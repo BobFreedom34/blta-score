@@ -247,8 +247,9 @@ function buildResultFromSets(formatKey, rawSets) {
         throw new Error(`Set ${i + 1} doesn't have a valid winner`);
       }
       const setWinner = p1 > p2 ? 1 : 2;
-      const wasTiebreak = (p1 === 7 && p2 === 6) || (p1 === 6 && p2 === 7);
-      set = { p1, p2, tiebreak: wasTiebreak ? { p1: 0, p2: 0 } : null, isSuperTiebreak: false, winner: setWinner };
+      // No placeholder tiebreak object for a 7-6 set — the real point score
+      // wasn't entered, and a fake "(0)" sub-score would be misleading.
+      set = { p1, p2, tiebreak: null, isSuperTiebreak: false, winner: setWinner };
     }
 
     sets.push(set);
