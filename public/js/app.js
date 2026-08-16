@@ -45,15 +45,19 @@ function matchCardHtml(m) {
 }
 
 // For the Planned tab the API already returns dated matches (soonest first),
-// then undated ones — insert a divider right where that switch happens.
+// then undated ones — head each section, and insert a new heading right
+// where that switch happens.
 function buildMatchListHtml(matches) {
   if (currentStatus !== 'PLANNED') {
     return matches.map(matchCardHtml).join('');
   }
   const parts = [];
   matches.forEach((m, i) => {
-    if (i > 0 && !m.scheduledAt && matches[i - 1].scheduledAt) {
-      parts.push('<div class="match-list-divider"><span>Not yet scheduled</span></div>');
+    const curScheduled = !!m.scheduledAt;
+    if (i === 0) {
+      parts.push(`<div class="match-list-heading">${curScheduled ? '📅 Scheduled' : '🕓 Not yet scheduled'}</div>`);
+    } else if (matches[i - 1].scheduledAt && !curScheduled) {
+      parts.push('<div class="match-list-heading">🕓 Not yet scheduled</div>');
     }
     parts.push(matchCardHtml(m));
   });
