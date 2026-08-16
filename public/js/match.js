@@ -105,7 +105,7 @@ function setCell(set, playerNum) {
   return `${main}${sub}`;
 }
 
-function scoreboardHtml(m) {
+function scoreboardHtml(m, durationHtml) {
   const state = m.state;
   const setsToShow = state.sets;
   const headerCells = setsToShow.map((s, i) => `<th>${s.isSuperTiebreak ? 'MTB' : `Set ${i + 1}`}</th>`).join('');
@@ -123,6 +123,7 @@ function scoreboardHtml(m) {
 
   return `
     <div class="scoreboard">
+      ${durationHtml ? `<div class="scoreboard-timer-row">${durationHtml}</div>` : ''}
       <table>
         <thead><tr><th></th>${headerCells}</tr></thead>
         <tbody>
@@ -260,7 +261,7 @@ function chatHtml() {
 function render(m) {
   current = m;
   const durationHtml = m.status === 'LIVE'
-    ? `<div class="timer${m.pausedAt ? ' timer-paused' : ''}" id="timer">00:00</div>${m.pausedAt ? '<div style="font-size:11px;color:var(--gray);text-align:right;margin-top:4px;font-weight:700">⏸ PAUSED</div>' : ''}`
+    ? `<div class="timer${m.pausedAt ? ' timer-paused' : ''}" id="timer">00:00</div>${m.pausedAt ? '<div class="paused-label">⏸ PAUSED</div>' : ''}`
     : (m.startTime && m.endTime
       ? `<div class="timer">${Math.max(1, Math.round((new Date(m.endTime) - new Date(m.startTime)) / 60000))} min</div>`
       : '');
@@ -274,10 +275,9 @@ function render(m) {
         <h1 style="margin-top:8px">${escapeHtml(m.player1.name)} <span style="color:var(--gray);font-weight:500">vs</span> ${escapeHtml(m.player2.name)}</h1>
         <div style="color:var(--gray);font-size:13px">${m.formatLabel}</div>
       </div>
-      ${durationHtml}
     </div>
 
-    ${scoreboardHtml(m)}
+    ${scoreboardHtml(m, durationHtml)}
     ${controlsHtml(m)}
 
     <div class="info-grid">
