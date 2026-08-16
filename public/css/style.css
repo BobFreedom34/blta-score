@@ -429,3 +429,24 @@ body.embed { background: var(--white); }
 .embed-live-item a { flex: 1; }
 
 footer.credit { text-align: center; font-size: 11px; color: var(--gray); margin-top: 24px; }
+
+/* ---------- Player rows ---------- */
+.player-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--gray-light);
+}
+.player-row:last-child { border-bottom: none; }
+.player-name { font-weight: 700; font-size: 14px; }
+.player-row-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.player-row .edit-name-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--orange);
+  font-family: inherit;
+  font-size: 14px;
+}
