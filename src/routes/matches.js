@@ -309,9 +309,9 @@ router.post('/:token/score', (req, res) => {
   const isSetCorrection = req.body.setIndex !== undefined && req.body.setIndex !== null;
 
   if (isSetCorrection) {
-    if (!isAdmin(req)) {
-      return res.status(403).json({ error: 'Only an admin can edit a specific set directly' });
-    }
+    // Picking an earlier (already-decided) set to correct is open to anyone
+    // while the match is LIVE, same as normal live scoring. It's only
+    // admin-gated when the match is FINISHED, via the check above.
     const setIndex = Number(req.body.setIndex);
     if (!Number.isInteger(setIndex) || setIndex < 0 || setIndex >= state.sets.length) {
       return res.status(400).json({ error: 'Invalid set index' });
@@ -327,11 +327,11 @@ router.post('/:token/score', (req, res) => {
 
   const winnerId = deriveWinnerId(nextState, row);
 
-  if (isSetCorrection) {
-    // A direct set correction can flip whether the match is actually decided
-    // (e.g. fixing an earlier set un-decides it) — reconcile status with that.
-    // Normal live scoring never touches status here; that stays the job of
-    // the explicit "Finish match" action.
+  if (isSetCorrection && row.status === 'FINISHED') {
+    // Correcting an already-finished match (admin-only, per the guard above)
+    // can flip whether it's still actually decided — reconcile status with
+    // that. A set correction on a still-LIVE match never auto-finishes it;
+    // that stays the job of the explicit "Finish match" action.
     const isNowComplete = nextState.status === 'COMPLETE';
     const newStatus = isNowComplete ? 'FINISHED' : 'LIVE';
     const ts = nowIso();

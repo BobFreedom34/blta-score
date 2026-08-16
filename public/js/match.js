@@ -98,10 +98,13 @@ function scoreboardHtml(m) {
 }
 
 function scoreControlsHtml(m, { showFinish, showRestart }) {
-  const effIndex = isAdminUser ? getEffectiveSetIndex(m) : m.state.currentSet;
+  // scoreControlsHtml is only ever called for a FINISHED match from the
+  // admin-only correction view, so the picker below is naturally admin-only
+  // there too — for a LIVE match it's open to everyone, same as scoring itself.
+  const effIndex = getEffectiveSetIndex(m);
   const curSet = m.state.sets[effIndex];
   const label = curSet.tiebreak ? (curSet.isSuperTiebreak ? 'POINT · match TB' : 'POINT · tiebreak') : 'GAME';
-  const setPicker = isAdminUser && m.state.sets.length > 1 ? `
+  const setPicker = m.state.sets.length > 1 ? `
     <div class="set-picker">
       ${m.state.sets.map((s, i) => `
         <button type="button" class="set-picker-btn ${i === effIndex ? 'active' : ''}" data-set-index="${i}">
@@ -281,8 +284,7 @@ function attachHandlers(m) {
   root.querySelectorAll('.btn-giant, .btn-minus').forEach((btn) => {
     btn.addEventListener('click', async () => {
       root.querySelectorAll('.btn-giant, .btn-minus').forEach((b) => b.disabled = true);
-      const body = { player: Number(btn.dataset.player), delta: Number(btn.dataset.delta) };
-      if (isAdminUser) body.setIndex = getEffectiveSetIndex(m);
+      const body = { player: Number(btn.dataset.player), delta: Number(btn.dataset.delta), setIndex: getEffectiveSetIndex(m) };
       try {
         await api(`/matches/${matchToken}/score`, { method: 'POST', body });
       } catch (err) { toast(err.message); }
