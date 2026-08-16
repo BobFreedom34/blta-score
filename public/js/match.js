@@ -170,6 +170,7 @@ function render(m) {
     <div class="match-actions">
       <button class="btn btn-yellow" id="share-btn">🔗 Share</button>
       <button class="btn btn-outline" id="embed-btn">🧩 Embed</button>
+      ${m.status === 'FINISHED' ? '<button class="btn btn-green" id="whatsapp-result-btn">📱 Send to WhatsApp</button>' : ''}
       ${isAdminUser || (m.status !== 'FINISHED' && !m.createdByAdmin) ? '<button class="btn btn-danger" id="delete-btn">🗑 Delete match</button>' : ''}
     </div>
   `;
@@ -313,6 +314,8 @@ function attachHandlers(m) {
   if (shareBtn) shareBtn.addEventListener('click', () => openShareModal(m));
   const embedBtn = document.getElementById('embed-btn');
   if (embedBtn) embedBtn.addEventListener('click', () => openEmbedModal(m));
+  const whatsappResultBtn = document.getElementById('whatsapp-result-btn');
+  if (whatsappResultBtn) whatsappResultBtn.addEventListener('click', () => openWhatsAppResultModal(m));
 
   const deleteBtn = document.getElementById('delete-btn');
   if (deleteBtn) deleteBtn.addEventListener('click', async () => {
