@@ -35,6 +35,8 @@ function serialize(row) {
     winnerId: row.winner_id,
     startTime: row.start_time,
     endTime: row.end_time,
+    pausedAt: row.paused_at,
+    pausedSeconds: row.paused_seconds || 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     player1: p1,
@@ -223,6 +225,59 @@ router.post('/:token/start', (req, res) => {
   const ts = nowIso();
   db.prepare("UPDATE matches SET status = 'LIVE', start_time = ?, updated_at = ? WHERE id = ?")
     .run(ts, ts, row.id);
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  const payload = broadcast(req, updated);
+  res.json(payload);
+});
+
+router.post('/:token/pause', (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (row.status !== 'LIVE') {
+    return res.status(400).json({ error: 'Only a live match can be paused' });
+  }
+  if (row.paused_at) {
+    return res.status(400).json({ error: 'Match is already paused' });
+  }
+  const ts = nowIso();
+  db.prepare('UPDATE matches SET paused_at = ?, updated_at = ? WHERE id = ?').run(ts, ts, row.id);
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  const payload = broadcast(req, updated);
+  res.json(payload);
+});
+
+router.post('/:token/resume', (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (row.status !== 'LIVE') {
+    return res.status(400).json({ error: 'Only a live match can be resumed' });
+  }
+  if (!row.paused_at) {
+    return res.status(400).json({ error: 'Match is not paused' });
+  }
+  const pausedMs = Date.now() - new Date(row.paused_at).getTime();
+  const pausedSeconds = (row.paused_seconds || 0) + Math.max(0, Math.round(pausedMs / 1000));
+  db.prepare('UPDATE matches SET paused_at = NULL, paused_seconds = ?, updated_at = ? WHERE id = ?')
+    .run(pausedSeconds, nowIso(), row.id);
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  const payload = broadcast(req, updated);
+  res.json(payload);
+});
+
+router.post('/:token/restart', (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (row.status !== 'LIVE') {
+    return res.status(400).json({ error: 'Only a live match can be restarted' });
+  }
+  const state = engine.initState(row.format);
+  const ts = nowIso();
+  db.prepare(`
+    UPDATE matches
+    SET state = ?, history = '[]', winner_id = NULL, start_time = ?,
+        paused_at = NULL, paused_seconds = 0, updated_at = ?
+    WHERE id = ?
+  `).run(JSON.stringify(state), ts, ts, row.id);
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);
   res.json(payload);

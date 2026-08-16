@@ -13,20 +13,23 @@ function toDatetimeLocalValue(iso) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function startTimer(startTimeIso) {
+function startTimer(m) {
   clearInterval(timerInterval);
-  const start = new Date(startTimeIso).getTime();
+  const start = new Date(m.startTime).getTime();
+  const pausedSeconds = m.pausedSeconds || 0;
+  const pausedAtMs = m.pausedAt ? new Date(m.pausedAt).getTime() : null;
   const tick = () => {
     const el = document.getElementById('timer');
     if (!el) { clearInterval(timerInterval); return; }
-    const secs = Math.max(0, Math.floor((Date.now() - start) / 1000));
+    const nowMs = pausedAtMs || Date.now();
+    const secs = Math.max(0, Math.floor((nowMs - start) / 1000) - pausedSeconds);
     const h = Math.floor(secs / 3600);
-    const m = Math.floor((secs % 3600) / 60);
+    const mm = Math.floor((secs % 3600) / 60);
     const s = secs % 60;
-    el.textContent = h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+    el.textContent = h > 0 ? `${h}:${pad(mm)}:${pad(s)}` : `${pad(mm)}:${pad(s)}`;
   };
   tick();
-  timerInterval = setInterval(tick, 1000);
+  if (!pausedAtMs) timerInterval = setInterval(tick, 1000);
 }
 
 function setCell(set, playerNum) {
@@ -84,6 +87,10 @@ function scoreControlsHtml(m, { showFinish }) {
     </div>
     <div class="match-actions">
       <button class="btn btn-outline" id="undo-btn" ${m.canUndo ? '' : 'disabled'}>↺ Undo last point</button>
+      ${showFinish ? (m.pausedAt
+        ? '<button class="btn btn-outline" id="resume-btn">▶ Resume match</button>'
+        : '<button class="btn btn-outline" id="pause-btn">⏸ Stop match</button>') : ''}
+      ${showFinish ? '<button class="btn btn-outline" id="restart-btn">🔁 Restart match</button>' : ''}
       ${showFinish ? '<button class="btn btn-dark" id="finish-btn">🏁 Finish match</button>' : ''}
     </div>
   `;
@@ -115,7 +122,7 @@ function controlsHtml(m) {
 function render(m) {
   current = m;
   const durationHtml = m.status === 'LIVE'
-    ? `<div class="timer" id="timer">00:00</div>`
+    ? `<div class="timer${m.pausedAt ? ' timer-paused' : ''}" id="timer">00:00</div>${m.pausedAt ? '<div style="font-size:11px;color:var(--gray);text-align:right;margin-top:4px;font-weight:700">⏸ PAUSED</div>' : ''}`
     : (m.startTime && m.endTime
       ? `<div class="timer">${Math.max(1, Math.round((new Date(m.endTime) - new Date(m.startTime)) / 60000))} min</div>`
       : '');
@@ -167,7 +174,7 @@ function render(m) {
     </div>
   `;
 
-  if (m.status === 'LIVE' && m.startTime) startTimer(m.startTime);
+  if (m.status === 'LIVE' && m.startTime) startTimer(m);
   else clearInterval(timerInterval);
 
   attachHandlers(m);
@@ -200,10 +207,34 @@ function attachHandlers(m) {
     catch (err) { toast(err.message); }
   });
 
+  const pauseBtn = document.getElementById('pause-btn');
+  if (pauseBtn) pauseBtn.addEventListener('click', async () => {
+    try { await api(`/matches/${matchToken}/pause`, { method: 'POST' }); }
+    catch (err) { toast(err.message); }
+  });
+
+  const resumeBtn = document.getElementById('resume-btn');
+  if (resumeBtn) resumeBtn.addEventListener('click', async () => {
+    try { await api(`/matches/${matchToken}/resume`, { method: 'POST' }); }
+    catch (err) { toast(err.message); }
+  });
+
+  const restartBtn = document.getElementById('restart-btn');
+  if (restartBtn) restartBtn.addEventListener('click', async () => {
+    if (!confirm("Restart this match? The score and timer will be cleared and the match will start over from 0-0. Are you sure?")) return;
+    restartBtn.disabled = true;
+    try { await api(`/matches/${matchToken}/restart`, { method: 'POST' }); }
+    catch (err) { toast(err.message); }
+    restartBtn.disabled = false;
+  });
+
   const finishBtn = document.getElementById('finish-btn');
   if (finishBtn) finishBtn.addEventListener('click', async () => {
     const complete = m.state.status === 'COMPLETE';
-    if (!complete && !confirm('The match is not finished yet (no winner determined). Finish it anyway? This is meant for retirements or walkovers.')) return;
+    const warning = complete
+      ? "Finish this match? The result can't be changed afterward (only an admin will be able to correct it later)."
+      : "The match doesn't have a winner yet — finishing now is meant for retirements or walkovers. The result can't be changed afterward (only an admin will be able to correct it later).";
+    if (!confirm(`${warning} Are you sure?`)) return;
     finishBtn.disabled = true;
     try { await api(`/matches/${matchToken}/finish`, { method: 'POST' }); }
     catch (err) { toast(err.message); finishBtn.disabled = false; }

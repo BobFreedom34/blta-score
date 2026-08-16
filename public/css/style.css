@@ -362,6 +362,7 @@ datalist {}
   padding: 8px 14px;
   border-radius: 999px;
 }
+.timer.timer-paused { background: var(--yellow); color: var(--ink); }
 .scoreboard {
   background: var(--ink);
   color: var(--white);
