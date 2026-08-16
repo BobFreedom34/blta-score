@@ -314,32 +314,34 @@ on — there's no separate account system, so treat the password like you would 
 ## 5. Setting up the "match finished" email
 
 The app emails **robert.sloboda@gmail.com** automatically whenever a match is marked finished,
-with the players, score, category, location and duration. It uses Gmail's SMTP server with
-that same account:
+with the players, score, category, location and duration. It sends *from* the blta.sk mailbox
+(`score@blta.sk`, hosted by WebSupport) — find that mailbox's credentials in WebAdmin under
+the mailbox's **Prihlasovacie údaje** (login details) page: it shows the outgoing mail server
+(`smtp.m1.websupport.sk`), port (`465`), and security (`SSL/TLS`), which already match what's
+hardcoded in `render.yaml`. You only need to supply the mailbox password:
 
-1. Go to your Google Account → Security → turn on **2-Step Verification** (required for the
-   next step).
-2. Go to https://myaccount.google.com/apppasswords, create an app password (name it e.g.
-   "BLTA Score"), and copy the 16-character password it gives you.
-3. Set `SMTP_USER=robert.sloboda@gmail.com` and `SMTP_PASS=<the 16-character app password>`:
-   - **On Render:** service → **Environment** tab → edit those two variables → **Save Changes**
-     (this triggers a redeploy automatically). The other SMTP values are already set by
-     `render.yaml`.
-   - **On a VPS:** edit `.env` on the server (see the full block below), then
-     `pm2 restart blta-score`.
+- **On Render:** service → **Environment** tab → set `SMTP_USER=score@blta.sk` and
+  `SMTP_PASS=<the score@blta.sk mailbox password>` → **Save Changes** (triggers a redeploy
+  automatically). The other SMTP values are already set by `render.yaml`.
+- **On a VPS:** edit `.env` on the server (see the full block below), then
+  `pm2 restart blta-score`.
 
 ```
-SMTP_HOST=smtp.gmail.com
+SMTP_HOST=smtp.m1.websupport.sk
 SMTP_PORT=465
 SMTP_SECURE=true
-SMTP_USER=robert.sloboda@gmail.com
-SMTP_PASS=<the 16-character app password>
+SMTP_USER=score@blta.sk
+SMTP_PASS=<the score@blta.sk mailbox password>
 NOTIFY_EMAIL=robert.sloboda@gmail.com
-MAIL_FROM="BLTA Score <robert.sloboda@gmail.com>"
+MAIL_FROM="BLTA Score <score@blta.sk>"
 ```
 
-4. Finish a test match to confirm the email arrives — if SMTP isn't configured, the app logs a
-   warning and simply skips sending, it never crashes.
+Finish a test match to confirm the email arrives — if SMTP isn't configured, the app logs a
+warning and simply skips sending, it never crashes.
+
+Using a different mailbox (e.g. a personal Gmail) instead is just as easy — swap in that
+provider's SMTP host/port and an app-specific password if it requires one (Gmail: Google
+Account → Security → 2-Step Verification → App Passwords).
 
 ---
 

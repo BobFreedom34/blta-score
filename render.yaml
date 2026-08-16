@@ -18,7 +18,7 @@ services:
       - key: PUBLIC_URL
         value: https://score.blta.sk
       - key: SMTP_HOST
-        value: smtp.gmail.com
+        value: smtp.m1.websupport.sk
       - key: SMTP_PORT
         value: 465
       - key: SMTP_SECURE
@@ -30,7 +30,7 @@ services:
       - key: NOTIFY_EMAIL
         value: robert.sloboda@gmail.com
       - key: MAIL_FROM
-        value: "BLTA Score <robert.sloboda@gmail.com>"
+        value: "BLTA Score <score@blta.sk>"
       - key: ADMIN_PASSWORD
         sync: false
       - key: SESSION_SECRET
