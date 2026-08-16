@@ -274,10 +274,10 @@ router.post('/:token/restart', (req, res) => {
   const ts = nowIso();
   db.prepare(`
     UPDATE matches
-    SET state = ?, history = '[]', winner_id = NULL, start_time = ?,
+    SET status = 'PLANNED', state = ?, history = '[]', winner_id = NULL, start_time = NULL,
         paused_at = NULL, paused_seconds = 0, updated_at = ?
     WHERE id = ?
-  `).run(JSON.stringify(state), ts, ts, row.id);
+  `).run(JSON.stringify(state), ts, row.id);
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);
   res.json(payload);

@@ -229,7 +229,7 @@ function attachHandlers(m) {
 
   const restartBtn = document.getElementById('restart-btn');
   if (restartBtn) restartBtn.addEventListener('click', async () => {
-    if (!confirm("Restart this match? The score and timer will be cleared and the match will start over from 0-0. Are you sure?")) return;
+    if (!confirm("Restart this match? The score and timer will be cleared and the match will go back to Planned. Are you sure?")) return;
     restartBtn.disabled = true;
     try { await api(`/matches/${matchToken}/restart`, { method: 'POST' }); }
     catch (err) { toast(err.message); }
