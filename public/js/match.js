@@ -508,9 +508,17 @@ function manualResultRowsHtml(m) {
     rows += `
       <div class="manual-set-row">
         <div class="manual-set-label">${isDeciderTB ? 'Match tiebreak' : `Set ${i + 1}`}</div>
-        <input type="number" min="0" max="99" class="manual-set-input" data-player="1" placeholder="${escapeHtml(m.player1.name)}">
-        <span>–</span>
-        <input type="number" min="0" max="99" class="manual-set-input" data-player="2" placeholder="${escapeHtml(m.player2.name)}">
+        <div class="manual-set-fields">
+          <div class="manual-set-field">
+            <label>${escapeHtml(m.player1.name)}</label>
+            <input type="number" min="0" max="99" inputmode="numeric" class="manual-set-input" data-player="1">
+          </div>
+          <div class="manual-set-dash">–</div>
+          <div class="manual-set-field">
+            <label>${escapeHtml(m.player2.name)}</label>
+            <input type="number" min="0" max="99" inputmode="numeric" class="manual-set-input" data-player="2">
+          </div>
+        </div>
       </div>
     `;
   }

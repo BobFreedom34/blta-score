@@ -448,23 +448,41 @@ datalist {}
 
 /* ---------- Manual result entry ---------- */
 .manual-set-row {
-  display: grid;
-  grid-template-columns: 1fr 60px 16px 60px;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--gray-light);
 }
-.manual-set-label { font-size: 13px; font-weight: 700; color: var(--gray); }
-.manual-set-row span { text-align: center; color: var(--gray); }
+.manual-set-row:last-child { border-bottom: none; margin-bottom: 6px; padding-bottom: 0; }
+.manual-set-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 10px;
+}
+.manual-set-fields { display: flex; align-items: flex-end; gap: 10px; }
+.manual-set-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.manual-set-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.manual-set-dash { color: var(--gray); font-weight: 700; font-size: 20px; padding-bottom: 12px; }
 .manual-set-input {
   width: 100%;
-  padding: 8px;
-  border-radius: 8px;
+  padding: 14px 8px;
+  border-radius: 10px;
   border: 1.5px solid #ddd;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 22px;
+  font-weight: 800;
   text-align: center;
 }
+.manual-set-input:focus { border-color: var(--orange); outline: none; }
 
 /* ---------- Match chat ---------- */
 .chat-messages {
