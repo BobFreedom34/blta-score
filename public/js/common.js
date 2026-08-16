@@ -63,11 +63,15 @@ function escapeHtml(str) {
   ));
 }
 
+// Fixed d.m.yyyy, HH:MM format (not locale-dependent) so it reads the same
+// for every visitor regardless of their browser's locale settings.
 function fmtDateShort(iso) {
   if (!iso) return 'Date TBD';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}, ${hh}:${mm}`;
 }
 
 function fmtDateLong(iso) {
