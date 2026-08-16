@@ -406,9 +406,6 @@ router.post('/:token/finish', async (req, res) => {
 router.post('/:token/manual-result', async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!isAdmin(req)) {
-    return res.status(403).json({ error: 'Only an admin can enter a result manually' });
-  }
   if (row.status !== 'PLANNED') {
     return res.status(400).json({ error: 'Only a planned match can have its result entered manually' });
   }

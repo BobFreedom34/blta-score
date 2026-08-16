@@ -142,7 +142,7 @@ function controlsHtml(m) {
   if (m.status === 'PLANNED') {
     return `
       <button class="btn btn-primary btn-block" id="start-btn" style="padding:16px;font-size:16px;margin-top:16px">▶ Start match</button>
-      ${isAdminUser ? '<button class="btn btn-outline btn-block" id="manual-result-btn" style="margin-top:10px">📝 Enter result manually</button>' : ''}
+      <button class="btn btn-outline btn-block" id="manual-result-btn" style="margin-top:10px">📝 Enter result manually</button>
     `;
   }
   if (m.status === 'LIVE') {
