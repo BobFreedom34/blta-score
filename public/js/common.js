@@ -1,4 +1,4 @@
-const CATEGORY_LABELS = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', FRIENDLY: 'Friendly' };
+const CATEGORY_LABELS = { ELITE: 'ELITE', NEXT_GEN: 'NEXT GEN', NOVICE: 'NOVICE', FRIENDLY: 'FRIENDLY' };
 const STATUS_LABELS = { PLANNED: 'Planned', LIVE: 'Live', FINISHED: 'Finished' };
 
 (function initMobileNav() {
