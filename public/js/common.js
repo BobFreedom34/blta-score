@@ -46,7 +46,14 @@ function categoryBadge(category) {
   return `<span class="badge badge-${category}">${CATEGORY_LABELS[category] || category}</span>`;
 }
 
-function statusBadge(status) {
+// Accepts either a match object (preferred, so a scheduled Planned match can
+// show its date/time instead of just "Planned") or a plain status string.
+function statusBadge(m) {
+  const status = typeof m === 'string' ? m : m.status;
+  const scheduledAt = typeof m === 'string' ? null : m.scheduledAt;
+  if (status === 'PLANNED' && scheduledAt) {
+    return `<span class="badge badge-status status-PLANNED-dated">${fmtDateShort(scheduledAt)}</span>`;
+  }
   return `<span class="badge badge-status status-${status}">${STATUS_LABELS[status] || status}</span>`;
 }
 

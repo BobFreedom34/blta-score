@@ -241,6 +241,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .badge-status { background: var(--gray-light); color: var(--gray); }
 .badge-status.status-LIVE { background: var(--orange); color: var(--white); }
 .badge-status.status-PLANNED { background: var(--gray-light); color: var(--charcoal); }
+.badge-status.status-PLANNED-dated { background: var(--green); color: var(--white); }
 .badge-status.status-FINISHED { background: var(--green); color: var(--white); }
 
 /* ---------- Match list ---------- */

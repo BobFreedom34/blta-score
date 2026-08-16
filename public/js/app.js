@@ -26,7 +26,7 @@ function matchCardHtml(m) {
     <a class="match-card status-${m.status}" href="/match/${m.token}">
       <div class="match-card-top">
         ${categoryBadge(m.category)}
-        ${statusBadge(m.status)}
+        ${statusBadge(m)}
         <div class="match-card-meta" style="margin-left:auto">
           ${m.location ? `<span>📍 ${escapeHtml(m.location)}</span>` : ''}
           <span>🗓 ${fmtDateShort(m.scheduledAt)}</span>
