@@ -18,6 +18,15 @@ const FORMAT_META = {
   BO5_STB: { setsToWin: 3, finalSetSuperTiebreak: true },
 };
 
+// Mirrors public/js/new-match.js FORMATS — for the change-format-while-live picker.
+const FORMATS_LIST = [
+  { key: 'BO1', label: 'Best of 1 set' },
+  { key: 'BO3', label: 'Best of 3 sets', sublabel: '(BLTA Play-Off)' },
+  { key: 'BO3_STB', label: 'Best of 3 sets — deciding set is a match tiebreak', sublabel: '(BLTA League)' },
+  { key: 'BO5', label: 'Best of 5 sets' },
+  { key: 'BO5_STB', label: 'Best of 5 sets — deciding set is a match tiebreak' },
+];
+
 // Standard tiebreak serve rotation: the player whose turn it is serves point 1
 // only, then serve alternates every 2 points for the rest of the tiebreak.
 function tiebreakServerAtPoint(pointNumber, firstServer) {
@@ -309,6 +318,7 @@ function render(m) {
     <div class="match-actions">
       <button class="btn btn-yellow" id="share-btn">🔗 Share</button>
       <button class="btn btn-outline" id="embed-btn">🧩 Embed</button>
+      ${m.status === 'LIVE' ? '<button class="btn btn-outline" id="change-format-btn">🎾 Change format</button>' : ''}
       ${m.status === 'FINISHED' ? '<button class="btn btn-green" id="whatsapp-result-btn">📱 Send to WhatsApp</button>' : ''}
       ${isAdminUser || (m.status !== 'FINISHED' && !m.createdByAdmin) ? '<button class="btn btn-danger" id="delete-btn">🗑 Delete match</button>' : ''}
     </div>
@@ -497,6 +507,8 @@ function attachHandlers(m) {
   if (shareBtn) shareBtn.addEventListener('click', () => openShareModal(m));
   const embedBtn = document.getElementById('embed-btn');
   if (embedBtn) embedBtn.addEventListener('click', () => openEmbedModal(m));
+  const changeFormatBtn = document.getElementById('change-format-btn');
+  if (changeFormatBtn) changeFormatBtn.addEventListener('click', () => openChangeFormatModal(m));
   const whatsappResultBtn = document.getElementById('whatsapp-result-btn');
   if (whatsappResultBtn) whatsappResultBtn.addEventListener('click', () => openWhatsAppResultModal(m));
 
@@ -533,6 +545,36 @@ function openFirstServerModal(m) {
   document.getElementById('first-server-p2-btn').onclick = () => startMatch(2);
   document.getElementById('first-server-skip-btn').onclick = () => startMatch(null);
   document.getElementById('first-server-modal').style.display = 'flex';
+}
+
+function openChangeFormatModal(m) {
+  const container = document.getElementById('change-format-options');
+  const errorEl = document.getElementById('change-format-error');
+  errorEl.textContent = '';
+  container.innerHTML = FORMATS_LIST.map((f) => `
+    <label class="format-option">
+      <input type="radio" name="change-format" value="${f.key}" ${f.key === m.format ? 'checked' : ''}>
+      <span>
+        <div style="font-weight:700">${f.label}${f.sublabel ? ` <span style="font-weight:400;color:var(--gray);font-size:12px">${f.sublabel}</span>` : ''}</div>
+      </span>
+    </label>
+  `).join('');
+  container.querySelectorAll('input[name="change-format"]').forEach((input) => {
+    input.addEventListener('change', async () => {
+      if (input.value === m.format) return;
+      errorEl.textContent = '';
+      try {
+        await api(`/matches/${matchToken}/format`, { method: 'PATCH', body: { format: input.value } });
+        document.getElementById('change-format-modal').style.display = 'none';
+      } catch (err) {
+        errorEl.textContent = err.message;
+        input.checked = false;
+        const currentInput = container.querySelector(`input[value="${m.format}"]`);
+        if (currentInput) currentInput.checked = true;
+      }
+    });
+  });
+  document.getElementById('change-format-modal').style.display = 'flex';
 }
 
 function openFinishUndecidedModal(m) {

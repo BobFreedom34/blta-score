@@ -129,6 +129,17 @@
   </div>
 </div>
 
+<!-- Change format modal (while LIVE) -->
+<div class="modal-backdrop" id="change-format-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="change-format-modal" aria-label="Close">&times;</button>
+    <h3>Change match format</h3>
+    <p style="font-size:13px;color:var(--gray)">Sets already played keep their score — this only changes how the rest of the match is scored. Picking a format the current score would already decide isn't allowed.</p>
+    <div class="format-options" id="change-format-options"></div>
+    <div id="change-format-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+  </div>
+</div>
+
 <footer class="site-footer">
   <div class="site-footer-inner">
     <span>BLTA Score</span>

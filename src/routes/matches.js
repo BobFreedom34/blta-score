@@ -268,6 +268,37 @@ router.post('/:token/start', async (req, res) => {
   });
 });
 
+// Changes the match format mid-game — open to anyone while LIVE, same as
+// scoring itself. Rejected if it would retroactively decide the match from
+// the sets already played (see engine.applyFormatChange).
+router.patch('/:token/format', (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (row.status !== 'LIVE') {
+    return res.status(400).json({ error: 'The match format can only be changed while live' });
+  }
+  const format = req.body.format;
+  if (!engine.FORMATS[format]) {
+    return res.status(400).json({ error: 'Invalid match format' });
+  }
+  if (format === row.format) {
+    return res.status(400).json({ error: 'That is already the current format' });
+  }
+
+  let state;
+  try {
+    state = engine.applyFormatChange(JSON.parse(row.state), format);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  db.prepare('UPDATE matches SET format = ?, state = ?, updated_at = ? WHERE id = ?')
+    .run(format, JSON.stringify(state), nowIso(), row.id);
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  const payload = broadcast(req, updated);
+  res.json(payload);
+});
+
 router.post('/:token/pause', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;

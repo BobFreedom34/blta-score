@@ -206,6 +206,33 @@ function editSetScore(state, formatKey, setIndex, player, delta) {
   return recomputeFromSets(next, format);
 }
 
+// Changes the match format mid-game. Sets already decided keep their score
+// under the same per-set rules (win condition doesn't depend on format); only
+// the *current* set is reshaped to the new format's rules, and only if it
+// has no progress yet (0-0) — a set already in progress keeps its current
+// shape rather than trying to convert partial games into an equivalent super
+// tiebreak or vice versa. Future sets are created under the new format
+// automatically as the match reaches them. Throws if the new format's rules
+// mean the sets already played would immediately decide the match — the
+// caller should reject the change rather than silently finishing it.
+function applyFormatChange(state, newFormatKey) {
+  const newFormat = FORMATS[newFormatKey];
+  if (!newFormat) throw new Error(`Unknown match format: ${newFormatKey}`);
+
+  const next = JSON.parse(JSON.stringify(state));
+  const cur = next.sets[next.currentSet];
+  const hasProgress = cur.p1 > 0 || cur.p2 > 0 || (cur.tiebreak && (cur.tiebreak.p1 > 0 || cur.tiebreak.p2 > 0));
+  if (!hasProgress) {
+    next.sets[next.currentSet] = createSetForIndex(next.currentSet, newFormat);
+  }
+
+  const recomputed = recomputeFromSets(next, newFormat);
+  if (recomputed.status === 'COMPLETE') {
+    throw new Error('Switching to this format would immediately decide the match from the sets already played — correct the score first, or pick a different format.');
+  }
+  return recomputed;
+}
+
 function isValidSetScore(p1, p2) {
   if ((p1 === 7 && p2 === 6) || (p1 === 6 && p2 === 7)) return true;
   return (p1 >= 6 || p2 >= 6) && Math.abs(p1 - p2) >= 2;
@@ -307,6 +334,7 @@ module.exports = {
   initState,
   applyDelta,
   editSetScore,
+  applyFormatChange,
   buildResultFromSets,
   describeSet,
   describeMatch,
