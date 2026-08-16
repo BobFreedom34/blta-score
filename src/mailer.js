@@ -40,7 +40,7 @@ async function sendMatchFinishedEmail(match, player1, player2) {
     : null;
 
   const baseUrl = process.env.PUBLIC_URL || '';
-  const link = `${baseUrl}/match/${match.id}`;
+  const link = `${baseUrl}/match/${match.share_token}`;
 
   const subject = `Match finished: ${player1.name} vs ${player2.name} (${match.category.replace('_', ' ')})`;
   const text = [
