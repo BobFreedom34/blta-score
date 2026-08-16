@@ -211,6 +211,7 @@ router.delete('/:token', (req, res) => {
       return res.status(403).json({ error: 'This match was created by an admin — only an admin can delete it' });
     }
   }
+  db.prepare('DELETE FROM messages WHERE match_id = ?').run(row.id);
   db.prepare('DELETE FROM matches WHERE id = ?').run(row.id);
   req.app.get('io').emit('matches:changed', { token: row.share_token, status: 'DELETED' });
   res.status(204).end();
@@ -360,6 +361,34 @@ router.post('/:token/finish', async (req, res) => {
   } catch (err) {
     console.error('[matches] failed to send finished-match email:', err.message);
   }
+});
+
+function serializeMessage(row) {
+  return { id: row.id, author: row.author, body: row.body, createdAt: row.created_at };
+}
+
+router.get('/:token/messages', (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  const messages = db.prepare('SELECT * FROM messages WHERE match_id = ? ORDER BY id ASC').all(row.id);
+  res.json(messages.map(serializeMessage));
+});
+
+router.post('/:token/messages', (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  const author = String(req.body.author || '').trim().slice(0, 60);
+  const body = String(req.body.body || '').trim().slice(0, 500);
+  if (!author) return res.status(400).json({ error: 'Please enter your name' });
+  if (!body) return res.status(400).json({ error: 'Message cannot be empty' });
+
+  const ts = nowIso();
+  const result = db.prepare('INSERT INTO messages (match_id, author, body, created_at) VALUES (?, ?, ?, ?)')
+    .run(row.id, author, body, ts);
+  const message = serializeMessage({ id: result.lastInsertRowid, author, body, created_at: ts });
+
+  req.app.get('io').to(`match:${row.share_token}`).emit('message:new', { token: row.share_token, message });
+  res.status(201).json(message);
 });
 
 module.exports = router;

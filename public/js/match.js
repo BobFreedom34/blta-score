@@ -3,6 +3,8 @@ const root = document.getElementById('match-root');
 let current = null;
 let timerInterval = null;
 let isAdminUser = false;
+let messages = [];
+let chatDraftBody = '';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -126,6 +128,48 @@ function controlsHtml(m) {
   `;
 }
 
+function chatMessageHtml(msg) {
+  return `
+    <div class="chat-message">
+      <div class="chat-message-meta"><span class="chat-message-author">${escapeHtml(msg.author)}</span><span class="chat-message-time">${fmtDateShort(msg.createdAt)}</span></div>
+      <div class="chat-message-body">${escapeHtml(msg.body)}</div>
+    </div>
+  `;
+}
+
+function appendChatMessage(message) {
+  if (messages.some((m) => m.id === message.id)) return;
+  messages.push(message);
+  const chatMessagesEl = document.getElementById('chat-messages');
+  if (chatMessagesEl) {
+    const emptyEl = chatMessagesEl.querySelector('.chat-empty');
+    if (emptyEl) emptyEl.remove();
+    chatMessagesEl.insertAdjacentHTML('beforeend', chatMessageHtml(message));
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  }
+}
+
+function chatHtml() {
+  const savedName = localStorage.getItem('blta_chat_name') || '';
+  return `
+    <div class="card chat-card" style="margin-bottom:16px">
+      <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em">Chat</div>
+      <div class="chat-messages" id="chat-messages">
+        ${messages.length === 0
+          ? '<div class="chat-empty">No messages yet — say hi 👋</div>'
+          : messages.map(chatMessageHtml).join('')}
+      </div>
+      <form id="chat-form">
+        <input type="text" id="chat-name" placeholder="Your name" value="${escapeHtml(savedName)}" maxlength="60" required>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <input type="text" id="chat-body" placeholder="Type a message…" value="${escapeHtml(chatDraftBody)}" maxlength="500" required style="flex:1">
+          <button type="submit" class="btn btn-primary btn-sm">Send</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
 function render(m) {
   current = m;
   const durationHtml = m.status === 'LIVE'
@@ -173,6 +217,8 @@ function render(m) {
         ${locationEditable ? `<button type="button" class="edit-link" id="edit-notes-link" style="margin-top:8px">Edit</button>` : ''}
       </div>
     ` : ''}
+
+    ${chatHtml()}
 
     <div class="match-actions">
       <button class="btn btn-yellow" id="share-btn">🔗 Share</button>
@@ -321,6 +367,31 @@ function attachHandlers(m) {
     });
   });
 
+  const chatMessagesEl = document.getElementById('chat-messages');
+  if (chatMessagesEl) chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  const chatForm = document.getElementById('chat-form');
+  if (chatForm) {
+    const bodyInput = document.getElementById('chat-body');
+    bodyInput.addEventListener('input', () => { chatDraftBody = bodyInput.value; });
+    chatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nameInput = document.getElementById('chat-name');
+      const name = nameInput.value.trim();
+      const body = bodyInput.value.trim();
+      if (!name || !body) return;
+      localStorage.setItem('blta_chat_name', name);
+      const submitBtn = chatForm.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      try {
+        const created = await api(`/matches/${matchToken}/messages`, { method: 'POST', body: { author: name, body } });
+        appendChatMessage(created);
+        chatDraftBody = '';
+        bodyInput.value = '';
+      } catch (err) { toast(err.message); }
+      submitBtn.disabled = false;
+    });
+  }
+
   const shareBtn = document.getElementById('share-btn');
   if (shareBtn) shareBtn.addEventListener('click', () => openShareModal(m));
   const embedBtn = document.getElementById('embed-btn');
@@ -389,6 +460,7 @@ async function init() {
   isAdminUser = await checkAdmin();
   try {
     const m = await api(`/matches/${matchToken}`);
+    try { messages = await api(`/matches/${matchToken}/messages`); } catch { /* chat is best-effort */ }
     render(m);
   } catch (err) {
     root.innerHTML = `<div class="empty-state">${escapeHtml(err.message)}</div>`;
@@ -398,6 +470,10 @@ async function init() {
   socket.emit('join', `match:${matchToken}`);
   socket.on('match:update', (m) => {
     if (m.token === matchToken) render(m);
+  });
+  socket.on('message:new', ({ token, message }) => {
+    if (token !== matchToken) return;
+    appendChatMessage(message);
   });
 }
 init();

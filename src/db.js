@@ -137,4 +137,15 @@ db.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_matches_share_token ON matches(share_token);
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id INTEGER NOT NULL REFERENCES matches(id),
+    author TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_messages_match_id ON messages(match_id);
+`);
+
 module.exports = db;
