@@ -147,6 +147,7 @@ function render(m) {
     <div class="match-actions">
       <button class="btn btn-yellow" id="share-btn">🔗 Share</button>
       <button class="btn btn-outline" id="embed-btn">🧩 Embed</button>
+      ${m.status === 'PLANNED' || isAdminUser ? '<button class="btn btn-danger" id="delete-btn">🗑 Delete match</button>' : ''}
     </div>
   `;
 
@@ -217,6 +218,20 @@ function attachHandlers(m) {
   if (shareBtn) shareBtn.addEventListener('click', () => openShareModal(m));
   const embedBtn = document.getElementById('embed-btn');
   if (embedBtn) embedBtn.addEventListener('click', () => openEmbedModal(m));
+
+  const deleteBtn = document.getElementById('delete-btn');
+  if (deleteBtn) deleteBtn.addEventListener('click', async () => {
+    if (!confirm(`Delete this match (${m.player1.name} vs ${m.player2.name})? This can't be undone.`)) return;
+    deleteBtn.disabled = true;
+    try {
+      await api(`/matches/${matchToken}`, { method: 'DELETE' });
+      toast('Match deleted');
+      window.location.href = '/';
+    } catch (err) {
+      toast(err.message);
+      deleteBtn.disabled = false;
+    }
+  });
 }
 
 function openShareModal(m) {

@@ -176,8 +176,8 @@ router.patch('/:token', (req, res) => {
 router.delete('/:token', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (row.status !== 'PLANNED') {
-    return res.status(400).json({ error: 'Only planned matches can be deleted' });
+  if (row.status !== 'PLANNED' && !isAdmin(req)) {
+    return res.status(403).json({ error: 'Only an admin can delete a match that has already started' });
   }
   db.prepare('DELETE FROM matches WHERE id = ?').run(row.id);
   req.app.get('io').emit('matches:changed', { token: row.share_token, status: 'DELETED' });
