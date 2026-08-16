@@ -280,6 +280,15 @@ datalist {}
   cursor: pointer;
 }
 .format-option:has(input:checked) { border-color: var(--orange); background: #fff6f2; }
+/* .field input {width:100%} above also matches these radios since .format-options
+   sits inside a .field — override back to their natural size so the dot stays put
+   at the start of the row instead of stretching and dragging the label rightward. */
+.format-option input[type="radio"] {
+  width: auto;
+  flex-shrink: 0;
+  margin: 0;
+}
+.format-option > span { flex: 1; }
 
 /* ---------- Live scoring page ---------- */
 .match-header {
