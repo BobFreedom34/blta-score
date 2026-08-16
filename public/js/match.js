@@ -123,9 +123,8 @@ function scoreboardHtml(m, durationHtml) {
 
   return `
     <div class="scoreboard">
-      ${durationHtml ? `<div class="scoreboard-timer-row">${durationHtml}</div>` : ''}
       <table>
-        <thead><tr><th></th>${headerCells}</tr></thead>
+        <thead><tr><th class="timer-cell">${durationHtml || ''}</th>${headerCells}</tr></thead>
         <tbody>
           ${row(1, m.player1)}
           ${row(2, m.player2)}

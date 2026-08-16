@@ -371,9 +371,9 @@ datalist {}
   padding: 18px;
   box-shadow: var(--shadow-lg);
 }
-.scoreboard-timer-row { display: flex; flex-direction: column; align-items: flex-end; margin-bottom: 12px; }
-.scoreboard-timer-row .timer { background: rgba(255,255,255,0.16); color: var(--white); }
-.scoreboard-timer-row .timer.timer-paused { background: var(--yellow); color: var(--ink); }
+.scoreboard th.timer-cell { text-align: left; padding: 0 8px 10px 0; }
+.timer-cell .timer { background: rgba(255,255,255,0.16); color: var(--white); }
+.timer-cell .timer.timer-paused { background: var(--yellow); color: var(--ink); }
 .paused-label { font-size: 11px; color: var(--yellow); font-weight: 700; margin-top: 4px; }
 .scoreboard table { width: 100%; border-collapse: collapse; }
 .scoreboard td, .scoreboard th {
