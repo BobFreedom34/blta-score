@@ -82,14 +82,19 @@ router.get('/', (req, res) => {
     params.q = `%${q}%`;
   }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  // Planned matches: soonest-scheduled first, undated ones grouped at the end
+  // (the frontend divides the two groups with a visual line).
+  const orderBy = status === 'PLANNED'
+    ? 'ORDER BY (m.scheduled_at IS NULL) ASC, m.scheduled_at ASC, m.created_at DESC'
+    : `ORDER BY
+        CASE m.status WHEN 'LIVE' THEN 0 WHEN 'PLANNED' THEN 1 ELSE 2 END,
+        COALESCE(m.scheduled_at, m.created_at) DESC`;
   const rows = db.prepare(`
     SELECT m.* FROM matches m
     JOIN players p1 ON p1.id = m.player1_id
     JOIN players p2 ON p2.id = m.player2_id
     ${where}
-    ORDER BY
-      CASE m.status WHEN 'LIVE' THEN 0 WHEN 'PLANNED' THEN 1 ELSE 2 END,
-      COALESCE(m.scheduled_at, m.created_at) DESC
+    ${orderBy}
   `).all(params);
   res.json(rows.map(serialize));
 });

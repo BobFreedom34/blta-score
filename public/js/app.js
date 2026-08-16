@@ -1,4 +1,4 @@
-let currentStatus = 'LIVE';
+let currentStatus = 'PLANNED';
 let currentQuery = '';
 let currentCategory = '';
 let debounceTimer = null;
@@ -29,6 +29,22 @@ function matchCardHtml(m) {
   `;
 }
 
+// For the Planned tab the API already returns dated matches (soonest first),
+// then undated ones — insert a divider right where that switch happens.
+function buildMatchListHtml(matches) {
+  if (currentStatus !== 'PLANNED') {
+    return matches.map(matchCardHtml).join('');
+  }
+  const parts = [];
+  matches.forEach((m, i) => {
+    if (i > 0 && !m.scheduledAt && matches[i - 1].scheduledAt) {
+      parts.push('<div class="match-list-divider"><span>Not yet scheduled</span></div>');
+    }
+    parts.push(matchCardHtml(m));
+  });
+  return parts.join('');
+}
+
 async function loadMatches() {
   const params = new URLSearchParams();
   params.set('status', currentStatus);
@@ -40,7 +56,7 @@ async function loadMatches() {
     if (matches.length === 0) {
       listEl.innerHTML = `<div class="empty-state">No ${STATUS_LABELS[currentStatus].toLowerCase()} matches${currentQuery || currentCategory ? ' match your filters' : ''}.</div>`;
     } else {
-      listEl.innerHTML = matches.map(matchCardHtml).join('');
+      listEl.innerHTML = buildMatchListHtml(matches);
     }
   } catch (err) {
     listEl.innerHTML = `<div class="empty-state">Could not load matches: ${escapeHtml(err.message)}</div>`;
