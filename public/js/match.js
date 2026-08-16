@@ -155,7 +155,7 @@ function render(m) {
     <div class="match-actions">
       <button class="btn btn-yellow" id="share-btn">🔗 Share</button>
       <button class="btn btn-outline" id="embed-btn">🧩 Embed</button>
-      ${m.status === 'PLANNED' || isAdminUser ? '<button class="btn btn-danger" id="delete-btn">🗑 Delete match</button>' : ''}
+      ${isAdminUser || (m.status !== 'FINISHED' && !m.createdByAdmin) ? '<button class="btn btn-danger" id="delete-btn">🗑 Delete match</button>' : ''}
     </div>
   `;
 

@@ -30,6 +30,7 @@ function serialize(row) {
     state,
     scoreSummary: engine.describeMatch(state),
     canUndo: history.length > 0,
+    createdByAdmin: !!row.created_by_admin,
     winnerId: row.winner_id,
     startTime: row.start_time,
     endTime: row.end_time,
@@ -133,8 +134,8 @@ router.post('/', (req, res) => {
 
   const state = engine.initState(format);
   const info = db.prepare(`
-    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history)
-    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]')
+    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin)
+    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin)
   `).run({
     share_token: crypto.randomUUID(),
     category,
@@ -144,6 +145,7 @@ router.post('/', (req, res) => {
     scheduled_at: scheduledAt || null,
     format,
     state: JSON.stringify(state),
+    created_by_admin: isAdmin(req) ? 1 : 0,
   });
 
   const row = db.prepare('SELECT * FROM matches WHERE id = ?').get(info.lastInsertRowid);
@@ -181,8 +183,13 @@ router.patch('/:token', (req, res) => {
 router.delete('/:token', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (row.status !== 'PLANNED' && !isAdmin(req)) {
-    return res.status(403).json({ error: 'Only an admin can delete a match that has already started' });
+  if (!isAdmin(req)) {
+    if (row.status === 'FINISHED') {
+      return res.status(403).json({ error: 'Only an admin can delete a finished match' });
+    }
+    if (row.created_by_admin) {
+      return res.status(403).json({ error: 'This match was created by an admin — only an admin can delete it' });
+    }
   }
   db.prepare('DELETE FROM matches WHERE id = ?').run(row.id);
   req.app.get('io').emit('matches:changed', { token: row.share_token, status: 'DELETED' });
