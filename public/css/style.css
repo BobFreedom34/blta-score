@@ -372,7 +372,7 @@ datalist {}
   box-shadow: var(--shadow-lg);
 }
 .scoreboard th.timer-cell { text-align: left; padding: 0 8px 10px 0; }
-.timer-cell .timer { background: rgba(255,255,255,0.16); color: var(--white); }
+.timer-cell .timer { display: inline-block; width: auto; background: rgba(255,255,255,0.16); color: var(--white); }
 .timer-cell .timer.timer-paused { background: var(--yellow); color: var(--ink); }
 .paused-label { font-size: 11px; color: var(--yellow); font-weight: 700; margin-top: 4px; }
 .scoreboard table { width: 100%; border-collapse: collapse; }
