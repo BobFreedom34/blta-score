@@ -297,16 +297,21 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   color: var(--gray);
 }
 .match-list-heading {
-  font-size: 15px;
-  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 22px 0 12px;
   color: var(--ink);
-  margin: 24px 0 12px;
-  padding: 9px 14px;
-  background: var(--gray-light);
-  border-left: 4px solid var(--orange);
-  border-radius: 8px;
+  font-size: 17px;
+  font-weight: 800;
 }
 .match-list-heading:first-child { margin-top: 0; }
+.match-list-heading::before, .match-list-heading::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #ddd;
+}
 
 /* ---------- Forms ---------- */
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
