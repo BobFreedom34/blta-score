@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db');
+const { requireAdmin } = require('../auth');
 
 const router = express.Router();
 
@@ -15,7 +16,10 @@ router.get('/', (req, res) => {
   res.json(rows);
 });
 
-router.post('/', (req, res) => {
+// Note: players can still be auto-created when someone plans a new match with
+// a new name (see resolvePlayer in routes/matches.js) — that stays open to
+// everyone. Only the dedicated Players page (add/rename/delete) is admin-only.
+router.post('/', requireAdmin, (req, res) => {
   const name = (req.body.name || '').trim();
   if (!name) return res.status(400).json({ error: 'Name is required' });
   if (name.length > 60) return res.status(400).json({ error: 'Name is too long' });
@@ -28,7 +32,7 @@ router.post('/', (req, res) => {
   res.status(201).json(player);
 });
 
-router.patch('/:id', (req, res) => {
+router.patch('/:id', requireAdmin, (req, res) => {
   const player = db.prepare('SELECT * FROM players WHERE id = ?').get(req.params.id);
   if (!player) return res.status(404).json({ error: 'Player not found' });
 
@@ -44,7 +48,7 @@ router.patch('/:id', (req, res) => {
   res.json(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id));
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requireAdmin, (req, res) => {
   const player = db.prepare('SELECT * FROM players WHERE id = ?').get(req.params.id);
   if (!player) return res.status(404).json({ error: 'Player not found' });
 

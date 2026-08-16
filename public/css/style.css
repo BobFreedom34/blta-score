@@ -200,6 +200,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .badge-ELITE { background: var(--ink); color: var(--yellow); }
 .badge-NEXT_GEN { background: var(--orange); color: var(--white); }
 .badge-NOVICE { background: var(--green); color: var(--white); }
+.badge-FRIENDLY { background: var(--yellow); color: var(--ink); }
 
 .badge-status { background: var(--gray-light); color: var(--gray); }
 .badge-status.status-LIVE { background: var(--orange); color: var(--white); }

@@ -1,15 +1,19 @@
 const listEl = document.getElementById('player-list');
 let query = '';
 let players = [];
+let isAdminUser = false;
 
 function playerRowHtml(p) {
-  return `
-    <div class="player-row" data-id="${p.id}">
-      <span class="player-name">${escapeHtml(p.name)}</span>
+  const actions = isAdminUser ? `
       <div class="player-row-actions">
         <button type="button" class="btn btn-sm btn-outline" data-action="edit">Edit</button>
         <button type="button" class="btn btn-sm btn-danger" data-action="delete">Delete</button>
       </div>
+  ` : '';
+  return `
+    <div class="player-row" data-id="${p.id}">
+      <span class="player-name">${escapeHtml(p.name)}</span>
+      ${actions}
     </div>
   `;
 }
@@ -20,7 +24,7 @@ function render() {
     return;
   }
   listEl.innerHTML = players.map(playerRowHtml).join('');
-  attachRowHandlers();
+  if (isAdminUser) attachRowHandlers();
 }
 
 async function loadPlayers() {
@@ -102,4 +106,9 @@ document.getElementById('filter-q').addEventListener('input', (e) => {
   loadPlayers();
 });
 
-loadPlayers();
+(async () => {
+  isAdminUser = await checkAdmin();
+  document.getElementById('add-player-card').style.display = isAdminUser ? '' : 'none';
+  document.getElementById('admin-required-card').style.display = isAdminUser ? 'none' : '';
+  loadPlayers();
+})();

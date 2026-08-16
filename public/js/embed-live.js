@@ -1,7 +1,7 @@
 const listEl = document.getElementById('live-list');
 
 function itemHtml(m) {
-  const url = `${window.location.origin}/match/${m.id}`;
+  const url = `${window.location.origin}/match/${m.token}`;
   return `
     <div class="embed-live-item">
       ${categoryBadge(m.category)}

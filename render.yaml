@@ -31,3 +31,7 @@ services:
         value: robert.sloboda@gmail.com
       - key: MAIL_FROM
         value: "BLTA Score <robert.sloboda@gmail.com>"
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true

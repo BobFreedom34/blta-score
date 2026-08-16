@@ -15,6 +15,7 @@
       <a href="/">Matches</a>
       <a href="/players" class="active">Players</a>
       <a href="/new-match">+ New match</a>
+      <a href="/admin">Admin</a>
     </nav>
   </div>
 </div>
@@ -23,11 +24,17 @@
   <h1 style="margin-top:22px">Players</h1>
   <p style="color:var(--gray)">Add every league player here once — then pick them from the list when creating a match.</p>
 
-  <div class="card" style="margin-bottom:20px">
+  <div class="card" style="margin-bottom:20px" id="add-player-card">
     <form id="add-player-form" style="display:flex;gap:10px;flex-wrap:wrap">
       <input type="text" id="new-player-name" placeholder="Player full name" style="flex:1;min-width:200px;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px" required maxlength="60">
       <button type="submit" class="btn btn-primary">+ Add player</button>
     </form>
+  </div>
+  <div class="card" style="margin-bottom:20px;display:none" id="admin-required-card">
+    <p style="margin:0;color:var(--gray)">
+      Anyone can pick existing players when planning a match — adding, renaming, or removing
+      players here requires an admin login. <a href="/admin" style="text-decoration:underline;color:var(--orange)">Log in as admin</a>.
+    </p>
   </div>
 
   <input type="text" id="filter-q" placeholder="Search players…" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px;margin-bottom:14px">

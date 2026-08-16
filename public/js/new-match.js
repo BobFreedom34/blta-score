@@ -61,7 +61,7 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
         format,
       },
     });
-    window.location.href = `/match/${match.id}`;
+    window.location.href = `/match/${match.token}`;
   } catch (err) {
     errorEl.textContent = err.message;
     submitBtn.disabled = false;

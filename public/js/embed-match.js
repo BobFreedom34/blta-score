@@ -1,4 +1,4 @@
-const matchId = window.location.pathname.split('/').filter(Boolean).pop();
+const matchToken = window.location.pathname.split('/').filter(Boolean).pop();
 const root = document.getElementById('embed-root');
 
 function setCell(set, playerNum) {
@@ -31,20 +31,20 @@ function render(m) {
     </div>
     <div style="margin-top:8px;font-size:11px;color:var(--gray)">
       ${m.location ? `📍 ${escapeHtml(m.location)} · ` : ''}${fmtDateShort(m.scheduledAt)}
-      · <a href="${window.location.origin}/match/${m.id}" target="_blank" rel="noopener" style="text-decoration:underline">Full match ↗</a>
+      · <a href="${window.location.origin}/match/${m.token}" target="_blank" rel="noopener" style="text-decoration:underline">Full match ↗</a>
     </div>
   `;
 }
 
 async function init() {
   try {
-    render(await api(`/matches/${matchId}`));
+    render(await api(`/matches/${matchToken}`));
   } catch (err) {
     root.innerHTML = `<div class="empty-state">${escapeHtml(err.message)}</div>`;
     return;
   }
   const socket = io();
-  socket.emit('join', `match:${matchId}`);
-  socket.on('match:update', (m) => { if (String(m.id) === String(matchId)) render(m); });
+  socket.emit('join', `match:${matchToken}`);
+  socket.on('match:update', (m) => { if (m.token === matchToken) render(m); });
 }
 init();

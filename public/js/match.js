@@ -1,7 +1,8 @@
-const matchId = window.location.pathname.split('/').filter(Boolean).pop();
+const matchToken = window.location.pathname.split('/').filter(Boolean).pop();
 const root = document.getElementById('match-root');
 let current = null;
 let timerInterval = null;
+let isAdminUser = false;
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -58,39 +59,49 @@ function scoreboardHtml(m) {
   `;
 }
 
+function scoreControlsHtml(m, { showFinish }) {
+  const curSet = m.state.sets[m.state.currentSet];
+  const label = curSet.tiebreak ? (curSet.isSuperTiebreak ? 'POINT · match TB' : 'POINT · tiebreak') : 'GAME';
+  return `
+    <div class="score-controls">
+      <div class="player-controls">
+        <div class="pname">${escapeHtml(m.player1.name)}</div>
+        <button class="btn btn-giant" data-player="1" data-delta="1">+1 ${label}</button>
+        <button class="btn btn-minus" data-player="1" data-delta="-1">−1</button>
+      </div>
+      <div class="player-controls">
+        <div class="pname">${escapeHtml(m.player2.name)}</div>
+        <button class="btn btn-giant" data-player="2" data-delta="1">+1 ${label}</button>
+        <button class="btn btn-minus" data-player="2" data-delta="-1">−1</button>
+      </div>
+    </div>
+    <div class="match-actions">
+      <button class="btn btn-outline" id="undo-btn" ${m.canUndo ? '' : 'disabled'}>↺ Undo last point</button>
+      ${showFinish ? '<button class="btn btn-dark" id="finish-btn">🏁 Finish match</button>' : ''}
+    </div>
+  `;
+}
+
 function controlsHtml(m) {
   if (m.status === 'PLANNED') {
     return `<button class="btn btn-primary btn-block" id="start-btn" style="padding:16px;font-size:16px;margin-top:16px">▶ Start match</button>`;
   }
   if (m.status === 'LIVE') {
-    const curSet = m.state.sets[m.state.currentSet];
-    const label = curSet.tiebreak ? (curSet.isSuperTiebreak ? 'POINT · match TB' : 'POINT · tiebreak') : 'GAME';
-    return `
-      <div class="score-controls">
-        <div class="player-controls">
-          <div class="pname">${escapeHtml(m.player1.name)}</div>
-          <button class="btn btn-giant" data-player="1" data-delta="1">+1 ${label}</button>
-          <button class="btn btn-minus" data-player="1" data-delta="-1">−1</button>
-        </div>
-        <div class="player-controls">
-          <div class="pname">${escapeHtml(m.player2.name)}</div>
-          <button class="btn btn-giant" data-player="2" data-delta="1">+1 ${label}</button>
-          <button class="btn btn-minus" data-player="2" data-delta="-1">−1</button>
-        </div>
-      </div>
-      <div class="match-actions">
-        <button class="btn btn-outline" id="undo-btn" ${m.canUndo ? '' : 'disabled'}>↺ Undo last point</button>
-        <button class="btn btn-dark" id="finish-btn">🏁 Finish match</button>
-      </div>
-    `;
+    return scoreControlsHtml(m, { showFinish: true });
   }
   // FINISHED
   const winnerName = m.winnerId === m.player1.id ? m.player1.name : m.winnerId === m.player2.id ? m.player2.name : null;
-  return `
+  const winnerCard = `
     <div class="card" style="margin-top:16px;text-align:center">
       <div style="font-size:13px;color:var(--gray);font-weight:700;letter-spacing:0.03em;text-transform:uppercase">Winner</div>
       <div style="font-size:22px;font-weight:800;color:var(--green-light)">${winnerName ? escapeHtml(winnerName) : 'Match ended without a result'}</div>
     </div>
+  `;
+  if (!isAdminUser) return winnerCard;
+  return `
+    ${winnerCard}
+    <div style="text-align:center;font-size:12px;color:var(--gray);margin:14px 0 -6px">Admin: you can still correct the score below.</div>
+    ${scoreControlsHtml(m, { showFinish: false })}
   `;
 }
 
@@ -101,6 +112,8 @@ function render(m) {
     : (m.startTime && m.endTime
       ? `<div class="timer">${Math.max(1, Math.round((new Date(m.endTime) - new Date(m.startTime)) / 60000))} min</div>`
       : '');
+
+  const locationEditable = m.status !== 'FINISHED' || isAdminUser;
 
   root.innerHTML = `
     <div class="match-header">
@@ -119,7 +132,7 @@ function render(m) {
       <div class="info-item">
         <div class="label">Location</div>
         <div class="value" id="location-display">${m.location ? escapeHtml(m.location) : '<span style="color:var(--gray)">Not set</span>'}</div>
-        ${m.status !== 'FINISHED' ? `<button type="button" class="edit-link" id="edit-location-link">Edit</button>` : ''}
+        ${locationEditable ? `<button type="button" class="edit-link" id="edit-location-link">Edit</button>` : ''}
       </div>
       <div class="info-item">
         <div class="label">Date</div>
@@ -147,7 +160,7 @@ function attachHandlers(m) {
   const startBtn = document.getElementById('start-btn');
   if (startBtn) startBtn.addEventListener('click', async () => {
     startBtn.disabled = true;
-    try { await api(`/matches/${matchId}/start`, { method: 'POST' }); }
+    try { await api(`/matches/${matchToken}/start`, { method: 'POST' }); }
     catch (err) { toast(err.message); startBtn.disabled = false; }
   });
 
@@ -155,7 +168,7 @@ function attachHandlers(m) {
     btn.addEventListener('click', async () => {
       root.querySelectorAll('.btn-giant, .btn-minus').forEach((b) => b.disabled = true);
       try {
-        await api(`/matches/${matchId}/score`, {
+        await api(`/matches/${matchToken}/score`, {
           method: 'POST',
           body: { player: Number(btn.dataset.player), delta: Number(btn.dataset.delta) },
         });
@@ -166,7 +179,7 @@ function attachHandlers(m) {
 
   const undoBtn = document.getElementById('undo-btn');
   if (undoBtn) undoBtn.addEventListener('click', async () => {
-    try { await api(`/matches/${matchId}/undo`, { method: 'POST' }); }
+    try { await api(`/matches/${matchToken}/undo`, { method: 'POST' }); }
     catch (err) { toast(err.message); }
   });
 
@@ -175,7 +188,7 @@ function attachHandlers(m) {
     const complete = m.state.status === 'COMPLETE';
     if (!complete && !confirm('The match is not finished yet (no winner determined). Finish it anyway? This is meant for retirements or walkovers.')) return;
     finishBtn.disabled = true;
-    try { await api(`/matches/${matchId}/finish`, { method: 'POST' }); }
+    try { await api(`/matches/${matchToken}/finish`, { method: 'POST' }); }
     catch (err) { toast(err.message); finishBtn.disabled = false; }
   });
 
@@ -195,7 +208,7 @@ function attachHandlers(m) {
     document.getElementById('cancel-location-btn').addEventListener('click', () => render(current));
     document.getElementById('save-location-btn').addEventListener('click', async () => {
       const val = document.getElementById('location-input').value.trim();
-      try { await api(`/matches/${matchId}`, { method: 'PATCH', body: { location: val } }); }
+      try { await api(`/matches/${matchToken}`, { method: 'PATCH', body: { location: val } }); }
       catch (err) { toast(err.message); }
     });
   });
@@ -207,7 +220,7 @@ function attachHandlers(m) {
 }
 
 function openShareModal(m) {
-  const url = `${window.location.origin}/match/${m.id}`;
+  const url = `${window.location.origin}/match/${m.token}`;
   document.getElementById('share-link').textContent = url;
   document.getElementById('whatsapp-btn').onclick = () => {
     window.open(whatsappShareUrl(`${m.player1.name} vs ${m.player2.name} — BLTA live score:`, url), '_blank');
@@ -219,7 +232,7 @@ function openShareModal(m) {
 }
 
 function openEmbedModal(m) {
-  const src = `${window.location.origin}/embed/match/${m.id}`;
+  const src = `${window.location.origin}/embed/match/${m.token}`;
   const code = `<iframe src="${src}" width="100%" height="420" frameborder="0" style="border:0;max-width:480px"></iframe>`;
   document.getElementById('embed-code').textContent = code;
   document.getElementById('copy-embed-btn').onclick = () => {
@@ -238,17 +251,18 @@ document.querySelectorAll('.modal-backdrop').forEach((el) => {
 });
 
 async function init() {
+  isAdminUser = await checkAdmin();
   try {
-    const m = await api(`/matches/${matchId}`);
+    const m = await api(`/matches/${matchToken}`);
     render(m);
   } catch (err) {
     root.innerHTML = `<div class="empty-state">${escapeHtml(err.message)}</div>`;
     return;
   }
   const socket = io();
-  socket.emit('join', `match:${matchId}`);
+  socket.emit('join', `match:${matchToken}`);
   socket.on('match:update', (m) => {
-    if (String(m.id) === String(matchId)) render(m);
+    if (m.token === matchToken) render(m);
   });
 }
 init();

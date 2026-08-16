@@ -1,4 +1,4 @@
-const CATEGORY_LABELS = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
+const CATEGORY_LABELS = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', FRIENDLY: 'Friendly' };
 const STATUS_LABELS = { PLANNED: 'Planned', LIVE: 'Live', FINISHED: 'Finished' };
 
 async function api(path, options = {}) {
@@ -77,6 +77,15 @@ function describeMatch(state) {
 
 function whatsappShareUrl(text, url) {
   return `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`;
+}
+
+async function checkAdmin() {
+  try {
+    const res = await api('/admin/session');
+    return !!res.isAdmin;
+  } catch {
+    return false;
+  }
 }
 
 function copyToClipboard(text) {

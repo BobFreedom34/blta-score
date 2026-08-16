@@ -1,11 +1,14 @@
+const crypto = require('crypto');
 const express = require('express');
 const db = require('../db');
 const engine = require('../matchEngine');
 const { sendMatchFinishedEmail } = require('../mailer');
+const { isAdmin } = require('../auth');
 
 const router = express.Router();
 
 const MAX_HISTORY = 30;
+const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE', 'FRIENDLY'];
 
 function getPlayer(id) {
   return db.prepare('SELECT * FROM players WHERE id = ?').get(id);
@@ -17,7 +20,7 @@ function serialize(row) {
   const state = JSON.parse(row.state);
   const history = JSON.parse(row.history);
   return {
-    id: row.id,
+    token: row.share_token,
     category: row.category,
     location: row.location,
     scheduledAt: row.scheduled_at,
@@ -38,7 +41,7 @@ function serialize(row) {
 }
 
 function getRowOr404(req, res) {
-  const row = db.prepare('SELECT * FROM matches WHERE id = ?').get(req.params.id);
+  const row = db.prepare('SELECT * FROM matches WHERE share_token = ?').get(req.params.token);
   if (!row) {
     res.status(404).json({ error: 'Match not found' });
     return null;
@@ -50,11 +53,15 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function deriveWinnerId(state, row) {
+  return state.winner === 1 ? row.player1_id : state.winner === 2 ? row.player2_id : null;
+}
+
 function broadcast(req, row) {
   const io = req.app.get('io');
   const payload = serialize(row);
-  io.to(`match:${row.id}`).emit('match:update', payload);
-  io.emit('matches:changed', { id: row.id, status: row.status });
+  io.to(`match:${row.share_token}`).emit('match:update', payload);
+  io.emit('matches:changed', { token: row.share_token, status: row.status });
   return payload;
 }
 
@@ -87,7 +94,7 @@ router.get('/', (req, res) => {
   res.json(rows.map(serialize));
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:token', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   res.json(serialize(row));
@@ -97,7 +104,7 @@ router.post('/', (req, res) => {
   const { category, location, scheduledAt, format } = req.body;
   let { player1Id, player2Id, player1Name, player2Name } = req.body;
 
-  if (!['ELITE', 'NEXT_GEN', 'NOVICE'].includes(category)) {
+  if (!CATEGORIES.includes(category)) {
     return res.status(400).json({ error: 'Invalid category' });
   }
   if (!engine.FORMATS[format]) {
@@ -121,9 +128,10 @@ router.post('/', (req, res) => {
 
   const state = engine.initState(format);
   const info = db.prepare(`
-    INSERT INTO matches (category, player1_id, player2_id, location, scheduled_at, format, status, state, history)
-    VALUES (@category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]')
+    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history)
+    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]')
   `).run({
+    share_token: crypto.randomUUID(),
     category,
     player1_id: p1.id,
     player2_id: p2.id,
@@ -138,11 +146,11 @@ router.post('/', (req, res) => {
   res.status(201).json(payload);
 });
 
-router.patch('/:id', (req, res) => {
+router.patch('/:token', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (row.status === 'FINISHED') {
-    return res.status(400).json({ error: 'Finished matches cannot be edited' });
+  if (row.status === 'FINISHED' && !isAdmin(req)) {
+    return res.status(403).json({ error: 'Only an admin can edit a finished match' });
   }
 
   const fields = {};
@@ -150,7 +158,7 @@ router.patch('/:id', (req, res) => {
   if (typeof req.body.scheduledAt === 'string' || req.body.scheduledAt === null) {
     fields.scheduled_at = req.body.scheduledAt;
   }
-  if (req.body.category && ['ELITE', 'NEXT_GEN', 'NOVICE'].includes(req.body.category)) {
+  if (req.body.category && CATEGORIES.includes(req.body.category)) {
     fields.category = req.body.category;
   }
   if (Object.keys(fields).length === 0) {
@@ -165,18 +173,18 @@ router.patch('/:id', (req, res) => {
   res.json(payload);
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:token', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status !== 'PLANNED') {
     return res.status(400).json({ error: 'Only planned matches can be deleted' });
   }
   db.prepare('DELETE FROM matches WHERE id = ?').run(row.id);
-  req.app.get('io').emit('matches:changed', { id: row.id, status: 'DELETED' });
+  req.app.get('io').emit('matches:changed', { token: row.share_token, status: 'DELETED' });
   res.status(204).end();
 });
 
-router.post('/:id/start', (req, res) => {
+router.post('/:token/start', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status !== 'PLANNED') {
@@ -190,11 +198,14 @@ router.post('/:id/start', (req, res) => {
   res.json(payload);
 });
 
-router.post('/:id/score', (req, res) => {
+router.post('/:token/score', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (row.status !== 'LIVE') {
+  if (row.status === 'PLANNED') {
     return res.status(400).json({ error: 'Match must be live to update the score' });
+  }
+  if (row.status === 'FINISHED' && !isAdmin(req)) {
+    return res.status(403).json({ error: 'Only an admin can edit the score of a finished match' });
   }
   const player = Number(req.body.player);
   const delta = Number(req.body.delta);
@@ -210,31 +221,35 @@ router.post('/:id/score', (req, res) => {
   history.push(prevState);
   while (history.length > MAX_HISTORY) history.shift();
 
-  db.prepare('UPDATE matches SET state = ?, history = ?, updated_at = ? WHERE id = ?')
-    .run(JSON.stringify(nextState), JSON.stringify(history), nowIso(), row.id);
+  db.prepare('UPDATE matches SET state = ?, history = ?, winner_id = ?, updated_at = ? WHERE id = ?')
+    .run(JSON.stringify(nextState), JSON.stringify(history), deriveWinnerId(nextState, row), nowIso(), row.id);
 
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);
   res.json(payload);
 });
 
-router.post('/:id/undo', (req, res) => {
+router.post('/:token/undo', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (row.status === 'FINISHED' && !isAdmin(req)) {
+    return res.status(403).json({ error: 'Only an admin can edit a finished match' });
+  }
   const history = JSON.parse(row.history);
   if (history.length === 0) {
     return res.status(400).json({ error: 'Nothing to undo' });
   }
   const prevState = history.pop();
-  db.prepare('UPDATE matches SET state = ?, history = ?, updated_at = ? WHERE id = ?')
-    .run(prevState, JSON.stringify(history), nowIso(), row.id);
+  const restoredState = JSON.parse(prevState);
+  db.prepare('UPDATE matches SET state = ?, history = ?, winner_id = ?, updated_at = ? WHERE id = ?')
+    .run(prevState, JSON.stringify(history), deriveWinnerId(restoredState, row), nowIso(), row.id);
 
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);
   res.json(payload);
 });
 
-router.post('/:id/finish', async (req, res) => {
+router.post('/:token/finish', async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status !== 'LIVE') {
@@ -242,7 +257,7 @@ router.post('/:id/finish', async (req, res) => {
   }
 
   const state = JSON.parse(row.state);
-  const winnerId = state.winner === 1 ? row.player1_id : state.winner === 2 ? row.player2_id : null;
+  const winnerId = deriveWinnerId(state, row);
 
   const ts = nowIso();
   db.prepare("UPDATE matches SET status = 'FINISHED', end_time = ?, winner_id = ?, updated_at = ? WHERE id = ?")

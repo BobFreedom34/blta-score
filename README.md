@@ -3,11 +3,14 @@
 Live score tracking app for the BLTA amateur tennis league, built to run on **score.blta.sk**.
 
 - Plan matches, add players, pick a format (best of 1/3/5 sets, with or without a
-  match-tiebreak deciding set)
+  match-tiebreak deciding set), in one of four categories (Elite / Next Gen / Novice / Friendly)
 - Score live with big +1 / -1 buttons, undo mistakes, a running match timer
 - Share a match by link or WhatsApp, or embed it (or the whole live-matches list)
-  on the blta.sk WordPress site via `<iframe>`
+  on the blta.sk WordPress site via `<iframe>` — every match link is an unguessable random
+  token, not a sequential number, so it can't be guessed
 - Emails you (robert.sloboda@gmail.com) automatically when a match finishes
+- A single **admin** login (§4) can add/rename/delete players and correct a match after it's
+  finished — everyone else can still plan matches and score live, same as before
 - No build step, no framework — plain Node.js + a SQLite file. Easy to read, easy to edit.
 
 ---
@@ -18,13 +21,15 @@ Live score tracking app for the BLTA amateur tennis league, built to run on **sc
 blta-score/
   server.js                  ← entry point: Express app + Socket.IO + routes
   src/
-    db.js                    ← SQLite connection + table schema
+    db.js                    ← SQLite connection + table schema + migrations
     matchEngine.js            ← tennis scoring rules (sets/games/tiebreaks) — pure logic, no DB/HTTP
     mailer.js                 ← sends the "match finished" email
+    auth.js                   ← admin login cookie (sign/check), requireAdmin middleware
     routes/players.js         ← REST API: /api/players
     routes/matches.js         ← REST API: /api/matches/...
+    routes/admin.js           ← REST API: /api/admin/login, /logout, /session
   public/                     ← everything the browser loads directly, no build step
-    index.html, match.html, new-match.html, players.html
+    index.html, match.html, new-match.html, players.html, admin.html
     embed-live.html, embed-match.html   ← stripped-down pages made for <iframe>
     css/style.css              ← all styling, using blta.sk's brand colors as CSS variables
     js/*.js                    ← one plain JS file per page, talks to the REST API + Socket.IO
@@ -43,7 +48,7 @@ signal to everyone on the home page so lists refresh automatically.
 
 Match formats and the tennis rules (tiebreak at 6-6, match-tiebreak deciding set, etc.) live in
 one file: `src/matchEngine.js`. It's covered by hand-written tests you can re-run any time —
-see §5.
+see §6.
 
 ---
 
@@ -110,10 +115,12 @@ git push -u origin main
 2. **New +** → **Blueprint** → connect your GitHub account → select the `blta-score` repo.
 3. Render reads `render.yaml` and shows you a preview: one web service (`blta-score`, Starter
    plan, $7/month) with a 1 GB disk ($0.25/month) attached. Click **Apply**.
-4. It'll ask you to fill in the two secret values marked `sync: false` in the blueprint —
-   `SMTP_USER` and `SMTP_PASS` (see §4 below for getting the Gmail app password; you can also
-   skip this for now and add them later from the service's **Environment** tab — the app runs
-   fine without them, it just won't be able to send the finished-match email yet).
+4. It'll ask you to fill in the secret values marked `sync: false` in the blueprint —
+   `SMTP_USER`, `SMTP_PASS` (see §5 below for getting the Gmail app password), and
+   `ADMIN_PASSWORD` (see §4 — pick your own admin password here). You can also skip SMTP for
+   now and add it later from the service's **Environment** tab — the app runs fine without it,
+   it just won't be able to send the finished-match email yet. `ADMIN_PASSWORD` is worth setting
+   right away, though, or the admin login won't work.
 5. Render builds and deploys automatically. First deploy takes a couple of minutes — watch the
    **Logs** tab for `BLTA score app listening on http://localhost:...`.
 
@@ -197,7 +204,8 @@ nano .env
 
 Set at minimum:
 - `PUBLIC_URL=https://score.blta.sk`
-- SMTP settings so the "match finished" email can send (see §4 below for the Gmail setup)
+- SMTP settings so the "match finished" email can send (see §5 below for the Gmail setup)
+- `ADMIN_PASSWORD` and `SESSION_SECRET` (see §4) so the admin login works
 
 **Step 5 — Run it permanently with PM2** (keeps it running, restarts it if it crashes or the
 server reboots).
@@ -278,7 +286,32 @@ check with your host.
 
 ---
 
-## 4. Setting up the "match finished" email
+## 4. The admin account
+
+Everyone can still plan matches, add a new player while doing so, start matches, and score
+live — that's unchanged. Only three things require logging in as **admin** at `/admin`
+(a single password, no username — visible as an "Admin" link in the top nav on every page):
+
+- Adding, renaming, or deleting a player from the **Players** page
+- Editing the location/category, or correcting the score, of a match that's already **finished**
+  (once a match is finished it's normally locked, so a mistake caught later needs an admin to fix it)
+
+Set the password via the `ADMIN_PASSWORD` environment variable:
+- **On Render:** service → **Environment** tab → set `ADMIN_PASSWORD`. `SESSION_SECRET` (used to
+  cryptographically sign the login cookie) is auto-generated by the Render Blueprint — you don't
+  need to set it yourself.
+- **On a VPS:** set both `ADMIN_PASSWORD` and `SESSION_SECRET` in `.env`. Generate a random
+  secret with:
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  ```
+
+The login is a single long-lived cookie (30 days) scoped to whichever browser/device you log in
+on — there's no separate account system, so treat the password like you would a shared door key.
+
+---
+
+## 5. Setting up the "match finished" email
 
 The app emails **robert.sloboda@gmail.com** automatically whenever a match is marked finished,
 with the players, score, category, location and duration. It uses Gmail's SMTP server with
@@ -310,7 +343,7 @@ MAIL_FROM="BLTA Score <robert.sloboda@gmail.com>"
 
 ---
 
-## 5. Making future adjustments
+## 6. Making future adjustments
 
 **Restart after any change** (nothing is hot-reloaded):
 
@@ -333,8 +366,9 @@ MAIL_FROM="BLTA Score <robert.sloboda@gmail.com>"
 | The live scoring screen | `public/match.html` + `public/js/match.js` |
 | What the WordPress embeds look like | `public/embed-live.html`, `public/embed-match.html` + matching `.js` files |
 | Match formats / tennis scoring rules | `src/matchEngine.js` — see the `FORMATS` object at the top |
-| Categories (currently Elite / Next Gen / Novice) | Search for `ELITE`, `NEXT_GEN`, `NOVICE` across `src/db.js`, `src/routes/matches.js`, and the `public/js/*.js` files — they're deliberately kept in sync as plain strings, no central config, since there are only three |
+| Categories (currently Elite / Next Gen / Novice / Friendly) | Add the new value to `CATEGORIES` in `src/routes/matches.js`, then add a matching `<option>` in `public/new-match.html` and `public/index.html`, and a badge color in `public/css/style.css` (search `badge-FRIENDLY` for the pattern) |
 | The finished-match email content | `src/mailer.js` |
+| What the admin account can do | `src/routes/matches.js` and `src/routes/players.js` — search for `isAdmin`/`requireAdmin` to see every gated action |
 
 **Adding a 4th match format** (e.g. "Best of 3, no-ad scoring"): add an entry to the `FORMATS`
 object in `src/matchEngine.js`, then add a matching entry to the `FORMATS` array in
@@ -367,26 +401,32 @@ while the server is running), living wherever `DATA_DIR` points.
 
 ---
 
-## 6. Embedding on the blta.sk WordPress site
+## 7. Embedding on the blta.sk WordPress site
 
 - **Full live-matches list**, always up to date:
   ```html
   <iframe src="https://score.blta.sk/embed/live" width="100%" height="600" frameborder="0"></iframe>
   ```
-- **A single match** — the exact snippet (with the right match ID) is generated for you: open
-  any match on score.blta.sk and click **🧩 Embed**, then paste the code into a WordPress
-  "Custom HTML" block.
+- **A single match** — the exact snippet (with the match's unguessable link) is generated for
+  you: open any match on score.blta.sk and click **🧩 Embed**, then paste the code into a
+  WordPress "Custom HTML" block.
 
 Both embeds update live via WebSocket — no page refresh needed on the WordPress side either.
 
 ---
 
-## 7. Notes on scope / things intentionally left out
+## 8. Notes on scope / things intentionally left out
 
-- **No login system.** Anyone with the link can add players, plan matches, and score live —
-  matching "everyone can add matches" from the brief. If abuse becomes a problem later (e.g.
-  random visitors editing scores from the public embed), the natural next step is a simple
-  shared PIN required for score changes; ask and it can be added.
+- **Live scoring stays open to everyone**, by design — anyone with a match link can plan
+  matches, start them, and score live, matching "everyone can add matches" from the brief. Only
+  player management and editing a *finished* match require the admin login (§4). If live
+  scoring itself becomes a problem later (e.g. random visitors messing with an in-progress match
+  from the public embed), the natural next step is a shared PIN for scoring too; ask and it can
+  be added.
+- **Match links are unguessable** (a random token, not a sequential number) but the home page
+  still lists every match publicly, by design — it's a public scoreboard. The token mainly stops
+  someone who only received one specific share link from finding *other* matches by editing the
+  URL; it doesn't hide that matches exist.
 - **`-1` correcting a mistake** only adjusts the game/point currently in progress — it can't
   undo a set that has already been won and closed out. For that, use **↺ Undo last point**,
   which restores the exact previous state and works across set boundaries too (keeps the last
