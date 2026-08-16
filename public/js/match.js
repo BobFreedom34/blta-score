@@ -6,6 +6,13 @@ let isAdminUser = false;
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
+function toDatetimeLocalValue(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function startTimer(startTimeIso) {
   clearInterval(timerInterval);
   const start = new Date(startTimeIso).getTime();
@@ -136,7 +143,8 @@ function render(m) {
       </div>
       <div class="info-item">
         <div class="label">Date</div>
-        <div class="value">${fmtDateLong(m.scheduledAt)}</div>
+        <div class="value" id="date-display">${fmtDateLong(m.scheduledAt)}</div>
+        ${locationEditable ? `<button type="button" class="edit-link" id="edit-date-link">Edit</button>` : ''}
       </div>
       <div class="info-item">
         <div class="label">Category</div>
@@ -212,6 +220,31 @@ function attachHandlers(m) {
       try { await api(`/matches/${matchToken}`, { method: 'PATCH', body: { location: val } }); }
       catch (err) { toast(err.message); }
     });
+  });
+
+  const editDateLink = document.getElementById('edit-date-link');
+  if (editDateLink) editDateLink.addEventListener('click', () => {
+    const display = document.getElementById('date-display');
+    display.innerHTML = `
+      <input type="datetime-local" id="date-input" value="${toDatetimeLocalValue(m.scheduledAt)}" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">
+      <div style="margin-top:6px;display:flex;gap:6px">
+        <button class="btn btn-sm btn-primary" id="save-date-btn">Save</button>
+        <button class="btn btn-sm btn-outline" id="clear-date-btn">Clear</button>
+        <button class="btn btn-sm btn-outline" id="cancel-date-btn">Cancel</button>
+      </div>
+    `;
+    editDateLink.style.display = 'none';
+    document.getElementById('date-input').focus();
+    document.getElementById('cancel-date-btn').addEventListener('click', () => render(current));
+    const saveDate = async (scheduledAt) => {
+      try { await api(`/matches/${matchToken}`, { method: 'PATCH', body: { scheduledAt } }); }
+      catch (err) { toast(err.message); }
+    };
+    document.getElementById('save-date-btn').addEventListener('click', () => {
+      const val = document.getElementById('date-input').value;
+      saveDate(val ? new Date(val).toISOString() : null);
+    });
+    document.getElementById('clear-date-btn').addEventListener('click', () => saveDate(null));
   });
 
   const shareBtn = document.getElementById('share-btn');
