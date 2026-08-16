@@ -383,6 +383,9 @@ datalist {}
 .scoreboard td.name-cell { text-align: left; font-weight: 700; font-size: 17px; }
 .scoreboard .sub-tb { font-size: 11px; color: #9a9a9a; margin-left: 2px; }
 .scoreboard tr.winner-row td.name-cell::after { content: " \2713"; color: var(--yellow); }
+.serve-ball { display: inline-block; margin-right: 6px; font-size: 14px; }
+
+.server-choice-row { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 
 .set-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
 .set-picker-btn {

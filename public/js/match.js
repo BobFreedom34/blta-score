@@ -18,6 +18,41 @@ const FORMAT_META = {
   BO5_STB: { setsToWin: 3, finalSetSuperTiebreak: true },
 };
 
+// Standard tiebreak serve rotation: the player whose turn it is serves point 1
+// only, then serve alternates every 2 points for the rest of the tiebreak.
+function tiebreakServerAtPoint(pointNumber, firstServer) {
+  if (pointNumber <= 1) return firstServer;
+  const other = firstServer === 1 ? 2 : 1;
+  const block = Math.floor((pointNumber - 2) / 2);
+  return block % 2 === 0 ? other : firstServer;
+}
+
+// Who serves the next point/game right now, given who served first in the
+// match. Serve alternates every game across the whole match (set boundaries
+// don't reset it); a tiebreak — standard or match-deciding — counts as
+// exactly one "game" in that alternation regardless of how many points it
+// takes, with its own point-by-point rotation inside it.
+function currentServer(state, firstServer) {
+  if (!firstServer) return null;
+  const other = firstServer === 1 ? 2 : 1;
+  let priorGames = 0;
+  for (let i = 0; i < state.currentSet; i += 1) {
+    const s = state.sets[i];
+    priorGames += s.isSuperTiebreak ? 1 : (s.p1 + s.p2);
+  }
+  const curSet = state.sets[state.currentSet];
+  if (curSet.tiebreak) {
+    // curSet.p1+p2 is either 12 (6-6, then frozen while the tiebreak plays
+    // out) or 0 (the whole set is a match tiebreak) — either way it's exactly
+    // the games played before this tiebreak "game" began.
+    const tbFirstServer = (priorGames + curSet.p1 + curSet.p2) % 2 === 0 ? firstServer : other;
+    const pointsPlayed = curSet.tiebreak.p1 + curSet.tiebreak.p2;
+    return tiebreakServerAtPoint(pointsPlayed + 1, tbFirstServer);
+  }
+  const gamesInSet = curSet.p1 + curSet.p2;
+  return (priorGames + gamesInSet) % 2 === 0 ? firstServer : other;
+}
+
 // Which set an admin's +1/-1 buttons currently target: their explicit pick if
 // still valid, otherwise the active set while live, or the last set once finished.
 function getEffectiveSetIndex(m) {
@@ -74,6 +109,7 @@ function scoreboardHtml(m) {
   const state = m.state;
   const setsToShow = state.sets;
   const headerCells = setsToShow.map((s, i) => `<th>${s.isSuperTiebreak ? 'MTB' : `Set ${i + 1}`}</th>`).join('');
+  const serving = m.status === 'LIVE' ? currentServer(state, m.firstServer) : null;
 
   const row = (playerNum, player) => {
     const isWinner = m.status === 'FINISHED' && m.winnerId === player.id;
@@ -81,7 +117,8 @@ function scoreboardHtml(m) {
       const isCurrent = m.status === 'LIVE' && i === state.currentSet;
       return `<td class="set-score ${isCurrent ? 'current' : ''}">${setCell(s, playerNum)}</td>`;
     }).join('');
-    return `<tr class="${isWinner ? 'winner-row' : ''}"><td class="name-cell">${escapeHtml(player.name)}</td>${cells}</tr>`;
+    const ball = serving === playerNum ? '<span class="serve-ball" title="Serving">🎾</span>' : '';
+    return `<tr class="${isWinner ? 'winner-row' : ''}"><td class="name-cell">${ball}${escapeHtml(player.name)}</td>${cells}</tr>`;
   };
 
   return `
@@ -279,11 +316,7 @@ function render(m) {
 
 function attachHandlers(m) {
   const startBtn = document.getElementById('start-btn');
-  if (startBtn) startBtn.addEventListener('click', async () => {
-    startBtn.disabled = true;
-    try { await api(`/matches/${matchToken}/start`, { method: 'POST' }); }
-    catch (err) { toast(err.message); startBtn.disabled = false; }
-  });
+  if (startBtn) startBtn.addEventListener('click', () => openFirstServerModal(m));
 
   const manualResultBtn = document.getElementById('manual-result-btn');
   if (manualResultBtn) manualResultBtn.addEventListener('click', () => openManualResultModal(m));
@@ -474,6 +507,26 @@ function attachHandlers(m) {
       deleteBtn.disabled = false;
     }
   });
+}
+
+function startMatch(firstServer) {
+  const startBtn = document.getElementById('start-btn');
+  if (startBtn) startBtn.disabled = true;
+  document.getElementById('first-server-modal').style.display = 'none';
+  api(`/matches/${matchToken}/start`, { method: 'POST', body: { firstServer } })
+    .catch((err) => {
+      toast(err.message);
+      if (startBtn) startBtn.disabled = false;
+    });
+}
+
+function openFirstServerModal(m) {
+  document.getElementById('first-server-p1-btn').textContent = m.player1.name;
+  document.getElementById('first-server-p1-btn').onclick = () => startMatch(1);
+  document.getElementById('first-server-p2-btn').textContent = m.player2.name;
+  document.getElementById('first-server-p2-btn').onclick = () => startMatch(2);
+  document.getElementById('first-server-skip-btn').onclick = () => startMatch(null);
+  document.getElementById('first-server-modal').style.display = 'flex';
 }
 
 function openShareModal(m) {

@@ -37,6 +37,7 @@ function serialize(row) {
     endTime: row.end_time,
     pausedAt: row.paused_at,
     pausedSeconds: row.paused_seconds || 0,
+    firstServer: row.first_server || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     player1: p1,
@@ -223,9 +224,16 @@ router.post('/:token/start', (req, res) => {
   if (row.status !== 'PLANNED') {
     return res.status(400).json({ error: 'Only planned matches can be started' });
   }
+  let firstServer = null;
+  if (req.body.firstServer !== undefined && req.body.firstServer !== null) {
+    firstServer = Number(req.body.firstServer);
+    if (![1, 2].includes(firstServer)) {
+      return res.status(400).json({ error: 'firstServer must be 1 or 2' });
+    }
+  }
   const ts = nowIso();
-  db.prepare("UPDATE matches SET status = 'LIVE', start_time = ?, updated_at = ? WHERE id = ?")
-    .run(ts, ts, row.id);
+  db.prepare("UPDATE matches SET status = 'LIVE', start_time = ?, first_server = ?, updated_at = ? WHERE id = ?")
+    .run(ts, firstServer, ts, row.id);
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);
   res.json(payload);
@@ -280,7 +288,7 @@ router.post('/:token/restart', (req, res) => {
   db.prepare(`
     UPDATE matches
     SET status = 'PLANNED', state = ?, history = '[]', winner_id = NULL, start_time = NULL, end_time = NULL,
-        notified = 0, paused_at = NULL, paused_seconds = 0, updated_at = ?
+        notified = 0, paused_at = NULL, paused_seconds = 0, first_server = NULL, updated_at = ?
     WHERE id = ?
   `).run(JSON.stringify(state), ts, row.id);
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
