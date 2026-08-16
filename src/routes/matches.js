@@ -96,12 +96,17 @@ router.get('/', (req, res) => {
   }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   // Planned matches: soonest-scheduled first, undated ones grouped at the end
-  // (the frontend divides the two groups with a visual line).
+  // (the frontend divides the two groups with a visual line). Finished
+  // matches: most recently finished first.
   const orderBy = status === 'PLANNED'
     ? 'ORDER BY (m.scheduled_at IS NULL) ASC, m.scheduled_at ASC, m.created_at DESC'
-    : `ORDER BY
-        CASE m.status WHEN 'LIVE' THEN 0 WHEN 'PLANNED' THEN 1 ELSE 2 END,
-        COALESCE(m.scheduled_at, m.created_at) DESC`;
+    : status === 'FINISHED'
+      // Manually-entered results have no real end_time — fall back to
+      // updated_at so they still sort in by when they were recorded.
+      ? 'ORDER BY COALESCE(m.end_time, m.updated_at) DESC'
+      : `ORDER BY
+          CASE m.status WHEN 'LIVE' THEN 0 WHEN 'PLANNED' THEN 1 ELSE 2 END,
+          COALESCE(m.scheduled_at, m.created_at) DESC`;
   const rows = db.prepare(`
     SELECT m.* FROM matches m
     JOIN players p1 ON p1.id = m.player1_id
