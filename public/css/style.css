@@ -58,9 +58,10 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   font-size: 18px;
   letter-spacing: 0.02em;
 }
-.brand .dot {
-  width: 12px; height: 12px; border-radius: 50%;
-  background: var(--yellow);
+.brand-logo {
+  height: 34px;
+  width: auto;
+  display: block;
 }
 .brand small {
   display: block;
