@@ -304,6 +304,8 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   color: var(--ink);
   font-size: 17px;
   font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 .match-list-heading:first-child { margin-top: 0; }
 .match-list-heading::before, .match-list-heading::after {
