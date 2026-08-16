@@ -117,6 +117,95 @@ function advanceOrFinish(state, format, winner, setsWon) {
   }
 }
 
+// Whether a set's raw score already meets a standard win condition, and who won it.
+// Returns null if the set isn't decided yet.
+function computeSetOutcome(set) {
+  if (set.tiebreak) {
+    const target = set.isSuperTiebreak ? SUPER_TIEBREAK_POINTS : TIEBREAK_POINTS;
+    const a = set.tiebreak.p1;
+    const b = set.tiebreak.p2;
+    if ((a >= target || b >= target) && Math.abs(a - b) >= 2) return a > b ? 1 : 2;
+    return null;
+  }
+  const a = set.p1;
+  const b = set.p2;
+  if ((a >= 6 || b >= 6) && Math.abs(a - b) >= 2) return a > b ? 1 : 2;
+  return null;
+}
+
+// Recomputes currentSet/status/winner/setsWon from the raw per-set scores.
+// Used after an admin directly edits a specific (possibly already-decided) set,
+// since that can flip the outcome of sets after it — mutates and returns state.
+function recomputeFromSets(state, format) {
+  const setsWon = { 1: 0, 2: 0 };
+  let matchWinner = null;
+  let matchStatus = 'IN_PROGRESS';
+  let currentSet = 0;
+
+  for (let i = 0; i < state.sets.length; i += 1) {
+    const set = state.sets[i];
+    const outcome = computeSetOutcome(set);
+    currentSet = i;
+    if (!outcome) {
+      set.winner = null;
+      break;
+    }
+    set.winner = outcome;
+    if (set.tiebreak && !set.isSuperTiebreak) {
+      set.p1 = outcome === 1 ? 7 : 6;
+      set.p2 = outcome === 1 ? 6 : 7;
+    }
+    setsWon[outcome] += 1;
+    if (setsWon[outcome] >= format.setsToWin) {
+      matchWinner = outcome;
+      matchStatus = 'COMPLETE';
+      state.sets = state.sets.slice(0, i + 1);
+      break;
+    }
+  }
+
+  if (matchStatus !== 'COMPLETE') {
+    const lastSet = state.sets[state.sets.length - 1];
+    if (computeSetOutcome(lastSet)) {
+      state.sets.push(createSetForIndex(state.sets.length, format));
+      currentSet = state.sets.length - 1;
+    }
+  }
+
+  state.currentSet = currentSet;
+  state.status = matchStatus;
+  state.winner = matchWinner;
+  state.setsWon = setsWon;
+  return state;
+}
+
+// Admin correction: adjust one specific set's score directly, even if that set
+// (or the whole match) has already finished, then recompute the match outcome
+// from scratch since fixing an earlier set can change who won later ones.
+function editSetScore(state, formatKey, setIndex, player, delta) {
+  const format = FORMATS[formatKey];
+  if (!format) throw new Error(`Unknown match format: ${formatKey}`);
+  if (player !== 1 && player !== 2) throw new Error('player must be 1 or 2');
+  if (delta !== 1 && delta !== -1) throw new Error('delta must be 1 or -1');
+
+  const next = JSON.parse(JSON.stringify(state));
+  const set = next.sets[setIndex];
+  if (!set) throw new Error('Invalid set index');
+  const key = player === 1 ? 'p1' : 'p2';
+
+  if (set.tiebreak) {
+    set.tiebreak[key] = Math.max(0, set.tiebreak[key] + delta);
+  } else {
+    set[key] = Math.max(0, set[key] + delta);
+    if (set.p1 === 6 && set.p2 === 6) {
+      set.tiebreak = { p1: 0, p2: 0 };
+      set.isSuperTiebreak = false;
+    }
+  }
+
+  return recomputeFromSets(next, format);
+}
+
 // "7-6(4)" / "6-7(4)" / "10-7" (super tiebreak, no games played) / "6-3"
 function describeSet(set) {
   if (set.isSuperTiebreak) {
@@ -140,6 +229,7 @@ module.exports = {
   FORMATS,
   initState,
   applyDelta,
+  editSetScore,
   describeSet,
   describeMatch,
   decidingSetIndex,

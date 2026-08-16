@@ -268,15 +268,19 @@ router.post('/:token/resume', (req, res) => {
 router.post('/:token/restart', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (row.status !== 'LIVE') {
-    return res.status(400).json({ error: 'Only a live match can be restarted' });
+  if (row.status === 'FINISHED') {
+    if (!isAdmin(req)) {
+      return res.status(403).json({ error: 'Only an admin can restart a finished match' });
+    }
+  } else if (row.status !== 'LIVE') {
+    return res.status(400).json({ error: 'Only a live or finished match can be restarted' });
   }
   const state = engine.initState(row.format);
   const ts = nowIso();
   db.prepare(`
     UPDATE matches
-    SET status = 'PLANNED', state = ?, history = '[]', winner_id = NULL, start_time = NULL,
-        paused_at = NULL, paused_seconds = 0, updated_at = ?
+    SET status = 'PLANNED', state = ?, history = '[]', winner_id = NULL, start_time = NULL, end_time = NULL,
+        notified = 0, paused_at = NULL, paused_seconds = 0, updated_at = ?
     WHERE id = ?
   `).run(JSON.stringify(state), ts, row.id);
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
@@ -301,14 +305,48 @@ router.post('/:token/score', (req, res) => {
 
   const prevState = row.state;
   const state = JSON.parse(row.state);
-  const nextState = engine.applyDelta(state, row.format, player, delta);
+  let nextState;
+  const isSetCorrection = req.body.setIndex !== undefined && req.body.setIndex !== null;
+
+  if (isSetCorrection) {
+    if (!isAdmin(req)) {
+      return res.status(403).json({ error: 'Only an admin can edit a specific set directly' });
+    }
+    const setIndex = Number(req.body.setIndex);
+    if (!Number.isInteger(setIndex) || setIndex < 0 || setIndex >= state.sets.length) {
+      return res.status(400).json({ error: 'Invalid set index' });
+    }
+    nextState = engine.editSetScore(state, row.format, setIndex, player, delta);
+  } else {
+    nextState = engine.applyDelta(state, row.format, player, delta);
+  }
 
   const history = JSON.parse(row.history);
   history.push(prevState);
   while (history.length > MAX_HISTORY) history.shift();
 
-  db.prepare('UPDATE matches SET state = ?, history = ?, winner_id = ?, updated_at = ? WHERE id = ?')
-    .run(JSON.stringify(nextState), JSON.stringify(history), deriveWinnerId(nextState, row), nowIso(), row.id);
+  const winnerId = deriveWinnerId(nextState, row);
+
+  if (isSetCorrection) {
+    // A direct set correction can flip whether the match is actually decided
+    // (e.g. fixing an earlier set un-decides it) — reconcile status with that.
+    // Normal live scoring never touches status here; that stays the job of
+    // the explicit "Finish match" action.
+    const isNowComplete = nextState.status === 'COMPLETE';
+    const newStatus = isNowComplete ? 'FINISHED' : 'LIVE';
+    const ts = nowIso();
+    db.prepare(`
+      UPDATE matches
+      SET state = ?, history = ?, winner_id = ?, status = ?, end_time = ?, updated_at = ?
+      WHERE id = ?
+    `).run(
+      JSON.stringify(nextState), JSON.stringify(history), winnerId, newStatus,
+      isNowComplete ? (row.end_time || ts) : null, ts, row.id,
+    );
+  } else {
+    db.prepare('UPDATE matches SET state = ?, history = ?, winner_id = ?, updated_at = ? WHERE id = ?')
+      .run(JSON.stringify(nextState), JSON.stringify(history), winnerId, nowIso(), row.id);
+  }
 
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);

@@ -384,6 +384,22 @@ datalist {}
 .scoreboard .sub-tb { font-size: 11px; color: #9a9a9a; margin-left: 2px; }
 .scoreboard tr.winner-row td.name-cell::after { content: " \2713"; color: var(--yellow); }
 
+.set-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.set-picker-btn {
+  border: 1.5px solid #ddd;
+  background: var(--white);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--ink);
+}
+.set-picker-btn.active { border-color: var(--orange); background: #fff6f2; color: var(--orange-dark); }
+.set-picker-score { color: var(--gray); font-weight: 600; margin-left: 4px; }
+.set-picker-btn.active .set-picker-score { color: var(--orange-dark); }
+
 .score-controls {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -5,6 +5,14 @@ let timerInterval = null;
 let isAdminUser = false;
 let messages = [];
 let chatDraftBody = '';
+let editSetIndex = null;
+
+// Which set an admin's +1/-1 buttons currently target: their explicit pick if
+// still valid, otherwise the active set while live, or the last set once finished.
+function getEffectiveSetIndex(m) {
+  if (editSetIndex !== null && editSetIndex >= 0 && editSetIndex < m.state.sets.length) return editSetIndex;
+  return m.status === 'LIVE' ? m.state.currentSet : m.state.sets.length - 1;
+}
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -78,10 +86,21 @@ function scoreboardHtml(m) {
   `;
 }
 
-function scoreControlsHtml(m, { showFinish }) {
-  const curSet = m.state.sets[m.state.currentSet];
+function scoreControlsHtml(m, { showFinish, showRestart }) {
+  const effIndex = isAdminUser ? getEffectiveSetIndex(m) : m.state.currentSet;
+  const curSet = m.state.sets[effIndex];
   const label = curSet.tiebreak ? (curSet.isSuperTiebreak ? 'POINT · match TB' : 'POINT · tiebreak') : 'GAME';
+  const setPicker = isAdminUser && m.state.sets.length > 1 ? `
+    <div class="set-picker">
+      ${m.state.sets.map((s, i) => `
+        <button type="button" class="set-picker-btn ${i === effIndex ? 'active' : ''}" data-set-index="${i}">
+          ${s.isSuperTiebreak ? 'MTB' : `Set ${i + 1}`} <span class="set-picker-score">${describeSet(s)}</span>
+        </button>
+      `).join('')}
+    </div>
+  ` : '';
   return `
+    ${setPicker}
     <div class="score-controls">
       <div class="player-controls">
         <div class="pname">${escapeHtml(m.player1.name)}</div>
@@ -99,7 +118,7 @@ function scoreControlsHtml(m, { showFinish }) {
       ${showFinish ? (m.pausedAt
         ? '<button class="btn btn-outline" id="resume-btn">▶ Resume match</button>'
         : '<button class="btn btn-outline" id="pause-btn">⏸ Stop match</button>') : ''}
-      ${showFinish ? '<button class="btn btn-outline" id="restart-btn">🔁 Restart match</button>' : ''}
+      ${showRestart ? '<button class="btn btn-outline" id="restart-btn">🔁 Restart match</button>' : ''}
       ${showFinish ? '<button class="btn btn-dark" id="finish-btn">🏁 Finish match</button>' : ''}
     </div>
   `;
@@ -110,7 +129,7 @@ function controlsHtml(m) {
     return `<button class="btn btn-primary btn-block" id="start-btn" style="padding:16px;font-size:16px;margin-top:16px">▶ Start match</button>`;
   }
   if (m.status === 'LIVE') {
-    return scoreControlsHtml(m, { showFinish: true });
+    return scoreControlsHtml(m, { showFinish: true, showRestart: true });
   }
   // FINISHED
   const winnerName = m.winnerId === m.player1.id ? m.player1.name : m.winnerId === m.player2.id ? m.player2.name : null;
@@ -123,8 +142,8 @@ function controlsHtml(m) {
   if (!isAdminUser) return winnerCard;
   return `
     ${winnerCard}
-    <div style="text-align:center;font-size:12px;color:var(--gray);margin:14px 0 -6px">Admin: you can still correct the score below.</div>
-    ${scoreControlsHtml(m, { showFinish: false })}
+    <div style="text-align:center;font-size:12px;color:var(--gray);margin:14px 0 -6px">Admin: you can still correct any set below, or restart the match entirely.</div>
+    ${scoreControlsHtml(m, { showFinish: false, showRestart: true })}
   `;
 }
 
@@ -245,13 +264,19 @@ function attachHandlers(m) {
   root.querySelectorAll('.btn-giant, .btn-minus').forEach((btn) => {
     btn.addEventListener('click', async () => {
       root.querySelectorAll('.btn-giant, .btn-minus').forEach((b) => b.disabled = true);
+      const body = { player: Number(btn.dataset.player), delta: Number(btn.dataset.delta) };
+      if (isAdminUser) body.setIndex = getEffectiveSetIndex(m);
       try {
-        await api(`/matches/${matchToken}/score`, {
-          method: 'POST',
-          body: { player: Number(btn.dataset.player), delta: Number(btn.dataset.delta) },
-        });
+        await api(`/matches/${matchToken}/score`, { method: 'POST', body });
       } catch (err) { toast(err.message); }
       root.querySelectorAll('.btn-giant, .btn-minus').forEach((b) => b.disabled = false);
+    });
+  });
+
+  root.querySelectorAll('.set-picker-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      editSetIndex = Number(btn.dataset.setIndex);
+      render(current);
     });
   });
 
