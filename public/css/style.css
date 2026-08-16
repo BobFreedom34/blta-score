@@ -66,10 +66,10 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 }
 .brand small {
   display: block;
-  font-weight: 500;
-  font-size: 11px;
-  color: #bdbdbd;
-  letter-spacing: 0.03em;
+  font-weight: 900;
+  font-size: 22px;
+  color: var(--white);
+  letter-spacing: 0.02em;
 }
 .nav-toggle {
   display: none;
