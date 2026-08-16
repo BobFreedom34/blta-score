@@ -1,15 +1,15 @@
 const FORMATS = [
-  { key: 'BO1', label: 'Best of 1 set', hint: 'Single set, first to 6 games (win by 2), tiebreak at 6-6.' },
   { key: 'BO3', label: 'Best of 3 sets', sublabel: '(BLTA Play-Off)', hint: 'Standard match. Tiebreak at 6-6 in every set.' },
   { key: 'BO3_STB', label: 'Best of 3 sets — deciding set is a match tiebreak', sublabel: '(BLTA League)', hint: 'If 1-1 in sets, the 3rd set is replaced by a single tiebreak to 10 points.' },
   { key: 'BO5', label: 'Best of 5 sets', hint: 'Tiebreak at 6-6 in every set.' },
   { key: 'BO5_STB', label: 'Best of 5 sets — deciding set is a match tiebreak', hint: 'If 2-2 in sets, the 5th set is replaced by a single tiebreak to 10 points.' },
+  { key: 'BO1', label: 'Best of 1 set', hint: 'Single set, first to 6 games (win by 2), tiebreak at 6-6.' },
 ];
 
 const formatContainer = document.getElementById('format-options');
 formatContainer.innerHTML = FORMATS.map((f, i) => `
   <label class="format-option">
-    <input type="radio" name="format" value="${f.key}" ${i === 1 ? 'checked' : ''}>
+    <input type="radio" name="format" value="${f.key}" ${i === 0 ? 'checked' : ''}>
     <span>
       <div style="font-weight:700">${f.label}${f.sublabel ? ` <span style="font-weight:400;color:var(--gray);font-size:12px">${f.sublabel}</span>` : ''}</div>
       <div style="font-size:12px;color:var(--gray)">${f.hint}</div>
