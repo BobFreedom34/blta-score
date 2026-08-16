@@ -140,7 +140,12 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
   // there too — for a LIVE match it's open to everyone, same as scoring itself.
   const effIndex = getEffectiveSetIndex(m);
   const curSet = m.state.sets[effIndex];
-  const label = curSet.tiebreak ? (curSet.isSuperTiebreak ? 'POINT · match TB' : 'POINT · tiebreak') : 'GAME';
+  const isTiebreak = !!curSet.tiebreak;
+  const unitLabel = isTiebreak ? (curSet.isSuperTiebreak ? 'point (match tiebreak)' : 'point (tiebreak)') : 'game';
+  // The big number IS the current score — tapping it adds one game (or one
+  // point mid-tiebreak); it naturally shows 0-0 again once a new set starts.
+  const p1Value = isTiebreak ? curSet.tiebreak.p1 : curSet.p1;
+  const p2Value = isTiebreak ? curSet.tiebreak.p2 : curSet.p2;
   const naturalIndex = m.status === 'LIVE' ? m.state.currentSet : m.state.sets.length - 1;
   // Once the match is decided, the active set is locked (matches the engine
   // refusing further scoring there) — pick an earlier set to correct instead,
@@ -162,12 +167,12 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
     <div class="score-controls">
       <div class="player-controls">
         <div class="pname">${escapeHtml(m.player1.name)}</div>
-        <button class="btn btn-giant" data-player="1" data-delta="1" ${isLocked ? 'disabled' : ''}>+1 ${label}</button>
+        <button class="btn btn-giant btn-score-number" data-player="1" data-delta="1" ${isLocked ? 'disabled' : ''} aria-label="Add a ${unitLabel} for ${escapeHtml(m.player1.name)}">${p1Value}</button>
         <button class="btn btn-minus" data-player="1" data-delta="-1" ${isLocked ? 'disabled' : ''}>−1</button>
       </div>
       <div class="player-controls">
         <div class="pname">${escapeHtml(m.player2.name)}</div>
-        <button class="btn btn-giant" data-player="2" data-delta="1" ${isLocked ? 'disabled' : ''}>+1 ${label}</button>
+        <button class="btn btn-giant btn-score-number" data-player="2" data-delta="1" ${isLocked ? 'disabled' : ''} aria-label="Add a ${unitLabel} for ${escapeHtml(m.player2.name)}">${p2Value}</button>
         <button class="btn btn-minus" data-player="2" data-delta="-1" ${isLocked ? 'disabled' : ''}>−1</button>
       </div>
     </div>
