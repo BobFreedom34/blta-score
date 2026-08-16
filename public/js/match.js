@@ -104,6 +104,12 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
   const effIndex = getEffectiveSetIndex(m);
   const curSet = m.state.sets[effIndex];
   const label = curSet.tiebreak ? (curSet.isSuperTiebreak ? 'POINT · match TB' : 'POINT · tiebreak') : 'GAME';
+  const naturalIndex = m.status === 'LIVE' ? m.state.currentSet : m.state.sets.length - 1;
+  // Once the match is decided, the active set is locked (matches the engine
+  // refusing further scoring there) — pick an earlier set to correct instead,
+  // or Finish the match. The admin correction view (showFinish false) is
+  // exempt: it's always editing a specific set on purpose.
+  const isLocked = showFinish && m.state.status === 'COMPLETE' && effIndex === naturalIndex;
   const setPicker = m.state.sets.length > 1 ? `
     <div class="set-picker">
       ${m.state.sets.map((s, i) => `
@@ -115,16 +121,17 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
   ` : '';
   return `
     ${setPicker}
+    ${isLocked ? '<div class="set-locked-note">This set is decided — pick an earlier set above to correct it, or finish the match below.</div>' : ''}
     <div class="score-controls">
       <div class="player-controls">
         <div class="pname">${escapeHtml(m.player1.name)}</div>
-        <button class="btn btn-giant" data-player="1" data-delta="1">+1 ${label}</button>
-        <button class="btn btn-minus" data-player="1" data-delta="-1">−1</button>
+        <button class="btn btn-giant" data-player="1" data-delta="1" ${isLocked ? 'disabled' : ''}>+1 ${label}</button>
+        <button class="btn btn-minus" data-player="1" data-delta="-1" ${isLocked ? 'disabled' : ''}>−1</button>
       </div>
       <div class="player-controls">
         <div class="pname">${escapeHtml(m.player2.name)}</div>
-        <button class="btn btn-giant" data-player="2" data-delta="1">+1 ${label}</button>
-        <button class="btn btn-minus" data-player="2" data-delta="-1">−1</button>
+        <button class="btn btn-giant" data-player="2" data-delta="1" ${isLocked ? 'disabled' : ''}>+1 ${label}</button>
+        <button class="btn btn-minus" data-player="2" data-delta="-1" ${isLocked ? 'disabled' : ''}>−1</button>
       </div>
     </div>
     <div class="match-actions">
@@ -284,9 +291,20 @@ function attachHandlers(m) {
   root.querySelectorAll('.btn-giant, .btn-minus').forEach((btn) => {
     btn.addEventListener('click', async () => {
       root.querySelectorAll('.btn-giant, .btn-minus').forEach((b) => b.disabled = true);
-      const body = { player: Number(btn.dataset.player), delta: Number(btn.dataset.delta), setIndex: getEffectiveSetIndex(m) };
+      const body = { player: Number(btn.dataset.player), delta: Number(btn.dataset.delta) };
+      // Only send setIndex for an explicit correction to a set other than the
+      // natural active one — ordinary scoring must go through the plain path
+      // so the engine's own "match already decided" guard and auto-advance
+      // to the next set keep working (editSetScore intentionally has neither).
+      const naturalIndex = m.status === 'LIVE' ? m.state.currentSet : m.state.sets.length - 1;
+      const effIndex = getEffectiveSetIndex(m);
+      if (m.status !== 'LIVE' || effIndex !== naturalIndex) body.setIndex = effIndex;
+      const wasComplete = m.state.status === 'COMPLETE';
       try {
-        await api(`/matches/${matchToken}/score`, { method: 'POST', body });
+        const updated = await api(`/matches/${matchToken}/score`, { method: 'POST', body });
+        if (!wasComplete && updated.status === 'LIVE' && updated.state.status === 'COMPLETE') {
+          offerFinish(updated);
+        }
       } catch (err) { toast(err.message); }
       root.querySelectorAll('.btn-giant, .btn-minus').forEach((b) => b.disabled = false);
     });
@@ -468,6 +486,15 @@ function openShareModal(m) {
     copyToClipboard(url).then(() => toast('Link copied'));
   };
   document.getElementById('share-modal').style.display = 'flex';
+}
+
+// Fired right when a scoring click decides the match, so the last point can't
+// just keep growing the score — offers to finish it immediately instead.
+function offerFinish(m) {
+  if (!confirm(`${m.scoreSummary} — the match is decided! Finish it now?`)) return;
+  api(`/matches/${matchToken}/finish`, { method: 'POST' })
+    .then((finished) => openWhatsAppResultModal(finished))
+    .catch((err) => toast(err.message));
 }
 
 function openWhatsAppResultModal(m) {
