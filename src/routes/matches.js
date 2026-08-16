@@ -401,6 +401,47 @@ router.post('/:token/finish', async (req, res) => {
   }
 });
 
+// Records a result for a match that was already played outside the app,
+// skipping the start/live-scoring flow entirely.
+router.post('/:token/manual-result', async (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (!isAdmin(req)) {
+    return res.status(403).json({ error: 'Only an admin can enter a result manually' });
+  }
+  if (row.status !== 'PLANNED') {
+    return res.status(400).json({ error: 'Only a planned match can have its result entered manually' });
+  }
+
+  let state;
+  try {
+    state = engine.buildResultFromSets(row.format, req.body.sets);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  const winnerId = deriveWinnerId(state, row);
+  const ts = nowIso();
+  db.prepare(`
+    UPDATE matches
+    SET status = 'FINISHED', state = ?, history = '[]', winner_id = ?, start_time = ?, end_time = NULL, updated_at = ?
+    WHERE id = ?
+  `).run(JSON.stringify(state), winnerId, row.scheduled_at || ts, ts, row.id);
+
+  let updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  const payload = broadcast(req, updated);
+  res.json(payload);
+
+  try {
+    const p1 = getPlayer(updated.player1_id);
+    const p2 = getPlayer(updated.player2_id);
+    await sendMatchFinishedEmail(updated, p1, p2);
+    db.prepare('UPDATE matches SET notified = 1 WHERE id = ?').run(row.id);
+  } catch (err) {
+    console.error('[matches] failed to send finished-match email:', err.message);
+  }
+});
+
 function serializeMessage(row) {
   return { id: row.id, author: row.author, body: row.body, createdAt: row.created_at };
 }

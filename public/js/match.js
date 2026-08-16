@@ -7,6 +7,17 @@ let messages = [];
 let chatDraftBody = '';
 let editSetIndex = null;
 
+// Mirrors src/matchEngine.js FORMATS — only the bits needed to build the
+// manual-result-entry form (how many sets, and whether the last one is a
+// match tiebreak instead of a normal set).
+const FORMAT_META = {
+  BO1: { setsToWin: 1, finalSetSuperTiebreak: false },
+  BO3: { setsToWin: 2, finalSetSuperTiebreak: false },
+  BO3_STB: { setsToWin: 2, finalSetSuperTiebreak: true },
+  BO5: { setsToWin: 3, finalSetSuperTiebreak: false },
+  BO5_STB: { setsToWin: 3, finalSetSuperTiebreak: true },
+};
+
 // Which set an admin's +1/-1 buttons currently target: their explicit pick if
 // still valid, otherwise the active set while live, or the last set once finished.
 function getEffectiveSetIndex(m) {
@@ -126,7 +137,10 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
 
 function controlsHtml(m) {
   if (m.status === 'PLANNED') {
-    return `<button class="btn btn-primary btn-block" id="start-btn" style="padding:16px;font-size:16px;margin-top:16px">▶ Start match</button>`;
+    return `
+      <button class="btn btn-primary btn-block" id="start-btn" style="padding:16px;font-size:16px;margin-top:16px">▶ Start match</button>
+      ${isAdminUser ? '<button class="btn btn-outline btn-block" id="manual-result-btn" style="margin-top:10px">📝 Enter result manually</button>' : ''}
+    `;
   }
   if (m.status === 'LIVE') {
     return scoreControlsHtml(m, { showFinish: true, showRestart: true });
@@ -260,6 +274,9 @@ function attachHandlers(m) {
     try { await api(`/matches/${matchToken}/start`, { method: 'POST' }); }
     catch (err) { toast(err.message); startBtn.disabled = false; }
   });
+
+  const manualResultBtn = document.getElementById('manual-result-btn');
+  if (manualResultBtn) manualResultBtn.addEventListener('click', () => openManualResultModal(m));
 
   root.querySelectorAll('.btn-giant, .btn-minus').forEach((btn) => {
     btn.addEventListener('click', async () => {
@@ -479,6 +496,63 @@ function openEmbedModal(m) {
     copyToClipboard(code).then(() => toast('Embed code copied'));
   };
   document.getElementById('embed-modal').style.display = 'flex';
+}
+
+function manualResultRowsHtml(m) {
+  const meta = FORMAT_META[m.format] || { setsToWin: 2, finalSetSuperTiebreak: false };
+  const maxSets = meta.setsToWin * 2 - 1;
+  const deciderIndex = meta.setsToWin * 2 - 2;
+  let rows = '';
+  for (let i = 0; i < maxSets; i += 1) {
+    const isDeciderTB = i === deciderIndex && meta.finalSetSuperTiebreak;
+    rows += `
+      <div class="manual-set-row">
+        <div class="manual-set-label">${isDeciderTB ? 'Match tiebreak' : `Set ${i + 1}`}</div>
+        <input type="number" min="0" max="99" class="manual-set-input" data-player="1" placeholder="${escapeHtml(m.player1.name)}">
+        <span>–</span>
+        <input type="number" min="0" max="99" class="manual-set-input" data-player="2" placeholder="${escapeHtml(m.player2.name)}">
+      </div>
+    `;
+  }
+  return rows;
+}
+
+function openManualResultModal(m) {
+  document.getElementById('manual-result-sets').innerHTML = manualResultRowsHtml(m);
+  const errorEl = document.getElementById('manual-result-error');
+  errorEl.textContent = '';
+  const form = document.getElementById('manual-result-form');
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    errorEl.textContent = '';
+    const rows = Array.from(document.querySelectorAll('.manual-set-row'));
+    const sets = [];
+    for (const row of rows) {
+      const p1raw = row.querySelector('[data-player="1"]').value.trim();
+      const p2raw = row.querySelector('[data-player="2"]').value.trim();
+      if (p1raw === '' && p2raw === '') break;
+      if (p1raw === '' || p2raw === '') {
+        errorEl.textContent = 'Fill in both scores for each set you enter.';
+        return;
+      }
+      sets.push({ p1: Number(p1raw), p2: Number(p2raw) });
+    }
+    if (sets.length === 0) {
+      errorEl.textContent = 'Enter at least one set score.';
+      return;
+    }
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    try {
+      const finished = await api(`/matches/${matchToken}/manual-result`, { method: 'POST', body: { sets } });
+      document.getElementById('manual-result-modal').style.display = 'none';
+      openWhatsAppResultModal(finished);
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
+    submitBtn.disabled = false;
+  };
+  document.getElementById('manual-result-modal').style.display = 'flex';
 }
 
 async function init() {

@@ -446,6 +446,26 @@ datalist {}
   background: none; border: none; padding: 0; font-family: inherit;
 }
 
+/* ---------- Manual result entry ---------- */
+.manual-set-row {
+  display: grid;
+  grid-template-columns: 1fr 60px 16px 60px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.manual-set-label { font-size: 13px; font-weight: 700; color: var(--gray); }
+.manual-set-row span { text-align: center; color: var(--gray); }
+.manual-set-input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1.5px solid #ddd;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: center;
+}
+
 /* ---------- Match chat ---------- */
 .chat-messages {
   max-height: 260px;

@@ -206,6 +206,61 @@ function editSetScore(state, formatKey, setIndex, player, delta) {
   return recomputeFromSets(next, format);
 }
 
+function isValidSetScore(p1, p2) {
+  if ((p1 === 7 && p2 === 6) || (p1 === 6 && p2 === 7)) return true;
+  return (p1 >= 6 || p2 >= 6) && Math.abs(p1 - p2) >= 2;
+}
+
+// Builds a finished match state directly from a list of already-known set
+// scores (e.g. "6-4, 3-6, 10-7"), for recording a result that was played
+// outside the app instead of scored live. Throws with a user-facing message
+// if the scores don't decide a winner under the match format's rules.
+function buildResultFromSets(formatKey, rawSets) {
+  const format = FORMATS[formatKey];
+  if (!format) throw new Error(`Unknown match format: ${formatKey}`);
+  if (!Array.isArray(rawSets) || rawSets.length === 0) {
+    throw new Error('Enter at least one set score');
+  }
+
+  const sets = [];
+  const setsWon = { 1: 0, 2: 0 };
+  let winner = null;
+
+  rawSets.forEach((raw, i) => {
+    if (winner) throw new Error('Too many sets entered — the match was already decided');
+
+    const p1 = Number(raw.p1);
+    const p2 = Number(raw.p2);
+    if (!Number.isInteger(p1) || !Number.isInteger(p2) || p1 < 0 || p2 < 0) {
+      throw new Error(`Invalid score for set ${i + 1}`);
+    }
+
+    const isDeciderTiebreak = i === decidingSetIndex(format) && format.finalSetSuperTiebreak;
+    let set;
+    if (isDeciderTiebreak) {
+      if (!((p1 >= SUPER_TIEBREAK_POINTS || p2 >= SUPER_TIEBREAK_POINTS) && Math.abs(p1 - p2) >= 2)) {
+        throw new Error(`Set ${i + 1} (match tiebreak) doesn't have a valid winner`);
+      }
+      set = { p1, p2, tiebreak: { p1, p2 }, isSuperTiebreak: true, winner: p1 > p2 ? 1 : 2 };
+    } else {
+      if (!isValidSetScore(p1, p2)) {
+        throw new Error(`Set ${i + 1} doesn't have a valid winner`);
+      }
+      const setWinner = p1 > p2 ? 1 : 2;
+      const wasTiebreak = (p1 === 7 && p2 === 6) || (p1 === 6 && p2 === 7);
+      set = { p1, p2, tiebreak: wasTiebreak ? { p1: 0, p2: 0 } : null, isSuperTiebreak: false, winner: setWinner };
+    }
+
+    sets.push(set);
+    setsWon[set.winner] += 1;
+    if (setsWon[set.winner] >= format.setsToWin) winner = set.winner;
+  });
+
+  if (!winner) throw new Error("These set scores don't add up to a completed match");
+
+  return { sets, currentSet: sets.length - 1, status: 'COMPLETE', winner, setsWon };
+}
+
 // "7-6(4)" / "6-7(4)" / "10-7" (super tiebreak, no games played) / "6-3"
 function describeSet(set) {
   if (set.isSuperTiebreak) {
@@ -230,6 +285,7 @@ module.exports = {
   initState,
   applyDelta,
   editSetScore,
+  buildResultFromSets,
   describeSet,
   describeMatch,
   decidingSetIndex,

@@ -64,6 +64,20 @@
   </div>
 </div>
 
+<!-- Manual result modal (admin: record a result for a match played outside the app) -->
+<div class="modal-backdrop" id="manual-result-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="manual-result-modal" aria-label="Close">&times;</button>
+    <h3>Enter result manually</h3>
+    <p style="font-size:13px;color:var(--gray)">For a match that was already played elsewhere. Fill in the sets that were played, in order, and leave the rest blank.</p>
+    <form id="manual-result-form">
+      <div id="manual-result-sets"></div>
+      <div id="manual-result-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Save result</button>
+    </form>
+  </div>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script src="/js/common.js"></script>
 <script src="/js/match.js"></script>
