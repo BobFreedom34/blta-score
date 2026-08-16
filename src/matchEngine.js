@@ -213,20 +213,30 @@ function isValidSetScore(p1, p2) {
 
 // Builds a finished match state directly from a list of already-known set
 // scores (e.g. "6-4, 3-6, 10-7"), for recording a result that was played
-// outside the app instead of scored live. Throws with a user-facing message
-// if the scores don't decide a winner under the match format's rules.
-function buildResultFromSets(formatKey, rawSets) {
+// outside the app instead of scored live.
+//
+// Without explicitWinner, every entered set must be a valid, decisive score
+// and together they must add up to a completed match — throws a user-facing
+// message otherwise. With explicitWinner (1 or 2), this is a walkover or
+// retirement instead: only the LAST entered set may be a partial/in-progress
+// score (or there may be no sets at all), and the given player is recorded
+// as the winner regardless of what the raw scores add up to.
+function buildResultFromSets(formatKey, rawSets, explicitWinner) {
   const format = FORMATS[formatKey];
   if (!format) throw new Error(`Unknown match format: ${formatKey}`);
-  if (!Array.isArray(rawSets) || rawSets.length === 0) {
+  if (!explicitWinner && (!Array.isArray(rawSets) || rawSets.length === 0)) {
     throw new Error('Enter at least one set score');
+  }
+  if (explicitWinner && ![1, 2].includes(explicitWinner)) {
+    throw new Error('Pick who won');
   }
 
   const sets = [];
   const setsWon = { 1: 0, 2: 0 };
   let winner = null;
+  const entered = rawSets || [];
 
-  rawSets.forEach((raw, i) => {
+  entered.forEach((raw, i) => {
     if (winner) throw new Error('Too many sets entered — the match was already decided');
 
     const p1 = Number(raw.p1);
@@ -234,30 +244,41 @@ function buildResultFromSets(formatKey, rawSets) {
     if (!Number.isInteger(p1) || !Number.isInteger(p2) || p1 < 0 || p2 < 0) {
       throw new Error(`Invalid score for set ${i + 1}`);
     }
+    const canBePartial = explicitWinner && i === entered.length - 1;
 
     const isDeciderTiebreak = i === decidingSetIndex(format) && format.finalSetSuperTiebreak;
     let set;
     if (isDeciderTiebreak) {
-      if (!((p1 >= SUPER_TIEBREAK_POINTS || p2 >= SUPER_TIEBREAK_POINTS) && Math.abs(p1 - p2) >= 2)) {
+      const decided = (p1 >= SUPER_TIEBREAK_POINTS || p2 >= SUPER_TIEBREAK_POINTS) && Math.abs(p1 - p2) >= 2;
+      if (!decided && !canBePartial) {
         throw new Error(`Set ${i + 1} (match tiebreak) doesn't have a valid winner`);
       }
-      set = { p1, p2, tiebreak: { p1, p2 }, isSuperTiebreak: true, winner: p1 > p2 ? 1 : 2 };
+      set = { p1, p2, tiebreak: { p1, p2 }, isSuperTiebreak: true, winner: decided ? (p1 > p2 ? 1 : 2) : null };
     } else {
-      if (!isValidSetScore(p1, p2)) {
+      const decided = isValidSetScore(p1, p2);
+      if (!decided && !canBePartial) {
         throw new Error(`Set ${i + 1} doesn't have a valid winner`);
       }
-      const setWinner = p1 > p2 ? 1 : 2;
+      const setWinner = decided ? (p1 > p2 ? 1 : 2) : null;
       // No placeholder tiebreak object for a 7-6 set — the real point score
       // wasn't entered, and a fake "(0)" sub-score would be misleading.
       set = { p1, p2, tiebreak: null, isSuperTiebreak: false, winner: setWinner };
     }
 
     sets.push(set);
-    setsWon[set.winner] += 1;
-    if (setsWon[set.winner] >= format.setsToWin) winner = set.winner;
+    if (set.winner) {
+      setsWon[set.winner] += 1;
+      if (setsWon[set.winner] >= format.setsToWin) winner = set.winner;
+    }
   });
 
-  if (!winner) throw new Error("These set scores don't add up to a completed match");
+  if (sets.length === 0) sets.push(createSetForIndex(0, format));
+
+  if (explicitWinner) {
+    winner = explicitWinner;
+  } else if (!winner) {
+    throw new Error("These set scores don't add up to a completed match");
+  }
 
   return { sets, currentSet: sets.length - 1, status: 'COMPLETE', winner, setsWon };
 }

@@ -435,9 +435,18 @@ router.post('/:token/manual-result', async (req, res) => {
     return res.status(400).json({ error: 'Only a planned match can have its result entered manually' });
   }
 
+  const hasExplicitWinner = req.body.winner !== undefined && req.body.winner !== null;
+  let endReason = null;
+  if (hasExplicitWinner) {
+    if (!['WALKOVER', 'RETIREMENT'].includes(req.body.reason)) {
+      return res.status(400).json({ error: 'Pick a reason: Walkover or Retirement' });
+    }
+    endReason = req.body.reason;
+  }
+
   let state;
   try {
-    state = engine.buildResultFromSets(row.format, req.body.sets);
+    state = engine.buildResultFromSets(row.format, req.body.sets, hasExplicitWinner ? Number(req.body.winner) : undefined);
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
@@ -446,9 +455,9 @@ router.post('/:token/manual-result', async (req, res) => {
   const ts = nowIso();
   db.prepare(`
     UPDATE matches
-    SET status = 'FINISHED', state = ?, history = '[]', winner_id = ?, start_time = ?, end_time = NULL, updated_at = ?
+    SET status = 'FINISHED', state = ?, history = '[]', winner_id = ?, start_time = ?, end_time = NULL, end_reason = ?, updated_at = ?
     WHERE id = ?
-  `).run(JSON.stringify(state), winnerId, row.scheduled_at || ts, ts, row.id);
+  `).run(JSON.stringify(state), winnerId, row.scheduled_at || ts, endReason, ts, row.id);
 
   let updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);

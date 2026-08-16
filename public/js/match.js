@@ -661,6 +661,38 @@ function openManualResultModal(m) {
   const errorEl = document.getElementById('manual-result-error');
   errorEl.textContent = '';
   const form = document.getElementById('manual-result-form');
+
+  const retiredCheckbox = document.getElementById('manual-result-retired-checkbox');
+  const retiredFields = document.getElementById('manual-result-retired-fields');
+  retiredCheckbox.checked = false;
+  retiredFields.style.display = 'none';
+  retiredCheckbox.onchange = () => {
+    retiredFields.style.display = retiredCheckbox.checked ? 'block' : 'none';
+  };
+
+  let winner = null;
+  let reason = null;
+  const winnerBtns = Array.from(document.querySelectorAll('#manual-result-winner-row button'));
+  const reasonBtns = Array.from(document.querySelectorAll('#manual-result-reason-row button'));
+  winnerBtns[0].textContent = m.player1.name;
+  winnerBtns[0].dataset.winner = '1';
+  winnerBtns[1].textContent = m.player2.name;
+  winnerBtns[1].dataset.winner = '2';
+  winnerBtns.forEach((btn) => {
+    btn.classList.remove('active');
+    btn.onclick = () => {
+      winner = Number(btn.dataset.winner);
+      winnerBtns.forEach((b) => b.classList.toggle('active', b === btn));
+    };
+  });
+  reasonBtns.forEach((btn) => {
+    btn.classList.remove('active');
+    btn.onclick = () => {
+      reason = btn.dataset.reason;
+      reasonBtns.forEach((b) => b.classList.toggle('active', b === btn));
+    };
+  });
+
   form.onsubmit = async (e) => {
     e.preventDefault();
     errorEl.textContent = '';
@@ -676,14 +708,24 @@ function openManualResultModal(m) {
       }
       sets.push({ p1: Number(p1raw), p2: Number(p2raw) });
     }
-    if (sets.length === 0) {
+
+    const body = { sets };
+    if (retiredCheckbox.checked) {
+      if (!winner || !reason) {
+        errorEl.textContent = 'Pick who won and why.';
+        return;
+      }
+      body.winner = winner;
+      body.reason = reason;
+    } else if (sets.length === 0) {
       errorEl.textContent = 'Enter at least one set score.';
       return;
     }
+
     const submitBtn = form.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     try {
-      const finished = await api(`/matches/${matchToken}/manual-result`, { method: 'POST', body: { sets } });
+      const finished = await api(`/matches/${matchToken}/manual-result`, { method: 'POST', body });
       document.getElementById('manual-result-modal').style.display = 'none';
       openWhatsAppResultModal(finished);
     } catch (err) {

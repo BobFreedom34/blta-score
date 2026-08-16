@@ -106,6 +106,24 @@
     <p style="font-size:13px;color:var(--gray)">For a match that was already played elsewhere. Fill in the sets that were played, in order, and leave the rest blank.</p>
     <form id="manual-result-form">
       <div id="manual-result-sets"></div>
+
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:6px">
+        <input type="checkbox" id="manual-result-retired-checkbox">
+        <span style="font-size:13px;font-weight:600">Ended in a walkover or retirement (didn't finish by score)</span>
+      </label>
+      <div id="manual-result-retired-fields" style="display:none;margin-top:10px">
+        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em">Winner</div>
+        <div class="server-choice-row" id="manual-result-winner-row">
+          <button type="button" class="btn btn-outline btn-block" data-winner="1"></button>
+          <button type="button" class="btn btn-outline btn-block" data-winner="2"></button>
+        </div>
+        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em;margin-top:12px">Reason</div>
+        <div class="server-choice-row" id="manual-result-reason-row">
+          <button type="button" class="btn btn-outline btn-block" data-reason="RETIREMENT">Retirement</button>
+          <button type="button" class="btn btn-outline btn-block" data-reason="WALKOVER">Walkover</button>
+        </div>
+      </div>
+
       <div id="manual-result-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
       <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Save result</button>
     </form>
