@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLTA Score — Live Matches</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="dot"></span>BLTA <small>Live Score</small></div>
+    <nav class="nav-links">
+      <a href="/" class="active">Matches</a>
+      <a href="/players">Players</a>
+      <a href="/new-match">+ New match</a>
+    </nav>
+  </div>
+</div>
+
+<div class="container">
+  <div class="tabs" id="tabs" role="tablist">
+    <button type="button" class="tab tab-live" data-status="LIVE"><span class="live-dot"></span>Live <span class="count" id="count-LIVE">0</span></button>
+    <button type="button" class="tab" data-status="PLANNED">Planned <span class="count" id="count-PLANNED">0</span></button>
+    <button type="button" class="tab" data-status="FINISHED">Finished <span class="count" id="count-FINISHED">0</span></button>
+  </div>
+
+  <div class="filters">
+    <input type="text" id="filter-q" placeholder="Search player name…">
+    <select id="filter-category">
+      <option value="">All categories</option>
+      <option value="ELITE">Elite</option>
+      <option value="NEXT_GEN">Next Gen</option>
+      <option value="NOVICE">Novice</option>
+    </select>
+  </div>
+
+  <div class="match-list" id="match-list">
+    <div class="empty-state">Loading matches…</div>
+  </div>
+
+  <footer class="credit">BLTA Score · <a href="/embed/live" target="_blank" style="text-decoration:underline">Embed this list</a></footer>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

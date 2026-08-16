@@ -1,0 +1,20 @@
+{
+  "name": "blta-score",
+  "version": "1.0.0",
+  "description": "Live score tracking app for BLTA amateur tennis league",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "nodemailer": "^9.0.5",
+    "socket.io": "^4.7.5"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}

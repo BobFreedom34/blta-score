@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLTA Score — Match</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="dot"></span>BLTA <small>Live Score</small></div>
+    <nav class="nav-links">
+      <a href="/">Matches</a>
+      <a href="/players">Players</a>
+      <a href="/new-match">+ New match</a>
+    </nav>
+  </div>
+</div>
+
+<div class="container" style="max-width:720px">
+  <div id="match-root">Loading match…</div>
+</div>
+
+<!-- Share modal -->
+<div class="modal-backdrop" id="share-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="share-modal" aria-label="Close">&times;</button>
+    <h3>Share this match</h3>
+    <div class="code-box" id="share-link"></div>
+    <div class="share-row">
+      <button class="btn btn-green btn-sm" id="whatsapp-btn">WhatsApp</button>
+      <button class="btn btn-outline btn-sm" id="copy-link-btn">Copy link</button>
+    </div>
+  </div>
+</div>
+
+<!-- Embed modal -->
+<div class="modal-backdrop" id="embed-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="embed-modal" aria-label="Close">&times;</button>
+    <h3>Embed on WordPress</h3>
+    <p style="font-size:13px;color:var(--gray)">Paste this into a "Custom HTML" block on your blta.sk page:</p>
+    <div class="code-box" id="embed-code"></div>
+    <div class="share-row">
+      <button class="btn btn-outline btn-sm" id="copy-embed-btn">Copy code</button>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/match.js"></script>
+</body>
+</html>

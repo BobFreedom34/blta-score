@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: blta-score
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true
+    disk:
+      name: blta-score-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: PUBLIC_URL
+        value: https://score.blta.sk
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_SECURE
+        value: true
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: NOTIFY_EMAIL
+        value: robert.sloboda@gmail.com
+      - key: MAIL_FROM
+        value: "BLTA Score <robert.sloboda@gmail.com>"

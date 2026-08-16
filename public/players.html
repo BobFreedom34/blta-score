@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLTA Score — Players</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="dot"></span>BLTA <small>Live Score</small></div>
+    <nav class="nav-links">
+      <a href="/">Matches</a>
+      <a href="/players" class="active">Players</a>
+      <a href="/new-match">+ New match</a>
+    </nav>
+  </div>
+</div>
+
+<div class="container">
+  <h1 style="margin-top:22px">Players</h1>
+  <p style="color:var(--gray)">Add every league player here once — then pick them from the list when creating a match.</p>
+
+  <div class="card" style="margin-bottom:20px">
+    <form id="add-player-form" style="display:flex;gap:10px;flex-wrap:wrap">
+      <input type="text" id="new-player-name" placeholder="Player full name" style="flex:1;min-width:200px;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px" required maxlength="60">
+      <button type="submit" class="btn btn-primary">+ Add player</button>
+    </form>
+  </div>
+
+  <input type="text" id="filter-q" placeholder="Search players…" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px;margin-bottom:14px">
+
+  <div class="card">
+    <div id="player-list">Loading…</div>
+  </div>
+</div>
+
+<script src="/js/common.js"></script>
+<script src="/js/players.js"></script>
+</body>
+</html>
