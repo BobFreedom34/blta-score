@@ -64,6 +64,29 @@
   </div>
 </div>
 
+<!-- Quick schedule modal -->
+<div class="modal-backdrop" id="quick-schedule-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="quick-schedule-modal" aria-label="Close">&times;</button>
+    <h3>Set date &amp; location</h3>
+    <form id="quick-schedule-form">
+      <div class="field">
+        <label for="quick-schedule-location">Place</label>
+        <input type="text" id="quick-schedule-location" placeholder="e.g. NTC Bratislava, Court 3">
+      </div>
+      <div class="field">
+        <label for="quick-schedule-date">Date &amp; time</label>
+        <div style="display:flex;gap:8px">
+          <input type="date" id="quick-schedule-date" style="flex:1">
+          <input type="time" id="quick-schedule-time" style="flex:1">
+        </div>
+      </div>
+      <div id="quick-schedule-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Save</button>
+    </form>
+  </div>
+</div>
+
 <footer class="site-footer">
   <div class="site-footer-inner">
     <span>BLTA Score</span>

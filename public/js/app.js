@@ -39,6 +39,7 @@ function matchCardHtml(m) {
         </div>
         <div class="match-score">${escapeHtml(matchResultText(m))}</div>
       </div>
+      ${m.status === 'PLANNED' && !m.scheduledAt ? `<button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}" style="margin-top:10px">📅 Set date &amp; location</button>` : ''}
     </a>
   `;
 }
@@ -132,6 +133,46 @@ document.getElementById('embed-list-btn').addEventListener('click', () => {
     copyToClipboard(code).then(() => toast('Embed code copied'));
   };
   document.getElementById('embed-modal').style.display = 'flex';
+});
+
+let quickScheduleToken = null;
+
+function openQuickScheduleModal(token) {
+  quickScheduleToken = token;
+  document.getElementById('quick-schedule-location').value = '';
+  document.getElementById('quick-schedule-date').value = '';
+  document.getElementById('quick-schedule-time').value = '';
+  document.getElementById('quick-schedule-error').textContent = '';
+  document.getElementById('quick-schedule-modal').style.display = 'flex';
+}
+
+listEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.quick-schedule-btn');
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  openQuickScheduleModal(btn.dataset.token);
+});
+
+document.getElementById('quick-schedule-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('quick-schedule-error');
+  errorEl.textContent = '';
+  const location = document.getElementById('quick-schedule-location').value.trim();
+  const dateVal = document.getElementById('quick-schedule-date').value;
+  const timeVal = document.getElementById('quick-schedule-time').value;
+  const scheduledAt = dateVal ? new Date(`${dateVal}T${timeVal || '00:00'}`).toISOString() : null;
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  try {
+    await api(`/matches/${quickScheduleToken}`, { method: 'PATCH', body: { location, scheduledAt } });
+    document.getElementById('quick-schedule-modal').style.display = 'none';
+    loadMatches();
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+  submitBtn.disabled = false;
 });
 
 const socket = io();
