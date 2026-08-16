@@ -19,6 +19,17 @@ function getWeekRange(offsetWeeks) {
   return { from: monday.toISOString(), to: sunday.toISOString() };
 }
 
+function notifyButtonsHtml(m) {
+  const startDone = localStorage.getItem(`blta_notified_${m.token}_START`);
+  const finishDone = localStorage.getItem(`blta_notified_${m.token}_FINISH`);
+  return `
+    <div class="notify-buttons-row">
+      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="START" ${startDone ? 'disabled' : ''}>${startDone ? '✓ Notified: start' : '🔔 Notify: start'}</button>
+      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="FINISH" ${finishDone ? 'disabled' : ''}>${finishDone ? '✓ Notified: finish' : '🏁 Notify: finish'}</button>
+    </div>
+  `;
+}
+
 function matchCardHtml(m) {
   const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
   const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
@@ -39,7 +50,8 @@ function matchCardHtml(m) {
         </div>
         <div class="match-score">${escapeHtml(matchResultText(m))}</div>
       </div>
-      ${m.status === 'PLANNED' && !m.scheduledAt ? `<button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}" style="margin-top:10px">📅 Set date &amp; location</button>` : ''}
+      ${m.status === 'PLANNED' && !m.scheduledAt ? `<button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}" style="margin-top:6px">📅 Set date &amp; location</button>` : ''}
+      ${m.status === 'PLANNED' && m.scheduledAt ? notifyButtonsHtml(m) : ''}
     </a>
   `;
 }
@@ -150,12 +162,35 @@ function openQuickScheduleModal(token) {
   document.getElementById('quick-schedule-modal').style.display = 'flex';
 }
 
+let notifyToken = null;
+let notifyType = null;
+
+function openNotifyModal(token, type) {
+  notifyToken = token;
+  notifyType = type;
+  document.getElementById('notify-modal-title').textContent = type === 'START' ? 'Notify me when it starts' : 'Notify me when it finishes';
+  document.getElementById('notify-modal-desc').textContent = type === 'START'
+    ? "We'll email you as soon as this match starts."
+    : "We'll email you the result as soon as this match finishes.";
+  document.getElementById('notify-email').value = localStorage.getItem('blta_notify_email') || '';
+  document.getElementById('notify-error').textContent = '';
+  document.getElementById('notify-modal').style.display = 'flex';
+}
+
 listEl.addEventListener('click', (e) => {
-  const btn = e.target.closest('.quick-schedule-btn');
-  if (!btn) return;
-  e.preventDefault();
-  e.stopPropagation();
-  openQuickScheduleModal(btn.dataset.token);
+  const scheduleBtn = e.target.closest('.quick-schedule-btn');
+  if (scheduleBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    openQuickScheduleModal(scheduleBtn.dataset.token);
+    return;
+  }
+  const notifyBtn = e.target.closest('.notify-btn');
+  if (notifyBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    openNotifyModal(notifyBtn.dataset.token, notifyBtn.dataset.type);
+  }
 });
 
 document.getElementById('quick-schedule-form').addEventListener('submit', async (e) => {
@@ -172,6 +207,27 @@ document.getElementById('quick-schedule-form').addEventListener('submit', async 
   try {
     await api(`/matches/${quickScheduleToken}`, { method: 'PATCH', body: { location, scheduledAt } });
     document.getElementById('quick-schedule-modal').style.display = 'none';
+    loadMatches();
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+  submitBtn.disabled = false;
+});
+
+document.getElementById('notify-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('notify-error');
+  errorEl.textContent = '';
+  const email = document.getElementById('notify-email').value.trim();
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  try {
+    await api(`/matches/${notifyToken}/notify-me`, { method: 'POST', body: { email, type: notifyType } });
+    localStorage.setItem('blta_notify_email', email);
+    localStorage.setItem(`blta_notified_${notifyToken}_${notifyType}`, '1');
+    document.getElementById('notify-modal').style.display = 'none';
+    toast("You're subscribed!");
     loadMatches();
   } catch (err) {
     errorEl.textContent = err.message;

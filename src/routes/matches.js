@@ -2,16 +2,34 @@ const crypto = require('crypto');
 const express = require('express');
 const db = require('../db');
 const engine = require('../matchEngine');
-const { sendMatchFinishedEmail } = require('../mailer');
+const { sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo } = require('../mailer');
 const { isAdmin } = require('../auth');
 
 const router = express.Router();
 
 const MAX_HISTORY = 30;
 const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE', 'FRIENDLY'];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function getPlayer(id) {
   return db.prepare('SELECT * FROM players WHERE id = ?').get(id);
+}
+
+// Emails everyone subscribed to this match/type who hasn't been notified yet.
+async function notifySubscribers(matchId, type, updated) {
+  const subs = db.prepare('SELECT * FROM match_notifications WHERE match_id = ? AND type = ? AND sent = 0').all(matchId, type);
+  if (!subs.length) return;
+  const p1 = getPlayer(updated.player1_id);
+  const p2 = getPlayer(updated.player2_id);
+  for (const sub of subs) {
+    try {
+      if (type === 'START') await sendMatchStartedEmailTo(updated, p1, p2, sub.email);
+      else await sendMatchFinishedEmailTo(updated, p1, p2, sub.email);
+      db.prepare('UPDATE match_notifications SET sent = 1 WHERE id = ?').run(sub.id);
+    } catch (err) {
+      console.error(`[matches] failed to send ${type} notification to ${sub.email}:`, err.message);
+    }
+  }
 }
 
 function serialize(row) {
@@ -224,7 +242,7 @@ router.delete('/:token', (req, res) => {
   res.status(204).end();
 });
 
-router.post('/:token/start', (req, res) => {
+router.post('/:token/start', async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status !== 'PLANNED') {
@@ -243,6 +261,10 @@ router.post('/:token/start', (req, res) => {
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);
   res.json(payload);
+
+  notifySubscribers(row.id, 'START', updated).catch((err) => {
+    console.error('[matches] failed to send start notifications:', err.message);
+  });
 });
 
 router.post('/:token/pause', (req, res) => {
@@ -429,6 +451,9 @@ router.post('/:token/finish', async (req, res) => {
   } catch (err) {
     console.error('[matches] failed to send finished-match email:', err.message);
   }
+  notifySubscribers(row.id, 'FINISH', updated).catch((err) => {
+    console.error('[matches] failed to send finish notifications:', err.message);
+  });
 });
 
 // Records a result for a match that was already played outside the app,
@@ -476,6 +501,37 @@ router.post('/:token/manual-result', async (req, res) => {
   } catch (err) {
     console.error('[matches] failed to send finished-match email:', err.message);
   }
+  notifySubscribers(row.id, 'FINISH', updated).catch((err) => {
+    console.error('[matches] failed to send finish notifications:', err.message);
+  });
+});
+
+// Subscribe an email address to a one-time notification for when this
+// specific match starts or finishes.
+router.post('/:token/notify-me', (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const type = req.body.type;
+  if (!EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: 'Enter a valid email address' });
+  }
+  if (!['START', 'FINISH'].includes(type)) {
+    return res.status(400).json({ error: 'Invalid notification type' });
+  }
+  if (row.status === 'FINISHED') {
+    return res.status(400).json({ error: 'This match has already finished' });
+  }
+  if (type === 'START' && row.status !== 'PLANNED') {
+    return res.status(400).json({ error: 'This match has already started' });
+  }
+  try {
+    db.prepare('INSERT INTO match_notifications (match_id, email, type) VALUES (?, ?, ?)').run(row.id, email, type);
+  } catch (err) {
+    if (!/UNIQUE/.test(err.message)) throw err;
+    // Already subscribed with this email — treat as success, not an error.
+  }
+  res.status(201).json({ subscribed: true });
 });
 
 function serializeMessage(row) {

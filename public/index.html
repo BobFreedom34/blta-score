@@ -87,6 +87,23 @@
   </div>
 </div>
 
+<!-- Notify me modal -->
+<div class="modal-backdrop" id="notify-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="notify-modal" aria-label="Close">&times;</button>
+    <h3 id="notify-modal-title">Get notified</h3>
+    <p style="font-size:13px;color:var(--gray)" id="notify-modal-desc"></p>
+    <form id="notify-form">
+      <div class="field">
+        <label for="notify-email">Your email</label>
+        <input type="email" id="notify-email" placeholder="you@example.com" required>
+      </div>
+      <div id="notify-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Notify me</button>
+    </form>
+  </div>
+</div>
+
 <footer class="site-footer">
   <div class="site-footer-inner">
     <span>BLTA Score</span>

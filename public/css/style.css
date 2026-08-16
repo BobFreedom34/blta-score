@@ -314,6 +314,8 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   height: 1px;
   background: #ddd;
 }
+.quick-schedule-btn { align-self: flex-start; }
+.notify-buttons-row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 
 /* ---------- Forms ---------- */
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }

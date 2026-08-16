@@ -154,4 +154,17 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_messages_match_id ON messages(match_id);
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS match_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id INTEGER NOT NULL REFERENCES matches(id),
+    email TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('START','FINISH')),
+    sent INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_match_notifications_unique ON match_notifications(match_id, email, type);
+  CREATE INDEX IF NOT EXISTS idx_match_notifications_match_id ON match_notifications(match_id);
+`);
+
 module.exports = db;
