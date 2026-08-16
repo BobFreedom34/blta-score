@@ -19,6 +19,15 @@ const STATUS_LABELS = { PLANNED: 'Planned', LIVE: 'Live', FINISHED: 'Finished' }
   });
 })();
 
+document.querySelectorAll('[data-close]').forEach((el) => {
+  el.addEventListener('click', () => {
+    document.getElementById(el.dataset.close).style.display = 'none';
+  });
+});
+document.querySelectorAll('.modal-backdrop').forEach((el) => {
+  el.addEventListener('click', (e) => { if (e.target === el) el.style.display = 'none'; });
+});
+
 async function api(path, options = {}) {
   const res = await fetch(`/api${path}`, {
     headers: { 'Content-Type': 'application/json' },

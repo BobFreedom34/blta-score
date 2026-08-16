@@ -317,15 +317,6 @@ function openEmbedModal(m) {
   document.getElementById('embed-modal').style.display = 'flex';
 }
 
-document.querySelectorAll('[data-close]').forEach((el) => {
-  el.addEventListener('click', () => {
-    document.getElementById(el.dataset.close).style.display = 'none';
-  });
-});
-document.querySelectorAll('.modal-backdrop').forEach((el) => {
-  el.addEventListener('click', (e) => { if (e.target === el) el.style.display = 'none'; });
-});
-
 async function init() {
   isAdminUser = await checkAdmin();
   try {

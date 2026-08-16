@@ -49,7 +49,20 @@
     <div class="empty-state">Loading matches…</div>
   </div>
 
-  <footer class="credit">BLTA Score · <a href="/embed/live" target="_blank" style="text-decoration:underline">Embed this list</a></footer>
+  <footer class="credit">BLTA Score · <button type="button" id="embed-list-btn" style="background:none;border:none;color:inherit;font:inherit;text-decoration:underline;cursor:pointer;padding:0">Embed this list</button></footer>
+</div>
+
+<!-- Embed modal -->
+<div class="modal-backdrop" id="embed-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="embed-modal" aria-label="Close">&times;</button>
+    <h3>Embed on WordPress</h3>
+    <p style="font-size:13px;color:var(--gray)" id="embed-modal-desc">Paste this into a "Custom HTML" block on your blta.sk page:</p>
+    <div class="code-box" id="embed-code"></div>
+    <div class="share-row">
+      <button class="btn btn-outline btn-sm" id="copy-embed-btn">Copy code</button>
+    </div>
+  </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>

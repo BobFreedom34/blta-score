@@ -122,6 +122,18 @@ document.getElementById('filter-time').addEventListener('change', (e) => {
   loadMatches();
 });
 
+document.getElementById('embed-list-btn').addEventListener('click', () => {
+  const src = `${window.location.origin}/embed/live?status=${currentStatus}`;
+  const code = `<iframe src="${src}" width="100%" height="600" frameborder="0" style="border:0;max-width:480px"></iframe>`;
+  document.getElementById('embed-modal-desc').textContent =
+    `Paste this into a "Custom HTML" block on your blta.sk page to show the ${STATUS_LABELS[currentStatus].toLowerCase()} matches list:`;
+  document.getElementById('embed-code').textContent = code;
+  document.getElementById('copy-embed-btn').onclick = () => {
+    copyToClipboard(code).then(() => toast('Embed code copied'));
+  };
+  document.getElementById('embed-modal').style.display = 'flex';
+});
+
 const socket = io();
 socket.on('matches:changed', () => {
   loadMatches();
