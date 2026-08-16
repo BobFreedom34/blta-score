@@ -237,6 +237,7 @@ router.delete('/:token', (req, res) => {
     }
   }
   db.prepare('DELETE FROM messages WHERE match_id = ?').run(row.id);
+  db.prepare('DELETE FROM match_notifications WHERE match_id = ?').run(row.id);
   db.prepare('DELETE FROM matches WHERE id = ?').run(row.id);
   req.app.get('io').emit('matches:changed', { token: row.share_token, status: 'DELETED' });
   res.status(204).end();
