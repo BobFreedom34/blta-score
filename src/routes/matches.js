@@ -38,6 +38,7 @@ function serialize(row) {
     pausedAt: row.paused_at,
     pausedSeconds: row.paused_seconds || 0,
     firstServer: row.first_server || null,
+    endReason: row.end_reason || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     player1: p1,
@@ -389,11 +390,27 @@ router.post('/:token/finish', async (req, res) => {
   }
 
   const state = JSON.parse(row.state);
-  const winnerId = deriveWinnerId(state, row);
+  let winnerId = deriveWinnerId(state, row);
+  let endReason = null;
+
+  if (state.status !== 'COMPLETE') {
+    // No winner by score — this is a walkover or retirement, so the winner
+    // and the reason have to be chosen explicitly instead of left blank.
+    const winner = Number(req.body.winner);
+    const reason = req.body.reason;
+    if (![1, 2].includes(winner)) {
+      return res.status(400).json({ error: "The match isn't decided by score — pick who won" });
+    }
+    if (!['WALKOVER', 'RETIREMENT'].includes(reason)) {
+      return res.status(400).json({ error: 'Pick a reason: Walkover or Retirement' });
+    }
+    winnerId = winner === 1 ? row.player1_id : row.player2_id;
+    endReason = reason;
+  }
 
   const ts = nowIso();
-  db.prepare("UPDATE matches SET status = 'FINISHED', end_time = ?, winner_id = ?, updated_at = ? WHERE id = ?")
-    .run(ts, winnerId, ts, row.id);
+  db.prepare("UPDATE matches SET status = 'FINISHED', end_time = ?, winner_id = ?, end_reason = ?, updated_at = ? WHERE id = ?")
+    .run(ts, winnerId, endReason, ts, row.id);
 
   let updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);

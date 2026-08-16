@@ -37,7 +37,7 @@ function matchCardHtml(m) {
           <div class="name ${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}</div>
           <div class="name ${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}</div>
         </div>
-        <div class="match-score">${m.status === 'PLANNED' ? m.formatLabel : (escapeHtml(m.scoreSummary) || '—')}</div>
+        <div class="match-score">${escapeHtml(matchResultText(m))}</div>
       </div>
     </a>
   `;

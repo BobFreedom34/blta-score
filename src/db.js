@@ -125,6 +125,9 @@ if (!matchColumns.includes('paused_seconds')) {
 if (!matchColumns.includes('first_server')) {
   db.exec('ALTER TABLE matches ADD COLUMN first_server INTEGER');
 }
+if (!matchColumns.includes('end_reason')) {
+  db.exec('ALTER TABLE matches ADD COLUMN end_reason TEXT');
+}
 
 const untokenized = db.prepare('SELECT id FROM matches WHERE share_token IS NULL').all();
 if (untokenized.length > 0) {

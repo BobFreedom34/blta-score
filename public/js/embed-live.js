@@ -19,7 +19,7 @@ const EMPTY_MESSAGES = {
 
 function itemHtml(m) {
   const url = `${window.location.origin}/match/${m.token}`;
-  const scoreOrFormat = m.status === 'PLANNED' ? m.formatLabel : (escapeHtml(m.scoreSummary) || 'starting…');
+  const scoreOrFormat = m.status === 'LIVE' ? (escapeHtml(m.scoreSummary) || 'starting…') : escapeHtml(matchResultText(m));
   return `
     <div class="embed-live-item">
       ${categoryBadge(m.category)}

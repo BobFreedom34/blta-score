@@ -1,5 +1,15 @@
 const CATEGORY_LABELS = { ELITE: 'ELITE', NEXT_GEN: 'NEXT GEN', NOVICE: 'NOVICE', FRIENDLY: 'FRIENDLY' };
 const STATUS_LABELS = { PLANNED: 'Planned', LIVE: 'Live', FINISHED: 'Finished' };
+const END_REASON_LABELS = { WALKOVER: 'Walkover', RETIREMENT: 'Retirement' };
+
+// "6-4, 3-2" / "Retirement" / "6-4, 3-2 — Retirement" / "Best of 3 sets" (planned)
+function matchResultText(m) {
+  if (m.status === 'PLANNED') return m.formatLabel;
+  const parts = [];
+  if (m.scoreSummary) parts.push(m.scoreSummary);
+  if (m.endReason && END_REASON_LABELS[m.endReason]) parts.push(END_REASON_LABELS[m.endReason]);
+  return parts.join(' — ') || '—';
+}
 
 (function initMobileNav() {
   const toggle = document.getElementById('nav-toggle');

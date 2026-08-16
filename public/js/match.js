@@ -194,10 +194,12 @@ function controlsHtml(m) {
   }
   // FINISHED
   const winnerName = m.winnerId === m.player1.id ? m.player1.name : m.winnerId === m.player2.id ? m.player2.name : null;
+  const reasonLabel = m.endReason && END_REASON_LABELS[m.endReason] ? END_REASON_LABELS[m.endReason] : null;
   const winnerCard = `
     <div class="card" style="margin-top:16px;text-align:center">
       <div style="font-size:13px;color:var(--gray);font-weight:700;letter-spacing:0.03em;text-transform:uppercase">Winner</div>
       <div style="font-size:22px;font-weight:800;color:var(--green-light)">${winnerName ? escapeHtml(winnerName) : 'Match ended without a result'}</div>
+      ${reasonLabel ? `<div style="font-size:12px;color:var(--gray);font-weight:700;margin-top:4px">${reasonLabel}</div>` : ''}
     </div>
   `;
   if (!isAdminUser) return winnerCard;
@@ -379,11 +381,11 @@ function attachHandlers(m) {
 
   const finishBtn = document.getElementById('finish-btn');
   if (finishBtn) finishBtn.addEventListener('click', async () => {
-    const complete = m.state.status === 'COMPLETE';
-    const warning = complete
-      ? "Finish this match? The result can't be changed afterward (only an admin will be able to correct it later)."
-      : "The match doesn't have a winner yet — finishing now is meant for retirements or walkovers. The result can't be changed afterward (only an admin will be able to correct it later).";
-    if (!confirm(`${warning} Are you sure?`)) return;
+    if (m.state.status !== 'COMPLETE') {
+      openFinishUndecidedModal(m);
+      return;
+    }
+    if (!confirm("Finish this match? The result can't be changed afterward (only an admin will be able to correct it later). Are you sure?")) return;
     finishBtn.disabled = true;
     try {
       const finished = await api(`/matches/${matchToken}/finish`, { method: 'POST' });
@@ -529,6 +531,53 @@ function openFirstServerModal(m) {
   document.getElementById('first-server-modal').style.display = 'flex';
 }
 
+function openFinishUndecidedModal(m) {
+  let winner = null;
+  let reason = null;
+  const winnerBtns = Array.from(document.querySelectorAll('#finish-winner-row button'));
+  const reasonBtns = Array.from(document.querySelectorAll('#finish-reason-row button'));
+  const confirmBtn = document.getElementById('finish-undecided-confirm-btn');
+
+  winnerBtns[0].textContent = m.player1.name;
+  winnerBtns[0].dataset.winner = '1';
+  winnerBtns[1].textContent = m.player2.name;
+  winnerBtns[1].dataset.winner = '2';
+
+  const updateConfirm = () => { confirmBtn.disabled = !(winner && reason); };
+
+  winnerBtns.forEach((btn) => {
+    btn.classList.remove('active');
+    btn.onclick = () => {
+      winner = Number(btn.dataset.winner);
+      winnerBtns.forEach((b) => b.classList.toggle('active', b === btn));
+      updateConfirm();
+    };
+  });
+  reasonBtns.forEach((btn) => {
+    btn.classList.remove('active');
+    btn.onclick = () => {
+      reason = btn.dataset.reason;
+      reasonBtns.forEach((b) => b.classList.toggle('active', b === btn));
+      updateConfirm();
+    };
+  });
+
+  confirmBtn.disabled = true;
+  confirmBtn.onclick = async () => {
+    confirmBtn.disabled = true;
+    try {
+      const finished = await api(`/matches/${matchToken}/finish`, { method: 'POST', body: { winner, reason } });
+      document.getElementById('finish-undecided-modal').style.display = 'none';
+      openWhatsAppResultModal(finished);
+    } catch (err) {
+      toast(err.message);
+      confirmBtn.disabled = false;
+    }
+  };
+
+  document.getElementById('finish-undecided-modal').style.display = 'flex';
+}
+
 function openShareModal(m) {
   const url = `${window.location.origin}/match/${m.token}`;
   document.getElementById('share-link').textContent = url;
@@ -556,7 +605,7 @@ function openWhatsAppResultModal(m) {
 
   const lines = [
     `🎾 ${m.player1.name} vs ${m.player2.name}`,
-    `🏆 ${m.scoreSummary || 'No result'}${winnerName ? ` — ${winnerName} wins` : ''}`,
+    `🏆 ${matchResultText(m) || 'No result'}${winnerName ? ` — ${winnerName} wins` : ''}`,
     `📅 ${fmtDateShort(m.startTime)}`,
   ];
   if (m.location) lines.push(`📍 ${m.location}`);
