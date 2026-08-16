@@ -51,6 +51,19 @@
   </div>
 </div>
 
+<!-- WhatsApp result modal (shown after finishing a match) -->
+<div class="modal-backdrop" id="whatsapp-result-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="whatsapp-result-modal" aria-label="Close">&times;</button>
+    <h3>Match finished 🎉</h3>
+    <p style="font-size:13px;color:var(--gray)">Send the result to your WhatsApp group:</p>
+    <div class="code-box" id="whatsapp-result-text" style="white-space:pre-line"></div>
+    <div class="share-row">
+      <button class="btn btn-green btn-block" id="whatsapp-result-send-btn">📱 Send to WhatsApp</button>
+    </div>
+  </div>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script src="/js/common.js"></script>
 <script src="/js/match.js"></script>

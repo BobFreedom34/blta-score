@@ -236,7 +236,10 @@ function attachHandlers(m) {
       : "The match doesn't have a winner yet — finishing now is meant for retirements or walkovers. The result can't be changed afterward (only an admin will be able to correct it later).";
     if (!confirm(`${warning} Are you sure?`)) return;
     finishBtn.disabled = true;
-    try { await api(`/matches/${matchToken}/finish`, { method: 'POST' }); }
+    try {
+      const finished = await api(`/matches/${matchToken}/finish`, { method: 'POST' });
+      openWhatsAppResultModal(finished);
+    }
     catch (err) { toast(err.message); finishBtn.disabled = false; }
   });
 
@@ -336,6 +339,26 @@ function openShareModal(m) {
     copyToClipboard(url).then(() => toast('Link copied'));
   };
   document.getElementById('share-modal').style.display = 'flex';
+}
+
+function openWhatsAppResultModal(m) {
+  const url = `${window.location.origin}/match/${m.token}`;
+  const winnerName = m.winnerId === m.player1.id ? m.player1.name : m.winnerId === m.player2.id ? m.player2.name : null;
+
+  const lines = [
+    `🎾 ${m.player1.name} vs ${m.player2.name}`,
+    `🏆 ${m.scoreSummary || 'No result'}${winnerName ? ` — ${winnerName} wins` : ''}`,
+    `📅 ${fmtDateShort(m.startTime)}`,
+  ];
+  if (m.location) lines.push(`📍 ${m.location}`);
+  lines.push(`🔗 ${url}`);
+  const text = lines.join('\n');
+
+  document.getElementById('whatsapp-result-text').textContent = text;
+  document.getElementById('whatsapp-result-send-btn').onclick = () => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+  document.getElementById('whatsapp-result-modal').style.display = 'flex';
 }
 
 function openEmbedModal(m) {
