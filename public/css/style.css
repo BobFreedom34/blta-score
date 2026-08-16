@@ -324,6 +324,30 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
 datalist {}
 
+.autocomplete { position: relative; }
+.autocomplete-list {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--white);
+  border: 1.5px solid #ddd;
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  max-height: 220px;
+  overflow-y: auto;
+}
+.autocomplete-list.open { display: block; }
+.autocomplete-item {
+  padding: 10px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.autocomplete-item:hover, .autocomplete-item.active { background: var(--gray-light); }
+.autocomplete-item + .autocomplete-item { border-top: 1px solid #f0f0f0; }
+
 .format-options { display: flex; flex-direction: column; gap: 8px; }
 .format-option {
   border: 1.5px solid #ddd;

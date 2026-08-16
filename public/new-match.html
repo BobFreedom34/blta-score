@@ -29,14 +29,19 @@
     <div class="grid-2">
       <div class="field">
         <label for="player1">Player 1</label>
-        <input list="players-datalist" id="player1" name="player1" placeholder="Type a name…" required autocomplete="off">
+        <div class="autocomplete">
+          <input id="player1" name="player1" placeholder="Type a name…" required autocomplete="off">
+          <div class="autocomplete-list" id="player1-suggestions"></div>
+        </div>
       </div>
       <div class="field">
         <label for="player2">Player 2</label>
-        <input list="players-datalist" id="player2" name="player2" placeholder="Type a name…" required autocomplete="off">
+        <div class="autocomplete">
+          <input id="player2" name="player2" placeholder="Type a name…" required autocomplete="off">
+          <div class="autocomplete-list" id="player2-suggestions"></div>
+        </div>
       </div>
     </div>
-    <datalist id="players-datalist"></datalist>
 
     <div class="field">
       <label for="category">Category</label>

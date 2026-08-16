@@ -17,14 +17,70 @@ formatContainer.innerHTML = FORMATS.map((f, i) => `
   </label>
 `).join('');
 
-async function loadPlayersDatalist() {
-  try {
-    const players = await api('/players');
-    document.getElementById('players-datalist').innerHTML =
-      players.map((p) => `<option value="${escapeHtml(p.name)}">`).join('');
-  } catch { /* ignore, autocomplete just won't populate */ }
+let allPlayers = [];
+async function loadPlayers() {
+  try { allPlayers = await api('/players'); } catch { allPlayers = []; }
 }
-loadPlayersDatalist();
+loadPlayers();
+
+// Custom autocomplete instead of a native <datalist>, which mobile Safari in
+// particular renders inconsistently (often not showing suggestions at all).
+function setupAutocomplete(inputId, listId) {
+  const input = document.getElementById(inputId);
+  const list = document.getElementById(listId);
+  let activeIndex = -1;
+
+  function currentMatches() {
+    const q = input.value.trim().toLowerCase();
+    if (!q) return [];
+    return allPlayers.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8);
+  }
+
+  function render() {
+    const matches = currentMatches();
+    list.innerHTML = matches.map((p, i) => `
+      <div class="autocomplete-item${i === activeIndex ? ' active' : ''}" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}</div>
+    `).join('');
+    list.classList.toggle('open', matches.length > 0);
+  }
+
+  input.addEventListener('input', () => { activeIndex = -1; render(); });
+  input.addEventListener('focus', render);
+  input.addEventListener('keydown', (e) => {
+    const items = list.querySelectorAll('.autocomplete-item');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIndex = Math.min(activeIndex + 1, items.length - 1);
+      render();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIndex = Math.max(activeIndex - 1, 0);
+      render();
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault();
+      input.value = items[activeIndex].dataset.name;
+      list.classList.remove('open');
+      activeIndex = -1;
+    } else if (e.key === 'Escape') {
+      list.classList.remove('open');
+      activeIndex = -1;
+    }
+  });
+  list.addEventListener('mousedown', (e) => {
+    const item = e.target.closest('.autocomplete-item');
+    if (!item) return;
+    e.preventDefault(); // keep focus on input so blur doesn't close the list first
+    input.value = item.dataset.name;
+    list.classList.remove('open');
+    activeIndex = -1;
+  });
+  input.addEventListener('blur', () => {
+    setTimeout(() => list.classList.remove('open'), 100);
+  });
+}
+setupAutocomplete('player1', 'player1-suggestions');
+setupAutocomplete('player2', 'player2-suggestions');
 
 document.getElementById('new-match-form').addEventListener('submit', async (e) => {
   e.preventDefault();
