@@ -6,11 +6,18 @@ let isAdminUser = false;
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
-function toDatetimeLocalValue(iso) {
+function toDateValue(iso) {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function toTimeValue(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function startTimer(m) {
@@ -269,7 +276,10 @@ function attachHandlers(m) {
   if (editDateLink) editDateLink.addEventListener('click', () => {
     const display = document.getElementById('date-display');
     display.innerHTML = `
-      <input type="datetime-local" id="date-input" value="${toDatetimeLocalValue(m.scheduledAt)}" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">
+      <div style="display:flex;gap:8px">
+        <input type="date" id="date-input" value="${toDateValue(m.scheduledAt)}" style="flex:1;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">
+        <input type="time" id="time-input" value="${toTimeValue(m.scheduledAt)}" style="flex:1;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">
+      </div>
       <div style="margin-top:6px;display:flex;gap:6px">
         <button class="btn btn-sm btn-primary" id="save-date-btn">Save</button>
         <button class="btn btn-sm btn-outline" id="clear-date-btn">Clear</button>
@@ -284,8 +294,9 @@ function attachHandlers(m) {
       catch (err) { toast(err.message); }
     };
     document.getElementById('save-date-btn').addEventListener('click', () => {
-      const val = document.getElementById('date-input').value;
-      saveDate(val ? new Date(val).toISOString() : null);
+      const dateVal = document.getElementById('date-input').value;
+      const timeVal = document.getElementById('time-input').value;
+      saveDate(dateVal ? new Date(`${dateVal}T${timeVal || '00:00'}`).toISOString() : null);
     });
     document.getElementById('clear-date-btn').addEventListener('click', () => saveDate(null));
   });
