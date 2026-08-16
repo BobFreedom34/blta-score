@@ -117,7 +117,7 @@ function scoreboardHtml(m) {
       const isCurrent = m.status === 'LIVE' && i === state.currentSet;
       return `<td class="set-score ${isCurrent ? 'current' : ''}">${setCell(s, playerNum)}</td>`;
     }).join('');
-    const ball = serving === playerNum ? '<span class="serve-ball" title="Serving">🎾</span>' : '';
+    const ball = serving === playerNum ? '<span class="serve-ball" title="Serving">🟡</span>' : '';
     return `<tr class="${isWinner ? 'winner-row' : ''}"><td class="name-cell">${ball}${escapeHtml(player.name)}</td>${cells}</tr>`;
   };
 
