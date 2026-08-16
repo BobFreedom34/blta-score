@@ -1,6 +1,24 @@
 const CATEGORY_LABELS = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', FRIENDLY: 'Friendly' };
 const STATUS_LABELS = { PLANNED: 'Planned', LIVE: 'Live', FINISHED: 'Finished' };
 
+(function initMobileNav() {
+  const toggle = document.getElementById('nav-toggle');
+  const links = document.getElementById('nav-links');
+  if (!toggle || !links) return;
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    links.classList.toggle('open');
+  });
+  links.addEventListener('click', (e) => {
+    if (e.target.tagName === 'A') links.classList.remove('open');
+  });
+  document.addEventListener('click', (e) => {
+    if (links.classList.contains('open') && !links.contains(e.target) && e.target !== toggle) {
+      links.classList.remove('open');
+    }
+  });
+})();
+
 async function api(path, options = {}) {
   const res = await fetch(`/api${path}`, {
     headers: { 'Content-Type': 'application/json' },

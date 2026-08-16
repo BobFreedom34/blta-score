@@ -11,7 +11,8 @@
 <div class="topbar">
   <div class="topbar-inner">
     <a class="brand" href="/"><img src="/img/blta-logo.png" alt="BLTA" class="brand-logo"><small>Live Score</small></a>
-    <nav class="nav-links">
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">☰</button>
+    <nav class="nav-links" id="nav-links">
       <a href="/">Matches</a>
       <a href="/players">Players</a>
       <a href="/new-match" class="active">+ New match</a>
@@ -63,6 +64,12 @@
     <div class="field">
       <label>Match format</label>
       <div class="format-options" id="format-options"></div>
+    </div>
+
+    <div class="field">
+      <label for="notes">Additional info</label>
+      <textarea id="notes" rows="3" maxlength="1000" placeholder="e.g. round of 16, bring your own balls, meet 10 min early…"></textarea>
+      <small>Optional — shown on the match page.</small>
     </div>
 
     <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Create match</button>

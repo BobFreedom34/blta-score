@@ -35,6 +35,7 @@ db.exec(`
     end_time TEXT,
     notified INTEGER NOT NULL DEFAULT 0,
     created_by_admin INTEGER NOT NULL DEFAULT 0,
+    notes TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
@@ -82,6 +83,7 @@ function rebuildMatchesTableWithoutCategoryCheck() {
         end_time TEXT,
         notified INTEGER NOT NULL DEFAULT 0,
         created_by_admin INTEGER NOT NULL DEFAULT 0,
+        notes TEXT NOT NULL DEFAULT '',
         created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
         updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
       )
@@ -108,6 +110,9 @@ if (!matchColumns.includes('share_token')) {
 }
 if (!matchColumns.includes('created_by_admin')) {
   db.exec('ALTER TABLE matches ADD COLUMN created_by_admin INTEGER NOT NULL DEFAULT 0');
+}
+if (!matchColumns.includes('notes')) {
+  db.exec("ALTER TABLE matches ADD COLUMN notes TEXT NOT NULL DEFAULT ''");
 }
 
 const untokenized = db.prepare('SELECT id FROM matches WHERE share_token IS NULL').all();

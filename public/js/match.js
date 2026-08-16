@@ -152,6 +152,14 @@ function render(m) {
       </div>
     </div>
 
+    ${m.notes || locationEditable ? `
+      <div class="card" style="margin-bottom:16px">
+        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em">Additional info</div>
+        <div class="value" id="notes-display" style="margin-top:4px;white-space:pre-wrap;font-weight:600">${m.notes ? escapeHtml(m.notes) : '<span style="color:var(--gray);font-weight:500">Not set</span>'}</div>
+        ${locationEditable ? `<button type="button" class="edit-link" id="edit-notes-link" style="margin-top:8px">Edit</button>` : ''}
+      </div>
+    ` : ''}
+
     <div class="match-actions">
       <button class="btn btn-yellow" id="share-btn">🔗 Share</button>
       <button class="btn btn-outline" id="embed-btn">🧩 Embed</button>
@@ -245,6 +253,26 @@ function attachHandlers(m) {
       saveDate(val ? new Date(val).toISOString() : null);
     });
     document.getElementById('clear-date-btn').addEventListener('click', () => saveDate(null));
+  });
+
+  const editNotesLink = document.getElementById('edit-notes-link');
+  if (editNotesLink) editNotesLink.addEventListener('click', () => {
+    const display = document.getElementById('notes-display');
+    display.innerHTML = `
+      <textarea id="notes-input" rows="3" maxlength="1000" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">${escapeHtml(m.notes || '')}</textarea>
+      <div style="margin-top:6px;display:flex;gap:6px">
+        <button class="btn btn-sm btn-primary" id="save-notes-btn">Save</button>
+        <button class="btn btn-sm btn-outline" id="cancel-notes-btn">Cancel</button>
+      </div>
+    `;
+    editNotesLink.style.display = 'none';
+    document.getElementById('notes-input').focus();
+    document.getElementById('cancel-notes-btn').addEventListener('click', () => render(current));
+    document.getElementById('save-notes-btn').addEventListener('click', async () => {
+      const val = document.getElementById('notes-input').value.trim();
+      try { await api(`/matches/${matchToken}`, { method: 'PATCH', body: { notes: val } }); }
+      catch (err) { toast(err.message); }
+    });
   });
 
   const shareBtn = document.getElementById('share-btn');

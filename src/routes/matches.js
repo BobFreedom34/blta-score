@@ -23,6 +23,7 @@ function serialize(row) {
     token: row.share_token,
     category: row.category,
     location: row.location,
+    notes: row.notes || '',
     scheduledAt: row.scheduled_at,
     format: row.format,
     formatLabel: engine.FORMATS[row.format] ? engine.FORMATS[row.format].label : row.format,
@@ -67,7 +68,7 @@ function broadcast(req, row) {
 }
 
 router.get('/', (req, res) => {
-  const { status, category, q } = req.query;
+  const { status, category, q, from, to, noDate } = req.query;
   const clauses = [];
   const params = {};
   if (status) {
@@ -81,6 +82,13 @@ router.get('/', (req, res) => {
   if (q) {
     clauses.push('(p1.name LIKE @q OR p2.name LIKE @q)');
     params.q = `%${q}%`;
+  }
+  if (noDate === '1') {
+    clauses.push('m.scheduled_at IS NULL');
+  } else if (from && to) {
+    clauses.push('m.scheduled_at BETWEEN @from AND @to');
+    params.from = from;
+    params.to = to;
   }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   // Planned matches: soonest-scheduled first, undated ones grouped at the end
@@ -107,7 +115,7 @@ router.get('/:token', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { category, location, scheduledAt, format } = req.body;
+  const { category, location, scheduledAt, format, notes } = req.body;
   let { player1Id, player2Id, player1Name, player2Name } = req.body;
 
   if (!CATEGORIES.includes(category)) {
@@ -115,6 +123,9 @@ router.post('/', (req, res) => {
   }
   if (!engine.FORMATS[format]) {
     return res.status(400).json({ error: 'Invalid match format' });
+  }
+  if (typeof notes === 'string' && notes.length > 1000) {
+    return res.status(400).json({ error: 'Additional info is too long (max 1000 characters)' });
   }
 
   const resolvePlayer = (id, name) => {
@@ -134,8 +145,8 @@ router.post('/', (req, res) => {
 
   const state = engine.initState(format);
   const info = db.prepare(`
-    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin)
-    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin)
+    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, notes)
+    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @notes)
   `).run({
     share_token: crypto.randomUUID(),
     category,
@@ -146,6 +157,7 @@ router.post('/', (req, res) => {
     format,
     state: JSON.stringify(state),
     created_by_admin: isAdmin(req) ? 1 : 0,
+    notes: (notes || '').trim(),
   });
 
   const row = db.prepare('SELECT * FROM matches WHERE id = ?').get(info.lastInsertRowid);
@@ -167,6 +179,12 @@ router.patch('/:token', (req, res) => {
   }
   if (req.body.category && CATEGORIES.includes(req.body.category)) {
     fields.category = req.body.category;
+  }
+  if (typeof req.body.notes === 'string') {
+    if (req.body.notes.length > 1000) {
+      return res.status(400).json({ error: 'Additional info is too long (max 1000 characters)' });
+    }
+    fields.notes = req.body.notes.trim();
   }
   if (Object.keys(fields).length === 0) {
     return res.status(400).json({ error: 'No editable fields provided' });

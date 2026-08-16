@@ -36,6 +36,7 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
   const category = document.getElementById('category').value;
   const location = document.getElementById('location').value.trim();
   const scheduledAtRaw = document.getElementById('scheduledAt').value;
+  const notes = document.getElementById('notes').value.trim();
   const format = document.querySelector('input[name="format"]:checked').value;
 
   if (!player1Name || !player2Name) {
@@ -59,6 +60,7 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
         location,
         scheduledAt: scheduledAtRaw ? new Date(scheduledAtRaw).toISOString() : null,
         format,
+        notes,
       },
     });
     window.location.href = `/match/${match.token}`;

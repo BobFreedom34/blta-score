@@ -1,9 +1,23 @@
 let currentStatus = 'PLANNED';
 let currentQuery = '';
 let currentCategory = '';
+let currentTimeFilter = '';
 let debounceTimer = null;
 
 const listEl = document.getElementById('match-list');
+
+// Monday-Sunday week containing "today + offsetWeeks*7", in the viewer's local time.
+function getWeekRange(offsetWeeks) {
+  const now = new Date();
+  const day = now.getDay(); // 0 = Sunday .. 6 = Saturday
+  const diffToMonday = (day === 0 ? -6 : 1) - day;
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday + offsetWeeks * 7);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(sunday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return { from: monday.toISOString(), to: sunday.toISOString() };
+}
 
 function matchCardHtml(m) {
   const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
@@ -50,11 +64,23 @@ async function loadMatches() {
   params.set('status', currentStatus);
   if (currentQuery) params.set('q', currentQuery);
   if (currentCategory) params.set('category', currentCategory);
+  if (currentTimeFilter === 'this_week') {
+    const { from, to } = getWeekRange(0);
+    params.set('from', from);
+    params.set('to', to);
+  } else if (currentTimeFilter === 'next_week') {
+    const { from, to } = getWeekRange(1);
+    params.set('from', from);
+    params.set('to', to);
+  } else if (currentTimeFilter === 'tbd') {
+    params.set('noDate', '1');
+  }
 
   try {
     const matches = await api(`/matches?${params.toString()}`);
     if (matches.length === 0) {
-      listEl.innerHTML = `<div class="empty-state">No ${STATUS_LABELS[currentStatus].toLowerCase()} matches${currentQuery || currentCategory ? ' match your filters' : ''}.</div>`;
+      const hasFilters = currentQuery || currentCategory || currentTimeFilter;
+      listEl.innerHTML = `<div class="empty-state">No ${STATUS_LABELS[currentStatus].toLowerCase()} matches${hasFilters ? ' match your filters' : ''}.</div>`;
     } else {
       listEl.innerHTML = buildMatchListHtml(matches);
     }
@@ -89,6 +115,10 @@ document.getElementById('filter-q').addEventListener('input', (e) => {
 });
 document.getElementById('filter-category').addEventListener('change', (e) => {
   currentCategory = e.target.value;
+  loadMatches();
+});
+document.getElementById('filter-time').addEventListener('change', (e) => {
+  currentTimeFilter = e.target.value;
   loadMatches();
 });
 
