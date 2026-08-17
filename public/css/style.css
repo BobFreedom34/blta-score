@@ -424,12 +424,6 @@ datalist {}
 .scoreboard tr.winner-row td.name-cell::after { content: " \2713"; color: var(--yellow); }
 .serve-ball { display: inline-block; margin-right: 6px; font-size: 14px; }
 
-/* Compact variant of .scoreboard, used on a match card in a list */
-.scoreboard-compact { padding: 10px 12px; overflow-x: auto; }
-.scoreboard-compact td, .scoreboard-compact th { padding: 4px 8px; }
-.scoreboard-compact td.set-score { font-size: 17px; width: auto; }
-.scoreboard-compact td.name-cell { font-size: 14px; }
-
 .server-choice-row { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .server-choice-row button.active { border-color: var(--orange); background: #fff6f2; color: var(--orange-dark); font-weight: 800; }
 
