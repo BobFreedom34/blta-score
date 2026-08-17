@@ -344,8 +344,21 @@ function attachHandlers(m) {
       const effIndex = getEffectiveSetIndex(m);
       if (m.status !== 'LIVE' || m.state.status === 'COMPLETE' || effIndex !== naturalIndex) body.setIndex = effIndex;
       const wasComplete = m.state.status === 'COMPLETE';
+      const setsBefore = m.state.sets.length;
       try {
         const updated = await api(`/matches/${matchToken}/score`, { method: 'POST', body });
+        // Whenever this click causes a new set to appear — a picker
+        // correction that re-decides an earlier set, or a sticky picker
+        // selection that happened to match the natural set as it finished
+        // normally — follow onto it instead of staying pinned to the now-
+        // finished one, same as live scoring always tracks the active set.
+        // Render right here rather than waiting on the matches:changed
+        // socket echo: the server broadcasts that before this response even
+        // arrives, so it would otherwise redraw with the still-stale index.
+        if (updated.state.sets.length > setsBefore) {
+          editSetIndex = updated.state.sets.length - 1;
+          render(updated);
+        }
         if (!wasComplete && updated.status === 'LIVE' && updated.state.status === 'COMPLETE') {
           offerFinish(updated);
         }
