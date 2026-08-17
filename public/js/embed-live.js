@@ -93,15 +93,6 @@ async function load() {
   }
 }
 
-// Tells the parent page (via the embed code's own listener script) how tall
-// the content actually is, so it can resize the iframe instead of leaving a
-// fixed height that either wastes space or clips the match list.
-function postHeightToParent() {
-  if (window.parent === window) return; // not actually embedded
-  window.parent.postMessage({ type: 'blta-embed-height', height: document.body.scrollHeight }, '*');
-}
-new ResizeObserver(postHeightToParent).observe(document.body);
-
 const socket = io();
 socket.on('matches:changed', load);
 load();
