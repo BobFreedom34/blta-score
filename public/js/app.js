@@ -63,9 +63,10 @@ function matchCardHtml(m) {
       </div>
       ${scoreboard || `
         <div class="match-players">
-          <div>
-            <div class="name ${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}</div>
-            <div class="name ${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}</div>
+          <div class="names-line">
+            <span class="name ${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}</span>
+            <span class="vs">vs</span>
+            <span class="name ${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}</span>
           </div>
           <div class="match-score">${escapeHtml(matchResultText(m))}</div>
         </div>
