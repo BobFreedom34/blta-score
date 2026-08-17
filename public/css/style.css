@@ -429,7 +429,7 @@ datalist {}
 .scoreboard-compact { padding: 10px 12px; overflow-x: auto; }
 .scoreboard-compact td, .scoreboard-compact th { padding: 4px 8px; }
 .scoreboard-compact td.set-score { font-size: 17px; width: auto; }
-.scoreboard-compact td.name-cell { font-size: 14px; }
+.scoreboard-compact td.name-cell { font-weight: 800; font-size: 18px; }
 
 .server-choice-row { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .server-choice-row button.active { border-color: var(--orange); background: #fff6f2; color: var(--orange-dark); font-weight: 800; }
