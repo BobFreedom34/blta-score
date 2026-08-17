@@ -260,11 +260,13 @@ function chatHtml() {
 
 function render(m) {
   current = m;
+  // Always shows a timer chip, even before the match has started (a static
+  // 00:00) — only actually starts counting once startTimer() runs, for LIVE.
   const durationHtml = m.status === 'LIVE'
     ? `<div class="timer${m.pausedAt ? ' timer-paused' : ''}" id="timer">00:00</div>${m.pausedAt ? '<div class="paused-label">⏸ PAUSED</div>' : ''}`
     : (m.startTime && m.endTime
       ? `<div class="timer">${Math.max(1, Math.round((new Date(m.endTime) - new Date(m.startTime)) / 60000))} min</div>`
-      : '');
+      : '<div class="timer">00:00</div>');
 
   const locationEditable = m.status !== 'FINISHED' || isAdminUser;
 
