@@ -199,8 +199,8 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
 function controlsHtml(m) {
   if (m.status === 'PLANNED') {
     return `
-      <button class="btn btn-primary btn-block" id="start-btn" style="padding:16px;font-size:16px;margin-top:16px">▶ Start match</button>
-      <button class="btn btn-outline btn-block" id="manual-result-btn" style="margin-top:10px">📝 Enter result manually</button>
+      <button class="btn btn-primary btn-block" id="start-btn" style="padding:16px;font-size:16px;margin-top:16px;text-transform:uppercase">🔴 Start live match</button>
+      <button class="btn btn-green btn-block" id="manual-result-btn" style="padding:16px;font-size:16px;margin-top:10px;text-transform:uppercase">📝 Enter result manually</button>
     `;
   }
   if (m.status === 'LIVE') {
