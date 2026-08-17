@@ -3,7 +3,7 @@ const express = require('express');
 const db = require('../db');
 const engine = require('../matchEngine');
 const { sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo } = require('../mailer');
-const { isAdmin } = require('../auth');
+const { isAdmin, requirePlayer } = require('../auth');
 
 const router = express.Router();
 
@@ -143,7 +143,7 @@ router.get('/:token', (req, res) => {
   res.json(serialize(row));
 });
 
-router.post('/', (req, res) => {
+router.post('/', requirePlayer, (req, res) => {
   const { category, location, scheduledAt, format, notes } = req.body;
   let { player1Id, player2Id, player1Name, player2Name } = req.body;
 
@@ -194,7 +194,7 @@ router.post('/', (req, res) => {
   res.status(201).json(payload);
 });
 
-router.patch('/:token', (req, res) => {
+router.patch('/:token', requirePlayer, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status === 'FINISHED' && !isAdmin(req)) {
@@ -245,7 +245,7 @@ router.delete('/:token', (req, res) => {
   res.status(204).end();
 });
 
-router.post('/:token/start', async (req, res) => {
+router.post('/:token/start', requirePlayer, async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status !== 'PLANNED') {
@@ -492,7 +492,7 @@ router.post('/:token/finish', async (req, res) => {
 
 // Records a result for a match that was already played outside the app,
 // skipping the start/live-scoring flow entirely.
-router.post('/:token/manual-result', async (req, res) => {
+router.post('/:token/manual-result', requirePlayer, async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status !== 'PLANNED') {

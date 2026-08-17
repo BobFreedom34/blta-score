@@ -116,11 +116,12 @@ git push -u origin main
 3. Render reads `render.yaml` and shows you a preview: one web service (`blta-score`, Starter
    plan, $7/month) with a 1 GB disk ($0.25/month) attached. Click **Apply**.
 4. It'll ask you to fill in the secret values marked `sync: false` in the blueprint —
-   `SMTP_USER`, `SMTP_PASS` (see §5 below for getting the Gmail app password), and
-   `ADMIN_PASSWORD` (see §4 — pick your own admin password here). You can also skip SMTP for
-   now and add it later from the service's **Environment** tab — the app runs fine without it,
-   it just won't be able to send the finished-match email yet. `ADMIN_PASSWORD` is worth setting
-   right away, though, or the admin login won't work.
+   `SMTP_USER`, `SMTP_PASS` (see §5 below for getting the Gmail app password), `ADMIN_PASSWORD`
+   (see §4 — pick your own admin password here), and `PLAYER_CODE` (see §4b — pick a 4-digit
+   code to hand out to players). You can also skip SMTP for now and add it later from the
+   service's **Environment** tab — the app runs fine without it, it just won't be able to send
+   the finished-match email yet. `ADMIN_PASSWORD` and `PLAYER_CODE` are worth setting right away,
+   though, or those logins won't work.
 5. Render builds and deploys automatically. First deploy takes a couple of minutes — watch the
    **Logs** tab for `BLTA score app listening on http://localhost:...`.
 
@@ -206,6 +207,7 @@ Set at minimum:
 - `PUBLIC_URL=https://score.blta.sk`
 - SMTP settings so the "match finished" email can send (see §5 below for the Gmail setup)
 - `ADMIN_PASSWORD` and `SESSION_SECRET` (see §4) so the admin login works
+- `PLAYER_CODE` (see §4b) so the player login works
 
 **Step 5 — Run it permanently with PM2** (keeps it running, restarts it if it crashes or the
 server reboots).
@@ -288,9 +290,10 @@ check with your host.
 
 ## 4. The admin account
 
-Everyone can still plan matches, add a new player while doing so, start matches, and score
-live — that's unchanged. Only three things require logging in as **admin** at `/admin`
-(a single password, no username — visible as an "Admin" link in the top nav on every page):
+Once someone is logged in as a player (see §4b below) or as admin, they can still score a live
+match, pause/resume/restart it, undo points, and chat — that's unchanged. Only two things require
+logging in as **admin** at `/admin` (a single password, no username — visible as an "Admin" link
+in the top nav on every page):
 
 - Adding, renaming, or deleting a player from the **Players** page
 - Editing the location/category, or correcting the score, of a match that's already **finished**
@@ -308,6 +311,21 @@ Set the password via the `ADMIN_PASSWORD` environment variable:
 
 The login is a single long-lived cookie (30 days) scoped to whichever browser/device you log in
 on — there's no separate account system, so treat the password like you would a shared door key.
+An admin session automatically counts as being logged in as a player too, everywhere.
+
+---
+
+## 4b. The player code
+
+Anyone can still browse matches, view a live score, and chat — no login needed for that. But
+**creating a new match, starting a live match, entering a result manually, and setting a match's
+date/location** all require being logged in as a **player** first, via the "LOG IN AS PLAYER" link
+in the top nav. Unlike the admin account this isn't a password for one person — it's a single
+4-digit code you hand out to every league player, so there's no per-person registration to manage.
+
+Set it via the `PLAYER_CODE` environment variable (same places as `ADMIN_PASSWORD` above — the
+Render **Environment** tab, or `.env` on a VPS). Pick any 4 digits; there's no username, and like
+the admin cookie it's a 30-day cookie scoped to whichever device logged in.
 
 ---
 

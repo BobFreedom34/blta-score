@@ -106,23 +106,26 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
   }
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
-  submitBtn.disabled = true;
-  try {
-    const match = await api('/matches', {
-      method: 'POST',
-      body: {
-        player1Name,
-        player2Name,
-        category,
-        location,
-        scheduledAt: scheduledAtDate ? new Date(`${scheduledAtDate}T${scheduledAtTime || '00:00'}`).toISOString() : null,
-        format,
-        notes,
-      },
-    });
-    window.location.href = `/match/${match.token}`;
-  } catch (err) {
-    errorEl.textContent = err.message;
-    submitBtn.disabled = false;
-  }
+
+  requirePlayerAuth(async () => {
+    submitBtn.disabled = true;
+    try {
+      const match = await api('/matches', {
+        method: 'POST',
+        body: {
+          player1Name,
+          player2Name,
+          category,
+          location,
+          scheduledAt: scheduledAtDate ? new Date(`${scheduledAtDate}T${scheduledAtTime || '00:00'}`).toISOString() : null,
+          format,
+          notes,
+        },
+      });
+      window.location.href = `/match/${match.token}`;
+    } catch (err) {
+      errorEl.textContent = err.message;
+      submitBtn.disabled = false;
+    }
+  });
 });

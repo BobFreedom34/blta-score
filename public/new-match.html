@@ -16,6 +16,7 @@
       <a href="/">Matches</a>
       <a href="/players">Players</a>
       <a href="/new-match" class="active">+ New match</a>
+      <a href="#" class="player-login-link" id="player-login-link">LOG IN AS PLAYER</a>
     </nav>
   </div>
 </div>
@@ -82,6 +83,23 @@
     <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Create match</button>
     <div id="form-error" style="color:var(--danger);font-weight:600;margin-top:10px"></div>
   </form>
+</div>
+
+<!-- Log in as player modal -->
+<div class="modal-backdrop" id="player-login-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="player-login-modal" aria-label="Close">&times;</button>
+    <h3>Log in as player</h3>
+    <p style="font-size:13px;color:var(--gray)">Enter the 4-digit code given to BLTA players.</p>
+    <form id="player-login-form">
+      <div class="field">
+        <label for="player-login-code">Code</label>
+        <input type="text" id="player-login-code" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••" style="font-size:22px;letter-spacing:0.3em;text-align:center">
+      </div>
+      <div id="player-login-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Log in</button>
+    </form>
+  </div>
 </div>
 
 <footer class="site-footer">

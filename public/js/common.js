@@ -136,6 +136,81 @@ async function checkAdmin() {
   }
 }
 
+// Shared "log in as player" gate: a single 4-digit code (given to every
+// league player) unlocks match-creating/starting/scheduling actions without
+// needing individual accounts. Lives in common.js since the popup and nav
+// toggle are identical across every page.
+let playerAuthed = false;
+
+function updatePlayerNavLinks() {
+  document.querySelectorAll('.player-login-link').forEach((el) => {
+    el.textContent = playerAuthed ? 'LOG OUT' : 'LOG IN AS PLAYER';
+  });
+}
+
+async function refreshPlayerAuth() {
+  try {
+    const res = await api('/player/session');
+    playerAuthed = !!res.isPlayer;
+  } catch {
+    playerAuthed = false;
+  }
+  updatePlayerNavLinks();
+  return playerAuthed;
+}
+
+function openPlayerLoginModal(onSuccess) {
+  const modal = document.getElementById('player-login-modal');
+  if (!modal) return;
+  const form = document.getElementById('player-login-form');
+  const errorEl = document.getElementById('player-login-error');
+  const codeInput = document.getElementById('player-login-code');
+  codeInput.value = '';
+  errorEl.textContent = '';
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    errorEl.textContent = '';
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    try {
+      await api('/player/login', { method: 'POST', body: { code: codeInput.value.trim() } });
+      playerAuthed = true;
+      updatePlayerNavLinks();
+      modal.style.display = 'none';
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
+    submitBtn.disabled = false;
+  };
+  modal.style.display = 'flex';
+  setTimeout(() => codeInput.focus(), 50);
+}
+
+// Runs onReady immediately if already logged in as a player (or admin,
+// which counts as a player everywhere) — otherwise shows the code popup
+// first and runs onReady only after a successful login.
+function requirePlayerAuth(onReady) {
+  if (playerAuthed) { onReady(); return; }
+  openPlayerLoginModal(onReady);
+}
+
+document.querySelectorAll('.player-login-link').forEach((el) => {
+  el.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (playerAuthed) {
+      try { await api('/player/logout', { method: 'POST' }); } catch { /* ignore */ }
+      playerAuthed = false;
+      updatePlayerNavLinks();
+      toast('Logged out');
+    } else {
+      openPlayerLoginModal();
+    }
+  });
+});
+
+refreshPlayerAuth();
+
 function copyToClipboard(text) {
   if (navigator.clipboard && window.isSecureContext) {
     return navigator.clipboard.writeText(text);

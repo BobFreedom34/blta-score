@@ -332,10 +332,10 @@ function render(m) {
 
 function attachHandlers(m) {
   const startBtn = document.getElementById('start-btn');
-  if (startBtn) startBtn.addEventListener('click', () => openFirstServerModal(m));
+  if (startBtn) startBtn.addEventListener('click', () => requirePlayerAuth(() => openFirstServerModal(m)));
 
   const manualResultBtn = document.getElementById('manual-result-btn');
-  if (manualResultBtn) manualResultBtn.addEventListener('click', () => openManualResultModal(m));
+  if (manualResultBtn) manualResultBtn.addEventListener('click', () => requirePlayerAuth(() => openManualResultModal(m)));
 
   root.querySelectorAll('.btn-giant, .btn-minus').forEach((btn) => {
     btn.addEventListener('click', async () => {
@@ -409,7 +409,7 @@ function attachHandlers(m) {
   });
 
   const editLink = document.getElementById('edit-location-link');
-  if (editLink) editLink.addEventListener('click', () => {
+  if (editLink) editLink.addEventListener('click', () => requirePlayerAuth(() => {
     const display = document.getElementById('location-display');
     const currentVal = m.location || '';
     display.innerHTML = `
@@ -427,10 +427,10 @@ function attachHandlers(m) {
       try { await api(`/matches/${matchToken}`, { method: 'PATCH', body: { location: val } }); }
       catch (err) { toast(err.message); }
     });
-  });
+  }));
 
   const editDateLink = document.getElementById('edit-date-link');
-  if (editDateLink) editDateLink.addEventListener('click', () => {
+  if (editDateLink) editDateLink.addEventListener('click', () => requirePlayerAuth(() => {
     const display = document.getElementById('date-display');
     display.innerHTML = `
       <div style="display:flex;gap:8px">
@@ -456,10 +456,10 @@ function attachHandlers(m) {
       saveDate(dateVal ? new Date(`${dateVal}T${timeVal || '00:00'}`).toISOString() : null);
     });
     document.getElementById('clear-date-btn').addEventListener('click', () => saveDate(null));
-  });
+  }));
 
   const editNotesLink = document.getElementById('edit-notes-link');
-  if (editNotesLink) editNotesLink.addEventListener('click', () => {
+  if (editNotesLink) editNotesLink.addEventListener('click', () => requirePlayerAuth(() => {
     const display = document.getElementById('notes-display');
     display.innerHTML = `
       <textarea id="notes-input" rows="3" maxlength="1000" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">${escapeHtml(m.notes || '')}</textarea>
@@ -476,7 +476,7 @@ function attachHandlers(m) {
       try { await api(`/matches/${matchToken}`, { method: 'PATCH', body: { notes: val } }); }
       catch (err) { toast(err.message); }
     });
-  });
+  }));
 
   const chatMessagesEl = document.getElementById('chat-messages');
   if (chatMessagesEl) chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;

@@ -208,7 +208,7 @@ listEl.addEventListener('click', (e) => {
   if (scheduleBtn) {
     e.preventDefault();
     e.stopPropagation();
-    openQuickScheduleModal(scheduleBtn.dataset.token);
+    requirePlayerAuth(() => openQuickScheduleModal(scheduleBtn.dataset.token));
     return;
   }
   const notifyBtn = e.target.closest('.notify-btn');
