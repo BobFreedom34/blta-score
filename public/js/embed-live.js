@@ -85,9 +85,12 @@ async function load() {
     if (dateFilter === 'has') qs.set('hasDate', '1');
     else if (dateFilter === 'none') qs.set('noDate', '1');
     const matches = await api(`/matches?${qs.toString()}`);
-    listEl.innerHTML = matches.length
-      ? `<div style="font-weight:800;margin-bottom:10px">${header()}</div><div class="match-list">${buildListHtml(matches)}</div>`
+    const body = matches.length
+      ? `<div class="match-list">${buildListHtml(matches)}</div>`
       : `<div class="empty-state" style="padding:24px">${emptyMessage()}</div>`;
+    // Header always shows, even with zero matches, so an embedded "Live now"
+    // widget doesn't just look blank/broken when nothing is live.
+    listEl.innerHTML = `<div style="font-weight:800;margin-bottom:10px">${header()}</div>${body}`;
   } catch {
     listEl.innerHTML = `<div class="empty-state">Could not load matches.</div>`;
   }
