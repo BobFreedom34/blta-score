@@ -11,6 +11,46 @@ function matchResultText(m) {
   return parts.join(' — ') || '—';
 }
 
+// Mirrors match.js's own render of a single set's score for one player,
+// including the small tiebreak-loser superscript — shared here so a match
+// card's compact scoreboard (below) and the full match-page scoreboard
+// stay visually identical.
+function setCell(set, playerNum) {
+  const gKey = playerNum === 1 ? 'p1' : 'p2';
+  if (set.isSuperTiebreak) return `${set.tiebreak[gKey]}`;
+  const main = set[gKey];
+  const sub = set.tiebreak ? `<sup class="sub-tb">${set.tiebreak[gKey]}</sup>` : '';
+  return `${main}${sub}`;
+}
+
+// Compact per-set scoreboard for a match card (LIVE/FINISHED) — same dark
+// table as the full match page, just condensed. Returns '' when there's no
+// set data yet (a walkover/retirement result, or a LIVE match with no
+// games played), so the caller can fall back to the plain text score line.
+function cardScoreboardHtml(m) {
+  if (!m.state || !m.state.sets) return '';
+  const sets = m.state.sets.filter((s) => s.winner || s.p1 > 0 || s.p2 > 0 || (s.tiebreak && (s.tiebreak.p1 > 0 || s.tiebreak.p2 > 0)));
+  if (!sets.length) return '';
+  const headerCells = sets.map((s, i) => `<th>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</th>`).join('');
+  const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
+  const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
+  const row = (playerNum, player, isWinner) => {
+    const cells = sets.map((s) => `<td class="set-score">${setCell(s, playerNum)}</td>`).join('');
+    return `<tr class="${isWinner ? 'winner-row' : ''}"><td class="name-cell">${escapeHtml(player.name)}</td>${cells}</tr>`;
+  };
+  return `
+    <div class="scoreboard scoreboard-compact">
+      <table>
+        <thead><tr><th></th>${headerCells}</tr></thead>
+        <tbody>
+          ${row(1, m.player1, winnerP1)}
+          ${row(2, m.player2, winnerP2)}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 // A match was scheduled for a day (or more) in the past but never got
 // started or finished — flags it as needing attention on its card.
 function isOverdueUnresolved(m) {

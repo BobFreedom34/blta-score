@@ -104,15 +104,7 @@ function startTimer(m) {
   if (!pausedAtMs) timerInterval = setInterval(tick, 1000);
 }
 
-function setCell(set, playerNum) {
-  const gKey = playerNum === 1 ? 'p1' : 'p2';
-  if (set.isSuperTiebreak) {
-    return `${set.tiebreak[gKey]}`;
-  }
-  const main = set[gKey];
-  const sub = set.tiebreak ? `<sup class="sub-tb">${set.tiebreak[gKey]}</sup>` : '';
-  return `${main}${sub}`;
-}
+// setCell is shared from common.js (also used by a match card's compact scoreboard).
 
 function scoreboardHtml(m, durationHtml) {
   const state = m.state;
