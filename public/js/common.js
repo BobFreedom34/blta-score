@@ -159,32 +159,70 @@ async function refreshPlayerAuth() {
   return playerAuthed;
 }
 
+// 4 separate one-digit boxes (like a phone-app 2FA code): typing a digit
+// auto-advances to the next box, and filling the last box submits
+// immediately — no separate "Log in" button to press.
 function openPlayerLoginModal(onSuccess) {
   const modal = document.getElementById('player-login-modal');
   if (!modal) return;
   const form = document.getElementById('player-login-form');
   const errorEl = document.getElementById('player-login-error');
-  const codeInput = document.getElementById('player-login-code');
-  codeInput.value = '';
+  const digits = Array.from(modal.querySelectorAll('.otp-digit'));
   errorEl.textContent = '';
-  form.onsubmit = async (e) => {
-    e.preventDefault();
+  form.onsubmit = (e) => e.preventDefault();
+
+  const submitCode = async () => {
     errorEl.textContent = '';
-    const submitBtn = form.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
+    digits.forEach((d) => { d.disabled = true; });
     try {
-      await api('/player/login', { method: 'POST', body: { code: codeInput.value.trim() } });
+      await api('/player/login', { method: 'POST', body: { code: digits.map((d) => d.value).join('') } });
       playerAuthed = true;
       updatePlayerNavLinks();
       modal.style.display = 'none';
       if (onSuccess) onSuccess();
     } catch (err) {
       errorEl.textContent = err.message;
+      digits.forEach((d) => { d.value = ''; d.disabled = false; });
+      digits[0].focus();
     }
-    submitBtn.disabled = false;
   };
+
+  // Boxes intentionally aren't maxlength=1 — a fast typist, an OS-level
+  // autofill suggestion, or this same automated test can land more than one
+  // digit in a box in a single input event, and the browser would silently
+  // drop the extra characters before we ever saw them if maxlength trimmed
+  // it first. Instead every digit that shows up gets distributed forward
+  // from whichever box received it.
+  digits.forEach((input, i) => {
+    input.value = '';
+    input.disabled = false;
+    input.oninput = () => {
+      const raw = input.value.replace(/\D/g, '');
+      let idx = i;
+      for (const ch of raw) {
+        if (idx >= digits.length) break;
+        digits[idx].value = ch;
+        idx += 1;
+      }
+      if (!raw) input.value = '';
+      digits[Math.min(idx, digits.length - 1)].focus();
+      if (digits.every((d) => d.value)) submitCode();
+    };
+    input.onkeydown = (e) => {
+      if (e.key === 'Backspace' && !input.value && i > 0) digits[i - 1].focus();
+    };
+    input.onpaste = (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+      if (!text) return;
+      digits.forEach((d, idx) => { d.value = text[idx] || ''; });
+      (digits.find((d) => !d.value) || digits[digits.length - 1]).focus();
+      if (digits.every((d) => d.value)) submitCode();
+    };
+  });
+
   modal.style.display = 'flex';
-  setTimeout(() => codeInput.focus(), 50);
+  setTimeout(() => digits[0].focus(), 50);
 }
 
 // Runs onReady immediately if already logged in as a player (or admin,

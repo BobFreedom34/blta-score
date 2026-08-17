@@ -588,6 +588,14 @@ datalist {}
   user-select: all;
 }
 
+.otp-inputs { display: flex; gap: 10px; justify-content: center; margin: 20px 0 6px; }
+.otp-digit {
+  width: 54px; height: 62px; font-size: 26px; font-weight: 800; text-align: center;
+  border-radius: 10px; border: 1.5px solid #ddd; font-family: inherit; color: var(--ink);
+}
+.otp-digit:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(230,126,34,0.15); }
+.otp-digit:disabled { opacity: 0.6; }
+
 .toast {
   position: fixed;
   bottom: 20px;
