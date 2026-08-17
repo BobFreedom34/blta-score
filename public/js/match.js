@@ -332,7 +332,13 @@ function render(m) {
 
 function attachHandlers(m) {
   const startBtn = document.getElementById('start-btn');
-  if (startBtn) startBtn.addEventListener('click', () => requirePlayerAuth(() => openFirstServerModal(m)));
+  if (startBtn) startBtn.addEventListener('click', () => requirePlayerAuth(() => {
+    if (!m.location || !m.scheduledAt) {
+      openStartScheduleModal(m, (updated) => openFirstServerModal(updated));
+    } else {
+      openFirstServerModal(m);
+    }
+  }));
 
   const manualResultBtn = document.getElementById('manual-result-btn');
   if (manualResultBtn) manualResultBtn.addEventListener('click', () => requirePlayerAuth(() => openManualResultModal(m)));
@@ -538,6 +544,42 @@ function startMatch(firstServer) {
     });
 }
 
+// Gate in front of starting a live match: a match needs a location and date
+// before it can go live, so if either is missing this collects them first
+// and only then hands off to onDone (normally openFirstServerModal) with
+// the freshly patched match.
+function openStartScheduleModal(m, onDone) {
+  document.getElementById('start-schedule-location').value = m.location || '';
+  document.getElementById('start-schedule-date').value = toDateValue(m.scheduledAt);
+  document.getElementById('start-schedule-time').value = toTimeValue(m.scheduledAt);
+  const errorEl = document.getElementById('start-schedule-error');
+  errorEl.textContent = '';
+  const form = document.getElementById('start-schedule-form');
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    errorEl.textContent = '';
+    const location = document.getElementById('start-schedule-location').value.trim();
+    const dateVal = document.getElementById('start-schedule-date').value;
+    const timeVal = document.getElementById('start-schedule-time').value;
+    if (!location || !dateVal) {
+      errorEl.textContent = 'Location and date are both required.';
+      return;
+    }
+    const scheduledAt = new Date(`${dateVal}T${timeVal || '00:00'}`).toISOString();
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    try {
+      const updated = await api(`/matches/${matchToken}`, { method: 'PATCH', body: { location, scheduledAt } });
+      document.getElementById('start-schedule-modal').style.display = 'none';
+      onDone(updated);
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
+    submitBtn.disabled = false;
+  };
+  document.getElementById('start-schedule-modal').style.display = 'flex';
+}
+
 function openFirstServerModal(m) {
   document.getElementById('first-server-p1-btn').textContent = m.player1.name;
   document.getElementById('first-server-p1-btn').onclick = () => startMatch(1);
@@ -704,6 +746,9 @@ function manualResultRowsHtml(m) {
 
 function openManualResultModal(m) {
   document.getElementById('manual-result-sets').innerHTML = manualResultRowsHtml(m);
+  document.getElementById('manual-result-location').value = m.location || '';
+  document.getElementById('manual-result-date').value = toDateValue(m.scheduledAt);
+  document.getElementById('manual-result-time').value = toTimeValue(m.scheduledAt);
   const errorEl = document.getElementById('manual-result-error');
   errorEl.textContent = '';
   const form = document.getElementById('manual-result-form');
@@ -742,6 +787,16 @@ function openManualResultModal(m) {
   form.onsubmit = async (e) => {
     e.preventDefault();
     errorEl.textContent = '';
+
+    const location = document.getElementById('manual-result-location').value.trim();
+    const dateVal = document.getElementById('manual-result-date').value;
+    const timeVal = document.getElementById('manual-result-time').value;
+    if (!location || !dateVal) {
+      errorEl.textContent = 'Location and date are both required.';
+      return;
+    }
+    const scheduledAt = new Date(`${dateVal}T${timeVal || '00:00'}`).toISOString();
+
     const rows = Array.from(document.querySelectorAll('.manual-set-row'));
     const sets = [];
     for (const row of rows) {
@@ -755,7 +810,7 @@ function openManualResultModal(m) {
       sets.push({ p1: Number(p1raw), p2: Number(p2raw) });
     }
 
-    const body = { sets };
+    const body = { sets, location, scheduledAt };
     if (retiredCheckbox.checked) {
       if (!winner || !reason) {
         errorEl.textContent = 'Pick who won and why.';

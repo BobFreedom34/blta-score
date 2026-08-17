@@ -251,6 +251,9 @@ router.post('/:token/start', requirePlayer, async (req, res) => {
   if (row.status !== 'PLANNED') {
     return res.status(400).json({ error: 'Only planned matches can be started' });
   }
+  if (!row.location || !row.scheduled_at) {
+    return res.status(400).json({ error: 'Set a location and date before starting the match' });
+  }
   let firstServer = null;
   if (req.body.firstServer !== undefined && req.body.firstServer !== null) {
     firstServer = Number(req.body.firstServer);
@@ -499,6 +502,18 @@ router.post('/:token/manual-result', requirePlayer, async (req, res) => {
     return res.status(400).json({ error: 'Only a planned match can have its result entered manually' });
   }
 
+  // A manually-entered result records a match that was already played
+  // somewhere — location and date document where/when that was, so (unlike
+  // a normal Planned match) they're required here rather than optional.
+  const location = typeof req.body.location === 'string' ? req.body.location.trim() : (row.location || '').trim();
+  const scheduledAt = (typeof req.body.scheduledAt === 'string' && req.body.scheduledAt) ? req.body.scheduledAt : row.scheduled_at;
+  if (!location) {
+    return res.status(400).json({ error: 'Location is required' });
+  }
+  if (!scheduledAt) {
+    return res.status(400).json({ error: 'Date is required' });
+  }
+
   const hasExplicitWinner = req.body.winner !== undefined && req.body.winner !== null;
   let endReason = null;
   if (hasExplicitWinner) {
@@ -519,9 +534,10 @@ router.post('/:token/manual-result', requirePlayer, async (req, res) => {
   const ts = nowIso();
   db.prepare(`
     UPDATE matches
-    SET status = 'FINISHED', state = ?, history = '[]', winner_id = ?, start_time = ?, end_time = NULL, end_reason = ?, updated_at = ?
+    SET status = 'FINISHED', state = ?, history = '[]', winner_id = ?, start_time = ?, end_time = NULL, end_reason = ?,
+        location = ?, scheduled_at = ?, updated_at = ?
     WHERE id = ?
-  `).run(JSON.stringify(state), winnerId, row.scheduled_at || ts, endReason, ts, row.id);
+  `).run(JSON.stringify(state), winnerId, scheduledAt, endReason, location, scheduledAt, ts, row.id);
 
   let updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);

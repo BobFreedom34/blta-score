@@ -78,6 +78,30 @@
   </div>
 </div>
 
+<!-- Fill date & location before starting a live match (only shown if missing) -->
+<div class="modal-backdrop" id="start-schedule-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="start-schedule-modal" aria-label="Close">&times;</button>
+    <h3>Set date &amp; location first</h3>
+    <p style="font-size:13px;color:var(--gray)">A live match needs a location and date before it can start.</p>
+    <form id="start-schedule-form">
+      <div class="field">
+        <label for="start-schedule-location">Place</label>
+        <input type="text" id="start-schedule-location" placeholder="e.g. NTC Bratislava, Court 3" required>
+      </div>
+      <div class="field">
+        <label for="start-schedule-date">Date &amp; time</label>
+        <div style="display:flex;gap:8px">
+          <input type="date" id="start-schedule-date" style="flex:1" required>
+          <input type="time" id="start-schedule-time" style="flex:1">
+        </div>
+      </div>
+      <div id="start-schedule-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Save &amp; continue</button>
+    </form>
+  </div>
+</div>
+
 <!-- Finish without a completed score (walkover / retirement) -->
 <div class="modal-backdrop" id="finish-undecided-modal" style="display:none">
   <div class="modal">
@@ -105,6 +129,19 @@
     <h3>Enter result manually</h3>
     <p style="font-size:13px;color:var(--gray)">For a match that was already played elsewhere. Fill in the sets that were played, in order, and leave the rest blank.</p>
     <form id="manual-result-form">
+      <div class="grid-2">
+        <div class="field">
+          <label for="manual-result-location">Place</label>
+          <input type="text" id="manual-result-location" placeholder="e.g. NTC Bratislava, Court 3" required>
+        </div>
+        <div class="field">
+          <label for="manual-result-date">Date &amp; time</label>
+          <div style="display:flex;gap:8px">
+            <input type="date" id="manual-result-date" style="flex:1" required>
+            <input type="time" id="manual-result-time" style="flex:1">
+          </div>
+        </div>
+      </div>
       <div id="manual-result-sets"></div>
 
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:6px">
