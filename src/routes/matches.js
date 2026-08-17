@@ -273,14 +273,15 @@ router.post('/:token/start', requirePlayer, async (req, res) => {
   });
 });
 
-// Changes the match format mid-game — open to anyone while LIVE, same as
-// scoring itself. Rejected if it would retroactively decide the match from
-// the sets already played (see engine.applyFormatChange).
+// Changes the match format — before it starts, or mid-game once it's LIVE —
+// open to anyone, same as scoring itself. Rejected if it would retroactively
+// decide the match from the sets already played (see engine.applyFormatChange);
+// that never actually triggers for a still-Planned match, only a LIVE one.
 router.patch('/:token/format', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (row.status !== 'LIVE') {
-    return res.status(400).json({ error: 'The match format can only be changed while live' });
+  if (row.status !== 'LIVE' && row.status !== 'PLANNED') {
+    return res.status(400).json({ error: 'The match format can only be changed before or during the match' });
   }
   const format = req.body.format;
   if (!engine.FORMATS[format]) {

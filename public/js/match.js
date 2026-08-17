@@ -21,13 +21,14 @@ const FORMAT_META = {
   FREE_PLAY: { setsToWin: 6, finalSetSuperTiebreak: false },
 };
 
-// Mirrors public/js/new-match.js FORMATS — for the change-format-while-live picker.
+// Mirrors public/js/new-match.js FORMATS — for the change-format picker.
 const FORMATS_LIST = [
   { key: 'BO1', label: 'Best of 1 set' },
   { key: 'BO3', label: 'Best of 3 sets', sublabel: '(BLTA Play-Off)' },
   { key: 'BO3_STB', label: 'Best of 3 sets — deciding set is a match tiebreak', sublabel: '(BLTA League)' },
   { key: 'BO5', label: 'Best of 5 sets' },
   { key: 'BO5_STB', label: 'Best of 5 sets — deciding set is a match tiebreak' },
+  { key: 'FREE_PLAY', label: 'Free Play', sublabel: '(training)' },
 ];
 
 // Standard tiebreak serve rotation: the player whose turn it is serves point 1
@@ -321,7 +322,7 @@ function render(m) {
     <div class="match-actions">
       <button class="btn btn-yellow" id="share-btn">🔗 Share</button>
       <button class="btn btn-outline" id="embed-btn">🧩 Embed</button>
-      ${m.status === 'LIVE' ? '<button class="btn btn-outline" id="change-format-btn">🎾 Change format</button>' : ''}
+      ${(m.status === 'LIVE' || m.status === 'PLANNED') ? '<button class="btn btn-outline" id="change-format-btn">🎾 Change format</button>' : ''}
       ${m.status === 'FINISHED' ? '<button class="btn btn-green" id="whatsapp-result-btn">📱 Send to WhatsApp</button>' : ''}
       ${isAdminUser || (m.status !== 'FINISHED' && !m.createdByAdmin) ? '<button class="btn btn-danger" id="delete-btn">🗑 Delete match</button>' : ''}
     </div>
