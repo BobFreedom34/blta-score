@@ -54,6 +54,7 @@ function matchCardHtml(m) {
         </div>
         <div class="match-score">${escapeHtml(matchResultText(m))}</div>
       </div>
+      ${isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : ''}
     </a>
   `;
 }

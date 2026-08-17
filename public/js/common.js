@@ -11,6 +11,13 @@ function matchResultText(m) {
   return parts.join(' — ') || '—';
 }
 
+// A match was scheduled for a day (or more) in the past but never got
+// started or finished — flags it as needing attention on its card.
+function isOverdueUnresolved(m) {
+  if (m.status !== 'PLANNED' || !m.scheduledAt) return false;
+  return Date.now() - new Date(m.scheduledAt).getTime() > 24 * 60 * 60 * 1000;
+}
+
 (function initMobileNav() {
   const toggle = document.getElementById('nav-toggle');
   const links = document.getElementById('nav-links');
