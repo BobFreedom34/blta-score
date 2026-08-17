@@ -5,7 +5,6 @@
   --green: #105a1e;
   --green-light: #14712a;
   --ink: #0a0a0a;
-  --scoreboard-gray: #3d3d41;
   --charcoal: #202124;
   --gray: #656565;
   --gray-light: #efefef;
@@ -401,7 +400,7 @@ datalist {}
 }
 .timer.timer-paused { background: var(--yellow); color: var(--ink); }
 .scoreboard {
-  background: var(--scoreboard-gray);
+  background: var(--ink);
   color: var(--white);
   border-radius: var(--radius);
   padding: 18px;
