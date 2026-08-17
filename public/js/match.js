@@ -171,7 +171,6 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
       </div>
     </div>
     <div class="match-actions">
-      <button class="btn btn-outline" id="undo-btn" ${m.canUndo ? '' : 'disabled'}>↺ Undo last point</button>
       ${showFinish ? (m.pausedAt
         ? '<button class="btn btn-outline" id="resume-btn">▶ Resume match</button>'
         : '<button class="btn btn-outline" id="pause-btn">⏸ Stop match</button>') : ''}
@@ -372,12 +371,6 @@ function attachHandlers(m) {
       editSetIndex = Number(btn.dataset.setIndex);
       render(current);
     });
-  });
-
-  const undoBtn = document.getElementById('undo-btn');
-  if (undoBtn) undoBtn.addEventListener('click', async () => {
-    try { await api(`/matches/${matchToken}/undo`, { method: 'POST' }); }
-    catch (err) { toast(err.message); }
   });
 
   const pauseBtn = document.getElementById('pause-btn');
