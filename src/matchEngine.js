@@ -207,8 +207,15 @@ function editSetScore(state, formatKey, setIndex, player, delta) {
     }
     set.tiebreak[key] = Math.max(0, set.tiebreak[key] + delta);
   } else {
-    // A non-tiebreak set can never reach 8 games (6-6 always converts to a
-    // tiebreak) — 7 (from a 7-5 finish) is the hard ceiling.
+    // Same rule as the tiebreak branch: once the set already has a winner
+    // by score (e.g. 6-4), real play would have stopped there — piling on
+    // another game would produce a score tennis doesn't have (7-4). Refuse
+    // it; decrementing first to genuinely un-decide the set still works.
+    if (delta > 0 && computeSetOutcome(set) !== null) {
+      throw new Error('That set is already decided — undo a game first before adding another');
+    }
+    // Backstop: a non-tiebreak set can never reach 8 games (6-6 always
+    // converts to a tiebreak) — 7 (from a 7-5 finish) is the hard ceiling.
     if (delta > 0 && set[key] + 1 > 7) {
       throw new Error('A set cannot go beyond 7 games');
     }
