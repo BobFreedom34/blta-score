@@ -429,12 +429,6 @@ datalist {}
 .scoreboard-compact td, .scoreboard-compact th { padding: 4px 8px; }
 .scoreboard-compact td.set-score { font-size: 17px; width: auto; }
 .scoreboard-compact td.name-cell { font-size: 14px; }
-.scoreboard-compact .overdue-warning,
-.scoreboard-compact .quick-schedule-btn,
-.scoreboard-compact .notify-buttons-row {
-  margin-top: 10px;
-}
-.scoreboard-compact .btn-outline { color: var(--white); border-color: rgba(255,255,255,0.5); }
 
 .server-choice-row { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .server-choice-row button.active { border-color: var(--orange); background: #fff6f2; color: var(--orange-dark); font-weight: 800; }

@@ -23,11 +23,11 @@ function setCell(set, playerNum) {
   return `${main}${sub}`;
 }
 
-// The <table> for a compact per-set scoreboard (LIVE/FINISHED with score
-// data) — same layout as the full match page, just condensed. Returns ''
-// when there's no set data yet (a walkover/retirement result, or a LIVE
-// match with no games played), so the caller falls back to plain text.
-function cardScoreboardTableHtml(m) {
+// Compact per-set scoreboard for a match card (LIVE/FINISHED) — same dark
+// table as the full match page, just condensed. Returns '' when there's no
+// set data yet (a walkover/retirement result, or a LIVE match with no
+// games played), so the caller can fall back to the plain text score line.
+function cardScoreboardHtml(m) {
   if (!m.state || !m.state.sets) return '';
   const sets = m.state.sets.filter((s) => s.winner || s.p1 > 0 || s.p2 > 0 || (s.tiebreak && (s.tiebreak.p1 > 0 || s.tiebreak.p2 > 0)));
   if (!sets.length) return '';
@@ -39,40 +39,37 @@ function cardScoreboardTableHtml(m) {
     return `<tr class="${isWinner ? 'winner-row' : ''}"><td class="name-cell">${escapeHtml(player.name)}</td>${cells}</tr>`;
   };
   return `
-    <table>
-      <thead><tr><th></th>${headerCells}</tr></thead>
-      <tbody>
-        ${row(1, m.player1, winnerP1)}
-        ${row(2, m.player2, winnerP2)}
-      </tbody>
-    </table>
+    <div class="scoreboard scoreboard-compact">
+      <table>
+        <thead><tr><th></th>${headerCells}</tr></thead>
+        <tbody>
+          ${row(1, m.player1, winnerP1)}
+          ${row(2, m.player2, winnerP2)}
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
-// The dark "result box" shown on every match card — a per-set scoreboard
-// for LIVE/FINISHED matches with score data, or (Planned, or a
-// walkover/retirement result with no sets) the same black box around the
-// player names and format/result text. extraHtml (overdue warning,
-// schedule/notify buttons, ...) renders inside the same box, at the
-// bottom, so the box is the last thing in the card rather than stopping
-// above a strip of plain white space.
-function matchCardBoxHtml(m, extraHtml) {
-  const table = cardScoreboardTableHtml(m);
+// The dark "result box" shown on every match card: a per-set scoreboard for
+// LIVE/FINISHED matches with score data, or — for everything else (Planned,
+// or a walkover/retirement result with no sets) — the same black box around
+// the player names and format/result text, so every card gets the same
+// dark-box treatment even before there's a score to show.
+function matchCardBoxHtml(m) {
+  const scoreboard = cardScoreboardHtml(m);
+  if (scoreboard) return scoreboard;
   const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
   const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
-  const body = table || `
-    <div class="match-players">
-      <div>
-        <div class="name ${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}</div>
-        <div class="name ${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}</div>
-      </div>
-      <div class="match-score">${escapeHtml(matchResultText(m))}</div>
-    </div>
-  `;
   return `
     <div class="scoreboard scoreboard-compact">
-      ${body}
-      ${extraHtml || ''}
+      <div class="match-players">
+        <div>
+          <div class="name ${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}</div>
+          <div class="name ${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}</div>
+        </div>
+        <div class="match-score">${escapeHtml(matchResultText(m))}</div>
+      </div>
     </div>
   `;
 }
