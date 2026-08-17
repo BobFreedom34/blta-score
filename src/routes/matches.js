@@ -90,7 +90,7 @@ function broadcast(req, row) {
 }
 
 router.get('/', (req, res) => {
-  const { status, category, q, from, to, noDate } = req.query;
+  const { status, category, q, from, to, noDate, hasDate } = req.query;
   const clauses = [];
   const params = {};
   if (status) {
@@ -107,6 +107,8 @@ router.get('/', (req, res) => {
   }
   if (noDate === '1') {
     clauses.push('m.scheduled_at IS NULL');
+  } else if (hasDate === '1') {
+    clauses.push('m.scheduled_at IS NOT NULL');
   } else if (from && to) {
     clauses.push('m.scheduled_at BETWEEN @from AND @to');
     params.from = from;

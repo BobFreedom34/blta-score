@@ -1,4 +1,11 @@
-let currentStatus = 'PLANNED';
+const FILTERS = {
+  ALL: { status: 'PLANNED', label: 'All Matches' },
+  SCHEDULED: { status: 'PLANNED', dateFilter: 'has', label: 'Scheduled' },
+  UNSCHEDULED: { status: 'PLANNED', dateFilter: 'none', label: 'Not yet scheduled' },
+  LIVE: { status: 'LIVE', label: 'Live' },
+  FINISHED: { status: 'FINISHED', label: 'Finished' },
+};
+let currentFilter = 'ALL';
 let currentQuery = '';
 let currentCategory = '';
 let currentTimeFilter = '';
@@ -56,11 +63,12 @@ function matchCardHtml(m) {
   `;
 }
 
-// For the Planned tab the API already returns dated matches (soonest first),
-// then undated ones — head each section, and insert a new heading right
-// where that switch happens.
+// "All Matches" mixes dated and undated planned matches (API returns dated
+// first) — head each section, and insert a new heading right where that
+// switch happens. The dedicated Scheduled/Not yet scheduled tabs already
+// show one kind only, so they skip the headings entirely.
 function buildMatchListHtml(matches) {
-  if (currentStatus !== 'PLANNED') {
+  if (currentFilter !== 'ALL') {
     return matches.map(matchCardHtml).join('');
   }
   const parts = [];
@@ -76,28 +84,40 @@ function buildMatchListHtml(matches) {
   return parts.join('');
 }
 
-async function loadMatches() {
+function buildFilterParams(filterKey) {
+  const f = FILTERS[filterKey];
   const params = new URLSearchParams();
-  params.set('status', currentStatus);
+  params.set('status', f.status);
   if (currentQuery) params.set('q', currentQuery);
   if (currentCategory) params.set('category', currentCategory);
-  if (currentTimeFilter === 'this_week') {
-    const { from, to } = getWeekRange(0);
-    params.set('from', from);
-    params.set('to', to);
-  } else if (currentTimeFilter === 'next_week') {
-    const { from, to } = getWeekRange(1);
-    params.set('from', from);
-    params.set('to', to);
-  } else if (currentTimeFilter === 'tbd') {
-    params.set('noDate', '1');
-  }
 
+  if (f.dateFilter === 'has') {
+    params.set('hasDate', '1');
+  } else if (f.dateFilter === 'none') {
+    params.set('noDate', '1');
+  } else if (f.status === 'PLANNED') {
+    if (currentTimeFilter === 'this_week') {
+      const { from, to } = getWeekRange(0);
+      params.set('from', from);
+      params.set('to', to);
+    } else if (currentTimeFilter === 'next_week') {
+      const { from, to } = getWeekRange(1);
+      params.set('from', from);
+      params.set('to', to);
+    } else if (currentTimeFilter === 'tbd') {
+      params.set('noDate', '1');
+    }
+  }
+  return params;
+}
+
+async function loadMatches() {
+  const params = buildFilterParams(currentFilter);
   try {
     const matches = await api(`/matches?${params.toString()}`);
     if (matches.length === 0) {
       const hasFilters = currentQuery || currentCategory || currentTimeFilter;
-      listEl.innerHTML = `<div class="empty-state">No ${STATUS_LABELS[currentStatus].toLowerCase()} matches${hasFilters ? ' match your filters' : ''}.</div>`;
+      listEl.innerHTML = `<div class="empty-state">No ${FILTERS[currentFilter].label.toLowerCase()} matches${hasFilters ? ' match your filters' : ''}.</div>`;
     } else {
       listEl.innerHTML = buildMatchListHtml(matches);
     }
@@ -107,10 +127,12 @@ async function loadMatches() {
 }
 
 async function refreshCounts() {
-  for (const status of ['LIVE', 'PLANNED', 'FINISHED']) {
+  for (const key of Object.keys(FILTERS)) {
     try {
-      const matches = await api(`/matches?status=${status}`);
-      document.getElementById(`count-${status}`).textContent = matches.length;
+      const params = buildFilterParams(key);
+      const matches = await api(`/matches?${params.toString()}`);
+      const el = document.getElementById(`count-${key}`);
+      if (el) el.textContent = matches.length;
     } catch { /* ignore */ }
   }
 }
@@ -119,11 +141,11 @@ document.querySelectorAll('.tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
     tab.classList.add('active');
-    currentStatus = tab.dataset.status;
+    currentFilter = tab.dataset.filter;
     loadMatches();
   });
 });
-document.querySelector(`.tab[data-status="${currentStatus}"]`).classList.add('active');
+document.querySelector(`.tab[data-filter="${currentFilter}"]`).classList.add('active');
 
 document.getElementById('filter-q').addEventListener('input', (e) => {
   currentQuery = e.target.value.trim();
@@ -140,10 +162,13 @@ document.getElementById('filter-time').addEventListener('change', (e) => {
 });
 
 document.getElementById('embed-list-btn').addEventListener('click', () => {
-  const src = `${window.location.origin}/embed/live?status=${currentStatus}`;
+  // The embed widget only understands PLANNED/LIVE/FINISHED — the Scheduled
+  // and Not yet scheduled tabs both embed as the full Planned list.
+  const embedStatus = FILTERS[currentFilter].status;
+  const src = `${window.location.origin}/embed/live?status=${embedStatus}`;
   const code = `<iframe src="${src}" width="100%" height="600" frameborder="0" style="border:0;max-width:480px"></iframe>`;
   document.getElementById('embed-modal-desc').textContent =
-    `Paste this into a "Custom HTML" block on your blta.sk page to show the ${STATUS_LABELS[currentStatus].toLowerCase()} matches list:`;
+    `Paste this into a "Custom HTML" block on your blta.sk page to show the ${STATUS_LABELS[embedStatus].toLowerCase()} matches list:`;
   document.getElementById('embed-code').textContent = code;
   document.getElementById('copy-embed-btn').onclick = () => {
     copyToClipboard(code).then(() => toast('Embed code copied'));
