@@ -48,6 +48,11 @@ function notifyButtonsHtml(m) {
 }
 
 function matchCardHtml(m) {
+  const extras = `
+    ${isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : ''}
+    ${m.status === 'PLANNED' && !m.scheduledAt ? `<button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}">📅 Set date &amp; location</button>` : ''}
+    ${m.status === 'PLANNED' && m.scheduledAt ? notifyButtonsHtml(m) : ''}
+  `;
   return `
     <a class="match-card status-${m.status}${m.status === 'PLANNED' && m.scheduledAt ? ' has-date' : ''}" href="/match/${m.token}">
       <div class="match-card-top">
@@ -58,10 +63,7 @@ function matchCardHtml(m) {
           ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>🗓 ${fmtDateShort(m.scheduledAt)}</span>`}
         </div>
       </div>
-      ${matchCardBoxHtml(m)}
-      ${isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : ''}
-      ${m.status === 'PLANNED' && !m.scheduledAt ? `<button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}" style="margin-top:6px">📅 Set date &amp; location</button>` : ''}
-      ${m.status === 'PLANNED' && m.scheduledAt ? notifyButtonsHtml(m) : ''}
+      ${matchCardBoxHtml(m, extras)}
     </a>
   `;
 }

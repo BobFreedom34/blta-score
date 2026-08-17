@@ -35,6 +35,7 @@ function emptyMessage() {
 // Same card markup as the home page's match list, so an embedded widget
 // looks identical to (and shows the same information as) the live site.
 function matchCardHtml(m) {
+  const extras = isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : '';
   return `
     <a class="match-card status-${m.status}${m.status === 'PLANNED' && m.scheduledAt ? ' has-date' : ''}" href="${window.location.origin}/match/${m.token}" target="_blank" rel="noopener">
       <div class="match-card-top">
@@ -45,8 +46,7 @@ function matchCardHtml(m) {
           ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>🗓 ${fmtDateShort(m.scheduledAt)}</span>`}
         </div>
       </div>
-      ${matchCardBoxHtml(m)}
-      ${isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : ''}
+      ${matchCardBoxHtml(m, extras)}
     </a>
   `;
 }
