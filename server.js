@@ -1,11 +1,14 @@
 require('dotenv').config();
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const http = require('http');
 const { Server } = require('socket.io');
 
+const db = require('./src/db');
+const engine = require('./src/matchEngine');
 const playersRouter = require('./src/routes/players');
 const matchesRouter = require('./src/routes/matches');
 const adminRouter = require('./src/routes/admin');
@@ -31,7 +34,50 @@ app.use('/api/admin', adminRouter);
 app.use('/api/player', playerAuthRouter);
 
 // Pretty routes -> static HTML pages (the page JS reads the share token from the URL).
-app.get('/match/:token', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'match.html')));
+const matchTemplate = fs.readFileSync(path.join(PUBLIC_DIR, 'match.html'), 'utf8');
+const MATCH_TITLE_TAG = '<title>BLTA Score — Match</title>';
+
+function escapeHtmlAttr(str) {
+  return String(str).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+// Chat apps (WhatsApp, etc.) read Open Graph tags from the raw HTML response
+// without running any JS, so the title/description shown in a shared link
+// preview has to be baked in server-side here rather than set later by
+// match.js — by the time that runs, the crawler is long gone.
+app.get('/match/:token', (req, res) => {
+  const row = db.prepare('SELECT * FROM matches WHERE share_token = ?').get(req.params.token);
+  if (!row) return res.send(matchTemplate);
+
+  const p1 = db.prepare('SELECT * FROM players WHERE id = ?').get(row.player1_id);
+  const p2 = db.prepare('SELECT * FROM players WHERE id = ?').get(row.player2_id);
+  const title = `${p1.name} vs ${p2.name} — BLTA Score`;
+
+  let description;
+  if (row.status === 'PLANNED') {
+    description = engine.FORMATS[row.format] ? engine.FORMATS[row.format].label : 'Upcoming BLTA match';
+  } else {
+    const scoreSummary = engine.describeMatch(JSON.parse(row.state));
+    description = row.status === 'LIVE'
+      ? `🔴 Live now${scoreSummary ? ` — ${scoreSummary}` : ''}`
+      : (scoreSummary ? `Final score: ${scoreSummary}` : 'Match finished');
+  }
+
+  const origin = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  const metaTags = `<title>${escapeHtmlAttr(title)}</title>
+<meta property="og:title" content="${escapeHtmlAttr(title)}">
+<meta property="og:description" content="${escapeHtmlAttr(description)}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="${escapeHtmlAttr(origin)}/match/${row.share_token}">
+<meta property="og:image" content="${escapeHtmlAttr(origin)}/img/blta-logo.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="${escapeHtmlAttr(title)}">
+<meta name="twitter:description" content="${escapeHtmlAttr(description)}">`;
+
+  res.send(matchTemplate.replace(MATCH_TITLE_TAG, metaTags));
+});
 app.get('/embed/match/:token', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-match.html')));
 app.get('/embed/live', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-live.html')));
 
