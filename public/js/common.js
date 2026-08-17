@@ -23,13 +23,40 @@ function setCell(set, playerNum) {
   return `${main}${sub}`;
 }
 
+// Static (non-ticking — updates whenever the card list itself re-renders,
+// e.g. on any matches:changed broadcast) duration for a card's scoreboard
+// header: elapsed time so far for a LIVE match, or total playtime once
+// FINISHED. Mirrors match.js's own timer math minus the per-second tick.
+function cardDurationHtml(m) {
+  if (m.status === 'LIVE' && m.startTime) {
+    const start = new Date(m.startTime).getTime();
+    const pausedSeconds = m.pausedSeconds || 0;
+    const nowMs = m.pausedAt ? new Date(m.pausedAt).getTime() : Date.now();
+    const secs = Math.max(0, Math.floor((nowMs - start) / 1000) - pausedSeconds);
+    const h = Math.floor(secs / 3600);
+    const mm = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
+    const ss = String(secs % 60).padStart(2, '0');
+    const text = h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+    return `<div class="timer${m.pausedAt ? ' timer-paused' : ''}">${text}</div>${m.pausedAt ? '<div class="paused-label">⏸ PAUSED</div>' : ''}`;
+  }
+  if (m.status === 'FINISHED' && m.startTime && m.endTime) {
+    const mins = Math.max(1, Math.round((new Date(m.endTime) - new Date(m.startTime)) / 60000));
+    return `<div class="timer">${mins} min</div>`;
+  }
+  return '';
+}
+
 // Compact per-set scoreboard for a match card (LIVE/FINISHED) — same dark
-// table as the full match page, just condensed. Returns '' when there's no
-// set data yet (a walkover/retirement result, or a LIVE match with no
-// games played), so the caller can fall back to the plain text score line.
+// table as the full match page, just condensed, with the same timer chip in
+// its header cell. For a LIVE match this always shows (even at a fresh
+// 0-0, matching the match page itself) since the clock is already running;
+// for FINISHED it only shows once there's real per-set score data, so a
+// walkover/retirement result still falls back to the plain text line.
 function cardScoreboardHtml(m) {
   if (!m.state || !m.state.sets) return '';
-  const sets = m.state.sets.filter((s) => s.winner || s.p1 > 0 || s.p2 > 0 || (s.tiebreak && (s.tiebreak.p1 > 0 || s.tiebreak.p2 > 0)));
+  const sets = m.status === 'LIVE'
+    ? m.state.sets
+    : m.state.sets.filter((s) => s.winner || s.p1 > 0 || s.p2 > 0 || (s.tiebreak && (s.tiebreak.p1 > 0 || s.tiebreak.p2 > 0)));
   if (!sets.length) return '';
   const headerCells = sets.map((s, i) => `<th>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</th>`).join('');
   const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
@@ -41,7 +68,7 @@ function cardScoreboardHtml(m) {
   return `
     <div class="scoreboard scoreboard-compact">
       <table>
-        <thead><tr><th></th>${headerCells}</tr></thead>
+        <thead><tr><th class="timer-cell">${cardDurationHtml(m)}</th>${headerCells}</tr></thead>
         <tbody>
           ${row(1, m.player1, winnerP1)}
           ${row(2, m.player2, winnerP2)}

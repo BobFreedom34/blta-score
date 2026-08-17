@@ -429,6 +429,9 @@ datalist {}
 .scoreboard-compact { padding: 10px 12px; overflow-x: auto; }
 .scoreboard-compact td, .scoreboard-compact th { padding: 4px 8px; }
 .scoreboard-compact td.set-score { font-size: 17px; width: auto; }
+.scoreboard-compact th.timer-cell { padding: 0 8px 6px 0; }
+.scoreboard-compact .timer { font-size: 12px; padding: 5px 10px; }
+.scoreboard-compact .paused-label { font-size: 10px; }
 
 .server-choice-row { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .server-choice-row button.active { border-color: var(--orange); background: #fff6f2; color: var(--orange-dark); font-weight: 800; }
