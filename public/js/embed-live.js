@@ -38,7 +38,7 @@ function matchCardHtml(m) {
   const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
   const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
   return `
-    <a class="match-card status-${m.status}" href="${window.location.origin}/match/${m.token}" target="_blank" rel="noopener">
+    <a class="match-card status-${m.status}${m.status === 'PLANNED' && m.scheduledAt ? ' has-date' : ''}" href="${window.location.origin}/match/${m.token}" target="_blank" rel="noopener">
       <div class="match-card-top">
         ${categoryBadge(m.category)}
         ${statusBadge(m)}
