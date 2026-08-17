@@ -167,9 +167,28 @@ document.getElementById('embed-list-btn').addEventListener('click', () => {
   src.searchParams.set('status', f.status);
   if (f.dateFilter === 'has') src.searchParams.set('dateFilter', 'has');
   else if (f.dateFilter === 'none') src.searchParams.set('dateFilter', 'none');
-  const code = `<iframe src="${src.toString()}" width="100%" height="600" frameborder="0" style="border:0;max-width:480px"></iframe>`;
+  const origin = window.location.origin;
+  const originHost = origin.replace(/^https?:\/\//, '');
+  // The iframe is on a different origin, so it can't resize itself — it
+  // posts its real content height to the parent, and this listener (pasted
+  // alongside the iframe) applies it. Matches by contentWindow instead of an
+  // id so it still works if the same snippet is pasted more than once.
+  const code = [
+    `<iframe src="${src.toString()}" width="100%" height="200" frameborder="0" style="border:0;max-width:480px;display:block"></iframe>`,
+    '<script>',
+    '(function () {',
+    "  window.addEventListener('message', function (e) {",
+    `    if (e.origin !== '${origin}' || !e.data || e.data.type !== 'blta-embed-height') return;`,
+    `    var frames = document.querySelectorAll('iframe[src*="${originHost}/embed/live"]');`,
+    '    for (var i = 0; i < frames.length; i++) {',
+    '      if (frames[i].contentWindow === e.source) { frames[i].style.height = e.data.height + "px"; break; }',
+    '    }',
+    '  });',
+    '})();',
+    '</script>',
+  ].join('\n');
   document.getElementById('embed-modal-desc').textContent =
-    `Paste this into a "Custom HTML" block on your blta.sk page to show the ${f.label.toLowerCase()} list:`;
+    `Paste this into a "Custom HTML" block on your blta.sk page to show the ${f.label.toLowerCase()} list — it resizes itself to fit the matches:`;
   document.getElementById('embed-code').textContent = code;
   document.getElementById('copy-embed-btn').onclick = () => {
     copyToClipboard(code).then(() => toast('Embed code copied'));
