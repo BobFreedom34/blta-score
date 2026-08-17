@@ -389,7 +389,11 @@ router.post('/:token/score', (req, res) => {
     if (!Number.isInteger(setIndex) || setIndex < 0 || setIndex >= state.sets.length) {
       return res.status(400).json({ error: 'Invalid set index' });
     }
-    nextState = engine.editSetScore(state, row.format, setIndex, player, delta);
+    try {
+      nextState = engine.editSetScore(state, row.format, setIndex, player, delta);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
   } else {
     nextState = engine.applyDelta(state, row.format, player, delta);
   }

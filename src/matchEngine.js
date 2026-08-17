@@ -148,6 +148,10 @@ function recomputeFromSets(state, format) {
     currentSet = i;
     if (!outcome) {
       set.winner = null;
+      // Drop any sets beyond this one — they're stale leftovers from before
+      // a correction or a format change reduced how many sets are needed,
+      // not sets the match has actually reached yet.
+      state.sets = state.sets.slice(0, i + 1);
       break;
     }
     set.winner = outcome;
@@ -194,8 +198,20 @@ function editSetScore(state, formatKey, setIndex, player, delta) {
   const key = player === 1 ? 'p1' : 'p2';
 
   if (set.tiebreak) {
+    // No fixed point cap (a breaker can legitimately run past 7/10 points),
+    // but once it's already decided real play would have stopped — refuse
+    // to pile more points onto it. Correcting it still works: decrement
+    // first to un-decide it, then increment from there.
+    if (delta > 0 && computeSetOutcome(set) !== null) {
+      throw new Error('That tiebreak is already decided — undo a point first before adding another');
+    }
     set.tiebreak[key] = Math.max(0, set.tiebreak[key] + delta);
   } else {
+    // A non-tiebreak set can never reach 8 games (6-6 always converts to a
+    // tiebreak) — 7 (from a 7-5 finish) is the hard ceiling.
+    if (delta > 0 && set[key] + 1 > 7) {
+      throw new Error('A set cannot go beyond 7 games');
+    }
     set[key] = Math.max(0, set[key] + delta);
     if (set.p1 === 6 && set.p2 === 6) {
       set.tiebreak = { p1: 0, p2: 0 };
