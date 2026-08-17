@@ -4,6 +4,7 @@ const FORMATS = [
   { key: 'BO5', label: 'Best of 5 sets', hint: 'Tiebreak at 6-6 in every set.' },
   { key: 'BO5_STB', label: 'Best of 5 sets — deciding set is a match tiebreak', hint: 'If 2-2 in sets, the 5th set is replaced by a single tiebreak to 10 points.' },
   { key: 'BO1', label: 'Best of 1 set', hint: 'Single set, first to 6 games (win by 2), tiebreak at 6-6.' },
+  { key: 'FREE_PLAY', label: 'Free Play', sublabel: '(training)', hint: 'Open-ended practice match — sets keep getting added as you play, and nothing ends it automatically. Switch each set between games-to-6, a 7-point tiebreak, or a 10-point tiebreak, and tap Finish whenever you\'re done.' },
 ];
 
 const formatContainer = document.getElementById('format-options');

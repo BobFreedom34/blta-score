@@ -17,22 +17,41 @@ const FORMATS = {
     setsToWin: 3,
     finalSetSuperTiebreak: true,
   },
+  // Open-ended practice/training match: sets keep getting added for as long
+  // as play continues (setsToWin: Infinity means advanceOrFinish's own win
+  // check never fires) and nothing ever auto-finishes it — only an explicit
+  // Finish action does. Each set's own style (games to 6, a 7-point
+  // tiebreak, or a 10-point tiebreak) is chosen live via state.nextSetStyle
+  // rather than being fixed by position like the STB formats above.
+  FREE_PLAY: {
+    key: 'FREE_PLAY',
+    label: 'Free Play (training — sets added automatically, finish manually)',
+    setsToWin: Infinity,
+    finalSetSuperTiebreak: false,
+  },
 };
 
 const SUPER_TIEBREAK_POINTS = 10;
 const TIEBREAK_POINTS = 7;
+const SET_STYLES = ['REGULAR', 'TB7', 'TB10'];
 
 function decidingSetIndex(format) {
   return format.setsToWin * 2 - 2;
 }
 
 function emptySet() {
-  return { p1: 0, p2: 0, tiebreak: null, isSuperTiebreak: false, winner: null };
+  return { p1: 0, p2: 0, tiebreak: null, isSuperTiebreak: false, tiebreakTarget: null, winner: null };
 }
 
-function createSetForIndex(index, format) {
+// style ('REGULAR' | 'TB7' | 'TB10'), when given, overrides the normal
+// index-based shape — used for Free Play, where each set's style is chosen
+// live rather than fixed by its position in the format.
+function createSetForIndex(index, format, style) {
+  if (style === 'TB7' || style === 'TB10') {
+    return { p1: 0, p2: 0, tiebreak: { p1: 0, p2: 0 }, isSuperTiebreak: true, tiebreakTarget: style === 'TB7' ? 7 : 10, winner: null };
+  }
   if (index === decidingSetIndex(format) && format.finalSetSuperTiebreak) {
-    return { p1: 0, p2: 0, tiebreak: { p1: 0, p2: 0 }, isSuperTiebreak: true, winner: null };
+    return { p1: 0, p2: 0, tiebreak: { p1: 0, p2: 0 }, isSuperTiebreak: true, tiebreakTarget: null, winner: null };
   }
   return emptySet();
 }
@@ -40,13 +59,15 @@ function createSetForIndex(index, format) {
 function initState(formatKey) {
   const format = FORMATS[formatKey];
   if (!format) throw new Error(`Unknown match format: ${formatKey}`);
-  return {
+  const state = {
     sets: [createSetForIndex(0, format)],
     currentSet: 0,
     status: 'IN_PROGRESS',
     winner: null,
     setsWon: { 1: 0, 2: 0 },
   };
+  if (formatKey === 'FREE_PLAY') state.nextSetStyle = 'REGULAR';
+  return state;
 }
 
 function finalizeSet(state, set, winner) {
@@ -79,7 +100,7 @@ function applyDelta(state, formatKey, player, delta) {
   if (set.tiebreak) {
     set.tiebreak[key] = Math.max(0, set.tiebreak[key] + delta);
     if (delta > 0) {
-      const target = set.isSuperTiebreak ? SUPER_TIEBREAK_POINTS : TIEBREAK_POINTS;
+      const target = set.tiebreakTarget || (set.isSuperTiebreak ? SUPER_TIEBREAK_POINTS : TIEBREAK_POINTS);
       const a = set.tiebreak.p1;
       const b = set.tiebreak.p2;
       if ((a >= target || b >= target) && Math.abs(a - b) >= 2) {
@@ -113,7 +134,7 @@ function advanceOrFinish(state, format, winner, setsWon) {
     state.winner = winner;
   } else {
     state.currentSet += 1;
-    state.sets.push(createSetForIndex(state.currentSet, format));
+    state.sets.push(createSetForIndex(state.currentSet, format, state.nextSetStyle));
   }
 }
 
@@ -121,7 +142,7 @@ function advanceOrFinish(state, format, winner, setsWon) {
 // Returns null if the set isn't decided yet.
 function computeSetOutcome(set) {
   if (set.tiebreak) {
-    const target = set.isSuperTiebreak ? SUPER_TIEBREAK_POINTS : TIEBREAK_POINTS;
+    const target = set.tiebreakTarget || (set.isSuperTiebreak ? SUPER_TIEBREAK_POINTS : TIEBREAK_POINTS);
     const a = set.tiebreak.p1;
     const b = set.tiebreak.p2;
     if ((a >= target || b >= target) && Math.abs(a - b) >= 2) return a > b ? 1 : 2;
@@ -171,7 +192,7 @@ function recomputeFromSets(state, format) {
   if (matchStatus !== 'COMPLETE') {
     const lastSet = state.sets[state.sets.length - 1];
     if (computeSetOutcome(lastSet)) {
-      state.sets.push(createSetForIndex(state.sets.length, format));
+      state.sets.push(createSetForIndex(state.sets.length, format, state.nextSetStyle));
       currentSet = state.sets.length - 1;
     }
   }
@@ -243,10 +264,14 @@ function applyFormatChange(state, newFormatKey) {
   if (!newFormat) throw new Error(`Unknown match format: ${newFormatKey}`);
 
   const next = JSON.parse(JSON.stringify(state));
+  // nextSetStyle only means anything for Free Play — moving to or from it
+  // shouldn't leak a stale style into an unrelated fixed format.
+  if (newFormatKey === 'FREE_PLAY') next.nextSetStyle = next.nextSetStyle || 'REGULAR';
+  else delete next.nextSetStyle;
   const cur = next.sets[next.currentSet];
   const hasProgress = cur.p1 > 0 || cur.p2 > 0 || (cur.tiebreak && (cur.tiebreak.p1 > 0 || cur.tiebreak.p2 > 0));
   if (!hasProgress) {
-    next.sets[next.currentSet] = createSetForIndex(next.currentSet, newFormat);
+    next.sets[next.currentSet] = createSetForIndex(next.currentSet, newFormat, next.nextSetStyle);
   }
 
   const recomputed = recomputeFromSets(next, newFormat);
@@ -254,6 +279,36 @@ function applyFormatChange(state, newFormatKey) {
     throw new Error('Switching to this format would immediately decide the match from the sets already played — correct the score first, or pick a different format.');
   }
   return recomputed;
+}
+
+// Free Play only: pick how the *next* set is played (games to 6, a 7-point
+// tiebreak, or a 10-point tiebreak). If the current set has no progress yet
+// it's reshaped immediately too — otherwise the choice just takes effect
+// starting with the set after this one, same rule as applyFormatChange.
+function setNextSetStyle(state, formatKey, style) {
+  if (formatKey !== 'FREE_PLAY') throw new Error('Only a Free Play match has a set style to change');
+  if (!SET_STYLES.includes(style)) throw new Error('Invalid set style');
+  const format = FORMATS[formatKey];
+  const next = JSON.parse(JSON.stringify(state));
+  next.nextSetStyle = style;
+  const cur = next.sets[next.currentSet];
+  const hasProgress = cur.p1 > 0 || cur.p2 > 0 || (cur.tiebreak && (cur.tiebreak.p1 > 0 || cur.tiebreak.p2 > 0));
+  if (!hasProgress) {
+    next.sets[next.currentSet] = createSetForIndex(next.currentSet, format, style);
+  }
+  return next;
+}
+
+// Free Play only: ending the match is always an explicit action rather than
+// an automatic one, so there's no engine-decided winner to fall back on —
+// whoever has won more completed sets is the natural winner, with the
+// current (possibly in-progress) set simply not counted. Returns null when
+// there's no clear leader (tied, including 0-0), leaving the caller to ask
+// for an explicit winner instead, same as any other undecided finish.
+function decideByCompletedSets(state) {
+  const { 1: a, 2: b } = state.setsWon;
+  if (a === b) return null;
+  return a > b ? 1 : 2;
 }
 
 function isValidSetScore(p1, p2) {
@@ -358,6 +413,8 @@ module.exports = {
   applyDelta,
   editSetScore,
   applyFormatChange,
+  setNextSetStyle,
+  decideByCompletedSets,
   buildResultFromSets,
   describeSet,
   describeMatch,

@@ -106,17 +106,19 @@
 <div class="modal-backdrop" id="finish-undecided-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="finish-undecided-modal" aria-label="Close">&times;</button>
-    <h3>Finish without a completed score?</h3>
-    <p style="font-size:13px;color:var(--gray)">The match isn't decided by score yet. Pick who won and why.</p>
+    <h3 id="finish-undecided-title">Finish without a completed score?</h3>
+    <p style="font-size:13px;color:var(--gray)" id="finish-undecided-desc">The match isn't decided by score yet. Pick who won and why.</p>
     <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em;margin-top:12px">Winner</div>
     <div class="server-choice-row" id="finish-winner-row">
       <button type="button" class="btn btn-outline btn-block" data-winner="1"></button>
       <button type="button" class="btn btn-outline btn-block" data-winner="2"></button>
     </div>
-    <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em;margin-top:14px">Reason</div>
-    <div class="server-choice-row" id="finish-reason-row">
-      <button type="button" class="btn btn-outline btn-block" data-reason="RETIREMENT">Retirement</button>
-      <button type="button" class="btn btn-outline btn-block" data-reason="WALKOVER">Walkover</button>
+    <div id="finish-reason-section">
+      <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em;margin-top:14px">Reason</div>
+      <div class="server-choice-row" id="finish-reason-row">
+        <button type="button" class="btn btn-outline btn-block" data-reason="RETIREMENT">Retirement</button>
+        <button type="button" class="btn btn-outline btn-block" data-reason="WALKOVER">Walkover</button>
+      </div>
     </div>
     <button class="btn btn-dark btn-block" id="finish-undecided-confirm-btn" style="margin-top:16px" disabled>Finish match</button>
   </div>

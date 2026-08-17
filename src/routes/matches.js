@@ -304,6 +304,26 @@ router.patch('/:token/format', (req, res) => {
   res.json(payload);
 });
 
+// Free Play only: choose how the next set is played (games to 6 / 7-point
+// tiebreak / 10-point tiebreak) — open to anyone while LIVE, same as scoring.
+router.patch('/:token/set-style', (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (row.status !== 'LIVE') {
+    return res.status(400).json({ error: 'The set style can only be changed while live' });
+  }
+  try {
+    const state = engine.setNextSetStyle(JSON.parse(row.state), row.format, req.body.style);
+    db.prepare('UPDATE matches SET state = ?, updated_at = ? WHERE id = ?')
+      .run(JSON.stringify(state), nowIso(), row.id);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  const payload = broadcast(req, updated);
+  res.json(payload);
+});
+
 router.post('/:token/pause', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
@@ -461,19 +481,39 @@ router.post('/:token/finish', async (req, res) => {
   let winnerId = deriveWinnerId(state, row);
   let endReason = null;
 
-  if (state.status !== 'COMPLETE') {
-    // No winner by score — this is a walkover or retirement, so the winner
-    // and the reason have to be chosen explicitly instead of left blank.
+  // Free Play never reaches state.status === 'COMPLETE' on its own — it's
+  // always ended by this explicit action instead. Whoever's won more sets
+  // is the natural winner, no reason needed; only a genuine tie (or 0-0)
+  // falls through to picking a winner by hand, same as any other format.
+  const freePlayWinner = row.format === 'FREE_PLAY' && state.status !== 'COMPLETE'
+    ? engine.decideByCompletedSets(state)
+    : null;
+
+  if (freePlayWinner) {
+    winnerId = freePlayWinner === 1 ? row.player1_id : row.player2_id;
+  } else if (state.status !== 'COMPLETE') {
     const winner = Number(req.body.winner);
-    const reason = req.body.reason;
     if (![1, 2].includes(winner)) {
       return res.status(400).json({ error: "The match isn't decided by score — pick who won" });
     }
-    if (!['WALKOVER', 'RETIREMENT'].includes(reason)) {
-      return res.status(400).json({ error: 'Pick a reason: Walkover or Retirement' });
-    }
     winnerId = winner === 1 ? row.player1_id : row.player2_id;
-    endReason = reason;
+    if (row.format === 'FREE_PLAY') {
+      // Not a real walkover/retirement here, just an early/tied stop —
+      // a reason is optional rather than required.
+      if (req.body.reason) {
+        if (!['WALKOVER', 'RETIREMENT'].includes(req.body.reason)) {
+          return res.status(400).json({ error: 'Pick a reason: Walkover or Retirement' });
+        }
+        endReason = req.body.reason;
+      }
+    } else {
+      // No winner by score — this is a walkover or retirement, so the
+      // reason has to be chosen explicitly instead of left blank.
+      if (!['WALKOVER', 'RETIREMENT'].includes(req.body.reason)) {
+        return res.status(400).json({ error: 'Pick a reason: Walkover or Retirement' });
+      }
+      endReason = req.body.reason;
+    }
   }
 
   const ts = nowIso();

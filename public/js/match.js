@@ -16,6 +16,9 @@ const FORMAT_META = {
   BO3_STB: { setsToWin: 2, finalSetSuperTiebreak: true },
   BO5: { setsToWin: 3, finalSetSuperTiebreak: false },
   BO5_STB: { setsToWin: 3, finalSetSuperTiebreak: true },
+  // Free Play is open-ended in real play — 6 is just a generous cap on how
+  // many set rows the manual-result-entry form offers.
+  FREE_PLAY: { setsToWin: 6, finalSetSuperTiebreak: false },
 };
 
 // Mirrors public/js/new-match.js FORMATS — for the change-format-while-live picker.
@@ -142,7 +145,9 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
   const effIndex = getEffectiveSetIndex(m);
   const curSet = m.state.sets[effIndex];
   const isTiebreak = !!curSet.tiebreak;
-  const unitLabel = isTiebreak ? (curSet.isSuperTiebreak ? 'point (match tiebreak)' : 'point (tiebreak)') : 'game';
+  const unitLabel = isTiebreak
+    ? (curSet.isSuperTiebreak ? (curSet.tiebreakTarget === 7 ? 'point (tiebreak to 7)' : 'point (match tiebreak)') : 'point (tiebreak)')
+    : 'game';
   // The big number IS the current score — tapping it adds one game (or one
   // point mid-tiebreak); it naturally shows 0-0 again once a new set starts.
   const p1Value = isTiebreak ? curSet.tiebreak.p1 : curSet.p1;
@@ -151,13 +156,25 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
     <div class="set-picker">
       ${m.state.sets.map((s, i) => `
         <button type="button" class="set-picker-btn ${i === effIndex ? 'active' : ''}" data-set-index="${i}">
-          ${s.isSuperTiebreak ? 'MTB' : `Set ${i + 1}`} <span class="set-picker-score">${describeSet(s)}</span>
+          ${s.isSuperTiebreak ? (s.tiebreakTarget === 7 ? 'TB-7' : 'MTB') : `Set ${i + 1}`} <span class="set-picker-score">${describeSet(s)}</span>
         </button>
       `).join('')}
     </div>
   ` : '';
+  // Free Play only: which style the *next* set (or the current one, if it
+  // has no progress yet) will be played to — always visible while live,
+  // since there's no fixed format to fall back on.
+  const styleSwitcher = (showFinish && m.format === 'FREE_PLAY') ? `
+    <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em;margin-top:10px">Next set</div>
+    <div class="set-picker">
+      <button type="button" class="set-picker-btn ${(m.state.nextSetStyle || 'REGULAR') === 'REGULAR' ? 'active' : ''}" data-set-style="REGULAR">Games to 6</button>
+      <button type="button" class="set-picker-btn ${m.state.nextSetStyle === 'TB7' ? 'active' : ''}" data-set-style="TB7">Tiebreak to 7</button>
+      <button type="button" class="set-picker-btn ${m.state.nextSetStyle === 'TB10' ? 'active' : ''}" data-set-style="TB10">Tiebreak to 10</button>
+    </div>
+  ` : '';
   return `
     ${setPicker}
+    ${styleSwitcher}
     <div class="score-controls">
       <div class="player-controls">
         <div class="pname">${escapeHtml(m.player1.name)}</div>
@@ -366,10 +383,17 @@ function attachHandlers(m) {
     });
   });
 
-  root.querySelectorAll('.set-picker-btn').forEach((btn) => {
+  root.querySelectorAll('.set-picker-btn[data-set-index]').forEach((btn) => {
     btn.addEventListener('click', () => {
       editSetIndex = Number(btn.dataset.setIndex);
       render(current);
+    });
+  });
+
+  root.querySelectorAll('.set-picker-btn[data-set-style]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      try { await api(`/matches/${matchToken}/set-style`, { method: 'PATCH', body: { style: btn.dataset.setStyle } }); }
+      catch (err) { toast(err.message); }
     });
   });
 
@@ -396,7 +420,12 @@ function attachHandlers(m) {
 
   const finishBtn = document.getElementById('finish-btn');
   if (finishBtn) finishBtn.addEventListener('click', async () => {
-    if (m.state.status !== 'COMPLETE') {
+    // Free Play never reaches state.status === 'COMPLETE' on its own — but
+    // if one player has clearly won more sets, finishing is just a normal
+    // decided finish (the server picks that player); only a genuine tie
+    // needs the "who won" prompt, same as any other undecided finish.
+    const freePlayDecided = m.format === 'FREE_PLAY' && m.state.setsWon[1] !== m.state.setsWon[2];
+    if (m.state.status !== 'COMPLETE' && !freePlayDecided) {
       openFinishUndecidedModal(m);
       return;
     }
@@ -615,18 +644,29 @@ function openChangeFormatModal(m) {
 }
 
 function openFinishUndecidedModal(m) {
+  // Free Play only reaches this modal on a genuine tie (or 0-0) — there's
+  // no walkover/retirement concept for an open-ended practice match, so it
+  // only needs a winner, not a reason.
+  const isFreePlay = m.format === 'FREE_PLAY';
   let winner = null;
   let reason = null;
   const winnerBtns = Array.from(document.querySelectorAll('#finish-winner-row button'));
   const reasonBtns = Array.from(document.querySelectorAll('#finish-reason-row button'));
   const confirmBtn = document.getElementById('finish-undecided-confirm-btn');
+  const reasonSection = document.getElementById('finish-reason-section');
+
+  document.getElementById('finish-undecided-title').textContent = isFreePlay ? 'Sets are tied — who won?' : 'Finish without a completed score?';
+  document.getElementById('finish-undecided-desc').textContent = isFreePlay
+    ? "You're tied on sets — pick who won this session."
+    : "The match isn't decided by score yet. Pick who won and why.";
+  reasonSection.style.display = isFreePlay ? 'none' : '';
 
   winnerBtns[0].textContent = m.player1.name;
   winnerBtns[0].dataset.winner = '1';
   winnerBtns[1].textContent = m.player2.name;
   winnerBtns[1].dataset.winner = '2';
 
-  const updateConfirm = () => { confirmBtn.disabled = !(winner && reason); };
+  const updateConfirm = () => { confirmBtn.disabled = isFreePlay ? !winner : !(winner && reason); };
 
   winnerBtns.forEach((btn) => {
     btn.classList.remove('active');
