@@ -287,6 +287,12 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   font-size: 16px;
 }
 .match-players .winner { color: var(--green-light); }
+.overdue-warning {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; color: var(--danger);
+  background: rgba(199,63,16,0.08);
+  padding: 6px 10px; border-radius: 8px;
+}
 .match-score {
   font-weight: 800;
   font-size: 15px;

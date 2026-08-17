@@ -67,6 +67,7 @@ function matchCardHtml(m) {
         </div>
         <div class="match-score">${escapeHtml(matchResultText(m))}</div>
       </div>
+      ${isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : ''}
       ${m.status === 'PLANNED' && !m.scheduledAt ? `<button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}" style="margin-top:6px">📅 Set date &amp; location</button>` : ''}
       ${m.status === 'PLANNED' && m.scheduledAt ? notifyButtonsHtml(m) : ''}
     </a>
