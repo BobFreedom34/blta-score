@@ -610,17 +610,6 @@ datalist {}
 /* ---------- Embed views ---------- */
 body.embed { background: var(--white); }
 .embed .container { padding: 10px; max-width: none; }
-.embed-live-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #eee;
-  margin-bottom: 8px;
-}
-.embed-live-item a { flex: 1; }
 
 footer.credit { text-align: center; font-size: 11px; color: var(--gray); margin-top: 24px; }
 
