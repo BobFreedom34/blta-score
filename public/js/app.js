@@ -47,7 +47,7 @@ function matchCardHtml(m) {
         ${statusBadge(m)}
         <div class="match-card-meta" style="margin-left:auto">
           ${m.location ? `<span>📍 ${escapeHtml(m.location)}</span>` : ''}
-          <span>🗓 ${fmtDateShort(m.scheduledAt)}</span>
+          ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>🗓 ${fmtDateShort(m.scheduledAt)}</span>`}
         </div>
       </div>
       <div class="match-players">
