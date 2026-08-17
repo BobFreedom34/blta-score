@@ -35,9 +35,6 @@ function emptyMessage() {
 // Same card markup as the home page's match list, so an embedded widget
 // looks identical to (and shows the same information as) the live site.
 function matchCardHtml(m) {
-  const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
-  const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
-  const scoreboard = cardScoreboardHtml(m);
   return `
     <a class="match-card status-${m.status}${m.status === 'PLANNED' && m.scheduledAt ? ' has-date' : ''}" href="${window.location.origin}/match/${m.token}" target="_blank" rel="noopener">
       <div class="match-card-top">
@@ -48,15 +45,7 @@ function matchCardHtml(m) {
           ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>🗓 ${fmtDateShort(m.scheduledAt)}</span>`}
         </div>
       </div>
-      ${scoreboard || `
-        <div class="match-players">
-          <div>
-            <div class="name ${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}</div>
-            <div class="name ${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}</div>
-          </div>
-          <div class="match-score">${escapeHtml(matchResultText(m))}</div>
-        </div>
-      `}
+      ${matchCardBoxHtml(m)}
       ${isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : ''}
     </a>
   `;

@@ -51,6 +51,29 @@ function cardScoreboardHtml(m) {
   `;
 }
 
+// The dark "result box" shown on every match card: a per-set scoreboard for
+// LIVE/FINISHED matches with score data, or — for everything else (Planned,
+// or a walkover/retirement result with no sets) — the same black box around
+// the player names and format/result text, so every card gets the same
+// dark-box treatment even before there's a score to show.
+function matchCardBoxHtml(m) {
+  const scoreboard = cardScoreboardHtml(m);
+  if (scoreboard) return scoreboard;
+  const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
+  const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
+  return `
+    <div class="scoreboard scoreboard-compact">
+      <div class="match-players">
+        <div>
+          <div class="name ${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}</div>
+          <div class="name ${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}</div>
+        </div>
+        <div class="match-score">${escapeHtml(matchResultText(m))}</div>
+      </div>
+    </div>
+  `;
+}
+
 // A match was scheduled for a day (or more) in the past but never got
 // started or finished — flags it as needing attention on its card.
 function isOverdueUnresolved(m) {
