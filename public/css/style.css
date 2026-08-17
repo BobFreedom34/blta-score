@@ -451,16 +451,6 @@ datalist {}
 .set-picker-btn.active { border-color: var(--orange); background: #fff6f2; color: var(--orange-dark); }
 .set-picker-score { color: var(--gray); font-weight: 600; margin-left: 4px; }
 .set-picker-btn.active .set-picker-score { color: var(--orange-dark); }
-.set-locked-note {
-  background: #fff6f2;
-  border: 1.5px solid #ffd8c4;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--orange-dark);
-  margin-top: 12px;
-}
 
 .score-controls {
   display: grid;

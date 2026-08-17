@@ -147,12 +147,6 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
   // point mid-tiebreak); it naturally shows 0-0 again once a new set starts.
   const p1Value = isTiebreak ? curSet.tiebreak.p1 : curSet.p1;
   const p2Value = isTiebreak ? curSet.tiebreak.p2 : curSet.p2;
-  const naturalIndex = m.status === 'LIVE' ? m.state.currentSet : m.state.sets.length - 1;
-  // Once the match is decided, the active set is locked (matches the engine
-  // refusing further scoring there) — pick an earlier set to correct instead,
-  // or Finish the match. The admin correction view (showFinish false) is
-  // exempt: it's always editing a specific set on purpose.
-  const isLocked = showFinish && m.state.status === 'COMPLETE' && effIndex === naturalIndex;
   const setPicker = m.state.sets.length > 1 ? `
     <div class="set-picker">
       ${m.state.sets.map((s, i) => `
@@ -164,17 +158,16 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
   ` : '';
   return `
     ${setPicker}
-    ${isLocked ? '<div class="set-locked-note">This set is decided — pick an earlier set above to correct it, or finish the match below.</div>' : ''}
     <div class="score-controls">
       <div class="player-controls">
         <div class="pname">${escapeHtml(m.player1.name)}</div>
-        <button class="btn btn-giant btn-score-number" data-player="1" data-delta="1" ${isLocked ? 'disabled' : ''} aria-label="Add a ${unitLabel} for ${escapeHtml(m.player1.name)}">${p1Value}</button>
-        <button class="btn btn-minus" data-player="1" data-delta="-1" ${isLocked ? 'disabled' : ''}>−1</button>
+        <button class="btn btn-giant btn-score-number" data-player="1" data-delta="1" aria-label="Add a ${unitLabel} for ${escapeHtml(m.player1.name)}">${p1Value}</button>
+        <button class="btn btn-minus" data-player="1" data-delta="-1">−1</button>
       </div>
       <div class="player-controls">
         <div class="pname">${escapeHtml(m.player2.name)}</div>
-        <button class="btn btn-giant btn-score-number" data-player="2" data-delta="1" ${isLocked ? 'disabled' : ''} aria-label="Add a ${unitLabel} for ${escapeHtml(m.player2.name)}">${p2Value}</button>
-        <button class="btn btn-minus" data-player="2" data-delta="-1" ${isLocked ? 'disabled' : ''}>−1</button>
+        <button class="btn btn-giant btn-score-number" data-player="2" data-delta="1" aria-label="Add a ${unitLabel} for ${escapeHtml(m.player2.name)}">${p2Value}</button>
+        <button class="btn btn-minus" data-player="2" data-delta="-1">−1</button>
       </div>
     </div>
     <div class="match-actions">
@@ -341,13 +334,15 @@ function attachHandlers(m) {
     btn.addEventListener('click', async () => {
       root.querySelectorAll('.btn-giant, .btn-minus').forEach((b) => b.disabled = true);
       const body = { player: Number(btn.dataset.player), delta: Number(btn.dataset.delta) };
-      // Only send setIndex for an explicit correction to a set other than the
-      // natural active one — ordinary scoring must go through the plain path
-      // so the engine's own "match already decided" guard and auto-advance
-      // to the next set keep working (editSetScore intentionally has neither).
+      // Ordinary in-progress scoring goes through the plain path so the
+      // engine's auto-advance to the next set keeps working (editSetScore
+      // intentionally has none). But once the natural/active set has
+      // already decided the match, applyDelta just no-ops on it — so a
+      // correction there (e.g. undoing an over-click) has to go through
+      // editSetScore too, same as correcting any earlier set.
       const naturalIndex = m.status === 'LIVE' ? m.state.currentSet : m.state.sets.length - 1;
       const effIndex = getEffectiveSetIndex(m);
-      if (m.status !== 'LIVE' || effIndex !== naturalIndex) body.setIndex = effIndex;
+      if (m.status !== 'LIVE' || m.state.status === 'COMPLETE' || effIndex !== naturalIndex) body.setIndex = effIndex;
       const wasComplete = m.state.status === 'COMPLETE';
       try {
         const updated = await api(`/matches/${matchToken}/score`, { method: 'POST', body });
