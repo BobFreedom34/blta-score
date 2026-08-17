@@ -13,6 +13,16 @@ let debounceTimer = null;
 
 const listEl = document.getElementById('match-list');
 
+// Midnight-to-midnight for "today + offsetDays", in the viewer's local time.
+function getDayRange(offsetDays) {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offsetDays);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setHours(23, 59, 59, 999);
+  return { from: start.toISOString(), to: end.toISOString() };
+}
+
 // Monday-Sunday week containing "today + offsetWeeks*7", in the viewer's local time.
 function getWeekRange(offsetWeeks) {
   const now = new Date();
@@ -96,7 +106,11 @@ function buildFilterParams(filterKey) {
   } else if (f.dateFilter === 'none') {
     params.set('noDate', '1');
   } else if (f.status === 'PLANNED') {
-    if (currentTimeFilter === 'this_week') {
+    if (currentTimeFilter === 'today') {
+      const { from, to } = getDayRange(0);
+      params.set('from', from);
+      params.set('to', to);
+    } else if (currentTimeFilter === 'this_week') {
       const { from, to } = getWeekRange(0);
       params.set('from', from);
       params.set('to', to);
