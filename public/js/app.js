@@ -162,13 +162,14 @@ document.getElementById('filter-time').addEventListener('change', (e) => {
 });
 
 document.getElementById('embed-list-btn').addEventListener('click', () => {
-  // The embed widget only understands PLANNED/LIVE/FINISHED — the Scheduled
-  // and Not yet scheduled tabs both embed as the full Planned list.
-  const embedStatus = FILTERS[currentFilter].status;
-  const src = `${window.location.origin}/embed/live?status=${embedStatus}`;
-  const code = `<iframe src="${src}" width="100%" height="600" frameborder="0" style="border:0;max-width:480px"></iframe>`;
+  const f = FILTERS[currentFilter];
+  const src = new URL('/embed/live', window.location.origin);
+  src.searchParams.set('status', f.status);
+  if (f.dateFilter === 'has') src.searchParams.set('dateFilter', 'has');
+  else if (f.dateFilter === 'none') src.searchParams.set('dateFilter', 'none');
+  const code = `<iframe src="${src.toString()}" width="100%" height="600" frameborder="0" style="border:0;max-width:480px"></iframe>`;
   document.getElementById('embed-modal-desc').textContent =
-    `Paste this into a "Custom HTML" block on your blta.sk page to show the ${STATUS_LABELS[embedStatus].toLowerCase()} matches list:`;
+    `Paste this into a "Custom HTML" block on your blta.sk page to show the ${f.label.toLowerCase()} list:`;
   document.getElementById('embed-code').textContent = code;
   document.getElementById('copy-embed-btn').onclick = () => {
     copyToClipboard(code).then(() => toast('Embed code copied'));

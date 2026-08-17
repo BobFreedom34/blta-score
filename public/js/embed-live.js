@@ -5,17 +5,32 @@ const params = new URLSearchParams(window.location.search);
 const statusFilter = VALID_STATUSES.includes((params.get('status') || '').toUpperCase())
   ? params.get('status').toUpperCase()
   : 'LIVE';
+// Only meaningful when statusFilter is PLANNED — narrows to just the
+// Scheduled or just the Not yet scheduled subset, matching the home page's
+// dedicated tabs, instead of embedding the full combined Planned list.
+const dateFilter = statusFilter === 'PLANNED' && ['has', 'none'].includes(params.get('dateFilter'))
+  ? params.get('dateFilter')
+  : null;
 
 const HEADERS = {
   PLANNED: '🗓 Planned matches',
   LIVE: '🔴 Live now',
   FINISHED: '✅ Finished matches',
 };
+const PLANNED_DATE_HEADERS = { has: '📅 Scheduled matches', none: '🕓 Not yet scheduled' };
 const EMPTY_MESSAGES = {
   PLANNED: 'No planned matches right now.',
   LIVE: 'No live matches right now.',
   FINISHED: 'No finished matches yet.',
 };
+const PLANNED_DATE_EMPTY_MESSAGES = { has: 'No scheduled matches right now.', none: 'No unscheduled matches right now.' };
+
+function header() {
+  return dateFilter ? PLANNED_DATE_HEADERS[dateFilter] : HEADERS[statusFilter];
+}
+function emptyMessage() {
+  return dateFilter ? PLANNED_DATE_EMPTY_MESSAGES[dateFilter] : EMPTY_MESSAGES[statusFilter];
+}
 
 // Same card markup as the home page's match list, so an embedded widget
 // looks identical to (and shows the same information as) the live site.
@@ -43,10 +58,11 @@ function matchCardHtml(m) {
   `;
 }
 
-// Planned matches: same Scheduled / Not yet scheduled divider as the home
-// page's "All Matches" tab (the API already returns dated matches first).
+// Combined Planned list (no dateFilter): same Scheduled / Not yet scheduled
+// divider as the home page's "All Matches" tab. A dateFilter-scoped embed
+// already shows one kind only, so it skips the divider entirely.
 function buildListHtml(matches) {
-  if (statusFilter !== 'PLANNED') {
+  if (statusFilter !== 'PLANNED' || dateFilter) {
     return matches.map(matchCardHtml).join('');
   }
   const parts = [];
@@ -64,10 +80,14 @@ function buildListHtml(matches) {
 
 async function load() {
   try {
-    const matches = await api(`/matches?status=${statusFilter}`);
+    const qs = new URLSearchParams();
+    qs.set('status', statusFilter);
+    if (dateFilter === 'has') qs.set('hasDate', '1');
+    else if (dateFilter === 'none') qs.set('noDate', '1');
+    const matches = await api(`/matches?${qs.toString()}`);
     listEl.innerHTML = matches.length
-      ? `<div style="font-weight:800;margin-bottom:10px">${HEADERS[statusFilter]}</div><div class="match-list">${buildListHtml(matches)}</div>`
-      : `<div class="empty-state" style="padding:24px">${EMPTY_MESSAGES[statusFilter]}</div>`;
+      ? `<div style="font-weight:800;margin-bottom:10px">${header()}</div><div class="match-list">${buildListHtml(matches)}</div>`
+      : `<div class="empty-state" style="padding:24px">${emptyMessage()}</div>`;
   } catch {
     listEl.innerHTML = `<div class="empty-state">Could not load matches.</div>`;
   }
