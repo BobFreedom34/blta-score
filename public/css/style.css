@@ -7,6 +7,7 @@
   --ink: #0a0a0a;
   --charcoal: #202124;
   --gray: #656565;
+  --gray-dim: #9a9a9a;
   --gray-light: #efefef;
   --white: #ffffff;
   --danger: #c73f10;
@@ -305,7 +306,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #9a9a9a;
+  color: var(--gray-dim);
 }
 .match-list-heading {
   display: flex;
@@ -640,7 +641,7 @@ datalist {}
 body.embed { background: var(--white); }
 .embed .container { padding: 10px; max-width: none; }
 
-footer.credit { text-align: center; font-size: 11px; color: #9a9a9a; margin-top: 24px; }
+footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); margin-top: 24px; }
 
 /* ---------- Site footer ---------- */
 .site-footer { background: var(--ink); color: var(--white); margin-top: 48px; }

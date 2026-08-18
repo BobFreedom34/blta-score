@@ -166,7 +166,7 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
   // has no progress yet) will be played to — always visible while live,
   // since there's no fixed format to fall back on.
   const styleSwitcher = (showFinish && m.format === 'FREE_PLAY') ? `
-    <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em;margin-top:10px">Next set</div>
+    <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray-dim);font-weight:700;letter-spacing:0.03em;margin-top:10px">Next set</div>
     <div class="set-picker">
       <button type="button" class="set-picker-btn ${(m.state.nextSetStyle || 'REGULAR') === 'REGULAR' ? 'active' : ''}" data-set-style="REGULAR">Games to 6</button>
       <button type="button" class="set-picker-btn ${m.state.nextSetStyle === 'TB7' ? 'active' : ''}" data-set-style="TB7">Tiebreak to 7</button>
@@ -221,7 +221,7 @@ function controlsHtml(m) {
   if (!isAdminUser) return winnerCard;
   return `
     ${winnerCard}
-    <div style="text-align:center;font-size:12px;color:var(--gray);margin:14px 0 -6px">Admin: you can still correct any set below, or restart the match entirely.</div>
+    <div style="text-align:center;font-size:12px;color:var(--gray-dim);margin:14px 0 -6px">Admin: you can still correct any set below, or restart the match entirely.</div>
     ${scoreControlsHtml(m, { showFinish: false, showRestart: true })}
   `;
 }
@@ -284,8 +284,8 @@ function render(m) {
     <div class="match-header">
       <div>
         ${categoryBadge(m.category)} ${statusBadge(m.status)}
-        <h1 style="margin-top:8px">${escapeHtml(m.player1.name)} <span style="color:var(--gray);font-weight:500">vs</span> ${escapeHtml(m.player2.name)}</h1>
-        <div style="color:var(--gray);font-size:13px">${m.formatLabel}</div>
+        <h1 style="margin-top:8px">${escapeHtml(m.player1.name)} <span style="color:var(--gray-dim);font-weight:500">vs</span> ${escapeHtml(m.player2.name)}</h1>
+        <div style="color:var(--gray-dim);font-size:13px">${m.formatLabel}</div>
       </div>
     </div>
 
