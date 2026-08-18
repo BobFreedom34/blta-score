@@ -103,6 +103,23 @@ function isOverdueUnresolved(m) {
   });
 })();
 
+// Desktop-only scroll-to-top button — skipped on pages with no topbar
+// (the embed views), which are short widgets that don't need it.
+(function initScrollTop() {
+  if (!document.querySelector('.topbar')) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'scroll-top-btn';
+  btn.className = 'scroll-top-btn';
+  btn.setAttribute('aria-label', 'Scroll to top');
+  btn.textContent = '↑';
+  document.body.appendChild(btn);
+  window.addEventListener('scroll', () => {
+    btn.classList.toggle('visible', window.scrollY > 400);
+  });
+  btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+})();
+
 document.querySelectorAll('[data-close]').forEach((el) => {
   el.addEventListener('click', () => {
     document.getElementById(el.dataset.close).style.display = 'none';

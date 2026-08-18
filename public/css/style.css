@@ -43,7 +43,9 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .topbar {
   background: var(--ink);
   color: var(--white);
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 30;
 }
 .topbar-inner {
   max-width: 1080px;
@@ -636,6 +638,30 @@ datalist {}
   transition: opacity 0.2s ease;
 }
 .toast.show { opacity: 1; }
+
+.scroll-top-btn {
+  display: none;
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ink);
+  color: var(--white);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  z-index: 30;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+@media (min-width: 681px) {
+  .scroll-top-btn.visible { display: flex; align-items: center; justify-content: center; opacity: 1; transform: translateY(0); }
+}
 
 /* ---------- Embed views ---------- */
 body.embed { background: var(--white); }
