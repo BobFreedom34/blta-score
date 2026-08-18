@@ -39,10 +39,14 @@ function getWeekRange(offsetWeeks) {
 function notifyButtonsHtml(m) {
   const startDone = localStorage.getItem(`blta_notified_${m.token}_START`);
   const finishDone = localStorage.getItem(`blta_notified_${m.token}_FINISH`);
+  const startCount = m.notifyStartCount || 0;
+  const finishCount = m.notifyFinishCount || 0;
+  const startLabel = `${startDone ? '✓ Notified: start' : '🔔 Notify: start'}${startCount ? ` (${startCount})` : ''}`;
+  const finishLabel = `${finishDone ? '✓ Notified: finish' : '🏁 Notify: finish'}${finishCount ? ` (${finishCount})` : ''}`;
   return `
     <div class="notify-buttons-row">
-      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="START" ${startDone ? 'disabled' : ''}>${startDone ? '✓ Notified: start' : '🔔 Notify: start'}</button>
-      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="FINISH" ${finishDone ? 'disabled' : ''}>${finishDone ? '✓ Notified: finish' : '🏁 Notify: finish'}</button>
+      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="START" ${startDone ? 'disabled' : ''}>${startLabel}</button>
+      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="FINISH" ${finishDone ? 'disabled' : ''}>${finishLabel}</button>
     </div>
   `;
 }

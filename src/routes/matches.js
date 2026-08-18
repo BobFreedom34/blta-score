@@ -32,11 +32,22 @@ async function notifySubscribers(matchId, type, updated) {
   }
 }
 
+// How many people have ever activated each notification type for this
+// match — every row in match_notifications counts, regardless of whether
+// its email has already gone out.
+function getNotifyCounts(matchId) {
+  const rows = db.prepare('SELECT type, COUNT(*) AS cnt FROM match_notifications WHERE match_id = ? GROUP BY type').all(matchId);
+  const counts = { START: 0, FINISH: 0 };
+  for (const row of rows) counts[row.type] = row.cnt;
+  return counts;
+}
+
 function serialize(row) {
   const p1 = getPlayer(row.player1_id);
   const p2 = getPlayer(row.player2_id);
   const state = JSON.parse(row.state);
   const history = JSON.parse(row.history);
+  const notifyCounts = getNotifyCounts(row.id);
   return {
     token: row.share_token,
     category: row.category,
@@ -59,6 +70,8 @@ function serialize(row) {
     endReason: row.end_reason || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    notifyStartCount: notifyCounts.START,
+    notifyFinishCount: notifyCounts.FINISH,
     player1: p1,
     player2: p2,
   };
