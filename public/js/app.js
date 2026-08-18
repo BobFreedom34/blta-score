@@ -120,7 +120,7 @@ function buildFilterParams(filterKey) {
     params.set('hasDate', '1');
   } else if (f.dateFilter === 'none') {
     params.set('noDate', '1');
-  } else if (f.status === 'PLANNED') {
+  } else if (f.status === 'PLANNED' || f.status === 'FINISHED') {
     if (currentTimeFilter === 'today') {
       const { from, to } = getDayRange(0);
       params.set('from', from);
