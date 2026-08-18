@@ -21,7 +21,8 @@ html, body {
   margin: 0;
   padding: 0;
   background: #000;
-  background: radial-gradient(circle at 50% 0%, #161616 0%, #000 68%);
+  background: radial-gradient(ellipse 90% 75% at 55% 40%, #2c2c2c 0%, #1a1a1a 35%, #0a0a0a 65%, #000 100%);
+  background-attachment: fixed;
   color: var(--ink);
   font-family: 'Montserrat', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
