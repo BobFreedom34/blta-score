@@ -369,13 +369,16 @@ function attachHandlers(m) {
         // selection that happened to match the natural set as it finished
         // normally — follow onto it instead of staying pinned to the now-
         // finished one, same as live scoring always tracks the active set.
-        // Render right here rather than waiting on the matches:changed
-        // socket echo: the server broadcasts that before this response even
-        // arrives, so it would otherwise redraw with the still-stale index.
         if (updated.state.sets.length > setsBefore) {
           editSetIndex = updated.state.sets.length - 1;
-          render(updated);
         }
+        // Always render straight from this response rather than waiting on
+        // the matches:changed socket echo — on mobile, backgrounding the
+        // tab (screen lock, app switch) commonly drops the socket, so the
+        // echo can arrive late or not at all even though the score change
+        // itself went through; without this the screen was stuck showing
+        // the pre-click score until a manual page refresh.
+        render(updated);
         if (!wasComplete && updated.status === 'LIVE' && updated.state.status === 'COMPLETE') {
           offerFinish(updated);
         }
@@ -393,20 +396,20 @@ function attachHandlers(m) {
 
   root.querySelectorAll('.set-picker-btn[data-set-style]').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      try { await api(`/matches/${matchToken}/set-style`, { method: 'PATCH', body: { style: btn.dataset.setStyle } }); }
+      try { render(await api(`/matches/${matchToken}/set-style`, { method: 'PATCH', body: { style: btn.dataset.setStyle } })); }
       catch (err) { toast(err.message); }
     });
   });
 
   const pauseBtn = document.getElementById('pause-btn');
   if (pauseBtn) pauseBtn.addEventListener('click', async () => {
-    try { await api(`/matches/${matchToken}/pause`, { method: 'POST' }); }
+    try { render(await api(`/matches/${matchToken}/pause`, { method: 'POST' })); }
     catch (err) { toast(err.message); }
   });
 
   const resumeBtn = document.getElementById('resume-btn');
   if (resumeBtn) resumeBtn.addEventListener('click', async () => {
-    try { await api(`/matches/${matchToken}/resume`, { method: 'POST' }); }
+    try { render(await api(`/matches/${matchToken}/resume`, { method: 'POST' })); }
     catch (err) { toast(err.message); }
   });
 
@@ -414,9 +417,8 @@ function attachHandlers(m) {
   if (restartBtn) restartBtn.addEventListener('click', async () => {
     if (!confirm("Restart this match? The score and timer will be cleared and the match will go back to Planned. Are you sure?")) return;
     restartBtn.disabled = true;
-    try { await api(`/matches/${matchToken}/restart`, { method: 'POST' }); }
-    catch (err) { toast(err.message); }
-    restartBtn.disabled = false;
+    try { render(await api(`/matches/${matchToken}/restart`, { method: 'POST' })); }
+    catch (err) { toast(err.message); restartBtn.disabled = false; }
   });
 
   const finishBtn = document.getElementById('finish-btn');
@@ -434,6 +436,7 @@ function attachHandlers(m) {
     finishBtn.disabled = true;
     try {
       const finished = await api(`/matches/${matchToken}/finish`, { method: 'POST' });
+      render(finished);
       openWhatsAppResultModal(finished);
     }
     catch (err) { toast(err.message); finishBtn.disabled = false; }
@@ -455,7 +458,7 @@ function attachHandlers(m) {
     document.getElementById('cancel-location-btn').addEventListener('click', () => render(current));
     document.getElementById('save-location-btn').addEventListener('click', async () => {
       const val = document.getElementById('location-input').value.trim();
-      try { await api(`/matches/${matchToken}`, { method: 'PATCH', body: { location: val } }); }
+      try { render(await api(`/matches/${matchToken}`, { method: 'PATCH', body: { location: val } })); }
       catch (err) { toast(err.message); }
     });
   }));
@@ -478,7 +481,7 @@ function attachHandlers(m) {
     document.getElementById('date-input').focus();
     document.getElementById('cancel-date-btn').addEventListener('click', () => render(current));
     const saveDate = async (scheduledAt) => {
-      try { await api(`/matches/${matchToken}`, { method: 'PATCH', body: { scheduledAt } }); }
+      try { render(await api(`/matches/${matchToken}`, { method: 'PATCH', body: { scheduledAt } })); }
       catch (err) { toast(err.message); }
     };
     document.getElementById('save-date-btn').addEventListener('click', () => {
@@ -504,7 +507,7 @@ function attachHandlers(m) {
     document.getElementById('cancel-notes-btn').addEventListener('click', () => render(current));
     document.getElementById('save-notes-btn').addEventListener('click', async () => {
       const val = document.getElementById('notes-input').value.trim();
-      try { await api(`/matches/${matchToken}`, { method: 'PATCH', body: { notes: val } }); }
+      try { render(await api(`/matches/${matchToken}`, { method: 'PATCH', body: { notes: val } })); }
       catch (err) { toast(err.message); }
     });
   }));
@@ -563,6 +566,7 @@ function startMatch(firstServer) {
   if (startBtn) startBtn.disabled = true;
   document.getElementById('first-server-modal').style.display = 'none';
   api(`/matches/${matchToken}/start`, { method: 'POST', body: { firstServer } })
+    .then((updated) => render(updated))
     .catch((err) => {
       toast(err.message);
       if (startBtn) startBtn.disabled = false;
@@ -631,8 +635,9 @@ function openChangeFormatModal(m) {
       if (input.value === m.format) return;
       errorEl.textContent = '';
       try {
-        await api(`/matches/${matchToken}/format`, { method: 'PATCH', body: { format: input.value } });
+        const updated = await api(`/matches/${matchToken}/format`, { method: 'PATCH', body: { format: input.value } });
         document.getElementById('change-format-modal').style.display = 'none';
+        render(updated);
       } catch (err) {
         errorEl.textContent = err.message;
         input.checked = false;
@@ -692,6 +697,7 @@ function openFinishUndecidedModal(m) {
     try {
       const finished = await api(`/matches/${matchToken}/finish`, { method: 'POST', body: { winner, reason } });
       document.getElementById('finish-undecided-modal').style.display = 'none';
+      render(finished);
       openWhatsAppResultModal(finished);
     } catch (err) {
       toast(err.message);
@@ -719,7 +725,7 @@ function openShareModal(m) {
 function offerFinish(m) {
   if (!confirm(`${m.scoreSummary} — the match is decided! Finish it now?`)) return;
   api(`/matches/${matchToken}/finish`, { method: 'POST' })
-    .then((finished) => openWhatsAppResultModal(finished))
+    .then((finished) => { render(finished); openWhatsAppResultModal(finished); })
     .catch((err) => toast(err.message));
 }
 
@@ -864,6 +870,7 @@ function openManualResultModal(m) {
     try {
       const finished = await api(`/matches/${matchToken}/manual-result`, { method: 'POST', body });
       document.getElementById('manual-result-modal').style.display = 'none';
+      render(finished);
       openWhatsAppResultModal(finished);
     } catch (err) {
       errorEl.textContent = err.message;
