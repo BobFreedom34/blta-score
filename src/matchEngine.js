@@ -25,7 +25,7 @@ const FORMATS = {
   // rather than being fixed by position like the STB formats above.
   FREE_PLAY: {
     key: 'FREE_PLAY',
-    label: 'Free Play (training — sets added automatically, finish manually)',
+    label: 'Free Play',
     setsToWin: Infinity,
     finalSetSuperTiebreak: false,
   },
