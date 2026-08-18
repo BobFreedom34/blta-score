@@ -321,8 +321,8 @@ function render(m) {
 
     <div class="match-actions">
       <button class="btn btn-yellow" id="share-btn">🔗 Share</button>
-      <button class="btn btn-outline" id="embed-btn">🧩 Embed</button>
-      ${(m.status === 'LIVE' || m.status === 'PLANNED') ? '<button class="btn btn-outline" id="change-format-btn">🎾 Change format</button>' : ''}
+      <button class="btn" id="embed-btn">🧩 Embed</button>
+      ${(m.status === 'LIVE' || m.status === 'PLANNED') ? '<button class="btn" id="change-format-btn">🎾 Change format</button>' : ''}
       ${m.status === 'FINISHED' ? '<button class="btn btn-green" id="whatsapp-result-btn">📱 Send to WhatsApp</button>' : ''}
       ${isAdminUser || (m.status !== 'FINISHED' && !m.createdByAdmin) ? '<button class="btn btn-danger" id="delete-btn">🗑 Delete match</button>' : ''}
     </div>
