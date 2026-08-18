@@ -190,9 +190,9 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
     </div>
     <div class="match-actions">
       ${showFinish ? (m.pausedAt
-        ? '<button class="btn btn-outline" id="resume-btn">▶ Resume match</button>'
-        : '<button class="btn btn-outline" id="pause-btn">⏸ Stop match</button>') : ''}
-      ${showRestart ? '<button class="btn btn-outline" id="restart-btn">🔁 Restart match</button>' : ''}
+        ? '<button class="btn" id="resume-btn">▶ Resume match</button>'
+        : '<button class="btn" id="pause-btn">⏸ Stop match</button>') : ''}
+      ${showRestart ? '<button class="btn" id="restart-btn">🔁 Restart match</button>' : ''}
       ${showFinish ? '<button class="btn btn-dark" id="finish-btn">🏁 Finish match</button>' : ''}
     </div>
   `;
