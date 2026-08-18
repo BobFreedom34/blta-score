@@ -86,11 +86,17 @@ function matchCardHtml(m) {
 // first) — head each section, and insert a new heading right where that
 // switch happens. The dedicated Scheduled/Not yet scheduled tabs already
 // show one kind only, so they skip the headings entirely.
-function buildMatchListHtml(matches) {
+function buildMatchListHtml(matches, liveMatches) {
   if (currentFilter !== 'ALL') {
     return matches.map(matchCardHtml).join('');
   }
   const parts = [];
+  // Live sits in its own group above Scheduled/Not yet scheduled, and only
+  // appears at all when there's something live right now.
+  if (liveMatches && liveMatches.length) {
+    parts.push('<div class="match-list-heading">🔴 Live</div>');
+    parts.push(...liveMatches.map(matchCardHtml));
+  }
   matches.forEach((m, i) => {
     const curScheduled = !!m.scheduledAt;
     if (i === 0) {
@@ -137,12 +143,18 @@ function buildFilterParams(filterKey) {
 async function loadMatches() {
   const params = buildFilterParams(currentFilter);
   try {
-    const matches = await api(`/matches?${params.toString()}`);
-    if (matches.length === 0) {
+    // "All Matches" also folds in a Live group up top, on the same
+    // search/category filters — a separate request since the API only
+    // takes one status per call.
+    const [matches, liveMatches] = await Promise.all([
+      api(`/matches?${params.toString()}`),
+      currentFilter === 'ALL' ? api(`/matches?${buildFilterParams('LIVE').toString()}`) : Promise.resolve([]),
+    ]);
+    if (matches.length === 0 && liveMatches.length === 0) {
       const hasFilters = currentQuery || currentCategory || currentTimeFilter;
       listEl.innerHTML = `<div class="empty-state">No ${FILTERS[currentFilter].label.toLowerCase()} matches${hasFilters ? ' match your filters' : ''}.</div>`;
     } else {
-      listEl.innerHTML = buildMatchListHtml(matches);
+      listEl.innerHTML = buildMatchListHtml(matches, liveMatches);
     }
   } catch (err) {
     listEl.innerHTML = `<div class="empty-state">Could not load matches: ${escapeHtml(err.message)}</div>`;
@@ -153,7 +165,11 @@ async function refreshCounts() {
   for (const key of Object.keys(FILTERS)) {
     try {
       const params = buildFilterParams(key);
-      const matches = await api(`/matches?${params.toString()}`);
+      let matches = await api(`/matches?${params.toString()}`);
+      if (key === 'ALL') {
+        const liveMatches = await api(`/matches?${buildFilterParams('LIVE').toString()}`);
+        matches = matches.concat(liveMatches);
+      }
       const el = document.getElementById(`count-${key}`);
       if (el) el.textContent = matches.length;
     } catch { /* ignore */ }
