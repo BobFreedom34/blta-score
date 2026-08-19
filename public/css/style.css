@@ -335,6 +335,12 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 }
 .quick-schedule-btn { align-self: flex-start; }
 .notify-buttons-row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.add-calendar-btn .cal-compact { display: none; }
+@media (max-width: 680px) {
+  .add-calendar-btn { padding-left: 10px; padding-right: 10px; }
+  .add-calendar-btn .cal-full { display: none; }
+  .add-calendar-btn .cal-compact { display: inline; }
+}
 
 /* ---------- Forms ---------- */
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }

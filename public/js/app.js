@@ -36,6 +36,26 @@ function getWeekRange(offsetWeeks) {
   return { from: monday.toISOString(), to: sunday.toISOString() };
 }
 
+// Google Calendar's "quick add" URL — no API/auth needed, just opens their
+// prefilled event form in a new tab for the viewer to save themselves.
+// Duration isn't tracked for a match that hasn't started, so this defaults
+// to 2 hours.
+function googleCalendarUrl(m) {
+  const start = new Date(m.scheduledAt);
+  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  const fmt = (d) => d.toISOString().replace(/[-:]|\.\d{3}/g, '');
+  const text = `${m.player1.name} vs ${m.player2.name} — BLTA match`;
+  const details = `${m.formatLabel}\n${window.location.origin}/match/${m.token}`;
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text,
+    dates: `${fmt(start)}/${fmt(end)}`,
+    details,
+    location: m.location || '',
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 function notifyButtonsHtml(m) {
   const startDone = localStorage.getItem(`blta_notified_${m.token}_START`);
   const finishDone = localStorage.getItem(`blta_notified_${m.token}_FINISH`);
@@ -45,6 +65,7 @@ function notifyButtonsHtml(m) {
   const finishLabel = `${finishDone ? '✓ Notified: finish' : '🏁 Notify: finish'}${finishCount ? ` (${finishCount})` : ''}`;
   return `
     <div class="notify-buttons-row">
+      <button type="button" class="btn btn-sm btn-outline add-calendar-btn" data-url="${escapeHtml(googleCalendarUrl(m))}"><span class="cal-full">📅 Add to Calendar</span><span class="cal-compact">📅+</span></button>
       <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="START" ${startDone ? 'disabled' : ''}>${startLabel}</button>
       <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="FINISH" ${finishDone ? 'disabled' : ''}>${finishLabel}</button>
     </div>
@@ -245,6 +266,13 @@ function openNotifyModal(token, type) {
 }
 
 listEl.addEventListener('click', (e) => {
+  const calendarBtn = e.target.closest('.add-calendar-btn');
+  if (calendarBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    window.open(calendarBtn.dataset.url, '_blank', 'noopener');
+    return;
+  }
   const scheduleBtn = e.target.closest('.quick-schedule-btn');
   if (scheduleBtn) {
     e.preventDefault();
