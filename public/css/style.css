@@ -430,6 +430,7 @@ datalist {}
 .scoreboard td.name-cell { text-align: left; font-weight: 800; font-size: 18px; }
 .scoreboard .sub-tb { font-size: 11px; color: #9a9a9a; margin-left: 2px; }
 .scoreboard tr.winner-row td.name-cell::after { content: " \2713"; color: var(--yellow); }
+.scoreboard-reason { padding: 0 12px 12px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #9a9a9a; }
 .serve-ball { display: inline-block; margin-right: 6px; font-size: 14px; }
 
 /* Compact variant of .scoreboard, used on a match card in a list */

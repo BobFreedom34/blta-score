@@ -57,10 +57,28 @@ function cardScoreboardHtml(m) {
   const sets = m.status === 'LIVE'
     ? m.state.sets
     : m.state.sets.filter((s) => s.winner || s.p1 > 0 || s.p2 > 0 || (s.tiebreak && (s.tiebreak.p1 > 0 || s.tiebreak.p2 > 0)));
-  if (!sets.length) return '';
-  const headerCells = sets.map((s, i) => `<th>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</th>`).join('');
   const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
   const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
+  // A finished match with no games played at all (walkover/retirement before
+  // a point was scored) — keep the same dark scoreboard box as every other
+  // finished card instead of falling back to the plain light layout, just
+  // without a score table.
+  if (!sets.length) {
+    if (m.status !== 'FINISHED') return '';
+    const reasonLabel = m.endReason && END_REASON_LABELS[m.endReason] ? END_REASON_LABELS[m.endReason] : null;
+    return `
+      <div class="scoreboard scoreboard-compact">
+        <table>
+          <tbody>
+            <tr class="${winnerP1 ? 'winner-row' : ''}"><td class="name-cell">${escapeHtml(m.player1.name)}</td></tr>
+            <tr class="${winnerP2 ? 'winner-row' : ''}"><td class="name-cell">${escapeHtml(m.player2.name)}</td></tr>
+          </tbody>
+        </table>
+        ${reasonLabel ? `<div class="scoreboard-reason">${escapeHtml(reasonLabel)}</div>` : ''}
+      </div>
+    `;
+  }
+  const headerCells = sets.map((s, i) => `<th>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</th>`).join('');
   const row = (playerNum, player, isWinner) => {
     const cells = sets.map((s) => `<td class="set-score">${setCell(s, playerNum)}</td>`).join('');
     return `<tr class="${isWinner ? 'winner-row' : ''}"><td class="name-cell">${escapeHtml(player.name)}</td>${cells}</tr>`;
