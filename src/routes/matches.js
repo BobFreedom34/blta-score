@@ -103,7 +103,7 @@ function broadcast(req, row) {
 }
 
 router.get('/', (req, res) => {
-  const { status, category, q, from, to, noDate, hasDate } = req.query;
+  const { status, category, q, from, to, noDate, hasDate, playerId } = req.query;
   const clauses = [];
   const params = {};
   if (status) {
@@ -117,6 +117,10 @@ router.get('/', (req, res) => {
   if (q) {
     clauses.push('(p1.name LIKE @q OR p2.name LIKE @q)');
     params.q = `%${q}%`;
+  }
+  if (playerId) {
+    clauses.push('(m.player1_id = @playerId OR m.player2_id = @playerId)');
+    params.playerId = playerId;
   }
   if (noDate === '1') {
     clauses.push('m.scheduled_at IS NULL');

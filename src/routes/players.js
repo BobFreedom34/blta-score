@@ -16,6 +16,12 @@ router.get('/', (req, res) => {
   res.json(rows);
 });
 
+router.get('/:id', (req, res) => {
+  const player = db.prepare('SELECT * FROM players WHERE id = ?').get(req.params.id);
+  if (!player) return res.status(404).json({ error: 'Player not found' });
+  res.json(player);
+});
+
 // Note: players can still be auto-created when someone plans a new match with
 // a new name (see resolvePlayer in routes/matches.js) — that stays open to
 // everyone. Only the dedicated Players page (add/rename/delete) is admin-only.

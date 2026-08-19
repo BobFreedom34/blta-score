@@ -78,6 +78,7 @@ app.get('/match/:token', (req, res) => {
 
   res.send(matchTemplate.replace(MATCH_TITLE_TAG, metaTags));
 });
+app.get('/player/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'player.html')));
 app.get('/embed/match/:token', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-match.html')));
 app.get('/embed/live', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-live.html')));
 

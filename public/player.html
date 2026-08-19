@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLTA Score — Player</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/"><img src="/img/blta-logo.png" alt="BLTA" class="brand-logo"><small>SCORE</small></a>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">☰</button>
+    <nav class="nav-links" id="nav-links">
+      <a href="/">Matches</a>
+      <a href="/players">Players</a>
+      <a href="/new-match">+ New match</a>
+      <a href="#" class="player-login-link" id="player-login-link">LOG IN AS PLAYER</a>
+    </nav>
+  </div>
+</div>
+
+<div class="container">
+  <h1 style="margin-top:22px" id="player-name">Loading…</h1>
+
+  <div class="match-list" id="player-match-list"></div>
+</div>
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <span>BLTA Score</span>
+    <a href="/admin">Admin</a>
+  </div>
+</footer>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/player.js"></script>
+</body>
+</html>

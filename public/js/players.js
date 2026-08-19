@@ -12,7 +12,7 @@ function playerRowHtml(p) {
   ` : '';
   return `
     <div class="player-row" data-id="${p.id}">
-      <span class="player-name">${escapeHtml(p.name)}</span>
+      <a class="player-name" href="/player/${p.id}">${escapeHtml(p.name)}</a>
       ${actions}
     </div>
   `;
