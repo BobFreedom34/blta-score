@@ -222,6 +222,16 @@ document.getElementById('filter-time').addEventListener('change', (e) => {
   currentTimeFilter = e.target.value;
   loadMatches();
 });
+document.getElementById('reset-filters-btn').addEventListener('click', () => {
+  currentQuery = '';
+  currentCategory = '';
+  currentTimeFilter = '';
+  document.getElementById('filter-q').value = '';
+  document.getElementById('filter-category').value = '';
+  document.getElementById('filter-time').value = '';
+  loadMatches();
+  refreshCounts();
+});
 
 document.getElementById('embed-list-btn').addEventListener('click', () => {
   const f = FILTERS[currentFilter];
