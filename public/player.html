@@ -24,6 +24,18 @@
 <div class="container">
   <h1 style="margin-top:22px" id="player-name">Loading…</h1>
 
+  <div class="filters">
+    <select id="result-filter">
+      <option value="">All results</option>
+      <option value="won">Won</option>
+      <option value="lost">Lost</option>
+    </select>
+    <select id="year-filter">
+      <option value="">All years</option>
+    </select>
+    <button type="button" class="btn btn-outline" id="reset-filters-btn"><span style="color:var(--orange)">✕</span> Reset filters</button>
+  </div>
+
   <div class="match-list" id="player-match-list"></div>
 </div>
 

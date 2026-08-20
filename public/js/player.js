@@ -1,6 +1,12 @@
 const playerId = window.location.pathname.split('/').filter(Boolean).pop();
 const nameEl = document.getElementById('player-name');
 const listEl = document.getElementById('player-match-list');
+const resultFilterEl = document.getElementById('result-filter');
+const yearFilterEl = document.getElementById('year-filter');
+
+let currentResult = '';
+let currentYear = '';
+let rawGroups = []; // last-fetched matches per GROUPS entry, unfiltered
 
 // Same card markup as the home page's match list, minus the quick-schedule/
 // notify actions (this page is a read-only history view for one player).
@@ -42,23 +48,67 @@ const GROUPS = [
   { heading: '✅ Finished', params: { status: 'FINISHED' } },
 ];
 
+function matchYear(m) {
+  return m.scheduledAt ? new Date(m.scheduledAt).getFullYear() : null;
+}
+
+// Won/Lost only ever matches a finished match with a decided winner, so
+// picking either one naturally empties (and hides) the Live/Scheduled/Not
+// yet scheduled groups without any special-casing here.
+function passesFilters(m) {
+  if (currentResult === 'won' && m.winnerId !== Number(playerId)) return false;
+  if (currentResult === 'lost' && (!m.winnerId || m.winnerId === Number(playerId))) return false;
+  if (currentYear && String(matchYear(m)) !== currentYear) return false;
+  return true;
+}
+
+function populateYearOptions() {
+  const years = [...new Set(rawGroups.flat().filter((m) => m.scheduledAt).map(matchYear))].sort((a, b) => b - a);
+  const keep = yearFilterEl.value;
+  yearFilterEl.innerHTML = '<option value="">All years</option>' + years.map((y) => `<option value="${y}">${y}</option>`).join('');
+  yearFilterEl.value = years.some((y) => String(y) === keep) ? keep : '';
+  currentYear = yearFilterEl.value;
+}
+
+function render() {
+  const parts = [];
+  rawGroups.forEach((matches, i) => {
+    const filtered = matches.filter(passesFilters);
+    if (!filtered.length) return;
+    parts.push(`<div class="match-list-heading">${GROUPS[i].heading}</div>`);
+    parts.push(...filtered.map(matchCardHtml));
+  });
+  listEl.innerHTML = parts.length ? parts.join('') : '<div class="empty-state">No matches match your filters.</div>';
+}
+
 async function load() {
   try {
-    const results = await Promise.all(GROUPS.map((g) => {
+    rawGroups = await Promise.all(GROUPS.map((g) => {
       const qs = new URLSearchParams({ playerId, ...g.params });
       return api(`/matches?${qs.toString()}`);
     }));
-    const parts = [];
-    results.forEach((matches, i) => {
-      if (!matches.length) return;
-      parts.push(`<div class="match-list-heading">${GROUPS[i].heading}</div>`);
-      parts.push(...matches.map(matchCardHtml));
-    });
-    listEl.innerHTML = parts.length ? parts.join('') : '<div class="empty-state">No matches yet.</div>';
+    populateYearOptions();
+    render();
   } catch (err) {
     listEl.innerHTML = `<div class="empty-state">Could not load matches: ${escapeHtml(err.message)}</div>`;
   }
 }
+
+resultFilterEl.addEventListener('change', (e) => {
+  currentResult = e.target.value;
+  render();
+});
+yearFilterEl.addEventListener('change', (e) => {
+  currentYear = e.target.value;
+  render();
+});
+document.getElementById('reset-filters-btn').addEventListener('click', () => {
+  currentResult = '';
+  currentYear = '';
+  resultFilterEl.value = '';
+  yearFilterEl.value = '';
+  render();
+});
 
 (async () => {
   try {
