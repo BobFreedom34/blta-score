@@ -1,7 +1,7 @@
 const FILTERS = {
   ALL: { status: 'PLANNED', label: 'All Matches' },
   SCHEDULED: { status: 'PLANNED', dateFilter: 'has', label: 'Scheduled' },
-  UNSCHEDULED: { status: 'PLANNED', dateFilter: 'none', label: 'Not yet scheduled' },
+  UNSCHEDULED: { status: 'PLANNED', dateFilter: 'none', label: 'Planned' },
   LIVE: { status: 'LIVE', label: 'Live' },
   FINISHED: { status: 'FINISHED', label: 'Finished' },
 };
@@ -123,9 +123,9 @@ function buildMatchListHtml(matches, liveMatches) {
   matches.forEach((m, i) => {
     const curScheduled = !!m.scheduledAt;
     if (i === 0) {
-      parts.push(`<div class="match-list-heading">${curScheduled ? '📅 Scheduled' : '🕓 Not yet scheduled'}</div>`);
+      parts.push(`<div class="match-list-heading">${curScheduled ? '📅 Scheduled' : '🕓 Planned'}</div>`);
     } else if (matches[i - 1].scheduledAt && !curScheduled) {
-      parts.push('<div class="match-list-heading">🕓 Not yet scheduled</div>');
+      parts.push('<div class="match-list-heading">🕓 Planned</div>');
     }
     parts.push(matchCardHtml(m));
   });

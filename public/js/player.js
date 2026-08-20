@@ -44,7 +44,7 @@ function matchCardHtml(m) {
 const GROUPS = [
   { heading: '🔴 Live', params: { status: 'LIVE' } },
   { heading: '📅 Scheduled', params: { status: 'PLANNED', hasDate: '1' } },
-  { heading: '🕓 Not yet scheduled', params: { status: 'PLANNED', noDate: '1' } },
+  { heading: '🕓 Planned', params: { status: 'PLANNED', noDate: '1' } },
   { heading: '✅ Finished', params: { status: 'FINISHED' } },
 ];
 

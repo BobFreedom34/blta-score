@@ -17,7 +17,7 @@ const HEADERS = {
   LIVE: '🔴 Live now',
   FINISHED: '✅ Finished matches',
 };
-const PLANNED_DATE_HEADERS = { has: '📅 Scheduled matches', none: '🕓 Not yet scheduled' };
+const PLANNED_DATE_HEADERS = { has: '📅 Scheduled matches', none: '🕓 Planned' };
 const EMPTY_MESSAGES = {
   PLANNED: 'No planned matches right now.',
   LIVE: 'No live matches right now.',
@@ -76,9 +76,9 @@ function buildListHtml(matches) {
   matches.forEach((m, i) => {
     const curScheduled = !!m.scheduledAt;
     if (i === 0) {
-      parts.push(`<div class="match-list-heading">${curScheduled ? '📅 Scheduled' : '🕓 Not yet scheduled'}</div>`);
+      parts.push(`<div class="match-list-heading">${curScheduled ? '📅 Scheduled' : '🕓 Planned'}</div>`);
     } else if (matches[i - 1].scheduledAt && !curScheduled) {
-      parts.push('<div class="match-list-heading">🕓 Not yet scheduled</div>');
+      parts.push('<div class="match-list-heading">🕓 Planned</div>');
     }
     parts.push(matchCardHtml(m));
   });
