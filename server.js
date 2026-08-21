@@ -82,12 +82,36 @@ app.get('/player/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'player.
 app.get('/embed/match/:token', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-match.html')));
 app.get('/embed/live', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-live.html')));
 
+// Live viewer count for a match room — everyone in the room gets the
+// updated headcount whenever someone joins, leaves, or disconnects.
+function broadcastViewerCount(room) {
+  const count = io.sockets.adapter.rooms.get(room)?.size || 0;
+  io.to(room).emit('viewers:count', { room, count });
+}
+
 io.on('connection', (socket) => {
   socket.on('join', (room) => {
-    if (typeof room === 'string' && room.length < 100) socket.join(room);
+    if (typeof room === 'string' && room.length < 100) {
+      socket.join(room);
+      if (room.startsWith('match:')) broadcastViewerCount(room);
+    }
   });
   socket.on('leave', (room) => {
-    if (typeof room === 'string') socket.leave(room);
+    if (typeof room === 'string') {
+      socket.leave(room);
+      if (room.startsWith('match:')) broadcastViewerCount(room);
+    }
+  });
+  // Fires while the socket is still a member of its rooms, so the room size
+  // read here still includes this socket — subtract 1 to report the count
+  // as it will be right after the disconnect completes.
+  socket.on('disconnecting', () => {
+    for (const room of socket.rooms) {
+      if (room.startsWith('match:')) {
+        const count = Math.max(0, (io.sockets.adapter.rooms.get(room)?.size || 1) - 1);
+        io.to(room).emit('viewers:count', { room, count });
+      }
+    }
   });
 });
 

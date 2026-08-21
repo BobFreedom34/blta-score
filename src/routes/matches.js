@@ -294,7 +294,7 @@ router.post('/:token/start', requirePlayer, async (req, res) => {
 // open to anyone, same as scoring itself. Rejected if it would retroactively
 // decide the match from the sets already played (see engine.applyFormatChange);
 // that never actually triggers for a still-Planned match, only a LIVE one.
-router.patch('/:token/format', (req, res) => {
+router.patch('/:token/format', requirePlayer, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status !== 'LIVE' && row.status !== 'PLANNED') {
@@ -323,8 +323,8 @@ router.patch('/:token/format', (req, res) => {
 });
 
 // Free Play only: choose how the next set is played (games to 6 / 7-point
-// tiebreak / 10-point tiebreak) — open to anyone while LIVE, same as scoring.
-router.patch('/:token/set-style', (req, res) => {
+// tiebreak / 10-point tiebreak) — requires a player/admin login, same as scoring.
+router.patch('/:token/set-style', requirePlayer, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status !== 'LIVE') {
@@ -342,7 +342,7 @@ router.patch('/:token/set-style', (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/pause', (req, res) => {
+router.post('/:token/pause', requirePlayer, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status !== 'LIVE') {
@@ -358,7 +358,7 @@ router.post('/:token/pause', (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/resume', (req, res) => {
+router.post('/:token/resume', requirePlayer, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status !== 'LIVE') {
@@ -376,7 +376,7 @@ router.post('/:token/resume', (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/restart', (req, res) => {
+router.post('/:token/restart', requirePlayer, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status === 'FINISHED') {
@@ -399,7 +399,7 @@ router.post('/:token/restart', (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/score', (req, res) => {
+router.post('/:token/score', requirePlayer, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status === 'PLANNED') {
@@ -468,7 +468,7 @@ router.post('/:token/score', (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/undo', (req, res) => {
+router.post('/:token/undo', requirePlayer, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status === 'FINISHED' && !isAdmin(req)) {
@@ -488,7 +488,7 @@ router.post('/:token/undo', (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/finish', async (req, res) => {
+router.post('/:token/finish', requirePlayer, async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (row.status !== 'LIVE') {

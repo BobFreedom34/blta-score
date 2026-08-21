@@ -6,6 +6,7 @@ let isAdminUser = false;
 let messages = [];
 let chatDraftBody = '';
 let editSetIndex = null;
+let viewerCount = null;
 
 // Mirrors src/matchEngine.js FORMATS — only the bits needed to build the
 // manual-result-entry form (how many sets, and whether the last one is a
@@ -283,7 +284,7 @@ function render(m) {
   root.innerHTML = `
     <div class="match-header">
       <div>
-        ${categoryBadge(m.category)} ${statusBadge(m.status)}
+        ${categoryBadge(m.category)} ${statusBadge(m.status)}${m.status === 'LIVE' ? ` <span class="badge badge-viewers" id="viewer-count-badge">👀 ${viewerCount !== null ? viewerCount : '…'} watching</span>` : ''}
         <h1 style="margin-top:8px">${escapeHtml(m.player1.name)} <span style="color:var(--gray-dim);font-weight:500">vs</span> ${escapeHtml(m.player2.name)}</h1>
         <div style="color:var(--gray-dim);font-size:13px">${m.formatLabel}</div>
       </div>
@@ -348,7 +349,7 @@ function attachHandlers(m) {
   if (manualResultBtn) manualResultBtn.addEventListener('click', () => requirePlayerAuth(() => openManualResultModal(m)));
 
   root.querySelectorAll('.btn-giant, .btn-minus').forEach((btn) => {
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', () => requirePlayerAuth(async () => {
       root.querySelectorAll('.btn-giant, .btn-minus').forEach((b) => b.disabled = true);
       const body = { player: Number(btn.dataset.player), delta: Number(btn.dataset.delta) };
       // Ordinary in-progress scoring goes through the plain path so the
@@ -384,7 +385,7 @@ function attachHandlers(m) {
         }
       } catch (err) { toast(err.message); }
       root.querySelectorAll('.btn-giant, .btn-minus').forEach((b) => b.disabled = false);
-    });
+    }));
   });
 
   root.querySelectorAll('.set-picker-btn[data-set-index]').forEach((btn) => {
@@ -395,34 +396,34 @@ function attachHandlers(m) {
   });
 
   root.querySelectorAll('.set-picker-btn[data-set-style]').forEach((btn) => {
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', () => requirePlayerAuth(async () => {
       try { render(await api(`/matches/${matchToken}/set-style`, { method: 'PATCH', body: { style: btn.dataset.setStyle } })); }
       catch (err) { toast(err.message); }
-    });
+    }));
   });
 
   const pauseBtn = document.getElementById('pause-btn');
-  if (pauseBtn) pauseBtn.addEventListener('click', async () => {
+  if (pauseBtn) pauseBtn.addEventListener('click', () => requirePlayerAuth(async () => {
     try { render(await api(`/matches/${matchToken}/pause`, { method: 'POST' })); }
     catch (err) { toast(err.message); }
-  });
+  }));
 
   const resumeBtn = document.getElementById('resume-btn');
-  if (resumeBtn) resumeBtn.addEventListener('click', async () => {
+  if (resumeBtn) resumeBtn.addEventListener('click', () => requirePlayerAuth(async () => {
     try { render(await api(`/matches/${matchToken}/resume`, { method: 'POST' })); }
     catch (err) { toast(err.message); }
-  });
+  }));
 
   const restartBtn = document.getElementById('restart-btn');
-  if (restartBtn) restartBtn.addEventListener('click', async () => {
+  if (restartBtn) restartBtn.addEventListener('click', () => requirePlayerAuth(async () => {
     if (!confirm("Restart this match? The score and timer will be cleared and the match will go back to Planned. Are you sure?")) return;
     restartBtn.disabled = true;
     try { render(await api(`/matches/${matchToken}/restart`, { method: 'POST' })); }
     catch (err) { toast(err.message); restartBtn.disabled = false; }
-  });
+  }));
 
   const finishBtn = document.getElementById('finish-btn');
-  if (finishBtn) finishBtn.addEventListener('click', async () => {
+  if (finishBtn) finishBtn.addEventListener('click', () => requirePlayerAuth(async () => {
     // Free Play never reaches state.status === 'COMPLETE' on its own — but
     // if one player has clearly won more sets, finishing is just a normal
     // decided finish (the server picks that player); only a genuine tie
@@ -440,7 +441,7 @@ function attachHandlers(m) {
       openWhatsAppResultModal(finished);
     }
     catch (err) { toast(err.message); finishBtn.disabled = false; }
-  });
+  }));
 
   const editLink = document.getElementById('edit-location-link');
   if (editLink) editLink.addEventListener('click', () => requirePlayerAuth(() => {
@@ -542,7 +543,7 @@ function attachHandlers(m) {
   const embedBtn = document.getElementById('embed-btn');
   if (embedBtn) embedBtn.addEventListener('click', () => openEmbedModal(m));
   const changeFormatBtn = document.getElementById('change-format-btn');
-  if (changeFormatBtn) changeFormatBtn.addEventListener('click', () => openChangeFormatModal(m));
+  if (changeFormatBtn) changeFormatBtn.addEventListener('click', () => requirePlayerAuth(() => openChangeFormatModal(m)));
   const whatsappResultBtn = document.getElementById('whatsapp-result-btn');
   if (whatsappResultBtn) whatsappResultBtn.addEventListener('click', () => openWhatsAppResultModal(m));
 
@@ -898,6 +899,12 @@ async function init() {
   socket.on('message:new', ({ token, message }) => {
     if (token !== matchToken) return;
     appendChatMessage(message);
+  });
+  socket.on('viewers:count', ({ room, count }) => {
+    if (room !== `match:${matchToken}`) return;
+    viewerCount = count;
+    const badge = document.getElementById('viewer-count-badge');
+    if (badge) badge.textContent = `👀 ${count} watching`;
   });
 }
 init();
