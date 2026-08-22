@@ -6,14 +6,14 @@ const FORMATS = {
   BO3: { key: 'BO3', label: 'Best of 3 sets', setsToWin: 2, finalSetSuperTiebreak: false },
   BO3_STB: {
     key: 'BO3_STB',
-    label: 'Best of 3 sets (deciding set: match tiebreak to 10)',
+    label: 'Best of 3 sets (Super Tie-break)',
     setsToWin: 2,
     finalSetSuperTiebreak: true,
   },
   BO5: { key: 'BO5', label: 'Best of 5 sets', setsToWin: 3, finalSetSuperTiebreak: false },
   BO5_STB: {
     key: 'BO5_STB',
-    label: 'Best of 5 sets (deciding set: match tiebreak to 10)',
+    label: 'Best of 5 sets (Super Tie-break)',
     setsToWin: 3,
     finalSetSuperTiebreak: true,
   },
