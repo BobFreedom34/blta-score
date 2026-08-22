@@ -11,6 +11,18 @@ function matchResultText(m) {
   return parts.join(' — ') || '—';
 }
 
+// Same text as matchResultText, but for a Planned match whose format label
+// has a parenthetical qualifier (e.g. "Best of 3 sets (Super Tie-break)"),
+// breaks it onto its own line so it doesn't crowd the format's main name.
+function matchScoreHtml(m) {
+  const text = matchResultText(m);
+  if (m.status === 'PLANNED') {
+    const idx = text.indexOf(' (');
+    if (idx !== -1) return `${escapeHtml(text.slice(0, idx))}<br>${escapeHtml(text.slice(idx + 1))}`;
+  }
+  return escapeHtml(text);
+}
+
 // Mirrors match.js's own render of a single set's score for one player,
 // including the small tiebreak-loser superscript — shared here so a match
 // card's compact scoreboard (below) and the full match-page scoreboard
