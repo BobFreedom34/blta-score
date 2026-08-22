@@ -138,9 +138,13 @@ router.get('/', (req, res) => {
   const orderBy = status === 'PLANNED'
     ? 'ORDER BY (m.scheduled_at IS NULL) ASC, m.scheduled_at ASC, m.created_at DESC'
     : status === 'FINISHED'
-      // Manually-entered results have no real end_time — fall back to
-      // updated_at so they still sort in by when they were recorded.
-      ? 'ORDER BY COALESCE(m.end_time, m.updated_at) DESC'
+      // Sort by when the match was actually played, not by database
+      // bookkeeping — a manually-entered or bulk-imported result has no
+      // real end_time (and its updated_at is just whenever it was typed
+      // in), so both would otherwise bury genuinely old matches under
+      // whatever was most recently recorded, regardless of when it was
+      // actually played.
+      ? 'ORDER BY COALESCE(m.scheduled_at, m.end_time, m.updated_at) DESC'
       : `ORDER BY
           CASE m.status WHEN 'LIVE' THEN 0 WHEN 'PLANNED' THEN 1 ELSE 2 END,
           COALESCE(m.scheduled_at, m.created_at) DESC`;
