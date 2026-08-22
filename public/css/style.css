@@ -455,6 +455,29 @@ datalist {}
 .scoreboard td.name-cell { text-align: left; font-weight: 800; font-size: 18px; }
 .scoreboard .sub-tb { font-size: 11px; color: #9a9a9a; margin-left: 2px; }
 .scoreboard tr.winner-row td.name-cell::after { content: " \2713"; color: var(--yellow); }
+.player-info-btn, .player-info-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.3px solid currentColor;
+  color: inherit;
+  background: none;
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 700;
+  font-family: Georgia, serif;
+  line-height: 1;
+  margin-left: 6px;
+  vertical-align: middle;
+  cursor: pointer;
+  opacity: 0.6;
+  padding: 0;
+  text-decoration: none;
+}
+.player-info-btn:hover, .player-info-link:hover { opacity: 1; }
 .scoreboard-reason { padding: 0 12px 12px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #9a9a9a; }
 .serve-ball { display: inline-block; margin-right: 6px; font-size: 14px; }
 

@@ -28,9 +28,9 @@ function matchCardHtml(m) {
         <div class="match-players-box">
           <div class="match-players">
             <div>
-              <div class="name ${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}</div>
+              <div class="name ${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}${playerInfoBtn(m.player1)}</div>
               <div class="vs">vs</div>
-              <div class="name ${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}</div>
+              <div class="name ${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}${playerInfoBtn(m.player2)}</div>
             </div>
             <div class="match-score">${matchScoreHtml(m)}</div>
           </div>

@@ -58,6 +58,16 @@ function cardDurationHtml(m) {
   return '';
 }
 
+// Small "i" next to a player's name that opens their profile page — a plain
+// <a> would be invalid (and misbehave) nested inside a match card's own
+// <a>, so this is a button that stops the click from also navigating the
+// card, then opens the profile in a new tab itself (also matters for the
+// embed widget, whose cards live inside an iframe on someone else's site —
+// same-tab navigation there would replace the whole widget).
+function playerInfoBtn(player) {
+  return `<button type="button" class="player-info-btn" title="View ${escapeHtml(player.name)}'s profile" onclick="event.stopPropagation();window.open('/player/${player.id}','_blank')">i</button>`;
+}
+
 // Compact per-set scoreboard for a match card (LIVE/FINISHED) — same dark
 // table as the full match page, just condensed, with the same timer chip in
 // its header cell. For a LIVE match this always shows (even at a fresh
@@ -82,8 +92,8 @@ function cardScoreboardHtml(m) {
       <div class="scoreboard scoreboard-compact">
         <table>
           <tbody>
-            <tr class="${winnerP1 ? 'winner-row' : ''}"><td class="name-cell">${escapeHtml(m.player1.name)}</td></tr>
-            <tr class="${winnerP2 ? 'winner-row' : ''}"><td class="name-cell">${escapeHtml(m.player2.name)}</td></tr>
+            <tr class="${winnerP1 ? 'winner-row' : ''}"><td class="name-cell">${escapeHtml(m.player1.name)}${playerInfoBtn(m.player1)}</td></tr>
+            <tr class="${winnerP2 ? 'winner-row' : ''}"><td class="name-cell">${escapeHtml(m.player2.name)}${playerInfoBtn(m.player2)}</td></tr>
           </tbody>
         </table>
         ${reasonLabel ? `<div class="scoreboard-reason">${escapeHtml(reasonLabel)}</div>` : ''}
@@ -93,7 +103,7 @@ function cardScoreboardHtml(m) {
   const headerCells = sets.map((s, i) => `<th>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</th>`).join('');
   const row = (playerNum, player, isWinner) => {
     const cells = sets.map((s) => `<td class="set-score">${setCell(s, playerNum)}</td>`).join('');
-    return `<tr class="${isWinner ? 'winner-row' : ''}"><td class="name-cell">${escapeHtml(player.name)}</td>${cells}</tr>`;
+    return `<tr class="${isWinner ? 'winner-row' : ''}"><td class="name-cell">${escapeHtml(player.name)}${playerInfoBtn(player)}</td>${cells}</tr>`;
   };
   return `
     <div class="scoreboard scoreboard-compact">
