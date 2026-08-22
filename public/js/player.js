@@ -70,6 +70,22 @@ function populateYearOptions() {
   currentYear = yearFilterEl.value;
 }
 
+// Career record, always computed from the full finished-match history —
+// independent of the result/year filters below, which only narrow the list.
+function renderStats() {
+  const finished = rawGroups[3] || [];
+  let wins = 0;
+  let losses = 0;
+  finished.forEach((m) => {
+    if (m.winnerId === Number(playerId)) wins += 1;
+    else if (m.winnerId) losses += 1;
+  });
+  const played = wins + losses;
+  document.getElementById('stat-played').textContent = played;
+  document.getElementById('stat-wl').textContent = `${wins} — ${losses}`;
+  document.getElementById('stat-pct').textContent = played ? `${Math.round((wins / played) * 100)}%` : '—';
+}
+
 function render() {
   const parts = [];
   rawGroups.forEach((matches, i) => {
@@ -88,6 +104,7 @@ async function load() {
       return api(`/matches?${qs.toString()}`);
     }));
     populateYearOptions();
+    renderStats();
     render();
   } catch (err) {
     listEl.innerHTML = `<div class="empty-state">Could not load matches: ${escapeHtml(err.message)}</div>`;
