@@ -34,7 +34,8 @@ function renderLoggedIn() {
     <p style="margin-top:0">✅ You're logged in as admin on this device.</p>
     <p style="color:var(--gray);font-size:13px">
       You'll now see Add / Edit / Delete on the <a href="/players" style="text-decoration:underline">Players</a> page,
-      and can correct the score or location of a finished match.
+      can correct the score or location of a finished match, and can
+      <a href="/badges-admin" style="text-decoration:underline">manage badges</a>.
     </p>
     <button type="button" class="btn btn-outline" id="logout-btn">Log out</button>
   `;

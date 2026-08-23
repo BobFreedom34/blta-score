@@ -103,12 +103,17 @@ function renderStats() {
   fillStats('overall', computeRecord(finished));
 }
 
+// Badge definitions are admin-managed (see /badges-admin) — fetched once
+// and cached, since they don't change mid-session.
+let badgeDefsCache = null;
+
 // Same full finished-match history as renderStats() — badges are always
 // computed from a player's whole career, not the filtered match list.
-function renderBadges() {
+async function renderBadges() {
+  if (!badgeDefsCache) badgeDefsCache = await api('/badges');
   const finished = rawGroups[3] || [];
-  const earned = computeEarnedBadges(playerId, finished);
-  document.getElementById('badges-grid').innerHTML = badgesGridHtml(earned);
+  const earned = computeEarnedBadges(playerId, finished, badgeDefsCache);
+  document.getElementById('badges-grid').innerHTML = badgesGridHtml(badgeDefsCache, earned);
 }
 
 // Per-opponent win/loss record, built from the same full finished-match
@@ -190,7 +195,7 @@ async function load() {
     }));
     populateYearOptions();
     renderStats();
-    renderBadges();
+    await renderBadges();
     renderH2H();
     render();
   } catch (err) {

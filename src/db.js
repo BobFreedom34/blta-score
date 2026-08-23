@@ -185,4 +185,40 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_push_subscriptions_match_id ON push_subscriptions(match_id);
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS badge_definitions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    icon TEXT NOT NULL,
+    logic_type TEXT NOT NULL CHECK (logic_type IN ('GAMES_PLAYED','WINS','WIN_STREAK','CATEGORY_SWEEP','BAGEL','COMEBACK','STRAIGHT_SETS')),
+    threshold INTEGER,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+
+// Seed the original 10 badges once, the first time this table is empty —
+// after that, admins own this data entirely (add/edit/delete via the
+// badges admin page), so this never runs again once rows exist.
+const badgeCount = db.prepare('SELECT COUNT(*) AS c FROM badge_definitions').get().c;
+if (badgeCount === 0) {
+  const seedBadge = db.prepare(
+    'INSERT INTO badge_definitions (name, description, icon, logic_type, threshold, sort_order) VALUES (?, ?, ?, ?, ?, ?)'
+  );
+  [
+    ['First serve', 'Play your 1st match', '🎾', 'GAMES_PLAYED', 1, 0],
+    ['Warm-up complete', 'Play 10 matches', '🔟', 'GAMES_PLAYED', 10, 1],
+    ['Marathon player', 'Play 25 matches', '🏃', 'GAMES_PLAYED', 25, 2],
+    ['Century club', 'Play 100 matches', '🏆', 'GAMES_PLAYED', 100, 3],
+    ['First win', 'Win your 1st match', '⭐', 'WINS', 1, 4],
+    ['Hot streak', 'Win 5 matches in a row', '🔥', 'WIN_STREAK', 5, 5],
+    ['Bagel baker', 'Win a set 6–0', '🥯', 'BAGEL', null, 6],
+    ['Comeback kid', 'Win after losing the 1st set', '🔄', 'COMEBACK', null, 7],
+    ['Straight-sets specialist', '10 wins without dropping a set', '⚡', 'STRAIGHT_SETS', 10, 8],
+    ['All-rounder', 'Win a match in Elite, Next Gen and Novice', '👑', 'CATEGORY_SWEEP', null, 9],
+  ].forEach((row) => seedBadge.run(...row));
+}
+
 module.exports = db;

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLTA Score — Manage badges</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/"><img src="/img/blta-logo.png" alt="BLTA" class="brand-logo"><small>SCORE</small></a>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">☰</button>
+    <nav class="nav-links" id="nav-links">
+      <a href="/">Matches</a>
+      <a href="/players">Players</a>
+      <a href="/new-match">+ New match</a>
+    </nav>
+  </div>
+</div>
+
+<div class="container">
+  <h1 style="margin-top:22px">Manage badges</h1>
+  <p style="color:var(--gray-dim)">Badges players can earn on their profile page — shown here in the order they'll appear.</p>
+
+  <div id="badges-admin-root">Loading…</div>
+</div>
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <span>BLTA Score</span>
+    <a href="/admin">Admin</a>
+  </div>
+</footer>
+
+<script src="/js/common.js"></script>
+<script src="/js/badges-admin.js"></script>
+</body>
+</html>

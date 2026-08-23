@@ -1,16 +1,3 @@
-const BADGES = [
-  { key: 'FIRST_SERVE', name: 'First serve', description: 'Play your 1st match', icon: '🎾' },
-  { key: 'WARMUP_COMPLETE', name: 'Warm-up complete', description: 'Play 10 matches', icon: '🔟' },
-  { key: 'MARATHON_PLAYER', name: 'Marathon player', description: 'Play 25 matches', icon: '🏃' },
-  { key: 'CENTURY_CLUB', name: 'Century club', description: 'Play 100 matches', icon: '🏆' },
-  { key: 'FIRST_WIN', name: 'First win', description: 'Win your 1st match', icon: '⭐' },
-  { key: 'HOT_STREAK', name: 'Hot streak', description: 'Win 5 matches in a row', icon: '🔥' },
-  { key: 'BAGEL_BAKER', name: 'Bagel baker', description: 'Win a set 6–0', icon: '🥯' },
-  { key: 'COMEBACK_KID', name: 'Comeback kid', description: 'Win after losing the 1st set', icon: '🔄' },
-  { key: 'STRAIGHT_SETS', name: 'Straight-sets specialist', description: '10 wins without dropping a set', icon: '⚡' },
-  { key: 'ALL_ROUNDER', name: 'All-rounder', description: 'Win a match in Elite, Next Gen and Novice', icon: '👑' },
-];
-
 function badgeSetWonZero(m, pid) {
   const sets = (m.state && m.state.sets) || [];
   const isP1 = m.player1.id === pid;
@@ -31,24 +18,12 @@ function badgeWonWithoutDroppingSet(m, pid) {
   return sets.every((s) => s.winner === playerSetNum);
 }
 
-// Every badge is a pure function of a player's full finished-match history —
-// computed on the fly rather than stored, so historical matches count too
-// and there's nothing to backfill.
-function computeEarnedBadges(playerId, finished) {
+// One numeric (or 0/1) value per logic type a badge definition can key off
+// — a badge is earned once its metric reaches its threshold (or, for the
+// threshold-less pass/fail types, once the metric is truthy).
+function computeBadgeMetrics(playerId, finished) {
   const pid = Number(playerId);
   const wins = finished.filter((m) => m.winnerId === pid);
-  const earned = new Set();
-
-  if (finished.length >= 1) earned.add('FIRST_SERVE');
-  if (finished.length >= 10) earned.add('WARMUP_COMPLETE');
-  if (finished.length >= 25) earned.add('MARATHON_PLAYER');
-  if (finished.length >= 100) earned.add('CENTURY_CLUB');
-  if (wins.length >= 1) earned.add('FIRST_WIN');
-
-  if (wins.some((m) => badgeSetWonZero(m, pid))) earned.add('BAGEL_BAKER');
-  if (wins.some((m) => badgeWonAfterLosingFirstSet(m, pid))) earned.add('COMEBACK_KID');
-  if (wins.filter((m) => badgeWonWithoutDroppingSet(m, pid)).length >= 10) earned.add('STRAIGHT_SETS');
-
   const chronological = finished
     .filter((m) => m.winnerId)
     .sort((a, b) => new Date(a.scheduledAt || a.startTime || a.createdAt) - new Date(b.scheduledAt || b.startTime || b.createdAt));
@@ -62,17 +37,34 @@ function computeEarnedBadges(playerId, finished) {
       streak = 0;
     }
   });
-  if (maxStreak >= 5) earned.add('HOT_STREAK');
-
   const winCategories = new Set(wins.map((m) => m.category));
-  if (BLTA_CATEGORIES.every((c) => winCategories.has(c))) earned.add('ALL_ROUNDER');
+  return {
+    GAMES_PLAYED: finished.length,
+    WINS: wins.length,
+    WIN_STREAK: maxStreak,
+    CATEGORY_SWEEP: BLTA_CATEGORIES.every((c) => winCategories.has(c)) ? 1 : 0,
+    BAGEL: wins.some((m) => badgeSetWonZero(m, pid)) ? 1 : 0,
+    COMEBACK: wins.some((m) => badgeWonAfterLosingFirstSet(m, pid)) ? 1 : 0,
+    STRAIGHT_SETS: wins.filter((m) => badgeWonWithoutDroppingSet(m, pid)).length,
+  };
+}
 
+// badgeDefs come from GET /api/badges — admin-managed, not hardcoded, so
+// this is always computed from a player's whole career, not filtered.
+function computeEarnedBadges(playerId, finished, badgeDefs) {
+  const metrics = computeBadgeMetrics(playerId, finished);
+  const earned = new Set();
+  badgeDefs.forEach((def) => {
+    const value = metrics[def.logicType] || 0;
+    const need = def.threshold != null ? def.threshold : 1;
+    if (value >= need) earned.add(def.id);
+  });
   return earned;
 }
 
-function badgesGridHtml(earnedSet) {
-  return BADGES.map((b) => {
-    const earned = earnedSet.has(b.key);
+function badgesGridHtml(badgeDefs, earnedSet) {
+  return badgeDefs.map((b) => {
+    const earned = earnedSet.has(b.id);
     return `
       <div class="badge-item">
         <div class="badge-medal${earned ? '' : ' locked'}" title="${escapeHtml(b.description)}">${b.icon}</div>
