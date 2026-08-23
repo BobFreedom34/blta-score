@@ -7,6 +7,8 @@ const yearFilterEl = document.getElementById('year-filter');
 let currentResult = '';
 let currentYear = '';
 let rawGroups = []; // last-fetched matches per GROUPS entry, unfiltered
+let h2hExpanded = false;
+const H2H_COLLAPSED_LIMIT = 5;
 
 // Same card markup as the home page's match list, minus the quick-schedule/
 // notify actions (this page is a read-only history view for one player).
@@ -125,9 +127,26 @@ function h2hRowHtml(rec) {
 function renderH2H() {
   const el = document.getElementById('h2h-section');
   const records = opponentRecords();
-  el.innerHTML = records.length
-    ? `<div class="h2h-title">Head-to-head</div><div class="h2h-card">${records.map(h2hRowHtml).join('')}</div>`
+  if (!records.length) {
+    el.innerHTML = '';
+    return;
+  }
+  const remaining = records.length - H2H_COLLAPSED_LIMIT;
+  const visible = h2hExpanded || remaining <= 0 ? records : records.slice(0, H2H_COLLAPSED_LIMIT);
+  const toggleHtml = remaining > 0
+    ? `<button type="button" class="h2h-toggle" id="h2h-toggle">${h2hExpanded ? 'Show less' : `Show all (${remaining} more)`}</button>`
     : '';
+  el.innerHTML = `
+    <div class="h2h-title">Head-to-head</div>
+    <div class="h2h-card">${visible.map(h2hRowHtml).join('')}</div>
+    ${toggleHtml}
+  `;
+  if (remaining > 0) {
+    document.getElementById('h2h-toggle').addEventListener('click', () => {
+      h2hExpanded = !h2hExpanded;
+      renderH2H();
+    });
+  }
 }
 
 function render() {
