@@ -138,8 +138,7 @@ function renderH2H() {
     : '';
   el.innerHTML = `
     <div class="h2h-title">Head-to-head</div>
-    <div class="h2h-card">${visible.map(h2hRowHtml).join('')}</div>
-    ${toggleHtml}
+    <div class="h2h-card">${visible.map(h2hRowHtml).join('')}${toggleHtml}</div>
   `;
   if (remaining > 0) {
     document.getElementById('h2h-toggle').addEventListener('click', () => {
