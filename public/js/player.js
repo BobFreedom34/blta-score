@@ -103,6 +103,14 @@ function renderStats() {
   fillStats('overall', computeRecord(finished));
 }
 
+// Same full finished-match history as renderStats() — badges are always
+// computed from a player's whole career, not the filtered match list.
+function renderBadges() {
+  const finished = rawGroups[3] || [];
+  const earned = computeEarnedBadges(playerId, finished);
+  document.getElementById('badges-grid').innerHTML = badgesGridHtml(earned);
+}
+
 // Per-opponent win/loss record, built from the same full finished-match
 // history as renderStats() — also independent of the result/year filters.
 function opponentRecords() {
@@ -182,6 +190,7 @@ async function load() {
     }));
     populateYearOptions();
     renderStats();
+    renderBadges();
     renderH2H();
     render();
   } catch (err) {
