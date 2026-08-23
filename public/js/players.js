@@ -18,12 +18,33 @@ function playerRowHtml(p) {
   `;
 }
 
+// Last whitespace-separated word of a full name — used to alphabetize by
+// surname instead of by however the name happens to be entered.
+function surname(name) {
+  const parts = name.trim().split(/\s+/);
+  return parts[parts.length - 1];
+}
+
 function render() {
   if (players.length === 0) {
     listEl.innerHTML = `<div class="empty-state">No players ${query ? 'match your search' : 'yet. Add the first one above'}.</div>`;
     return;
   }
-  listEl.innerHTML = players.map(playerRowHtml).join('');
+  const sorted = [...players].sort((a, b) => {
+    const bySurname = surname(a.name).localeCompare(surname(b.name));
+    return bySurname !== 0 ? bySurname : a.name.localeCompare(b.name);
+  });
+  const parts = [];
+  let currentLetter = null;
+  sorted.forEach((p) => {
+    const letter = surname(p.name).charAt(0).toUpperCase();
+    if (letter !== currentLetter) {
+      currentLetter = letter;
+      parts.push(`<div class="player-group-heading">${escapeHtml(letter)}</div>`);
+    }
+    parts.push(playerRowHtml(p));
+  });
+  listEl.innerHTML = parts.join('');
   if (isAdminUser) attachRowHandlers();
 }
 

@@ -740,6 +740,17 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 .site-footer-inner a:hover { color: var(--white); }
 
 /* ---------- Player rows ---------- */
+.player-group-heading {
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--orange);
+  text-transform: uppercase;
+  margin: 18px 0 2px;
+  padding: 0 4px 4px;
+  border-bottom: 1.5px solid var(--gray-light);
+}
+.player-group-heading:first-child { margin-top: 0; }
 .player-row {
   display: flex;
   align-items: center;
