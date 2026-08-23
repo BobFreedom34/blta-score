@@ -65,7 +65,14 @@ function cardDurationHtml(m) {
 // embed widget, whose cards live inside an iframe on someone else's site —
 // same-tab navigation there would replace the whole widget).
 function playerInfoBtn(player) {
-  return `<button type="button" class="player-info-btn" title="View ${escapeHtml(player.name)}'s profile" onclick="event.stopPropagation();window.open('/player/${player.id}','_blank')">i</button>`;
+  // Same-window navigation everywhere, except when this card is rendered
+  // inside the embed widget's iframe on an external site — there, navigating
+  // the iframe itself would replace the whole embedded widget with the
+  // profile page, so that context still opens a new tab.
+  const nav = window.top === window.self
+    ? `window.location.href='/player/${player.id}'`
+    : `window.open('/player/${player.id}','_blank')`;
+  return `<button type="button" class="player-info-btn" title="View ${escapeHtml(player.name)}'s profile" onclick="event.preventDefault();event.stopPropagation();${nav}">i</button>`;
 }
 
 // Compact per-set scoreboard for a match card (LIVE/FINISHED) — same dark

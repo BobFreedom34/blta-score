@@ -285,7 +285,7 @@ function render(m) {
     <div class="match-header">
       <div>
         ${categoryBadge(m.category)} ${statusBadge(m.status)}${m.status === 'LIVE' ? ` <span class="badge badge-viewers" id="viewer-count-badge">👀 ${viewerCount !== null ? viewerCount : '…'} watching</span>` : ''}
-        <h1 style="margin-top:8px">${escapeHtml(m.player1.name)}<a class="player-info-link" href="/player/${m.player1.id}" target="_blank" title="View ${escapeHtml(m.player1.name)}'s profile">i</a> <span style="color:var(--gray-dim);font-weight:500">vs</span> ${escapeHtml(m.player2.name)}<a class="player-info-link" href="/player/${m.player2.id}" target="_blank" title="View ${escapeHtml(m.player2.name)}'s profile">i</a></h1>
+        <h1 style="margin-top:8px">${escapeHtml(m.player1.name)}<a class="player-info-link" href="/player/${m.player1.id}" title="View ${escapeHtml(m.player1.name)}'s profile">i</a> <span style="color:var(--gray-dim);font-weight:500">vs</span> ${escapeHtml(m.player2.name)}<a class="player-info-link" href="/player/${m.player2.id}" title="View ${escapeHtml(m.player2.name)}'s profile">i</a></h1>
         <div style="color:var(--gray-dim);font-size:13px">${m.formatLabel}</div>
       </div>
     </div>
