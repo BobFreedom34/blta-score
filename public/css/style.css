@@ -552,7 +552,7 @@ datalist {}
 
 .match-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
 
-.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
+.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0; }
 .info-item { background: var(--white); border-radius: 10px; padding: 12px; box-shadow: var(--shadow); }
 .info-item .label { font-size: 11px; text-transform: uppercase; color: var(--gray); font-weight: 700; letter-spacing: 0.03em; }
 .info-item .value { font-weight: 700; font-size: 14px; margin-top: 2px; }
@@ -589,10 +589,11 @@ datalist {}
   font-weight: 800;
   font-size: 52px;
 }
+#stats-tabs { margin: 0 0 12px; }
 #stats-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 
 /* ---------- Badges ---------- */
-.badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 14px; margin-bottom: 8px; }
+.badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 14px; }
 .badge-item { text-align: center; }
 .badge-medal {
   width: 60px;
@@ -617,9 +618,9 @@ datalist {}
   letter-spacing: 0.06em;
   color: var(--orange);
   text-transform: uppercase;
-  margin: 20px 0 8px;
+  margin: 40px 0 12px;
 }
-.h2h-card { background: var(--white); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 20px; }
+.h2h-card { background: var(--white); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 40px; }
 .h2h-row {
   display: flex;
   align-items: center;
