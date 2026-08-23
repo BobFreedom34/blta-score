@@ -444,3 +444,13 @@ async function subscribeToPush(matchToken, type) {
   });
   await api(`/matches/${matchToken}/push-subscribe`, { method: 'POST', body: { subscription: subscription.toJSON(), type } });
 }
+
+// Reveals the "Manage badges" footer link only for a logged-in admin —
+// hidden by default in the HTML so it never flashes visible for everyone
+// else while this check is in flight.
+if (!document.body.classList.contains('embed')) {
+  checkAdmin().then((isAdminUser) => {
+    if (!isAdminUser) return;
+    document.querySelectorAll('.footer-badges-link').forEach((el) => { el.style.display = ''; });
+  });
+}
