@@ -29,6 +29,9 @@ app.use(cookieParser(process.env.SESSION_SECRET || 'dev-only-insecure-secret'));
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }));
+// Uploaded badge icons live on the persistent disk (see src/db.js's
+// dataDir), not under public/, so they survive redeploys.
+app.use('/badge-icons', express.static(path.join(db.dataDir, 'badge-icons')));
 
 app.use('/api/players', playersRouter);
 app.use('/api/matches', matchesRouter);

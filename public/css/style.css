@@ -624,6 +624,7 @@ datalist {}
   border: 3px solid var(--orange);
 }
 .badge-medal.locked { background: var(--charcoal); border-color: var(--gray); filter: grayscale(1); opacity: 0.45; }
+.badge-medal img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .badge-name { font-size: 11px; font-weight: 700; color: var(--white); line-height: 1.3; }
 .badge-name.locked { color: var(--gray-dim); }
 .badge-condition { font-size: 10px; color: var(--gray-dim); line-height: 1.3; margin-top: 3px; }

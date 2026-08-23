@@ -19,8 +19,15 @@ function logicOptionsHtml(selected) {
   return LOGIC_TYPES.map((t) => `<option value="${t.value}" ${t.value === selected ? 'selected' : ''}>${escapeHtml(t.label)}</option>`).join('');
 }
 
+function badgeMedalInner(icon) {
+  return icon && icon.startsWith('/badge-icons/')
+    ? `<img src="${escapeHtml(icon)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`
+    : (icon || '');
+}
+
 function badgeFormHtml(prefix, badge) {
   const b = badge || { name: '', description: '', icon: '', logicType: 'GAMES_PLAYED', threshold: '', sortOrder: 0 };
+  const isImage = b.icon && b.icon.startsWith('/badge-icons/');
   return `
     <div class="field">
       <label>Name</label>
@@ -31,8 +38,15 @@ function badgeFormHtml(prefix, badge) {
       <input type="text" id="${prefix}-description" value="${escapeHtml(b.description)}" maxlength="140" required>
     </div>
     <div class="field">
-      <label>Icon (one emoji)</label>
-      <input type="text" id="${prefix}-icon" value="${escapeHtml(b.icon)}" maxlength="8" required style="width:80px">
+      <label>Icon emoji (used if no image is uploaded below)</label>
+      <input type="text" id="${prefix}-icon" value="${isImage ? '' : escapeHtml(b.icon)}" maxlength="8" style="width:80px">
+    </div>
+    <div class="field">
+      <label>Or upload an icon image (PNG/JPG, under 2MB)</label>
+      <input type="file" id="${prefix}-iconFile" accept="image/png,image/jpeg">
+      <div id="${prefix}-iconPreview" style="margin-top:8px;width:44px;height:44px">
+        ${isImage ? badgeMedalInner(b.icon) : ''}
+      </div>
     </div>
     <div class="field">
       <label>Unlock condition</label>
@@ -57,6 +71,31 @@ function wireThresholdToggle(prefix) {
   update();
 }
 
+function wireIconPreview(prefix) {
+  const fileInput = document.getElementById(`${prefix}-iconFile`);
+  const preview = document.getElementById(`${prefix}-iconPreview`);
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    preview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
+  });
+}
+
+// Uploaded separately from the JSON create/edit call since it's a file,
+// not JSON — the shared api() helper always JSON-stringifies its body, so
+// this bypasses it with a plain fetch instead.
+async function uploadIconIfSelected(prefix, badgeId) {
+  const file = document.getElementById(`${prefix}-iconFile`).files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('icon', file);
+  const res = await fetch(`/api/badges/${badgeId}/icon`, { method: 'POST', body: formData });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Could not upload the image');
+  }
+}
+
 function readBadgeForm(prefix) {
   const logicType = document.getElementById(`${prefix}-logicType`).value;
   return {
@@ -75,7 +114,7 @@ function badgeRowHtml(badge) {
   return `
     <div class="badge-row" data-id="${badge.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
       <div class="badge-row-view" style="display:flex;align-items:center;gap:12px">
-        <div class="badge-medal" style="width:44px;height:44px;font-size:20px;margin:0">${badge.icon}</div>
+        <div class="badge-medal" style="width:44px;height:44px;font-size:20px;margin:0">${badgeMedalInner(badge.icon)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700">${escapeHtml(badge.name)}</div>
           <div style="font-size:12px;color:var(--gray)">${escapeHtml(badge.description)} — ${escapeHtml(conditionText)}</div>
@@ -121,6 +160,7 @@ function attachRowHandlers() {
         </form>
       `;
       wireThresholdToggle('edit-' + id);
+      wireIconPreview('edit-' + id);
       rowEl.querySelector('[data-action="cancel"]').addEventListener('click', renderList);
       rowEl.querySelector('.edit-badge-form').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -128,6 +168,7 @@ function attachRowHandlers() {
         errorEl.textContent = '';
         try {
           await api(`/badges/${id}`, { method: 'PATCH', body: readBadgeForm('edit-' + id) });
+          await uploadIconIfSelected('edit-' + id, id);
           toast('Badge saved');
           await loadBadges();
         } catch (err) {
@@ -164,6 +205,7 @@ function renderAdmin() {
     </div>
   `;
   wireThresholdToggle('add');
+  wireIconPreview('add');
   document.getElementById('add-badge-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errorEl = document.getElementById('add-badge-error');
@@ -171,10 +213,12 @@ function renderAdmin() {
     const submitBtn = e.target.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     try {
-      await api('/badges', { method: 'POST', body: readBadgeForm('add') });
+      const created = await api('/badges', { method: 'POST', body: readBadgeForm('add') });
+      await uploadIconIfSelected('add', created.id);
       toast('Badge added');
       e.target.reset();
       wireThresholdToggle('add');
+      wireIconPreview('add');
       await loadBadges();
     } catch (err) {
       errorEl.textContent = err.message;

@@ -10,6 +10,10 @@ if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
 const db = new DatabaseSync(path.join(dataDir, 'blta-score.db'));
 db.exec('PRAGMA journal_mode = WAL');
+// Exposed so anything else that needs to write to the persistent disk
+// (e.g. uploaded badge icons) uses the same directory as the DB itself,
+// rather than public/ which gets replaced fresh on every deploy.
+db.dataDir = dataDir;
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS players (

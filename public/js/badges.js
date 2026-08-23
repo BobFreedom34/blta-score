@@ -62,11 +62,17 @@ function computeEarnedBadges(playerId, finished, badgeDefs) {
   return earned;
 }
 
+// An uploaded icon's value is the path it was saved under (/badge-icons/...);
+// anything else is treated as literal emoji/text.
+function badgeIconInner(icon) {
+  return icon.startsWith('/badge-icons/') ? `<img src="${escapeHtml(icon)}" alt="">` : icon;
+}
+
 function badgeItemHtml(b, earned, detailed) {
   const classes = earned ? '' : ' locked';
   return `
     <div class="badge-item">
-      <div class="badge-medal${classes}" title="${escapeHtml(b.description)}">${b.icon}</div>
+      <div class="badge-medal${classes}" title="${escapeHtml(b.description)}">${badgeIconInner(b.icon)}</div>
       <div class="badge-name${classes}">${escapeHtml(b.name)}</div>
       ${detailed ? `<div class="badge-condition">${escapeHtml(b.description)}</div>` : ''}
     </div>
