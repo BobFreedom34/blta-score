@@ -609,19 +609,19 @@ datalist {}
   flex-shrink: 0;
 }
 .section-link:hover { text-decoration: underline; }
-.badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 14px 10px; transition: max-height 0.2s ease; }
+.badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 18px 12px; transition: max-height 0.2s ease; }
 .badge-item { text-align: center; }
 .badge-medal {
-  width: 60px;
-  height: 60px;
+  width: 90px;
+  height: 90px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
-  margin: 0 auto 6px;
+  font-size: 38px;
+  margin: 0 auto 8px;
   background: var(--white);
-  border: 3px solid var(--orange);
+  border: 4px solid var(--orange);
 }
 .badge-medal.locked { background: var(--charcoal); border-color: var(--gray); filter: grayscale(1); opacity: 0.45; }
 .badge-medal img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
