@@ -574,8 +574,8 @@ datalist {}
 .player-first-name { font-weight: 400; }
 .player-surname { font-weight: 800; }
 .player-avatar, .player-avatar-fallback {
-  width: 110px;
-  height: 110px;
+  width: 168px;
+  height: 168px;
   border-radius: var(--radius);
   flex-shrink: 0;
 }
@@ -587,7 +587,7 @@ datalist {}
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 34px;
+  font-size: 52px;
 }
 #stats-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 
