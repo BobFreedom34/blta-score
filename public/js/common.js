@@ -403,3 +403,42 @@ function copyToClipboard(text) {
   document.body.removeChild(ta);
   return Promise.resolve();
 }
+
+// Registered on every real page but not inside the embed widget — an iframe
+// embedded on someone else's site has no business becoming its own
+// installable app.
+if ('serviceWorker' in navigator && !document.body.classList.contains('embed')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* not fatal — installability just won't work */ });
+  });
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+// Subscribes this browser to push notifications for one match/type —
+// mirrors the email-based /notify-me flow. Throws a user-facing message on
+// any failure (unsupported browser, permission denied, no VAPID key
+// configured server-side, etc).
+async function subscribeToPush(matchToken, type) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    throw new Error("This browser doesn't support push notifications.");
+  }
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    throw new Error('Notification permission was not granted.');
+  }
+  const { publicKey } = await api('/push/vapid-public-key');
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(publicKey),
+  });
+  await api(`/matches/${matchToken}/push-subscribe`, { method: 'POST', body: { subscription: subscription.toJSON(), type } });
+}

@@ -3,6 +3,7 @@ const express = require('express');
 const db = require('../db');
 const engine = require('../matchEngine');
 const { sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo } = require('../mailer');
+const { sendPush } = require('../push');
 const { isAdmin, requirePlayer } = require('../auth');
 
 const router = express.Router();
@@ -32,13 +33,42 @@ async function notifySubscribers(matchId, type, updated) {
   }
 }
 
+// Sends a push notification to everyone subscribed to this match/type who
+// hasn't been notified yet. Mirrors notifySubscribers() above but for push
+// instead of email — a subscription the browser has dropped (410/404)
+// is deleted rather than retried forever.
+async function notifyPushSubscribers(matchId, type, updated) {
+  const subs = db.prepare('SELECT * FROM push_subscriptions WHERE match_id = ? AND type = ? AND sent = 0').all(matchId, type);
+  if (!subs.length) return;
+  const p1 = getPlayer(updated.player1_id);
+  const p2 = getPlayer(updated.player2_id);
+  const url = `${process.env.PUBLIC_URL || ''}/match/${updated.share_token}`;
+  const payload = type === 'START'
+    ? { title: `Match started: ${p1.name} vs ${p2.name}`, body: 'Watch it live now.', url }
+    : { title: `Match finished: ${p1.name} vs ${p2.name}`, body: engine.describeMatch(JSON.parse(updated.state)) || 'See the result.', url };
+  for (const sub of subs) {
+    try {
+      await sendPush(JSON.parse(sub.subscription), payload);
+      db.prepare('UPDATE push_subscriptions SET sent = 1 WHERE id = ?').run(sub.id);
+    } catch (err) {
+      if (err.statusCode === 404 || err.statusCode === 410) {
+        db.prepare('DELETE FROM push_subscriptions WHERE id = ?').run(sub.id);
+      } else {
+        console.error(`[matches] failed to send ${type} push notification:`, err.message);
+      }
+    }
+  }
+}
+
 // How many people have ever activated each notification type for this
-// match — every row in match_notifications counts, regardless of whether
-// its email has already gone out.
+// match — every row in match_notifications/push_subscriptions counts,
+// regardless of whether its notification has already gone out.
 function getNotifyCounts(matchId) {
-  const rows = db.prepare('SELECT type, COUNT(*) AS cnt FROM match_notifications WHERE match_id = ? GROUP BY type').all(matchId);
   const counts = { START: 0, FINISH: 0 };
-  for (const row of rows) counts[row.type] = row.cnt;
+  const emailRows = db.prepare('SELECT type, COUNT(*) AS cnt FROM match_notifications WHERE match_id = ? GROUP BY type').all(matchId);
+  for (const row of emailRows) counts[row.type] += row.cnt;
+  const pushRows = db.prepare('SELECT type, COUNT(*) AS cnt FROM push_subscriptions WHERE match_id = ? GROUP BY type').all(matchId);
+  for (const row of pushRows) counts[row.type] += row.cnt;
   return counts;
 }
 
@@ -295,6 +325,9 @@ router.post('/:token/start', requirePlayer, async (req, res) => {
 
   notifySubscribers(row.id, 'START', updated).catch((err) => {
     console.error('[matches] failed to send start notifications:', err.message);
+  });
+  notifyPushSubscribers(row.id, 'START', updated).catch((err) => {
+    console.error('[matches] failed to send start push notifications:', err.message);
   });
 });
 
@@ -561,6 +594,9 @@ router.post('/:token/finish', requirePlayer, async (req, res) => {
   notifySubscribers(row.id, 'FINISH', updated).catch((err) => {
     console.error('[matches] failed to send finish notifications:', err.message);
   });
+  notifyPushSubscribers(row.id, 'FINISH', updated).catch((err) => {
+    console.error('[matches] failed to send finish push notifications:', err.message);
+  });
 });
 
 // Records a result for a match that was already played outside the app,
@@ -624,6 +660,9 @@ router.post('/:token/manual-result', requirePlayer, async (req, res) => {
   notifySubscribers(row.id, 'FINISH', updated).catch((err) => {
     console.error('[matches] failed to send finish notifications:', err.message);
   });
+  notifyPushSubscribers(row.id, 'FINISH', updated).catch((err) => {
+    console.error('[matches] failed to send finish push notifications:', err.message);
+  });
 });
 
 // Subscribe an email address to a one-time notification for when this
@@ -650,6 +689,34 @@ router.post('/:token/notify-me', (req, res) => {
   } catch (err) {
     if (!/UNIQUE/.test(err.message)) throw err;
     // Already subscribed with this email — treat as success, not an error.
+  }
+  res.status(201).json({ subscribed: true });
+});
+
+// Same as /notify-me above, but for a browser push subscription instead of
+// an email address.
+router.post('/:token/push-subscribe', (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  const subscription = req.body.subscription;
+  const type = req.body.type;
+  if (!subscription || typeof subscription.endpoint !== 'string') {
+    return res.status(400).json({ error: 'Invalid push subscription' });
+  }
+  if (!['START', 'FINISH'].includes(type)) {
+    return res.status(400).json({ error: 'Invalid notification type' });
+  }
+  if (row.status === 'FINISHED') {
+    return res.status(400).json({ error: 'This match has already finished' });
+  }
+  if (type === 'START' && row.status !== 'PLANNED') {
+    return res.status(400).json({ error: 'This match has already started' });
+  }
+  try {
+    db.prepare('INSERT INTO push_subscriptions (match_id, subscription, type) VALUES (?, ?, ?)').run(row.id, JSON.stringify(subscription), type);
+  } catch (err) {
+    if (!/UNIQUE/.test(err.message)) throw err;
+    // Already subscribed with this device — treat as success, not an error.
   }
   res.status(201).json({ subscribed: true });
 });

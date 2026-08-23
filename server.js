@@ -13,6 +13,7 @@ const playersRouter = require('./src/routes/players');
 const matchesRouter = require('./src/routes/matches');
 const adminRouter = require('./src/routes/admin');
 const playerAuthRouter = require('./src/routes/player');
+const pushRouter = require('./src/routes/push');
 
 const app = express();
 const server = http.createServer(app);
@@ -32,6 +33,7 @@ app.use('/api/players', playersRouter);
 app.use('/api/matches', matchesRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/player', playerAuthRouter);
+app.use('/api/push', pushRouter);
 
 // Pretty routes -> static HTML pages (the page JS reads the share token from the URL).
 const matchTemplate = fs.readFileSync(path.join(PUBLIC_DIR, 'match.html'), 'utf8');

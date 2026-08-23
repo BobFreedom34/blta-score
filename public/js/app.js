@@ -340,6 +340,23 @@ document.getElementById('notify-form').addEventListener('submit', async (e) => {
   submitBtn.disabled = false;
 });
 
+document.getElementById('notify-push-btn').addEventListener('click', async () => {
+  const errorEl = document.getElementById('notify-push-error');
+  const btn = document.getElementById('notify-push-btn');
+  errorEl.textContent = '';
+  btn.disabled = true;
+  try {
+    await subscribeToPush(notifyToken, notifyType);
+    localStorage.setItem(`blta_notified_${notifyToken}_${notifyType}`, '1');
+    document.getElementById('notify-modal').style.display = 'none';
+    toast("You're subscribed!");
+    loadMatches();
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+  btn.disabled = false;
+});
+
 const socket = io();
 socket.on('matches:changed', () => {
   loadMatches();

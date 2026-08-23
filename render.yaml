@@ -37,3 +37,9 @@ services:
         sync: false
       - key: SESSION_SECRET
         generateValue: true
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: "mailto:score@blta.sk"
