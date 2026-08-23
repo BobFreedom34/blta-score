@@ -598,7 +598,7 @@ datalist {}
   letter-spacing: 0.06em;
   color: var(--orange);
   text-transform: uppercase;
-  margin: 0 0 8px;
+  margin: 20px 0 8px;
 }
 .h2h-card { background: var(--white); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 20px; }
 .h2h-row {
