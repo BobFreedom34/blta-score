@@ -210,11 +210,35 @@ document.getElementById('reset-filters-btn').addEventListener('click', () => {
   render();
 });
 
+function initials(name) {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0] ? parts[0][0] : '';
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+  return (first + last).toUpperCase();
+}
+
+// First name on its own (lighter) line, surname on the line below (bold) —
+// falls back to a single line if the name is only one word.
+function nameLinesHtml(name) {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0] || '';
+  const rest = parts.slice(1).join(' ');
+  return rest
+    ? `<span class="player-first-name">${escapeHtml(first)}</span><span class="player-surname">${escapeHtml(rest)}</span>`
+    : `<span class="player-surname">${escapeHtml(first)}</span>`;
+}
+
 (async () => {
   try {
     const player = await api(`/players/${playerId}`);
-    nameEl.textContent = player.name;
+    nameEl.innerHTML = nameLinesHtml(player.name);
     document.title = `${player.name} — BLTA Score`;
+    const avatarEl = document.getElementById('player-avatar');
+    if (player.photo_url) {
+      avatarEl.outerHTML = `<img class="player-avatar" id="player-avatar" src="${escapeHtml(player.photo_url)}" alt="${escapeHtml(player.name)}">`;
+    } else {
+      avatarEl.textContent = initials(player.name);
+    }
   } catch {
     nameEl.textContent = 'Player not found';
     listEl.innerHTML = '';

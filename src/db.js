@@ -129,6 +129,11 @@ if (!matchColumns.includes('end_reason')) {
   db.exec('ALTER TABLE matches ADD COLUMN end_reason TEXT');
 }
 
+const playerColumns = db.prepare('PRAGMA table_info(players)').all().map((c) => c.name);
+if (!playerColumns.includes('photo_url')) {
+  db.exec('ALTER TABLE players ADD COLUMN photo_url TEXT');
+}
+
 const untokenized = db.prepare('SELECT id FROM matches WHERE share_token IS NULL').all();
 if (untokenized.length > 0) {
   const setToken = db.prepare('UPDATE matches SET share_token = ? WHERE id = ?');

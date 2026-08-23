@@ -50,7 +50,8 @@ router.patch('/:id', requireAdmin, (req, res) => {
     .get(name, player.id);
   if (existing) return res.status(400).json({ error: 'Another player already has that name' });
 
-  db.prepare('UPDATE players SET name = ? WHERE id = ?').run(name, player.id);
+  const photoUrl = req.body.photoUrl !== undefined ? (req.body.photoUrl || null) : player.photo_url;
+  db.prepare('UPDATE players SET name = ?, photo_url = ? WHERE id = ?').run(name, photoUrl, player.id);
   res.json(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id));
 });
 
