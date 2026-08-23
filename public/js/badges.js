@@ -62,14 +62,26 @@ function computeEarnedBadges(playerId, finished, badgeDefs) {
   return earned;
 }
 
+function badgeItemHtml(b, earned, detailed) {
+  const classes = earned ? '' : ' locked';
+  return `
+    <div class="badge-item">
+      <div class="badge-medal${classes}" title="${escapeHtml(b.description)}">${b.icon}</div>
+      <div class="badge-name${classes}">${escapeHtml(b.name)}</div>
+      ${detailed ? `<div class="badge-condition">${escapeHtml(b.description)}</div>` : ''}
+    </div>
+  `;
+}
+
+// Compact grid for the profile page — icon + name only, description as a
+// hover tooltip.
 function badgesGridHtml(badgeDefs, earnedSet) {
-  return badgeDefs.map((b) => {
-    const earned = earnedSet.has(b.id);
-    return `
-      <div class="badge-item">
-        <div class="badge-medal${earned ? '' : ' locked'}" title="${escapeHtml(b.description)}">${b.icon}</div>
-        <div class="badge-name${earned ? '' : ' locked'}">${escapeHtml(b.name)}</div>
-      </div>
-    `;
-  }).join('');
+  return badgeDefs.map((b) => badgeItemHtml(b, earnedSet.has(b.id), false)).join('');
+}
+
+// Full grid for the "show all badges" modal — same badges, but with the
+// unlock condition written out under each one instead of hidden in a
+// tooltip, so a player can see every badge that exists and what it takes.
+function badgesModalGridHtml(badgeDefs, earnedSet) {
+  return badgeDefs.map((b) => badgeItemHtml(b, earnedSet.has(b.id), true)).join('');
 }

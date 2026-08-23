@@ -106,14 +106,50 @@ function renderStats() {
 // Badge definitions are admin-managed (see /badges-admin) — fetched once
 // and cached, since they don't change mid-session.
 let badgeDefsCache = null;
+let earnedBadgesCache = null;
+
+// Clips the profile-page badges grid to exactly 2 visual rows by measuring
+// where row 3 would start — grid columns are responsive (auto-fill), so a
+// fixed badge count can't reliably mean "2 rows" at every viewport width
+// the way a measured pixel height can. The "Show all badges" button always
+// stays visible and opens the full-list modal instead of expanding this
+// grid in place.
+function applyBadgesClip() {
+  const grid = document.getElementById('badges-grid');
+  const items = [...grid.children];
+  if (!items.length) return;
+  // offsetTop is relative to the nearest *positioned* ancestor, which isn't
+  // this grid — getBoundingClientRect gives positions relative to the
+  // viewport instead, so diffing against the grid's own rect is reliable
+  // regardless of what (if anything) up the tree is positioned.
+  const gridTop = grid.getBoundingClientRect().top;
+  const relTops = items.map((el) => Math.round(el.getBoundingClientRect().top - gridTop));
+  const rowTops = [...new Set(relTops)].sort((a, b) => a - b);
+  if (rowTops.length <= 2) {
+    grid.style.maxHeight = '';
+    grid.style.overflow = '';
+    return;
+  }
+  const secondRowBottom = Math.max(...items
+    .filter((el, i) => relTops[i] === rowTops[1])
+    .map((el) => Math.round(el.getBoundingClientRect().bottom - gridTop)));
+  grid.style.maxHeight = `${secondRowBottom}px`;
+  grid.style.overflow = 'hidden';
+}
 
 // Same full finished-match history as renderStats() — badges are always
 // computed from a player's whole career, not the filtered match list.
 async function renderBadges() {
   if (!badgeDefsCache) badgeDefsCache = await api('/badges');
   const finished = rawGroups[3] || [];
-  const earned = computeEarnedBadges(playerId, finished, badgeDefsCache);
-  document.getElementById('badges-grid').innerHTML = badgesGridHtml(badgeDefsCache, earned);
+  earnedBadgesCache = computeEarnedBadges(playerId, finished, badgeDefsCache);
+  document.getElementById('badges-grid').innerHTML = badgesGridHtml(badgeDefsCache, earnedBadgesCache);
+  applyBadgesClip();
+}
+
+function openBadgesModal() {
+  document.getElementById('badges-modal-grid').innerHTML = badgesModalGridHtml(badgeDefsCache, earnedBadgesCache);
+  document.getElementById('badges-modal').style.display = 'flex';
 }
 
 // Per-opponent win/loss record, built from the same full finished-match
@@ -210,6 +246,9 @@ document.getElementById('stats-tabs').addEventListener('click', (e) => {
   document.getElementById('stats-panel-blta').style.display = btn.dataset.statsTab === 'blta' ? '' : 'none';
   document.getElementById('stats-panel-overall').style.display = btn.dataset.statsTab === 'overall' ? '' : 'none';
 });
+
+document.getElementById('badges-toggle').addEventListener('click', openBadgesModal);
+window.addEventListener('resize', applyBadgesClip);
 
 resultFilterEl.addEventListener('change', (e) => {
   currentResult = e.target.value;

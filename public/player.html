@@ -72,7 +72,10 @@
     </div>
   </div>
 
-  <div class="section-label">Badges</div>
+  <div class="section-header">
+    <div class="section-label">Badges</div>
+    <button type="button" class="section-link" id="badges-toggle">Show all badges</button>
+  </div>
   <div class="badges-grid" id="badges-grid"></div>
 
   <div id="h2h-section"></div>
@@ -98,6 +101,15 @@
   </div>
 
   <div class="match-list" id="player-match-list"></div>
+</div>
+
+<!-- All badges modal -->
+<div class="modal-backdrop" id="badges-modal" style="display:none">
+  <div class="modal" style="max-width:560px">
+    <button type="button" class="close" data-close="badges-modal" aria-label="Close">&times;</button>
+    <h3 style="margin-top:0">All badges</h3>
+    <div class="badges-grid" id="badges-modal-grid"></div>
+  </div>
 </div>
 
 <footer class="site-footer">
