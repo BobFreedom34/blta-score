@@ -561,6 +561,38 @@ datalist {}
   background: none; border: none; padding: 0; font-family: inherit;
 }
 
+/* ---------- Head-to-head ---------- */
+.h2h-title {
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--orange);
+  text-transform: uppercase;
+  margin: 0 0 8px;
+}
+.h2h-card { background: var(--white); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 20px; }
+.h2h-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--gray-light);
+}
+.h2h-row:last-child { border-bottom: none; }
+.h2h-name { font-weight: 700; font-size: 14px; }
+.h2h-record { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.h2h-bar {
+  width: 60px;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  background: var(--gray-light);
+  flex-shrink: 0;
+}
+.h2h-score { font-weight: 800; font-size: 13px; min-width: 34px; text-align: right; }
+
 /* ---------- Manual result entry ---------- */
 .manual-set-row {
   margin-bottom: 18px;

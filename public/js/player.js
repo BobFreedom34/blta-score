@@ -86,6 +86,50 @@ function renderStats() {
   document.getElementById('stat-pct').textContent = played ? `${Math.round((wins / played) * 100)}%` : '—';
 }
 
+// Per-opponent win/loss record, built from the same full finished-match
+// history as renderStats() — also independent of the result/year filters.
+function opponentRecords() {
+  const finished = rawGroups[3] || [];
+  const byOpponent = new Map();
+  finished.forEach((m) => {
+    if (!m.winnerId) return;
+    const opponent = m.player1.id === Number(playerId) ? m.player2 : m.player1;
+    const rec = byOpponent.get(opponent.id) || { opponent, wins: 0, losses: 0 };
+    if (m.winnerId === Number(playerId)) rec.wins += 1;
+    else rec.losses += 1;
+    byOpponent.set(opponent.id, rec);
+  });
+  return [...byOpponent.values()].sort((a, b) => {
+    const byTotal = (b.wins + b.losses) - (a.wins + a.losses);
+    return byTotal !== 0 ? byTotal : a.opponent.name.localeCompare(b.opponent.name);
+  });
+}
+
+function h2hRowHtml(rec) {
+  const total = rec.wins + rec.losses;
+  const winPct = Math.round((rec.wins / total) * 100);
+  const scoreColor = rec.wins > rec.losses ? 'var(--green)' : rec.wins < rec.losses ? 'var(--danger)' : 'var(--gray)';
+  return `
+    <div class="h2h-row">
+      <a class="h2h-name" href="/player/${rec.opponent.id}">${escapeHtml(rec.opponent.name)}</a>
+      <div class="h2h-record">
+        <div class="h2h-bar">
+          <div style="width:${winPct}%;background:var(--green)"></div><div style="width:${100 - winPct}%;background:var(--danger)"></div>
+        </div>
+        <span class="h2h-score" style="color:${scoreColor}">${rec.wins} — ${rec.losses}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderH2H() {
+  const el = document.getElementById('h2h-section');
+  const records = opponentRecords();
+  el.innerHTML = records.length
+    ? `<div class="h2h-title">Head-to-head</div><div class="h2h-card">${records.map(h2hRowHtml).join('')}</div>`
+    : '';
+}
+
 function render() {
   const parts = [];
   rawGroups.forEach((matches, i) => {
@@ -105,6 +149,7 @@ async function load() {
     }));
     populateYearOptions();
     renderStats();
+    renderH2H();
     render();
   } catch (err) {
     listEl.innerHTML = `<div class="empty-state">Could not load matches: ${escapeHtml(err.message)}</div>`;
