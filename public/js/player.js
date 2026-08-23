@@ -72,20 +72,32 @@ function populateYearOptions() {
   currentYear = yearFilterEl.value;
 }
 
-// Career record, always computed from the full finished-match history —
-// independent of the result/year filters below, which only narrow the list.
-function renderStats() {
-  const finished = rawGroups[3] || [];
+function computeRecord(matches) {
   let wins = 0;
   let losses = 0;
-  finished.forEach((m) => {
+  matches.forEach((m) => {
     if (m.winnerId === Number(playerId)) wins += 1;
     else if (m.winnerId) losses += 1;
   });
   const played = wins + losses;
-  document.getElementById('stat-played').textContent = played;
-  document.getElementById('stat-wl').textContent = `${wins} — ${losses}`;
-  document.getElementById('stat-pct').textContent = played ? `${Math.round((wins / played) * 100)}%` : '—';
+  return { played, wins, losses, pct: played ? `${Math.round((wins / played) * 100)}%` : '—' };
+}
+
+function fillStats(prefix, record) {
+  document.getElementById(`stat-${prefix}-played`).textContent = record.played;
+  document.getElementById(`stat-${prefix}-wl`).textContent = `${record.wins} — ${record.losses}`;
+  document.getElementById(`stat-${prefix}-pct`).textContent = record.pct;
+}
+
+// Career record, always computed from the full finished-match history —
+// independent of the result/year filters below, which only narrow the list.
+// Shown two ways: BLTA league matches only (ELITE/NEXT_GEN/NOVICE), and
+// overall across every category including FRIENDLY/VIP_CUP.
+function renderStats() {
+  const finished = rawGroups[3] || [];
+  const bltaFinished = finished.filter((m) => BLTA_CATEGORIES.includes(m.category));
+  fillStats('blta', computeRecord(bltaFinished));
+  fillStats('overall', computeRecord(finished));
 }
 
 // Per-opponent win/loss record, built from the same full finished-match
@@ -137,7 +149,7 @@ function renderH2H() {
     ? `<button type="button" class="h2h-toggle" id="h2h-toggle">${h2hExpanded ? 'Show less' : `Show all (${remaining} more)`}</button>`
     : '';
   el.innerHTML = `
-    <div class="h2h-title">Head-to-head</div>
+    <div class="section-label">Head-to-head</div>
     <div class="h2h-card">${visible.map(h2hRowHtml).join('')}${toggleHtml}</div>
   `;
   if (remaining > 0) {
@@ -173,6 +185,14 @@ async function load() {
     listEl.innerHTML = `<div class="empty-state">Could not load matches: ${escapeHtml(err.message)}</div>`;
   }
 }
+
+document.getElementById('stats-tabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab');
+  if (!btn) return;
+  document.querySelectorAll('#stats-tabs .tab').forEach((b) => b.classList.toggle('active', b === btn));
+  document.getElementById('stats-panel-blta').style.display = btn.dataset.statsTab === 'blta' ? '' : 'none';
+  document.getElementById('stats-panel-overall').style.display = btn.dataset.statsTab === 'overall' ? '' : 'none';
+});
 
 resultFilterEl.addEventListener('change', (e) => {
   currentResult = e.target.value;
