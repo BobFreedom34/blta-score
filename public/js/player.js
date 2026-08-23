@@ -2,9 +2,11 @@ const playerId = window.location.pathname.split('/').filter(Boolean).pop();
 const nameEl = document.getElementById('player-name');
 const listEl = document.getElementById('player-match-list');
 const resultFilterEl = document.getElementById('result-filter');
+const categoryFilterEl = document.getElementById('category-filter');
 const yearFilterEl = document.getElementById('year-filter');
 
 let currentResult = '';
+let currentCategory = '';
 let currentYear = '';
 let rawGroups = []; // last-fetched matches per GROUPS entry, unfiltered
 let h2hExpanded = false;
@@ -60,6 +62,7 @@ function matchYear(m) {
 function passesFilters(m) {
   if (currentResult === 'won' && m.winnerId !== Number(playerId)) return false;
   if (currentResult === 'lost' && (!m.winnerId || m.winnerId === Number(playerId))) return false;
+  if (currentCategory && m.category !== currentCategory) return false;
   if (currentYear && String(matchYear(m)) !== currentYear) return false;
   return true;
 }
@@ -198,14 +201,20 @@ resultFilterEl.addEventListener('change', (e) => {
   currentResult = e.target.value;
   render();
 });
+categoryFilterEl.addEventListener('change', (e) => {
+  currentCategory = e.target.value;
+  render();
+});
 yearFilterEl.addEventListener('change', (e) => {
   currentYear = e.target.value;
   render();
 });
 document.getElementById('reset-filters-btn').addEventListener('click', () => {
   currentResult = '';
+  currentCategory = '';
   currentYear = '';
   resultFilterEl.value = '';
+  categoryFilterEl.value = '';
   yearFilterEl.value = '';
   render();
 });
