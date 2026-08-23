@@ -114,10 +114,6 @@ router.get('/', (req, res) => {
     clauses.push('m.category = @category');
     params.category = category;
   }
-  if (q) {
-    clauses.push('(p1.name LIKE @q OR p2.name LIKE @q)');
-    params.q = `%${q}%`;
-  }
   if (playerId) {
     clauses.push('(m.player1_id = @playerId OR m.player2_id = @playerId)');
     params.playerId = playerId;
@@ -148,13 +144,21 @@ router.get('/', (req, res) => {
       : `ORDER BY
           CASE m.status WHEN 'LIVE' THEN 0 WHEN 'PLANNED' THEN 1 ELSE 2 END,
           COALESCE(m.scheduled_at, m.created_at) DESC`;
-  const rows = db.prepare(`
-    SELECT m.* FROM matches m
+  let rows = db.prepare(`
+    SELECT m.*, p1.name AS p1_name, p2.name AS p2_name FROM matches m
     JOIN players p1 ON p1.id = m.player1_id
     JOIN players p2 ON p2.id = m.player2_id
     ${where}
     ${orderBy}
   `).all(params);
+  // Filtered in JS rather than SQL LIKE — SQLite's LIKE only case-folds
+  // ASCII, so a query like "šar" would never match a stored "Šarudy".
+  // String.prototype.toLowerCase() handles this correctly for all of
+  // Slovak's diacritics.
+  if (q) {
+    const needle = q.toLowerCase();
+    rows = rows.filter((r) => r.p1_name.toLowerCase().includes(needle) || r.p2_name.toLowerCase().includes(needle));
+  }
   res.json(rows.map(serialize));
 });
 
