@@ -455,3 +455,71 @@ if (!document.body.classList.contains('embed')) {
     document.querySelectorAll('.footer-badges-link').forEach((el) => { el.style.display = ''; });
   });
 }
+
+// "Install app" — a single button that does two different things
+// depending on the platform, because there's no single API that covers
+// both: Android/Chrome supports a real one-tap install via
+// beforeinstallprompt; iOS Safari has no install API at all (Apple
+// doesn't expose one), so the only thing a website can do there is show
+// the manual Share -> Add to Home Screen steps.
+(function initInstallPrompt() {
+  if (document.body.classList.contains('embed')) return;
+  const navLinks = document.querySelector('.nav-links');
+  if (!navLinks) return;
+
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (isStandalone) return; // already installed — nothing to offer
+
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'install-app-btn';
+  btn.textContent = '📲 Install app';
+  btn.style.display = 'none';
+  navLinks.appendChild(btn);
+
+  if (isIOS) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop';
+    modal.id = 'install-ios-modal';
+    modal.style.display = 'none';
+    modal.innerHTML = `
+      <div class="modal" style="max-width:340px;text-align:center">
+        <button type="button" class="close" data-close="install-ios-modal" aria-label="Close">&times;</button>
+        <h3 style="margin-top:0">Install BLTA Score</h3>
+        <p style="color:var(--gray);font-size:14px;text-align:left">
+          1. Tap the <strong>Share</strong> button in Safari's toolbar<br><br>
+          2. Scroll down and tap <strong>Add to Home Screen</strong><br><br>
+          3. Tap <strong>Add</strong>
+        </p>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    // The generic [data-close]/.modal-backdrop listeners above already ran
+    // by the time this modal exists, so it needs its own close wiring.
+    modal.querySelector('[data-close]').addEventListener('click', () => { modal.style.display = 'none'; });
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+
+    btn.style.display = '';
+    btn.addEventListener('click', () => { modal.style.display = 'flex'; });
+  } else {
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      btn.style.display = '';
+    });
+    btn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      btn.disabled = true;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      btn.style.display = 'none';
+      btn.disabled = false;
+    });
+    window.addEventListener('appinstalled', () => { btn.style.display = 'none'; });
+  }
+})();

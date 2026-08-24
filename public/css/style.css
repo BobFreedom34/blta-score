@@ -103,6 +103,21 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   color: #d8d8d8;
 }
 .nav-links a:hover { background: rgba(255,255,255,0.08); color: var(--white); }
+.install-app-btn {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #d8d8d8;
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+.install-app-btn:hover { background: rgba(255,255,255,0.08); color: var(--white); }
+@media (max-width: 680px) { .install-app-btn { text-align: center; padding: 12px; } }
 .nav-links a.active { background: var(--orange); color: var(--white); }
 
 @media (max-width: 680px) {
