@@ -92,6 +92,24 @@ function fillStats(prefix, record) {
   document.getElementById(`stat-${prefix}-pct`).textContent = record.pct;
 }
 
+// Small W/L square guide for the last 20 decided matches, oldest to
+// newest (most recent square on the right) — same chronological ordering
+// used for the badges' win-streak calculation. Each square is a link to
+// that match, with the opponent's name as a hover tooltip.
+function formGuideHtml(matches) {
+  const chronological = matches
+    .filter((m) => m.winnerId)
+    .sort((a, b) => new Date(a.scheduledAt || a.startTime || a.createdAt) - new Date(b.scheduledAt || b.startTime || b.createdAt));
+  const last20 = chronological.slice(-20);
+  if (!last20.length) return '';
+  const squares = last20.map((m) => {
+    const won = m.winnerId === Number(playerId);
+    const opponent = m.player1.id === Number(playerId) ? m.player2 : m.player1;
+    return `<a class="form-square ${won ? 'win' : 'loss'}" href="/match/${m.token}" title="${escapeHtml(opponent.name)}">${won ? 'W' : 'L'}</a>`;
+  }).join('');
+  return `<div class="form-guide-label">Last ${last20.length} game${last20.length === 1 ? '' : 's'}</div><div class="form-guide">${squares}</div>`;
+}
+
 // Career record, always computed from the full finished-match history —
 // independent of the result/year filters below, which only narrow the list.
 // Shown two ways: BLTA league matches only (ELITE/NEXT_GEN/NOVICE), and
@@ -101,6 +119,8 @@ function renderStats() {
   const bltaFinished = finished.filter((m) => BLTA_CATEGORIES.includes(m.category));
   fillStats('blta', computeRecord(bltaFinished));
   fillStats('overall', computeRecord(finished));
+  document.getElementById('form-blta').innerHTML = formGuideHtml(bltaFinished);
+  document.getElementById('form-overall').innerHTML = formGuideHtml(finished);
 }
 
 // Badge definitions are admin-managed (see /badges-admin) — fetched once
