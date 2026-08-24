@@ -219,6 +219,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   flex-wrap: wrap;
   margin-bottom: 40px;
 }
+#player-filters { margin-bottom: 56px; }
 .filters input[type="text"],
 .filters select,
 .field input,
@@ -654,13 +655,13 @@ datalist {}
 /* ---------- Head-to-head ---------- */
 .section-label {
   font-weight: 800;
-  font-size: 18px;
+  font-size: 17px;
   letter-spacing: 0.06em;
   color: var(--orange);
   text-transform: uppercase;
-  margin: 40px 0 12px;
+  margin: 56px 0 12px;
 }
-.h2h-card { background: var(--white); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 40px; }
+.h2h-card { background: var(--white); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 56px; }
 .h2h-row {
   display: flex;
   align-items: center;
