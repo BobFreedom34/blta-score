@@ -661,6 +661,11 @@ datalist {}
 #badges-modal-grid .badge-name { color: var(--ink); }
 #badges-modal-grid .badge-name.locked { color: var(--gray); }
 #badges-modal-grid .badge-condition { color: var(--gray); }
+.badge-item { cursor: pointer; }
+#badge-zoom-content .badge-name { color: var(--ink); font-size: 17px; margin-top: 4px; }
+#badge-zoom-content .badge-name.locked { color: var(--gray); }
+#badge-zoom-content .badge-condition { color: var(--gray); font-size: 13px; margin-top: 6px; }
+#badge-zoom-content .badge-medal { width: 160px; height: 160px; font-size: 68px; border-width: 5px; margin: 0 auto 10px; }
 
 /* ---------- Head-to-head ---------- */
 .section-label {

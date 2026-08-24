@@ -177,6 +177,19 @@ function openBadgesModal() {
   document.getElementById('badges-modal').style.display = 'flex';
 }
 
+// Delegated so it works for a badge clicked in either the compact profile
+// grid or inside the "show all badges" modal — both use the same
+// data-badge-id markup from badgeItemHtml().
+document.addEventListener('click', (e) => {
+  const item = e.target.closest('.badge-item');
+  if (!item || !badgeDefsCache) return;
+  const badge = badgeDefsCache.find((b) => b.id === Number(item.dataset.badgeId));
+  if (!badge) return;
+  const earned = item.dataset.earned === '1';
+  document.getElementById('badge-zoom-content').innerHTML = badgeItemHtml(badge, earned, true);
+  document.getElementById('badge-zoom-modal').style.display = 'flex';
+});
+
 // Per-opponent win/loss record, built from the same full finished-match
 // history as renderStats() — also independent of the result/year filters.
 function opponentRecords() {

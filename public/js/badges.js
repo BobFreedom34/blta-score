@@ -71,7 +71,7 @@ function badgeIconInner(icon) {
 function badgeItemHtml(b, earned, detailed) {
   const classes = earned ? '' : ' locked';
   return `
-    <div class="badge-item">
+    <div class="badge-item" data-badge-id="${b.id}" data-earned="${earned ? '1' : '0'}">
       <div class="badge-medal${classes}" title="${escapeHtml(b.description)}">${badgeIconInner(b.icon)}</div>
       <div class="badge-name${classes}">${escapeHtml(b.name)}</div>
       ${detailed ? `<div class="badge-condition">${escapeHtml(b.description)}</div>` : ''}
