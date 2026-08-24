@@ -654,7 +654,7 @@ datalist {}
 /* ---------- Head-to-head ---------- */
 .section-label {
   font-weight: 800;
-  font-size: 12px;
+  font-size: 18px;
   letter-spacing: 0.06em;
   color: var(--orange);
   text-transform: uppercase;
