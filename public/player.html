@@ -31,55 +31,59 @@
     <h1 id="player-name">Loading…</h1>
   </div>
 
-  <div class="section-label">Statistics</div>
-  <div class="tabs" id="stats-tabs">
-    <button type="button" class="tab active" data-stats-tab="blta">BLTA matches</button>
-    <button type="button" class="tab" data-stats-tab="overall">Overall</button>
-  </div>
-
-  <div id="stats-panel-blta">
-    <p class="stats-tab-note">Only official BLTA league matches (Elite, Next Gen, Novice).</p>
-    <div class="info-grid" id="player-stats-blta">
-      <div class="info-item">
-        <div class="label">Games played</div>
-        <div class="value" id="stat-blta-played" style="font-size:22px">0</div>
-      </div>
-      <div class="info-item">
-        <div class="label">Wins — Losses</div>
-        <div class="value" id="stat-blta-wl" style="font-size:22px">0 — 0</div>
-      </div>
-      <div class="info-item">
-        <div class="label">Win rate</div>
-        <div class="value" id="stat-blta-pct" style="font-size:22px">—</div>
-      </div>
+  <div class="statistics-card">
+    <div class="section-label">Statistics</div>
+    <div class="tabs" id="stats-tabs">
+      <button type="button" class="tab active" data-stats-tab="blta">BLTA matches</button>
+      <button type="button" class="tab" data-stats-tab="overall">Overall</button>
     </div>
-    <div id="form-blta"></div>
-  </div>
 
-  <div id="stats-panel-overall" style="display:none">
-    <p class="stats-tab-note">BLTA league matches plus other matches like Friendly and VIP Cup.</p>
-    <div class="info-grid" id="player-stats-overall">
-      <div class="info-item">
-        <div class="label">Games played</div>
-        <div class="value" id="stat-overall-played" style="font-size:22px">0</div>
+    <div id="stats-panel-blta">
+      <p class="stats-tab-note">Only official BLTA league matches (Elite, Next Gen, Novice).</p>
+      <div class="info-grid" id="player-stats-blta">
+        <div class="info-item">
+          <div class="label">Games played</div>
+          <div class="value" id="stat-blta-played" style="font-size:22px">0</div>
+        </div>
+        <div class="info-item">
+          <div class="label">Wins — Losses</div>
+          <div class="value" id="stat-blta-wl" style="font-size:22px">0 — 0</div>
+        </div>
+        <div class="info-item">
+          <div class="label">Win rate</div>
+          <div class="value" id="stat-blta-pct" style="font-size:22px">—</div>
+        </div>
       </div>
-      <div class="info-item">
-        <div class="label">Wins — Losses</div>
-        <div class="value" id="stat-overall-wl" style="font-size:22px">0 — 0</div>
-      </div>
-      <div class="info-item">
-        <div class="label">Win rate</div>
-        <div class="value" id="stat-overall-pct" style="font-size:22px">—</div>
-      </div>
+      <div id="form-blta"></div>
     </div>
-    <div id="form-overall"></div>
+
+    <div id="stats-panel-overall" style="display:none">
+      <p class="stats-tab-note">BLTA league matches plus other matches like Friendly and VIP Cup.</p>
+      <div class="info-grid" id="player-stats-overall">
+        <div class="info-item">
+          <div class="label">Games played</div>
+          <div class="value" id="stat-overall-played" style="font-size:22px">0</div>
+        </div>
+        <div class="info-item">
+          <div class="label">Wins — Losses</div>
+          <div class="value" id="stat-overall-wl" style="font-size:22px">0 — 0</div>
+        </div>
+        <div class="info-item">
+          <div class="label">Win rate</div>
+          <div class="value" id="stat-overall-pct" style="font-size:22px">—</div>
+        </div>
+      </div>
+      <div id="form-overall"></div>
+    </div>
   </div>
 
-  <div class="section-header">
-    <div class="section-label">Badges <span class="badges-ratio" id="badges-ratio"></span></div>
-    <button type="button" class="section-link" id="badges-toggle">Show all badges</button>
+  <div class="statistics-card">
+    <div class="section-header">
+      <div class="section-label">Badges <span class="badges-ratio" id="badges-ratio"></span></div>
+      <button type="button" class="section-link" id="badges-toggle">Show all badges</button>
+    </div>
+    <div class="badges-grid" id="badges-grid"></div>
   </div>
-  <div class="badges-grid" id="badges-grid"></div>
 
   <div id="h2h-section"></div>
 

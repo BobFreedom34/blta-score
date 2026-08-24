@@ -629,6 +629,14 @@ datalist {}
 }
 #stats-tabs { margin: 0 0 12px; }
 #stats-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
+.statistics-card {
+  background: var(--ink);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-top: 56px;
+}
+.statistics-card .section-label { margin: 0 0 12px; }
+.statistics-card .section-header { margin: 0 0 12px; }
 
 /* ---------- Badges ---------- */
 .section-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 40px 0 12px; }
