@@ -553,7 +553,12 @@ datalist {}
 
 .match-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
 
-.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0; }
+.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
+/* Zeroed only for the player profile page's two stats grids — spacing
+   there is deliberately owned by #stats-tabs and the following section
+   label instead, not the grid itself (see the section-gap unification
+   above). Match page's Location/Date/Category grid keeps the base margin. */
+#player-stats-blta, #player-stats-overall { margin: 0; }
 .info-item { background: var(--white); border-radius: 10px; padding: 12px; box-shadow: var(--shadow); }
 .info-item .label { font-size: 11px; text-transform: uppercase; color: var(--gray); font-weight: 700; letter-spacing: 0.03em; }
 .info-item .value { font-weight: 700; font-size: 14px; margin-top: 2px; }
@@ -628,6 +633,11 @@ datalist {}
 }
 .section-link:hover { text-decoration: underline; }
 .badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 18px 12px; transition: max-height 0.2s ease; }
+@media (max-width: 480px) {
+  /* auto-fill's 118px minimum only fits 2 per row at phone widths — force
+     3 so the 2-row clip shows 6 badges instead of 4. */
+  .badges-grid { grid-template-columns: repeat(3, 1fr); gap: 14px 8px; }
+}
 .badge-item { text-align: center; }
 .badge-medal {
   width: 90px;
