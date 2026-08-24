@@ -169,6 +169,9 @@ async function renderBadges() {
   const finished = rawGroups[3] || [];
   earnedBadgesCache = computeEarnedBadges(playerId, finished, badgeDefsCache);
   document.getElementById('badges-grid').innerHTML = badgesGridHtml(badgeDefsCache, earnedBadgesCache);
+  document.getElementById('badges-ratio').textContent = badgeDefsCache.length
+    ? `${earnedBadgesCache.size}/${badgeDefsCache.length}`
+    : '';
   applyBadgesClip();
 }
 

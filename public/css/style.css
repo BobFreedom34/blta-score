@@ -618,6 +618,7 @@ datalist {}
 /* ---------- Badges ---------- */
 .section-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 40px 0 12px; }
 .section-header .section-label { margin: 0; }
+.badges-ratio { color: var(--gray-dim); font-weight: 700; }
 .section-link {
   background: none;
   border: none;
