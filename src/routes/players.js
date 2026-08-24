@@ -4,6 +4,41 @@ const { requireAdmin } = require('../auth');
 
 const router = express.Router();
 
+function slugifyPart(str) {
+  return str.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function surnameOf(name) {
+  const parts = name.trim().split(/\s+/);
+  return parts[parts.length - 1];
+}
+
+// Base slug is the surname — falls back to a full-name slug then "player"
+// for the rare edge case where the surname alone normalizes to nothing
+// (e.g. a name that's only diacritics/symbols).
+function uniqueSlugFor(name, excludeId) {
+  const base = slugifyPart(surnameOf(name)) || slugifyPart(name) || 'player';
+  let slug = base;
+  let n = 2;
+  const taken = (candidate) => {
+    const row = db.prepare('SELECT id FROM players WHERE slug = ?').get(candidate);
+    return row && row.id !== excludeId;
+  };
+  while (taken(slug)) {
+    slug = `${base}-${n}`;
+    n += 1;
+  }
+  return slug;
+}
+
+// Old links (numeric id) still work — anything else is looked up as a slug.
+function findPlayerByIdOrSlug(idOrSlug) {
+  if (/^\d+$/.test(idOrSlug)) {
+    return db.prepare('SELECT * FROM players WHERE id = ?').get(idOrSlug);
+  }
+  return db.prepare('SELECT * FROM players WHERE slug = ?').get(idOrSlug);
+}
+
 router.get('/', (req, res) => {
   const q = (req.query.q || '').trim();
   let rows;
@@ -17,7 +52,7 @@ router.get('/', (req, res) => {
 });
 
 router.get('/:id', (req, res) => {
-  const player = db.prepare('SELECT * FROM players WHERE id = ?').get(req.params.id);
+  const player = findPlayerByIdOrSlug(req.params.id);
   if (!player) return res.status(404).json({ error: 'Player not found' });
   res.json(player);
 });
@@ -33,13 +68,14 @@ router.post('/', requireAdmin, (req, res) => {
   const existing = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE').get(name);
   if (existing) return res.status(200).json(existing);
 
-  const info = db.prepare('INSERT INTO players (name) VALUES (?)').run(name);
+  const slug = uniqueSlugFor(name, null);
+  const info = db.prepare('INSERT INTO players (name, slug) VALUES (?, ?)').run(name, slug);
   const player = db.prepare('SELECT * FROM players WHERE id = ?').get(info.lastInsertRowid);
   res.status(201).json(player);
 });
 
 router.patch('/:id', requireAdmin, (req, res) => {
-  const player = db.prepare('SELECT * FROM players WHERE id = ?').get(req.params.id);
+  const player = findPlayerByIdOrSlug(req.params.id);
   if (!player) return res.status(404).json({ error: 'Player not found' });
 
   const name = (req.body.name || '').trim();
@@ -56,7 +92,7 @@ router.patch('/:id', requireAdmin, (req, res) => {
 });
 
 router.delete('/:id', requireAdmin, (req, res) => {
-  const player = db.prepare('SELECT * FROM players WHERE id = ?').get(req.params.id);
+  const player = findPlayerByIdOrSlug(req.params.id);
   if (!player) return res.status(404).json({ error: 'Player not found' });
 
   const { count } = db.prepare(

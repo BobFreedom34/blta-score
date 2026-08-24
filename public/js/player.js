@@ -1,4 +1,9 @@
-const playerId = window.location.pathname.split('/').filter(Boolean).pop();
+// The URL segment can be either the player's slug (surname-based, the
+// normal case) or their old numeric id (still supported for links shared
+// before slugs existed) — reassigned to the real numeric id once the
+// player record loads below, since every Number(playerId) comparison in
+// this file downstream needs the actual id either way.
+let playerId = window.location.pathname.split('/').filter(Boolean).pop();
 const nameEl = document.getElementById('player-name');
 const listEl = document.getElementById('player-match-list');
 const resultFilterEl = document.getElementById('result-filter');
@@ -197,7 +202,7 @@ function h2hRowHtml(rec) {
   const scoreColor = rec.wins > rec.losses ? 'var(--green)' : rec.wins < rec.losses ? 'var(--danger)' : 'var(--gray)';
   return `
     <div class="h2h-row">
-      <a class="h2h-name" href="/player/${rec.opponent.id}">${escapeHtml(rec.opponent.name)}</a>
+      <a class="h2h-name" href="/player/${rec.opponent.slug || rec.opponent.id}">${escapeHtml(rec.opponent.name)}</a>
       <div class="h2h-record">
         <div class="h2h-bar">
           <div style="width:${winPct}%;background:var(--green)"></div><div style="width:${100 - winPct}%;background:var(--danger)"></div>
@@ -313,6 +318,7 @@ function nameLinesHtml(name) {
 (async () => {
   try {
     const player = await api(`/players/${playerId}`);
+    playerId = player.id;
     nameEl.innerHTML = nameLinesHtml(player.name);
     document.title = `${player.name} — BLTA Score`;
     const avatarEl = document.getElementById('player-avatar');

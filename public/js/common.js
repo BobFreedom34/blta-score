@@ -71,9 +71,10 @@ function playerInfoBtn(player) {
   // inside the embed widget's iframe on an external site — there, navigating
   // the iframe itself would replace the whole embedded widget with the
   // profile page, so that context still opens a new tab.
+  const playerPath = player.slug || player.id;
   const nav = window.top === window.self
-    ? `window.location.href='/player/${player.id}'`
-    : `window.open('/player/${player.id}','_blank')`;
+    ? `window.location.href='/player/${playerPath}'`
+    : `window.open('/player/${playerPath}','_blank')`;
   return `<button type="button" class="player-info-btn" title="View ${escapeHtml(player.name)}'s profile" onclick="event.preventDefault();event.stopPropagation();${nav}">i</button>`;
 }
 

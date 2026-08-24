@@ -137,6 +137,37 @@ const playerColumns = db.prepare('PRAGMA table_info(players)').all().map((c) => 
 if (!playerColumns.includes('photo_url')) {
   db.exec('ALTER TABLE players ADD COLUMN photo_url TEXT');
 }
+if (!playerColumns.includes('slug')) {
+  db.exec('ALTER TABLE players ADD COLUMN slug TEXT');
+}
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_players_slug ON players(slug)');
+
+// Backfills a URL-friendly slug (surname-based, e.g. "sloboda") for any
+// player that doesn't have one yet — new players, and every existing one
+// the first time this migration runs. Player profile links use this
+// instead of the numeric id; old numeric links still resolve too (see
+// findPlayerByIdOrSlug in routes/players.js).
+function slugifyForBackfill(str) {
+  return str.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+const playersNeedingSlug = db.prepare('SELECT id, name FROM players WHERE slug IS NULL').all();
+if (playersNeedingSlug.length > 0) {
+  const existingSlugs = new Set(db.prepare('SELECT slug FROM players WHERE slug IS NOT NULL').all().map((r) => r.slug));
+  const setSlug = db.prepare('UPDATE players SET slug = ? WHERE id = ?');
+  playersNeedingSlug.forEach((p) => {
+    const parts = p.name.trim().split(/\s+/);
+    const surname = parts[parts.length - 1];
+    const base = slugifyForBackfill(surname) || slugifyForBackfill(p.name) || 'player';
+    let slug = base;
+    let n = 2;
+    while (existingSlugs.has(slug)) {
+      slug = `${base}-${n}`;
+      n += 1;
+    }
+    existingSlugs.add(slug);
+    setSlug.run(slug, p.id);
+  });
+}
 
 const untokenized = db.prepare('SELECT id FROM matches WHERE share_token IS NULL').all();
 if (untokenized.length > 0) {
