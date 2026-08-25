@@ -115,6 +115,41 @@ function formGuideHtml(matches) {
   return `<div class="form-guide-label">Last ${last20.length} game${last20.length === 1 ? '' : 's'}</div><div class="form-guide">${squares}</div>`;
 }
 
+// Small sparkline of the running win rate after each decided match, oldest
+// to newest — same chronological ordering as formGuideHtml(). Skipped for
+// fewer than 2 decided matches, since a single point isn't a trend.
+function winRateTrendHtml(matches) {
+  const chronological = matches
+    .filter((m) => m.winnerId)
+    .sort((a, b) => new Date(a.scheduledAt || a.startTime || a.createdAt) - new Date(b.scheduledAt || b.startTime || b.createdAt));
+  if (chronological.length < 2) return '';
+  let wins = 0;
+  const points = chronological.map((m, i) => {
+    if (m.winnerId === Number(playerId)) wins += 1;
+    return Math.round((wins / (i + 1)) * 100);
+  });
+  const w = 120;
+  const h = 36;
+  const pad = 4;
+  const stepX = (w - pad * 2) / (points.length - 1);
+  const coords = points.map((pct, i) => [
+    pad + i * stepX,
+    pad + ((100 - pct) / 100) * (h - pad * 2),
+  ]);
+  const path = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const [lastX, lastY] = coords[coords.length - 1];
+  return `
+    <div class="trend-sparkline">
+      <div class="form-guide-label">Win rate trend</div>
+      <svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
+        <path d="${path}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="2.5" fill="var(--orange)"/>
+      </svg>
+      <div class="trend-value">${points[points.length - 1]}%</div>
+    </div>
+  `;
+}
+
 // Career record, always computed from the full finished-match history —
 // independent of the result/year filters below, which only narrow the list.
 // Shown two ways: BLTA league matches only (ELITE/NEXT_GEN/NOVICE), and
@@ -126,6 +161,8 @@ function renderStats() {
   fillStats('overall', computeRecord(finished));
   document.getElementById('form-blta').innerHTML = formGuideHtml(bltaFinished);
   document.getElementById('form-overall').innerHTML = formGuideHtml(finished);
+  document.getElementById('trend-blta').innerHTML = winRateTrendHtml(bltaFinished);
+  document.getElementById('trend-overall').innerHTML = winRateTrendHtml(finished);
 }
 
 // Badge definitions are admin-managed (see /badges-admin) — fetched once
