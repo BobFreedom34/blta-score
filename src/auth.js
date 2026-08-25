@@ -53,7 +53,32 @@ function requirePlayer(req, res, next) {
   next();
 }
 
+// Separate gate for editing profile bio info — its own code (PROFILE_CODE),
+// distinct from PLAYER_CODE, so it can be shared or changed independently
+// of the match-scoring player code.
+const PROFILE_COOKIE_NAME = 'blta_profile';
+
+function isProfileEditor(req) {
+  return isAdmin(req) || (req.signedCookies && req.signedCookies[PROFILE_COOKIE_NAME] === 'ok');
+}
+
+function logInProfileEditor(res) {
+  res.cookie(PROFILE_COOKIE_NAME, 'ok', cookieOptions());
+}
+
+function logOutProfileEditor(res) {
+  res.clearCookie(PROFILE_COOKIE_NAME, cookieOptions());
+}
+
+function requireProfileEditor(req, res, next) {
+  if (!isProfileEditor(req)) {
+    return res.status(401).json({ error: 'Please log in to edit profile info' });
+  }
+  next();
+}
+
 module.exports = {
   COOKIE_NAME, PLAYER_COOKIE_NAME, isAdmin, logIn, logOut, requireAdmin,
   isPlayer, logInPlayer, logOutPlayer, requirePlayer,
+  PROFILE_COOKIE_NAME, isProfileEditor, logInProfileEditor, logOutProfileEditor, requireProfileEditor,
 };

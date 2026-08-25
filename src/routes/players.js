@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { requireAdmin, requirePlayer } = require('../auth');
+const { requireAdmin, requireProfileEditor } = require('../auth');
 
 const router = express.Router();
 
@@ -99,11 +99,12 @@ function optionalTextField(body, key, current, maxLen) {
   return v ? v.slice(0, maxLen) : null;
 }
 
-// Bio fields are editable by any logged-in player (the shared league code),
-// not just admins — unlike name/photo above, which stay admin-only since
-// renaming or re-photographing another player is a more sensitive action
-// than filling in your own racket string tension.
-router.patch('/:id/bio', requirePlayer, (req, res) => {
+// Bio fields are editable by anyone with the profile-editing code (its own
+// PROFILE_CODE, separate from the match-scoring PLAYER_CODE) or an admin —
+// unlike name/photo above, which stay admin-only since renaming or
+// re-photographing another player is a more sensitive action than filling
+// in your own racket string tension.
+router.patch('/:id/bio', requireProfileEditor, (req, res) => {
   const player = findPlayerByIdOrSlug(req.params.id);
   if (!player) return res.status(404).json({ error: 'Player not found' });
 

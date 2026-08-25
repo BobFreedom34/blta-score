@@ -470,10 +470,84 @@ function openBioModal() {
   document.getElementById('player-bio-modal').style.display = 'flex';
 }
 
-// Open to any logged-in player, not just admins — same shared-code gate
-// used for scoring/starting matches elsewhere (requirePlayerAuth prompts
-// the login popup first if not already authed, then proceeds).
-document.getElementById('edit-bio-btn').addEventListener('click', () => requirePlayerAuth(openBioModal));
+// Editing profile info uses its own code (PROFILE_CODE), separate from the
+// shared match-scoring player code — a self-contained login flow (not
+// common.js's requirePlayerAuth/openPlayerLoginModal, which are wired to
+// the other code) since this is the only page that needs it.
+let profileEditorAuthed = false;
+
+async function refreshProfileAuth() {
+  try {
+    const res = await api('/player/profile-session');
+    profileEditorAuthed = !!res.isProfileEditor;
+  } catch {
+    profileEditorAuthed = false;
+  }
+  return profileEditorAuthed;
+}
+
+function openProfileLoginModal(onSuccess) {
+  const modal = document.getElementById('profile-login-modal');
+  if (!modal) return;
+  const form = document.getElementById('profile-login-form');
+  const errorEl = document.getElementById('profile-login-error');
+  const digits = Array.from(modal.querySelectorAll('.otp-digit'));
+  errorEl.textContent = '';
+  form.onsubmit = (e) => e.preventDefault();
+
+  const submitCode = async () => {
+    errorEl.textContent = '';
+    digits.forEach((d) => { d.disabled = true; });
+    try {
+      await api('/player/profile-login', { method: 'POST', body: { code: digits.map((d) => d.value).join('') } });
+      profileEditorAuthed = true;
+      modal.style.display = 'none';
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      digits.forEach((d) => { d.value = ''; d.disabled = false; });
+      digits[0].focus();
+    }
+  };
+
+  digits.forEach((input, i) => {
+    input.value = '';
+    input.disabled = false;
+    input.oninput = () => {
+      const raw = input.value.replace(/\D/g, '');
+      let idx = i;
+      for (const ch of raw) {
+        if (idx >= digits.length) break;
+        digits[idx].value = ch;
+        idx += 1;
+      }
+      if (!raw) input.value = '';
+      digits[Math.min(idx, digits.length - 1)].focus();
+      if (digits.every((d) => d.value)) submitCode();
+    };
+    input.onkeydown = (e) => {
+      if (e.key === 'Backspace' && !input.value && i > 0) digits[i - 1].focus();
+    };
+    input.onpaste = (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+      if (!text) return;
+      digits.forEach((d, idx) => { d.value = text[idx] || ''; });
+      (digits.find((d) => !d.value) || digits[digits.length - 1]).focus();
+      if (digits.every((d) => d.value)) submitCode();
+    };
+  });
+
+  modal.style.display = 'flex';
+  setTimeout(() => digits[0].focus(), 50);
+}
+
+function requireProfileAuth(onReady) {
+  if (profileEditorAuthed) { onReady(); return; }
+  openProfileLoginModal(onReady);
+}
+
+document.getElementById('edit-bio-btn').addEventListener('click', () => requireProfileAuth(openBioModal));
 
 document.getElementById('player-bio-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -498,6 +572,8 @@ document.getElementById('player-bio-form').addEventListener('submit', async (e) 
     document.getElementById('bio-error').textContent = err.message;
   }
 });
+
+refreshProfileAuth();
 
 (async () => {
   try {
