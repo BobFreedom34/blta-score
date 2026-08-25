@@ -28,8 +28,17 @@
 <div class="container">
   <div class="player-avatar-row">
     <div class="player-avatar-fallback" id="player-avatar">?</div>
-    <h1 id="player-name">Loading…</h1>
+    <div class="player-header-main">
+      <div class="player-name-row">
+        <h1 id="player-name">Loading…</h1>
+      </div>
+    </div>
   </div>
+
+  <div class="player-bio-header">
+    <button type="button" class="btn btn-sm player-bio-edit-btn" id="edit-bio-btn">Edit profile</button>
+  </div>
+  <div class="player-bio-card" id="player-bio-card" style="display:none"></div>
 
   <div class="statistics-card">
     <div class="section-label">Statistics</div>
@@ -114,6 +123,83 @@
   </div>
 
   <div class="match-list" id="player-match-list"></div>
+</div>
+
+<!-- Edit player profile info -->
+<div class="modal-backdrop" id="player-bio-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="player-bio-modal" aria-label="Close">&times;</button>
+    <h3 style="margin-top:0">Edit profile info</h3>
+    <form id="player-bio-form">
+      <div class="grid-2">
+        <div class="field">
+          <label for="bio-category">Category</label>
+          <select id="bio-category">
+            <option value="">Not set</option>
+            <option value="ELITE">BLTA ELITE</option>
+            <option value="NEXT_GEN">BLTA NEXT GEN</option>
+            <option value="NOVICE">BLTA NOVICE</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="bio-nationality">Nationality</label>
+          <input type="text" id="bio-nationality" maxlength="60" placeholder="e.g. Slovakia">
+        </div>
+        <div class="field">
+          <label for="bio-birthday">Birthday</label>
+          <input type="date" id="bio-birthday">
+        </div>
+        <div class="field">
+          <label for="bio-racket">Racket</label>
+          <input type="text" id="bio-racket" maxlength="60" placeholder="e.g. Head Speed Pro 2022">
+        </div>
+        <div class="field">
+          <label for="bio-string-brand">String brand</label>
+          <input type="text" id="bio-string-brand" maxlength="60" placeholder="e.g. Luxilon ALU Power">
+        </div>
+        <div class="field">
+          <label for="bio-string-tension">String tension</label>
+          <input type="text" id="bio-string-tension" maxlength="30" placeholder="e.g. 24/23 kg">
+        </div>
+        <div class="field">
+          <label for="bio-forehand">Forehand</label>
+          <input type="text" id="bio-forehand" maxlength="40" placeholder="e.g. Right-handed">
+        </div>
+        <div class="field">
+          <label for="bio-backhand">Backhand</label>
+          <input type="text" id="bio-backhand" maxlength="40" placeholder="e.g. Two-handed">
+        </div>
+        <div class="field">
+          <label for="bio-seasons">Seasons</label>
+          <input type="text" id="bio-seasons" maxlength="60" placeholder="e.g. 2025, 2026">
+        </div>
+        <div class="field">
+          <label for="bio-favorite-player">Favourite player</label>
+          <input type="text" id="bio-favorite-player" maxlength="60" placeholder="e.g. Roger Federer">
+        </div>
+      </div>
+      <div id="bio-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Save</button>
+    </form>
+  </div>
+</div>
+
+<!-- Log in as player modal -->
+<div class="modal-backdrop" id="player-login-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="player-login-modal" aria-label="Close">&times;</button>
+    <h3>Log in as player</h3>
+    <p style="font-size:13px;color:var(--gray)">Enter the 4-digit code given to BLTA players.</p>
+    <form id="player-login-form">
+      <div class="otp-inputs">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="otp-digit" autocomplete="off">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="otp-digit" autocomplete="off">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="otp-digit" autocomplete="off">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="otp-digit" autocomplete="off">
+      </div>
+      <div id="player-login-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
+    </form>
+  </div>
 </div>
 
 <!-- All badges modal -->

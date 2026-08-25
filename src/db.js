@@ -140,6 +140,26 @@ if (!playerColumns.includes('photo_url')) {
 if (!playerColumns.includes('slug')) {
   db.exec('ALTER TABLE players ADD COLUMN slug TEXT');
 }
+// Optional bio fields shown on the player's profile page, below their
+// photo — editable by any logged-in player or admin, all nullable since
+// most players won't have every field filled in.
+[
+  'category TEXT',
+  'forehand TEXT',
+  'backhand TEXT',
+  'racket TEXT',
+  'string_brand TEXT',
+  'string_tension TEXT',
+  'seasons TEXT',
+  'nationality TEXT',
+  'birthday TEXT',
+  'favorite_player TEXT',
+].forEach((colDef) => {
+  const colName = colDef.split(' ')[0];
+  if (!playerColumns.includes(colName)) {
+    db.exec(`ALTER TABLE players ADD COLUMN ${colDef}`);
+  }
+});
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_players_slug ON players(slug)');
 
 // Backfills a URL-friendly slug (surname-based, e.g. "sloboda") for any

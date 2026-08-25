@@ -4,6 +4,7 @@
 // player record loads below, since every Number(playerId) comparison in
 // this file downstream needs the actual id either way.
 let playerId = window.location.pathname.split('/').filter(Boolean).pop();
+let currentPlayer = null;
 const nameEl = document.getElementById('player-name');
 const listEl = document.getElementById('player-match-list');
 const resultFilterEl = document.getElementById('result-filter');
@@ -391,10 +392,118 @@ function nameLinesHtml(name) {
     : `<span class="player-surname">${escapeHtml(first)}</span>`;
 }
 
+// Age as of today, from a YYYY-MM-DD birthday — not stored directly, since a
+// stored age would silently go stale.
+function computeAge(birthday) {
+  if (!birthday) return null;
+  const b = new Date(birthday);
+  if (Number.isNaN(b.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - b.getFullYear();
+  const hadBirthdayThisYear = today.getMonth() > b.getMonth()
+    || (today.getMonth() === b.getMonth() && today.getDate() >= b.getDate());
+  if (!hadBirthdayThisYear) age -= 1;
+  return age;
+}
+
+function fmtBirthday(birthday) {
+  if (!birthday) return null;
+  const d = new Date(birthday);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// Three columns, each independently skipping its own empty fields — the
+// whole card stays hidden only when every field across all three is empty.
+function bioCardHtml(player) {
+  const age = computeAge(player.birthday);
+  const columns = [
+    [
+      ['Category', player.category ? (CATEGORY_LABELS[player.category] || player.category) : null],
+      ['Nationality', player.nationality],
+      ['Birthday', fmtBirthday(player.birthday)],
+      ['Age', age !== null ? String(age) : null],
+    ],
+    [
+      ['Racket', player.racket],
+      ['String brand', player.string_brand],
+      ['String tension', player.string_tension],
+      ['Forehand', player.forehand],
+    ],
+    [
+      ['Backhand', player.backhand],
+      ['Seasons', player.seasons],
+      ['Favourite player', player.favorite_player],
+    ],
+  ].map((rows) => rows.filter(([, value]) => value)).filter((rows) => rows.length);
+
+  if (!columns.length) return '';
+  return columns.map((rows) => `
+    <div class="bio-col">
+      ${rows.map(([label, value]) => `
+        <div class="bio-row"><span class="bio-label">${escapeHtml(label)}</span><span class="bio-value">${escapeHtml(value)}</span></div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function renderBio() {
+  const card = document.getElementById('player-bio-card');
+  const html = bioCardHtml(currentPlayer);
+  card.innerHTML = html;
+  card.style.display = html ? '' : 'none';
+}
+
+function openBioModal() {
+  const p = currentPlayer;
+  document.getElementById('bio-category').value = p.category || '';
+  document.getElementById('bio-nationality').value = p.nationality || '';
+  document.getElementById('bio-forehand').value = p.forehand || '';
+  document.getElementById('bio-backhand').value = p.backhand || '';
+  document.getElementById('bio-racket').value = p.racket || '';
+  document.getElementById('bio-string-brand').value = p.string_brand || '';
+  document.getElementById('bio-string-tension').value = p.string_tension || '';
+  document.getElementById('bio-seasons').value = p.seasons || '';
+  document.getElementById('bio-favorite-player').value = p.favorite_player || '';
+  document.getElementById('bio-birthday').value = p.birthday || '';
+  document.getElementById('bio-error').textContent = '';
+  document.getElementById('player-bio-modal').style.display = 'flex';
+}
+
+// Open to any logged-in player, not just admins — same shared-code gate
+// used for scoring/starting matches elsewhere (requirePlayerAuth prompts
+// the login popup first if not already authed, then proceeds).
+document.getElementById('edit-bio-btn').addEventListener('click', () => requirePlayerAuth(openBioModal));
+
+document.getElementById('player-bio-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = {
+    category: document.getElementById('bio-category').value || null,
+    nationality: document.getElementById('bio-nationality').value.trim() || null,
+    forehand: document.getElementById('bio-forehand').value.trim() || null,
+    backhand: document.getElementById('bio-backhand').value.trim() || null,
+    racket: document.getElementById('bio-racket').value.trim() || null,
+    stringBrand: document.getElementById('bio-string-brand').value.trim() || null,
+    stringTension: document.getElementById('bio-string-tension').value.trim() || null,
+    seasons: document.getElementById('bio-seasons').value.trim() || null,
+    favoritePlayer: document.getElementById('bio-favorite-player').value.trim() || null,
+    birthday: document.getElementById('bio-birthday').value || null,
+  };
+  try {
+    currentPlayer = await api(`/players/${playerId}/bio`, { method: 'PATCH', body });
+    renderBio();
+    document.getElementById('player-bio-modal').style.display = 'none';
+    toast('Profile updated');
+  } catch (err) {
+    document.getElementById('bio-error').textContent = err.message;
+  }
+});
+
 (async () => {
   try {
     const player = await api(`/players/${playerId}`);
     playerId = player.id;
+    currentPlayer = player;
     nameEl.innerHTML = nameLinesHtml(player.name);
     document.title = `${player.name} — BLTA Score`;
     const avatarEl = document.getElementById('player-avatar');
@@ -403,6 +512,7 @@ function nameLinesHtml(name) {
     } else {
       avatarEl.textContent = initials(player.name);
     }
+    renderBio();
   } catch {
     nameEl.textContent = 'Player not found';
     listEl.innerHTML = '';

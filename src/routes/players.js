@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { requireAdmin } = require('../auth');
+const { requireAdmin, requirePlayer } = require('../auth');
 
 const router = express.Router();
 
@@ -88,6 +88,60 @@ router.patch('/:id', requireAdmin, (req, res) => {
 
   const photoUrl = req.body.photoUrl !== undefined ? (req.body.photoUrl || null) : player.photo_url;
   db.prepare('UPDATE players SET name = ?, photo_url = ? WHERE id = ?').run(name, photoUrl, player.id);
+  res.json(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id));
+});
+
+const BIO_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+
+function optionalTextField(body, key, current, maxLen) {
+  if (body[key] === undefined) return current;
+  const v = (body[key] || '').trim();
+  return v ? v.slice(0, maxLen) : null;
+}
+
+// Bio fields are editable by any logged-in player (the shared league code),
+// not just admins — unlike name/photo above, which stay admin-only since
+// renaming or re-photographing another player is a more sensitive action
+// than filling in your own racket string tension.
+router.patch('/:id/bio', requirePlayer, (req, res) => {
+  const player = findPlayerByIdOrSlug(req.params.id);
+  if (!player) return res.status(404).json({ error: 'Player not found' });
+
+  let category = player.category;
+  if (req.body.category !== undefined) {
+    category = req.body.category || null;
+    if (category && !BIO_CATEGORIES.includes(category)) {
+      return res.status(400).json({ error: 'Invalid category' });
+    }
+  }
+
+  const nationality = optionalTextField(req.body, 'nationality', player.nationality, 60);
+  const racket = optionalTextField(req.body, 'racket', player.racket, 60);
+  const stringBrand = optionalTextField(req.body, 'stringBrand', player.string_brand, 60);
+  const stringTension = optionalTextField(req.body, 'stringTension', player.string_tension, 30);
+  const forehand = optionalTextField(req.body, 'forehand', player.forehand, 40);
+  const backhand = optionalTextField(req.body, 'backhand', player.backhand, 40);
+  const seasons = optionalTextField(req.body, 'seasons', player.seasons, 60);
+  const favoritePlayer = optionalTextField(req.body, 'favoritePlayer', player.favorite_player, 60);
+
+  let birthday = player.birthday;
+  if (req.body.birthday !== undefined) {
+    if (!req.body.birthday) {
+      birthday = null;
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(req.body.birthday) && !Number.isNaN(new Date(req.body.birthday).getTime())) {
+      birthday = req.body.birthday;
+    } else {
+      return res.status(400).json({ error: 'Invalid birthday' });
+    }
+  }
+
+  db.prepare(`
+    UPDATE players SET category = ?, nationality = ?, birthday = ?, racket = ?,
+      string_brand = ?, string_tension = ?, forehand = ?, backhand = ?,
+      seasons = ?, favorite_player = ?
+    WHERE id = ?
+  `).run(category, nationality, birthday, racket, stringBrand, stringTension, forehand, backhand, seasons, favoritePlayer, player.id);
+
   res.json(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id));
 });
 
