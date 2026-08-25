@@ -416,67 +416,73 @@ function fmtBirthday(birthday) {
 // Nationality is free text (admin-typed), not a country code, so flags are
 // matched by name — covers every value currently in use plus a handful of
 // common variants/languages. Falls back to no flag for anything unmapped
-// rather than guessing.
-const NATIONALITY_FLAGS = {
-  'slovenska republika': '🇸🇰',
-  slovensko: '🇸🇰',
-  slovakia: '🇸🇰',
-  ukrajina: '🇺🇦',
-  ukraine: '🇺🇦',
-  nemecko: '🇩🇪',
-  germany: '🇩🇪',
-  francuzsko: '🇫🇷',
-  france: '🇫🇷',
-  'korejska republika': '🇰🇷',
-  'south korea': '🇰🇷',
-  korea: '🇰🇷',
-  czechia: '🇨🇿',
-  'ceska republika': '🇨🇿',
-  'czech republic': '🇨🇿',
-  cesko: '🇨🇿',
-  vietnam: '🇻🇳',
-  bulharsko: '🇧🇬',
-  bulgaria: '🇧🇬',
-  polsko: '🇵🇱',
-  poland: '🇵🇱',
-  madarsko: '🇭🇺',
-  hungary: '🇭🇺',
-  rakusko: '🇦🇹',
-  austria: '🇦🇹',
-  rusko: '🇷🇺',
-  russia: '🇷🇺',
-  srbsko: '🇷🇸',
-  serbia: '🇷🇸',
-  chorvatsko: '🇭🇷',
-  croatia: '🇭🇷',
-  taliansko: '🇮🇹',
-  italy: '🇮🇹',
-  spanielsko: '🇪🇸',
-  spain: '🇪🇸',
-  'velka britania': '🇬🇧',
-  'united kingdom': '🇬🇧',
-  anglicko: '🇬🇧',
-  usa: '🇺🇸',
-  'united states': '🇺🇸',
+// rather than guessing. Rendered as an actual flag image (flagcdn.com SVGs)
+// rather than a Unicode flag emoji — Windows browsers commonly fall back to
+// showing the raw two-letter region code ("SK") instead of a flag glyph, so
+// emoji aren't reliable here.
+const NATIONALITY_CODES = {
+  'slovenska republika': 'sk',
+  slovensko: 'sk',
+  slovakia: 'sk',
+  ukrajina: 'ua',
+  ukraine: 'ua',
+  nemecko: 'de',
+  germany: 'de',
+  francuzsko: 'fr',
+  france: 'fr',
+  'korejska republika': 'kr',
+  'south korea': 'kr',
+  korea: 'kr',
+  czechia: 'cz',
+  'ceska republika': 'cz',
+  'czech republic': 'cz',
+  cesko: 'cz',
+  vietnam: 'vn',
+  bulharsko: 'bg',
+  bulgaria: 'bg',
+  polsko: 'pl',
+  poland: 'pl',
+  madarsko: 'hu',
+  hungary: 'hu',
+  rakusko: 'at',
+  austria: 'at',
+  rusko: 'ru',
+  russia: 'ru',
+  srbsko: 'rs',
+  serbia: 'rs',
+  chorvatsko: 'hr',
+  croatia: 'hr',
+  taliansko: 'it',
+  italy: 'it',
+  spanielsko: 'es',
+  spain: 'es',
+  'velka britania': 'gb',
+  'united kingdom': 'gb',
+  anglicko: 'gb',
+  usa: 'us',
+  'united states': 'us',
 };
 
-function flagFor(nationality) {
+function flagCodeFor(nationality) {
   if (!nationality) return '';
   const key = nationality.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-  return NATIONALITY_FLAGS[key] || '';
+  return NATIONALITY_CODES[key] || '';
+}
+
+function flagImgHtml(nationality, cssClass) {
+  const code = flagCodeFor(nationality);
+  if (!code) return '';
+  return `<img class="${cssClass}" src="https://flagcdn.com/${code}.svg" alt="${code.toUpperCase()}">`;
 }
 
 // Three columns, each independently skipping its own empty fields — the
 // whole card stays hidden only when every field across all three is empty.
 function bioCardHtml(player) {
   const age = computeAge(player.birthday);
-  const nationalityValue = player.nationality
-    ? `${flagFor(player.nationality)} ${player.nationality}`.trim()
-    : null;
   const columns = [
     [
       ['Category', player.category ? (CATEGORY_LABELS[player.category] || player.category) : null],
-      ['Nationality', nationalityValue],
+      ['Nationality', player.nationality],
       ['Birthday', fmtBirthday(player.birthday)],
       ['Age', age !== null ? String(age) : null],
     ],
@@ -496,9 +502,10 @@ function bioCardHtml(player) {
   if (!columns.length) return '';
   return columns.map((rows) => `
     <div class="bio-col">
-      ${rows.map(([label, value]) => `
-        <div class="bio-row"><span class="bio-label">${escapeHtml(label)}</span><span class="bio-value">${escapeHtml(value)}</span></div>
-      `).join('')}
+      ${rows.map(([label, value]) => {
+        const flagHtml = label === 'Nationality' ? flagImgHtml(player.nationality, 'bio-flag-icon') : '';
+        return `<div class="bio-row"><span class="bio-label">${escapeHtml(label)}</span><span class="bio-value">${flagHtml}${escapeHtml(value)}</span></div>`;
+      }).join('')}
     </div>
   `).join('');
 }
@@ -637,7 +644,7 @@ refreshProfileAuth();
     playerId = player.id;
     currentPlayer = player;
     nameEl.innerHTML = nameLinesHtml(player.name);
-    document.getElementById('player-flag').textContent = flagFor(player.nationality);
+    document.getElementById('player-flag').innerHTML = flagImgHtml(player.nationality, 'player-flag-img');
     document.title = `${player.name} — BLTA Score`;
     const avatarEl = document.getElementById('player-avatar');
     if (player.photo_url) {
