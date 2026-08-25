@@ -7,6 +7,8 @@ let messages = [];
 let chatDraftBody = '';
 let editSetIndex = null;
 let viewerCount = null;
+let h2hKey = null;
+let h2hHtml = '';
 
 // Mirrors src/matchEngine.js FORMATS — only the bits needed to build the
 // manual-result-entry form (how many sets, and whether the last one is a
@@ -269,6 +271,46 @@ function chatHtml() {
   `;
 }
 
+// Prior meetings between these two players (any category, excluding this
+// match itself) — fetched once per pair and cached, then re-rendered in
+// place. Runs independently of the frequent re-renders that happen while
+// scoring, since past history between them can't change from those.
+async function ensureH2H(m) {
+  const key = `${m.player1.id}-${m.player2.id}`;
+  if (h2hKey === key) return;
+  h2hKey = key;
+  h2hHtml = '';
+  try {
+    const finished = await api(`/matches?playerId=${m.player1.id}&status=FINISHED`);
+    const prior = finished.filter((x) => x.token !== matchToken && x.winnerId
+      && (x.player1.id === m.player2.id || x.player2.id === m.player2.id));
+    if (prior.length) {
+      let wins = 0;
+      let losses = 0;
+      prior.forEach((x) => { if (x.winnerId === m.player1.id) wins += 1; else losses += 1; });
+      const total = wins + losses;
+      const pct = Math.round((wins / total) * 100);
+      const scoreColor = wins > losses ? 'var(--green)' : wins < losses ? 'var(--danger)' : 'var(--gray)';
+      h2hHtml = `
+        <div class="section-label">Head-to-head</div>
+        <div class="h2h-card">
+          <div class="h2h-row" style="flex-direction:column;align-items:stretch;gap:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <a class="h2h-name" href="/player/${m.player1.slug || m.player1.id}">${escapeHtml(m.player1.name)}</a>
+              <span class="h2h-score" style="color:${scoreColor}">${wins} — ${losses}</span>
+              <a class="h2h-name" href="/player/${m.player2.slug || m.player2.id}" style="text-align:right">${escapeHtml(m.player2.name)}</a>
+            </div>
+            <div class="h2h-bar" style="width:100%">
+              <div style="width:${pct}%;background:var(--green)"></div><div style="width:${100 - pct}%;background:var(--danger)"></div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  } catch (err) { /* non-critical — leave the section empty */ }
+  if (current) render(current);
+}
+
 function render(m) {
   current = m;
   // Always shows a timer chip, even before the match has started (a static
@@ -310,6 +352,8 @@ function render(m) {
       </div>
     </div>
 
+    ${h2hHtml}
+
     ${m.notes || locationEditable ? `
       <div class="card" style="margin-bottom:16px">
         <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em">Additional info</div>
@@ -333,6 +377,7 @@ function render(m) {
   else clearInterval(timerInterval);
 
   attachHandlers(m);
+  ensureH2H(m);
 }
 
 function attachHandlers(m) {
