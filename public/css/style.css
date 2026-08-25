@@ -620,6 +620,7 @@ datalist {}
 .player-header-main { flex: 1; min-width: 240px; }
 .player-name-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .player-flag { display: block; margin-top: 6px; }
+.player-upcoming-stat { margin-top: 12px; max-width: 220px; }
 .player-flag-img { display: block; width: 64px; height: auto; border-radius: 4px; box-shadow: var(--shadow); }
 .bio-flag-icon { width: 20px; height: auto; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
 .player-bio-header { display: flex; justify-content: flex-end; margin-top: 24px; }

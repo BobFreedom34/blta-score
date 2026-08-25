@@ -332,6 +332,7 @@ async function load() {
       return api(`/matches?${qs.toString()}`);
     }));
     populateYearOptions();
+    document.getElementById('player-upcoming-count').textContent = rawGroups[1].length + rawGroups[2].length;
     renderStats();
     await renderBadges();
     renderH2H();
