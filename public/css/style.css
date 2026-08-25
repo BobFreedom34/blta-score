@@ -619,6 +619,7 @@ datalist {}
 .player-avatar-row { display: flex; align-items: flex-start; gap: 18px; margin-top: 22px; flex-wrap: wrap; }
 .player-header-main { flex: 1; min-width: 240px; }
 .player-name-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.player-flag { display: block; font-size: 42px; line-height: 1; margin-top: 6px; }
 .player-bio-header { display: flex; justify-content: flex-end; margin-top: 24px; }
 .player-bio-edit-btn { background: var(--white); color: var(--ink); font-size: 11px; padding: 5px 10px; }
 .player-bio-card {

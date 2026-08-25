@@ -637,6 +637,7 @@ refreshProfileAuth();
     playerId = player.id;
     currentPlayer = player;
     nameEl.innerHTML = nameLinesHtml(player.name);
+    document.getElementById('player-flag').textContent = flagFor(player.nationality);
     document.title = `${player.name} — BLTA Score`;
     const avatarEl = document.getElementById('player-avatar');
     if (player.photo_url) {
