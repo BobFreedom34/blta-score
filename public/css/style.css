@@ -585,7 +585,7 @@ datalist {}
 .form-guide-label { font-size: 11px; text-transform: uppercase; color: var(--gray-dim); font-weight: 700; letter-spacing: 0.03em; margin: 16px 0 8px; }
 .form-guide { display: flex; gap: 6px; flex-wrap: wrap; }
 .form-trend-row { display: flex; align-items: flex-end; gap: 16px 24px; flex-wrap: wrap; }
-.form-trend-row > *:first-child { flex-shrink: 0; }
+.form-trend-row > *:first-child { min-width: 0; }
 .form-trend-row > *:last-child { flex: 1 1 220px; min-width: 220px; }
 .trend-sparkline { display: flex; flex-direction: column; gap: 4px; }
 .trend-sparkline svg { display: block; width: 100%; }
