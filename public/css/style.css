@@ -501,6 +501,8 @@ datalist {}
   text-decoration: none;
 }
 .player-info-btn:hover, .player-info-link:hover { opacity: 1; }
+.player-name-link { cursor: pointer; }
+.player-name-link:hover { color: var(--orange); }
 .scoreboard-reason { padding: 0 12px 12px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #9a9a9a; }
 .serve-ball { display: inline-block; margin-right: 6px; font-size: 14px; }
 
