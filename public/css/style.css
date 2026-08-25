@@ -584,9 +584,11 @@ datalist {}
 .stats-tab-note { font-size: 12px; color: var(--gray-dim); margin: 0 0 10px; }
 .form-guide-label { font-size: 11px; text-transform: uppercase; color: var(--gray-dim); font-weight: 700; letter-spacing: 0.03em; margin: 16px 0 8px; }
 .form-guide { display: flex; gap: 6px; flex-wrap: wrap; }
-.form-trend-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.trend-sparkline { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
-.trend-sparkline svg { display: block; }
+.form-trend-row { display: flex; align-items: flex-end; gap: 16px 24px; flex-wrap: wrap; }
+.form-trend-row > *:first-child { flex-shrink: 0; }
+.form-trend-row > *:last-child { flex: 1 1 220px; min-width: 220px; }
+.trend-sparkline { display: flex; flex-direction: column; gap: 4px; }
+.trend-sparkline svg { display: block; width: 100%; }
 .trend-value { font-size: 12px; font-weight: 800; color: var(--white); }
 .form-square {
   width: 30px;

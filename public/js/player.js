@@ -115,10 +115,16 @@ function formGuideHtml(matches) {
   return `<div class="form-guide-label">Last ${last20.length} game${last20.length === 1 ? '' : 's'}</div><div class="form-guide">${squares}</div>`;
 }
 
-// Small sparkline of the running win rate after each decided match, oldest
-// to newest — same chronological ordering as formGuideHtml(). Skipped for
+// Sparkline of the running win rate after each decided match, oldest to
+// newest — same chronological ordering as formGuideHtml(). Skipped for
 // fewer than 2 decided matches, since a single point isn't a trend.
-function winRateTrendHtml(matches) {
+// Drawn as a wide, fixed-height chart (stretched via CSS width:100% —
+// preserveAspectRatio="none" lets it fill however wide its flex container
+// ends up, without letterboxing) with a quintile grid and a gradient-filled
+// area under the line for a more analytical, dashboard-style look.
+// idSuffix keeps the gradient's id unique since both the BLTA and All
+// matches versions of this chart exist in the DOM at once (one just hidden).
+function winRateTrendHtml(matches, idSuffix) {
   const chronological = matches
     .filter((m) => m.winnerId)
     .sort((a, b) => new Date(a.scheduledAt || a.startTime || a.createdAt) - new Date(b.scheduledAt || b.startTime || b.createdAt));
@@ -128,22 +134,38 @@ function winRateTrendHtml(matches) {
     if (m.winnerId === Number(playerId)) wins += 1;
     return Math.round((wins / (i + 1)) * 100);
   });
-  const w = 120;
-  const h = 36;
-  const pad = 4;
-  const stepX = (w - pad * 2) / (points.length - 1);
-  const coords = points.map((pct, i) => [
-    pad + i * stepX,
-    pad + ((100 - pct) / 100) * (h - pad * 2),
-  ]);
-  const path = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const w = 280;
+  const h = 64;
+  const padX = 8;
+  const padY = 8;
+  const yFor = (pct) => padY + ((100 - pct) / 100) * (h - padY * 2);
+  const stepX = (w - padX * 2) / (points.length - 1);
+  const coords = points.map((pct, i) => [padX + i * stepX, yFor(pct)]);
+  const linePath = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const baseline = h - padY;
+  const areaPath = `${linePath} L${coords[coords.length - 1][0].toFixed(1)},${baseline.toFixed(1)} `
+    + `L${coords[0][0].toFixed(1)},${baseline.toFixed(1)} Z`;
+  const gridLines = [25, 50, 75].map((pct) => {
+    const y = yFor(pct).toFixed(1);
+    return `<line x1="${padX}" y1="${y}" x2="${w - padX}" y2="${y}" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="3,3"/>`;
+  }).join('');
+  const gradId = `trend-gradient-${idSuffix}`;
   const [lastX, lastY] = coords[coords.length - 1];
   return `
     <div class="trend-sparkline">
       <div class="form-guide-label">Win rate trend</div>
-      <svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
-        <path d="${path}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="2.5" fill="var(--orange)"/>
+      <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px">
+        <defs>
+          <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--orange)" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="var(--orange)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        ${gridLines}
+        <line x1="${padX}" y1="${baseline.toFixed(1)}" x2="${w - padX}" y2="${baseline.toFixed(1)}" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+        <path d="${areaPath}" fill="url(#${gradId})" stroke="none"/>
+        <path d="${linePath}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="3" fill="var(--orange)"/>
       </svg>
       <div class="trend-value">${points[points.length - 1]}%</div>
     </div>
@@ -161,8 +183,8 @@ function renderStats() {
   fillStats('overall', computeRecord(finished));
   document.getElementById('form-blta').innerHTML = formGuideHtml(bltaFinished);
   document.getElementById('form-overall').innerHTML = formGuideHtml(finished);
-  document.getElementById('trend-blta').innerHTML = winRateTrendHtml(bltaFinished);
-  document.getElementById('trend-overall').innerHTML = winRateTrendHtml(finished);
+  document.getElementById('trend-blta').innerHTML = winRateTrendHtml(bltaFinished, 'blta');
+  document.getElementById('trend-overall').innerHTML = winRateTrendHtml(finished, 'overall');
 }
 
 // Badge definitions are admin-managed (see /badges-admin) — fetched once
