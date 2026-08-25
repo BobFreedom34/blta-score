@@ -629,6 +629,7 @@ datalist {}
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
+  border-radius: 4px;
 }
 .player-upcoming-stat .label { font-size: 9px; margin: 0; }
 .player-upcoming-stat .value { font-size: 16px; margin-top: 1px; }
