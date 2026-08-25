@@ -33,6 +33,7 @@ function matchCardHtml(m) {
           ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>🗓 ${fmtDateShort(m.scheduledAt)}</span>`}
         </div>
       </div>
+      ${m.notes ? `<div class="match-card-notes">${escapeHtml(m.notes)}</div>` : ''}
       ${scoreboard || `
         <div class="match-players-box">
           <div class="match-players">
