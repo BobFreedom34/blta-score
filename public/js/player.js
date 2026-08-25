@@ -413,14 +413,70 @@ function fmtBirthday(birthday) {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// Nationality is free text (admin-typed), not a country code, so flags are
+// matched by name — covers every value currently in use plus a handful of
+// common variants/languages. Falls back to no flag for anything unmapped
+// rather than guessing.
+const NATIONALITY_FLAGS = {
+  'slovenska republika': '🇸🇰',
+  slovensko: '🇸🇰',
+  slovakia: '🇸🇰',
+  ukrajina: '🇺🇦',
+  ukraine: '🇺🇦',
+  nemecko: '🇩🇪',
+  germany: '🇩🇪',
+  francuzsko: '🇫🇷',
+  france: '🇫🇷',
+  'korejska republika': '🇰🇷',
+  'south korea': '🇰🇷',
+  korea: '🇰🇷',
+  czechia: '🇨🇿',
+  'ceska republika': '🇨🇿',
+  'czech republic': '🇨🇿',
+  cesko: '🇨🇿',
+  vietnam: '🇻🇳',
+  bulharsko: '🇧🇬',
+  bulgaria: '🇧🇬',
+  polsko: '🇵🇱',
+  poland: '🇵🇱',
+  madarsko: '🇭🇺',
+  hungary: '🇭🇺',
+  rakusko: '🇦🇹',
+  austria: '🇦🇹',
+  rusko: '🇷🇺',
+  russia: '🇷🇺',
+  srbsko: '🇷🇸',
+  serbia: '🇷🇸',
+  chorvatsko: '🇭🇷',
+  croatia: '🇭🇷',
+  taliansko: '🇮🇹',
+  italy: '🇮🇹',
+  spanielsko: '🇪🇸',
+  spain: '🇪🇸',
+  'velka britania': '🇬🇧',
+  'united kingdom': '🇬🇧',
+  anglicko: '🇬🇧',
+  usa: '🇺🇸',
+  'united states': '🇺🇸',
+};
+
+function flagFor(nationality) {
+  if (!nationality) return '';
+  const key = nationality.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  return NATIONALITY_FLAGS[key] || '';
+}
+
 // Three columns, each independently skipping its own empty fields — the
 // whole card stays hidden only when every field across all three is empty.
 function bioCardHtml(player) {
   const age = computeAge(player.birthday);
+  const nationalityValue = player.nationality
+    ? `${flagFor(player.nationality)} ${player.nationality}`.trim()
+    : null;
   const columns = [
     [
       ['Category', player.category ? (CATEGORY_LABELS[player.category] || player.category) : null],
-      ['Nationality', player.nationality],
+      ['Nationality', nationalityValue],
       ['Birthday', fmtBirthday(player.birthday)],
       ['Age', age !== null ? String(age) : null],
     ],
