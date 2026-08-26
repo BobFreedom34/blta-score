@@ -673,6 +673,14 @@ datalist {}
   flex-shrink: 0;
 }
 .player-avatar { object-fit: cover; background: var(--gray-light); }
+/* On mobile the photo becomes a full-width square banner above the name,
+   instead of a small square beside it — there just isn't room for both
+   at a readable size on a phone. */
+@media (max-width: 480px) {
+  .player-avatar-row { flex-direction: column; align-items: stretch; gap: 14px; }
+  .player-avatar, .player-avatar-fallback { width: 100%; height: auto; aspect-ratio: 1 / 1; }
+  .player-avatar-fallback { font-size: 64px; }
+}
 .player-avatar-fallback {
   background: var(--ink);
   color: var(--white);
@@ -681,16 +689,6 @@ datalist {}
   justify-content: center;
   font-weight: 800;
   font-size: 52px;
-}
-/* Flag and name must never wrap under the photo — on a narrow phone there
-   just isn't room for a 168px photo plus that column at full size, so the
-   photo (and the flag/name alongside it) shrinks instead. Planned matches
-   lives below the whole row, so it's unaffected by this squeeze. */
-@media (max-width: 480px) {
-  .player-avatar, .player-avatar-fallback { width: 90px; height: 90px; }
-  .player-avatar-fallback { font-size: 28px; }
-  .player-avatar-row h1 { font-size: 20px; }
-  .player-flag-img { height: 18px; }
 }
 #stats-tabs { margin: 0 0 12px; }
 #stats-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
