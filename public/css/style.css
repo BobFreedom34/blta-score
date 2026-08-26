@@ -616,7 +616,7 @@ datalist {}
 .form-square:hover { opacity: 0.8; }
 
 /* ---------- Player avatar ---------- */
-.player-avatar-row { display: flex; align-items: flex-start; gap: 18px; margin-top: 22px; flex-wrap: nowrap; }
+.player-avatar-row { display: flex; align-items: flex-start; gap: 18px; margin-top: 22px; flex-wrap: wrap; }
 .player-header-main {
   flex: 1;
   min-width: 240px;
@@ -681,19 +681,6 @@ datalist {}
   justify-content: center;
   font-weight: 800;
   font-size: 52px;
-}
-/* Flag/name/planned-matches must never wrap under the photo — on a narrow
-   phone there just isn't room for a 168px photo plus that column at full
-   size, so the photo (and everything alongside it) shrinks instead. */
-@media (max-width: 480px) {
-  .player-avatar, .player-avatar-fallback { width: 90px; height: 90px; }
-  .player-avatar-fallback { font-size: 28px; }
-  .player-header-main { min-width: 0; height: 90px; }
-  .player-avatar-row h1 { font-size: 20px; }
-  .player-flag-img { height: 18px; }
-  .player-upcoming-stat { padding: 4px 8px; }
-  .player-upcoming-stat .label { font-size: 7px; }
-  .player-upcoming-stat .value { font-size: 12px; }
 }
 #stats-tabs { margin: 0 0 12px; }
 #stats-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
