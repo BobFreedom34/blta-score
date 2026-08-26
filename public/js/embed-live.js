@@ -32,9 +32,14 @@ function emptyMessage() {
   return dateFilter ? PLANNED_DATE_EMPTY_MESSAGES[dateFilter] : EMPTY_MESSAGES[statusFilter];
 }
 
+// /embed/compact sets this body class — reuses compactMatchCardHtml from
+// common.js instead of the full card below, same as the /compact page does.
+const COMPACT_MODE = document.body.classList.contains('compact-page');
+
 // Same card markup as the home page's match list, so an embedded widget
 // looks identical to (and shows the same information as) the live site.
 function matchCardHtml(m) {
+  if (COMPACT_MODE) return compactMatchCardHtml(m);
   const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
   const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
   const scoreboard = cardScoreboardHtml(m);
@@ -94,7 +99,7 @@ async function load() {
     else if (dateFilter === 'none') qs.set('noDate', '1');
     const matches = await api(`/matches?${qs.toString()}`);
     const body = matches.length
-      ? `<div class="match-list">${buildListHtml(matches)}</div>`
+      ? `<div class="match-list${COMPACT_MODE ? ' compact-match-list' : ''}">${buildListHtml(matches)}</div>`
       : `<div class="empty-state" style="padding:24px">${emptyMessage()}</div>`;
     // Header always shows, even with zero matches, so an embedded "Live now"
     // widget doesn't just look blank/broken when nothing is live.

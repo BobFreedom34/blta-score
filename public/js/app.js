@@ -72,41 +72,9 @@ function notifyButtonsHtml(m) {
   `;
 }
 
-// One-line card for the /compact page: date, category, opponents, result,
-// place, nothing else — built for embedding a lot of matches into a tight
-// WordPress widget instead of the full card's scoreboard/notify buttons.
+// /compact and /embed/compact share this — see compactMatchCardHtml in
+// common.js — via the same 'compact-page' body class.
 const COMPACT_MODE = document.body.classList.contains('compact-page');
-
-// Calendar date only — no weekday name, no clock time (unlike fmtDateShort).
-function compactDateOnly(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
-}
-
-function compactDateHtml(m) {
-  if (m.status === 'LIVE') return '<span class="compact-live">🔴 LIVE</span>';
-  return escapeHtml(compactDateOnly(m.scheduledAt) || 'Date TBD');
-}
-
-function compactMatchCardHtml(m) {
-  const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
-  const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
-  return `
-    <a class="compact-card status-${m.status}" href="/match/${m.token}">
-      <span class="compact-date">${compactDateHtml(m)}</span>
-      ${categoryBadge(m.category)}
-      <span class="compact-players">
-        <span class="${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}</span>
-        <span class="compact-vs">vs</span>
-        <span class="${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}</span>
-      </span>
-      <span class="compact-result">${matchScoreHtml(m)}</span>
-      <span class="compact-place">${m.location ? `📍 ${escapeHtml(m.location)}` : ''}</span>
-    </a>
-  `;
-}
 
 function matchCardHtml(m) {
   if (COMPACT_MODE) return compactMatchCardHtml(m);
@@ -277,11 +245,14 @@ document.getElementById('reset-filters-btn').addEventListener('click', () => {
 
 document.getElementById('embed-list-btn').addEventListener('click', () => {
   const f = FILTERS[currentFilter];
-  const src = new URL('/embed/live', window.location.origin);
+  const src = new URL(COMPACT_MODE ? '/embed/compact' : '/embed/live', window.location.origin);
   src.searchParams.set('status', f.status);
   if (f.dateFilter === 'has') src.searchParams.set('dateFilter', 'has');
   else if (f.dateFilter === 'none') src.searchParams.set('dateFilter', 'none');
-  const code = `<iframe src="${src.toString()}" width="100%" height="600" frameborder="0" style="border:0;max-width:480px"></iframe>`;
+  // The compact table reads better wide and short; the full card is tall and
+  // narrow (a sidebar widget), so each embed defaults to a different shape.
+  const iframeStyle = COMPACT_MODE ? 'border:0;width:100%' : 'border:0;max-width:480px';
+  const code = `<iframe src="${src.toString()}" width="100%" height="${COMPACT_MODE ? 400 : 600}" frameborder="0" style="${iframeStyle}"></iframe>`;
   document.getElementById('embed-modal-desc').textContent =
     `Paste this into a "Custom HTML" block on your blta.sk page to show the ${f.label.toLowerCase()} list:`;
   document.getElementById('embed-code').textContent = code;

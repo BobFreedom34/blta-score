@@ -208,6 +208,42 @@ function categoryBadge(category) {
   return `<span class="badge badge-${category}">${CATEGORY_LABELS[category] || category}</span>`;
 }
 
+// One-line card shared by the /compact page and the /embed/compact widget:
+// date, category, opponents, result, place, nothing else — built for
+// embedding a lot of matches into a tight WordPress widget instead of the
+// full card's scoreboard/notify buttons.
+
+// Calendar date only — no weekday name, no clock time (unlike fmtDateShort).
+function compactDateOnly(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+}
+
+function compactDateHtml(m) {
+  if (m.status === 'LIVE') return '<span class="compact-live">🔴 LIVE</span>';
+  return escapeHtml(compactDateOnly(m.scheduledAt) || 'Date TBD');
+}
+
+function compactMatchCardHtml(m) {
+  const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
+  const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
+  return `
+    <a class="compact-card status-${m.status}" href="${window.location.origin}/match/${m.token}"${window.top !== window.self ? ' target="_blank" rel="noopener"' : ''}>
+      <span class="compact-date">${compactDateHtml(m)}</span>
+      ${categoryBadge(m.category)}
+      <span class="compact-players">
+        <span class="${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}</span>
+        <span class="compact-vs">vs</span>
+        <span class="${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}</span>
+      </span>
+      <span class="compact-result">${matchScoreHtml(m)}</span>
+      <span class="compact-place">${m.location ? `📍 ${escapeHtml(m.location)}` : ''}</span>
+    </a>
+  `;
+}
+
 // Accepts either a match object (preferred, so a scheduled Planned match can
 // show its date/time instead of just "Planned") or a plain status string.
 function statusBadge(m) {
