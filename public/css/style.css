@@ -365,11 +365,14 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .compact-card.status-PLANNED { border-left-color: var(--gray); }
 .compact-date { color: var(--gray); font-weight: 600; }
 .compact-live { color: var(--danger); font-weight: 800; }
-.compact-card .badge { justify-self: start; padding: 2px 8px; font-size: 10px; }
+/* Pulled left with a negative margin so the date→category and
+   category→players gaps read tighter than the grid's base 16px gap, without
+   changing the (still 16px) gaps further along the row. */
+.compact-card .badge { justify-self: start; margin-left: -8px; padding: 2px 8px; font-size: 10px; }
 /* Names stacked one above the other, not side by side — and never
    truncated: a long name wraps within its own line instead of being
    clipped with an ellipsis. */
-.compact-players { display: flex; flex-direction: column; gap: 1px; font-weight: 700; }
+.compact-players { display: flex; flex-direction: column; gap: 1px; margin-left: -8px; font-weight: 700; }
 .compact-players .winner { color: var(--green-light); }
 .compact-result {
   justify-self: start;
