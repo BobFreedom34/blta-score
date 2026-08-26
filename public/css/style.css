@@ -11,6 +11,7 @@
   --gray-light: #efefef;
   --white: #ffffff;
   --danger: #c73f10;
+  --blue-dark: #0d2b4e;
   --radius: 14px;
   --shadow: 0 2px 10px rgba(10, 10, 10, 0.08);
   --shadow-lg: 0 10px 30px rgba(10, 10, 10, 0.16);
@@ -267,6 +268,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .badge-NOVICE { background: var(--green); color: var(--white); }
 .badge-FRIENDLY { background: var(--yellow); color: var(--ink); }
 .badge-VIP_CUP { background: var(--ink); color: var(--white); }
+.badge-ATA_TENNIS { background: var(--blue-dark); color: var(--white); }
 
 .badge-status { background: var(--gray-light); color: var(--gray); }
 .badge-status.status-LIVE { background: var(--orange); color: var(--white); animation: live-blink 1.8s ease-in-out infinite; }

@@ -9,7 +9,7 @@ const { isAdmin, requirePlayer } = require('../auth');
 const router = express.Router();
 
 const MAX_HISTORY = 30;
-const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE', 'FRIENDLY', 'VIP_CUP'];
+const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE', 'FRIENDLY', 'VIP_CUP', 'ATA_TENNIS'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function getPlayer(id) {
