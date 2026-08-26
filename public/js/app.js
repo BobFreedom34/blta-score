@@ -149,6 +149,10 @@ function buildFilterParams(filterKey) {
       const { from, to } = getDayRange(0);
       params.set('from', from);
       params.set('to', to);
+    } else if (currentTimeFilter === 'tomorrow') {
+      const { from, to } = getDayRange(1);
+      params.set('from', from);
+      params.set('to', to);
     } else if (currentTimeFilter === 'this_week') {
       const { from, to } = getWeekRange(0);
       params.set('from', from);
