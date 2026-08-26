@@ -1016,7 +1016,7 @@ datalist {}
 }
 
 /* ---------- Embed views ---------- */
-body.embed { background: var(--white); }
+html.embed, body.embed { background: transparent; }
 .embed .container { padding: 10px; max-width: none; }
 
 footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); margin-top: 24px; }
