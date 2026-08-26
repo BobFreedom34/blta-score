@@ -656,13 +656,13 @@ datalist {}
   .player-upcoming-stat { width: 100%; }
 }
 .bio-flag-icon { width: 20px; height: auto; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
-.player-bio-header { display: flex; justify-content: flex-end; margin-top: 24px; }
+.player-bio-header { display: flex; justify-content: flex-end; margin-top: 12px; }
 .player-bio-edit-btn { background: var(--white); color: var(--ink); font-size: 11px; padding: 5px 10px; }
 .player-bio-card {
   background: var(--ink);
   border-radius: var(--radius);
   padding: 16px 20px;
-  margin-top: 6px;
+  margin-top: 24px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px 32px;
