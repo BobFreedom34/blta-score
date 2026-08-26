@@ -182,7 +182,10 @@ function winRateTrendHtml(matches, idSuffix) {
 // Shown two ways: BLTA league matches only (ELITE/NEXT_GEN/NOVICE), and
 // overall across every category including FRIENDLY/VIP_CUP.
 function renderStats() {
-  const finished = rawGroups[3] || [];
+  // A walkover means no tennis was actually played, so it's excluded from
+  // every stat below (games played, W-L, win rate, form guide, trend) —
+  // it still shows up in the plain match list further down, just not here.
+  const finished = (rawGroups[3] || []).filter((m) => m.endReason !== 'WALKOVER');
   const bltaFinished = finished.filter((m) => BLTA_CATEGORIES.includes(m.category));
   fillStats('blta', computeRecord(bltaFinished));
   fillStats('overall', computeRecord(finished));
@@ -263,7 +266,7 @@ function opponentRecords() {
   const finished = rawGroups[3] || [];
   const byOpponent = new Map();
   finished.forEach((m) => {
-    if (!m.winnerId) return;
+    if (!m.winnerId || m.endReason === 'WALKOVER') return;
     const opponent = m.player1.id === Number(playerId) ? m.player2 : m.player1;
     const rec = byOpponent.get(opponent.id) || { opponent, wins: 0, losses: 0 };
     if (m.winnerId === Number(playerId)) rec.wins += 1;

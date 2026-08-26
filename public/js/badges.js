@@ -23,8 +23,12 @@ function badgeWonWithoutDroppingSet(m, pid) {
 // threshold-less pass/fail types, once the metric is truthy).
 function computeBadgeMetrics(playerId, finished) {
   const pid = Number(playerId);
-  const wins = finished.filter((m) => m.winnerId === pid);
-  const chronological = finished
+  // A walkover means no tennis was actually played, so it doesn't count
+  // toward games played, wins, streaks, or any other badge metric — same
+  // rule as the player-profile stats cards.
+  const counted = finished.filter((m) => m.endReason !== 'WALKOVER');
+  const wins = counted.filter((m) => m.winnerId === pid);
+  const chronological = counted
     .filter((m) => m.winnerId)
     .sort((a, b) => new Date(a.scheduledAt || a.startTime || a.createdAt) - new Date(b.scheduledAt || b.startTime || b.createdAt));
   let streak = 0;
@@ -39,7 +43,7 @@ function computeBadgeMetrics(playerId, finished) {
   });
   const winCategories = new Set(wins.map((m) => m.category));
   return {
-    GAMES_PLAYED: finished.length,
+    GAMES_PLAYED: counted.length,
     WINS: wins.length,
     WIN_STREAK: maxStreak,
     CATEGORY_SWEEP: BLTA_CATEGORIES.every((c) => winCategories.has(c)) ? 1 : 0,

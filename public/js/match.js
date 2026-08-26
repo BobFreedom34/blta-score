@@ -283,6 +283,7 @@ async function ensureH2H(m) {
   try {
     const finished = await api(`/matches?playerId=${m.player1.id}&status=FINISHED`);
     const prior = finished.filter((x) => x.token !== matchToken && x.winnerId
+      && x.endReason !== 'WALKOVER'
       && (x.player1.id === m.player2.id || x.player2.id === m.player2.id));
     if (prior.length) {
       let wins = 0;
