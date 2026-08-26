@@ -629,16 +629,32 @@ datalist {}
 .player-flag-img { display: block; height: 28px; width: auto; border-radius: 3px; box-shadow: var(--shadow); }
 .player-upcoming-stat {
   margin-top: 16px;
-  max-width: 220px;
+  width: 168px;
   padding: 8px 14px;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 10px;
+  border-radius: 4px;
+}
+.player-upcoming-stat .label {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-start;
-  border-radius: 4px;
+  font-size: 11px;
+  margin: 0;
+  line-height: 1.3;
 }
-.player-upcoming-stat .label { font-size: 9px; margin: 0; }
-.player-upcoming-stat .value { font-size: 16px; margin-top: 1px; }
+.player-upcoming-stat .value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  margin: 0;
+}
+@media (max-width: 480px) {
+  .player-upcoming-stat { width: 100%; }
+}
 .bio-flag-icon { width: 20px; height: auto; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
 .player-bio-header { display: flex; justify-content: flex-end; margin-top: 24px; }
 .player-bio-edit-btn { background: var(--white); color: var(--ink); font-size: 11px; padding: 5px 10px; }
