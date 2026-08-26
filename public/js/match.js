@@ -349,7 +349,8 @@ function render(m) {
       </div>
       <div class="info-item">
         <div class="label">Category</div>
-        <div class="value">${CATEGORY_LABELS[m.category]}</div>
+        <div class="value" id="category-display">${CATEGORY_LABELS[m.category]}</div>
+        ${locationEditable ? `<button type="button" class="edit-link" id="edit-category-link">Edit</button>` : ''}
       </div>
     </div>
 
@@ -555,6 +556,28 @@ function attachHandlers(m) {
     document.getElementById('save-notes-btn').addEventListener('click', async () => {
       const val = document.getElementById('notes-input').value.trim();
       try { render(await api(`/matches/${matchToken}`, { method: 'PATCH', body: { notes: val } })); }
+      catch (err) { toast(err.message); }
+    });
+  }));
+
+  const editCategoryLink = document.getElementById('edit-category-link');
+  if (editCategoryLink) editCategoryLink.addEventListener('click', () => requirePlayerAuth(() => {
+    const display = document.getElementById('category-display');
+    const options = Object.keys(CATEGORY_LABELS).map((key) =>
+      `<option value="${key}"${key === m.category ? ' selected' : ''}>${CATEGORY_LABELS[key]}</option>`).join('');
+    display.innerHTML = `
+      <select id="category-input" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">${options}</select>
+      <div style="margin-top:6px;display:flex;gap:6px">
+        <button class="btn btn-sm btn-primary" id="save-category-btn">Save</button>
+        <button class="btn btn-sm btn-outline" id="cancel-category-btn">Cancel</button>
+      </div>
+    `;
+    editCategoryLink.style.display = 'none';
+    document.getElementById('category-input').focus();
+    document.getElementById('cancel-category-btn').addEventListener('click', () => render(current));
+    document.getElementById('save-category-btn').addEventListener('click', async () => {
+      const val = document.getElementById('category-input').value;
+      try { render(await api(`/matches/${matchToken}`, { method: 'PATCH', body: { category: val } })); }
       catch (err) { toast(err.message); }
     });
   }));
