@@ -647,11 +647,13 @@ datalist {}
   border-radius: var(--radius);
   padding: 16px 20px;
   margin-top: 6px;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px 32px;
-  flex-wrap: wrap;
 }
-.bio-col { flex: 1 1 200px; display: flex; flex-direction: column; gap: 2px; }
+@media (max-width: 680px) { .player-bio-card { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .player-bio-card { grid-template-columns: 1fr; } }
+.bio-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .bio-row { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; }
 .bio-label { color: var(--orange); font-weight: 700; font-size: 13px; }
 .bio-value { color: var(--white); font-weight: 600; font-size: 13px; text-align: right; }
