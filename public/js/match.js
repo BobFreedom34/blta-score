@@ -617,7 +617,7 @@ function attachHandlers(m) {
   if (whatsappResultBtn) whatsappResultBtn.addEventListener('click', () => openWhatsAppResultModal(m));
 
   const deleteBtn = document.getElementById('delete-btn');
-  if (deleteBtn) deleteBtn.addEventListener('click', async () => {
+  if (deleteBtn) deleteBtn.addEventListener('click', () => requirePlayerAuth(async () => {
     if (!confirm(`Delete this match (${m.player1.name} vs ${m.player2.name})? This can't be undone.`)) return;
     deleteBtn.disabled = true;
     try {
@@ -628,7 +628,7 @@ function attachHandlers(m) {
       toast(err.message);
       deleteBtn.disabled = false;
     }
-  });
+  }));
 }
 
 function startMatch(firstServer) {

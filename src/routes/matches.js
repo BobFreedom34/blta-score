@@ -282,7 +282,7 @@ router.patch('/:token', requirePlayer, (req, res) => {
   res.json(payload);
 });
 
-router.delete('/:token', (req, res) => {
+router.delete('/:token', requirePlayer, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (!isAdmin(req)) {
