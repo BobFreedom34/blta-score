@@ -18,8 +18,10 @@ let rawGroups = []; // last-fetched matches per GROUPS entry, unfiltered
 let h2hExpanded = false;
 const H2H_COLLAPSED_LIMIT = 5;
 
-// Same card markup as the home page's match list, minus the quick-schedule/
-// notify actions (this page is a read-only history view for one player).
+// Same card markup as the home page's match list, minus the notify actions
+// (this page is a read-only history view for one player) — but the
+// quick-schedule button is included, since a planned match without a date
+// still needs a way to be scheduled from here.
 function matchCardHtml(m) {
   const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
   const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
@@ -48,6 +50,7 @@ function matchCardHtml(m) {
         </div>
       `}
       ${isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : ''}
+      ${m.status === 'PLANNED' && !m.scheduledAt ? `<button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}" style="margin-top:6px">📅 Set date &amp; location</button>` : ''}
     </a>
   `;
 }
@@ -313,6 +316,46 @@ function renderH2H() {
     });
   }
 }
+
+let quickScheduleToken = null;
+
+function openQuickScheduleModal(token) {
+  quickScheduleToken = token;
+  document.getElementById('quick-schedule-location').value = '';
+  document.getElementById('quick-schedule-date').value = '';
+  document.getElementById('quick-schedule-time').value = '';
+  document.getElementById('quick-schedule-error').textContent = '';
+  document.getElementById('quick-schedule-modal').style.display = 'flex';
+}
+
+listEl.addEventListener('click', (e) => {
+  const scheduleBtn = e.target.closest('.quick-schedule-btn');
+  if (!scheduleBtn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  requirePlayerAuth(() => openQuickScheduleModal(scheduleBtn.dataset.token));
+});
+
+document.getElementById('quick-schedule-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('quick-schedule-error');
+  errorEl.textContent = '';
+  const location = document.getElementById('quick-schedule-location').value.trim();
+  const dateVal = document.getElementById('quick-schedule-date').value;
+  const timeVal = document.getElementById('quick-schedule-time').value;
+  const scheduledAt = dateVal ? new Date(`${dateVal}T${timeVal || '00:00'}`).toISOString() : null;
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  try {
+    await api(`/matches/${quickScheduleToken}`, { method: 'PATCH', body: { location, scheduledAt } });
+    document.getElementById('quick-schedule-modal').style.display = 'none';
+    load();
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+  submitBtn.disabled = false;
+});
 
 function render() {
   const parts = [];
