@@ -617,19 +617,25 @@ datalist {}
 
 /* ---------- Player avatar ---------- */
 .player-avatar-row { display: flex; align-items: flex-start; gap: 18px; margin-top: 22px; flex-wrap: wrap; }
-.player-header-main { flex: 1; min-width: 240px; }
+.player-header-main {
+  flex: 1;
+  min-width: 240px;
+  height: 168px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
 .player-name-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.player-flag-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
 .player-flag { display: block; }
-.player-flag-img { display: block; height: 48px; width: auto; border-radius: 4px; box-shadow: var(--shadow); }
+.player-flag-img { display: block; height: 28px; width: auto; border-radius: 3px; box-shadow: var(--shadow); }
 .player-upcoming-stat {
-  height: 48px;
-  padding: 0 14px;
+  padding: 8px 14px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
   border-radius: 4px;
+  align-self: flex-start;
 }
 .player-upcoming-stat .label { font-size: 9px; margin: 0; }
 .player-upcoming-stat .value { font-size: 16px; margin-top: 1px; }
