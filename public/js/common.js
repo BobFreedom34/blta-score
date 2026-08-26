@@ -235,7 +235,6 @@ function compactMatchCardHtml(m) {
       ${categoryBadge(m.category)}
       <span class="compact-players">
         <span class="${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}</span>
-        <span class="compact-vs">vs</span>
         <span class="${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}</span>
       </span>
       <span class="compact-result">${matchScoreHtml(m)}</span>

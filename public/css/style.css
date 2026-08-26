@@ -366,11 +366,11 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .compact-date { color: var(--gray); font-weight: 600; }
 .compact-live { color: var(--danger); font-weight: 800; }
 .compact-card .badge { justify-self: start; padding: 2px 8px; font-size: 10px; }
-/* Never truncates — a long name wraps to a second line within its column
-   (making just that one row taller) instead of being clipped with an ellipsis. */
-.compact-players { font-weight: 700; }
+/* Names stacked one above the other, not side by side — and never
+   truncated: a long name wraps within its own line instead of being
+   clipped with an ellipsis. */
+.compact-players { display: flex; flex-direction: column; gap: 1px; font-weight: 700; }
 .compact-players .winner { color: var(--green-light); }
-.compact-vs { color: var(--gray); font-weight: 500; margin: 0 4px; }
 .compact-result {
   justify-self: start;
   font-weight: 800;
