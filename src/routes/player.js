@@ -4,24 +4,33 @@ const auth = require('../auth');
 const router = express.Router();
 
 router.get('/session', (req, res) => {
-  res.json({ isPlayer: auth.isPlayer(req) });
+  res.json({ isPlayer: auth.isPlayer(req), isAnon: auth.isAnon(req) });
 });
 
+// One code box, two possible outcomes: the real PLAYER_CODE logs in with
+// full rights, while ANON_CODE (given out to anyone without a real BLTA
+// code) logs in as the limited anonymous tier — see requireLoggedIn in
+// routes/matches.js for what that tier can and can't do.
 router.post('/login', (req, res) => {
   const code = String(req.body.code || '').trim();
   if (!process.env.PLAYER_CODE) {
     return res.status(500).json({ error: 'Player login is not configured on this server (PLAYER_CODE is unset)' });
   }
-  if (code !== process.env.PLAYER_CODE) {
-    return res.status(401).json({ error: 'Incorrect code' });
+  if (code === process.env.PLAYER_CODE) {
+    auth.logInPlayer(res);
+    return res.json({ isPlayer: true, isAnon: false });
   }
-  auth.logInPlayer(res);
-  res.json({ isPlayer: true });
+  if (process.env.ANON_CODE && code === process.env.ANON_CODE) {
+    auth.logInAnon(res);
+    return res.json({ isPlayer: false, isAnon: true });
+  }
+  res.status(401).json({ error: 'Incorrect code' });
 });
 
 router.post('/logout', (req, res) => {
   auth.logOutPlayer(res);
-  res.json({ isPlayer: false });
+  auth.logOutAnon(res);
+  res.json({ isPlayer: false, isAnon: false });
 });
 
 // Separate login for editing profile bio info — its own code (PROFILE_CODE

@@ -77,8 +77,38 @@ function requireProfileEditor(req, res, next) {
   next();
 }
 
+// Third, more limited login tier — its own shared code (ANON_CODE), for
+// someone with no real BLTA player code. Unlike isPlayer, this does NOT
+// imply general match-management rights: an anon session can only manage
+// matches it created itself (see created_by_anonymous / requireLoggedIn in
+// routes/matches.js) — everything else stays off-limits.
+const ANON_COOKIE_NAME = 'blta_anon';
+
+function isAnon(req) {
+  return req.signedCookies && req.signedCookies[ANON_COOKIE_NAME] === 'ok';
+}
+
+function logInAnon(res) {
+  res.cookie(ANON_COOKIE_NAME, 'ok', cookieOptions());
+}
+
+function logOutAnon(res) {
+  res.clearCookie(ANON_COOKIE_NAME, cookieOptions());
+}
+
+// Gate for a route that's open to a real player/admin OR a limited anon
+// session — used where the actual ownership check happens afterward, once
+// the specific match row is loaded (see routes/matches.js).
+function requireLoggedIn(req, res, next) {
+  if (!isPlayer(req) && !isAnon(req)) {
+    return res.status(401).json({ error: 'Please log in to do this' });
+  }
+  next();
+}
+
 module.exports = {
   COOKIE_NAME, PLAYER_COOKIE_NAME, isAdmin, logIn, logOut, requireAdmin,
   isPlayer, logInPlayer, logOutPlayer, requirePlayer,
   PROFILE_COOKIE_NAME, isProfileEditor, logInProfileEditor, logOutProfileEditor, requireProfileEditor,
+  ANON_COOKIE_NAME, isAnon, logInAnon, logOutAnon, requireLoggedIn,
 };

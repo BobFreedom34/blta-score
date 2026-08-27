@@ -4,7 +4,7 @@ const db = require('../db');
 const engine = require('../matchEngine');
 const { sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo } = require('../mailer');
 const { sendPush } = require('../push');
-const { isAdmin, requirePlayer } = require('../auth');
+const { isAdmin, isPlayer, isAnon, requireLoggedIn } = require('../auth');
 
 const router = express.Router();
 
@@ -91,6 +91,7 @@ function serialize(row) {
     scoreSummary: engine.describeMatch(state),
     canUndo: history.length > 0,
     createdByAdmin: !!row.created_by_admin,
+    createdByAnonymous: !!row.created_by_anonymous,
     winnerId: row.winner_id,
     startTime: row.start_time,
     endTime: row.end_time,
@@ -114,6 +115,18 @@ function getRowOr404(req, res) {
     return null;
   }
   return row;
+}
+
+// A real player/admin can manage any match. The limited anon tier can only
+// manage a match it (or another anon session) created — checked once the
+// row is loaded, since requireLoggedIn alone can't know which match this
+// is yet. Returns a response (and false) if access is denied, so callers
+// can just `if (!checkMatchAccess(req, res, row)) return;`.
+function checkMatchAccess(req, res, row) {
+  if (isPlayer(req)) return true;
+  if (isAnon(req) && row.created_by_anonymous) return true;
+  res.status(403).json({ error: 'You can only manage matches you created' });
+  return false;
 }
 
 function nowIso() {
@@ -198,7 +211,7 @@ router.get('/:token', (req, res) => {
   res.json(serialize(row));
 });
 
-router.post('/', requirePlayer, (req, res) => {
+router.post('/', requireLoggedIn, (req, res) => {
   const { category, location, scheduledAt, format, notes } = req.body;
   let { player1Id, player2Id, player1Name, player2Name } = req.body;
 
@@ -229,8 +242,8 @@ router.post('/', requirePlayer, (req, res) => {
 
   const state = engine.initState(format);
   const info = db.prepare(`
-    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, notes)
-    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @notes)
+    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, notes)
+    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @notes)
   `).run({
     share_token: crypto.randomUUID(),
     category,
@@ -241,6 +254,10 @@ router.post('/', requirePlayer, (req, res) => {
     format,
     state: JSON.stringify(state),
     created_by_admin: isAdmin(req) ? 1 : 0,
+    // Only counts as anon-created when the session has no real player/admin
+    // login at all — a real player who also happens to hold the anon
+    // cookie still creates a normal, fully-managed match.
+    created_by_anonymous: !isPlayer(req) && isAnon(req) ? 1 : 0,
     notes: (notes || '').trim(),
   });
 
@@ -249,9 +266,10 @@ router.post('/', requirePlayer, (req, res) => {
   res.status(201).json(payload);
 });
 
-router.patch('/:token', requirePlayer, (req, res) => {
+router.patch('/:token', requireLoggedIn, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
   if (row.status === 'FINISHED' && !isAdmin(req)) {
     return res.status(403).json({ error: 'Only an admin can edit a finished match' });
   }
@@ -282,9 +300,10 @@ router.patch('/:token', requirePlayer, (req, res) => {
   res.json(payload);
 });
 
-router.delete('/:token', requirePlayer, (req, res) => {
+router.delete('/:token', requireLoggedIn, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
   if (!isAdmin(req)) {
     if (row.status === 'FINISHED') {
       return res.status(403).json({ error: 'Only an admin can delete a finished match' });
@@ -300,9 +319,10 @@ router.delete('/:token', requirePlayer, (req, res) => {
   res.status(204).end();
 });
 
-router.post('/:token/start', requirePlayer, async (req, res) => {
+router.post('/:token/start', requireLoggedIn, async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
   if (row.status !== 'PLANNED') {
     return res.status(400).json({ error: 'Only planned matches can be started' });
   }
@@ -335,9 +355,10 @@ router.post('/:token/start', requirePlayer, async (req, res) => {
 // open to anyone, same as scoring itself. Rejected if it would retroactively
 // decide the match from the sets already played (see engine.applyFormatChange);
 // that never actually triggers for a still-Planned match, only a LIVE one.
-router.patch('/:token/format', requirePlayer, (req, res) => {
+router.patch('/:token/format', requireLoggedIn, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
   if (row.status !== 'LIVE' && row.status !== 'PLANNED') {
     return res.status(400).json({ error: 'The match format can only be changed before or during the match' });
   }
@@ -365,9 +386,10 @@ router.patch('/:token/format', requirePlayer, (req, res) => {
 
 // Free Play only: choose how the next set is played (games to 6 / 7-point
 // tiebreak / 10-point tiebreak) — requires a player/admin login, same as scoring.
-router.patch('/:token/set-style', requirePlayer, (req, res) => {
+router.patch('/:token/set-style', requireLoggedIn, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
   if (row.status !== 'LIVE') {
     return res.status(400).json({ error: 'The set style can only be changed while live' });
   }
@@ -383,9 +405,10 @@ router.patch('/:token/set-style', requirePlayer, (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/pause', requirePlayer, (req, res) => {
+router.post('/:token/pause', requireLoggedIn, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
   if (row.status !== 'LIVE') {
     return res.status(400).json({ error: 'Only a live match can be paused' });
   }
@@ -399,9 +422,10 @@ router.post('/:token/pause', requirePlayer, (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/resume', requirePlayer, (req, res) => {
+router.post('/:token/resume', requireLoggedIn, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
   if (row.status !== 'LIVE') {
     return res.status(400).json({ error: 'Only a live match can be resumed' });
   }
@@ -417,9 +441,10 @@ router.post('/:token/resume', requirePlayer, (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/restart', requirePlayer, (req, res) => {
+router.post('/:token/restart', requireLoggedIn, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
   if (row.status === 'FINISHED') {
     if (!isAdmin(req)) {
       return res.status(403).json({ error: 'Only an admin can restart a finished match' });
@@ -440,9 +465,10 @@ router.post('/:token/restart', requirePlayer, (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/score', requirePlayer, (req, res) => {
+router.post('/:token/score', requireLoggedIn, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
   if (row.status === 'PLANNED') {
     return res.status(400).json({ error: 'Match must be live to update the score' });
   }
@@ -509,9 +535,10 @@ router.post('/:token/score', requirePlayer, (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/undo', requirePlayer, (req, res) => {
+router.post('/:token/undo', requireLoggedIn, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
   if (row.status === 'FINISHED' && !isAdmin(req)) {
     return res.status(403).json({ error: 'Only an admin can edit a finished match' });
   }
@@ -529,9 +556,10 @@ router.post('/:token/undo', requirePlayer, (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/finish', requirePlayer, async (req, res) => {
+router.post('/:token/finish', requireLoggedIn, async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
   if (row.status !== 'LIVE') {
     return res.status(400).json({ error: 'Only live matches can be finished' });
   }
@@ -601,9 +629,10 @@ router.post('/:token/finish', requirePlayer, async (req, res) => {
 
 // Records a result for a match that was already played outside the app,
 // skipping the start/live-scoring flow entirely.
-router.post('/:token/manual-result', requirePlayer, async (req, res) => {
+router.post('/:token/manual-result', requireLoggedIn, async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
   if (row.status !== 'PLANNED') {
     return res.status(400).json({ error: 'Only a planned match can have its result entered manually' });
   }

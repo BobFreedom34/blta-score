@@ -117,6 +117,12 @@ if (!matchColumns.includes('share_token')) {
 if (!matchColumns.includes('created_by_admin')) {
   db.exec('ALTER TABLE matches ADD COLUMN created_by_admin INTEGER NOT NULL DEFAULT 0');
 }
+// Marks a match created by the limited "anonymous" login tier (its own
+// shared code, see ANON_CODE) — such a session can only manage matches
+// carrying this flag, unlike a real player/admin who can manage any match.
+if (!matchColumns.includes('created_by_anonymous')) {
+  db.exec('ALTER TABLE matches ADD COLUMN created_by_anonymous INTEGER NOT NULL DEFAULT 0');
+}
 if (!matchColumns.includes('notes')) {
   db.exec("ALTER TABLE matches ADD COLUMN notes TEXT NOT NULL DEFAULT ''");
 }

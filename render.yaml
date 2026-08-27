@@ -35,6 +35,8 @@ services:
         sync: false
       - key: PLAYER_CODE
         sync: false
+      - key: ANON_CODE
+        sync: false
       - key: SESSION_SECRET
         generateValue: true
       - key: VAPID_PUBLIC_KEY

@@ -329,11 +329,19 @@ async function checkAdmin() {
 // league player) unlocks match-creating/starting/scheduling actions without
 // needing individual accounts. Lives in common.js since the popup and nav
 // toggle are identical across every page.
+//
+// The same code box also accepts ANON_CODE, a second, more limited login
+// (see requireLoggedIn/checkMatchAccess in routes/matches.js) — anonAuthed
+// tracks that separately since it changes what a "logged in" session can
+// actually do, even though both count as "some session active" for the
+// nav link and for requirePlayerAuth just letting an action through to the
+// server (the server enforces the actual per-match restriction).
 let playerAuthed = false;
+let anonAuthed = false;
 
 function updatePlayerNavLinks() {
   document.querySelectorAll('.player-login-link').forEach((el) => {
-    el.textContent = playerAuthed ? 'LOG OUT' : 'LOG IN AS PLAYER';
+    el.textContent = (playerAuthed || anonAuthed) ? 'LOG OUT' : 'LOG IN AS PLAYER';
   });
 }
 
@@ -341,11 +349,13 @@ async function refreshPlayerAuth() {
   try {
     const res = await api('/player/session');
     playerAuthed = !!res.isPlayer;
+    anonAuthed = !!res.isAnon;
   } catch {
     playerAuthed = false;
+    anonAuthed = false;
   }
   updatePlayerNavLinks();
-  return playerAuthed;
+  return playerAuthed || anonAuthed;
 }
 
 // 4 separate one-digit boxes (like a phone-app 2FA code): typing a digit
@@ -364,8 +374,9 @@ function openPlayerLoginModal(onSuccess) {
     errorEl.textContent = '';
     digits.forEach((d) => { d.disabled = true; });
     try {
-      await api('/player/login', { method: 'POST', body: { code: digits.map((d) => d.value).join('') } });
-      playerAuthed = true;
+      const res = await api('/player/login', { method: 'POST', body: { code: digits.map((d) => d.value).join('') } });
+      playerAuthed = !!res.isPlayer;
+      anonAuthed = !!res.isAnon;
       updatePlayerNavLinks();
       modal.style.display = 'none';
       if (onSuccess) onSuccess();
@@ -414,20 +425,24 @@ function openPlayerLoginModal(onSuccess) {
   setTimeout(() => digits[0].focus(), 50);
 }
 
-// Runs onReady immediately if already logged in as a player (or admin,
-// which counts as a player everywhere) — otherwise shows the code popup
-// first and runs onReady only after a successful login.
+// Runs onReady immediately if already logged in — as a real player, admin,
+// or the limited anon tier — otherwise shows the code popup first and runs
+// onReady only after a successful login. Getting past this gate doesn't
+// guarantee the server will actually allow the action (an anon session
+// still only owns matches it created) — that's enforced server-side, with
+// the error surfaced back through the normal toast(err.message) path.
 function requirePlayerAuth(onReady) {
-  if (playerAuthed) { onReady(); return; }
+  if (playerAuthed || anonAuthed) { onReady(); return; }
   openPlayerLoginModal(onReady);
 }
 
 document.querySelectorAll('.player-login-link').forEach((el) => {
   el.addEventListener('click', async (e) => {
     e.preventDefault();
-    if (playerAuthed) {
+    if (playerAuthed || anonAuthed) {
       try { await api('/player/logout', { method: 'POST' }); } catch { /* ignore */ }
       playerAuthed = false;
+      anonAuthed = false;
       updatePlayerNavLinks();
       toast('Logged out');
     } else {
