@@ -381,7 +381,15 @@ function buildResultFromSets(formatKey, rawSets, explicitWinner) {
 
   if (explicitWinner) {
     winner = explicitWinner;
-  } else if (!winner) {
+  } else if (!winner && formatKey === 'FREE_PLAY') {
+    // Free Play has no fixed number of sets to win (setsToWin: Infinity),
+    // so the setsWon >= format.setsToWin check above can never fire — same
+    // situation the live "Finish match" action already handles by falling
+    // back to whoever won more of the sets actually played.
+    winner = decideByCompletedSets({ setsWon });
+  }
+
+  if (!winner) {
     throw new Error("These set scores don't add up to a completed match");
   }
 
