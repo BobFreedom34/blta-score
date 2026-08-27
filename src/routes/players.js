@@ -1,14 +1,16 @@
 const express = require('express');
 const db = require('../db');
-const { requireAdmin, requireProfileEditor, isAdmin, isProfileEditor } = require('../auth');
+const { requireAdmin, requireProfileEditor, isAdmin, isPlayer, isProfileEditor } = require('../auth');
 
 const router = express.Router();
 
 // Phone/email are never shown to an anonymous visitor — only to a
-// logged-in player (the shared code, same as everyone who can edit a bio)
-// or an admin. Everything else on the bio stays public.
+// logged-in player (either code: the match-scoring PLAYER_CODE or the
+// bio-editing PROFILE_CODE) or an admin. Everything else on the bio stays
+// public. Deliberately excludes the limited anon tier (ANON_CODE) — that
+// login has no rights beyond its own created matches.
 function canSeePrivateFields(req) {
-  return isAdmin(req) || isProfileEditor(req);
+  return isAdmin(req) || isPlayer(req) || isProfileEditor(req);
 }
 function stripPrivateFields(player, req) {
   if (canSeePrivateFields(req)) return player;
