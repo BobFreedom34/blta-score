@@ -499,16 +499,19 @@ router.post('/:token/finish-as-is', requireLoggedIn, async (req, res) => {
     return res.status(400).json({ error: 'Only an unfinished match can be finished this way' });
   }
 
-  const state = JSON.parse(row.state);
-  let winnerId = deriveWinnerId(state, row);
-  if (!winnerId) {
-    const bySetsWon = engine.decideByCompletedSets(state);
-    winnerId = bySetsWon === 1 ? row.player1_id : bySetsWon === 2 ? row.player2_id : null;
-  }
-
+  // An unfinished match never gets a winner, even if one side was clearly
+  // ahead on sets — that's the whole point of Unfinished vs. a decided
+  // result. Leave winner_id NULL unconditionally.
+  //
+  // Keep row.end_time as-is (don't fabricate one with `|| ts`): a
+  // live-originated unfinished match already has a real end_time (set by
+  // /unfinished when it stopped), but a manually-entered one never went
+  // live and has no real end_time — pairing a fabricated "now" with a
+  // possibly much older start_time would make the match page compute and
+  // show a bogus duration.
   const ts = nowIso();
-  db.prepare("UPDATE matches SET status = 'FINISHED', end_time = ?, winner_id = ?, end_reason = 'UNFINISHED', updated_at = ? WHERE id = ?")
-    .run(row.end_time || ts, winnerId, ts, row.id);
+  db.prepare("UPDATE matches SET status = 'FINISHED', end_time = ?, winner_id = NULL, end_reason = 'UNFINISHED', updated_at = ? WHERE id = ?")
+    .run(row.end_time, ts, row.id);
 
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);
@@ -736,6 +739,37 @@ router.post('/:token/manual-result', requireLoggedIn, async (req, res) => {
   }
   if (!scheduledAt) {
     return res.status(400).json({ error: 'Date is required' });
+  }
+
+  const isUnfinished = req.body.unfinished === true;
+
+  // Recording a result that was ALSO never finished lands the match in
+  // UNFINISHED, same as marking a live match unfinished — no winner, no
+  // end_reason yet, and it can be resumed later (/resume-later) or locked
+  // in as-is (/finish-as-is) from there, using the exact same buttons a
+  // live-originated unfinished match gets. This is deliberately not a
+  // direct path to FINISHED.
+  if (isUnfinished) {
+    let state;
+    try {
+      state = engine.buildStateFromSets(row.format, req.body.sets);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    // Mirror the FINISHED branch below: start_time = scheduledAt, end_time
+    // left NULL — there's no real live start/end to record here, and a
+    // non-null end_time paired with start_time would make the match page
+    // compute and show a bogus duration.
+    const ts = nowIso();
+    db.prepare(`
+      UPDATE matches
+      SET status = 'UNFINISHED', state = ?, history = '[]', winner_id = NULL, start_time = ?, end_time = NULL,
+          location = ?, scheduled_at = ?, updated_at = ?
+      WHERE id = ?
+    `).run(JSON.stringify(state), scheduledAt, location, scheduledAt, ts, row.id);
+    const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+    const payload = broadcast(req, updated);
+    return res.json(payload);
   }
 
   const hasExplicitWinner = req.body.winner !== undefined && req.body.winner !== null;

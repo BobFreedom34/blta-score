@@ -396,6 +396,56 @@ function buildResultFromSets(formatKey, rawSets, explicitWinner) {
   return { sets, currentSet: sets.length - 1, status: 'COMPLETE', winner, setsWon };
 }
 
+// Builds an IN-PROGRESS state (not a decided result) directly from a list
+// of already-known set scores — for recording a match that was played
+// outside the app AND also never got finished (e.g. ran out of court
+// time). Every entered set but the last must be a complete, valid score;
+// the last may be partial. Never decides — or even looks for — a winner,
+// same as marking a live match Unfinished: this state is meant to land the
+// match in UNFINISHED status, from which it can be resumed later (picking
+// up these exact sets) or finished as-is (still with no winner).
+function buildStateFromSets(formatKey, rawSets) {
+  const format = FORMATS[formatKey];
+  if (!format) throw new Error(`Unknown match format: ${formatKey}`);
+  if (!Array.isArray(rawSets) || rawSets.length === 0) {
+    throw new Error('Enter at least one set score');
+  }
+
+  const sets = [];
+  const setsWon = { 1: 0, 2: 0 };
+
+  rawSets.forEach((raw, i) => {
+    const p1 = Number(raw.p1);
+    const p2 = Number(raw.p2);
+    if (!Number.isInteger(p1) || !Number.isInteger(p2) || p1 < 0 || p2 < 0) {
+      throw new Error(`Invalid score for set ${i + 1}`);
+    }
+    const canBePartial = i === rawSets.length - 1;
+
+    const isDeciderTiebreak = i === decidingSetIndex(format) && format.finalSetSuperTiebreak;
+    let set;
+    if (isDeciderTiebreak) {
+      const decided = (p1 >= SUPER_TIEBREAK_POINTS || p2 >= SUPER_TIEBREAK_POINTS) && Math.abs(p1 - p2) >= 2;
+      if (!decided && !canBePartial) {
+        throw new Error(`Set ${i + 1} (match tiebreak) doesn't have a valid winner`);
+      }
+      set = { p1, p2, tiebreak: { p1, p2 }, isSuperTiebreak: true, winner: decided ? (p1 > p2 ? 1 : 2) : null };
+    } else {
+      const decided = isValidSetScore(p1, p2);
+      if (!decided && !canBePartial) {
+        throw new Error(`Set ${i + 1} doesn't have a valid winner`);
+      }
+      const setWinner = decided ? (p1 > p2 ? 1 : 2) : null;
+      set = { p1, p2, tiebreak: null, isSuperTiebreak: false, winner: setWinner };
+    }
+
+    sets.push(set);
+    if (set.winner) setsWon[set.winner] += 1;
+  });
+
+  return { sets, currentSet: sets.length - 1, status: 'IN_PROGRESS', winner: null, setsWon };
+}
+
 // "7-6(4)" / "6-7(4)" / "10-7" (super tiebreak, no games played) / "6-3"
 function describeSet(set) {
   if (set.isSuperTiebreak) {
@@ -424,6 +474,7 @@ module.exports = {
   setNextSetStyle,
   decideByCompletedSets,
   buildResultFromSets,
+  buildStateFromSets,
   describeSet,
   describeMatch,
   decidingSetIndex,

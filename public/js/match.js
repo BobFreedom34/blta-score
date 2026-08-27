@@ -905,10 +905,21 @@ function openManualResultModal(m) {
 
   const retiredCheckbox = document.getElementById('manual-result-retired-checkbox');
   const retiredFields = document.getElementById('manual-result-retired-fields');
+  const unfinishedCheckbox = document.getElementById('manual-result-unfinished-checkbox');
   retiredCheckbox.checked = false;
+  unfinishedCheckbox.checked = false;
   retiredFields.style.display = 'none';
+  // Mutually exclusive — a walkover/retirement claims a winner+reason, while
+  // Unfinished explicitly declines to claim anything, so only one can apply.
   retiredCheckbox.onchange = () => {
     retiredFields.style.display = retiredCheckbox.checked ? 'block' : 'none';
+    if (retiredCheckbox.checked) unfinishedCheckbox.checked = false;
+  };
+  unfinishedCheckbox.onchange = () => {
+    if (unfinishedCheckbox.checked) {
+      retiredCheckbox.checked = false;
+      retiredFields.style.display = 'none';
+    }
   };
 
   let winner = null;
@@ -968,6 +979,12 @@ function openManualResultModal(m) {
       }
       body.winner = winner;
       body.reason = reason;
+    } else if (unfinishedCheckbox.checked) {
+      if (sets.length === 0) {
+        errorEl.textContent = 'Enter at least one set score.';
+        return;
+      }
+      body.unfinished = true;
     } else if (sets.length === 0) {
       errorEl.textContent = 'Enter at least one set score.';
       return;
@@ -979,7 +996,9 @@ function openManualResultModal(m) {
       const finished = await api(`/matches/${matchToken}/manual-result`, { method: 'POST', body });
       document.getElementById('manual-result-modal').style.display = 'none';
       render(finished);
-      openWhatsAppResultModal(finished);
+      // An unfinished result has no result to share — only pop the
+      // WhatsApp-share modal when the match actually finished.
+      if (finished.status === 'FINISHED') openWhatsAppResultModal(finished);
     } catch (err) {
       errorEl.textContent = err.message;
     }
