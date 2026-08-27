@@ -1,6 +1,6 @@
 const listEl = document.getElementById('live-list');
 
-const VALID_STATUSES = ['PLANNED', 'LIVE', 'FINISHED'];
+const VALID_STATUSES = ['PLANNED', 'LIVE', 'FINISHED', 'UNFINISHED'];
 const params = new URLSearchParams(window.location.search);
 const statusFilter = VALID_STATUSES.includes((params.get('status') || '').toUpperCase())
   ? params.get('status').toUpperCase()
@@ -16,12 +16,14 @@ const HEADERS = {
   PLANNED: '🗓 Planned matches',
   LIVE: '🔴 Live now',
   FINISHED: '✅ Finished matches',
+  UNFINISHED: '⏹ Unfinished matches',
 };
 const PLANNED_DATE_HEADERS = { has: '📅 Scheduled matches', none: '🕓 Planned' };
 const EMPTY_MESSAGES = {
   PLANNED: 'No planned matches right now.',
   LIVE: 'No live matches right now.',
   FINISHED: 'No finished matches yet.',
+  UNFINISHED: 'No unfinished matches right now.',
 };
 const PLANNED_DATE_EMPTY_MESSAGES = { has: 'No scheduled matches right now.', none: 'No unscheduled matches right now.' };
 

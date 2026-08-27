@@ -1,8 +1,8 @@
 const CATEGORY_LABELS = { ELITE: 'BLTA ELITE', NEXT_GEN: 'BLTA NEXT GEN', NOVICE: 'BLTA NOVICE', FRIENDLY: 'FRIENDLY', VIP_CUP: 'VIP CUP', ATA_TENNIS: 'ATA TENNIS' };
 // The three official league categories — everything else (FRIENDLY, VIP_CUP) is a non-league match.
 const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
-const STATUS_LABELS = { PLANNED: 'Planned', LIVE: 'Live', FINISHED: 'Finished' };
-const END_REASON_LABELS = { WALKOVER: 'Walkover', RETIREMENT: 'Retirement' };
+const STATUS_LABELS = { PLANNED: 'Planned', LIVE: 'Live', FINISHED: 'Finished', UNFINISHED: 'Unfinished' };
+const END_REASON_LABELS = { WALKOVER: 'Walkover', RETIREMENT: 'Retirement', UNFINISHED: 'Left unfinished' };
 
 // "6-4, 3-2" / "Retirement" / "6-4, 3-2 — Retirement" / "Best of 3 sets" (planned)
 function matchResultText(m) {

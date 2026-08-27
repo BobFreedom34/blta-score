@@ -4,6 +4,7 @@ const FILTERS = {
   UNSCHEDULED: { status: 'PLANNED', dateFilter: 'none', label: 'Planned' },
   LIVE: { status: 'LIVE', label: 'Live' },
   FINISHED: { status: 'FINISHED', label: 'Finished' },
+  UNFINISHED: { status: 'UNFINISHED', label: 'Unfinished' },
 };
 let currentFilter = 'ALL';
 let currentQuery = '';
@@ -149,7 +150,7 @@ function buildFilterParams(filterKey) {
     params.set('hasDate', '1');
   } else if (f.dateFilter === 'none') {
     params.set('noDate', '1');
-  } else if (f.status === 'PLANNED' || f.status === 'FINISHED') {
+  } else if (f.status === 'PLANNED' || f.status === 'FINISHED' || f.status === 'UNFINISHED') {
     if (currentTimeFilter === 'today') {
       const { from, to } = getDayRange(0);
       params.set('from', from);
@@ -205,6 +206,12 @@ async function refreshCounts() {
       }
       const el = document.getElementById(`count-${key}`);
       if (el) el.textContent = matches.length;
+      // Unfinished matches are the exception, not the norm — the tab stays
+      // out of the way entirely until there's actually one to see.
+      if (key === 'UNFINISHED') {
+        const tabBtn = document.getElementById('tab-UNFINISHED');
+        if (tabBtn) tabBtn.style.display = matches.length ? '' : 'none';
+      }
     } catch { /* ignore */ }
   }
 }

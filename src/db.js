@@ -110,6 +110,65 @@ if (matchesTableHasOldCategoryCheck()) {
   rebuildMatchesTableWithoutCategoryCheck();
 }
 
+function matchesTableHasStatusCheck() {
+  const row = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='matches'").get();
+  return !!(row && /CHECK\s*\(\s*status/i.test(row.sql));
+}
+
+// Same rebuild-without-CHECK trick as above, this time for status — added
+// to allow the new UNFINISHED status (a live match that had to stop, e.g.
+// the court booking ran out, with no winner decided) without being locked
+// to the original PLANNED/LIVE/FINISHED list. Reads the table's actual
+// current columns via PRAGMA (not a hardcoded list) so it safely carries
+// forward every column added by later migrations below, whatever they are.
+function rebuildMatchesTableWithoutStatusCheck() {
+  const oldColumns = db.prepare('PRAGMA table_info(matches)').all().map((c) => c.name);
+  const cols = oldColumns.join(', ');
+
+  db.exec('BEGIN');
+  try {
+    db.exec('ALTER TABLE matches RENAME TO matches_old');
+    db.exec(`
+      CREATE TABLE matches (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        share_token TEXT,
+        category TEXT NOT NULL,
+        player1_id INTEGER NOT NULL REFERENCES players(id),
+        player2_id INTEGER NOT NULL REFERENCES players(id),
+        location TEXT NOT NULL DEFAULT '',
+        scheduled_at TEXT,
+        format TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'PLANNED',
+        state TEXT NOT NULL,
+        history TEXT NOT NULL DEFAULT '[]',
+        winner_id INTEGER,
+        start_time TEXT,
+        end_time TEXT,
+        notified INTEGER NOT NULL DEFAULT 0,
+        created_by_admin INTEGER NOT NULL DEFAULT 0,
+        notes TEXT NOT NULL DEFAULT '',
+        paused_at TEXT,
+        paused_seconds INTEGER NOT NULL DEFAULT 0,
+        first_server INTEGER,
+        end_reason TEXT,
+        created_by_anonymous INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+    db.exec(`INSERT INTO matches (${cols}) SELECT ${cols} FROM matches_old`);
+    db.exec('DROP TABLE matches_old');
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
+
+if (matchesTableHasStatusCheck()) {
+  rebuildMatchesTableWithoutStatusCheck();
+}
+
 const matchColumns = db.prepare('PRAGMA table_info(matches)').all().map((c) => c.name);
 if (!matchColumns.includes('share_token')) {
   db.exec('ALTER TABLE matches ADD COLUMN share_token TEXT');
@@ -253,6 +312,77 @@ db.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_push_subscriptions_unique ON push_subscriptions(match_id, subscription, type);
   CREATE INDEX IF NOT EXISTS idx_push_subscriptions_match_id ON push_subscriptions(match_id);
 `);
+
+// SQLite silently rewrites OTHER tables' foreign-key clauses to follow a
+// renamed table — so every "ALTER TABLE matches RENAME TO matches_old ...
+// DROP TABLE matches_old" rebuild above (there'll be more of these over
+// time) leaves messages/match_notifications/push_subscriptions pointing at
+// a "matches_old" that no longer exists, even though their own table name
+// never changed. Nothing breaks until something resolves that reference —
+// then every query against the affected table fails with a "no such
+// table: main.matches_old" error. Self-heals it on every startup (a no-op
+// once fixed) rather than a one-time guarded migration, since a future
+// matches-table rebuild would just reintroduce the same dangling reference.
+function fixDanglingMatchesOldReference(tableName, createSql, indexSqls) {
+  const row = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?").get(tableName);
+  if (!row || !/matches_old/i.test(row.sql)) return;
+  const brokenName = `${tableName}_broken`;
+  const cols = db.prepare(`PRAGMA table_info(${tableName})`).all().map((c) => c.name).join(', ');
+  db.exec('BEGIN');
+  try {
+    db.exec(`ALTER TABLE ${tableName} RENAME TO ${brokenName}`);
+    db.exec(createSql);
+    db.exec(`INSERT INTO ${tableName} (${cols}) SELECT ${cols} FROM ${brokenName}`);
+    db.exec(`DROP TABLE ${brokenName}`);
+    indexSqls.forEach((sql) => db.exec(sql));
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
+
+fixDanglingMatchesOldReference(
+  'messages',
+  `CREATE TABLE messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id INTEGER NOT NULL REFERENCES matches(id),
+    author TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  )`,
+  ['CREATE INDEX IF NOT EXISTS idx_messages_match_id ON messages(match_id)'],
+);
+fixDanglingMatchesOldReference(
+  'match_notifications',
+  `CREATE TABLE match_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id INTEGER NOT NULL REFERENCES matches(id),
+    email TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('START','FINISH')),
+    sent INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  )`,
+  [
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_match_notifications_unique ON match_notifications(match_id, email, type)',
+    'CREATE INDEX IF NOT EXISTS idx_match_notifications_match_id ON match_notifications(match_id)',
+  ],
+);
+fixDanglingMatchesOldReference(
+  'push_subscriptions',
+  `CREATE TABLE push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id INTEGER NOT NULL REFERENCES matches(id),
+    subscription TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('START','FINISH')),
+    sent INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  )`,
+  [
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_push_subscriptions_unique ON push_subscriptions(match_id, subscription, type)',
+    'CREATE INDEX IF NOT EXISTS idx_push_subscriptions_match_id ON push_subscriptions(match_id)',
+  ],
+);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS badge_definitions (

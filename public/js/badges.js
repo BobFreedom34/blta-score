@@ -23,10 +23,11 @@ function badgeWonWithoutDroppingSet(m, pid) {
 // threshold-less pass/fail types, once the metric is truthy).
 function computeBadgeMetrics(playerId, finished) {
   const pid = Number(playerId);
-  // A walkover means no tennis was actually played, so it doesn't count
-  // toward games played, wins, streaks, or any other badge metric — same
-  // rule as the player-profile stats cards.
-  const counted = finished.filter((m) => m.endReason !== 'WALKOVER');
+  // A walkover means no tennis was actually played, and a match finished
+  // "as is" from Unfinished never reached a real conclusion — neither
+  // counts toward games played, wins, streaks, or any other badge metric,
+  // same rule as the player-profile stats cards.
+  const counted = finished.filter((m) => m.endReason !== 'WALKOVER' && m.endReason !== 'UNFINISHED');
   const wins = counted.filter((m) => m.winnerId === pid);
   const chronological = counted
     .filter((m) => m.winnerId)

@@ -197,6 +197,7 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
         : '<button class="btn" id="pause-btn">⏸ Stop match</button>') : ''}
       ${showRestart ? '<button class="btn" id="restart-btn">🔁 Restart match</button>' : ''}
       ${showFinish ? '<button class="btn btn-dark" id="finish-btn">🏁 Finish match</button>' : ''}
+      ${showFinish ? '<button class="btn btn-outline" id="unfinished-btn" title="No winner yet — e.g. ran out of court time. Can be resumed later.">⏹ Match unfinished</button>' : ''}
     </div>
   `;
 }
@@ -210,6 +211,17 @@ function controlsHtml(m) {
   }
   if (m.status === 'LIVE') {
     return scoreControlsHtml(m, { showFinish: true, showRestart: true });
+  }
+  if (m.status === 'UNFINISHED') {
+    return `
+      <div class="card" style="margin-top:16px;text-align:center">
+        <div style="font-size:13px;color:var(--gray);font-weight:700;letter-spacing:0.03em;text-transform:uppercase">Unfinished</div>
+        <div style="font-size:16px;font-weight:700;color:var(--ink);margin-top:4px">No winner yet — the score above is where it stopped.</div>
+      </div>
+      <button class="btn btn-primary btn-block" id="resume-later-btn" style="padding:16px;font-size:16px;margin-top:10px;text-transform:uppercase">📅 Set a new date &amp; resume later</button>
+      <button class="btn btn-dark btn-block" id="finish-as-is-btn" style="margin-top:10px">🏁 Finish with the result as it is</button>
+      <button class="btn btn-block" id="restart-btn" style="margin-top:10px">🔁 Restart match from scratch</button>
+    `;
   }
   // FINISHED
   const winnerName = m.winnerId === m.player1.id ? m.player1.name : m.winnerId === m.player2.id ? m.player2.name : null;
@@ -283,7 +295,7 @@ async function ensureH2H(m) {
   try {
     const finished = await api(`/matches?playerId=${m.player1.id}&status=FINISHED`);
     const prior = finished.filter((x) => x.token !== matchToken && x.winnerId
-      && x.endReason !== 'WALKOVER'
+      && x.endReason !== 'WALKOVER' && x.endReason !== 'UNFINISHED'
       && (x.player1.id === m.player2.id || x.player2.id === m.player2.id));
     if (prior.length) {
       let wins = 0;
@@ -488,6 +500,32 @@ function attachHandlers(m) {
       openWhatsAppResultModal(finished);
     }
     catch (err) { toast(err.message); finishBtn.disabled = false; }
+  }));
+
+  const unfinishedBtn = document.getElementById('unfinished-btn');
+  if (unfinishedBtn) unfinishedBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+    if (!confirm("Mark this match unfinished? No winner is recorded, and it won't count toward stats. You can pick a new date and resume it later, whenever you're ready.")) return;
+    unfinishedBtn.disabled = true;
+    try { render(await api(`/matches/${matchToken}/unfinished`, { method: 'POST' })); }
+    catch (err) { toast(err.message); unfinishedBtn.disabled = false; }
+  }));
+
+  const resumeLaterBtn = document.getElementById('resume-later-btn');
+  if (resumeLaterBtn) resumeLaterBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+    resumeLaterBtn.disabled = true;
+    try {
+      const updated = await api(`/matches/${matchToken}/resume-later`, { method: 'POST' });
+      render(updated);
+      toast('Back to Planned — set a new date and location, then start it whenever you\'re ready.');
+    } catch (err) { toast(err.message); resumeLaterBtn.disabled = false; }
+  }));
+
+  const finishAsIsBtn = document.getElementById('finish-as-is-btn');
+  if (finishAsIsBtn) finishAsIsBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+    if (!confirm("Finish this match with the score exactly as it is? This can't be changed afterward, and it won't count toward stats or badges.")) return;
+    finishAsIsBtn.disabled = true;
+    try { render(await api(`/matches/${matchToken}/finish-as-is`, { method: 'POST' })); }
+    catch (err) { toast(err.message); finishAsIsBtn.disabled = false; }
   }));
 
   const editLink = document.getElementById('edit-location-link');

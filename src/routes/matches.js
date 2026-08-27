@@ -176,7 +176,7 @@ router.get('/', (req, res) => {
   // matches: most recently finished first.
   const orderBy = status === 'PLANNED'
     ? 'ORDER BY (m.scheduled_at IS NULL) ASC, m.scheduled_at ASC, m.created_at DESC'
-    : status === 'FINISHED'
+    : (status === 'FINISHED' || status === 'UNFINISHED')
       // Sort by when the match was actually played, not by database
       // bookkeeping — a manually-entered or bulk-imported result has no
       // real end_time (and its updated_at is just whenever it was typed
@@ -445,6 +445,91 @@ router.post('/:token/resume', requireLoggedIn, (req, res) => {
   res.json(payload);
 });
 
+// A live match that has to stop without a winner — e.g. the court booking
+// ran out — freezes here instead of forcing a Finish. Nothing about the
+// score/state is touched, so resuming later (see /resume-later below)
+// picks up exactly where it left off. Not FINISHED, so it's automatically
+// excluded from stats/badges same as any other non-finished match — that
+// stays true for as long as it sits here, whether or not it's ever resumed.
+router.post('/:token/unfinished', requireLoggedIn, (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
+  if (row.status !== 'LIVE') {
+    return res.status(400).json({ error: 'Only a live match can be marked unfinished' });
+  }
+  const ts = nowIso();
+  db.prepare("UPDATE matches SET status = 'UNFINISHED', end_time = ?, paused_at = NULL, updated_at = ? WHERE id = ?")
+    .run(ts, ts, row.id);
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  const payload = broadcast(req, updated);
+  res.json(payload);
+});
+
+// Puts an unfinished match back to Planned, ready to pick a new date and
+// location and start again — the score/state carries over untouched (only
+// the live-scoring "Start" flow actually resets nothing itself; it just
+// stops using a fresh initState the way match creation does).
+router.post('/:token/resume-later', requireLoggedIn, (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
+  if (row.status !== 'UNFINISHED') {
+    return res.status(400).json({ error: 'Only an unfinished match can be resumed this way' });
+  }
+  const ts = nowIso();
+  db.prepare("UPDATE matches SET status = 'PLANNED', start_time = NULL, end_time = NULL, updated_at = ? WHERE id = ?")
+    .run(ts, row.id);
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  const payload = broadcast(req, updated);
+  res.json(payload);
+});
+
+// Locks in an unfinished match's score exactly as it stands, instead of
+// resuming it later — no picking a winner, no walkover/retirement reason,
+// just whatever the score already says. Marked with its own end_reason
+// (same trick as WALKOVER) so it's permanently excluded from stats/badges/
+// H2H, same as everywhere else that filters those out — this never
+// reached a real conclusion, so it shouldn't count as one.
+router.post('/:token/finish-as-is', requireLoggedIn, async (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (!checkMatchAccess(req, res, row)) return;
+  if (row.status !== 'UNFINISHED') {
+    return res.status(400).json({ error: 'Only an unfinished match can be finished this way' });
+  }
+
+  const state = JSON.parse(row.state);
+  let winnerId = deriveWinnerId(state, row);
+  if (!winnerId) {
+    const bySetsWon = engine.decideByCompletedSets(state);
+    winnerId = bySetsWon === 1 ? row.player1_id : bySetsWon === 2 ? row.player2_id : null;
+  }
+
+  const ts = nowIso();
+  db.prepare("UPDATE matches SET status = 'FINISHED', end_time = ?, winner_id = ?, end_reason = 'UNFINISHED', updated_at = ? WHERE id = ?")
+    .run(row.end_time || ts, winnerId, ts, row.id);
+
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  const payload = broadcast(req, updated);
+  res.json(payload);
+
+  try {
+    const p1 = getPlayer(updated.player1_id);
+    const p2 = getPlayer(updated.player2_id);
+    await sendMatchFinishedEmail(updated, p1, p2);
+    db.prepare('UPDATE matches SET notified = 1 WHERE id = ?').run(row.id);
+  } catch (err) {
+    console.error('[matches] failed to send finished-match email:', err.message);
+  }
+  notifySubscribers(row.id, 'FINISH', updated).catch((err) => {
+    console.error('[matches] failed to send finish notifications:', err.message);
+  });
+  notifyPushSubscribers(row.id, 'FINISH', updated).catch((err) => {
+    console.error('[matches] failed to send finish push notifications:', err.message);
+  });
+});
+
 router.post('/:token/restart', requireLoggedIn, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
@@ -453,8 +538,8 @@ router.post('/:token/restart', requireLoggedIn, (req, res) => {
     if (!isAdmin(req)) {
       return res.status(403).json({ error: 'Only an admin can restart a finished match' });
     }
-  } else if (row.status !== 'LIVE') {
-    return res.status(400).json({ error: 'Only a live or finished match can be restarted' });
+  } else if (row.status !== 'LIVE' && row.status !== 'UNFINISHED') {
+    return res.status(400).json({ error: 'Only a live, unfinished, or finished match can be restarted' });
   }
   const state = engine.initState(row.format);
   const ts = nowIso();

@@ -30,7 +30,7 @@ function matchLink(match) {
   return `${process.env.PUBLIC_URL || ''}/match/${match.share_token}`;
 }
 
-const END_REASON_LABELS = { WALKOVER: 'Walkover', RETIREMENT: 'Retirement' };
+const END_REASON_LABELS = { WALKOVER: 'Walkover', RETIREMENT: 'Retirement', UNFINISHED: 'Left unfinished' };
 
 async function sendMatchFinishedEmail(match, player1, player2) {
   const t = getTransporter();

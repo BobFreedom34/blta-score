@@ -60,6 +60,9 @@ const GROUPS = [
   { heading: '📅 Scheduled', params: { status: 'PLANNED', hasDate: '1' } },
   { heading: '🕓 Planned', params: { status: 'PLANNED', noDate: '1' } },
   { heading: '✅ Finished', params: { status: 'FINISHED' } },
+  // Appended at the end, not inserted — rawGroups[3] is relied on elsewhere
+  // as "the Finished group" and must keep that index.
+  { heading: '⏸ Unfinished', params: { status: 'UNFINISHED' } },
 ];
 
 function matchYear(m) {
@@ -185,7 +188,7 @@ function renderStats() {
   // A walkover means no tennis was actually played, so it's excluded from
   // every stat below (games played, W-L, win rate, form guide, trend) —
   // it still shows up in the plain match list further down, just not here.
-  const finished = (rawGroups[3] || []).filter((m) => m.endReason !== 'WALKOVER');
+  const finished = (rawGroups[3] || []).filter((m) => m.endReason !== 'WALKOVER' && m.endReason !== 'UNFINISHED');
   const bltaFinished = finished.filter((m) => BLTA_CATEGORIES.includes(m.category));
   fillStats('blta', computeRecord(bltaFinished));
   fillStats('overall', computeRecord(finished));
@@ -266,7 +269,7 @@ function opponentRecords() {
   const finished = rawGroups[3] || [];
   const byOpponent = new Map();
   finished.forEach((m) => {
-    if (!m.winnerId || m.endReason === 'WALKOVER') return;
+    if (!m.winnerId || m.endReason === 'WALKOVER' || m.endReason === 'UNFINISHED') return;
     const opponent = m.player1.id === Number(playerId) ? m.player2 : m.player1;
     const rec = byOpponent.get(opponent.id) || { opponent, wins: 0, losses: 0 };
     if (m.winnerId === Number(playerId)) rec.wins += 1;
