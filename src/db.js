@@ -164,6 +164,10 @@ if (!playerColumns.includes('slug')) {
   // only to a logged-in player/admin (see the /:id endpoint in players.js).
   'phone TEXT',
   'email TEXT',
+  // Marks a player auto-created by the limited anon login tier (see
+  // created_by_anonymous on matches) — such a session can only edit that
+  // player's bio, unlike a real player/admin who can edit any player's.
+  'created_by_anonymous INTEGER NOT NULL DEFAULT 0',
 ].forEach((colDef) => {
   const colName = colDef.split(' ')[0];
   if (!playerColumns.includes(colName)) {

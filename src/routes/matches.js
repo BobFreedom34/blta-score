@@ -225,13 +225,17 @@ router.post('/', requireLoggedIn, (req, res) => {
     return res.status(400).json({ error: 'Additional info is too long (max 1000 characters)' });
   }
 
+  // A player created here by an anon-only session is flagged the same way
+  // as the match itself, so that session can later edit that player's bio
+  // (see checkPlayerAccess in routes/players.js) — but not anyone else's.
+  const createdByAnon = !isPlayer(req) && isAnon(req) ? 1 : 0;
   const resolvePlayer = (id, name) => {
     if (id) return getPlayer(id);
     const trimmed = (name || '').trim();
     if (!trimmed) return null;
     const existing = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE').get(trimmed);
     if (existing) return existing;
-    const info = db.prepare('INSERT INTO players (name) VALUES (?)').run(trimmed);
+    const info = db.prepare('INSERT INTO players (name, created_by_anonymous) VALUES (?, ?)').run(trimmed, createdByAnon);
     return getPlayer(info.lastInsertRowid);
   };
 

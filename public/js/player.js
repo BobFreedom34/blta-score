@@ -661,8 +661,13 @@ function openProfileLoginModal(onSuccess) {
   setTimeout(() => digits[0].focus(), 50);
 }
 
+// anonAuthed comes from common.js's shared session state (the anon tier
+// logs in through the same code box as a real player, not this page's own
+// profile-code modal) — letting it through here just reaches the server,
+// which enforces that an anon session can only actually save changes to a
+// player it created itself (see checkPlayerAccess in routes/players.js).
 function requireProfileAuth(onReady) {
-  if (profileEditorAuthed) { onReady(); return; }
+  if (profileEditorAuthed || anonAuthed) { onReady(); return; }
   openProfileLoginModal(onReady);
 }
 

@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { requireAdmin, requireProfileEditor, isAdmin, isPlayer, isProfileEditor } = require('../auth');
+const { requireAdmin, isAdmin, isPlayer, isAnon, isProfileEditor } = require('../auth');
 
 const router = express.Router();
 
@@ -8,7 +8,8 @@ const router = express.Router();
 // logged-in player (either code: the match-scoring PLAYER_CODE or the
 // bio-editing PROFILE_CODE) or an admin. Everything else on the bio stays
 // public. Deliberately excludes the limited anon tier (ANON_CODE) — that
-// login has no rights beyond its own created matches.
+// login only ever sees/edits players it created itself (see
+// checkPlayerAccess below), and phone/email is off-limits even for those.
 function canSeePrivateFields(req) {
   return isAdmin(req) || isPlayer(req) || isProfileEditor(req);
 }
@@ -16,6 +17,22 @@ function stripPrivateFields(player, req) {
   if (canSeePrivateFields(req)) return player;
   const { phone, email, ...rest } = player;
   return rest;
+}
+
+// A real profile editor/admin can edit any player's bio. The limited anon
+// tier can only edit a player it (or another anon session) created —
+// mirrors checkMatchAccess in routes/matches.js.
+function requireProfileEditorOrAnon(req, res, next) {
+  if (!isAdmin(req) && !isProfileEditor(req) && !isAnon(req)) {
+    return res.status(401).json({ error: 'Please log in to edit profile info' });
+  }
+  next();
+}
+function checkPlayerAccess(req, res, player) {
+  if (isAdmin(req) || isProfileEditor(req)) return true;
+  if (isAnon(req) && player.created_by_anonymous) return true;
+  res.status(403).json({ error: 'You can only edit players you created' });
+  return false;
 }
 
 function slugifyPart(str) {
@@ -117,10 +134,13 @@ function optionalTextField(body, key, current, maxLen) {
 // PROFILE_CODE, separate from the match-scoring PLAYER_CODE) or an admin —
 // unlike name/photo above, which stay admin-only since renaming or
 // re-photographing another player is a more sensitive action than filling
-// in your own racket string tension.
-router.patch('/:id/bio', requireProfileEditor, (req, res) => {
+// in your own racket string tension. The limited anon tier gets a narrower
+// version of this same right: it can edit a player's bio only if it (or
+// another anon session) created that player in the first place.
+router.patch('/:id/bio', requireProfileEditorOrAnon, (req, res) => {
   const player = findPlayerByIdOrSlug(req.params.id);
   if (!player) return res.status(404).json({ error: 'Player not found' });
+  if (!checkPlayerAccess(req, res, player)) return;
 
   let category = player.category;
   if (req.body.category !== undefined) {
