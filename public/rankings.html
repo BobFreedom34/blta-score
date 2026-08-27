@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BLTA Score — Players</title>
+<title>BLTA Score — Rankings</title>
+<meta name="description" content="BLTA league point standings — overall, per-category Race points, and tournament points.">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" href="/favicon.png">
@@ -18,8 +19,8 @@
     <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">☰</button>
     <nav class="nav-links" id="nav-links">
       <a href="/">Matches</a>
-      <a href="/players" class="active">Players</a>
-      <a href="/rankings">Rankings</a>
+      <a href="/players">Players</a>
+      <a href="/rankings" class="active">Rankings</a>
       <a href="/new-match">+ New match</a>
       <a href="#" class="player-login-link" id="player-login-link">LOG IN AS PLAYER</a>
     </nav>
@@ -27,26 +28,13 @@
 </div>
 
 <div class="container">
-  <h1 style="margin-top:22px">Players</h1>
-  <p style="color:var(--gray-dim)">Add every league player here once — then pick them from the list when creating a match.</p>
+  <h1 style="margin-top:22px">Rankings</h1>
+  <p style="color:var(--gray-dim)" id="rankings-updated">Loading…</p>
 
-  <div class="card" style="margin-bottom:20px" id="add-player-card">
-    <form id="add-player-form" style="display:flex;gap:10px;flex-wrap:wrap">
-      <input type="text" id="new-player-name" placeholder="Player full name" style="flex:1;min-width:200px;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px" required maxlength="60">
-      <button type="submit" class="btn btn-primary">+ Add player</button>
-    </form>
-  </div>
-  <div class="card" style="margin-bottom:20px;display:none" id="admin-required-card">
-    <p style="margin:0;color:var(--gray)">
-      Anyone can pick existing players when planning a match — adding, renaming, or removing
-      players here requires an admin login. <a href="/admin" style="text-decoration:underline;color:var(--orange)">Log in as admin</a>.
-    </p>
-  </div>
+  <div class="tabs" id="rankings-tabs" role="tablist"></div>
 
-  <input type="text" id="filter-q" placeholder="Search players…" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px;margin-bottom:14px">
-
-  <div class="card">
-    <div id="player-list">Loading…</div>
+  <div class="card card-dark">
+    <div id="rankings-list">Loading…</div>
   </div>
 </div>
 
@@ -79,6 +67,6 @@
 </footer>
 
 <script src="/js/common.js"></script>
-<script src="/js/players.js"></script>
+<script src="/js/rankings.js"></script>
 </body>
 </html>
