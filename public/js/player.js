@@ -544,6 +544,13 @@ function bioCardHtml(player) {
       ['Seasons', player.seasons],
       ['Favourite player', player.favorite_player],
     ],
+    // Phone/email are never sent to the API for an anonymous visitor (see
+    // stripPrivateFields in routes/players.js), so this column disappears
+    // on its own for anyone not logged in as a player or admin.
+    [
+      ['Phone', player.phone],
+      ['Email', player.email],
+    ],
   ].map((rows) => rows.filter(([, value]) => value)).filter((rows) => rows.length);
 
   if (!columns.length) return '';
@@ -576,6 +583,8 @@ function openBioModal() {
   document.getElementById('bio-seasons').value = p.seasons || '';
   document.getElementById('bio-favorite-player').value = p.favorite_player || '';
   document.getElementById('bio-birthday').value = p.birthday || '';
+  document.getElementById('bio-phone').value = p.phone || '';
+  document.getElementById('bio-email').value = p.email || '';
   document.getElementById('bio-error').textContent = '';
   document.getElementById('player-bio-modal').style.display = 'flex';
 }
@@ -672,6 +681,8 @@ document.getElementById('player-bio-form').addEventListener('submit', async (e) 
     seasons: document.getElementById('bio-seasons').value.trim() || null,
     favoritePlayer: document.getElementById('bio-favorite-player').value.trim() || null,
     birthday: document.getElementById('bio-birthday').value || null,
+    phone: document.getElementById('bio-phone').value.trim() || null,
+    email: document.getElementById('bio-email').value.trim() || null,
   };
   try {
     currentPlayer = await api(`/players/${playerId}/bio`, { method: 'PATCH', body });

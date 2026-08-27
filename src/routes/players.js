@@ -1,8 +1,20 @@
 const express = require('express');
 const db = require('../db');
-const { requireAdmin, requireProfileEditor } = require('../auth');
+const { requireAdmin, requireProfileEditor, isAdmin, isProfileEditor } = require('../auth');
 
 const router = express.Router();
+
+// Phone/email are never shown to an anonymous visitor — only to a
+// logged-in player (the shared code, same as everyone who can edit a bio)
+// or an admin. Everything else on the bio stays public.
+function canSeePrivateFields(req) {
+  return isAdmin(req) || isProfileEditor(req);
+}
+function stripPrivateFields(player, req) {
+  if (canSeePrivateFields(req)) return player;
+  const { phone, email, ...rest } = player;
+  return rest;
+}
 
 function slugifyPart(str) {
   return str.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -48,13 +60,13 @@ router.get('/', (req, res) => {
   } else {
     rows = db.prepare('SELECT * FROM players ORDER BY name COLLATE NOCASE').all();
   }
-  res.json(rows);
+  res.json(rows.map((p) => stripPrivateFields(p, req)));
 });
 
 router.get('/:id', (req, res) => {
   const player = findPlayerByIdOrSlug(req.params.id);
   if (!player) return res.status(404).json({ error: 'Player not found' });
-  res.json(player);
+  res.json(stripPrivateFields(player, req));
 });
 
 // Note: players can still be auto-created when someone plans a new match with
@@ -124,6 +136,19 @@ router.patch('/:id/bio', requireProfileEditor, (req, res) => {
   const backhand = optionalTextField(req.body, 'backhand', player.backhand, 40);
   const seasons = optionalTextField(req.body, 'seasons', player.seasons, 60);
   const favoritePlayer = optionalTextField(req.body, 'favoritePlayer', player.favorite_player, 60);
+  const phone = optionalTextField(req.body, 'phone', player.phone, 30);
+
+  let email = player.email;
+  if (req.body.email !== undefined) {
+    const v = (req.body.email || '').trim();
+    if (!v) {
+      email = null;
+    } else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
+      email = v.slice(0, 100);
+    } else {
+      return res.status(400).json({ error: 'Invalid email' });
+    }
+  }
 
   let birthday = player.birthday;
   if (req.body.birthday !== undefined) {
@@ -139,9 +164,9 @@ router.patch('/:id/bio', requireProfileEditor, (req, res) => {
   db.prepare(`
     UPDATE players SET category = ?, nationality = ?, birthday = ?, racket = ?,
       string_brand = ?, string_tension = ?, forehand = ?, backhand = ?,
-      seasons = ?, favorite_player = ?
+      seasons = ?, favorite_player = ?, phone = ?, email = ?
     WHERE id = ?
-  `).run(category, nationality, birthday, racket, stringBrand, stringTension, forehand, backhand, seasons, favoritePlayer, player.id);
+  `).run(category, nationality, birthday, racket, stringBrand, stringTension, forehand, backhand, seasons, favoritePlayer, phone, email, player.id);
 
   res.json(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id));
 });

@@ -154,6 +154,10 @@ if (!playerColumns.includes('slug')) {
   'nationality TEXT',
   'birthday TEXT',
   'favorite_player TEXT',
+  // Unlike the fields above, these are never shown on the public profile —
+  // only to a logged-in player/admin (see the /:id endpoint in players.js).
+  'phone TEXT',
+  'email TEXT',
 ].forEach((colDef) => {
   const colName = colDef.split(' ')[0];
   if (!playerColumns.includes(colName)) {
