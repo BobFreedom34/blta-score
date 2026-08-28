@@ -609,6 +609,21 @@ datalist {}
 .avail-cell.selected { background: var(--orange); }
 .avail-cell.selected:hover { background: var(--orange-dark); }
 
+/* Response grid on the match page — single-pick, not the creation grid's
+   multi-toggle. Only cells matching one of the proposed slots are
+   clickable/highlighted; everything else stays plain filler so the
+   calendar shape reads correctly without implying it can be clicked. */
+#proposal-grid-wrap .avail-cell { cursor: default; }
+#proposal-grid-wrap .avail-cell:hover { background: var(--gray-light); }
+#proposal-grid-wrap .avail-cell.proposed { background: #fff6f2; border: 1.5px solid var(--orange); cursor: pointer; }
+#proposal-grid-wrap .avail-cell.proposed:hover { background: #ffe8dc; }
+#proposal-grid-wrap .avail-cell.proposed.selected { background: var(--orange); border-color: var(--orange-dark); }
+#proposal-grid-wrap .avail-cell.proposed.selected:hover { background: var(--orange-dark); }
+#proposal-week-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
+#proposal-week-tabs .tab { flex-direction: column; gap: 2px; font-size: 11px; padding: 7px 14px; }
+#proposal-week-tabs .tab span { text-transform: none; font-weight: 500; opacity: 0.75; }
+#proposal-week-tabs .tab.active span { opacity: 0.9; }
+
 .proposal-option-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .proposal-option.selected { border-color: var(--orange); background: #fff6f2; color: var(--orange-dark); font-weight: 800; }
 

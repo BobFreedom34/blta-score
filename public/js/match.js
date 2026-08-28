@@ -336,9 +336,8 @@ function proposalCardHtml(m) {
       <p style="font-size:13px;color:var(--gray);margin:6px 0 16px">A few options were proposed for this match — pick whichever works for you and it's confirmed.</p>
       <div class="field">
         <label>When</label>
-        <div class="proposal-option-list" id="proposal-slot-list">
-          ${m.proposalSlots.map((s) => `<button type="button" class="btn btn-outline proposal-option" data-slot="${escapeHtml(s)}">${fmtDateLong(s)}</button>`).join('')}
-        </div>
+        <div class="tabs" id="proposal-week-tabs"></div>
+        <div class="availability-grid-wrap" id="proposal-grid-wrap"></div>
       </div>
       <div class="field">
         <label>Where</label>
@@ -456,13 +455,75 @@ function attachHandlers(m) {
     let selectedVenue = null;
     const confirmBtn = document.getElementById('confirm-proposal-btn');
     const proposalErrorEl = document.getElementById('proposal-error');
-    const slotBtns = proposalCard.querySelectorAll('#proposal-slot-list .proposal-option');
+
+    // Same weekly-grid look as the "Schedule a match" form that created
+    // this proposal, but single-pick instead of multi-toggle: only cells
+    // matching one of m.proposalSlots are clickable, everything else is
+    // inert filler that keeps the calendar shape recognizable. The day
+    // range comes from the actual proposed dates (not a fixed 14 days),
+    // paged in weeks of 7 the same way, so a short proposal doesn't drag
+    // in empty weeks.
+    const proposalSlotSet = new Set(m.proposalSlots);
+    const dayDates = m.proposalSlots.map((iso) => {
+      const d = new Date(iso);
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    });
+    const minDay = new Date(Math.min(...dayDates));
+    const maxDay = new Date(Math.max(...dayDates));
+    const proposalDays = [];
+    for (let d = new Date(minDay); d <= maxDay; d.setDate(d.getDate() + 1)) proposalDays.push(new Date(d));
+    const proposalWeeks = [];
+    for (let i = 0; i < proposalDays.length; i += 7) proposalWeeks.push(proposalDays.slice(i, i + 7));
+    let proposalActiveWeek = 0;
+
+    function renderProposalWeekTabs() {
+      const tabsEl = document.getElementById('proposal-week-tabs');
+      if (proposalWeeks.length <= 1) { tabsEl.style.display = 'none'; return; }
+      const fmt = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+      tabsEl.innerHTML = proposalWeeks.map((days, i) => `
+        <button type="button" class="tab${i === proposalActiveWeek ? ' active' : ''}" data-week="${i}">Week ${i + 1}<span>${fmt(days[0])} – ${fmt(days[days.length - 1])}</span></button>
+      `).join('');
+      tabsEl.querySelectorAll('.tab').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          proposalActiveWeek = Number(btn.dataset.week);
+          renderProposalWeekTabs();
+          renderProposalGrid();
+        });
+      });
+    }
+
+    function renderProposalGrid() {
+      const days = proposalWeeks[proposalActiveWeek];
+      const dayHead = (d) => `${d.toLocaleDateString(undefined, { weekday: 'short' })}<br>${d.toLocaleDateString(undefined, { day: 'numeric', month: 'numeric' })}`;
+      let html = `<div class="availability-grid" style="grid-template-columns:44px repeat(${days.length}, 1fr)"><div class="avail-corner"></div>`;
+      for (const d of days) html += `<div class="avail-day-head">${dayHead(d)}</div>`;
+      for (let h = 7; h < 22; h++) {
+        html += `<div class="avail-time-label">${String(h).padStart(2, '0')}:00</div>`;
+        for (const d of days) {
+          const cellDate = new Date(d);
+          cellDate.setHours(h, 0, 0, 0);
+          const iso = cellDate.toISOString();
+          const isProposed = proposalSlotSet.has(iso);
+          const isSelected = iso === selectedSlot;
+          html += `<div class="avail-cell${isProposed ? ' proposed' : ''}${isSelected ? ' selected' : ''}" data-iso="${iso}" data-proposed="${isProposed ? '1' : '0'}"></div>`;
+        }
+      }
+      html += '</div>';
+      document.getElementById('proposal-grid-wrap').innerHTML = html;
+
+      document.querySelectorAll('#proposal-grid-wrap .avail-cell[data-proposed="1"]').forEach((cell) => {
+        cell.addEventListener('click', () => {
+          selectedSlot = cell.dataset.iso;
+          renderProposalGrid();
+          confirmBtn.disabled = !(selectedSlot && selectedVenue);
+        });
+      });
+    }
+
+    renderProposalWeekTabs();
+    renderProposalGrid();
+
     const venueBtns = proposalCard.querySelectorAll('#proposal-venue-list .proposal-option');
-    slotBtns.forEach((btn) => btn.addEventListener('click', () => {
-      selectedSlot = btn.dataset.slot;
-      slotBtns.forEach((b) => b.classList.toggle('selected', b === btn));
-      confirmBtn.disabled = !(selectedSlot && selectedVenue);
-    }));
     venueBtns.forEach((btn) => btn.addEventListener('click', () => {
       selectedVenue = btn.dataset.venue;
       venueBtns.forEach((b) => b.classList.toggle('selected', b === btn));
