@@ -21,6 +21,21 @@ function normalize(name) {
     .trim();
 }
 
+// Same age math as the player profile page (player.js's computeAge) —
+// duplicated here rather than shared since that one runs client-side and
+// this needs to run server-side to land in the API response.
+function computeAge(birthday) {
+  if (!birthday) return null;
+  const b = new Date(birthday);
+  if (Number.isNaN(b.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - b.getFullYear();
+  const hadBirthdayThisYear = today.getMonth() > b.getMonth()
+    || (today.getMonth() === b.getMonth() && today.getDate() >= b.getDate());
+  if (!hadBirthdayThisYear) age -= 1;
+  return age;
+}
+
 router.get('/', async (req, res) => {
   let data;
   try {
@@ -29,15 +44,18 @@ router.get('/', async (req, res) => {
     return res.status(502).json({ error: `Could not load rankings from ${SOURCE_URL}: ${err.message}` });
   }
 
-  // Nationality isn't part of the scraped blta.sk data — it only exists on
-  // a player's bio here, so a flag can only show up when the scraped name
-  // resolves to a local player who has one set.
-  const players = db.prepare('SELECT id, name, slug, nationality FROM players').all();
+  // Nationality and age aren't part of the scraped blta.sk data — they only
+  // exist on a player's bio here, so they can only show up when the scraped
+  // name resolves to a local player who has them set.
+  const players = db.prepare('SELECT id, name, slug, nationality, birthday FROM players').all();
   const bySlug = {};
   const byNationality = {};
+  const byAge = {};
   players.forEach((p) => {
     bySlug[normalize(p.name)] = p.slug;
     if (p.nationality) byNationality[normalize(p.name)] = p.nationality;
+    const age = computeAge(p.birthday);
+    if (age !== null) byAge[normalize(p.name)] = age;
   });
 
   const overrides = db.prepare('SELECT table_key, player_name, points FROM ranking_overrides').all();
@@ -55,6 +73,7 @@ router.get('/', async (req, res) => {
         ...r,
         slug: bySlug[normalize(r.name)] || null,
         nationality: byNationality[normalize(r.name)] || null,
+        age: byAge[normalize(r.name)] ?? null,
         points: hasOverride ? byOverrideKey[overrideKey] : r.points,
         overridden: hasOverride,
       };

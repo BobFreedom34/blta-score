@@ -30,6 +30,17 @@ function pointsDisplayHtml(r) {
   return `${value}${overriddenMark}`;
 }
 
+function headerRowHtml(table) {
+  return `
+    <div class="rank-table-header rank-grid">
+      <div class="rank-col-pos"></div>
+      <div class="rank-col-player">Player</div>
+      <div class="rank-col-age">Age</div>
+      <div class="rank-col-matches">Matches</div>
+      <div class="rank-col-points">${escapeHtml(table.pointsLabel)}</div>
+    </div>`;
+}
+
 function renderTable() {
   const table = rankingsData.tables.find((t) => t.key === activeTab);
   const listEl = document.getElementById('rankings-list');
@@ -37,7 +48,7 @@ function renderTable() {
     listEl.innerHTML = '<p style="color:var(--gray)">No standings yet.</p>';
     return;
   }
-  listEl.innerHTML = table.rows.map((r, i) => {
+  const rowsHtml = table.rows.map((r, i) => {
     const flag = flagImgHtml(r.nationality, 'rank-flag-icon');
     const nameHtml = r.slug
       ? `<a href="/player/${escapeHtml(r.slug)}" class="rank-name">${flag}${escapeHtml(r.name)}</a>`
@@ -46,12 +57,11 @@ function renderTable() {
       ? `<button type="button" class="rank-edit-link" data-action="edit-points">Edit</button>`
       : '';
     return `
-      <div class="rank-row" data-index="${i}">
+      <div class="rank-row rank-grid" data-index="${i}">
         <div class="rank-pos">${r.rank}</div>
-        <div class="rank-main">
-          ${nameHtml}
-          <div class="rank-matches">${r.matches} match${r.matches === 1 ? '' : 'es'}</div>
-        </div>
+        ${nameHtml}
+        <div class="rank-col-age">${r.age === null ? '–' : r.age}</div>
+        <div class="rank-col-matches">${r.matches}</div>
         <div class="rank-points">
           ${pointsDisplayHtml(r)}
           ${editLink}
@@ -59,6 +69,7 @@ function renderTable() {
       </div>
     `;
   }).join('');
+  listEl.innerHTML = `<div class="rank-table">${headerRowHtml(table)}${rowsHtml}</div>`;
 
   if (isAdminUser) attachEditHandlers(table);
 }
