@@ -324,6 +324,34 @@ async function ensureH2H(m) {
   if (current) render(current);
 }
 
+// Public "respond to a proposed time" card — shown to anyone viewing this
+// link while the match has proposed slots/venues but no confirmed date yet.
+// No login required to use it (see attachHandlers' confirm-proposal-btn
+// handler and POST /:token/respond-proposal on the server) — the share
+// link itself is the access control, same trust model as an anon match.
+function proposalCardHtml(m) {
+  return `
+    <div class="card" id="proposal-card" style="margin-bottom:16px;border:2px solid var(--orange)">
+      <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">📅 Pick a time</div>
+      <p style="font-size:13px;color:var(--gray);margin:6px 0 16px">A few options were proposed for this match — pick whichever works for you and it's confirmed.</p>
+      <div class="field">
+        <label>When</label>
+        <div class="proposal-option-list" id="proposal-slot-list">
+          ${m.proposalSlots.map((s) => `<button type="button" class="btn btn-outline proposal-option" data-slot="${escapeHtml(s)}">${fmtDateLong(s)}</button>`).join('')}
+        </div>
+      </div>
+      <div class="field">
+        <label>Where</label>
+        <div class="proposal-option-list" id="proposal-venue-list">
+          ${(m.proposalVenues || []).map((v) => `<button type="button" class="btn btn-outline proposal-option" data-venue="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join('')}
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary btn-block" id="confirm-proposal-btn" disabled style="margin-top:6px">Confirm</button>
+      <div id="proposal-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
+    </div>
+  `;
+}
+
 function render(m) {
   current = m;
   // Always shows a timer chip, even before the match has started (a static
@@ -335,6 +363,16 @@ function render(m) {
       : '<div class="timer">00:00</div>');
 
   const locationEditable = m.status !== 'FINISHED' || isAdminUser;
+  // A "propose times" match has no real location/date yet — say so plainly
+  // rather than showing "Not set", since a response is actually pending
+  // (see the proposal card below, where anyone with this link picks one).
+  const awaitingProposal = !!(m.proposalSlots && !m.scheduledAt);
+  const locationValue = m.location ? escapeHtml(m.location)
+    : awaitingProposal ? '<span style="color:var(--gray)">Awaiting response…</span>'
+    : '<span style="color:var(--gray)">Not set</span>';
+  const dateValue = m.scheduledAt ? fmtDateLong(m.scheduledAt)
+    : awaitingProposal ? '<span style="color:var(--gray)">Awaiting response…</span>'
+    : fmtDateLong(m.scheduledAt);
 
   root.innerHTML = `
     <div class="match-header">
@@ -351,12 +389,12 @@ function render(m) {
     <div class="info-grid">
       <div class="info-item">
         <div class="label">Location</div>
-        <div class="value" id="location-display">${m.location ? escapeHtml(m.location) : '<span style="color:var(--gray)">Not set</span>'}</div>
+        <div class="value" id="location-display">${locationValue}</div>
         ${locationEditable ? `<button type="button" class="edit-link" id="edit-location-link">Edit</button>` : ''}
       </div>
       <div class="info-item">
         <div class="label">Date</div>
-        <div class="value" id="date-display">${fmtDateLong(m.scheduledAt)}</div>
+        <div class="value" id="date-display">${dateValue}</div>
         ${locationEditable ? `<button type="button" class="edit-link" id="edit-date-link">Edit</button>` : ''}
       </div>
       <div class="info-item">
@@ -365,6 +403,8 @@ function render(m) {
         ${locationEditable ? `<button type="button" class="edit-link" id="edit-category-link">Edit</button>` : ''}
       </div>
     </div>
+
+    ${awaitingProposal ? proposalCardHtml(m) : ''}
 
     ${h2hHtml}
 
@@ -406,6 +446,45 @@ function attachHandlers(m) {
 
   const manualResultBtn = document.getElementById('manual-result-btn');
   if (manualResultBtn) manualResultBtn.addEventListener('click', () => requirePlayerAuth(() => openManualResultModal(m)));
+
+  // Proposal response card — deliberately NOT behind requirePlayerAuth.
+  // Anyone with this link can pick a slot/venue, matching the server's
+  // public POST /:token/respond-proposal (see proposalCardHtml above).
+  const proposalCard = document.getElementById('proposal-card');
+  if (proposalCard) {
+    let selectedSlot = null;
+    let selectedVenue = null;
+    const confirmBtn = document.getElementById('confirm-proposal-btn');
+    const proposalErrorEl = document.getElementById('proposal-error');
+    const slotBtns = proposalCard.querySelectorAll('#proposal-slot-list .proposal-option');
+    const venueBtns = proposalCard.querySelectorAll('#proposal-venue-list .proposal-option');
+    slotBtns.forEach((btn) => btn.addEventListener('click', () => {
+      selectedSlot = btn.dataset.slot;
+      slotBtns.forEach((b) => b.classList.toggle('selected', b === btn));
+      confirmBtn.disabled = !(selectedSlot && selectedVenue);
+    }));
+    venueBtns.forEach((btn) => btn.addEventListener('click', () => {
+      selectedVenue = btn.dataset.venue;
+      venueBtns.forEach((b) => b.classList.toggle('selected', b === btn));
+      confirmBtn.disabled = !(selectedSlot && selectedVenue);
+    }));
+    confirmBtn.addEventListener('click', async () => {
+      if (!selectedSlot || !selectedVenue) return;
+      confirmBtn.disabled = true;
+      proposalErrorEl.textContent = '';
+      try {
+        const updated = await api(`/matches/${matchToken}/respond-proposal`, {
+          method: 'POST',
+          body: { slot: selectedSlot, venue: selectedVenue },
+        });
+        toast('Time confirmed!');
+        render(updated);
+      } catch (err) {
+        proposalErrorEl.textContent = err.message;
+        confirmBtn.disabled = false;
+      }
+    });
+  }
 
   root.querySelectorAll('.btn-giant, .btn-minus').forEach((btn) => {
     btn.addEventListener('click', () => requirePlayerAuth(async () => {

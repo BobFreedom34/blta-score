@@ -125,4 +125,31 @@ async function sendMatchFinishedEmailTo(match, player1, player2, toEmail) {
   return true;
 }
 
-module.exports = { sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo };
+// Sent to whoever left an email when proposing several times/venues, once
+// the other player has picked one of each (see POST /:token/respond-proposal)
+// — worded neutrally since either named player could be the one who
+// originally proposed the match.
+async function sendProposalConfirmedEmail(match, player1, player2, toEmail) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping proposal-confirmed email.');
+    return false;
+  }
+  const subject = `Time confirmed: ${player1.name} vs ${player2.name}`;
+  const lines = [
+    `A time has been picked for the match you proposed: ${player1.name} vs ${player2.name}.`,
+    `When: ${fmtDate(match.scheduled_at)}`,
+    `Where: ${match.location || '-'}`,
+    `Link: ${matchLink(match)}`,
+  ];
+
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: toEmail,
+    subject,
+    text: lines.join('\n'),
+  });
+  return true;
+}
+
+module.exports = { sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail };

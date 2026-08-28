@@ -581,6 +581,37 @@ datalist {}
    reads better than two stacked full-width buttons. */
 .balls-choice-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 
+/* "Schedule a match" page's week pager — reuses the app's standard .tab
+   pill, just scoped so its active state matches the orange used for
+   rankings/stats tabs elsewhere. */
+#week-tabs.tabs { margin: 4px 0 0; }
+#week-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
+#week-tabs .tab { flex-direction: column; gap: 2px; font-size: 11px; padding: 7px 14px; }
+#week-tabs .tab span { text-transform: none; font-weight: 500; opacity: 0.75; }
+#week-tabs .tab.active span { opacity: 0.9; }
+
+.venue-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.venue-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--gray-light); border-radius: 999px; padding: 6px 6px 6px 14px; font-size: 13px; font-weight: 600; }
+.venue-chip-remove { border: none; background: none; cursor: pointer; font-size: 17px; line-height: 1; color: var(--gray); padding: 2px 6px; }
+.venue-chip-remove:hover { color: var(--danger); }
+
+/* When2Meet-style availability grid: a fixed time-label column plus 7 day
+   columns that share the remaining width, so a week always fits without
+   horizontal scrolling (drag-to-paint and page-scroll would otherwise
+   fight each other on touch). touch-action:none on the cells hands that
+   whole gesture to our own touch handlers instead of the browser. */
+.availability-grid { display: grid; grid-template-columns: 44px repeat(7, 1fr); gap: 2px; margin-top: 10px; user-select: none; -webkit-user-select: none; }
+.avail-corner { background: transparent; }
+.avail-day-head { font-size: 11px; font-weight: 700; text-align: center; padding: 4px 2px; color: var(--gray); line-height: 1.3; }
+.avail-time-label { font-size: 11px; color: var(--gray-dim); text-align: right; padding: 5px 6px 5px 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.avail-cell { height: 25px; border-radius: 4px; background: var(--gray-light); cursor: pointer; touch-action: none; }
+.avail-cell:hover { background: #e2e2e2; }
+.avail-cell.selected { background: var(--orange); }
+.avail-cell.selected:hover { background: var(--orange-dark); }
+
+.proposal-option-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.proposal-option.selected { border-color: var(--orange); background: #fff6f2; color: var(--orange-dark); font-weight: 800; }
+
 .set-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
 .set-picker-btn {
   border: 1.5px solid #ddd;

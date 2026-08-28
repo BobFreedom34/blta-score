@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BLTA Score — New Match</title>
+<title>BLTA Score — Schedule a Match</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" href="/favicon.png">
@@ -20,18 +20,18 @@
       <a href="/">Matches</a>
       <a href="/players">Players</a>
       <a href="/rankings">Rankings</a>
-      <a href="/new-match" class="active">+ New match</a>
-      <a href="/schedule-match">Schedule match</a>
+      <a href="/new-match">+ New match</a>
+      <a href="/schedule-match" class="active">Schedule match</a>
       <a href="#" class="player-login-link" id="player-login-link">LOG IN AS PLAYER</a>
     </nav>
   </div>
 </div>
 
 <div class="container" style="max-width:640px">
-  <h1 style="margin-top:22px">Plan a new match</h1>
-  <p style="color:var(--gray-dim)">Pick two players (type a new name to add them), a category, and how the match will be played.</p>
+  <h1 style="margin-top:22px">Schedule a match</h1>
+  <p style="color:var(--gray-dim)">Don't know a fixed date yet? Mark every time you could play over the next two weeks and a few venues you're happy with — send the link, and the other player picks whichever suits them. No account needed on their end.</p>
 
-  <form id="new-match-form" class="card">
+  <form id="schedule-match-form" class="card">
 
     <div class="grid-2">
       <div class="field">
@@ -70,22 +70,29 @@
       </select>
     </div>
 
-    <div class="grid-2">
-      <div class="field">
-        <label for="location">Place</label>
-        <input type="text" id="location" placeholder="e.g. NTC Bratislava, Court 3">
+    <div class="field">
+      <label>Preferred venues</label>
+      <div class="venue-chip-row" id="venue-chip-list"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input type="text" id="venue-input" placeholder="e.g. NTC Bratislava, Court 3" style="flex:1">
+        <button type="button" class="btn btn-outline" id="venue-add-btn">Add</button>
       </div>
-      <div class="field">
-        <label for="scheduledAtDate">Date &amp; time</label>
-        <div style="display:flex;gap:8px">
-          <input type="date" id="scheduledAtDate" style="flex:1">
-          <input type="time" id="scheduledAtTime" style="flex:1">
-        </div>
-        <small>Optional — leave blank if it's not scheduled yet, and set it later from the match page.</small>
-      </div>
+      <small>Add one or more courts/clubs the other player can choose from.</small>
     </div>
 
-    <p style="font-size:13px;color:var(--gray-dim);margin:-6px 0 16px">Don't know a date yet? <a href="/schedule-match" style="color:var(--orange);font-weight:700">Propose a few times instead →</a></p>
+    <div class="field">
+      <label>Mark the times you can play <span id="slot-count" style="font-weight:400;color:var(--gray-dim)"></span></label>
+      <small style="margin-bottom:8px">Click a time, or click and drag across several. The other player picks one via your share link — no login needed on their end.</small>
+      <div class="tabs" id="week-tabs"></div>
+      <div class="availability-grid-wrap" id="availability-grid-wrap"></div>
+      <button type="button" class="btn btn-sm btn-outline" id="clear-slots-btn" style="margin-top:10px;align-self:flex-start">Clear all</button>
+    </div>
+
+    <div class="field">
+      <label for="notify-email">Email for confirmation <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional)</span></label>
+      <input type="email" id="notify-email" placeholder="you@example.com">
+      <small>We'll email you here the moment the other player picks a time and venue.</small>
+    </div>
 
     <div class="field">
       <label for="notes">Additional info</label>
@@ -98,9 +105,13 @@
       <div class="format-options" id="format-options"></div>
     </div>
 
-    <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Create match</button>
+    <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Send proposal</button>
     <div id="form-error" style="color:var(--danger);font-weight:600;margin-top:10px"></div>
   </form>
+
+  <h2 style="color:var(--white);margin:48px 0 4px">Waiting for a response</h2>
+  <p style="color:var(--gray-dim);font-size:13px;margin:0 0 16px">Proposed but not yet confirmed. Once the other player picks a time, a match moves to the main Matches list as Scheduled.</p>
+  <div class="match-list" id="proposal-list"></div>
 </div>
 
 <!-- Log in as player modal -->
@@ -132,6 +143,6 @@
 </footer>
 
 <script src="/js/common.js"></script>
-<script src="/js/new-match.js"></script>
+<script src="/js/schedule-match.js"></script>
 </body>
 </html>

@@ -214,6 +214,26 @@ if (!matchColumns.includes('end_reason')) {
 if (!matchColumns.includes('balls_player')) {
   db.exec('ALTER TABLE matches ADD COLUMN balls_player INTEGER');
 }
+// A "propose times" match: the creator picks several candidate start times
+// (JSON array of ISO strings) and preferred venues (JSON array of strings)
+// instead of one fixed date/location; the other player then picks one of
+// each via a public (no-login) link — see POST /:token/respond-proposal.
+// Both stay set after resolution as a record of what was offered, same as
+// how a real date/location just get filled in on the match once resolved.
+if (!matchColumns.includes('proposal_slots')) {
+  db.exec('ALTER TABLE matches ADD COLUMN proposal_slots TEXT');
+}
+if (!matchColumns.includes('proposal_venues')) {
+  db.exec('ALTER TABLE matches ADD COLUMN proposal_venues TEXT');
+}
+// Optional — the creator's email for a "propose times" match, used only to
+// notify them once the other player confirms a slot/venue (see
+// POST /:token/respond-proposal). Never returned by GET /matches — same
+// privacy treatment as match_notifications.email, which also never appears
+// in a serialized match.
+if (!matchColumns.includes('proposal_notify_email')) {
+  db.exec('ALTER TABLE matches ADD COLUMN proposal_notify_email TEXT');
+}
 
 const playerColumns = db.prepare('PRAGMA table_info(players)').all().map((c) => c.name);
 if (!playerColumns.includes('photo_url')) {
