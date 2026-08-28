@@ -430,4 +430,20 @@ if (badgeCount === 0) {
   ].forEach((row) => seedBadge.run(...row));
 }
 
+// Admin overrides for the (otherwise scraped-from-blta.sk) rankings page —
+// keyed by table + the player's name exactly as it appears in that scraped
+// table, since a scraped row doesn't always resolve to a local player row
+// (see src/routes/rankings.js). A row here always wins over the live
+// scraped points for that name; deleting it reverts to the scraped value.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ranking_overrides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_key TEXT NOT NULL,
+    player_name TEXT NOT NULL,
+    points INTEGER,
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_ranking_overrides_unique ON ranking_overrides(table_key, player_name COLLATE NOCASE);
+`);
+
 module.exports = db;
