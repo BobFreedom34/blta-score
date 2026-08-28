@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { requireAdmin } = require('../auth');
 const { getRankings, SOURCE_URL } = require('../rankingsScraper');
-const { getMoves } = require('../rankingSnapshots');
+const { getMoves, getHistory } = require('../rankingSnapshots');
 
 const router = express.Router();
 
@@ -92,6 +92,21 @@ router.get('/', async (req, res) => {
   });
 
   res.json({ fetchedAt: data.fetchedAt, sourceUrl: SOURCE_URL, tables });
+});
+
+// Weekly rank history for one player in one table — the data behind the
+// rank-trend chart on a player's profile page. Public, like the rest of
+// the rankings data; matched by name (not a local player id) same as
+// everywhere else in this file, since the snapshot itself only ever knew
+// the scraped blta.sk name.
+router.get('/history/:tableKey/:name', (req, res) => {
+  const { tableKey } = req.params;
+  if (!TABLE_KEYS.includes(tableKey)) {
+    return res.status(400).json({ error: 'Unknown ranking table' });
+  }
+  const name = decodeURIComponent(req.params.name);
+  const history = getHistory(tableKey, normalize(name));
+  res.json({ history: history.map((h) => ({ week: h.snapshot_week, rank: h.rank })) });
 });
 
 // Admin-only manual override for one player's points in one table — takes

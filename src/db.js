@@ -446,10 +446,12 @@ db.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_ranking_overrides_unique ON ranking_overrides(table_key, player_name COLLATE NOCASE);
 `);
 
-// One row per (table, player) holding their rank as of the most recent
-// weekly snapshot — the baseline the "moved up/down N places" arrow on the
-// rankings page compares this week's rank against. Rolled forward once a
-// week (see src/rankingSnapshots.js), matching how blta.sk itself only
+// One row per (table, player, week) — an append-only weekly history, not
+// just the latest snapshot: it's both the baseline the "moved up/down N
+// places" arrow on the rankings page compares this week's rank against
+// (see src/rankingSnapshots.js), and the source for a player's rank-trend
+// chart on their profile page. A new week's row is added (never
+// overwriting an older one) once a week, matching how blta.sk itself only
 // republishes standings on Mondays.
 db.exec(`
   CREATE TABLE IF NOT EXISTS ranking_snapshots (
@@ -459,7 +461,8 @@ db.exec(`
     rank INTEGER NOT NULL,
     snapshot_week TEXT NOT NULL
   );
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_ranking_snapshots_unique ON ranking_snapshots(table_key, player_name COLLATE NOCASE);
+  DROP INDEX IF EXISTS idx_ranking_snapshots_unique;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_ranking_snapshots_unique ON ranking_snapshots(table_key, player_name COLLATE NOCASE, snapshot_week);
 `);
 
 module.exports = db;

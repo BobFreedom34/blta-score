@@ -180,6 +180,76 @@ function winRateTrendHtml(matches, idSuffix) {
   `;
 }
 
+// Same sparkline treatment as winRateTrendHtml, for BLTA overall rank
+// instead of win rate — one point per weekly snapshot (see
+// src/rankingSnapshots.js), oldest to newest. Inverted on purpose: rank 1
+// is the best possible position, so a lower number draws *higher* on the
+// chart, the same way a climbing line reads as "doing better" everywhere
+// else. Scaled to the player's own best/worst rank in the window rather
+// than a fixed range (unlike the 0-100 win-rate scale) since rank pool
+// size varies by table and isn't meaningful on an absolute scale here.
+function rankTrendHtml(history) {
+  if (!history || history.length < 2) return '';
+  const ranks = history.map((h) => h.rank);
+  const minRank = Math.min(...ranks);
+  const maxRank = Math.max(...ranks);
+  const range = Math.max(1, maxRank - minRank);
+  const w = 280;
+  const chartH = 64;
+  const labelSpace = 14; // headroom for each point's own "#N" label, above the line
+  const h = chartH + labelSpace;
+  const padX = 8;
+  const padY = 8;
+  const yFor = (rank) => labelSpace + padY + ((rank - minRank) / range) * (chartH - padY * 2);
+  const stepX = (w - padX * 2) / (history.length - 1);
+  const coords = history.map((pt, i) => [padX + i * stepX, yFor(pt.rank)]);
+  const linePath = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const baseline = h - padY;
+  const areaPath = `${linePath} L${coords[coords.length - 1][0].toFixed(1)},${baseline.toFixed(1)} `
+    + `L${coords[0][0].toFixed(1)},${baseline.toFixed(1)} Z`;
+  const gradId = 'rank-trend-gradient';
+  const currentRank = history[history.length - 1].rank;
+  // The rank itself, right above every point — not just the latest one —
+  // since the whole point of this chart is watching a specific number move.
+  const pointLabels = coords.map(([x, y], i) => `
+    <text x="${x.toFixed(1)}" y="${(y - 5).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="var(--white)">#${history[i].rank}</text>
+  `).join('');
+  return `
+    <div class="trend-sparkline">
+      <div class="form-guide-label">BLTA ranking trend</div>
+      <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px">
+        <defs>
+          <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--orange)" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="var(--orange)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <line x1="${padX}" y1="${baseline.toFixed(1)}" x2="${w - padX}" y2="${baseline.toFixed(1)}" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+        <path d="${areaPath}" fill="url(#${gradId})" stroke="none"/>
+        <path d="${linePath}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        ${coords.map(([x, y]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5" fill="var(--orange)"/>`).join('')}
+        ${pointLabels}
+      </svg>
+      <div class="trend-value">#${currentRank}</div>
+    </div>
+  `;
+}
+
+// Fetches this player's own weekly BLTA-rank history and renders it — a
+// no-op if the placeholder isn't on the page, or if there's under 2 weeks
+// of data yet (rankTrendHtml itself returns '' in that case, same
+// threshold winRateTrendHtml uses for "not enough points for a trend").
+async function renderRankTrend() {
+  const el = document.getElementById('rank-trend-blta');
+  if (!el || !currentPlayer) return;
+  try {
+    const { history } = await api(`/rankings/history/blta/${encodeURIComponent(currentPlayer.name)}`);
+    el.innerHTML = rankTrendHtml(history);
+  } catch {
+    el.innerHTML = '';
+  }
+}
+
 // Career record, always computed from the full finished-match history —
 // independent of the result/year filters below, which only narrow the list.
 // Shown two ways: BLTA league matches only (ELITE/NEXT_GEN/NOVICE), and
@@ -384,6 +454,7 @@ async function load() {
     document.getElementById('player-upcoming-count').textContent = rawGroups[1].length + rawGroups[2].length;
     renderStats();
     await renderBadges();
+    renderRankTrend();
     renderH2H();
     render();
   } catch (err) {
