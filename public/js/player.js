@@ -15,6 +15,9 @@ let currentResult = '';
 let currentCategory = '';
 let currentYear = '';
 let rawGroups = []; // last-fetched matches per GROUPS entry, unfiltered
+let lastBltaFinished = []; // set by renderStats(), reused when the "All matches" tab
+let lastAllFinished = []; // is switched to, since its trend chart can't be measured
+// accurately (see renderTrendChart) while its panel is still display:none.
 let h2hExpanded = false;
 const H2H_COLLAPSED_LIMIT = 5;
 
@@ -126,13 +129,20 @@ function formGuideHtml(matches) {
 // Sparkline of the running win rate after each decided match, oldest to
 // newest — same chronological ordering as formGuideHtml(). Skipped for
 // fewer than 2 decided matches, since a single point isn't a trend.
-// Drawn as a wide, fixed-height chart (stretched via CSS width:100% —
-// preserveAspectRatio="none" lets it fill however wide its flex container
-// ends up, without letterboxing) with a quintile grid and a gradient-filled
-// area under the line for a more analytical, dashboard-style look.
-// idSuffix keeps the gradient's id unique since both the BLTA and All
-// matches versions of this chart exist in the DOM at once (one just hidden).
-function winRateTrendHtml(matches, idSuffix) {
+// Drawn as a wide, fixed-height chart with a quintile grid and a
+// gradient-filled area under the line for a more analytical,
+// dashboard-style look. idSuffix keeps the gradient's id unique since both
+// the BLTA and All matches versions of this chart exist in the DOM at
+// once (one just hidden).
+// containerWidth is the chart's own real measured pixel width (see
+// renderTrendChart, which measures before calling this) — the viewBox is
+// built to match it exactly, rather than stretched from a generic
+// reference width via preserveAspectRatio="none" the way this used to
+// work. That non-uniform stretch was harmless for the line's slope, but
+// also flattened the end-of-line circle marker into a thin ellipse on a
+// wide (desktop) container; matching viewBox width to the real pixel
+// width makes the scale factor exactly 1:1 in both axes instead.
+function winRateTrendHtml(matches, idSuffix, containerWidth) {
   const chronological = matches
     .filter((m) => m.winnerId)
     .sort((a, b) => new Date(a.scheduledAt || a.startTime || a.createdAt) - new Date(b.scheduledAt || b.startTime || b.createdAt));
@@ -142,7 +152,7 @@ function winRateTrendHtml(matches, idSuffix) {
     if (m.winnerId === Number(playerId)) wins += 1;
     return Math.round((wins / (i + 1)) * 100);
   });
-  const w = 280;
+  const w = Math.max(120, Math.round(containerWidth || 280));
   const h = 64;
   const padX = 8;
   const padY = 8;
@@ -162,7 +172,7 @@ function winRateTrendHtml(matches, idSuffix) {
   return `
     <div class="trend-sparkline">
       <div class="form-guide-label">Win rate trend</div>
-      <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px">
+      <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px">
         <defs>
           <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="var(--orange)" stop-opacity="0.35"/>
@@ -274,6 +284,19 @@ async function renderRankTrend() {
   }
 }
 
+// winRateTrendHtml needs the chart's real container width up front (see
+// its comment) — renders an empty measuring shell first, reads its
+// clientWidth, then the real chart. Skipped entirely (left blank, like
+// winRateTrendHtml itself would return) when there's nothing to plot.
+function renderTrendChart(elId, matches, idSuffix) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (matches.filter((m) => m.winnerId).length < 2) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="trend-sparkline"></div>';
+  const containerWidth = el.querySelector('.trend-sparkline').clientWidth;
+  el.innerHTML = winRateTrendHtml(matches, idSuffix, containerWidth);
+}
+
 // Career record, always computed from the full finished-match history —
 // independent of the result/year filters below, which only narrow the list.
 // Shown two ways: BLTA league matches only (ELITE/NEXT_GEN/NOVICE), and
@@ -284,12 +307,16 @@ function renderStats() {
   // it still shows up in the plain match list further down, just not here.
   const finished = (rawGroups[3] || []).filter((m) => m.endReason !== 'WALKOVER' && m.endReason !== 'UNFINISHED');
   const bltaFinished = finished.filter((m) => BLTA_CATEGORIES.includes(m.category));
+  lastBltaFinished = bltaFinished;
+  lastAllFinished = finished;
   fillStats('blta', computeRecord(bltaFinished));
   fillStats('overall', computeRecord(finished));
   document.getElementById('form-blta').innerHTML = formGuideHtml(bltaFinished);
   document.getElementById('form-overall').innerHTML = formGuideHtml(finished);
-  document.getElementById('trend-blta').innerHTML = winRateTrendHtml(bltaFinished, 'blta');
-  document.getElementById('trend-overall').innerHTML = winRateTrendHtml(finished, 'overall');
+  renderTrendChart('trend-blta', bltaFinished, 'blta');
+  // The "All matches" panel starts display:none — its trend chart is
+  // (re-)rendered when that tab is actually switched to instead (see the
+  // #stats-tabs click handler below), once it can be measured accurately.
 }
 
 // Badge definitions are admin-managed (see /badges-admin) — fetched once
@@ -492,6 +519,11 @@ document.getElementById('stats-tabs').addEventListener('click', (e) => {
   document.querySelectorAll('#stats-tabs .tab').forEach((b) => b.classList.toggle('active', b === btn));
   document.getElementById('stats-panel-blta').style.display = btn.dataset.statsTab === 'blta' ? '' : 'none';
   document.getElementById('stats-panel-overall').style.display = btn.dataset.statsTab === 'overall' ? '' : 'none';
+  // Re-render whichever trend chart just became visible — it can only be
+  // measured accurately (see renderTrendChart) once its panel is actually
+  // showing, not while it was still display:none.
+  if (btn.dataset.statsTab === 'overall') renderTrendChart('trend-overall', lastAllFinished, 'overall');
+  else renderTrendChart('trend-blta', lastBltaFinished, 'blta');
 });
 
 document.getElementById('badges-toggle').addEventListener('click', openBadgesModal);
