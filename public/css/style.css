@@ -581,14 +581,16 @@ datalist {}
    reads better than two stacked full-width buttons. */
 .balls-choice-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 
-/* "Schedule a match" page's week pager — reuses the app's standard .tab
-   pill, just scoped so its active state matches the orange used for
-   rankings/stats tabs elsewhere. */
-#week-tabs.tabs { margin: 4px 0 0; }
-#week-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
-#week-tabs .tab { flex-direction: column; gap: 2px; font-size: 11px; padding: 7px 14px; }
-#week-tabs .tab span { text-transform: none; font-weight: 500; opacity: 0.75; }
-#week-tabs .tab.active span { opacity: 0.9; }
+/* Week pager for the availability grid — creation flow (Schedule a match
+   page, homepage's Propose times modal) and the response flow (match
+   page's Pick a time card) all share this one class. Reuses the app's
+   standard .tab pill, just scoped so its active state matches the orange
+   used for rankings/stats tabs elsewhere. */
+.week-picker-tabs.tabs { margin: 4px 0 0; }
+.week-picker-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
+.week-picker-tabs .tab { flex-direction: column; gap: 2px; font-size: 11px; padding: 7px 14px; }
+.week-picker-tabs .tab span { text-transform: none; font-weight: 500; opacity: 0.75; }
+.week-picker-tabs .tab.active span { opacity: 0.9; }
 
 .venue-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .venue-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--gray-light); border-radius: 999px; padding: 6px 6px 6px 14px; font-size: 13px; font-weight: 600; }
@@ -619,10 +621,6 @@ datalist {}
 #proposal-grid-wrap .avail-cell.proposed:hover { background: #ffe8dc; }
 #proposal-grid-wrap .avail-cell.proposed.selected { background: var(--orange); border-color: var(--orange-dark); }
 #proposal-grid-wrap .avail-cell.proposed.selected:hover { background: var(--orange-dark); }
-#proposal-week-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
-#proposal-week-tabs .tab { flex-direction: column; gap: 2px; font-size: 11px; padding: 7px 14px; }
-#proposal-week-tabs .tab span { text-transform: none; font-weight: 500; opacity: 0.75; }
-#proposal-week-tabs .tab.active span { opacity: 0.9; }
 
 .proposal-option-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .proposal-option.selected { border-color: var(--orange); background: #fff6f2; color: var(--orange-dark); font-weight: 800; }

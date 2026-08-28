@@ -106,7 +106,12 @@ function matchCardHtml(m) {
         </div>
       `}
       ${isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : ''}
-      ${m.status === 'PLANNED' && !m.scheduledAt ? `<button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}" style="margin-top:6px">📅 Set date &amp; location</button>` : ''}
+      ${m.status === 'PLANNED' && !m.scheduledAt ? `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}">📅 Set date &amp; location</button>
+          <button type="button" class="btn btn-sm btn-outline propose-times-btn" data-token="${m.token}">🗓 Propose times for opponent</button>
+        </div>
+      ` : ''}
       ${m.status === 'PLANNED' && m.scheduledAt ? notifyButtonsHtml(m) : ''}
     </a>
   `;
@@ -280,6 +285,63 @@ function openQuickScheduleModal(token) {
   document.getElementById('quick-schedule-modal').style.display = 'flex';
 }
 
+// "Propose times for opponent" — turns an existing undated Planned match
+// into one awaiting a scheduling response, same widgets as the "Schedule a
+// match" page, just built once here and reset() on each open instead of
+// reloading a whole page (see createAvailabilityPicker/createVenueChipPicker
+// in common.js).
+let proposeTimesToken = null;
+const proposeAvailabilityPicker = createAvailabilityPicker({ weekTabsId: 'modal-week-tabs', gridWrapId: 'modal-availability-grid-wrap', slotCountId: 'modal-slot-count' });
+const proposeVenuePicker = createVenueChipPicker({ listId: 'modal-venue-chip-list', inputId: 'modal-venue-input', addBtnId: 'modal-venue-add-btn' });
+document.getElementById('modal-clear-slots-btn').addEventListener('click', () => proposeAvailabilityPicker.clear());
+
+function openProposeTimesModal(token) {
+  proposeTimesToken = token;
+  proposeAvailabilityPicker.reset();
+  proposeVenuePicker.clear();
+  document.getElementById('modal-notify-email').value = '';
+  document.getElementById('propose-times-error').textContent = '';
+  document.getElementById('propose-times-modal').style.display = 'flex';
+}
+
+document.getElementById('propose-times-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('propose-times-error');
+  errorEl.textContent = '';
+  if (proposeAvailabilityPicker.selectedSlots.size === 0) {
+    errorEl.textContent = 'Mark at least one time you can play.';
+    return;
+  }
+  if (proposeVenuePicker.venues.length === 0) {
+    errorEl.textContent = 'Add at least one preferred venue.';
+    return;
+  }
+  const notifyEmail = document.getElementById('modal-notify-email').value.trim();
+  if (notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail)) {
+    errorEl.textContent = 'Enter a valid confirmation email address, or leave it blank.';
+    return;
+  }
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  try {
+    await api(`/matches/${proposeTimesToken}`, {
+      method: 'PATCH',
+      body: {
+        proposalSlots: Array.from(proposeAvailabilityPicker.selectedSlots),
+        proposalVenues: proposeVenuePicker.venues,
+        proposalNotifyEmail: notifyEmail || undefined,
+      },
+    });
+    document.getElementById('propose-times-modal').style.display = 'none';
+    toast('Times proposed — share the match link with your opponent.');
+    loadMatches();
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+  submitBtn.disabled = false;
+});
+
 let notifyToken = null;
 let notifyType = null;
 
@@ -308,6 +370,13 @@ listEl.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
     requirePlayerAuth(() => openQuickScheduleModal(scheduleBtn.dataset.token));
+    return;
+  }
+  const proposeBtn = e.target.closest('.propose-times-btn');
+  if (proposeBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    requirePlayerAuth(() => openProposeTimesModal(proposeBtn.dataset.token));
     return;
   }
   const notifyBtn = e.target.closest('.notify-btn');

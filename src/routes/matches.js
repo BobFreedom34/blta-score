@@ -350,6 +350,43 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
     }
     fields.notes = req.body.notes.trim();
   }
+  // "Propose times" from the homepage's quick-action button — turns an
+  // existing undated Planned match into one awaiting a scheduling response,
+  // same shape as creating one that way from the start (see POST / above).
+  if (Array.isArray(req.body.proposalSlots) && req.body.proposalSlots.length > 0) {
+    if (row.scheduled_at) {
+      return res.status(400).json({ error: "Can't propose times for a match that's already scheduled" });
+    }
+    if (row.status !== 'PLANNED') {
+      return res.status(400).json({ error: 'Only a planned match can have times proposed' });
+    }
+    if (req.body.proposalSlots.length > 60) {
+      return res.status(400).json({ error: 'Too many proposed times (max 60)' });
+    }
+    const parsedSlots = req.body.proposalSlots.map((s) => new Date(s));
+    if (parsedSlots.some((d) => Number.isNaN(d.getTime()))) {
+      return res.status(400).json({ error: 'One of the proposed times is invalid' });
+    }
+    fields.proposal_slots = JSON.stringify(parsedSlots.map((d) => d.toISOString()).sort());
+
+    const venues = Array.isArray(req.body.proposalVenues) ? req.body.proposalVenues : [];
+    const trimmedVenues = venues.map((v) => (typeof v === 'string' ? v.trim() : '')).filter(Boolean);
+    if (trimmedVenues.length === 0) {
+      return res.status(400).json({ error: 'Add at least one preferred venue' });
+    }
+    if (trimmedVenues.length > 10) {
+      return res.status(400).json({ error: 'Too many venues (max 10)' });
+    }
+    fields.proposal_venues = JSON.stringify(trimmedVenues);
+
+    if (typeof req.body.proposalNotifyEmail === 'string' && req.body.proposalNotifyEmail.trim()) {
+      const email = req.body.proposalNotifyEmail.trim().toLowerCase();
+      if (!EMAIL_RE.test(email)) {
+        return res.status(400).json({ error: 'Enter a valid confirmation email address' });
+      }
+      fields.proposal_notify_email = email;
+    }
+  }
   if (Object.keys(fields).length === 0) {
     return res.status(400).json({ error: 'No editable fields provided' });
   }

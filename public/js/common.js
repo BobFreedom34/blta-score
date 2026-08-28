@@ -127,6 +127,174 @@ function setupBallsPicker() {
   return () => ballsPlayer;
 }
 
+// When2Meet-style availability grid — used by the "Schedule a match" page
+// and the homepage's "Propose times" modal. Paged one week at a time over
+// the next two weeks so it always fills the container width without
+// horizontal scroll (drag-select and page-scroll would otherwise fight over
+// the same gesture on touch). `selectedSlots` is the live Set to read at
+// submit time; call reset() right before showing a modal that was built at
+// page load, so "the next two weeks" is relative to when it's opened, not
+// to whenever the page happened to load.
+function createAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
+  const START_HOUR = 7;
+  const END_HOUR = 22; // exclusive — last slot starts at 21:00
+  let proposalDays = [];
+  const selectedSlots = new Set();
+  let activeWeek = 0;
+
+  function buildDays() {
+    proposalDays = [];
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    for (let i = 1; i <= 14; i++) {
+      const d = new Date(base);
+      d.setDate(d.getDate() + i);
+      proposalDays.push(d);
+    }
+  }
+
+  function slotIso(day, hour) {
+    const d = new Date(day);
+    d.setHours(hour, 0, 0, 0);
+    return d.toISOString();
+  }
+
+  function updateSlotCount() {
+    const el = document.getElementById(slotCountId);
+    if (el) el.textContent = selectedSlots.size ? `— ${selectedSlots.size} selected` : '';
+  }
+
+  function renderWeekTabs() {
+    const fmt = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    const label = (days) => `${fmt(days[0])} – ${fmt(days[days.length - 1])}`;
+    const weeks = [proposalDays.slice(0, 7), proposalDays.slice(7, 14)];
+    document.getElementById(weekTabsId).innerHTML = weeks.map((days, i) => `
+      <button type="button" class="tab${i === activeWeek ? ' active' : ''}" data-week="${i}">Week ${i + 1}<span>${label(days)}</span></button>
+    `).join('');
+    document.querySelectorAll(`#${weekTabsId} .tab`).forEach((btn) => {
+      btn.addEventListener('click', () => {
+        activeWeek = Number(btn.dataset.week);
+        renderWeekTabs();
+        renderGrid();
+      });
+    });
+  }
+
+  function renderGrid() {
+    const days = proposalDays.slice(activeWeek * 7, activeWeek * 7 + 7);
+    const dayHead = (d) => `${d.toLocaleDateString(undefined, { weekday: 'short' })}<br>${d.toLocaleDateString(undefined, { day: 'numeric', month: 'numeric' })}`;
+    let html = '<div class="availability-grid"><div class="avail-corner"></div>';
+    for (const d of days) html += `<div class="avail-day-head">${dayHead(d)}</div>`;
+    for (let h = START_HOUR; h < END_HOUR; h++) {
+      html += `<div class="avail-time-label">${String(h).padStart(2, '0')}:00</div>`;
+      for (const d of days) {
+        const iso = slotIso(d, h);
+        html += `<div class="avail-cell${selectedSlots.has(iso) ? ' selected' : ''}" data-iso="${iso}"></div>`;
+      }
+    }
+    html += '</div>';
+    document.getElementById(gridWrapId).innerHTML = html;
+  }
+
+  function setupDragSelect() {
+    const wrap = document.getElementById(gridWrapId);
+    let dragging = false;
+    let paintValue = true;
+    let lastCell = null;
+
+    function paint(cell) {
+      if (!cell || cell === lastCell) return;
+      lastCell = cell;
+      if (paintValue) { selectedSlots.add(cell.dataset.iso); cell.classList.add('selected'); }
+      else { selectedSlots.delete(cell.dataset.iso); cell.classList.remove('selected'); }
+      updateSlotCount();
+    }
+
+    wrap.addEventListener('mousedown', (e) => {
+      const cell = e.target.closest('.avail-cell');
+      if (!cell) return;
+      e.preventDefault();
+      dragging = true;
+      lastCell = null;
+      paintValue = !cell.classList.contains('selected');
+      paint(cell);
+    });
+    wrap.addEventListener('mouseover', (e) => {
+      if (!dragging) return;
+      paint(e.target.closest('.avail-cell'));
+    });
+    document.addEventListener('mouseup', () => { dragging = false; lastCell = null; });
+
+    wrap.addEventListener('touchstart', (e) => {
+      const cell = e.target.closest('.avail-cell');
+      if (!cell) return;
+      dragging = true;
+      lastCell = null;
+      paintValue = !cell.classList.contains('selected');
+      paint(cell);
+    }, { passive: true });
+    wrap.addEventListener('touchmove', (e) => {
+      if (!dragging) return;
+      const touch = e.touches[0];
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      const cell = el && el.classList.contains('avail-cell') ? el : null;
+      if (cell) { e.preventDefault(); paint(cell); }
+    }, { passive: false });
+    document.addEventListener('touchend', () => { dragging = false; lastCell = null; });
+  }
+
+  buildDays();
+  renderWeekTabs();
+  renderGrid();
+  setupDragSelect();
+  updateSlotCount();
+
+  return {
+    selectedSlots,
+    clear() { selectedSlots.clear(); renderGrid(); updateSlotCount(); },
+    reset() { buildDays(); activeWeek = 0; selectedSlots.clear(); renderWeekTabs(); renderGrid(); updateSlotCount(); },
+  };
+}
+
+// Shared "add/remove venue chips" widget, same pages as
+// createAvailabilityPicker above.
+function createVenueChipPicker({ listId, inputId, addBtnId }) {
+  const venues = [];
+
+  function render() {
+    const list = document.getElementById(listId);
+    list.innerHTML = venues.map((v, i) => `
+      <span class="venue-chip">${escapeHtml(v)}<button type="button" class="venue-chip-remove" data-i="${i}" aria-label="Remove venue">&times;</button></span>
+    `).join('');
+    list.querySelectorAll('.venue-chip-remove').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        venues.splice(Number(btn.dataset.i), 1);
+        render();
+      });
+    });
+  }
+
+  function add() {
+    const input = document.getElementById(inputId);
+    const val = input.value.trim();
+    if (!val || venues.length >= 10) return;
+    if (venues.some((v) => v.toLowerCase() === val.toLowerCase())) { input.value = ''; return; }
+    venues.push(val);
+    input.value = '';
+    render();
+  }
+
+  document.getElementById(addBtnId).addEventListener('click', add);
+  document.getElementById(inputId).addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); add(); }
+  });
+
+  return {
+    venues,
+    clear() { venues.length = 0; render(); },
+  };
+}
+
 // "6-4, 3-2" / "Retirement" / "6-4, 3-2 — Retirement" / "Best of 3 sets" (planned)
 function matchResultText(m) {
   if (m.status === 'PLANNED') return m.formatLabel;

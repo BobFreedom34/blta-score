@@ -336,7 +336,7 @@ function proposalCardHtml(m) {
       <p style="font-size:13px;color:var(--gray);margin:6px 0 16px">A few options were proposed for this match — pick whichever works for you and it's confirmed.</p>
       <div class="field">
         <label>When</label>
-        <div class="tabs" id="proposal-week-tabs"></div>
+        <div class="tabs week-picker-tabs" id="proposal-week-tabs"></div>
         <div class="availability-grid-wrap" id="proposal-grid-wrap"></div>
       </div>
       <div class="field">
