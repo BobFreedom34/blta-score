@@ -635,6 +635,10 @@ datalist {}
 }
 
 .match-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+/* .match-actions sits directly on the page's dark background, not inside a
+   white card — .btn-outline's default black-on-transparent styling is
+   unreadable there (same fix as #reset-filters-btn on the filters bar). */
+#unfinished-btn { border-color: var(--white); color: var(--white); }
 
 .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
 /* Zeroed only for the player profile page's two stats grids — spacing
