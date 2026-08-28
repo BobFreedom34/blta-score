@@ -109,7 +109,7 @@ function matchCardHtml(m) {
       ${m.status === 'PLANNED' && !m.scheduledAt ? `
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
           <button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}">📅 Set date &amp; location</button>
-          <button type="button" class="btn btn-sm btn-outline propose-times-btn" data-token="${m.token}">🗓 Propose times for opponent</button>
+          <button type="button" class="btn btn-sm btn-outline propose-times-btn" data-token="${m.token}" data-p1-name="${escapeHtml(m.player1.name)}" data-p2-name="${escapeHtml(m.player2.name)}">🗓 Propose times for opponent</button>
         </div>
       ` : ''}
       ${m.status === 'PLANNED' && m.scheduledAt ? notifyButtonsHtml(m) : ''}
@@ -293,12 +293,15 @@ function openQuickScheduleModal(token) {
 let proposeTimesToken = null;
 const proposeAvailabilityPicker = createAvailabilityPicker({ weekTabsId: 'modal-week-tabs', gridWrapId: 'modal-availability-grid-wrap', slotCountId: 'modal-slot-count' });
 const proposeVenuePicker = createVenueChipPicker({ listId: 'modal-venue-chip-list', inputId: 'modal-venue-input', addBtnId: 'modal-venue-add-btn' });
+const proposeProposerPicker = createStaticPlayerChoicePicker('modal-proposer-choice-row');
 document.getElementById('modal-clear-slots-btn').addEventListener('click', () => proposeAvailabilityPicker.clear());
 
-function openProposeTimesModal(token) {
+function openProposeTimesModal(token, p1Name, p2Name) {
   proposeTimesToken = token;
   proposeAvailabilityPicker.reset();
   proposeVenuePicker.clear();
+  proposeProposerPicker.setNames(p1Name, p2Name);
+  proposeProposerPicker.reset(null);
   document.getElementById('modal-notify-email').value = '';
   document.getElementById('propose-times-error').textContent = '';
   document.getElementById('propose-times-modal').style.display = 'flex';
@@ -330,6 +333,7 @@ document.getElementById('propose-times-form').addEventListener('submit', async (
       body: {
         proposalSlots: Array.from(proposeAvailabilityPicker.selectedSlots),
         proposalVenues: proposeVenuePicker.venues,
+        proposedBy: proposeProposerPicker.getPicked(),
         proposalNotifyEmail: notifyEmail || undefined,
       },
     });
@@ -376,7 +380,7 @@ listEl.addEventListener('click', (e) => {
   if (proposeBtn) {
     e.preventDefault();
     e.stopPropagation();
-    requirePlayerAuth(() => openProposeTimesModal(proposeBtn.dataset.token));
+    requirePlayerAuth(() => openProposeTimesModal(proposeBtn.dataset.token, proposeBtn.dataset.p1Name, proposeBtn.dataset.p2Name));
     return;
   }
   const notifyBtn = e.target.closest('.notify-btn');

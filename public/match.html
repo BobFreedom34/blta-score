@@ -108,6 +108,88 @@
   </div>
 </div>
 
+<!-- Edit proposal — change the proposed times/venues before the other
+     player has confirmed one. Same widgets as the Schedule a match page
+     and the homepage's Propose times modal (see createAvailabilityPicker/
+     createVenueChipPicker in common.js), pre-filled with what's already
+     proposed. -->
+<div class="modal-backdrop" id="edit-proposal-modal" style="display:none">
+  <div class="modal" style="max-width:640px">
+    <button type="button" class="close" data-close="edit-proposal-modal" aria-label="Close">&times;</button>
+    <h3>Edit proposed times</h3>
+    <form id="edit-proposal-form">
+      <div class="field">
+        <label>Preferred venues</label>
+        <div class="venue-chip-row" id="edit-venue-chip-list"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input type="text" id="edit-venue-input" placeholder="e.g. NTC Bratislava, Court 3" style="flex:1">
+          <button type="button" class="btn btn-outline" id="edit-venue-add-btn">Add</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Who's proposing? <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional)</span></label>
+        <div class="server-choice-row balls-choice-row" id="edit-proposer-choice-row">
+          <button type="button" class="btn btn-outline btn-block" data-value="1">Player 1</button>
+          <button type="button" class="btn btn-outline btn-block" data-value="2">Player 2</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Mark the times you can play <span id="edit-slot-count" style="font-weight:400;color:var(--gray-dim)"></span></label>
+        <div class="tabs week-picker-tabs" id="edit-week-tabs"></div>
+        <div class="availability-grid-wrap" id="edit-availability-grid-wrap"></div>
+        <button type="button" class="btn btn-sm btn-outline" id="edit-clear-slots-btn" style="margin-top:10px">Clear all</button>
+      </div>
+      <div class="field">
+        <label for="edit-notify-email">Email for confirmation <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional — leave blank to keep the current one)</span></label>
+        <input type="email" id="edit-notify-email" placeholder="you@example.com">
+      </div>
+      <div id="edit-proposal-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Save changes</button>
+    </form>
+  </div>
+</div>
+
+<!-- Counter-propose — the other player, instead of picking one of the
+     offered slots, submits their own times/venues instead. Public, no
+     login (see POST /:token/counter-propose) — same access model as
+     confirming a slot: the share link is the only key. -->
+<div class="modal-backdrop" id="counter-propose-modal" style="display:none">
+  <div class="modal" style="max-width:640px">
+    <button type="button" class="close" data-close="counter-propose-modal" aria-label="Close">&times;</button>
+    <h3>Propose your own times instead</h3>
+    <p style="font-size:13px;color:var(--gray);margin-top:-8px">None of the offered times work? Mark what does work for you — this replaces the current options, and the other player picks from these instead.</p>
+    <form id="counter-propose-form">
+      <div class="field">
+        <label>Preferred venues</label>
+        <div class="venue-chip-row" id="counter-venue-chip-list"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input type="text" id="counter-venue-input" placeholder="e.g. NTC Bratislava, Court 3" style="flex:1">
+          <button type="button" class="btn btn-outline" id="counter-venue-add-btn">Add</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Who's proposing? <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional)</span></label>
+        <div class="server-choice-row balls-choice-row" id="counter-proposer-choice-row">
+          <button type="button" class="btn btn-outline btn-block" data-value="1">Player 1</button>
+          <button type="button" class="btn btn-outline btn-block" data-value="2">Player 2</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Mark the times you can play <span id="counter-slot-count" style="font-weight:400;color:var(--gray-dim)"></span></label>
+        <div class="tabs week-picker-tabs" id="counter-week-tabs"></div>
+        <div class="availability-grid-wrap" id="counter-availability-grid-wrap"></div>
+        <button type="button" class="btn btn-sm btn-outline" id="counter-clear-slots-btn" style="margin-top:10px">Clear all</button>
+      </div>
+      <div class="field">
+        <label for="counter-notify-email">Email for confirmation <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional)</span></label>
+        <input type="email" id="counter-notify-email" placeholder="you@example.com">
+      </div>
+      <div id="counter-propose-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Send my times instead</button>
+    </form>
+  </div>
+</div>
+
 <!-- Finish without a completed score (walkover / retirement) -->
 <div class="modal-backdrop" id="finish-undecided-modal" style="display:none">
   <div class="modal">

@@ -234,6 +234,14 @@ if (!matchColumns.includes('proposal_venues')) {
 if (!matchColumns.includes('proposal_notify_email')) {
   db.exec('ALTER TABLE matches ADD COLUMN proposal_notify_email TEXT');
 }
+// Which of player1/player2 (1 or 2) most recently proposed the current
+// proposal_slots/proposal_venues — shown on the "Pick a time" card so the
+// other player knows who they're responding to. Flips when the other
+// player counter-proposes their own times instead of picking one (see
+// POST /:token/counter-propose) — same 1/2/null shape as balls_player.
+if (!matchColumns.includes('proposed_by')) {
+  db.exec('ALTER TABLE matches ADD COLUMN proposed_by INTEGER');
+}
 
 const playerColumns = db.prepare('PRAGMA table_info(players)').all().map((c) => c.name);
 if (!playerColumns.includes('photo_url')) {

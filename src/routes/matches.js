@@ -102,6 +102,7 @@ function serialize(row) {
     endReason: row.end_reason || null,
     proposalSlots: row.proposal_slots ? JSON.parse(row.proposal_slots) : null,
     proposalVenues: row.proposal_venues ? JSON.parse(row.proposal_venues) : null,
+    proposedBy: row.proposed_by || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     notifyStartCount: notifyCounts.START,
@@ -279,6 +280,17 @@ router.post('/', requireLoggedIn, (req, res) => {
     proposalNotifyEmail = email;
   }
 
+  // Optional — which of player1/player2 is doing the proposing, shown on
+  // the "Pick a time" card so the other player knows who they're
+  // responding to. Only meaningful alongside proposalSlots.
+  let proposedBy = null;
+  if (proposalSlots && req.body.proposedBy !== undefined && req.body.proposedBy !== null) {
+    proposedBy = Number(req.body.proposedBy);
+    if (![1, 2].includes(proposedBy)) {
+      return res.status(400).json({ error: 'proposedBy must be 1 or 2' });
+    }
+  }
+
   // A player created here by an anon-only session is flagged the same way
   // as the match itself, so that session can later edit that player's bio
   // (see checkPlayerAccess in routes/players.js) — but not anyone else's.
@@ -300,8 +312,8 @@ router.post('/', requireLoggedIn, (req, res) => {
 
   const state = engine.initState(format);
   const info = db.prepare(`
-    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, notes, balls_player, proposal_slots, proposal_venues, proposal_notify_email)
-    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @notes, @balls_player, @proposal_slots, @proposal_venues, @proposal_notify_email)
+    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, notes, balls_player, proposal_slots, proposal_venues, proposal_notify_email, proposed_by)
+    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @notes, @balls_player, @proposal_slots, @proposal_venues, @proposal_notify_email, @proposed_by)
   `).run({
     share_token: crypto.randomUUID(),
     category,
@@ -321,6 +333,7 @@ router.post('/', requireLoggedIn, (req, res) => {
     proposal_slots: proposalSlots ? JSON.stringify(proposalSlots) : null,
     proposal_venues: proposalVenues ? JSON.stringify(proposalVenues) : null,
     proposal_notify_email: proposalNotifyEmail,
+    proposed_by: proposedBy,
   });
 
   const row = db.prepare('SELECT * FROM matches WHERE id = ?').get(info.lastInsertRowid);
@@ -385,6 +398,14 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
         return res.status(400).json({ error: 'Enter a valid confirmation email address' });
       }
       fields.proposal_notify_email = email;
+    }
+
+    if (req.body.proposedBy !== undefined && req.body.proposedBy !== null) {
+      const proposedBy = Number(req.body.proposedBy);
+      if (![1, 2].includes(proposedBy)) {
+        return res.status(400).json({ error: 'proposedBy must be 1 or 2' });
+      }
+      fields.proposed_by = proposedBy;
     }
   }
   if (Object.keys(fields).length === 0) {
@@ -460,6 +481,69 @@ router.post('/:token/respond-proposal', (req, res) => {
       console.error('[matches] failed to send proposal-confirmed email:', err.message);
     });
   }
+});
+
+// Public "counter-propose" endpoint — instead of picking one of the
+// offered slots, the other player submits their own times/venues instead.
+// Same trust model as respond-proposal above (the link is the only access
+// control, deliberately no requireLoggedIn/checkMatchAccess): this simply
+// overwrites the current proposal, so whoever looks at the match next sees
+// a fresh "Pick a time" card built from these new slots. proposedBy flips
+// to record who's now on offer; proposalNotifyEmail is replaced outright
+// (not merged like PATCH does) since the old email was for whoever made
+// the proposal this one just replaced, not for whoever's proposing now.
+router.post('/:token/counter-propose', (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (row.scheduled_at) {
+    return res.status(409).json({ error: 'This match has already been scheduled' });
+  }
+  if (row.status !== 'PLANNED') {
+    return res.status(400).json({ error: 'This match is no longer awaiting a scheduling response' });
+  }
+  if (!Array.isArray(req.body.proposalSlots) || req.body.proposalSlots.length === 0) {
+    return res.status(400).json({ error: 'Mark at least one time you can play' });
+  }
+  if (req.body.proposalSlots.length > 60) {
+    return res.status(400).json({ error: 'Too many proposed times (max 60)' });
+  }
+  const parsedSlots = req.body.proposalSlots.map((s) => new Date(s));
+  if (parsedSlots.some((d) => Number.isNaN(d.getTime()))) {
+    return res.status(400).json({ error: 'One of the proposed times is invalid' });
+  }
+  const proposalSlots = parsedSlots.map((d) => d.toISOString()).sort();
+
+  const venues = Array.isArray(req.body.proposalVenues) ? req.body.proposalVenues : [];
+  const trimmedVenues = venues.map((v) => (typeof v === 'string' ? v.trim() : '')).filter(Boolean);
+  if (trimmedVenues.length === 0) {
+    return res.status(400).json({ error: 'Add at least one preferred venue' });
+  }
+  if (trimmedVenues.length > 10) {
+    return res.status(400).json({ error: 'Too many venues (max 10)' });
+  }
+
+  let proposedBy = null;
+  if (req.body.proposedBy !== undefined && req.body.proposedBy !== null) {
+    proposedBy = Number(req.body.proposedBy);
+    if (![1, 2].includes(proposedBy)) {
+      return res.status(400).json({ error: 'proposedBy must be 1 or 2' });
+    }
+  }
+  let proposalNotifyEmail = null;
+  if (typeof req.body.proposalNotifyEmail === 'string' && req.body.proposalNotifyEmail.trim()) {
+    const email = req.body.proposalNotifyEmail.trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) {
+      return res.status(400).json({ error: 'Enter a valid confirmation email address' });
+    }
+    proposalNotifyEmail = email;
+  }
+
+  db.prepare('UPDATE matches SET proposal_slots = ?, proposal_venues = ?, proposed_by = ?, proposal_notify_email = ?, updated_at = ? WHERE id = ?')
+    .run(JSON.stringify(proposalSlots), JSON.stringify(trimmedVenues), proposedBy, proposalNotifyEmail, nowIso(), row.id);
+
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  const payload = broadcast(req, updated);
+  res.json(payload);
 });
 
 router.post('/:token/start', requireLoggedIn, async (req, res) => {

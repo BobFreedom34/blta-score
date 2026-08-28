@@ -99,32 +99,61 @@ function setupAutocomplete(inputId, listId) {
   });
 }
 
-// Who brings the balls — optional, defaults to nobody picked. Button labels
-// track whatever's currently typed into the #player1/#player2 name fields
+// Two-button "pick one of the two players" widget for a match still being
+// created — optional, defaults to nobody picked. Button labels track
+// whatever's currently typed into the #player1/#player2 name fields
 // (falling back to "Player 1"/"Player 2" while empty) so it's clear who's
 // who even before either name resolves to a real player. Clicking the
 // already-active button clears the pick instead of just switching sides.
+// Used for "who brings the balls" and "who's proposing these times".
 // Returns a getter for the current pick (1, 2, or null) to read at submit.
-function setupBallsPicker() {
-  let ballsPlayer = null;
-  const ballsBtns = Array.from(document.querySelectorAll('#balls-choice-row button'));
-  function updateBallsLabels() {
+function setupLivePlayerChoicePicker(rowId) {
+  let picked = null;
+  const btns = Array.from(document.querySelectorAll(`#${rowId} button`));
+  function updateLabels() {
     const p1 = document.getElementById('player1').value.trim();
     const p2 = document.getElementById('player2').value.trim();
-    ballsBtns[0].textContent = p1 || 'Player 1';
-    ballsBtns[1].textContent = p2 || 'Player 2';
+    btns[0].textContent = p1 || 'Player 1';
+    btns[1].textContent = p2 || 'Player 2';
   }
-  document.getElementById('player1').addEventListener('input', updateBallsLabels);
-  document.getElementById('player2').addEventListener('input', updateBallsLabels);
-  updateBallsLabels();
-  ballsBtns.forEach((btn) => {
+  document.getElementById('player1').addEventListener('input', updateLabels);
+  document.getElementById('player2').addEventListener('input', updateLabels);
+  updateLabels();
+  btns.forEach((btn) => {
     btn.addEventListener('click', () => {
-      const val = Number(btn.dataset.balls);
-      ballsPlayer = ballsPlayer === val ? null : val;
-      ballsBtns.forEach((b) => b.classList.toggle('active', Number(b.dataset.balls) === ballsPlayer));
+      const val = Number(btn.dataset.value);
+      picked = picked === val ? null : val;
+      btns.forEach((b) => b.classList.toggle('active', Number(b.dataset.value) === picked));
     });
   });
-  return () => ballsPlayer;
+  return () => picked;
+}
+function setupBallsPicker() { return setupLivePlayerChoicePicker('balls-choice-row'); }
+function setupProposerPicker() { return setupLivePlayerChoicePicker('proposer-choice-row'); }
+
+// Same two-button widget, but for a match whose two players are already
+// fixed (a homepage/match-page modal, opened for one existing match at a
+// time) instead of still being typed into #player1/#player2. Call
+// setNames() each time the modal opens, possibly for a different match —
+// reset() re-labels nothing, just sets/clears the pick.
+function createStaticPlayerChoicePicker(rowId) {
+  let picked = null;
+  const btns = Array.from(document.querySelectorAll(`#${rowId} button`));
+  function applyActive() {
+    btns.forEach((b) => b.classList.toggle('active', Number(b.dataset.value) === picked));
+  }
+  btns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const val = Number(btn.dataset.value);
+      picked = picked === val ? null : val;
+      applyActive();
+    });
+  });
+  return {
+    getPicked: () => picked,
+    setNames(n1, n2) { btns[0].textContent = n1; btns[1].textContent = n2; },
+    reset(initial) { picked = initial != null ? initial : null; applyActive(); },
+  };
 }
 
 // When2Meet-style availability grid — used by the "Schedule a match" page
@@ -253,6 +282,16 @@ function createAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
     selectedSlots,
     clear() { selectedSlots.clear(); renderGrid(); updateSlotCount(); },
     reset() { buildDays(); activeWeek = 0; selectedSlots.clear(); renderWeekTabs(); renderGrid(); updateSlotCount(); },
+    // Pre-checks an already-proposed match's existing slots when editing —
+    // call right after reset(). A slot older than "today" (proposed a
+    // while ago, now stale) won't have a cell to check in the freshly
+    // built window, but still counts toward "N selected" and still gets
+    // resubmitted, so nothing already offered silently disappears.
+    setSlots(isoArray) {
+      isoArray.forEach((iso) => selectedSlots.add(iso));
+      renderGrid();
+      updateSlotCount();
+    },
   };
 }
 
@@ -292,6 +331,12 @@ function createVenueChipPicker({ listId, inputId, addBtnId }) {
   return {
     venues,
     clear() { venues.length = 0; render(); },
+    // Pre-fills an already-proposed match's existing venues when editing —
+    // call right after clear().
+    setVenues(arr) {
+      arr.forEach((v) => { if (v && !venues.includes(v)) venues.push(v); });
+      render();
+    },
   };
 }
 

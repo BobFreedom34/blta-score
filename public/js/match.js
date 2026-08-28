@@ -330,10 +330,14 @@ async function ensureH2H(m) {
 // handler and POST /:token/respond-proposal on the server) — the share
 // link itself is the access control, same trust model as an anon match.
 function proposalCardHtml(m) {
+  const proposerName = m.proposedBy === 1 ? m.player1.name : m.proposedBy === 2 ? m.player2.name : null;
   return `
     <div class="card" id="proposal-card" style="margin-bottom:16px;border:2px solid var(--orange)">
-      <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">📅 Pick a time</div>
-      <p style="font-size:13px;color:var(--gray);margin:6px 0 16px">A few options were proposed for this match — pick whichever works for you and it's confirmed.</p>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">📅 Pick a time</div>
+        <button type="button" class="edit-link" id="edit-proposal-link">Edit</button>
+      </div>
+      <p style="font-size:13px;color:var(--gray);margin:6px 0 16px">${proposerName ? `${escapeHtml(proposerName)} proposed` : 'A few options were proposed'} for this match — pick whichever works for you and it's confirmed.</p>
       <div class="field">
         <label>When</label>
         <div class="tabs week-picker-tabs" id="proposal-week-tabs"></div>
@@ -347,6 +351,7 @@ function proposalCardHtml(m) {
       </div>
       <button type="button" class="btn btn-primary btn-block" id="confirm-proposal-btn" disabled style="margin-top:6px">Confirm</button>
       <div id="proposal-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
+      <button type="button" class="edit-link" id="counter-propose-link" style="margin-top:12px">Can't make any of these? Propose your own times instead →</button>
     </div>
   `;
 }
@@ -545,6 +550,16 @@ function attachHandlers(m) {
         confirmBtn.disabled = false;
       }
     });
+
+    // "Edit" — the proposer changing their own offer. Requires login (same
+    // as editing Location/Date), unlike everything else on this card.
+    const editProposalLink = document.getElementById('edit-proposal-link');
+    if (editProposalLink) editProposalLink.addEventListener('click', () => requirePlayerAuth(() => openEditProposalModal(m)));
+
+    // "Propose your own times instead" — deliberately NOT behind
+    // requirePlayerAuth, same public trust model as confirming a slot.
+    const counterProposeLink = document.getElementById('counter-propose-link');
+    if (counterProposeLink) counterProposeLink.addEventListener('click', () => openCounterProposeModal(m));
   }
 
   root.querySelectorAll('.btn-giant, .btn-minus').forEach((btn) => {
@@ -856,6 +871,124 @@ function openStartScheduleModal(m, onDone) {
   };
   document.getElementById('start-schedule-modal').style.display = 'flex';
 }
+
+// "Edit" on the proposal card — the proposer changing their own offer
+// before anyone's confirmed it. Requires login (see attachHandlers above),
+// same widgets as the Schedule a match page, pre-filled with what's
+// already proposed.
+const editAvailabilityPicker = createAvailabilityPicker({ weekTabsId: 'edit-week-tabs', gridWrapId: 'edit-availability-grid-wrap', slotCountId: 'edit-slot-count' });
+const editVenuePicker = createVenueChipPicker({ listId: 'edit-venue-chip-list', inputId: 'edit-venue-input', addBtnId: 'edit-venue-add-btn' });
+const editProposerPicker = createStaticPlayerChoicePicker('edit-proposer-choice-row');
+document.getElementById('edit-clear-slots-btn').addEventListener('click', () => editAvailabilityPicker.clear());
+
+function openEditProposalModal(m) {
+  editAvailabilityPicker.reset();
+  editAvailabilityPicker.setSlots(m.proposalSlots || []);
+  editVenuePicker.clear();
+  editVenuePicker.setVenues(m.proposalVenues || []);
+  editProposerPicker.setNames(m.player1.name, m.player2.name);
+  editProposerPicker.reset(m.proposedBy || null);
+  document.getElementById('edit-notify-email').value = '';
+  document.getElementById('edit-proposal-error').textContent = '';
+  document.getElementById('edit-proposal-modal').style.display = 'flex';
+}
+
+document.getElementById('edit-proposal-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('edit-proposal-error');
+  errorEl.textContent = '';
+  if (editAvailabilityPicker.selectedSlots.size === 0) {
+    errorEl.textContent = 'Mark at least one time you can play.';
+    return;
+  }
+  if (editVenuePicker.venues.length === 0) {
+    errorEl.textContent = 'Add at least one preferred venue.';
+    return;
+  }
+  const notifyEmail = document.getElementById('edit-notify-email').value.trim();
+  if (notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail)) {
+    errorEl.textContent = 'Enter a valid confirmation email address, or leave it blank.';
+    return;
+  }
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  try {
+    const updated = await api(`/matches/${matchToken}`, {
+      method: 'PATCH',
+      body: {
+        proposalSlots: Array.from(editAvailabilityPicker.selectedSlots),
+        proposalVenues: editVenuePicker.venues,
+        proposedBy: editProposerPicker.getPicked(),
+        proposalNotifyEmail: notifyEmail || undefined,
+      },
+    });
+    document.getElementById('edit-proposal-modal').style.display = 'none';
+    toast('Proposal updated!');
+    render(updated);
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+  submitBtn.disabled = false;
+});
+
+// "Propose your own times instead" — the other player submitting their own
+// availability rather than picking from what's offered. Deliberately
+// public (see attachHandlers above and POST /:token/counter-propose on the
+// server) — no login needed, same share-link trust model as confirming a
+// slot. Always starts empty (this is a fresh alternative, not an edit of
+// what's already there).
+const counterAvailabilityPicker = createAvailabilityPicker({ weekTabsId: 'counter-week-tabs', gridWrapId: 'counter-availability-grid-wrap', slotCountId: 'counter-slot-count' });
+const counterVenuePicker = createVenueChipPicker({ listId: 'counter-venue-chip-list', inputId: 'counter-venue-input', addBtnId: 'counter-venue-add-btn' });
+const counterProposerPicker = createStaticPlayerChoicePicker('counter-proposer-choice-row');
+document.getElementById('counter-clear-slots-btn').addEventListener('click', () => counterAvailabilityPicker.clear());
+
+function openCounterProposeModal(m) {
+  counterAvailabilityPicker.reset();
+  counterVenuePicker.clear();
+  counterProposerPicker.setNames(m.player1.name, m.player2.name);
+  counterProposerPicker.reset(null);
+  document.getElementById('counter-notify-email').value = '';
+  document.getElementById('counter-propose-error').textContent = '';
+  document.getElementById('counter-propose-modal').style.display = 'flex';
+}
+
+document.getElementById('counter-propose-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('counter-propose-error');
+  errorEl.textContent = '';
+  if (counterAvailabilityPicker.selectedSlots.size === 0) {
+    errorEl.textContent = 'Mark at least one time you can play.';
+    return;
+  }
+  if (counterVenuePicker.venues.length === 0) {
+    errorEl.textContent = 'Add at least one preferred venue.';
+    return;
+  }
+  const notifyEmail = document.getElementById('counter-notify-email').value.trim();
+  if (notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail)) {
+    errorEl.textContent = 'Enter a valid confirmation email address, or leave it blank.';
+    return;
+  }
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  try {
+    const updated = await api(`/matches/${matchToken}/counter-propose`, {
+      method: 'POST',
+      body: {
+        proposalSlots: Array.from(counterAvailabilityPicker.selectedSlots),
+        proposalVenues: counterVenuePicker.venues,
+        proposedBy: counterProposerPicker.getPicked(),
+        proposalNotifyEmail: notifyEmail || undefined,
+      },
+    });
+    document.getElementById('counter-propose-modal').style.display = 'none';
+    toast('Your times were sent!');
+    render(updated);
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+  submitBtn.disabled = false;
+});
 
 function openFirstServerModal(m) {
   document.getElementById('first-server-p1-btn').textContent = m.player1.name;

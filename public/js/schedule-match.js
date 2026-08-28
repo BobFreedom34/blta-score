@@ -4,6 +4,7 @@ loadPlayers();
 setupAutocomplete('player1', 'player1-suggestions');
 setupAutocomplete('player2', 'player2-suggestions');
 const getBallsPlayer = setupBallsPicker();
+const getProposedBy = setupProposerPicker();
 
 const venuePicker = createVenueChipPicker({ listId: 'venue-chip-list', inputId: 'venue-input', addBtnId: 'venue-add-btn' });
 const availabilityPicker = createAvailabilityPicker({ weekTabsId: 'week-tabs', gridWrapId: 'availability-grid-wrap', slotCountId: 'slot-count' });
@@ -101,6 +102,7 @@ document.getElementById('schedule-match-form').addEventListener('submit', async 
           ballsPlayer: getBallsPlayer(),
           proposalSlots: Array.from(availabilityPicker.selectedSlots),
           proposalVenues: venuePicker.venues,
+          proposedBy: getProposedBy(),
           proposalNotifyEmail: notifyEmail || undefined,
         },
       });
