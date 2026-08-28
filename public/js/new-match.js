@@ -61,6 +61,11 @@ function setupAutocomplete(inputId, listId) {
     } else if (e.key === 'Enter' && activeIndex >= 0) {
       e.preventDefault();
       input.value = items[activeIndex].dataset.name;
+      // Setting .value directly doesn't fire a native 'input' event, so
+      // anything listening for the player name to change (the balls-picker
+      // button labels below) would otherwise never see this pick — dispatch
+      // one explicitly, same as the mousedown handler just below.
+      input.dispatchEvent(new Event('input'));
       list.classList.remove('open');
       activeIndex = -1;
     } else if (e.key === 'Escape') {
@@ -73,6 +78,7 @@ function setupAutocomplete(inputId, listId) {
     if (!item) return;
     e.preventDefault(); // keep focus on input so blur doesn't close the list first
     input.value = item.dataset.name;
+    input.dispatchEvent(new Event('input'));
     list.classList.remove('open');
     activeIndex = -1;
   });
