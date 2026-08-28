@@ -741,23 +741,28 @@ async function checkAdmin() {
   }
 }
 
-// Shared "log in as player" gate: a single 4-digit code (given to every
-// league player) unlocks match-creating/starting/scheduling actions without
-// needing individual accounts. Lives in common.js since the popup and nav
-// toggle are identical across every page.
+// Shared "log in as player" gate: each player logs in with their own phone
+// number (set per-player by an admin — see routes/players.js) which both
+// authenticates them and identifies WHICH player they are, so match-editing
+// rights can be scoped to their own matches instead of every match in the
+// league (see checkMatchAccess in routes/matches.js). Lives in common.js
+// since the popup and nav toggle are identical across every page.
 //
-// The same code box also accepts ANON_CODE, a second, more limited login
-// (see requireLoggedIn/checkMatchAccess in routes/matches.js) — anonAuthed
+// The same input also accepts ANON_CODE, a second, more limited login (see
+// requireLoggedIn/checkMatchAccess in routes/matches.js) — anonAuthed
 // tracks that separately since it changes what a "logged in" session can
 // actually do, even though both count as "some session active" for the
 // nav link and for requirePlayerAuth just letting an action through to the
 // server (the server enforces the actual per-match restriction).
 let playerAuthed = false;
 let anonAuthed = false;
+let currentPlayerName = null;
 
 function updatePlayerNavLinks() {
   document.querySelectorAll('.player-login-link').forEach((el) => {
-    el.textContent = (playerAuthed || anonAuthed) ? 'LOG OUT' : 'LOG IN AS PLAYER';
+    if (playerAuthed && currentPlayerName) el.textContent = `LOG OUT (${currentPlayerName})`;
+    else if (playerAuthed || anonAuthed) el.textContent = 'LOG OUT';
+    else el.textContent = 'LOG IN AS PLAYER';
   });
 }
 
@@ -766,79 +771,53 @@ async function refreshPlayerAuth() {
     const res = await api('/player/session');
     playerAuthed = !!res.isPlayer;
     anonAuthed = !!res.isAnon;
+    currentPlayerName = res.playerName || null;
   } catch {
     playerAuthed = false;
     anonAuthed = false;
+    currentPlayerName = null;
   }
   updatePlayerNavLinks();
   return playerAuthed || anonAuthed;
 }
 
-// 4 separate one-digit boxes (like a phone-app 2FA code): typing a digit
-// auto-advances to the next box, and filling the last box submits
-// immediately — no separate "Log in" button to press.
 function openPlayerLoginModal(onSuccess) {
   const modal = document.getElementById('player-login-modal');
   if (!modal) return;
   const form = document.getElementById('player-login-form');
+  const input = document.getElementById('player-login-input');
   const errorEl = document.getElementById('player-login-error');
-  const digits = Array.from(modal.querySelectorAll('.otp-digit'));
+  const submitBtn = form.querySelector('button[type="submit"]');
   errorEl.textContent = '';
-  form.onsubmit = (e) => e.preventDefault();
+  input.value = '';
+  input.disabled = false;
 
-  const submitCode = async () => {
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const code = input.value.trim();
+    if (!code) return;
     errorEl.textContent = '';
-    digits.forEach((d) => { d.disabled = true; });
+    input.disabled = true;
+    submitBtn.disabled = true;
     try {
-      const res = await api('/player/login', { method: 'POST', body: { code: digits.map((d) => d.value).join('') } });
+      const res = await api('/player/login', { method: 'POST', body: { code } });
       playerAuthed = !!res.isPlayer;
       anonAuthed = !!res.isAnon;
+      currentPlayerName = res.playerName || null;
       updatePlayerNavLinks();
       modal.style.display = 'none';
       if (onSuccess) onSuccess();
     } catch (err) {
       errorEl.textContent = err.message;
-      digits.forEach((d) => { d.value = ''; d.disabled = false; });
-      digits[0].focus();
+      input.disabled = false;
+      submitBtn.disabled = false;
+      input.value = '';
+      input.focus();
     }
   };
 
-  // Boxes intentionally aren't maxlength=1 — a fast typist, an OS-level
-  // autofill suggestion, or this same automated test can land more than one
-  // digit in a box in a single input event, and the browser would silently
-  // drop the extra characters before we ever saw them if maxlength trimmed
-  // it first. Instead every digit that shows up gets distributed forward
-  // from whichever box received it.
-  digits.forEach((input, i) => {
-    input.value = '';
-    input.disabled = false;
-    input.oninput = () => {
-      const raw = input.value.replace(/\D/g, '');
-      let idx = i;
-      for (const ch of raw) {
-        if (idx >= digits.length) break;
-        digits[idx].value = ch;
-        idx += 1;
-      }
-      if (!raw) input.value = '';
-      digits[Math.min(idx, digits.length - 1)].focus();
-      if (digits.every((d) => d.value)) submitCode();
-    };
-    input.onkeydown = (e) => {
-      if (e.key === 'Backspace' && !input.value && i > 0) digits[i - 1].focus();
-    };
-    input.onpaste = (e) => {
-      e.preventDefault();
-      const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
-      if (!text) return;
-      digits.forEach((d, idx) => { d.value = text[idx] || ''; });
-      (digits.find((d) => !d.value) || digits[digits.length - 1]).focus();
-      if (digits.every((d) => d.value)) submitCode();
-    };
-  });
-
   modal.style.display = 'flex';
-  setTimeout(() => digits[0].focus(), 50);
+  setTimeout(() => input.focus(), 50);
 }
 
 // Runs onReady immediately if already logged in — as a real player, admin,
@@ -859,6 +838,7 @@ document.querySelectorAll('.player-login-link').forEach((el) => {
       try { await api('/player/logout', { method: 'POST' }); } catch { /* ignore */ }
       playerAuthed = false;
       anonAuthed = false;
+      currentPlayerName = null;
       updatePlayerNavLinks();
       toast('Logged out');
     } else {

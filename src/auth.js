@@ -32,14 +32,28 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// A player (logged in with the shared 4-digit code) or an admin — admin
-// implies player, so admins never need to separately log in as a player.
-function isPlayer(req) {
-  return isAdmin(req) || (req.signedCookies && req.signedCookies[PLAYER_COOKIE_NAME] === 'ok');
+// A specific player, identified by their phone number at login (see
+// routes/player.js) — the cookie holds that player's id, not just a
+// boolean, so match-editing rights can be scoped to "this player" instead
+// of "any player" (see checkMatchAccess in routes/matches.js). Signed, so
+// a client can't forge a different id into it without the server's secret.
+function getPlayerId(req) {
+  const raw = req.signedCookies && req.signedCookies[PLAYER_COOKIE_NAME];
+  if (!raw) return null;
+  const id = Number(raw);
+  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-function logInPlayer(res) {
-  res.cookie(PLAYER_COOKIE_NAME, 'ok', cookieOptions());
+// True for an admin OR any specific logged-in player — admin implies
+// player, so admins never need to separately log in as one. Used where a
+// route just needs "some real identity", with the finer per-match/per-
+// player scoping happening afterward once the specific row is loaded.
+function isPlayer(req) {
+  return isAdmin(req) || getPlayerId(req) !== null;
+}
+
+function logInPlayer(res, playerId) {
+  res.cookie(PLAYER_COOKIE_NAME, String(playerId), cookieOptions());
 }
 
 function logOutPlayer(res) {
@@ -53,9 +67,9 @@ function requirePlayer(req, res, next) {
   next();
 }
 
-// Separate gate for editing profile bio info — its own code (PROFILE_CODE),
-// distinct from PLAYER_CODE, so it can be shared or changed independently
-// of the match-scoring player code.
+// Separate gate for editing profile bio info — its own shared code
+// (PROFILE_CODE), independent of a player's own phone-number login, so it
+// can be shared or changed without touching anyone's match-editing rights.
 const PROFILE_COOKIE_NAME = 'blta_profile';
 
 function isProfileEditor(req) {
@@ -108,7 +122,7 @@ function requireLoggedIn(req, res, next) {
 
 module.exports = {
   COOKIE_NAME, PLAYER_COOKIE_NAME, isAdmin, logIn, logOut, requireAdmin,
-  isPlayer, logInPlayer, logOutPlayer, requirePlayer,
+  isPlayer, getPlayerId, logInPlayer, logOutPlayer, requirePlayer,
   PROFILE_COOKIE_NAME, isProfileEditor, logInProfileEditor, logOutProfileEditor, requireProfileEditor,
   ANON_COOKIE_NAME, isAnon, logInAnon, logOutAnon, requireLoggedIn,
 };

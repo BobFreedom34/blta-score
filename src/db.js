@@ -192,6 +192,14 @@ if (!matchColumns.includes('created_by_admin')) {
 if (!matchColumns.includes('created_by_anonymous')) {
   db.exec('ALTER TABLE matches ADD COLUMN created_by_anonymous INTEGER NOT NULL DEFAULT 0');
 }
+// Which specific player (by id, not just "some player") created this match
+// while logged in as themselves — set only for a real per-player login, not
+// admin or anon (see checkMatchAccess in routes/matches.js: a player can
+// manage a match they play in only if it's admin-created, but any match
+// they created themselves regardless of who's playing in it).
+if (!matchColumns.includes('created_by_player_id')) {
+  db.exec('ALTER TABLE matches ADD COLUMN created_by_player_id INTEGER');
+}
 if (!matchColumns.includes('notes')) {
   db.exec("ALTER TABLE matches ADD COLUMN notes TEXT NOT NULL DEFAULT ''");
 }
@@ -264,8 +272,11 @@ if (!playerColumns.includes('slug')) {
   'nationality TEXT',
   'birthday TEXT',
   'favorite_player TEXT',
-  // Unlike the fields above, these are never shown on the public profile —
-  // only to a logged-in player/admin (see the /:id endpoint in players.js).
+  // Unlike the fields above, these are never shown on the public profile.
+  // phone additionally doubles as this player's login credential (see
+  // auth.js/routes/player.js) — admin-only to view or edit (routes/players.js),
+  // unique when set (see idx_players_phone below). email stays visible to
+  // any logged-in tier, same as before.
   'phone TEXT',
   'email TEXT',
   // Marks a player auto-created by the limited anon login tier (see
@@ -279,6 +290,10 @@ if (!playerColumns.includes('slug')) {
   }
 });
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_players_slug ON players(slug)');
+// Partial (only enforced once a phone is actually set) so the many players
+// without one yet don't collide on NULL — SQLite doesn't treat NULLs as
+// equal for uniqueness anyway, but being explicit here matches the intent.
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_players_phone ON players(phone) WHERE phone IS NOT NULL');
 
 // Backfills a URL-friendly slug (surname-based, e.g. "sloboda") for any
 // player that doesn't have one yet — new players, and every existing one

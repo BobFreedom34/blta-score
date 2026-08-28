@@ -4,7 +4,7 @@ const db = require('../db');
 const engine = require('../matchEngine');
 const { sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail } = require('../mailer');
 const { sendPush } = require('../push');
-const { isAdmin, isPlayer, isAnon, requireLoggedIn } = require('../auth');
+const { isAdmin, isPlayer, isAnon, getPlayerId, requireLoggedIn } = require('../auth');
 
 const router = express.Router();
 
@@ -92,6 +92,7 @@ function serialize(row) {
     canUndo: history.length > 0,
     createdByAdmin: !!row.created_by_admin,
     createdByAnonymous: !!row.created_by_anonymous,
+    createdByPlayerId: row.created_by_player_id || null,
     winnerId: row.winner_id,
     startTime: row.start_time,
     endTime: row.end_time,
@@ -126,10 +127,22 @@ function getRowOr404(req, res) {
 // row is loaded, since requireLoggedIn alone can't know which match this
 // is yet. Returns a response (and false) if access is denied, so callers
 // can just `if (!checkMatchAccess(req, res, row)) return;`.
+// Admin: always. A specific logged-in player: matches they play in that an
+// admin created, or any match they created themselves (regardless of
+// whether they're one of the two players in it — mirrors how an anon
+// session can manage a match it created without playing in it). Anon: only
+// matches it created. See getPlayerId/created_by_player_id for how "this
+// specific player" is known at all.
 function checkMatchAccess(req, res, row) {
-  if (isPlayer(req)) return true;
+  if (isAdmin(req)) return true;
+  const playerId = getPlayerId(req);
+  if (playerId) {
+    const playsInMatch = playerId === row.player1_id || playerId === row.player2_id;
+    if (row.created_by_admin && playsInMatch) return true;
+    if (row.created_by_player_id === playerId) return true;
+  }
   if (isAnon(req) && row.created_by_anonymous) return true;
-  res.status(403).json({ error: 'You can only manage matches you created' });
+  res.status(403).json({ error: 'You can only manage matches you play in (if an admin created them) or matches you created yourself' });
   return false;
 }
 
@@ -312,8 +325,8 @@ router.post('/', requireLoggedIn, (req, res) => {
 
   const state = engine.initState(format);
   const info = db.prepare(`
-    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, notes, balls_player, proposal_slots, proposal_venues, proposal_notify_email, proposed_by)
-    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @notes, @balls_player, @proposal_slots, @proposal_venues, @proposal_notify_email, @proposed_by)
+    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, created_by_player_id, notes, balls_player, proposal_slots, proposal_venues, proposal_notify_email, proposed_by)
+    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @created_by_player_id, @notes, @balls_player, @proposal_slots, @proposal_venues, @proposal_notify_email, @proposed_by)
   `).run({
     share_token: crypto.randomUUID(),
     category,
@@ -328,6 +341,11 @@ router.post('/', requireLoggedIn, (req, res) => {
     // login at all — a real player who also happens to hold the anon
     // cookie still creates a normal, fully-managed match.
     created_by_anonymous: !isPlayer(req) && isAnon(req) ? 1 : 0,
+    // Null for admin (admin already has full rights regardless) or anon —
+    // set only when a specific real player created this as themselves, so
+    // checkMatchAccess can later recognize "a match I made" even for a
+    // match they're not one of the two players in.
+    created_by_player_id: isAdmin(req) ? null : getPlayerId(req),
     notes: (notes || '').trim(),
     balls_player: ballsPlayer,
     proposal_slots: proposalSlots ? JSON.stringify(proposalSlots) : null,

@@ -1,40 +1,63 @@
 const express = require('express');
+const db = require('../db');
 const auth = require('../auth');
 
 const router = express.Router();
 
+// Builds the { isPlayer, isAnon, playerId, playerName, playerSlug } shape
+// every session-reporting response shares. Takes the logged-in player's
+// row directly rather than re-reading it off req's cookies, since a route
+// that just called auth.logInPlayer() won't see that cookie reflected in
+// req.signedCookies until the *next* request — cookies set on the response
+// don't retroactively appear on the request that set them.
+function sessionInfo({ isPlayerFlag, isAnon, player }) {
+  return {
+    isPlayer: isPlayerFlag,
+    isAnon,
+    playerId: player ? player.id : null,
+    playerName: player ? player.name : null,
+    playerSlug: player ? player.slug : null,
+  };
+}
+
 router.get('/session', (req, res) => {
-  res.json({ isPlayer: auth.isPlayer(req), isAnon: auth.isAnon(req) });
+  const playerId = auth.getPlayerId(req);
+  const player = playerId ? db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(playerId) : null;
+  res.json(sessionInfo({ isPlayerFlag: auth.isPlayer(req), isAnon: auth.isAnon(req), player }));
 });
 
-// One code box, two possible outcomes: the real PLAYER_CODE logs in with
-// full rights, while ANON_CODE (given out to anyone without a real BLTA
-// code) logs in as the limited anonymous tier — see requireLoggedIn in
-// routes/matches.js for what that tier can and can't do.
+// One input, two possible outcomes: a real player's own phone number logs
+// them in as that specific player (see checkMatchAccess in
+// routes/matches.js for what that scopes them to — only matches they play
+// in that an admin created, or matches they created themselves), while
+// ANON_CODE (given to anyone without a real BLTA account) logs in as the
+// limited anonymous tier — see requireLoggedIn in routes/matches.js.
 router.post('/login', (req, res) => {
-  const code = String(req.body.code || '').trim();
-  if (!process.env.PLAYER_CODE) {
-    return res.status(500).json({ error: 'Player login is not configured on this server (PLAYER_CODE is unset)' });
+  const raw = String(req.body.code || '').trim();
+  const digits = raw.replace(/\s+/g, '');
+  if (/^0\d{9}$/.test(digits)) {
+    const player = db.prepare('SELECT id, name, slug FROM players WHERE phone = ?').get(digits);
+    if (player) {
+      auth.logInPlayer(res, player.id);
+      return res.json(sessionInfo({ isPlayerFlag: true, isAnon: false, player }));
+    }
+    return res.status(401).json({ error: "That phone number isn't on file — ask an admin to add it on your Players page entry" });
   }
-  if (code === process.env.PLAYER_CODE) {
-    auth.logInPlayer(res);
-    return res.json({ isPlayer: true, isAnon: false });
-  }
-  if (process.env.ANON_CODE && code === process.env.ANON_CODE) {
+  if (process.env.ANON_CODE && raw === process.env.ANON_CODE) {
     auth.logInAnon(res);
-    return res.json({ isPlayer: false, isAnon: true });
+    return res.json(sessionInfo({ isPlayerFlag: false, isAnon: true, player: null }));
   }
-  res.status(401).json({ error: 'Incorrect code' });
+  res.status(401).json({ error: 'Incorrect phone number or code' });
 });
 
 router.post('/logout', (req, res) => {
   auth.logOutPlayer(res);
   auth.logOutAnon(res);
-  res.json({ isPlayer: false, isAnon: false });
+  res.json({ isPlayer: false, isAnon: false, playerId: null, playerName: null, playerSlug: null });
 });
 
 // Separate login for editing profile bio info — its own code (PROFILE_CODE
-// env var), independent of PLAYER_CODE above.
+// env var), independent of a player's own phone-number login above.
 router.get('/profile-session', (req, res) => {
   res.json({ isProfileEditor: auth.isProfileEditor(req) });
 });

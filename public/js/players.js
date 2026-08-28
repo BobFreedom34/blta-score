@@ -3,7 +3,13 @@ let query = '';
 let players = [];
 let isAdminUser = false;
 
+// Phone is admin-only (it doubles as a player's login credential — see
+// auth.js) and only ever present in the API response at all when the
+// viewer is admin, so this display/edit UI only shows up for them too.
 function playerRowHtml(p) {
+  const phone = isAdminUser
+    ? `<span class="player-phone">${p.phone ? escapeHtml(p.phone) : '<span class="player-phone-missing">No phone on file</span>'}</span>`
+    : '';
   const actions = isAdminUser ? `
       <div class="player-row-actions">
         <button type="button" class="btn btn-sm btn-outline" data-action="edit">Edit</button>
@@ -13,6 +19,7 @@ function playerRowHtml(p) {
   return `
     <div class="player-row" data-id="${p.id}">
       <a class="player-name" href="/player/${p.slug || p.id}">${escapeHtml(p.name)}</a>
+      ${phone}
       ${actions}
     </div>
   `;
@@ -65,32 +72,42 @@ function attachRowHandlers() {
 
     row.querySelector('[data-action="edit"]').addEventListener('click', () => {
       row.innerHTML = `
-        <input type="text" class="edit-name-input" value="${escapeHtml(player.name)}" maxlength="60">
+        <input type="text" class="edit-name-input" value="${escapeHtml(player.name)}" maxlength="60" placeholder="Name">
+        <input type="text" class="edit-phone-input" inputmode="numeric" value="${player.phone ? escapeHtml(player.phone) : ''}" placeholder="0903111222" maxlength="10">
         <div class="player-row-actions">
           <button type="button" class="btn btn-sm btn-primary" data-action="save">Save</button>
           <button type="button" class="btn btn-sm btn-outline" data-action="cancel">Cancel</button>
         </div>
       `;
-      const input = row.querySelector('.edit-name-input');
-      input.focus();
-      input.select();
+      const nameInput = row.querySelector('.edit-name-input');
+      const phoneInput = row.querySelector('.edit-phone-input');
+      nameInput.focus();
+      nameInput.select();
 
       row.querySelector('[data-action="cancel"]').addEventListener('click', render);
       const save = async () => {
-        const name = input.value.trim();
+        const name = nameInput.value.trim();
         if (!name) return toast('Name is required');
+        const phone = phoneInput.value.trim();
         try {
-          await api(`/players/${id}`, { method: 'PATCH', body: { name } });
-          toast('Player renamed');
+          if (name !== player.name) {
+            await api(`/players/${id}`, { method: 'PATCH', body: { name } });
+          }
+          if (phone !== (player.phone || '')) {
+            await api(`/players/${id}/phone`, { method: 'PATCH', body: { phone } });
+          }
+          toast('Player updated');
           loadPlayers();
         } catch (err) {
           toast(err.message);
         }
       };
       row.querySelector('[data-action="save"]').addEventListener('click', save);
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') save();
-        if (e.key === 'Escape') render();
+      [nameInput, phoneInput].forEach((input) => {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') save();
+          if (e.key === 'Escape') render();
+        });
       });
     });
 

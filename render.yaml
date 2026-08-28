@@ -33,8 +33,6 @@ services:
         value: "BLTA Score <score@blta.sk>"
       - key: ADMIN_PASSWORD
         sync: false
-      - key: PLAYER_CODE
-        sync: false
       - key: ANON_CODE
         sync: false
       - key: SESSION_SECRET

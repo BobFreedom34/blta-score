@@ -4,18 +4,23 @@ const { requireAdmin, isAdmin, isPlayer, isAnon, isProfileEditor } = require('..
 
 const router = express.Router();
 
-// Phone/email are never shown to an anonymous visitor — only to a
-// logged-in player (either code: the match-scoring PLAYER_CODE or the
-// bio-editing PROFILE_CODE) or an admin. Everything else on the bio stays
-// public. Deliberately excludes the limited anon tier (ANON_CODE) — that
-// login only ever sees/edits players it created itself (see
-// checkPlayerAccess below), and phone/email is off-limits even for those.
+// Email is never shown to an anonymous visitor — only to a logged-in
+// player, the bio-editing PROFILE_CODE, or an admin. Everything else on
+// the bio stays public. Deliberately excludes the limited anon tier
+// (ANON_CODE) — that login only ever sees/edits players it created itself
+// (see checkPlayerAccess below), and email is off-limits even for those.
+//
+// Phone is stricter still: it's now a player's login credential (see
+// auth.js), so it's admin-only regardless of the tiers above — a logged-in
+// player (or PROFILE_CODE session) could otherwise read, and log in as,
+// any other player.
 function canSeePrivateFields(req) {
   return isAdmin(req) || isPlayer(req) || isProfileEditor(req);
 }
 function stripPrivateFields(player, req) {
-  if (canSeePrivateFields(req)) return player;
   const { phone, email, ...rest } = player;
+  if (isAdmin(req)) return player;
+  if (canSeePrivateFields(req)) return { ...rest, email };
   return rest;
 }
 
@@ -131,8 +136,8 @@ function optionalTextField(body, key, current, maxLen) {
 }
 
 // Bio fields are editable by anyone with the profile-editing code (its own
-// PROFILE_CODE, separate from the match-scoring PLAYER_CODE) or an admin —
-// unlike name/photo above, which stay admin-only since renaming or
+// PROFILE_CODE, separate from a player's own phone-number login) or an
+// admin — unlike name/photo above, which stay admin-only since renaming or
 // re-photographing another player is a more sensitive action than filling
 // in your own racket string tension. The limited anon tier gets a narrower
 // version of this same right: it can edit a player's bio only if it (or
@@ -158,7 +163,6 @@ router.patch('/:id/bio', requireProfileEditorOrAnon, (req, res) => {
   const backhand = optionalTextField(req.body, 'backhand', player.backhand, 40);
   const seasons = optionalTextField(req.body, 'seasons', player.seasons, 60);
   const favoritePlayer = optionalTextField(req.body, 'favoritePlayer', player.favorite_player, 60);
-  const phone = optionalTextField(req.body, 'phone', player.phone, 30);
 
   let email = player.email;
   if (req.body.email !== undefined) {
@@ -186,10 +190,36 @@ router.patch('/:id/bio', requireProfileEditorOrAnon, (req, res) => {
   db.prepare(`
     UPDATE players SET category = ?, nationality = ?, birthday = ?, racket = ?,
       string_brand = ?, string_tension = ?, forehand = ?, backhand = ?,
-      seasons = ?, favorite_player = ?, phone = ?, email = ?
+      seasons = ?, favorite_player = ?, email = ?
     WHERE id = ?
-  `).run(category, nationality, birthday, racket, stringBrand, stringTension, forehand, backhand, seasons, favoritePlayer, phone, email, player.id);
+  `).run(category, nationality, birthday, racket, stringBrand, stringTension, forehand, backhand, seasons, favoritePlayer, email, player.id);
 
+  res.json(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id));
+});
+
+// Phone doubles as a player's login credential (see auth.js) — editable by
+// admin only, deliberately separate from the bio route above (which the
+// profile-editing code and anon-who-created-this-player can also reach).
+router.patch('/:id/phone', requireAdmin, (req, res) => {
+  const player = findPlayerByIdOrSlug(req.params.id);
+  if (!player) return res.status(404).json({ error: 'Player not found' });
+
+  const raw = String(req.body.phone || '').trim();
+  let phone = null;
+  if (raw) {
+    const digits = raw.replace(/\s+/g, '');
+    if (!/^0\d{9}$/.test(digits)) {
+      return res.status(400).json({ error: 'Enter a 10-digit phone number starting with 0, e.g. 0903111222' });
+    }
+    phone = digits;
+  }
+
+  try {
+    db.prepare('UPDATE players SET phone = ? WHERE id = ?').run(phone, player.id);
+  } catch (err) {
+    if (!/UNIQUE/.test(err.message)) throw err;
+    return res.status(409).json({ error: 'Another player already has this phone number' });
+  }
   res.json(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id));
 });
 

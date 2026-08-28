@@ -117,11 +117,12 @@ git push -u origin main
    plan, $7/month) with a 1 GB disk ($0.25/month) attached. Click **Apply**.
 4. It'll ask you to fill in the secret values marked `sync: false` in the blueprint —
    `SMTP_USER`, `SMTP_PASS` (see §5 below for getting the Gmail app password), `ADMIN_PASSWORD`
-   (see §4 — pick your own admin password here), and `PLAYER_CODE` (see §4b — pick a 4-digit
-   code to hand out to players). You can also skip SMTP for now and add it later from the
+   (see §4 — pick your own admin password here), and `ANON_CODE` (a fallback code for anyone
+   without a real BLTA account). You can also skip SMTP for now and add it later from the
    service's **Environment** tab — the app runs fine without it, it just won't be able to send
-   the finished-match email yet. `ADMIN_PASSWORD` and `PLAYER_CODE` are worth setting right away,
-   though, or those logins won't work.
+   the finished-match email yet. `ADMIN_PASSWORD` is worth setting right away, though, or that
+   login won't work. Player login itself needs no setup here — each player logs in with their
+   own phone number, set per-player on the Players page once you're logged in as admin.
 5. Render builds and deploys automatically. First deploy takes a couple of minutes — watch the
    **Logs** tab for `BLTA score app listening on http://localhost:...`.
 
@@ -207,7 +208,8 @@ Set at minimum:
 - `PUBLIC_URL=https://score.blta.sk`
 - SMTP settings so the "match finished" email can send (see §5 below for the Gmail setup)
 - `ADMIN_PASSWORD` and `SESSION_SECRET` (see §4) so the admin login works
-- `PLAYER_CODE` (see §4b) so the player login works
+- `ANON_CODE` so the no-account fallback login works (player login itself needs no env var — each
+  player logs in with their own phone number, set per-player on the Players page as admin)
 
 **Step 5 — Run it permanently with PM2** (keeps it running, restarts it if it crashes or the
 server reboots).
@@ -315,17 +317,22 @@ An admin session automatically counts as being logged in as a player too, everyw
 
 ---
 
-## 4b. The player code
+## 4b. Player login (phone number)
 
 Anyone can still browse matches, view a live score, and chat — no login needed for that. But
 **creating a new match, starting a live match, entering a result manually, and setting a match's
 date/location** all require being logged in as a **player** first, via the "LOG IN AS PLAYER" link
-in the top nav. Unlike the admin account this isn't a password for one person — it's a single
-4-digit code you hand out to every league player, so there's no per-person registration to manage.
+in the top nav.
 
-Set it via the `PLAYER_CODE` environment variable (same places as `ADMIN_PASSWORD` above — the
-Render **Environment** tab, or `.env` on a VPS). Pick any 4 digits; there's no username, and like
-the admin cookie it's a 30-day cookie scoped to whichever device logged in.
+Unlike the admin account, this isn't one shared password — each player logs in with their own
+phone number (Slovak mobile format, e.g. `0903111222`), which doubles as their identity: a
+logged-in player can only manage a match they play in (if an admin created it) or a match they
+created themselves — not every match in the league, the way the old shared code used to allow.
+
+There's no self-registration — an admin sets each player's number from their entry on the
+**Players** page (logged in as admin, an "Edit phone" control appears there). A player with no
+number on file yet simply can't log in until an admin adds one. Nothing to configure in the
+environment for this — it's all in the database.
 
 ---
 
