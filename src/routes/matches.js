@@ -98,6 +98,7 @@ function serialize(row) {
     pausedAt: row.paused_at,
     pausedSeconds: row.paused_seconds || 0,
     firstServer: row.first_server || null,
+    ballsPlayer: row.balls_player || null,
     endReason: row.end_reason || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -224,6 +225,13 @@ router.post('/', requireLoggedIn, (req, res) => {
   if (typeof notes === 'string' && notes.length > 1000) {
     return res.status(400).json({ error: 'Additional info is too long (max 1000 characters)' });
   }
+  let ballsPlayer = null;
+  if (req.body.ballsPlayer !== undefined && req.body.ballsPlayer !== null) {
+    ballsPlayer = Number(req.body.ballsPlayer);
+    if (![1, 2].includes(ballsPlayer)) {
+      return res.status(400).json({ error: 'ballsPlayer must be 1 or 2' });
+    }
+  }
 
   // A player created here by an anon-only session is flagged the same way
   // as the match itself, so that session can later edit that player's bio
@@ -246,8 +254,8 @@ router.post('/', requireLoggedIn, (req, res) => {
 
   const state = engine.initState(format);
   const info = db.prepare(`
-    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, notes)
-    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @notes)
+    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, notes, balls_player)
+    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @notes, @balls_player)
   `).run({
     share_token: crypto.randomUUID(),
     category,
@@ -263,6 +271,7 @@ router.post('/', requireLoggedIn, (req, res) => {
     // cookie still creates a normal, fully-managed match.
     created_by_anonymous: !isPlayer(req) && isAnon(req) ? 1 : 0,
     notes: (notes || '').trim(),
+    balls_player: ballsPlayer,
   });
 
   const row = db.prepare('SELECT * FROM matches WHERE id = ?').get(info.lastInsertRowid);

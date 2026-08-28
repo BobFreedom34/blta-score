@@ -83,6 +83,30 @@ function setupAutocomplete(inputId, listId) {
 setupAutocomplete('player1', 'player1-suggestions');
 setupAutocomplete('player2', 'player2-suggestions');
 
+// Who brings the balls — optional, defaults to nobody picked. Button
+// labels track whatever's currently typed into the name fields (falling
+// back to "Player 1"/"Player 2" while empty) so it's clear who's who even
+// before either name resolves to a real player. Clicking the already-
+// active button clears the pick instead of just switching sides.
+let ballsPlayer = null;
+const ballsBtns = Array.from(document.querySelectorAll('#balls-choice-row button'));
+function updateBallsLabels() {
+  const p1 = document.getElementById('player1').value.trim();
+  const p2 = document.getElementById('player2').value.trim();
+  ballsBtns[0].textContent = p1 || 'Player 1';
+  ballsBtns[1].textContent = p2 || 'Player 2';
+}
+document.getElementById('player1').addEventListener('input', updateBallsLabels);
+document.getElementById('player2').addEventListener('input', updateBallsLabels);
+updateBallsLabels();
+ballsBtns.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const val = Number(btn.dataset.balls);
+    ballsPlayer = ballsPlayer === val ? null : val;
+    ballsBtns.forEach((b) => b.classList.toggle('active', Number(b.dataset.balls) === ballsPlayer));
+  });
+});
+
 document.getElementById('new-match-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const errorEl = document.getElementById('form-error');
@@ -121,6 +145,7 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
           scheduledAt: scheduledAtDate ? new Date(`${scheduledAtDate}T${scheduledAtTime || '00:00'}`).toISOString() : null,
           format,
           notes,
+          ballsPlayer,
         },
       });
       window.location.href = `/match/${match.token}`;

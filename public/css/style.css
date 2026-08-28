@@ -564,6 +564,7 @@ datalist {}
 .player-name-link:hover { color: var(--orange); }
 .scoreboard-reason { padding: 0 12px 12px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #9a9a9a; }
 .serve-ball { display: inline-block; margin-right: 6px; font-size: 14px; }
+.balls-icon { display: inline-block; margin-left: 6px; width: 14px; height: 14px; vertical-align: -2px; }
 
 /* Compact variant of .scoreboard, used on a match card in a list */
 .scoreboard-compact { padding: 10px 12px; overflow-x: auto; }
@@ -575,6 +576,10 @@ datalist {}
 
 .server-choice-row { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .server-choice-row button.active { border-color: var(--orange); background: #fff6f2; color: var(--orange-dark); font-weight: 800; }
+/* Side by side instead of server-choice-row's default stacked column —
+   this sits in a full-width form card, not a narrow modal, so two columns
+   reads better than two stacked full-width buttons. */
+.balls-choice-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 
 .set-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
 .set-picker-btn {

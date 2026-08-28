@@ -89,6 +89,24 @@ function playerNameLink(player) {
   return `<span class="player-name-link" onclick="event.preventDefault();event.stopPropagation();${nav}">${escapeHtml(player.name)}</span>`;
 }
 
+// A small tennis-ball marker next to whichever player is bringing the
+// balls (set at creation time, see new-match.js) — only while the match
+// is still PLANNED, since once it's live/finished that's no longer
+// useful information to surface on the card. Drawn as inline SVG rather
+// than the 🎾 emoji — an emoji glyph's actual artwork is up to the
+// viewer's own OS/font, and 🎾 renders as a racket-and-ball combo on
+// several common platforms instead of a plain ball. Drawing it ourselves
+// (a lime circle with two curved seam lines, the classic tennis-ball
+// icon shape) guarantees the same ball-only look everywhere.
+function ballsIconHtml(m, playerNum) {
+  if (m.status !== 'PLANNED' || m.ballsPlayer !== playerNum) return '';
+  return `<svg class="balls-icon" viewBox="0 0 24 24" title="Brings the balls">
+    <circle cx="12" cy="12" r="11" fill="#d4ee4e" stroke="#a8c93a" stroke-width="1"/>
+    <path d="M3 6c3.2 2.6 3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    <path d="M21 6c-3.2 2.6-3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  </svg>`;
+}
+
 // Compact per-set scoreboard for a match card (LIVE/FINISHED) — same dark
 // table as the full match page, just condensed, with the same timer chip in
 // its header cell. For a LIVE match this always shows (even at a fresh
@@ -234,8 +252,8 @@ function compactMatchCardHtml(m) {
       <span class="compact-date">${compactDateHtml(m)}</span>
       ${categoryBadge(m.category)}
       <span class="compact-players">
-        <span class="${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}</span>
-        <span class="${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}</span>
+        <span class="${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}${ballsIconHtml(m, 1)}</span>
+        <span class="${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}${ballsIconHtml(m, 2)}</span>
       </span>
       <span class="compact-result">${matchScoreHtml(m)}</span>
       <span class="compact-place">${m.location ? `📍 ${escapeHtml(m.location)}` : ''}</span>

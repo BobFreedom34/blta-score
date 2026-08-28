@@ -207,6 +207,13 @@ if (!matchColumns.includes('first_server')) {
 if (!matchColumns.includes('end_reason')) {
   db.exec('ALTER TABLE matches ADD COLUMN end_reason TEXT');
 }
+// Who's bringing the balls — 1 or 2 (player1/player2), set at match
+// creation and shown as a small marker on the match card while it's still
+// PLANNED (see the balls-icon rendering in common.js). NULL means nobody
+// picked, same as first_server.
+if (!matchColumns.includes('balls_player')) {
+  db.exec('ALTER TABLE matches ADD COLUMN balls_player INTEGER');
+}
 
 const playerColumns = db.prepare('PRAGMA table_info(players)').all().map((c) => c.name);
 if (!playerColumns.includes('photo_url')) {
