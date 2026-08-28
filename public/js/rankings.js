@@ -38,9 +38,10 @@ function renderTable() {
     return;
   }
   listEl.innerHTML = table.rows.map((r, i) => {
+    const flag = flagImgHtml(r.nationality, 'rank-flag-icon');
     const nameHtml = r.slug
-      ? `<a href="/player/${escapeHtml(r.slug)}" class="rank-name">${escapeHtml(r.name)}</a>`
-      : `<span class="rank-name">${escapeHtml(r.name)}</span>`;
+      ? `<a href="/player/${escapeHtml(r.slug)}" class="rank-name">${flag}${escapeHtml(r.name)}</a>`
+      : `<span class="rank-name">${flag}${escapeHtml(r.name)}</span>`;
     const editLink = isAdminUser
       ? `<button type="button" class="rank-edit-link" data-action="edit-points">Edit</button>`
       : '';

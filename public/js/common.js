@@ -260,6 +260,68 @@ function escapeHtml(str) {
   ));
 }
 
+// Nationality is free text (admin-typed), not a country code, so flags are
+// matched by name — covers every value currently in use plus a handful of
+// common variants/languages. Falls back to no flag for anything unmapped
+// rather than guessing. Rendered as an actual flag image (flagcdn.com SVGs)
+// rather than a Unicode flag emoji — Windows browsers commonly fall back to
+// showing the raw two-letter region code ("SK") instead of a flag glyph, so
+// emoji aren't reliable here.
+const NATIONALITY_CODES = {
+  'slovenska republika': 'sk',
+  slovensko: 'sk',
+  slovakia: 'sk',
+  ukrajina: 'ua',
+  ukraine: 'ua',
+  nemecko: 'de',
+  germany: 'de',
+  francuzsko: 'fr',
+  france: 'fr',
+  'korejska republika': 'kr',
+  'south korea': 'kr',
+  korea: 'kr',
+  czechia: 'cz',
+  'ceska republika': 'cz',
+  'czech republic': 'cz',
+  cesko: 'cz',
+  vietnam: 'vn',
+  bulharsko: 'bg',
+  bulgaria: 'bg',
+  polsko: 'pl',
+  poland: 'pl',
+  madarsko: 'hu',
+  hungary: 'hu',
+  rakusko: 'at',
+  austria: 'at',
+  rusko: 'ru',
+  russia: 'ru',
+  srbsko: 'rs',
+  serbia: 'rs',
+  chorvatsko: 'hr',
+  croatia: 'hr',
+  taliansko: 'it',
+  italy: 'it',
+  spanielsko: 'es',
+  spain: 'es',
+  'velka britania': 'gb',
+  'united kingdom': 'gb',
+  anglicko: 'gb',
+  usa: 'us',
+  'united states': 'us',
+};
+
+function flagCodeFor(nationality) {
+  if (!nationality) return '';
+  const key = nationality.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  return NATIONALITY_CODES[key] || '';
+}
+
+function flagImgHtml(nationality, cssClass) {
+  const code = flagCodeFor(nationality);
+  if (!code) return '';
+  return `<img class="${cssClass}" src="https://flagcdn.com/${code}.svg" alt="${code.toUpperCase()}">`;
+}
+
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // Fixed Ddd d.m.yyyy, HH:MM format (not locale-dependent) so it reads the

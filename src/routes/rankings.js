@@ -29,9 +29,16 @@ router.get('/', async (req, res) => {
     return res.status(502).json({ error: `Could not load rankings from ${SOURCE_URL}: ${err.message}` });
   }
 
-  const players = db.prepare('SELECT id, name, slug FROM players').all();
+  // Nationality isn't part of the scraped blta.sk data — it only exists on
+  // a player's bio here, so a flag can only show up when the scraped name
+  // resolves to a local player who has one set.
+  const players = db.prepare('SELECT id, name, slug, nationality FROM players').all();
   const bySlug = {};
-  players.forEach((p) => { bySlug[normalize(p.name)] = p.slug; });
+  const byNationality = {};
+  players.forEach((p) => {
+    bySlug[normalize(p.name)] = p.slug;
+    if (p.nationality) byNationality[normalize(p.name)] = p.nationality;
+  });
 
   const overrides = db.prepare('SELECT table_key, player_name, points FROM ranking_overrides').all();
   const byOverrideKey = {};
@@ -47,6 +54,7 @@ router.get('/', async (req, res) => {
       return {
         ...r,
         slug: bySlug[normalize(r.name)] || null,
+        nationality: byNationality[normalize(r.name)] || null,
         points: hasOverride ? byOverrideKey[overrideKey] : r.points,
         overridden: hasOverride,
       };
