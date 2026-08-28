@@ -1030,6 +1030,15 @@ datalist {}
 /* ---------- Embed views ---------- */
 html.embed, body.embed { background: transparent; }
 .embed .container { padding: 10px; max-width: none; }
+/* An embedded iframe gets a fixed height from the surrounding WordPress
+   page. Without a height cap here, a long list (e.g. a season's worth of
+   finished matches) just grows this element to thousands of pixels tall —
+   its own horizontal scrollbar (for the compact table's overflow-x) ends
+   up anchored at the very bottom of that, far below the visible iframe
+   box, instead of right where a viewer can actually reach it. Capping the
+   height and adding vertical scroll here keeps both scrollbars where the
+   embed itself is visible, no matter how many rows there are. */
+.embed .compact-match-list { max-height: 100vh; overflow-y: auto; }
 
 footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); margin-top: 24px; }
 
