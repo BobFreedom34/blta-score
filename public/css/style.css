@@ -662,6 +662,16 @@ datalist {}
 .trend-sparkline { display: flex; flex-direction: column; gap: 4px; }
 .trend-sparkline svg { display: block; width: 100%; }
 .trend-value { font-size: 12px; font-weight: 800; color: var(--white); }
+.rank-trend-chart { position: relative; }
+.rank-trend-labels { position: absolute; inset: 0; pointer-events: none; }
+.rank-trend-labels span {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--white);
+  white-space: nowrap;
+}
 .form-square {
   width: 30px;
   height: 30px;

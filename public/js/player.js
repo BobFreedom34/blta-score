@@ -188,13 +188,21 @@ function winRateTrendHtml(matches, idSuffix) {
 // else. Scaled to the player's own best/worst rank in the window rather
 // than a fixed range (unlike the 0-100 win-rate scale) since rank pool
 // size varies by table and isn't meaningful on an absolute scale here.
-function rankTrendHtml(history) {
+function rankTrendHtml(history, containerWidth) {
   if (!history || history.length < 2) return '';
   const ranks = history.map((h) => h.rank);
   const minRank = Math.min(...ranks);
   const maxRank = Math.max(...ranks);
   const range = Math.max(1, maxRank - minRank);
-  const w = 280;
+  // The viewBox width is set to the container's own real measured pixel
+  // width (see renderRankTrend, which measures before calling this) rather
+  // than a generic reference width like the win-rate chart uses — that
+  // chart's preserveAspectRatio="none" non-uniform stretch is harmless for
+  // a line's slope, but it also flattened this chart's circular point
+  // markers into thin ellipses on a wide container. Matching viewBox width
+  // to real pixel width makes the scale factor exactly 1:1 in both axes,
+  // so nothing needs stretching in the first place.
+  const w = Math.max(120, Math.round(containerWidth || 280));
   const chartH = 64;
   const labelSpace = 14; // headroom for each point's own "#N" label, above the line
   const h = chartH + labelSpace;
@@ -210,26 +218,34 @@ function rankTrendHtml(history) {
   const gradId = 'rank-trend-gradient';
   const currentRank = history[history.length - 1].rank;
   // The rank itself, right above every point — not just the latest one —
-  // since the whole point of this chart is watching a specific number move.
+  // since the whole point of this chart is watching a specific number
+  // move. Rendered as an HTML overlay (positioned by percentage, matching
+  // each point's x/y within the viewBox) rather than SVG <text>: this SVG
+  // uses preserveAspectRatio="none" so the line fills however wide its
+  // container ends up without letterboxing, but that same non-uniform
+  // scaling stretches SVG text sideways on a wide (desktop) container —
+  // HTML text positioned by percentage isn't subject to that distortion.
   const pointLabels = coords.map(([x, y], i) => `
-    <text x="${x.toFixed(1)}" y="${(y - 5).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="var(--white)">#${history[i].rank}</text>
+    <span style="left:${(x / w * 100).toFixed(2)}%;top:${((y - 5) / h * 100).toFixed(2)}%">#${history[i].rank}</span>
   `).join('');
   return `
     <div class="trend-sparkline">
       <div class="form-guide-label">BLTA ranking trend</div>
-      <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px">
-        <defs>
-          <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="var(--orange)" stop-opacity="0.35"/>
-            <stop offset="100%" stop-color="var(--orange)" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-        <line x1="${padX}" y1="${baseline.toFixed(1)}" x2="${w - padX}" y2="${baseline.toFixed(1)}" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
-        <path d="${areaPath}" fill="url(#${gradId})" stroke="none"/>
-        <path d="${linePath}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        ${coords.map(([x, y]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5" fill="var(--orange)"/>`).join('')}
-        ${pointLabels}
-      </svg>
+      <div class="rank-trend-chart">
+        <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px">
+          <defs>
+            <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--orange)" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="var(--orange)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <line x1="${padX}" y1="${baseline.toFixed(1)}" x2="${w - padX}" y2="${baseline.toFixed(1)}" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+          <path d="${areaPath}" fill="url(#${gradId})" stroke="none"/>
+          <path d="${linePath}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          ${coords.map(([x, y]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5" fill="var(--orange)"/>`).join('')}
+        </svg>
+        <div class="rank-trend-labels">${pointLabels}</div>
+      </div>
       <div class="trend-value">#${currentRank}</div>
     </div>
   `;
@@ -239,12 +255,20 @@ function rankTrendHtml(history) {
 // no-op if the placeholder isn't on the page, or if there's under 2 weeks
 // of data yet (rankTrendHtml itself returns '' in that case, same
 // threshold winRateTrendHtml uses for "not enough points for a trend").
+// Renders an empty measuring shell first — rankTrendHtml needs the real
+// container width up front (see its comment) — then the real chart. Sized
+// once at load, not re-measured on window resize; a live resize would
+// need to redraw this to stay pixel-accurate, same trade-off most static
+// chart widgets make.
 async function renderRankTrend() {
   const el = document.getElementById('rank-trend-blta');
   if (!el || !currentPlayer) return;
   try {
     const { history } = await api(`/rankings/history/blta/${encodeURIComponent(currentPlayer.name)}`);
-    el.innerHTML = rankTrendHtml(history);
+    if (!history || history.length < 2) { el.innerHTML = ''; return; }
+    el.innerHTML = '<div class="trend-sparkline"><div class="form-guide-label">BLTA ranking trend</div><div class="rank-trend-chart"></div></div>';
+    const containerWidth = el.querySelector('.rank-trend-chart').clientWidth;
+    el.innerHTML = rankTrendHtml(history, containerWidth);
   } catch {
     el.innerHTML = '';
   }

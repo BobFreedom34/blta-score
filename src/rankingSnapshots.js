@@ -63,9 +63,9 @@ function getMoves(tableKey, rows) {
 
 // Full weekly rank history for one player in one table, oldest to newest —
 // the data behind the rank-trend chart on a player's profile page. Capped
-// to the most recent `limit` weeks so the chart (and the query) don't grow
-// unbounded over years of history.
-function getHistory(tableKey, normalizedName, limit = 26) {
+// to the most recent `limit` weeks (16 — about a season) so the chart
+// (and the query) don't grow unbounded over years of history.
+function getHistory(tableKey, normalizedName, limit = 16) {
   const rows = db.prepare(`
     SELECT rank, snapshot_week FROM ranking_snapshots
     WHERE table_key = ? AND player_name = ?
