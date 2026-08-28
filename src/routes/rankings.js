@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { requireAdmin } = require('../auth');
 const { getRankings, SOURCE_URL } = require('../rankingsScraper');
+const { getMoves } = require('../rankingSnapshots');
 
 const router = express.Router();
 
@@ -62,23 +63,33 @@ router.get('/', async (req, res) => {
   const byOverrideKey = {};
   overrides.forEach((o) => { byOverrideKey[`${o.table_key} ${o.player_name}`] = o.points; });
 
-  const tables = data.tables.map((t) => ({
-    key: t.key,
-    label: t.label,
-    pointsLabel: t.pointsLabel,
-    rows: t.rows.map((r) => {
-      const overrideKey = `${t.key} ${normalize(r.name)}`;
-      const hasOverride = Object.prototype.hasOwnProperty.call(byOverrideKey, overrideKey);
-      return {
-        ...r,
-        slug: bySlug[normalize(r.name)] || null,
-        nationality: byNationality[normalize(r.name)] || null,
-        age: byAge[normalize(r.name)] ?? null,
-        points: hasOverride ? byOverrideKey[overrideKey] : r.points,
-        overridden: hasOverride,
-      };
-    }),
-  }));
+  const tables = data.tables.map((t) => {
+    // Week-over-week movement — see src/rankingSnapshots.js. Computed (and
+    // the snapshot rolled forward, once a week) from this table's actual
+    // rank order, before overrides are layered on: an admin correcting a
+    // points value doesn't itself count as blta.sk-reported movement.
+    const moves = getMoves(t.key, t.rows.map((r) => ({ name: normalize(r.name), rank: r.rank })));
+
+    return {
+      key: t.key,
+      label: t.label,
+      pointsLabel: t.pointsLabel,
+      rows: t.rows.map((r) => {
+        const normName = normalize(r.name);
+        const overrideKey = `${t.key} ${normName}`;
+        const hasOverride = Object.prototype.hasOwnProperty.call(byOverrideKey, overrideKey);
+        return {
+          ...r,
+          slug: bySlug[normName] || null,
+          nationality: byNationality[normName] || null,
+          age: byAge[normName] ?? null,
+          points: hasOverride ? byOverrideKey[overrideKey] : r.points,
+          overridden: hasOverride,
+          move: moves[normName] || null,
+        };
+      }),
+    };
+  });
 
   res.json({ fetchedAt: data.fetchedAt, sourceUrl: SOURCE_URL, tables });
 });

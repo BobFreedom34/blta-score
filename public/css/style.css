@@ -1092,6 +1092,7 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 
 /* ---------- Rankings ---------- */
 .card-dark { background: var(--ink); color: var(--white); }
+#rankings-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 /* A real table: rank / player / age / matches / points as actual columns,
    not player+matches stacked in one cell — the header row and every data
    row share this exact column template so everything lines up. A fixed
@@ -1130,6 +1131,9 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   text-align: center;
 }
 .rank-row:nth-child(1) .rank-pos { color: var(--orange); }
+.rank-move { font-size: 10px; font-weight: 800; line-height: 1.3; }
+.rank-move-up { color: var(--green-light); }
+.rank-move-down { color: var(--danger); }
 .rank-name { font-weight: 700; font-size: 14px; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-dark .rank-name { color: var(--white); }
 .rank-flag-icon { width: 18px; height: auto; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
@@ -1163,19 +1167,19 @@ a.rank-name:hover { text-decoration: underline; }
 /* On a narrow screen, points is the number people actually came to check —
    it moves right after the player name (both in a resized column template
    and via `order`, since a grid item's `order` doesn't change which
-   track's width it gets) so it's visible with zero scrolling, while
-   age/matches shift after it and stay reachable via the row's own
-   horizontal scroll. */
+   track's width it gets) so it's visible with zero scrolling. Age is
+   dropped entirely (least essential of the four, and the extra room lets
+   names stop truncating as aggressively); Matches shifts after points. */
 @media (max-width: 560px) {
   .rank-grid {
-    grid-template-columns: 20px minmax(80px, 1fr) 58px 30px 62px;
+    grid-template-columns: 20px minmax(80px, 1fr) 64px 64px;
     min-width: 0;
     gap: 6px;
   }
-  .rank-col-age, .rank-col-matches { font-size: 12px; }
+  .rank-col-matches { font-size: 12px; }
+  .rank-col-age { display: none; }
   .rank-pos, .rank-col-pos { order: 1; }
   .rank-name, .rank-col-player { order: 2; }
   .rank-points, .rank-col-points { order: 3; }
-  .rank-col-age { order: 4; }
-  .rank-col-matches { order: 5; }
+  .rank-col-matches { order: 4; }
 }

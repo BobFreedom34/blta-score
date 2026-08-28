@@ -30,6 +30,18 @@ function pointsDisplayHtml(r) {
   return `${value}${overriddenMark}`;
 }
 
+// Week-over-week movement, e.g. "▲2" in green or "▼1" in red — blank until
+// there's been at least one weekly snapshot to compare against (see
+// src/rankingSnapshots.js), so a brand-new deploy or an unchanged rank
+// shows nothing rather than a misleading "no movement" indicator.
+function moveHtml(move) {
+  if (!move) return '';
+  const arrow = move.direction === 'up' ? '▲' : '▼';
+  const cls = move.direction === 'up' ? 'rank-move-up' : 'rank-move-down';
+  const title = move.direction === 'up' ? `Up ${move.amount} since last week` : `Down ${move.amount} since last week`;
+  return `<div class="rank-move ${cls}" title="${title}">${arrow}${move.amount}</div>`;
+}
+
 function headerRowHtml(table) {
   return `
     <div class="rank-table-header rank-grid">
@@ -58,7 +70,7 @@ function renderTable() {
       : '';
     return `
       <div class="rank-row rank-grid" data-index="${i}">
-        <div class="rank-pos">${r.rank}</div>
+        <div class="rank-pos">${r.rank}${moveHtml(r.move)}</div>
         ${nameHtml}
         <div class="rank-col-age">${r.age === null ? '–' : r.age}</div>
         <div class="rank-col-matches">${r.matches}</div>
