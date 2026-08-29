@@ -151,6 +151,21 @@
   </div>
 </div>
 
+<!-- Share modal — shown right after "Propose times for opponent" succeeds,
+     so there's an immediate link + Copy link to hand to the opponent
+     (see openShareModal in common.js and its call site in app.js). -->
+<div class="modal-backdrop" id="share-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="share-modal" aria-label="Close">&times;</button>
+    <h3>Share this match</h3>
+    <div class="code-box" id="share-link"></div>
+    <div class="share-row">
+      <button class="btn btn-green btn-sm" id="whatsapp-btn">WhatsApp</button>
+      <button class="btn btn-outline btn-sm" id="copy-link-btn">Copy link</button>
+    </div>
+  </div>
+</div>
+
 <!-- Notify me modal -->
 <div class="modal-backdrop" id="notify-modal" style="display:none">
   <div class="modal">

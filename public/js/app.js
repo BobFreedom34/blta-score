@@ -351,7 +351,7 @@ document.getElementById('propose-times-form').addEventListener('submit', async (
     // one otherwise (see routes/matches.js), so this same button keeps
     // working correctly for a match the opponent already proposed times
     // for instead of silently overwriting their offer.
-    await api(`/matches/${proposeTimesToken}/counter-propose`, {
+    const updated = await api(`/matches/${proposeTimesToken}/counter-propose`, {
       method: 'POST',
       body: {
         proposalSlots: Array.from(proposeAvailabilityPicker.selectedSlots),
@@ -361,7 +361,9 @@ document.getElementById('propose-times-form').addEventListener('submit', async (
       },
     });
     document.getElementById('propose-times-modal').style.display = 'none';
-    toast('Times proposed — share the match link with your opponent.');
+    // The share-with-opponent popup (link + Copy link) is the actual
+    // confirmation here — no separate toast needed on top of it.
+    openShareModal(updated, `${updated.player1.name} vs ${updated.player2.name} — pick a time that works for you:`);
     loadMatches();
   } catch (err) {
     errorEl.textContent = err.message;

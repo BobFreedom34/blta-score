@@ -1115,8 +1115,16 @@ document.getElementById('counter-propose-form').addEventListener('submit', async
       },
     });
     document.getElementById('counter-propose-modal').style.display = 'none';
-    toast(wasEditing ? 'Your times were updated!' : 'Your times were sent!');
     render(updated);
+    // A brand-new counter-proposal gets the share-with-opponent popup
+    // (link + Copy link) as its confirmation, same as the homepage's
+    // Propose Times flow — editing an existing one just needs the toast,
+    // since whoever's viewing this page already has the link.
+    if (wasEditing) {
+      toast('Your times were updated!');
+    } else {
+      openShareModal(updated, `${updated.player1.name} vs ${updated.player2.name} — pick a time that works for you:`);
+    }
   } catch (err) {
     errorEl.textContent = err.message;
   }
@@ -1222,17 +1230,10 @@ function openFinishUndecidedModal(m) {
   document.getElementById('finish-undecided-modal').style.display = 'flex';
 }
 
-function openShareModal(m) {
-  const url = `${window.location.origin}/match/${m.token}`;
-  document.getElementById('share-link').textContent = url;
-  document.getElementById('whatsapp-btn').onclick = () => {
-    window.open(whatsappShareUrl(`${m.player1.name} vs ${m.player2.name} — BLTA live score:`, url), '_blank');
-  };
-  document.getElementById('copy-link-btn').onclick = () => {
-    copyToClipboard(url).then(() => toast('Link copied'));
-  };
-  document.getElementById('share-modal').style.display = 'flex';
-}
+// openShareModal now lives in common.js — used here by the plain "🔗
+// Share" button (default text) and by the propose-times/counter-propose
+// success flows (their own text, see attachHandlers/openCounterProposeModal
+// call sites) — and by app.js's homepage propose-times flow too.
 
 // Fired right when a scoring click decides the match, so the last point can't
 // just keep growing the score — offers to finish it immediately instead.
