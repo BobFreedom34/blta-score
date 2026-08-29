@@ -30,7 +30,7 @@ const TRANSLATIONS = {
 
     'tabs.all': 'Všetky zápasy',
     'tabs.scheduled': 'Naplánované',
-    'tabs.planned': 'Plánované',
+    'tabs.planned': 'K naplánovaniu',
     'tabs.live': 'Naživo',
     'tabs.finished': 'Ukončené',
     'tabs.unfinished': 'Nedokončené',
@@ -121,8 +121,9 @@ const TRANSLATIONS = {
     'notify.pushInstead': '🔔 Radšej push notifikácia',
     'notify.subscribed': 'Ste prihlásený na odber!',
 
-    'login.title': 'Prihlásiť sa ako hráč',
-    'login.phoneIntro': 'Ak ste hráč BLTA, zadajte <span style="color:var(--green-light);text-transform:uppercase">svoje telefónne číslo</span> (napr. 0903111222). Ešte ho nemáte v systéme? Požiadajte admina, aby ho pridal.',
+    'login.title': 'Prihlásiť sa ako hráč BLTA',
+    'login.headline': 'Zadajte svoje <span style="color:var(--green-light)">telefónne číslo</span>',
+    'login.phoneIntro': 'Napr. 0903111222. Ešte ho nemáte v systéme? Požiadajte admina, aby ho pridal.',
     'login.notBltaPlayer': 'Ak nie ste hráč BLTA, prihláste sa namiesto toho kódom 3344 — aj tak môžete vytvárať a spravovať svoje vlastné zápasy.',
     'login.submit': 'Prihlásiť sa',
 
@@ -485,8 +486,9 @@ const TRANSLATIONS = {
     'notify.pushInstead': '🔔 Push notification instead',
     'notify.subscribed': "You're subscribed!",
 
-    'login.title': 'Log in as player',
-    'login.phoneIntro': 'If you\'re a BLTA player, enter <span style="color:var(--green-light);text-transform:uppercase">your phone number</span> (e.g. 0903111222). Don\'t have one on file yet? Ask an admin to add it.',
+    'login.title': 'Log in as a BLTA player',
+    'login.headline': 'Enter your <span style="color:var(--green-light)">phone number</span>',
+    'login.phoneIntro': "e.g. 0903111222. Don't have one on file yet? Ask an admin to add it.",
     'login.notBltaPlayer': "If you're not a BLTA player, log in with 3344 instead — you can still create and manage your own matches.",
     'login.submit': 'Log in',
 
