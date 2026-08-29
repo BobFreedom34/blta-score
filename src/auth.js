@@ -67,30 +67,6 @@ function requirePlayer(req, res, next) {
   next();
 }
 
-// Separate gate for editing profile bio info — its own shared code
-// (PROFILE_CODE), independent of a player's own phone-number login, so it
-// can be shared or changed without touching anyone's match-editing rights.
-const PROFILE_COOKIE_NAME = 'blta_profile';
-
-function isProfileEditor(req) {
-  return isAdmin(req) || (req.signedCookies && req.signedCookies[PROFILE_COOKIE_NAME] === 'ok');
-}
-
-function logInProfileEditor(res) {
-  res.cookie(PROFILE_COOKIE_NAME, 'ok', cookieOptions());
-}
-
-function logOutProfileEditor(res) {
-  res.clearCookie(PROFILE_COOKIE_NAME, cookieOptions());
-}
-
-function requireProfileEditor(req, res, next) {
-  if (!isProfileEditor(req)) {
-    return res.status(401).json({ error: 'Please log in to edit profile info' });
-  }
-  next();
-}
-
 // Third, more limited login tier — its own shared code (ANON_CODE), for
 // someone with no real BLTA player code. Unlike isPlayer, this does NOT
 // imply general match-management rights: an anon session can only manage
@@ -123,6 +99,5 @@ function requireLoggedIn(req, res, next) {
 module.exports = {
   COOKIE_NAME, PLAYER_COOKIE_NAME, isAdmin, logIn, logOut, requireAdmin,
   isPlayer, getPlayerId, logInPlayer, logOutPlayer, requirePlayer,
-  PROFILE_COOKIE_NAME, isProfileEditor, logInProfileEditor, logOutProfileEditor, requireProfileEditor,
   ANON_COOKIE_NAME, isAnon, logInAnon, logOutAnon, requireLoggedIn,
 };

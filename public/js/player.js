@@ -5,6 +5,7 @@
 // this file downstream needs the actual id either way.
 let playerId = window.location.pathname.split('/').filter(Boolean).pop();
 let currentPlayer = null;
+let isAdminUser = false;
 const nameEl = document.getElementById('player-name');
 const listEl = document.getElementById('player-match-list');
 const resultFilterEl = document.getElementById('result-filter');
@@ -660,92 +661,18 @@ function openBioModal() {
   document.getElementById('player-bio-modal').style.display = 'flex';
 }
 
-// Editing profile info uses its own code (PROFILE_CODE), separate from the
-// shared match-scoring player code — a self-contained login flow (not
-// common.js's requirePlayerAuth/openPlayerLoginModal, which are wired to
-// the other code) since this is the only page that needs it.
-let profileEditorAuthed = false;
-
-async function refreshProfileAuth() {
-  try {
-    const res = await api('/player/profile-session');
-    profileEditorAuthed = !!res.isProfileEditor;
-  } catch {
-    profileEditorAuthed = false;
-  }
-  return profileEditorAuthed;
-}
-
-function openProfileLoginModal(onSuccess) {
-  const modal = document.getElementById('profile-login-modal');
-  if (!modal) return;
-  const form = document.getElementById('profile-login-form');
-  const errorEl = document.getElementById('profile-login-error');
-  const digits = Array.from(modal.querySelectorAll('.otp-digit'));
-  errorEl.textContent = '';
-  form.onsubmit = (e) => e.preventDefault();
-
-  const submitCode = async () => {
-    errorEl.textContent = '';
-    digits.forEach((d) => { d.disabled = true; });
-    try {
-      await api('/player/profile-login', { method: 'POST', body: { code: digits.map((d) => d.value).join('') } });
-      profileEditorAuthed = true;
-      modal.style.display = 'none';
-      if (onSuccess) onSuccess();
-    } catch (err) {
-      errorEl.textContent = err.message;
-      digits.forEach((d) => { d.value = ''; d.disabled = false; });
-      digits[0].focus();
-    }
-  };
-
-  digits.forEach((input, i) => {
-    input.value = '';
-    input.disabled = false;
-    input.oninput = () => {
-      const raw = input.value.replace(/\D/g, '');
-      let idx = i;
-      for (const ch of raw) {
-        if (idx >= digits.length) break;
-        digits[idx].value = ch;
-        idx += 1;
-      }
-      if (!raw) input.value = '';
-      digits[Math.min(idx, digits.length - 1)].focus();
-      if (digits.every((d) => d.value)) submitCode();
-    };
-    input.onkeydown = (e) => {
-      if (e.key === 'Backspace' && !input.value && i > 0) digits[i - 1].focus();
-    };
-    input.onpaste = (e) => {
-      e.preventDefault();
-      const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
-      if (!text) return;
-      digits.forEach((d, idx) => { d.value = text[idx] || ''; });
-      (digits.find((d) => !d.value) || digits[digits.length - 1]).focus();
-      if (digits.every((d) => d.value)) submitCode();
-    };
-  });
-
-  modal.style.display = 'flex';
-  setTimeout(() => digits[0].focus(), 50);
-}
-
-// anonAuthed comes from common.js's shared session state (the anon tier
-// logs in through the same code box as a real player, not this page's own
-// profile-code modal) — letting it through here just reaches the server,
-// which enforces that an anon session can only actually save changes to a
-// player it created itself (see checkPlayerAccess in routes/players.js).
+// A profile can only be edited by the player it belongs to (logged in via
+// their own phone number — common.js's requirePlayerAuth/currentPlayerId)
+// or by an admin — mirrors checkPlayerAccess in routes/players.js. Prompts
+// login if logged out, then — the moment login is confirmed — rejects
+// immediately with a clear message if this isn't the visitor's own page,
+// same pattern as handlePlannedActionClick in app.js.
 function requireProfileAuth(onReady) {
-  if (profileEditorAuthed || anonAuthed) { onReady(); return; }
-  // A logged-in player (common.js's playerAuthed/currentPlayerId — see
-  // requirePlayerAuth/openPlayerLoginModal there) can edit their own bio
-  // without the separate PROFILE_CODE, but only on their own page —
-  // playerId is this file's own module var, reassigned to the real
-  // numeric id once the player record loads below.
-  if (playerAuthed && currentPlayerId && currentPlayerId === Number(playerId)) { onReady(); return; }
-  openProfileLoginModal(onReady);
+  if (isAdminUser) { onReady(); return; }
+  requirePlayerAuth(() => {
+    if (playerAuthed && currentPlayerId && currentPlayerId === Number(playerId)) { onReady(); return; }
+    toast('You can only edit your own profile');
+  });
 }
 
 document.getElementById('edit-bio-btn').addEventListener('click', () => requireProfileAuth(openBioModal));
@@ -776,9 +703,8 @@ document.getElementById('player-bio-form').addEventListener('submit', async (e) 
   }
 });
 
-refreshProfileAuth();
-
 (async () => {
+  isAdminUser = await checkAdmin();
   try {
     const player = await api(`/players/${playerId}`);
     playerId = player.id;

@@ -1,21 +1,17 @@
 const express = require('express');
 const db = require('../db');
-const { requireAdmin, isAdmin, isPlayer, isAnon, isProfileEditor, getPlayerId } = require('../auth');
+const { requireAdmin, isAdmin, isPlayer, getPlayerId } = require('../auth');
 
 const router = express.Router();
 
 // Email is never shown to an anonymous visitor — only to a logged-in
-// player, the bio-editing PROFILE_CODE, or an admin. Everything else on
-// the bio stays public. Deliberately excludes the limited anon tier
-// (ANON_CODE) — that login only ever sees/edits players it created itself
-// (see checkPlayerAccess below), and email is off-limits even for those.
+// player or an admin. Everything else on the bio stays public.
 //
 // Phone is stricter still: it's now a player's login credential (see
-// auth.js), so it's admin-only regardless of the tiers above — a logged-in
-// player (or PROFILE_CODE session) could otherwise read, and log in as,
-// any other player.
+// auth.js), so it's admin-only regardless — a logged-in player could
+// otherwise read, and log in as, any other player.
 function canSeePrivateFields(req) {
-  return isAdmin(req) || isPlayer(req) || isProfileEditor(req);
+  return isAdmin(req) || isPlayer(req);
 }
 function stripPrivateFields(player, req) {
   const { phone, email, ...rest } = player;
@@ -24,22 +20,21 @@ function stripPrivateFields(player, req) {
   return rest;
 }
 
-// A real profile editor/admin can edit any player's bio. A specific
-// logged-in player can edit only their own bio (see checkPlayerAccess
-// below). The limited anon tier can only edit a player it (or another anon
-// session) created — mirrors checkMatchAccess in routes/matches.js.
-function requireProfileEditorOrAnon(req, res, next) {
-  if (!isAdmin(req) && !isProfileEditor(req) && !isAnon(req) && !getPlayerId(req)) {
+// A profile can only be edited by an admin, or by the specific logged-in
+// player it belongs to (see checkPlayerAccess below) — no shared code, no
+// editing someone else's profile, mirrors checkMatchAccess's shape in
+// routes/matches.js but simpler since there's no "created by" carve-out.
+function requireLoggedInForProfile(req, res, next) {
+  if (!isAdmin(req) && !getPlayerId(req)) {
     return res.status(401).json({ error: 'Please log in to edit profile info' });
   }
   next();
 }
 function checkPlayerAccess(req, res, player) {
-  if (isAdmin(req) || isProfileEditor(req)) return true;
-  if (isAnon(req) && player.created_by_anonymous) return true;
+  if (isAdmin(req)) return true;
   const playerId = getPlayerId(req);
   if (playerId && playerId === player.id) return true;
-  res.status(403).json({ error: 'You can only edit your own profile (or players you created)' });
+  res.status(403).json({ error: 'You can only edit your own profile' });
   return false;
 }
 
@@ -138,14 +133,11 @@ function optionalTextField(body, key, current, maxLen) {
   return v ? v.slice(0, maxLen) : null;
 }
 
-// Bio fields are editable by anyone with the profile-editing code (its own
-// PROFILE_CODE, separate from a player's own phone-number login) or an
-// admin — unlike name/photo above, which stay admin-only since renaming or
-// re-photographing another player is a more sensitive action than filling
-// in your own racket string tension. The limited anon tier gets a narrower
-// version of this same right: it can edit a player's bio only if it (or
-// another anon session) created that player in the first place.
-router.patch('/:id/bio', requireProfileEditorOrAnon, (req, res) => {
+// Bio fields are editable by the player themselves (logged in via their
+// own phone number) or an admin — unlike name/photo above, which stay
+// admin-only since renaming or re-photographing another player is a more
+// sensitive action than filling in your own racket string tension.
+router.patch('/:id/bio', requireLoggedInForProfile, (req, res) => {
   const player = findPlayerByIdOrSlug(req.params.id);
   if (!player) return res.status(404).json({ error: 'Player not found' });
   if (!checkPlayerAccess(req, res, player)) return;
@@ -202,7 +194,7 @@ router.patch('/:id/bio', requireProfileEditorOrAnon, (req, res) => {
 
 // Phone doubles as a player's login credential (see auth.js) — editable by
 // admin only, deliberately separate from the bio route above (which the
-// profile-editing code and anon-who-created-this-player can also reach).
+// player themselves can also reach, but only for their own profile).
 router.patch('/:id/phone', requireAdmin, (req, res) => {
   const player = findPlayerByIdOrSlug(req.params.id);
   if (!player) return res.status(404).json({ error: 'Player not found' });
