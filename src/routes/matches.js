@@ -496,19 +496,22 @@ router.delete('/:token', requireLoggedIn, (req, res) => {
 // "Respond to a proposed time" endpoint. Player A created this match with
 // several candidate slots + venues instead of one fixed date; Player B
 // picks one of each — from either calendar if B also counter-proposed
-// their own (see POST /:token/counter-propose). That fills in the match's
-// real scheduled_at/location, same as if it had been entered directly, and
-// clears both proposals — the negotiation is over either way. Unlike
-// viewing the card (open to anyone with the link), actually confirming a
-// slot requires being logged in as one of the two specific players in
-// this match, or an admin — not anon, not a different player, not a
+// their own (see POST /:token/counter-propose), but only from A's
+// calendar, not their own — the whole point is the *other* player picking
+// from what you offered, not self-confirming your own availability. That
+// fills in the match's real scheduled_at/location, same as if it had been
+// entered directly, and clears both proposals — the negotiation is over
+// either way. Unlike viewing the card (open to anyone with the link),
+// actually confirming a slot requires being logged in as one of the two
+// specific players in this match, or an admin — not anon, not a different
+// player, not a
 // visitor who hasn't logged in at all.
 router.post('/:token/respond-proposal', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  const requestingPlayerId = getPlayerId(req);
   if (!isAdmin(req)) {
-    const playerId = getPlayerId(req);
-    if (!playerId || (playerId !== row.player1_id && playerId !== row.player2_id)) {
+    if (!requestingPlayerId || (requestingPlayerId !== row.player1_id && requestingPlayerId !== row.player2_id)) {
       return res.status(403).json({ error: 'Log in as one of the two players in this match to pick a time' });
     }
   }
@@ -528,14 +531,22 @@ router.post('/:token/respond-proposal', (req, res) => {
   // Whichever calendar (the first proposal, or the counter-proposal if
   // there is one) actually offered this slot+venue combination wins — a
   // picked slot only ever comes from one card's own options, so there's no
-  // ambiguity if it happens to appear in both.
+  // ambiguity if it happens to appear in both. proposerPlayerId (mapped
+  // from the 1/2 proposedBy shape to an actual player id) is null when
+  // whoever proposed it left "who's proposing" blank — nothing to check
+  // against then, so it's left open rather than blocked.
   const proposals = [
-    { slots: JSON.parse(row.proposal_slots), venues: row.proposal_venues ? JSON.parse(row.proposal_venues) : [], notifyEmail: row.proposal_notify_email },
-    row.counter_proposal_slots ? { slots: JSON.parse(row.counter_proposal_slots), venues: row.counter_proposal_venues ? JSON.parse(row.counter_proposal_venues) : [], notifyEmail: row.counter_proposal_notify_email } : null,
+    { slots: JSON.parse(row.proposal_slots), venues: row.proposal_venues ? JSON.parse(row.proposal_venues) : [], notifyEmail: row.proposal_notify_email, proposerPlayerId: row.proposed_by === 1 ? row.player1_id : row.proposed_by === 2 ? row.player2_id : null },
+    row.counter_proposal_slots ? { slots: JSON.parse(row.counter_proposal_slots), venues: row.counter_proposal_venues ? JSON.parse(row.counter_proposal_venues) : [], notifyEmail: row.counter_proposal_notify_email, proposerPlayerId: row.counter_proposed_by === 1 ? row.player1_id : row.counter_proposed_by === 2 ? row.player2_id : null } : null,
   ].filter(Boolean);
   const matched = proposals.find((p) => p.slots.includes(slot) && p.venues.includes(venue));
   if (!matched) {
     return res.status(400).json({ error: 'That time and venue combination is not one of the proposed options' });
+  }
+  // A player can only pick from the *other* player's calendar, not confirm
+  // their own offer — admin is exempt, same as the login check above.
+  if (!isAdmin(req) && matched.proposerPlayerId && matched.proposerPlayerId === requestingPlayerId) {
+    return res.status(403).json({ error: "You can't confirm the times you proposed yourself — wait for the other player to pick one" });
   }
   db.prepare(`
     UPDATE matches SET scheduled_at = ?, location = ?, updated_at = ?,

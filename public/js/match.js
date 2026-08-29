@@ -385,6 +385,11 @@ function attachProposalCardHandlers(m, which) {
   const isPrimary = which === 'primary';
   const idPrefix = isPrimary ? 'proposal' : 'counter-proposal';
   const slots = isPrimary ? m.proposalSlots : m.counterProposalSlots;
+  const proposedBy = isPrimary ? m.proposedBy : m.counterProposedBy;
+  // null when whoever proposed this card left "who's proposing" blank —
+  // nothing to check the confirming player against then, mirrors the
+  // server-side proposerPlayerId in POST /:token/respond-proposal.
+  const proposerPlayerId = proposedBy === 1 ? m.player1.id : proposedBy === 2 ? m.player2.id : null;
   const card = document.getElementById(`${idPrefix}-card`);
   if (!card) return;
 
@@ -471,13 +476,18 @@ function attachProposalCardHandlers(m, which) {
   // server-side gate in POST /:token/respond-proposal. Prompts login if
   // logged out, then rejects immediately with a clear message if this
   // isn't one of the two players in the match, same pattern as
-  // handlePlannedActionClick in app.js.
+  // handlePlannedActionClick in app.js. A player also can't confirm their
+  // own card — only the *other* player's calendar is theirs to pick from.
   confirmBtn.addEventListener('click', () => requirePlayerAuth(async () => {
     if (!selectedSlot || !selectedVenue) return;
     const playsInMatch = isAdminUser || (playerAuthed && currentPlayerId
       && (currentPlayerId === m.player1.id || currentPlayerId === m.player2.id));
     if (!playsInMatch) {
       proposalErrorEl.textContent = 'Log in as one of the two players in this match to pick a time.';
+      return;
+    }
+    if (!isAdminUser && proposerPlayerId && currentPlayerId === proposerPlayerId) {
+      proposalErrorEl.textContent = "You can't confirm the times you proposed yourself — wait for the other player to pick one.";
       return;
     }
     confirmBtn.disabled = true;
