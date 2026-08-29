@@ -4,19 +4,19 @@ const { requireAdmin, isAdmin, isPlayer, getPlayerId } = require('../auth');
 
 const router = express.Router();
 
-// Email is never shown to an anonymous visitor — only to a logged-in
-// player or an admin. Everything else on the bio stays public.
-//
-// Phone is stricter still: it's now a player's login credential (see
-// auth.js), so only admin or the player's own record shows it — any other
-// logged-in player could otherwise read, and log in as, that player.
+// Email and phone are never shown to an anonymous visitor or a logged-out
+// browser — only to a logged-in player (any player, not just their own
+// record) or an admin. Everything else on the bio stays public. Phone
+// doubles as a player's login credential (see auth.js), so this is a
+// deliberate trust call: any logged-in player can see it for anyone, on
+// the understanding that the BLTA player base isn't adversarial towards
+// each other.
 function canSeePrivateFields(req) {
   return isAdmin(req) || isPlayer(req);
 }
 function stripPrivateFields(player, req) {
+  if (canSeePrivateFields(req)) return player;
   const { phone, email, ...rest } = player;
-  if (isAdmin(req) || getPlayerId(req) === player.id) return player;
-  if (canSeePrivateFields(req)) return { ...rest, email };
   return rest;
 }
 
