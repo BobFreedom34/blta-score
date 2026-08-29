@@ -620,8 +620,18 @@ function render(m) {
 }
 
 function attachHandlers(m) {
+  // Start live match / Enter result manually: prompt login if logged out
+  // (requirePlayerAuth), then — the moment login is confirmed — reject
+  // immediately with checkMatchAccess's own message if this isn't a match
+  // this player/anon session can manage, rather than only rejecting after
+  // they've filled out and submitted the schedule/first-server/result
+  // form. Same pattern as handlePlannedActionClick in app.js.
   const startBtn = document.getElementById('start-btn');
   if (startBtn) startBtn.addEventListener('click', () => requirePlayerAuth(() => {
+    if (!canManageMatch(m, isAdminUser)) {
+      toast('You can only manage matches you play in (if an admin created them) or matches you created yourself');
+      return;
+    }
     if (!m.location || !m.scheduledAt) {
       openStartScheduleModal(m, (updated) => openFirstServerModal(updated));
     } else {
@@ -630,7 +640,13 @@ function attachHandlers(m) {
   }));
 
   const manualResultBtn = document.getElementById('manual-result-btn');
-  if (manualResultBtn) manualResultBtn.addEventListener('click', () => requirePlayerAuth(() => openManualResultModal(m)));
+  if (manualResultBtn) manualResultBtn.addEventListener('click', () => requirePlayerAuth(() => {
+    if (!canManageMatch(m, isAdminUser)) {
+      toast('You can only manage matches you play in (if an admin created them) or matches you created yourself');
+      return;
+    }
+    openManualResultModal(m);
+  }));
 
   // Proposal response card(s) — viewing/marking a slot is open to anyone
   // with the link, but confirming one is gated to the two match players
