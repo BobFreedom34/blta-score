@@ -8,12 +8,12 @@ let isAdminUser = false;
 // viewer is admin, so this display/edit UI only shows up for them too.
 function playerRowHtml(p) {
   const phone = isAdminUser
-    ? `<span class="player-phone">${p.phone ? escapeHtml(p.phone) : '<span class="player-phone-missing">No phone on file</span>'}</span>`
+    ? `<span class="player-phone">${p.phone ? escapeHtml(p.phone) : `<span class="player-phone-missing">${t('players.noPhoneOnFile')}</span>`}</span>`
     : '';
   const actions = isAdminUser ? `
       <div class="player-row-actions">
-        <button type="button" class="btn btn-sm btn-outline" data-action="edit">Edit</button>
-        <button type="button" class="btn btn-sm btn-danger" data-action="delete">Delete</button>
+        <button type="button" class="btn btn-sm btn-outline" data-action="edit">${t('common.edit')}</button>
+        <button type="button" class="btn btn-sm btn-danger" data-action="delete">${t('common.delete')}</button>
       </div>
   ` : '';
   return `
@@ -34,7 +34,7 @@ function surname(name) {
 
 function render() {
   if (players.length === 0) {
-    listEl.innerHTML = `<div class="empty-state">No players ${query ? 'match your search' : 'yet. Add the first one above'}.</div>`;
+    listEl.innerHTML = `<div class="empty-state">${t(query ? 'players.noneSearch' : 'players.noneYet')}</div>`;
     return;
   }
   const sorted = [...players].sort((a, b) => {
@@ -61,7 +61,7 @@ async function loadPlayers() {
     players = await api(`/players${params}`);
     render();
   } catch (err) {
-    listEl.innerHTML = `<div class="empty-state">Could not load players: ${escapeHtml(err.message)}</div>`;
+    listEl.innerHTML = `<div class="empty-state">${escapeHtml(t('players.couldNotLoad', { error: err.message }))}</div>`;
   }
 }
 
@@ -72,11 +72,11 @@ function attachRowHandlers() {
 
     row.querySelector('[data-action="edit"]').addEventListener('click', () => {
       row.innerHTML = `
-        <input type="text" class="edit-name-input" value="${escapeHtml(player.name)}" maxlength="60" placeholder="Name">
+        <input type="text" class="edit-name-input" value="${escapeHtml(player.name)}" maxlength="60" placeholder="${escapeHtml(t('players.namePlaceholder'))}">
         <input type="text" class="edit-phone-input" inputmode="numeric" value="${player.phone ? escapeHtml(player.phone) : ''}" placeholder="0903111222" maxlength="10">
         <div class="player-row-actions">
-          <button type="button" class="btn btn-sm btn-primary" data-action="save">Save</button>
-          <button type="button" class="btn btn-sm btn-outline" data-action="cancel">Cancel</button>
+          <button type="button" class="btn btn-sm btn-primary" data-action="save">${t('common.save')}</button>
+          <button type="button" class="btn btn-sm btn-outline" data-action="cancel">${t('common.cancel')}</button>
         </div>
       `;
       const nameInput = row.querySelector('.edit-name-input');
@@ -87,7 +87,7 @@ function attachRowHandlers() {
       row.querySelector('[data-action="cancel"]').addEventListener('click', render);
       const save = async () => {
         const name = nameInput.value.trim();
-        if (!name) return toast('Name is required');
+        if (!name) return toast(t('players.nameRequired'));
         const phone = phoneInput.value.trim();
         try {
           if (name !== player.name) {
@@ -96,7 +96,7 @@ function attachRowHandlers() {
           if (phone !== (player.phone || '')) {
             await api(`/players/${id}/phone`, { method: 'PATCH', body: { phone } });
           }
-          toast('Player updated');
+          toast(t('players.updated'));
           loadPlayers();
         } catch (err) {
           toast(err.message);
@@ -112,10 +112,10 @@ function attachRowHandlers() {
     });
 
     row.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-      if (!confirm(`Delete ${player.name}? This can't be undone.`)) return;
+      if (!confirm(t('players.deleteConfirm', { name: player.name }))) return;
       try {
         await api(`/players/${id}`, { method: 'DELETE' });
-        toast(`Deleted ${player.name}`);
+        toast(t('players.deleted', { name: player.name }));
         loadPlayers();
       } catch (err) {
         toast(err.message);
@@ -132,7 +132,7 @@ document.getElementById('add-player-form').addEventListener('submit', async (e) 
   try {
     await api('/players', { method: 'POST', body: { name } });
     input.value = '';
-    toast(`Added ${name}`);
+    toast(t('players.added', { name }));
     loadPlayers();
   } catch (err) {
     toast(err.message);

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BLTA Score — Players</title>
+<title data-i18n="page.playersTitle">BLTA Score — Hráči</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" href="/favicon.png">
@@ -17,36 +17,40 @@
     <a class="brand" href="/"><img src="/img/blta-logo.png" alt="BLTA" class="brand-logo"><small>SCORE</small></a>
     <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">☰</button>
     <nav class="nav-links" id="nav-links">
-      <a href="/">Matches</a>
-      <a href="/players" class="active">Players</a>
-      <a href="/rankings">Rankings</a>
-      <a href="/new-match">+ New match</a>
-      <a href="#" class="player-login-link" id="player-login-link">LOG IN AS PLAYER</a>
+      <a href="/" data-i18n="nav.matches">Zápasy</a>
+      <a href="/players" class="active" data-i18n="nav.players">Hráči</a>
+      <a href="/rankings" data-i18n="nav.rankings">Rebríček</a>
+      <a href="/new-match" data-i18n="nav.newMatch">+ Nový zápas</a>
+      <a href="#" class="player-login-link" id="player-login-link" data-i18n="nav.loginPlayer">PRIHLÁSIŤ SA AKO HRÁČ</a>
+      <div class="lang-switcher" id="lang-switcher">
+        <button type="button" class="lang-btn" data-lang="sk">SK</button>
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+      </div>
     </nav>
   </div>
 </div>
 
 <div class="container">
-  <h1 style="margin-top:22px">Players</h1>
-  <p style="color:var(--gray-dim)">Add every league player here once — then pick them from the list when creating a match.</p>
+  <h1 style="margin-top:22px" data-i18n="players.heading">Hráči</h1>
+  <p style="color:var(--gray-dim)" data-i18n="players.intro">Pridajte každého hráča ligy sem raz — potom si ho vyberiete zo zoznamu pri vytváraní zápasu.</p>
 
   <div class="card" style="margin-bottom:20px" id="add-player-card">
     <form id="add-player-form" style="display:flex;gap:10px;flex-wrap:wrap">
-      <input type="text" id="new-player-name" placeholder="Player full name" style="flex:1;min-width:200px;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px" required maxlength="60">
-      <button type="submit" class="btn btn-primary">+ Add player</button>
+      <input type="text" id="new-player-name" placeholder="Celé meno hráča" data-i18n-placeholder="players.newPlayerPlaceholder" style="flex:1;min-width:200px;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px" required maxlength="60">
+      <button type="submit" class="btn btn-primary" data-i18n="players.addPlayer">+ Pridať hráča</button>
     </form>
   </div>
   <div class="card" style="margin-bottom:20px;display:none" id="admin-required-card">
     <p style="margin:0;color:var(--gray)">
-      Anyone can pick existing players when planning a match — adding, renaming, or removing
-      players here requires an admin login. <a href="/admin" style="text-decoration:underline;color:var(--orange)">Log in as admin</a>.
+      <span data-i18n="players.adminRequiredBefore">Ktoréhokoľvek existujúceho hráča môže pri plánovaní zápasu vybrať ktokoľvek — pridávanie, premenovanie alebo odstraňovanie hráčov tu si vyžaduje prihlásenie ako admin.</span>
+      <a href="/admin" style="text-decoration:underline;color:var(--orange)" data-i18n="players.loginAsAdmin">Prihlásiť sa ako admin</a>.
     </p>
   </div>
 
-  <input type="text" id="filter-q" placeholder="Search players…" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px;margin-bottom:14px">
+  <input type="text" id="filter-q" placeholder="Hľadať hráčov…" data-i18n-placeholder="players.searchPlaceholder" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px;margin-bottom:14px">
 
   <div class="card">
-    <div id="player-list">Loading…</div>
+    <div id="player-list" data-i18n="players.loading">Načítavam…</div>
   </div>
 </div>
 
@@ -54,15 +58,15 @@
 <div class="modal-backdrop" id="player-login-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="player-login-modal" aria-label="Close">&times;</button>
-    <h3 style="text-transform:uppercase;font-weight:900">Log in as player</h3>
-    <p style="font-size:16px;color:var(--ink)">If you're a BLTA player, enter <span style="color:var(--green-light);text-transform:uppercase">your phone number</span> (e.g. 0903111222). Don't have one on file yet? Ask an admin to add it.</p>
-    <p style="font-size:13px;color:var(--gray);margin:8px 0">If you're not a BLTA player, log in with 3344 instead — you can still create and manage your own matches.</p>
+    <h3 style="text-transform:uppercase;font-weight:900" data-i18n="login.title">Prihlásiť sa ako hráč</h3>
+    <p style="font-size:16px;color:var(--ink)" data-i18n-html="login.phoneIntro">Ak ste hráč BLTA, zadajte <span style="color:var(--green-light);text-transform:uppercase">svoje telefónne číslo</span> (napr. 0903111222). Ešte ho nemáte v systéme? Požiadajte admina, aby ho pridal.</p>
+    <p style="font-size:13px;color:var(--gray);margin:8px 0" data-i18n="login.notBltaPlayer">Ak nie ste hráč BLTA, prihláste sa namiesto toho kódom 3344 — aj tak môžete vytvárať a spravovať svoje vlastné zápasy.</p>
     <form id="player-login-form">
       <div class="field">
         <input type="text" inputmode="numeric" id="player-login-input" placeholder="0903111222" autocomplete="off">
       </div>
       <div id="player-login-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
-      <button type="submit" class="btn btn-primary btn-block">Log in</button>
+      <button type="submit" class="btn btn-primary btn-block" data-i18n="login.submit">Prihlásiť sa</button>
     </form>
   </div>
 </div>
@@ -71,7 +75,7 @@
   <div class="site-footer-inner">
     <span>BLTA Score</span>
     <div style="display:flex;gap:12px">
-      <a href="/badges-admin" class="footer-badges-link" style="display:none">Manage badges</a>
+      <a href="/badges-admin" class="footer-badges-link" style="display:none" data-i18n="footer.manageBadges">Spravovať odznaky</a>
       <a href="/admin">Admin</a>
     </div>
   </div>
