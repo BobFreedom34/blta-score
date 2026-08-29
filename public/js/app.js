@@ -11,6 +11,7 @@ let currentQuery = '';
 let currentCategory = '';
 let currentTimeFilter = '';
 let debounceTimer = null;
+let isAdminUser = false;
 
 const listEl = document.getElementById('match-list');
 
@@ -77,6 +78,14 @@ function notifyButtonsHtml(m) {
 // common.js — via the same 'compact-page' body class.
 const COMPACT_MODE = document.body.classList.contains('compact-page');
 
+// Enough of a match's ownership shape (mirrors checkMatchAccess in
+// routes/matches.js) baked onto the Set date/Propose times buttons so the
+// click handler can decide eligibility immediately, before opening either
+// modal — see canManageMatch in common.js and the click delegation below.
+function plannedActionDataAttrs(m) {
+  return `data-token="${m.token}" data-p1-id="${m.player1.id}" data-p2-id="${m.player2.id}" data-created-by-admin="${m.createdByAdmin ? '1' : '0'}" data-created-by-anonymous="${m.createdByAnonymous ? '1' : '0'}" data-created-by-player-id="${m.createdByPlayerId != null ? m.createdByPlayerId : ''}"`;
+}
+
 function matchCardHtml(m) {
   if (COMPACT_MODE) return compactMatchCardHtml(m);
   const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
@@ -108,8 +117,8 @@ function matchCardHtml(m) {
       ${isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : ''}
       ${m.status === 'PLANNED' && !m.scheduledAt ? `
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-          <button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}">📅 Set date &amp; location</button>
-          <button type="button" class="btn btn-sm btn-outline propose-times-btn" data-token="${m.token}" data-p1-name="${escapeHtml(m.player1.name)}" data-p2-name="${escapeHtml(m.player2.name)}">🗓 Propose times for opponent</button>
+          <button type="button" class="btn btn-sm btn-outline quick-schedule-btn" ${plannedActionDataAttrs(m)}>📅 Set date &amp; location</button>
+          <button type="button" class="btn btn-sm btn-outline propose-times-btn" ${plannedActionDataAttrs(m)} data-p1-name="${escapeHtml(m.player1.name)}" data-p2-name="${escapeHtml(m.player2.name)}">🗓 Propose times for opponent</button>
         </div>
       ` : ''}
       ${m.status === 'PLANNED' && m.scheduledAt ? notifyButtonsHtml(m) : ''}
@@ -361,6 +370,30 @@ function openNotifyModal(token, type) {
   document.getElementById('notify-modal').style.display = 'flex';
 }
 
+// Shared gate for the two Planned-card quick actions. Both buttons are
+// always visible (see matchCardHtml) — logging in, and eligibility for
+// this specific match, are enforced here instead: prompt login first if
+// logged out, then — the moment login is confirmed — reject immediately
+// with checkMatchAccess's own message if this player/anon session isn't
+// allowed to manage this particular match, rather than only rejecting
+// after they've filled out the whole modal and hit submit.
+function handlePlannedActionClick(btn, onReady) {
+  requirePlayerAuth(() => {
+    const matchLike = {
+      player1: { id: Number(btn.dataset.p1Id) },
+      player2: { id: Number(btn.dataset.p2Id) },
+      createdByAdmin: btn.dataset.createdByAdmin === '1',
+      createdByAnonymous: btn.dataset.createdByAnonymous === '1',
+      createdByPlayerId: btn.dataset.createdByPlayerId ? Number(btn.dataset.createdByPlayerId) : null,
+    };
+    if (!canManageMatch(matchLike, isAdminUser)) {
+      toast('You can only manage matches you play in (if an admin created them) or matches you created yourself');
+      return;
+    }
+    onReady();
+  });
+}
+
 listEl.addEventListener('click', (e) => {
   const calendarBtn = e.target.closest('.add-calendar-btn');
   if (calendarBtn) {
@@ -373,14 +406,14 @@ listEl.addEventListener('click', (e) => {
   if (scheduleBtn) {
     e.preventDefault();
     e.stopPropagation();
-    requirePlayerAuth(() => openQuickScheduleModal(scheduleBtn.dataset.token));
+    handlePlannedActionClick(scheduleBtn, () => openQuickScheduleModal(scheduleBtn.dataset.token));
     return;
   }
   const proposeBtn = e.target.closest('.propose-times-btn');
   if (proposeBtn) {
     e.preventDefault();
     e.stopPropagation();
-    requirePlayerAuth(() => openProposeTimesModal(proposeBtn.dataset.token, proposeBtn.dataset.p1Name, proposeBtn.dataset.p2Name));
+    handlePlannedActionClick(proposeBtn, () => openProposeTimesModal(proposeBtn.dataset.token, proposeBtn.dataset.p1Name, proposeBtn.dataset.p2Name));
     return;
   }
   const notifyBtn = e.target.closest('.notify-btn');
@@ -456,5 +489,18 @@ socket.on('matches:changed', () => {
   refreshCounts();
 });
 
-loadMatches();
-refreshCounts();
+(async () => {
+  // Awaited before the first render (and before any click can reach
+  // handlePlannedActionClick above) so isAdminUser/playerAuthed/
+  // currentPlayerId are accurate the moment someone can actually click one
+  // of the Planned-card buttons.
+  isAdminUser = await checkAdmin();
+  await refreshPlayerAuth();
+  loadMatches();
+  refreshCounts();
+  // Re-render once a *later* login/logout finishes (see the
+  // blta:auth-changed dispatch in common.js) — registered only after the
+  // refreshPlayerAuth() call above so its own initial dispatch doesn't
+  // trigger a redundant second loadMatches() right after this one.
+  window.addEventListener('blta:auth-changed', loadMatches);
+})();
