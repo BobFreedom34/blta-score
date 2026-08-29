@@ -324,15 +324,15 @@ async function ensureH2H(m) {
   if (current) render(current);
 }
 
-// Public "respond to a proposed time" card — shown to anyone viewing this
-// link while the match has proposed slots/venues but no confirmed date yet.
-// No login required to use it (see attachProposalCardHandlers'
-// confirm-*-btn handler and POST /:token/respond-proposal on the server) —
-// the share link itself is the access control, same trust model as an
-// anon match. `which` is 'primary' (the first proposal) or 'counter' (the
-// other player's own independent counter-proposal, see
-// POST /:token/counter-propose) — each gets its own card with its own ids
-// so both can render and work side by side at once.
+// "Respond to a proposed time" card — shown to anyone viewing this link
+// while the match has proposed slots/venues but no confirmed date yet.
+// Anyone can look at it and mark a slot/venue, but actually confirming
+// requires being logged in as one of the two players in this match (or
+// admin) — see attachProposalCardHandlers' confirm-*-btn handler and
+// POST /:token/respond-proposal on the server. `which` is 'primary' (the
+// first proposal) or 'counter' (the other player's own independent
+// counter-proposal, see POST /:token/counter-propose) — each gets its own
+// card with its own ids so both can render and work side by side at once.
 function oneProposalCardHtml(m, which) {
   const isPrimary = which === 'primary';
   const idPrefix = isPrimary ? 'proposal' : 'counter-proposal';
@@ -465,8 +465,21 @@ function attachProposalCardHandlers(m, which) {
     venueBtns.forEach((b) => b.classList.toggle('selected', b === btn));
     confirmBtn.disabled = !(selectedSlot && selectedVenue);
   }));
-  confirmBtn.addEventListener('click', async () => {
+  // Viewing the card and marking a slot/venue is open to anyone with the
+  // link, but actually confirming one requires being logged in as one of
+  // the two specific players in this match (or admin) — mirrors the
+  // server-side gate in POST /:token/respond-proposal. Prompts login if
+  // logged out, then rejects immediately with a clear message if this
+  // isn't one of the two players in the match, same pattern as
+  // handlePlannedActionClick in app.js.
+  confirmBtn.addEventListener('click', () => requirePlayerAuth(async () => {
     if (!selectedSlot || !selectedVenue) return;
+    const playsInMatch = isAdminUser || (playerAuthed && currentPlayerId
+      && (currentPlayerId === m.player1.id || currentPlayerId === m.player2.id));
+    if (!playsInMatch) {
+      proposalErrorEl.textContent = 'Log in as one of the two players in this match to pick a time.';
+      return;
+    }
     confirmBtn.disabled = true;
     proposalErrorEl.textContent = '';
     try {
@@ -480,7 +493,7 @@ function attachProposalCardHandlers(m, which) {
       proposalErrorEl.textContent = err.message;
       confirmBtn.disabled = false;
     }
-  });
+  }));
 
   // "Edit" — the proposer changing their own offer. Requires login (same
   // as editing Location/Date), unlike everything else on this card.
@@ -609,18 +622,21 @@ function attachHandlers(m) {
   const manualResultBtn = document.getElementById('manual-result-btn');
   if (manualResultBtn) manualResultBtn.addEventListener('click', () => requirePlayerAuth(() => openManualResultModal(m)));
 
-  // Proposal response card(s) — deliberately NOT behind requirePlayerAuth.
-  // Anyone with this link can pick a slot/venue, matching the server's
-  // public POST /:token/respond-proposal (see oneProposalCardHtml above).
-  // One call per card that's actually on the page — the primary proposal,
-  // and the counter-proposal too once there is one.
+  // Proposal response card(s) — viewing/marking a slot is open to anyone
+  // with the link, but confirming one is gated to the two match players
+  // (or admin) inside attachProposalCardHandlers itself, matching the
+  // server's POST /:token/respond-proposal (see oneProposalCardHtml
+  // above). One call per card that's actually on the page — the primary
+  // proposal, and the counter-proposal too once there is one.
   attachProposalCardHandlers(m, 'primary');
   if (m.counterProposalSlots) attachProposalCardHandlers(m, 'counter');
 
   // "Propose your own times instead" — only present on the primary card
   // while there's no counter-proposal yet (see oneProposalCardHtml).
-  // Deliberately NOT behind requirePlayerAuth, same public trust model as
-  // confirming a slot.
+  // Deliberately NOT behind requirePlayerAuth — same public, share-link
+  // trust model as viewing the card, unlike actually confirming a slot
+  // (see attachProposalCardHandlers), which does require being one of the
+  // two match players.
   const counterProposeLink = document.getElementById('counter-propose-link');
   if (counterProposeLink) counterProposeLink.addEventListener('click', () => openCounterProposeModal(m));
 
@@ -1005,11 +1021,13 @@ document.getElementById('edit-proposal-form').addEventListener('submit', async (
 // what's offered (see POST /:token/counter-propose — it no longer
 // replaces the first proposal, both stand side by side, see
 // oneProposalCardHtml). Deliberately public (see attachProposalCardHandlers
-// above) — no login needed, same share-link trust model as confirming a
-// slot. Reused for editing an existing counter-proposal too (its own
-// "Edit" link reaches here with `editing: true`) — same form, pre-filled
-// instead of starting empty, same POST route since it already just
-// overwrites whatever counter-proposal is there.
+// above) — no login needed to submit a counter-proposal, same share-link
+// trust model as viewing the card (unlike actually confirming a slot,
+// which does require being one of the two match players). Reused for
+// editing an existing counter-proposal too (its own "Edit" link reaches
+// here with `editing: true`) — same form, pre-filled instead of starting
+// empty, same POST route since it already just overwrites whatever
+// counter-proposal is there.
 const counterAvailabilityPicker = createAvailabilityPicker({ weekTabsId: 'counter-week-tabs', gridWrapId: 'counter-availability-grid-wrap', slotCountId: 'counter-slot-count' });
 const counterVenuePicker = createVenueChipPicker({ listId: 'counter-venue-chip-list', inputId: 'counter-venue-input', addBtnId: 'counter-venue-add-btn' });
 const counterProposerPicker = createStaticPlayerChoicePicker('counter-proposer-choice-row');

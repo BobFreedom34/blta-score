@@ -493,18 +493,25 @@ router.delete('/:token', requireLoggedIn, (req, res) => {
   res.status(204).end();
 });
 
-// Public "respond to a proposed time" endpoint. Player A created this match
-// with several candidate slots + venues instead of one fixed date; Player B
-// follows the same share link (no separate login — the link is the access
-// control, same trust model as viewing/scoring an anon match) and picks one
-// of each — from either calendar if B also counter-proposed their own (see
-// POST /:token/counter-propose). That fills in the match's real
-// scheduled_at/location, same as if it had been entered directly, and
-// clears both proposals — the negotiation is over either way. Deliberately
-// NOT behind requireLoggedIn or checkMatchAccess.
+// "Respond to a proposed time" endpoint. Player A created this match with
+// several candidate slots + venues instead of one fixed date; Player B
+// picks one of each — from either calendar if B also counter-proposed
+// their own (see POST /:token/counter-propose). That fills in the match's
+// real scheduled_at/location, same as if it had been entered directly, and
+// clears both proposals — the negotiation is over either way. Unlike
+// viewing the card (open to anyone with the link), actually confirming a
+// slot requires being logged in as one of the two specific players in
+// this match, or an admin — not anon, not a different player, not a
+// visitor who hasn't logged in at all.
 router.post('/:token/respond-proposal', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  if (!isAdmin(req)) {
+    const playerId = getPlayerId(req);
+    if (!playerId || (playerId !== row.player1_id && playerId !== row.player2_id)) {
+      return res.status(403).json({ error: 'Log in as one of the two players in this match to pick a time' });
+    }
+  }
   if (!row.proposal_slots) {
     return res.status(400).json({ error: 'This match has no proposed times to respond to' });
   }
