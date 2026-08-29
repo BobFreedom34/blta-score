@@ -1,10 +1,12 @@
+// label is a t() key, not literal text — read it with t(FILTERS[key].label)
+// wherever it's shown, so it follows the current language.
 const FILTERS = {
-  ALL: { status: 'PLANNED', label: 'All Matches' },
-  SCHEDULED: { status: 'PLANNED', dateFilter: 'has', label: 'Scheduled' },
-  UNSCHEDULED: { status: 'PLANNED', dateFilter: 'none', label: 'Planned' },
-  LIVE: { status: 'LIVE', label: 'Live' },
-  FINISHED: { status: 'FINISHED', label: 'Finished' },
-  UNFINISHED: { status: 'UNFINISHED', label: 'Unfinished' },
+  ALL: { status: 'PLANNED', label: 'tabs.all' },
+  SCHEDULED: { status: 'PLANNED', dateFilter: 'has', label: 'tabs.scheduled' },
+  UNSCHEDULED: { status: 'PLANNED', dateFilter: 'none', label: 'tabs.planned' },
+  LIVE: { status: 'LIVE', label: 'tabs.live' },
+  FINISHED: { status: 'FINISHED', label: 'tabs.finished' },
+  UNFINISHED: { status: 'UNFINISHED', label: 'tabs.unfinished' },
 };
 let currentFilter = 'ALL';
 let currentQuery = '';
@@ -46,7 +48,7 @@ function googleCalendarUrl(m) {
   const start = new Date(m.scheduledAt);
   const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
   const fmt = (d) => d.toISOString().replace(/[-:]|\.\d{3}/g, '');
-  const text = `${m.player1.name} vs ${m.player2.name} — BLTA match`;
+  const text = t('calendar.eventTitle', { p1: m.player1.name, p2: m.player2.name });
   const details = `${m.formatLabel}\n${window.location.origin}/match/${m.token}`;
   const params = new URLSearchParams({
     action: 'TEMPLATE',
@@ -63,11 +65,11 @@ function notifyButtonsHtml(m) {
   const finishDone = localStorage.getItem(`blta_notified_${m.token}_FINISH`);
   const startCount = m.notifyStartCount || 0;
   const finishCount = m.notifyFinishCount || 0;
-  const startLabel = `${startDone ? '✓ Notified: start' : '🔔 Notify: start'}${startCount ? ` (${startCount})` : ''}`;
-  const finishLabel = `${finishDone ? '✓ Notified: finish' : '🏁 Notify: finish'}${finishCount ? ` (${finishCount})` : ''}`;
+  const startLabel = `${t(startDone ? 'matches.notifiedStart' : 'matches.notifyStart')}${startCount ? ` (${startCount})` : ''}`;
+  const finishLabel = `${t(finishDone ? 'matches.notifiedFinish' : 'matches.notifyFinish')}${finishCount ? ` (${finishCount})` : ''}`;
   return `
     <div class="notify-buttons-row">
-      <button type="button" class="btn btn-sm btn-outline add-calendar-btn" data-url="${escapeHtml(googleCalendarUrl(m))}"><span class="cal-full">📅 Add to Calendar</span><span class="cal-compact">📅+</span></button>
+      <button type="button" class="btn btn-sm btn-outline add-calendar-btn" data-url="${escapeHtml(googleCalendarUrl(m))}"><span class="cal-full">${t('matches.addToCalendar')}</span><span class="cal-compact">📅+</span></button>
       <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="START" ${startDone ? 'disabled' : ''}>${startLabel}</button>
       <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="FINISH" ${finishDone ? 'disabled' : ''}>${finishLabel}</button>
     </div>
@@ -114,11 +116,11 @@ function matchCardHtml(m) {
           </div>
         </div>
       `}
-      ${isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : ''}
+      ${isOverdueUnresolved(m) ? `<div class="overdue-warning">${t('matches.overdueWarning')}</div>` : ''}
       ${m.status === 'PLANNED' && !m.scheduledAt ? `
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-          <button type="button" class="btn btn-sm btn-outline quick-schedule-btn" ${plannedActionDataAttrs(m)}>📅 Set date &amp; location</button>
-          <button type="button" class="btn btn-sm btn-outline propose-times-btn" ${plannedActionDataAttrs(m)} data-p1-name="${escapeHtml(m.player1.name)}" data-p2-name="${escapeHtml(m.player2.name)}">🗓 Propose times for opponent</button>
+          <button type="button" class="btn btn-sm btn-outline quick-schedule-btn" ${plannedActionDataAttrs(m)}>${t('matches.setDateLocation')}</button>
+          <button type="button" class="btn btn-sm btn-outline propose-times-btn" ${plannedActionDataAttrs(m)} data-p1-name="${escapeHtml(m.player1.name)}" data-p2-name="${escapeHtml(m.player2.name)}">${t('matches.proposeTimes')}</button>
         </div>
       ` : ''}
       ${m.status === 'PLANNED' && m.scheduledAt ? notifyButtonsHtml(m) : ''}
@@ -138,15 +140,15 @@ function buildMatchListHtml(matches, liveMatches) {
   // Live sits in its own group above Scheduled/Not yet scheduled, and only
   // appears at all when there's something live right now.
   if (liveMatches && liveMatches.length) {
-    parts.push('<div class="match-list-heading">🔴 Live</div>');
+    parts.push(`<div class="match-list-heading">${t('matches.liveHeading')}</div>`);
     parts.push(...liveMatches.map(matchCardHtml));
   }
   matches.forEach((m, i) => {
     const curScheduled = !!m.scheduledAt;
     if (i === 0) {
-      parts.push(`<div class="match-list-heading">${curScheduled ? '📅 Scheduled' : '🕓 Planned'}</div>`);
+      parts.push(`<div class="match-list-heading">${t(curScheduled ? 'matches.scheduledHeading' : 'matches.plannedHeading')}</div>`);
     } else if (matches[i - 1].scheduledAt && !curScheduled) {
-      parts.push('<div class="match-list-heading">🕓 Planned</div>');
+      parts.push(`<div class="match-list-heading">${t('matches.plannedHeading')}</div>`);
     }
     parts.push(matchCardHtml(m));
   });
@@ -200,12 +202,13 @@ async function loadMatches() {
     ]);
     if (matches.length === 0 && liveMatches.length === 0) {
       const hasFilters = currentQuery || currentCategory || currentTimeFilter;
-      listEl.innerHTML = `<div class="empty-state">No ${FILTERS[currentFilter].label.toLowerCase()} matches${hasFilters ? ' match your filters' : ''}.</div>`;
+      const label = t(FILTERS[currentFilter].label).toLowerCase();
+      listEl.innerHTML = `<div class="empty-state">${escapeHtml(t(hasFilters ? 'matches.noneFiltered' : 'matches.noneOfType', { label }))}</div>`;
     } else {
       listEl.innerHTML = buildMatchListHtml(matches, liveMatches);
     }
   } catch (err) {
-    listEl.innerHTML = `<div class="empty-state">Could not load matches: ${escapeHtml(err.message)}</div>`;
+    listEl.innerHTML = `<div class="empty-state">${escapeHtml(t('matches.couldNotLoad', { error: err.message }))}</div>`;
   }
 }
 
@@ -274,11 +277,10 @@ document.getElementById('embed-list-btn').addEventListener('click', () => {
   // narrow (a sidebar widget), so each embed defaults to a different shape.
   const iframeStyle = COMPACT_MODE ? 'border:0;width:100%' : 'border:0;max-width:480px';
   const code = `<iframe src="${src.toString()}" width="100%" height="${COMPACT_MODE ? 400 : 600}" frameborder="0" style="${iframeStyle}"></iframe>`;
-  document.getElementById('embed-modal-desc').textContent =
-    `Paste this into a "Custom HTML" block on your blta.sk page to show the ${f.label.toLowerCase()} list:`;
+  document.getElementById('embed-modal-desc').textContent = t('embed.descWithList', { label: t(f.label).toLowerCase() });
   document.getElementById('embed-code').textContent = code;
   document.getElementById('copy-embed-btn').onclick = () => {
-    copyToClipboard(code).then(() => toast('Embed code copied'));
+    copyToClipboard(code).then(() => toast(t('embed.copied')));
   };
   document.getElementById('embed-modal').style.display = 'flex';
 });
@@ -329,16 +331,16 @@ document.getElementById('propose-times-form').addEventListener('submit', async (
   const errorEl = document.getElementById('propose-times-error');
   errorEl.textContent = '';
   if (proposeAvailabilityPicker.selectedSlots.size === 0) {
-    errorEl.textContent = 'Mark at least one time you can play.';
+    errorEl.textContent = t('proposeTimes.markAtLeastOne');
     return;
   }
   if (proposeVenuePicker.venues.length === 0) {
-    errorEl.textContent = 'Add at least one preferred venue.';
+    errorEl.textContent = t('proposeTimes.addAtLeastOneVenue');
     return;
   }
   const notifyEmail = document.getElementById('modal-notify-email').value.trim();
   if (notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail)) {
-    errorEl.textContent = 'Enter a valid confirmation email address, or leave it blank.';
+    errorEl.textContent = t('proposeTimes.invalidEmail');
     return;
   }
 
@@ -365,8 +367,8 @@ document.getElementById('propose-times-form').addEventListener('submit', async (
     // confirmation here — no separate toast needed on top of it.
     openShareModal(
       updated,
-      `${updated.player1.name} vs ${updated.player2.name} — pick a time that works for you:`,
-      "Send this link to your opponent so they can pick the best time for them. Once they choose a date, you'll get a confirmation email if you added one."
+      t('proposeTimes.whatsappText', { p1: updated.player1.name, p2: updated.player2.name }),
+      t('proposeTimes.shareDesc')
     );
     loadMatches();
   } catch (err) {
@@ -381,10 +383,8 @@ let notifyType = null;
 function openNotifyModal(token, type) {
   notifyToken = token;
   notifyType = type;
-  document.getElementById('notify-modal-title').textContent = type === 'START' ? 'Notify me when it starts' : 'Notify me when it finishes';
-  document.getElementById('notify-modal-desc').textContent = type === 'START'
-    ? "We'll email you as soon as this match starts."
-    : "We'll email you the result as soon as this match finishes.";
+  document.getElementById('notify-modal-title').textContent = t(type === 'START' ? 'notify.startTitle' : 'notify.finishTitle');
+  document.getElementById('notify-modal-desc').textContent = t(type === 'START' ? 'notify.startDesc' : 'notify.finishDesc');
   document.getElementById('notify-email').value = localStorage.getItem('blta_notify_email') || '';
   document.getElementById('notify-error').textContent = '';
   document.getElementById('notify-modal').style.display = 'flex';
@@ -407,7 +407,7 @@ function handlePlannedActionClick(btn, onReady) {
       createdByPlayerId: btn.dataset.createdByPlayerId ? Number(btn.dataset.createdByPlayerId) : null,
     };
     if (!canManageMatch(matchLike, isAdminUser)) {
-      showAccessDeniedModal('You can only manage matches you play in (if an admin created them) or matches you created yourself.');
+      showAccessDeniedModal(t('accessDenied.message'));
       return;
     }
     onReady();
@@ -478,7 +478,7 @@ document.getElementById('notify-form').addEventListener('submit', async (e) => {
     localStorage.setItem('blta_notify_email', email);
     localStorage.setItem(`blta_notified_${notifyToken}_${notifyType}`, '1');
     document.getElementById('notify-modal').style.display = 'none';
-    toast("You're subscribed!");
+    toast(t('notify.subscribed'));
     loadMatches();
   } catch (err) {
     errorEl.textContent = err.message;
@@ -495,7 +495,7 @@ document.getElementById('notify-push-btn').addEventListener('click', async () =>
     await subscribeToPush(notifyToken, notifyType);
     localStorage.setItem(`blta_notified_${notifyToken}_${notifyType}`, '1');
     document.getElementById('notify-modal').style.display = 'none';
-    toast("You're subscribed!");
+    toast(t('notify.subscribed'));
     loadMatches();
   } catch (err) {
     errorEl.textContent = err.message;

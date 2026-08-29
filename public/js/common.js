@@ -571,7 +571,13 @@ async function api(path, options = {}) {
 }
 
 function categoryBadge(category) {
-  return `<span class="badge badge-${category}">${CATEGORY_LABELS[category] || category}</span>`;
+  // Only FRIENDLY has its own translation (a plain English word) —
+  // ELITE/NEXT_GEN/NOVICE/VIP_CUP/ATA_TENNIS stay as the same brand-style
+  // label in both languages, so those fall back to CATEGORY_LABELS as-is.
+  const key = `category.${category}`;
+  const hasTranslation = TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key];
+  const label = hasTranslation ? t(key) : (CATEGORY_LABELS[category] || category);
+  return `<span class="badge badge-${category}">${label}</span>`;
 }
 
 // One-line card shared by the /compact page and the /embed/compact widget:
@@ -617,7 +623,10 @@ function statusBadge(m) {
   if (status === 'PLANNED' && scheduledAt) {
     return `<span class="badge badge-status status-PLANNED-dated">${fmtDateShort(scheduledAt)}</span>`;
   }
-  return `<span class="badge badge-status status-${status}">${STATUS_LABELS[status] || status}</span>`;
+  const key = `status.${status}`;
+  const hasTranslation = TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key];
+  const label = hasTranslation ? t(key) : (STATUS_LABELS[status] || status);
+  return `<span class="badge badge-status status-${status}">${label}</span>`;
 }
 
 function escapeHtml(str) {
@@ -758,12 +767,12 @@ function openShareModal(m, whatsappText, description) {
   const descEl = document.getElementById('share-modal-desc');
   descEl.textContent = description || '';
   descEl.style.display = description ? '' : 'none';
-  const text = whatsappText || `${m.player1.name} vs ${m.player2.name} — BLTA live score:`;
+  const text = whatsappText || t('share.defaultWhatsappText', { p1: m.player1.name, p2: m.player2.name });
   document.getElementById('whatsapp-btn').onclick = () => {
     window.open(whatsappShareUrl(text, url), '_blank');
   };
   document.getElementById('copy-link-btn').onclick = () => {
-    copyToClipboard(url).then(() => toast('Link copied'));
+    copyToClipboard(url).then(() => toast(t('share.linkCopied')));
   };
   document.getElementById('share-modal').style.display = 'flex';
 }
@@ -812,9 +821,9 @@ let currentPlayerId = null;
 
 function updatePlayerNavLinks() {
   document.querySelectorAll('.player-login-link').forEach((el) => {
-    if (playerAuthed && currentPlayerName) el.textContent = `LOG OUT (${currentPlayerName})`;
-    else if (playerAuthed || anonAuthed) el.textContent = 'LOG OUT';
-    else el.textContent = 'LOG IN AS PLAYER';
+    if (playerAuthed && currentPlayerName) el.textContent = t('nav.logoutWithName', { name: currentPlayerName });
+    else if (playerAuthed || anonAuthed) el.textContent = t('nav.logout');
+    else el.textContent = t('nav.loginPlayer');
   });
 }
 
