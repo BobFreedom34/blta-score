@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BLTA Score — Player</title>
+<title data-i18n="page.playerTitle">BLTA Score — Hráč</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" href="/favicon.png">
@@ -17,11 +17,15 @@
     <a class="brand" href="/"><img src="/img/blta-logo.png" alt="BLTA" class="brand-logo"><small>SCORE</small></a>
     <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">☰</button>
     <nav class="nav-links" id="nav-links">
-      <a href="/">Matches</a>
-      <a href="/players">Players</a>
-      <a href="/rankings">Rankings</a>
-      <a href="/new-match">+ New match</a>
-      <a href="#" class="player-login-link" id="player-login-link">LOG IN AS PLAYER</a>
+      <a href="/" data-i18n="nav.matches">Zápasy</a>
+      <a href="/players" data-i18n="nav.players">Hráči</a>
+      <a href="/rankings" data-i18n="nav.rankings">Rebríček</a>
+      <a href="/new-match" data-i18n="nav.newMatch">+ Nový zápas</a>
+      <a href="#" class="player-login-link" id="player-login-link" data-i18n="nav.loginPlayer">PRIHLÁSIŤ SA AKO HRÁČ</a>
+      <div class="lang-switcher" id="lang-switcher">
+        <button type="button" class="lang-btn" data-lang="sk">SK</button>
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+      </div>
     </nav>
   </div>
 </div>
@@ -32,41 +36,41 @@
     <div class="player-header-main">
       <span class="player-flag" id="player-flag"></span>
       <div class="player-name-row">
-        <h1 id="player-name">Loading…</h1>
+        <h1 id="player-name" data-i18n="common.loading">Načítavam…</h1>
       </div>
     </div>
   </div>
 
   <div class="info-item player-upcoming-stat">
     <div class="value" id="player-upcoming-count">0</div>
-    <div class="label">Planned<br>matches</div>
+    <div class="label" data-i18n-html="player.plannedMatchesLabel">Plánované<br>zápasy</div>
   </div>
 
   <div class="player-bio-card" id="player-bio-card" style="display:none"></div>
   <div class="player-bio-header">
-    <button type="button" class="btn btn-sm player-bio-edit-btn" id="edit-bio-btn">Edit profile</button>
+    <button type="button" class="btn btn-sm player-bio-edit-btn" id="edit-bio-btn" data-i18n="player.editProfile">Upraviť profil</button>
   </div>
 
   <div class="statistics-card">
-    <div class="section-label">Statistics</div>
+    <div class="section-label" data-i18n="player.statisticsLabel">Štatistiky</div>
     <div class="tabs" id="stats-tabs">
-      <button type="button" class="tab active" data-stats-tab="blta">BLTA matches</button>
-      <button type="button" class="tab" data-stats-tab="overall">All matches</button>
+      <button type="button" class="tab active" data-stats-tab="blta" data-i18n="player.bltaTab">Zápasy BLTA</button>
+      <button type="button" class="tab" data-stats-tab="overall" data-i18n="player.allMatchesTab">Všetky zápasy</button>
     </div>
 
     <div id="stats-panel-blta">
-      <p class="stats-tab-note">Only official BLTA league matches (Elite, Next Gen, Novice).</p>
+      <p class="stats-tab-note" data-i18n="player.bltaNote">Iba oficiálne zápasy ligy BLTA (Elite, Next Gen, Novice).</p>
       <div class="info-grid" id="player-stats-blta">
         <div class="info-item">
-          <div class="label">Games played</div>
+          <div class="label" data-i18n="player.gamesPlayed">Odohrané zápasy</div>
           <div class="value" id="stat-blta-played" style="font-size:22px">0</div>
         </div>
         <div class="info-item">
-          <div class="label">Wins — Losses</div>
+          <div class="label" data-i18n="player.winsLosses">Výhry — Prehry</div>
           <div class="value" id="stat-blta-wl" style="font-size:22px">0 — 0</div>
         </div>
         <div class="info-item">
-          <div class="label">Win rate</div>
+          <div class="label" data-i18n="player.winRate">Úspešnosť</div>
           <div class="value" id="stat-blta-pct" style="font-size:22px">—</div>
         </div>
       </div>
@@ -78,18 +82,18 @@
     </div>
 
     <div id="stats-panel-overall" style="display:none">
-      <p class="stats-tab-note">BLTA league matches plus other matches like Friendly and VIP Cup.</p>
+      <p class="stats-tab-note" data-i18n="player.overallNote">Zápasy ligy BLTA plus ostatné zápasy ako Priateľský a VIP Cup.</p>
       <div class="info-grid" id="player-stats-overall">
         <div class="info-item">
-          <div class="label">Games played</div>
+          <div class="label" data-i18n="player.gamesPlayed">Odohrané zápasy</div>
           <div class="value" id="stat-overall-played" style="font-size:22px">0</div>
         </div>
         <div class="info-item">
-          <div class="label">Wins — Losses</div>
+          <div class="label" data-i18n="player.winsLosses">Výhry — Prehry</div>
           <div class="value" id="stat-overall-wl" style="font-size:22px">0 — 0</div>
         </div>
         <div class="info-item">
-          <div class="label">Win rate</div>
+          <div class="label" data-i18n="player.winRate">Úspešnosť</div>
           <div class="value" id="stat-overall-pct" style="font-size:22px">—</div>
         </div>
       </div>
@@ -102,8 +106,8 @@
 
   <div class="statistics-card">
     <div class="section-header">
-      <div class="section-label">Badges <span class="badges-ratio" id="badges-ratio"></span></div>
-      <button type="button" class="section-link" id="badges-toggle">Show all badges</button>
+      <div class="section-label"><span data-i18n="player.badgesLabel">Odznaky</span> <span class="badges-ratio" id="badges-ratio"></span></div>
+      <button type="button" class="section-link" id="badges-toggle" data-i18n="player.showAllBadges">Zobraziť všetky odznaky</button>
     </div>
     <div class="badges-grid" id="badges-grid"></div>
   </div>
@@ -112,23 +116,23 @@
 
   <div class="filters" id="player-filters">
     <select id="result-filter">
-      <option value="">All results</option>
-      <option value="won">Won</option>
-      <option value="lost">Lost</option>
+      <option value="" data-i18n="player.allResults">Všetky výsledky</option>
+      <option value="won" data-i18n="player.won">Vyhraté</option>
+      <option value="lost" data-i18n="player.lost">Prehrané</option>
     </select>
     <select id="category-filter">
-      <option value="">All categories</option>
+      <option value="" data-i18n="filters.allCategories">Všetky kategórie</option>
       <option value="ELITE">BLTA ELITE</option>
       <option value="NEXT_GEN">BLTA NEXT GEN</option>
       <option value="NOVICE">BLTA NOVICE</option>
-      <option value="FRIENDLY">FRIENDLY</option>
+      <option value="FRIENDLY" data-i18n="category.FRIENDLY">PRIATEĽSKÝ</option>
       <option value="VIP_CUP">VIP CUP</option>
       <option value="ATA_TENNIS">ATA TENNIS</option>
     </select>
     <select id="year-filter">
-      <option value="">All years</option>
+      <option value="" data-i18n="player.allYears">Všetky roky</option>
     </select>
-    <button type="button" class="btn btn-outline" id="reset-filters-btn"><span style="color:var(--orange)">✕</span> Reset filters</button>
+    <button type="button" class="btn btn-outline" id="reset-filters-btn"><span style="color:var(--orange)">✕</span> <span data-i18n="filters.reset">Zrušiť filtre</span></button>
   </div>
 
   <div class="match-list" id="player-match-list"></div>
@@ -138,66 +142,66 @@
 <div class="modal-backdrop" id="player-bio-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="player-bio-modal" aria-label="Close">&times;</button>
-    <h3 style="margin-top:0">Edit profile info</h3>
+    <h3 style="margin-top:0" data-i18n="player.bioModalTitle">Upraviť profilové údaje</h3>
     <form id="player-bio-form">
       <div class="grid-2">
         <div class="field">
-          <label for="bio-category">Category</label>
+          <label for="bio-category" data-i18n="player.bio.category">Kategória</label>
           <select id="bio-category">
-            <option value="">Not set</option>
+            <option value="" data-i18n="player.bio.notSet">Nenastavené</option>
             <option value="ELITE">BLTA ELITE</option>
             <option value="NEXT_GEN">BLTA NEXT GEN</option>
             <option value="NOVICE">BLTA NOVICE</option>
           </select>
         </div>
         <div class="field">
-          <label for="bio-nationality">Nationality</label>
-          <input type="text" id="bio-nationality" maxlength="60" placeholder="e.g. Slovakia">
+          <label for="bio-nationality" data-i18n="player.bio.nationality">Národnosť</label>
+          <input type="text" id="bio-nationality" maxlength="60" placeholder="napr. Slovensko" data-i18n-placeholder="player.bio.nationalityPlaceholder">
         </div>
         <div class="field">
-          <label for="bio-birthday">Birthday</label>
+          <label for="bio-birthday" data-i18n="player.bio.birthday">Dátum narodenia</label>
           <input type="date" id="bio-birthday">
         </div>
         <div class="field">
-          <label for="bio-racket">Racket</label>
-          <input type="text" id="bio-racket" maxlength="60" placeholder="e.g. Head Speed Pro 2022">
+          <label for="bio-racket" data-i18n="player.bio.racket">Raketa</label>
+          <input type="text" id="bio-racket" maxlength="60" placeholder="napr. Head Speed Pro 2022" data-i18n-placeholder="player.bio.racketPlaceholder">
         </div>
         <div class="field">
-          <label for="bio-string-brand">String brand</label>
-          <input type="text" id="bio-string-brand" maxlength="60" placeholder="e.g. Luxilon ALU Power">
+          <label for="bio-string-brand" data-i18n="player.bio.stringBrand">Značka výpletu</label>
+          <input type="text" id="bio-string-brand" maxlength="60" placeholder="napr. Luxilon ALU Power" data-i18n-placeholder="player.bio.stringBrandPlaceholder">
         </div>
         <div class="field">
-          <label for="bio-string-tension">String tension</label>
-          <input type="text" id="bio-string-tension" maxlength="30" placeholder="e.g. 24/23 kg">
+          <label for="bio-string-tension" data-i18n="player.bio.stringTension">Napnutie výpletu</label>
+          <input type="text" id="bio-string-tension" maxlength="30" placeholder="napr. 24/23 kg" data-i18n-placeholder="player.bio.stringTensionPlaceholder">
         </div>
         <div class="field">
-          <label for="bio-forehand">Forehand</label>
-          <input type="text" id="bio-forehand" maxlength="40" placeholder="e.g. Right-handed">
+          <label for="bio-forehand" data-i18n="player.bio.forehand">Forhend</label>
+          <input type="text" id="bio-forehand" maxlength="40" placeholder="napr. Pravák" data-i18n-placeholder="player.bio.forehandPlaceholder">
         </div>
         <div class="field">
-          <label for="bio-backhand">Backhand</label>
-          <input type="text" id="bio-backhand" maxlength="40" placeholder="e.g. Two-handed">
+          <label for="bio-backhand" data-i18n="player.bio.backhand">Bekhend</label>
+          <input type="text" id="bio-backhand" maxlength="40" placeholder="napr. Obojručný" data-i18n-placeholder="player.bio.backhandPlaceholder">
         </div>
         <div class="field">
-          <label for="bio-seasons">Seasons</label>
-          <input type="text" id="bio-seasons" maxlength="60" placeholder="e.g. 2025, 2026">
+          <label for="bio-seasons" data-i18n="player.bio.seasons">Sezóny</label>
+          <input type="text" id="bio-seasons" maxlength="60" placeholder="napr. 2025, 2026" data-i18n-placeholder="player.bio.seasonsPlaceholder">
         </div>
         <div class="field">
-          <label for="bio-favorite-player">Favourite player</label>
-          <input type="text" id="bio-favorite-player" maxlength="60" placeholder="e.g. Roger Federer">
+          <label for="bio-favorite-player" data-i18n="player.bio.favoritePlayer">Obľúbený hráč</label>
+          <input type="text" id="bio-favorite-player" maxlength="60" placeholder="napr. Roger Federer" data-i18n-placeholder="player.bio.favoritePlayerPlaceholder">
         </div>
         <div class="field">
-          <label for="bio-phone">Phone</label>
-          <input type="tel" id="bio-phone" maxlength="30" placeholder="e.g. 0912 345 678">
+          <label for="bio-phone" data-i18n="player.bio.phone">Telefón</label>
+          <input type="tel" id="bio-phone" maxlength="30" placeholder="napr. 0912 345 678" data-i18n-placeholder="player.bio.phonePlaceholder">
         </div>
         <div class="field">
-          <label for="bio-email">Email</label>
-          <input type="email" id="bio-email" maxlength="100" placeholder="e.g. name@example.com">
+          <label for="bio-email" data-i18n="player.bio.email">Email</label>
+          <input type="email" id="bio-email" maxlength="100" placeholder="napr. meno@example.com" data-i18n-placeholder="player.bio.emailPlaceholder">
         </div>
       </div>
-      <p style="font-size:12px;color:var(--gray);margin:8px 0 0">Phone and email are only visible to logged-in players and admins — never shown publicly.</p>
+      <p style="font-size:12px;color:var(--gray);margin:8px 0 0" data-i18n="player.bio.privacyNote">Telefón a email vidia iba prihlásení hráči a admini — nikdy nie sú verejne zobrazené.</p>
       <div id="bio-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Save</button>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px" data-i18n="common.save">Uložiť</button>
     </form>
   </div>
 </div>
@@ -206,15 +210,15 @@
 <div class="modal-backdrop" id="player-login-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="player-login-modal" aria-label="Close">&times;</button>
-    <h3 style="text-transform:uppercase;font-weight:900">Log in as player</h3>
-    <p style="font-size:16px;color:var(--ink)">If you're a BLTA player, enter <span style="color:var(--green-light);text-transform:uppercase">your phone number</span> (e.g. 0903111222). Don't have one on file yet? Ask an admin to add it.</p>
-    <p style="font-size:13px;color:var(--gray);margin:8px 0">If you're not a BLTA player, log in with 3344 instead — you can still create and manage your own matches.</p>
+    <h3 style="text-transform:uppercase;font-weight:900" data-i18n="login.title">Prihlásiť sa ako hráč</h3>
+    <p style="font-size:16px;color:var(--ink)" data-i18n-html="login.phoneIntro">Ak ste hráč BLTA, zadajte <span style="color:var(--green-light);text-transform:uppercase">svoje telefónne číslo</span> (napr. 0903111222). Ešte ho nemáte v systéme? Požiadajte admina, aby ho pridal.</p>
+    <p style="font-size:13px;color:var(--gray);margin:8px 0" data-i18n="login.notBltaPlayer">Ak nie ste hráč BLTA, prihláste sa namiesto toho kódom 3344 — aj tak môžete vytvárať a spravovať svoje vlastné zápasy.</p>
     <form id="player-login-form">
       <div class="field">
         <input type="text" inputmode="numeric" id="player-login-input" placeholder="0903111222" autocomplete="off">
       </div>
       <div id="player-login-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
-      <button type="submit" class="btn btn-primary btn-block">Log in</button>
+      <button type="submit" class="btn btn-primary btn-block" data-i18n="login.submit">Prihlásiť sa</button>
     </form>
   </div>
 </div>
@@ -223,21 +227,21 @@
 <div class="modal-backdrop" id="quick-schedule-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="quick-schedule-modal" aria-label="Close">&times;</button>
-    <h3>Set date &amp; location</h3>
+    <h3 data-i18n="quickSchedule.title">Nastaviť dátum a miesto</h3>
     <form id="quick-schedule-form">
       <div class="field">
-        <label for="quick-schedule-location">Place</label>
-        <input type="text" id="quick-schedule-location" placeholder="e.g. NTC Bratislava, Court 3">
+        <label for="quick-schedule-location" data-i18n="quickSchedule.place">Miesto</label>
+        <input type="text" id="quick-schedule-location" placeholder="napr. NTC Bratislava, kurt 3" data-i18n-placeholder="quickSchedule.placePlaceholder">
       </div>
       <div class="field">
-        <label for="quick-schedule-date">Date &amp; time</label>
+        <label for="quick-schedule-date" data-i18n="quickSchedule.dateTime">Dátum a čas</label>
         <div style="display:flex;gap:8px">
           <input type="date" id="quick-schedule-date" style="flex:1">
           <input type="time" id="quick-schedule-time" style="flex:1">
         </div>
       </div>
       <div id="quick-schedule-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Save</button>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px" data-i18n="common.save">Uložiť</button>
     </form>
   </div>
 </div>
@@ -246,7 +250,7 @@
 <div class="modal-backdrop" id="badges-modal" style="display:none">
   <div class="modal" style="max-width:560px">
     <button type="button" class="close" data-close="badges-modal" aria-label="Close">&times;</button>
-    <h3 style="margin-top:0">All badges</h3>
+    <h3 style="margin-top:0" data-i18n="player.allBadgesModalTitle">Všetky odznaky</h3>
     <div class="badges-grid" id="badges-modal-grid"></div>
   </div>
 </div>
@@ -263,7 +267,7 @@
   <div class="site-footer-inner">
     <span>BLTA Score</span>
     <div style="display:flex;gap:12px">
-      <a href="/badges-admin" class="footer-badges-link" style="display:none">Manage badges</a>
+      <a href="/badges-admin" class="footer-badges-link" style="display:none" data-i18n="footer.manageBadges">Spravovať odznaky</a>
       <a href="/admin">Admin</a>
     </div>
   </div>

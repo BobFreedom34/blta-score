@@ -3,6 +3,9 @@ const CATEGORY_LABELS = { ELITE: 'BLTA ELITE', NEXT_GEN: 'BLTA NEXT GEN', NOVICE
 const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 const STATUS_LABELS = { PLANNED: 'Planned', LIVE: 'Live', FINISHED: 'Finished', UNFINISHED: 'Unfinished' };
 const END_REASON_LABELS = { WALKOVER: 'Walkover', RETIREMENT: 'Retirement', UNFINISHED: 'Left unfinished' };
+function endReasonLabel(reason) {
+  return END_REASON_LABELS[reason] ? t(`common.endReason.${reason}`) : null;
+}
 
 // ---------- Shared match-creation form pieces ----------
 // Used by new-match.js (pick one fixed date) and by match.js's
@@ -364,7 +367,7 @@ function matchResultText(m) {
   if (m.status === 'PLANNED') return m.formatLabel;
   const parts = [];
   if (m.scoreSummary) parts.push(m.scoreSummary);
-  if (m.endReason && END_REASON_LABELS[m.endReason]) parts.push(END_REASON_LABELS[m.endReason]);
+  if (m.endReason && endReasonLabel(m.endReason)) parts.push(endReasonLabel(m.endReason));
   return parts.join(' — ') || '—';
 }
 
@@ -430,7 +433,7 @@ function playerInfoBtn(player) {
   const nav = window.top === window.self
     ? `window.location.href='/player/${playerPath}'`
     : `window.open('/player/${playerPath}','_blank')`;
-  return `<button type="button" class="player-info-btn" title="View ${escapeHtml(player.name)}'s profile" onclick="event.preventDefault();event.stopPropagation();${nav}">i</button>`;
+  return `<button type="button" class="player-info-btn" title="${escapeHtml(t('common.viewProfileTitle', { name: player.name }))}" onclick="event.preventDefault();event.stopPropagation();${nav}">i</button>`;
 }
 
 // A player's name inside a match card — clickable to their profile page,
@@ -455,7 +458,7 @@ function playerNameLink(player) {
 // icon shape) guarantees the same ball-only look everywhere.
 function ballsIconHtml(m, playerNum) {
   if (m.status !== 'PLANNED' || m.ballsPlayer !== playerNum) return '';
-  return `<svg class="balls-icon" viewBox="0 0 24 24" title="Brings the balls">
+  return `<svg class="balls-icon" viewBox="0 0 24 24" title="${escapeHtml(t('common.bringsBallsTitle'))}">
     <circle cx="12" cy="12" r="11" fill="#d4ee4e" stroke="#a8c93a" stroke-width="1"/>
     <path d="M3 6c3.2 2.6 3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
     <path d="M21 6c-3.2 2.6-3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
@@ -481,7 +484,7 @@ function cardScoreboardHtml(m) {
   // without a score table.
   if (!sets.length) {
     if (m.status !== 'FINISHED') return '';
-    const reasonLabel = m.endReason && END_REASON_LABELS[m.endReason] ? END_REASON_LABELS[m.endReason] : null;
+    const reasonLabel = m.endReason ? endReasonLabel(m.endReason) : null;
     return `
       <div class="scoreboard scoreboard-compact">
         <table>
@@ -704,21 +707,20 @@ function flagImgHtml(nationality, cssClass) {
   return `<img class="${cssClass}" src="https://flagcdn.com/${code}.svg" alt="${code.toUpperCase()}">`;
 }
 
-const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
 // Fixed Ddd d.m.yyyy, HH:MM format (not locale-dependent) so it reads the
 // same for every visitor regardless of their browser's locale settings.
 function fmtDateShort(iso) {
-  if (!iso) return 'Date TBD';
+  if (!iso) return t('common.dateTbd');
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${WEEKDAYS_SHORT[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}, ${hh}:${mm}`;
+  const weekday = t('common.weekdaysShort').split(',')[d.getDay()];
+  return `${weekday} ${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}, ${hh}:${mm}`;
 }
 
 function fmtDateLong(iso) {
-  if (!iso) return 'Date TBD';
+  if (!iso) return t('common.dateTbd');
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString(undefined, {

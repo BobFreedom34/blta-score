@@ -53,20 +53,22 @@ function matchCardHtml(m) {
           </div>
         </div>
       `}
-      ${isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : ''}
-      ${m.status === 'PLANNED' && !m.scheduledAt ? `<button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}" style="margin-top:6px">📅 Set date &amp; location</button>` : ''}
+      ${isOverdueUnresolved(m) ? `<div class="overdue-warning">${t('matches.overdueWarning')}</div>` : ''}
+      ${m.status === 'PLANNED' && !m.scheduledAt ? `<button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}" style="margin-top:6px">${t('matches.setDateLocation')}</button>` : ''}
     </a>
   `;
 }
 
+// Headings are read live via a getter (not plain strings) so a language
+// switch picks them up without this array needing to be rebuilt.
 const GROUPS = [
-  { heading: '🔴 Live', params: { status: 'LIVE' } },
-  { heading: '📅 Scheduled', params: { status: 'PLANNED', hasDate: '1' } },
-  { heading: '🕓 Planned', params: { status: 'PLANNED', noDate: '1' } },
-  { heading: '✅ Finished', params: { status: 'FINISHED' } },
+  { get heading() { return t('matches.liveHeading'); }, params: { status: 'LIVE' } },
+  { get heading() { return t('matches.scheduledHeading'); }, params: { status: 'PLANNED', hasDate: '1' } },
+  { get heading() { return t('matches.plannedHeading'); }, params: { status: 'PLANNED', noDate: '1' } },
+  { get heading() { return t('matches.finishedHeading'); }, params: { status: 'FINISHED' } },
   // Appended at the end, not inserted — rawGroups[3] is relied on elsewhere
   // as "the Finished group" and must keep that index.
-  { heading: '⏸ Unfinished', params: { status: 'UNFINISHED' } },
+  { get heading() { return t('matches.unfinishedHeading'); }, params: { status: 'UNFINISHED' } },
 ];
 
 function matchYear(m) {
@@ -87,7 +89,7 @@ function passesFilters(m) {
 function populateYearOptions() {
   const years = [...new Set(rawGroups.flat().filter((m) => m.scheduledAt).map(matchYear))].sort((a, b) => b - a);
   const keep = yearFilterEl.value;
-  yearFilterEl.innerHTML = '<option value="">All years</option>' + years.map((y) => `<option value="${y}">${y}</option>`).join('');
+  yearFilterEl.innerHTML = `<option value="">${t('player.allYears')}</option>` + years.map((y) => `<option value="${y}">${y}</option>`).join('');
   yearFilterEl.value = years.some((y) => String(y) === keep) ? keep : '';
   currentYear = yearFilterEl.value;
 }
@@ -124,7 +126,8 @@ function formGuideHtml(matches) {
     const opponent = m.player1.id === Number(playerId) ? m.player2 : m.player1;
     return `<a class="form-square ${won ? 'win' : 'loss'}" href="/match/${m.token}" title="${escapeHtml(opponent.name)}">${won ? 'W' : 'L'}</a>`;
   }).join('');
-  return `<div class="form-guide-label">Last ${last20.length} game${last20.length === 1 ? '' : 's'}</div><div class="form-guide">${squares}</div>`;
+  const label = last20.length === 1 ? t('player.lastGamesOne') : t('player.lastGames', { count: last20.length });
+  return `<div class="form-guide-label">${label}</div><div class="form-guide">${squares}</div>`;
 }
 
 // Sparkline of the running win rate after each decided match, oldest to
@@ -172,7 +175,7 @@ function winRateTrendHtml(matches, idSuffix, containerWidth) {
   const [lastX, lastY] = coords[coords.length - 1];
   return `
     <div class="trend-sparkline">
-      <div class="form-guide-label">Win rate trend</div>
+      <div class="form-guide-label">${t('player.winRateTrend')}</div>
       <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px">
         <defs>
           <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
@@ -241,7 +244,7 @@ function rankTrendHtml(history, containerWidth) {
   `).join('');
   return `
     <div class="trend-sparkline">
-      <div class="form-guide-label">BLTA ranking trend</div>
+      <div class="form-guide-label">${t('player.rankTrend')}</div>
       <div class="rank-trend-chart">
         <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px">
           <defs>
@@ -277,7 +280,7 @@ async function renderRankTrend() {
   try {
     const { history } = await api(`/rankings/history/blta/${encodeURIComponent(currentPlayer.name)}`);
     if (!history || history.length < 2) { el.innerHTML = ''; return; }
-    el.innerHTML = '<div class="trend-sparkline"><div class="form-guide-label">BLTA ranking trend</div><div class="rank-trend-chart"></div></div>';
+    el.innerHTML = `<div class="trend-sparkline"><div class="form-guide-label">${t('player.rankTrend')}</div><div class="rank-trend-chart"></div></div>`;
     const containerWidth = el.querySelector('.rank-trend-chart').clientWidth;
     el.innerHTML = rankTrendHtml(history, containerWidth);
   } catch {
@@ -431,10 +434,10 @@ function renderH2H() {
   const remaining = records.length - H2H_COLLAPSED_LIMIT;
   const visible = h2hExpanded || remaining <= 0 ? records : records.slice(0, H2H_COLLAPSED_LIMIT);
   const toggleHtml = remaining > 0
-    ? `<button type="button" class="h2h-toggle" id="h2h-toggle">${h2hExpanded ? 'Show less' : `Show all (${remaining} more)`}</button>`
+    ? `<button type="button" class="h2h-toggle" id="h2h-toggle">${h2hExpanded ? t('player.showLess') : t('player.showMoreH2H', { count: remaining })}</button>`
     : '';
   el.innerHTML = `
-    <div class="section-label">Head-to-head</div>
+    <div class="section-label">${t('player.h2h')}</div>
     <div class="h2h-card">${visible.map(h2hRowHtml).join('')}${toggleHtml}</div>
   `;
   if (remaining > 0) {
@@ -493,7 +496,7 @@ function render() {
     parts.push(`<div class="match-list-heading">${GROUPS[i].heading}</div>`);
     parts.push(...filtered.map(matchCardHtml));
   });
-  listEl.innerHTML = parts.length ? parts.join('') : '<div class="empty-state">No matches match your filters.</div>';
+  listEl.innerHTML = parts.length ? parts.join('') : `<div class="empty-state">${t('player.noMatchesFilter')}</div>`;
 }
 
 async function load() {
@@ -510,7 +513,7 @@ async function load() {
     renderH2H();
     render();
   } catch (err) {
-    listEl.innerHTML = `<div class="empty-state">Could not load matches: ${escapeHtml(err.message)}</div>`;
+    listEl.innerHTML = `<div class="empty-state">${escapeHtml(t('player.couldNotLoadMatches', { error: err.message }))}</div>`;
   }
 }
 
@@ -600,36 +603,36 @@ function bioCardHtml(player) {
   const age = computeAge(player.birthday);
   const columns = [
     [
-      ['Category', player.category ? (CATEGORY_LABELS[player.category] || player.category) : null],
-      ['Nationality', player.nationality],
-      ['Birthday', fmtBirthday(player.birthday)],
-      ['Age', age !== null ? String(age) : null],
+      ['category', player.category ? (CATEGORY_LABELS[player.category] || player.category) : null, t('player.bio.category')],
+      ['nationality', player.nationality, t('player.bio.nationality')],
+      ['birthday', fmtBirthday(player.birthday), t('player.bio.birthday')],
+      ['age', age !== null ? String(age) : null, t('player.bio.age')],
     ],
     [
-      ['Racket', player.racket],
-      ['String brand', player.string_brand],
-      ['String tension', player.string_tension],
-      ['Forehand', player.forehand],
+      ['racket', player.racket, t('player.bio.racket')],
+      ['stringBrand', player.string_brand, t('player.bio.stringBrand')],
+      ['stringTension', player.string_tension, t('player.bio.stringTension')],
+      ['forehand', player.forehand, t('player.bio.forehand')],
     ],
     [
-      ['Backhand', player.backhand],
-      ['Seasons', player.seasons],
-      ['Favourite player', player.favorite_player],
+      ['backhand', player.backhand, t('player.bio.backhand')],
+      ['seasons', player.seasons, t('player.bio.seasons')],
+      ['favoritePlayer', player.favorite_player, t('player.bio.favoritePlayer')],
     ],
     // Phone/email are never sent to the API for an anonymous visitor (see
     // stripPrivateFields in routes/players.js), so this column disappears
     // on its own for anyone not logged in as a player or admin.
     [
-      ['Phone', player.phone],
-      ['Email', player.email],
+      ['phone', player.phone, t('player.bio.phone')],
+      ['email', player.email, t('player.bio.email')],
     ],
   ].map((rows) => rows.filter(([, value]) => value)).filter((rows) => rows.length);
 
   if (!columns.length) return '';
   return columns.map((rows) => `
     <div class="bio-col">
-      ${rows.map(([label, value]) => {
-        const flagHtml = label === 'Nationality' ? flagImgHtml(player.nationality, 'bio-flag-icon') : '';
+      ${rows.map(([field, value, label]) => {
+        const flagHtml = field === 'nationality' ? flagImgHtml(player.nationality, 'bio-flag-icon') : '';
         return `<div class="bio-row"><span class="bio-label">${escapeHtml(label)}</span><span class="bio-value">${flagHtml}${escapeHtml(value)}</span></div>`;
       }).join('')}
     </div>
@@ -671,7 +674,7 @@ function requireProfileAuth(onReady) {
   if (isAdminUser) { onReady(); return; }
   requirePlayerAuth(() => {
     if (playerAuthed && currentPlayerId && currentPlayerId === Number(playerId)) { onReady(); return; }
-    toast('You can only edit your own profile');
+    toast(t('player.onlyEditOwnProfile'));
   });
 }
 
@@ -705,7 +708,7 @@ document.getElementById('player-bio-form').addEventListener('submit', async (e) 
     }
     renderBio();
     document.getElementById('player-bio-modal').style.display = 'none';
-    toast('Profile updated');
+    toast(t('player.profileUpdated'));
   } catch (err) {
     document.getElementById('bio-error').textContent = err.message;
   }
@@ -728,7 +731,7 @@ document.getElementById('player-bio-form').addEventListener('submit', async (e) 
     }
     renderBio();
   } catch {
-    nameEl.textContent = 'Player not found';
+    nameEl.textContent = t('player.notFound');
     listEl.innerHTML = '';
     return;
   }
