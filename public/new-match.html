@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BLTA Score — New Match</title>
+<title data-i18n="page.newMatchTitle">BLTA Score — Nový zápas</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" href="/favicon.png">
@@ -17,53 +17,57 @@
     <a class="brand" href="/"><img src="/img/blta-logo.png" alt="BLTA" class="brand-logo"><small>SCORE</small></a>
     <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">☰</button>
     <nav class="nav-links" id="nav-links">
-      <a href="/">Matches</a>
-      <a href="/players">Players</a>
-      <a href="/rankings">Rankings</a>
-      <a href="/new-match" class="active">+ New match</a>
-      <a href="#" class="player-login-link" id="player-login-link">LOG IN AS PLAYER</a>
+      <a href="/" data-i18n="nav.matches">Zápasy</a>
+      <a href="/players" data-i18n="nav.players">Hráči</a>
+      <a href="/rankings" data-i18n="nav.rankings">Rebríček</a>
+      <a href="/new-match" class="active" data-i18n="nav.newMatch">+ Nový zápas</a>
+      <a href="#" class="player-login-link" id="player-login-link" data-i18n="nav.loginPlayer">PRIHLÁSIŤ SA AKO HRÁČ</a>
+      <div class="lang-switcher" id="lang-switcher">
+        <button type="button" class="lang-btn" data-lang="sk">SK</button>
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+      </div>
     </nav>
   </div>
 </div>
 
 <div class="container" style="max-width:640px">
-  <h1 style="margin-top:22px">Plan a new match</h1>
-  <p style="color:var(--gray-dim)">Pick two players (type a new name to add them), a category, and how the match will be played.</p>
+  <h1 style="margin-top:22px" data-i18n="newMatch.heading">Naplánovať nový zápas</h1>
+  <p style="color:var(--gray-dim)" data-i18n="newMatch.intro">Vyberte dvoch hráčov (zadaním nového mena ich pridáte), kategóriu a spôsob hry.</p>
 
   <form id="new-match-form" class="card">
 
     <div class="grid-2">
       <div class="field">
-        <label for="player1">Player 1</label>
+        <label for="player1" data-i18n="common.player1">Hráč 1</label>
         <div class="autocomplete">
-          <input id="player1" name="player1" placeholder="Type a name…" required autocomplete="off">
+          <input id="player1" name="player1" placeholder="Zadajte meno…" data-i18n-placeholder="newMatch.namePlaceholder" required autocomplete="off">
           <div class="autocomplete-list" id="player1-suggestions"></div>
         </div>
       </div>
       <div class="field">
-        <label for="player2">Player 2</label>
+        <label for="player2" data-i18n="common.player2">Hráč 2</label>
         <div class="autocomplete">
-          <input id="player2" name="player2" placeholder="Type a name…" required autocomplete="off">
+          <input id="player2" name="player2" placeholder="Zadajte meno…" data-i18n-placeholder="newMatch.namePlaceholder" required autocomplete="off">
           <div class="autocomplete-list" id="player2-suggestions"></div>
         </div>
       </div>
     </div>
 
     <div class="field">
-      <label><svg viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px"><circle cx="12" cy="12" r="11" fill="#d4ee4e" stroke="#a8c93a" stroke-width="1"/><path d="M3 6c3.2 2.6 3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M21 6c-3.2 2.6-3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg> Who brings the balls? <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional)</span></label>
+      <label><svg viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px"><circle cx="12" cy="12" r="11" fill="#d4ee4e" stroke="#a8c93a" stroke-width="1"/><path d="M3 6c3.2 2.6 3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M21 6c-3.2 2.6-3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg> <span data-i18n="newMatch.whoBringsBalls">Kto nesie loptičky?</span> <span style="font-weight:400;color:var(--gray-dim);font-size:12px" data-i18n="common.optional">(voliteľné)</span></label>
       <div class="server-choice-row balls-choice-row" id="balls-choice-row">
-        <button type="button" class="btn btn-outline btn-block" data-value="1">Player 1</button>
-        <button type="button" class="btn btn-outline btn-block" data-value="2">Player 2</button>
+        <button type="button" class="btn btn-outline btn-block" data-value="1" data-i18n="common.player1">Hráč 1</button>
+        <button type="button" class="btn btn-outline btn-block" data-value="2" data-i18n="common.player2">Hráč 2</button>
       </div>
     </div>
 
     <div class="field">
-      <label for="category">Category</label>
+      <label for="category" data-i18n="newMatch.categoryLabel">Kategória</label>
       <select id="category" required>
         <option value="ELITE">BLTA ELITE</option>
         <option value="NEXT_GEN">BLTA NEXT GEN</option>
         <option value="NOVICE">BLTA NOVICE</option>
-        <option value="FRIENDLY">FRIENDLY</option>
+        <option value="FRIENDLY" data-i18n="category.FRIENDLY">PRIATEĽSKÝ</option>
         <option value="VIP_CUP">VIP CUP</option>
         <option value="ATA_TENNIS">ATA TENNIS</option>
       </select>
@@ -71,31 +75,31 @@
 
     <div class="grid-2">
       <div class="field">
-        <label for="location">Place</label>
-        <input type="text" id="location" placeholder="e.g. NTC Bratislava, Court 3">
+        <label for="location" data-i18n="newMatch.placeLabel">Miesto</label>
+        <input type="text" id="location" placeholder="napr. NTC Bratislava, kurt 3" data-i18n-placeholder="newMatch.placePlaceholder">
       </div>
       <div class="field">
-        <label for="scheduledAtDate">Date &amp; time</label>
+        <label for="scheduledAtDate" data-i18n="newMatch.dateTimeLabel">Dátum a čas</label>
         <div style="display:flex;gap:8px">
           <input type="date" id="scheduledAtDate" style="flex:1">
           <input type="time" id="scheduledAtTime" style="flex:1">
         </div>
-        <small>Optional — leave blank if it's not scheduled yet, and set it later from the match page.</small>
+        <small data-i18n="newMatch.dateTimeHint">Nepovinné — nechajte prázdne, ak zápas zatiaľ nie je naplánovaný, a nastavte to neskôr na stránke zápasu.</small>
       </div>
     </div>
 
     <div class="field">
-      <label for="notes">Additional info</label>
-      <textarea id="notes" rows="3" maxlength="1000" placeholder="e.g. round of 16, bring your own balls, meet 10 min early…"></textarea>
-      <small>Optional — shown on the match page.</small>
+      <label for="notes" data-i18n="newMatch.notesLabel">Doplňujúce informácie</label>
+      <textarea id="notes" rows="3" maxlength="1000" placeholder="napr. osemfinále, prineste si vlastné loptičky, stretnutie o 10 min skôr…" data-i18n-placeholder="newMatch.notesPlaceholder"></textarea>
+      <small data-i18n="newMatch.notesHint">Nepovinné — zobrazí sa na stránke zápasu.</small>
     </div>
 
     <div class="field">
-      <label>Match format</label>
+      <label data-i18n="newMatch.formatLabel">Formát zápasu</label>
       <div class="format-options" id="format-options"></div>
     </div>
 
-    <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Create match</button>
+    <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px" data-i18n="newMatch.createButton">Vytvoriť zápas</button>
     <div id="form-error" style="color:var(--danger);font-weight:600;margin-top:10px"></div>
   </form>
 </div>
@@ -104,15 +108,15 @@
 <div class="modal-backdrop" id="player-login-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="player-login-modal" aria-label="Close">&times;</button>
-    <h3 style="text-transform:uppercase;font-weight:900">Log in as player</h3>
-    <p style="font-size:16px;color:var(--ink)">If you're a BLTA player, enter <span style="color:var(--green-light);text-transform:uppercase">your phone number</span> (e.g. 0903111222). Don't have one on file yet? Ask an admin to add it.</p>
-    <p style="font-size:13px;color:var(--gray);margin:8px 0">If you're not a BLTA player, log in with 3344 instead — you can still create and manage your own matches.</p>
+    <h3 style="text-transform:uppercase;font-weight:900" data-i18n="login.title">Prihlásiť sa ako hráč</h3>
+    <p style="font-size:16px;color:var(--ink)" data-i18n-html="login.phoneIntro">Ak ste hráč BLTA, zadajte <span style="color:var(--green-light);text-transform:uppercase">svoje telefónne číslo</span> (napr. 0903111222). Ešte ho nemáte v systéme? Požiadajte admina, aby ho pridal.</p>
+    <p style="font-size:13px;color:var(--gray);margin:8px 0" data-i18n="login.notBltaPlayer">Ak nie ste hráč BLTA, prihláste sa namiesto toho kódom 3344 — aj tak môžete vytvárať a spravovať svoje vlastné zápasy.</p>
     <form id="player-login-form">
       <div class="field">
         <input type="text" inputmode="numeric" id="player-login-input" placeholder="0903111222" autocomplete="off">
       </div>
       <div id="player-login-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
-      <button type="submit" class="btn btn-primary btn-block">Log in</button>
+      <button type="submit" class="btn btn-primary btn-block" data-i18n="login.submit">Prihlásiť sa</button>
     </form>
   </div>
 </div>
@@ -121,7 +125,7 @@
   <div class="site-footer-inner">
     <span>BLTA Score</span>
     <div style="display:flex;gap:12px">
-      <a href="/badges-admin" class="footer-badges-link" style="display:none">Manage badges</a>
+      <a href="/badges-admin" class="footer-badges-link" style="display:none" data-i18n="footer.manageBadges">Spravovať odznaky</a>
       <a href="/admin">Admin</a>
     </div>
   </div>

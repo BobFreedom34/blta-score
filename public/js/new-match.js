@@ -20,11 +20,11 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
   const format = document.querySelector('input[name="format"]:checked').value;
 
   if (!player1Name || !player2Name) {
-    errorEl.textContent = 'Please enter both player names.';
+    errorEl.textContent = t('newMatch.errorBothNames');
     return;
   }
   if (player1Name.toLowerCase() === player2Name.toLowerCase()) {
-    errorEl.textContent = 'Player 1 and Player 2 must be different.';
+    errorEl.textContent = t('newMatch.errorSameName');
     return;
   }
 
