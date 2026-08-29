@@ -242,13 +242,30 @@ if (!matchColumns.includes('proposal_venues')) {
 if (!matchColumns.includes('proposal_notify_email')) {
   db.exec('ALTER TABLE matches ADD COLUMN proposal_notify_email TEXT');
 }
-// Which of player1/player2 (1 or 2) most recently proposed the current
-// proposal_slots/proposal_venues — shown on the "Pick a time" card so the
-// other player knows who they're responding to. Flips when the other
-// player counter-proposes their own times instead of picking one (see
-// POST /:token/counter-propose) — same 1/2/null shape as balls_player.
+// Which of player1/player2 (1 or 2) proposed proposal_slots/proposal_venues
+// — shown on its "Pick a time" card so the other player knows who they're
+// responding to. Same 1/2/null shape as balls_player.
 if (!matchColumns.includes('proposed_by')) {
   db.exec('ALTER TABLE matches ADD COLUMN proposed_by INTEGER');
+}
+// A second, independent proposal — once the other player counter-proposes
+// (see POST /:token/counter-propose) instead of just picking one of the
+// first player's offered slots, both calendars stay up on the match page
+// side by side rather than one replacing the other, and either one can
+// still be confirmed via POST /:token/respond-proposal. Same shape as the
+// proposal_slots/proposal_venues/proposed_by/proposal_notify_email set
+// above, just for this second offer.
+if (!matchColumns.includes('counter_proposal_slots')) {
+  db.exec('ALTER TABLE matches ADD COLUMN counter_proposal_slots TEXT');
+}
+if (!matchColumns.includes('counter_proposal_venues')) {
+  db.exec('ALTER TABLE matches ADD COLUMN counter_proposal_venues TEXT');
+}
+if (!matchColumns.includes('counter_proposal_notify_email')) {
+  db.exec('ALTER TABLE matches ADD COLUMN counter_proposal_notify_email TEXT');
+}
+if (!matchColumns.includes('counter_proposed_by')) {
+  db.exec('ALTER TABLE matches ADD COLUMN counter_proposed_by INTEGER');
 }
 
 const playerColumns = db.prepare('PRAGMA table_info(players)').all().map((c) => c.name);

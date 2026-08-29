@@ -155,8 +155,8 @@
 <div class="modal-backdrop" id="counter-propose-modal" style="display:none">
   <div class="modal" style="max-width:640px">
     <button type="button" class="close" data-close="counter-propose-modal" aria-label="Close">&times;</button>
-    <h3>Propose your own times instead</h3>
-    <p style="font-size:13px;color:var(--gray);margin-top:-8px">None of the offered times work? Mark what does work for you — this replaces the current options, and the other player picks from these instead.</p>
+    <h3 id="counter-propose-modal-title">Propose your own times instead</h3>
+    <p id="counter-propose-modal-desc" style="font-size:13px;color:var(--gray);margin-top:-8px">None of the offered times work? Mark what does work for you — it shows up as its own calendar alongside the original, and either one can be picked from.</p>
     <form id="counter-propose-form">
       <div class="field">
         <label>Preferred venues</label>
@@ -184,7 +184,7 @@
         <input type="email" id="counter-notify-email" placeholder="you@example.com">
       </div>
       <div id="counter-propose-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Send my times instead</button>
+      <button type="submit" id="counter-propose-submit-btn" class="btn btn-primary btn-block" style="margin-top:6px">Send my times instead</button>
     </form>
   </div>
 </div>

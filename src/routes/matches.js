@@ -104,6 +104,9 @@ function serialize(row) {
     proposalSlots: row.proposal_slots ? JSON.parse(row.proposal_slots) : null,
     proposalVenues: row.proposal_venues ? JSON.parse(row.proposal_venues) : null,
     proposedBy: row.proposed_by || null,
+    counterProposalSlots: row.counter_proposal_slots ? JSON.parse(row.counter_proposal_slots) : null,
+    counterProposalVenues: row.counter_proposal_venues ? JSON.parse(row.counter_proposal_venues) : null,
+    counterProposedBy: row.counter_proposed_by || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     notifyStartCount: notifyCounts.START,
@@ -385,12 +388,27 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
   // outright — whoever can edit it (see canManageMatch) can also delete it,
   // putting the match back to a plain unscheduled Planned match with no
   // "Pick a time" card. Distinct from the array branch below, which sets a
-  // new/updated proposal instead.
+  // new/updated proposal instead. Deleting the first proposal takes the
+  // counter-proposal down with it (see counterProposalSlots below) — there's
+  // nothing left to counter once it's gone.
   if (req.body.proposalSlots === null) {
     fields.proposal_slots = null;
     fields.proposal_venues = null;
     fields.proposed_by = null;
     fields.proposal_notify_email = null;
+    fields.counter_proposal_slots = null;
+    fields.counter_proposal_venues = null;
+    fields.counter_proposed_by = null;
+    fields.counter_proposal_notify_email = null;
+  }
+  // Same, but for just the counter-proposal — withdraws the second
+  // calendar while leaving the first proposal (and its own "Pick a time"
+  // card) in place.
+  if (req.body.counterProposalSlots === null) {
+    fields.counter_proposal_slots = null;
+    fields.counter_proposal_venues = null;
+    fields.counter_proposed_by = null;
+    fields.counter_proposal_notify_email = null;
   }
   // "Propose times" from the homepage's quick-action button — turns an
   // existing undated Planned match into one awaiting a scheduling response,
@@ -472,9 +490,11 @@ router.delete('/:token', requireLoggedIn, (req, res) => {
 // with several candidate slots + venues instead of one fixed date; Player B
 // follows the same share link (no separate login — the link is the access
 // control, same trust model as viewing/scoring an anon match) and picks one
-// of each. That fills in the match's real scheduled_at/location, same as if
-// it had been entered directly. Deliberately NOT behind requireLoggedIn or
-// checkMatchAccess.
+// of each — from either calendar if B also counter-proposed their own (see
+// POST /:token/counter-propose). That fills in the match's real
+// scheduled_at/location, same as if it had been entered directly, and
+// clears both proposals — the negotiation is over either way. Deliberately
+// NOT behind requireLoggedIn or checkMatchAccess.
 router.post('/:token/respond-proposal', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
@@ -487,40 +507,55 @@ router.post('/:token/respond-proposal', (req, res) => {
   if (row.status !== 'PLANNED') {
     return res.status(400).json({ error: 'This match is no longer awaiting a scheduling response' });
   }
-  const slots = JSON.parse(row.proposal_slots);
-  const venues = row.proposal_venues ? JSON.parse(row.proposal_venues) : [];
   const { slot, venue } = req.body;
-  if (typeof slot !== 'string' || !slots.includes(slot)) {
-    return res.status(400).json({ error: 'That time is not one of the proposed options' });
+  if (typeof slot !== 'string' || typeof venue !== 'string') {
+    return res.status(400).json({ error: 'Pick one of the proposed times and venues' });
   }
-  if (typeof venue !== 'string' || !venues.includes(venue)) {
-    return res.status(400).json({ error: 'That venue is not one of the proposed options' });
+  // Whichever calendar (the first proposal, or the counter-proposal if
+  // there is one) actually offered this slot+venue combination wins — a
+  // picked slot only ever comes from one card's own options, so there's no
+  // ambiguity if it happens to appear in both.
+  const proposals = [
+    { slots: JSON.parse(row.proposal_slots), venues: row.proposal_venues ? JSON.parse(row.proposal_venues) : [], notifyEmail: row.proposal_notify_email },
+    row.counter_proposal_slots ? { slots: JSON.parse(row.counter_proposal_slots), venues: row.counter_proposal_venues ? JSON.parse(row.counter_proposal_venues) : [], notifyEmail: row.counter_proposal_notify_email } : null,
+  ].filter(Boolean);
+  const matched = proposals.find((p) => p.slots.includes(slot) && p.venues.includes(venue));
+  if (!matched) {
+    return res.status(400).json({ error: 'That time and venue combination is not one of the proposed options' });
   }
-  db.prepare('UPDATE matches SET scheduled_at = ?, location = ?, updated_at = ? WHERE id = ?')
-    .run(slot, venue, nowIso(), row.id);
+  db.prepare(`
+    UPDATE matches SET scheduled_at = ?, location = ?, updated_at = ?,
+      proposal_slots = NULL, proposal_venues = NULL, proposed_by = NULL, proposal_notify_email = NULL,
+      counter_proposal_slots = NULL, counter_proposal_venues = NULL, counter_proposed_by = NULL, counter_proposal_notify_email = NULL
+    WHERE id = ?
+  `).run(slot, venue, nowIso(), row.id);
 
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);
   res.json(payload);
 
-  if (row.proposal_notify_email) {
+  if (matched.notifyEmail) {
     const p1 = getPlayer(updated.player1_id);
     const p2 = getPlayer(updated.player2_id);
-    sendProposalConfirmedEmail(updated, p1, p2, row.proposal_notify_email).catch((err) => {
+    sendProposalConfirmedEmail(updated, p1, p2, matched.notifyEmail).catch((err) => {
       console.error('[matches] failed to send proposal-confirmed email:', err.message);
     });
   }
 });
 
 // Public "counter-propose" endpoint — instead of picking one of the
-// offered slots, the other player submits their own times/venues instead.
-// Same trust model as respond-proposal above (the link is the only access
-// control, deliberately no requireLoggedIn/checkMatchAccess): this simply
-// overwrites the current proposal, so whoever looks at the match next sees
-// a fresh "Pick a time" card built from these new slots. proposedBy flips
-// to record who's now on offer; proposalNotifyEmail is replaced outright
-// (not merged like PATCH does) since the old email was for whoever made
-// the proposal this one just replaced, not for whoever's proposing now.
+// offered slots, the other player submits their own times/venues as a
+// second, independent proposal. Same trust model as respond-proposal above
+// (the link is the only access control, deliberately no
+// requireLoggedIn/checkMatchAccess). Writes to the counter_proposal_*
+// columns rather than overwriting proposal_slots — both calendars then
+// show up on the match page side by side (see proposalCardHtml in
+// match.js), and either one can still be confirmed via
+// POST /:token/respond-proposal. Calling this again just re-submits the
+// counter-proposal (its own "Edit" reaches this same route). Falls back to
+// writing the first proposal instead if there somehow isn't one yet — the
+// UI never reaches this route without one, but a direct API call shouldn't
+// 400 for it.
 router.post('/:token/counter-propose', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
@@ -567,8 +602,13 @@ router.post('/:token/counter-propose', (req, res) => {
     proposalNotifyEmail = email;
   }
 
-  db.prepare('UPDATE matches SET proposal_slots = ?, proposal_venues = ?, proposed_by = ?, proposal_notify_email = ?, updated_at = ? WHERE id = ?')
-    .run(JSON.stringify(proposalSlots), JSON.stringify(trimmedVenues), proposedBy, proposalNotifyEmail, nowIso(), row.id);
+  if (row.proposal_slots) {
+    db.prepare('UPDATE matches SET counter_proposal_slots = ?, counter_proposal_venues = ?, counter_proposed_by = ?, counter_proposal_notify_email = ?, updated_at = ? WHERE id = ?')
+      .run(JSON.stringify(proposalSlots), JSON.stringify(trimmedVenues), proposedBy, proposalNotifyEmail, nowIso(), row.id);
+  } else {
+    db.prepare('UPDATE matches SET proposal_slots = ?, proposal_venues = ?, proposed_by = ?, proposal_notify_email = ?, updated_at = ? WHERE id = ?')
+      .run(JSON.stringify(proposalSlots), JSON.stringify(trimmedVenues), proposedBy, proposalNotifyEmail, nowIso(), row.id);
+  }
 
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);

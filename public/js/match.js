@@ -326,39 +326,187 @@ async function ensureH2H(m) {
 
 // Public "respond to a proposed time" card — shown to anyone viewing this
 // link while the match has proposed slots/venues but no confirmed date yet.
-// No login required to use it (see attachHandlers' confirm-proposal-btn
-// handler and POST /:token/respond-proposal on the server) — the share
-// link itself is the access control, same trust model as an anon match.
-function proposalCardHtml(m) {
-  const proposerName = m.proposedBy === 1 ? m.player1.name : m.proposedBy === 2 ? m.player2.name : null;
+// No login required to use it (see attachProposalCardHandlers'
+// confirm-*-btn handler and POST /:token/respond-proposal on the server) —
+// the share link itself is the access control, same trust model as an
+// anon match. `which` is 'primary' (the first proposal) or 'counter' (the
+// other player's own independent counter-proposal, see
+// POST /:token/counter-propose) — each gets its own card with its own ids
+// so both can render and work side by side at once.
+function oneProposalCardHtml(m, which) {
+  const isPrimary = which === 'primary';
+  const idPrefix = isPrimary ? 'proposal' : 'counter-proposal';
+  const slots = isPrimary ? m.proposalSlots : m.counterProposalSlots;
+  const venues = isPrimary ? m.proposalVenues : m.counterProposalVenues;
+  const proposedBy = isPrimary ? m.proposedBy : m.counterProposedBy;
+  const proposerName = proposedBy === 1 ? m.player1.name : proposedBy === 2 ? m.player2.name : null;
+  // Only offer "propose your own times instead" while there's just the one
+  // calendar up — with two players there's no room for a third.
+  const showCounterProposeLink = isPrimary && !m.counterProposalSlots;
   return `
-    <div class="card" id="proposal-card" style="margin-bottom:16px;border:2px solid var(--orange)">
+    <div class="card" id="${idPrefix}-card" style="margin-bottom:16px;border:2px solid var(--orange)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">📅 Pick a time</div>
         ${canManageMatch(m, isAdminUser) ? `
           <div style="display:flex;gap:10px">
-            <button type="button" class="edit-link" id="edit-proposal-link">Edit</button>
-            <button type="button" class="edit-link" id="delete-proposal-link" style="color:var(--danger)">Delete</button>
+            <button type="button" class="edit-link" id="edit-${idPrefix}-link">Edit</button>
+            <button type="button" class="edit-link" id="delete-${idPrefix}-link" style="color:var(--danger)">Delete</button>
           </div>
         ` : ''}
       </div>
       <p style="font-size:13px;color:var(--gray);margin:6px 0 16px">${proposerName ? `${escapeHtml(proposerName)} proposed` : 'A few options were proposed'} for this match — pick whichever works for you and it's confirmed.</p>
       <div class="field">
         <label>When</label>
-        <div class="tabs week-picker-tabs" id="proposal-week-tabs"></div>
-        <div class="availability-grid-wrap" id="proposal-grid-wrap"></div>
+        <div class="tabs week-picker-tabs" id="${idPrefix}-week-tabs"></div>
+        <div class="availability-grid-wrap" id="${idPrefix}-grid-wrap"></div>
       </div>
       <div class="field">
         <label>Where</label>
-        <div class="proposal-option-list" id="proposal-venue-list">
-          ${(m.proposalVenues || []).map((v) => `<button type="button" class="btn btn-outline proposal-option" data-venue="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join('')}
+        <div class="proposal-option-list" id="${idPrefix}-venue-list">
+          ${(venues || []).map((v) => `<button type="button" class="btn btn-outline proposal-option" data-venue="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join('')}
         </div>
       </div>
-      <button type="button" class="btn btn-primary btn-block" id="confirm-proposal-btn" disabled style="margin-top:6px">Confirm</button>
-      <div id="proposal-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
-      <button type="button" class="edit-link" id="counter-propose-link" style="margin-top:12px">Can't make any of these? Propose your own times instead →</button>
+      <button type="button" class="btn btn-primary btn-block" id="confirm-${idPrefix}-btn" disabled style="margin-top:6px">Confirm</button>
+      <div id="${idPrefix}-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
+      ${showCounterProposeLink ? `<button type="button" class="edit-link" id="counter-propose-link" style="margin-top:12px">Can't make any of these? Propose your own times instead →</button>` : ''}
     </div>
   `;
+}
+
+function proposalCardHtml(m) {
+  return oneProposalCardHtml(m, 'primary') + (m.counterProposalSlots ? oneProposalCardHtml(m, 'counter') : '');
+}
+
+// Wires up one proposal card's picker/Confirm/Edit/Delete — `which` is
+// 'primary' or 'counter', matching oneProposalCardHtml's id scheme, so the
+// same logic drives whichever card(s) are actually on the page (see the
+// attachHandlers call site).
+function attachProposalCardHandlers(m, which) {
+  const isPrimary = which === 'primary';
+  const idPrefix = isPrimary ? 'proposal' : 'counter-proposal';
+  const slots = isPrimary ? m.proposalSlots : m.counterProposalSlots;
+  const card = document.getElementById(`${idPrefix}-card`);
+  if (!card) return;
+
+  let selectedSlot = null;
+  let selectedVenue = null;
+  const confirmBtn = document.getElementById(`confirm-${idPrefix}-btn`);
+  const proposalErrorEl = document.getElementById(`${idPrefix}-error`);
+
+  // Same weekly-grid look as the "Schedule a match" form that created this
+  // proposal, but single-pick instead of multi-toggle: only cells matching
+  // one of this card's own slots are clickable, everything else is inert
+  // filler that keeps the calendar shape recognizable. The day range comes
+  // from the actual proposed dates (not a fixed 14 days), paged in weeks of
+  // 7 the same way, so a short proposal doesn't drag in empty weeks.
+  const proposalSlotSet = new Set(slots);
+  const dayDates = slots.map((iso) => {
+    const d = new Date(iso);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  });
+  const minDay = new Date(Math.min(...dayDates));
+  const maxDay = new Date(Math.max(...dayDates));
+  const proposalDays = [];
+  for (let d = new Date(minDay); d <= maxDay; d.setDate(d.getDate() + 1)) proposalDays.push(new Date(d));
+  const proposalWeeks = [];
+  for (let i = 0; i < proposalDays.length; i += 7) proposalWeeks.push(proposalDays.slice(i, i + 7));
+  let proposalActiveWeek = 0;
+
+  function renderProposalWeekTabs() {
+    const tabsEl = document.getElementById(`${idPrefix}-week-tabs`);
+    if (proposalWeeks.length <= 1) { tabsEl.style.display = 'none'; return; }
+    const fmt = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    tabsEl.innerHTML = proposalWeeks.map((days, i) => `
+      <button type="button" class="tab${i === proposalActiveWeek ? ' active' : ''}" data-week="${i}">Week ${i + 1}<span>${fmt(days[0])} – ${fmt(days[days.length - 1])}</span></button>
+    `).join('');
+    tabsEl.querySelectorAll('.tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        proposalActiveWeek = Number(btn.dataset.week);
+        renderProposalWeekTabs();
+        renderProposalGrid();
+      });
+    });
+  }
+
+  function renderProposalGrid() {
+    const days = proposalWeeks[proposalActiveWeek];
+    const dayHead = (d) => `${d.toLocaleDateString(undefined, { weekday: 'short' })}<br>${d.toLocaleDateString(undefined, { day: 'numeric', month: 'numeric' })}`;
+    let html = `<div class="availability-grid" style="grid-template-columns:44px repeat(${days.length}, 1fr)"><div class="avail-corner"></div>`;
+    for (const d of days) html += `<div class="avail-day-head">${dayHead(d)}</div>`;
+    for (let h = 7; h < 22; h++) {
+      html += `<div class="avail-time-label">${String(h).padStart(2, '0')}:00</div>`;
+      for (const d of days) {
+        const cellDate = new Date(d);
+        cellDate.setHours(h, 0, 0, 0);
+        const iso = cellDate.toISOString();
+        const isProposed = proposalSlotSet.has(iso);
+        const isSelected = iso === selectedSlot;
+        html += `<div class="avail-cell${isProposed ? ' proposed' : ''}${isSelected ? ' selected' : ''}" data-iso="${iso}" data-proposed="${isProposed ? '1' : '0'}"></div>`;
+      }
+    }
+    html += '</div>';
+    document.getElementById(`${idPrefix}-grid-wrap`).innerHTML = html;
+
+    document.querySelectorAll(`#${idPrefix}-grid-wrap .avail-cell[data-proposed="1"]`).forEach((cell) => {
+      cell.addEventListener('click', () => {
+        selectedSlot = cell.dataset.iso;
+        renderProposalGrid();
+        confirmBtn.disabled = !(selectedSlot && selectedVenue);
+      });
+    });
+  }
+
+  renderProposalWeekTabs();
+  renderProposalGrid();
+
+  const venueBtns = card.querySelectorAll(`#${idPrefix}-venue-list .proposal-option`);
+  venueBtns.forEach((btn) => btn.addEventListener('click', () => {
+    selectedVenue = btn.dataset.venue;
+    venueBtns.forEach((b) => b.classList.toggle('selected', b === btn));
+    confirmBtn.disabled = !(selectedSlot && selectedVenue);
+  }));
+  confirmBtn.addEventListener('click', async () => {
+    if (!selectedSlot || !selectedVenue) return;
+    confirmBtn.disabled = true;
+    proposalErrorEl.textContent = '';
+    try {
+      const updated = await api(`/matches/${matchToken}/respond-proposal`, {
+        method: 'POST',
+        body: { slot: selectedSlot, venue: selectedVenue },
+      });
+      toast('Time confirmed!');
+      render(updated);
+    } catch (err) {
+      proposalErrorEl.textContent = err.message;
+      confirmBtn.disabled = false;
+    }
+  });
+
+  // "Edit" — the proposer changing their own offer. Requires login (same
+  // as editing Location/Date), unlike everything else on this card.
+  const editProposalLink = document.getElementById(`edit-${idPrefix}-link`);
+  if (editProposalLink) editProposalLink.addEventListener('click', () => requirePlayerAuth(() => (isPrimary ? openEditProposalModal(m) : openCounterProposeModal(m, { editing: true }))));
+
+  // "Delete" — cancels this proposal outright (see PATCH /:token's
+  // proposalSlots/counterProposalSlots: null handling), same access as
+  // Edit. Deleting the primary card takes any counter-proposal with it
+  // (nothing left to counter) — see the server-side comment.
+  const deleteProposalLink = document.getElementById(`delete-${idPrefix}-link`);
+  if (deleteProposalLink) deleteProposalLink.addEventListener('click', () => requirePlayerAuth(async () => {
+    if (!confirm('Delete this proposal? The proposed times and venues will be removed.')) return;
+    deleteProposalLink.disabled = true;
+    try {
+      const updated = await api(`/matches/${matchToken}`, {
+        method: 'PATCH',
+        body: isPrimary ? { proposalSlots: null } : { counterProposalSlots: null },
+      });
+      toast('Proposal deleted');
+      render(updated);
+    } catch (err) {
+      toast(err.message);
+      deleteProposalLink.disabled = false;
+    }
+  }));
 }
 
 function render(m) {
@@ -461,132 +609,20 @@ function attachHandlers(m) {
   const manualResultBtn = document.getElementById('manual-result-btn');
   if (manualResultBtn) manualResultBtn.addEventListener('click', () => requirePlayerAuth(() => openManualResultModal(m)));
 
-  // Proposal response card — deliberately NOT behind requirePlayerAuth.
+  // Proposal response card(s) — deliberately NOT behind requirePlayerAuth.
   // Anyone with this link can pick a slot/venue, matching the server's
-  // public POST /:token/respond-proposal (see proposalCardHtml above).
-  const proposalCard = document.getElementById('proposal-card');
-  if (proposalCard) {
-    let selectedSlot = null;
-    let selectedVenue = null;
-    const confirmBtn = document.getElementById('confirm-proposal-btn');
-    const proposalErrorEl = document.getElementById('proposal-error');
+  // public POST /:token/respond-proposal (see oneProposalCardHtml above).
+  // One call per card that's actually on the page — the primary proposal,
+  // and the counter-proposal too once there is one.
+  attachProposalCardHandlers(m, 'primary');
+  if (m.counterProposalSlots) attachProposalCardHandlers(m, 'counter');
 
-    // Same weekly-grid look as the "Schedule a match" form that created
-    // this proposal, but single-pick instead of multi-toggle: only cells
-    // matching one of m.proposalSlots are clickable, everything else is
-    // inert filler that keeps the calendar shape recognizable. The day
-    // range comes from the actual proposed dates (not a fixed 14 days),
-    // paged in weeks of 7 the same way, so a short proposal doesn't drag
-    // in empty weeks.
-    const proposalSlotSet = new Set(m.proposalSlots);
-    const dayDates = m.proposalSlots.map((iso) => {
-      const d = new Date(iso);
-      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    });
-    const minDay = new Date(Math.min(...dayDates));
-    const maxDay = new Date(Math.max(...dayDates));
-    const proposalDays = [];
-    for (let d = new Date(minDay); d <= maxDay; d.setDate(d.getDate() + 1)) proposalDays.push(new Date(d));
-    const proposalWeeks = [];
-    for (let i = 0; i < proposalDays.length; i += 7) proposalWeeks.push(proposalDays.slice(i, i + 7));
-    let proposalActiveWeek = 0;
-
-    function renderProposalWeekTabs() {
-      const tabsEl = document.getElementById('proposal-week-tabs');
-      if (proposalWeeks.length <= 1) { tabsEl.style.display = 'none'; return; }
-      const fmt = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-      tabsEl.innerHTML = proposalWeeks.map((days, i) => `
-        <button type="button" class="tab${i === proposalActiveWeek ? ' active' : ''}" data-week="${i}">Week ${i + 1}<span>${fmt(days[0])} – ${fmt(days[days.length - 1])}</span></button>
-      `).join('');
-      tabsEl.querySelectorAll('.tab').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          proposalActiveWeek = Number(btn.dataset.week);
-          renderProposalWeekTabs();
-          renderProposalGrid();
-        });
-      });
-    }
-
-    function renderProposalGrid() {
-      const days = proposalWeeks[proposalActiveWeek];
-      const dayHead = (d) => `${d.toLocaleDateString(undefined, { weekday: 'short' })}<br>${d.toLocaleDateString(undefined, { day: 'numeric', month: 'numeric' })}`;
-      let html = `<div class="availability-grid" style="grid-template-columns:44px repeat(${days.length}, 1fr)"><div class="avail-corner"></div>`;
-      for (const d of days) html += `<div class="avail-day-head">${dayHead(d)}</div>`;
-      for (let h = 7; h < 22; h++) {
-        html += `<div class="avail-time-label">${String(h).padStart(2, '0')}:00</div>`;
-        for (const d of days) {
-          const cellDate = new Date(d);
-          cellDate.setHours(h, 0, 0, 0);
-          const iso = cellDate.toISOString();
-          const isProposed = proposalSlotSet.has(iso);
-          const isSelected = iso === selectedSlot;
-          html += `<div class="avail-cell${isProposed ? ' proposed' : ''}${isSelected ? ' selected' : ''}" data-iso="${iso}" data-proposed="${isProposed ? '1' : '0'}"></div>`;
-        }
-      }
-      html += '</div>';
-      document.getElementById('proposal-grid-wrap').innerHTML = html;
-
-      document.querySelectorAll('#proposal-grid-wrap .avail-cell[data-proposed="1"]').forEach((cell) => {
-        cell.addEventListener('click', () => {
-          selectedSlot = cell.dataset.iso;
-          renderProposalGrid();
-          confirmBtn.disabled = !(selectedSlot && selectedVenue);
-        });
-      });
-    }
-
-    renderProposalWeekTabs();
-    renderProposalGrid();
-
-    const venueBtns = proposalCard.querySelectorAll('#proposal-venue-list .proposal-option');
-    venueBtns.forEach((btn) => btn.addEventListener('click', () => {
-      selectedVenue = btn.dataset.venue;
-      venueBtns.forEach((b) => b.classList.toggle('selected', b === btn));
-      confirmBtn.disabled = !(selectedSlot && selectedVenue);
-    }));
-    confirmBtn.addEventListener('click', async () => {
-      if (!selectedSlot || !selectedVenue) return;
-      confirmBtn.disabled = true;
-      proposalErrorEl.textContent = '';
-      try {
-        const updated = await api(`/matches/${matchToken}/respond-proposal`, {
-          method: 'POST',
-          body: { slot: selectedSlot, venue: selectedVenue },
-        });
-        toast('Time confirmed!');
-        render(updated);
-      } catch (err) {
-        proposalErrorEl.textContent = err.message;
-        confirmBtn.disabled = false;
-      }
-    });
-
-    // "Edit" — the proposer changing their own offer. Requires login (same
-    // as editing Location/Date), unlike everything else on this card.
-    const editProposalLink = document.getElementById('edit-proposal-link');
-    if (editProposalLink) editProposalLink.addEventListener('click', () => requirePlayerAuth(() => openEditProposalModal(m)));
-
-    // "Delete" — cancels the pending proposal outright (see PATCH /:token's
-    // proposalSlots: null handling), same access as Edit.
-    const deleteProposalLink = document.getElementById('delete-proposal-link');
-    if (deleteProposalLink) deleteProposalLink.addEventListener('click', () => requirePlayerAuth(async () => {
-      if (!confirm('Delete this proposal? The proposed times and venues will be removed.')) return;
-      deleteProposalLink.disabled = true;
-      try {
-        const updated = await api(`/matches/${matchToken}`, { method: 'PATCH', body: { proposalSlots: null } });
-        toast('Proposal deleted');
-        render(updated);
-      } catch (err) {
-        toast(err.message);
-        deleteProposalLink.disabled = false;
-      }
-    }));
-
-    // "Propose your own times instead" — deliberately NOT behind
-    // requirePlayerAuth, same public trust model as confirming a slot.
-    const counterProposeLink = document.getElementById('counter-propose-link');
-    if (counterProposeLink) counterProposeLink.addEventListener('click', () => openCounterProposeModal(m));
-  }
+  // "Propose your own times instead" — only present on the primary card
+  // while there's no counter-proposal yet (see oneProposalCardHtml).
+  // Deliberately NOT behind requirePlayerAuth, same public trust model as
+  // confirming a slot.
+  const counterProposeLink = document.getElementById('counter-propose-link');
+  if (counterProposeLink) counterProposeLink.addEventListener('click', () => openCounterProposeModal(m));
 
   root.querySelectorAll('.btn-giant, .btn-minus').forEach((btn) => {
     btn.addEventListener('click', () => requirePlayerAuth(async () => {
@@ -965,19 +1001,25 @@ document.getElementById('edit-proposal-form').addEventListener('submit', async (
 });
 
 // "Propose your own times instead" — the other player submitting their own
-// availability rather than picking from what's offered. Deliberately
-// public (see attachHandlers above and POST /:token/counter-propose on the
-// server) — no login needed, same share-link trust model as confirming a
-// slot. Always starts empty (this is a fresh alternative, not an edit of
-// what's already there).
+// availability as a second, independent proposal rather than picking from
+// what's offered (see POST /:token/counter-propose — it no longer
+// replaces the first proposal, both stand side by side, see
+// oneProposalCardHtml). Deliberately public (see attachProposalCardHandlers
+// above) — no login needed, same share-link trust model as confirming a
+// slot. Reused for editing an existing counter-proposal too (its own
+// "Edit" link reaches here with `editing: true`) — same form, pre-filled
+// instead of starting empty, same POST route since it already just
+// overwrites whatever counter-proposal is there.
 const counterAvailabilityPicker = createAvailabilityPicker({ weekTabsId: 'counter-week-tabs', gridWrapId: 'counter-availability-grid-wrap', slotCountId: 'counter-slot-count' });
 const counterVenuePicker = createVenueChipPicker({ listId: 'counter-venue-chip-list', inputId: 'counter-venue-input', addBtnId: 'counter-venue-add-btn' });
 const counterProposerPicker = createStaticPlayerChoicePicker('counter-proposer-choice-row');
 document.getElementById('counter-clear-slots-btn').addEventListener('click', () => counterAvailabilityPicker.clear());
 
-function openCounterProposeModal(m) {
+function openCounterProposeModal(m, { editing = false } = {}) {
   counterAvailabilityPicker.reset();
+  if (editing) counterAvailabilityPicker.setSlots(m.counterProposalSlots || []);
   counterVenuePicker.clear();
+  if (editing) counterVenuePicker.setVenues(m.counterProposalVenues || []);
   counterProposerPicker.setNames(m.player1.name, m.player2.name);
   // Deliberately public (see the comment above) so most visitors here
   // aren't logged in as anyone in particular — but if this happens to be
@@ -986,10 +1028,15 @@ function openCounterProposeModal(m) {
   const forcedProposer = (playerAuthed && currentPlayerId)
     ? (currentPlayerId === m.player1.id ? 1 : currentPlayerId === m.player2.id ? 2 : null)
     : null;
-  counterProposerPicker.reset(forcedProposer, { lock: forcedProposer != null });
+  counterProposerPicker.reset(forcedProposer != null ? forcedProposer : (editing ? (m.counterProposedBy || null) : null), { lock: forcedProposer != null });
   document.getElementById('counter-proposer-optional-hint').style.display = forcedProposer != null ? 'none' : '';
   document.getElementById('counter-notify-email').value = '';
   document.getElementById('counter-propose-error').textContent = '';
+  document.getElementById('counter-propose-modal-title').textContent = editing ? 'Edit your proposed times' : 'Propose your own times instead';
+  document.getElementById('counter-propose-modal-desc').textContent = editing
+    ? "Update what works for you — the other player picks from these instead, or from the match's original options."
+    : "None of the offered times work? Mark what does work for you — it shows up as its own calendar alongside the original, and either one can be picked from.";
+  document.getElementById('counter-propose-submit-btn').textContent = editing ? 'Update my times' : 'Send my times instead';
   document.getElementById('counter-propose-modal').style.display = 'flex';
 }
 
@@ -1010,6 +1057,7 @@ document.getElementById('counter-propose-form').addEventListener('submit', async
     errorEl.textContent = 'Enter a valid confirmation email address, or leave it blank.';
     return;
   }
+  const wasEditing = !!(current && current.counterProposalSlots);
   const submitBtn = e.target.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   try {
@@ -1023,7 +1071,7 @@ document.getElementById('counter-propose-form').addEventListener('submit', async
       },
     });
     document.getElementById('counter-propose-modal').style.display = 'none';
-    toast('Your times were sent!');
+    toast(wasEditing ? 'Your times were updated!' : 'Your times were sent!');
     render(updated);
   } catch (err) {
     errorEl.textContent = err.message;

@@ -345,8 +345,14 @@ document.getElementById('propose-times-form').addEventListener('submit', async (
   const submitBtn = e.target.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   try {
-    await api(`/matches/${proposeTimesToken}`, {
-      method: 'PATCH',
+    // POST .../counter-propose rather than PATCH here deliberately — the
+    // server writes this as the match's first proposal if it doesn't have
+    // one yet, or as an independent second calendar alongside an existing
+    // one otherwise (see routes/matches.js), so this same button keeps
+    // working correctly for a match the opponent already proposed times
+    // for instead of silently overwriting their offer.
+    await api(`/matches/${proposeTimesToken}/counter-propose`, {
+      method: 'POST',
       body: {
         proposalSlots: Array.from(proposeAvailabilityPicker.selectedSlots),
         proposalVenues: proposeVenuePicker.venues,
