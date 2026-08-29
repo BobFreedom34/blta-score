@@ -26,31 +26,22 @@ router.get('/session', (req, res) => {
   res.json(sessionInfo({ isPlayerFlag: auth.isPlayer(req), isAnon: auth.isAnon(req), player }));
 });
 
-// Digits (and a leading '+') only, then Slovakia's +421/00421 country code
-// folded to the domestic 0-prefix form — "+421 903 111 222" and
-// "0903111222" are the same number. Many players' numbers here were
-// entered on blta.sk long before this login system existed, in whatever
-// format they typed (spaces, missing leading 0, full international for
-// non-Slovak players), so matching has to tolerate that instead of
-// expecting one canonical stored format.
+// Digits only — everything else (spaces, dashes, a leading +, a country
+// code) is irrelevant once samePhone below only looks at the last 6.
 function normalizePhone(raw) {
-  let s = String(raw || '').trim().replace(/[^\d+]/g, '');
-  if (s.startsWith('00421')) s = `0${s.slice(5)}`;
-  else if (s.startsWith('+421')) s = `0${s.slice(4)}`;
-  return s;
+  return String(raw || '').replace(/\D/g, '');
 }
 
-// True if two phone strings are the same number once normalized — either
-// an exact match (covers non-Slovak numbers, which normalizePhone can't
-// re-map a country code for), or the same last 9 digits (a Slovak mobile
-// number's significant digits, however its country-code/leading-0 prefix
-// was written).
+// True if the last 6 digits match. Deliberately loose (not a full-number
+// or even a last-9-digit compare) so a player can log in regardless of how
+// their number was entered on file — spaces, a missing leading 0, a
+// country code, etc. Trade-off: two players who happen to share their last
+// 6 digits would each be able to log in as either — accepted as unlikely
+// enough given real Slovak mobile numbers.
 function samePhone(a, b) {
   const na = normalizePhone(a);
   const nb = normalizePhone(b);
-  if (!na || !nb) return false;
-  if (na === nb) return true;
-  return na.length >= 9 && nb.length >= 9 && na.slice(-9) === nb.slice(-9);
+  return na.length >= 6 && nb.length >= 6 && na.slice(-6) === nb.slice(-6);
 }
 
 // One input, two possible outcomes: a real player's own phone number logs
