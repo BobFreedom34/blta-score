@@ -143,6 +143,13 @@ function checkMatchAccess(req, res, row) {
     const playsInMatch = playerId === row.player1_id || playerId === row.player2_id;
     if (row.created_by_admin && playsInMatch) return true;
     if (row.created_by_player_id === playerId) return true;
+    // Grandfather clause: a match with no creator attribution at all
+    // predates per-player tracking — it was created under the old shared
+    // PLAYER_CODE login (before individual players were identified), so
+    // there's no real creator to check against and no way to know which
+    // side made it. Treat it like an admin-created match instead of
+    // leaving it permanently unmanageable by either player still in it.
+    if (!row.created_by_admin && !row.created_by_anonymous && !row.created_by_player_id && playsInMatch) return true;
   }
   if (isAnon(req) && row.created_by_anonymous) return true;
   res.status(403).json({ error: 'You can only manage matches you play in (if an admin created them) or matches you created yourself' });

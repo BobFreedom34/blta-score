@@ -819,7 +819,13 @@ function canManageMatch(m, isAdminUser) {
   if (playerAuthed && currentPlayerId) {
     const playsInMatch = currentPlayerId === m.player1.id || currentPlayerId === m.player2.id;
     if (m.createdByAdmin && playsInMatch) return true;
-    return m.createdByPlayerId === currentPlayerId;
+    if (m.createdByPlayerId === currentPlayerId) return true;
+    // Grandfather clause — mirrors checkMatchAccess in routes/matches.js:
+    // a match with no creator attribution at all predates per-player
+    // tracking (created under the old shared PLAYER_CODE login), so treat
+    // it like an admin-created match instead of leaving it permanently
+    // unmanageable by either player still in it.
+    return !m.createdByAdmin && !m.createdByAnonymous && !m.createdByPlayerId && playsInMatch;
   }
   if (anonAuthed) return m.createdByAnonymous;
   return true;
