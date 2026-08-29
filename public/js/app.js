@@ -363,7 +363,11 @@ document.getElementById('propose-times-form').addEventListener('submit', async (
     document.getElementById('propose-times-modal').style.display = 'none';
     // The share-with-opponent popup (link + Copy link) is the actual
     // confirmation here — no separate toast needed on top of it.
-    openShareModal(updated, `${updated.player1.name} vs ${updated.player2.name} — pick a time that works for you:`);
+    openShareModal(
+      updated,
+      `${updated.player1.name} vs ${updated.player2.name} — pick a time that works for you:`,
+      "Send this link to your opponent so they can pick the best time for them. Once they choose a date, you'll get a confirmation email if you added one."
+    );
     loadMatches();
   } catch (err) {
     errorEl.textContent = err.message;
@@ -403,7 +407,7 @@ function handlePlannedActionClick(btn, onReady) {
       createdByPlayerId: btn.dataset.createdByPlayerId ? Number(btn.dataset.createdByPlayerId) : null,
     };
     if (!canManageMatch(matchLike, isAdminUser)) {
-      toast('You can only manage matches you play in (if an admin created them) or matches you created yourself');
+      showAccessDeniedModal('You can only manage matches you play in (if an admin created them) or matches you created yourself.');
       return;
     }
     onReady();

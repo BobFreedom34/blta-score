@@ -746,14 +746,18 @@ function whatsappShareUrl(text, url) {
 
 // Shared "share this match" popup — the match's link plus WhatsApp/Copy
 // link actions. Used by match.js's plain "🔗 Share" button (default
-// WhatsApp text) and, with their own text, by the propose-times/
-// counter-propose success flows on both the homepage (app.js) and the
-// match page (match.js) — that's the moment the proposer actually needs
-// the link to hand to their opponent. Every page that calls this needs
-// the same #share-modal/#share-link/#whatsapp-btn/#copy-link-btn markup.
-function openShareModal(m, whatsappText) {
+// WhatsApp text, no description) and, with their own text/description, by
+// the propose-times/counter-propose success flows on both the homepage
+// (app.js) and the match page (match.js) — that's the moment the proposer
+// actually needs the link to hand to their opponent. Every page that
+// calls this needs the same #share-modal/#share-modal-desc/#share-link/
+// #whatsapp-btn/#copy-link-btn markup.
+function openShareModal(m, whatsappText, description) {
   const url = `${window.location.origin}/match/${m.token}`;
   document.getElementById('share-link').textContent = url;
+  const descEl = document.getElementById('share-modal-desc');
+  descEl.textContent = description || '';
+  descEl.style.display = description ? '' : 'none';
   const text = whatsappText || `${m.player1.name} vs ${m.player2.name} — BLTA live score:`;
   document.getElementById('whatsapp-btn').onclick = () => {
     window.open(whatsappShareUrl(text, url), '_blank');
@@ -762,6 +766,17 @@ function openShareModal(m, whatsappText) {
     copyToClipboard(url).then(() => toast('Link copied'));
   };
   document.getElementById('share-modal').style.display = 'flex';
+}
+
+// Shown instead of a toast wherever a click is blocked by checkMatchAccess/
+// canManageMatch — the rejection message stays on screen until dismissed
+// instead of a toast that can be missed. Used by app.js's
+// handlePlannedActionClick and match.js's Start live match/Enter result
+// manually handlers; every page that calls this needs the same
+// #access-denied-modal/#access-denied-text markup.
+function showAccessDeniedModal(message) {
+  document.getElementById('access-denied-text').textContent = message;
+  document.getElementById('access-denied-modal').style.display = 'flex';
 }
 
 async function checkAdmin() {

@@ -35,11 +35,24 @@
   <div class="modal">
     <button type="button" class="close" data-close="share-modal" aria-label="Close">&times;</button>
     <h3>Share this match</h3>
+    <p id="share-modal-desc" style="font-size:13px;color:var(--gray);margin:-6px 0 12px;display:none"></p>
     <div class="code-box" id="share-link"></div>
     <div class="share-row">
       <button class="btn btn-green btn-sm" id="whatsapp-btn">WhatsApp</button>
       <button class="btn btn-outline btn-sm" id="copy-link-btn">Copy link</button>
     </div>
+  </div>
+</div>
+
+<!-- Access denied — shown instead of a toast when a click is blocked by
+     checkMatchAccess/canManageMatch (see showAccessDeniedModal in
+     common.js and its call sites). -->
+<div class="modal-backdrop" id="access-denied-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="access-denied-modal" aria-label="Close">&times;</button>
+    <h3>Can't manage this match</h3>
+    <p id="access-denied-text" style="font-size:14px;color:var(--gray)"></p>
+    <button type="button" class="btn btn-primary btn-block" data-close="access-denied-modal">OK</button>
   </div>
 </div>
 

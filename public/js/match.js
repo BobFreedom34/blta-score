@@ -629,7 +629,7 @@ function attachHandlers(m) {
   const startBtn = document.getElementById('start-btn');
   if (startBtn) startBtn.addEventListener('click', () => requirePlayerAuth(() => {
     if (!canManageMatch(m, isAdminUser)) {
-      toast('You can only manage matches you play in (if an admin created them) or matches you created yourself');
+      showAccessDeniedModal('You can only manage matches you play in (if an admin created them) or matches you created yourself.');
       return;
     }
     if (!m.location || !m.scheduledAt) {
@@ -642,7 +642,7 @@ function attachHandlers(m) {
   const manualResultBtn = document.getElementById('manual-result-btn');
   if (manualResultBtn) manualResultBtn.addEventListener('click', () => requirePlayerAuth(() => {
     if (!canManageMatch(m, isAdminUser)) {
-      toast('You can only manage matches you play in (if an admin created them) or matches you created yourself');
+      showAccessDeniedModal('You can only manage matches you play in (if an admin created them) or matches you created yourself.');
       return;
     }
     openManualResultModal(m);
@@ -1123,7 +1123,11 @@ document.getElementById('counter-propose-form').addEventListener('submit', async
     if (wasEditing) {
       toast('Your times were updated!');
     } else {
-      openShareModal(updated, `${updated.player1.name} vs ${updated.player2.name} — pick a time that works for you:`);
+      openShareModal(
+        updated,
+        `${updated.player1.name} vs ${updated.player2.name} — pick a time that works for you:`,
+        "Send this link to your opponent so they can pick the best time for them. Once they choose a date, you'll get a confirmation email if you added one."
+      );
     }
   } catch (err) {
     errorEl.textContent = err.message;
