@@ -139,12 +139,14 @@ function setupProposerPicker() { return setupLivePlayerChoicePicker('proposer-ch
 // reset() re-labels nothing, just sets/clears the pick.
 function createStaticPlayerChoicePicker(rowId) {
   let picked = null;
+  let locked = false;
   const btns = Array.from(document.querySelectorAll(`#${rowId} button`));
   function applyActive() {
     btns.forEach((b) => b.classList.toggle('active', Number(b.dataset.value) === picked));
   }
   btns.forEach((btn) => {
     btn.addEventListener('click', () => {
+      if (locked) return;
       const val = Number(btn.dataset.value);
       picked = picked === val ? null : val;
       applyActive();
@@ -153,7 +155,16 @@ function createStaticPlayerChoicePicker(rowId) {
   return {
     getPicked: () => picked,
     setNames(n1, n2) { btns[0].textContent = n1; btns[1].textContent = n2; },
-    reset(initial) { picked = initial != null ? initial : null; applyActive(); },
+    // `lock: true` is for when we already know who's proposing (the
+    // logged-in player opening this modal is one of the two match
+    // players) — the answer is forced to them and neither button responds
+    // to a click, instead of just starting pre-picked but still editable.
+    reset(initial, { lock = false } = {}) {
+      picked = initial != null ? initial : null;
+      locked = lock;
+      btns.forEach((b) => { b.disabled = locked; b.classList.toggle('locked', locked); });
+      applyActive();
+    },
   };
 }
 

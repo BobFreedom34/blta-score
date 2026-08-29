@@ -576,6 +576,10 @@ datalist {}
 
 .server-choice-row { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .server-choice-row button.active { border-color: var(--orange); background: #fff6f2; color: var(--orange-dark); font-weight: 800; }
+/* A locked choice (we already know who's proposing — see
+   createStaticPlayerChoicePicker's lock option) stays fully solid orange
+   instead of fading like an ordinary disabled button. */
+.server-choice-row button.active.locked:disabled { opacity: 1; }
 /* Side by side instead of server-choice-row's default stacked column —
    this sits in a full-width form card, not a narrow modal, so two columns
    reads better than two stacked full-width buttons. */

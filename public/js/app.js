@@ -305,12 +305,20 @@ const proposeVenuePicker = createVenueChipPicker({ listId: 'modal-venue-chip-lis
 const proposeProposerPicker = createStaticPlayerChoicePicker('modal-proposer-choice-row');
 document.getElementById('modal-clear-slots-btn').addEventListener('click', () => proposeAvailabilityPicker.clear());
 
-function openProposeTimesModal(token, p1Name, p2Name) {
+function openProposeTimesModal(token, p1Name, p2Name, p1Id, p2Id) {
   proposeTimesToken = token;
   proposeAvailabilityPicker.reset();
   proposeVenuePicker.clear();
   proposeProposerPicker.setNames(p1Name, p2Name);
-  proposeProposerPicker.reset(null);
+  // If the logged-in player opening this modal is one of the two match
+  // players, we already know who's proposing — lock the answer to them
+  // instead of asking (see canManageMatch's ownership check, which is what
+  // let them get here in the first place).
+  const forcedProposer = (playerAuthed && currentPlayerId)
+    ? (currentPlayerId === Number(p1Id) ? 1 : currentPlayerId === Number(p2Id) ? 2 : null)
+    : null;
+  proposeProposerPicker.reset(forcedProposer, { lock: forcedProposer != null });
+  document.getElementById('modal-proposer-optional-hint').style.display = forcedProposer != null ? 'none' : '';
   document.getElementById('modal-notify-email').value = '';
   document.getElementById('propose-times-error').textContent = '';
   document.getElementById('propose-times-modal').style.display = 'flex';
@@ -413,7 +421,7 @@ listEl.addEventListener('click', (e) => {
   if (proposeBtn) {
     e.preventDefault();
     e.stopPropagation();
-    handlePlannedActionClick(proposeBtn, () => openProposeTimesModal(proposeBtn.dataset.token, proposeBtn.dataset.p1Name, proposeBtn.dataset.p2Name));
+    handlePlannedActionClick(proposeBtn, () => openProposeTimesModal(proposeBtn.dataset.token, proposeBtn.dataset.p1Name, proposeBtn.dataset.p2Name, proposeBtn.dataset.p1Id, proposeBtn.dataset.p2Id));
     return;
   }
   const notifyBtn = e.target.closest('.notify-btn');

@@ -117,7 +117,7 @@
   <div class="modal" style="max-width:640px">
     <button type="button" class="close" data-close="propose-times-modal" aria-label="Close">&times;</button>
     <h3>Propose times for the opponent</h3>
-    <p style="font-size:13px;color:var(--gray);margin:-6px 0 16px">Mark every time you could play and a few venues you're happy with — the other player picks one via the match's share link, no login needed on their end.</p>
+    <p style="font-size:13px;color:var(--gray);margin:-6px 0 16px">Mark every time you could play and a few venues you're happy with — the other player picks one via the match's share link.</p>
     <form id="propose-times-form">
       <div class="field">
         <label>Preferred venues</label>
@@ -128,7 +128,7 @@
         </div>
       </div>
       <div class="field">
-        <label>Who's proposing? <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional)</span></label>
+        <label>Who's proposing? <span id="modal-proposer-optional-hint" style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional)</span></label>
         <div class="server-choice-row balls-choice-row" id="modal-proposer-choice-row">
           <button type="button" class="btn btn-outline btn-block" data-value="1">Player 1</button>
           <button type="button" class="btn btn-outline btn-block" data-value="2">Player 2</button>

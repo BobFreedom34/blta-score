@@ -913,7 +913,14 @@ function openEditProposalModal(m) {
   editVenuePicker.clear();
   editVenuePicker.setVenues(m.proposalVenues || []);
   editProposerPicker.setNames(m.player1.name, m.player2.name);
-  editProposerPicker.reset(m.proposedBy || null);
+  // If the logged-in player opening this modal is one of the two match
+  // players, lock the answer to them instead of leaving it editable — see
+  // createStaticPlayerChoicePicker's lock option.
+  const forcedProposer = (playerAuthed && currentPlayerId)
+    ? (currentPlayerId === m.player1.id ? 1 : currentPlayerId === m.player2.id ? 2 : null)
+    : null;
+  editProposerPicker.reset(forcedProposer != null ? forcedProposer : (m.proposedBy || null), { lock: forcedProposer != null });
+  document.getElementById('edit-proposer-optional-hint').style.display = forcedProposer != null ? 'none' : '';
   document.getElementById('edit-notify-email').value = '';
   document.getElementById('edit-proposal-error').textContent = '';
   document.getElementById('edit-proposal-modal').style.display = 'flex';
@@ -972,7 +979,15 @@ function openCounterProposeModal(m) {
   counterAvailabilityPicker.reset();
   counterVenuePicker.clear();
   counterProposerPicker.setNames(m.player1.name, m.player2.name);
-  counterProposerPicker.reset(null);
+  // Deliberately public (see the comment above) so most visitors here
+  // aren't logged in as anyone in particular — but if this happens to be
+  // one of the two match players, lock the answer to them same as the
+  // other proposer pickers.
+  const forcedProposer = (playerAuthed && currentPlayerId)
+    ? (currentPlayerId === m.player1.id ? 1 : currentPlayerId === m.player2.id ? 2 : null)
+    : null;
+  counterProposerPicker.reset(forcedProposer, { lock: forcedProposer != null });
+  document.getElementById('counter-proposer-optional-hint').style.display = forcedProposer != null ? 'none' : '';
   document.getElementById('counter-notify-email').value = '';
   document.getElementById('counter-propose-error').textContent = '';
   document.getElementById('counter-propose-modal').style.display = 'flex';
