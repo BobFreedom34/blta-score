@@ -26,6 +26,33 @@ router.get('/session', (req, res) => {
   res.json(sessionInfo({ isPlayerFlag: auth.isPlayer(req), isAnon: auth.isAnon(req), player }));
 });
 
+// Digits (and a leading '+') only, then Slovakia's +421/00421 country code
+// folded to the domestic 0-prefix form — "+421 903 111 222" and
+// "0903111222" are the same number. Many players' numbers here were
+// entered on blta.sk long before this login system existed, in whatever
+// format they typed (spaces, missing leading 0, full international for
+// non-Slovak players), so matching has to tolerate that instead of
+// expecting one canonical stored format.
+function normalizePhone(raw) {
+  let s = String(raw || '').trim().replace(/[^\d+]/g, '');
+  if (s.startsWith('00421')) s = `0${s.slice(5)}`;
+  else if (s.startsWith('+421')) s = `0${s.slice(4)}`;
+  return s;
+}
+
+// True if two phone strings are the same number once normalized — either
+// an exact match (covers non-Slovak numbers, which normalizePhone can't
+// re-map a country code for), or the same last 9 digits (a Slovak mobile
+// number's significant digits, however its country-code/leading-0 prefix
+// was written).
+function samePhone(a, b) {
+  const na = normalizePhone(a);
+  const nb = normalizePhone(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  return na.length >= 9 && nb.length >= 9 && na.slice(-9) === nb.slice(-9);
+}
+
 // One input, two possible outcomes: a real player's own phone number logs
 // them in as that specific player (see checkMatchAccess in
 // routes/matches.js for what that scopes them to — only matches they play
@@ -34,9 +61,13 @@ router.get('/session', (req, res) => {
 // limited anonymous tier — see requireLoggedIn in routes/matches.js.
 router.post('/login', (req, res) => {
   const raw = String(req.body.code || '').trim();
-  const digits = raw.replace(/\s+/g, '');
-  if (/^0\d{9}$/.test(digits)) {
-    const player = db.prepare('SELECT id, name, slug FROM players WHERE phone = ?').get(digits);
+  const digitCount = raw.replace(/\D/g, '').length;
+  // A short numeric guess (like the 4-digit ANON_CODE) isn't worth a full
+  // table scan/comparison — only attempt a phone match once it's long
+  // enough to plausibly be one.
+  if (digitCount >= 6) {
+    const candidates = db.prepare('SELECT id, name, slug, phone FROM players WHERE phone IS NOT NULL').all();
+    const player = candidates.find((p) => samePhone(p.phone, raw));
     if (player) {
       auth.logInPlayer(res, player.id);
       return res.json(sessionInfo({ isPlayerFlag: true, isAnon: false, player }));

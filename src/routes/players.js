@@ -207,9 +207,15 @@ router.patch('/:id/phone', requireAdmin, (req, res) => {
   const raw = String(req.body.phone || '').trim();
   let phone = null;
   if (raw) {
-    const digits = raw.replace(/\s+/g, '');
-    if (!/^0\d{9}$/.test(digits)) {
-      return res.status(400).json({ error: 'Enter a 10-digit phone number starting with 0, e.g. 0903111222' });
+    // Slovak local (0903111222) is the expected format, but a handful of
+    // players already have a full international number on file from
+    // before this login system existed (non-Slovak players) — allow
+    // fixing/re-entering those too rather than rejecting them outright.
+    const digits = raw.replace(/[^\d+]/g, '');
+    const isSlovakLocal = /^0\d{9}$/.test(digits);
+    const isInternational = /^\+\d{8,15}$/.test(digits);
+    if (!isSlovakLocal && !isInternational) {
+      return res.status(400).json({ error: 'Enter a 10-digit phone number starting with 0 (e.g. 0903111222), or a full international number starting with +' });
     }
     phone = digits;
   }

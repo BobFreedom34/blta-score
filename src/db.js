@@ -293,7 +293,19 @@ db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_players_slug ON players(slug)');
 // Partial (only enforced once a phone is actually set) so the many players
 // without one yet don't collide on NULL — SQLite doesn't treat NULLs as
 // equal for uniqueness anyway, but being explicit here matches the intent.
-db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_players_phone ON players(phone) WHERE phone IS NOT NULL');
+//
+// Wrapped in try/catch: this app already had real, admin-entered phone
+// numbers before this login system existed, in inconsistent formats — if
+// two of those happen to collide exactly, creating the index throws. That
+// must never crash the whole server on boot (it did once, in production)
+// — log it clearly instead so an admin can resolve the actual duplicate
+// via the Players page; the index quietly gets created on a later boot
+// once the data no longer collides.
+try {
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_players_phone ON players(phone) WHERE phone IS NOT NULL');
+} catch (err) {
+  console.error('[db] Could not create unique index on players.phone — two players likely have the exact same phone number on file already. Fix it from the Players page (admin), then this resolves itself on the next deploy/restart. Error:', err.message);
+}
 
 // Backfills a URL-friendly slug (surname-based, e.g. "sloboda") for any
 // player that doesn't have one yet — new players, and every existing one
