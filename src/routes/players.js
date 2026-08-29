@@ -8,14 +8,14 @@ const router = express.Router();
 // player or an admin. Everything else on the bio stays public.
 //
 // Phone is stricter still: it's now a player's login credential (see
-// auth.js), so it's admin-only regardless — a logged-in player could
-// otherwise read, and log in as, any other player.
+// auth.js), so only admin or the player's own record shows it — any other
+// logged-in player could otherwise read, and log in as, that player.
 function canSeePrivateFields(req) {
   return isAdmin(req) || isPlayer(req);
 }
 function stripPrivateFields(player, req) {
   const { phone, email, ...rest } = player;
-  if (isAdmin(req)) return player;
+  if (isAdmin(req) || getPlayerId(req) === player.id) return player;
   if (canSeePrivateFields(req)) return { ...rest, email };
   return rest;
 }
@@ -192,12 +192,16 @@ router.patch('/:id/bio', requireLoggedInForProfile, (req, res) => {
   res.json(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id));
 });
 
-// Phone doubles as a player's login credential (see auth.js) — editable by
-// admin only, deliberately separate from the bio route above (which the
-// player themselves can also reach, but only for their own profile).
-router.patch('/:id/phone', requireAdmin, (req, res) => {
+// Phone doubles as a player's login credential (see auth.js) — same
+// access as the bio route above (admin, or the player editing their own
+// profile), kept as its own route rather than folded into /bio because it
+// needs its own format validation and uniqueness handling. A player can
+// only ever change their own number this way, same as changing your own
+// password — checkPlayerAccess still blocks touching anyone else's.
+router.patch('/:id/phone', requireLoggedInForProfile, (req, res) => {
   const player = findPlayerByIdOrSlug(req.params.id);
   if (!player) return res.status(404).json({ error: 'Player not found' });
+  if (!checkPlayerAccess(req, res, player)) return;
 
   const raw = String(req.body.phone || '').trim();
   let phone = null;

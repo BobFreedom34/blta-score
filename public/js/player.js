@@ -690,11 +690,19 @@ document.getElementById('player-bio-form').addEventListener('submit', async (e) 
     seasons: document.getElementById('bio-seasons').value.trim() || null,
     favoritePlayer: document.getElementById('bio-favorite-player').value.trim() || null,
     birthday: document.getElementById('bio-birthday').value || null,
-    phone: document.getElementById('bio-phone').value.trim() || null,
     email: document.getElementById('bio-email').value.trim() || null,
   };
+  // Phone is a player's login credential, so it goes through its own
+  // route (PATCH /:id/phone — same one the admin-only Players page uses)
+  // with its own format validation and uniqueness check, rather than the
+  // general /bio route — only called if it actually changed, same pattern
+  // as players.js's edit row.
+  const phone = document.getElementById('bio-phone').value.trim();
   try {
     currentPlayer = await api(`/players/${playerId}/bio`, { method: 'PATCH', body });
+    if (phone !== (currentPlayer.phone || '')) {
+      currentPlayer = await api(`/players/${playerId}/phone`, { method: 'PATCH', body: { phone } });
+    }
     renderBio();
     document.getElementById('player-bio-modal').style.display = 'none';
     toast('Profile updated');
