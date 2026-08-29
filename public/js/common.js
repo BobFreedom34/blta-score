@@ -212,7 +212,7 @@ function createAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
 
   function updateSlotCount() {
     const el = document.getElementById(slotCountId);
-    if (el) el.textContent = selectedSlots.size ? `— ${selectedSlots.size} selected` : '';
+    if (el) el.textContent = selectedSlots.size ? t('match.slotsSelected', { count: selectedSlots.size }) : '';
   }
 
   function renderWeekTabs() {
@@ -220,7 +220,7 @@ function createAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
     const label = (days) => `${fmt(days[0])} – ${fmt(days[days.length - 1])}`;
     const weeks = [proposalDays.slice(0, 7), proposalDays.slice(7, 14)];
     document.getElementById(weekTabsId).innerHTML = weeks.map((days, i) => `
-      <button type="button" class="tab${i === activeWeek ? ' active' : ''}" data-week="${i}">Week ${i + 1}<span>${label(days)}</span></button>
+      <button type="button" class="tab${i === activeWeek ? ' active' : ''}" data-week="${i}">${t('match.weekLabel', { n: i + 1 })}<span>${label(days)}</span></button>
     `).join('');
     document.querySelectorAll(`#${weekTabsId} .tab`).forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -580,14 +580,17 @@ async function api(path, options = {}) {
   return data;
 }
 
-function categoryBadge(category) {
-  // Only FRIENDLY has its own translation (a plain English word) —
-  // ELITE/NEXT_GEN/NOVICE/VIP_CUP/ATA_TENNIS stay as the same brand-style
-  // label in both languages, so those fall back to CATEGORY_LABELS as-is.
+// Plain-text version of the same lookup categoryBadge uses below — for
+// spots that need just the label (an info-item value, a <select> option),
+// not the badge markup.
+function categoryLabel(category) {
   const key = `category.${category}`;
   const hasTranslation = TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key];
-  const label = hasTranslation ? t(key) : (CATEGORY_LABELS[category] || category);
-  return `<span class="badge badge-${category}">${label}</span>`;
+  return hasTranslation ? t(key) : (CATEGORY_LABELS[category] || category);
+}
+
+function categoryBadge(category) {
+  return `<span class="badge badge-${category}">${categoryLabel(category)}</span>`;
 }
 
 // One-line card shared by the /compact page and the /embed/compact widget:

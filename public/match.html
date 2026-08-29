@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BLTA Score — Match</title>
+<title data-i18n="page.matchTitle">BLTA Score — Zápas</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" href="/favicon.png">
@@ -17,29 +17,33 @@
     <a class="brand" href="/"><img src="/img/blta-logo.png" alt="BLTA" class="brand-logo"><small>SCORE</small></a>
     <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">☰</button>
     <nav class="nav-links" id="nav-links">
-      <a href="/">Matches</a>
-      <a href="/players">Players</a>
-      <a href="/rankings">Rankings</a>
-      <a href="/new-match">+ New match</a>
-      <a href="#" class="player-login-link" id="player-login-link">LOG IN AS PLAYER</a>
+      <a href="/" data-i18n="nav.matches">Zápasy</a>
+      <a href="/players" data-i18n="nav.players">Hráči</a>
+      <a href="/rankings" data-i18n="nav.rankings">Rebríček</a>
+      <a href="/new-match" data-i18n="nav.newMatch">+ Nový zápas</a>
+      <a href="#" class="player-login-link" id="player-login-link" data-i18n="nav.loginPlayer">PRIHLÁSIŤ SA AKO HRÁČ</a>
+      <div class="lang-switcher" id="lang-switcher">
+        <button type="button" class="lang-btn" data-lang="sk">SK</button>
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+      </div>
     </nav>
   </div>
 </div>
 
 <div class="container" style="max-width:720px">
-  <div id="match-root">Loading match…</div>
+  <div id="match-root" data-i18n="match.loadingMatch">Načítavam zápas…</div>
 </div>
 
 <!-- Share modal -->
 <div class="modal-backdrop" id="share-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="share-modal" aria-label="Close">&times;</button>
-    <h3>Share this match</h3>
+    <h3 data-i18n="share.title">Zdieľať zápas</h3>
     <p id="share-modal-desc" style="font-size:13px;color:var(--gray);margin:-6px 0 12px;display:none"></p>
     <div class="code-box" id="share-link"></div>
     <div class="share-row">
       <button class="btn btn-green btn-sm" id="whatsapp-btn">WhatsApp</button>
-      <button class="btn btn-outline btn-sm" id="copy-link-btn">Copy link</button>
+      <button class="btn btn-outline btn-sm" id="copy-link-btn" data-i18n="share.copyLink">Kopírovať odkaz</button>
     </div>
   </div>
 </div>
@@ -50,9 +54,9 @@
 <div class="modal-backdrop" id="access-denied-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="access-denied-modal" aria-label="Close">&times;</button>
-    <h3>Can't manage this match</h3>
+    <h3 data-i18n="accessDenied.title">Tento zápas nemôžete spravovať</h3>
     <p id="access-denied-text" style="font-size:14px;color:var(--gray)"></p>
-    <button type="button" class="btn btn-primary btn-block" data-close="access-denied-modal">OK</button>
+    <button type="button" class="btn btn-primary btn-block" data-close="access-denied-modal" data-i18n="common.ok">OK</button>
   </div>
 </div>
 
@@ -60,11 +64,11 @@
 <div class="modal-backdrop" id="embed-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="embed-modal" aria-label="Close">&times;</button>
-    <h3>Embed on WordPress</h3>
-    <p style="font-size:13px;color:var(--gray)">Paste this into a "Custom HTML" block on your blta.sk page:</p>
+    <h3 data-i18n="embed.title">Vložiť do WordPress</h3>
+    <p style="font-size:13px;color:var(--gray)" data-i18n="embed.desc">Vložte toto do bloku „Custom HTML“ na vašej stránke blta.sk:</p>
     <div class="code-box" id="embed-code"></div>
     <div class="share-row">
-      <button class="btn btn-outline btn-sm" id="copy-embed-btn">Copy code</button>
+      <button class="btn btn-outline btn-sm" id="copy-embed-btn" data-i18n="embed.copyCode">Kopírovať kód</button>
     </div>
   </div>
 </div>
@@ -73,11 +77,11 @@
 <div class="modal-backdrop" id="whatsapp-result-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="whatsapp-result-modal" aria-label="Close">&times;</button>
-    <h3>Match finished 🎉</h3>
-    <p style="font-size:13px;color:var(--gray)">Send the result to your WhatsApp group:</p>
+    <h3 data-i18n="match.finishedTitle">Zápas ukončený 🎉</h3>
+    <p style="font-size:13px;color:var(--gray)" data-i18n="match.sendResultWhatsapp">Odošlite výsledok do vašej WhatsApp skupiny:</p>
     <div class="code-box" id="whatsapp-result-text" style="white-space:pre-line"></div>
     <div class="share-row">
-      <button class="btn btn-green btn-block" id="whatsapp-result-send-btn">📱 Send to WhatsApp</button>
+      <button class="btn btn-green btn-block" id="whatsapp-result-send-btn" data-i18n="match.sendToWhatsapp">📱 Poslať na WhatsApp</button>
     </div>
   </div>
 </div>
@@ -86,13 +90,13 @@
 <div class="modal-backdrop" id="first-server-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="first-server-modal" aria-label="Close">&times;</button>
-    <h3>Who's serving first?</h3>
-    <p style="font-size:13px;color:var(--gray)">We'll show a 🟡 next to whoever's turn it is to serve, and switch it automatically as the match goes on.</p>
+    <h3 data-i18n="match.whoServesFirst">Kto podáva prvý?</h3>
+    <p style="font-size:13px;color:var(--gray)" data-i18n="match.serveHint">Vedľa hráča, ktorý má práve podávať, zobrazíme 🟡, a automaticky sa to bude prepínať počas zápasu.</p>
     <div class="server-choice-row">
       <button class="btn btn-outline btn-block" id="first-server-p1-btn"></button>
       <button class="btn btn-outline btn-block" id="first-server-p2-btn"></button>
     </div>
-    <button class="btn btn-block" id="first-server-skip-btn" style="margin-top:10px">Skip — don't track serve</button>
+    <button class="btn btn-block" id="first-server-skip-btn" style="margin-top:10px" data-i18n="match.skipServe">Preskočiť — nesledovať podanie</button>
   </div>
 </div>
 
@@ -100,22 +104,22 @@
 <div class="modal-backdrop" id="start-schedule-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="start-schedule-modal" aria-label="Close">&times;</button>
-    <h3>Set date &amp; location first</h3>
-    <p style="font-size:13px;color:var(--gray)">A live match needs a location and date before it can start.</p>
+    <h3 data-i18n="match.setDateFirst">Najprv nastaviť dátum a miesto</h3>
+    <p style="font-size:13px;color:var(--gray)" data-i18n="match.liveNeedsLocation">Zápas naživo potrebuje pred spustením miesto a dátum.</p>
     <form id="start-schedule-form">
       <div class="field">
-        <label for="start-schedule-location">Place</label>
-        <input type="text" id="start-schedule-location" placeholder="e.g. NTC Bratislava, Court 3" required>
+        <label for="start-schedule-location" data-i18n="quickSchedule.place">Miesto</label>
+        <input type="text" id="start-schedule-location" placeholder="napr. NTC Bratislava, kurt 3" data-i18n-placeholder="quickSchedule.placePlaceholder" required>
       </div>
       <div class="field">
-        <label for="start-schedule-date">Date &amp; time</label>
+        <label for="start-schedule-date" data-i18n="quickSchedule.dateTime">Dátum a čas</label>
         <div style="display:flex;gap:8px">
           <input type="date" id="start-schedule-date" style="flex:1" required>
           <input type="time" id="start-schedule-time" style="flex:1">
         </div>
       </div>
       <div id="start-schedule-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Save &amp; continue</button>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px" data-i18n="match.saveContinue">Uložiť a pokračovať</button>
     </form>
   </div>
 </div>
@@ -128,35 +132,35 @@
 <div class="modal-backdrop" id="edit-proposal-modal" style="display:none">
   <div class="modal" style="max-width:640px">
     <button type="button" class="close" data-close="edit-proposal-modal" aria-label="Close">&times;</button>
-    <h3>Edit proposed times</h3>
+    <h3 data-i18n="match.editProposalTitle">Upraviť navrhnuté termíny</h3>
     <form id="edit-proposal-form">
       <div class="field">
-        <label>Preferred venues</label>
+        <label data-i18n="proposeTimes.venues">Preferované miesta</label>
         <div class="venue-chip-row" id="edit-venue-chip-list"></div>
         <div style="display:flex;gap:8px;margin-top:8px">
-          <input type="text" id="edit-venue-input" placeholder="e.g. NTC Bratislava, Court 3" style="flex:1">
-          <button type="button" class="btn btn-outline" id="edit-venue-add-btn">Add</button>
+          <input type="text" id="edit-venue-input" placeholder="napr. NTC Bratislava, kurt 3" style="flex:1" data-i18n-placeholder="quickSchedule.placePlaceholder">
+          <button type="button" class="btn btn-outline" id="edit-venue-add-btn" data-i18n="proposeTimes.add">Pridať</button>
         </div>
       </div>
       <div class="field">
-        <label>Who's proposing? <span id="edit-proposer-optional-hint" style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional)</span></label>
+        <label><span data-i18n="proposeTimes.whoProposing">Kto navrhuje?</span> <span id="edit-proposer-optional-hint" style="font-weight:400;color:var(--gray-dim);font-size:12px" data-i18n="common.optional">(voliteľné)</span></label>
         <div class="server-choice-row balls-choice-row" id="edit-proposer-choice-row">
-          <button type="button" class="btn btn-outline btn-block" data-value="1">Player 1</button>
-          <button type="button" class="btn btn-outline btn-block" data-value="2">Player 2</button>
+          <button type="button" class="btn btn-outline btn-block" data-value="1" data-i18n="common.player1">Hráč 1</button>
+          <button type="button" class="btn btn-outline btn-block" data-value="2" data-i18n="common.player2">Hráč 2</button>
         </div>
       </div>
       <div class="field">
-        <label>Mark the times you can play <span id="edit-slot-count" style="font-weight:400;color:var(--gray-dim)"></span></label>
+        <label><span data-i18n="proposeTimes.markTimes">Označte časy, kedy môžete hrať</span> <span id="edit-slot-count" style="font-weight:400;color:var(--gray-dim)"></span></label>
         <div class="tabs week-picker-tabs" id="edit-week-tabs"></div>
         <div class="availability-grid-wrap" id="edit-availability-grid-wrap"></div>
-        <button type="button" class="btn btn-sm btn-outline" id="edit-clear-slots-btn" style="margin-top:10px">Clear all</button>
+        <button type="button" class="btn btn-sm btn-outline" id="edit-clear-slots-btn" style="margin-top:10px" data-i18n="common.clearAll">Vymazať všetko</button>
       </div>
       <div class="field">
-        <label for="edit-notify-email">Email for confirmation <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional — leave blank to keep the current one)</span></label>
+        <label for="edit-notify-email"><span data-i18n="proposeTimes.emailConfirm">E-mail pre potvrdenie</span> <span style="font-weight:400;color:var(--gray-dim);font-size:12px" data-i18n="match.emailKeepCurrentHint">(voliteľné — nechajte prázdne, ak chcete zachovať súčasný)</span></label>
         <input type="email" id="edit-notify-email" placeholder="you@example.com">
       </div>
       <div id="edit-proposal-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Save changes</button>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px" data-i18n="match.saveChanges">Uložiť zmeny</button>
     </form>
   </div>
 </div>
@@ -168,36 +172,36 @@
 <div class="modal-backdrop" id="counter-propose-modal" style="display:none">
   <div class="modal" style="max-width:640px">
     <button type="button" class="close" data-close="counter-propose-modal" aria-label="Close">&times;</button>
-    <h3 id="counter-propose-modal-title">Propose your own times instead</h3>
-    <p id="counter-propose-modal-desc" style="font-size:13px;color:var(--gray);margin-top:-8px">None of the offered times work? Mark what does work for you — it shows up as its own calendar alongside the original, and either one can be picked from.</p>
+    <h3 id="counter-propose-modal-title">Navrhnúť namiesto toho svoje vlastné termíny</h3>
+    <p id="counter-propose-modal-desc" style="font-size:13px;color:var(--gray);margin-top:-8px">Ani jeden z ponúknutých termínov nevyhovuje? Označte, čo vám vyhovuje — zobrazí sa ako samostatný kalendár vedľa pôvodného, a dá sa vybrať z ktoréhokoľvek z nich.</p>
     <form id="counter-propose-form">
       <div class="field">
-        <label>Preferred venues</label>
+        <label data-i18n="proposeTimes.venues">Preferované miesta</label>
         <div class="venue-chip-row" id="counter-venue-chip-list"></div>
         <div style="display:flex;gap:8px;margin-top:8px">
-          <input type="text" id="counter-venue-input" placeholder="e.g. NTC Bratislava, Court 3" style="flex:1">
-          <button type="button" class="btn btn-outline" id="counter-venue-add-btn">Add</button>
+          <input type="text" id="counter-venue-input" placeholder="napr. NTC Bratislava, kurt 3" style="flex:1" data-i18n-placeholder="quickSchedule.placePlaceholder">
+          <button type="button" class="btn btn-outline" id="counter-venue-add-btn" data-i18n="proposeTimes.add">Pridať</button>
         </div>
       </div>
       <div class="field">
-        <label>Who's proposing? <span id="counter-proposer-optional-hint" style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional)</span></label>
+        <label><span data-i18n="proposeTimes.whoProposing">Kto navrhuje?</span> <span id="counter-proposer-optional-hint" style="font-weight:400;color:var(--gray-dim);font-size:12px" data-i18n="common.optional">(voliteľné)</span></label>
         <div class="server-choice-row balls-choice-row" id="counter-proposer-choice-row">
-          <button type="button" class="btn btn-outline btn-block" data-value="1">Player 1</button>
-          <button type="button" class="btn btn-outline btn-block" data-value="2">Player 2</button>
+          <button type="button" class="btn btn-outline btn-block" data-value="1" data-i18n="common.player1">Hráč 1</button>
+          <button type="button" class="btn btn-outline btn-block" data-value="2" data-i18n="common.player2">Hráč 2</button>
         </div>
       </div>
       <div class="field">
-        <label>Mark the times you can play <span id="counter-slot-count" style="font-weight:400;color:var(--gray-dim)"></span></label>
+        <label><span data-i18n="proposeTimes.markTimes">Označte časy, kedy môžete hrať</span> <span id="counter-slot-count" style="font-weight:400;color:var(--gray-dim)"></span></label>
         <div class="tabs week-picker-tabs" id="counter-week-tabs"></div>
         <div class="availability-grid-wrap" id="counter-availability-grid-wrap"></div>
-        <button type="button" class="btn btn-sm btn-outline" id="counter-clear-slots-btn" style="margin-top:10px">Clear all</button>
+        <button type="button" class="btn btn-sm btn-outline" id="counter-clear-slots-btn" style="margin-top:10px" data-i18n="common.clearAll">Vymazať všetko</button>
       </div>
       <div class="field">
-        <label for="counter-notify-email">Email for confirmation <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional)</span></label>
+        <label for="counter-notify-email"><span data-i18n="proposeTimes.emailConfirm">E-mail pre potvrdenie</span> <span style="font-weight:400;color:var(--gray-dim);font-size:12px" data-i18n="common.optional">(voliteľné)</span></label>
         <input type="email" id="counter-notify-email" placeholder="you@example.com">
       </div>
       <div id="counter-propose-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
-      <button type="submit" id="counter-propose-submit-btn" class="btn btn-primary btn-block" style="margin-top:6px">Send my times instead</button>
+      <button type="submit" id="counter-propose-submit-btn" class="btn btn-primary btn-block" style="margin-top:6px">Odoslať namiesto toho moje termíny</button>
     </form>
   </div>
 </div>
@@ -206,21 +210,21 @@
 <div class="modal-backdrop" id="finish-undecided-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="finish-undecided-modal" aria-label="Close">&times;</button>
-    <h3 id="finish-undecided-title">Finish without a completed score?</h3>
-    <p style="font-size:13px;color:var(--gray)" id="finish-undecided-desc">The match isn't decided by score yet. Pick who won and why.</p>
-    <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em;margin-top:12px">Winner</div>
+    <h3 id="finish-undecided-title">Ukončiť bez dokončeného skóre?</h3>
+    <p style="font-size:13px;color:var(--gray)" id="finish-undecided-desc">Zápas ešte nie je rozhodnutý skóre. Vyberte, kto vyhral a prečo.</p>
+    <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em;margin-top:12px" data-i18n="match.winner">Víťaz</div>
     <div class="server-choice-row" id="finish-winner-row">
       <button type="button" class="btn btn-outline btn-block" data-winner="1"></button>
       <button type="button" class="btn btn-outline btn-block" data-winner="2"></button>
     </div>
     <div id="finish-reason-section">
-      <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em;margin-top:14px">Reason</div>
+      <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em;margin-top:14px" data-i18n="match.reasonLabel">Dôvod</div>
       <div class="server-choice-row" id="finish-reason-row">
-        <button type="button" class="btn btn-outline btn-block" data-reason="RETIREMENT">Retirement</button>
-        <button type="button" class="btn btn-outline btn-block" data-reason="WALKOVER">Walkover</button>
+        <button type="button" class="btn btn-outline btn-block" data-reason="RETIREMENT" data-i18n="common.endReason.RETIREMENT">Skreč</button>
+        <button type="button" class="btn btn-outline btn-block" data-reason="WALKOVER" data-i18n="common.endReason.WALKOVER">Kontumácia</button>
       </div>
     </div>
-    <button class="btn btn-dark btn-block" id="finish-undecided-confirm-btn" style="margin-top:16px" disabled>Finish match</button>
+    <button class="btn btn-dark btn-block" id="finish-undecided-confirm-btn" style="margin-top:16px" disabled data-i18n="match.finishMatchBtn">🏁 Ukončiť zápas</button>
   </div>
 </div>
 
@@ -228,16 +232,16 @@
 <div class="modal-backdrop" id="manual-result-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="manual-result-modal" aria-label="Close">&times;</button>
-    <h3>Enter result manually</h3>
-    <p style="font-size:13px;color:var(--gray)">For a match that was already played elsewhere. Fill in the sets that were played, in order, and leave the rest blank.</p>
+    <h3 data-i18n="match.manualResultTitle">Zadať výsledok manuálne</h3>
+    <p style="font-size:13px;color:var(--gray)" data-i18n="match.manualResultDesc">Pre zápas, ktorý sa už odohral inde. Vyplňte odohrané sety v poradí a zvyšok nechajte prázdny.</p>
     <form id="manual-result-form">
       <div class="grid-2">
         <div class="field">
-          <label for="manual-result-location">Place</label>
-          <input type="text" id="manual-result-location" placeholder="e.g. NTC Bratislava, Court 3" required>
+          <label for="manual-result-location" data-i18n="quickSchedule.place">Miesto</label>
+          <input type="text" id="manual-result-location" placeholder="napr. NTC Bratislava, kurt 3" data-i18n-placeholder="quickSchedule.placePlaceholder" required>
         </div>
         <div class="field">
-          <label for="manual-result-date">Date &amp; time</label>
+          <label for="manual-result-date" data-i18n="quickSchedule.dateTime">Dátum a čas</label>
           <div style="display:flex;gap:8px">
             <input type="date" id="manual-result-date" style="flex:1" required>
             <input type="time" id="manual-result-time" style="flex:1">
@@ -248,28 +252,28 @@
 
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:6px">
         <input type="checkbox" id="manual-result-retired-checkbox">
-        <span style="font-size:13px;font-weight:600">Ended in a walkover or retirement (didn't finish by score)</span>
+        <span style="font-size:13px;font-weight:600" data-i18n="match.retiredCheckboxLabel">Skončilo kontumáciou alebo skrečom (nedohralo sa do konca)</span>
       </label>
       <div id="manual-result-retired-fields" style="display:none;margin-top:10px">
-        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em">Winner</div>
+        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em" data-i18n="match.winner">Víťaz</div>
         <div class="server-choice-row" id="manual-result-winner-row">
           <button type="button" class="btn btn-outline btn-block" data-winner="1"></button>
           <button type="button" class="btn btn-outline btn-block" data-winner="2"></button>
         </div>
-        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em;margin-top:12px">Reason</div>
+        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em;margin-top:12px" data-i18n="match.reasonLabel">Dôvod</div>
         <div class="server-choice-row" id="manual-result-reason-row">
-          <button type="button" class="btn btn-outline btn-block" data-reason="RETIREMENT">Retirement</button>
-          <button type="button" class="btn btn-outline btn-block" data-reason="WALKOVER">Walkover</button>
+          <button type="button" class="btn btn-outline btn-block" data-reason="RETIREMENT" data-i18n="common.endReason.RETIREMENT">Skreč</button>
+          <button type="button" class="btn btn-outline btn-block" data-reason="WALKOVER" data-i18n="common.endReason.WALKOVER">Kontumácia</button>
         </div>
       </div>
 
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:10px">
         <input type="checkbox" id="manual-result-unfinished-checkbox">
-        <span style="font-size:13px;font-weight:600">Unfinished — ran out of time (won't count toward stats)</span>
+        <span style="font-size:13px;font-weight:600" data-i18n="match.unfinishedCheckboxLabel">Nedokončené — vypršal čas (nezapočíta sa do štatistík)</span>
       </label>
 
       <div id="manual-result-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Save result</button>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px" data-i18n="match.saveResult">Uložiť výsledok</button>
     </form>
   </div>
 </div>
@@ -278,8 +282,8 @@
 <div class="modal-backdrop" id="change-format-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="change-format-modal" aria-label="Close">&times;</button>
-    <h3>Change match format</h3>
-    <p style="font-size:13px;color:var(--gray)">Sets already played keep their score — this only changes how the rest of the match is scored. Picking a format the current score would already decide isn't allowed.</p>
+    <h3 data-i18n="match.changeFormatTitle">Zmeniť formát zápasu</h3>
+    <p style="font-size:13px;color:var(--gray)" data-i18n="match.changeFormatDesc">Už odohrané sety si zachovajú svoje skóre — toto zmení iba spôsob počítania zvyšku zápasu. Nie je možné vybrať formát, ktorý by aktuálne skóre už rozhodlo.</p>
     <div class="format-options" id="change-format-options"></div>
     <div id="change-format-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
   </div>
@@ -289,15 +293,15 @@
 <div class="modal-backdrop" id="player-login-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="player-login-modal" aria-label="Close">&times;</button>
-    <h3 style="text-transform:uppercase;font-weight:900">Log in as player</h3>
-    <p style="font-size:16px;color:var(--ink)">If you're a BLTA player, enter <span style="color:var(--green-light);text-transform:uppercase">your phone number</span> (e.g. 0903111222). Don't have one on file yet? Ask an admin to add it.</p>
-    <p style="font-size:13px;color:var(--gray);margin:8px 0">If you're not a BLTA player, log in with 3344 instead — you can still create and manage your own matches.</p>
+    <h3 style="text-transform:uppercase;font-weight:900" data-i18n="login.title">Prihlásiť sa ako hráč</h3>
+    <p style="font-size:16px;color:var(--ink)" data-i18n-html="login.phoneIntro">Ak ste hráč BLTA, zadajte <span style="color:var(--green-light);text-transform:uppercase">svoje telefónne číslo</span> (napr. 0903111222). Ešte ho nemáte v systéme? Požiadajte admina, aby ho pridal.</p>
+    <p style="font-size:13px;color:var(--gray);margin:8px 0" data-i18n="login.notBltaPlayer">Ak nie ste hráč BLTA, prihláste sa namiesto toho kódom 3344 — aj tak môžete vytvárať a spravovať svoje vlastné zápasy.</p>
     <form id="player-login-form">
       <div class="field">
         <input type="text" inputmode="numeric" id="player-login-input" placeholder="0903111222" autocomplete="off">
       </div>
       <div id="player-login-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
-      <button type="submit" class="btn btn-primary btn-block">Log in</button>
+      <button type="submit" class="btn btn-primary btn-block" data-i18n="login.submit">Prihlásiť sa</button>
     </form>
   </div>
 </div>
@@ -306,7 +310,7 @@
   <div class="site-footer-inner">
     <span>BLTA Score</span>
     <div style="display:flex;gap:12px">
-      <a href="/badges-admin" class="footer-badges-link" style="display:none">Manage badges</a>
+      <a href="/badges-admin" class="footer-badges-link" style="display:none" data-i18n="footer.manageBadges">Spravovať odznaky</a>
       <a href="/admin">Admin</a>
     </div>
   </div>

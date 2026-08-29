@@ -24,15 +24,9 @@ const FORMAT_META = {
   FREE_PLAY: { setsToWin: 6, finalSetSuperTiebreak: false },
 };
 
-// Mirrors public/js/new-match.js FORMATS — for the change-format picker.
-const FORMATS_LIST = [
-  { key: 'BO1', label: 'Best of 1 set' },
-  { key: 'BO3', label: 'Best of 3 sets', sublabel: '(BLTA Play-Off)' },
-  { key: 'BO3_STB', label: 'Best of 3 sets — deciding set is a match tiebreak', sublabel: '(BLTA League)' },
-  { key: 'BO5', label: 'Best of 5 sets' },
-  { key: 'BO5_STB', label: 'Best of 5 sets — deciding set is a match tiebreak' },
-  { key: 'FREE_PLAY', label: 'Free Play', sublabel: '(training)' },
-];
+// Same keys as common.js's MATCH_FORMATS (and its format.* i18n entries),
+// just in a different display order for the change-format picker (BO1 first).
+const FORMATS_ORDER = ['BO1', 'BO3', 'BO3_STB', 'BO5', 'BO5_STB', 'FREE_PLAY'];
 
 // Standard tiebreak serve rotation: the player whose turn it is serves point 1
 // only, then serve alternates every 2 points for the rest of the tiebreak.
@@ -116,7 +110,7 @@ function startTimer(m) {
 function scoreboardHtml(m, durationHtml) {
   const state = m.state;
   const setsToShow = state.sets;
-  const headerCells = setsToShow.map((s, i) => `<th>${s.isSuperTiebreak ? 'MTB' : `Set ${i + 1}`}</th>`).join('');
+  const headerCells = setsToShow.map((s, i) => `<th>${s.isSuperTiebreak ? t('match.mtbAbbrev') : t('match.setLabel', { n: i + 1 })}</th>`).join('');
   const serving = m.status === 'LIVE' ? currentServer(state, m.firstServer) : null;
 
   const row = (playerNum, player) => {
@@ -125,7 +119,7 @@ function scoreboardHtml(m, durationHtml) {
       const isCurrent = m.status === 'LIVE' && i === state.currentSet;
       return `<td class="set-score ${isCurrent ? 'current' : ''}">${setCell(s, playerNum)}</td>`;
     }).join('');
-    const ball = serving === playerNum ? '<span class="serve-ball" title="Serving">🟡</span>' : '';
+    const ball = serving === playerNum ? `<span class="serve-ball" title="${escapeHtml(t('match.servingTitle'))}">🟡</span>` : '';
     return `<tr class="${isWinner ? 'winner-row' : ''}"><td class="name-cell">${ball}${escapeHtml(player.name)}</td>${cells}</tr>`;
   };
 
@@ -150,8 +144,8 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
   const curSet = m.state.sets[effIndex];
   const isTiebreak = !!curSet.tiebreak;
   const unitLabel = isTiebreak
-    ? (curSet.isSuperTiebreak ? (curSet.tiebreakTarget === 7 ? 'point (tiebreak to 7)' : 'point (match tiebreak)') : 'point (tiebreak)')
-    : 'game';
+    ? (curSet.isSuperTiebreak ? (curSet.tiebreakTarget === 7 ? t('match.unit.tb7') : t('match.unit.mtb')) : t('match.unit.tiebreak'))
+    : t('match.unit.game');
   // The big number IS the current score — tapping it adds one game (or one
   // point mid-tiebreak); it naturally shows 0-0 again once a new set starts.
   const p1Value = isTiebreak ? curSet.tiebreak.p1 : curSet.p1;
@@ -160,7 +154,7 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
     <div class="set-picker">
       ${m.state.sets.map((s, i) => `
         <button type="button" class="set-picker-btn ${i === effIndex ? 'active' : ''}" data-set-index="${i}">
-          ${s.isSuperTiebreak ? (s.tiebreakTarget === 7 ? 'TB-7' : 'MTB') : `Set ${i + 1}`} <span class="set-picker-score">${describeSet(s)}</span>
+          ${s.isSuperTiebreak ? (s.tiebreakTarget === 7 ? t('match.tb7Abbrev') : t('match.mtbAbbrev')) : t('match.setLabel', { n: i + 1 })} <span class="set-picker-score">${describeSet(s)}</span>
         </button>
       `).join('')}
     </div>
@@ -169,11 +163,11 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
   // has no progress yet) will be played to — always visible while live,
   // since there's no fixed format to fall back on.
   const styleSwitcher = (showFinish && m.format === 'FREE_PLAY') ? `
-    <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray-dim);font-weight:700;letter-spacing:0.03em;margin-top:10px">Next set</div>
+    <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray-dim);font-weight:700;letter-spacing:0.03em;margin-top:10px">${t('match.nextSet')}</div>
     <div class="set-picker">
-      <button type="button" class="set-picker-btn ${(m.state.nextSetStyle || 'REGULAR') === 'REGULAR' ? 'active' : ''}" data-set-style="REGULAR">Games to 6</button>
-      <button type="button" class="set-picker-btn ${m.state.nextSetStyle === 'TB7' ? 'active' : ''}" data-set-style="TB7">Tiebreak to 7</button>
-      <button type="button" class="set-picker-btn ${m.state.nextSetStyle === 'TB10' ? 'active' : ''}" data-set-style="TB10">Tiebreak to 10</button>
+      <button type="button" class="set-picker-btn ${(m.state.nextSetStyle || 'REGULAR') === 'REGULAR' ? 'active' : ''}" data-set-style="REGULAR">${t('match.gamesTo6')}</button>
+      <button type="button" class="set-picker-btn ${m.state.nextSetStyle === 'TB7' ? 'active' : ''}" data-set-style="TB7">${t('match.tiebreakTo7')}</button>
+      <button type="button" class="set-picker-btn ${m.state.nextSetStyle === 'TB10' ? 'active' : ''}" data-set-style="TB10">${t('match.tiebreakTo10')}</button>
     </div>
   ` : '';
   return `
@@ -182,22 +176,22 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
     <div class="score-controls">
       <div class="player-controls">
         <div class="pname">${escapeHtml(m.player1.name)}</div>
-        <button class="btn btn-giant btn-score-number" data-player="1" data-delta="1" aria-label="Add a ${unitLabel} for ${escapeHtml(m.player1.name)}">${p1Value}</button>
+        <button class="btn btn-giant btn-score-number" data-player="1" data-delta="1" aria-label="${escapeHtml(t('match.addUnitFor', { unit: unitLabel, name: m.player1.name }))}">${p1Value}</button>
         <button class="btn btn-minus" data-player="1" data-delta="-1">−1</button>
       </div>
       <div class="player-controls">
         <div class="pname">${escapeHtml(m.player2.name)}</div>
-        <button class="btn btn-giant btn-score-number" data-player="2" data-delta="1" aria-label="Add a ${unitLabel} for ${escapeHtml(m.player2.name)}">${p2Value}</button>
+        <button class="btn btn-giant btn-score-number" data-player="2" data-delta="1" aria-label="${escapeHtml(t('match.addUnitFor', { unit: unitLabel, name: m.player2.name }))}">${p2Value}</button>
         <button class="btn btn-minus" data-player="2" data-delta="-1">−1</button>
       </div>
     </div>
     <div class="match-actions">
       ${showFinish ? (m.pausedAt
-        ? '<button class="btn" id="resume-btn">▶ Resume match</button>'
-        : '<button class="btn" id="pause-btn">⏸ Stop match</button>') : ''}
-      ${showRestart ? '<button class="btn" id="restart-btn">🔁 Restart match</button>' : ''}
-      ${showFinish ? '<button class="btn btn-dark" id="finish-btn">🏁 Finish match</button>' : ''}
-      ${showFinish ? '<button class="btn btn-outline" id="unfinished-btn" title="No winner yet — e.g. ran out of court time. Can be resumed later.">⏹ Match unfinished</button>' : ''}
+        ? `<button class="btn" id="resume-btn">${t('match.resumeMatch')}</button>`
+        : `<button class="btn" id="pause-btn">${t('match.stopMatch')}</button>`) : ''}
+      ${showRestart ? `<button class="btn" id="restart-btn">${t('match.restartMatch')}</button>` : ''}
+      ${showFinish ? `<button class="btn btn-dark" id="finish-btn">${t('match.finishMatchBtn')}</button>` : ''}
+      ${showFinish ? `<button class="btn btn-outline" id="unfinished-btn" title="${escapeHtml(t('match.matchUnfinishedTitle'))}">${t('match.matchUnfinishedBtn')}</button>` : ''}
     </div>
   `;
 }
@@ -205,8 +199,8 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
 function controlsHtml(m) {
   if (m.status === 'PLANNED') {
     return `
-      <button class="btn btn-primary btn-block" id="start-btn" style="padding:16px;font-size:16px;margin-top:16px;text-transform:uppercase">🔴 Start live match</button>
-      <button class="btn btn-green btn-block" id="manual-result-btn" style="padding:16px;font-size:16px;margin-top:10px;text-transform:uppercase">📝 Enter result manually</button>
+      <button class="btn btn-primary btn-block" id="start-btn" style="padding:16px;font-size:16px;margin-top:16px;text-transform:uppercase">${t('match.startLiveMatch')}</button>
+      <button class="btn btn-green btn-block" id="manual-result-btn" style="padding:16px;font-size:16px;margin-top:10px;text-transform:uppercase">${t('match.enterResultManually')}</button>
     `;
   }
   if (m.status === 'LIVE') {
@@ -215,28 +209,28 @@ function controlsHtml(m) {
   if (m.status === 'UNFINISHED') {
     return `
       <div class="card" style="margin-top:16px;text-align:center">
-        <div style="font-size:13px;color:var(--gray);font-weight:700;letter-spacing:0.03em;text-transform:uppercase">Unfinished</div>
-        <div style="font-size:16px;font-weight:700;color:var(--ink);margin-top:4px">No winner yet — the score above is where it stopped.</div>
+        <div style="font-size:13px;color:var(--gray);font-weight:700;letter-spacing:0.03em;text-transform:uppercase">${t('status.UNFINISHED')}</div>
+        <div style="font-size:16px;font-weight:700;color:var(--ink);margin-top:4px">${t('match.unfinishedDesc')}</div>
       </div>
-      <button class="btn btn-primary btn-block" id="resume-later-btn" style="padding:16px;font-size:16px;margin-top:10px;text-transform:uppercase">📅 Set a new date &amp; resume later</button>
-      <button class="btn btn-dark btn-block" id="finish-as-is-btn" style="margin-top:10px">🏁 Finish with the result as it is</button>
-      <button class="btn btn-block" id="restart-btn" style="margin-top:10px">🔁 Restart match from scratch</button>
+      <button class="btn btn-primary btn-block" id="resume-later-btn" style="padding:16px;font-size:16px;margin-top:10px;text-transform:uppercase">${t('match.setNewDateResume')}</button>
+      <button class="btn btn-dark btn-block" id="finish-as-is-btn" style="margin-top:10px">${t('match.finishAsIs')}</button>
+      <button class="btn btn-block" id="restart-btn" style="margin-top:10px">${t('match.restartFromScratch')}</button>
     `;
   }
   // FINISHED
   const winnerName = m.winnerId === m.player1.id ? m.player1.name : m.winnerId === m.player2.id ? m.player2.name : null;
-  const reasonLabel = m.endReason && END_REASON_LABELS[m.endReason] ? END_REASON_LABELS[m.endReason] : null;
+  const reasonLabel = m.endReason ? endReasonLabel(m.endReason) : null;
   const winnerCard = `
     <div class="card" style="margin-top:16px;text-align:center">
-      <div style="font-size:13px;color:var(--gray);font-weight:700;letter-spacing:0.03em;text-transform:uppercase">Winner</div>
-      <div style="font-size:22px;font-weight:800;color:var(--green-light)">${winnerName ? escapeHtml(winnerName) : 'Match ended without a result'}</div>
-      ${reasonLabel ? `<div style="font-size:12px;color:var(--gray);font-weight:700;margin-top:4px">${reasonLabel}</div>` : ''}
+      <div style="font-size:13px;color:var(--gray);font-weight:700;letter-spacing:0.03em;text-transform:uppercase">${t('match.winner')}</div>
+      <div style="font-size:22px;font-weight:800;color:var(--green-light)">${winnerName ? escapeHtml(winnerName) : t('match.endedNoResult')}</div>
+      ${reasonLabel ? `<div style="font-size:12px;color:var(--gray);font-weight:700;margin-top:4px">${escapeHtml(reasonLabel)}</div>` : ''}
     </div>
   `;
   if (!isAdminUser) return winnerCard;
   return `
     ${winnerCard}
-    <div style="text-align:center;font-size:12px;color:var(--gray-dim);margin:14px 0 -6px">Admin: you can still correct any set below, or restart the match entirely.</div>
+    <div style="text-align:center;font-size:12px;color:var(--gray-dim);margin:14px 0 -6px">${t('match.adminCorrectNote')}</div>
     ${scoreControlsHtml(m, { showFinish: false, showRestart: true })}
   `;
 }
@@ -266,17 +260,17 @@ function chatHtml() {
   const savedName = localStorage.getItem('blta_chat_name') || '';
   return `
     <div class="card chat-card" style="margin-bottom:16px">
-      <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em">Chat</div>
+      <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em">${t('match.chatLabel')}</div>
       <div class="chat-messages" id="chat-messages">
         ${messages.length === 0
-          ? '<div class="chat-empty">No messages yet — say hi 👋</div>'
+          ? `<div class="chat-empty">${t('match.noMessagesYet')}</div>`
           : messages.map(chatMessageHtml).join('')}
       </div>
       <form id="chat-form">
-        <input type="text" id="chat-name" placeholder="Your name" value="${escapeHtml(savedName)}" maxlength="60" required>
+        <input type="text" id="chat-name" placeholder="${escapeHtml(t('match.yourNamePlaceholder'))}" value="${escapeHtml(savedName)}" maxlength="60" required>
         <div style="display:flex;gap:6px;margin-top:6px">
-          <input type="text" id="chat-body" placeholder="Type a message…" value="${escapeHtml(chatDraftBody)}" maxlength="500" required style="flex:1">
-          <button type="submit" class="btn btn-primary btn-sm">Send</button>
+          <input type="text" id="chat-body" placeholder="${escapeHtml(t('match.typeMessagePlaceholder'))}" value="${escapeHtml(chatDraftBody)}" maxlength="500" required style="flex:1">
+          <button type="submit" class="btn btn-primary btn-sm">${t('match.sendBtn')}</button>
         </div>
       </form>
     </div>
@@ -305,7 +299,7 @@ async function ensureH2H(m) {
       const pct = Math.round((wins / total) * 100);
       const scoreColor = wins > losses ? 'var(--green)' : wins < losses ? 'var(--danger)' : 'var(--gray)';
       h2hHtml = `
-        <div class="section-label">Head-to-head</div>
+        <div class="section-label">${t('player.h2h')}</div>
         <div class="h2h-card">
           <div class="h2h-row" style="flex-direction:column;align-items:stretch;gap:8px">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -346,29 +340,29 @@ function oneProposalCardHtml(m, which) {
   return `
     <div class="card" id="${idPrefix}-card" style="margin-bottom:16px;border:2px solid var(--orange)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">📅 Pick a time</div>
+        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">${t('match.pickATime')}</div>
         ${canManageMatch(m, isAdminUser) ? `
           <div style="display:flex;gap:10px">
-            <button type="button" class="edit-link" id="edit-${idPrefix}-link">Edit</button>
-            <button type="button" class="edit-link" id="delete-${idPrefix}-link" style="color:var(--danger)">Delete</button>
+            <button type="button" class="edit-link" id="edit-${idPrefix}-link">${t('common.edit')}</button>
+            <button type="button" class="edit-link" id="delete-${idPrefix}-link" style="color:var(--danger)">${t('common.delete')}</button>
           </div>
         ` : ''}
       </div>
-      <p style="font-size:13px;color:var(--gray);margin:6px 0 16px">${proposerName ? `${escapeHtml(proposerName)} proposed` : 'A few options were proposed'} for this match — pick whichever works for you and it's confirmed.</p>
+      <p style="font-size:13px;color:var(--gray);margin:6px 0 16px">${proposerName ? t('match.proposedByForSentence', { name: escapeHtml(proposerName) }) : t('match.proposedGenericForSentence')}</p>
       <div class="field">
-        <label>When</label>
+        <label>${t('match.whenLabel')}</label>
         <div class="tabs week-picker-tabs" id="${idPrefix}-week-tabs"></div>
         <div class="availability-grid-wrap" id="${idPrefix}-grid-wrap"></div>
       </div>
       <div class="field">
-        <label>Where</label>
+        <label>${t('match.whereLabel')}</label>
         <div class="proposal-option-list" id="${idPrefix}-venue-list">
           ${(venues || []).map((v) => `<button type="button" class="btn btn-outline proposal-option" data-venue="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join('')}
         </div>
       </div>
-      <button type="button" class="btn btn-primary btn-block" id="confirm-${idPrefix}-btn" disabled style="margin-top:6px">Confirm</button>
+      <button type="button" class="btn btn-primary btn-block" id="confirm-${idPrefix}-btn" disabled style="margin-top:6px">${t('match.confirmBtn')}</button>
       <div id="${idPrefix}-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
-      ${showCounterProposeLink ? `<button type="button" class="edit-link" id="counter-propose-link" style="margin-top:12px">Can't make any of these? Propose your own times instead →</button>` : ''}
+      ${showCounterProposeLink ? `<button type="button" class="edit-link" id="counter-propose-link" style="margin-top:12px">${t('match.cantMakeAny')}</button>` : ''}
     </div>
   `;
 }
@@ -422,7 +416,7 @@ function attachProposalCardHandlers(m, which) {
     if (proposalWeeks.length <= 1) { tabsEl.style.display = 'none'; return; }
     const fmt = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
     tabsEl.innerHTML = proposalWeeks.map((days, i) => `
-      <button type="button" class="tab${i === proposalActiveWeek ? ' active' : ''}" data-week="${i}">Week ${i + 1}<span>${fmt(days[0])} – ${fmt(days[days.length - 1])}</span></button>
+      <button type="button" class="tab${i === proposalActiveWeek ? ' active' : ''}" data-week="${i}">${t('match.weekLabel', { n: i + 1 })}<span>${fmt(days[0])} – ${fmt(days[days.length - 1])}</span></button>
     `).join('');
     tabsEl.querySelectorAll('.tab').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -483,11 +477,11 @@ function attachProposalCardHandlers(m, which) {
     const playsInMatch = isAdminUser || (playerAuthed && currentPlayerId
       && (currentPlayerId === m.player1.id || currentPlayerId === m.player2.id));
     if (!playsInMatch) {
-      proposalErrorEl.textContent = 'Log in as one of the two players in this match to pick a time.';
+      proposalErrorEl.textContent = t('match.loginAsPlayerToPick');
       return;
     }
     if (!isAdminUser && proposerPlayerId && currentPlayerId === proposerPlayerId) {
-      proposalErrorEl.textContent = "You can't confirm the times you proposed yourself — wait for the other player to pick one.";
+      proposalErrorEl.textContent = t('match.cantConfirmOwnProposal');
       return;
     }
     confirmBtn.disabled = true;
@@ -497,7 +491,7 @@ function attachProposalCardHandlers(m, which) {
         method: 'POST',
         body: { slot: selectedSlot, venue: selectedVenue },
       });
-      toast('Time confirmed!');
+      toast(t('match.timeConfirmed'));
       render(updated);
     } catch (err) {
       proposalErrorEl.textContent = err.message;
@@ -516,14 +510,14 @@ function attachProposalCardHandlers(m, which) {
   // (nothing left to counter) — see the server-side comment.
   const deleteProposalLink = document.getElementById(`delete-${idPrefix}-link`);
   if (deleteProposalLink) deleteProposalLink.addEventListener('click', () => requirePlayerAuth(async () => {
-    if (!confirm('Delete this proposal? The proposed times and venues will be removed.')) return;
+    if (!confirm(t('match.deleteProposalConfirm'))) return;
     deleteProposalLink.disabled = true;
     try {
       const updated = await api(`/matches/${matchToken}`, {
         method: 'PATCH',
         body: isPrimary ? { proposalSlots: null } : { counterProposalSlots: null },
       });
-      toast('Proposal deleted');
+      toast(t('match.proposalDeleted'));
       render(updated);
     } catch (err) {
       toast(err.message);
@@ -553,17 +547,17 @@ function render(m) {
   // (see the proposal card below, where anyone with this link picks one).
   const awaitingProposal = !!(m.proposalSlots && !m.scheduledAt);
   const locationValue = m.location ? escapeHtml(m.location)
-    : awaitingProposal ? '<span style="color:var(--gray)">Awaiting response…</span>'
-    : '<span style="color:var(--gray)">Not set</span>';
+    : awaitingProposal ? `<span style="color:var(--gray)">${t('match.awaitingResponse')}</span>`
+    : `<span style="color:var(--gray)">${t('player.bio.notSet')}</span>`;
   const dateValue = m.scheduledAt ? fmtDateLong(m.scheduledAt)
-    : awaitingProposal ? '<span style="color:var(--gray)">Awaiting response…</span>'
+    : awaitingProposal ? `<span style="color:var(--gray)">${t('match.awaitingResponse')}</span>`
     : fmtDateLong(m.scheduledAt);
 
   root.innerHTML = `
     <div class="match-header">
       <div>
-        ${categoryBadge(m.category)} ${statusBadge(m.status)}${m.status === 'LIVE' ? ` <span class="badge badge-viewers" id="viewer-count-badge">👀 ${viewerCount !== null ? viewerCount : '…'} watching</span>` : ''}
-        <h1 style="margin-top:8px">${escapeHtml(m.player1.name)}<a class="player-info-link" href="/player/${m.player1.slug || m.player1.id}" title="View ${escapeHtml(m.player1.name)}'s profile">i</a> <span style="color:var(--gray-dim);font-weight:500">vs</span> ${escapeHtml(m.player2.name)}<a class="player-info-link" href="/player/${m.player2.slug || m.player2.id}" title="View ${escapeHtml(m.player2.name)}'s profile">i</a></h1>
+        ${categoryBadge(m.category)} ${statusBadge(m.status)}${m.status === 'LIVE' ? ` <span class="badge badge-viewers" id="viewer-count-badge">👀 ${viewerCount !== null ? viewerCount : '…'} ${t('match.watching')}</span>` : ''}
+        <h1 style="margin-top:8px">${escapeHtml(m.player1.name)}<a class="player-info-link" href="/player/${m.player1.slug || m.player1.id}" title="${escapeHtml(t('common.viewProfileTitle', { name: m.player1.name }))}">i</a> <span style="color:var(--gray-dim);font-weight:500">${t('match.vsLabel')}</span> ${escapeHtml(m.player2.name)}<a class="player-info-link" href="/player/${m.player2.slug || m.player2.id}" title="${escapeHtml(t('common.viewProfileTitle', { name: m.player2.name }))}">i</a></h1>
         <div style="color:var(--gray-dim);font-size:13px">${m.formatLabel}</div>
       </div>
     </div>
@@ -573,19 +567,19 @@ function render(m) {
 
     <div class="info-grid">
       <div class="info-item">
-        <div class="label">Location</div>
+        <div class="label">${t('quickSchedule.place')}</div>
         <div class="value" id="location-display">${locationValue}</div>
-        ${locationEditable ? `<button type="button" class="edit-link" id="edit-location-link">Edit</button>` : ''}
+        ${locationEditable ? `<button type="button" class="edit-link" id="edit-location-link">${t('common.edit')}</button>` : ''}
       </div>
       <div class="info-item">
-        <div class="label">Date</div>
+        <div class="label">${t('match.dateLabel')}</div>
         <div class="value" id="date-display">${dateValue}</div>
-        ${locationEditable ? `<button type="button" class="edit-link" id="edit-date-link">Edit</button>` : ''}
+        ${locationEditable ? `<button type="button" class="edit-link" id="edit-date-link">${t('common.edit')}</button>` : ''}
       </div>
       <div class="info-item">
-        <div class="label">Category</div>
-        <div class="value" id="category-display">${CATEGORY_LABELS[m.category]}</div>
-        ${locationEditable ? `<button type="button" class="edit-link" id="edit-category-link">Edit</button>` : ''}
+        <div class="label">${t('player.bio.category')}</div>
+        <div class="value" id="category-display">${categoryLabel(m.category)}</div>
+        ${locationEditable ? `<button type="button" class="edit-link" id="edit-category-link">${t('common.edit')}</button>` : ''}
       </div>
     </div>
 
@@ -595,20 +589,20 @@ function render(m) {
 
     ${m.notes || locationEditable ? `
       <div class="card" style="margin-bottom:16px">
-        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em">Additional info</div>
-        <div class="value" id="notes-display" style="margin-top:4px;white-space:pre-wrap;font-weight:600">${m.notes ? escapeHtml(m.notes) : '<span style="color:var(--gray);font-weight:500">Not set</span>'}</div>
-        ${locationEditable ? `<button type="button" class="edit-link" id="edit-notes-link" style="margin-top:8px">Edit</button>` : ''}
+        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em">${t('newMatch.notesLabel')}</div>
+        <div class="value" id="notes-display" style="margin-top:4px;white-space:pre-wrap;font-weight:600">${m.notes ? escapeHtml(m.notes) : `<span style="color:var(--gray);font-weight:500">${t('player.bio.notSet')}</span>`}</div>
+        ${locationEditable ? `<button type="button" class="edit-link" id="edit-notes-link" style="margin-top:8px">${t('common.edit')}</button>` : ''}
       </div>
     ` : ''}
 
     ${chatHtml()}
 
     <div class="match-actions">
-      <button class="btn btn-yellow" id="share-btn">🔗 Share</button>
-      <button class="btn" id="embed-btn">🧩 Embed</button>
-      ${(m.status === 'LIVE' || m.status === 'PLANNED') ? '<button class="btn" id="change-format-btn">🎾 Change format</button>' : ''}
-      ${m.status === 'FINISHED' ? '<button class="btn btn-green" id="whatsapp-result-btn">📱 Send to WhatsApp</button>' : ''}
-      ${isAdminUser || (m.status !== 'FINISHED' && !m.createdByAdmin) ? '<button class="btn btn-danger" id="delete-btn">🗑 Delete match</button>' : ''}
+      <button class="btn btn-yellow" id="share-btn">${t('match.shareBtn')}</button>
+      <button class="btn" id="embed-btn">${t('match.embedBtn')}</button>
+      ${(m.status === 'LIVE' || m.status === 'PLANNED') ? `<button class="btn" id="change-format-btn">${t('match.changeFormatBtn')}</button>` : ''}
+      ${m.status === 'FINISHED' ? `<button class="btn btn-green" id="whatsapp-result-btn">${t('match.sendToWhatsapp')}</button>` : ''}
+      ${isAdminUser || (m.status !== 'FINISHED' && !m.createdByAdmin) ? `<button class="btn btn-danger" id="delete-btn">${t('match.deleteMatchBtn')}</button>` : ''}
     </div>
   `;
 
@@ -629,7 +623,7 @@ function attachHandlers(m) {
   const startBtn = document.getElementById('start-btn');
   if (startBtn) startBtn.addEventListener('click', () => requirePlayerAuth(() => {
     if (!canManageMatch(m, isAdminUser)) {
-      showAccessDeniedModal('You can only manage matches you play in (if an admin created them) or matches you created yourself.');
+      showAccessDeniedModal(t('accessDenied.message'));
       return;
     }
     if (!m.location || !m.scheduledAt) {
@@ -642,7 +636,7 @@ function attachHandlers(m) {
   const manualResultBtn = document.getElementById('manual-result-btn');
   if (manualResultBtn) manualResultBtn.addEventListener('click', () => requirePlayerAuth(() => {
     if (!canManageMatch(m, isAdminUser)) {
-      showAccessDeniedModal('You can only manage matches you play in (if an admin created them) or matches you created yourself.');
+      showAccessDeniedModal(t('accessDenied.message'));
       return;
     }
     openManualResultModal(m);
@@ -734,7 +728,7 @@ function attachHandlers(m) {
 
   const restartBtn = document.getElementById('restart-btn');
   if (restartBtn) restartBtn.addEventListener('click', () => requirePlayerAuth(async () => {
-    if (!confirm("Restart this match? The score and timer will be cleared and the match will go back to Planned. Are you sure?")) return;
+    if (!confirm(t('match.restartConfirm'))) return;
     restartBtn.disabled = true;
     try { render(await api(`/matches/${matchToken}/restart`, { method: 'POST' })); }
     catch (err) { toast(err.message); restartBtn.disabled = false; }
@@ -751,7 +745,7 @@ function attachHandlers(m) {
       openFinishUndecidedModal(m);
       return;
     }
-    if (!confirm("Finish this match? The result can't be changed afterward (only an admin will be able to correct it later). Are you sure?")) return;
+    if (!confirm(t('match.finishConfirm'))) return;
     finishBtn.disabled = true;
     try {
       const finished = await api(`/matches/${matchToken}/finish`, { method: 'POST' });
@@ -763,7 +757,7 @@ function attachHandlers(m) {
 
   const unfinishedBtn = document.getElementById('unfinished-btn');
   if (unfinishedBtn) unfinishedBtn.addEventListener('click', () => requirePlayerAuth(async () => {
-    if (!confirm("Mark this match unfinished? No winner is recorded, and it won't count toward stats. You can pick a new date and resume it later, whenever you're ready.")) return;
+    if (!confirm(t('match.unfinishedConfirm'))) return;
     unfinishedBtn.disabled = true;
     try { render(await api(`/matches/${matchToken}/unfinished`, { method: 'POST' })); }
     catch (err) { toast(err.message); unfinishedBtn.disabled = false; }
@@ -775,13 +769,13 @@ function attachHandlers(m) {
     try {
       const updated = await api(`/matches/${matchToken}/resume-later`, { method: 'POST' });
       render(updated);
-      toast('Back to Planned — set a new date and location, then start it whenever you\'re ready.');
+      toast(t('match.backToPlannedToast'));
     } catch (err) { toast(err.message); resumeLaterBtn.disabled = false; }
   }));
 
   const finishAsIsBtn = document.getElementById('finish-as-is-btn');
   if (finishAsIsBtn) finishAsIsBtn.addEventListener('click', () => requirePlayerAuth(async () => {
-    if (!confirm("Finish this match with the score exactly as it is? This can't be changed afterward, and it won't count toward stats or badges.")) return;
+    if (!confirm(t('match.finishAsIsConfirm'))) return;
     finishAsIsBtn.disabled = true;
     try { render(await api(`/matches/${matchToken}/finish-as-is`, { method: 'POST' })); }
     catch (err) { toast(err.message); finishAsIsBtn.disabled = false; }
@@ -794,8 +788,8 @@ function attachHandlers(m) {
     display.innerHTML = `
       <input type="text" id="location-input" value="${escapeHtml(currentVal)}" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">
       <div style="margin-top:6px;display:flex;gap:6px">
-        <button class="btn btn-sm btn-primary" id="save-location-btn">Save</button>
-        <button class="btn btn-sm btn-outline" id="cancel-location-btn">Cancel</button>
+        <button class="btn btn-sm btn-primary" id="save-location-btn">${t('common.save')}</button>
+        <button class="btn btn-sm btn-outline" id="cancel-location-btn">${t('common.cancel')}</button>
       </div>
     `;
     editLink.style.display = 'none';
@@ -817,9 +811,9 @@ function attachHandlers(m) {
         <input type="time" id="time-input" value="${toTimeValue(m.scheduledAt)}" style="flex:1;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">
       </div>
       <div style="margin-top:6px;display:flex;gap:6px">
-        <button class="btn btn-sm btn-primary" id="save-date-btn">Save</button>
-        <button class="btn btn-sm btn-outline" id="clear-date-btn">Clear</button>
-        <button class="btn btn-sm btn-outline" id="cancel-date-btn">Cancel</button>
+        <button class="btn btn-sm btn-primary" id="save-date-btn">${t('common.save')}</button>
+        <button class="btn btn-sm btn-outline" id="clear-date-btn">${t('match.clearBtn')}</button>
+        <button class="btn btn-sm btn-outline" id="cancel-date-btn">${t('common.cancel')}</button>
       </div>
     `;
     editDateLink.style.display = 'none';
@@ -843,8 +837,8 @@ function attachHandlers(m) {
     display.innerHTML = `
       <textarea id="notes-input" rows="3" maxlength="1000" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">${escapeHtml(m.notes || '')}</textarea>
       <div style="margin-top:6px;display:flex;gap:6px">
-        <button class="btn btn-sm btn-primary" id="save-notes-btn">Save</button>
-        <button class="btn btn-sm btn-outline" id="cancel-notes-btn">Cancel</button>
+        <button class="btn btn-sm btn-primary" id="save-notes-btn">${t('common.save')}</button>
+        <button class="btn btn-sm btn-outline" id="cancel-notes-btn">${t('common.cancel')}</button>
       </div>
     `;
     editNotesLink.style.display = 'none';
@@ -861,12 +855,12 @@ function attachHandlers(m) {
   if (editCategoryLink) editCategoryLink.addEventListener('click', () => requirePlayerAuth(() => {
     const display = document.getElementById('category-display');
     const options = Object.keys(CATEGORY_LABELS).map((key) =>
-      `<option value="${key}"${key === m.category ? ' selected' : ''}>${CATEGORY_LABELS[key]}</option>`).join('');
+      `<option value="${key}"${key === m.category ? ' selected' : ''}>${categoryLabel(key)}</option>`).join('');
     display.innerHTML = `
       <select id="category-input" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">${options}</select>
       <div style="margin-top:6px;display:flex;gap:6px">
-        <button class="btn btn-sm btn-primary" id="save-category-btn">Save</button>
-        <button class="btn btn-sm btn-outline" id="cancel-category-btn">Cancel</button>
+        <button class="btn btn-sm btn-primary" id="save-category-btn">${t('common.save')}</button>
+        <button class="btn btn-sm btn-outline" id="cancel-category-btn">${t('common.cancel')}</button>
       </div>
     `;
     editCategoryLink.style.display = 'none';
@@ -915,11 +909,11 @@ function attachHandlers(m) {
 
   const deleteBtn = document.getElementById('delete-btn');
   if (deleteBtn) deleteBtn.addEventListener('click', () => requirePlayerAuth(async () => {
-    if (!confirm(`Delete this match (${m.player1.name} vs ${m.player2.name})? This can't be undone.`)) return;
+    if (!confirm(t('match.deleteMatchConfirm', { p1: m.player1.name, p2: m.player2.name }))) return;
     deleteBtn.disabled = true;
     try {
       await api(`/matches/${matchToken}`, { method: 'DELETE' });
-      toast('Match deleted');
+      toast(t('match.matchDeletedToast'));
       window.location.href = '/';
     } catch (err) {
       toast(err.message);
@@ -958,7 +952,7 @@ function openStartScheduleModal(m, onDone) {
     const dateVal = document.getElementById('start-schedule-date').value;
     const timeVal = document.getElementById('start-schedule-time').value;
     if (!location || !dateVal) {
-      errorEl.textContent = 'Location and date are both required.';
+      errorEl.textContent = t('match.locationDateRequired');
       return;
     }
     const scheduledAt = new Date(`${dateVal}T${timeVal || '00:00'}`).toISOString();
@@ -1009,16 +1003,16 @@ document.getElementById('edit-proposal-form').addEventListener('submit', async (
   const errorEl = document.getElementById('edit-proposal-error');
   errorEl.textContent = '';
   if (editAvailabilityPicker.selectedSlots.size === 0) {
-    errorEl.textContent = 'Mark at least one time you can play.';
+    errorEl.textContent = t('proposeTimes.markAtLeastOne');
     return;
   }
   if (editVenuePicker.venues.length === 0) {
-    errorEl.textContent = 'Add at least one preferred venue.';
+    errorEl.textContent = t('proposeTimes.addAtLeastOneVenue');
     return;
   }
   const notifyEmail = document.getElementById('edit-notify-email').value.trim();
   if (notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail)) {
-    errorEl.textContent = 'Enter a valid confirmation email address, or leave it blank.';
+    errorEl.textContent = t('proposeTimes.invalidEmail');
     return;
   }
   const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -1034,7 +1028,7 @@ document.getElementById('edit-proposal-form').addEventListener('submit', async (
       },
     });
     document.getElementById('edit-proposal-modal').style.display = 'none';
-    toast('Proposal updated!');
+    toast(t('proposeTimes.updated'));
     render(updated);
   } catch (err) {
     errorEl.textContent = err.message;
@@ -1076,11 +1070,11 @@ function openCounterProposeModal(m, { editing = false } = {}) {
   document.getElementById('counter-proposer-optional-hint').style.display = forcedProposer != null ? 'none' : '';
   document.getElementById('counter-notify-email').value = '';
   document.getElementById('counter-propose-error').textContent = '';
-  document.getElementById('counter-propose-modal-title').textContent = editing ? 'Edit your proposed times' : 'Propose your own times instead';
+  document.getElementById('counter-propose-modal-title').textContent = editing ? t('match.editYourProposedTimes') : t('match.proposeOwnTimesInstead');
   document.getElementById('counter-propose-modal-desc').textContent = editing
-    ? "Update what works for you — the other player picks from these instead, or from the match's original options."
-    : "None of the offered times work? Mark what does work for you — it shows up as its own calendar alongside the original, and either one can be picked from.";
-  document.getElementById('counter-propose-submit-btn').textContent = editing ? 'Update my times' : 'Send my times instead';
+    ? t('match.updateWhatWorksDesc')
+    : t('match.counterProposeDesc');
+  document.getElementById('counter-propose-submit-btn').textContent = editing ? t('match.updateMyTimes') : t('match.sendMyTimesInstead');
   document.getElementById('counter-propose-modal').style.display = 'flex';
 }
 
@@ -1089,16 +1083,16 @@ document.getElementById('counter-propose-form').addEventListener('submit', async
   const errorEl = document.getElementById('counter-propose-error');
   errorEl.textContent = '';
   if (counterAvailabilityPicker.selectedSlots.size === 0) {
-    errorEl.textContent = 'Mark at least one time you can play.';
+    errorEl.textContent = t('proposeTimes.markAtLeastOne');
     return;
   }
   if (counterVenuePicker.venues.length === 0) {
-    errorEl.textContent = 'Add at least one preferred venue.';
+    errorEl.textContent = t('proposeTimes.addAtLeastOneVenue');
     return;
   }
   const notifyEmail = document.getElementById('counter-notify-email').value.trim();
   if (notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail)) {
-    errorEl.textContent = 'Enter a valid confirmation email address, or leave it blank.';
+    errorEl.textContent = t('proposeTimes.invalidEmail');
     return;
   }
   const wasEditing = !!(current && current.counterProposalSlots);
@@ -1121,12 +1115,12 @@ document.getElementById('counter-propose-form').addEventListener('submit', async
     // Propose Times flow — editing an existing one just needs the toast,
     // since whoever's viewing this page already has the link.
     if (wasEditing) {
-      toast('Your times were updated!');
+      toast(t('match.timesUpdatedToast'));
     } else {
       openShareModal(
         updated,
-        `${updated.player1.name} vs ${updated.player2.name} — pick a time that works for you:`,
-        "Send this link to your opponent so they can pick the best time for them. Once they choose a date, you'll get a confirmation email if you added one."
+        t('proposeTimes.whatsappText', { p1: updated.player1.name, p2: updated.player2.name }),
+        t('proposeTimes.shareDesc')
       );
     }
   } catch (err) {
@@ -1148,14 +1142,20 @@ function openChangeFormatModal(m) {
   const container = document.getElementById('change-format-options');
   const errorEl = document.getElementById('change-format-error');
   errorEl.textContent = '';
-  container.innerHTML = FORMATS_LIST.map((f) => `
+  container.innerHTML = FORMATS_ORDER.map((key) => {
+    const label = t(`format.${key}.label`);
+    const sublabelKey = `format.${key}.sublabel`;
+    const hasSublabel = (TRANSLATIONS[currentLang] && sublabelKey in TRANSLATIONS[currentLang]) || sublabelKey in TRANSLATIONS.en;
+    const sublabel = hasSublabel ? t(sublabelKey) : '';
+    return `
     <label class="format-option">
-      <input type="radio" name="change-format" value="${f.key}" ${f.key === m.format ? 'checked' : ''}>
+      <input type="radio" name="change-format" value="${key}" ${key === m.format ? 'checked' : ''}>
       <span>
-        <div style="font-weight:700">${f.label}${f.sublabel ? ` <span style="font-weight:400;color:var(--gray);font-size:12px">${f.sublabel}</span>` : ''}</div>
+        <div style="font-weight:700">${label}${sublabel ? ` <span style="font-weight:400;color:var(--gray);font-size:12px">${sublabel}</span>` : ''}</div>
       </span>
     </label>
-  `).join('');
+  `;
+  }).join('');
   container.querySelectorAll('input[name="change-format"]').forEach((input) => {
     input.addEventListener('change', async () => {
       if (input.value === m.format) return;
@@ -1187,10 +1187,10 @@ function openFinishUndecidedModal(m) {
   const confirmBtn = document.getElementById('finish-undecided-confirm-btn');
   const reasonSection = document.getElementById('finish-reason-section');
 
-  document.getElementById('finish-undecided-title').textContent = isFreePlay ? 'Sets are tied — who won?' : 'Finish without a completed score?';
+  document.getElementById('finish-undecided-title').textContent = isFreePlay ? t('match.tiedWhoWon') : t('match.finishUndecidedTitle');
   document.getElementById('finish-undecided-desc').textContent = isFreePlay
-    ? "You're tied on sets — pick who won this session."
-    : "The match isn't decided by score yet. Pick who won and why.";
+    ? t('match.tiedDesc')
+    : t('match.finishUndecidedDesc');
   reasonSection.style.display = isFreePlay ? 'none' : '';
 
   winnerBtns[0].textContent = m.player1.name;
@@ -1242,7 +1242,7 @@ function openFinishUndecidedModal(m) {
 // Fired right when a scoring click decides the match, so the last point can't
 // just keep growing the score — offers to finish it immediately instead.
 function offerFinish(m) {
-  if (!confirm(`${m.scoreSummary} — the match is decided! Finish it now?`)) return;
+  if (!confirm(t('match.decidedFinishNowConfirm', { score: m.scoreSummary }))) return;
   api(`/matches/${matchToken}/finish`, { method: 'POST' })
     .then((finished) => { render(finished); openWhatsAppResultModal(finished); })
     .catch((err) => toast(err.message));
@@ -1254,7 +1254,7 @@ function openWhatsAppResultModal(m) {
 
   const lines = [
     `🎾 ${m.player1.name} vs ${m.player2.name}`,
-    `🏆 ${matchResultText(m) || 'No result'}${winnerName ? ` — ${winnerName} wins` : ''}`,
+    `🏆 ${matchResultText(m) || t('match.noResult')}${winnerName ? t('match.winsSuffix', { name: winnerName }) : ''}`,
     `📅 ${fmtDateShort(m.startTime)}`,
   ];
   if (m.location) lines.push(`📍 ${m.location}`);
@@ -1273,7 +1273,7 @@ function openEmbedModal(m) {
   const code = `<iframe src="${src}" width="100%" height="420" frameborder="0" style="border:0;max-width:480px"></iframe>`;
   document.getElementById('embed-code').textContent = code;
   document.getElementById('copy-embed-btn').onclick = () => {
-    copyToClipboard(code).then(() => toast('Embed code copied'));
+    copyToClipboard(code).then(() => toast(t('embed.copied')));
   };
   document.getElementById('embed-modal').style.display = 'flex';
 }
@@ -1287,7 +1287,7 @@ function manualResultRowsHtml(m) {
     const isDeciderTB = i === deciderIndex && meta.finalSetSuperTiebreak;
     rows += `
       <div class="manual-set-row">
-        <div class="manual-set-label">${isDeciderTB ? 'Match tiebreak' : `Set ${i + 1}`}</div>
+        <div class="manual-set-label">${isDeciderTB ? t('match.matchTiebreakLabel') : t('match.setLabel', { n: i + 1 })}</div>
         <div class="manual-set-fields">
           <div class="manual-set-field">
             <label>${escapeHtml(m.player1.name)}</label>
@@ -1364,7 +1364,7 @@ function openManualResultModal(m) {
     const dateVal = document.getElementById('manual-result-date').value;
     const timeVal = document.getElementById('manual-result-time').value;
     if (!location || !dateVal) {
-      errorEl.textContent = 'Location and date are both required.';
+      errorEl.textContent = t('match.locationDateRequired');
       return;
     }
     const scheduledAt = new Date(`${dateVal}T${timeVal || '00:00'}`).toISOString();
@@ -1376,7 +1376,7 @@ function openManualResultModal(m) {
       const p2raw = row.querySelector('[data-player="2"]').value.trim();
       if (p1raw === '' && p2raw === '') break;
       if (p1raw === '' || p2raw === '') {
-        errorEl.textContent = 'Fill in both scores for each set you enter.';
+        errorEl.textContent = t('match.fillBothScores');
         return;
       }
       sets.push({ p1: Number(p1raw), p2: Number(p2raw) });
@@ -1385,19 +1385,19 @@ function openManualResultModal(m) {
     const body = { sets, location, scheduledAt };
     if (retiredCheckbox.checked) {
       if (!winner || !reason) {
-        errorEl.textContent = 'Pick who won and why.';
+        errorEl.textContent = t('match.pickWhoWonWhy');
         return;
       }
       body.winner = winner;
       body.reason = reason;
     } else if (unfinishedCheckbox.checked) {
       if (sets.length === 0) {
-        errorEl.textContent = 'Enter at least one set score.';
+        errorEl.textContent = t('match.enterAtLeastOneSetScore');
         return;
       }
       body.unfinished = true;
     } else if (sets.length === 0) {
-      errorEl.textContent = 'Enter at least one set score.';
+      errorEl.textContent = t('match.enterAtLeastOneSetScore');
       return;
     }
 
@@ -1453,7 +1453,7 @@ async function init() {
     if (room !== `match:${matchToken}`) return;
     viewerCount = count;
     const badge = document.getElementById('viewer-count-badge');
-    if (badge) badge.textContent = `👀 ${count} watching`;
+    if (badge) badge.textContent = `👀 ${count} ${t('match.watching')}`;
   });
 }
 init();
