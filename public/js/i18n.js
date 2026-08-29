@@ -153,6 +153,23 @@ const TRANSLATIONS = {
     'players.deleted': 'Vymazané: {name}',
     'players.added': 'Pridané: {name}',
 
+    'common.loading': 'Načítavam…',
+
+    'page.rankingsTitle': 'BLTA Score — Rebríček',
+    'rankings.heading': 'Rebríček',
+    'rankings.none': 'Zatiaľ žiadne poradie.',
+    'rankings.playerCol': 'Hráč',
+    'rankings.ageCol': 'Vek',
+    'rankings.matchesCol': 'Zápasy',
+    'rankings.reset': 'Obnoviť',
+    'rankings.resetTitle': 'Vrátiť na hodnotu publikovanú na blta.sk',
+    'rankings.pointsMustBeWhole': 'Body musia byť celé číslo',
+    'rankings.pointsUpdated': 'Body aktualizované',
+    'rankings.revertedToBlta': 'Vrátené na hodnotu z blta.sk',
+    'rankings.overriddenTooltip': 'Ručne nastavené adminom',
+    'rankings.moveUpTitle': 'Hore o {amount} od minulého týždňa',
+    'rankings.moveDownTitle': 'Dole o {amount} od minulého týždňa',
+
     'lang.switchTo': 'EN',
   },
   en: {
@@ -288,6 +305,23 @@ const TRANSLATIONS = {
     'players.deleteConfirm': "Delete {name}? This can't be undone.",
     'players.deleted': 'Deleted {name}',
     'players.added': 'Added {name}',
+
+    'common.loading': 'Loading…',
+
+    'page.rankingsTitle': 'BLTA Score — Rankings',
+    'rankings.heading': 'Rankings',
+    'rankings.none': 'No standings yet.',
+    'rankings.playerCol': 'Player',
+    'rankings.ageCol': 'Age',
+    'rankings.matchesCol': 'Matches',
+    'rankings.reset': 'Reset',
+    'rankings.resetTitle': 'Revert to the value published on blta.sk',
+    'rankings.pointsMustBeWhole': 'Points must be a whole number',
+    'rankings.pointsUpdated': 'Points updated',
+    'rankings.revertedToBlta': 'Reverted to blta.sk value',
+    'rankings.overriddenTooltip': 'Manually set by an admin',
+    'rankings.moveUpTitle': 'Up {amount} since last week',
+    'rankings.moveDownTitle': 'Down {amount} since last week',
 
     'lang.switchTo': 'SK',
   },

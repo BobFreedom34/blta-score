@@ -26,7 +26,7 @@ function renderTabs() {
 
 function pointsDisplayHtml(r) {
   const value = r.points === null ? '<span style="color:var(--gray-dim)">–</span>' : escapeHtml(String(r.points));
-  const overriddenMark = r.overridden ? '<span title="Manually set by an admin" style="color:var(--orange);font-size:11px;margin-left:4px">✎</span>' : '';
+  const overriddenMark = r.overridden ? `<span title="${escapeHtml(t('rankings.overriddenTooltip'))}" style="color:var(--orange);font-size:11px;margin-left:4px">✎</span>` : '';
   return `${value}${overriddenMark}`;
 }
 
@@ -38,7 +38,7 @@ function moveHtml(move) {
   if (!move) return '';
   const arrow = move.direction === 'up' ? '▲' : '▼';
   const cls = move.direction === 'up' ? 'rank-move-up' : 'rank-move-down';
-  const title = move.direction === 'up' ? `Up ${move.amount} since last week` : `Down ${move.amount} since last week`;
+  const title = t(move.direction === 'up' ? 'rankings.moveUpTitle' : 'rankings.moveDownTitle', { amount: move.amount });
   return `<div class="rank-move ${cls}" title="${title}">${arrow}${move.amount}</div>`;
 }
 
@@ -46,9 +46,9 @@ function headerRowHtml(table) {
   return `
     <div class="rank-table-header rank-grid">
       <div class="rank-col-pos"></div>
-      <div class="rank-col-player">Player</div>
-      <div class="rank-col-age">Age</div>
-      <div class="rank-col-matches">Matches</div>
+      <div class="rank-col-player">${t('rankings.playerCol')}</div>
+      <div class="rank-col-age">${t('rankings.ageCol')}</div>
+      <div class="rank-col-matches">${t('rankings.matchesCol')}</div>
       <div class="rank-col-points">${escapeHtml(table.pointsLabel)}</div>
     </div>`;
 }
@@ -57,7 +57,7 @@ function renderTable() {
   const table = rankingsData.tables.find((t) => t.key === activeTab);
   const listEl = document.getElementById('rankings-list');
   if (!table || table.rows.length === 0) {
-    listEl.innerHTML = '<p style="color:var(--gray)">No standings yet.</p>';
+    listEl.innerHTML = `<p style="color:var(--gray)">${t('rankings.none')}</p>`;
     return;
   }
   const rowsHtml = table.rows.map((r, i) => {
@@ -66,7 +66,7 @@ function renderTable() {
       ? `<a href="/player/${escapeHtml(r.slug)}" class="rank-name">${flag}${escapeHtml(r.name)}</a>`
       : `<span class="rank-name">${flag}${escapeHtml(r.name)}</span>`;
     const editLink = isAdminUser
-      ? `<button type="button" class="rank-edit-link" data-action="edit-points">Edit</button>`
+      ? `<button type="button" class="rank-edit-link" data-action="edit-points">${t('common.edit')}</button>`
       : '';
     return `
       <div class="rank-row rank-grid" data-index="${i}">
@@ -103,9 +103,9 @@ function startEdit(rowEl, table) {
   pointsEl.innerHTML = `
     <input type="number" class="edit-points-input" value="${row.points === null ? '' : row.points}" style="width:70px;padding:6px 8px;border-radius:8px;border:1.5px solid var(--orange);font-family:inherit;font-size:14px">
     <div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end">
-      <button type="button" class="btn btn-sm btn-primary" data-action="save-points">Save</button>
-      <button type="button" class="btn btn-sm btn-outline" data-action="cancel-points">Cancel</button>
-      ${row.overridden ? '<button type="button" class="btn btn-sm btn-outline" data-action="clear-points" title="Revert to the value published on blta.sk">Reset</button>' : ''}
+      <button type="button" class="btn btn-sm btn-primary" data-action="save-points">${t('common.save')}</button>
+      <button type="button" class="btn btn-sm btn-outline" data-action="cancel-points">${t('common.cancel')}</button>
+      ${row.overridden ? `<button type="button" class="btn btn-sm btn-outline" data-action="clear-points" title="${escapeHtml(t('rankings.resetTitle'))}">${t('rankings.reset')}</button>` : ''}
     </div>
   `;
   const input = pointsEl.querySelector('.edit-points-input');
@@ -119,13 +119,13 @@ function startEdit(rowEl, table) {
     const raw = input.value.trim();
     const points = raw === '' ? null : Number(raw);
     if (raw !== '' && !Number.isInteger(points)) {
-      return toast('Points must be a whole number');
+      return toast(t('rankings.pointsMustBeWhole'));
     }
     try {
       await api(`/rankings/override/${table.key}/${encodeURIComponent(row.name)}`, { method: 'PUT', body: { points } });
       row.points = points;
       row.overridden = true;
-      toast('Points updated');
+      toast(t('rankings.pointsUpdated'));
       renderTable();
     } catch (err) {
       toast(err.message);
@@ -142,7 +142,7 @@ function startEdit(rowEl, table) {
     clearBtn.addEventListener('click', async () => {
       try {
         await api(`/rankings/override/${table.key}/${encodeURIComponent(row.name)}`, { method: 'DELETE' });
-        toast('Reverted to blta.sk value');
+        toast(t('rankings.revertedToBlta'));
         load();
       } catch (err) {
         toast(err.message);
