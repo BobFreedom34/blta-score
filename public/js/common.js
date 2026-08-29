@@ -5,10 +5,11 @@ const STATUS_LABELS = { PLANNED: 'Planned', LIVE: 'Live', FINISHED: 'Finished', 
 const END_REASON_LABELS = { WALKOVER: 'Walkover', RETIREMENT: 'Retirement', UNFINISHED: 'Left unfinished' };
 
 // ---------- Shared match-creation form pieces ----------
-// Used by both new-match.js (pick one fixed date) and schedule-match.js
-// (propose several times/venues instead) — the two forms share everything
-// except how the actual date/location gets decided, so that part lives
-// here once instead of twice.
+// Used by new-match.js (pick one fixed date) and by match.js's
+// edit-proposal/counter-propose modals (propose several times/venues
+// instead, once the match already exists as a Planned card) — the
+// availability grid and venue picker widgets live here once instead of
+// being duplicated per caller.
 
 const MATCH_FORMATS = [
   { key: 'BO3', label: 'Best of 3 sets', sublabel: '(BLTA Play-Off)', hint: 'Standard match. Tiebreak at 6-6 in every set.' },

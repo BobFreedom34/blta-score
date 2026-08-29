@@ -335,7 +335,12 @@ function proposalCardHtml(m) {
     <div class="card" id="proposal-card" style="margin-bottom:16px;border:2px solid var(--orange)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">📅 Pick a time</div>
-        ${canManageMatch(m, isAdminUser) ? `<button type="button" class="edit-link" id="edit-proposal-link">Edit</button>` : ''}
+        ${canManageMatch(m, isAdminUser) ? `
+          <div style="display:flex;gap:10px">
+            <button type="button" class="edit-link" id="edit-proposal-link">Edit</button>
+            <button type="button" class="edit-link" id="delete-proposal-link" style="color:var(--danger)">Delete</button>
+          </div>
+        ` : ''}
       </div>
       <p style="font-size:13px;color:var(--gray);margin:6px 0 16px">${proposerName ? `${escapeHtml(proposerName)} proposed` : 'A few options were proposed'} for this match — pick whichever works for you and it's confirmed.</p>
       <div class="field">
@@ -560,6 +565,22 @@ function attachHandlers(m) {
     // as editing Location/Date), unlike everything else on this card.
     const editProposalLink = document.getElementById('edit-proposal-link');
     if (editProposalLink) editProposalLink.addEventListener('click', () => requirePlayerAuth(() => openEditProposalModal(m)));
+
+    // "Delete" — cancels the pending proposal outright (see PATCH /:token's
+    // proposalSlots: null handling), same access as Edit.
+    const deleteProposalLink = document.getElementById('delete-proposal-link');
+    if (deleteProposalLink) deleteProposalLink.addEventListener('click', () => requirePlayerAuth(async () => {
+      if (!confirm('Delete this proposal? The proposed times and venues will be removed.')) return;
+      deleteProposalLink.disabled = true;
+      try {
+        const updated = await api(`/matches/${matchToken}`, { method: 'PATCH', body: { proposalSlots: null } });
+        toast('Proposal deleted');
+        render(updated);
+      } catch (err) {
+        toast(err.message);
+        deleteProposalLink.disabled = false;
+      }
+    }));
 
     // "Propose your own times instead" — deliberately NOT behind
     // requirePlayerAuth, same public trust model as confirming a slot.

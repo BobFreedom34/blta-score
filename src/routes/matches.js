@@ -381,6 +381,17 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
     }
     fields.notes = req.body.notes.trim();
   }
+  // Explicit null (as opposed to omitted) cancels a pending proposal
+  // outright — whoever can edit it (see canManageMatch) can also delete it,
+  // putting the match back to a plain unscheduled Planned match with no
+  // "Pick a time" card. Distinct from the array branch below, which sets a
+  // new/updated proposal instead.
+  if (req.body.proposalSlots === null) {
+    fields.proposal_slots = null;
+    fields.proposal_venues = null;
+    fields.proposed_by = null;
+    fields.proposal_notify_email = null;
+  }
   // "Propose times" from the homepage's quick-action button — turns an
   // existing undated Planned match into one awaiting a scheduling response,
   // same shape as creating one that way from the start (see POST / above).
