@@ -335,7 +335,7 @@ function proposalCardHtml(m) {
     <div class="card" id="proposal-card" style="margin-bottom:16px;border:2px solid var(--orange)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">📅 Pick a time</div>
-        <button type="button" class="edit-link" id="edit-proposal-link">Edit</button>
+        ${canManageMatch(m, isAdminUser) ? `<button type="button" class="edit-link" id="edit-proposal-link">Edit</button>` : ''}
       </div>
       <p style="font-size:13px;color:var(--gray);margin:6px 0 16px">${proposerName ? `${escapeHtml(proposerName)} proposed` : 'A few options were proposed'} for this match — pick whichever works for you and it's confirmed.</p>
       <div class="field">
@@ -366,7 +366,12 @@ function render(m) {
       ? `<div class="timer">${Math.max(1, Math.round((new Date(m.endTime) - new Date(m.startTime)) / 60000))} min</div>`
       : '<div class="timer">00:00</div>');
 
-  const locationEditable = m.status !== 'FINISHED' || isAdminUser;
+  // Location/Date/Category/Notes all go through the same PATCH /:token +
+  // checkMatchAccess path server-side, so they're gated together
+  // client-side too — admin can always edit (even a finished match); a
+  // real player or anon session otherwise needs canManageMatch to say
+  // this is actually their match (see routes/matches.js).
+  const locationEditable = (m.status !== 'FINISHED' || isAdminUser) && canManageMatch(m, isAdminUser);
   // A "propose times" match has no real location/date yet — say so plainly
   // rather than showing "Not set", since a response is actually pending
   // (see the proposal card below, where anyone with this link picks one).
@@ -1281,7 +1286,14 @@ function openManualResultModal(m) {
 }
 
 async function init() {
+  // Both awaited before the first render() — canManageMatch (used for the
+  // Location/Date/Category/Notes Edit links and the proposal card's Edit
+  // link) needs isAdminUser/playerAuthed/currentPlayerId settled first, or
+  // a first render that happens to win the race against common.js's own
+  // (unawaited) session check would incorrectly hide them for an already
+  // logged-in player.
   isAdminUser = await checkAdmin();
+  await refreshPlayerAuth();
   try {
     const m = await api(`/matches/${matchToken}`);
     try { messages = await api(`/matches/${matchToken}/messages`); } catch { /* chat is best-effort */ }
@@ -1290,6 +1302,11 @@ async function init() {
     root.innerHTML = `<div class="empty-state">${escapeHtml(err.message)}</div>`;
     return;
   }
+  // Re-render once a *later* login/logout finishes (see the
+  // blta:auth-changed dispatch in common.js) — registered only after the
+  // refreshPlayerAuth() call above so its own initial dispatch doesn't
+  // trigger a redundant extra render right after this one.
+  window.addEventListener('blta:auth-changed', () => { if (current) render(current); });
   const socket = io();
   socket.emit('join', `match:${matchToken}`);
   socket.on('match:update', (m) => {

@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { requireAdmin, isAdmin, isPlayer, isAnon, isProfileEditor } = require('../auth');
+const { requireAdmin, isAdmin, isPlayer, isAnon, isProfileEditor, getPlayerId } = require('../auth');
 
 const router = express.Router();
 
@@ -24,11 +24,12 @@ function stripPrivateFields(player, req) {
   return rest;
 }
 
-// A real profile editor/admin can edit any player's bio. The limited anon
-// tier can only edit a player it (or another anon session) created —
-// mirrors checkMatchAccess in routes/matches.js.
+// A real profile editor/admin can edit any player's bio. A specific
+// logged-in player can edit only their own bio (see checkPlayerAccess
+// below). The limited anon tier can only edit a player it (or another anon
+// session) created — mirrors checkMatchAccess in routes/matches.js.
 function requireProfileEditorOrAnon(req, res, next) {
-  if (!isAdmin(req) && !isProfileEditor(req) && !isAnon(req)) {
+  if (!isAdmin(req) && !isProfileEditor(req) && !isAnon(req) && !getPlayerId(req)) {
     return res.status(401).json({ error: 'Please log in to edit profile info' });
   }
   next();
@@ -36,7 +37,9 @@ function requireProfileEditorOrAnon(req, res, next) {
 function checkPlayerAccess(req, res, player) {
   if (isAdmin(req) || isProfileEditor(req)) return true;
   if (isAnon(req) && player.created_by_anonymous) return true;
-  res.status(403).json({ error: 'You can only edit players you created' });
+  const playerId = getPlayerId(req);
+  if (playerId && playerId === player.id) return true;
+  res.status(403).json({ error: 'You can only edit your own profile (or players you created)' });
   return false;
 }
 

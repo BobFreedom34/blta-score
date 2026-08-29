@@ -739,6 +739,12 @@ function openProfileLoginModal(onSuccess) {
 // player it created itself (see checkPlayerAccess in routes/players.js).
 function requireProfileAuth(onReady) {
   if (profileEditorAuthed || anonAuthed) { onReady(); return; }
+  // A logged-in player (common.js's playerAuthed/currentPlayerId — see
+  // requirePlayerAuth/openPlayerLoginModal there) can edit their own bio
+  // without the separate PROFILE_CODE, but only on their own page —
+  // playerId is this file's own module var, reassigned to the real
+  // numeric id once the player record loads below.
+  if (playerAuthed && currentPlayerId && currentPlayerId === Number(playerId)) { onReady(); return; }
   openProfileLoginModal(onReady);
 }
 

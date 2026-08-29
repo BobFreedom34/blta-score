@@ -11,6 +11,7 @@ let currentQuery = '';
 let currentCategory = '';
 let currentTimeFilter = '';
 let debounceTimer = null;
+let isAdminUser = false;
 
 const listEl = document.getElementById('match-list');
 
@@ -106,7 +107,7 @@ function matchCardHtml(m) {
         </div>
       `}
       ${isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : ''}
-      ${m.status === 'PLANNED' && !m.scheduledAt ? `
+      ${m.status === 'PLANNED' && !m.scheduledAt && canManageMatch(m, isAdminUser) ? `
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
           <button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}">📅 Set date &amp; location</button>
           <button type="button" class="btn btn-sm btn-outline propose-times-btn" data-token="${m.token}" data-p1-name="${escapeHtml(m.player1.name)}" data-p2-name="${escapeHtml(m.player2.name)}">🗓 Propose times for opponent</button>
@@ -456,5 +457,14 @@ socket.on('matches:changed', () => {
   refreshCounts();
 });
 
-loadMatches();
-refreshCounts();
+(async () => {
+  isAdminUser = await checkAdmin();
+  await refreshPlayerAuth();
+  loadMatches();
+  refreshCounts();
+  // Re-render once a *later* login/logout finishes (see the
+  // blta:auth-changed dispatch in common.js) — registered only after the
+  // refreshPlayerAuth() call above so its own initial dispatch doesn't
+  // trigger a redundant second loadMatches() right after this one.
+  window.addEventListener('blta:auth-changed', loadMatches);
+})();

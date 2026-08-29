@@ -757,6 +757,11 @@ async function checkAdmin() {
 let playerAuthed = false;
 let anonAuthed = false;
 let currentPlayerName = null;
+// Null for a pure admin session (no player cookie) or no session at all —
+// only set once a *specific* player is logged in via their phone number.
+// Pages that need to scope a button/action to "this player's own stuff"
+// (see checkMatchAccess in routes/matches.js) compare against this.
+let currentPlayerId = null;
 
 function updatePlayerNavLinks() {
   document.querySelectorAll('.player-login-link').forEach((el) => {
@@ -772,13 +777,40 @@ async function refreshPlayerAuth() {
     playerAuthed = !!res.isPlayer;
     anonAuthed = !!res.isAnon;
     currentPlayerName = res.playerName || null;
+    currentPlayerId = res.playerId || null;
   } catch {
     playerAuthed = false;
     anonAuthed = false;
     currentPlayerName = null;
+    currentPlayerId = null;
   }
   updatePlayerNavLinks();
+  // Lets any page's own script react to a login/logout finishing (e.g. the
+  // homepage re-showing/hiding "Set date & location" once it knows who's
+  // logged in) without common.js needing to know what each page does.
+  window.dispatchEvent(new Event('blta:auth-changed'));
   return playerAuthed || anonAuthed;
+}
+
+// Mirrors checkMatchAccess in routes/matches.js — whether the current
+// session could actually manage this match (start it, set its date/
+// location, propose times for the opponent, edit an existing proposal,
+// etc.), so those controls only show up where they'd work instead of
+// showing everywhere and 403ing on click. isAdminUser is passed in rather
+// than read off a shared global since each page tracks its own admin
+// status (via checkAdmin()) independently. A visitor with no session at
+// all still sees these controls — requirePlayerAuth prompts login, then
+// the action proceeds normally — this only hides them once we actually
+// know who's logged in and they're not eligible for THIS match.
+function canManageMatch(m, isAdminUser) {
+  if (isAdminUser) return true;
+  if (playerAuthed && currentPlayerId) {
+    const playsInMatch = currentPlayerId === m.player1.id || currentPlayerId === m.player2.id;
+    if (m.createdByAdmin && playsInMatch) return true;
+    return m.createdByPlayerId === currentPlayerId;
+  }
+  if (anonAuthed) return m.createdByAnonymous;
+  return true;
 }
 
 function openPlayerLoginModal(onSuccess) {
@@ -804,7 +836,9 @@ function openPlayerLoginModal(onSuccess) {
       playerAuthed = !!res.isPlayer;
       anonAuthed = !!res.isAnon;
       currentPlayerName = res.playerName || null;
+      currentPlayerId = res.playerId || null;
       updatePlayerNavLinks();
+      window.dispatchEvent(new Event('blta:auth-changed'));
       modal.style.display = 'none';
       if (onSuccess) onSuccess();
     } catch (err) {
@@ -839,7 +873,9 @@ document.querySelectorAll('.player-login-link').forEach((el) => {
       playerAuthed = false;
       anonAuthed = false;
       currentPlayerName = null;
+      currentPlayerId = null;
       updatePlayerNavLinks();
+      window.dispatchEvent(new Event('blta:auth-changed'));
       toast('Logged out');
     } else {
       openPlayerLoginModal();
