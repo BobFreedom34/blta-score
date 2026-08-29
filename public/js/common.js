@@ -890,6 +890,8 @@ function canManageMatch(m, isAdminUser) {
 function openPlayerLoginModal(onSuccess) {
   const modal = document.getElementById('player-login-modal');
   if (!modal) return;
+  const formStep = document.getElementById('player-login-step-form');
+  const successStep = document.getElementById('player-login-step-success');
   const form = document.getElementById('player-login-form');
   const input = document.getElementById('player-login-input');
   const errorEl = document.getElementById('player-login-error');
@@ -897,6 +899,8 @@ function openPlayerLoginModal(onSuccess) {
   errorEl.textContent = '';
   input.value = '';
   input.disabled = false;
+  formStep.style.display = '';
+  successStep.style.display = 'none';
 
   form.onsubmit = async (e) => {
     e.preventDefault();
@@ -913,8 +917,16 @@ function openPlayerLoginModal(onSuccess) {
       currentPlayerId = res.playerId || null;
       updatePlayerNavLinks();
       window.dispatchEvent(new Event('blta:auth-changed'));
-      modal.style.display = 'none';
-      if (onSuccess) onSuccess();
+      // Confirm who just logged in instead of closing silently — the modal
+      // switches to a short success step (see the two #player-login-step-*
+      // panels in the modal markup) and only actually closes (and hands
+      // off to onSuccess, continuing whatever action prompted this login)
+      // once the player acknowledges it via the OK button below.
+      document.getElementById('player-login-success-text').textContent = currentPlayerName
+        ? t('login.successNamed', { name: currentPlayerName })
+        : t('login.successGeneric');
+      formStep.style.display = 'none';
+      successStep.style.display = '';
     } catch (err) {
       errorEl.textContent = err.message;
       input.disabled = false;
@@ -922,6 +934,11 @@ function openPlayerLoginModal(onSuccess) {
       input.value = '';
       input.focus();
     }
+  };
+
+  document.getElementById('player-login-ok-btn').onclick = () => {
+    modal.style.display = 'none';
+    if (onSuccess) onSuccess();
   };
 
   modal.style.display = 'flex';

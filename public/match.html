@@ -293,17 +293,23 @@
 <div class="modal-backdrop" id="player-login-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="player-login-modal" aria-label="Close">&times;</button>
-    <div style="text-transform:uppercase;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--gray)" data-i18n="login.title">Prihlásiť sa ako hráč BLTA</div>
-    <h3 style="font-weight:700;text-transform:none;margin-top:4px" data-i18n-html="login.headline">Zadajte svoje <span style="color:var(--green-light)">telefónne číslo</span></h3>
-    <p style="font-size:14px;color:var(--ink);line-height:1.5" data-i18n="login.phoneIntro">Napr. 0903111222. Ešte ho nemáte v systéme? Požiadajte admina, aby ho pridal.</p>
-    <p style="font-size:13px;color:var(--gray);margin:8px 0" data-i18n="login.notBltaPlayer">Ak nie ste hráč BLTA, prihláste sa namiesto toho kódom 3344 — aj tak môžete vytvárať a spravovať svoje vlastné zápasy.</p>
-    <form id="player-login-form">
-      <div class="field">
-        <input type="text" inputmode="numeric" id="player-login-input" placeholder="0903111222" autocomplete="off">
-      </div>
-      <div id="player-login-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
-      <button type="submit" class="btn btn-primary btn-block" data-i18n="login.submit">Prihlásiť sa</button>
-    </form>
+    <div id="player-login-step-form">
+      <div style="text-transform:uppercase;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--gray)" data-i18n="login.title">Prihlásiť sa ako hráč BLTA</div>
+      <h3 style="font-weight:700;text-transform:none;margin-top:4px" data-i18n-html="login.headline">Zadajte svoje <span style="color:var(--green-light)">telefónne číslo</span></h3>
+      <p style="font-size:14px;color:var(--ink);line-height:1.5" data-i18n="login.phoneIntro">Napr. 0903111222. Ešte ho nemáte v systéme? Požiadajte admina, aby ho pridal.</p>
+      <p style="font-size:13px;color:var(--gray);margin:8px 0" data-i18n="login.notBltaPlayer">Ak nie ste hráč BLTA, prihláste sa namiesto toho kódom 3344 — aj tak môžete vytvárať a spravovať svoje vlastné zápasy.</p>
+      <form id="player-login-form">
+        <div class="field">
+          <input type="text" inputmode="numeric" id="player-login-input" placeholder="0903111222" autocomplete="off">
+        </div>
+        <div id="player-login-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
+        <button type="submit" class="btn btn-primary btn-block" data-i18n="login.submit">Prihlásiť sa</button>
+      </form>
+    </div>
+    <div id="player-login-step-success" style="display:none;text-align:center">
+      <h3 id="player-login-success-text" style="margin-top:0"></h3>
+      <button type="button" class="btn btn-primary btn-block" id="player-login-ok-btn" data-i18n="common.ok">OK</button>
+    </div>
   </div>
 </div>
 

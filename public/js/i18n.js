@@ -126,6 +126,8 @@ const TRANSLATIONS = {
     'login.phoneIntro': 'Napr. 0903111222. Ešte ho nemáte v systéme? Požiadajte admina, aby ho pridal.',
     'login.notBltaPlayer': 'Ak nie ste hráč BLTA, prihláste sa namiesto toho kódom 3344 — aj tak môžete vytvárať a spravovať svoje vlastné zápasy.',
     'login.submit': 'Prihlásiť sa',
+    'login.successNamed': 'Prihlásili ste sa ako {name}',
+    'login.successGeneric': 'Prihlásili ste sa',
 
     'page.homeTitle': 'BLTA Score — Živé zápasy',
     'calendar.eventTitle': '{p1} vs {p2} — zápas BLTA',
@@ -491,6 +493,8 @@ const TRANSLATIONS = {
     'login.phoneIntro': "e.g. 0903111222. Don't have one on file yet? Ask an admin to add it.",
     'login.notBltaPlayer': "If you're not a BLTA player, log in with 3344 instead — you can still create and manage your own matches.",
     'login.submit': 'Log in',
+    'login.successNamed': 'Logged in as {name}',
+    'login.successGeneric': 'Logged in',
 
     'page.homeTitle': 'BLTA Score — Live Matches',
     'calendar.eventTitle': '{p1} vs {p2} — BLTA match',
