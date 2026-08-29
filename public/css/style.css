@@ -618,13 +618,23 @@ datalist {}
 /* Response grid on the match page — single-pick, not the creation grid's
    multi-toggle. Only cells matching one of the proposed slots are
    clickable/highlighted; everything else stays plain filler so the
-   calendar shape reads correctly without implying it can be clicked. */
-#proposal-grid-wrap .avail-cell { cursor: default; }
-#proposal-grid-wrap .avail-cell:hover { background: var(--gray-light); }
-#proposal-grid-wrap .avail-cell.proposed { background: #fff6f2; border: 1.5px solid var(--orange); cursor: pointer; }
-#proposal-grid-wrap .avail-cell.proposed:hover { background: #ffe8dc; }
-#proposal-grid-wrap .avail-cell.proposed.selected { background: var(--orange); border-color: var(--orange-dark); }
-#proposal-grid-wrap .avail-cell.proposed.selected:hover { background: var(--orange-dark); }
+   calendar shape reads correctly without implying it can be clicked.
+   #proposal-grid-wrap is the first proposal's card; #counter-proposal-
+   grid-wrap is the second, independent one (see oneProposalCardHtml in
+   match.js) — same rules apply to both. Overrides the base .avail-cell's
+   touch-action: none — that's only needed by the *other* grid (the
+   multi-select "mark your availability" one), which has its own
+   touchstart/touchmove drag-select handling to compensate. This grid is
+   plain single-tap-to-pick with no such handling, so touch-action: none
+   alone can swallow a quick tap's click event on mobile (only a slower
+   press-and-release manages to register) — manipulation still blocks
+   double-tap-zoom but lets a normal tap fire click. */
+#proposal-grid-wrap .avail-cell, #counter-proposal-grid-wrap .avail-cell { cursor: default; touch-action: manipulation; }
+#proposal-grid-wrap .avail-cell:hover, #counter-proposal-grid-wrap .avail-cell:hover { background: var(--gray-light); }
+#proposal-grid-wrap .avail-cell.proposed, #counter-proposal-grid-wrap .avail-cell.proposed { background: #fff6f2; border: 1.5px solid var(--orange); cursor: pointer; }
+#proposal-grid-wrap .avail-cell.proposed:hover, #counter-proposal-grid-wrap .avail-cell.proposed:hover { background: #ffe8dc; }
+#proposal-grid-wrap .avail-cell.proposed.selected, #counter-proposal-grid-wrap .avail-cell.proposed.selected { background: var(--orange); border-color: var(--orange-dark); }
+#proposal-grid-wrap .avail-cell.proposed.selected:hover, #counter-proposal-grid-wrap .avail-cell.proposed.selected:hover { background: var(--orange-dark); }
 
 .proposal-option-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .proposal-option.selected { border-color: var(--orange); background: #fff6f2; color: var(--orange-dark); font-weight: 800; }
