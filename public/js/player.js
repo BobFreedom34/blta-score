@@ -533,6 +533,7 @@ function render() {
 }
 
 async function load() {
+  await RANKS_READY;
   try {
     rawGroups = await Promise.all(GROUPS.map((g) => {
       const qs = new URLSearchParams({ playerId, ...g.params });

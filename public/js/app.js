@@ -191,6 +191,7 @@ function buildFilterParams(filterKey) {
 }
 
 async function loadMatches() {
+  await RANKS_READY;
   const params = buildFilterParams(currentFilter);
   try {
     // "All Matches" also folds in a Live group up top, on the same

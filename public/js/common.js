@@ -436,6 +436,26 @@ function playerInfoBtn(player) {
   return `<button type="button" class="player-info-btn" title="${escapeHtml(t('common.viewProfileTitle', { name: player.name }))}" onclick="event.preventDefault();event.stopPropagation();${nav}">i</button>`;
 }
 
+// Name -> current overall BLTA rank (the "blta" rankings table only, not
+// the per-category Race tables), so a match card can show "#N" next to a
+// ranked player. Fetched once per page load; a page that renders cards
+// should `await RANKS_READY` before its first render so the badges are
+// there from the start rather than popping in on a later re-render. Best
+// -effort — a scraper hiccup just means no badges, not a broken page.
+const RANK_BY_NAME = new Map();
+const RANKS_READY = (async () => {
+  try {
+    const data = await api('/rankings');
+    const blta = data.tables.find((t) => t.key === 'blta');
+    if (blta) blta.rows.forEach((r) => RANK_BY_NAME.set(r.name, r.rank));
+  } catch { /* no badges this load — not worth failing the page over */ }
+})();
+
+function rankBadgeHtml(name) {
+  const rank = RANK_BY_NAME.get(name);
+  return rank ? `<span class="player-rank">#${rank}</span> ` : '';
+}
+
 // A player's name inside a match card — clickable to their profile page,
 // same not-a-real-<a> nav trick as playerInfoBtn above (and for the same
 // reason: it sits inside the card's own <a>).
@@ -444,7 +464,7 @@ function playerNameLink(player) {
   const nav = window.top === window.self
     ? `window.location.href='/player/${playerPath}'`
     : `window.open('/player/${playerPath}','_blank')`;
-  return `<span class="player-name-link" onclick="event.preventDefault();event.stopPropagation();${nav}">${escapeHtml(player.name)}</span>`;
+  return `<span class="player-name-link" onclick="event.preventDefault();event.stopPropagation();${nav}">${rankBadgeHtml(player.name)}${escapeHtml(player.name)}</span>`;
 }
 
 // A small tennis-ball marker next to whichever player is bringing the
