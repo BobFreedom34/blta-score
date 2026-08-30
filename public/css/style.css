@@ -764,7 +764,7 @@ datalist {}
 .form-square:hover { opacity: 0.8; }
 
 /* ---------- Player avatar ---------- */
-.player-avatar-row { display: flex; align-items: center; gap: 18px; margin-top: 22px; flex-wrap: nowrap; }
+.player-avatar-row { display: flex; align-items: stretch; gap: 18px; margin-top: 22px; flex-wrap: nowrap; }
 .player-header-main {
   flex: 1;
   min-width: 0;
@@ -772,10 +772,15 @@ datalist {}
   flex-direction: column;
   gap: 8px;
 }
-.player-name-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.player-rank-flag { display: flex; flex-direction: column; gap: 4px; }
 .player-rank-badge { font-size: 28px; font-weight: 800; color: var(--orange); line-height: 1; }
-.player-flag { display: block; }
+/* .player-header-main stretches to the avatar's full height (see
+   align-items: stretch above), and the rank badge — first child, no auto
+   margin — packs against its top edge same as before. These two auto
+   margins then split whatever's left over evenly above/below the flag so
+   it and the name center as a pair in that remaining space, rather than
+   just trailing the rank at the top with empty space left below. */
+.player-flag { display: block; margin-top: auto; }
+.player-name-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: auto; }
 .player-flag-img { display: block; height: 28px; width: auto; border-radius: 3px; box-shadow: var(--shadow); }
 .player-upcoming-stat {
   margin-top: 16px;
@@ -848,8 +853,20 @@ datalist {}
   .player-avatar-fallback { font-size: 64px; }
   /* The rank number + flag stay stacked exactly like on desktop, but that
      whole block sits beside the name now instead of above it — full-width
-     stacking here would push the name down further than it needs to. */
-  .player-header-main { flex-direction: row; align-items: center; gap: 14px; }
+     stacking here would push the name down further than it needs to. Grid
+     (rather than reusing the desktop flex column) so rank+flag can occupy
+     one column and the name the other without changing the markup. */
+  .player-header-main {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 14px;
+    row-gap: 2px;
+  }
+  .player-rank-badge { grid-row: 1; grid-column: 1; margin: 0; }
+  .player-flag { grid-row: 2; grid-column: 1; margin: 0; }
+  .player-name-row { grid-row: 1 / 3; grid-column: 2; margin: 0; }
 }
 .player-avatar-fallback {
   background: var(--ink);
