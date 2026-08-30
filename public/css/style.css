@@ -428,6 +428,15 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+@media (max-width: 680px) {
+  /* On a planned match the "score" slot just repeats the match format
+     (e.g. "Best of 3 sets") rather than an actual result — on a narrow
+     screen that's not worth the room it takes from the names next to it,
+     so it's dropped and the names take the freed-up width. A real result
+     (score, retirement, etc.) still shows on every other status. */
+  .match-score-format { display: none; }
+  .match-players-names { flex: 1; }
+}
 .empty-state {
   text-align: center;
   padding: 60px 20px;
