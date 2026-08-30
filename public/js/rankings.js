@@ -56,11 +56,17 @@ function headerRowHtml(table) {
 function renderTable() {
   const table = rankingsData.tables.find((t) => t.key === activeTab);
   const listEl = document.getElementById('rankings-list');
-  if (!table || table.rows.length === 0) {
+  // Skip anyone with no points at all (null) or exactly 0 — keeping the
+  // original index (not the filtered position) on each entry so the
+  // admin edit flow below still looks up the right row in table.rows.
+  const visibleRows = table
+    ? table.rows.map((r, i) => ({ r, i })).filter(({ r }) => r.points !== null && r.points !== 0)
+    : [];
+  if (!table || visibleRows.length === 0) {
     listEl.innerHTML = `<p style="color:var(--gray)">${t('rankings.none')}</p>`;
     return;
   }
-  const rowsHtml = table.rows.map((r, i) => {
+  const rowsHtml = visibleRows.map(({ r, i }) => {
     const flag = flagImgHtml(r.nationality, 'rank-flag-icon');
     const nameHtml = r.slug
       ? `<a href="/player/${escapeHtml(r.slug)}" class="rank-name">${flag}${escapeHtml(r.name)}</a>`
