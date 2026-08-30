@@ -773,6 +773,7 @@ datalist {}
   gap: 8px;
 }
 .player-name-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.player-rank-flag { display: flex; flex-direction: column; gap: 4px; }
 .player-rank-badge { font-size: 28px; font-weight: 800; color: var(--orange); line-height: 1; }
 .player-flag { display: block; }
 .player-flag-img { display: block; height: 28px; width: auto; border-radius: 3px; box-shadow: var(--shadow); }
@@ -845,6 +846,10 @@ datalist {}
   .player-avatar-row { flex-direction: column; align-items: stretch; gap: 14px; }
   .player-avatar, .player-avatar-fallback { width: 100%; height: auto; aspect-ratio: 1 / 1; }
   .player-avatar-fallback { font-size: 64px; }
+  /* The rank number + flag stay stacked exactly like on desktop, but that
+     whole block sits beside the name now instead of above it — full-width
+     stacking here would push the name down further than it needs to. */
+  .player-header-main { flex-direction: row; align-items: center; gap: 14px; }
 }
 .player-avatar-fallback {
   background: var(--ink);
