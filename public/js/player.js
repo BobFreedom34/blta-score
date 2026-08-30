@@ -756,13 +756,19 @@ document.getElementById('player-bio-form').addEventListener('submit', async (e) 
 });
 
 (async () => {
-  isAdminUser = await checkAdmin();
+  [isAdminUser] = await Promise.all([checkAdmin(), RANKS_READY]);
   try {
     const player = await api(`/players/${playerId}`);
     playerId = player.id;
     currentPlayer = player;
     nameEl.innerHTML = nameLinesHtml(player.name);
     document.getElementById('player-flag').innerHTML = flagImgHtml(player.nationality, 'player-flag-img');
+    const rank = RANK_BY_NAME.get(player.name);
+    if (rank) {
+      const rankEl = document.getElementById('player-rank-badge');
+      rankEl.textContent = t('player.bltaRank', { rank });
+      rankEl.style.display = '';
+    }
     document.title = `${player.name} — BLTA Score`;
     const avatarEl = document.getElementById('player-avatar');
     if (player.photo_url) {

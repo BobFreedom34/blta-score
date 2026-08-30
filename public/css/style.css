@@ -773,6 +773,7 @@ datalist {}
   gap: 8px;
 }
 .player-name-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.player-rank-badge { font-size: 28px; font-weight: 800; color: var(--orange); line-height: 1; }
 .player-flag { display: block; }
 .player-flag-img { display: block; height: 28px; width: auto; border-radius: 3px; box-shadow: var(--shadow); }
 .player-upcoming-stat {
