@@ -75,12 +75,14 @@ function findPlayerByIdOrSlug(idOrSlug) {
 
 router.get('/', (req, res) => {
   const q = (req.query.q || '').trim();
-  let rows;
+  let rows = db.prepare('SELECT * FROM players ORDER BY name COLLATE NOCASE').all();
+  // Filtered in JS rather than via SQL LIKE — SQLite's LIKE only case-folds
+  // plain ASCII letters, so a query like "šar" (lowercase) would silently
+  // fail to match "Šarudy" (capital Š) even though it's clearly the same
+  // word — JS's toLowerCase() handles accented letters correctly.
   if (q) {
-    rows = db.prepare('SELECT * FROM players WHERE name LIKE ? ORDER BY name COLLATE NOCASE')
-      .all(`%${q}%`);
-  } else {
-    rows = db.prepare('SELECT * FROM players ORDER BY name COLLATE NOCASE').all();
+    const needle = q.toLowerCase();
+    rows = rows.filter((p) => p.name.toLowerCase().includes(needle));
   }
   res.json(rows.map((p) => stripPrivateFields(p, req)));
 });
