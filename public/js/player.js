@@ -8,10 +8,12 @@ let currentPlayer = null;
 let isAdminUser = false;
 const nameEl = document.getElementById('player-name');
 const listEl = document.getElementById('player-match-list');
+const opponentFilterEl = document.getElementById('opponent-filter');
 const resultFilterEl = document.getElementById('result-filter');
 const categoryFilterEl = document.getElementById('category-filter');
 const yearFilterEl = document.getElementById('year-filter');
 
+let currentOpponent = '';
 let currentResult = '';
 let currentCategory = '';
 let currentYear = '';
@@ -75,15 +77,38 @@ function matchYear(m) {
   return m.scheduledAt ? new Date(m.scheduledAt).getFullYear() : null;
 }
 
+// The other player in a match, from this profile's point of view.
+function opponentOf(m) {
+  return m.player1.id === Number(playerId) ? m.player2 : m.player1;
+}
+
 // Won/Lost only ever matches a finished match with a decided winner, so
 // picking either one naturally empties (and hides) the Live/Scheduled/Not
 // yet scheduled groups without any special-casing here.
 function passesFilters(m) {
+  if (currentOpponent && String(opponentOf(m).id) !== currentOpponent) return false;
   if (currentResult === 'won' && m.winnerId !== Number(playerId)) return false;
   if (currentResult === 'lost' && (!m.winnerId || m.winnerId === Number(playerId))) return false;
   if (currentCategory && m.category !== currentCategory) return false;
   if (currentYear && String(matchYear(m)) !== currentYear) return false;
   return true;
+}
+
+// Alphabetically-sorted, de-duplicated (by id) list of everyone this player
+// has ever faced across every match group — not just the finished ones, so
+// an upcoming/live opponent can be filtered to too.
+function populateOpponentOptions() {
+  const byId = new Map();
+  rawGroups.flat().forEach((m) => {
+    const opp = opponentOf(m);
+    if (!byId.has(opp.id)) byId.set(opp.id, opp.name);
+  });
+  const opponents = [...byId.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  const keep = opponentFilterEl.value;
+  opponentFilterEl.innerHTML = `<option value="">${t('player.allOpponents')}</option>`
+    + opponents.map(([id, name]) => `<option value="${id}">${escapeHtml(name)}</option>`).join('');
+  opponentFilterEl.value = opponents.some(([id]) => String(id) === keep) ? keep : '';
+  currentOpponent = opponentFilterEl.value;
 }
 
 function populateYearOptions() {
@@ -505,6 +530,7 @@ async function load() {
       const qs = new URLSearchParams({ playerId, ...g.params });
       return api(`/matches?${qs.toString()}`);
     }));
+    populateOpponentOptions();
     populateYearOptions();
     document.getElementById('player-upcoming-count').textContent = rawGroups[1].length + rawGroups[2].length;
     renderStats();
@@ -533,6 +559,10 @@ document.getElementById('stats-tabs').addEventListener('click', (e) => {
 document.getElementById('badges-toggle').addEventListener('click', openBadgesModal);
 window.addEventListener('resize', applyBadgesClip);
 
+opponentFilterEl.addEventListener('change', (e) => {
+  currentOpponent = e.target.value;
+  render();
+});
 resultFilterEl.addEventListener('change', (e) => {
   currentResult = e.target.value;
   render();
@@ -546,9 +576,11 @@ yearFilterEl.addEventListener('change', (e) => {
   render();
 });
 document.getElementById('reset-filters-btn').addEventListener('click', () => {
+  currentOpponent = '';
   currentResult = '';
   currentCategory = '';
   currentYear = '';
+  opponentFilterEl.value = '';
   resultFilterEl.value = '';
   categoryFilterEl.value = '';
   yearFilterEl.value = '';
