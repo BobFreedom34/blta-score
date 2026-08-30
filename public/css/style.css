@@ -1248,10 +1248,9 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 .rank-pos {
   font-weight: 800;
   font-size: 14px;
-  color: var(--gray-dim);
+  color: var(--orange);
   text-align: center;
 }
-.rank-row:nth-child(1) .rank-pos { color: var(--orange); }
 .rank-move { font-size: 10px; font-weight: 800; line-height: 1.3; }
 .rank-move-up { color: var(--green-light); }
 .rank-move-down { color: var(--danger); }
