@@ -1187,7 +1187,22 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 .site-footer-inner a:hover { color: var(--white); }
 
 /* ---------- Player rows ---------- */
+/* A single grid holds both the A/B/C… headings and the name rows — each
+   heading spans every column (grid-column: 1/-1), which forces a row break
+   so the next letter's names always start a fresh grid row instead of
+   continuing to trail the previous letter's last, half-empty one. Rows
+   between two headings then just auto-flow left-to-right, wrapping into as
+   many columns as the container defines (3 on desktop, 2 on mobile below). */
+#player-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  column-gap: 28px;
+}
+@media (max-width: 680px) {
+  #player-list { grid-template-columns: repeat(2, 1fr); column-gap: 16px; }
+}
 .player-group-heading {
+  grid-column: 1 / -1;
   font-weight: 800;
   font-size: 13px;
   letter-spacing: 0.06em;
@@ -1201,13 +1216,21 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 .player-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 12px;
+  gap: 4px 12px;
   padding: 10px 4px;
   border-bottom: 1px solid var(--gray-light);
+  min-width: 0;
 }
 .player-row:last-child { border-bottom: none; }
-.player-name { font-weight: 700; font-size: 14px; flex: 1; min-width: 0; }
+/* flex-basis 100% (rather than the usual flex:1) so the name always
+   claims its own full-width line above phone/actions once those wrap —
+   the narrower a grid column gets, the more likely admin's phone +
+   Edit/Delete buttons don't fit next to a name on one line (see the
+   3/2-column #player-list grid above), and a name sharing a line with
+   only part of that group read worse than the two stacking cleanly. */
+.player-name { font-weight: 700; font-size: 14px; flex: 1 1 100%; min-width: 0; }
 .player-row-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .player-row .edit-name-input {
   flex: 1;
