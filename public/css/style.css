@@ -77,8 +77,14 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   color: var(--white);
   letter-spacing: 0.02em;
 }
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .nav-toggle {
   display: none;
+  order: 3;
   background: none;
   border: none;
   color: var(--white);
@@ -93,6 +99,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  order: 1;
 }
 .nav-links a {
   padding: 8px 12px;
@@ -120,14 +127,18 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .install-app-btn:hover { background: rgba(255,255,255,0.08); color: var(--white); }
 @media (max-width: 680px) { .install-app-btn { text-align: center; padding: 12px; } }
 .nav-links a.active { background: var(--orange); color: var(--white); }
-.lang-switcher { display: flex; gap: 4px; align-items: center; margin-left: 4px; }
+.lang-switcher { display: flex; gap: 4px; align-items: center; order: 2; }
 .lang-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; color: #d8d8d8; background: none; border: 1px solid rgba(255,255,255,0.25); cursor: pointer; font-family: inherit; }
 .lang-btn:hover { background: rgba(255,255,255,0.08); color: var(--white); }
 .lang-btn.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 .lang-flag { width: 15px; height: 11px; object-fit: cover; border-radius: 2px; }
-@media (max-width: 680px) { .lang-switcher { justify-content: center; margin: 8px 0 0; } }
 
 @media (max-width: 680px) {
+  /* The lang switcher lives in .topbar-right, a sibling of the collapsible
+     .nav-links dropdown — so unlike the nav links, it stays visible in the
+     sticky top bar at all times on mobile instead of hiding until the
+     hamburger menu is opened. order:1 puts it just left of the toggle. */
+  .lang-switcher { order: 1; }
   .nav-toggle { display: block; }
   .nav-links {
     display: none;
