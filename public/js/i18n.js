@@ -46,7 +46,7 @@ const TRANSLATIONS = {
     'filters.noDate': 'Bez dátumu',
     'filters.reset': 'Zrušiť filtre',
 
-    'status.PLANNED': 'Plánovaný',
+    'status.PLANNED': 'K naplánovaniu',
     'status.LIVE': 'Naživo',
     'status.FINISHED': 'Ukončený',
     'status.UNFINISHED': 'Nedokončený',
