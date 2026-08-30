@@ -307,6 +307,11 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .match-card.status-UNFINISHED { border-left-color: var(--yellow); }
 .match-card.status-PLANNED.has-date { border-left-color: var(--green); }
 .match-card.status-PLANNED:not(.has-date) { border-left-color: var(--gray); }
+/* Player profile match list only (see matchCardHtml in player.js) — a
+   decided result recolors the accent bar by win/loss instead of the plain
+   "finished = green" status color every other match list uses. */
+.match-card.result-won { border-left-color: var(--green); }
+.match-card.result-lost { border-left-color: var(--danger); }
 .match-card-top {
   display: flex;
   justify-content: space-between;

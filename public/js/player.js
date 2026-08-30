@@ -32,8 +32,16 @@ function matchCardHtml(m) {
   const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
   const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
   const scoreboard = cardScoreboardHtml(m);
+  // Green/red left border by outcome from THIS profile's point of view,
+  // overriding the plain "finished = green" status color everywhere else
+  // uses — only for a decided result (a walkover/retirement counts, but a
+  // no-winner Unfinished-as-is finish doesn't, so it keeps the neutral
+  // status color instead of falsely reading as a loss).
+  const resultClass = m.status === 'FINISHED' && m.winnerId
+    ? (m.winnerId === Number(playerId) ? ' result-won' : ' result-lost')
+    : '';
   return `
-    <a class="match-card status-${m.status}${m.status === 'PLANNED' && m.scheduledAt ? ' has-date' : ''}" href="/match/${m.token}">
+    <a class="match-card status-${m.status}${m.status === 'PLANNED' && m.scheduledAt ? ' has-date' : ''}${resultClass}" href="/match/${m.token}">
       <div class="match-card-top">
         ${categoryBadge(m.category)}
         ${statusBadge(m)}
