@@ -125,9 +125,9 @@ function openEditMatchModal(m, onSaved) {
     });
   }
 
-  // Balls picker — labeled with the real player names directly (unlike the
-  // create form's version, which has to track live-typed names instead
-  // since the players don't exist yet at that point).
+  // Balls/court pickers — labeled with the real player names directly
+  // (unlike the create form's version, which has to track live-typed names
+  // instead since the players don't exist yet at that point).
   const ballsBtns = Array.from(document.querySelectorAll('#edit-match-balls-row button'));
   ballsBtns[0].textContent = m.player1.name;
   ballsBtns[1].textContent = m.player2.name;
@@ -141,6 +141,22 @@ function openEditMatchModal(m, onSaved) {
       const val = Number(btn.dataset.value);
       ballsPlayer = ballsPlayer === val ? null : val;
       updateBallsButtons();
+    };
+  });
+
+  const courtBtns = Array.from(document.querySelectorAll('#edit-match-court-row button'));
+  courtBtns[0].textContent = m.player1.name;
+  courtBtns[1].textContent = m.player2.name;
+  let courtPlayer = m.courtPlayer || null;
+  const updateCourtButtons = () => {
+    courtBtns.forEach((b) => b.classList.toggle('active', Number(b.dataset.value) === courtPlayer));
+  };
+  updateCourtButtons();
+  courtBtns.forEach((btn) => {
+    btn.onclick = () => {
+      const val = Number(btn.dataset.value);
+      courtPlayer = courtPlayer === val ? null : val;
+      updateCourtButtons();
     };
   });
 
@@ -164,7 +180,7 @@ function openEditMatchModal(m, onSaved) {
     try {
       let updated = await api(`/matches/${m.token}`, {
         method: 'PATCH',
-        body: { category, location, scheduledAt, notes, ballsPlayer },
+        body: { category, location, scheduledAt, notes, ballsPlayer, courtPlayer },
       });
       if (canChangeFormat && selectedFormat !== m.format) {
         updated = await api(`/matches/${m.token}/format`, { method: 'PATCH', body: { format: selectedFormat } });
@@ -279,6 +295,7 @@ function setupLivePlayerChoicePicker(rowId) {
   return () => picked;
 }
 function setupBallsPicker() { return setupLivePlayerChoicePicker('balls-choice-row'); }
+function setupCourtPicker() { return setupLivePlayerChoicePicker('court-choice-row'); }
 function setupProposerPicker() { return setupLivePlayerChoicePicker('proposer-choice-row'); }
 
 // Same two-button widget, but for a match whose two players are already
@@ -617,11 +634,24 @@ function playerNameLink(player) {
 // icon shape) guarantees the same ball-only look everywhere.
 function ballsIconHtml(m, playerNum) {
   if (m.status !== 'PLANNED' || m.ballsPlayer !== playerNum) return '';
-  return `<svg class="balls-icon" viewBox="0 0 24 24" title="${escapeHtml(t('common.bringsBallsTitle'))}">
+  // The title has to be a <title> *child element*, not a title attribute on
+  // <svg> itself — unlike a plain HTML element, a bare attribute there
+  // isn't picked up as a hover tooltip by browsers.
+  return `<svg class="balls-icon" viewBox="0 0 24 24"><title>${escapeHtml(t('common.bringsBallsTitle'))}</title>
     <circle cx="12" cy="12" r="11" fill="#d4ee4e" stroke="#a8c93a" stroke-width="1"/>
     <path d="M3 6c3.2 2.6 3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
     <path d="M21 6c-3.2 2.6-3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
   </svg>`;
+}
+
+// Same idea as ballsIconHtml, for whichever player is reserving the court —
+// a plain 📞 emoji rather than a drawn icon (unlike the ball, there's no
+// cross-platform rendering risk worth avoiding for a phone glyph). A plain
+// HTML element's title attribute *does* work as a native tooltip, unlike
+// the SVG case above, so no <title> child needed here.
+function courtIconHtml(m, playerNum) {
+  if (m.status !== 'PLANNED' || m.courtPlayer !== playerNum) return '';
+  return `<span class="court-icon" title="${escapeHtml(t('common.reservesCourtTitle'))}">📞</span>`;
 }
 
 // Compact per-set scoreboard for a match card (LIVE/FINISHED) — same dark
@@ -778,8 +808,8 @@ function compactMatchCardHtml(m) {
       <span class="compact-date">${compactDateHtml(m)}</span>
       ${categoryBadge(m.category)}
       <span class="compact-players">
-        <span class="${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}${ballsIconHtml(m, 1)}</span>
-        <span class="${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}${ballsIconHtml(m, 2)}</span>
+        <span class="${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}${ballsIconHtml(m, 1)}${courtIconHtml(m, 1)}</span>
+        <span class="${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}${ballsIconHtml(m, 2)}${courtIconHtml(m, 2)}</span>
       </span>
       <span class="compact-result">${matchScoreHtml(m)}</span>
       <span class="compact-place">${m.location ? `📍 ${escapeHtml(m.location)}` : ''}</span>

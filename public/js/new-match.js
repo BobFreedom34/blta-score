@@ -4,6 +4,7 @@ loadPlayers();
 setupAutocomplete('player1', 'player1-suggestions');
 setupAutocomplete('player2', 'player2-suggestions');
 const getBallsPlayer = setupBallsPicker();
+const getCourtPlayer = setupCourtPicker();
 
 document.getElementById('new-match-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -44,6 +45,7 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
           format,
           notes,
           ballsPlayer: getBallsPlayer(),
+          courtPlayer: getCourtPlayer(),
         },
       });
       window.location.href = `/match/${match.token}`;

@@ -100,6 +100,7 @@ function serialize(row) {
     pausedSeconds: row.paused_seconds || 0,
     firstServer: row.first_server || null,
     ballsPlayer: row.balls_player || null,
+    courtPlayer: row.court_player || null,
     endReason: row.end_reason || null,
     proposalSlots: row.proposal_slots ? JSON.parse(row.proposal_slots) : null,
     proposalVenues: row.proposal_venues ? JSON.parse(row.proposal_venues) : null,
@@ -258,6 +259,13 @@ router.post('/', requireLoggedIn, (req, res) => {
       return res.status(400).json({ error: 'ballsPlayer must be 1 or 2' });
     }
   }
+  let courtPlayer = null;
+  if (req.body.courtPlayer !== undefined && req.body.courtPlayer !== null) {
+    courtPlayer = Number(req.body.courtPlayer);
+    if (![1, 2].includes(courtPlayer)) {
+      return res.status(400).json({ error: 'courtPlayer must be 1 or 2' });
+    }
+  }
 
   // "Propose times" mode: several candidate slots + preferred venues
   // instead of one fixed date — the other player picks one of each later
@@ -335,8 +343,8 @@ router.post('/', requireLoggedIn, (req, res) => {
 
   const state = engine.initState(format);
   const info = db.prepare(`
-    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, created_by_player_id, notes, balls_player, proposal_slots, proposal_venues, proposal_notify_email, proposed_by)
-    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @created_by_player_id, @notes, @balls_player, @proposal_slots, @proposal_venues, @proposal_notify_email, @proposed_by)
+    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, created_by_player_id, notes, balls_player, court_player, proposal_slots, proposal_venues, proposal_notify_email, proposed_by)
+    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @created_by_player_id, @notes, @balls_player, @court_player, @proposal_slots, @proposal_venues, @proposal_notify_email, @proposed_by)
   `).run({
     share_token: crypto.randomUUID(),
     category,
@@ -358,6 +366,7 @@ router.post('/', requireLoggedIn, (req, res) => {
     created_by_player_id: isAdmin(req) ? null : getPlayerId(req),
     notes: (notes || '').trim(),
     balls_player: ballsPlayer,
+    court_player: courtPlayer,
     proposal_slots: proposalSlots ? JSON.stringify(proposalSlots) : null,
     proposal_venues: proposalVenues ? JSON.stringify(proposalVenues) : null,
     proposal_notify_email: proposalNotifyEmail,
@@ -390,6 +399,17 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
         return res.status(400).json({ error: 'ballsPlayer must be 1 or 2' });
       }
       fields.balls_player = ballsPlayer;
+    }
+  }
+  if (req.body.courtPlayer !== undefined) {
+    if (req.body.courtPlayer === null) {
+      fields.court_player = null;
+    } else {
+      const courtPlayer = Number(req.body.courtPlayer);
+      if (![1, 2].includes(courtPlayer)) {
+        return res.status(400).json({ error: 'courtPlayer must be 1 or 2' });
+      }
+      fields.court_player = courtPlayer;
     }
   }
   if (typeof req.body.location === 'string') fields.location = req.body.location.trim();

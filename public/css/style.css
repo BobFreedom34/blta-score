@@ -615,6 +615,7 @@ datalist {}
 .scoreboard-reason { padding: 0 12px 12px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #9a9a9a; }
 .serve-ball { display: inline-block; margin-right: 6px; font-size: 14px; }
 .balls-icon { display: inline-block; margin-left: 6px; width: 14px; height: 14px; vertical-align: -2px; }
+.court-icon { display: inline-block; margin-left: 6px; font-size: 13px; vertical-align: -1px; }
 
 /* Compact variant of .scoreboard, used on a match card in a list */
 .scoreboard-compact { padding: 10px 12px; overflow-x: auto; }

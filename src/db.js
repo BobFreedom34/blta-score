@@ -267,6 +267,13 @@ if (!matchColumns.includes('counter_proposal_notify_email')) {
 if (!matchColumns.includes('counter_proposed_by')) {
   db.exec('ALTER TABLE matches ADD COLUMN counter_proposed_by INTEGER');
 }
+// Who's reserving the court — 1 or 2 (player1/player2), set at match
+// creation and shown as a small marker on the match card while it's still
+// PLANNED (see the court-icon rendering in common.js). Same 1/2/null shape
+// as balls_player — NULL means nobody picked.
+if (!matchColumns.includes('court_player')) {
+  db.exec('ALTER TABLE matches ADD COLUMN court_player INTEGER');
+}
 
 const playerColumns = db.prepare('PRAGMA table_info(players)').all().map((c) => c.name);
 if (!playerColumns.includes('photo_url')) {
