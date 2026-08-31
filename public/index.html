@@ -116,6 +116,43 @@
   </div>
 </div>
 
+<!-- Quick edit match modal (category/date/format) — opened right from a
+     match card (the ✏️ button) without navigating to the match's own page,
+     for a logged-in player in that match or admin. See
+     openQuickEditMatchModal/handleQuickEditMatchClick in common.js. -->
+<div class="modal-backdrop" id="quick-edit-match-modal" style="display:none">
+  <div class="modal" style="max-width:480px">
+    <button type="button" class="close" data-close="quick-edit-match-modal" aria-label="Close">&times;</button>
+    <h3 data-i18n="match.editMatchTitle">Upraviť nastavenia zápasu</h3>
+    <form id="quick-edit-match-form">
+      <div class="field">
+        <label for="quick-edit-category" data-i18n="newMatch.categoryLabel">Kategória</label>
+        <select id="quick-edit-category" required>
+          <option value="ELITE">BLTA ELITE</option>
+          <option value="NEXT_GEN">BLTA NEXT GEN</option>
+          <option value="NOVICE">BLTA NOVICE</option>
+          <option value="FRIENDLY" data-i18n="category.FRIENDLY">PRIATEĽSKÝ</option>
+          <option value="VIP_CUP">VIP CUP</option>
+          <option value="ATA_TENNIS">ATA TENNIS</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="quick-edit-date" data-i18n="newMatch.dateTimeLabel">Dátum a čas</label>
+        <div style="display:flex;gap:8px">
+          <input type="date" id="quick-edit-date" style="flex:1">
+          <input type="time" id="quick-edit-time" style="flex:1">
+        </div>
+      </div>
+      <div class="field" id="quick-edit-format-field">
+        <label data-i18n="newMatch.formatLabel">Formát zápasu</label>
+        <div class="format-options" id="quick-edit-format-options"></div>
+      </div>
+      <div id="quick-edit-match-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px" data-i18n="match.saveChanges">Uložiť zmeny</button>
+    </form>
+  </div>
+</div>
+
 <!-- Propose times modal — turns an existing undated Planned match into one
      awaiting a scheduling response, same widgets as the Schedule a match
      page (see createAvailabilityPicker/createVenueChipPicker in common.js). -->

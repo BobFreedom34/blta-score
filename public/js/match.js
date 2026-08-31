@@ -66,21 +66,8 @@ function getEffectiveSetIndex(m) {
   return m.status === 'LIVE' ? m.state.currentSet : m.state.sets.length - 1;
 }
 
-function pad(n) { return String(n).padStart(2, '0'); }
-
-function toDateValue(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function toTimeValue(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
+// pad/toDateValue/toTimeValue now live in common.js — shared with any page
+// that opens a match-editing modal of its own.
 
 function startTimer(m) {
   clearInterval(timerInterval);

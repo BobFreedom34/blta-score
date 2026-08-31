@@ -7,6 +7,24 @@ function endReasonLabel(reason) {
   return END_REASON_LABELS[reason] ? t(`common.endReason.${reason}`) : null;
 }
 
+// Shared by match.js (per-match date/time edit fields) and any page that
+// opens a match-editing modal of its own (see openQuickEditMatchModal
+// below) — <input type="date">/<input type="time"> want the local
+// wall-clock date/time, not the ISO string's UTC one.
+function pad(n) { return String(n).padStart(2, '0'); }
+function toDateValue(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function toTimeValue(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 // ---------- Shared match-creation form pieces ----------
 // Used by new-match.js (pick one fixed date) and by match.js's
 // edit-proposal/counter-propose modals (propose several times/venues
@@ -40,6 +58,94 @@ function setupFormatOptions(containerId) {
     </label>
   `;
   }).join('');
+}
+
+// ---------- Quick-edit-from-card modal ----------
+// A compact version of match.js's own "Edit match" modal (category/date/
+// format only — no location/notes/who-brings-balls) that a match CARD can
+// open in place, without navigating to the match's own page — used by
+// app.js (homepage) and player.js (a player's own match list). Needs the
+// matching #quick-edit-match-modal markup present on that page (see
+// index.html/player.html).
+
+// Prompts login if needed, re-fetches the match fresh (never trusts
+// whatever's baked into the card's own dataset — it could be stale, or the
+// viewer's eligibility could have changed since this card last rendered),
+// re-checks canManageMatch against that fresh data, then opens the modal.
+// isAdminUser is passed in rather than read off a shared global since each
+// page tracks its own admin status independently (see canManageMatch).
+function handleQuickEditMatchClick(token, isAdminUser, reload) {
+  requirePlayerAuth(() => {
+    (async () => {
+      let m;
+      try {
+        m = await api(`/matches/${token}`);
+      } catch (err) {
+        toast(err.message);
+        return;
+      }
+      if (!canManageMatch(m, isAdminUser) || (m.status === 'FINISHED' && !isAdminUser)) {
+        showAccessDeniedModal(t('accessDenied.message'));
+        return;
+      }
+      openQuickEditMatchModal(m, reload);
+    })();
+  });
+}
+
+function openQuickEditMatchModal(m, onSaved) {
+  const modal = document.getElementById('quick-edit-match-modal');
+  if (!modal) return;
+  const errorEl = document.getElementById('quick-edit-match-error');
+  errorEl.textContent = '';
+
+  document.getElementById('quick-edit-category').value = m.category;
+  document.getElementById('quick-edit-date').value = toDateValue(m.scheduledAt);
+  document.getElementById('quick-edit-time').value = toTimeValue(m.scheduledAt);
+
+  // Format can only actually be changed server-side while LIVE or
+  // PLANNED (see PATCH /:token/format) — hidden here rather than shown
+  // and then erroring on save for a Finished/Unfinished match.
+  const formatField = document.getElementById('quick-edit-format-field');
+  const canChangeFormat = m.status === 'LIVE' || m.status === 'PLANNED';
+  formatField.style.display = canChangeFormat ? '' : 'none';
+  if (canChangeFormat) {
+    setupFormatOptions('quick-edit-format-options');
+    document.querySelectorAll('#quick-edit-format-options input[name="format"]').forEach((input) => {
+      input.checked = input.value === m.format;
+    });
+  }
+
+  document.getElementById('quick-edit-match-form').onsubmit = async (e) => {
+    e.preventDefault();
+    errorEl.textContent = '';
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    const category = document.getElementById('quick-edit-category').value;
+    const dateVal = document.getElementById('quick-edit-date').value;
+    const timeVal = document.getElementById('quick-edit-time').value;
+    const scheduledAt = dateVal ? new Date(`${dateVal}T${timeVal || '00:00'}`).toISOString() : null;
+    const selectedFormatInput = canChangeFormat
+      ? document.querySelector('#quick-edit-format-options input[name="format"]:checked')
+      : null;
+    const selectedFormat = selectedFormatInput ? selectedFormatInput.value : m.format;
+
+    try {
+      await api(`/matches/${m.token}`, { method: 'PATCH', body: { category, scheduledAt } });
+      if (canChangeFormat && selectedFormat !== m.format) {
+        await api(`/matches/${m.token}/format`, { method: 'PATCH', body: { format: selectedFormat } });
+      }
+      modal.style.display = 'none';
+      toast(t('match.editMatchSaved'));
+      if (onSaved) onSaved();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      submitBtn.disabled = false;
+    }
+  };
+
+  modal.style.display = 'flex';
 }
 
 let allPlayers = [];

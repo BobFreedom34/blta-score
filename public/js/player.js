@@ -48,6 +48,7 @@ function matchCardHtml(m) {
         <div class="match-card-meta" style="margin-left:auto">
           ${m.location ? `<span>📍 ${escapeHtml(m.location)}</span>` : ''}
           ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>🗓 ${fmtDateShort(m.scheduledAt)}</span>`}
+          ${(m.status !== 'FINISHED' || isAdminUser) && canManageMatch(m, isAdminUser) ? `<button type="button" class="match-quick-edit-btn" data-token="${m.token}" title="${escapeHtml(t('match.editMatchBtn'))}">✏️</button>` : ''}
         </div>
       </div>
       ${m.notes ? `<div class="match-card-notes">${escapeHtml(m.notes)}</div>` : ''}
@@ -494,10 +495,18 @@ function openQuickScheduleModal(token) {
 
 listEl.addEventListener('click', (e) => {
   const scheduleBtn = e.target.closest('.quick-schedule-btn');
-  if (!scheduleBtn) return;
-  e.preventDefault();
-  e.stopPropagation();
-  requirePlayerAuth(() => openQuickScheduleModal(scheduleBtn.dataset.token));
+  if (scheduleBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    requirePlayerAuth(() => openQuickScheduleModal(scheduleBtn.dataset.token));
+    return;
+  }
+  const quickEditBtn = e.target.closest('.match-quick-edit-btn');
+  if (quickEditBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    handleQuickEditMatchClick(quickEditBtn.dataset.token, isAdminUser, load);
+  }
 });
 
 document.getElementById('quick-schedule-form').addEventListener('submit', async (e) => {
