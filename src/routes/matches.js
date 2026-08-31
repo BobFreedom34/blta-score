@@ -429,14 +429,22 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
   // outright — whoever can edit it (see canManageMatch) can also delete it,
   // putting the match back to a plain unscheduled Planned match with no
   // "Pick a time" card. Distinct from the array branch below, which sets a
-  // new/updated proposal instead. Deleting the first proposal takes the
-  // counter-proposal down with it (see counterProposalSlots below) — there's
-  // nothing left to counter once it's gone.
+  // new/updated proposal instead. If there's a counter-proposal, it's
+  // promoted to take over as the primary proposal instead of being wiped
+  // out with it — deleting your own offer shouldn't cost the other player
+  // theirs (mirrors DELETE /:token/proposal above, kept in sync with it).
   if (req.body.proposalSlots === null) {
-    fields.proposal_slots = null;
-    fields.proposal_venues = null;
-    fields.proposed_by = null;
-    fields.proposal_notify_email = null;
+    if (row.counter_proposal_slots) {
+      fields.proposal_slots = row.counter_proposal_slots;
+      fields.proposal_venues = row.counter_proposal_venues;
+      fields.proposed_by = row.counter_proposed_by;
+      fields.proposal_notify_email = row.counter_proposal_notify_email;
+    } else {
+      fields.proposal_slots = null;
+      fields.proposal_venues = null;
+      fields.proposed_by = null;
+      fields.proposal_notify_email = null;
+    }
     fields.counter_proposal_slots = null;
     fields.counter_proposal_venues = null;
     fields.counter_proposed_by = null;
@@ -798,9 +806,10 @@ router.patch('/:token/proposal', requireLoggedIn, (req, res) => {
 // checkMatchAccess), this route is gated by authorizeProposalOwner above so
 // the specific player named as proposer can delete their own card even on
 // a match they don't otherwise "manage" (e.g. one the other player, not
-// them, created). Also takes any counter-proposal down with it, same as
-// PATCH /:token's proposalSlots: null — there's nothing left to counter
-// once the first proposal is gone.
+// them, created). If there's a counter-proposal, it's promoted to take
+// over as the primary proposal instead of being wiped out with it —
+// deleting your own offer shouldn't cost the other player theirs (kept in
+// sync with PATCH /:token's proposalSlots: null branch above).
 router.delete('/:token/proposal', requireLoggedIn, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
@@ -808,12 +817,21 @@ router.delete('/:token/proposal', requireLoggedIn, (req, res) => {
     return res.status(400).json({ error: 'This match has no proposal to delete' });
   }
   if (!authorizeProposalOwner(req, res, row, row.proposed_by)) return;
-  db.prepare(`
-    UPDATE matches SET proposal_slots = NULL, proposal_venues = NULL, proposed_by = NULL, proposal_notify_email = NULL,
-      counter_proposal_slots = NULL, counter_proposal_venues = NULL, counter_proposed_by = NULL, counter_proposal_notify_email = NULL,
-      updated_at = ?
-    WHERE id = ?
-  `).run(nowIso(), row.id);
+  if (row.counter_proposal_slots) {
+    db.prepare(`
+      UPDATE matches SET
+        proposal_slots = counter_proposal_slots, proposal_venues = counter_proposal_venues,
+        proposed_by = counter_proposed_by, proposal_notify_email = counter_proposal_notify_email,
+        counter_proposal_slots = NULL, counter_proposal_venues = NULL, counter_proposed_by = NULL, counter_proposal_notify_email = NULL,
+        updated_at = ?
+      WHERE id = ?
+    `).run(nowIso(), row.id);
+  } else {
+    db.prepare(`
+      UPDATE matches SET proposal_slots = NULL, proposal_venues = NULL, proposed_by = NULL, proposal_notify_email = NULL, updated_at = ?
+      WHERE id = ?
+    `).run(nowIso(), row.id);
+  }
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);
   res.json(payload);
