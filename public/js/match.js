@@ -771,7 +771,7 @@ function attachHandlers(m) {
       showAccessDeniedModal(t('accessDenied.message'));
       return;
     }
-    openEditMatchModal(m);
+    openEditMatchModal(m, render);
   });
   const editMatchBtn = document.getElementById('edit-match-btn');
   if (editMatchBtn) editMatchBtn.addEventListener('click', openEditMatch);
@@ -1042,93 +1042,9 @@ function openFirstServerModal(m) {
   document.getElementById('first-server-modal').style.display = 'flex';
 }
 
-// Consolidated "edit initial settings" modal — the same fields the new-
-// match form collects (see new-match.html/new-match.js), pre-filled from
-// the existing match and editable. Category/location/date/notes/
-// ballsPlayer all go through the generic PATCH /:token; format (only when
-// actually changed) goes through its own PATCH /:token/format instead,
-// which already knows how to validate a LIVE match's current score
-// against the newly picked format — reused rather than duplicated here.
-// The two players themselves are never shown as editable — reassigning
-// them isn't supported (their stats/history are tied to this match).
-function openEditMatchModal(m) {
-  const errorEl = document.getElementById('edit-match-error');
-  errorEl.textContent = '';
-
-  document.getElementById('edit-match-category').value = m.category;
-  document.getElementById('edit-match-location').value = m.location || '';
-  document.getElementById('edit-match-date').value = toDateValue(m.scheduledAt);
-  document.getElementById('edit-match-time').value = toTimeValue(m.scheduledAt);
-  document.getElementById('edit-match-notes').value = m.notes || '';
-
-  // Format can only actually be changed server-side while LIVE or
-  // PLANNED (see PATCH /:token/format) — hidden here rather than shown
-  // and then erroring on save for a Finished/Unfinished match.
-  const formatField = document.getElementById('edit-match-format-field');
-  const canChangeFormat = m.status === 'LIVE' || m.status === 'PLANNED';
-  formatField.style.display = canChangeFormat ? '' : 'none';
-  if (canChangeFormat) {
-    setupFormatOptions('edit-match-format-options');
-    document.querySelectorAll('#edit-match-format-options input[name="format"]').forEach((input) => {
-      input.checked = input.value === m.format;
-    });
-  }
-
-  // Balls picker — labeled with the real player names directly (unlike the
-  // create form's version, which has to track live-typed names instead
-  // since the players don't exist yet at that point).
-  const ballsBtns = Array.from(document.querySelectorAll('#edit-match-balls-row button'));
-  ballsBtns[0].textContent = m.player1.name;
-  ballsBtns[1].textContent = m.player2.name;
-  let ballsPlayer = m.ballsPlayer || null;
-  const updateBallsButtons = () => {
-    ballsBtns.forEach((b) => b.classList.toggle('active', Number(b.dataset.value) === ballsPlayer));
-  };
-  updateBallsButtons();
-  ballsBtns.forEach((btn) => {
-    btn.onclick = () => {
-      const val = Number(btn.dataset.value);
-      ballsPlayer = ballsPlayer === val ? null : val;
-      updateBallsButtons();
-    };
-  });
-
-  document.getElementById('edit-match-form').onsubmit = async (e) => {
-    e.preventDefault();
-    errorEl.textContent = '';
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-
-    const category = document.getElementById('edit-match-category').value;
-    const location = document.getElementById('edit-match-location').value.trim();
-    const dateVal = document.getElementById('edit-match-date').value;
-    const timeVal = document.getElementById('edit-match-time').value;
-    const notes = document.getElementById('edit-match-notes').value.trim();
-    const scheduledAt = dateVal ? new Date(`${dateVal}T${timeVal || '00:00'}`).toISOString() : null;
-    const selectedFormatInput = canChangeFormat
-      ? document.querySelector('#edit-match-format-options input[name="format"]:checked')
-      : null;
-    const selectedFormat = selectedFormatInput ? selectedFormatInput.value : m.format;
-
-    try {
-      let updated = await api(`/matches/${matchToken}`, {
-        method: 'PATCH',
-        body: { category, location, scheduledAt, notes, ballsPlayer },
-      });
-      if (canChangeFormat && selectedFormat !== m.format) {
-        updated = await api(`/matches/${matchToken}/format`, { method: 'PATCH', body: { format: selectedFormat } });
-      }
-      document.getElementById('edit-match-modal').style.display = 'none';
-      toast(t('match.editMatchSaved'));
-      render(updated);
-    } catch (err) {
-      errorEl.textContent = err.message;
-      submitBtn.disabled = false;
-    }
-  };
-
-  document.getElementById('edit-match-modal').style.display = 'flex';
-}
+// openEditMatchModal now lives in common.js, shared with the pencil-icon
+// quick-edit on match cards (see handleQuickEditMatchClick) — this page
+// just passes its own render() as the onSaved callback below.
 
 function openFinishUndecidedModal(m) {
   // Free Play only reaches this modal on a genuine tie (or 0-0) — there's

@@ -259,18 +259,22 @@
   </div>
 </div>
 
-<!-- Quick edit match modal (category/date/format) — opened right from a
-     match card (the ✏️ button) without navigating to the match's own page,
-     for a logged-in player in that match or admin. See
-     openQuickEditMatchModal/handleQuickEditMatchClick in common.js. -->
-<div class="modal-backdrop" id="quick-edit-match-modal" style="display:none">
-  <div class="modal" style="max-width:480px">
-    <button type="button" class="close" data-close="quick-edit-match-modal" aria-label="Close">&times;</button>
+<!-- Edit match modal — the same initial-settings fields as the "New match"
+     form, pre-filled and editable for a match that already exists. Opened
+     both by a match card's ✏️ button (without navigating away — see
+     handleQuickEditMatchClick/openEditMatchModal in common.js) and, on the
+     match's own page, by its "Upraviť zápas" button (see match.js) —
+     identical markup on both pages so the same modal logic drives either.
+     The two players themselves are never shown as editable — reassigning
+     them isn't supported (their stats/history are tied to this match). -->
+<div class="modal-backdrop" id="edit-match-modal" style="display:none">
+  <div class="modal" style="max-width:560px">
+    <button type="button" class="close" data-close="edit-match-modal" aria-label="Close">&times;</button>
     <h3 data-i18n="match.editMatchTitle">Upraviť nastavenia zápasu</h3>
-    <form id="quick-edit-match-form">
+    <form id="edit-match-form">
       <div class="field">
-        <label for="quick-edit-category" data-i18n="newMatch.categoryLabel">Kategória</label>
-        <select id="quick-edit-category" required>
+        <label for="edit-match-category" data-i18n="newMatch.categoryLabel">Kategória</label>
+        <select id="edit-match-category" required>
           <option value="ELITE">BLTA ELITE</option>
           <option value="NEXT_GEN">BLTA NEXT GEN</option>
           <option value="NOVICE">BLTA NOVICE</option>
@@ -280,17 +284,32 @@
         </select>
       </div>
       <div class="field">
-        <label for="quick-edit-date" data-i18n="newMatch.dateTimeLabel">Dátum a čas</label>
+        <label for="edit-match-date" data-i18n="newMatch.dateTimeLabel">Dátum a čas</label>
         <div style="display:flex;gap:8px">
-          <input type="date" id="quick-edit-date" style="flex:1">
-          <input type="time" id="quick-edit-time" style="flex:1">
+          <input type="date" id="edit-match-date" style="flex:1">
+          <input type="time" id="edit-match-time" style="flex:1">
         </div>
       </div>
-      <div class="field" id="quick-edit-format-field">
-        <label data-i18n="newMatch.formatLabel">Formát zápasu</label>
-        <div class="format-options" id="quick-edit-format-options"></div>
+      <div class="field">
+        <label for="edit-match-location" data-i18n="newMatch.placeLabel">Miesto</label>
+        <input type="text" id="edit-match-location" placeholder="napr. NTC Bratislava, kurt 3" data-i18n-placeholder="newMatch.placePlaceholder">
       </div>
-      <div id="quick-edit-match-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <div class="field" id="edit-match-balls-field">
+        <label><svg viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px"><circle cx="12" cy="12" r="11" fill="#d4ee4e" stroke="#a8c93a" stroke-width="1"/><path d="M3 6c3.2 2.6 3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M21 6c-3.2 2.6-3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg> <span data-i18n="newMatch.whoBringsBalls">Kto nesie loptičky?</span> <span style="font-weight:400;color:var(--gray-dim);font-size:12px" data-i18n="common.optional">(voliteľné)</span></label>
+        <div class="server-choice-row balls-choice-row" id="edit-match-balls-row">
+          <button type="button" class="btn btn-outline btn-block" data-value="1"></button>
+          <button type="button" class="btn btn-outline btn-block" data-value="2"></button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="edit-match-notes" data-i18n="newMatch.notesLabel">Doplňujúce informácie</label>
+        <textarea id="edit-match-notes" rows="3" maxlength="1000" placeholder="napr. osemfinále, prineste si vlastné loptičky, stretnutie o 10 min skôr…" data-i18n-placeholder="newMatch.notesPlaceholder"></textarea>
+      </div>
+      <div class="field" id="edit-match-format-field">
+        <label data-i18n="newMatch.formatLabel">Formát zápasu</label>
+        <div class="format-options" id="edit-match-format-options"></div>
+      </div>
+      <div id="edit-match-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
       <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px" data-i18n="match.saveChanges">Uložiť zmeny</button>
     </form>
   </div>
