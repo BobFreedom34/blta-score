@@ -25,7 +25,7 @@ function logicOptionsHtml(selected) {
 
 function badgeMedalInner(icon) {
   return icon && icon.startsWith('/badge-icons/')
-    ? `<img src="${escapeHtml(icon)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`
+    ? `<img src="${escapeHtml(icon)}" alt="" style="width:100%;height:100%;border-radius:var(--radius);object-fit:cover">`
     : (icon || '');
 }
 
@@ -81,7 +81,7 @@ function wireIconPreview(prefix) {
   fileInput.addEventListener('change', () => {
     const file = fileInput.files[0];
     if (!file) return;
-    preview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
+    preview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="" style="width:100%;height:100%;border-radius:var(--radius);object-fit:cover">`;
   });
 }
 

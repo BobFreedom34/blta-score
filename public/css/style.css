@@ -939,17 +939,18 @@ datalist {}
 .badge-medal {
   width: 90px;
   height: 90px;
-  border-radius: 50%;
+  border-radius: var(--radius);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 38px;
   margin: 0 auto 8px;
-  background: var(--white);
-  border: 4px solid var(--orange);
+  background: transparent;
 }
-.badge-medal.locked { background: var(--charcoal); border-color: var(--gray); filter: grayscale(1); opacity: 0.45; }
-.badge-medal img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+/* No background/shadow of its own to dim, so "locked" is carried entirely
+   by the icon itself — grayscale plus reduced opacity — same as before. */
+.badge-medal.locked { filter: grayscale(1); opacity: 0.45; }
+.badge-medal img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 .badge-name { font-size: 11px; font-weight: 700; color: var(--white); line-height: 1.3; }
 .badge-name.locked { color: var(--gray-dim); }
 .badge-condition { font-size: 10px; color: var(--gray-dim); line-height: 1.3; margin-top: 3px; }
@@ -977,7 +978,7 @@ datalist {}
 #badge-zoom-content .badge-name { color: var(--ink); font-size: 20px; margin-top: 8px; }
 #badge-zoom-content .badge-name.locked { color: var(--gray); }
 #badge-zoom-content .badge-condition { color: var(--gray); font-size: 15px; margin-top: 8px; }
-#badge-zoom-content .badge-medal { width: 320px; height: 320px; font-size: 136px; border-width: 10px; margin: 0 auto 16px; }
+#badge-zoom-content .badge-medal { width: 320px; height: 320px; font-size: 136px; margin: 0 auto 16px; }
 
 /* ---------- Head-to-head ---------- */
 .section-label {
@@ -1276,8 +1277,8 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
    .player-name above, so it always starts its own line under the name
    rather than trying to share one with phone/actions. */
 .player-badges-preview { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 100%; margin-top: 2px; }
-.badge-medal-mini { width: 26px; height: 26px; font-size: 13px; border-width: 2px; margin: 0; }
-.badge-medal-mini img { border-radius: 50%; }
+.badge-medal-mini { width: 26px; height: 26px; font-size: 13px; margin: 0; }
+.badge-medal-mini img { border-radius: inherit; }
 
 /* ---------- Rankings ---------- */
 .card-dark { background: var(--ink); color: var(--white); }
