@@ -101,7 +101,7 @@ const TRANSLATIONS = {
     'proposeTimes.markAtLeastOne': 'Označte aspoň jeden čas, kedy môžete hrať.',
     'proposeTimes.addAtLeastOneVenue': 'Pridajte aspoň jedno preferované miesto.',
     'proposeTimes.invalidEmail': 'Zadajte platnú e-mailovú adresu pre potvrdenie, alebo pole nechajte prázdne.',
-    'proposeTimes.whatsappText': '{p1} vs {p2} — vyberte si termín, ktorý vám vyhovuje:',
+    'proposeTimes.whatsappText': 'Ahoj, na náš spoločný plánovaný zápas ti posielam návrhy termíny začiatku zápasu, ktoré by mi vyhovovali. V prípade, že si nevyberieš žiaden navrhni prosím tvoje termíny začiatku zápasu.',
     'proposeTimes.shareDesc': 'Pošlite tento odkaz súperovi, aby si mohol vybrať termín, ktorý mu vyhovuje. Keď si termín vyberie, dostanete potvrdzovací e-mail, ak ste ho zadali.',
     'proposeTimes.updated': 'Váš návrh bol upravený!',
     'proposeTimes.sent': 'Vaše časy boli odoslané!',

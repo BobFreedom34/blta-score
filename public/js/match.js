@@ -378,9 +378,12 @@ function attachProposalCardHandlers(m, which) {
   // Same weekly-grid look as the "Schedule a match" form that created this
   // proposal, but single-pick instead of multi-toggle: only cells matching
   // one of this card's own slots are clickable, everything else is inert
-  // filler that keeps the calendar shape recognizable. The day range comes
-  // from the actual proposed dates (not a fixed 14 days), paged in weeks of
-  // 7 the same way, so a short proposal doesn't drag in empty weeks.
+  // filler that keeps the calendar shape recognizable. The grid always
+  // shows full 7-day weeks (starting from the earliest proposed date, paged
+  // the same way as the proposer's own picker) rather than trimming to just
+  // the days that actually have a proposed slot — a proposal for, say, only
+  // Tuesday and Thursday still shows the whole week around them, not a
+  // 2-day sliver.
   const proposalSlotSet = new Set(slots);
   const dayDates = slots.map((iso) => {
     const d = new Date(iso);
@@ -388,8 +391,14 @@ function attachProposalCardHandlers(m, which) {
   });
   const minDay = new Date(Math.min(...dayDates));
   const maxDay = new Date(Math.max(...dayDates));
+  const spanDays = Math.round((maxDay - minDay) / 86400000) + 1;
+  const numWeeks = Math.max(1, Math.ceil(spanDays / 7));
   const proposalDays = [];
-  for (let d = new Date(minDay); d <= maxDay; d.setDate(d.getDate() + 1)) proposalDays.push(new Date(d));
+  for (let i = 0; i < numWeeks * 7; i++) {
+    const d = new Date(minDay);
+    d.setDate(d.getDate() + i);
+    proposalDays.push(d);
+  }
   const proposalWeeks = [];
   for (let i = 0; i < proposalDays.length; i += 7) proposalWeeks.push(proposalDays.slice(i, i + 7));
   let proposalActiveWeek = 0;
