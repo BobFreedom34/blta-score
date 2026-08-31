@@ -370,39 +370,6 @@ Account → Security → 2-Step Verification → App Passwords).
 
 ---
 
-## 5b. Nightly backup to Google Drive
-
-The database (matches, players, badges — everything real users have entered) lives on
-Render's persistent disk, not in this repo, so it isn't covered by git history the way the
-code is. `src/backup.js` can zip up a clean snapshot of the database, the uploaded badge
-icons (`data/badge-icons/` — also not in git), and the code itself, and upload it to a
-Google Drive folder once a night automatically.
-
-It's entirely optional — with nothing configured, the server just logs
-`[backup] ... not set — nightly backup disabled` once at startup and otherwise does
-nothing. To turn it on:
-
-1. [console.cloud.google.com](https://console.cloud.google.com) → create or pick a project →
-   enable the **Google Drive API**.
-2. **APIs & Services → Credentials → Create Credentials → Service Account.** Any name, no
-   roles needed. Open it → **Keys → Add Key → Create new key → JSON**, and download it.
-3. In your own Google Drive, make a folder for the backups and share it with the service
-   account's email (the `client_email` field in that JSON file — looks like
-   `...@...iam.gserviceaccount.com`) as **Editor**.
-4. Open that folder in Drive and copy its id from the URL
-   (`drive.google.com/drive/folders/<this part>`).
-5. **On Render:** service → **Environment** tab → set `GOOGLE_SERVICE_ACCOUNT_JSON` to the
-   *entire contents* of that downloaded JSON file (as one value), and
-   `GOOGLE_DRIVE_BACKUP_FOLDER_ID` to the folder id from step 4 → **Save Changes**.
-
-Backups run automatically around 03:00 UTC. To check the setup works without waiting for
-that, log in as admin and send a `POST /api/admin/backup-now` request (e.g.
-`curl -X POST https://score.blta.sk/api/admin/backup-now -b "<your admin cookie>"`) — a new
-zip should appear in the Drive folder within a few seconds. Only the most recent 21 backups
-are kept; older ones are pruned automatically each run.
-
----
-
 ## 6. Making future adjustments
 
 **Restart after any change** (nothing is hot-reloaded):

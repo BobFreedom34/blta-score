@@ -43,7 +43,3 @@ services:
         sync: false
       - key: VAPID_SUBJECT
         value: "mailto:score@blta.sk"
-      - key: GOOGLE_SERVICE_ACCOUNT_JSON
-        sync: false
-      - key: GOOGLE_DRIVE_BACKUP_FOLDER_ID
-        sync: false
