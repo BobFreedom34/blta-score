@@ -558,24 +558,59 @@ router.post('/:token/respond-proposal', (req, res) => {
   if (row.status !== 'PLANNED') {
     return res.status(400).json({ error: 'This match is no longer awaiting a scheduling response' });
   }
-  const { slot, venue } = req.body;
-  if (typeof slot !== 'string' || typeof venue !== 'string') {
-    return res.status(400).json({ error: 'Pick one of the proposed times and venues' });
+  const { slot } = req.body;
+  if (typeof slot !== 'string') {
+    return res.status(400).json({ error: 'Pick one of the proposed times' });
+  }
+  // The venue is the responder's own call, not required to be one of the
+  // proposer's suggested chips — they can pick one of those (the client
+  // still offers them), type somewhere else entirely, or leave it blank
+  // and fill it in later, same as any other scheduled match (location is
+  // only actually required at :token/start, see above). So unlike slot,
+  // venue is no longer matched against the proposal's own venues list.
+  const venue = typeof req.body.venue === 'string' ? req.body.venue.trim() : '';
+  // Same optional-and-independent pattern as PATCH /:token below: pick a
+  // value only if the responder actually set one, otherwise leave whatever
+  // was already on the match (null for a "propose times" match, since
+  // neither the original New Match form's balls/court fields nor the
+  // propose-times modal ever run for one — see POST / and counter-propose
+  // above).
+  let ballsPlayer = row.balls_player;
+  if (req.body.ballsPlayer !== undefined) {
+    if (req.body.ballsPlayer === null) {
+      ballsPlayer = null;
+    } else {
+      ballsPlayer = Number(req.body.ballsPlayer);
+      if (![1, 2].includes(ballsPlayer)) {
+        return res.status(400).json({ error: 'ballsPlayer must be 1 or 2' });
+      }
+    }
+  }
+  let courtPlayer = row.court_player;
+  if (req.body.courtPlayer !== undefined) {
+    if (req.body.courtPlayer === null) {
+      courtPlayer = null;
+    } else {
+      courtPlayer = Number(req.body.courtPlayer);
+      if (![1, 2].includes(courtPlayer)) {
+        return res.status(400).json({ error: 'courtPlayer must be 1 or 2' });
+      }
+    }
   }
   // Whichever calendar (the first proposal, or the counter-proposal if
-  // there is one) actually offered this slot+venue combination wins — a
-  // picked slot only ever comes from one card's own options, so there's no
-  // ambiguity if it happens to appear in both. proposerPlayerId (mapped
-  // from the 1/2 proposedBy shape to an actual player id) is null when
-  // whoever proposed it left "who's proposing" blank — nothing to check
-  // against then, so it's left open rather than blocked.
+  // there is one) actually offered this slot wins — a picked slot only
+  // ever comes from one card's own options, so there's no ambiguity if it
+  // happens to appear in both. proposerPlayerId (mapped from the 1/2
+  // proposedBy shape to an actual player id) is null when whoever proposed
+  // it left "who's proposing" blank — nothing to check against then, so
+  // it's left open rather than blocked.
   const proposals = [
-    { slots: JSON.parse(row.proposal_slots), venues: row.proposal_venues ? JSON.parse(row.proposal_venues) : [], notifyEmail: row.proposal_notify_email, proposerPlayerId: row.proposed_by === 1 ? row.player1_id : row.proposed_by === 2 ? row.player2_id : null },
-    row.counter_proposal_slots ? { slots: JSON.parse(row.counter_proposal_slots), venues: row.counter_proposal_venues ? JSON.parse(row.counter_proposal_venues) : [], notifyEmail: row.counter_proposal_notify_email, proposerPlayerId: row.counter_proposed_by === 1 ? row.player1_id : row.counter_proposed_by === 2 ? row.player2_id : null } : null,
+    { slots: JSON.parse(row.proposal_slots), notifyEmail: row.proposal_notify_email, proposerPlayerId: row.proposed_by === 1 ? row.player1_id : row.proposed_by === 2 ? row.player2_id : null },
+    row.counter_proposal_slots ? { slots: JSON.parse(row.counter_proposal_slots), notifyEmail: row.counter_proposal_notify_email, proposerPlayerId: row.counter_proposed_by === 1 ? row.player1_id : row.counter_proposed_by === 2 ? row.player2_id : null } : null,
   ].filter(Boolean);
-  const matched = proposals.find((p) => p.slots.includes(slot) && p.venues.includes(venue));
+  const matched = proposals.find((p) => p.slots.includes(slot));
   if (!matched) {
-    return res.status(400).json({ error: 'That time and venue combination is not one of the proposed options' });
+    return res.status(400).json({ error: 'That time is not one of the proposed options' });
   }
   // A player can only pick from the *other* player's calendar, not confirm
   // their own offer — admin is exempt, same as the login check above.
@@ -583,11 +618,11 @@ router.post('/:token/respond-proposal', (req, res) => {
     return res.status(403).json({ error: "You can't confirm the times you proposed yourself — wait for the other player to pick one" });
   }
   db.prepare(`
-    UPDATE matches SET scheduled_at = ?, location = ?, updated_at = ?,
+    UPDATE matches SET scheduled_at = ?, location = ?, balls_player = ?, court_player = ?, updated_at = ?,
       proposal_slots = NULL, proposal_venues = NULL, proposed_by = NULL, proposal_notify_email = NULL,
       counter_proposal_slots = NULL, counter_proposal_venues = NULL, counter_proposed_by = NULL, counter_proposal_notify_email = NULL
     WHERE id = ?
-  `).run(slot, venue, nowIso(), row.id);
+  `).run(slot, venue, ballsPlayer, courtPlayer, nowIso(), row.id);
 
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);

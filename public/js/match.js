@@ -338,9 +338,24 @@ function oneProposalCardHtml(m, which) {
         <div class="availability-grid-wrap" id="${idPrefix}-grid-wrap"></div>
       </div>
       <div class="field">
-        <label>${t('match.whereLabel')}</label>
+        <label>${t('match.whereLabel')} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${t('common.optional')}</span></label>
         <div class="proposal-option-list" id="${idPrefix}-venue-list">
           ${(venues || []).map((v) => `<button type="button" class="btn btn-outline proposal-option" data-venue="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join('')}
+        </div>
+        <input type="text" id="${idPrefix}-venue-input" placeholder="${t('quickSchedule.placePlaceholder')}" style="margin-top:8px;width:100%">
+      </div>
+      <div class="field">
+        <label><svg viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px"><circle cx="12" cy="12" r="11" fill="#d4ee4e" stroke="#a8c93a" stroke-width="1"/><path d="M3 6c3.2 2.6 3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M21 6c-3.2 2.6-3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg> <span>${t('newMatch.whoBringsBalls')}</span> <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${t('common.optional')}</span></label>
+        <div class="server-choice-row balls-choice-row" id="${idPrefix}-balls-choice-row">
+          <button type="button" class="btn btn-outline btn-block" data-value="1">${escapeHtml(m.player1.name)}</button>
+          <button type="button" class="btn btn-outline btn-block" data-value="2">${escapeHtml(m.player2.name)}</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>📞 <span>${t('newMatch.whoReservesCourt')}</span> <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${t('common.optional')}</span></label>
+        <div class="server-choice-row balls-choice-row" id="${idPrefix}-court-choice-row">
+          <button type="button" class="btn btn-outline btn-block" data-value="1">${escapeHtml(m.player1.name)}</button>
+          <button type="button" class="btn btn-outline btn-block" data-value="2">${escapeHtml(m.player2.name)}</button>
         </div>
       </div>
       <button type="button" class="btn btn-primary btn-block" id="confirm-${idPrefix}-btn" disabled style="margin-top:6px">${t('match.confirmBtn')}</button>
@@ -433,7 +448,7 @@ function attachProposalCardHandlers(m, which) {
       cell.addEventListener('click', () => {
         selectedSlot = cell.dataset.iso;
         renderProposalGrid();
-        confirmBtn.disabled = !(selectedSlot && selectedVenue);
+        confirmBtn.disabled = !selectedSlot;
       });
     });
   }
@@ -441,12 +456,28 @@ function attachProposalCardHandlers(m, which) {
   renderProposalWeekTabs();
   renderProposalGrid();
 
+  // Venue is optional — a slot alone is enough to confirm (see confirmBtn's
+  // disabled state, gated only on selectedSlot). The confirming player can
+  // pick one of the proposer's suggested chips, type somewhere else
+  // entirely into the field below, or leave both blank and set a location
+  // later, same as any other scheduled match.
   const venueBtns = card.querySelectorAll(`#${idPrefix}-venue-list .proposal-option`);
+  const venueInput = document.getElementById(`${idPrefix}-venue-input`);
   venueBtns.forEach((btn) => btn.addEventListener('click', () => {
     selectedVenue = btn.dataset.venue;
+    venueInput.value = selectedVenue;
     venueBtns.forEach((b) => b.classList.toggle('selected', b === btn));
-    confirmBtn.disabled = !(selectedSlot && selectedVenue);
   }));
+  venueInput.addEventListener('input', () => {
+    selectedVenue = venueInput.value.trim() || null;
+    venueBtns.forEach((b) => b.classList.toggle('selected', b.dataset.venue === selectedVenue));
+  });
+
+  // Also optional, same as on the "New match" and "Edit match" forms — the
+  // confirming player can leave either blank.
+  const proposalBallsPicker = createStaticPlayerChoicePicker(`${idPrefix}-balls-choice-row`);
+  const proposalCourtPicker = createStaticPlayerChoicePicker(`${idPrefix}-court-choice-row`);
+
   // Viewing the card and marking a slot/venue is open to anyone with the
   // link, but actually confirming one requires being logged in as one of
   // the two specific players in this match (or admin) — mirrors the
@@ -456,7 +487,7 @@ function attachProposalCardHandlers(m, which) {
   // handlePlannedActionClick in app.js. A player also can't confirm their
   // own card — only the *other* player's calendar is theirs to pick from.
   confirmBtn.addEventListener('click', () => requirePlayerAuth(async () => {
-    if (!selectedSlot || !selectedVenue) return;
+    if (!selectedSlot) return;
     const playsInMatch = isAdminUser || (playerAuthed && currentPlayerId
       && (currentPlayerId === m.player1.id || currentPlayerId === m.player2.id));
     if (!playsInMatch) {
@@ -472,7 +503,12 @@ function attachProposalCardHandlers(m, which) {
     try {
       const updated = await api(`/matches/${matchToken}/respond-proposal`, {
         method: 'POST',
-        body: { slot: selectedSlot, venue: selectedVenue },
+        body: {
+          slot: selectedSlot,
+          venue: selectedVenue || '',
+          ballsPlayer: proposalBallsPicker.getPicked(),
+          courtPlayer: proposalCourtPicker.getPicked(),
+        },
       });
       toast(t('match.timeConfirmed'));
       render(updated);
