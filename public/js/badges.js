@@ -90,9 +90,26 @@ function badgesGridHtml(badgeDefs, earnedSet) {
   return badgeDefs.map((b) => badgeItemHtml(b, earnedSet.has(b.id), false)).join('');
 }
 
+// Same order as LOGIC_TYPES in src/routes/badges.js — fixed rather than
+// derived from whatever badges happen to exist, so the section order in
+// the modal stays stable even as badges are added/removed/reordered
+// within a type.
+const BADGE_GROUP_ORDER = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP', 'BAGEL', 'COMEBACK', 'STRAIGHT_SETS'];
+
 // Full grid for the "show all badges" modal — same badges, but with the
 // unlock condition written out under each one instead of hidden in a
 // tooltip, so a player can see every badge that exists and what it takes.
+// Grouped by that unlock condition (logic type), each under its own
+// heading, so badges that work the same way sit together instead of one
+// undifferentiated grid — a type with no badges yet just contributes no
+// section, rather than an empty heading.
 function badgesModalGridHtml(badgeDefs, earnedSet) {
-  return badgeDefs.map((b) => badgeItemHtml(b, earnedSet.has(b.id), true)).join('');
+  const parts = [];
+  BADGE_GROUP_ORDER.forEach((logicType) => {
+    const group = badgeDefs.filter((b) => b.logicType === logicType);
+    if (!group.length) return;
+    parts.push(`<div class="badge-group-heading">${escapeHtml(t(`badge.group.${logicType}`))}</div>`);
+    parts.push(...group.map((b) => badgeItemHtml(b, earnedSet.has(b.id), true)));
+  });
+  return parts.join('');
 }

@@ -958,6 +958,21 @@ datalist {}
 #badges-modal-grid .badge-name { color: var(--ink); }
 #badges-modal-grid .badge-name.locked { color: var(--gray); }
 #badges-modal-grid .badge-condition { color: var(--gray); }
+/* One heading per unlock condition (see BADGE_GROUP_ORDER in badges.js) —
+   grid-column:1/-1 spans every auto-fill column so it breaks the row,
+   same trick as .player-group-heading on the Players page. */
+.badge-group-heading {
+  grid-column: 1 / -1;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--orange);
+  text-transform: uppercase;
+  margin: 14px 0 -4px;
+  padding: 0 0 6px;
+  border-bottom: 1.5px solid var(--gray-light);
+}
+.badge-group-heading:first-child { margin-top: 0; }
 .badge-item { cursor: pointer; }
 #badge-zoom-content .badge-name { color: var(--ink); font-size: 20px; margin-top: 8px; }
 #badge-zoom-content .badge-name.locked { color: var(--gray); }
@@ -1256,6 +1271,13 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   font-family: inherit;
   font-size: 14px;
 }
+/* Earned badges plus a fixed-size taste of what's still locked (see
+   playerBadgesPreviewHtml in players.js) — flex-basis 100%, same reason as
+   .player-name above, so it always starts its own line under the name
+   rather than trying to share one with phone/actions. */
+.player-badges-preview { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 100%; margin-top: 2px; }
+.badge-medal-mini { width: 26px; height: 26px; font-size: 13px; border-width: 2px; margin: 0; }
+.badge-medal-mini img { border-radius: 50%; }
 
 /* ---------- Rankings ---------- */
 .card-dark { background: var(--ink); color: var(--white); }

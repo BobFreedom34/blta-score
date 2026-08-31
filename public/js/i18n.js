@@ -279,6 +279,13 @@ const TRANSLATIONS = {
     'player.bio.privacyNote': 'Telefón a email vidia iba prihlásení hráči a admini — nikdy nie sú verejne zobrazené.',
 
     'player.allBadgesModalTitle': 'Všetky odznaky',
+    'badge.group.GAMES_PLAYED': 'Odohraté zápasy',
+    'badge.group.WINS': 'Výhry',
+    'badge.group.WIN_STREAK': 'Séria výhier',
+    'badge.group.CATEGORY_SWEEP': 'Všestrannosť',
+    'badge.group.BAGEL': 'Bagel',
+    'badge.group.COMEBACK': 'Comeback',
+    'badge.group.STRAIGHT_SETS': 'Bez straty setu',
 
     'common.ok': 'OK',
 
@@ -649,6 +656,13 @@ const TRANSLATIONS = {
     'player.bio.privacyNote': 'Phone and email are only visible to logged-in players and admins — never shown publicly.',
 
     'player.allBadgesModalTitle': 'All badges',
+    'badge.group.GAMES_PLAYED': 'Matches Played',
+    'badge.group.WINS': 'Wins',
+    'badge.group.WIN_STREAK': 'Win Streak',
+    'badge.group.CATEGORY_SWEEP': 'Versatility',
+    'badge.group.BAGEL': 'Bagel',
+    'badge.group.COMEBACK': 'Comeback',
+    'badge.group.STRAIGHT_SETS': 'Straight Sets',
 
     'common.ok': 'OK',
 
