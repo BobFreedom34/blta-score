@@ -552,14 +552,17 @@ function render(m) {
       <div class="info-item">
         <div class="label">${t('quickSchedule.place')}</div>
         <div class="value" id="location-display">${locationValue}</div>
+        ${locationEditable ? `<button type="button" class="edit-link info-item-edit-link" data-action="open-edit-match">${t('common.edit')}</button>` : ''}
       </div>
       <div class="info-item">
         <div class="label">${t('match.dateLabel')}</div>
         <div class="value" id="date-display">${dateValue}</div>
+        ${locationEditable ? `<button type="button" class="edit-link info-item-edit-link" data-action="open-edit-match">${t('common.edit')}</button>` : ''}
       </div>
       <div class="info-item">
         <div class="label">${t('player.bio.category')}</div>
         <div class="value" id="category-display">${categoryLabel(m.category)}</div>
+        ${locationEditable ? `<button type="button" class="edit-link info-item-edit-link" data-action="open-edit-match">${t('common.edit')}</button>` : ''}
       </div>
     </div>
 
@@ -760,14 +763,21 @@ function attachHandlers(m) {
     catch (err) { toast(err.message); finishAsIsBtn.disabled = false; }
   }));
 
-  const editMatchBtn = document.getElementById('edit-match-btn');
-  if (editMatchBtn) editMatchBtn.addEventListener('click', () => requirePlayerAuth(() => {
+  // The main "Upraviť zápas" action button, plus the small "Upraviť" link
+  // on each of the Miesto/Dátum/Kategória info-items above — all open the
+  // exact same modal, just from different entry points on the page.
+  const openEditMatch = () => requirePlayerAuth(() => {
     if (!canManageMatch(m, isAdminUser)) {
       showAccessDeniedModal(t('accessDenied.message'));
       return;
     }
     openEditMatchModal(m);
-  }));
+  });
+  const editMatchBtn = document.getElementById('edit-match-btn');
+  if (editMatchBtn) editMatchBtn.addEventListener('click', openEditMatch);
+  document.querySelectorAll('.info-item-edit-link').forEach((link) => {
+    link.addEventListener('click', openEditMatch);
+  });
 
   const chatMessagesEl = document.getElementById('chat-messages');
   if (chatMessagesEl) chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
