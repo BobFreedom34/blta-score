@@ -950,7 +950,12 @@ datalist {}
 /* No background/shadow of its own to dim, so "locked" is carried entirely
    by the icon itself — grayscale plus reduced opacity — same as before. */
 .badge-medal.locked { filter: grayscale(1); opacity: 0.45; }
-.badge-medal img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+/* contain, not cover — an uploaded medal's artwork is rarely a clean
+   square (a ribbon or banner often extends past it), and now that there's
+   no background box behind it (see .badge-medal above), cropping to fill
+   would cut real parts of the badge off instead of just trimming empty
+   padding. */
+.badge-medal img { width: 100%; height: 100%; border-radius: inherit; object-fit: contain; }
 .badge-name { font-size: 11px; font-weight: 700; color: var(--white); line-height: 1.3; }
 .badge-name.locked { color: var(--gray-dim); }
 .badge-condition { font-size: 10px; color: var(--gray-dim); line-height: 1.3; margin-top: 3px; }
