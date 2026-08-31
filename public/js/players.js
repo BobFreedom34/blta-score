@@ -33,23 +33,33 @@ async function loadBadgesData() {
   }
 }
 
+// GET /badges comes back easiest-first per group (sort_order, then id) —
+// the admin's own "lower shows first" convention (see badges-admin.js
+// hint text) means a higher sort_order is a harder, more valuable badge.
+// Reversed once here rather than per row.
+function byMostValuableFirst(a, b) {
+  return (b.sortOrder - a.sortOrder) || (b.id - a.id);
+}
+
 // Every badge this player has already earned, plus a fixed-size preview of
 // what's still locked (capped at LOCKED_PREVIEW_COUNT, or fewer if that's
 // all that's left) — a taste of what to go for next, not the full list
-// (that's what the player's own profile page is for).
+// (that's what the player's own profile page is for). The locked slice is
+// still picked easiest-remaining-first (the most realistic "go for this
+// next"), but the combined row then displays most-valuable-first.
 function playerBadgesPreviewHtml(playerId) {
   if (!badgeDefsCache) return '';
   const earned = earnedBadgesByPlayerId.get(playerId) || new Set();
   const earnedDefs = badgeDefsCache.filter((b) => earned.has(b.id));
   const lockedDefs = badgeDefsCache.filter((b) => !earned.has(b.id)).slice(0, LOCKED_PREVIEW_COUNT);
   if (!earnedDefs.length && !lockedDefs.length) return '';
-  const iconHtml = (b, isEarned) => `
-    <div class="badge-medal badge-medal-mini${isEarned ? '' : ' locked'}" title="${escapeHtml(b.name)} — ${escapeHtml(b.description)}">${badgeIconInner(b.icon)}</div>
+  const iconHtml = (b) => `
+    <div class="badge-medal badge-medal-mini${earned.has(b.id) ? '' : ' locked'}" title="${escapeHtml(b.name)} — ${escapeHtml(b.description)}">${badgeIconInner(b.icon)}</div>
   `;
+  const ordered = [...earnedDefs, ...lockedDefs].sort(byMostValuableFirst);
   return `
     <div class="player-badges-preview">
-      ${earnedDefs.map((b) => iconHtml(b, true)).join('')}
-      ${lockedDefs.map((b) => iconHtml(b, false)).join('')}
+      ${ordered.map(iconHtml).join('')}
     </div>
   `;
 }
@@ -69,10 +79,12 @@ function playerRowHtml(p) {
   ` : '';
   return `
     <div class="player-row" data-id="${p.id}">
-      <a class="player-name" href="/player/${p.slug || p.id}">${escapeHtml(p.name)}</a>
+      <div class="player-name-badges">
+        <a class="player-name" href="/player/${p.slug || p.id}">${escapeHtml(p.name)}</a>
+        ${playerBadgesPreviewHtml(p.id)}
+      </div>
       ${phone}
       ${actions}
-      ${playerBadgesPreviewHtml(p.id)}
     </div>
   `;
 }
