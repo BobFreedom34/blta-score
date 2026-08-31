@@ -86,7 +86,7 @@ const TRANSLATIONS = {
     'common.save': 'Uložiť',
 
     'proposeTimes.title': 'Navrhnúť termíny súperovi',
-    'proposeTimes.desc': 'Označte všetky časy, kedy môžete hrať, a niekoľko miest, ktoré vám vyhovujú — súper si jeden vyberie cez zdieľaný odkaz na zápas.',
+    'proposeTimes.desc': 'Označte časy ZAČIATKU ZÁPASU, kedy môžete hrať, a niekoľko miest, ktoré vám vyhovujú — súper si jeden vyberie cez zdieľaný odkaz na zápas.',
     'proposeTimes.venues': 'Preferované miesta',
     'proposeTimes.add': 'Pridať',
     'proposeTimes.whoProposing': 'Kto navrhuje?',
