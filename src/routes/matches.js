@@ -709,6 +709,137 @@ router.post('/:token/counter-propose', (req, res) => {
   res.json(payload);
 });
 
+// Shared by the routes below that touch an existing proposal card. Each
+// card belongs to whichever specific player it names in its optional
+// proposedBy/counterProposedBy field — that field being set is what draws
+// the "who's proposing" name on the card in the first place, and player 1
+// editing or deleting player 2's card (or vice versa) would be a real
+// surprise. Admin can always. If nobody was named (the field was left
+// blank), there's no specific owner to check against, so it falls back to
+// the same match-management access as everything else on the match
+// (checkMatchAccess) rather than leaving it permanently unmanageable by
+// anyone.
+function authorizeProposalOwner(req, res, row, proposedByValue) {
+  if (isAdmin(req)) return true;
+  if (proposedByValue === 1 || proposedByValue === 2) {
+    const ownerPlayerId = proposedByValue === 1 ? row.player1_id : row.player2_id;
+    const playerId = getPlayerId(req);
+    if (playerId && playerId === ownerPlayerId) return true;
+    res.status(403).json({ error: 'Log in as the player who made this proposal' });
+    return false;
+  }
+  return checkMatchAccess(req, res, row);
+}
+
+// Edits the primary proposal's slots/venues/who's-proposing/notify-email
+// after it's already been created — the "Edit" link on the "Pick a time"
+// card, not the original creation flow (POST / or PATCH /:token's
+// proposalSlots array branch, which stay gated by the broader
+// checkMatchAccess — injecting a brand-new proposal into a match is
+// different from updating a proposal you already made). Same validation as
+// those two.
+router.patch('/:token/proposal', requireLoggedIn, (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (!row.proposal_slots) {
+    return res.status(400).json({ error: 'This match has no proposal to edit' });
+  }
+  if (!authorizeProposalOwner(req, res, row, row.proposed_by)) return;
+  if (row.scheduled_at) {
+    return res.status(409).json({ error: 'This match has already been scheduled' });
+  }
+  if (!Array.isArray(req.body.proposalSlots) || req.body.proposalSlots.length === 0) {
+    return res.status(400).json({ error: 'Mark at least one time you can play' });
+  }
+  if (req.body.proposalSlots.length > 60) {
+    return res.status(400).json({ error: 'Too many proposed times (max 60)' });
+  }
+  const parsedSlots = req.body.proposalSlots.map((s) => new Date(s));
+  if (parsedSlots.some((d) => Number.isNaN(d.getTime()))) {
+    return res.status(400).json({ error: 'One of the proposed times is invalid' });
+  }
+  const proposalSlots = parsedSlots.map((d) => d.toISOString()).sort();
+
+  const venues = Array.isArray(req.body.proposalVenues) ? req.body.proposalVenues : [];
+  const trimmedVenues = venues.map((v) => (typeof v === 'string' ? v.trim() : '')).filter(Boolean);
+  if (trimmedVenues.length === 0) {
+    return res.status(400).json({ error: 'Add at least one preferred venue' });
+  }
+  if (trimmedVenues.length > 10) {
+    return res.status(400).json({ error: 'Too many venues (max 10)' });
+  }
+
+  let proposedBy = null;
+  if (req.body.proposedBy !== undefined && req.body.proposedBy !== null) {
+    proposedBy = Number(req.body.proposedBy);
+    if (![1, 2].includes(proposedBy)) {
+      return res.status(400).json({ error: 'proposedBy must be 1 or 2' });
+    }
+  }
+  let proposalNotifyEmail = null;
+  if (typeof req.body.proposalNotifyEmail === 'string' && req.body.proposalNotifyEmail.trim()) {
+    const email = req.body.proposalNotifyEmail.trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) {
+      return res.status(400).json({ error: 'Enter a valid confirmation email address' });
+    }
+    proposalNotifyEmail = email;
+  }
+
+  db.prepare('UPDATE matches SET proposal_slots = ?, proposal_venues = ?, proposed_by = ?, proposal_notify_email = ?, updated_at = ? WHERE id = ?')
+    .run(JSON.stringify(proposalSlots), JSON.stringify(trimmedVenues), proposedBy, proposalNotifyEmail, nowIso(), row.id);
+
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  const payload = broadcast(req, updated);
+  res.json(payload);
+});
+
+// Deletes the primary proposal — unlike PATCH /:token (which also handles
+// this via proposalSlots: null, gated by the broader ownership-based
+// checkMatchAccess), this route is gated by authorizeProposalOwner above so
+// the specific player named as proposer can delete their own card even on
+// a match they don't otherwise "manage" (e.g. one the other player, not
+// them, created). Also takes any counter-proposal down with it, same as
+// PATCH /:token's proposalSlots: null — there's nothing left to counter
+// once the first proposal is gone.
+router.delete('/:token/proposal', requireLoggedIn, (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (!row.proposal_slots) {
+    return res.status(400).json({ error: 'This match has no proposal to delete' });
+  }
+  if (!authorizeProposalOwner(req, res, row, row.proposed_by)) return;
+  db.prepare(`
+    UPDATE matches SET proposal_slots = NULL, proposal_venues = NULL, proposed_by = NULL, proposal_notify_email = NULL,
+      counter_proposal_slots = NULL, counter_proposal_venues = NULL, counter_proposed_by = NULL, counter_proposal_notify_email = NULL,
+      updated_at = ?
+    WHERE id = ?
+  `).run(nowIso(), row.id);
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  const payload = broadcast(req, updated);
+  res.json(payload);
+});
+
+// Deletes an existing counter-proposal — same trust model as
+// counter-propose above extended one step: submitting/editing one is fully
+// public (no login at all, see the route above), but deleting is more
+// consequential, so this does require being logged in, and specifically as
+// the player named as counter-proposer (see authorizeProposalOwner).
+router.delete('/:token/counter-proposal', requireLoggedIn, (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (!row.counter_proposal_slots) {
+    return res.status(400).json({ error: 'This match has no counter-proposal to delete' });
+  }
+  if (!authorizeProposalOwner(req, res, row, row.counter_proposed_by)) return;
+  db.prepare(`
+    UPDATE matches SET counter_proposal_slots = NULL, counter_proposal_venues = NULL, counter_proposed_by = NULL, counter_proposal_notify_email = NULL, updated_at = ?
+    WHERE id = ?
+  `).run(nowIso(), row.id);
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  const payload = broadcast(req, updated);
+  res.json(payload);
+});
+
 router.post('/:token/start', requireLoggedIn, async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;

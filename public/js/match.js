@@ -310,6 +310,24 @@ async function ensureH2H(m) {
 // first proposal) or 'counter' (the other player's own independent
 // counter-proposal, see POST /:token/counter-propose) — each gets its own
 // card with its own ids so both can render and work side by side at once.
+// A proposal card's Edit/Delete belong to whichever specific player it
+// names as its proposer (the optional proposedBy/counterProposedBy field —
+// same field the "Proposed by X" sentence on the card reads from), not to
+// whoever generally manages this match — player 1 shouldn't be able to
+// edit or delete player 2's own proposed times, or vice versa. Admin can
+// always. If nobody was named (left blank), there's no specific owner to
+// check against, so it falls back to general match-management access
+// instead of the buttons never showing at all — mirrors the server-side
+// authorizeProposalDelete in routes/matches.js.
+function canManageProposalCard(m, isAdminUser, proposedByValue) {
+  if (isAdminUser) return true;
+  if (proposedByValue === 1 || proposedByValue === 2) {
+    const ownerPlayerId = proposedByValue === 1 ? m.player1.id : m.player2.id;
+    return !!(playerAuthed && currentPlayerId === ownerPlayerId);
+  }
+  return canManageMatch(m, isAdminUser);
+}
+
 function oneProposalCardHtml(m, which) {
   const isPrimary = which === 'primary';
   const idPrefix = isPrimary ? 'proposal' : 'counter-proposal';
@@ -324,7 +342,7 @@ function oneProposalCardHtml(m, which) {
     <div class="card" id="${idPrefix}-card" style="margin-bottom:16px;border:2px solid var(--orange)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">${t('match.pickATime')}</div>
-        ${canManageMatch(m, isAdminUser) ? `
+        ${canManageProposalCard(m, isAdminUser, proposedBy) ? `
           <div style="display:flex;gap:10px">
             <button type="button" class="edit-link" id="edit-${idPrefix}-link">${t('common.edit')}</button>
             <button type="button" class="edit-link" id="delete-${idPrefix}-link" style="color:var(--danger)">${t('common.delete')}</button>
@@ -523,19 +541,19 @@ function attachProposalCardHandlers(m, which) {
   const editProposalLink = document.getElementById(`edit-${idPrefix}-link`);
   if (editProposalLink) editProposalLink.addEventListener('click', () => requirePlayerAuth(() => (isPrimary ? openEditProposalModal(m) : openCounterProposeModal(m, { editing: true }))));
 
-  // "Delete" — cancels this proposal outright (see PATCH /:token's
-  // proposalSlots/counterProposalSlots: null handling), same access as
-  // Edit. Deleting the primary card takes any counter-proposal with it
-  // (nothing left to counter) — see the server-side comment.
+  // "Delete" — cancels this proposal outright. Dedicated endpoint per card
+  // (see DELETE /:token/proposal and /:token/counter-proposal) rather than
+  // PATCH /:token, since each is authorized by who this specific card names
+  // as its proposer, not general match-management access — see
+  // canManageProposalCard above and authorizeProposalDelete server-side.
+  // Deleting the primary card takes any counter-proposal with it (nothing
+  // left to counter).
   const deleteProposalLink = document.getElementById(`delete-${idPrefix}-link`);
   if (deleteProposalLink) deleteProposalLink.addEventListener('click', () => requirePlayerAuth(async () => {
     if (!confirm(t('match.deleteProposalConfirm'))) return;
     deleteProposalLink.disabled = true;
     try {
-      const updated = await api(`/matches/${matchToken}`, {
-        method: 'PATCH',
-        body: isPrimary ? { proposalSlots: null } : { counterProposalSlots: null },
-      });
+      const updated = await api(`/matches/${matchToken}/${isPrimary ? 'proposal' : 'counter-proposal'}`, { method: 'DELETE' });
       toast(t('match.proposalDeleted'));
       render(updated);
     } catch (err) {
@@ -840,8 +858,18 @@ function attachHandlers(m) {
     });
   }
 
+  // While this match is still awaiting a scheduling response (someone's
+  // proposed times, nothing confirmed yet), the plain Share button should
+  // send the same "pick a time" WhatsApp message as the propose/edit flows
+  // above, not the generic "BLTA live score" text — the whole reason to
+  // share the link at this stage is to get times picked.
+  const awaitingResponseForShare = !!((m.proposalSlots || m.counterProposalSlots) && !m.scheduledAt);
   const shareBtn = document.getElementById('share-btn');
-  if (shareBtn) shareBtn.addEventListener('click', () => openShareModal(m));
+  if (shareBtn) shareBtn.addEventListener('click', () => openShareModal(
+    m,
+    awaitingResponseForShare ? t('proposeTimes.whatsappText', { p1: m.player1.name, p2: m.player2.name }) : undefined,
+    awaitingResponseForShare ? t('proposeTimes.shareDesc') : undefined
+  ));
   const embedBtn = document.getElementById('embed-btn');
   if (embedBtn) embedBtn.addEventListener('click', () => openEmbedModal(m));
   const whatsappResultBtn = document.getElementById('whatsapp-result-btn');
@@ -958,7 +986,12 @@ document.getElementById('edit-proposal-form').addEventListener('submit', async (
   const submitBtn = e.target.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   try {
-    const updated = await api(`/matches/${matchToken}`, {
+    // Dedicated endpoint rather than the generic PATCH /:token — authorized
+    // by who this proposal actually names as its proposer (see
+    // authorizeProposalOwner server-side), not general match-management
+    // access, so the specific player who made it can update it even on a
+    // match they don't otherwise "manage".
+    const updated = await api(`/matches/${matchToken}/proposal`, {
       method: 'PATCH',
       body: {
         proposalSlots: Array.from(editAvailabilityPicker.selectedSlots),
@@ -968,8 +1001,16 @@ document.getElementById('edit-proposal-form').addEventListener('submit', async (
       },
     });
     document.getElementById('edit-proposal-modal').style.display = 'none';
-    toast(t('proposeTimes.updated'));
     render(updated);
+    // Same share-with-opponent popup (link + WhatsApp/Copy link) as a
+    // brand-new proposal — the times just changed, so the proposer still
+    // needs to (re-)send the link, e.g. to point the opponent at updated
+    // times after they'd already looked at the old ones.
+    openShareModal(
+      updated,
+      t('proposeTimes.whatsappText', { p1: updated.player1.name, p2: updated.player2.name }),
+      t('proposeTimes.shareDesc')
+    );
   } catch (err) {
     errorEl.textContent = err.message;
   }
@@ -1035,7 +1076,6 @@ document.getElementById('counter-propose-form').addEventListener('submit', async
     errorEl.textContent = t('proposeTimes.invalidEmail');
     return;
   }
-  const wasEditing = !!(current && current.counterProposalSlots);
   const submitBtn = e.target.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   try {
@@ -1050,19 +1090,15 @@ document.getElementById('counter-propose-form').addEventListener('submit', async
     });
     document.getElementById('counter-propose-modal').style.display = 'none';
     render(updated);
-    // A brand-new counter-proposal gets the share-with-opponent popup
-    // (link + Copy link) as its confirmation, same as the homepage's
-    // Propose Times flow — editing an existing one just needs the toast,
-    // since whoever's viewing this page already has the link.
-    if (wasEditing) {
-      toast(t('match.timesUpdatedToast'));
-    } else {
-      openShareModal(
-        updated,
-        t('proposeTimes.whatsappText', { p1: updated.player1.name, p2: updated.player2.name }),
-        t('proposeTimes.shareDesc')
-      );
-    }
+    // Same share-with-opponent popup (link + WhatsApp/Copy link) whether
+    // this is a brand-new counter-proposal or an edit of an existing one —
+    // an edit means the times changed, so the proposer still needs to
+    // (re-)send the link, e.g. to point the opponent at the updated times.
+    openShareModal(
+      updated,
+      t('proposeTimes.whatsappText', { p1: updated.player1.name, p2: updated.player2.name }),
+      t('proposeTimes.shareDesc')
+    );
   } catch (err) {
     errorEl.textContent = err.message;
   }
