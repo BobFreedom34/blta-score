@@ -527,10 +527,23 @@ function createVenueChipPicker({ listId, inputId, addBtnId }) {
 // index.html/player.html) so this one instance drives either.
 let proposeTimesToken = null;
 let proposeTimesOnSuccess = null;
-const proposeAvailabilityPicker = createAvailabilityPicker({ weekTabsId: 'modal-week-tabs', gridWrapId: 'modal-availability-grid-wrap', slotCountId: 'modal-slot-count' });
-const proposeVenuePicker = createVenueChipPicker({ listId: 'modal-venue-chip-list', inputId: 'modal-venue-input', addBtnId: 'modal-venue-add-btn' });
-const proposeProposerPicker = createStaticPlayerChoicePicker('modal-proposer-choice-row');
-document.getElementById('modal-clear-slots-btn').addEventListener('click', () => proposeAvailabilityPicker.clear());
+let proposeAvailabilityPicker = null;
+let proposeVenuePicker = null;
+let proposeProposerPicker = null;
+// Only index.html and player.html carry the #propose-times-modal markup —
+// every other page (rankings.html, match.html, players.html) loads this
+// same common.js, so this whole block must stay guarded. It used to run
+// unconditionally and throw on those pages, which — because a thrown error
+// aborts the rest of this script's top-level execution — also silently
+// skipped everything declared further down in this file (NATIONALITY_CODES
+// among others), breaking unrelated features like rankings' nationality
+// flags on every page except these two.
+if (document.getElementById('propose-times-modal')) {
+  proposeAvailabilityPicker = createAvailabilityPicker({ weekTabsId: 'modal-week-tabs', gridWrapId: 'modal-availability-grid-wrap', slotCountId: 'modal-slot-count' });
+  proposeVenuePicker = createVenueChipPicker({ listId: 'modal-venue-chip-list', inputId: 'modal-venue-input', addBtnId: 'modal-venue-add-btn' });
+  proposeProposerPicker = createStaticPlayerChoicePicker('modal-proposer-choice-row');
+  document.getElementById('modal-clear-slots-btn').addEventListener('click', () => proposeAvailabilityPicker.clear());
+}
 
 // onSuccess (optional) is called once the proposal is sent — app.js passes
 // its own loadMatches(), player.js passes load(), so whichever page's list
@@ -556,56 +569,58 @@ function openProposeTimesModal(token, p1Name, p2Name, p1Id, p2Id, onSuccess) {
   document.getElementById('propose-times-modal').style.display = 'flex';
 }
 
-document.getElementById('propose-times-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const errorEl = document.getElementById('propose-times-error');
-  errorEl.textContent = '';
-  if (proposeAvailabilityPicker.selectedSlots.size === 0) {
-    errorEl.textContent = t('proposeTimes.markAtLeastOne');
-    return;
-  }
-  if (proposeVenuePicker.venues.length === 0) {
-    errorEl.textContent = t('proposeTimes.addAtLeastOneVenue');
-    return;
-  }
-  const notifyEmail = document.getElementById('modal-notify-email').value.trim();
-  if (notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail)) {
-    errorEl.textContent = t('proposeTimes.invalidEmail');
-    return;
-  }
+if (document.getElementById('propose-times-form')) {
+  document.getElementById('propose-times-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('propose-times-error');
+    errorEl.textContent = '';
+    if (proposeAvailabilityPicker.selectedSlots.size === 0) {
+      errorEl.textContent = t('proposeTimes.markAtLeastOne');
+      return;
+    }
+    if (proposeVenuePicker.venues.length === 0) {
+      errorEl.textContent = t('proposeTimes.addAtLeastOneVenue');
+      return;
+    }
+    const notifyEmail = document.getElementById('modal-notify-email').value.trim();
+    if (notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail)) {
+      errorEl.textContent = t('proposeTimes.invalidEmail');
+      return;
+    }
 
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-  submitBtn.disabled = true;
-  try {
-    // POST .../counter-propose rather than PATCH here deliberately — the
-    // server writes this as the match's first proposal if it doesn't have
-    // one yet, or as an independent second calendar alongside an existing
-    // one otherwise (see routes/matches.js), so this same button keeps
-    // working correctly for a match the opponent already proposed times
-    // for instead of silently overwriting their offer.
-    const updated = await api(`/matches/${proposeTimesToken}/counter-propose`, {
-      method: 'POST',
-      body: {
-        proposalSlots: Array.from(proposeAvailabilityPicker.selectedSlots),
-        proposalVenues: proposeVenuePicker.venues,
-        proposedBy: proposeProposerPicker.getPicked(),
-        proposalNotifyEmail: notifyEmail || undefined,
-      },
-    });
-    document.getElementById('propose-times-modal').style.display = 'none';
-    // The share-with-opponent popup (link + Copy link) is the actual
-    // confirmation here — no separate toast needed on top of it.
-    openShareModal(
-      updated,
-      t('proposeTimes.whatsappText', { p1: updated.player1.name, p2: updated.player2.name }),
-      t('proposeTimes.shareDesc')
-    );
-    if (proposeTimesOnSuccess) proposeTimesOnSuccess();
-  } catch (err) {
-    errorEl.textContent = err.message;
-  }
-  submitBtn.disabled = false;
-});
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    try {
+      // POST .../counter-propose rather than PATCH here deliberately — the
+      // server writes this as the match's first proposal if it doesn't have
+      // one yet, or as an independent second calendar alongside an existing
+      // one otherwise (see routes/matches.js), so this same button keeps
+      // working correctly for a match the opponent already proposed times
+      // for instead of silently overwriting their offer.
+      const updated = await api(`/matches/${proposeTimesToken}/counter-propose`, {
+        method: 'POST',
+        body: {
+          proposalSlots: Array.from(proposeAvailabilityPicker.selectedSlots),
+          proposalVenues: proposeVenuePicker.venues,
+          proposedBy: proposeProposerPicker.getPicked(),
+          proposalNotifyEmail: notifyEmail || undefined,
+        },
+      });
+      document.getElementById('propose-times-modal').style.display = 'none';
+      // The share-with-opponent popup (link + Copy link) is the actual
+      // confirmation here — no separate toast needed on top of it.
+      openShareModal(
+        updated,
+        t('proposeTimes.whatsappText', { p1: updated.player1.name, p2: updated.player2.name }),
+        t('proposeTimes.shareDesc')
+      );
+      if (proposeTimesOnSuccess) proposeTimesOnSuccess();
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
+    submitBtn.disabled = false;
+  });
+}
 
 // "6-4, 3-2" / "Retirement" / "6-4, 3-2 — Retirement" / "Best of 3 sets" (planned)
 function matchResultText(m) {
