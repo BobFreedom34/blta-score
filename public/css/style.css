@@ -774,6 +774,11 @@ datalist {}
 .form-trend-row { display: flex; align-items: flex-end; gap: 16px 24px; flex-wrap: wrap; }
 .form-trend-row > *:first-child { min-width: 0; }
 .form-trend-row > *:last-child { flex: 1 1 220px; min-width: 220px; }
+/* Win-rate trend + BLTA rank trend side by side, 50/50 — the "All matches"
+   panel only ever has the first one (no rank trend outside BLTA), so it
+   naturally renders alone at full width instead of splitting. */
+.trend-row-2col { display: flex; gap: 16px 24px; flex-wrap: wrap; }
+.trend-row-2col > * { flex: 1 1 220px; min-width: 220px; }
 .trend-sparkline { display: flex; flex-direction: column; gap: 4px; }
 .trend-sparkline svg { display: block; width: 100%; }
 .trend-value { font-size: 12px; font-weight: 800; color: var(--white); }
