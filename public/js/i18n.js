@@ -107,6 +107,7 @@ const TRANSLATIONS = {
     'proposeTimes.sent': 'Vaše časy boli odoslané!',
 
     'share.title': 'Zdieľať zápas',
+    'share.whatsappMessageLabel': 'Správa pre WhatsApp',
     'share.copyLink': 'Kopírovať odkaz',
     'share.linkCopied': 'Odkaz skopírovaný',
     'share.defaultWhatsappText': '{p1} vs {p2} — BLTA naživo:',
@@ -490,6 +491,7 @@ const TRANSLATIONS = {
     'proposeTimes.sent': 'Your times were sent!',
 
     'share.title': 'Share this match',
+    'share.whatsappMessageLabel': 'WhatsApp message',
     'share.copyLink': 'Copy link',
     'share.linkCopied': 'Link copied',
     'share.defaultWhatsappText': '{p1} vs {p2} — BLTA live score:',

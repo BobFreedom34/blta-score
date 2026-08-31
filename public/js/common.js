@@ -1064,7 +1064,8 @@ function whatsappShareUrl(text, url) {
 // the propose-times/counter-propose success flows on both the homepage
 // (app.js) and the match page (match.js) — that's the moment the proposer
 // actually needs the link to hand to their opponent. Every page that
-// calls this needs the same #share-modal/#share-modal-desc/#share-link/
+// calls this needs the same #share-modal/#share-modal-desc/
+// #share-whatsapp-preview-field/#share-whatsapp-preview/#share-link/
 // #whatsapp-btn/#copy-link-btn markup.
 function openShareModal(m, whatsappText, description) {
   const url = `${window.location.origin}/match/${m.token}`;
@@ -1073,6 +1074,16 @@ function openShareModal(m, whatsappText, description) {
   descEl.textContent = description || '';
   descEl.style.display = description ? '' : 'none';
   const text = whatsappText || t('share.defaultWhatsappText', { p1: m.player1.name, p2: m.player2.name });
+  // The WhatsApp button's own pre-filled text isn't visible anywhere until
+  // WhatsApp actually opens — show it here too so what's about to be sent
+  // isn't a surprise. Only for a real custom message (the propose-times
+  // flows) — the plain Share button's generic default text doesn't need
+  // its own preview line, the link below already covers that case.
+  const previewField = document.getElementById('share-whatsapp-preview-field');
+  if (previewField) {
+    document.getElementById('share-whatsapp-preview').textContent = whatsappText || '';
+    previewField.style.display = whatsappText ? '' : 'none';
+  }
   document.getElementById('whatsapp-btn').onclick = () => {
     window.open(whatsappShareUrl(text, url), '_blank');
   };
