@@ -775,6 +775,12 @@ datalist {}
    label instead, not the grid itself (see the section-gap unification
    above). Match page's Location/Date/Category grid keeps the base margin. */
 #player-stats-blta, #player-stats-overall { margin: 0; }
+/* Below ~480px, auto-fit's 150px minimum only leaves room for one column,
+   stacking every tile full-width. Force a fixed 2-column grid instead so
+   tiles pair up two per row on phones. */
+@media (max-width: 480px) {
+  .info-grid { grid-template-columns: repeat(2, 1fr); }
+}
 .info-item { background: var(--white); border-radius: 10px; padding: 12px; box-shadow: var(--shadow); }
 .info-item .label { font-size: 11px; text-transform: uppercase; color: var(--gray); font-weight: 700; letter-spacing: 0.03em; }
 .info-item .value { font-weight: 700; font-size: 14px; margin-top: 2px; }

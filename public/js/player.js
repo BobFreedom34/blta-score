@@ -144,10 +144,95 @@ function computeRecord(matches) {
   return { played, wins, losses, pct: played ? `${Math.round((wins / played) * 100)}%` : '—' };
 }
 
+// A "record" tile like computeRecord's, but as a plain {won, lost} count
+// with a rate — shared by the three finer-grained stats below (sets,
+// tiebreaks, comebacks) so they all render the same "72% (18/25)" shape.
+function rateHtml(won, lost) {
+  const played = won + lost;
+  if (!played) return '—';
+  return `${Math.round((won / played) * 100)}% (${won}/${played})`;
+}
+
+// Sets and games won/lost across every set actually played (has a real
+// score or a decided winner — same criterion cardScoreboardHtml uses to
+// tell a real set apart from a not-yet-played one). Games are only
+// tallied from a normal set's own game count, not a match-tiebreak's
+// point score (isSuperTiebreak) — those are still counted as a set each,
+// just not as "games", since a 10-7 breaker isn't games won in the sense
+// 6-4 is.
+function computeSetGameStats(matches) {
+  const pid = Number(playerId);
+  let setsWon = 0;
+  let setsLost = 0;
+  let gamesWon = 0;
+  let gamesLost = 0;
+  matches.forEach((m) => {
+    const mine = m.player1.id === pid ? 1 : 2;
+    const sets = (m.state && m.state.sets) || [];
+    sets.forEach((s) => {
+      const played = s.winner || s.p1 > 0 || s.p2 > 0 || (s.tiebreak && (s.tiebreak.p1 > 0 || s.tiebreak.p2 > 0));
+      if (!played) return;
+      if (s.winner === mine) setsWon += 1;
+      else if (s.winner) setsLost += 1;
+      if (!s.isSuperTiebreak) {
+        gamesWon += mine === 1 ? s.p1 : s.p2;
+        gamesLost += mine === 1 ? s.p2 : s.p1;
+      }
+    });
+  });
+  return { sets: rateHtml(setsWon, setsLost), games: rateHtml(gamesWon, gamesLost) };
+}
+
+// A tiebreak — whether a normal set's tiebreak at 6-6 or a match-tiebreak
+// deciding set — always has its own s.tiebreak score and its winner is
+// simply s.winner (a set only reaches either kind of tiebreak by playing
+// one, and winning it is exactly what decides that set).
+function computeTiebreakStats(matches) {
+  const pid = Number(playerId);
+  let won = 0;
+  let lost = 0;
+  matches.forEach((m) => {
+    const mine = m.player1.id === pid ? 1 : 2;
+    const sets = (m.state && m.state.sets) || [];
+    sets.forEach((s) => {
+      if (!s.tiebreak || !s.winner) return;
+      if (s.winner === mine) won += 1;
+      else lost += 1;
+    });
+  });
+  return rateHtml(won, lost);
+}
+
+// "Comeback" = losing the first set but still winning the match — counted
+// against every match where the first set was lost (the "opportunity"),
+// regardless of how it ended, not just the ones that succeeded.
+function computeComebackStats(matches) {
+  const pid = Number(playerId);
+  let opportunities = 0;
+  let completed = 0;
+  matches.forEach((m) => {
+    if (!m.winnerId) return;
+    const mine = m.player1.id === pid ? 1 : 2;
+    const firstSet = m.state && m.state.sets && m.state.sets[0];
+    if (!firstSet || !firstSet.winner || firstSet.winner === mine) return;
+    opportunities += 1;
+    if (m.winnerId === pid) completed += 1;
+  });
+  return rateHtml(completed, opportunities - completed);
+}
+
 function fillStats(prefix, record) {
   document.getElementById(`stat-${prefix}-played`).textContent = record.played;
   document.getElementById(`stat-${prefix}-wl`).textContent = `${record.wins} — ${record.losses}`;
   document.getElementById(`stat-${prefix}-pct`).textContent = record.pct;
+}
+
+function fillExtraStats(prefix, matches) {
+  const setGames = computeSetGameStats(matches);
+  document.getElementById(`stat-${prefix}-sets-pct`).textContent = setGames.sets;
+  document.getElementById(`stat-${prefix}-games-pct`).textContent = setGames.games;
+  document.getElementById(`stat-${prefix}-tb-pct`).textContent = computeTiebreakStats(matches);
+  document.getElementById(`stat-${prefix}-comeback-pct`).textContent = computeComebackStats(matches);
 }
 
 // Small W/L square guide for the last 20 decided matches, oldest to
@@ -462,6 +547,8 @@ function renderStats() {
   lastAllFinished = finished;
   fillStats('blta', computeRecord(bltaFinished));
   fillStats('overall', computeRecord(finished));
+  fillExtraStats('blta', bltaFinished);
+  fillExtraStats('overall', finished);
   document.getElementById('form-blta').innerHTML = formGuideHtml(bltaFinished);
   document.getElementById('form-overall').innerHTML = formGuideHtml(finished);
   renderTrendChart('trend-blta', bltaFinished, 'blta');
