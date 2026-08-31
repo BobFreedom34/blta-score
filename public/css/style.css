@@ -1302,6 +1302,21 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   gap: 10px;
   min-width: 520px;
 }
+/* Badges tab: no age/matches columns — pos | player+icons | badge count.
+   The real total always lives in that last column; the icon row next to
+   the name is just a 5-badge preview, not the full count. */
+.rank-grid-badges {
+  grid-template-columns: 30px minmax(160px, 1.6fr) 60px;
+  min-width: 360px;
+}
+.rank-badges-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rank-badges-cell .rank-name { flex: 1 1 auto; min-width: 0; }
+/* A fanned "avatar stack": each icon after the first overlaps the previous
+   one by half its own width, and later icons paint over earlier ones
+   (plain DOM order already does that — no z-index needed) — the whole
+   group stays as wide as one-and-a-bit icons instead of five. */
+.rank-badges-icons { display: flex; flex-shrink: 0; }
+.rank-badges-icons .badge-medal-mini:not(:first-child) { margin-left: -13px; }
 .rank-table-header {
   padding: 0 4px 8px;
   border-bottom: 1.5px solid var(--gray-light);
@@ -1376,4 +1391,28 @@ a.rank-name:hover { text-decoration: underline; }
   .rank-name, .rank-col-player { order: 2; }
   .rank-points, .rank-col-points { order: 3; }
   .rank-col-matches { order: 4; }
+  /* Overrides the unconditional 3-column .rank-grid-badges rule above —
+     same reasoning as .rank-grid just above: a narrower badge-count column
+     so the row fits without needing to scroll sideways on a phone.
+     .rank-badges-cell needs its own explicit order here too — the
+     .rank-pos/.rank-points order rules just above were written for the
+     other tables' flat pos/name/points/matches siblings, and without a
+     matching order the auto-placement algorithm sorts .rank-badges-cell
+     (unordered, so order:0) ahead of .rank-pos (order:1), swapping which
+     grid track each one actually lands in. */
+  .rank-badges-cell { order: 2; }
+  /* Same collision one level deeper: .rank-badges-cell's own two children
+     are a .rank-name (the generic order:2 rule above applies to it here
+     too, since it's just a class match, not scoped to the 4-column table)
+     and a .rank-badges-icons group with no order override — so the icons
+     (order:0) would jump to the name's left instead of sitting after it. */
+  .rank-badges-cell > .rank-name { order: 0; }
+  .rank-badges-icons { order: 1; }
+  .rank-grid-badges {
+    grid-template-columns: 20px minmax(70px, 1fr) 40px;
+    min-width: 0;
+    gap: 6px;
+  }
+  .rank-badges-icons .badge-medal-mini { width: 20px; height: 20px; font-size: 10px; }
+  .rank-badges-icons .badge-medal-mini:not(:first-child) { margin-left: -10px; }
 }

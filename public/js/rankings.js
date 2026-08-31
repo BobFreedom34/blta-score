@@ -10,6 +10,51 @@ let rankingsData = null;
 let activeTab = null;
 let isAdminUser = false;
 
+// The "Badges" tab isn't scraped from blta.sk like the others — it's built
+// locally from this app's own badge system (see badges.js), same
+// computeEarnedBadges() the player profile and Players pages use, just run
+// once for every player from a single bulk match/badge fetch instead of
+// one player at a time. badgeDefsForBadgesTab is kept around after that so
+// each row can show a fixed preview of badge icons next to the name.
+const BADGES_ICON_PREVIEW_COUNT = 5;
+let badgeDefsForBadgesTab = null;
+
+async function buildBadgesTable() {
+  const [players, badgeDefs, finished] = await Promise.all([
+    api('/players'),
+    api('/badges'),
+    api('/matches?status=FINISHED'),
+  ]);
+  badgeDefsForBadgesTab = badgeDefs;
+  const matchesByPlayerId = new Map();
+  finished.forEach((m) => {
+    [m.player1.id, m.player2.id].forEach((pid) => {
+      if (!matchesByPlayerId.has(pid)) matchesByPlayerId.set(pid, []);
+      matchesByPlayerId.get(pid).push(m);
+    });
+  });
+  const withCounts = players.map((p) => {
+    const earned = computeEarnedBadges(p.id, matchesByPlayerId.get(p.id) || [], badgeDefs);
+    return {
+      name: p.name, slug: p.slug, nationality: p.nationality, points: earned.size, earned,
+    };
+  });
+  // Same "shared rank on a tie" convention as the scraped tables (see
+  // buildRaceTable in rankingsScraper.js) — a stable sort keeps players
+  // with equal badge counts in their original (alphabetical) order rather
+  // than shuffling them.
+  const sorted = withCounts.slice().sort((a, b) => b.points - a.points);
+  let rank = 0;
+  let lastVal;
+  const rows = sorted.map((r, i) => {
+    if (r.points !== lastVal) { rank = i + 1; lastVal = r.points; }
+    return {
+      rank, name: r.name, slug: r.slug, nationality: r.nationality, points: r.points, earned: r.earned,
+    };
+  });
+  return { key: 'badges', label: t('rankings.badgesTab'), pointsLabel: t('rankings.badgesCol'), rows };
+}
+
 function renderTabs() {
   const tabsEl = document.getElementById('rankings-tabs');
   tabsEl.innerHTML = rankingsData.tables.map((t) => `
@@ -53,8 +98,51 @@ function headerRowHtml(table) {
     </div>`;
 }
 
+// Badges tab has its own row/column shape (icon preview needs real room,
+// unlike the age/matches numbers the scraped tables show) and no admin
+// edit — there's no override endpoint for a locally-computed count — so
+// it renders through its own function entirely rather than folding into
+// the generic one below.
+function renderBadgesTable(table) {
+  const listEl = document.getElementById('rankings-list');
+  const visibleRows = table.rows.filter((r) => r.points !== 0);
+  if (!visibleRows.length) {
+    listEl.innerHTML = `<p style="color:var(--gray)">${t('rankings.none')}</p>`;
+    return;
+  }
+  const iconDefs = (badgeDefsForBadgesTab || []).slice(0, BADGES_ICON_PREVIEW_COUNT);
+  const headerHtml = `
+    <div class="rank-table-header rank-grid rank-grid-badges">
+      <div class="rank-col-pos"></div>
+      <div class="rank-col-player">${t('rankings.playerCol')}</div>
+      <div class="rank-col-points">${escapeHtml(table.pointsLabel)}</div>
+    </div>`;
+  const rowsHtml = visibleRows.map((r) => {
+    const flag = flagImgHtml(r.nationality, 'rank-flag-icon');
+    const nameHtml = r.slug
+      ? `<a href="/player/${escapeHtml(r.slug)}" class="rank-name">${flag}${escapeHtml(r.name)}</a>`
+      : `<span class="rank-name">${flag}${escapeHtml(r.name)}</span>`;
+    const iconsHtml = iconDefs.map((b) => {
+      const earned = r.earned.has(b.id);
+      return `<div class="badge-medal badge-medal-mini${earned ? '' : ' locked'}" title="${escapeHtml(b.name)} — ${escapeHtml(b.description)}">${badgeIconInner(b.icon)}</div>`;
+    }).join('');
+    return `
+      <div class="rank-row rank-grid rank-grid-badges">
+        <div class="rank-pos">${r.rank}</div>
+        <div class="rank-badges-cell">
+          ${nameHtml}
+          <div class="rank-badges-icons">${iconsHtml}</div>
+        </div>
+        <div class="rank-points">${r.points}</div>
+      </div>
+    `;
+  }).join('');
+  listEl.innerHTML = `<div class="rank-table">${headerHtml}${rowsHtml}</div>`;
+}
+
 function renderTable() {
   const table = rankingsData.tables.find((t) => t.key === activeTab);
+  if (table && table.key === 'badges') return renderBadgesTable(table);
   const listEl = document.getElementById('rankings-list');
   // Skip anyone with no points at all (null) or exactly 0 — keeping the
   // original index (not the filtered position) on each entry so the
@@ -158,13 +246,23 @@ function startEdit(rowEl, table) {
 }
 
 async function load() {
+  let badgesTableResult;
   try {
-    rankingsData = await api('/rankings');
+    [rankingsData, badgesTableResult] = await Promise.all([
+      api('/rankings'),
+      buildBadgesTable().catch((err) => {
+        // Non-fatal — the scraped tables still work without it, just minus
+        // the one locally-computed tab.
+        console.error('[rankings] badges tab failed to build:', err.message);
+        return null;
+      }),
+    ]);
   } catch (err) {
     document.getElementById('rankings-updated').textContent = '';
     document.getElementById('rankings-list').innerHTML = `<p style="color:var(--danger)">${escapeHtml(err.message)}</p>`;
     return;
   }
+  if (badgesTableResult) rankingsData.tables.push(badgesTableResult);
   if (!activeTab || !rankingsData.tables.some((t) => t.key === activeTab)) {
     activeTab = rankingsData.tables[0] && rankingsData.tables[0].key;
   }
