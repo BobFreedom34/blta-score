@@ -484,7 +484,7 @@ const TRANSLATIONS = {
     'proposeTimes.markAtLeastOne': 'Mark at least one time you can play.',
     'proposeTimes.addAtLeastOneVenue': 'Add at least one preferred venue.',
     'proposeTimes.invalidEmail': 'Enter a valid confirmation email address, or leave it blank.',
-    'proposeTimes.whatsappText': '{p1} vs {p2} — pick a time that works for you:',
+    'proposeTimes.whatsappText': "Hey, for our planned match I'm sending you some proposed start times that would work for me. If none of them work for you, please suggest your own start times instead.",
     'proposeTimes.shareDesc': "Send this link to your opponent so they can pick the best time for them. Once they choose a date, you'll get a confirmation email if you added one.",
     'proposeTimes.updated': 'Your proposal was updated!',
     'proposeTimes.sent': 'Your times were sent!',
