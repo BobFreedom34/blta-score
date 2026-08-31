@@ -1,13 +1,17 @@
 const root = document.getElementById('badges-admin-root');
 
+// groupLabel matches the player-facing group headings (see BADGE_GROUP_ORDER
+// in badges.js / the 'badge.group.*' English strings in i18n.js) — this
+// array's own order is what both the dropdown options and the admin badge
+// list's grouping use.
 const LOGIC_TYPES = [
-  { value: 'GAMES_PLAYED', label: 'Games played ≥', needsThreshold: true },
-  { value: 'WINS', label: 'Wins ≥', needsThreshold: true },
-  { value: 'WIN_STREAK', label: 'Win streak ≥', needsThreshold: true },
-  { value: 'STRAIGHT_SETS', label: 'Straight-set wins (no sets dropped) ≥', needsThreshold: true },
-  { value: 'CATEGORY_SWEEP', label: 'Win in Elite, Next Gen and Novice', needsThreshold: false },
-  { value: 'BAGEL', label: 'Win a set 6–0', needsThreshold: false },
-  { value: 'COMEBACK', label: 'Win after losing the 1st set', needsThreshold: false },
+  { value: 'GAMES_PLAYED', label: 'Games played ≥', groupLabel: 'Matches Played', needsThreshold: true },
+  { value: 'WINS', label: 'Wins ≥', groupLabel: 'Wins', needsThreshold: true },
+  { value: 'WIN_STREAK', label: 'Win streak ≥', groupLabel: 'Win Streak', needsThreshold: true },
+  { value: 'STRAIGHT_SETS', label: 'Straight-set wins (no sets dropped) ≥', groupLabel: 'Straight Sets', needsThreshold: true },
+  { value: 'CATEGORY_SWEEP', label: 'Win in Elite, Next Gen and Novice', groupLabel: 'Versatility', needsThreshold: false },
+  { value: 'BAGEL', label: 'Win a set 6–0', groupLabel: 'Bagel', needsThreshold: false },
+  { value: 'COMEBACK', label: 'Win after losing the 1st set', groupLabel: 'Comeback', needsThreshold: false },
 ];
 
 function needsThreshold(logicType) {
@@ -57,7 +61,7 @@ function badgeFormHtml(prefix, badge) {
       <input type="number" id="${prefix}-threshold" value="${b.threshold != null ? b.threshold : ''}" min="1" step="1">
     </div>
     <div class="field">
-      <label>Sort order (lower shows first)</label>
+      <label>Sort order (lower shows first within its unlock-condition group)</label>
       <input type="number" id="${prefix}-sortOrder" value="${b.sortOrder != null ? b.sortOrder : 0}" step="1" style="width:80px">
     </div>
   `;
@@ -135,10 +139,26 @@ async function loadBadges() {
   renderList();
 }
 
+// GET /badges already comes back ordered by sort_order (then id), so
+// filtering into each group here preserves that as the intra-group order —
+// grouping just re-partitions the flat list by unlock condition, in
+// LOGIC_TYPES' own order, same as the player-facing "all badges" modal.
+// A condition with no badges yet contributes no heading.
+function badgeGroupsHtml(badgeList) {
+  const parts = [];
+  LOGIC_TYPES.forEach((type) => {
+    const group = badgeList.filter((b) => b.logicType === type.value);
+    if (!group.length) return;
+    parts.push(`<div class="badge-group-heading">${escapeHtml(type.groupLabel)}</div>`);
+    parts.push(...group.map(badgeRowHtml));
+  });
+  return parts.join('');
+}
+
 function renderList() {
   const listEl = document.getElementById('badges-list');
   listEl.innerHTML = badges.length
-    ? badges.map(badgeRowHtml).join('')
+    ? badgeGroupsHtml(badges)
     : '<div class="empty-state">No badges yet.</div>';
   attachRowHandlers();
 }
