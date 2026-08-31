@@ -349,7 +349,7 @@ function renderTrendChart(elId, matches, idSuffix) {
 // is the chart's own real measured pixel width, same reasoning as
 // winRateTrendHtml — see renderMonthsChart, which measures before calling
 // this.
-function matchesPerMonthHtml(matches, containerWidth) {
+function matchesPerMonthHtml(matches, idSuffix, containerWidth) {
   const now = new Date();
   const months = [];
   for (let i = 11; i >= 0; i -= 1) {
@@ -380,8 +380,9 @@ function matchesPerMonthHtml(matches, containerWidth) {
     const y = baseline - barH;
     return { ...b, cx, x, y, barH };
   });
+  const gradId = `months-bar-gradient-${idSuffix}`;
   const rects = bars.map((b) => `
-    <rect x="${b.x.toFixed(1)}" y="${b.y.toFixed(1)}" width="${barW.toFixed(1)}" height="${b.barH}" rx="2" fill="${b.count === 0 ? 'rgba(255,255,255,0.12)' : 'var(--orange)'}"><title>${escapeHtml(`${b.label} ${b.year}: ${b.count}`)}</title></rect>
+    <rect x="${b.x.toFixed(1)}" y="${b.y.toFixed(1)}" width="${barW.toFixed(1)}" height="${b.barH}" rx="3" fill="${b.count === 0 ? 'rgba(255,255,255,0.12)' : `url(#${gradId})`}"><title>${escapeHtml(`${b.label} ${b.year}: ${b.count}`)}</title></rect>
   `).join('');
   // Anchored bottom-center at each bar's own top edge (translate(-50%,-100%),
   // same trick rankTrendHtml's pointLabels use) so it sits right above that
@@ -397,6 +398,12 @@ function matchesPerMonthHtml(matches, containerWidth) {
       <div class="form-guide-label">${t('player.matchesPerMonth')}</div>
       <div class="months-chart">
         <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px">
+          <defs>
+            <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--orange)"/>
+              <stop offset="100%" stop-color="var(--orange-dark)"/>
+            </linearGradient>
+          </defs>
           <line x1="${padX}" y1="${baseline}" x2="${w - padX}" y2="${baseline}" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
           ${rects}
         </svg>
@@ -409,13 +416,13 @@ function matchesPerMonthHtml(matches, containerWidth) {
 
 // Same measure-then-render two-pass approach as renderTrendChart, for the
 // months-per-bar chart above.
-function renderMonthsChart(elId, matches) {
+function renderMonthsChart(elId, matches, idSuffix) {
   const el = document.getElementById(elId);
   if (!el) return;
   if (!matches.length) { el.innerHTML = ''; return; }
   el.innerHTML = '<div class="trend-sparkline"><div class="months-chart"></div></div>';
   const containerWidth = el.querySelector('.months-chart').clientWidth;
-  el.innerHTML = matchesPerMonthHtml(matches, containerWidth);
+  el.innerHTML = matchesPerMonthHtml(matches, idSuffix, containerWidth);
 }
 
 // Career record, always computed from the full finished-match history —
@@ -435,7 +442,7 @@ function renderStats() {
   document.getElementById('form-blta').innerHTML = formGuideHtml(bltaFinished);
   document.getElementById('form-overall').innerHTML = formGuideHtml(finished);
   renderTrendChart('trend-blta', bltaFinished, 'blta');
-  renderMonthsChart('months-blta', bltaFinished);
+  renderMonthsChart('months-blta', bltaFinished, 'blta');
   // The "All matches" panel starts display:none — its trend/months charts
   // are (re-)rendered when that tab is actually switched to instead (see
   // the #stats-tabs click handler below), once they can be measured
@@ -664,10 +671,10 @@ document.getElementById('stats-tabs').addEventListener('click', (e) => {
   // actually showing, not while it was still display:none.
   if (btn.dataset.statsTab === 'overall') {
     renderTrendChart('trend-overall', lastAllFinished, 'overall');
-    renderMonthsChart('months-overall', lastAllFinished);
+    renderMonthsChart('months-overall', lastAllFinished, 'overall');
   } else {
     renderTrendChart('trend-blta', lastBltaFinished, 'blta');
-    renderMonthsChart('months-blta', lastBltaFinished);
+    renderMonthsChart('months-blta', lastBltaFinished, 'blta');
   }
 });
 
