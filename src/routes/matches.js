@@ -378,6 +378,20 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
   }
 
   const fields = {};
+  // Explicit null clears the pick; 1/2 sets it; anything else (including
+  // omitted, which leaves it untouched) is rejected — same validation as
+  // the POST / create route above.
+  if (req.body.ballsPlayer !== undefined) {
+    if (req.body.ballsPlayer === null) {
+      fields.balls_player = null;
+    } else {
+      const ballsPlayer = Number(req.body.ballsPlayer);
+      if (![1, 2].includes(ballsPlayer)) {
+        return res.status(400).json({ error: 'ballsPlayer must be 1 or 2' });
+      }
+      fields.balls_player = ballsPlayer;
+    }
+  }
   if (typeof req.body.location === 'string') fields.location = req.body.location.trim();
   if (typeof req.body.scheduledAt === 'string' || req.body.scheduledAt === null) {
     fields.scheduled_at = req.body.scheduledAt;

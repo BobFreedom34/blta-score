@@ -24,10 +24,6 @@ const FORMAT_META = {
   FREE_PLAY: { setsToWin: 6, finalSetSuperTiebreak: false },
 };
 
-// Same keys as common.js's MATCH_FORMATS (and its format.* i18n entries),
-// just in a different display order for the change-format picker (BO1 first).
-const FORMATS_ORDER = ['BO1', 'BO3', 'BO3_STB', 'BO5', 'BO5_STB', 'FREE_PLAY'];
-
 // Standard tiebreak serve rotation: the player whose turn it is serves point 1
 // only, then serve alternates every 2 points for the rest of the tiebreak.
 function tiebreakServerAtPoint(pointNumber, firstServer) {
@@ -569,17 +565,14 @@ function render(m) {
       <div class="info-item">
         <div class="label">${t('quickSchedule.place')}</div>
         <div class="value" id="location-display">${locationValue}</div>
-        ${locationEditable ? `<button type="button" class="edit-link" id="edit-location-link">${t('common.edit')}</button>` : ''}
       </div>
       <div class="info-item">
         <div class="label">${t('match.dateLabel')}</div>
         <div class="value" id="date-display">${dateValue}</div>
-        ${locationEditable ? `<button type="button" class="edit-link" id="edit-date-link">${t('common.edit')}</button>` : ''}
       </div>
       <div class="info-item">
         <div class="label">${t('player.bio.category')}</div>
         <div class="value" id="category-display">${categoryLabel(m.category)}</div>
-        ${locationEditable ? `<button type="button" class="edit-link" id="edit-category-link">${t('common.edit')}</button>` : ''}
       </div>
     </div>
 
@@ -587,11 +580,10 @@ function render(m) {
 
     ${h2hHtml}
 
-    ${m.notes || locationEditable ? `
+    ${m.notes ? `
       <div class="card" style="margin-bottom:16px">
         <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em">${t('newMatch.notesLabel')}</div>
-        <div class="value" id="notes-display" style="margin-top:4px;white-space:pre-wrap;font-weight:600">${m.notes ? escapeHtml(m.notes) : `<span style="color:var(--gray);font-weight:500">${t('player.bio.notSet')}</span>`}</div>
-        ${locationEditable ? `<button type="button" class="edit-link" id="edit-notes-link" style="margin-top:8px">${t('common.edit')}</button>` : ''}
+        <div class="value" id="notes-display" style="margin-top:4px;white-space:pre-wrap;font-weight:600">${escapeHtml(m.notes)}</div>
       </div>
     ` : ''}
 
@@ -600,7 +592,7 @@ function render(m) {
     <div class="match-actions">
       <button class="btn btn-yellow" id="share-btn">${t('match.shareBtn')}</button>
       <button class="btn" id="embed-btn">${t('match.embedBtn')}</button>
-      ${(m.status === 'LIVE' || m.status === 'PLANNED') ? `<button class="btn" id="change-format-btn">${t('match.changeFormatBtn')}</button>` : ''}
+      ${locationEditable ? `<button class="btn" id="edit-match-btn">${t('match.editMatchBtn')}</button>` : ''}
       ${m.status === 'FINISHED' ? `<button class="btn btn-green" id="whatsapp-result-btn">${t('match.sendToWhatsapp')}</button>` : ''}
       ${isAdminUser || (m.status !== 'FINISHED' && !m.createdByAdmin) ? `<button class="btn btn-danger" id="delete-btn">${t('match.deleteMatchBtn')}</button>` : ''}
     </div>
@@ -781,96 +773,13 @@ function attachHandlers(m) {
     catch (err) { toast(err.message); finishAsIsBtn.disabled = false; }
   }));
 
-  const editLink = document.getElementById('edit-location-link');
-  if (editLink) editLink.addEventListener('click', () => requirePlayerAuth(() => {
-    const display = document.getElementById('location-display');
-    const currentVal = m.location || '';
-    display.innerHTML = `
-      <input type="text" id="location-input" value="${escapeHtml(currentVal)}" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">
-      <div style="margin-top:6px;display:flex;gap:6px">
-        <button class="btn btn-sm btn-primary" id="save-location-btn">${t('common.save')}</button>
-        <button class="btn btn-sm btn-outline" id="cancel-location-btn">${t('common.cancel')}</button>
-      </div>
-    `;
-    editLink.style.display = 'none';
-    document.getElementById('location-input').focus();
-    document.getElementById('cancel-location-btn').addEventListener('click', () => render(current));
-    document.getElementById('save-location-btn').addEventListener('click', async () => {
-      const val = document.getElementById('location-input').value.trim();
-      try { render(await api(`/matches/${matchToken}`, { method: 'PATCH', body: { location: val } })); }
-      catch (err) { toast(err.message); }
-    });
-  }));
-
-  const editDateLink = document.getElementById('edit-date-link');
-  if (editDateLink) editDateLink.addEventListener('click', () => requirePlayerAuth(() => {
-    const display = document.getElementById('date-display');
-    display.innerHTML = `
-      <div style="display:flex;gap:8px">
-        <input type="date" id="date-input" value="${toDateValue(m.scheduledAt)}" style="flex:1;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">
-        <input type="time" id="time-input" value="${toTimeValue(m.scheduledAt)}" style="flex:1;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">
-      </div>
-      <div style="margin-top:6px;display:flex;gap:6px">
-        <button class="btn btn-sm btn-primary" id="save-date-btn">${t('common.save')}</button>
-        <button class="btn btn-sm btn-outline" id="clear-date-btn">${t('match.clearBtn')}</button>
-        <button class="btn btn-sm btn-outline" id="cancel-date-btn">${t('common.cancel')}</button>
-      </div>
-    `;
-    editDateLink.style.display = 'none';
-    document.getElementById('date-input').focus();
-    document.getElementById('cancel-date-btn').addEventListener('click', () => render(current));
-    const saveDate = async (scheduledAt) => {
-      try { render(await api(`/matches/${matchToken}`, { method: 'PATCH', body: { scheduledAt } })); }
-      catch (err) { toast(err.message); }
-    };
-    document.getElementById('save-date-btn').addEventListener('click', () => {
-      const dateVal = document.getElementById('date-input').value;
-      const timeVal = document.getElementById('time-input').value;
-      saveDate(dateVal ? new Date(`${dateVal}T${timeVal || '00:00'}`).toISOString() : null);
-    });
-    document.getElementById('clear-date-btn').addEventListener('click', () => saveDate(null));
-  }));
-
-  const editNotesLink = document.getElementById('edit-notes-link');
-  if (editNotesLink) editNotesLink.addEventListener('click', () => requirePlayerAuth(() => {
-    const display = document.getElementById('notes-display');
-    display.innerHTML = `
-      <textarea id="notes-input" rows="3" maxlength="1000" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">${escapeHtml(m.notes || '')}</textarea>
-      <div style="margin-top:6px;display:flex;gap:6px">
-        <button class="btn btn-sm btn-primary" id="save-notes-btn">${t('common.save')}</button>
-        <button class="btn btn-sm btn-outline" id="cancel-notes-btn">${t('common.cancel')}</button>
-      </div>
-    `;
-    editNotesLink.style.display = 'none';
-    document.getElementById('notes-input').focus();
-    document.getElementById('cancel-notes-btn').addEventListener('click', () => render(current));
-    document.getElementById('save-notes-btn').addEventListener('click', async () => {
-      const val = document.getElementById('notes-input').value.trim();
-      try { render(await api(`/matches/${matchToken}`, { method: 'PATCH', body: { notes: val } })); }
-      catch (err) { toast(err.message); }
-    });
-  }));
-
-  const editCategoryLink = document.getElementById('edit-category-link');
-  if (editCategoryLink) editCategoryLink.addEventListener('click', () => requirePlayerAuth(() => {
-    const display = document.getElementById('category-display');
-    const options = Object.keys(CATEGORY_LABELS).map((key) =>
-      `<option value="${key}"${key === m.category ? ' selected' : ''}>${categoryLabel(key)}</option>`).join('');
-    display.innerHTML = `
-      <select id="category-input" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-family:inherit">${options}</select>
-      <div style="margin-top:6px;display:flex;gap:6px">
-        <button class="btn btn-sm btn-primary" id="save-category-btn">${t('common.save')}</button>
-        <button class="btn btn-sm btn-outline" id="cancel-category-btn">${t('common.cancel')}</button>
-      </div>
-    `;
-    editCategoryLink.style.display = 'none';
-    document.getElementById('category-input').focus();
-    document.getElementById('cancel-category-btn').addEventListener('click', () => render(current));
-    document.getElementById('save-category-btn').addEventListener('click', async () => {
-      const val = document.getElementById('category-input').value;
-      try { render(await api(`/matches/${matchToken}`, { method: 'PATCH', body: { category: val } })); }
-      catch (err) { toast(err.message); }
-    });
+  const editMatchBtn = document.getElementById('edit-match-btn');
+  if (editMatchBtn) editMatchBtn.addEventListener('click', () => requirePlayerAuth(() => {
+    if (!canManageMatch(m, isAdminUser)) {
+      showAccessDeniedModal(t('accessDenied.message'));
+      return;
+    }
+    openEditMatchModal(m);
   }));
 
   const chatMessagesEl = document.getElementById('chat-messages');
@@ -902,8 +811,6 @@ function attachHandlers(m) {
   if (shareBtn) shareBtn.addEventListener('click', () => openShareModal(m));
   const embedBtn = document.getElementById('embed-btn');
   if (embedBtn) embedBtn.addEventListener('click', () => openEmbedModal(m));
-  const changeFormatBtn = document.getElementById('change-format-btn');
-  if (changeFormatBtn) changeFormatBtn.addEventListener('click', () => requirePlayerAuth(() => openChangeFormatModal(m)));
   const whatsappResultBtn = document.getElementById('whatsapp-result-btn');
   if (whatsappResultBtn) whatsappResultBtn.addEventListener('click', () => openWhatsAppResultModal(m));
 
@@ -1138,41 +1045,92 @@ function openFirstServerModal(m) {
   document.getElementById('first-server-modal').style.display = 'flex';
 }
 
-function openChangeFormatModal(m) {
-  const container = document.getElementById('change-format-options');
-  const errorEl = document.getElementById('change-format-error');
+// Consolidated "edit initial settings" modal — the same fields the new-
+// match form collects (see new-match.html/new-match.js), pre-filled from
+// the existing match and editable. Category/location/date/notes/
+// ballsPlayer all go through the generic PATCH /:token; format (only when
+// actually changed) goes through its own PATCH /:token/format instead,
+// which already knows how to validate a LIVE match's current score
+// against the newly picked format — reused rather than duplicated here.
+// The two players themselves are never shown as editable — reassigning
+// them isn't supported (their stats/history are tied to this match).
+function openEditMatchModal(m) {
+  const errorEl = document.getElementById('edit-match-error');
   errorEl.textContent = '';
-  container.innerHTML = FORMATS_ORDER.map((key) => {
-    const label = t(`format.${key}.label`);
-    const sublabelKey = `format.${key}.sublabel`;
-    const hasSublabel = (TRANSLATIONS[currentLang] && sublabelKey in TRANSLATIONS[currentLang]) || sublabelKey in TRANSLATIONS.en;
-    const sublabel = hasSublabel ? t(sublabelKey) : '';
-    return `
-    <label class="format-option">
-      <input type="radio" name="change-format" value="${key}" ${key === m.format ? 'checked' : ''}>
-      <span>
-        <div style="font-weight:700">${label}${sublabel ? ` <span style="font-weight:400;color:var(--gray);font-size:12px">${sublabel}</span>` : ''}</div>
-      </span>
-    </label>
-  `;
-  }).join('');
-  container.querySelectorAll('input[name="change-format"]').forEach((input) => {
-    input.addEventListener('change', async () => {
-      if (input.value === m.format) return;
-      errorEl.textContent = '';
-      try {
-        const updated = await api(`/matches/${matchToken}/format`, { method: 'PATCH', body: { format: input.value } });
-        document.getElementById('change-format-modal').style.display = 'none';
-        render(updated);
-      } catch (err) {
-        errorEl.textContent = err.message;
-        input.checked = false;
-        const currentInput = container.querySelector(`input[value="${m.format}"]`);
-        if (currentInput) currentInput.checked = true;
-      }
+
+  document.getElementById('edit-match-category').value = m.category;
+  document.getElementById('edit-match-location').value = m.location || '';
+  document.getElementById('edit-match-date').value = toDateValue(m.scheduledAt);
+  document.getElementById('edit-match-time').value = toTimeValue(m.scheduledAt);
+  document.getElementById('edit-match-notes').value = m.notes || '';
+
+  // Format can only actually be changed server-side while LIVE or
+  // PLANNED (see PATCH /:token/format) — hidden here rather than shown
+  // and then erroring on save for a Finished/Unfinished match.
+  const formatField = document.getElementById('edit-match-format-field');
+  const canChangeFormat = m.status === 'LIVE' || m.status === 'PLANNED';
+  formatField.style.display = canChangeFormat ? '' : 'none';
+  if (canChangeFormat) {
+    setupFormatOptions('edit-match-format-options');
+    document.querySelectorAll('#edit-match-format-options input[name="format"]').forEach((input) => {
+      input.checked = input.value === m.format;
     });
+  }
+
+  // Balls picker — labeled with the real player names directly (unlike the
+  // create form's version, which has to track live-typed names instead
+  // since the players don't exist yet at that point).
+  const ballsBtns = Array.from(document.querySelectorAll('#edit-match-balls-row button'));
+  ballsBtns[0].textContent = m.player1.name;
+  ballsBtns[1].textContent = m.player2.name;
+  let ballsPlayer = m.ballsPlayer || null;
+  const updateBallsButtons = () => {
+    ballsBtns.forEach((b) => b.classList.toggle('active', Number(b.dataset.value) === ballsPlayer));
+  };
+  updateBallsButtons();
+  ballsBtns.forEach((btn) => {
+    btn.onclick = () => {
+      const val = Number(btn.dataset.value);
+      ballsPlayer = ballsPlayer === val ? null : val;
+      updateBallsButtons();
+    };
   });
-  document.getElementById('change-format-modal').style.display = 'flex';
+
+  document.getElementById('edit-match-form').onsubmit = async (e) => {
+    e.preventDefault();
+    errorEl.textContent = '';
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    const category = document.getElementById('edit-match-category').value;
+    const location = document.getElementById('edit-match-location').value.trim();
+    const dateVal = document.getElementById('edit-match-date').value;
+    const timeVal = document.getElementById('edit-match-time').value;
+    const notes = document.getElementById('edit-match-notes').value.trim();
+    const scheduledAt = dateVal ? new Date(`${dateVal}T${timeVal || '00:00'}`).toISOString() : null;
+    const selectedFormatInput = canChangeFormat
+      ? document.querySelector('#edit-match-format-options input[name="format"]:checked')
+      : null;
+    const selectedFormat = selectedFormatInput ? selectedFormatInput.value : m.format;
+
+    try {
+      let updated = await api(`/matches/${matchToken}`, {
+        method: 'PATCH',
+        body: { category, location, scheduledAt, notes, ballsPlayer },
+      });
+      if (canChangeFormat && selectedFormat !== m.format) {
+        updated = await api(`/matches/${matchToken}/format`, { method: 'PATCH', body: { format: selectedFormat } });
+      }
+      document.getElementById('edit-match-modal').style.display = 'none';
+      toast(t('match.editMatchSaved'));
+      render(updated);
+    } catch (err) {
+      errorEl.textContent = err.message;
+      submitBtn.disabled = false;
+    }
+  };
+
+  document.getElementById('edit-match-modal').style.display = 'flex';
 }
 
 function openFinishUndecidedModal(m) {
