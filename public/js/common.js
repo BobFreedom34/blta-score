@@ -647,12 +647,21 @@ function matchScoreHtml(m) {
 // including the small tiebreak-loser superscript — shared here so a match
 // card's compact scoreboard (below) and the full match-page scoreboard
 // stay visually identical.
-function setCell(set, playerNum) {
+// highlightWinner colors the winning player's number green for a decided
+// set (set.winner from matchEngine.js) — off by default so the full
+// match-page scoreboard and the regular (non-compact) match-card
+// scoreboard keep their existing plain-white look; only the compact
+// match-list grid (see cardScoreboardHtml's compact mode) turns it on.
+function setCell(set, playerNum, { highlightWinner = false } = {}) {
   const gKey = playerNum === 1 ? 'p1' : 'p2';
-  if (set.isSuperTiebreak) return `${set.tiebreak[gKey]}`;
+  const won = highlightWinner && set.winner === playerNum;
+  if (set.isSuperTiebreak) {
+    const val = set.tiebreak[gKey];
+    return won ? `<span class="set-win">${val}</span>` : `${val}`;
+  }
   const main = set[gKey];
   const sub = set.tiebreak ? `<sup class="sub-tb">${set.tiebreak[gKey]}</sup>` : '';
-  return `${main}${sub}`;
+  return `${won ? `<span class="set-win">${main}</span>` : main}${sub}`;
 }
 
 // Static (non-ticking — updates whenever the card list itself re-renders,
@@ -777,7 +786,11 @@ function proposalIconHtml(m, playerNum) {
 // 0-0, matching the match page itself) since the clock is already running;
 // for FINISHED it only shows once there's real per-set score data, so a
 // walkover/retirement result still falls back to the plain text line.
-function cardScoreboardHtml(m) {
+// compact:true drops the name column (and the LIVE timer header cell) —
+// used by compactMatchCardHtml, whose match list already shows player
+// names in their own separate column right next to this one, so repeating
+// them inside the table too would be redundant.
+function cardScoreboardHtml(m, { compact = false } = {}) {
   if (!m.state || !m.state.sets) return '';
   const sets = m.status === 'LIVE'
     ? m.state.sets
@@ -793,25 +806,28 @@ function cardScoreboardHtml(m) {
     const reasonLabel = m.endReason ? endReasonLabel(m.endReason) : null;
     return `
       <div class="scoreboard scoreboard-compact">
-        <table>
-          <tbody>
-            <tr class="${winnerP1 ? 'winner-row' : ''}"><td class="name-cell">${playerNameLink(m.player1)}${playerInfoBtn(m.player1)}</td></tr>
-            <tr class="${winnerP2 ? 'winner-row' : ''}"><td class="name-cell">${playerNameLink(m.player2)}${playerInfoBtn(m.player2)}</td></tr>
-          </tbody>
-        </table>
+        ${compact ? '' : `
+          <table>
+            <tbody>
+              <tr class="${winnerP1 ? 'winner-row' : ''}"><td class="name-cell">${playerNameLink(m.player1)}${playerInfoBtn(m.player1)}</td></tr>
+              <tr class="${winnerP2 ? 'winner-row' : ''}"><td class="name-cell">${playerNameLink(m.player2)}${playerInfoBtn(m.player2)}</td></tr>
+            </tbody>
+          </table>
+        `}
         ${reasonLabel ? `<div class="scoreboard-reason">${escapeHtml(reasonLabel)}</div>` : ''}
       </div>
     `;
   }
   const headerCells = sets.map((s, i) => `<th>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</th>`).join('');
   const row = (playerNum, player, isWinner) => {
-    const cells = sets.map((s) => `<td class="set-score">${setCell(s, playerNum)}</td>`).join('');
-    return `<tr class="${isWinner ? 'winner-row' : ''}"><td class="name-cell">${playerNameLink(player)}${playerInfoBtn(player)}</td>${cells}</tr>`;
+    const cells = sets.map((s) => `<td class="set-score">${setCell(s, playerNum, { highlightWinner: compact })}</td>`).join('');
+    const nameCell = compact ? '' : `<td class="name-cell">${playerNameLink(player)}${playerInfoBtn(player)}</td>`;
+    return `<tr class="${isWinner ? 'winner-row' : ''}">${nameCell}${cells}</tr>`;
   };
   return `
     <div class="scoreboard scoreboard-compact">
       <table>
-        <thead><tr><th class="timer-cell">${cardDurationHtml(m)}</th>${headerCells}</tr></thead>
+        ${compact ? '' : `<thead><tr><th class="timer-cell">${cardDurationHtml(m)}</th>${headerCells}</tr></thead>`}
         <tbody>
           ${row(1, m.player1, winnerP1)}
           ${row(2, m.player2, winnerP2)}
@@ -920,15 +936,23 @@ function compactDateHtml(m) {
 function compactMatchCardHtml(m) {
   const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
   const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
+  // Same dark S1/S2/MTB score grid as the regular match cards' scoreboard
+  // (cardScoreboardHtml), just without its own name column — falls back to
+  // the plain result pill (format label for a Planned match, or a
+  // walkover/retirement's reason text) when there's no real score grid to
+  // show, same cases cardScoreboardHtml itself returns '' for.
+  const scoreboard = cardScoreboardHtml(m, { compact: true });
   return `
     <a class="compact-card status-${m.status}" href="${window.location.origin}/match/${m.token}"${window.top !== window.self ? ' target="_blank" rel="noopener"' : ''}>
-      <span class="compact-date">${compactDateHtml(m)}</span>
-      ${categoryBadge(m.category)}
+      <span class="compact-date-category">
+        ${categoryBadge(m.category)}
+        <span class="compact-date">${compactDateHtml(m)}</span>
+      </span>
       <span class="compact-players">
         <span class="${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}${ballsIconHtml(m, 1)}${courtIconHtml(m, 1)}${proposalIconHtml(m, 1)}</span>
         <span class="${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}${ballsIconHtml(m, 2)}${courtIconHtml(m, 2)}${proposalIconHtml(m, 2)}</span>
       </span>
-      <span class="compact-result">${matchScoreHtml(m)}</span>
+      ${scoreboard || `<span class="compact-result">${matchScoreHtml(m)}</span>`}
       <span class="compact-place">${m.location ? `📍 ${escapeHtml(m.location)}` : ''}</span>
     </a>
   `;

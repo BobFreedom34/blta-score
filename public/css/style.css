@@ -390,7 +390,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   box-shadow: var(--shadow);
   padding: 8px 20px;
   display: grid;
-  grid-template-columns: 85px 120px minmax(160px, 1.4fr) 90px minmax(120px, 1fr);
+  grid-template-columns: minmax(100px, auto) minmax(160px, auto) minmax(90px, auto) minmax(120px, 1fr);
   align-items: center;
   gap: 16px;
   cursor: pointer;
@@ -402,21 +402,15 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .compact-card.status-LIVE { border-left-color: var(--danger); }
 .compact-card.status-FINISHED { border-left-color: var(--green); }
 .compact-card.status-PLANNED { border-left-color: var(--gray); }
-/* justify-self:start so the date box shrinks to its text instead of
-   stretching to fill the whole column — without this, the date→category
-   gap read bigger than category→players even with identical margins below,
-   because of that leftover stretch space after short date text. */
-.compact-date { color: var(--gray); font-weight: 600; justify-self: start; }
+/* Category badge stacked above the date, not side by side. */
+.compact-date-category { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; justify-self: start; }
+.compact-date { color: var(--gray); font-weight: 600; }
 .compact-live { color: var(--danger); font-weight: 800; }
-/* Pulled left with a negative margin so the date→category and
-   category→players gaps read tighter than the grid's base 16px gap (and
-   equal to each other), without changing the (still 16px) gaps further
-   along the row. */
-.compact-card .badge { justify-self: start; margin-left: -18px; padding: 2px 8px; font-size: 10px; }
+.compact-card .badge { padding: 2px 8px; font-size: 10px; }
 /* Names stacked one above the other, not side by side — and never
    truncated: a long name wraps within its own line instead of being
    clipped with an ellipsis. */
-.compact-players { display: flex; flex-direction: column; gap: 1px; margin-left: -18px; font-weight: 700; }
+.compact-players { display: flex; flex-direction: column; gap: 1px; font-weight: 700; justify-self: start; }
 .compact-players .winner { color: var(--green-light); }
 .compact-result {
   justify-self: start;
@@ -625,6 +619,26 @@ datalist {}
 .scoreboard-compact th.timer-cell { padding: 0 8px 6px 0; }
 .scoreboard-compact .timer { font-size: 12px; padding: 5px 10px; }
 .scoreboard-compact .paused-label { font-size: 10px; }
+/* Even tighter, for the S1/S2/MTB grid embedded in a /compact list row (see
+   compactMatchCardHtml) — that row's height is set by the two-line
+   player-names column right next to it, so this needs to fit within that
+   same space, not the more generous room .scoreboard-compact gets on a
+   regular (taller) match card. */
+/* overflow-y: hidden overrides the sliver of vertical scroll the base
+   .scoreboard rule's overflow-x: auto otherwise forces onto overflow-y too
+   (its used value becomes auto, not visible, once only overflow-x is set —
+   see the CSS Overflow spec) — at this tight a height, a 1px rounding
+   overflow was enough to draw a real (if hairline) vertical scrollbar. */
+.compact-card .scoreboard {
+  padding: 4px 10px; border-radius: 8px; box-shadow: none; justify-self: start; overflow-y: hidden;
+  background: var(--gray-light); color: var(--ink);
+}
+.compact-card .scoreboard table { border-collapse: collapse; }
+.compact-card .scoreboard td { padding: 0 16px 0 0; line-height: 1; }
+.compact-card .scoreboard td:last-child { padding-right: 0; }
+.compact-card .scoreboard td.set-score { font-size: 13px; font-weight: 800; width: auto; }
+.compact-card .scoreboard-reason { font-size: 9px; padding: 1px 0; color: var(--gray); }
+.compact-card .scoreboard .set-win { color: var(--green); }
 
 .server-choice-row { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .server-choice-row button.active { border-color: var(--orange); background: #fff6f2; color: var(--orange-dark); font-weight: 800; }
