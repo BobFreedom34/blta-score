@@ -65,8 +65,10 @@ const TRANSLATIONS = {
     'matches.addToCalendar': '📅 Pridať do kalendára',
     'matches.notifyStart': '🔔 Upozorniť: začiatok',
     'matches.notifiedStart': '✓ Upozornené: začiatok',
-    'matches.notifyFinish': '🏁 Upozorniť: koniec',
+    'matches.notifyFinish': '🔔 Upozorniť: koniec',
     'matches.notifiedFinish': '✓ Upozornené: koniec',
+    'matches.startShort': 'Začiatok',
+    'matches.finishShort': 'Koniec',
 
     'footer.embedList': 'Vložiť tento zoznam',
     'footer.manageBadges': 'Spravovať odznaky',
@@ -446,8 +448,10 @@ const TRANSLATIONS = {
     'matches.addToCalendar': '📅 Add to Calendar',
     'matches.notifyStart': '🔔 Notify: start',
     'matches.notifiedStart': '✓ Notified: start',
-    'matches.notifyFinish': '🏁 Notify: finish',
+    'matches.notifyFinish': '🔔 Notify: finish',
     'matches.notifiedFinish': '✓ Notified: finish',
+    'matches.startShort': 'Start',
+    'matches.finishShort': 'Finish',
 
     'footer.embedList': 'Embed this list',
     'footer.manageBadges': 'Manage badges',

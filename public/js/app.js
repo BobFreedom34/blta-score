@@ -65,13 +65,20 @@ function notifyButtonsHtml(m) {
   const finishDone = localStorage.getItem(`blta_notified_${m.token}_FINISH`);
   const startCount = m.notifyStartCount || 0;
   const finishCount = m.notifyFinishCount || 0;
-  const startLabel = `${t(startDone ? 'matches.notifiedStart' : 'matches.notifyStart')}${startCount ? ` (${startCount})` : ''}`;
-  const finishLabel = `${t(finishDone ? 'matches.notifiedFinish' : 'matches.notifyFinish')}${finishCount ? ` (${finishCount})` : ''}`;
+  const startCountSuffix = startCount ? ` (${startCount})` : '';
+  const finishCountSuffix = finishCount ? ` (${finishCount})` : '';
+  const startLabelFull = `${t(startDone ? 'matches.notifiedStart' : 'matches.notifyStart')}${startCountSuffix}`;
+  const finishLabelFull = `${t(finishDone ? 'matches.notifiedFinish' : 'matches.notifyFinish')}${finishCountSuffix}`;
+  // Compact mobile labels drop the "Notify:"/"Notified:" wording and keep
+  // just the icon (✓ once done, same as the full label) + the bare word —
+  // see .notify-btn .btn-text-compact in style.css for where these show.
+  const startLabelShort = `${startDone ? '✓' : '🔔'} ${t('matches.startShort')}${startCountSuffix}`;
+  const finishLabelShort = `${finishDone ? '✓' : '🔔'} ${t('matches.finishShort')}${finishCountSuffix}`;
   return `
     <div class="notify-buttons-row">
       <button type="button" class="btn btn-sm btn-outline add-calendar-btn" data-url="${escapeHtml(googleCalendarUrl(m))}"><span class="cal-full">${t('matches.addToCalendar')}</span><span class="cal-compact">📅+</span></button>
-      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="START" ${startDone ? 'disabled' : ''}>${startLabel}</button>
-      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="FINISH" ${finishDone ? 'disabled' : ''}>${finishLabel}</button>
+      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="START" ${startDone ? 'disabled' : ''}><span class="btn-text-full">${startLabelFull}</span><span class="btn-text-compact">${startLabelShort}</span></button>
+      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="FINISH" ${finishDone ? 'disabled' : ''}><span class="btn-text-full">${finishLabelFull}</span><span class="btn-text-compact">${finishLabelShort}</span></button>
     </div>
   `;
 }
