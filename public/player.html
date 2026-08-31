@@ -329,13 +329,29 @@
      handleQuickEditMatchClick/openEditMatchModal in common.js) and, on the
      match's own page, by its "Upraviť zápas" button (see match.js) —
      identical markup on both pages so the same modal logic drives either.
-     The two players themselves are never shown as editable — reassigning
-     them isn't supported (their stats/history are tied to this match). -->
+     The two players themselves are only shown as editable for an admin
+     (see openEditMatchModal's isAdminUser param) — reassigning them
+     touches this match's recorded winner_id too (see PATCH /:token
+     server-side), not something a regular match-managing player should
+     casually do. -->
 <div class="modal-backdrop" id="edit-match-modal" style="display:none">
   <div class="modal" style="max-width:560px">
     <button type="button" class="close" data-close="edit-match-modal" aria-label="Close">&times;</button>
     <h3 data-i18n="match.editMatchTitle">Upraviť nastavenia zápasu</h3>
     <form id="edit-match-form">
+      <div class="field" id="edit-match-players-field" style="display:none">
+        <label data-i18n="match.editPlayersLabel">Hráči (iba admin)</label>
+        <div class="grid-2">
+          <div class="autocomplete">
+            <input id="edit-match-player1" placeholder="Zadajte meno…" data-i18n-placeholder="newMatch.namePlaceholder" autocomplete="off">
+            <div class="autocomplete-list" id="edit-match-player1-suggestions"></div>
+          </div>
+          <div class="autocomplete">
+            <input id="edit-match-player2" placeholder="Zadajte meno…" data-i18n-placeholder="newMatch.namePlaceholder" autocomplete="off">
+            <div class="autocomplete-list" id="edit-match-player2-suggestions"></div>
+          </div>
+        </div>
+      </div>
       <div class="field">
         <label for="edit-match-category" data-i18n="newMatch.categoryLabel">Kategória</label>
         <select id="edit-match-category" required>

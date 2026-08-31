@@ -91,7 +91,7 @@ function handleQuickEditMatchClick(token, isAdminUser, onSaved) {
         showAccessDeniedModal(t('accessDenied.message'));
         return;
       }
-      openEditMatchModal(m, onSaved);
+      openEditMatchModal(m, isAdminUser, onSaved);
     })();
   });
 }
@@ -99,12 +99,27 @@ function handleQuickEditMatchClick(token, isAdminUser, onSaved) {
 // onSaved (optional) is called with the updated match once saved — match.js
 // passes its own render() so the page updates in place; a card page passes
 // its list-reload function instead since there's no single match to re-
-// render there.
-function openEditMatchModal(m, onSaved) {
+// render there. isAdminUser gates the players field below — passed in like
+// everywhere else that checks it, rather than a shared global (see
+// canManageMatch).
+async function openEditMatchModal(m, isAdminUser, onSaved) {
   const modal = document.getElementById('edit-match-modal');
   if (!modal) return;
   const errorEl = document.getElementById('edit-match-error');
   errorEl.textContent = '';
+
+  // Reassigning who's actually in the match is admin-only (see the doc
+  // comment on the modal's markup) — everyone else never sees the field,
+  // same as the format field hides for a status where it can't apply.
+  const playersField = document.getElementById('edit-match-players-field');
+  if (playersField) {
+    playersField.style.display = isAdminUser ? '' : 'none';
+    if (isAdminUser) {
+      if (!allPlayers.length) await loadPlayers();
+      document.getElementById('edit-match-player1').value = m.player1.name;
+      document.getElementById('edit-match-player2').value = m.player2.name;
+    }
+  }
 
   document.getElementById('edit-match-category').value = m.category;
   document.getElementById('edit-match-date').value = toDateValue(m.scheduledAt);
@@ -177,10 +192,35 @@ function openEditMatchModal(m, onSaved) {
       : null;
     const selectedFormat = selectedFormatInput ? selectedFormatInput.value : m.format;
 
+    // Only ever sent when the players field is actually showing (admin) —
+    // matched against allPlayers by exact name, same as picking a
+    // suggestion from the autocomplete list is meant to leave behind,
+    // rather than trusting arbitrary typed text as a player id lookup.
+    let player1Id;
+    let player2Id;
+    if (isAdminUser && playersField) {
+      const name1 = document.getElementById('edit-match-player1').value.trim();
+      const name2 = document.getElementById('edit-match-player2').value.trim();
+      const p1 = allPlayers.find((p) => p.name.toLowerCase() === name1.toLowerCase());
+      const p2 = allPlayers.find((p) => p.name.toLowerCase() === name2.toLowerCase());
+      if (!p1 || !p2) {
+        errorEl.textContent = t('match.editPickFromSuggestions');
+        submitBtn.disabled = false;
+        return;
+      }
+      if (p1.id === p2.id) {
+        errorEl.textContent = t('match.editPlayersMustDiffer');
+        submitBtn.disabled = false;
+        return;
+      }
+      player1Id = p1.id;
+      player2Id = p2.id;
+    }
+
     try {
       let updated = await api(`/matches/${m.token}`, {
         method: 'PATCH',
-        body: { category, location, scheduledAt, notes, ballsPlayer, courtPlayer },
+        body: { category, location, scheduledAt, notes, ballsPlayer, courtPlayer, player1Id, player2Id },
       });
       if (canChangeFormat && selectedFormat !== m.format) {
         updated = await api(`/matches/${m.token}/format`, { method: 'PATCH', body: { format: selectedFormat } });
@@ -207,6 +247,13 @@ async function loadPlayers() {
 function setupAutocomplete(inputId, listId) {
   const input = document.getElementById(inputId);
   const list = document.getElementById(listId);
+  // Guards the case where this page doesn't actually have these fields
+  // (e.g. the admin-only edit-match-players-field, present on
+  // index.html/player.html/match.html but not, say, rankings.html — common.js
+  // loads on every page) — an unguarded null access here would throw and,
+  // since that halts the rest of this script's top-level execution, silently
+  // break everything declared later in the file too.
+  if (!input || !list) return;
   let activeIndex = -1;
 
   function currentMatches() {
@@ -264,6 +311,14 @@ function setupAutocomplete(inputId, listId) {
     setTimeout(() => list.classList.remove('open'), 100);
   });
 }
+
+// Wired once here (not inside openEditMatchModal, which runs every time the
+// modal opens) — same one-shot-at-load pattern new-match.js uses for its own
+// player1/player2 fields. setupAutocomplete's own guard above makes this a
+// no-op on any page without the admin-only players field in its modal
+// markup.
+setupAutocomplete('edit-match-player1', 'edit-match-player1-suggestions');
+setupAutocomplete('edit-match-player2', 'edit-match-player2-suggestions');
 
 // Two-button "pick one of the two players" widget for a match still being
 // created — optional, defaults to nobody picked. Button labels track

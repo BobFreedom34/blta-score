@@ -825,7 +825,7 @@ function attachHandlers(m) {
       showAccessDeniedModal(t('accessDenied.message'));
       return;
     }
-    openEditMatchModal(m, render);
+    openEditMatchModal(m, isAdminUser, render);
   });
   const editMatchBtn = document.getElementById('edit-match-btn');
   if (editMatchBtn) editMatchBtn.addEventListener('click', openEditMatch);

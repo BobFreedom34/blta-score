@@ -425,6 +425,38 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
     }
     fields.notes = req.body.notes.trim();
   }
+  // Reassigning who's actually in the match — admin-only regardless of the
+  // broader checkMatchAccess check above (a regular match-managing player
+  // can edit date/location/etc. on a match they don't administer, but
+  // swapping out one of the two people playing it is a bigger deal). Only
+  // touched if the client actually sent one; either can be omitted to leave
+  // that side as-is (e.g. only correcting player2).
+  if (req.body.player1Id !== undefined || req.body.player2Id !== undefined) {
+    if (!isAdmin(req)) {
+      return res.status(403).json({ error: 'Only an admin can change the players in a match' });
+    }
+    const p1Id = req.body.player1Id !== undefined ? Number(req.body.player1Id) : row.player1_id;
+    const p2Id = req.body.player2Id !== undefined ? Number(req.body.player2Id) : row.player2_id;
+    if (!Number.isInteger(p1Id) || !Number.isInteger(p2Id)) {
+      return res.status(400).json({ error: 'Both players are required' });
+    }
+    if (p1Id === p2Id) {
+      return res.status(400).json({ error: 'Players must be different' });
+    }
+    if (!getPlayer(p1Id) || !getPlayer(p2Id)) {
+      return res.status(400).json({ error: 'One of the selected players does not exist' });
+    }
+    fields.player1_id = p1Id;
+    fields.player2_id = p2Id;
+    // winner_id is stored as a real player id (resolved from state.winner's
+    // 1/2 position at finish time — see matchEngine.js) — if whoever was
+    // recorded as the winner just got swapped out of that position, carry
+    // the win over to whoever replaced them instead of leaving winner_id
+    // pointing at someone no longer in this match at all. The score itself
+    // (state.sets[].p1/p2) is positional and doesn't need any equivalent fix.
+    if (row.winner_id === row.player1_id && p1Id !== row.player1_id) fields.winner_id = p1Id;
+    else if (row.winner_id === row.player2_id && p2Id !== row.player2_id) fields.winner_id = p2Id;
+  }
   // Explicit null (as opposed to omitted) cancels a pending proposal
   // outright — whoever can edit it (see canManageMatch) can also delete it,
   // putting the match back to a plain unscheduled Planned match with no
