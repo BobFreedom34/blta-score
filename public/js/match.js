@@ -378,34 +378,25 @@ function attachProposalCardHandlers(m, which) {
   // Same weekly-grid look as the "Schedule a match" form that created this
   // proposal, but single-pick instead of multi-toggle: only cells matching
   // one of this card's own slots are clickable, everything else is inert
-  // filler that keeps the calendar shape recognizable. The grid always
-  // shows full 7-day weeks (starting from the earliest proposed date, paged
-  // the same way as the proposer's own picker) rather than trimming to just
-  // the days that actually have a proposed slot — a proposal for, say, only
-  // Tuesday and Thursday still shows the whole week around them, not a
-  // 2-day sliver.
+  // filler that keeps the calendar shape recognizable. Always the same
+  // fixed 14-day/2-week window (starting tomorrow) as the proposer's own
+  // createAvailabilityPicker used to build this proposal in the first
+  // place, not a range derived from the proposed dates — so the opponent
+  // always sees two full weeks ahead, same as the proposer did.
   const proposalSlotSet = new Set(slots);
-  const dayDates = slots.map((iso) => {
-    const d = new Date(iso);
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  });
-  const minDay = new Date(Math.min(...dayDates));
-  const maxDay = new Date(Math.max(...dayDates));
-  const spanDays = Math.round((maxDay - minDay) / 86400000) + 1;
-  const numWeeks = Math.max(1, Math.ceil(spanDays / 7));
   const proposalDays = [];
-  for (let i = 0; i < numWeeks * 7; i++) {
-    const d = new Date(minDay);
+  const proposalBase = new Date();
+  proposalBase.setHours(0, 0, 0, 0);
+  for (let i = 1; i <= 14; i++) {
+    const d = new Date(proposalBase);
     d.setDate(d.getDate() + i);
     proposalDays.push(d);
   }
-  const proposalWeeks = [];
-  for (let i = 0; i < proposalDays.length; i += 7) proposalWeeks.push(proposalDays.slice(i, i + 7));
+  const proposalWeeks = [proposalDays.slice(0, 7), proposalDays.slice(7, 14)];
   let proposalActiveWeek = 0;
 
   function renderProposalWeekTabs() {
     const tabsEl = document.getElementById(`${idPrefix}-week-tabs`);
-    if (proposalWeeks.length <= 1) { tabsEl.style.display = 'none'; return; }
     const fmt = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
     tabsEl.innerHTML = proposalWeeks.map((days, i) => `
       <button type="button" class="tab${i === proposalActiveWeek ? ' active' : ''}" data-week="${i}">${t('match.weekLabel', { n: i + 1 })}<span>${fmt(days[0])} – ${fmt(days[days.length - 1])}</span></button>
