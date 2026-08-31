@@ -222,6 +222,7 @@ const TRANSLATIONS = {
     'common.viewProfileTitle': 'Zobraziť profil hráča {name}',
     'common.bringsBallsTitle': 'Kto nesie loptičky',
     'common.reservesCourtTitle': 'Kto rezervuje kurt',
+    'common.proposalTitle': 'Návrh termínu zápasu',
 
     'matches.finishedHeading': '✅ Ukončené',
     'matches.unfinishedHeading': '⏸ Nedokončené',
@@ -606,6 +607,7 @@ const TRANSLATIONS = {
     'common.viewProfileTitle': "View {name}'s profile",
     'common.bringsBallsTitle': 'Who brings the balls',
     'common.reservesCourtTitle': 'Who reserves the court',
+    'common.proposalTitle': 'Match date proposal',
 
     'matches.finishedHeading': '✅ Finished',
     'matches.unfinishedHeading': '⏸ Unfinished',

@@ -758,6 +758,19 @@ function courtIconHtml(m, playerNum) {
   return `<span class="court-icon" title="${escapeHtml(t('common.reservesCourtTitle'))}">📞</span>`;
 }
 
+// Same idea again, for whichever player made a "propose times" offer
+// that's still awaiting the other player's response — checks both the
+// primary proposal and any independent counter-proposal (see
+// proposeTimesModal/counter-propose in match.js), since either one can
+// name its own proposer. Both proposal_slots/counter_proposal_slots are
+// always cleared the moment a slot gets confirmed (see respond-proposal
+// server-side), so there's no separate "still awaiting" check needed here
+// beyond proposedBy/counterProposedBy actually being this player.
+function proposalIconHtml(m, playerNum) {
+  if (m.status !== 'PLANNED' || (m.proposedBy !== playerNum && m.counterProposedBy !== playerNum)) return '';
+  return `<span class="proposal-icon" title="${escapeHtml(t('common.proposalTitle'))}">🕓</span>`;
+}
+
 // Compact per-set scoreboard for a match card (LIVE/FINISHED) — same dark
 // table as the full match page, just condensed, with the same timer chip in
 // its header cell. For a LIVE match this always shows (even at a fresh
@@ -912,8 +925,8 @@ function compactMatchCardHtml(m) {
       <span class="compact-date">${compactDateHtml(m)}</span>
       ${categoryBadge(m.category)}
       <span class="compact-players">
-        <span class="${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}${ballsIconHtml(m, 1)}${courtIconHtml(m, 1)}</span>
-        <span class="${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}${ballsIconHtml(m, 2)}${courtIconHtml(m, 2)}</span>
+        <span class="${winnerP1 ? 'winner' : ''}">${escapeHtml(m.player1.name)}${ballsIconHtml(m, 1)}${courtIconHtml(m, 1)}${proposalIconHtml(m, 1)}</span>
+        <span class="${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}${ballsIconHtml(m, 2)}${courtIconHtml(m, 2)}${proposalIconHtml(m, 2)}</span>
       </span>
       <span class="compact-result">${matchScoreHtml(m)}</span>
       <span class="compact-place">${m.location ? `📍 ${escapeHtml(m.location)}` : ''}</span>

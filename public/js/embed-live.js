@@ -60,9 +60,9 @@ function matchCardHtml(m) {
         <div class="match-players-box">
           <div class="match-players">
             <div class="match-players-names">
-              <div class="name ${winnerP1 ? 'winner' : ''}">${playerNameLink(m.player1)}${ballsIconHtml(m, 1)}${courtIconHtml(m, 1)}${playerInfoBtn(m.player1)}</div>
+              <div class="name ${winnerP1 ? 'winner' : ''}">${playerNameLink(m.player1)}${ballsIconHtml(m, 1)}${courtIconHtml(m, 1)}${proposalIconHtml(m, 1)}${playerInfoBtn(m.player1)}</div>
               <div class="vs">vs</div>
-              <div class="name ${winnerP2 ? 'winner' : ''}">${playerNameLink(m.player2)}${ballsIconHtml(m, 2)}${courtIconHtml(m, 2)}${playerInfoBtn(m.player2)}</div>
+              <div class="name ${winnerP2 ? 'winner' : ''}">${playerNameLink(m.player2)}${ballsIconHtml(m, 2)}${courtIconHtml(m, 2)}${proposalIconHtml(m, 2)}${playerInfoBtn(m.player2)}</div>
             </div>
             <div class="match-score${m.status === 'PLANNED' ? ' match-score-format' : ''}">${matchScoreHtml(m)}</div>
           </div>
