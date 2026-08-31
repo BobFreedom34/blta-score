@@ -369,7 +369,7 @@ function matchesPerMonthHtml(matches, idSuffix, containerWidth) {
   const axisSpace = 16; // month abbreviation, below the baseline
   const h = labelSpace + barAreaH + axisSpace;
   const padX = 8;
-  const gap = 4;
+  const gap = 8;
   const slot = (w - padX * 2) / months.length;
   const barW = Math.max(4, slot - gap);
   const baseline = labelSpace + barAreaH;
@@ -380,10 +380,33 @@ function matchesPerMonthHtml(matches, idSuffix, containerWidth) {
     const y = baseline - barH;
     return { ...b, cx, x, y, barH };
   });
+  // Same gradient as winRateTrendHtml/rankTrendHtml's area-under-the-line
+  // fill (var(--orange) fading from 35% opacity down to fully transparent)
+  // — same look and feel as those trend charts, just filling a bar instead
+  // of the area below a line. gradientUnits defaults to objectBoundingBox,
+  // so this 0%-100% range spans each bar's own height individually, not
+  // the whole chart.
   const gradId = `months-bar-gradient-${idSuffix}`;
-  const rects = bars.map((b) => `
-    <rect x="${b.x.toFixed(1)}" y="${b.y.toFixed(1)}" width="${barW.toFixed(1)}" height="${b.barH}" rx="3" fill="${b.count === 0 ? 'rgba(255,255,255,0.12)' : `url(#${gradId})`}"><title>${escapeHtml(`${b.label} ${b.year}: ${b.count}`)}</title></rect>
-  `).join('');
+  // Fill rect plus a separate open-bottomed outline path on top — an SVG
+  // <rect>'s own stroke always draws all four sides, but a bar growing up
+  // from the baseline reads better without a bottom edge closing it off
+  // (the baseline stroke below already does that job). Solid var(--orange),
+  // same color/weight as the trend line's own stroke (see
+  // winRateTrendHtml/rankTrendHtml).
+  const rects = bars.map((b) => {
+    const title = `<title>${escapeHtml(`${b.label} ${b.year}: ${b.count}`)}</title>`;
+    if (b.count === 0) {
+      return `<rect x="${b.x.toFixed(1)}" y="${b.y.toFixed(1)}" width="${barW.toFixed(1)}" height="${b.barH}" rx="3" fill="rgba(255,255,255,0.12)">${title}</rect>`;
+    }
+    const top = b.y.toFixed(1);
+    const bottom = (b.y + b.barH).toFixed(1);
+    const left = b.x.toFixed(1);
+    const right = (b.x + barW).toFixed(1);
+    return `
+      <rect x="${left}" y="${top}" width="${barW.toFixed(1)}" height="${b.barH}" fill="url(#${gradId})">${title}</rect>
+      <path d="M${left},${bottom} L${left},${top} L${right},${top} L${right},${bottom}" fill="none" stroke="var(--orange)" stroke-width="2"/>
+    `;
+  }).join('');
   // Anchored bottom-center at each bar's own top edge (translate(-50%,-100%),
   // same trick rankTrendHtml's pointLabels use) so it sits right above that
   // bar regardless of height, not in one fixed row.
@@ -400,8 +423,8 @@ function matchesPerMonthHtml(matches, idSuffix, containerWidth) {
         <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px">
           <defs>
             <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="var(--orange)"/>
-              <stop offset="100%" stop-color="var(--orange-dark)"/>
+              <stop offset="0%" stop-color="var(--orange)" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="var(--orange)" stop-opacity="0"/>
             </linearGradient>
           </defs>
           <line x1="${padX}" y1="${baseline}" x2="${w - padX}" y2="${baseline}" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
