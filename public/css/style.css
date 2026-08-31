@@ -787,6 +787,11 @@ datalist {}
   color: var(--white);
   white-space: nowrap;
 }
+.months-chart { position: relative; }
+.months-chart-labels { position: absolute; inset: 0; pointer-events: none; }
+.months-chart-labels span { position: absolute; font-size: 9px; white-space: nowrap; }
+.months-chart-counts span { transform: translate(-50%, -100%); font-weight: 700; color: var(--white); }
+.months-chart-axis span { transform: translate(-50%, 2px); color: var(--gray-dim); }
 .form-square {
   width: 30px;
   height: 30px;

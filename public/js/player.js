@@ -340,6 +340,84 @@ function renderTrendChart(elId, matches, idSuffix) {
   el.innerHTML = winRateTrendHtml(matches, idSuffix, containerWidth);
 }
 
+// Bar chart of matches played per month, rolling 12-month window ending
+// this month (oldest on the left) — same "how active lately" idea as the
+// win-rate/rank sparklines above, just bucketed by calendar month instead
+// of by match. Counts by scheduledAt the same way matchYear()/the sort key
+// in formGuideHtml/winRateTrendHtml do, falling back to startTime/
+// createdAt for the rare finished match with no real date. containerWidth
+// is the chart's own real measured pixel width, same reasoning as
+// winRateTrendHtml — see renderMonthsChart, which measures before calling
+// this.
+function matchesPerMonthHtml(matches, containerWidth) {
+  const now = new Date();
+  const months = [];
+  for (let i = 11; i >= 0; i -= 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString(undefined, { month: 'short' }), count: 0 });
+  }
+  matches.forEach((m) => {
+    const d = new Date(m.scheduledAt || m.startTime || m.createdAt);
+    if (Number.isNaN(d.getTime())) return;
+    const bucket = months.find((b) => b.year === d.getFullYear() && b.month === d.getMonth());
+    if (bucket) bucket.count += 1;
+  });
+  const maxCount = Math.max(1, ...months.map((b) => b.count));
+  const w = Math.max(180, Math.round(containerWidth || 280));
+  const barAreaH = 64;
+  const labelSpace = 14; // headroom for each bar's own count, above it
+  const axisSpace = 16; // month abbreviation, below the baseline
+  const h = labelSpace + barAreaH + axisSpace;
+  const padX = 8;
+  const gap = 4;
+  const slot = (w - padX * 2) / months.length;
+  const barW = Math.max(4, slot - gap);
+  const baseline = labelSpace + barAreaH;
+  const bars = months.map((b, i) => {
+    const cx = padX + i * slot + slot / 2;
+    const x = cx - barW / 2;
+    const barH = b.count === 0 ? 1 : Math.max(3, Math.round((b.count / maxCount) * (barAreaH - 4)));
+    const y = baseline - barH;
+    return { ...b, cx, x, y, barH };
+  });
+  const rects = bars.map((b) => `
+    <rect x="${b.x.toFixed(1)}" y="${b.y.toFixed(1)}" width="${barW.toFixed(1)}" height="${b.barH}" rx="2" fill="${b.count === 0 ? 'rgba(255,255,255,0.12)' : 'var(--orange)'}"><title>${escapeHtml(`${b.label} ${b.year}: ${b.count}`)}</title></rect>
+  `).join('');
+  // Anchored bottom-center at each bar's own top edge (translate(-50%,-100%),
+  // same trick rankTrendHtml's pointLabels use) so it sits right above that
+  // bar regardless of height, not in one fixed row.
+  const countLabels = bars.filter((b) => b.count).map((b) => `
+    <span style="left:${(b.cx / w * 100).toFixed(2)}%;top:${(b.y / h * 100).toFixed(2)}%">${b.count}</span>
+  `).join('');
+  const monthLabels = bars.map((b) => `
+    <span style="left:${(b.cx / w * 100).toFixed(2)}%;top:${((baseline + 2) / h * 100).toFixed(2)}%">${escapeHtml(b.label)}</span>
+  `).join('');
+  return `
+    <div class="trend-sparkline">
+      <div class="form-guide-label">${t('player.matchesPerMonth')}</div>
+      <div class="months-chart">
+        <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px">
+          <line x1="${padX}" y1="${baseline}" x2="${w - padX}" y2="${baseline}" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+          ${rects}
+        </svg>
+        <div class="months-chart-labels months-chart-counts">${countLabels}</div>
+        <div class="months-chart-labels months-chart-axis">${monthLabels}</div>
+      </div>
+    </div>
+  `;
+}
+
+// Same measure-then-render two-pass approach as renderTrendChart, for the
+// months-per-bar chart above.
+function renderMonthsChart(elId, matches) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (!matches.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="trend-sparkline"><div class="months-chart"></div></div>';
+  const containerWidth = el.querySelector('.months-chart').clientWidth;
+  el.innerHTML = matchesPerMonthHtml(matches, containerWidth);
+}
+
 // Career record, always computed from the full finished-match history —
 // independent of the result/year filters below, which only narrow the list.
 // Shown two ways: BLTA league matches only (ELITE/NEXT_GEN/NOVICE), and
@@ -357,9 +435,11 @@ function renderStats() {
   document.getElementById('form-blta').innerHTML = formGuideHtml(bltaFinished);
   document.getElementById('form-overall').innerHTML = formGuideHtml(finished);
   renderTrendChart('trend-blta', bltaFinished, 'blta');
-  // The "All matches" panel starts display:none — its trend chart is
-  // (re-)rendered when that tab is actually switched to instead (see the
-  // #stats-tabs click handler below), once it can be measured accurately.
+  renderMonthsChart('months-blta', bltaFinished);
+  // The "All matches" panel starts display:none — its trend/months charts
+  // are (re-)rendered when that tab is actually switched to instead (see
+  // the #stats-tabs click handler below), once they can be measured
+  // accurately.
 }
 
 // Badge definitions are admin-managed (see /badges-admin) — fetched once
@@ -579,11 +659,16 @@ document.getElementById('stats-tabs').addEventListener('click', (e) => {
   document.querySelectorAll('#stats-tabs .tab').forEach((b) => b.classList.toggle('active', b === btn));
   document.getElementById('stats-panel-blta').style.display = btn.dataset.statsTab === 'blta' ? '' : 'none';
   document.getElementById('stats-panel-overall').style.display = btn.dataset.statsTab === 'overall' ? '' : 'none';
-  // Re-render whichever trend chart just became visible — it can only be
-  // measured accurately (see renderTrendChart) once its panel is actually
-  // showing, not while it was still display:none.
-  if (btn.dataset.statsTab === 'overall') renderTrendChart('trend-overall', lastAllFinished, 'overall');
-  else renderTrendChart('trend-blta', lastBltaFinished, 'blta');
+  // Re-render whichever trend/months charts just became visible — they can
+  // only be measured accurately (see renderTrendChart) once their panel is
+  // actually showing, not while it was still display:none.
+  if (btn.dataset.statsTab === 'overall') {
+    renderTrendChart('trend-overall', lastAllFinished, 'overall');
+    renderMonthsChart('months-overall', lastAllFinished);
+  } else {
+    renderTrendChart('trend-blta', lastBltaFinished, 'blta');
+    renderMonthsChart('months-blta', lastBltaFinished);
+  }
 });
 
 // The "N planned matches" stat box under the profile photo just counts
