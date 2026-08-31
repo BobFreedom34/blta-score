@@ -518,6 +518,95 @@ function createVenueChipPicker({ listId, inputId, addBtnId }) {
   };
 }
 
+// ---------- "Propose times for opponent" modal (shared) ----------
+// Turns an existing undated Planned match into one awaiting a scheduling
+// response, same widgets as the "Schedule a match" page, just built once
+// here and reset() on each open instead of reloading a whole page. Shared
+// by app.js (homepage) and player.js (a player's own match list) — both
+// pages carry identical #propose-times-modal/#share-modal markup (see
+// index.html/player.html) so this one instance drives either.
+let proposeTimesToken = null;
+let proposeTimesOnSuccess = null;
+const proposeAvailabilityPicker = createAvailabilityPicker({ weekTabsId: 'modal-week-tabs', gridWrapId: 'modal-availability-grid-wrap', slotCountId: 'modal-slot-count' });
+const proposeVenuePicker = createVenueChipPicker({ listId: 'modal-venue-chip-list', inputId: 'modal-venue-input', addBtnId: 'modal-venue-add-btn' });
+const proposeProposerPicker = createStaticPlayerChoicePicker('modal-proposer-choice-row');
+document.getElementById('modal-clear-slots-btn').addEventListener('click', () => proposeAvailabilityPicker.clear());
+
+// onSuccess (optional) is called once the proposal is sent — app.js passes
+// its own loadMatches(), player.js passes load(), so whichever page's list
+// is showing this match refreshes to reflect the new "awaiting response"
+// state.
+function openProposeTimesModal(token, p1Name, p2Name, p1Id, p2Id, onSuccess) {
+  proposeTimesToken = token;
+  proposeTimesOnSuccess = onSuccess || null;
+  proposeAvailabilityPicker.reset();
+  proposeVenuePicker.clear();
+  proposeProposerPicker.setNames(p1Name, p2Name);
+  // If the logged-in player opening this modal is one of the two match
+  // players, we already know who's proposing — lock the answer to them
+  // instead of asking (see canManageMatch's ownership check, which is what
+  // let them get here in the first place).
+  const forcedProposer = (playerAuthed && currentPlayerId)
+    ? (currentPlayerId === Number(p1Id) ? 1 : currentPlayerId === Number(p2Id) ? 2 : null)
+    : null;
+  proposeProposerPicker.reset(forcedProposer, { lock: forcedProposer != null });
+  document.getElementById('modal-proposer-optional-hint').style.display = forcedProposer != null ? 'none' : '';
+  document.getElementById('modal-notify-email').value = '';
+  document.getElementById('propose-times-error').textContent = '';
+  document.getElementById('propose-times-modal').style.display = 'flex';
+}
+
+document.getElementById('propose-times-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('propose-times-error');
+  errorEl.textContent = '';
+  if (proposeAvailabilityPicker.selectedSlots.size === 0) {
+    errorEl.textContent = t('proposeTimes.markAtLeastOne');
+    return;
+  }
+  if (proposeVenuePicker.venues.length === 0) {
+    errorEl.textContent = t('proposeTimes.addAtLeastOneVenue');
+    return;
+  }
+  const notifyEmail = document.getElementById('modal-notify-email').value.trim();
+  if (notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail)) {
+    errorEl.textContent = t('proposeTimes.invalidEmail');
+    return;
+  }
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  try {
+    // POST .../counter-propose rather than PATCH here deliberately — the
+    // server writes this as the match's first proposal if it doesn't have
+    // one yet, or as an independent second calendar alongside an existing
+    // one otherwise (see routes/matches.js), so this same button keeps
+    // working correctly for a match the opponent already proposed times
+    // for instead of silently overwriting their offer.
+    const updated = await api(`/matches/${proposeTimesToken}/counter-propose`, {
+      method: 'POST',
+      body: {
+        proposalSlots: Array.from(proposeAvailabilityPicker.selectedSlots),
+        proposalVenues: proposeVenuePicker.venues,
+        proposedBy: proposeProposerPicker.getPicked(),
+        proposalNotifyEmail: notifyEmail || undefined,
+      },
+    });
+    document.getElementById('propose-times-modal').style.display = 'none';
+    // The share-with-opponent popup (link + Copy link) is the actual
+    // confirmation here — no separate toast needed on top of it.
+    openShareModal(
+      updated,
+      t('proposeTimes.whatsappText', { p1: updated.player1.name, p2: updated.player2.name }),
+      t('proposeTimes.shareDesc')
+    );
+    if (proposeTimesOnSuccess) proposeTimesOnSuccess();
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+  submitBtn.disabled = false;
+});
+
 // "6-4, 3-2" / "Retirement" / "6-4, 3-2 — Retirement" / "Best of 3 sets" (planned)
 function matchResultText(m) {
   if (m.status === 'PLANNED') return m.formatLabel;

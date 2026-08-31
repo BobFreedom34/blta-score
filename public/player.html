@@ -259,6 +259,64 @@
   </div>
 </div>
 
+<!-- Propose times modal — turns an existing undated Planned match into one
+     awaiting a scheduling response, same widgets as the Schedule a match
+     page (see createAvailabilityPicker/createVenueChipPicker/
+     openProposeTimesModal in common.js). -->
+<div class="modal-backdrop" id="propose-times-modal" style="display:none">
+  <div class="modal" style="max-width:640px">
+    <button type="button" class="close" data-close="propose-times-modal" aria-label="Close">&times;</button>
+    <h3 data-i18n="proposeTimes.title">Navrhnúť termíny súperovi</h3>
+    <p style="font-size:13px;color:var(--gray);margin:-6px 0 16px" data-i18n="proposeTimes.desc">Označte všetky časy, kedy môžete hrať, a niekoľko miest, ktoré vám vyhovujú — súper si jeden vyberie cez zdieľaný odkaz na zápas.</p>
+    <form id="propose-times-form">
+      <div class="field">
+        <label data-i18n="proposeTimes.venues">Preferované miesta</label>
+        <div class="venue-chip-row" id="modal-venue-chip-list"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input type="text" id="modal-venue-input" placeholder="napr. NTC Bratislava, kurt 3" style="flex:1" data-i18n-placeholder="quickSchedule.placePlaceholder">
+          <button type="button" class="btn btn-outline" id="modal-venue-add-btn" data-i18n="proposeTimes.add">Pridať</button>
+        </div>
+      </div>
+      <div class="field">
+        <label><span data-i18n="proposeTimes.whoProposing">Kto navrhuje?</span> <span id="modal-proposer-optional-hint" style="font-weight:400;color:var(--gray-dim);font-size:12px" data-i18n="common.optional">(voliteľné)</span></label>
+        <div class="server-choice-row balls-choice-row" id="modal-proposer-choice-row">
+          <button type="button" class="btn btn-outline btn-block" data-value="1" data-i18n="common.player1">Hráč 1</button>
+          <button type="button" class="btn btn-outline btn-block" data-value="2" data-i18n="common.player2">Hráč 2</button>
+        </div>
+        <small data-i18n="proposeTimes.shownHint">Zobrazí sa súperovi nad termínmi, aby vedel, komu odpovedá.</small>
+      </div>
+      <div class="field">
+        <label><span data-i18n="proposeTimes.markTimes">Označte časy, kedy môžete hrať</span> <span id="modal-slot-count" style="font-weight:400;color:var(--gray-dim)"></span></label>
+        <div class="tabs week-picker-tabs" id="modal-week-tabs"></div>
+        <div class="availability-grid-wrap" id="modal-availability-grid-wrap"></div>
+        <button type="button" class="btn btn-sm btn-outline" id="modal-clear-slots-btn" style="margin-top:10px" data-i18n="common.clearAll">Vymazať všetko</button>
+      </div>
+      <div class="field">
+        <label for="modal-notify-email"><span data-i18n="proposeTimes.emailConfirm">E-mail pre potvrdenie</span> <span style="font-weight:400;color:var(--gray-dim);font-size:12px" data-i18n="common.optional">(voliteľné)</span></label>
+        <input type="email" id="modal-notify-email" placeholder="you@example.com">
+      </div>
+      <div id="propose-times-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px" data-i18n="proposeTimes.send">Odoslať návrh</button>
+    </form>
+  </div>
+</div>
+
+<!-- Share modal — shown right after "Propose times for opponent" succeeds,
+     so there's an immediate link + Copy link to hand to the opponent
+     (see openShareModal in common.js). -->
+<div class="modal-backdrop" id="share-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="share-modal" aria-label="Close">&times;</button>
+    <h3 data-i18n="share.title">Zdieľať zápas</h3>
+    <p id="share-modal-desc" style="font-size:13px;color:var(--gray);margin:-6px 0 12px;display:none"></p>
+    <div class="code-box" id="share-link"></div>
+    <div class="share-row">
+      <button class="btn btn-green btn-sm" id="whatsapp-btn">WhatsApp</button>
+      <button class="btn btn-outline btn-sm" id="copy-link-btn" data-i18n="share.copyLink">Kopírovať odkaz</button>
+    </div>
+  </div>
+</div>
+
 <!-- Edit match modal — the same initial-settings fields as the "New match"
      form, pre-filled and editable for a match that already exists. Opened
      both by a match card's ✏️ button (without navigating away — see

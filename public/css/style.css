@@ -830,7 +830,10 @@ datalist {}
   align-items: stretch;
   gap: 10px;
   border-radius: 4px;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
 }
+.player-upcoming-stat:hover { box-shadow: var(--shadow-lg); }
 .player-upcoming-stat .label {
   display: flex;
   flex-direction: column;
@@ -1264,19 +1267,13 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   min-width: 0;
 }
 .player-row:last-child { border-bottom: none; }
-/* .player-name-badges wraps the name and its badges preview together —
-   flex-basis 100% (rather than the usual flex:1) so that pair always
+/* flex-basis 100% (rather than the usual flex:1) so the name always
    claims its own full-width line above phone/actions once those wrap —
    the narrower a grid column gets, the more likely admin's phone +
    Edit/Delete buttons don't fit next to a name on one line (see the
    3/2-column #player-list grid above), and a name sharing a line with
-   only part of that group read worse than the two stacking cleanly.
-   Inside that pair, flex-wrap does the "next to the name on desktop"
-   part for free: the badges preview sits right after the name while
-   there's room, and only drops to its own line once a narrower column
-   genuinely can't fit both — no separate breakpoint needed. */
-.player-name-badges { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex: 1 1 100%; min-width: 0; }
-.player-name { font-weight: 700; font-size: 14px; flex: 0 1 auto; min-width: 0; }
+   only part of that group read worse than the two stacking cleanly. */
+.player-name { font-weight: 700; font-size: 14px; flex: 1 1 100%; min-width: 0; }
 .player-row-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .player-row .edit-name-input {
   flex: 1;
@@ -1299,13 +1296,6 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   font-family: inherit;
   font-size: 14px;
 }
-/* Earned badges plus a fixed-size taste of what's still locked (see
-   playerBadgesPreviewHtml in players.js), most-valuable-first — a fanned
-   overlap stack (see .rank-badges-icons for the same pattern on the
-   Rankings page) so even a long earned list stays compact enough to sit
-   next to the name instead of needing its own line. */
-.player-badges-preview { display: flex; flex-shrink: 0; }
-.player-badges-preview .badge-medal-mini:not(:first-child) { margin-left: -13px; }
 .badge-medal-mini { width: 26px; height: 26px; font-size: 13px; margin: 0; }
 .badge-medal-mini img { border-radius: inherit; }
 

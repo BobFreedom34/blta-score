@@ -3,67 +3,6 @@ let query = '';
 let players = [];
 let isAdminUser = false;
 
-// Populated once up front (see loadBadgesData) from a single bulk fetch of
-// every finished match, rather than one request per player — the same
-// computeEarnedBadges() the profile page uses, just fed each player's own
-// slice of that one match list instead of a per-player API call.
-let badgeDefsCache = null;
-let earnedBadgesByPlayerId = new Map();
-const LOCKED_PREVIEW_COUNT = 3;
-
-async function loadBadgesData() {
-  try {
-    const [defs, finished] = await Promise.all([api('/badges'), api('/matches?status=FINISHED')]);
-    badgeDefsCache = defs;
-    const matchesByPlayerId = new Map();
-    finished.forEach((m) => {
-      [m.player1.id, m.player2.id].forEach((pid) => {
-        if (!matchesByPlayerId.has(pid)) matchesByPlayerId.set(pid, []);
-        matchesByPlayerId.get(pid).push(m);
-      });
-    });
-    earnedBadgesByPlayerId = new Map();
-    matchesByPlayerId.forEach((matches, pid) => {
-      earnedBadgesByPlayerId.set(pid, computeEarnedBadges(pid, matches, badgeDefsCache));
-    });
-  } catch {
-    // Non-fatal — the roster itself still loads, it just renders without
-    // the badges preview (playerBadgesPreviewHtml no-ops while defs are null).
-    badgeDefsCache = null;
-  }
-}
-
-// GET /badges comes back easiest-first per group (sort_order, then id) —
-// the admin's own "lower shows first" convention (see badges-admin.js
-// hint text) means a higher sort_order is a harder, more valuable badge.
-// Reversed once here rather than per row.
-function byMostValuableFirst(a, b) {
-  return (b.sortOrder - a.sortOrder) || (b.id - a.id);
-}
-
-// Every badge this player has already earned, plus a fixed-size preview of
-// what's still locked (capped at LOCKED_PREVIEW_COUNT, or fewer if that's
-// all that's left) — a taste of what to go for next, not the full list
-// (that's what the player's own profile page is for). The locked slice is
-// still picked easiest-remaining-first (the most realistic "go for this
-// next"), but the combined row then displays most-valuable-first.
-function playerBadgesPreviewHtml(playerId) {
-  if (!badgeDefsCache) return '';
-  const earned = earnedBadgesByPlayerId.get(playerId) || new Set();
-  const earnedDefs = badgeDefsCache.filter((b) => earned.has(b.id));
-  const lockedDefs = badgeDefsCache.filter((b) => !earned.has(b.id)).slice(0, LOCKED_PREVIEW_COUNT);
-  if (!earnedDefs.length && !lockedDefs.length) return '';
-  const iconHtml = (b) => `
-    <div class="badge-medal badge-medal-mini${earned.has(b.id) ? '' : ' locked'}" title="${escapeHtml(b.name)} — ${escapeHtml(b.description)}">${badgeIconInner(b.icon)}</div>
-  `;
-  const ordered = [...earnedDefs, ...lockedDefs].sort(byMostValuableFirst);
-  return `
-    <div class="player-badges-preview">
-      ${ordered.map(iconHtml).join('')}
-    </div>
-  `;
-}
-
 // Phone is admin-only (it doubles as a player's login credential — see
 // auth.js) and only ever present in the API response at all when the
 // viewer is admin, so this display/edit UI only shows up for them too.
@@ -79,10 +18,7 @@ function playerRowHtml(p) {
   ` : '';
   return `
     <div class="player-row" data-id="${p.id}">
-      <div class="player-name-badges">
-        <a class="player-name" href="/player/${p.slug || p.id}">${escapeHtml(p.name)}</a>
-        ${playerBadgesPreviewHtml(p.id)}
-      </div>
+      <a class="player-name" href="/player/${p.slug || p.id}">${escapeHtml(p.name)}</a>
       ${phone}
       ${actions}
     </div>
@@ -209,8 +145,7 @@ document.getElementById('filter-q').addEventListener('input', (e) => {
 });
 
 (async () => {
-  const [adminResult] = await Promise.all([checkAdmin(), loadBadgesData()]);
-  isAdminUser = adminResult;
+  isAdminUser = await checkAdmin();
   document.getElementById('add-player-card').style.display = isAdminUser ? '' : 'none';
   document.getElementById('admin-required-card').style.display = isAdminUser ? 'none' : '';
   loadPlayers();

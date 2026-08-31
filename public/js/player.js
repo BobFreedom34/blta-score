@@ -65,7 +65,12 @@ function matchCardHtml(m) {
         </div>
       `}
       ${isOverdueUnresolved(m) ? `<div class="overdue-warning">${t('matches.overdueWarning')}</div>` : ''}
-      ${m.status === 'PLANNED' && !m.scheduledAt ? `<button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}" style="margin-top:6px"><span class="btn-text-full">${t('matches.setDateLocation')}</span><span class="btn-text-compact">${t('matches.setDateLocationShort')}</span></button>` : ''}
+      ${m.status === 'PLANNED' && !m.scheduledAt ? `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}"><span class="btn-text-full">${t('matches.setDateLocation')}</span><span class="btn-text-compact">${t('matches.setDateLocationShort')}</span></button>
+          <button type="button" class="btn btn-sm btn-outline propose-times-btn" data-token="${m.token}" data-p1-id="${m.player1.id}" data-p2-id="${m.player2.id}" data-p1-name="${escapeHtml(m.player1.name)}" data-p2-name="${escapeHtml(m.player2.name)}">${t('matches.proposeTimes')}</button>
+        </div>
+      ` : ''}
     </a>
   `;
 }
@@ -501,6 +506,13 @@ listEl.addEventListener('click', (e) => {
     requirePlayerAuth(() => openQuickScheduleModal(scheduleBtn.dataset.token));
     return;
   }
+  const proposeBtn = e.target.closest('.propose-times-btn');
+  if (proposeBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    requirePlayerAuth(() => openProposeTimesModal(proposeBtn.dataset.token, proposeBtn.dataset.p1Name, proposeBtn.dataset.p2Name, proposeBtn.dataset.p1Id, proposeBtn.dataset.p2Id, load));
+    return;
+  }
   const quickEditBtn = e.target.closest('.match-quick-edit-btn');
   if (quickEditBtn) {
     e.preventDefault();
@@ -572,6 +584,21 @@ document.getElementById('stats-tabs').addEventListener('click', (e) => {
   // showing, not while it was still display:none.
   if (btn.dataset.statsTab === 'overall') renderTrendChart('trend-overall', lastAllFinished, 'overall');
   else renderTrendChart('trend-blta', lastBltaFinished, 'blta');
+});
+
+// The "N planned matches" stat box under the profile photo just counts
+// GROUPS[1] (scheduled) + GROUPS[2] (not yet scheduled) — clicking it
+// scrolls straight to wherever those two live in the match list below,
+// whichever of the two headings actually rendered first (a group with no
+// matches — or none left after the opponent/category/year filters — skips
+// its heading entirely, see render() above). offset accounts for the
+// sticky top bar so the heading doesn't end up hidden behind it.
+document.querySelector('.player-upcoming-stat').addEventListener('click', () => {
+  const headings = Array.from(document.querySelectorAll('#player-match-list .match-list-heading'));
+  const target = headings.find((h) => h.textContent === t('matches.scheduledHeading') || h.textContent === t('matches.plannedHeading'))
+    || document.getElementById('player-match-list');
+  const top = target.getBoundingClientRect().top + window.scrollY - 76;
+  window.scrollTo({ top, behavior: 'smooth' });
 });
 
 document.getElementById('badges-toggle').addEventListener('click', openBadgesModal);
