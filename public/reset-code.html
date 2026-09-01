@@ -38,11 +38,25 @@
     <form id="reset-code-form">
       <div class="field">
         <label for="reset-code-input" data-i18n="login.newCode">Nový kód</label>
-        <input type="text" inputmode="numeric" maxlength="5" id="reset-code-input" placeholder="•••••" autocomplete="off">
+        <div class="otp-group" id="reset-code-input-otp">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+        </div>
+        <input type="hidden" id="reset-code-input">
       </div>
       <div class="field">
         <label for="reset-code-confirm-input" data-i18n="login.confirmCode">Zopakujte kód</label>
-        <input type="text" inputmode="numeric" maxlength="5" id="reset-code-confirm-input" placeholder="•••••" autocomplete="off">
+        <div class="otp-group" id="reset-code-confirm-input-otp">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+        </div>
+        <input type="hidden" id="reset-code-confirm-input">
       </div>
       <div id="reset-code-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
       <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px" data-i18n="login.createCode">Vytvoriť kód</button>

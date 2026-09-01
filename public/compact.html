@@ -152,7 +152,14 @@
       <p style="font-size:13px;color:var(--gray);margin:8px 0">The code you created the first time you logged in.</p>
       <form id="player-login-pin-form">
         <div class="field">
-          <input type="text" inputmode="numeric" maxlength="5" id="player-login-pin-input" placeholder="•••••" autocomplete="off">
+          <div class="otp-group" id="player-login-pin-input-otp">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          </div>
+          <input type="hidden" id="player-login-pin-input">
         </div>
         <div id="player-login-pin-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
         <button type="submit" class="btn btn-primary btn-block">Log in</button>
@@ -169,11 +176,25 @@
       <form id="player-login-set-pin-form">
         <div class="field">
           <label for="player-login-set-pin-input">New code</label>
-          <input type="text" inputmode="numeric" maxlength="5" id="player-login-set-pin-input" placeholder="•••••" autocomplete="off">
+          <div class="otp-group" id="player-login-set-pin-input-otp">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          </div>
+          <input type="hidden" id="player-login-set-pin-input">
         </div>
         <div class="field">
           <label for="player-login-set-pin-confirm-input">Confirm code</label>
-          <input type="text" inputmode="numeric" maxlength="5" id="player-login-set-pin-confirm-input" placeholder="•••••" autocomplete="off">
+          <div class="otp-group" id="player-login-set-pin-confirm-input-otp">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          </div>
+          <input type="hidden" id="player-login-set-pin-confirm-input">
         </div>
         <div id="player-login-set-pin-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
         <button type="submit" class="btn btn-primary btn-block">Create code</button>

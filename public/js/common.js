@@ -943,6 +943,71 @@ document.querySelectorAll('.modal-backdrop').forEach((el) => {
   el.addEventListener('click', (e) => { if (e.target === el) el.style.display = 'none'; });
 });
 
+// OTP-style 5-digit code entry — a row of 5 single-digit boxes (see
+// .otp-group/.otp-box in style.css) in front of a plain hidden <input>
+// (id is the group's own id minus the "-otp" suffix, e.g.
+// "player-login-pin-input-otp" pairs with "player-login-pin-input") that
+// stays in sync with them. That hidden input is the one every existing
+// bit of login/registration/reset JS actually reads/writes — via
+// `.value`, or (since setting .value directly wouldn't touch the boxes)
+// the otpClear/otpFocus/otpDisable helpers below wherever that code used
+// to just call .value='' / .focus() / .disabled=x on the input directly —
+// so this only changes how the digits get typed in, never how the rest
+// of the app reads the result.
+const otpBoxesByInputId = new Map();
+
+function initOtpGroups() {
+  document.querySelectorAll('.otp-group').forEach((group) => {
+    const hiddenId = group.id.replace(/-otp$/, '');
+    const hidden = document.getElementById(hiddenId);
+    if (!hidden) return;
+    const boxes = Array.from(group.querySelectorAll('.otp-box'));
+    otpBoxesByInputId.set(hiddenId, boxes);
+    const sync = () => { hidden.value = boxes.map((b) => b.value).join(''); };
+
+    boxes.forEach((box, i) => {
+      box.addEventListener('input', () => {
+        box.value = box.value.replace(/\D/g, '').slice(-1);
+        sync();
+        if (box.value && boxes[i + 1]) boxes[i + 1].focus();
+      });
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !box.value && boxes[i - 1]) boxes[i - 1].focus();
+        else if (e.key === 'ArrowLeft' && boxes[i - 1]) boxes[i - 1].focus();
+        else if (e.key === 'ArrowRight' && boxes[i + 1]) boxes[i + 1].focus();
+      });
+      // Pasting a full code (e.g. copied from a password manager) fills
+      // every box at once instead of just dumping it all into whichever
+      // one happened to be focused.
+      box.addEventListener('paste', (e) => {
+        const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+        if (!text) return;
+        e.preventDefault();
+        boxes.forEach((b, j) => { b.value = text[j] || ''; });
+        sync();
+        const nextEmpty = boxes.findIndex((b) => !b.value);
+        (nextEmpty === -1 ? boxes[boxes.length - 1] : boxes[nextEmpty]).focus();
+      });
+    });
+  });
+}
+initOtpGroups();
+
+function otpClear(hiddenInputId) {
+  const hidden = document.getElementById(hiddenInputId);
+  if (hidden) hidden.value = '';
+  const boxes = otpBoxesByInputId.get(hiddenInputId);
+  if (boxes) boxes.forEach((b) => { b.value = ''; });
+}
+function otpFocus(hiddenInputId) {
+  const boxes = otpBoxesByInputId.get(hiddenInputId);
+  if (boxes && boxes[0]) boxes[0].focus();
+}
+function otpSetDisabled(hiddenInputId, disabled) {
+  const boxes = otpBoxesByInputId.get(hiddenInputId);
+  if (boxes) boxes.forEach((b) => { b.disabled = disabled; });
+}
+
 async function api(path, options = {}) {
   const res = await fetch(`/api${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -1433,11 +1498,11 @@ function openPlayerLoginModal(onSuccess, opts) {
     // is sending them straight back here, skipping the phone/pin steps
     // entirely since they're not relevant right now.
     pinSetupMandatory = true;
-    setPinInput.value = '';
-    setPinConfirmInput.value = '';
+    otpClear('player-login-set-pin-input');
+    otpClear('player-login-set-pin-confirm-input');
     setPinErrorEl.textContent = '';
     showStep(setPinStep);
-    setTimeout(() => setPinInput.focus(), 50);
+    setTimeout(() => otpFocus('player-login-set-pin-input'), 50);
   } else {
     showStep(formStep);
   }
@@ -1456,11 +1521,11 @@ function openPlayerLoginModal(onSuccess, opts) {
       if (res.pinSetupRequired) {
         enteredPhone = code;
         pinSetupMandatory = true;
-        setPinInput.value = '';
-        setPinConfirmInput.value = '';
+        otpClear('player-login-set-pin-input');
+        otpClear('player-login-set-pin-confirm-input');
         setPinErrorEl.textContent = '';
         showStep(setPinStep);
-        setTimeout(() => setPinInput.focus(), 50);
+        setTimeout(() => otpFocus('player-login-set-pin-input'), 50);
       } else {
         // Confirm who just logged in instead of closing silently — see
         // showSuccess; the modal only actually closes (and hands off to
@@ -1475,10 +1540,10 @@ function openPlayerLoginModal(onSuccess, opts) {
       // locked-out player needs, and the error text itself explains why).
       if (err.data && (err.data.pinRequired || err.data.locked)) {
         enteredPhone = code;
-        pinInput.value = '';
+        otpClear('player-login-pin-input');
         pinErrorEl.textContent = err.data.locked ? loginErrorText(err) : '';
         showStep(pinStep);
-        setTimeout(() => pinInput.focus(), 50);
+        setTimeout(() => otpFocus('player-login-pin-input'), 50);
       } else {
         errorEl.textContent = loginErrorText(err);
         // notFound means this genuinely looks like a phone number, just
@@ -1516,11 +1581,11 @@ function openPlayerLoginModal(onSuccess, opts) {
       applySession(res);
       // Same landing spot a pinSetupRequired login uses — registering and
       // a first login both end with "now create your code".
-      setPinInput.value = '';
-      setPinConfirmInput.value = '';
+      otpClear('player-login-set-pin-input');
+      otpClear('player-login-set-pin-confirm-input');
       setPinErrorEl.textContent = '';
       showStep(setPinStep);
-      setTimeout(() => setPinInput.focus(), 50);
+      setTimeout(() => otpFocus('player-login-set-pin-input'), 50);
     } catch (err) {
       registerErrorEl.textContent = loginErrorText(err);
     }
@@ -1537,7 +1602,7 @@ function openPlayerLoginModal(onSuccess, opts) {
     const pin = pinInput.value.trim();
     if (!pin) return;
     pinErrorEl.textContent = '';
-    pinInput.disabled = true;
+    otpSetDisabled('player-login-pin-input', true);
     pinSubmitBtn.disabled = true;
     try {
       const res = await api('/player/login', { method: 'POST', body: { code: enteredPhone, pin } });
@@ -1545,10 +1610,10 @@ function openPlayerLoginModal(onSuccess, opts) {
       showSuccess();
     } catch (err) {
       pinErrorEl.textContent = loginErrorText(err);
-      pinInput.value = '';
-      pinInput.focus();
+      otpClear('player-login-pin-input');
+      otpFocus('player-login-pin-input');
     }
-    pinInput.disabled = false;
+    otpSetDisabled('player-login-pin-input', false);
     pinSubmitBtn.disabled = false;
   };
 
@@ -1620,7 +1685,7 @@ function openPlayerLoginModal(onSuccess, opts) {
 
   forgotBackBtn.onclick = () => {
     showStep(pinStep);
-    setTimeout(() => pinInput.focus(), 50);
+    setTimeout(() => otpFocus('player-login-pin-input'), 50);
   };
 
   document.getElementById('player-login-ok-btn').onclick = () => {

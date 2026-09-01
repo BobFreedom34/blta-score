@@ -300,6 +300,32 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .filters input[type="text"] { flex: 1; min-width: 180px; }
 .filters select { min-width: 150px; }
 #reset-filters-btn { border-color: var(--white); color: var(--white); }
+
+/* ---------- OTP-style 5-digit code entry ---------- */
+/* One box per digit (login code / new code / confirm code / email-reset
+   code — see setupOtpGroups in common.js) instead of one text field for
+   the whole code. flex + a max-width cap (rather than a fixed width) so
+   the row of 5 shrinks to fit a narrow modal instead of overflowing it;
+   the underlying value lives on a plain hidden <input> these sit in front
+   of, so every existing bit of login/registration/reset JS that reads it
+   keeps working completely unchanged. */
+.otp-group { display: flex; gap: 8px; justify-content: center; margin: 4px 0; }
+.otp-box {
+  flex: 1 1 0;
+  max-width: 52px;
+  aspect-ratio: 3 / 4;
+  padding: 0;
+  text-align: center;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 1.5px solid #ddd;
+  background: var(--white);
+  color: var(--ink);
+}
+.otp-box:focus { border-color: var(--orange); outline: none; }
+.otp-box:disabled { opacity: 0.55; }
 /* Below ~640px the search box and two selects no longer fit side by side
    and stack into 4 full-width rows — a 2-column grid instead pairs the
    selects up (a search box, where present, spans both columns above them;
