@@ -1237,11 +1237,13 @@ function updatePlayerNavLinks() {
 }
 
 async function refreshPlayerAuth() {
+  let needsPinSetup = false;
   try {
     const res = await api('/player/session');
     playerAuthed = !!res.isPlayer;
     currentPlayerName = res.playerName || null;
     currentPlayerId = res.playerId || null;
+    needsPinSetup = !!res.needsPinSetup;
   } catch {
     playerAuthed = false;
     currentPlayerName = null;
@@ -1252,6 +1254,13 @@ async function refreshPlayerAuth() {
   // homepage re-showing/hiding "Set date & location" once it knows who's
   // logged in) without common.js needing to know what each page does.
   window.dispatchEvent(new Event('blta:auth-changed'));
+  // A player who's logged in but never finished creating a code (see
+  // needsPinSetup in routes/player.js) gets sent straight back to that
+  // step on every page load — this is what actually stops "close the
+  // modal and never set one" from working: closing it (see the
+  // pinSetupMandatory close-handlers below) logs them back out, and the
+  // very next page they land on runs this same check again regardless.
+  if (needsPinSetup) openPlayerLoginModal(null, { startAtSetPin: true });
   return playerAuthed;
 }
 
@@ -1318,10 +1327,14 @@ function loginErrorText(err) {
 //                                    set up (server 401s with pinRequired);
 //                                    also where "Forgot your code?" lives
 //   3. player-login-step-set-pin  — only the first time (server 200s with
-//                                    pinSetupRequired) — creating a code is
-//                                    mandatory going forward, so there's no
-//                                    skip here; closing the modal without
-//                                    finishing just prompts again next login
+//                                    pinSetupRequired), or any later page
+//                                    load that still finds no code set
+//                                    (see refreshPlayerAuth's needsPinSetup
+//                                    check) — creating a code is mandatory
+//                                    going forward: closing the modal here
+//                                    (the X button or the backdrop) logs
+//                                    the player back out instead of just
+//                                    hiding it, via pinSetupMandatory below
 //   4. player-login-step-forgot   — reached from step 2's "Forgot your
 //                                    code?" link, not from a server response
 //   5. player-login-step-register — reached from step 1's "not registered
@@ -1334,7 +1347,15 @@ function loginErrorText(err) {
 //                                    an admin-added player's first login
 //   6. player-login-step-success  — always the last step, whichever way it
 //                                    got there
-function openPlayerLoginModal(onSuccess) {
+//
+// True only while step 3 is showing because a code genuinely still has to
+// be created (not just "the modal happens to be sitting on that panel"
+// mid-flow) — gates the close-handlers below so closing the modal any
+// OTHER time (e.g. a not-yet-logged-in visitor backing out of the phone
+// step) behaves exactly as it always has, no logout involved.
+let pinSetupMandatory = false;
+
+function openPlayerLoginModal(onSuccess, opts) {
   const modal = document.getElementById('player-login-modal');
   if (!modal) return;
   const steps = ['form', 'pin', 'set-pin', 'forgot', 'register', 'success'].map((name) => document.getElementById(`player-login-step-${name}`));
@@ -1405,7 +1426,21 @@ function openPlayerLoginModal(onSuccess) {
   registerPromptEl.style.display = 'none';
   input.value = '';
   input.disabled = false;
-  showStep(formStep);
+
+  if (opts && opts.startAtSetPin) {
+    // Not a fresh login — refreshPlayerAuth found an already-logged-in
+    // player with no code yet (see needsPinSetup in routes/player.js) and
+    // is sending them straight back here, skipping the phone/pin steps
+    // entirely since they're not relevant right now.
+    pinSetupMandatory = true;
+    setPinInput.value = '';
+    setPinConfirmInput.value = '';
+    setPinErrorEl.textContent = '';
+    showStep(setPinStep);
+    setTimeout(() => setPinInput.focus(), 50);
+  } else {
+    showStep(formStep);
+  }
 
   form.onsubmit = async (e) => {
     e.preventDefault();
@@ -1420,6 +1455,7 @@ function openPlayerLoginModal(onSuccess) {
       applySession(res);
       if (res.pinSetupRequired) {
         enteredPhone = code;
+        pinSetupMandatory = true;
         setPinInput.value = '';
         setPinConfirmInput.value = '';
         setPinErrorEl.textContent = '';
@@ -1534,6 +1570,7 @@ function openPlayerLoginModal(onSuccess) {
     setPinSubmitBtn.disabled = true;
     try {
       await api('/player/set-pin', { method: 'POST', body: { pin, confirmPin } });
+      pinSetupMandatory = false;
       showSuccess();
     } catch (err) {
       setPinErrorEl.textContent = loginErrorText(err);
@@ -1592,7 +1629,38 @@ function openPlayerLoginModal(onSuccess) {
   };
 
   modal.style.display = 'flex';
-  setTimeout(() => input.focus(), 50);
+  // The startAtSetPin branch above already showed its own step and
+  // focused its own field — focusing the (now-hidden) phone input here
+  // too would just steal it back.
+  if (!(opts && opts.startAtSetPin)) setTimeout(() => input.focus(), 50);
+}
+
+// Closing the modal while pinSetupMandatory is true (the X button or
+// clicking the backdrop — both already close the modal via the generic
+// [data-close]/.modal-backdrop handlers up top; this just runs alongside
+// them) means walking away without creating a code, which would otherwise
+// leave the player sitting fully logged in with no code, indefinitely —
+// exactly the stuck state needsPinSetup/refreshPlayerAuth above exists to
+// prevent. Logging them out here closes that loophole for the current
+// page; the recheck on every other page load closes it for good.
+async function forceLogoutFromPinSetup() {
+  if (!pinSetupMandatory) return;
+  pinSetupMandatory = false;
+  try { await api('/player/logout', { method: 'POST' }); } catch { /* ignore */ }
+  playerAuthed = false;
+  currentPlayerName = null;
+  currentPlayerId = null;
+  updatePlayerNavLinks();
+  window.dispatchEvent(new Event('blta:auth-changed'));
+}
+document.querySelectorAll('#player-login-modal [data-close]').forEach((el) => {
+  el.addEventListener('click', forceLogoutFromPinSetup);
+});
+const playerLoginModalEl = document.getElementById('player-login-modal');
+if (playerLoginModalEl) {
+  playerLoginModalEl.addEventListener('click', (e) => {
+    if (e.target.id === 'player-login-modal') forceLogoutFromPinSetup();
+  });
 }
 
 // Runs onReady immediately if already logged in (as a real player or

@@ -30,8 +30,18 @@ function sessionInfo({ isPlayerFlag, player }) {
 
 router.get('/session', (req, res) => {
   const playerId = auth.getPlayerId(req);
-  const player = playerId ? db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(playerId) : null;
-  res.json(sessionInfo({ isPlayerFlag: auth.isPlayer(req), player }));
+  const player = playerId ? db.prepare('SELECT id, name, slug, login_pin FROM players WHERE id = ?').get(playerId) : null;
+  res.json({
+    ...sessionInfo({ isPlayerFlag: auth.isPlayer(req), player }),
+    // True for a player who's logged in (their phone was confirmed) but
+    // never actually finished creating a code — e.g. closed the
+    // pinSetupRequired step of their first login instead of completing
+    // it. Checked on every page load (see refreshPlayerAuth in
+    // common.js), not just at that first login, so there's no way to just
+    // sit logged in without a code by closing the modal or navigating
+    // away from it — the very next page re-opens it, forced.
+    needsPinSetup: !!(player && !player.login_pin),
+  });
 });
 
 // Digits only — everything else (spaces, dashes, a leading +, a country
