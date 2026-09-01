@@ -107,8 +107,33 @@ function requireLoggedIn(req, res, next) {
   next();
 }
 
+// Email and phone are never shown to an anonymous visitor or a logged-out
+// browser — only to a logged-in player (any player, not just their own
+// record) or an admin. Everything else on the bio stays public. Phone
+// doubles as a player's login credential, so this is a deliberate trust
+// call: any logged-in player can see it for anyone, on the understanding
+// that the BLTA player base isn't adversarial towards each other.
+function canSeePrivateFields(req) {
+  return isAdmin(req) || isPlayer(req);
+}
+// login_pin/reset_token/reset_token_expires/failed_pin_attempts (see
+// hashPin above and the reset flow in routes/player.js) are stripped
+// unconditionally — unlike phone/email, there's no viewer it's ever
+// appropriate to send these to (even failed_pin_attempts, not a secret by
+// itself, still reveals whether someone's currently locked out — no reason
+// another player needs that), so every response that could carry a player
+// row — directly (routes/players.js) or embedded in something else, like a
+// match's player1/player2 (routes/matches.js) — goes through this.
+function stripPrivateFields(player, req) {
+  if (!player) return player;
+  const { login_pin, reset_token, reset_token_expires, failed_pin_attempts, ...visible } = player;
+  if (canSeePrivateFields(req)) return visible;
+  const { phone, email, ...rest } = visible;
+  return rest;
+}
+
 module.exports = {
   COOKIE_NAME, PLAYER_COOKIE_NAME, isAdmin, logIn, logOut, requireAdmin,
   isPlayer, getPlayerId, logInPlayer, logOutPlayer, requirePlayer,
-  requireLoggedIn, hashPin, verifyPin,
+  requireLoggedIn, hashPin, verifyPin, canSeePrivateFields, stripPrivateFields,
 };

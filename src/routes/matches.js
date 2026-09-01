@@ -4,7 +4,7 @@ const db = require('../db');
 const engine = require('../matchEngine');
 const { sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail } = require('../mailer');
 const { sendPush } = require('../push');
-const { isAdmin, getPlayerId, requireLoggedIn } = require('../auth');
+const { isAdmin, getPlayerId, requireLoggedIn, stripPrivateFields } = require('../auth');
 
 const router = express.Router();
 
@@ -72,6 +72,21 @@ function getNotifyCounts(matchId) {
   return counts;
 }
 
+// stripPrivateFields(player, req) normally keeps phone/email for a
+// logged-in viewer (see auth.js) — but this payload doesn't have a single
+// viewer: besides being the direct HTTP response to whoever called the
+// API, it's also broadcast as-is to every socket in the match's room (see
+// broadcast() below), an audience that includes anonymous spectators with
+// no login at all. So player1/player2 here always get the same, most
+// restrictive treatment (no login_pin/reset_token/etc, and no phone/email
+// either) regardless of who happens to be asking — passing {} rather than
+// the real req forces stripPrivateFields down that no-privileges branch.
+// Nothing in the client reads phone/email off a match's embedded players
+// anyway (that's what GET /api/players/:id is for).
+function serializePlayer(player) {
+  return stripPrivateFields(player, {});
+}
+
 function serialize(row) {
   const p1 = getPlayer(row.player1_id);
   const p2 = getPlayer(row.player2_id);
@@ -112,8 +127,8 @@ function serialize(row) {
     updatedAt: row.updated_at,
     notifyStartCount: notifyCounts.START,
     notifyFinishCount: notifyCounts.FINISH,
-    player1: p1,
-    player2: p2,
+    player1: serializePlayer(p1),
+    player2: serializePlayer(p2),
   };
 }
 

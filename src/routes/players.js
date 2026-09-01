@@ -1,36 +1,8 @@
 const express = require('express');
 const db = require('../db');
-const { requireAdmin, isAdmin, isPlayer, getPlayerId } = require('../auth');
+const { requireAdmin, isAdmin, isPlayer, getPlayerId, stripPrivateFields } = require('../auth');
 
 const router = express.Router();
-
-// Email and phone are never shown to an anonymous visitor or a logged-out
-// browser — only to a logged-in player (any player, not just their own
-// record) or an admin. Everything else on the bio stays public. Phone
-// doubles as a player's login credential (see auth.js), so this is a
-// deliberate trust call: any logged-in player can see it for anyone, on
-// the understanding that the BLTA player base isn't adversarial towards
-// each other.
-function canSeePrivateFields(req) {
-  return isAdmin(req) || isPlayer(req);
-}
-// login_pin/reset_token/reset_token_expires/failed_pin_attempts (see
-// hashPin in auth.js and the reset flow in routes/player.js) are stripped
-// unconditionally — unlike phone/email, there's no viewer it's ever
-// appropriate to send these to (even failed_pin_attempts, not a secret by
-// itself, still reveals whether someone's currently locked out — no
-// reason another player needs that), so every response that could carry a
-// player row goes through this, including write-endpoint responses that
-// don't otherwise call stripPrivateFields for phone/email (those are fine
-// to skip there, since the caller in that case is always the player
-// themselves or an admin — these four just have no legitimate reason to
-// leave the server at all).
-function stripPrivateFields(player, req) {
-  const { login_pin, reset_token, reset_token_expires, failed_pin_attempts, ...visible } = player;
-  if (canSeePrivateFields(req)) return visible;
-  const { phone, email, ...rest } = visible;
-  return rest;
-}
 
 // A profile can only be edited by an admin, or by the specific logged-in
 // player it belongs to (see checkPlayerAccess below) — no shared code, no
