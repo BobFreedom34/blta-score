@@ -59,6 +59,14 @@ function findPlayerByPhone(raw) {
 
 const PHONE_NOT_FOUND_ERROR = "That phone number isn't on file — ask an admin to add it on your Players page entry";
 
+// error is always plain English (matches this app's existing convention —
+// every server error string always has been, regardless of UI language).
+// errorCode is a short machine key the client maps to a translated string
+// via t(`login.error.${errorCode}`) — see loginErrorText in common.js —
+// falling back to the raw English error above for any code that lookup
+// misses, so an unmapped/future error still shows *something* instead of
+// a blank message.
+
 // A real player's own phone number logs them in as that specific player
 // (see checkMatchAccess in routes/matches.js for what that scopes them
 // to). There used to be a second, anonymous-code path here too — it's
@@ -80,7 +88,7 @@ router.post('/login', (req, res) => {
   // Not worth a full table scan/comparison against something that's
   // clearly not a phone number.
   if (raw.replace(/\D/g, '').length < 6) {
-    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR });
+    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR, errorCode: 'phoneNotFound' });
   }
   const player = findPlayerByPhone(raw);
   if (!player) {
@@ -88,25 +96,30 @@ router.post('/login', (req, res) => {
     // looks like a phone number that just isn't registered yet — the
     // client uses that to offer POST /register as the next step, instead
     // of a dead-end "ask an admin".
-    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR, notFound: true });
+    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR, errorCode: 'phoneNotFound', notFound: true });
   }
 
   if (player.login_pin) {
     if (player.failed_pin_attempts >= MAX_PIN_ATTEMPTS) {
-      return res.status(401).json({ locked: true, error: 'Too many incorrect attempts — reset your code below, or ask an admin to reset it' });
+      return res.status(401).json({ locked: true, error: 'Too many incorrect attempts — reset your code below, or ask an admin to reset it', errorCode: 'locked' });
     }
     const pin = String(req.body.pin || '').trim();
     if (!pin) {
-      return res.status(401).json({ pinRequired: true, error: 'Enter your 5-digit code' });
+      return res.status(401).json({ pinRequired: true, error: 'Enter your 5-digit code', errorCode: 'enterCode' });
     }
     if (!auth.verifyPin(pin, player.login_pin)) {
       const attempts = player.failed_pin_attempts + 1;
       db.prepare('UPDATE players SET failed_pin_attempts = ? WHERE id = ?').run(attempts, player.id);
       if (attempts >= MAX_PIN_ATTEMPTS) {
-        return res.status(401).json({ locked: true, error: 'Too many incorrect attempts — reset your code below, or ask an admin to reset it' });
+        return res.status(401).json({ locked: true, error: 'Too many incorrect attempts — reset your code below, or ask an admin to reset it', errorCode: 'locked' });
       }
       const left = MAX_PIN_ATTEMPTS - attempts;
-      return res.status(401).json({ pinRequired: true, error: `Incorrect code (${left} attempt${left === 1 ? '' : 's'} left)` });
+      return res.status(401).json({
+        pinRequired: true,
+        error: `Incorrect code (${left} attempt${left === 1 ? '' : 's'} left)`,
+        errorCode: 'incorrectCode',
+        attemptsLeft: left,
+      });
     }
     if (player.failed_pin_attempts > 0) {
       db.prepare('UPDATE players SET failed_pin_attempts = 0 WHERE id = ?').run(player.id);
@@ -157,15 +170,15 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 router.post('/register', async (req, res) => {
   const name = (req.body.name || '').trim();
-  if (!name) return res.status(400).json({ error: 'Name is required' });
-  if (name.length > 60) return res.status(400).json({ error: 'Name is too long' });
+  if (!name) return res.status(400).json({ error: 'Name is required', errorCode: 'nameRequired' });
+  if (name.length > 60) return res.status(400).json({ error: 'Name is too long', errorCode: 'nameTooLong' });
 
   const raw = String(req.body.phone || '').trim();
   const digits = raw.replace(/[^\d+]/g, '');
   const isSlovakLocal = /^0\d{9}$/.test(digits);
   const isInternational = /^\+\d{8,15}$/.test(digits);
   if (!isSlovakLocal && !isInternational) {
-    return res.status(400).json({ error: 'Enter a 10-digit phone number starting with 0 (e.g. 0903111222), or a full international number starting with +' });
+    return res.status(400).json({ error: 'Enter a 10-digit phone number starting with 0 (e.g. 0903111222), or a full international number starting with +', errorCode: 'invalidPhoneFormat' });
   }
 
   // Unlike the optional email on an existing profile's bio (PATCH
@@ -174,18 +187,18 @@ router.post('/register', async (req, res) => {
   // the only self-service password-reset path (POST /forgot-pin) if they
   // ever forget their code.
   const email = (req.body.email || '').trim();
-  if (!email) return res.status(400).json({ error: 'Email is required' });
-  if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Invalid email' });
+  if (!email) return res.status(400).json({ error: 'Email is required', errorCode: 'emailRequired' });
+  if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Invalid email', errorCode: 'invalidEmail' });
 
   if (db.prepare('SELECT id FROM players WHERE name = ? COLLATE NOCASE').get(name)) {
-    return res.status(409).json({ error: 'A player with that name already exists — ask an admin, or log in instead if this is you' });
+    return res.status(409).json({ error: 'A player with that name already exists — ask an admin, or log in instead if this is you', errorCode: 'nameAlreadyExists' });
   }
   // Same loose last-6-digits comparison findPlayerByPhone/login uses —
   // checked here too, not just the DB's exact-string unique index on
   // phone, so registration can't create a second row that a later login's
   // own loose lookup would then find ambiguous between the two.
   if (findPlayerByPhone(digits)) {
-    return res.status(409).json({ error: 'This phone number is already registered to a player — try logging in instead' });
+    return res.status(409).json({ error: 'This phone number is already registered to a player — try logging in instead', errorCode: 'phoneAlreadyRegistered' });
   }
 
   const slug = uniqueSlugFor(name);
@@ -211,14 +224,14 @@ router.post('/register', async (req, res) => {
 // of who it applies to).
 router.post('/set-pin', (req, res) => {
   const playerId = auth.getPlayerId(req);
-  if (!playerId) return res.status(401).json({ error: 'Please log in first' });
+  if (!playerId) return res.status(401).json({ error: 'Please log in first', errorCode: 'pleaseLogInFirst' });
   const pin = String(req.body.pin || '').trim();
   const confirmPin = String(req.body.confirmPin || '').trim();
   if (!/^\d{5}$/.test(pin)) {
-    return res.status(400).json({ error: 'Code must be exactly 5 digits' });
+    return res.status(400).json({ error: 'Code must be exactly 5 digits', errorCode: 'codeMustBe5Digits' });
   }
   if (pin !== confirmPin) {
-    return res.status(400).json({ error: "Codes don't match" });
+    return res.status(400).json({ error: "Codes don't match", errorCode: 'codesDontMatch' });
   }
   db.prepare('UPDATE players SET login_pin = ?, failed_pin_attempts = 0, reset_token = NULL, reset_token_expires = NULL WHERE id = ?')
     .run(auth.hashPin(pin), playerId);
@@ -235,7 +248,7 @@ router.post('/forgot-pin', async (req, res) => {
   const raw = String(req.body.code || '').trim();
   const player = findPlayerByPhone(raw);
   if (!player) {
-    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR });
+    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR, errorCode: 'phoneNotFound' });
   }
   if (!player.email) {
     return res.json({ noEmail: true });
@@ -259,18 +272,18 @@ router.post('/forgot-pin', async (req, res) => {
 // login would.
 router.post('/reset-pin', (req, res) => {
   const token = String(req.body.token || '').trim();
-  if (!token) return res.status(400).json({ error: 'Missing reset token' });
+  if (!token) return res.status(400).json({ error: 'Missing reset token', errorCode: 'missingResetToken' });
   const player = db.prepare('SELECT id, name, slug, reset_token_expires FROM players WHERE reset_token = ?').get(token);
   if (!player || !player.reset_token_expires || new Date(player.reset_token_expires) < new Date()) {
-    return res.status(400).json({ error: 'This reset link is invalid or has expired — request a new one' });
+    return res.status(400).json({ error: 'This reset link is invalid or has expired — request a new one', errorCode: 'resetLinkInvalid' });
   }
   const pin = String(req.body.pin || '').trim();
   const confirmPin = String(req.body.confirmPin || '').trim();
   if (!/^\d{5}$/.test(pin)) {
-    return res.status(400).json({ error: 'Code must be exactly 5 digits' });
+    return res.status(400).json({ error: 'Code must be exactly 5 digits', errorCode: 'codeMustBe5Digits' });
   }
   if (pin !== confirmPin) {
-    return res.status(400).json({ error: "Codes don't match" });
+    return res.status(400).json({ error: "Codes don't match", errorCode: 'codesDontMatch' });
   }
   db.prepare('UPDATE players SET login_pin = ?, failed_pin_attempts = 0, reset_token = NULL, reset_token_expires = NULL WHERE id = ?')
     .run(auth.hashPin(pin), player.id);
@@ -288,7 +301,7 @@ router.post('/request-admin-reset', async (req, res) => {
   const raw = String(req.body.code || '').trim();
   const player = findPlayerByPhone(raw);
   if (!player) {
-    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR });
+    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR, errorCode: 'phoneNotFound' });
   }
   try {
     await sendAdminResetRequestEmail(player);

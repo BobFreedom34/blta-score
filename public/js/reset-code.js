@@ -43,7 +43,7 @@ if (!resetToken) {
       formCard.style.display = 'none';
       successCard.style.display = '';
     } catch (err) {
-      errorEl.textContent = err.message;
+      errorEl.textContent = loginErrorText(err);
     }
     submitBtn.disabled = false;
   });

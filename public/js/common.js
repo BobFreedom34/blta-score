@@ -1281,6 +1281,34 @@ function canManageMatch(m, isAdminUser) {
   return true;
 }
 
+// "N attempt(s) left" needs real plural forms in Slovak (1/2-4/5+), not
+// just an English-style singular/plural switch — used only by
+// loginErrorText's incorrectCode case below.
+function attemptsWord(n) {
+  if (currentLang === 'sk') {
+    if (n === 1) return 'pokus';
+    if (n >= 2 && n <= 4) return 'pokusy';
+    return 'pokusov';
+  }
+  return n === 1 ? 'attempt' : 'attempts';
+}
+
+// Every /player/* auth error (login, register, set-pin, forgot-pin,
+// reset-pin, request-admin-reset) carries a plain-English "error" string
+// (this app's long-standing convention for server error text generally)
+// alongside a short machine "errorCode" — this maps that code to a
+// translated string via t(`login.error.${code}`), falling back to the raw
+// English message for any code that isn't mapped (a future/forgotten one)
+// rather than showing nothing.
+function loginErrorText(err) {
+  const code = err.data && err.data.errorCode;
+  if (!code) return err.message;
+  const key = `login.error.${code}`;
+  const vars = code === 'incorrectCode' ? { count: err.data.attemptsLeft, word: attemptsWord(err.data.attemptsLeft) } : undefined;
+  const translated = t(key, vars);
+  return translated === key ? err.message : translated;
+}
+
 // Six steps, only three of which any one login ever visits — see the
 // #player-login-step-* panels in the modal markup:
 //   1. player-login-step-form     — phone number; also where the "not
@@ -1412,11 +1440,11 @@ function openPlayerLoginModal(onSuccess) {
       if (err.data && (err.data.pinRequired || err.data.locked)) {
         enteredPhone = code;
         pinInput.value = '';
-        pinErrorEl.textContent = err.data.locked ? err.message : '';
+        pinErrorEl.textContent = err.data.locked ? loginErrorText(err) : '';
         showStep(pinStep);
         setTimeout(() => pinInput.focus(), 50);
       } else {
-        errorEl.textContent = err.message;
+        errorEl.textContent = loginErrorText(err);
         // notFound means this genuinely looks like a phone number, just
         // not a registered one — offer self-registration instead of a
         // dead end (see the login route's contract in routes/player.js).
@@ -1458,7 +1486,7 @@ function openPlayerLoginModal(onSuccess) {
       showStep(setPinStep);
       setTimeout(() => setPinInput.focus(), 50);
     } catch (err) {
-      registerErrorEl.textContent = err.message;
+      registerErrorEl.textContent = loginErrorText(err);
     }
     registerSubmitBtn.disabled = false;
   };
@@ -1480,7 +1508,7 @@ function openPlayerLoginModal(onSuccess) {
       applySession(res);
       showSuccess();
     } catch (err) {
-      pinErrorEl.textContent = err.message;
+      pinErrorEl.textContent = loginErrorText(err);
       pinInput.value = '';
       pinInput.focus();
     }
@@ -1508,7 +1536,7 @@ function openPlayerLoginModal(onSuccess) {
       await api('/player/set-pin', { method: 'POST', body: { pin, confirmPin } });
       showSuccess();
     } catch (err) {
-      setPinErrorEl.textContent = err.message;
+      setPinErrorEl.textContent = loginErrorText(err);
     }
     setPinSubmitBtn.disabled = false;
   };
@@ -1537,7 +1565,7 @@ function openPlayerLoginModal(onSuccess) {
       else forgotEmailSent.style.display = '';
     } catch (err) {
       forgotLoading.style.display = 'none';
-      forgotErrorEl.textContent = err.message;
+      forgotErrorEl.textContent = loginErrorText(err);
     }
   };
 
@@ -1549,7 +1577,7 @@ function openPlayerLoginModal(onSuccess) {
       requestAdminSentEl.style.display = '';
     } catch (err) {
       requestAdminBtn.disabled = false;
-      forgotErrorEl.textContent = err.message;
+      forgotErrorEl.textContent = loginErrorText(err);
     }
   };
 

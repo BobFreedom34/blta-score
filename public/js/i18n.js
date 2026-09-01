@@ -152,6 +152,27 @@ const TRANSLATIONS = {
     'login.registerIntro': 'Toto telefónne číslo ešte nie je v systéme. Zadajte svoje meno a vytvoríme vám nový profil hráča.',
     'login.registerNameLabel': 'Vaše meno',
     'login.registerEmailLabel': 'Váš email',
+
+    // Server-side /player/* error codes (see loginErrorText in common.js)
+    // — error text itself always comes back in plain English (this app's
+    // long-standing convention for server error strings generally); these
+    // are what actually shows in the UI instead, in the current language.
+    'login.error.phoneNotFound': 'Toto telefónne číslo nie je v systéme — požiadajte admina, aby ho pridal na stránke Hráči.',
+    'login.error.enterCode': 'Zadajte svoj 5-miestny kód.',
+    'login.error.incorrectCode': 'Nesprávny kód (zostáva {count} {word})',
+    'login.error.locked': 'Príliš veľa nesprávnych pokusov — obnovte si kód nižšie, alebo požiadajte admina o jeho resetovanie.',
+    'login.error.codeMustBe5Digits': 'Kód musí mať presne 5 číslic.',
+    'login.error.codesDontMatch': 'Kódy sa nezhodujú.',
+    'login.error.pleaseLogInFirst': 'Najprv sa prihláste.',
+    'login.error.resetLinkInvalid': 'Tento odkaz na obnovenie je neplatný alebo expiroval — vyžiadajte si nový.',
+    'login.error.missingResetToken': 'Chýba token na obnovenie.',
+    'login.error.nameRequired': 'Meno je povinné.',
+    'login.error.nameTooLong': 'Meno je príliš dlhé.',
+    'login.error.invalidPhoneFormat': 'Zadajte 10-miestne telefónne číslo začínajúce na 0 (napr. 0903111222), alebo medzinárodné číslo začínajúce na +.',
+    'login.error.emailRequired': 'Email je povinný.',
+    'login.error.invalidEmail': 'Neplatný email.',
+    'login.error.nameAlreadyExists': 'Hráč s týmto menom už existuje — požiadajte admina, alebo sa prihláste, ak ste to vy.',
+    'login.error.phoneAlreadyRegistered': 'Toto telefónne číslo je už zaregistrované — skúste sa prihlásiť.',
     'login.registerSubmit': 'Zaregistrovať sa',
 
     'resetCode.pageTitle': 'BLTA Score — Obnoviť kód',
@@ -577,6 +598,23 @@ const TRANSLATIONS = {
     'login.registerIntro': "This phone number isn't in the system yet. Enter your name and we'll create a new player profile for you.",
     'login.registerNameLabel': 'Your name',
     'login.registerEmailLabel': 'Your email',
+
+    'login.error.phoneNotFound': "That phone number isn't on file — ask an admin to add it on your Players page entry.",
+    'login.error.enterCode': 'Enter your 5-digit code.',
+    'login.error.incorrectCode': 'Incorrect code ({count} {word} left)',
+    'login.error.locked': 'Too many incorrect attempts — reset your code below, or ask an admin to reset it.',
+    'login.error.codeMustBe5Digits': 'Code must be exactly 5 digits.',
+    'login.error.codesDontMatch': "Codes don't match.",
+    'login.error.pleaseLogInFirst': 'Please log in first.',
+    'login.error.resetLinkInvalid': 'This reset link is invalid or has expired — request a new one.',
+    'login.error.missingResetToken': 'Missing reset token.',
+    'login.error.nameRequired': 'Name is required.',
+    'login.error.nameTooLong': 'Name is too long.',
+    'login.error.invalidPhoneFormat': 'Enter a 10-digit phone number starting with 0 (e.g. 0903111222), or a full international number starting with +.',
+    'login.error.emailRequired': 'Email is required.',
+    'login.error.invalidEmail': 'Invalid email.',
+    'login.error.nameAlreadyExists': 'A player with that name already exists — ask an admin, or log in instead if this is you.',
+    'login.error.phoneAlreadyRegistered': 'This phone number is already registered to a player — try logging in instead.',
     'login.registerSubmit': 'Register',
 
     'resetCode.pageTitle': 'BLTA Score — Reset code',
