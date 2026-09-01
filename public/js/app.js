@@ -163,18 +163,22 @@ function buildMatchListHtml(matches, liveMatches) {
   return parts.join('');
 }
 
-function buildFilterParams(filterKey) {
-  const f = FILTERS[filterKey];
+// Same {status, dateFilter} spec shape as a FILTERS entry, but usable
+// standalone — the "My matches" tab's per-group queries (see
+// MY_MATCHES_GROUPS below) aren't full FILTERS entries themselves (no
+// single FILTERS key covers "my matches"), so they share this builder
+// instead of going through a FILTERS key.
+function buildFilterParamsForSpec(spec) {
   const params = new URLSearchParams();
-  params.set('status', f.status);
+  if (spec.status) params.set('status', spec.status);
   if (currentQuery) params.set('q', currentQuery);
   if (currentCategory) params.set('category', currentCategory);
 
-  if (f.dateFilter === 'has') {
+  if (spec.dateFilter === 'has') {
     params.set('hasDate', '1');
-  } else if (f.dateFilter === 'none') {
+  } else if (spec.dateFilter === 'none') {
     params.set('noDate', '1');
-  } else if (f.status === 'PLANNED' || f.status === 'FINISHED' || f.status === 'UNFINISHED') {
+  } else if (spec.status === 'PLANNED' || spec.status === 'FINISHED' || spec.status === 'UNFINISHED') {
     if (currentTimeFilter === 'today') {
       const { from, to } = getDayRange(0);
       params.set('from', from);
@@ -198,7 +202,79 @@ function buildFilterParams(filterKey) {
   return params;
 }
 
+function buildFilterParams(filterKey) {
+  return buildFilterParamsForSpec(FILTERS[filterKey]);
+}
+
+// The "My matches" tab (unlocked only once a real player is logged in —
+// see updateMyMatchesTabState) divides that player's own matches into the
+// same groups/headings as the head-to-head list on their own profile page
+// (see GROUPS in player.js) — Live / Scheduled / Not yet scheduled /
+// Finished / Unfinished — rather than the single-status ALL tab, since a
+// player's own matches should include their finished history too.
+const MY_MATCHES_GROUPS = [
+  { get heading() { return t('matches.liveHeading'); }, params: { status: 'LIVE' } },
+  { get heading() { return t('matches.scheduledHeading'); }, params: { status: 'PLANNED', dateFilter: 'has' } },
+  { get heading() { return t('matches.plannedHeading'); }, params: { status: 'PLANNED', dateFilter: 'none' } },
+  { get heading() { return t('matches.finishedHeading'); }, params: { status: 'FINISHED' } },
+  { get heading() { return t('matches.unfinishedHeading'); }, params: { status: 'UNFINISHED' } },
+];
+
+async function loadMyMatches() {
+  await RANKS_READY;
+  try {
+    const rawGroups = await Promise.all(MY_MATCHES_GROUPS.map((g) => {
+      const params = buildFilterParamsForSpec(g.params);
+      params.set('playerId', currentPlayerId);
+      return api(`/matches?${params.toString()}`);
+    }));
+    const parts = [];
+    rawGroups.forEach((matches, i) => {
+      if (!matches.length) return;
+      parts.push(`<div class="match-list-heading">${MY_MATCHES_GROUPS[i].heading}</div>`);
+      parts.push(...matches.map(matchCardHtml));
+    });
+    listEl.innerHTML = parts.length
+      ? parts.join('')
+      : `<div class="empty-state">${escapeHtml(t('matches.noneOfType', { label: t('tabs.myMatches').toLowerCase() }))}</div>`;
+  } catch (err) {
+    listEl.innerHTML = `<div class="empty-state">${escapeHtml(t('matches.couldNotLoad', { error: err.message }))}</div>`;
+  }
+}
+
+async function refreshMyMatchesCount() {
+  const el = document.getElementById('count-MY_MATCHES');
+  if (!el || !playerAuthed || !currentPlayerId) return;
+  try {
+    const totals = await Promise.all(MY_MATCHES_GROUPS.map((g) => {
+      const params = buildFilterParamsForSpec(g.params);
+      params.set('playerId', currentPlayerId);
+      return api(`/matches?${params.toString()}`);
+    }));
+    el.textContent = totals.reduce((sum, matches) => sum + matches.length, 0);
+  } catch { /* ignore */ }
+}
+
+// The tab is always visible (first in the row), but only makes sense for a
+// real logged-in player — an anon session has no specific player's matches
+// to show. Until then it's greyed out via .tab-locked (see the click
+// handler below for what a click does in that state instead of switching
+// tabs). If a player logs out while this tab is the active one, fall back
+// to ALL rather than leave a now-locked tab selected.
+function updateMyMatchesTabState() {
+  const tabBtn = document.getElementById('tab-MY_MATCHES');
+  if (!tabBtn) return;
+  const unlocked = playerAuthed && !!currentPlayerId;
+  tabBtn.classList.toggle('tab-locked', !unlocked);
+  if (!unlocked && currentFilter === 'MY_MATCHES') {
+    document.querySelectorAll('.tab').forEach((tb) => tb.classList.remove('active'));
+    document.querySelector('.tab[data-filter="ALL"]').classList.add('active');
+    currentFilter = 'ALL';
+  }
+}
+
 async function loadMatches() {
+  if (currentFilter === 'MY_MATCHES') return loadMyMatches();
   await RANKS_READY;
   const params = buildFilterParams(currentFilter);
   try {
@@ -242,12 +318,26 @@ async function refreshCounts() {
   }
 }
 
+function activateTab(tab) {
+  document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+  tab.classList.add('active');
+  currentFilter = tab.dataset.filter;
+  loadMatches();
+}
+
 document.querySelectorAll('.tab').forEach((tab) => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
-    tab.classList.add('active');
-    currentFilter = tab.dataset.filter;
-    loadMatches();
+    if (tab.dataset.filter === 'MY_MATCHES' && !(playerAuthed && currentPlayerId)) {
+      // Locked until a real player is logged in — a click prompts the
+      // login modal instead of switching immediately, then only actually
+      // switches to it once a real player identity comes back (an
+      // anon-code login doesn't count — see updateMyMatchesTabState).
+      openPlayerLoginModal(() => {
+        if (playerAuthed && currentPlayerId) activateTab(tab);
+      });
+      return;
+    }
+    activateTab(tab);
   });
 });
 document.querySelector(`.tab[data-filter="${currentFilter}"]`).classList.add('active');
@@ -274,6 +364,7 @@ document.getElementById('reset-filters-btn').addEventListener('click', () => {
   document.getElementById('filter-time').value = '';
   loadMatches();
   refreshCounts();
+  refreshMyMatchesCount();
 });
 
 document.getElementById('embed-list-btn').addEventListener('click', () => {
@@ -442,6 +533,7 @@ const socket = io();
 socket.on('matches:changed', () => {
   loadMatches();
   refreshCounts();
+  refreshMyMatchesCount();
 });
 
 (async () => {
@@ -451,11 +543,17 @@ socket.on('matches:changed', () => {
   // of the Planned-card buttons.
   isAdminUser = await checkAdmin();
   await refreshPlayerAuth();
+  updateMyMatchesTabState();
   loadMatches();
   refreshCounts();
+  refreshMyMatchesCount();
   // Re-render once a *later* login/logout finishes (see the
   // blta:auth-changed dispatch in common.js) — registered only after the
   // refreshPlayerAuth() call above so its own initial dispatch doesn't
   // trigger a redundant second loadMatches() right after this one.
-  window.addEventListener('blta:auth-changed', loadMatches);
+  window.addEventListener('blta:auth-changed', () => {
+    updateMyMatchesTabState();
+    loadMatches();
+    refreshMyMatchesCount();
+  });
 })();

@@ -34,6 +34,7 @@ const TRANSLATIONS = {
     'tabs.live': 'Naživo',
     'tabs.finished': 'Ukončené',
     'tabs.unfinished': 'Nedokončené',
+    'tabs.myMatches': 'Moje zápasy',
 
     'filters.searchPlaceholder': 'Hľadať meno hráča…',
     'filters.allCategories': 'Všetky kategórie',
@@ -427,6 +428,7 @@ const TRANSLATIONS = {
     'tabs.live': 'Live',
     'tabs.finished': 'Finished',
     'tabs.unfinished': 'Unfinished',
+    'tabs.myMatches': 'My matches',
 
     'filters.searchPlaceholder': 'Search player name…',
     'filters.allCategories': 'All categories',

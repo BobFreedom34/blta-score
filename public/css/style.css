@@ -227,6 +227,12 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   font-size: 11px;
 }
 .tab.active { border-color: var(--ink); }
+/* "My matches" before a real player is logged in — greyed out and its
+   count hidden (there's nothing to count yet), but still clickable: a
+   click opens the login modal instead of switching tabs (see app.js).
+   Cleared the moment updateMyMatchesTabState sees a real playerId. */
+.tab-locked { opacity: 0.45; }
+.tab-locked .count { display: none; }
 .tab.tab-live.active { border-color: var(--orange); color: var(--orange); }
 #count-ALL { background: var(--ink); color: var(--white); }
 #count-SCHEDULED { background: var(--green); color: var(--white); }
