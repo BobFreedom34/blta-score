@@ -927,7 +927,14 @@ function renderBio() {
 
 function openBioModal() {
   const p = currentPlayer;
-  document.getElementById('bio-category').value = p.category || '';
+  // Category is a competitive-division label, not a personal detail — only
+  // an admin may change it (mirrors the server-side gate in PATCH
+  // /:id/bio). Still shown (disabled, not hidden) so a player can see
+  // their own category while editing everything else on this form.
+  const categorySelect = document.getElementById('bio-category');
+  categorySelect.value = p.category || '';
+  categorySelect.disabled = !isAdminUser;
+  document.getElementById('bio-category-admin-hint').style.display = isAdminUser ? 'none' : '';
   document.getElementById('bio-nationality').value = p.nationality || '';
   document.getElementById('bio-forehand').value = p.forehand || '';
   document.getElementById('bio-backhand').value = p.backhand || '';

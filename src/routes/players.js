@@ -144,8 +144,14 @@ router.patch('/:id/bio', requireLoggedInForProfile, (req, res) => {
   if (!player) return res.status(404).json({ error: 'Player not found' });
   if (!checkPlayerAccess(req, res, player)) return;
 
+  // Unlike every other bio field, category is a competitive-division
+  // label (ELITE/NEXT_GEN/NOVICE), not a personal detail — self-editing it
+  // would let a player sandbag their own division. Only an admin's change
+  // is honored; a non-admin's own request (whether from a UI that hides
+  // the field or a direct API call) leaves it untouched rather than
+  // erroring the whole save over one unauthorized field.
   let category = player.category;
-  if (req.body.category !== undefined) {
+  if (isAdmin(req) && req.body.category !== undefined) {
     category = req.body.category || null;
     if (category && !BIO_CATEGORIES.includes(category)) {
       return res.status(400).json({ error: 'Invalid category' });
