@@ -4,7 +4,7 @@ const db = require('../db');
 const engine = require('../matchEngine');
 const { sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail } = require('../mailer');
 const { sendPush } = require('../push');
-const { isAdmin, isPlayer, isAnon, getPlayerId, requireLoggedIn } = require('../auth');
+const { isAdmin, getPlayerId, requireLoggedIn } = require('../auth');
 
 const router = express.Router();
 
@@ -126,17 +126,20 @@ function getRowOr404(req, res) {
   return row;
 }
 
-// A real player/admin can manage any match. The limited anon tier can only
-// manage a match it (or another anon session) created — checked once the
-// row is loaded, since requireLoggedIn alone can't know which match this
-// is yet. Returns a response (and false) if access is denied, so callers
-// can just `if (!checkMatchAccess(req, res, row)) return;`.
+// A real player/admin can manage any match — checked once the row is
+// loaded, since requireLoggedIn alone can't know which match this is yet.
+// Returns a response (and false) if access is denied, so callers can just
+// `if (!checkMatchAccess(req, res, row)) return;`.
 // Admin: always. A specific logged-in player: matches they play in that an
 // admin created, or any match they created themselves (regardless of
-// whether they're one of the two players in it — mirrors how an anon
-// session can manage a match it created without playing in it). Anon: only
-// matches it created. See getPlayerId/created_by_player_id for how "this
-// specific player" is known at all.
+// whether they're one of the two players in it). See getPlayerId/
+// created_by_player_id for how "this specific player" is known at all.
+//
+// The anonymous login tier this used to also cover has been removed
+// entirely (no new session can ever be created_by_anonymous again) — a
+// match that already carries that flag from before removal is simply no
+// longer manageable by anyone but an admin, same as it would be for any
+// other creator who's no longer around to log back in as themselves.
 function checkMatchAccess(req, res, row) {
   if (isAdmin(req)) return true;
   const playerId = getPlayerId(req);
@@ -152,7 +155,6 @@ function checkMatchAccess(req, res, row) {
     // leaving it permanently unmanageable by either player still in it.
     if (!row.created_by_admin && !row.created_by_anonymous && !row.created_by_player_id && playsInMatch) return true;
   }
-  if (isAnon(req) && row.created_by_anonymous) return true;
   res.status(403).json({ error: 'You can only manage matches you play in (if an admin created them) or matches you created yourself' });
   return false;
 }
@@ -322,17 +324,17 @@ router.post('/', requireLoggedIn, (req, res) => {
     }
   }
 
-  // A player created here by an anon-only session is flagged the same way
-  // as the match itself, so that session can later edit that player's bio
-  // (see checkPlayerAccess in routes/players.js) — but not anyone else's.
-  const createdByAnon = !isPlayer(req) && isAnon(req) ? 1 : 0;
+  // created_by_anonymous always writes 0 here now — the anonymous login
+  // tier that once set this to 1 has been removed entirely (see
+  // checkMatchAccess's comment above), but the column itself stays for
+  // existing historical rows.
   const resolvePlayer = (id, name) => {
     if (id) return getPlayer(id);
     const trimmed = (name || '').trim();
     if (!trimmed) return null;
     const existing = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE').get(trimmed);
     if (existing) return existing;
-    const info = db.prepare('INSERT INTO players (name, created_by_anonymous) VALUES (?, ?)').run(trimmed, createdByAnon);
+    const info = db.prepare('INSERT INTO players (name, created_by_anonymous) VALUES (?, ?)').run(trimmed, 0);
     return getPlayer(info.lastInsertRowid);
   };
 
@@ -355,12 +357,9 @@ router.post('/', requireLoggedIn, (req, res) => {
     format,
     state: JSON.stringify(state),
     created_by_admin: isAdmin(req) ? 1 : 0,
-    // Only counts as anon-created when the session has no real player/admin
-    // login at all — a real player who also happens to hold the anon
-    // cookie still creates a normal, fully-managed match.
-    created_by_anonymous: !isPlayer(req) && isAnon(req) ? 1 : 0,
-    // Null for admin (admin already has full rights regardless) or anon —
-    // set only when a specific real player created this as themselves, so
+    created_by_anonymous: 0,
+    // Null for admin (admin already has full rights regardless) — set only
+    // when a specific real player created this as themselves, so
     // checkMatchAccess can later recognize "a match I made" even for a
     // match they're not one of the two players in.
     created_by_player_id: isAdmin(req) ? null : getPlayerId(req),
@@ -577,9 +576,8 @@ router.delete('/:token', requireLoggedIn, (req, res) => {
 // entered directly, and clears both proposals — the negotiation is over
 // either way. Unlike viewing the card (open to anyone with the link),
 // actually confirming a slot requires being logged in as one of the two
-// specific players in this match, or an admin — not anon, not a different
-// player, not a
-// visitor who hasn't logged in at all.
+// specific players in this match, or an admin — not a different player,
+// not a visitor who hasn't logged in at all.
 router.post('/:token/respond-proposal', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;

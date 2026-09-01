@@ -946,9 +946,23 @@ function openBioModal() {
   document.getElementById('bio-birthday').value = p.birthday || '';
   document.getElementById('bio-phone').value = p.phone || '';
   document.getElementById('bio-email').value = p.email || '';
+  document.getElementById('bio-reset-pin-btn').style.display = isAdminUser ? '' : 'none';
   document.getElementById('bio-error').textContent = '';
   document.getElementById('player-bio-modal').style.display = 'flex';
 }
+
+// Admin-only recovery for a forgotten login code (see the button's own
+// comment in player.html) — clears it server-side so the player's next
+// phone-only login succeeds and prompts them to set a new one.
+document.getElementById('bio-reset-pin-btn').addEventListener('click', async () => {
+  if (!confirm(t('player.bio.resetLoginPinConfirm'))) return;
+  try {
+    await api(`/players/${playerId}/reset-login-pin`, { method: 'POST' });
+    toast(t('player.bio.resetLoginPinDone'));
+  } catch (err) {
+    toast(err.message);
+  }
+});
 
 // A profile can only be edited by the player it belongs to (logged in via
 // their own phone number — common.js's requirePlayerAuth/currentPlayerId)

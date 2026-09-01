@@ -952,7 +952,12 @@ async function api(path, options = {}) {
   let data = null;
   try { data = await res.json(); } catch { /* no body */ }
   if (!res.ok) {
-    throw new Error((data && data.error) || `Request failed (${res.status})`);
+    const err = new Error((data && data.error) || `Request failed (${res.status})`);
+    // The parsed body, if any — lets a caller branch on a custom field the
+    // server sent alongside the error (e.g. pinRequired in the player
+    // login flow) rather than only ever having the message text.
+    err.data = data;
+    throw err;
   }
   return data;
 }
@@ -1212,14 +1217,10 @@ async function checkAdmin() {
 // league (see checkMatchAccess in routes/matches.js). Lives in common.js
 // since the popup and nav toggle are identical across every page.
 //
-// The same input also accepts ANON_CODE, a second, more limited login (see
-// requireLoggedIn/checkMatchAccess in routes/matches.js) — anonAuthed
-// tracks that separately since it changes what a "logged in" session can
-// actually do, even though both count as "some session active" for the
-// nav link and for requirePlayerAuth just letting an action through to the
-// server (the server enforces the actual per-match restriction).
+// There used to be a second, more limited "anonymous" login here too (its
+// own shared code) — it's been removed entirely; phone number is now the
+// only way in besides admin.
 let playerAuthed = false;
-let anonAuthed = false;
 let currentPlayerName = null;
 // Null for a pure admin session (no player cookie) or no session at all —
 // only set once a *specific* player is logged in via their phone number.
@@ -1230,7 +1231,7 @@ let currentPlayerId = null;
 function updatePlayerNavLinks() {
   document.querySelectorAll('.player-login-link').forEach((el) => {
     if (playerAuthed && currentPlayerName) el.textContent = t('nav.logoutWithName', { name: currentPlayerName });
-    else if (playerAuthed || anonAuthed) el.textContent = t('nav.logout');
+    else if (playerAuthed) el.textContent = t('nav.logout');
     else el.textContent = t('nav.loginPlayer');
   });
 }
@@ -1239,12 +1240,10 @@ async function refreshPlayerAuth() {
   try {
     const res = await api('/player/session');
     playerAuthed = !!res.isPlayer;
-    anonAuthed = !!res.isAnon;
     currentPlayerName = res.playerName || null;
     currentPlayerId = res.playerId || null;
   } catch {
     playerAuthed = false;
-    anonAuthed = false;
     currentPlayerName = null;
     currentPlayerId = null;
   }
@@ -1253,7 +1252,7 @@ async function refreshPlayerAuth() {
   // homepage re-showing/hiding "Set date & location" once it knows who's
   // logged in) without common.js needing to know what each page does.
   window.dispatchEvent(new Event('blta:auth-changed'));
-  return playerAuthed || anonAuthed;
+  return playerAuthed;
 }
 
 // Mirrors checkMatchAccess in routes/matches.js — whether the current
@@ -1279,24 +1278,86 @@ function canManageMatch(m, isAdminUser) {
     // unmanageable by either player still in it.
     return !m.createdByAdmin && !m.createdByAnonymous && !m.createdByPlayerId && playsInMatch;
   }
-  if (anonAuthed) return m.createdByAnonymous;
   return true;
 }
 
+// Five steps, only three of which any one login ever visits — see the
+// #player-login-step-* panels in the modal markup:
+//   1. player-login-step-form    — phone number
+//   2. player-login-step-pin     — only if that phone already has a code
+//                                   set up (server 401s with pinRequired);
+//                                   also where "Forgot your code?" lives
+//   3. player-login-step-set-pin — only the first time (server 200s with
+//                                   pinSetupRequired) — creating a code is
+//                                   mandatory going forward, so there's no
+//                                   skip here; closing the modal without
+//                                   finishing just prompts again next login
+//   4. player-login-step-forgot  — reached from step 2's "Forgot your
+//                                   code?" link, not from a server response
+//   5. player-login-step-success — always the last step, whichever way it
+//                                   got there
 function openPlayerLoginModal(onSuccess) {
   const modal = document.getElementById('player-login-modal');
   if (!modal) return;
-  const formStep = document.getElementById('player-login-step-form');
-  const successStep = document.getElementById('player-login-step-success');
+  const steps = ['form', 'pin', 'set-pin', 'forgot', 'success'].map((name) => document.getElementById(`player-login-step-${name}`));
+  const [formStep, pinStep, setPinStep, forgotStep, successStep] = steps;
+
   const form = document.getElementById('player-login-form');
   const input = document.getElementById('player-login-input');
   const errorEl = document.getElementById('player-login-error');
   const submitBtn = form.querySelector('button[type="submit"]');
+
+  const pinForm = document.getElementById('player-login-pin-form');
+  const pinInput = document.getElementById('player-login-pin-input');
+  const pinErrorEl = document.getElementById('player-login-pin-error');
+  const pinSubmitBtn = pinForm.querySelector('button[type="submit"]');
+  const pinBackBtn = document.getElementById('player-login-pin-back-btn');
+  const forgotLink = document.getElementById('player-login-forgot-link');
+
+  const setPinForm = document.getElementById('player-login-set-pin-form');
+  const setPinInput = document.getElementById('player-login-set-pin-input');
+  const setPinConfirmInput = document.getElementById('player-login-set-pin-confirm-input');
+  const setPinErrorEl = document.getElementById('player-login-set-pin-error');
+  const setPinSubmitBtn = setPinForm.querySelector('button[type="submit"]');
+
+  const forgotLoading = document.getElementById('player-login-forgot-loading');
+  const forgotEmailSent = document.getElementById('player-login-forgot-email-sent');
+  const forgotNoEmail = document.getElementById('player-login-forgot-no-email');
+  const forgotErrorEl = document.getElementById('player-login-forgot-error');
+  const forgotBackBtn = document.getElementById('player-login-forgot-back-btn');
+  const requestAdminBtn = document.getElementById('player-login-request-admin-btn');
+  const requestAdminSentEl = document.getElementById('player-login-request-admin-sent');
+
+  function showStep(step) {
+    steps.forEach((el) => { el.style.display = 'none'; });
+    step.style.display = '';
+  }
+
+  // The phone number just entered — carried from the form step to the pin
+  // and forgot steps so their own submits can resend it (see the login/
+  // forgot-pin/request-admin-reset routes' contract in routes/player.js)
+  // without asking for the phone number twice.
+  let enteredPhone = '';
+
+  function showSuccess() {
+    document.getElementById('player-login-success-text').textContent = currentPlayerName
+      ? t('login.successNamed', { name: currentPlayerName })
+      : t('login.successGeneric');
+    showStep(successStep);
+  }
+
+  function applySession(res) {
+    playerAuthed = !!res.isPlayer;
+    currentPlayerName = res.playerName || null;
+    currentPlayerId = res.playerId || null;
+    updatePlayerNavLinks();
+    window.dispatchEvent(new Event('blta:auth-changed'));
+  }
+
   errorEl.textContent = '';
   input.value = '';
   input.disabled = false;
-  formStep.style.display = '';
-  successStep.style.display = 'none';
+  showStep(formStep);
 
   form.onsubmit = async (e) => {
     e.preventDefault();
@@ -1307,29 +1368,129 @@ function openPlayerLoginModal(onSuccess) {
     submitBtn.disabled = true;
     try {
       const res = await api('/player/login', { method: 'POST', body: { code } });
-      playerAuthed = !!res.isPlayer;
-      anonAuthed = !!res.isAnon;
-      currentPlayerName = res.playerName || null;
-      currentPlayerId = res.playerId || null;
-      updatePlayerNavLinks();
-      window.dispatchEvent(new Event('blta:auth-changed'));
-      // Confirm who just logged in instead of closing silently — the modal
-      // switches to a short success step (see the two #player-login-step-*
-      // panels in the modal markup) and only actually closes (and hands
-      // off to onSuccess, continuing whatever action prompted this login)
-      // once the player acknowledges it via the OK button below.
-      document.getElementById('player-login-success-text').textContent = currentPlayerName
-        ? t('login.successNamed', { name: currentPlayerName })
-        : t('login.successGeneric');
-      formStep.style.display = 'none';
-      successStep.style.display = '';
+      applySession(res);
+      if (res.pinSetupRequired) {
+        enteredPhone = code;
+        setPinInput.value = '';
+        setPinConfirmInput.value = '';
+        setPinErrorEl.textContent = '';
+        showStep(setPinStep);
+        setTimeout(() => setPinInput.focus(), 50);
+      } else {
+        // Confirm who just logged in instead of closing silently — see
+        // showSuccess; the modal only actually closes (and hands off to
+        // onSuccess, continuing whatever action prompted this login) once
+        // the player acknowledges it via the OK button below.
+        showSuccess();
+      }
     } catch (err) {
-      errorEl.textContent = err.message;
-      input.disabled = false;
-      submitBtn.disabled = false;
-      input.value = '';
-      input.focus();
+      // pinRequired and locked both land here (a locked account still 401s
+      // with pinRequired unset, but showing the pin step either way is
+      // right — the "Forgot your code?" link on it is exactly what a
+      // locked-out player needs, and the error text itself explains why).
+      if (err.data && (err.data.pinRequired || err.data.locked)) {
+        enteredPhone = code;
+        pinInput.value = '';
+        pinErrorEl.textContent = err.data.locked ? err.message : '';
+        showStep(pinStep);
+        setTimeout(() => pinInput.focus(), 50);
+      } else {
+        errorEl.textContent = err.message;
+        input.focus();
+      }
     }
+    input.disabled = false;
+    submitBtn.disabled = false;
+  };
+
+  pinForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const pin = pinInput.value.trim();
+    if (!pin) return;
+    pinErrorEl.textContent = '';
+    pinInput.disabled = true;
+    pinSubmitBtn.disabled = true;
+    try {
+      const res = await api('/player/login', { method: 'POST', body: { code: enteredPhone, pin } });
+      applySession(res);
+      showSuccess();
+    } catch (err) {
+      pinErrorEl.textContent = err.message;
+      pinInput.value = '';
+      pinInput.focus();
+    }
+    pinInput.disabled = false;
+    pinSubmitBtn.disabled = false;
+  };
+
+  // Back to the phone step — e.g. the phone number itself was mistyped and
+  // this isn't actually their code to enter.
+  pinBackBtn.onclick = () => {
+    errorEl.textContent = '';
+    input.value = '';
+    showStep(formStep);
+    setTimeout(() => input.focus(), 50);
+  };
+
+  setPinForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const pin = setPinInput.value.trim();
+    const confirmPin = setPinConfirmInput.value.trim();
+    if (!pin || !confirmPin) return;
+    setPinErrorEl.textContent = '';
+    setPinSubmitBtn.disabled = true;
+    try {
+      await api('/player/set-pin', { method: 'POST', body: { pin, confirmPin } });
+      showSuccess();
+    } catch (err) {
+      setPinErrorEl.textContent = err.message;
+    }
+    setPinSubmitBtn.disabled = false;
+  };
+
+  // "Forgot your code?" — reuses the phone number already entered on the
+  // form step (see enteredPhone above), so there's nothing new to type
+  // before this fires. The server tells us which of the two outcomes
+  // applies (an email on file to send a reset link to, or not); either
+  // way this never logs the player in by itself — that only happens once
+  // they actually follow the emailed link (POST /player/reset-pin, on the
+  // dedicated public/reset-code.html page) or an admin resets it.
+  forgotLink.onclick = async (e) => {
+    e.preventDefault();
+    forgotErrorEl.textContent = '';
+    forgotLoading.style.display = '';
+    forgotEmailSent.style.display = 'none';
+    forgotNoEmail.style.display = 'none';
+    requestAdminBtn.style.display = '';
+    requestAdminBtn.disabled = false;
+    requestAdminSentEl.style.display = 'none';
+    showStep(forgotStep);
+    try {
+      const res = await api('/player/forgot-pin', { method: 'POST', body: { code: enteredPhone } });
+      forgotLoading.style.display = 'none';
+      if (res.noEmail) forgotNoEmail.style.display = '';
+      else forgotEmailSent.style.display = '';
+    } catch (err) {
+      forgotLoading.style.display = 'none';
+      forgotErrorEl.textContent = err.message;
+    }
+  };
+
+  requestAdminBtn.onclick = async () => {
+    requestAdminBtn.disabled = true;
+    try {
+      await api('/player/request-admin-reset', { method: 'POST', body: { code: enteredPhone } });
+      requestAdminBtn.style.display = 'none';
+      requestAdminSentEl.style.display = '';
+    } catch (err) {
+      requestAdminBtn.disabled = false;
+      forgotErrorEl.textContent = err.message;
+    }
+  };
+
+  forgotBackBtn.onclick = () => {
+    showStep(pinStep);
+    setTimeout(() => pinInput.focus(), 50);
   };
 
   document.getElementById('player-login-ok-btn').onclick = () => {
@@ -1341,24 +1502,23 @@ function openPlayerLoginModal(onSuccess) {
   setTimeout(() => input.focus(), 50);
 }
 
-// Runs onReady immediately if already logged in — as a real player, admin,
-// or the limited anon tier — otherwise shows the code popup first and runs
-// onReady only after a successful login. Getting past this gate doesn't
-// guarantee the server will actually allow the action (an anon session
-// still only owns matches it created) — that's enforced server-side, with
-// the error surfaced back through the normal toast(err.message) path.
+// Runs onReady immediately if already logged in (as a real player or
+// admin), otherwise shows the login popup first and runs onReady only
+// after a successful login. Getting past this gate doesn't guarantee the
+// server will actually allow the action — the real per-match ownership
+// check happens server-side, with the error surfaced back through the
+// normal toast(err.message) path.
 function requirePlayerAuth(onReady) {
-  if (playerAuthed || anonAuthed) { onReady(); return; }
+  if (playerAuthed) { onReady(); return; }
   openPlayerLoginModal(onReady);
 }
 
 document.querySelectorAll('.player-login-link').forEach((el) => {
   el.addEventListener('click', async (e) => {
     e.preventDefault();
-    if (playerAuthed || anonAuthed) {
+    if (playerAuthed) {
       try { await api('/player/logout', { method: 'POST' }); } catch { /* ignore */ }
       playerAuthed = false;
-      anonAuthed = false;
       currentPlayerName = null;
       currentPlayerId = null;
       updatePlayerNavLinks();

@@ -186,17 +186,18 @@ if (!matchColumns.includes('share_token')) {
 if (!matchColumns.includes('created_by_admin')) {
   db.exec('ALTER TABLE matches ADD COLUMN created_by_admin INTEGER NOT NULL DEFAULT 0');
 }
-// Marks a match created by the limited "anonymous" login tier (its own
-// shared code, see ANON_CODE) — such a session can only manage matches
-// carrying this flag, unlike a real player/admin who can manage any match.
+// Historical only — marked a match created by the anonymous login tier
+// (its own shared code, ANON_CODE), which has since been removed entirely.
+// Always 0 for any match created from here on; checkMatchAccess in
+// routes/matches.js still reads it for existing rows that predate removal.
 if (!matchColumns.includes('created_by_anonymous')) {
   db.exec('ALTER TABLE matches ADD COLUMN created_by_anonymous INTEGER NOT NULL DEFAULT 0');
 }
 // Which specific player (by id, not just "some player") created this match
 // while logged in as themselves — set only for a real per-player login, not
-// admin or anon (see checkMatchAccess in routes/matches.js: a player can
-// manage a match they play in only if it's admin-created, but any match
-// they created themselves regardless of who's playing in it).
+// admin (see checkMatchAccess in routes/matches.js: a player can manage a
+// match they play in only if it's admin-created, but any match they
+// created themselves regardless of who's playing in it).
 if (!matchColumns.includes('created_by_player_id')) {
   db.exec('ALTER TABLE matches ADD COLUMN created_by_player_id INTEGER');
 }
@@ -300,12 +301,35 @@ if (!playerColumns.includes('slug')) {
   // phone additionally doubles as this player's login credential (see
   // auth.js/routes/player.js) — admin-only to view or edit (routes/players.js),
   // unique when set (see idx_players_phone below). email stays visible to
-  // any logged-in tier, same as before.
+  // any logged-in player or admin, same as before.
   'phone TEXT',
   'email TEXT',
-  // Marks a player auto-created by the limited anon login tier (see
-  // created_by_anonymous on matches) — such a session can only edit that
-  // player's bio, unlike a real player/admin who can edit any player's.
+  // "<salt>:<hash>" (see hashPin in src/auth.js) — the 5-digit code a
+  // player sets up right after their first phone-only login, required
+  // alongside their phone number on every login after that. NULL means no
+  // code yet: either a genuinely new player, or an existing one who hasn't
+  // logged in again since this feature shipped — either way they're
+  // prompted to create one on their next successful phone login (see
+  // POST /player/login's pinSetupRequired). Admin-only to view or clear
+  // (routes/players.js's reset-login-pin), same tier as phone above.
+  'login_pin TEXT',
+  // Consecutive wrong codes since the last successful login (see
+  // MAX_PIN_ATTEMPTS in routes/player.js) — resets to 0 on a correct login,
+  // an email/token reset, or an admin's reset-login-pin. At the max, login
+  // is refused outright even for the *correct* code, until one of those
+  // three clears it — this is what actually enforces the 5-attempt limit,
+  // not just a UI warning.
+  'failed_pin_attempts INTEGER NOT NULL DEFAULT 0',
+  // Self-service "forgot my code" (POST /player/forgot-pin sets these,
+  // POST /player/reset-pin consumes them): a random token emailed as a
+  // link, valid only until reset_token_expires and only for one use — both
+  // columns are cleared the moment the token is used, or replaced outright
+  // by requesting a new one. NULL/NULL when no reset is pending.
+  'reset_token TEXT',
+  'reset_token_expires TEXT',
+  // Historical only — marked a player auto-created by the anonymous login
+  // tier (see created_by_anonymous on matches), which has since been
+  // removed entirely. Always 0 for any player created from here on.
   'created_by_anonymous INTEGER NOT NULL DEFAULT 0',
 ].forEach((colDef) => {
   const colName = colDef.split(' ')[0];

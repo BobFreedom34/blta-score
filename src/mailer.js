@@ -152,4 +152,64 @@ async function sendProposalConfirmedEmail(match, player1, player2, toEmail) {
   return true;
 }
 
-module.exports = { sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail };
+// Self-service login-code recovery (see POST /player/forgot-pin) — the
+// link lands on the dedicated public/reset-code.html page, not anywhere
+// requiring an existing session (the whole point is the player has none).
+function resetCodeLink(token) {
+  return `${process.env.PUBLIC_URL || ''}/reset-code?token=${token}`;
+}
+
+async function sendPinResetEmail(player, token) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping login-code reset email.');
+    return false;
+  }
+  const subject = 'Reset your BLTA Score login code';
+  const text = [
+    `Hi ${player.name},`,
+    '',
+    'Someone (hopefully you) requested to reset your BLTA Score login code.',
+    `Set a new one here: ${resetCodeLink(token)}`,
+    '',
+    "This link works for 1 hour. If you didn't request this, you can just ignore this email.",
+  ].join('\n');
+
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: player.email,
+    subject,
+    text,
+  });
+  return true;
+}
+
+// The fallback when a player has no email on file — see POST
+// /player/request-admin-reset. Goes to the same admin address the
+// match-finished summary email already uses, not the player.
+async function sendAdminResetRequestEmail(player) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping admin reset-request email.');
+    return false;
+  }
+  const subject = `Login code reset requested: ${player.name}`;
+  const text = [
+    `${player.name} (phone ${player.phone || '-'}) has requested their BLTA Score login code be reset.`,
+    "They have no email on file, so there's no self-service link to send them.",
+    'Reset it from their profile page (Upraviť profil → Resetovať prihlasovací kód) once you\'ve confirmed it\'s really them.',
+  ].join('\n');
+
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
+    subject,
+    text,
+  });
+  return true;
+}
+
+module.exports = {
+  sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
+  sendPinResetEmail, sendAdminResetRequestEmail,
+};

@@ -1,7 +1,33 @@
+const crypto = require('crypto');
+
 const COOKIE_NAME = 'blta_admin';
 const PLAYER_COOKIE_NAME = 'blta_player';
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const isSecure = (process.env.PUBLIC_URL || '').startsWith('https://');
+
+// A player's login PIN (routes/player.js) is stored as "<salt>:<hash>",
+// both hex — scrypt + a random per-player salt rather than a plain
+// comparison, since unlike ADMIN_PASSWORD (one shared secret living only
+// in an env var) this is a per-player secret that actually lives in the
+// database.
+function hashPin(pin) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(pin, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPin(pin, stored) {
+  if (!stored) return false;
+  const [salt, hash] = stored.split(':');
+  if (!salt || !hash) return false;
+  const candidate = crypto.scryptSync(pin, salt, 64);
+  const expected = Buffer.from(hash, 'hex');
+  // timingSafeEqual throws on a length mismatch rather than just returning
+  // false, so guard it explicitly (only possible if login_pin was ever
+  // written by anything other than hashPin above).
+  if (candidate.length !== expected.length) return false;
+  return crypto.timingSafeEqual(candidate, expected);
+}
 
 function cookieOptions() {
   return {
@@ -67,30 +93,15 @@ function requirePlayer(req, res, next) {
   next();
 }
 
-// Third, more limited login tier — its own shared code (ANON_CODE), for
-// someone with no real BLTA player code. Unlike isPlayer, this does NOT
-// imply general match-management rights: an anon session can only manage
-// matches it created itself (see created_by_anonymous / requireLoggedIn in
-// routes/matches.js) — everything else stays off-limits.
-const ANON_COOKIE_NAME = 'blta_anon';
-
-function isAnon(req) {
-  return req.signedCookies && req.signedCookies[ANON_COOKIE_NAME] === 'ok';
-}
-
-function logInAnon(res) {
-  res.cookie(ANON_COOKIE_NAME, 'ok', cookieOptions());
-}
-
-function logOutAnon(res) {
-  res.clearCookie(ANON_COOKIE_NAME, cookieOptions());
-}
-
-// Gate for a route that's open to a real player/admin OR a limited anon
-// session — used where the actual ownership check happens afterward, once
-// the specific match row is loaded (see routes/matches.js).
+// Gate for a route that's open to a real player or admin — the actual
+// per-match ownership check happens afterward, once the specific row is
+// loaded (see checkMatchAccess in routes/matches.js). There used to be a
+// third, more limited "anonymous" login tier here (a shared code, for
+// someone with no real BLTA player account) that this also accepted — it's
+// been removed entirely: only a real player (a phone number on file) or an
+// admin can log in at all now.
 function requireLoggedIn(req, res, next) {
-  if (!isPlayer(req) && !isAnon(req)) {
+  if (!isPlayer(req)) {
     return res.status(401).json({ error: 'Please log in to do this' });
   }
   next();
@@ -99,5 +110,5 @@ function requireLoggedIn(req, res, next) {
 module.exports = {
   COOKIE_NAME, PLAYER_COOKIE_NAME, isAdmin, logIn, logOut, requireAdmin,
   isPlayer, getPlayerId, logInPlayer, logOutPlayer, requirePlayer,
-  ANON_COOKIE_NAME, isAnon, logInAnon, logOutAnon, requireLoggedIn,
+  requireLoggedIn, hashPin, verifyPin,
 };

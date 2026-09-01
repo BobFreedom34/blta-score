@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="resetCode.pageTitle">BLTA Score — Obnoviť kód</title>
+<link rel="icon" href="/favicon.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/"><img src="/img/blta-logo.png" alt="BLTA" class="brand-logo"><small>SCORE</small></a>
+    <div class="topbar-right">
+      <div class="lang-switcher" id="lang-switcher">
+        <button type="button" class="lang-btn" data-lang="sk"><img class="lang-flag" src="https://flagcdn.com/sk.svg" alt="">SK</button>
+        <button type="button" class="lang-btn" data-lang="en"><img class="lang-flag" src="https://flagcdn.com/gb.svg" alt="">EN</button>
+      </div>
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">☰</button>
+      <nav class="nav-links" id="nav-links">
+        <a href="/" data-i18n="nav.matches">Zápasy</a>
+        <a href="/players" data-i18n="nav.players">Hráči</a>
+        <a href="/rankings" data-i18n="nav.rankings">Rebríček</a>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<div class="container" style="max-width:420px">
+  <h1 style="margin-top:22px" data-i18n="resetCode.headline">Nastavte si nový kód</h1>
+
+  <div class="card" id="reset-code-form-card">
+    <p style="font-size:14px;color:var(--gray);line-height:1.5;margin-top:0" data-i18n="resetCode.intro">Vytvorte si nový 5-miestny kód. Použijete ho spolu s vaším telefónnym číslom pri každom ďalšom prihlásení.</p>
+    <form id="reset-code-form">
+      <div class="field">
+        <label for="reset-code-input" data-i18n="login.newCode">Nový kód</label>
+        <input type="text" inputmode="numeric" maxlength="5" id="reset-code-input" placeholder="•••••" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="reset-code-confirm-input" data-i18n="login.confirmCode">Zopakujte kód</label>
+        <input type="text" inputmode="numeric" maxlength="5" id="reset-code-confirm-input" placeholder="•••••" autocomplete="off">
+      </div>
+      <div id="reset-code-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px" data-i18n="login.createCode">Vytvoriť kód</button>
+    </form>
+  </div>
+
+  <div class="card" id="reset-code-success-card" style="display:none;text-align:center">
+    <h3 style="margin-top:0" id="reset-code-success-text"></h3>
+    <a href="/" class="btn btn-primary btn-block" data-i18n="resetCode.goToSite">Prejsť na stránku</a>
+  </div>
+
+  <div class="card" id="reset-code-invalid-card" style="display:none;text-align:center">
+    <h3 style="margin-top:0" data-i18n="resetCode.invalidTitle">Neplatný alebo expirovaný odkaz</h3>
+    <p style="font-size:14px;color:var(--gray)" data-i18n="resetCode.invalidText">Skúste sa znova prihlásiť a požiadajte o nový odkaz cez „Zabudli ste kód?“.</p>
+    <a href="/" class="btn btn-outline btn-block" data-i18n="resetCode.goToSite">Prejsť na stránku</a>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <span>BLTA Score</span>
+    <div style="display:flex;gap:12px">
+      <a href="/admin">Admin</a>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/i18n.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/reset-code.js"></script>
+</body>
+</html>

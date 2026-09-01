@@ -14,9 +14,21 @@ const router = express.Router();
 function canSeePrivateFields(req) {
   return isAdmin(req) || isPlayer(req);
 }
+// login_pin/reset_token/reset_token_expires/failed_pin_attempts (see
+// hashPin in auth.js and the reset flow in routes/player.js) are stripped
+// unconditionally — unlike phone/email, there's no viewer it's ever
+// appropriate to send these to (even failed_pin_attempts, not a secret by
+// itself, still reveals whether someone's currently locked out — no
+// reason another player needs that), so every response that could carry a
+// player row goes through this, including write-endpoint responses that
+// don't otherwise call stripPrivateFields for phone/email (those are fine
+// to skip there, since the caller in that case is always the player
+// themselves or an admin — these four just have no legitimate reason to
+// leave the server at all).
 function stripPrivateFields(player, req) {
-  if (canSeePrivateFields(req)) return player;
-  const { phone, email, ...rest } = player;
+  const { login_pin, reset_token, reset_token_expires, failed_pin_attempts, ...visible } = player;
+  if (canSeePrivateFields(req)) return visible;
+  const { phone, email, ...rest } = visible;
   return rest;
 }
 
@@ -102,12 +114,12 @@ router.post('/', requireAdmin, (req, res) => {
   if (name.length > 60) return res.status(400).json({ error: 'Name is too long' });
 
   const existing = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE').get(name);
-  if (existing) return res.status(200).json(existing);
+  if (existing) return res.status(200).json(stripPrivateFields(existing, req));
 
   const slug = uniqueSlugFor(name, null);
   const info = db.prepare('INSERT INTO players (name, slug) VALUES (?, ?)').run(name, slug);
   const player = db.prepare('SELECT * FROM players WHERE id = ?').get(info.lastInsertRowid);
-  res.status(201).json(player);
+  res.status(201).json(stripPrivateFields(player, req));
 });
 
 router.patch('/:id', requireAdmin, (req, res) => {
@@ -124,7 +136,7 @@ router.patch('/:id', requireAdmin, (req, res) => {
 
   const photoUrl = req.body.photoUrl !== undefined ? (req.body.photoUrl || null) : player.photo_url;
   db.prepare('UPDATE players SET name = ?, photo_url = ? WHERE id = ?').run(name, photoUrl, player.id);
-  res.json(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id));
+  res.json(stripPrivateFields(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id), req));
 });
 
 const BIO_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
@@ -197,7 +209,7 @@ router.patch('/:id/bio', requireLoggedInForProfile, (req, res) => {
     WHERE id = ?
   `).run(category, nationality, birthday, racket, stringBrand, stringTension, forehand, backhand, seasons, favoritePlayer, email, player.id);
 
-  res.json(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id));
+  res.json(stripPrivateFields(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id), req));
 });
 
 // Phone doubles as a player's login credential (see auth.js) — same
@@ -233,7 +245,21 @@ router.patch('/:id/phone', requireLoggedInForProfile, (req, res) => {
     if (!/UNIQUE/.test(err.message)) throw err;
     return res.status(409).json({ error: 'Another player already has this phone number' });
   }
-  res.json(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id));
+  res.json(stripPrivateFields(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id), req));
+});
+
+// The fallback recovery path when a player has no email on file at all —
+// there's then no self-service link to send them (see POST
+// /player/forgot-pin), so an admin clearing it here is the only way back
+// in. Also clears failed_pin_attempts (so a lockout doesn't outlive the
+// code that caused it) and any pending email-reset token. The player's
+// very next phone-only login succeeds again and prompts them to set a new
+// code, exactly like a first-time login (see POST /player/login).
+router.post('/:id/reset-login-pin', requireAdmin, (req, res) => {
+  const player = findPlayerByIdOrSlug(req.params.id);
+  if (!player) return res.status(404).json({ error: 'Player not found' });
+  db.prepare('UPDATE players SET login_pin = NULL, failed_pin_attempts = 0, reset_token = NULL, reset_token_expires = NULL WHERE id = ?').run(player.id);
+  res.json({ ok: true });
 });
 
 router.delete('/:id', requireAdmin, (req, res) => {

@@ -116,13 +116,13 @@ git push -u origin main
 3. Render reads `render.yaml` and shows you a preview: one web service (`blta-score`, Starter
    plan, $7/month) with a 1 GB disk ($0.25/month) attached. Click **Apply**.
 4. It'll ask you to fill in the secret values marked `sync: false` in the blueprint —
-   `SMTP_USER`, `SMTP_PASS` (see §5 below for getting the Gmail app password), `ADMIN_PASSWORD`
-   (see §4 — pick your own admin password here), and `ANON_CODE` (a fallback code for anyone
-   without a real BLTA account). You can also skip SMTP for now and add it later from the
-   service's **Environment** tab — the app runs fine without it, it just won't be able to send
-   the finished-match email yet. `ADMIN_PASSWORD` is worth setting right away, though, or that
-   login won't work. Player login itself needs no setup here — each player logs in with their
-   own phone number, set per-player on the Players page once you're logged in as admin.
+   `SMTP_USER`, `SMTP_PASS` (see §5 below for getting the Gmail app password) and `ADMIN_PASSWORD`
+   (see §4 — pick your own admin password here). You can also skip SMTP for now and add it later
+   from the service's **Environment** tab — the app runs fine without it, it just won't be able
+   to send the finished-match email (or a login-code reset/request email — see §4b) yet.
+   `ADMIN_PASSWORD` is worth setting right away, though, or that login won't work. Player login
+   itself needs no setup here — each player logs in with their own phone number, set per-player
+   on the Players page once you're logged in as admin.
 5. Render builds and deploys automatically. First deploy takes a couple of minutes — watch the
    **Logs** tab for `BLTA score app listening on http://localhost:...`.
 
@@ -206,10 +206,11 @@ nano .env
 
 Set at minimum:
 - `PUBLIC_URL=https://score.blta.sk`
-- SMTP settings so the "match finished" email can send (see §5 below for the Gmail setup)
+- SMTP settings so the "match finished" email — and a player's login-code reset/request emails,
+  see §4b — can send (see §5 below for the Gmail setup)
 - `ADMIN_PASSWORD` and `SESSION_SECRET` (see §4) so the admin login works
-- `ANON_CODE` so the no-account fallback login works (player login itself needs no env var — each
-  player logs in with their own phone number, set per-player on the Players page as admin)
+- Player login itself needs no env var — each player logs in with their own phone number, set
+  per-player on the Players page as admin
 
 **Step 5 — Run it permanently with PM2** (keeps it running, restarts it if it crashes or the
 server reboots).
@@ -317,22 +318,36 @@ An admin session automatically counts as being logged in as a player too, everyw
 
 ---
 
-## 4b. Player login (phone number)
+## 4b. Player login (phone number + 5-digit code)
 
 Anyone can still browse matches, view a live score, and chat — no login needed for that. But
 **creating a new match, starting a live match, entering a result manually, and setting a match's
 date/location** all require being logged in as a **player** first, via the "LOG IN AS PLAYER" link
-in the top nav.
+in the top nav. There's no anonymous/no-account login tier anymore — a phone number on file (or
+admin) is the only way in.
 
 Unlike the admin account, this isn't one shared password — each player logs in with their own
 phone number (Slovak mobile format, e.g. `0903111222`), which doubles as their identity: a
 logged-in player can only manage a match they play in (if an admin created it) or a match they
-created themselves — not every match in the league, the way the old shared code used to allow.
+created themselves — not every match in the league.
+
+**First login vs. every login after that:** the very first time (phone number alone), they're
+logged in immediately and prompted to create a 5-digit code on the spot. Every login after that
+needs both the phone number and that code. Five wrong codes in a row locks the account until it's
+reset (see below) — this also applies to any existing player who hasn't logged in again since
+this shipped, since they don't have a code yet either.
+
+**Forgotten code:** the login popup's "Forgot your code?" link emails a one-time reset link if
+that player has an email on file (set from their own profile, or by an admin) — SMTP has to be
+configured for this to actually send (see §5). With no email on file, a "Send request to admin"
+button emails `NOTIFY_EMAIL` instead; an admin then clears their code from the player's own
+profile page (**Upraviť profil** → **Resetovať prihlasovací kód**, admin-only), which lets them
+log in with just their phone number again and re-prompts them to set a new code.
 
 There's no self-registration — an admin sets each player's number from their entry on the
 **Players** page (logged in as admin, an "Edit phone" control appears there). A player with no
 number on file yet simply can't log in until an admin adds one. Nothing to configure in the
-environment for this — it's all in the database.
+environment for any of this — it's all in the database.
 
 ---
 

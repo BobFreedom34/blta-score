@@ -234,6 +234,12 @@
         <div class="field">
           <label for="bio-phone" data-i18n="player.bio.phone">Telefón</label>
           <input type="tel" id="bio-phone" maxlength="30" placeholder="napr. 0912 345 678" data-i18n-placeholder="player.bio.phonePlaceholder">
+          <!-- Admin-only (see renderResetPinBtn in player.js) — a forgotten
+               login code has no self-service recovery, same as a lost
+               phone number; this is the only way back in for the player
+               (POST /players/:id/reset-login-pin, then a plain phone-only
+               login prompts them to set a new one, same as a first login). -->
+          <button type="button" id="bio-reset-pin-btn" class="btn btn-outline btn-sm" style="display:none;margin-top:6px" data-i18n="player.bio.resetLoginPin">Resetovať prihlasovací kód</button>
         </div>
         <div class="field">
           <label for="bio-email" data-i18n="player.bio.email">Email</label>
@@ -255,7 +261,6 @@
       <div style="text-transform:uppercase;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--gray)" data-i18n="login.title">Prihlásiť sa ako hráč BLTA</div>
       <h3 style="font-weight:700;text-transform:none;margin-top:4px" data-i18n-html="login.headline">Zadajte svoje <span style="color:var(--green-light)">telefónne číslo</span></h3>
       <p style="font-size:14px;color:var(--ink);line-height:1.5" data-i18n="login.phoneIntro">Napr. 0903111222. Ešte ho nemáte v systéme? Požiadajte admina, aby ho pridal.</p>
-      <p style="font-size:13px;color:var(--gray);margin:8px 0" data-i18n="login.notBltaPlayer">Ak nie ste hráč BLTA, prihláste sa namiesto toho kódom 3344 — aj tak môžete vytvárať a spravovať svoje vlastné zápasy.</p>
       <form id="player-login-form">
         <div class="field">
           <input type="text" inputmode="numeric" id="player-login-input" placeholder="0903111222" autocomplete="off">
@@ -263,6 +268,54 @@
         <div id="player-login-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
         <button type="submit" class="btn btn-primary btn-block" data-i18n="login.submit">Prihlásiť sa</button>
       </form>
+    </div>
+    <div id="player-login-step-pin" style="display:none">
+      <div style="text-transform:uppercase;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--gray)" data-i18n="login.title">Prihlásiť sa ako hráč BLTA</div>
+      <h3 style="font-weight:700;text-transform:none;margin-top:4px" data-i18n="login.pinHeadline">Zadajte svoj 5-miestny kód</h3>
+      <p style="font-size:14px;color:var(--ink);line-height:1.5" data-i18n="login.pinIntro">Kód, ktorý ste si vytvorili pri prvom prihlásení.</p>
+      <form id="player-login-pin-form">
+        <div class="field">
+          <input type="text" inputmode="numeric" maxlength="5" id="player-login-pin-input" placeholder="•••••" autocomplete="off">
+        </div>
+        <div id="player-login-pin-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
+        <button type="submit" class="btn btn-primary btn-block" data-i18n="login.submit">Prihlásiť sa</button>
+        <button type="button" class="btn btn-outline btn-block" id="player-login-pin-back-btn" style="margin-top:8px" data-i18n="login.back">Späť</button>
+      </form>
+      <p style="text-align:center;margin-top:10px">
+        <a href="#" id="player-login-forgot-link" style="font-size:13px;color:var(--gray);text-decoration:underline" data-i18n="login.forgotCode">Zabudli ste kód?</a>
+      </p>
+    </div>
+    <div id="player-login-step-set-pin" style="display:none">
+      <div style="text-transform:uppercase;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--gray)" data-i18n="login.title">Prihlásiť sa ako hráč BLTA</div>
+      <h3 style="font-weight:700;text-transform:none;margin-top:4px" data-i18n="login.setPinHeadline">Vytvorte si 5-miestny kód</h3>
+      <p style="font-size:14px;color:var(--ink);line-height:1.5" data-i18n="login.setPinIntro">Nabudúce sa budete prihlasovať telefónnym číslom a týmto kódom.</p>
+      <form id="player-login-set-pin-form">
+        <div class="field">
+          <label for="player-login-set-pin-input" data-i18n="login.newCode">Nový kód</label>
+          <input type="text" inputmode="numeric" maxlength="5" id="player-login-set-pin-input" placeholder="•••••" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="player-login-set-pin-confirm-input" data-i18n="login.confirmCode">Zopakujte kód</label>
+          <input type="text" inputmode="numeric" maxlength="5" id="player-login-set-pin-confirm-input" placeholder="•••••" autocomplete="off">
+        </div>
+        <div id="player-login-set-pin-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
+        <button type="submit" class="btn btn-primary btn-block" data-i18n="login.createCode">Vytvoriť kód</button>
+      </form>
+    </div>
+    <div id="player-login-step-forgot" style="display:none">
+      <div style="text-transform:uppercase;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--gray)" data-i18n="login.title">Prihlásiť sa ako hráč BLTA</div>
+      <h3 style="font-weight:700;text-transform:none;margin-top:4px" data-i18n="login.forgotHeadline">Zabudnutý kód</h3>
+      <p id="player-login-forgot-loading" style="font-size:14px;color:var(--ink);line-height:1.5" data-i18n="login.forgotSending">Odosielam…</p>
+      <div id="player-login-forgot-email-sent" style="display:none">
+        <p style="font-size:14px;color:var(--ink);line-height:1.5" data-i18n="login.forgotEmailSent">Odkaz na obnovenie kódu sme poslali na váš email.</p>
+      </div>
+      <div id="player-login-forgot-no-email" style="display:none">
+        <p style="font-size:14px;color:var(--ink);line-height:1.5" data-i18n="login.forgotNoEmail">Nemáte pridaný email. Požiadajte administrátora o resetovanie kódu.</p>
+        <button type="button" class="btn btn-primary btn-block" id="player-login-request-admin-btn" data-i18n="login.requestAdminReset">Poslať žiadosť adminovi</button>
+        <p id="player-login-request-admin-sent" style="display:none;color:var(--green-light);font-weight:700;margin-top:8px" data-i18n="login.requestAdminResetSent">Žiadosť bola odoslaná adminovi.</p>
+      </div>
+      <div id="player-login-forgot-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
+      <button type="button" class="btn btn-outline btn-block" id="player-login-forgot-back-btn" style="margin-top:8px" data-i18n="login.back">Späť</button>
     </div>
     <div id="player-login-step-success" style="display:none;text-align:center">
       <h3 id="player-login-success-text" style="margin-top:0"></h3>

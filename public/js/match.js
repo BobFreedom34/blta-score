@@ -578,8 +578,8 @@ function render(m) {
   // Location/Date/Category/Notes all go through the same PATCH /:token +
   // checkMatchAccess path server-side, so they're gated together
   // client-side too — admin can always edit (even a finished match); a
-  // real player or anon session otherwise needs canManageMatch to say
-  // this is actually their match (see routes/matches.js).
+  // real player otherwise needs canManageMatch to say this is actually
+  // their match (see routes/matches.js).
   const locationEditable = (m.status !== 'FINISHED' || isAdminUser) && canManageMatch(m, isAdminUser);
   // Mirrors DELETE /:token server-side: admin can always delete; otherwise
   // the match can't be finished or admin-created, AND canManageMatch has
@@ -662,7 +662,7 @@ function attachHandlers(m) {
   // Start live match / Enter result manually: prompt login if logged out
   // (requirePlayerAuth), then — the moment login is confirmed — reject
   // immediately with checkMatchAccess's own message if this isn't a match
-  // this player/anon session can manage, rather than only rejecting after
+  // this player can manage, rather than only rejecting after
   // they've filled out and submitted the schedule/first-server/result
   // form. Same pattern as handlePlannedActionClick in app.js.
   const startBtn = document.getElementById('start-btn');

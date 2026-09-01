@@ -256,8 +256,7 @@ async function refreshMyMatchesCount() {
 }
 
 // The tab is always visible (first in the row), but only makes sense for a
-// real logged-in player — an anon session has no specific player's matches
-// to show. Until then it's greyed out via .tab-locked (see the click
+// real logged-in player. Until then it's greyed out via .tab-locked (see the click
 // handler below for what a click does in that state instead of switching
 // tabs). If a player logs out while this tab is the active one, fall back
 // to ALL rather than leave a now-locked tab selected.
@@ -330,8 +329,7 @@ document.querySelectorAll('.tab').forEach((tab) => {
     if (tab.dataset.filter === 'MY_MATCHES' && !(playerAuthed && currentPlayerId)) {
       // Locked until a real player is logged in — a click prompts the
       // login modal instead of switching immediately, then only actually
-      // switches to it once a real player identity comes back (an
-      // anon-code login doesn't count — see updateMyMatchesTabState).
+      // switches to it once a real player identity comes back.
       openPlayerLoginModal(() => {
         if (playerAuthed && currentPlayerId) activateTab(tab);
       });
@@ -413,8 +411,8 @@ function openNotifyModal(token, type) {
 // always visible (see matchCardHtml) — logging in, and eligibility for
 // this specific match, are enforced here instead: prompt login first if
 // logged out, then — the moment login is confirmed — reject immediately
-// with checkMatchAccess's own message if this player/anon session isn't
-// allowed to manage this particular match, rather than only rejecting
+// with checkMatchAccess's own message if this player isn't allowed to
+// manage this particular match, rather than only rejecting
 // after they've filled out the whole modal and hit submit.
 function handlePlannedActionClick(btn, onReady) {
   requirePlayerAuth(() => {

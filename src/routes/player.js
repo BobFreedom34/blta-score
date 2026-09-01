@@ -1,19 +1,27 @@
+const crypto = require('crypto');
 const express = require('express');
 const db = require('../db');
 const auth = require('../auth');
+const { sendPinResetEmail, sendAdminResetRequestEmail } = require('../mailer');
 
 const router = express.Router();
 
-// Builds the { isPlayer, isAnon, playerId, playerName, playerSlug } shape
-// every session-reporting response shares. Takes the logged-in player's
-// row directly rather than re-reading it off req's cookies, since a route
-// that just called auth.logInPlayer() won't see that cookie reflected in
+// After this many consecutive wrong codes, login is refused outright —
+// even for the *correct* code — until either an emailed reset link
+// (POST /reset-pin) or an admin (POST /players/:id/reset-login-pin) clears
+// it. See failed_pin_attempts in src/db.js.
+const MAX_PIN_ATTEMPTS = 5;
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+// Builds the { isPlayer, playerId, playerName, playerSlug } shape every
+// session-reporting response shares. Takes the logged-in player's row
+// directly rather than re-reading it off req's cookies, since a route that
+// just called auth.logInPlayer() won't see that cookie reflected in
 // req.signedCookies until the *next* request — cookies set on the response
 // don't retroactively appear on the request that set them.
-function sessionInfo({ isPlayerFlag, isAnon, player }) {
+function sessionInfo({ isPlayerFlag, player }) {
   return {
     isPlayer: isPlayerFlag,
-    isAnon,
     playerId: player ? player.id : null,
     playerName: player ? player.name : null,
     playerSlug: player ? player.slug : null,
@@ -23,7 +31,7 @@ function sessionInfo({ isPlayerFlag, isAnon, player }) {
 router.get('/session', (req, res) => {
   const playerId = auth.getPlayerId(req);
   const player = playerId ? db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(playerId) : null;
-  res.json(sessionInfo({ isPlayerFlag: auth.isPlayer(req), isAnon: auth.isAnon(req), player }));
+  res.json(sessionInfo({ isPlayerFlag: auth.isPlayer(req), player }));
 });
 
 // Digits only — everything else (spaces, dashes, a leading +, a country
@@ -44,38 +52,166 @@ function samePhone(a, b) {
   return na.length >= 6 && nb.length >= 6 && na.slice(-6) === nb.slice(-6);
 }
 
-// One input, two possible outcomes: a real player's own phone number logs
-// them in as that specific player (see checkMatchAccess in
-// routes/matches.js for what that scopes them to — only matches they play
-// in that an admin created, or matches they created themselves), while
-// ANON_CODE (given to anyone without a real BLTA account) logs in as the
-// limited anonymous tier — see requireLoggedIn in routes/matches.js.
+function findPlayerByPhone(raw) {
+  const candidates = db.prepare('SELECT * FROM players WHERE phone IS NOT NULL').all();
+  return candidates.find((p) => samePhone(p.phone, raw));
+}
+
+const PHONE_NOT_FOUND_ERROR = "That phone number isn't on file — ask an admin to add it on your Players page entry";
+
+// A real player's own phone number logs them in as that specific player
+// (see checkMatchAccess in routes/matches.js for what that scopes them
+// to). There used to be a second, anonymous-code path here too — it's
+// been removed entirely; phone number is now the only way in besides admin.
+//
+// Once a player has a login_pin set (see POST /set-pin below), phone alone
+// isn't enough — req.body.pin also has to match, and MAX_PIN_ATTEMPTS
+// wrong guesses locks the account until a reset (see /forgot-pin below or
+// an admin's /players/:id/reset-login-pin) clears failed_pin_attempts. The
+// client always submits phone-only first; a player with no PIN yet logs in
+// immediately (same as before PINs existed) with pinSetupRequired:true
+// telling the client to prompt for one right away, while a player who
+// already has one gets a 401 with pinRequired:true instead of being logged
+// in, so the client can show a second step asking for it and resubmit
+// {code, pin} together — see openPlayerLoginModal in common.js for that
+// whole flow.
 router.post('/login', (req, res) => {
   const raw = String(req.body.code || '').trim();
-  const digitCount = raw.replace(/\D/g, '').length;
-  // A short numeric guess (like the 4-digit ANON_CODE) isn't worth a full
-  // table scan/comparison — only attempt a phone match once it's long
-  // enough to plausibly be one.
-  if (digitCount >= 6) {
-    const candidates = db.prepare('SELECT id, name, slug, phone FROM players WHERE phone IS NOT NULL').all();
-    const player = candidates.find((p) => samePhone(p.phone, raw));
-    if (player) {
-      auth.logInPlayer(res, player.id);
-      return res.json(sessionInfo({ isPlayerFlag: true, isAnon: false, player }));
+  // Not worth a full table scan/comparison against something that's
+  // clearly not a phone number.
+  if (raw.replace(/\D/g, '').length < 6) {
+    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR });
+  }
+  const player = findPlayerByPhone(raw);
+  if (!player) {
+    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR });
+  }
+
+  if (player.login_pin) {
+    if (player.failed_pin_attempts >= MAX_PIN_ATTEMPTS) {
+      return res.status(401).json({ locked: true, error: 'Too many incorrect attempts — reset your code below, or ask an admin to reset it' });
     }
-    return res.status(401).json({ error: "That phone number isn't on file — ask an admin to add it on your Players page entry" });
+    const pin = String(req.body.pin || '').trim();
+    if (!pin) {
+      return res.status(401).json({ pinRequired: true, error: 'Enter your 5-digit code' });
+    }
+    if (!auth.verifyPin(pin, player.login_pin)) {
+      const attempts = player.failed_pin_attempts + 1;
+      db.prepare('UPDATE players SET failed_pin_attempts = ? WHERE id = ?').run(attempts, player.id);
+      if (attempts >= MAX_PIN_ATTEMPTS) {
+        return res.status(401).json({ locked: true, error: 'Too many incorrect attempts — reset your code below, or ask an admin to reset it' });
+      }
+      const left = MAX_PIN_ATTEMPTS - attempts;
+      return res.status(401).json({ pinRequired: true, error: `Incorrect code (${left} attempt${left === 1 ? '' : 's'} left)` });
+    }
+    if (player.failed_pin_attempts > 0) {
+      db.prepare('UPDATE players SET failed_pin_attempts = 0 WHERE id = ?').run(player.id);
+    }
+    auth.logInPlayer(res, player.id);
+    return res.json(sessionInfo({ isPlayerFlag: true, player }));
   }
-  if (process.env.ANON_CODE && raw === process.env.ANON_CODE) {
-    auth.logInAnon(res);
-    return res.json(sessionInfo({ isPlayerFlag: false, isAnon: true, player: null }));
+
+  auth.logInPlayer(res, player.id);
+  return res.json({ ...sessionInfo({ isPlayerFlag: true, player }), pinSetupRequired: true });
+});
+
+// Creates this player's login code — only reachable once already logged in
+// (right after a pinSetupRequired login; see openPlayerLoginModal), and
+// only ever sets *this* player's own code, never anyone else's (there's no
+// playerId in the body to spoof — auth.getPlayerId(req) is the only source
+// of who it applies to).
+router.post('/set-pin', (req, res) => {
+  const playerId = auth.getPlayerId(req);
+  if (!playerId) return res.status(401).json({ error: 'Please log in first' });
+  const pin = String(req.body.pin || '').trim();
+  const confirmPin = String(req.body.confirmPin || '').trim();
+  if (!/^\d{5}$/.test(pin)) {
+    return res.status(400).json({ error: 'Code must be exactly 5 digits' });
   }
-  res.status(401).json({ error: 'Incorrect phone number or code' });
+  if (pin !== confirmPin) {
+    return res.status(400).json({ error: "Codes don't match" });
+  }
+  db.prepare('UPDATE players SET login_pin = ?, failed_pin_attempts = 0, reset_token = NULL, reset_token_expires = NULL WHERE id = ?')
+    .run(auth.hashPin(pin), playerId);
+  res.json({ ok: true });
+});
+
+// Self-service recovery, step 1: given just the phone number (no PIN
+// needed — that's the whole point of this route existing), emails a
+// one-time reset link if this player has an email on file. If they don't,
+// the client falls back to POST /request-admin-reset instead (see
+// openPlayerLoginModal in common.js) — there's no self-service path
+// without an email to actually send the link to.
+router.post('/forgot-pin', async (req, res) => {
+  const raw = String(req.body.code || '').trim();
+  const player = findPlayerByPhone(raw);
+  if (!player) {
+    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR });
+  }
+  if (!player.email) {
+    return res.json({ noEmail: true });
+  }
+  const token = crypto.randomBytes(24).toString('hex');
+  const expires = new Date(Date.now() + RESET_TOKEN_TTL_MS).toISOString();
+  db.prepare('UPDATE players SET reset_token = ?, reset_token_expires = ? WHERE id = ?').run(token, expires, player.id);
+  try {
+    await sendPinResetEmail(player, token);
+  } catch (err) {
+    console.error('[player] Failed to send reset email:', err.message);
+  }
+  res.json({ emailSent: true });
+});
+
+// Self-service recovery, step 2 — what the link from that email lands on
+// (a dedicated page, /reset-code?token=..., since this has to work from a
+// freshly-opened email client with no existing session; see
+// public/reset-code.html). Success clears the lockout counter too (not
+// just login_pin), and logs the player straight in, same as a normal
+// login would.
+router.post('/reset-pin', (req, res) => {
+  const token = String(req.body.token || '').trim();
+  if (!token) return res.status(400).json({ error: 'Missing reset token' });
+  const player = db.prepare('SELECT id, name, slug, reset_token_expires FROM players WHERE reset_token = ?').get(token);
+  if (!player || !player.reset_token_expires || new Date(player.reset_token_expires) < new Date()) {
+    return res.status(400).json({ error: 'This reset link is invalid or has expired — request a new one' });
+  }
+  const pin = String(req.body.pin || '').trim();
+  const confirmPin = String(req.body.confirmPin || '').trim();
+  if (!/^\d{5}$/.test(pin)) {
+    return res.status(400).json({ error: 'Code must be exactly 5 digits' });
+  }
+  if (pin !== confirmPin) {
+    return res.status(400).json({ error: "Codes don't match" });
+  }
+  db.prepare('UPDATE players SET login_pin = ?, failed_pin_attempts = 0, reset_token = NULL, reset_token_expires = NULL WHERE id = ?')
+    .run(auth.hashPin(pin), player.id);
+  auth.logInPlayer(res, player.id);
+  res.json(sessionInfo({ isPlayerFlag: true, player }));
+});
+
+// The fallback when a player has no email on file at all — pings the
+// admin by email (NOTIFY_EMAIL, the same address the match-finished
+// summary already goes to) instead of the player themselves, since
+// there's nowhere else to send a self-service link. The admin resets it
+// manually from the player's profile once they've confirmed it's really
+// them (see POST /players/:id/reset-login-pin).
+router.post('/request-admin-reset', async (req, res) => {
+  const raw = String(req.body.code || '').trim();
+  const player = findPlayerByPhone(raw);
+  if (!player) {
+    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR });
+  }
+  try {
+    await sendAdminResetRequestEmail(player);
+  } catch (err) {
+    console.error('[player] Failed to send admin reset-request email:', err.message);
+  }
+  res.json({ sent: true });
 });
 
 router.post('/logout', (req, res) => {
   auth.logOutPlayer(res);
-  auth.logOutAnon(res);
-  res.json({ isPlayer: false, isAnon: false, playerId: null, playerName: null, playerSlug: null });
+  res.json({ isPlayer: false, playerId: null, playerName: null, playerSlug: null });
 });
 
 module.exports = router;

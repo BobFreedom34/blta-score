@@ -122,20 +122,78 @@
   </div>
 </div>
 
-<!-- Log in as player modal -->
+<!-- Log in as player modal — brought in line with the step-based version
+     on every other page (index.html etc; see openPlayerLoginModal in
+     common.js), which this one had drifted out of sync with (missing the
+     phone -> success split entirely, so the shared JS silently no-op'd
+     here before this fix). Hardcoded English throughout, matching this
+     page's own convention — unlike every other page, compact.html has no
+     language switcher and never uses data-i18n. -->
 <div class="modal-backdrop" id="player-login-modal" style="display:none">
   <div class="modal">
     <button type="button" class="close" data-close="player-login-modal" aria-label="Close">&times;</button>
-    <h3 style="text-transform:uppercase;font-weight:900">Log in as player</h3>
-    <p style="font-size:16px;color:var(--ink)">If you're a BLTA player, enter <span style="color:var(--green-light);text-transform:uppercase">your phone number</span> (e.g. 0903111222). Don't have one on file yet? Ask an admin to add it.</p>
-    <p style="font-size:13px;color:var(--gray);margin:8px 0">If you're not a BLTA player, log in with 3344 instead — you can still create and manage your own matches.</p>
-    <form id="player-login-form">
-      <div class="field">
-        <input type="text" inputmode="numeric" id="player-login-input" placeholder="0903111222" autocomplete="off">
+    <div id="player-login-step-form">
+      <h3 style="text-transform:uppercase;font-weight:900">Log in as player</h3>
+      <p style="font-size:16px;color:var(--ink)">If you're a BLTA player, enter <span style="color:var(--green-light);text-transform:uppercase">your phone number</span> (e.g. 0903111222). Don't have one on file yet? Ask an admin to add it.</p>
+      <form id="player-login-form">
+        <div class="field">
+          <input type="text" inputmode="numeric" id="player-login-input" placeholder="0903111222" autocomplete="off">
+        </div>
+        <div id="player-login-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
+        <button type="submit" class="btn btn-primary btn-block">Log in</button>
+      </form>
+    </div>
+    <div id="player-login-step-pin" style="display:none">
+      <h3 style="text-transform:uppercase;font-weight:900">Log in as player</h3>
+      <p style="font-size:16px;color:var(--ink)">Enter your 5-digit code</p>
+      <p style="font-size:13px;color:var(--gray);margin:8px 0">The code you created the first time you logged in.</p>
+      <form id="player-login-pin-form">
+        <div class="field">
+          <input type="text" inputmode="numeric" maxlength="5" id="player-login-pin-input" placeholder="•••••" autocomplete="off">
+        </div>
+        <div id="player-login-pin-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
+        <button type="submit" class="btn btn-primary btn-block">Log in</button>
+        <button type="button" class="btn btn-outline btn-block" id="player-login-pin-back-btn" style="margin-top:8px">Back</button>
+      </form>
+      <p style="text-align:center;margin-top:10px">
+        <a href="#" id="player-login-forgot-link" style="font-size:13px;color:var(--gray);text-decoration:underline">Forgot your code?</a>
+      </p>
+    </div>
+    <div id="player-login-step-set-pin" style="display:none">
+      <h3 style="text-transform:uppercase;font-weight:900">Log in as player</h3>
+      <p style="font-size:16px;color:var(--ink)">Create your 5-digit code</p>
+      <p style="font-size:13px;color:var(--gray);margin:8px 0">From now on you'll log in with your phone number and this code.</p>
+      <form id="player-login-set-pin-form">
+        <div class="field">
+          <label for="player-login-set-pin-input">New code</label>
+          <input type="text" inputmode="numeric" maxlength="5" id="player-login-set-pin-input" placeholder="•••••" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="player-login-set-pin-confirm-input">Confirm code</label>
+          <input type="text" inputmode="numeric" maxlength="5" id="player-login-set-pin-confirm-input" placeholder="•••••" autocomplete="off">
+        </div>
+        <div id="player-login-set-pin-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
+        <button type="submit" class="btn btn-primary btn-block">Create code</button>
+      </form>
+    </div>
+    <div id="player-login-step-forgot" style="display:none">
+      <h3 style="text-transform:uppercase;font-weight:900">Log in as player</h3>
+      <p id="player-login-forgot-loading" style="font-size:14px;color:var(--ink);line-height:1.5">Sending…</p>
+      <div id="player-login-forgot-email-sent" style="display:none">
+        <p style="font-size:14px;color:var(--ink);line-height:1.5">We've sent a reset link to your email.</p>
       </div>
-      <div id="player-login-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
-      <button type="submit" class="btn btn-primary btn-block">Log in</button>
-    </form>
+      <div id="player-login-forgot-no-email" style="display:none">
+        <p style="font-size:14px;color:var(--ink);line-height:1.5">You don't have an email on file. Ask an admin to reset your code.</p>
+        <button type="button" class="btn btn-primary btn-block" id="player-login-request-admin-btn">Send request to admin</button>
+        <p id="player-login-request-admin-sent" style="display:none;color:var(--green-light);font-weight:700;margin-top:8px">Request sent to the admin.</p>
+      </div>
+      <div id="player-login-forgot-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
+      <button type="button" class="btn btn-outline btn-block" id="player-login-forgot-back-btn" style="margin-top:8px">Back</button>
+    </div>
+    <div id="player-login-step-success" style="display:none;text-align:center">
+      <h3 id="player-login-success-text" style="margin-top:0"></h3>
+      <button type="button" class="btn btn-primary btn-block" id="player-login-ok-btn">OK</button>
+    </div>
   </div>
 </div>
 
