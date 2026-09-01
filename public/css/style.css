@@ -179,6 +179,12 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .btn:hover { box-shadow: var(--shadow-lg); }
 .btn:active { transform: translateY(1px) scale(0.99); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+/* Start live / Enter result manually (see controlsHtml in match.js) — a
+   transparent border by default (so nothing shifts) that turns orange for
+   the moment the button is actually pressed, same accent color as the
+   NAŽIVO tab's border when it's the selected tab (.tab-live.active). */
+#start-btn, #manual-result-btn { border: 2px solid transparent; }
+#start-btn:active, #manual-result-btn:active { border-color: var(--orange); }
 .btn-primary { background: var(--orange); color: var(--white); }
 .btn-green { background: var(--green); color: var(--white); }
 .btn-yellow { background: var(--yellow); color: var(--ink); }
