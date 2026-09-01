@@ -579,6 +579,13 @@ function render(m) {
   // real player or anon session otherwise needs canManageMatch to say
   // this is actually their match (see routes/matches.js).
   const locationEditable = (m.status !== 'FINISHED' || isAdminUser) && canManageMatch(m, isAdminUser);
+  // Mirrors DELETE /:token server-side: admin can always delete; otherwise
+  // the match can't be finished or admin-created, AND canManageMatch has
+  // to say this is actually your match — the status/createdByAdmin checks
+  // alone say nothing about who's looking, so canManageMatch here isn't
+  // optional (this button was previously missing it entirely, showing for
+  // any logged-in player on any non-finished, non-admin-created match).
+  const deletable = isAdminUser || (m.status !== 'FINISHED' && !m.createdByAdmin && canManageMatch(m, isAdminUser));
   // A "propose times" match has no real location/date yet — say so plainly
   // rather than showing "Not set", since a response is actually pending
   // (see the proposal card below, where anyone with this link picks one).
@@ -638,7 +645,7 @@ function render(m) {
       <button class="btn" id="embed-btn">${t('match.embedBtn')}</button>
       ${locationEditable ? `<button class="btn" id="edit-match-btn">${t('match.editMatchBtn')}</button>` : ''}
       ${m.status === 'FINISHED' ? `<button class="btn btn-green" id="whatsapp-result-btn">${t('match.sendToWhatsapp')}</button>` : ''}
-      ${isAdminUser || (m.status !== 'FINISHED' && !m.createdByAdmin) ? `<button class="btn btn-danger" id="delete-btn">${t('match.deleteMatchBtn')}</button>` : ''}
+      ${deletable ? `<button class="btn btn-danger" id="delete-btn">${t('match.deleteMatchBtn')}</button>` : ''}
     </div>
   `;
 
