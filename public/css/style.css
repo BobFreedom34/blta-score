@@ -204,6 +204,26 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   margin: 22px 0 14px;
   flex-wrap: wrap;
 }
+/* Below ~680px there isn't room for every tab pill on one line, and
+   wrapping wastes several screens' worth of vertical space (5+ rows for a
+   full tab set). A single horizontally-scrolling row keeps it to one line
+   instead — full-bleed to the screen edge (negative margin matching
+   .container's own 16px padding) so the scroll area isn't squeezed
+   narrower than it has to be, with a hidden scrollbar since the row itself
+   is the obvious affordance to swipe. */
+@media (max-width: 680px) {
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-left: -16px;
+    margin-right: -16px;
+    padding: 0 16px;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 0 0 auto; }
+}
 .tab {
   padding: 9px 16px;
   border-radius: 999px;
@@ -275,6 +295,20 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .filters input[type="text"] { flex: 1; min-width: 180px; }
 .filters select { min-width: 150px; }
 #reset-filters-btn { border-color: var(--white); color: var(--white); }
+/* Below ~640px the search box and two selects no longer fit side by side
+   and stack into 4 full-width rows — a 2-column grid instead pairs the
+   selects up (a search box, where present, spans both columns above them;
+   the reset button spans both below), cutting it to 3 rows. */
+@media (max-width: 640px) {
+  .filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .filters input[type="text"] { grid-column: 1 / -1; min-width: 0; }
+  .filters select { min-width: 0; }
+  #reset-filters-btn { grid-column: 1 / -1; }
+}
 
 /* ---------- Category badges ---------- */
 .badge {
