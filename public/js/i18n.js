@@ -149,7 +149,7 @@ const TRANSLATIONS = {
     'login.requestAdminResetSent': 'Žiadosť bola odoslaná adminovi.',
     'login.registerPrompt': 'Zaregistrovať sa ako nový hráč?',
     'login.registerHeadline': 'Nový hráč',
-    'login.registerIntro': 'Toto telefónne číslo ešte nie je v systéme. Zadajte svoje meno a vytvoríme vám nový profil hráča.',
+    'login.registerIntro': 'Toto telefónne číslo ešte nie je v systéme. Zadajte svoje meno — ak už ste v zozname hráčov, prepojíme ho s vaším profilom, inak vytvoríme nový.',
     'login.registerNameLabel': 'Vaše meno',
     'login.registerEmailLabel': 'Váš email',
 
@@ -596,7 +596,7 @@ const TRANSLATIONS = {
     'login.requestAdminResetSent': 'Request sent to the admin.',
     'login.registerPrompt': 'Register as a new player?',
     'login.registerHeadline': 'New player',
-    'login.registerIntro': "This phone number isn't in the system yet. Enter your name and we'll create a new player profile for you.",
+    'login.registerIntro': "This phone number isn't in the system yet. Enter your name — if you're already in the player list, we'll link it to your existing profile, otherwise we'll create a new one.",
     'login.registerNameLabel': 'Your name',
     'login.registerEmailLabel': 'Your email',
 

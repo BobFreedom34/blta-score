@@ -155,17 +155,25 @@ function uniqueSlugFor(name) {
   return slug;
 }
 
-// Self-service registration for a brand-new player — the only other way
-// in is an admin adding a player's phone number from the Players page
-// first (POST /players, admin-only). This is intentionally open to
-// anyone, same trust model as a brand-new player name typed straight into
-// "New match" (see resolvePlayer in routes/matches.js) — just with a
-// phone number attached from the start. Reached from the login form's
-// notFound response above (see openPlayerLoginModal in common.js): give a
-// name and the phone number you just tried to log in with, and this
-// creates the player and logs you straight in, with pinSetupRequired:true
-// exactly like an admin-added player's first login — you land on the same
-// "create your code" step either way.
+// Self-service registration — the only other way in is an admin adding a
+// player's phone number from the Players page first (POST /players,
+// admin-only). This is intentionally open to anyone, same trust model as
+// a brand-new player name typed straight into "New match" (see
+// resolvePlayer in routes/matches.js) — just with a phone number attached
+// from the start. Reached from the login form's notFound response above
+// (see openPlayerLoginModal in common.js): give a name and the phone
+// number you just tried to log in with, and this logs you straight in
+// with pinSetupRequired:true, exactly like an admin-added player's first
+// login — you land on the same "create your code" step either way.
+//
+// Two outcomes depending on that name:
+//  - No existing player has it: a brand-new row is created.
+//  - An existing player has it AND has no phone on file yet (the league
+//    roster commonly has these — an admin added the name from blta.sk
+//    without a number to reach them): this *claims* that row instead of
+//    creating a duplicate, attaching the phone/email to it. An existing
+//    player whose name already has a phone is a genuine conflict, not a
+//    claim — rejected the same as always.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 router.post('/register', async (req, res) => {
@@ -190,20 +198,28 @@ router.post('/register', async (req, res) => {
   if (!email) return res.status(400).json({ error: 'Email is required', errorCode: 'emailRequired' });
   if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Invalid email', errorCode: 'invalidEmail' });
 
-  if (db.prepare('SELECT id FROM players WHERE name = ? COLLATE NOCASE').get(name)) {
+  const existingByName = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE').get(name);
+  if (existingByName && existingByName.phone) {
     return res.status(409).json({ error: 'A player with that name already exists — ask an admin, or log in instead if this is you', errorCode: 'nameAlreadyExists' });
   }
   // Same loose last-6-digits comparison findPlayerByPhone/login uses —
   // checked here too, not just the DB's exact-string unique index on
   // phone, so registration can't create a second row that a later login's
-  // own loose lookup would then find ambiguous between the two.
+  // own loose lookup would then find ambiguous between the two. (Can never
+  // match existingByName here — it's guaranteed phone-less at this point.)
   if (findPlayerByPhone(digits)) {
     return res.status(409).json({ error: 'This phone number is already registered to a player — try logging in instead', errorCode: 'phoneAlreadyRegistered' });
   }
 
-  const slug = uniqueSlugFor(name);
-  const info = db.prepare('INSERT INTO players (name, slug, phone, email) VALUES (?, ?, ?, ?)').run(name, slug, digits, email.slice(0, 100));
-  const player = db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(info.lastInsertRowid);
+  let player;
+  if (existingByName) {
+    db.prepare('UPDATE players SET phone = ?, email = ? WHERE id = ?').run(digits, email.slice(0, 100), existingByName.id);
+    player = db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(existingByName.id);
+  } else {
+    const slug = uniqueSlugFor(name);
+    const info = db.prepare('INSERT INTO players (name, slug, phone, email) VALUES (?, ?, ?, ?)').run(name, slug, digits, email.slice(0, 100));
+    player = db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(info.lastInsertRowid);
+  }
 
   auth.logInPlayer(res, player.id);
   res.status(201).json({ ...sessionInfo({ isPlayerFlag: true, player }), pinSetupRequired: true });
@@ -211,7 +227,7 @@ router.post('/register', async (req, res) => {
   // After responding — the registering player shouldn't wait on this (or
   // have it fail their own registration) if SMTP has a hiccup.
   try {
-    await sendNewRegistrationEmail({ name, phone: digits, email });
+    await sendNewRegistrationEmail({ name, phone: digits, email, claimed: !!existingByName });
   } catch (err) {
     console.error('[player] Failed to send new-registration admin email:', err.message);
   }

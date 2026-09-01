@@ -210,9 +210,13 @@ async function sendAdminResetRequestEmail(player) {
 }
 
 // Fires on every self-service registration (see POST /player/register) —
-// player here is a plain {name, phone, email} object, not a DB row (the
-// route builds this from req.body directly, before/without a re-SELECT).
-// Same admin address as the other admin-facing emails above.
+// player here is a plain {name, phone, email, claimed} object, not a DB
+// row (the route builds this from req.body directly, before/without a
+// re-SELECT). claimed is true when this attached phone/email to an
+// existing, admin-added roster entry that had neither yet, rather than
+// creating a brand-new player — worth calling out to the admin, who'll
+// likely recognize the name either way. Same admin address as the other
+// admin-facing emails above.
 async function sendNewRegistrationEmail(player) {
   const t = getTransporter();
   if (!t) {
@@ -221,7 +225,9 @@ async function sendNewRegistrationEmail(player) {
   }
   const subject = `New player registration: ${player.name}`;
   const text = [
-    'A new player just registered themselves on BLTA Score:',
+    player.claimed
+      ? `${player.name} just claimed their existing player entry on BLTA Score (it had no phone/email on file before now):`
+      : 'A new player just registered themselves on BLTA Score:',
     `Name: ${player.name}`,
     `Phone: ${player.phone}`,
     `Email: ${player.email}`,
