@@ -1372,6 +1372,23 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   font-family: inherit;
   font-size: 14px;
 }
+/* Admin-only, same as phone above — email is where a login-code reset
+   link and the new-registration notice go (see routes/player.js), edited
+   here via the general bio route rather than its own dedicated one.
+   Missing email isn't flagged as urgently as missing phone (--gray-dim,
+   not --danger): it doesn't block logging in at all, just self-service
+   recovery, and plenty of admin-added players predate this mattering. */
+.player-email { font-size: 12px; color: var(--gray); white-space: nowrap; }
+.player-email-missing { color: var(--gray-dim); font-weight: 600; }
+.player-row .edit-email-input {
+  width: 170px;
+  flex-shrink: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--orange);
+  font-family: inherit;
+  font-size: 14px;
+}
 .badge-medal-mini { width: 26px; height: 26px; font-size: 13px; margin: 0; }
 .badge-medal-mini img { border-radius: inherit; }
 

@@ -3,12 +3,17 @@ let query = '';
 let players = [];
 let isAdminUser = false;
 
-// Phone is admin-only (it doubles as a player's login credential — see
-// auth.js) and only ever present in the API response at all when the
-// viewer is admin, so this display/edit UI only shows up for them too.
+// Phone and email are admin-only here (phone doubles as a player's login
+// credential — see auth.js; email is where a login-code reset link and
+// the new-registration notice go) and only ever present in the API
+// response at all when the viewer is admin, so this display/edit UI only
+// shows up for them too.
 function playerRowHtml(p) {
   const phone = isAdminUser
     ? `<span class="player-phone">${p.phone ? escapeHtml(p.phone) : `<span class="player-phone-missing">${t('players.noPhoneOnFile')}</span>`}</span>`
+    : '';
+  const email = isAdminUser
+    ? `<span class="player-email">${p.email ? escapeHtml(p.email) : `<span class="player-email-missing">${t('players.noEmailOnFile')}</span>`}</span>`
     : '';
   const actions = isAdminUser ? `
       <div class="player-row-actions">
@@ -20,6 +25,7 @@ function playerRowHtml(p) {
     <div class="player-row" data-id="${p.id}">
       <a class="player-name" href="/player/${p.slug || p.id}">${escapeHtml(p.name)}</a>
       ${phone}
+      ${email}
       ${actions}
     </div>
   `;
@@ -74,6 +80,7 @@ function attachRowHandlers() {
       row.innerHTML = `
         <input type="text" class="edit-name-input" value="${escapeHtml(player.name)}" maxlength="60" placeholder="${escapeHtml(t('players.namePlaceholder'))}">
         <input type="text" class="edit-phone-input" inputmode="numeric" value="${player.phone ? escapeHtml(player.phone) : ''}" placeholder="0903111222" maxlength="10">
+        <input type="email" class="edit-email-input" value="${player.email ? escapeHtml(player.email) : ''}" placeholder="meno@example.com" maxlength="100">
         <div class="player-row-actions">
           <button type="button" class="btn btn-sm btn-primary" data-action="save">${t('common.save')}</button>
           <button type="button" class="btn btn-sm btn-outline" data-action="cancel">${t('common.cancel')}</button>
@@ -81,6 +88,7 @@ function attachRowHandlers() {
       `;
       const nameInput = row.querySelector('.edit-name-input');
       const phoneInput = row.querySelector('.edit-phone-input');
+      const emailInput = row.querySelector('.edit-email-input');
       nameInput.focus();
       nameInput.select();
 
@@ -89,12 +97,19 @@ function attachRowHandlers() {
         const name = nameInput.value.trim();
         if (!name) return toast(t('players.nameRequired'));
         const phone = phoneInput.value.trim();
+        const email = emailInput.value.trim();
         try {
           if (name !== player.name) {
             await api(`/players/${id}`, { method: 'PATCH', body: { name } });
           }
           if (phone !== (player.phone || '')) {
             await api(`/players/${id}/phone`, { method: 'PATCH', body: { phone } });
+          }
+          // Email lives on the general bio route (not its own dedicated
+          // one like phone) — same route the profile page's "Edit
+          // profile" modal already uses for it.
+          if (email !== (player.email || '')) {
+            await api(`/players/${id}/bio`, { method: 'PATCH', body: { email } });
           }
           toast(t('players.updated'));
           loadPlayers();
@@ -103,7 +118,7 @@ function attachRowHandlers() {
         }
       };
       row.querySelector('[data-action="save"]').addEventListener('click', save);
-      [nameInput, phoneInput].forEach((input) => {
+      [nameInput, phoneInput, emailInput].forEach((input) => {
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') save();
           if (e.key === 'Escape') render();
