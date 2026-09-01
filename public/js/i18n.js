@@ -147,6 +147,11 @@ const TRANSLATIONS = {
     'login.forgotNoEmail': 'Nemáte pridaný email. Požiadajte administrátora o resetovanie kódu.',
     'login.requestAdminReset': 'Poslať žiadosť adminovi',
     'login.requestAdminResetSent': 'Žiadosť bola odoslaná adminovi.',
+    'login.registerPrompt': 'Zaregistrovať sa ako nový hráč?',
+    'login.registerHeadline': 'Nový hráč',
+    'login.registerIntro': 'Toto telefónne číslo ešte nie je v systéme. Zadajte svoje meno a vytvoríme vám nový profil hráča.',
+    'login.registerNameLabel': 'Vaše meno',
+    'login.registerSubmit': 'Zaregistrovať sa',
 
     'resetCode.pageTitle': 'BLTA Score — Obnoviť kód',
     'resetCode.headline': 'Nastavte si nový kód',
@@ -566,6 +571,11 @@ const TRANSLATIONS = {
     'login.forgotNoEmail': "You don't have an email on file. Ask an admin to reset your code.",
     'login.requestAdminReset': 'Send request to admin',
     'login.requestAdminResetSent': 'Request sent to the admin.',
+    'login.registerPrompt': 'Register as a new player?',
+    'login.registerHeadline': 'New player',
+    'login.registerIntro': "This phone number isn't in the system yet. Enter your name and we'll create a new player profile for you.",
+    'login.registerNameLabel': 'Your name',
+    'login.registerSubmit': 'Register',
 
     'resetCode.pageTitle': 'BLTA Score — Reset code',
     'resetCode.headline': 'Set your new code',

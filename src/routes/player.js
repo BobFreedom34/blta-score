@@ -84,7 +84,11 @@ router.post('/login', (req, res) => {
   }
   const player = findPlayerByPhone(raw);
   if (!player) {
-    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR });
+    // notFound (unlike the too-short case above) means this genuinely
+    // looks like a phone number that just isn't registered yet — the
+    // client uses that to offer POST /register as the next step, instead
+    // of a dead-end "ask an admin".
+    return res.status(401).json({ error: PHONE_NOT_FOUND_ERROR, notFound: true });
   }
 
   if (player.login_pin) {
@@ -113,6 +117,72 @@ router.post('/login', (req, res) => {
 
   auth.logInPlayer(res, player.id);
   return res.json({ ...sessionInfo({ isPlayerFlag: true, player }), pinSetupRequired: true });
+});
+
+// Slug generation, duplicated from routes/players.js's own uniqueSlugFor
+// rather than imported — same small-helper-per-file precedent as
+// db.js's own separate slugifyForBackfill copy. Kept here (not there) so
+// every /player/* auth route (login, set-pin, forgot-pin, reset-pin,
+// register) lives in one file with one naming convention.
+function slugifyPart(str) {
+  return str.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+function surnameOf(name) {
+  const parts = name.trim().split(/\s+/);
+  return parts[parts.length - 1];
+}
+function uniqueSlugFor(name) {
+  const base = slugifyPart(surnameOf(name)) || slugifyPart(name) || 'player';
+  let slug = base;
+  let n = 2;
+  while (db.prepare('SELECT id FROM players WHERE slug = ?').get(slug)) {
+    slug = `${base}-${n}`;
+    n += 1;
+  }
+  return slug;
+}
+
+// Self-service registration for a brand-new player — the only other way
+// in is an admin adding a player's phone number from the Players page
+// first (POST /players, admin-only). This is intentionally open to
+// anyone, same trust model as a brand-new player name typed straight into
+// "New match" (see resolvePlayer in routes/matches.js) — just with a
+// phone number attached from the start. Reached from the login form's
+// notFound response above (see openPlayerLoginModal in common.js): give a
+// name and the phone number you just tried to log in with, and this
+// creates the player and logs you straight in, with pinSetupRequired:true
+// exactly like an admin-added player's first login — you land on the same
+// "create your code" step either way.
+router.post('/register', (req, res) => {
+  const name = (req.body.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'Name is required' });
+  if (name.length > 60) return res.status(400).json({ error: 'Name is too long' });
+
+  const raw = String(req.body.phone || '').trim();
+  const digits = raw.replace(/[^\d+]/g, '');
+  const isSlovakLocal = /^0\d{9}$/.test(digits);
+  const isInternational = /^\+\d{8,15}$/.test(digits);
+  if (!isSlovakLocal && !isInternational) {
+    return res.status(400).json({ error: 'Enter a 10-digit phone number starting with 0 (e.g. 0903111222), or a full international number starting with +' });
+  }
+
+  if (db.prepare('SELECT id FROM players WHERE name = ? COLLATE NOCASE').get(name)) {
+    return res.status(409).json({ error: 'A player with that name already exists — ask an admin, or log in instead if this is you' });
+  }
+  // Same loose last-6-digits comparison findPlayerByPhone/login uses —
+  // checked here too, not just the DB's exact-string unique index on
+  // phone, so registration can't create a second row that a later login's
+  // own loose lookup would then find ambiguous between the two.
+  if (findPlayerByPhone(digits)) {
+    return res.status(409).json({ error: 'This phone number is already registered to a player — try logging in instead' });
+  }
+
+  const slug = uniqueSlugFor(name);
+  const info = db.prepare('INSERT INTO players (name, slug, phone) VALUES (?, ?, ?)').run(name, slug, digits);
+  const player = db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(info.lastInsertRowid);
+
+  auth.logInPlayer(res, player.id);
+  res.status(201).json({ ...sessionInfo({ isPlayerFlag: true, player }), pinSetupRequired: true });
 });
 
 // Creates this player's login code — only reachable once already logged in

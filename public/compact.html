@@ -142,6 +142,9 @@
         <div id="player-login-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
         <button type="submit" class="btn btn-primary btn-block">Log in</button>
       </form>
+      <p id="player-login-register-prompt" style="display:none;text-align:center;margin-top:10px">
+        <a href="#" id="player-login-register-link" style="font-size:13px;color:var(--gray);text-decoration:underline">Register as a new player?</a>
+      </p>
     </div>
     <div id="player-login-step-pin" style="display:none">
       <h3 style="text-transform:uppercase;font-weight:900">Log in as player</h3>
@@ -189,6 +192,19 @@
       </div>
       <div id="player-login-forgot-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
       <button type="button" class="btn btn-outline btn-block" id="player-login-forgot-back-btn" style="margin-top:8px">Back</button>
+    </div>
+    <div id="player-login-step-register" style="display:none">
+      <h3 style="text-transform:uppercase;font-weight:900">New player</h3>
+      <p style="font-size:14px;color:var(--ink);line-height:1.5">This phone number isn't in the system yet. Enter your name and we'll create a new player profile for you.</p>
+      <form id="player-login-register-form">
+        <div class="field">
+          <label for="player-login-register-name-input">Your name</label>
+          <input type="text" id="player-login-register-name-input" placeholder="First Last" autocomplete="off" maxlength="60">
+        </div>
+        <div id="player-login-register-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
+        <button type="submit" class="btn btn-primary btn-block">Register</button>
+        <button type="button" class="btn btn-outline btn-block" id="player-login-register-back-btn" style="margin-top:8px">Back</button>
+      </form>
     </div>
     <div id="player-login-step-success" style="display:none;text-align:center">
       <h3 id="player-login-success-text" style="margin-top:0"></h3>

@@ -1281,31 +1281,43 @@ function canManageMatch(m, isAdminUser) {
   return true;
 }
 
-// Five steps, only three of which any one login ever visits — see the
+// Six steps, only three of which any one login ever visits — see the
 // #player-login-step-* panels in the modal markup:
-//   1. player-login-step-form    — phone number
-//   2. player-login-step-pin     — only if that phone already has a code
-//                                   set up (server 401s with pinRequired);
-//                                   also where "Forgot your code?" lives
-//   3. player-login-step-set-pin — only the first time (server 200s with
-//                                   pinSetupRequired) — creating a code is
-//                                   mandatory going forward, so there's no
-//                                   skip here; closing the modal without
-//                                   finishing just prompts again next login
-//   4. player-login-step-forgot  — reached from step 2's "Forgot your
-//                                   code?" link, not from a server response
-//   5. player-login-step-success — always the last step, whichever way it
-//                                   got there
+//   1. player-login-step-form     — phone number; also where the "not
+//                                    registered yet?" prompt into step 6
+//                                    lives (server 401s with notFound)
+//   2. player-login-step-pin      — only if that phone already has a code
+//                                    set up (server 401s with pinRequired);
+//                                    also where "Forgot your code?" lives
+//   3. player-login-step-set-pin  — only the first time (server 200s with
+//                                    pinSetupRequired) — creating a code is
+//                                    mandatory going forward, so there's no
+//                                    skip here; closing the modal without
+//                                    finishing just prompts again next login
+//   4. player-login-step-forgot   — reached from step 2's "Forgot your
+//                                    code?" link, not from a server response
+//   5. player-login-step-register — reached from step 1's "not registered
+//                                    yet?" prompt, not from switching a
+//                                    login-vs-register mode upfront —
+//                                    self-service registration (see POST
+//                                    /player/register) for a phone number
+//                                    with no player behind it at all;
+//                                    success lands on step 3 exactly like
+//                                    an admin-added player's first login
+//   6. player-login-step-success  — always the last step, whichever way it
+//                                    got there
 function openPlayerLoginModal(onSuccess) {
   const modal = document.getElementById('player-login-modal');
   if (!modal) return;
-  const steps = ['form', 'pin', 'set-pin', 'forgot', 'success'].map((name) => document.getElementById(`player-login-step-${name}`));
-  const [formStep, pinStep, setPinStep, forgotStep, successStep] = steps;
+  const steps = ['form', 'pin', 'set-pin', 'forgot', 'register', 'success'].map((name) => document.getElementById(`player-login-step-${name}`));
+  const [formStep, pinStep, setPinStep, forgotStep, registerStep, successStep] = steps;
 
   const form = document.getElementById('player-login-form');
   const input = document.getElementById('player-login-input');
   const errorEl = document.getElementById('player-login-error');
   const submitBtn = form.querySelector('button[type="submit"]');
+  const registerPromptEl = document.getElementById('player-login-register-prompt');
+  const registerLink = document.getElementById('player-login-register-link');
 
   const pinForm = document.getElementById('player-login-pin-form');
   const pinInput = document.getElementById('player-login-pin-input');
@@ -1327,6 +1339,12 @@ function openPlayerLoginModal(onSuccess) {
   const forgotBackBtn = document.getElementById('player-login-forgot-back-btn');
   const requestAdminBtn = document.getElementById('player-login-request-admin-btn');
   const requestAdminSentEl = document.getElementById('player-login-request-admin-sent');
+
+  const registerForm = document.getElementById('player-login-register-form');
+  const registerNameInput = document.getElementById('player-login-register-name-input');
+  const registerErrorEl = document.getElementById('player-login-register-error');
+  const registerSubmitBtn = registerForm.querySelector('button[type="submit"]');
+  const registerBackBtn = document.getElementById('player-login-register-back-btn');
 
   function showStep(step) {
     steps.forEach((el) => { el.style.display = 'none'; });
@@ -1355,6 +1373,7 @@ function openPlayerLoginModal(onSuccess) {
   }
 
   errorEl.textContent = '';
+  registerPromptEl.style.display = 'none';
   input.value = '';
   input.disabled = false;
   showStep(formStep);
@@ -1364,6 +1383,7 @@ function openPlayerLoginModal(onSuccess) {
     const code = input.value.trim();
     if (!code) return;
     errorEl.textContent = '';
+    registerPromptEl.style.display = 'none';
     input.disabled = true;
     submitBtn.disabled = true;
     try {
@@ -1396,11 +1416,53 @@ function openPlayerLoginModal(onSuccess) {
         setTimeout(() => pinInput.focus(), 50);
       } else {
         errorEl.textContent = err.message;
+        // notFound means this genuinely looks like a phone number, just
+        // not a registered one — offer self-registration instead of a
+        // dead end (see the login route's contract in routes/player.js).
+        if (err.data && err.data.notFound) {
+          enteredPhone = code;
+          registerPromptEl.style.display = '';
+        }
         input.focus();
       }
     }
     input.disabled = false;
     submitBtn.disabled = false;
+  };
+
+  registerLink.onclick = (e) => {
+    e.preventDefault();
+    registerNameInput.value = '';
+    registerErrorEl.textContent = '';
+    showStep(registerStep);
+    setTimeout(() => registerNameInput.focus(), 50);
+  };
+
+  registerForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const name = registerNameInput.value.trim();
+    if (!name) return;
+    registerErrorEl.textContent = '';
+    registerSubmitBtn.disabled = true;
+    try {
+      const res = await api('/player/register', { method: 'POST', body: { name, phone: enteredPhone } });
+      applySession(res);
+      // Same landing spot a pinSetupRequired login uses — registering and
+      // a first login both end with "now create your code".
+      setPinInput.value = '';
+      setPinConfirmInput.value = '';
+      setPinErrorEl.textContent = '';
+      showStep(setPinStep);
+      setTimeout(() => setPinInput.focus(), 50);
+    } catch (err) {
+      registerErrorEl.textContent = err.message;
+    }
+    registerSubmitBtn.disabled = false;
+  };
+
+  registerBackBtn.onclick = () => {
+    showStep(formStep);
+    setTimeout(() => input.focus(), 50);
   };
 
   pinForm.onsubmit = async (e) => {
