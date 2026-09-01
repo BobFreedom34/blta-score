@@ -151,6 +151,7 @@ const TRANSLATIONS = {
     'login.registerHeadline': 'Nový hráč',
     'login.registerIntro': 'Toto telefónne číslo ešte nie je v systéme. Zadajte svoje meno a vytvoríme vám nový profil hráča.',
     'login.registerNameLabel': 'Vaše meno',
+    'login.registerEmailLabel': 'Váš email',
     'login.registerSubmit': 'Zaregistrovať sa',
 
     'resetCode.pageTitle': 'BLTA Score — Obnoviť kód',
@@ -575,6 +576,7 @@ const TRANSLATIONS = {
     'login.registerHeadline': 'New player',
     'login.registerIntro': "This phone number isn't in the system yet. Enter your name and we'll create a new player profile for you.",
     'login.registerNameLabel': 'Your name',
+    'login.registerEmailLabel': 'Your email',
     'login.registerSubmit': 'Register',
 
     'resetCode.pageTitle': 'BLTA Score — Reset code',

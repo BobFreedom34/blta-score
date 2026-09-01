@@ -209,7 +209,34 @@ async function sendAdminResetRequestEmail(player) {
   return true;
 }
 
+// Fires on every self-service registration (see POST /player/register) —
+// player here is a plain {name, phone, email} object, not a DB row (the
+// route builds this from req.body directly, before/without a re-SELECT).
+// Same admin address as the other admin-facing emails above.
+async function sendNewRegistrationEmail(player) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping new-registration email.');
+    return false;
+  }
+  const subject = `New player registration: ${player.name}`;
+  const text = [
+    'A new player just registered themselves on BLTA Score:',
+    `Name: ${player.name}`,
+    `Phone: ${player.phone}`,
+    `Email: ${player.email}`,
+  ].join('\n');
+
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
+    subject,
+    text,
+  });
+  return true;
+}
+
 module.exports = {
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
-  sendPinResetEmail, sendAdminResetRequestEmail,
+  sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail,
 };

@@ -1342,6 +1342,7 @@ function openPlayerLoginModal(onSuccess) {
 
   const registerForm = document.getElementById('player-login-register-form');
   const registerNameInput = document.getElementById('player-login-register-name-input');
+  const registerEmailInput = document.getElementById('player-login-register-email-input');
   const registerErrorEl = document.getElementById('player-login-register-error');
   const registerSubmitBtn = registerForm.querySelector('button[type="submit"]');
   const registerBackBtn = document.getElementById('player-login-register-back-btn');
@@ -1433,6 +1434,7 @@ function openPlayerLoginModal(onSuccess) {
   registerLink.onclick = (e) => {
     e.preventDefault();
     registerNameInput.value = '';
+    registerEmailInput.value = '';
     registerErrorEl.textContent = '';
     showStep(registerStep);
     setTimeout(() => registerNameInput.focus(), 50);
@@ -1441,11 +1443,12 @@ function openPlayerLoginModal(onSuccess) {
   registerForm.onsubmit = async (e) => {
     e.preventDefault();
     const name = registerNameInput.value.trim();
-    if (!name) return;
+    const email = registerEmailInput.value.trim();
+    if (!name || !email) return;
     registerErrorEl.textContent = '';
     registerSubmitBtn.disabled = true;
     try {
-      const res = await api('/player/register', { method: 'POST', body: { name, phone: enteredPhone } });
+      const res = await api('/player/register', { method: 'POST', body: { name, email, phone: enteredPhone } });
       applySession(res);
       // Same landing spot a pinSetupRequired login uses — registering and
       // a first login both end with "now create your code".

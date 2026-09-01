@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const express = require('express');
 const db = require('../db');
 const auth = require('../auth');
-const { sendPinResetEmail, sendAdminResetRequestEmail } = require('../mailer');
+const { sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail } = require('../mailer');
 
 const router = express.Router();
 
@@ -153,7 +153,9 @@ function uniqueSlugFor(name) {
 // creates the player and logs you straight in, with pinSetupRequired:true
 // exactly like an admin-added player's first login — you land on the same
 // "create your code" step either way.
-router.post('/register', (req, res) => {
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+router.post('/register', async (req, res) => {
   const name = (req.body.name || '').trim();
   if (!name) return res.status(400).json({ error: 'Name is required' });
   if (name.length > 60) return res.status(400).json({ error: 'Name is too long' });
@@ -165,6 +167,15 @@ router.post('/register', (req, res) => {
   if (!isSlovakLocal && !isInternational) {
     return res.status(400).json({ error: 'Enter a 10-digit phone number starting with 0 (e.g. 0903111222), or a full international number starting with +' });
   }
+
+  // Unlike the optional email on an existing profile's bio (PATCH
+  // /players/:id/bio), this one's required — it's the only way the admin
+  // gets notified a new player just registered themselves (see below), and
+  // the only self-service password-reset path (POST /forgot-pin) if they
+  // ever forget their code.
+  const email = (req.body.email || '').trim();
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+  if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Invalid email' });
 
   if (db.prepare('SELECT id FROM players WHERE name = ? COLLATE NOCASE').get(name)) {
     return res.status(409).json({ error: 'A player with that name already exists — ask an admin, or log in instead if this is you' });
@@ -178,11 +189,19 @@ router.post('/register', (req, res) => {
   }
 
   const slug = uniqueSlugFor(name);
-  const info = db.prepare('INSERT INTO players (name, slug, phone) VALUES (?, ?, ?)').run(name, slug, digits);
+  const info = db.prepare('INSERT INTO players (name, slug, phone, email) VALUES (?, ?, ?, ?)').run(name, slug, digits, email.slice(0, 100));
   const player = db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(info.lastInsertRowid);
 
   auth.logInPlayer(res, player.id);
   res.status(201).json({ ...sessionInfo({ isPlayerFlag: true, player }), pinSetupRequired: true });
+
+  // After responding — the registering player shouldn't wait on this (or
+  // have it fail their own registration) if SMTP has a hiccup.
+  try {
+    await sendNewRegistrationEmail({ name, phone: digits, email });
+  } catch (err) {
+    console.error('[player] Failed to send new-registration admin email:', err.message);
+  }
 });
 
 // Creates this player's login code — only reachable once already logged in
