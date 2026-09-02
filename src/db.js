@@ -575,4 +575,21 @@ db.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_ranking_snapshots_unique ON ranking_snapshots(table_key, player_name COLLATE NOCASE, snapshot_week);
 `);
 
+// Admin-visible login history (see auth.js's logInPlayer, the single
+// choke point every real/first phone login, registration, and PIN reset
+// all funnel through — one row per session actually started, not per
+// attempt; a wrong code never lands here). player_id has no FK/CASCADE:
+// a deleted player's history intentionally stays queryable rather than
+// vanishing, same reasoning as match rows already keep their own
+// player_id/player2_id after a player is renamed or removed elsewhere.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS login_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_login_events_player_id ON login_events(player_id);
+  CREATE INDEX IF NOT EXISTS idx_login_events_created_at ON login_events(created_at);
+`);
+
 module.exports = db;

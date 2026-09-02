@@ -1477,6 +1477,29 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 }
 .card-dark .rank-table-header { border-bottom-color: rgba(255,255,255,0.18); }
 .rank-col-age, .rank-col-matches, .rank-col-points { text-align: right; }
+
+/* Login history (admin-only) — same row-as-grid pattern as .rank-grid
+   above rather than a literal <table>, for the same reason: every row
+   (including the header) shares one column template so they line up
+   without any per-cell width bookkeeping. */
+.login-history-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--gray-light);
+}
+.login-history-row:last-child { border-bottom: none; }
+.login-history-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--gray-dim);
+  border-bottom: 1.5px solid var(--gray-light);
+}
+.login-history-when { color: var(--gray-dim); white-space: nowrap; text-align: right; }
 .rank-row {
   padding: 10px 4px;
   border-bottom: 1px solid var(--gray-light);

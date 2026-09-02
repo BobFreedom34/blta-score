@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const db = require('./db');
 
 const COOKIE_NAME = 'blta_admin';
 const PLAYER_COOKIE_NAME = 'blta_player';
@@ -78,8 +79,16 @@ function isPlayer(req) {
   return isAdmin(req) || getPlayerId(req) !== null;
 }
 
+// The single choke point every real session start funnels through — a
+// first phone-only login (before a code exists yet), a phone+code login,
+// self-service registration, and a successful PIN reset all call this,
+// so recording the login_events row here (rather than at each call site
+// individually) guarantees the admin-visible history in routes/admin.js
+// can't quietly miss one of those paths. A wrong code never reaches this
+// function at all, so failed attempts never show up here either.
 function logInPlayer(res, playerId) {
   res.cookie(PLAYER_COOKIE_NAME, String(playerId), cookieOptions());
+  db.prepare('INSERT INTO login_events (player_id) VALUES (?)').run(playerId);
 }
 
 function logOutPlayer(res) {

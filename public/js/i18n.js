@@ -21,6 +21,7 @@ try {
 const TRANSLATIONS = {
   sk: {
     'nav.matches': 'Zápasy',
+    'nav.myProfile': 'Môj profil',
     'nav.players': 'Hráči',
     'nav.rankings': 'Rebríček',
     'nav.newMatch': '+ Nový zápas',
@@ -73,6 +74,7 @@ const TRANSLATIONS = {
 
     'footer.embedList': 'Vložiť tento zoznam',
     'footer.manageBadges': 'Spravovať odznaky',
+    'footer.loginHistory': 'História prihlásení',
 
     'embed.title': 'Vložiť do WordPress',
     'embed.desc': 'Vložte toto do bloku „Custom HTML“ na vašej stránke blta.sk:',
@@ -468,6 +470,7 @@ const TRANSLATIONS = {
   },
   en: {
     'nav.matches': 'Matches',
+    'nav.myProfile': 'My profile',
     'nav.players': 'Players',
     'nav.rankings': 'Rankings',
     'nav.newMatch': '+ New match',
@@ -520,6 +523,7 @@ const TRANSLATIONS = {
 
     'footer.embedList': 'Embed this list',
     'footer.manageBadges': 'Manage badges',
+    'footer.loginHistory': 'Login history',
 
     'embed.title': 'Embed on WordPress',
     'embed.desc': 'Paste this into a "Custom HTML" block on your blta.sk page:',

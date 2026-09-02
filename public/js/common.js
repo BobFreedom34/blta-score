@@ -1292,6 +1292,11 @@ let currentPlayerName = null;
 // Pages that need to scope a button/action to "this player's own stuff"
 // (see checkMatchAccess in routes/matches.js) compare against this.
 let currentPlayerId = null;
+// Only meaningful alongside currentPlayerId — the "My profile" nav link
+// needs somewhere to actually point (see updatePlayerNavLinks below;
+// /player/:id still resolves without a slug, but the slug is what every
+// other profile link on the site already uses).
+let currentPlayerSlug = null;
 
 function updatePlayerNavLinks() {
   document.querySelectorAll('.player-login-link').forEach((el) => {
@@ -1299,7 +1304,23 @@ function updatePlayerNavLinks() {
     else if (playerAuthed) el.textContent = t('nav.logout');
     else el.textContent = t('nav.loginPlayer');
   });
+  // Always visible (unlike .player-login-link's text, which already says
+  // whether you're logged in) — kept pointed at the real profile once
+  // known so a normal click, middle-click, or "open in new tab" all just
+  // work; the click handler below is only what's needed for the logged-
+  // out case, where there's nowhere real to point yet.
+  document.querySelectorAll('.nav-my-profile-link').forEach((el) => {
+    el.href = (playerAuthed && currentPlayerId) ? `/player/${currentPlayerSlug || currentPlayerId}` : '#';
+  });
 }
+
+document.querySelectorAll('.nav-my-profile-link').forEach((el) => {
+  el.addEventListener('click', (e) => {
+    if (playerAuthed && currentPlayerId) return; // real href already set — let it navigate normally
+    e.preventDefault();
+    requirePlayerAuth(() => { window.location.href = `/player/${currentPlayerSlug || currentPlayerId}`; });
+  });
+});
 
 async function refreshPlayerAuth() {
   let needsPinSetup = false;
@@ -1308,11 +1329,13 @@ async function refreshPlayerAuth() {
     playerAuthed = !!res.isPlayer;
     currentPlayerName = res.playerName || null;
     currentPlayerId = res.playerId || null;
+    currentPlayerSlug = res.playerSlug || null;
     needsPinSetup = !!res.needsPinSetup;
   } catch {
     playerAuthed = false;
     currentPlayerName = null;
     currentPlayerId = null;
+    currentPlayerSlug = null;
   }
   updatePlayerNavLinks();
   // Lets any page's own script react to a login/logout finishing (e.g. the
@@ -1483,6 +1506,7 @@ function openPlayerLoginModal(onSuccess, opts) {
     playerAuthed = !!res.isPlayer;
     currentPlayerName = res.playerName || null;
     currentPlayerId = res.playerId || null;
+    currentPlayerSlug = res.playerSlug || null;
     updatePlayerNavLinks();
     window.dispatchEvent(new Event('blta:auth-changed'));
   }
@@ -1747,6 +1771,7 @@ document.querySelectorAll('.player-login-link').forEach((el) => {
       playerAuthed = false;
       currentPlayerName = null;
       currentPlayerId = null;
+      currentPlayerSlug = null;
       updatePlayerNavLinks();
       window.dispatchEvent(new Event('blta:auth-changed'));
       toast('Logged out');
@@ -1812,13 +1837,13 @@ async function subscribeToPush(matchToken, type) {
   await api(`/matches/${matchToken}/push-subscribe`, { method: 'POST', body: { subscription: subscription.toJSON(), type } });
 }
 
-// Reveals the "Manage badges" footer link only for a logged-in admin —
-// hidden by default in the HTML so it never flashes visible for everyone
-// else while this check is in flight.
+// Reveals the "Manage badges" and "Login history" footer links only for a
+// logged-in admin — hidden by default in the HTML so neither ever flashes
+// visible for everyone else while this check is in flight.
 if (!document.body.classList.contains('embed')) {
   checkAdmin().then((isAdminUser) => {
     if (!isAdminUser) return;
-    document.querySelectorAll('.footer-badges-link').forEach((el) => { el.style.display = ''; });
+    document.querySelectorAll('.footer-badges-link, .footer-login-history-link').forEach((el) => { el.style.display = ''; });
   });
 }
 
