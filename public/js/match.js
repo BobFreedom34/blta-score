@@ -593,7 +593,13 @@ function render(m) {
   // Location/Date/Category/Notes all go through the same PATCH /:token +
   // checkMatchAccess path server-side, so they're gated together
   // client-side too — admin can always edit (even a finished match).
-  const locationEditable = (m.status !== 'FINISHED' || isAdminUser) && canControlLive;
+  // Deliberately uses plain canManageMatch, not canControlLive: unlike
+  // deleting the match or controlling a live one, editing the basics is
+  // meant to stay visible to anyone with the share link (e.g. setting a
+  // location/date before the match is even scheduled) and only actually
+  // decided once requirePlayerAuth resolves who's clicking — same pattern
+  // as start-btn and the proposal cards.
+  const locationEditable = (m.status !== 'FINISHED' || isAdminUser) && canManageMatch(m, isAdminUser);
   // Mirrors DELETE /:token server-side: admin can always delete; otherwise
   // the match can't be finished or admin-created, AND canControlLive has
   // to say this is actually your match — the status/createdByAdmin checks
