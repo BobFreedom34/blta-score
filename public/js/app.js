@@ -381,6 +381,13 @@ document.getElementById('embed-list-btn').addEventListener('click', () => {
   src.searchParams.set('status', f.status);
   if (f.dateFilter === 'has') src.searchParams.set('dateFilter', 'has');
   else if (f.dateFilter === 'none') src.searchParams.set('dateFilter', 'none');
+  // A specific category picked from the dropdown carries over as-is; on
+  // /compactblta, with nothing more specific picked, the page's own
+  // allowlist (see FORCED_CATEGORIES) carries over instead — otherwise the
+  // embedded widget would show every category again, silently dropping
+  // the one thing this page's whole point is to restrict.
+  if (currentCategory) src.searchParams.set('category', currentCategory);
+  else if (FORCED_CATEGORIES.length) src.searchParams.set('category', FORCED_CATEGORIES.join(','));
   // The compact table reads better wide and short; the full card is tall and
   // narrow (a sidebar widget), so each embed defaults to a different shape.
   const iframeStyle = COMPACT_MODE ? 'border:0;width:100%' : 'border:0;max-width:480px';

@@ -11,6 +11,11 @@ const statusFilter = VALID_STATUSES.includes((params.get('status') || '').toUppe
 const dateFilter = statusFilter === 'PLANNED' && ['has', 'none'].includes(params.get('dateFilter'))
   ? params.get('dateFilter')
   : null;
+// Single value or a comma-separated list, passed straight through to
+// GET /api/matches (see its category filter in routes/matches.js) — set
+// by app.js's embed-list-btn handler when the page it was generated from
+// had a category picked or restricted (e.g. /compactblta).
+const categoryFilter = params.get('category') || null;
 
 const HEADERS = {
   PLANNED: '🗓 Planned matches',
@@ -99,6 +104,7 @@ async function load() {
     qs.set('status', statusFilter);
     if (dateFilter === 'has') qs.set('hasDate', '1');
     else if (dateFilter === 'none') qs.set('noDate', '1');
+    if (categoryFilter) qs.set('category', categoryFilter);
     const matches = await api(`/matches?${qs.toString()}`);
     const body = matches.length
       ? `<div class="match-list${COMPACT_MODE ? ' compact-match-list' : ''}">${buildListHtml(matches)}</div>`
