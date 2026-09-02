@@ -119,7 +119,7 @@ function scoreboardHtml(m, durationHtml) {
   `;
 }
 
-function scoreControlsHtml(m, { showFinish, showRestart }) {
+function scoreControlsHtml(m, { showFinish, showRestart, canControlLive }) {
   // scoreControlsHtml is only ever called for a FINISHED match from the
   // admin-only correction view, so the picker below is naturally admin-only
   // there too — for a LIVE match it's open to everyone, same as scoring itself.
@@ -169,17 +169,19 @@ function scoreControlsHtml(m, { showFinish, showRestart }) {
       </div>
     </div>
     <div class="match-actions">
+      ${canControlLive ? `
       ${showFinish ? (m.pausedAt
         ? `<button class="btn" id="resume-btn">${t('match.resumeMatch')}</button>`
         : `<button class="btn" id="pause-btn">${t('match.stopMatch')}</button>`) : ''}
       ${showRestart ? `<button class="btn" id="restart-btn">${t('match.restartMatch')}</button>` : ''}
       ${showFinish ? `<button class="btn btn-dark" id="finish-btn">${t('match.finishMatchBtn')}</button>` : ''}
       ${showFinish ? `<button class="btn btn-outline" id="unfinished-btn" title="${escapeHtml(t('match.matchUnfinishedTitle'))}">${t('match.matchUnfinishedBtn')}</button>` : ''}
+      ` : ''}
     </div>
   `;
 }
 
-function controlsHtml(m) {
+function controlsHtml(m, canControlLive) {
   if (m.status === 'PLANNED') {
     return `
       <div style="display:flex;gap:10px;margin-top:16px">
@@ -189,7 +191,7 @@ function controlsHtml(m) {
     `;
   }
   if (m.status === 'LIVE') {
-    return scoreControlsHtml(m, { showFinish: true, showRestart: true });
+    return scoreControlsHtml(m, { showFinish: true, showRestart: true, canControlLive });
   }
   if (m.status === 'UNFINISHED') {
     return `
@@ -197,9 +199,11 @@ function controlsHtml(m) {
         <div style="font-size:13px;color:var(--gray);font-weight:700;letter-spacing:0.03em;text-transform:uppercase">${t('status.UNFINISHED')}</div>
         <div style="font-size:16px;font-weight:700;color:var(--ink);margin-top:4px">${t('match.unfinishedDesc')}</div>
       </div>
+      ${canControlLive ? `
       <button class="btn btn-primary btn-block" id="resume-later-btn" style="padding:16px;font-size:16px;margin-top:10px;text-transform:uppercase">${t('match.setNewDateResume')}</button>
       <button class="btn btn-dark btn-block" id="finish-as-is-btn" style="margin-top:10px">${t('match.finishAsIs')}</button>
       <button class="btn btn-block" id="restart-btn" style="margin-top:10px">${t('match.restartFromScratch')}</button>
+      ` : ''}
     `;
   }
   // FINISHED
@@ -216,7 +220,7 @@ function controlsHtml(m) {
   return `
     ${winnerCard}
     <div style="text-align:center;font-size:12px;color:var(--gray-dim);margin:14px 0 -6px">${t('match.adminCorrectNote')}</div>
-    ${scoreControlsHtml(m, { showFinish: false, showRestart: true })}
+    ${scoreControlsHtml(m, { showFinish: false, showRestart: true, canControlLive })}
   `;
 }
 
@@ -575,19 +579,28 @@ function render(m) {
       ? `<div class="timer">${Math.max(1, Math.round((new Date(m.endTime) - new Date(m.startTime)) / 60000))} min</div>`
       : '<div class="timer">00:00</div>');
 
+  // canManageMatch alone deliberately returns true for a logged-out
+  // visitor (see common.js) — that's the right call for flows like
+  // starting a planned match or responding to a proposal, which are meant
+  // to be visible to anyone with the share link and only actually decided
+  // once requirePlayerAuth resolves who's clicking. Editing/deleting the
+  // match and controlling a live one are different: a spectator watching
+  // someone else's live match (or just holding the link, logged out)
+  // shouldn't see Stop/Restart/Finish/Edit/Delete at all, not just get
+  // rejected after clicking — so these require being logged in already
+  // AND passing canManageMatch, not either alone.
+  const canControlLive = isAdminUser || (playerAuthed && canManageMatch(m, isAdminUser));
   // Location/Date/Category/Notes all go through the same PATCH /:token +
   // checkMatchAccess path server-side, so they're gated together
-  // client-side too — admin can always edit (even a finished match); a
-  // real player otherwise needs canManageMatch to say this is actually
-  // their match (see routes/matches.js).
-  const locationEditable = (m.status !== 'FINISHED' || isAdminUser) && canManageMatch(m, isAdminUser);
+  // client-side too — admin can always edit (even a finished match).
+  const locationEditable = (m.status !== 'FINISHED' || isAdminUser) && canControlLive;
   // Mirrors DELETE /:token server-side: admin can always delete; otherwise
-  // the match can't be finished or admin-created, AND canManageMatch has
+  // the match can't be finished or admin-created, AND canControlLive has
   // to say this is actually your match — the status/createdByAdmin checks
-  // alone say nothing about who's looking, so canManageMatch here isn't
-  // optional (this button was previously missing it entirely, showing for
-  // any logged-in player on any non-finished, non-admin-created match).
-  const deletable = isAdminUser || (m.status !== 'FINISHED' && !m.createdByAdmin && canManageMatch(m, isAdminUser));
+  // alone say nothing about who's looking, so this isn't optional (this
+  // button was previously missing it entirely, showing for any logged-in
+  // player on any non-finished, non-admin-created match).
+  const deletable = isAdminUser || (m.status !== 'FINISHED' && !m.createdByAdmin && canControlLive);
   // A "propose times" match has no real location/date yet — say so plainly
   // rather than showing "Not set", since a response is actually pending
   // (see the proposal card below, where anyone with this link picks one).
@@ -609,7 +622,7 @@ function render(m) {
     </div>
 
     ${scoreboardHtml(m, durationHtml)}
-    ${controlsHtml(m)}
+    ${controlsHtml(m, canControlLive)}
 
     <div class="info-grid">
       <div class="info-item">
@@ -759,20 +772,36 @@ function attachHandlers(m) {
     }));
   });
 
+  // Stop/Resume/Restart/Finish/Mark-unfinished/Resume-later/Finish-as-is
+  // are now hidden from render() entirely unless canControlLive was true
+  // (see there) — this recheck is just the same belt-and-braces pattern
+  // start-btn/manual-result-btn/openEditMatch already use, for the rare
+  // case a stale render leaves one of these clickable a beat too long.
+  function guardCanControl() {
+    if (!canManageMatch(m, isAdminUser)) {
+      showAccessDeniedModal(t('accessDenied.message'));
+      return false;
+    }
+    return true;
+  }
+
   const pauseBtn = document.getElementById('pause-btn');
   if (pauseBtn) pauseBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+    if (!guardCanControl()) return;
     try { render(await api(`/matches/${matchToken}/pause`, { method: 'POST' })); }
     catch (err) { toast(err.message); }
   }));
 
   const resumeBtn = document.getElementById('resume-btn');
   if (resumeBtn) resumeBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+    if (!guardCanControl()) return;
     try { render(await api(`/matches/${matchToken}/resume`, { method: 'POST' })); }
     catch (err) { toast(err.message); }
   }));
 
   const restartBtn = document.getElementById('restart-btn');
   if (restartBtn) restartBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+    if (!guardCanControl()) return;
     if (!confirm(t('match.restartConfirm'))) return;
     restartBtn.disabled = true;
     try { render(await api(`/matches/${matchToken}/restart`, { method: 'POST' })); }
@@ -781,6 +810,7 @@ function attachHandlers(m) {
 
   const finishBtn = document.getElementById('finish-btn');
   if (finishBtn) finishBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+    if (!guardCanControl()) return;
     // Free Play never reaches state.status === 'COMPLETE' on its own — but
     // if one player has clearly won more sets, finishing is just a normal
     // decided finish (the server picks that player); only a genuine tie
@@ -802,6 +832,7 @@ function attachHandlers(m) {
 
   const unfinishedBtn = document.getElementById('unfinished-btn');
   if (unfinishedBtn) unfinishedBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+    if (!guardCanControl()) return;
     if (!confirm(t('match.unfinishedConfirm'))) return;
     unfinishedBtn.disabled = true;
     try { render(await api(`/matches/${matchToken}/unfinished`, { method: 'POST' })); }
@@ -810,6 +841,7 @@ function attachHandlers(m) {
 
   const resumeLaterBtn = document.getElementById('resume-later-btn');
   if (resumeLaterBtn) resumeLaterBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+    if (!guardCanControl()) return;
     resumeLaterBtn.disabled = true;
     try {
       const updated = await api(`/matches/${matchToken}/resume-later`, { method: 'POST' });
@@ -820,6 +852,7 @@ function attachHandlers(m) {
 
   const finishAsIsBtn = document.getElementById('finish-as-is-btn');
   if (finishAsIsBtn) finishAsIsBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+    if (!guardCanControl()) return;
     if (!confirm(t('match.finishAsIsConfirm'))) return;
     finishAsIsBtn.disabled = true;
     try { render(await api(`/matches/${matchToken}/finish-as-is`, { method: 'POST' })); }
@@ -886,6 +919,7 @@ function attachHandlers(m) {
 
   const deleteBtn = document.getElementById('delete-btn');
   if (deleteBtn) deleteBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+    if (!guardCanControl()) return;
     if (!confirm(t('match.deleteMatchConfirm', { p1: m.player1.name, p2: m.player2.name }))) return;
     deleteBtn.disabled = true;
     try {
