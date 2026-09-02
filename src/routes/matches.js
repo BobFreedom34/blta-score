@@ -199,8 +199,19 @@ router.get('/', (req, res) => {
     params.status = status;
   }
   if (category) {
-    clauses.push('m.category = @category');
-    params.category = category;
+    // Plain "category=ELITE" still works exactly as before (a single bound
+    // param); a comma-separated list (e.g. for /compactblta, which only
+    // ever wants ELITE/NEXT_GEN/NOVICE) becomes an IN (...) instead, one
+    // bound param per value rather than interpolating the raw list into
+    // the query string.
+    const cats = category.split(',').map((c) => c.trim()).filter(Boolean);
+    if (cats.length <= 1) {
+      clauses.push('m.category = @category');
+      params.category = cats[0] || category;
+    } else {
+      clauses.push(`m.category IN (${cats.map((_, i) => `@category${i}`).join(', ')})`);
+      cats.forEach((c, i) => { params[`category${i}`] = c; });
+    }
   }
   if (playerId) {
     clauses.push('(m.player1_id = @playerId OR m.player2_id = @playerId)');

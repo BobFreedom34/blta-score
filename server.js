@@ -98,6 +98,7 @@ app.get('/embed/match/:token', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 
 app.get('/embed/live', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-live.html')));
 app.get('/embed/compact', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-compact.html')));
 app.get('/compact', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'compact.html')));
+app.get('/compactblta', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'compactblta.html')));
 
 // Live viewer count for a match room — everyone in the room gets the
 // updated headcount whenever someone joins, leaves, or disconnects.

@@ -87,6 +87,15 @@ function notifyButtonsHtml(m) {
 // common.js — via the same 'compact-page' body class.
 const COMPACT_MODE = document.body.classList.contains('compact-page');
 
+// /compactblta only — a fixed category allowlist read off the body tag
+// (see compactblta.html) rather than a hardcoded list here, so the page
+// itself stays the one place that says which categories it's for. Applied
+// in buildFilterParamsForSpec below only when nothing more specific is
+// already selected — the page's own category dropdown only offers these
+// same categories to pick from, so a specific pick never needs widening
+// back out to the rest of the list.
+const FORCED_CATEGORIES = (document.body.dataset.categories || '').split(',').map((c) => c.trim()).filter(Boolean);
+
 // Enough of a match's ownership shape (mirrors checkMatchAccess in
 // routes/matches.js) baked onto the Set date/Propose times buttons so the
 // click handler can decide eligibility immediately, before opening either
@@ -173,6 +182,7 @@ function buildFilterParamsForSpec(spec) {
   if (spec.status) params.set('status', spec.status);
   if (currentQuery) params.set('q', currentQuery);
   if (currentCategory) params.set('category', currentCategory);
+  else if (FORCED_CATEGORIES.length) params.set('category', FORCED_CATEGORIES.join(','));
 
   if (spec.dateFilter === 'has') {
     params.set('hasDate', '1');
