@@ -1028,7 +1028,7 @@ document.getElementById('player-bio-form').addEventListener('submit', async (e) 
       rankEl.textContent = t('player.bltaRank', { rank });
       rankEl.style.display = '';
     }
-    document.title = `${player.name} — BLTA Score`;
+    document.title = `${player.name} — Tennis SCORE`;
     const avatarEl = document.getElementById('player-avatar');
     if (player.photo_url) {
       avatarEl.outerHTML = `<img class="player-avatar" id="player-avatar" src="${escapeHtml(player.photo_url)}" alt="${escapeHtml(player.name)}">`;

@@ -571,6 +571,13 @@ function attachProposalCardHandlers(m, which) {
 
 function render(m) {
   current = m;
+  // The static <title> in match.html is just a generic placeholder — every
+  // real visit lands here via JS, so the actual per-match tab title (and
+  // what shows if the tab is bookmarked) only ever gets set here. Server-
+  // side, GET /match/:token separately bakes the same "P1 vs P2" text into
+  // the raw HTML's <title>/og:title for chat-app link previews, which run
+  // before any JS — see the comment there for why that duplication exists.
+  document.title = `${m.player1.name} vs ${m.player2.name} — Tennis SCORE`;
   // Always shows a timer chip, even before the match has started (a static
   // 00:00) — only actually starts counting once startTimer() runs, for LIVE.
   const durationHtml = m.status === 'LIVE'

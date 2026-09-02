@@ -44,7 +44,13 @@ app.use('/api/rankings', rankingsRouter);
 
 // Pretty routes -> static HTML pages (the page JS reads the share token from the URL).
 const matchTemplate = fs.readFileSync(path.join(PUBLIC_DIR, 'match.html'), 'utf8');
-const MATCH_TITLE_TAG = '<title>BLTA Score — Match</title>';
+// A regex, not an exact string match — an exact literal here previously
+// went stale the moment match.html's own <title> text/attributes changed
+// (e.g. gaining data-i18n, or its fallback text being edited) and the
+// .replace() below silently no-outed, meaning shared match links quietly
+// stopped getting a real per-match preview and nobody would notice short
+// of checking the raw HTML response.
+const MATCH_TITLE_RE = /<title[^>]*>[^<]*<\/title>/;
 
 function escapeHtmlAttr(str) {
   return String(str).replace(/[&<>"']/g, (c) => (
@@ -62,7 +68,7 @@ app.get('/match/:token', (req, res) => {
 
   const p1 = db.prepare('SELECT * FROM players WHERE id = ?').get(row.player1_id);
   const p2 = db.prepare('SELECT * FROM players WHERE id = ?').get(row.player2_id);
-  const title = `${p1.name} vs ${p2.name} — BLTA Score`;
+  const title = `${p1.name} vs ${p2.name} — Tennis SCORE`;
 
   let description;
   if (row.status === 'PLANNED') {
@@ -85,7 +91,7 @@ app.get('/match/:token', (req, res) => {
 <meta name="twitter:title" content="${escapeHtmlAttr(title)}">
 <meta name="twitter:description" content="${escapeHtmlAttr(description)}">`;
 
-  res.send(matchTemplate.replace(MATCH_TITLE_TAG, metaTags));
+  res.send(matchTemplate.replace(MATCH_TITLE_RE, metaTags));
 });
 app.get('/player/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'player.html')));
 app.get('/embed/match/:token', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-match.html')));

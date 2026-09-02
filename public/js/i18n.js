@@ -175,21 +175,21 @@ const TRANSLATIONS = {
     'login.error.phoneAlreadyRegistered': 'Toto telefónne číslo je už zaregistrované — skúste sa prihlásiť.',
     'login.registerSubmit': 'Zaregistrovať sa',
 
-    'resetCode.pageTitle': 'BLTA Score — Obnoviť kód',
+    'resetCode.pageTitle': 'Tennis SCORE — Obnoviť kód',
     'resetCode.headline': 'Nastavte si nový kód',
     'resetCode.intro': 'Vytvorte si nový 5-miestny kód. Použijete ho spolu s vaším telefónnym číslom pri každom ďalšom prihlásení.',
     'resetCode.goToSite': 'Prejsť na stránku',
     'resetCode.invalidTitle': 'Neplatný alebo expirovaný odkaz',
     'resetCode.invalidText': 'Skúste sa znova prihlásiť a požiadajte o nový odkaz cez „Zabudli ste kód?“.',
 
-    'page.homeTitle': 'BLTA Score — Živé zápasy',
+    'page.homeTitle': 'Tennis SCORE — Živé zápasy',
     'calendar.eventTitle': '{p1} vs {p2} — zápas BLTA',
 
     'common.edit': 'Upraviť',
     'common.delete': 'Vymazať',
     'common.cancel': 'Zrušiť',
 
-    'page.playersTitle': 'BLTA Score — Hráči',
+    'page.playersTitle': 'Tennis SCORE — Hráči',
     'players.heading': 'Hráči',
     'players.intro': 'Pridajte každého hráča ligy sem raz — potom si ho vyberiete zo zoznamu pri vytváraní zápasu.',
     'players.newPlayerPlaceholder': 'Celé meno hráča',
@@ -212,7 +212,7 @@ const TRANSLATIONS = {
 
     'common.loading': 'Načítavam…',
 
-    'page.rankingsTitle': 'BLTA Score — Rebríček',
+    'page.rankingsTitle': 'Tennis SCORE — Rebríček',
     'rankings.heading': 'Rebríček',
     'rankings.none': 'Zatiaľ žiadne poradie.',
     'rankings.playerCol': 'Hráč',
@@ -229,7 +229,7 @@ const TRANSLATIONS = {
     'rankings.moveUpTitle': 'Hore o {amount} od minulého týždňa',
     'rankings.moveDownTitle': 'Dole o {amount} od minulého týždňa',
 
-    'page.newMatchTitle': 'BLTA Score — Nový zápas',
+    'page.newMatchTitle': 'Tennis SCORE — Nový zápas',
     'newMatch.heading': 'Naplánovať nový zápas',
     'newMatch.intro': 'Vyberte dvoch hráčov (zadaním nového mena ich pridáte), kategóriu a spôsob hry.',
     'newMatch.namePlaceholder': 'Zadajte meno…',
@@ -277,7 +277,7 @@ const TRANSLATIONS = {
     'matches.finishedHeading': '✅ Ukončené',
     'matches.unfinishedHeading': '⏸ Nedokončené',
 
-    'page.playerTitle': 'BLTA Score — Hráč',
+    'page.playerTitle': 'Tennis SCORE — Hráč',
     'player.plannedMatchesLabel': 'Plánované<br>zápasy',
     'player.editProfile': 'Upraviť profil',
     'player.statisticsLabel': 'Štatistiky',
@@ -356,7 +356,7 @@ const TRANSLATIONS = {
 
     'common.ok': 'OK',
 
-    'page.matchTitle': 'BLTA Score — Zápas',
+    'page.matchTitle': 'Tennis SCORE — Zápas',
     'match.mtbAbbrev': 'MTB',
     'match.tb7Abbrev': 'TB-7',
     'match.setLabel': 'Set {n}',
@@ -618,21 +618,21 @@ const TRANSLATIONS = {
     'login.error.phoneAlreadyRegistered': 'This phone number is already registered to a player — try logging in instead.',
     'login.registerSubmit': 'Register',
 
-    'resetCode.pageTitle': 'BLTA Score — Reset code',
+    'resetCode.pageTitle': 'Tennis SCORE — Reset code',
     'resetCode.headline': 'Set your new code',
     'resetCode.intro': "Create a new 5-digit code. You'll use it together with your phone number every time you log in from now on.",
     'resetCode.goToSite': 'Go to the site',
     'resetCode.invalidTitle': 'Invalid or expired link',
     'resetCode.invalidText': 'Try logging in again and request a new link via "Forgot your code?".',
 
-    'page.homeTitle': 'BLTA Score — Live Matches',
+    'page.homeTitle': 'Tennis SCORE — Live Matches',
     'calendar.eventTitle': '{p1} vs {p2} — BLTA match',
 
     'common.edit': 'Edit',
     'common.delete': 'Delete',
     'common.cancel': 'Cancel',
 
-    'page.playersTitle': 'BLTA Score — Players',
+    'page.playersTitle': 'Tennis SCORE — Players',
     'players.heading': 'Players',
     'players.intro': 'Add every league player here once — then pick them from the list when creating a match.',
     'players.newPlayerPlaceholder': 'Player full name',
@@ -655,7 +655,7 @@ const TRANSLATIONS = {
 
     'common.loading': 'Loading…',
 
-    'page.rankingsTitle': 'BLTA Score — Rankings',
+    'page.rankingsTitle': 'Tennis SCORE — Rankings',
     'rankings.heading': 'Rankings',
     'rankings.none': 'No standings yet.',
     'rankings.playerCol': 'Player',
@@ -672,7 +672,7 @@ const TRANSLATIONS = {
     'rankings.moveUpTitle': 'Up {amount} since last week',
     'rankings.moveDownTitle': 'Down {amount} since last week',
 
-    'page.newMatchTitle': 'BLTA Score — New Match',
+    'page.newMatchTitle': 'Tennis SCORE — New Match',
     'newMatch.heading': 'Plan a new match',
     'newMatch.intro': "Pick two players (type a new name to add them), a category, and how the match will be played.",
     'newMatch.namePlaceholder': 'Type a name…',
@@ -720,7 +720,7 @@ const TRANSLATIONS = {
     'matches.finishedHeading': '✅ Finished',
     'matches.unfinishedHeading': '⏸ Unfinished',
 
-    'page.playerTitle': 'BLTA Score — Player',
+    'page.playerTitle': 'Tennis SCORE — Player',
     'player.plannedMatchesLabel': 'Planned<br>matches',
     'player.editProfile': 'Edit profile',
     'player.statisticsLabel': 'Statistics',
@@ -799,7 +799,7 @@ const TRANSLATIONS = {
 
     'common.ok': 'OK',
 
-    'page.matchTitle': 'BLTA Score — Match',
+    'page.matchTitle': 'Tennis SCORE — Match',
     'match.mtbAbbrev': 'MTB',
     'match.tb7Abbrev': 'TB-7',
     'match.setLabel': 'Set {n}',

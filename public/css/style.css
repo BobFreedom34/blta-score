@@ -77,6 +77,22 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   color: var(--white);
   letter-spacing: 0.02em;
 }
+/* "TENNIS" stacked above the existing "SCORE" — small, thin, tracked out
+   wide so it reads as a label for the bold word beneath it rather than
+   competing with it. line-height:1 on the wrapper keeps the two lines
+   snug instead of leaving normal text spacing between them. */
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+.brand-tennis {
+  font-weight: 400;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--white);
+  opacity: 0.85;
+}
 .topbar-right {
   display: flex;
   align-items: center;
