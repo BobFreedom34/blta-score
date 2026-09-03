@@ -1582,9 +1582,13 @@ a.rank-name:hover { text-decoration: underline; }
    names stop truncating as aggressively); Matches shifts after points. */
 @media (max-width: 560px) {
   .rank-grid {
-    grid-template-columns: 20px minmax(80px, 1fr) 64px 64px;
+    /* First column widened from a plain 20px (fine when it only ever held
+       the bare rank number) so the move indicator's own fixed-width slot
+       — see .rank-move — still has room; at 20px that content overflowed
+       straight into the gap, crowding right up against the player name. */
+    grid-template-columns: 50px minmax(80px, 1fr) 64px 64px;
     min-width: 0;
-    gap: 6px;
+    gap: 8px;
   }
   .rank-col-matches { font-size: 12px; }
   .rank-col-age { display: none; }
