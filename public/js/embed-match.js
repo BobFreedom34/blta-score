@@ -22,7 +22,7 @@ function render(m) {
   };
 
   root.innerHTML = `
-    <div style="margin-bottom:8px">${categoryBadge(m.category)} ${statusBadge(m.status)}</div>
+    <div style="margin-bottom:8px">${categoryBadge(m.category)} ${statusBadge(m)}</div>
     <div class="scoreboard">
       <table>
         <thead><tr><th></th>${headerCells}</tr></thead>
