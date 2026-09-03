@@ -4,7 +4,7 @@ const db = require('../db');
 const engine = require('../matchEngine');
 const { sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail } = require('../mailer');
 const { sendPush } = require('../push');
-const { isAdmin, getPlayerId, requireLoggedIn, stripPrivateFields } = require('../auth');
+const { isAdmin, getPlayerId, requireLoggedIn, requireAdmin, stripPrivateFields } = require('../auth');
 
 const router = express.Router();
 
@@ -96,6 +96,7 @@ function serialize(row) {
   return {
     token: row.share_token,
     category: row.category,
+    league: row.league || null,
     location: row.location,
     notes: row.notes || '',
     scheduledAt: row.scheduled_at,
@@ -265,6 +266,21 @@ router.get('/:token', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   res.json(serialize(row));
+});
+
+// Admin-only, and deliberately its own tiny route rather than a field on
+// the general PATCH /:token below — this isn't something a player ever
+// sets themselves (see league in db.js), only the sync-match-league skill,
+// which looks it up on the match's blta.sk event page one at a time.
+router.patch('/:token/league', requireAdmin, (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  const league = typeof req.body.league === 'string' ? req.body.league.trim() : '';
+  if (!league) return res.status(400).json({ error: 'league is required' });
+  if (league.length > 200) return res.status(400).json({ error: 'league is too long' });
+  db.prepare('UPDATE matches SET league = ?, updated_at = ? WHERE id = ?').run(league, nowIso(), row.id);
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  res.json(serialize(updated));
 });
 
 router.post('/', requireLoggedIn, (req, res) => {

@@ -275,6 +275,16 @@ if (!matchColumns.includes('counter_proposed_by')) {
 if (!matchColumns.includes('court_player')) {
   db.exec('ALTER TABLE matches ADD COLUMN court_player INTEGER');
 }
+// blta.sk's own League field (e.g. "Autumn Finals Series 2026") — separate
+// from this app's own `category` (ELITE/NEXT_GEN/NOVICE/etc.), and only
+// ever set for those three "official BLTA league" categories in the first
+// place. Backend-only for now (no UI reads it yet): written by the
+// sync-match-league skill, which looks each match up on its blta.sk event
+// page since this isn't something an admin enters by hand. NULL means not
+// synced yet, same as any other not-yet-backfilled column here.
+if (!matchColumns.includes('league')) {
+  db.exec('ALTER TABLE matches ADD COLUMN league TEXT');
+}
 
 const playerColumns = db.prepare('PRAGMA table_info(players)').all().map((c) => c.name);
 if (!playerColumns.includes('photo_url')) {
