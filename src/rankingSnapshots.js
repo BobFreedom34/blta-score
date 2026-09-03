@@ -41,10 +41,17 @@ function getMoves(tableKey, rows) {
   const storedWeek = existing.length ? existing[0].snapshot_week : null;
 
   const moves = {};
-  // Only show arrows once there's a snapshot from a week strictly before
-  // this one — a same-week revisit or the very first run ever (nothing
-  // stored yet) has no real "since last week" to compare against.
-  if (storedWeek && storedWeek < currentWeek) {
+  // Compares against whatever the most recent stored snapshot is — this
+  // week's own (captured at that week's first visit, so effectively "your
+  // rank at the start of this week") or last week's if this week has no
+  // snapshot yet — rather than requiring a week to have actually turned
+  // over since the last visit. blta.sk's live numbers do change mid-week
+  // (not just on its own Monday republish, despite the comment above), so
+  // gating this on "a new week has started" meant a real mid-week move
+  // never showed an arrow at all until the following Monday. The only
+  // real "nothing to compare against yet" case is the very first run ever,
+  // with no snapshot stored at all.
+  if (storedWeek) {
     rows.forEach((r) => {
       const prev = latestByName[r.name];
       if (!prev) return;

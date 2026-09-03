@@ -75,12 +75,15 @@ function pointsDisplayHtml(r) {
   return `${value}${overriddenMark}`;
 }
 
-// Week-over-week movement, e.g. "▲2" in green or "▼1" in red — blank until
-// there's been at least one weekly snapshot to compare against (see
-// src/rankingSnapshots.js), so a brand-new deploy or an unchanged rank
-// shows nothing rather than a misleading "no movement" indicator.
+// Week-over-week movement, e.g. "▲2" in green or "▼1" in red — a plain
+// dash once there's been at least one weekly snapshot to compare against
+// (see src/rankingSnapshots.js) but the rank hasn't actually changed,
+// same "nothing to show" convention as the age/nationality columns
+// elsewhere on this page. Always renders *some* .rank-move element (never
+// '') so its fixed width (see the CSS) keeps the rank number lined up in
+// the same spot on every row, movement or not.
 function moveHtml(move) {
-  if (!move) return '';
+  if (!move) return '<div class="rank-move rank-move-none">–</div>';
   const arrow = move.direction === 'up' ? '▲' : '▼';
   const cls = move.direction === 'up' ? 'rank-move-up' : 'rank-move-down';
   const title = t(move.direction === 'up' ? 'rankings.moveUpTitle' : 'rankings.moveDownTitle', { amount: move.amount });
@@ -164,7 +167,7 @@ function renderTable() {
       : '';
     return `
       <div class="rank-row rank-grid" data-index="${i}">
-        <div class="rank-pos">${r.rank}${moveHtml(r.move)}</div>
+        <div class="rank-pos">${moveHtml(r.move)}<span class="rank-pos-num">${r.rank}</span></div>
         ${nameHtml}
         <div class="rank-col-age">${r.age === null ? '–' : r.age}</div>
         <div class="rank-col-matches">${r.matches}</div>

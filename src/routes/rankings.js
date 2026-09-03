@@ -99,13 +99,39 @@ router.get('/', async (req, res) => {
 // the rankings data; matched by name (not a local player id) same as
 // everywhere else in this file, since the snapshot itself only ever knew
 // the scraped blta.sk name.
-router.get('/history/:tableKey/:name', (req, res) => {
+router.get('/history/:tableKey/:name', async (req, res) => {
   const { tableKey } = req.params;
   if (!TABLE_KEYS.includes(tableKey)) {
     return res.status(400).json({ error: 'Unknown ranking table' });
   }
   const name = decodeURIComponent(req.params.name);
-  const history = getHistory(tableKey, normalize(name));
+  const normName = normalize(name);
+  const history = getHistory(tableKey, normName);
+
+  // The last *stored* weekly snapshot can lag the actual live rank by up
+  // to a week — rankingSnapshots.js only rolls forward once a week on
+  // purpose, so the earlier points stay a stable weekly cadence instead of
+  // thrashing on every visit (see its own comment). But showing that
+  // stale number as "now" is actively misleading right next to this same
+  // player's live rank shown elsewhere (e.g. the main rankings page) — so
+  // the chart's very last point is always today's real live rank, appended
+  // on top of (never replacing) the actual weekly history underneath it.
+  try {
+    const data = await getRankings();
+    const table = data.tables.find((t) => t.key === tableKey);
+    const liveRow = table && table.rows.find((r) => normalize(r.name) === normName);
+    if (liveRow) {
+      const today = new Date().toISOString().slice(0, 10);
+      const last = history[history.length - 1];
+      if (!last || last.snapshot_week !== today || last.rank !== liveRow.rank) {
+        history.push({ rank: liveRow.rank, snapshot_week: today });
+      }
+    }
+  } catch {
+    // Live rankings temporarily unreachable — fall back to whatever
+    // weekly history is already stored rather than failing the chart.
+  }
+
   res.json({ history: history.map((h) => ({ week: h.snapshot_week, rank: h.rank })) });
 });
 

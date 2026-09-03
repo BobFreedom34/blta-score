@@ -1462,10 +1462,13 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 .rank-table { overflow-x: auto; }
 .rank-grid {
   display: grid;
-  grid-template-columns: 30px minmax(150px, 1.8fr) 56px 76px minmax(80px, 110px);
+  /* First column widened from a plain 30px — just enough for the rank
+     number alone — to fit the move indicator (see .rank-move) sitting in
+     front of it on the same line without wrapping. */
+  grid-template-columns: 62px minmax(150px, 1.8fr) 56px 76px minmax(80px, 110px);
   align-items: center;
   gap: 10px;
-  min-width: 520px;
+  min-width: 552px;
 }
 /* Badges tab: no age/matches columns — pos | player+icons | badge count.
    The real total always lives in that last column; the icon row next to
@@ -1522,15 +1525,25 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 }
 .card-dark .rank-row { border-bottom-color: rgba(255,255,255,0.12); }
 .rank-row:last-child { border-bottom: none; }
+/* A real flex row (not the inline-flow-plus-margin this used to be) so the
+   move indicator gets its own fixed-width slot — moveHtml() always renders
+   *something* into it now (an arrow+amount, or a plain "–" — see
+   rank-move-none), so that fixed width keeps .rank-pos-num, the actual
+   rank number, starting at the exact same x position on every single row
+   regardless of whether this one has a 1-digit move amount, a 3-digit one,
+   or none at all. */
 .rank-pos {
-  font-weight: 800;
-  font-size: 14px;
-  color: var(--orange);
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
 }
-.rank-move { font-size: 10px; font-weight: 800; line-height: 1.3; }
+.rank-pos-num { font-weight: 800; font-size: 14px; color: var(--orange); }
+.rank-move { flex: 0 0 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; line-height: 1; }
 .rank-move-up { color: var(--green-light); }
 .rank-move-down { color: var(--danger); }
+.rank-move-none { color: var(--gray-dim); font-weight: 700; }
 .rank-name { font-weight: 700; font-size: 14px; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-dark .rank-name { color: var(--white); }
 .rank-flag-icon { width: 18px; height: auto; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
