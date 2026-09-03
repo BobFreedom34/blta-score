@@ -1586,12 +1586,25 @@ a.rank-name:hover { text-decoration: underline; }
        the bare rank number) so the move indicator's own fixed-width slot
        — see .rank-move — still has room; at 20px that content overflowed
        straight into the gap, crowding right up against the player name. */
-    grid-template-columns: 50px minmax(80px, 1fr) 64px 64px;
+    grid-template-columns: 44px minmax(80px, 1fr) 64px 64px;
     min-width: 0;
-    gap: 8px;
+    gap: 6px;
   }
   .rank-col-matches { font-size: 12px; }
   .rank-col-age { display: none; }
+  /* Tighter outer padding than the desktop card frame — .card-dark is only
+     ever the rankings table (see card-dark padding override below), so
+     trimming it here just gives the name column more real width to work
+     with instead of shrinking the type. Row padding and the grid gap are
+     trimmed the same way, and .rank-pos switches from centered to
+     left-aligned so its content sits flush against the row's left edge —
+     centering it inside the 50px column (fine on desktop, where that
+     column has slack) was the actual cause of the left side reading as
+     more padded than the right: .rank-points is right-aligned text with
+     no such slack, so it already hugs the row's right edge. */
+  .card-dark { padding: 12px; }
+  .rank-row { padding: 8px 0; }
+  .rank-pos { justify-content: flex-start; }
   .rank-pos, .rank-col-pos { order: 1; }
   .rank-name, .rank-col-player { order: 2; }
   .rank-points, .rank-col-points { order: 3; }
