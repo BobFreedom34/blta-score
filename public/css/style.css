@@ -171,8 +171,15 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
     z-index: 40;
   }
   .nav-links.open { display: flex; }
-  .nav-links a { text-align: center; padding: 12px; }
+  .nav-links a { text-align: center; padding: 12px; font-size: 16px; }
 }
+/* An inline SVG rather than an emoji glyph — unlike text, an emoji's color
+   is baked into the glyph itself and ignores CSS color entirely (varies
+   by platform/font, but never plain white), so this is the only way to
+   actually guarantee it. Same reasoning as the scoreboard's SVG "balls"
+   icon elsewhere on the site. */
+.nav-icon { margin-right: 6px; display: inline-flex; vertical-align: -2px; }
+.nav-icon svg { display: block; fill: var(--white); }
 
 /* ---------- Buttons ---------- */
 .btn {
@@ -272,6 +279,15 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
    Cleared the moment updateMyMatchesTabState sees a real playerId. */
 .tab-locked { opacity: 0.45; }
 .tab-locked .count { display: none; }
+/* Once unlocked (a real player is logged in — see updateMyMatchesTabState
+   in app.js clearing .tab-locked), "My matches" gets its own green/white
+   treatment instead of the default white pill, so the tab that just
+   became available actually reads as newly available rather than
+   blending into the rest of the row. Stays green whether or not it's
+   also the *selected* tab — .active only ever adds a border color on top
+   (see .tab.active above), never a background, so the two don't conflict. */
+#tab-MY_MATCHES:not(.tab-locked) { background: var(--green); color: var(--white); }
+#tab-MY_MATCHES:not(.tab-locked) .count { background: rgba(255,255,255,0.22); color: var(--white); }
 .tab.tab-live.active { color: var(--orange); }
 #count-ALL { background: var(--ink); color: var(--white); }
 #count-SCHEDULED { background: var(--green); color: var(--white); }

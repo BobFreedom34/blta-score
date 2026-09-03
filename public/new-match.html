@@ -27,7 +27,8 @@
         <a href="/players" data-i18n="nav.players">Hráči</a>
         <a href="/rankings" data-i18n="nav.rankings">Rebríček</a>
         <a href="/new-match" class="active" data-i18n="nav.newMatch">+ Nový zápas</a>
-        <a href="#" class="player-login-link" id="player-login-link" data-i18n="nav.loginPlayer">PRIHLÁSIŤ SA AKO HRÁČ</a>
+        <a href="#" class="player-login-link" id="player-login-link"><span class="nav-icon"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span><span class="player-login-link-text" data-i18n="nav.loginPlayer">PRIHLÁSIŤ SA AKO HRÁČ</span></a>
+        <a href="#" class="nav-register-link" id="nav-register-link" data-i18n="nav.register">Registrácia</a>
       </nav>
     </div>
   </div>
@@ -207,6 +208,10 @@
       <h3 style="font-weight:700;text-transform:none;margin-top:4px" data-i18n="login.registerHeadline">Nový hráč</h3>
       <p style="font-size:14px;color:var(--ink);line-height:1.5" data-i18n="login.registerIntro">Toto telefónne číslo ešte nie je v systéme. Zadajte svoje meno a vytvoríme vám nový profil hráča.</p>
       <form id="player-login-register-form">
+        <div class="field">
+          <label for="player-login-register-phone-input" data-i18n="login.registerPhoneLabel">Telefónne číslo</label>
+          <input type="text" inputmode="numeric" id="player-login-register-phone-input" placeholder="0903111222" autocomplete="off" maxlength="20">
+        </div>
         <div class="field">
           <label for="player-login-register-name-input" data-i18n="login.registerNameLabel">Vaše meno</label>
           <input type="text" id="player-login-register-name-input" placeholder="Meno Priezvisko" autocomplete="off" maxlength="60">

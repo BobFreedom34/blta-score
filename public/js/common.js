@@ -1300,9 +1300,13 @@ let currentPlayerSlug = null;
 
 function updatePlayerNavLinks() {
   document.querySelectorAll('.player-login-link').forEach((el) => {
-    if (playerAuthed && currentPlayerName) el.textContent = t('nav.logoutWithName', { name: currentPlayerName });
-    else if (playerAuthed) el.textContent = t('nav.logout');
-    else el.textContent = t('nav.loginPlayer');
+    // The 🔑 icon lives in its own sibling span (see the nav-icon markup)
+    // so it survives every text update below untouched — only the text
+    // span itself gets rewritten, never the whole link's content.
+    const textEl = el.querySelector('.player-login-link-text') || el;
+    if (playerAuthed && currentPlayerName) textEl.textContent = t('nav.logoutWithName', { name: currentPlayerName });
+    else if (playerAuthed) textEl.textContent = t('nav.logout');
+    else textEl.textContent = t('nav.loginPlayer');
   });
   // Always visible (unlike .player-login-link's text, which already says
   // whether you're logged in) — kept pointed at the real profile once
@@ -1312,6 +1316,13 @@ function updatePlayerNavLinks() {
   document.querySelectorAll('.nav-my-profile-link').forEach((el) => {
     el.href = (playerAuthed && currentPlayerId) ? `/player/${currentPlayerSlug || currentPlayerId}` : '#';
   });
+  // Registering is only meaningful for someone who isn't a player yet —
+  // hidden once a real player session exists, same reasoning as
+  // .player-login-link's text switching to "Log out" instead of offering
+  // to log in again.
+  document.querySelectorAll('.nav-register-link').forEach((el) => {
+    el.style.display = playerAuthed ? 'none' : '';
+  });
 }
 
 document.querySelectorAll('.nav-my-profile-link').forEach((el) => {
@@ -1319,6 +1330,19 @@ document.querySelectorAll('.nav-my-profile-link').forEach((el) => {
     if (playerAuthed && currentPlayerId) return; // real href already set — let it navigate normally
     e.preventDefault();
     requirePlayerAuth(() => { window.location.href = `/player/${currentPlayerSlug || currentPlayerId}`; });
+  });
+});
+
+// Opens the same login modal straight at its registration step (see
+// opts.startAtRegister in openPlayerLoginModal) instead of the normal
+// phone-entry step — the one difference from reaching registration via
+// the "not registered yet?" prompt is that the phone number isn't known
+// yet either, so the register step's own phone field starts blank here
+// instead of pre-filled.
+document.querySelectorAll('.nav-register-link').forEach((el) => {
+  el.addEventListener('click', (e) => {
+    e.preventDefault();
+    openPlayerLoginModal(null, { startAtRegister: true });
   });
 });
 
@@ -1478,6 +1502,7 @@ function openPlayerLoginModal(onSuccess, opts) {
   const requestAdminSentEl = document.getElementById('player-login-request-admin-sent');
 
   const registerForm = document.getElementById('player-login-register-form');
+  const registerPhoneInput = document.getElementById('player-login-register-phone-input');
   const registerNameInput = document.getElementById('player-login-register-name-input');
   const registerEmailInput = document.getElementById('player-login-register-email-input');
   const registerErrorEl = document.getElementById('player-login-register-error');
@@ -1527,6 +1552,17 @@ function openPlayerLoginModal(onSuccess, opts) {
     setPinErrorEl.textContent = '';
     showStep(setPinStep);
     setTimeout(() => otpFocus('player-login-set-pin-input'), 50);
+  } else if (opts && opts.startAtRegister) {
+    // Opened directly from the nav's "Register" link (see the
+    // .nav-register-link handler above) — no phone step first, so unlike
+    // registerLink.onclick below, the phone field starts blank rather
+    // than pre-filled with a just-entered, already-known number.
+    registerPhoneInput.value = '';
+    registerNameInput.value = '';
+    registerEmailInput.value = '';
+    registerErrorEl.textContent = '';
+    showStep(registerStep);
+    setTimeout(() => registerPhoneInput.focus(), 50);
   } else {
     showStep(formStep);
   }
@@ -1586,6 +1622,10 @@ function openPlayerLoginModal(onSuccess, opts) {
 
   registerLink.onclick = (e) => {
     e.preventDefault();
+    // Already known from the phone step that led here (see notFound
+    // above) — pre-filled rather than left for the player to retype, but
+    // still just a normal editable field in case they mistyped it there.
+    registerPhoneInput.value = enteredPhone;
     registerNameInput.value = '';
     registerEmailInput.value = '';
     registerErrorEl.textContent = '';
@@ -1595,13 +1635,15 @@ function openPlayerLoginModal(onSuccess, opts) {
 
   registerForm.onsubmit = async (e) => {
     e.preventDefault();
+    const phone = registerPhoneInput.value.trim();
     const name = registerNameInput.value.trim();
     const email = registerEmailInput.value.trim();
-    if (!name || !email) return;
+    if (!phone || !name || !email) return;
+    enteredPhone = phone;
     registerErrorEl.textContent = '';
     registerSubmitBtn.disabled = true;
     try {
-      const res = await api('/player/register', { method: 'POST', body: { name, email, phone: enteredPhone } });
+      const res = await api('/player/register', { method: 'POST', body: { name, email, phone } });
       applySession(res);
       // Same landing spot a pinSetupRequired login uses — registering and
       // a first login both end with "now create your code".

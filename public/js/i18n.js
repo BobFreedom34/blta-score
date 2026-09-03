@@ -22,6 +22,7 @@ const TRANSLATIONS = {
   sk: {
     'nav.matches': 'Zápasy',
     'nav.myProfile': 'Môj profil',
+    'nav.register': 'Registrácia',
     'nav.players': 'Hráči',
     'nav.rankings': 'Rebríček',
     'nav.newMatch': '+ Nový zápas',
@@ -152,6 +153,7 @@ const TRANSLATIONS = {
     'login.registerPrompt': 'Zaregistrovať sa ako nový hráč?',
     'login.registerHeadline': 'Nový hráč',
     'login.registerIntro': 'Toto telefónne číslo ešte nie je v systéme. Zadajte svoje meno — ak už ste v zozname hráčov, prepojíme ho s vaším profilom, inak vytvoríme nový.',
+    'login.registerPhoneLabel': 'Telefónne číslo',
     'login.registerNameLabel': 'Vaše meno',
     'login.registerEmailLabel': 'Váš email',
 
@@ -471,6 +473,7 @@ const TRANSLATIONS = {
   en: {
     'nav.matches': 'Matches',
     'nav.myProfile': 'My profile',
+    'nav.register': 'Register',
     'nav.players': 'Players',
     'nav.rankings': 'Rankings',
     'nav.newMatch': '+ New match',
@@ -601,6 +604,7 @@ const TRANSLATIONS = {
     'login.registerPrompt': 'Register as a new player?',
     'login.registerHeadline': 'New player',
     'login.registerIntro': "This phone number isn't in the system yet. Enter your name — if you're already in the player list, we'll link it to your existing profile, otherwise we'll create a new one.",
+    'login.registerPhoneLabel': 'Phone number',
     'login.registerNameLabel': 'Your name',
     'login.registerEmailLabel': 'Your email',
 

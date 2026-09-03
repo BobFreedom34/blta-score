@@ -33,7 +33,8 @@
       <a href="/players">Players</a>
       <a href="/rankings">Rankings</a>
       <a href="/new-match">+ New match</a>
-      <a href="#" class="player-login-link" id="player-login-link">LOG IN AS PLAYER</a>
+      <a href="#" class="player-login-link" id="player-login-link"><span class="nav-icon"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span><span class="player-login-link-text">LOG IN AS PLAYER</span></a>
+      <a href="#" class="nav-register-link" id="nav-register-link">Register</a>
     </nav>
   </div>
 </div>
@@ -226,6 +227,10 @@
       <h3 style="text-transform:uppercase;font-weight:900">New player</h3>
       <p style="font-size:14px;color:var(--ink);line-height:1.5">This phone number isn't in the system yet. Enter your name — if you're already in the player list, we'll link it to your existing profile, otherwise we'll create a new one.</p>
       <form id="player-login-register-form">
+        <div class="field">
+          <label for="player-login-register-phone-input">Phone number</label>
+          <input type="text" inputmode="numeric" id="player-login-register-phone-input" placeholder="0903111222" autocomplete="off" maxlength="20">
+        </div>
         <div class="field">
           <label for="player-login-register-name-input">Your name</label>
           <input type="text" id="player-login-register-name-input" placeholder="First Last" autocomplete="off" maxlength="60">
