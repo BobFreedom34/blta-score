@@ -30,6 +30,16 @@ const TRANSLATIONS = {
     'nav.logout': 'ODHLÁSIŤ SA',
     'nav.logoutWithName': 'ODHLÁSIŤ SA ({name})',
 
+    'install.navBtn': '📲 Inštalovať appku',
+    'install.bannerTitle': 'Nainštalovať Tennis SCORE',
+    'install.bannerBody': 'Pridajte si appku na plochu pre rýchly prístup k zápasom a rebríčku.',
+    'install.installBtn': 'Inštalovať',
+    'install.notNow': 'Teraz nie',
+    'install.iosTitle': 'Inštalácia Tennis SCORE',
+    'install.iosStep1': 'Klepnite na tlačidlo <strong>Zdieľať</strong> v paneli Safari',
+    'install.iosStep2': 'Prejdite nadol a klepnite na <strong>Pridať na plochu</strong>',
+    'install.iosStep3': 'Klepnite na <strong>Pridať</strong>',
+
     'tabs.all': 'Všetky zápasy',
     'tabs.scheduled': 'Naplánované',
     'tabs.planned': 'K naplánovaniu',
@@ -485,6 +495,16 @@ const TRANSLATIONS = {
     'nav.loginPlayer': 'LOG IN AS PLAYER',
     'nav.logout': 'LOG OUT',
     'nav.logoutWithName': 'LOG OUT ({name})',
+
+    'install.navBtn': '📲 Install app',
+    'install.bannerTitle': 'Install Tennis SCORE',
+    'install.bannerBody': 'Add the app to your home screen for quick access to matches and rankings.',
+    'install.installBtn': 'Install',
+    'install.notNow': 'Not now',
+    'install.iosTitle': 'Install Tennis SCORE',
+    'install.iosStep1': 'Tap the <strong>Share</strong> button in Safari\'s toolbar',
+    'install.iosStep2': 'Scroll down and tap <strong>Add to Home Screen</strong>',
+    'install.iosStep3': 'Tap <strong>Add</strong>',
 
     'tabs.all': 'All Matches',
     'tabs.scheduled': 'Scheduled',

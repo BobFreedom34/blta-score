@@ -1,6 +1,6 @@
 {
-  "name": "BLTA Score",
-  "short_name": "BLTA Score",
+  "name": "Tennis SCORE",
+  "short_name": "Tennis SCORE",
   "description": "Live tennis league score tracker for BLTA",
   "start_url": "/",
   "scope": "/",

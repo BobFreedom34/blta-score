@@ -1336,6 +1336,55 @@ datalist {}
   .scroll-top-btn.visible { display: flex; align-items: center; justify-content: center; opacity: 1; transform: translateY(0); }
 }
 
+/* ---------- Install banner (auto-shown once, mobile only) ---------- */
+/* Bottom sheet, not a modal — it shouldn't block the page underneath, just
+   sit on top of it until dismissed or installed (see initInstallPrompt in
+   common.js). Starts translated fully off-screen and slides up on
+   `.show` so it doesn't just pop into place. */
+.install-banner {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 45;
+  background: var(--ink);
+  color: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 14px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  transform: translateY(140%);
+  transition: transform 0.25s ease;
+}
+.install-banner.show { display: flex; transform: translateY(0); }
+/* Icon + title + close all on one line, title itself ellipsizing rather
+   than wrapping — the description below (.install-banner-body) is where
+   the actual explanation lives, this line is just a label. */
+.install-banner-row { display: flex; align-items: center; gap: 10px; }
+.install-banner-icon { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; }
+.install-banner-title { font-size: 14px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.install-banner-close {
+  background: none;
+  border: none;
+  color: var(--gray-dim);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+.install-banner-close:hover { color: var(--white); }
+.install-banner-body { margin: 0; font-size: 12px; color: var(--gray-dim); }
+/* Belt-and-suspenders alongside the JS's own matchMedia check in
+   maybeShowBanner() — this is what actually keeps it off desktop even if
+   that check were ever bypassed (e.g. a resize after it's already shown). */
+@media (min-width: 681px) {
+  .install-banner { display: none !important; }
+}
+
 /* ---------- Embed views ---------- */
 html.embed, body.embed { background: transparent; }
 .embed .container { padding: 10px; max-width: none; }

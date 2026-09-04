@@ -1889,12 +1889,17 @@ if (!document.body.classList.contains('embed')) {
   });
 }
 
-// "Install app" — a single button that does two different things
-// depending on the platform, because there's no single API that covers
-// both: Android/Chrome supports a real one-tap install via
-// beforeinstallprompt; iOS Safari has no install API at all (Apple
-// doesn't expose one), so the only thing a website can do there is show
-// the manual Share -> Add to Home Screen steps.
+// "Install app" — a nav-menu button plus an auto-popping bottom banner on
+// mobile, both driving the same install action, which does two different
+// things depending on the platform (no single API covers both):
+// Android/Chrome supports a real one-tap install via beforeinstallprompt;
+// iOS Safari has no install API at all (Apple doesn't expose one), so the
+// only thing a website can do there is show the manual Share -> Add to
+// Home Screen steps. The nav button is the permanent, always-findable
+// entry point; the banner is what actually surfaces it to someone who'd
+// otherwise never open the mobile menu to notice it's there — it shows
+// itself once, and stays dismissed (see INSTALL_DISMISS_KEY) once someone
+// closes it or installs, so it never turns into a nag.
 (function initInstallPrompt() {
   if (document.body.classList.contains('embed')) return;
   const navLinks = document.querySelector('.nav-links');
@@ -1903,16 +1908,31 @@ if (!document.body.classList.contains('embed')) {
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   if (isStandalone) return; // already installed — nothing to offer
 
+  const INSTALL_DISMISS_KEY = 'blta_install_banner_dismissed_until';
+  const INSTALL_DONE_KEY = 'blta_app_installed';
+  const DISMISS_DAYS = 30;
+
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  // A regular (non-standalone) browser tab can't tell on its own that this
+  // browser already has the app installed — display-mode only reflects
+  // *this* tab. INSTALL_DONE_KEY, set once by the appinstalled handler
+  // below, is what keeps the banner from reoffering an install that
+  // already happened the next time this same browser visits in a normal
+  // tab (e.g. a search-result link) instead of the installed app.
+  let alreadyInstalled = false;
+  try { alreadyInstalled = localStorage.getItem(INSTALL_DONE_KEY) === '1'; } catch { /* ignore */ }
+  if (alreadyInstalled) return;
 
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'install-app-btn';
-  btn.textContent = '📲 Install app';
+  btn.textContent = t('install.navBtn');
   btn.style.display = 'none';
   navLinks.appendChild(btn);
 
+  let showIosModal = () => {};
   if (isIOS) {
     const modal = document.createElement('div');
     modal.className = 'modal-backdrop';
@@ -1921,11 +1941,11 @@ if (!document.body.classList.contains('embed')) {
     modal.innerHTML = `
       <div class="modal" style="max-width:340px;text-align:center">
         <button type="button" class="close" data-close="install-ios-modal" aria-label="Close">&times;</button>
-        <h3 style="margin-top:0">Install BLTA Score</h3>
+        <h3 style="margin-top:0">${t('install.iosTitle')}</h3>
         <p style="color:var(--gray);font-size:14px;text-align:left">
-          1. Tap the <strong>Share</strong> button in Safari's toolbar<br><br>
-          2. Scroll down and tap <strong>Add to Home Screen</strong><br><br>
-          3. Tap <strong>Add</strong>
+          1. ${t('install.iosStep1')}<br><br>
+          2. ${t('install.iosStep2')}<br><br>
+          3. ${t('install.iosStep3')}
         </p>
       </div>
     `;
@@ -1935,24 +1955,84 @@ if (!document.body.classList.contains('embed')) {
     modal.querySelector('[data-close]').addEventListener('click', () => { modal.style.display = 'none'; });
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
 
+    showIosModal = () => { modal.style.display = 'flex'; };
     btn.style.display = '';
-    btn.addEventListener('click', () => { modal.style.display = 'flex'; });
-  } else {
-    let deferredPrompt = null;
+    btn.addEventListener('click', showIosModal);
+  }
+
+  let deferredPrompt = null;
+  let triggerAndroidInstall = () => {};
+  if (!isIOS) {
+    triggerAndroidInstall = async () => {
+      if (!deferredPrompt) return;
+      const prompt = deferredPrompt;
+      deferredPrompt = null;
+      prompt.prompt();
+      await prompt.userChoice;
+    };
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
       btn.style.display = '';
+      maybeShowBanner();
     });
     btn.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
       btn.disabled = true;
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-      deferredPrompt = null;
+      await triggerAndroidInstall();
       btn.style.display = 'none';
       btn.disabled = false;
     });
-    window.addEventListener('appinstalled', () => { btn.style.display = 'none'; });
+    window.addEventListener('appinstalled', () => {
+      btn.style.display = 'none';
+      hideBanner();
+      try { localStorage.setItem(INSTALL_DONE_KEY, '1'); } catch { /* ignore */ }
+    });
   }
+
+  // The banner itself — a bottom sheet that shows once, unprompted, so
+  // someone who'd never think to open the mobile nav menu still sees the
+  // option. Desktop gets nothing here (see the min-width guard in CSS) —
+  // the nav button alone covers that case, same as before this existed.
+  const banner = document.createElement('div');
+  banner.className = 'install-banner';
+  banner.setAttribute('role', 'dialog');
+  banner.setAttribute('aria-label', t('install.bannerTitle'));
+  banner.innerHTML = `
+    <div class="install-banner-row">
+      <img src="/icon-192.png" alt="" class="install-banner-icon">
+      <strong class="install-banner-title">${t('install.bannerTitle')}</strong>
+      <button type="button" class="install-banner-close" data-action="dismiss" aria-label="${t('install.notNow')}">&times;</button>
+    </div>
+    <p class="install-banner-body">${t('install.bannerBody')}</p>
+    <button type="button" class="btn btn-sm btn-primary btn-block" data-action="install">${t('install.installBtn')}</button>
+  `;
+  document.body.appendChild(banner);
+
+  function hideBanner() { banner.classList.remove('show'); }
+  function dismissBanner() {
+    hideBanner();
+    try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now() + DISMISS_DAYS * 86400000)); } catch { /* ignore */ }
+  }
+  banner.querySelector('[data-action="dismiss"]').addEventListener('click', dismissBanner);
+  banner.querySelector('[data-action="install"]').addEventListener('click', async () => {
+    if (isIOS) { showIosModal(); hideBanner(); return; }
+    await triggerAndroidInstall();
+    hideBanner();
+  });
+
+  function maybeShowBanner() {
+    if (!window.matchMedia('(max-width: 680px)').matches) return; // mobile only
+    let dismissedUntil = 0;
+    try { dismissedUntil = Number(localStorage.getItem(INSTALL_DISMISS_KEY)) || 0; } catch { /* ignore */ }
+    if (Date.now() < dismissedUntil) return;
+    banner.classList.add('show');
+  }
+
+  // iOS never fires beforeinstallprompt at all, so it's the only signal
+  // there ever will be to wait on — show after a short delay instead so
+  // the banner doesn't appear mid-page-load, before anyone's had a chance
+  // to see what they landed on. Android waits for beforeinstallprompt
+  // itself (see the listener above) since without it there'd be nothing
+  // for the banner's Install button to actually do.
+  if (isIOS) setTimeout(maybeShowBanner, 1500);
 })();
