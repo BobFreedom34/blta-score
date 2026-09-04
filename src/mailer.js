@@ -249,7 +249,7 @@ async function sendNewRegistrationEmail(player) {
 // shows those to the owner, via this app's normal logged-in-player trust
 // model (see stripPrivateFields in auth.js) — just enough to recognize who
 // it is and go take a look.
-async function sendPlayRequestEmail(owner, joiner, message) {
+async function sendPlayRequestEmail(owner, joiner, slot, message) {
   const t = getTransporter();
   if (!t) {
     console.warn('[mailer] SMTP not configured — skipping play-request email.');
@@ -257,7 +257,8 @@ async function sendPlayRequestEmail(owner, joiner, message) {
   }
   const subject = `${joiner.name} wants to play with you!`;
   const lines = [
-    `${joiner.name} saw your "Looking to play" post on Tennis SCORE and wants to play a friendly match with you.`,
+    `${joiner.name} saw your "Looking to play" post on Tennis SCORE and picked one of your free times for a friendly match:`,
+    `When: ${fmtDate(slot)}`,
   ];
   if (message) lines.push(`Their message: "${message}"`);
   lines.push(`See it here: ${process.env.PUBLIC_URL || ''}/looking-to-play`);

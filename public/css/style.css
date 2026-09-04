@@ -648,7 +648,7 @@ datalist {}
   margin-top: 22px;
   margin-bottom: 16px;
 }
-.match-header h1, .container > h1 { color: var(--white); }
+.match-header h1, .container > h1, .container > h2 { color: var(--white); }
 .timer {
   font-variant-numeric: tabular-nums;
   font-weight: 800;
@@ -783,6 +783,19 @@ datalist {}
 .avail-cell:hover { background: #e2e2e2; }
 .avail-cell.selected { background: var(--orange); }
 .avail-cell.selected:hover { background: var(--orange-dark); }
+
+/* "Looking to play" board's own calendars (looking-to-play.js's
+   renderLtpGrid) — half-hour steps instead of whole ones means twice the
+   rows of the propose-times grid above, so each row is shrunk well below
+   .avail-cell's own 25px to keep the whole thing from doubling in height.
+   Only the on-the-hour row gets a label and a slightly heavier top edge
+   (.hour-start) — labeling every half-hour row at this height would be
+   unreadable clutter, and the hour mark alone is enough to scan by. */
+.avail-grid-compact { gap: 1px; }
+.avail-grid-compact .avail-cell { height: 13px; border-radius: 2px; }
+.avail-grid-compact .avail-time-label { font-size: 9px; padding: 1px 6px 0 0; }
+.avail-grid-compact .avail-day-head { font-size: 10px; padding: 3px 2px; }
+.avail-grid-compact .hour-start { border-top: 1px solid rgba(0,0,0,0.14); }
 
 /* Response grid on the match page — single-pick, not the creation grid's
    multi-toggle. Only cells matching one of the proposed slots are
@@ -1690,26 +1703,24 @@ a.rank-name:hover { text-decoration: underline; }
 }
 
 /* ---------- Looking to play ---------- */
-.day-picker { display: flex; gap: 6px; flex-wrap: wrap; }
-.day-toggle {
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 1.5px solid #ddd;
-  background: var(--white);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ink);
-  cursor: pointer;
-}
-.day-toggle.active { background: var(--orange); border-color: var(--orange); color: var(--white); }
+/* Multi-select category toggles on the post form — plain .badge markup
+   (the exact same category-colored pills used everywhere else, e.g.
+   categoryBadge in common.js) so a selected one already looks exactly
+   like the badge the board card itself will show; unselected ones are
+   just dimmed rather than restyled, which keeps each one recognizable by
+   color even before it's picked. */
+.category-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+.category-toggle { border: none; font-family: inherit; cursor: pointer; opacity: 0.35; transition: opacity 0.15s ease; }
+.category-toggle.active { opacity: 1; }
 
-.availability-post { padding: 14px 4px; border-bottom: 1px solid var(--gray-light); }
-.availability-post:last-child { border-bottom: none; }
-.availability-post-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.availability-post-player { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
-.availability-post-photo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
-.availability-post-days { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0 6px; }
+/* Board cards deliberately reuse a finished match card's own chrome (white
+   card, colored left accent, top badge row, dark .scoreboard box) instead
+   of a bespoke look — the same visual language as the match cards
+   elsewhere in the app, just with a fixed accent color instead of one
+   keyed to a match status, and a single player instead of two either side
+   of "vs". */
+.match-card.availability-post { border-left-color: var(--orange); cursor: default; }
+.availability-post-days { display: flex; gap: 4px; flex-wrap: wrap; }
 .availability-day-pill {
   padding: 2px 9px;
   border-radius: 999px;
@@ -1720,23 +1731,29 @@ a.rank-name:hover { text-decoration: underline; }
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
-.availability-post-meta { font-size: 13px; color: var(--gray); }
-.availability-post-note { font-size: 13px; color: var(--ink); margin-top: 6px; }
-.availability-join-count { font-size: 12px; color: var(--gray-dim); margin-top: 8px; }
-/* The optional-message box that unfolds under a board card's own Join
-   button (see boardPostHtml/renderBoard in looking-to-play.js) — not a
-   modal, so the rest of the board stays visible and scrollable while
-   writing it. */
-.availability-join-compose { display: flex; gap: 8px; margin-top: 10px; align-items: flex-start; }
-.availability-join-compose textarea {
-  flex: 1;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1.5px solid #ddd;
-  font-family: inherit;
-  font-size: 13px;
-  resize: vertical;
+.availability-player-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Font weight/size match .match-players .name exactly — same visual
+   weight a match card gives its own player names. */
+.availability-player-name { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 18px; color: inherit; text-decoration: none; }
+.availability-post-photo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+/* The join trigger — sits right next to the name (see boardPostHtml in
+   looking-to-play.js) and opens the post owner's own free-time calendar
+   in a single-pick modal (#pick-slot-grid-wrap below). Plain and round
+   rather than a labeled button since the calendar itself, not this icon,
+   is the actual point of interest. */
+.availability-calendar-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.12);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
 }
+.availability-calendar-btn:hover { background: rgba(255,255,255,0.22); }
+.availability-join-count { font-size: 12px; color: var(--gray-dim); }
 /* One row per player who joined — shown only to the post's own owner (or
    an admin), on their My post card (see interestedListHtml). */
 .availability-join-row {
@@ -1751,3 +1768,14 @@ a.rank-name:hover { text-decoration: underline; }
 .availability-join-row:last-child { border-bottom: none; }
 .availability-join-contact { color: var(--gray); font-variant-numeric: tabular-nums; }
 .availability-join-message { color: var(--gray-dim); font-style: italic; }
+/* The "pick a time" modal's grid — same single-pick treatment as a match's
+   own respondent-side calendar (#proposal-grid-wrap/#counter-proposal-
+   grid-wrap in match.js): only the post owner's own marked times
+   (.proposed) are clickable, everything else is inert filler that just
+   keeps the calendar shape recognizable. */
+#pick-slot-grid-wrap .avail-cell { cursor: default; touch-action: manipulation; }
+#pick-slot-grid-wrap .avail-cell:hover { background: var(--gray-light); }
+#pick-slot-grid-wrap .avail-cell.proposed { background: #fff6f2; border: 1.5px solid var(--orange); cursor: pointer; }
+#pick-slot-grid-wrap .avail-cell.proposed:hover { background: #ffe8dc; }
+#pick-slot-grid-wrap .avail-cell.proposed.selected { background: var(--orange); border-color: var(--orange-dark); }
+#pick-slot-grid-wrap .avail-cell.proposed.selected:hover { background: var(--orange-dark); }

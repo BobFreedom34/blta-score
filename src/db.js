@@ -623,6 +623,14 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS availability_posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     player_id INTEGER NOT NULL REFERENCES players(id),
+    -- JSON array of ISO datetime strings — the exact same "When2Meet-style"
+    -- hourly-grid representation a match's own proposalSlots use (see
+    -- createAvailabilityPicker in common.js and parseSlots in
+    -- routes/availability.js), so a viewer picking one of these reuses that
+    -- same calendar UI instead of a bespoke one. time_from/time_to below
+    -- predate this (an earlier day-of-week design) and are no longer
+    -- written — a table-rebuild-free column is easier to just leave unused
+    -- than migrate away, and this table has never carried real rows.
     days TEXT NOT NULL,
     time_from TEXT,
     time_to TEXT,
@@ -633,18 +641,38 @@ db.exec(`
   );
   CREATE UNIQUE INDEX IF NOT EXISTS idx_availability_posts_player ON availability_posts(player_id);
 
-  -- One row per (post, player) who tapped "I want to play!" — the UNIQUE
-  -- constraint is what makes that idempotent (see POST /:id/join), so
-  -- clicking it twice never double-notifies the post's owner.
+  -- One row per (post, player) who tapped a time on the post owner's
+  -- calendar — the UNIQUE constraint is what makes re-picking idempotent
+  -- (see POST /:id/join), so clicking Confirm twice never double-notifies
+  -- the post's owner; picking a *different* slot updates this same row
+  -- instead of inserting a second one.
   CREATE TABLE IF NOT EXISTS availability_joins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     post_id INTEGER NOT NULL REFERENCES availability_posts(id),
     player_id INTEGER NOT NULL REFERENCES players(id),
+    slot TEXT NOT NULL DEFAULT '',
     message TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     UNIQUE(post_id, player_id)
   );
   CREATE INDEX IF NOT EXISTS idx_availability_joins_post ON availability_joins(post_id);
 `);
+
+// Predates the `slot` column above (the join used to just be a free-text
+// message, no specific time attached) — added the ordinary way in case
+// this table already exists somewhere without it.
+const availabilityJoinColumns = db.prepare('PRAGMA table_info(availability_joins)').all().map((c) => c.name);
+if (!availabilityJoinColumns.includes('slot')) {
+  db.exec("ALTER TABLE availability_joins ADD COLUMN slot TEXT NOT NULL DEFAULT ''");
+}
+
+// JSON array of zero or more of BLTA_CATEGORIES (ELITE/NEXT_GEN/NOVICE,
+// see common.js) — which divisions this player is looking for an
+// opponent in, shown as the same category badges the rest of the app
+// uses (categoryBadge in common.js). Empty means no preference stated.
+const availabilityPostColumns = db.prepare('PRAGMA table_info(availability_posts)').all().map((c) => c.name);
+if (!availabilityPostColumns.includes('categories')) {
+  db.exec("ALTER TABLE availability_posts ADD COLUMN categories TEXT NOT NULL DEFAULT '[]'");
+}
 
 module.exports = db;
