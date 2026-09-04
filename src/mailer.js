@@ -242,7 +242,36 @@ async function sendNewRegistrationEmail(player) {
   return true;
 }
 
+// Sent to a "looking to play" post's owner the moment another player taps
+// "I want to play!" on it (see POST /availability/:id/join) — the whole
+// point of that board is not having to keep checking it yourself. The
+// joiner's phone/email aren't included here — the page itself already
+// shows those to the owner, via this app's normal logged-in-player trust
+// model (see stripPrivateFields in auth.js) — just enough to recognize who
+// it is and go take a look.
+async function sendPlayRequestEmail(owner, joiner, message) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping play-request email.');
+    return false;
+  }
+  const subject = `${joiner.name} wants to play with you!`;
+  const lines = [
+    `${joiner.name} saw your "Looking to play" post on Tennis SCORE and wants to play a friendly match with you.`,
+  ];
+  if (message) lines.push(`Their message: "${message}"`);
+  lines.push(`See it here: ${process.env.PUBLIC_URL || ''}/looking-to-play`);
+
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: owner.email,
+    subject,
+    text: lines.join('\n'),
+  });
+  return true;
+}
+
 module.exports = {
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
-  sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail,
+  sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendPlayRequestEmail,
 };

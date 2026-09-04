@@ -16,6 +16,7 @@ const playerAuthRouter = require('./src/routes/player');
 const pushRouter = require('./src/routes/push');
 const badgesRouter = require('./src/routes/badges');
 const rankingsRouter = require('./src/routes/rankings');
+const availabilityRouter = require('./src/routes/availability');
 
 const app = express();
 const server = http.createServer(app);
@@ -41,6 +42,7 @@ app.use('/api/player', playerAuthRouter);
 app.use('/api/push', pushRouter);
 app.use('/api/badges', badgesRouter);
 app.use('/api/rankings', rankingsRouter);
+app.use('/api/availability', availabilityRouter);
 
 // Pretty routes -> static HTML pages (the page JS reads the share token from the URL).
 const matchTemplate = fs.readFileSync(path.join(PUBLIC_DIR, 'match.html'), 'utf8');

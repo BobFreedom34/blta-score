@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title data-i18n="page.rankingsTitle">Tennis SCORE — Rebríček</title>
-<meta name="description" content="BLTA league point standings — overall, per-category Race points, and tournament points.">
+<title data-i18n="page.lookingToPlayTitle">Tennis SCORE — Hľadám súpera</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" href="/favicon.png">
@@ -26,8 +25,8 @@
         <a href="/" data-i18n="nav.matches">Zápasy</a>
         <a href="#" class="nav-my-profile-link" id="nav-my-profile-link" data-i18n="nav.myProfile">Môj profil</a>
         <a href="/players" data-i18n="nav.players">Hráči</a>
-        <a href="/rankings" class="active" data-i18n="nav.rankings">Rebríček</a>
-        <a href="/looking-to-play" data-i18n="nav.lookingToPlay">Hľadám súpera</a>
+        <a href="/rankings" data-i18n="nav.rankings">Rebríček</a>
+        <a href="/looking-to-play" class="active" data-i18n="nav.lookingToPlay">Hľadám súpera</a>
         <a href="/new-match" data-i18n="nav.newMatch">+ Nový zápas</a>
         <a href="#" class="player-login-link" id="player-login-link"><span class="nav-icon"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span><span class="player-login-link-text" data-i18n="nav.loginPlayer">PRIHLÁSIŤ SA AKO HRÁČ</span></a>
         <a href="#" class="nav-register-link" id="nav-register-link" data-i18n="nav.register">Registrácia</a>
@@ -37,13 +36,21 @@
 </div>
 
 <div class="container">
-  <h1 style="margin-top:22px" data-i18n="rankings.heading">Rebríček</h1>
-  <p style="color:var(--danger)" id="rankings-updated"></p>
+  <h1 style="margin-top:22px" data-i18n="lookingToPlay.heading">Hľadám súpera</h1>
+  <p style="color:var(--gray-dim)" data-i18n="lookingToPlay.intro">Pridajte dni a časy, kedy ste voľní na priateľský zápas — ostatní hráči sa môžu prihlásiť a vy dostanete správu, že si s vami niekto chce zahrať.</p>
 
-  <div class="tabs" id="rankings-tabs" role="tablist"></div>
+  <div class="card" style="margin-bottom:20px;display:none" id="my-post-card"></div>
 
-  <div class="card card-dark">
-    <div id="rankings-list" data-i18n="common.loading">Načítavam…</div>
+  <div class="card" style="margin-bottom:20px;display:none" id="login-required-card">
+    <p style="margin:0;color:var(--gray)">
+      <span data-i18n="lookingToPlay.loginRequired">Ak chcete pridať svoju dostupnosť, prihláste sa ako hráč.</span>
+      <a href="#" id="looking-to-play-login-link" style="text-decoration:underline;color:var(--orange)" data-i18n="lookingToPlay.loginNow">Prihlásiť sa</a>.
+    </p>
+  </div>
+
+  <h2 style="margin-top:32px" data-i18n="lookingToPlay.boardHeading">Hráči hľadajúci súpera</h2>
+  <div class="card">
+    <div id="availability-list" data-i18n="common.loading">Načítavam…</div>
   </div>
 </div>
 
@@ -176,7 +183,6 @@
 
 <script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
-<script src="/js/badges.js"></script>
-<script src="/js/rankings.js"></script>
+<script src="/js/looking-to-play.js"></script>
 </body>
 </html>

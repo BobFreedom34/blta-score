@@ -609,4 +609,42 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_login_events_created_at ON login_events(created_at);
 `);
 
+// "Looking to play" board (src/routes/availability.js, public/looking-to-play.html)
+// — a player posts the days/times they're free for a friendly match, other
+// players can join in, and the poster gets notified (see sendPlayRequestEmail
+// in mailer.js). One row per player at a time: posting again while a post
+// already exists updates it in place rather than creating a second one, and
+// idx_availability_posts_player enforces that at the DB level too. There's
+// no CLOSED/status column at all — "closing" a post is just deleting its
+// row (see DELETE /:id), which also cascades to its joins below (node:sqlite
+// doesn't enforce real FK cascades — see the PRAGMA foreign_keys note up
+// top — so that cascade is done explicitly in the route, not by the DB).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS availability_posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL REFERENCES players(id),
+    days TEXT NOT NULL,
+    time_from TEXT,
+    time_to TEXT,
+    location TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_availability_posts_player ON availability_posts(player_id);
+
+  -- One row per (post, player) who tapped "I want to play!" — the UNIQUE
+  -- constraint is what makes that idempotent (see POST /:id/join), so
+  -- clicking it twice never double-notifies the post's owner.
+  CREATE TABLE IF NOT EXISTS availability_joins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL REFERENCES availability_posts(id),
+    player_id INTEGER NOT NULL REFERENCES players(id),
+    message TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    UNIQUE(post_id, player_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_availability_joins_post ON availability_joins(post_id);
+`);
+
 module.exports = db;

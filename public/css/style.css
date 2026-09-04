@@ -1688,3 +1688,66 @@ a.rank-name:hover { text-decoration: underline; }
   .rank-badges-icons .badge-medal-mini { width: 20px; height: 20px; font-size: 10px; }
   .rank-badges-icons .badge-medal-mini:not(:first-child) { margin-left: -10px; }
 }
+
+/* ---------- Looking to play ---------- */
+.day-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+.day-toggle {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1.5px solid #ddd;
+  background: var(--white);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+.day-toggle.active { background: var(--orange); border-color: var(--orange); color: var(--white); }
+
+.availability-post { padding: 14px 4px; border-bottom: 1px solid var(--gray-light); }
+.availability-post:last-child { border-bottom: none; }
+.availability-post-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.availability-post-player { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.availability-post-photo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.availability-post-days { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0 6px; }
+.availability-day-pill {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--gray-light);
+  color: var(--gray);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.availability-post-meta { font-size: 13px; color: var(--gray); }
+.availability-post-note { font-size: 13px; color: var(--ink); margin-top: 6px; }
+.availability-join-count { font-size: 12px; color: var(--gray-dim); margin-top: 8px; }
+/* The optional-message box that unfolds under a board card's own Join
+   button (see boardPostHtml/renderBoard in looking-to-play.js) — not a
+   modal, so the rest of the board stays visible and scrollable while
+   writing it. */
+.availability-join-compose { display: flex; gap: 8px; margin-top: 10px; align-items: flex-start; }
+.availability-join-compose textarea {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid #ddd;
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+/* One row per player who joined — shown only to the post's own owner (or
+   an admin), on their My post card (see interestedListHtml). */
+.availability-join-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gray-light);
+  font-size: 13px;
+}
+.availability-join-row:last-child { border-bottom: none; }
+.availability-join-contact { color: var(--gray); font-variant-numeric: tabular-nums; }
+.availability-join-message { color: var(--gray-dim); font-style: italic; }
