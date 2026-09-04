@@ -15,15 +15,21 @@ function playerRowHtml(p) {
   const email = isAdminUser
     ? `<span class="player-email">${p.email ? escapeHtml(p.email) : `<span class="player-email-missing">${t('players.noEmailOnFile')}</span>`}</span>`
     : '';
+  // Only an admin ever sees a hidden row at all (see render() below), so
+  // the badge and the toggle button are both admin-only markup — no need
+  // to guard them separately from `actions`.
+  const hiddenBadge = p.hidden ? `<span class="badge badge-hidden">${t('players.hiddenBadge')}</span>` : '';
   const actions = isAdminUser ? `
       <div class="player-row-actions">
         <button type="button" class="btn btn-sm btn-outline" data-action="edit">${t('common.edit')}</button>
+        <button type="button" class="btn btn-sm btn-outline" data-action="toggle-hidden">${p.hidden ? t('players.unhide') : t('players.hide')}</button>
         <button type="button" class="btn btn-sm btn-danger" data-action="delete">${t('common.delete')}</button>
       </div>
   ` : '';
   return `
-    <div class="player-row" data-id="${p.id}">
+    <div class="player-row${p.hidden ? ' player-row-hidden' : ''}" data-id="${p.id}">
       <a class="player-name" href="/player/${p.slug || p.id}">${escapeHtml(p.name)}</a>
+      ${hiddenBadge}
       ${phone}
       ${email}
       ${actions}
@@ -39,11 +45,16 @@ function surname(name) {
 }
 
 function render() {
-  if (players.length === 0) {
+  // A hidden player only ever shows up here for an admin (marked with a
+  // badge — see playerRowHtml — so they can still find and unhide them);
+  // everyone else's Players directory just never lists them. The API
+  // itself doesn't filter this (see routes/players.js), so it's done here.
+  const visible = isAdminUser ? players : players.filter((p) => !p.hidden);
+  if (visible.length === 0) {
     listEl.innerHTML = `<div class="empty-state">${t(query ? 'players.noneSearch' : 'players.noneYet')}</div>`;
     return;
   }
-  const sorted = [...players].sort((a, b) => {
+  const sorted = [...visible].sort((a, b) => {
     const bySurname = surname(a.name).localeCompare(surname(b.name));
     return bySurname !== 0 ? bySurname : a.name.localeCompare(b.name);
   });
@@ -124,6 +135,16 @@ function attachRowHandlers() {
           if (e.key === 'Escape') render();
         });
       });
+    });
+
+    row.querySelector('[data-action="toggle-hidden"]').addEventListener('click', async () => {
+      try {
+        await api(`/players/${id}/hidden`, { method: 'PATCH', body: { hidden: !player.hidden } });
+        toast(player.hidden ? t('players.shown', { name: player.name }) : t('players.hiddenToast', { name: player.name }));
+        loadPlayers();
+      } catch (err) {
+        toast(err.message);
+      }
     });
 
     row.querySelector('[data-action="delete"]').addEventListener('click', async () => {

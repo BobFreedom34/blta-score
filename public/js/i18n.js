@@ -213,6 +213,11 @@ const TRANSLATIONS = {
     'players.deleteConfirm': "Vymazať {name}? Túto akciu nemožno vrátiť späť.",
     'players.deleted': 'Vymazané: {name}',
     'players.added': 'Pridané: {name}',
+    'players.hide': 'Skryť',
+    'players.unhide': 'Zobraziť',
+    'players.hiddenBadge': 'Skrytý',
+    'players.hiddenToast': 'Skrytý: {name}',
+    'players.shown': 'Zobrazený: {name}',
 
     'common.loading': 'Načítavam…',
 
@@ -660,6 +665,11 @@ const TRANSLATIONS = {
     'players.deleteConfirm': "Delete {name}? This can't be undone.",
     'players.deleted': 'Deleted {name}',
     'players.added': 'Added {name}',
+    'players.hide': 'Hide',
+    'players.unhide': 'Unhide',
+    'players.hiddenBadge': 'Hidden',
+    'players.hiddenToast': 'Hidden {name}',
+    'players.shown': 'Unhidden {name}',
 
     'common.loading': 'Loading…',
 

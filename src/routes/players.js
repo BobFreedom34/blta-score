@@ -68,6 +68,12 @@ router.get('/', (req, res) => {
     const needle = q.toLowerCase();
     rows = rows.filter((p) => p.name.toLowerCase().includes(needle));
   }
+  // `hidden` is deliberately NOT filtered out here — this same endpoint
+  // also feeds the rankings page's Badges tab and the match-creation
+  // player picker (see rankings.js/common.js), and hiding a player from
+  // the Players directory shouldn't silently drop them from either of
+  // those. The Players page itself does its own client-side filtering
+  // (public/js/players.js) using the `hidden` flag on each row instead.
   res.json(rows.map((p) => stripPrivateFields(p, req)));
 });
 
@@ -232,6 +238,18 @@ router.post('/:id/reset-login-pin', requireAdmin, (req, res) => {
   if (!player) return res.status(404).json({ error: 'Player not found' });
   db.prepare('UPDATE players SET login_pin = NULL, failed_pin_attempts = 0, reset_token = NULL, reset_token_expires = NULL WHERE id = ?').run(player.id);
   res.json({ ok: true });
+});
+
+// Hides/unhides a player from the public Players directory (see GET /
+// above and public/js/players.js) without touching anything else about
+// them — their matches, rankings, and badges are untouched, and an admin
+// still sees them on the Players page (just marked, with an Unhide
+// action). Reversible, so unlike DELETE this has no in-matches guard.
+router.patch('/:id/hidden', requireAdmin, (req, res) => {
+  const player = findPlayerByIdOrSlug(req.params.id);
+  if (!player) return res.status(404).json({ error: 'Player not found' });
+  db.prepare('UPDATE players SET hidden = ? WHERE id = ?').run(req.body.hidden ? 1 : 0, player.id);
+  res.json(stripPrivateFields(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id), req));
 });
 
 router.delete('/:id', requireAdmin, (req, res) => {

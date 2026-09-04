@@ -1401,6 +1401,11 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   min-width: 0;
 }
 .player-row:last-child { border-bottom: none; }
+/* Only rendered for an admin (see players.js's render()) — a hidden
+   player never reaches a non-admin's DOM at all, so this is purely
+   "still findable in the admin list, but visually set apart". */
+.player-row-hidden { opacity: 0.55; }
+.badge-hidden { background: var(--gray-light); color: var(--gray); }
 /* flex-basis 100% (rather than the usual flex:1) so the name always
    claims its own full-width line above phone/actions once those wrap —
    the narrower a grid column gets, the more likely admin's phone +

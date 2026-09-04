@@ -341,6 +341,13 @@ if (!playerColumns.includes('slug')) {
   // tier (see created_by_anonymous on matches), which has since been
   // removed entirely. Always 0 for any player created from here on.
   'created_by_anonymous INTEGER NOT NULL DEFAULT 0',
+  // Admin-only "hide from the Players directory" toggle (routes/players.js's
+  // PATCH /:id/hidden) — e.g. for an inactive/duplicate player cluttering
+  // the alphabetical list. Deliberately narrow in scope: the player, their
+  // matches, and their rankings/badges are completely unaffected, and an
+  // admin still sees (and can unhide) them on the Players page — this only
+  // removes them from what a logged-out/non-admin visitor sees there.
+  'hidden INTEGER NOT NULL DEFAULT 0',
 ].forEach((colDef) => {
   const colName = colDef.split(' ')[0];
   if (!playerColumns.includes(colName)) {
