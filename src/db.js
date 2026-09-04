@@ -660,10 +660,27 @@ db.exec(`
 
 // Predates the `slot` column above (the join used to just be a free-text
 // message, no specific time attached) — added the ordinary way in case
-// this table already exists somewhere without it.
+// this table already exists somewhere without it. status/deny_reason/
+// match_token are later additions too: accept/deny for a join (POST
+// /:id/joins/:playerId/accept|deny in routes/availability.js) — a join
+// stays PENDING until the post's owner responds. Accepting auto-creates a
+// real FRIENDLY/PLANNED match (match_token records which one) and blocks
+// that time — plus a few hours after it, see MATCH_BLOCK_HOURS — from
+// being offered to anyone else; denying requires deny_reason, sent back
+// to the requester by email so they know why, not just that they were
+// turned down.
 const availabilityJoinColumns = db.prepare('PRAGMA table_info(availability_joins)').all().map((c) => c.name);
 if (!availabilityJoinColumns.includes('slot')) {
   db.exec("ALTER TABLE availability_joins ADD COLUMN slot TEXT NOT NULL DEFAULT ''");
+}
+if (!availabilityJoinColumns.includes('status')) {
+  db.exec("ALTER TABLE availability_joins ADD COLUMN status TEXT NOT NULL DEFAULT 'PENDING'");
+}
+if (!availabilityJoinColumns.includes('deny_reason')) {
+  db.exec("ALTER TABLE availability_joins ADD COLUMN deny_reason TEXT NOT NULL DEFAULT ''");
+}
+if (!availabilityJoinColumns.includes('match_token')) {
+  db.exec('ALTER TABLE availability_joins ADD COLUMN match_token TEXT');
 }
 
 // JSON array of zero or more of BLTA_CATEGORIES (ELITE/NEXT_GEN/NOVICE,

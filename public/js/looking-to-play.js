@@ -90,8 +90,15 @@ function renderLtpGrid(wrapId, days, cellHtml) {
 // This page's own fork of createAvailabilityPicker (common.js) — same
 // public shape (selectedSlots/clear/setSlots) so renderMyPostArea barely
 // differs from using the shared one, but built on buildLtpDays/
-// renderLtpGrid above instead.
-function createLtpAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
+// renderLtpGrid above instead. `blockedByIso` (Map<iso, {opponentName}>,
+// optional) marks cells that are actually a real, already-accepted match
+// — those render as inert/blocked rather than selectable, regardless of
+// whether that same time is also in selectedSlots (accepting doesn't
+// remove it from the underlying marked-free set, it just takes priority
+// over it visually and functionally).
+function createLtpAvailabilityPicker({
+  weekTabsId, gridWrapId, slotCountId, blockedByIso = new Map(),
+}) {
   let days = [];
   const selectedSlots = new Set();
   let activeWeek = 0;
@@ -120,6 +127,10 @@ function createLtpAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
     const weekDays = [days.slice(0, 7), days.slice(7, 14)][activeWeek];
     renderLtpGrid(gridWrapId, weekDays, (d, step, onHour) => {
       const iso = ltpSlotIso(d, step);
+      const blocked = blockedByIso.get(iso);
+      if (blocked) {
+        return `<div class="avail-cell blocked${onHour ? ' hour-start' : ''}" data-iso="${iso}" title="${escapeHtml(blocked.opponentName || '')}"></div>`;
+      }
       return `<div class="avail-cell${selectedSlots.has(iso) ? ' selected' : ''}${onHour ? ' hour-start' : ''}" data-iso="${iso}"></div>`;
     });
   }
@@ -134,7 +145,7 @@ function createLtpAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
     let lastCell = null;
 
     function paint(cell) {
-      if (!cell || cell === lastCell) return;
+      if (!cell || cell === lastCell || cell.classList.contains('blocked')) return;
       lastCell = cell;
       if (paintValue) { selectedSlots.add(cell.dataset.iso); cell.classList.add('selected'); }
       else { selectedSlots.delete(cell.dataset.iso); cell.classList.remove('selected'); }
@@ -143,7 +154,7 @@ function createLtpAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
 
     wrap.addEventListener('mousedown', (e) => {
       const cell = e.target.closest('.avail-cell');
-      if (!cell) return;
+      if (!cell || cell.classList.contains('blocked')) return;
       e.preventDefault();
       dragging = true;
       lastCell = null;
@@ -158,7 +169,7 @@ function createLtpAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
 
     wrap.addEventListener('touchstart', (e) => {
       const cell = e.target.closest('.avail-cell');
-      if (!cell) return;
+      if (!cell || cell.classList.contains('blocked')) return;
       dragging = true;
       lastCell = null;
       paintValue = !cell.classList.contains('selected');
@@ -203,6 +214,7 @@ function myPostFormHtml(existing) {
         <div class="availability-grid-wrap" id="my-post-grid-wrap"></div>
         <button type="button" class="btn btn-sm btn-outline" id="my-post-clear-slots-btn" style="margin-top:10px">${t('common.clearAll')}</button>
       </div>
+      ${existing ? blockedListHtml(existing) : ''}
       <div class="field">
         <label>${t('lookingToPlay.levelLabel')} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(${t('common.optional')})</span></label>
         <div class="category-picker" id="my-post-categories">
@@ -230,19 +242,87 @@ function myPostFormHtml(existing) {
 function interestedListHtml(post) {
   const joins = post.joins || [];
   const rows = joins.length
-    ? joins.map((j) => `
-      <div class="availability-join-row">
-        <a class="player-name-link" href="/player/${j.player.slug || j.player.id}">${escapeHtml(j.player.name)}</a>
-        <span class="availability-join-contact">${escapeHtml(fmtSlot(j.slot))}</span>
-        ${j.player.phone ? `<span class="availability-join-contact">${escapeHtml(j.player.phone)}</span>` : ''}
-        ${j.message ? `<span class="availability-join-message">“${escapeHtml(j.message)}”</span>` : ''}
-      </div>
-    `).join('')
+    ? joins.map((j) => {
+      let statusLine = '';
+      if (j.status === 'ACCEPTED') {
+        statusLine = `<span class="badge" style="background:var(--green);color:var(--white)">${t('lookingToPlay.accepted')}</span>${j.matchToken ? ` <a href="/match/${j.matchToken}" class="edit-link">${t('lookingToPlay.viewMatch')}</a>` : ''}`;
+      } else if (j.status === 'DENIED') {
+        statusLine = `<span class="badge" style="background:var(--gray-light);color:var(--gray)">${t('lookingToPlay.deniedLabel')}</span> <span class="availability-join-message">“${escapeHtml(j.denyReason)}”</span>`;
+      }
+      const actions = j.status === 'PENDING' ? `
+        <div class="availability-join-actions">
+          <button type="button" class="btn btn-sm btn-primary" data-accept-join="${j.player.id}">${t('lookingToPlay.acceptBtn')}</button>
+          <button type="button" class="btn btn-sm btn-outline" data-deny-join-toggle="${j.player.id}">${t('lookingToPlay.denyBtn')}</button>
+        </div>
+        <div class="availability-join-compose" id="deny-compose-${j.player.id}" style="display:none">
+          <textarea rows="2" maxlength="300" placeholder="${escapeHtml(t('lookingToPlay.denyReasonPlaceholder'))}"></textarea>
+          <button type="button" class="btn btn-sm btn-danger" data-deny-join="${j.player.id}">${t('lookingToPlay.confirmDenyBtn')}</button>
+        </div>
+      ` : '';
+      return `
+        <div class="availability-join-row">
+          <a class="player-name-link" href="/player/${j.player.slug || j.player.id}">${escapeHtml(j.player.name)}</a>
+          <span class="availability-join-contact">${escapeHtml(fmtSlot(j.slot))}</span>
+          ${j.player.phone ? `<span class="availability-join-contact">${escapeHtml(j.player.phone)}</span>` : ''}
+          ${j.message ? `<span class="availability-join-message">“${escapeHtml(j.message)}”</span>` : ''}
+          ${statusLine}
+          ${actions}
+        </div>
+      `;
+    }).join('')
     : `<p style="color:var(--gray-dim);margin:6px 0 0">${t('lookingToPlay.noInterestYet')}</p>`;
   return `
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--gray-light)">
       <strong style="font-size:13px;text-transform:uppercase;letter-spacing:0.03em;color:var(--gray)">${t('lookingToPlay.interestedHeading')}${joins.length ? ` (${joins.length})` : ''}</strong>
       ${rows}
+    </div>
+  `;
+}
+
+// Groups blockedSlots (one entry per half-hour cell, see getBlockedSlots
+// server-side) back into one row per actual match by matchToken, with
+// the real start–end range that match occupies.
+function groupBlockedRanges(blockedSlots) {
+  const byToken = new Map();
+  (blockedSlots || []).forEach((b) => {
+    if (!byToken.has(b.matchToken)) byToken.set(b.matchToken, { ...b, isos: [] });
+    byToken.get(b.matchToken).isos.push(b.iso);
+  });
+  return [...byToken.values()].map((g) => {
+    const sorted = g.isos.slice().sort();
+    const end = new Date(sorted[sorted.length - 1]);
+    end.setMinutes(end.getMinutes() + 30);
+    return { ...g, start: sorted[0], end: end.toISOString() };
+  });
+}
+
+function fmtSlotRange(startIso, endIso) {
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  const datePart = start.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  const startTime = start.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const endTime = end.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return `${datePart}, ${startTime}–${endTime}`;
+}
+
+// The text list backing up the calendar's own greyed-out blocked cells —
+// a 13px cell has no room to show who a block is with, so this is where
+// that name actually lives (also reachable via each blocked cell's own
+// title tooltip, but that's not something a touch device has at all).
+function blockedListHtml(post) {
+  const groups = groupBlockedRanges(post.blockedSlots);
+  if (groups.length === 0) return '';
+  return `
+    <div class="field">
+      <label>${t('lookingToPlay.blockedListHeading')}</label>
+      <div class="availability-blocked-list">
+        ${groups.map((g) => `
+          <div class="availability-blocked-row">
+            <span>🎾 ${escapeHtml(fmtSlotRange(g.start, g.end))} — ${g.opponentSlug ? `<a href="/player/${g.opponentSlug}">${escapeHtml(g.opponentName)}</a>` : escapeHtml(g.opponentName || '')}</span>
+            ${g.matchToken ? `<a href="/match/${g.matchToken}" class="edit-link">${t('lookingToPlay.viewMatch')}</a>` : ''}
+          </div>
+        `).join('')}
+      </div>
     </div>
   `;
 }
@@ -262,10 +342,56 @@ function renderMyPostArea() {
   // rebuilt on every loadPosts() (unlike the propose-times modal elsewhere,
   // which stays in the DOM and just calls .reset()), so there's no reason
   // to keep the old instance around.
-  myPostPicker = createLtpAvailabilityPicker({ weekTabsId: 'my-post-week-tabs', gridWrapId: 'my-post-grid-wrap', slotCountId: 'my-post-slot-count' });
+  const blockedByIso = new Map((mine ? mine.blockedSlots : []).map((b) => [b.iso, b]));
+  myPostPicker = createLtpAvailabilityPicker({
+    weekTabsId: 'my-post-week-tabs', gridWrapId: 'my-post-grid-wrap', slotCountId: 'my-post-slot-count', blockedByIso,
+  });
   if (mine) myPostPicker.setSlots(mine.slots);
 
   document.getElementById('my-post-clear-slots-btn').addEventListener('click', () => myPostPicker.clear());
+
+  // Accept: one confirm click away, since there's nothing further to fill
+  // in — the slot, the two players, and the location (if any) are already
+  // settled. Deny: reveals its own inline compose (same pattern as the
+  // board's own join compose) since a reason is mandatory server-side.
+  document.querySelectorAll('[data-accept-join]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const playerId = btn.dataset.acceptJoin;
+      const join = (mine.joins || []).find((j) => String(j.player.id) === playerId);
+      if (!confirm(t('lookingToPlay.acceptConfirm', { name: join ? join.player.name : '' }))) return;
+      try {
+        await api(`/availability/${mine.id}/joins/${playerId}/accept`, { method: 'POST' });
+        toast(t('lookingToPlay.acceptedToast'));
+        await loadPosts();
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+  });
+  document.querySelectorAll('[data-deny-join-toggle]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const compose = document.getElementById(`deny-compose-${btn.dataset.denyJoinToggle}`);
+      if (!compose) return;
+      const opening = compose.style.display === 'none';
+      compose.style.display = opening ? '' : 'none';
+      if (opening) compose.querySelector('textarea').focus();
+    });
+  });
+  document.querySelectorAll('[data-deny-join]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const playerId = btn.dataset.denyJoin;
+      const compose = document.getElementById(`deny-compose-${playerId}`);
+      const reason = compose ? compose.querySelector('textarea').value.trim() : '';
+      if (!reason) { toast(t('lookingToPlay.denyReasonRequired')); return; }
+      try {
+        await api(`/availability/${mine.id}/joins/${playerId}/deny`, { method: 'POST', body: { reason } });
+        toast(t('lookingToPlay.deniedToast'));
+        await loadPosts();
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+  });
 
   // Category is a plain toggle, same idea as the day-toggle pickers
   // elsewhere in this app — clicking just flips its own .active class,
@@ -330,6 +456,12 @@ function boardPostHtml(post) {
   const photo = post.player.photoUrl
     ? `<img src="${escapeHtml(post.player.photoUrl)}" alt="" class="availability-post-photo">`
     : '';
+  // A slot that's now part of an accepted match is booked, not free —
+  // doesn't count toward "how many free times" even though it's still
+  // technically in the post's own marked-free set (see the block comment
+  // on createLtpAvailabilityPicker above for why that set is left as-is).
+  const blockedIsos = new Set((post.blockedSlots || []).map((b) => b.iso));
+  const freeSlotCount = post.slots.filter((s) => !blockedIsos.has(s)).length;
 
   // The calendar icon next to the name is the actual join trigger (opens
   // openPickSlotModal below) — not shown at all once there's nothing left
@@ -354,7 +486,7 @@ function boardPostHtml(post) {
   return `
     <div class="match-card availability-post" data-id="${post.id}">
       <div class="match-card-top">
-        <div class="availability-post-days">${post.categories.map(levelBadge).join('')}<span class="availability-day-pill">${escapeHtml(t('lookingToPlay.slotsCount', { count: post.slots.length }))}</span></div>
+        <div class="availability-post-days">${post.categories.map(levelBadge).join('')}<span class="availability-day-pill">${escapeHtml(t('lookingToPlay.slotsCount', { count: freeSlotCount }))}</span></div>
         ${post.location ? `<div class="match-card-meta" style="margin-left:auto"><span>📍 ${escapeHtml(post.location)}</span></div>` : ''}
       </div>
       <div class="scoreboard">
@@ -457,7 +589,8 @@ function renderPickSlotWeekTabs() {
 
 function renderPickSlotGrid() {
   const post = posts.find((p) => p.id === pickSlotPostId);
-  const offered = new Set(post ? post.slots : []);
+  const blockedIsos = new Set(post ? (post.blockedSlots || []).map((b) => b.iso) : []);
+  const offered = new Set(post ? post.slots.filter((s) => !blockedIsos.has(s)) : []);
   const weekDays = [pickSlotDays.slice(0, 7), pickSlotDays.slice(7, 14)][pickSlotActiveWeek];
   renderLtpGrid('pick-slot-grid-wrap', weekDays, (d, step, onHour) => {
     const iso = ltpSlotIso(d, step);

@@ -272,7 +272,60 @@ async function sendPlayRequestEmail(owner, joiner, slot, message) {
   return true;
 }
 
+// Sent to the requester the moment a "looking to play" post's owner
+// accepts their picked time (see POST /:id/joins/:playerId/accept) — a
+// real FRIENDLY/PLANNED match already exists by the time this goes out,
+// so this just points them at it rather than asking them to do anything
+// further.
+async function sendPlayRequestAcceptedEmail(owner, joiner, slot, matchToken) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping play-request-accepted email.');
+    return false;
+  }
+  const subject = `${owner.name} accepted your time to play!`;
+  const lines = [
+    `${owner.name} accepted the time you picked on Tennis SCORE — you're set to play a friendly match.`,
+    `When: ${fmtDate(slot)}`,
+    `Match: ${process.env.PUBLIC_URL || ''}/match/${matchToken}`,
+  ];
+
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: joiner.email,
+    subject,
+    text: lines.join('\n'),
+  });
+  return true;
+}
+
+// Sent to the requester when a post's owner declines their picked time
+// (see POST /:id/joins/:playerId/deny) — always carries the owner's own
+// explanation (required server-side), so this is never just a bare "no".
+async function sendPlayRequestDeniedEmail(owner, joiner, reason) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping play-request-denied email.');
+    return false;
+  }
+  const subject = `${owner.name} can't make that time`;
+  const lines = [
+    `${owner.name} wasn't able to accept the time you picked on Tennis SCORE.`,
+    `Their note: "${reason}"`,
+    `See their other free times: ${process.env.PUBLIC_URL || ''}/looking-to-play`,
+  ];
+
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: joiner.email,
+    subject,
+    text: lines.join('\n'),
+  });
+  return true;
+}
+
 module.exports = {
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendPlayRequestEmail,
+  sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail,
 };

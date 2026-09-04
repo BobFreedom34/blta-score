@@ -1,13 +1,18 @@
+const crypto = require('crypto');
 const express = require('express');
 const db = require('../db');
-const { isAdmin, getPlayerId, stripPrivateFields, requireLoggedIn } = require('../auth');
-const { sendPlayRequestEmail } = require('../mailer');
+const engine = require('../matchEngine');
+const {
+  isAdmin, getPlayerId, stripPrivateFields, requireLoggedIn,
+} = require('../auth');
+const { sendPlayRequestEmail, sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail } = require('../mailer');
 
 const router = express.Router();
 
 const MAX_LOCATION_LEN = 120;
 const MAX_NOTE_LEN = 300;
 const MAX_MESSAGE_LEN = 300;
+const MAX_DENY_REASON_LEN = 300;
 // Double POST /matches' own cap on proposalSlots — this board's own
 // calendar (looking-to-play.js) marks half-hour steps rather than whole
 // ones, so a similarly-sized block of free time naturally produces about
@@ -18,6 +23,16 @@ const MAX_SLOTS = 120;
 // specifically about finding a friendly match, not slotting into one of
 // those other, more specific formats.
 const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+// A tennis match runs a couple of hours — accepting a request blocks not
+// just the picked half-hour slot but this whole window after it too (see
+// blockedRangeIsos below), so the owner's calendar (and everyone else's
+// view of it) doesn't keep offering a time they're now actually busy.
+const MATCH_BLOCK_HOURS = 2;
+// Auto-created matches (see the /accept route) don't go through the "New
+// match" form, which is where a format would normally be picked — best
+// of 3 sets is that form's own first/default option, so it's what a
+// friendly match here gets too.
+const DEFAULT_MATCH_FORMAT = 'BO3';
 
 // Posting or joining always needs a specific player identity — the whole
 // feature is "notify a real player", so unlike requireLoggedIn elsewhere
@@ -62,17 +77,56 @@ function parseCategories(raw) {
   return { categories: CATEGORIES.filter((c) => categories.includes(c)) };
 }
 
+// Every half-hour mark from `slotIso` through MATCH_BLOCK_HOURS after it —
+// the window an accepted request actually occupies, not just its own
+// single half-hour cell.
+function blockedRangeIsos(slotIso) {
+  const start = new Date(slotIso).getTime();
+  const isos = [];
+  for (let mins = 0; mins < MATCH_BLOCK_HOURS * 60; mins += 30) {
+    isos.push(new Date(start + mins * 60000).toISOString());
+  }
+  return isos;
+}
+
+// One entry per half-hour cell an ACCEPTED join occupies, each naming who
+// the resulting match is with — the match itself is already public (it's
+// a normal FRIENDLY match on the main matches list), so there's no reason
+// to hide who it's with here either, unlike the pending joins list below.
+function getBlockedSlots(postId) {
+  const accepted = db.prepare(`
+    SELECT slot, player_id, match_token FROM availability_joins
+    WHERE post_id = ? AND status = 'ACCEPTED'
+  `).all(postId);
+  const byIso = new Map();
+  accepted.forEach((j) => {
+    const opponent = getPlayer(j.player_id);
+    blockedRangeIsos(j.slot).forEach((iso) => {
+      byIso.set(iso, {
+        iso,
+        opponentName: opponent ? opponent.name : null,
+        opponentSlug: opponent ? opponent.slug : null,
+        matchToken: j.match_token,
+      });
+    });
+  });
+  return [...byIso.values()];
+}
+
 // Who's interested (the joins list) is only ever shown to the post's own
 // owner or an admin — same trust boundary as phone/email elsewhere (see
 // stripPrivateFields in auth.js), just applied to "who wants to play with
-// you" instead of contact details. Everyone else only sees joinCount.
+// you" instead of contact details. Everyone else only sees joinCount
+// (PENDING requests only — accepted/denied ones are already resolved) and
+// blockedSlots (see getBlockedSlots above, public since the match it
+// represents already is).
 function serializePost(row, req) {
   const player = getPlayer(row.player_id);
   const viewerPlayerId = getPlayerId(req);
   const isMine = viewerPlayerId === row.player_id;
-  const joinCount = db.prepare('SELECT COUNT(*) AS c FROM availability_joins WHERE post_id = ?').get(row.id).c;
+  const joinCount = db.prepare("SELECT COUNT(*) AS c FROM availability_joins WHERE post_id = ? AND status = 'PENDING'").get(row.id).c;
   const joinedByMe = viewerPlayerId
-    ? !!db.prepare('SELECT 1 FROM availability_joins WHERE post_id = ? AND player_id = ?').get(row.id, viewerPlayerId)
+    ? !!db.prepare("SELECT 1 FROM availability_joins WHERE post_id = ? AND player_id = ? AND status IN ('PENDING','ACCEPTED')").get(row.id, viewerPlayerId)
     : false;
 
   const payload = {
@@ -89,17 +143,21 @@ function serializePost(row, req) {
     joinCount,
     joinedByMe,
     mine: isMine,
+    blockedSlots: getBlockedSlots(row.id),
   };
 
   if (isMine || isAdmin(req)) {
     const joins = db.prepare(`
-      SELECT slot, message, created_at, player_id FROM availability_joins
+      SELECT slot, message, status, deny_reason, match_token, created_at, player_id FROM availability_joins
       WHERE post_id = ? ORDER BY created_at ASC
     `).all(row.id);
     payload.joins = joins.map((j) => ({
       player: stripPrivateFields(getPlayer(j.player_id), req),
       slot: j.slot,
       message: j.message,
+      status: j.status,
+      denyReason: j.deny_reason,
+      matchToken: j.match_token,
       createdAt: j.created_at,
     }));
   }
@@ -182,15 +240,25 @@ router.post('/:id/join', requirePlayerIdentity, async (req, res) => {
   if (row.player_id === playerId) return res.status(400).json({ error: "That's your own post" });
 
   const { slot } = req.body;
+  const blockedIsos = new Set(getBlockedSlots(row.id).map((b) => b.iso));
   if (typeof slot !== 'string' || !JSON.parse(row.days).includes(slot)) {
     return res.status(400).json({ error: 'Pick one of the times this player marked as free' });
+  }
+  if (blockedIsos.has(slot)) {
+    return res.status(409).json({ error: 'That time is no longer available' });
   }
   const message = typeof req.body.message === 'string' ? req.body.message.trim().slice(0, MAX_MESSAGE_LEN) : '';
 
   const existingJoin = db.prepare('SELECT * FROM availability_joins WHERE post_id = ? AND player_id = ?').get(row.id, playerId);
-  const changed = !existingJoin || existingJoin.slot !== slot;
+  if (existingJoin && existingJoin.status === 'ACCEPTED') {
+    return res.status(409).json({ error: 'You already have a confirmed match with this player' });
+  }
+  const changed = !existingJoin || existingJoin.slot !== slot || existingJoin.status === 'DENIED';
   if (existingJoin) {
-    db.prepare('UPDATE availability_joins SET slot = ?, message = ? WHERE id = ?').run(slot, message, existingJoin.id);
+    // Re-picking after a denial reopens the request (fresh PENDING, old
+    // reason cleared) rather than leaving it stuck showing "Denied" —
+    // the owner sees it as a new ask, same as if this were their first.
+    db.prepare("UPDATE availability_joins SET slot = ?, message = ?, status = 'PENDING', deny_reason = '' WHERE id = ?").run(slot, message, existingJoin.id);
   } else {
     db.prepare('INSERT INTO availability_joins (post_id, player_id, slot, message) VALUES (?, ?, ?, ?)').run(row.id, playerId, slot, message);
   }
@@ -204,6 +272,88 @@ router.post('/:id/join', requirePlayerIdentity, async (req, res) => {
       } catch (err) {
         console.error('[availability] play-request email failed:', err.message);
       }
+    }
+  }
+
+  res.json(serializePost(db.prepare('SELECT * FROM availability_posts WHERE id = ?').get(row.id), req));
+});
+
+// Only the post's own owner (or admin, for moderation/assistance) ever
+// gets to accept or deny — requireLoggedIn (not requirePlayerIdentity)
+// for the same reason DELETE /:id uses it above: a pure admin session has
+// no player cookie for canManagePost to match against a specific player,
+// so the stricter gate would wrongly turn them away before that check
+// ever ran.
+function loadPendingJoin(req, res) {
+  const row = db.prepare('SELECT * FROM availability_posts WHERE id = ?').get(req.params.id);
+  if (!row) { res.status(404).json({ error: 'Post not found' }); return null; }
+  if (!canManagePost(req, row)) { res.status(403).json({ error: 'Only the post owner can respond to this' }); return null; }
+  const join = db.prepare('SELECT * FROM availability_joins WHERE post_id = ? AND player_id = ?').get(row.id, req.params.playerId);
+  if (!join) { res.status(404).json({ error: 'Request not found' }); return null; }
+  if (join.status !== 'PENDING') { res.status(409).json({ error: 'This request was already responded to' }); return null; }
+  return { row, join };
+}
+
+// Accepting is the whole point of this board: it turns a picked time into
+// a real match. Same FRIENDLY/PLANNED shape POST /matches itself would
+// create (share_token, empty history, initial engine state), just built
+// here instead of going through that route, since the two players and
+// the time are already settled — there's no form left to fill in.
+router.post('/:id/joins/:playerId/accept', requireLoggedIn, async (req, res) => {
+  const loaded = loadPendingJoin(req, res);
+  if (!loaded) return;
+  const { row, join } = loaded;
+
+  if (new Set(getBlockedSlots(row.id).map((b) => b.iso)).has(join.slot)) {
+    return res.status(409).json({ error: 'This time already has a confirmed match' });
+  }
+
+  const owner = getPlayer(row.player_id);
+  const joiner = getPlayer(join.player_id);
+  if (!owner || !joiner) return res.status(400).json({ error: 'One of the players no longer exists' });
+
+  const shareToken = crypto.randomUUID();
+  const state = engine.initState(DEFAULT_MATCH_FORMAT);
+  db.prepare(`
+    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_player_id)
+    VALUES (?, 'FRIENDLY', ?, ?, ?, ?, ?, 'PLANNED', ?, '[]', ?, ?)
+  `).run(
+    shareToken, row.player_id, join.player_id, row.location || '', join.slot, DEFAULT_MATCH_FORMAT,
+    JSON.stringify(state), isAdmin(req) ? 1 : 0, isAdmin(req) ? null : row.player_id,
+  );
+  db.prepare("UPDATE availability_joins SET status = 'ACCEPTED', match_token = ? WHERE id = ?").run(shareToken, join.id);
+
+  if (joiner.email) {
+    try {
+      await sendPlayRequestAcceptedEmail(owner, joiner, join.slot, shareToken);
+    } catch (err) {
+      console.error('[availability] accept email failed:', err.message);
+    }
+  }
+
+  res.json(serializePost(db.prepare('SELECT * FROM availability_posts WHERE id = ?').get(row.id), req));
+});
+
+// Denying always requires a reason — unlike accepting, there's no
+// automatic action to fall back on, so the requester's only way to find
+// out anything beyond "no" is whatever the owner writes here.
+router.post('/:id/joins/:playerId/deny', requireLoggedIn, async (req, res) => {
+  const loaded = loadPendingJoin(req, res);
+  if (!loaded) return;
+  const { row, join } = loaded;
+
+  const reason = typeof req.body.reason === 'string' ? req.body.reason.trim().slice(0, MAX_DENY_REASON_LEN) : '';
+  if (!reason) return res.status(400).json({ error: 'Explain why you’re declining' });
+
+  db.prepare("UPDATE availability_joins SET status = 'DENIED', deny_reason = ? WHERE id = ?").run(reason, join.id);
+
+  const owner = getPlayer(row.player_id);
+  const joiner = getPlayer(join.player_id);
+  if (owner && joiner && joiner.email) {
+    try {
+      await sendPlayRequestDeniedEmail(owner, joiner, reason);
+    } catch (err) {
+      console.error('[availability] deny email failed:', err.message);
     }
   }
 

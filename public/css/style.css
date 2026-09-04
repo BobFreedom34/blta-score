@@ -796,6 +796,17 @@ datalist {}
 .avail-grid-compact .avail-time-label { font-size: 9px; padding: 1px 6px 0 0; }
 .avail-grid-compact .avail-day-head { font-size: 10px; padding: 3px 2px; }
 .avail-grid-compact .hour-start { border-top: 1px solid rgba(0,0,0,0.14); }
+/* A cell an accepted request actually turned into a real match — not
+   selectable (see the .contains('blocked') guards in
+   createLtpAvailabilityPicker), striped rather than a flat color so it
+   reads as "occupied" at a glance rather than just another shade of
+   grey. Who it's occupied by is a title tooltip here (hover only, so not
+   much use on a touch device) — the real, always-visible version of that
+   is the text list under the calendar (see blockedListHtml). */
+.avail-cell.blocked {
+  cursor: default;
+  background: repeating-linear-gradient(135deg, var(--gray-light), var(--gray-light) 3px, #e2e2e2 3px, #e2e2e2 6px);
+}
 
 /* Response grid on the match page — single-pick, not the creation grid's
    multi-toggle. Only cells matching one of the proposed slots are
@@ -1768,6 +1779,23 @@ a.rank-name:hover { text-decoration: underline; }
 .availability-join-row:last-child { border-bottom: none; }
 .availability-join-contact { color: var(--gray); font-variant-numeric: tabular-nums; }
 .availability-join-message { color: var(--gray-dim); font-style: italic; }
+.availability-join-actions { display: flex; gap: 8px; flex-basis: 100%; }
+/* Legend for the calendar's own .avail-cell.blocked stripes (see
+   blockedListHtml in looking-to-play.js) — a real, already-scheduled
+   match per row, since a 13px calendar cell has no room to name who it's
+   with. */
+.availability-blocked-list { display: flex; flex-direction: column; gap: 6px; }
+.availability-blocked-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--gray-light);
+  border-radius: 8px;
+}
 /* The "pick a time" modal's grid — same single-pick treatment as a match's
    own respondent-side calendar (#proposal-grid-wrap/#counter-proposal-
    grid-wrap in match.js): only the post owner's own marked times
