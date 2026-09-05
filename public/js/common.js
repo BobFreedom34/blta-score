@@ -1348,6 +1348,7 @@ document.querySelectorAll('.nav-register-link').forEach((el) => {
 
 async function refreshPlayerAuth() {
   let needsPinSetup = false;
+  let unreadBadgeCount = 0;
   try {
     const res = await api('/player/session');
     playerAuthed = !!res.isPlayer;
@@ -1355,6 +1356,7 @@ async function refreshPlayerAuth() {
     currentPlayerId = res.playerId || null;
     currentPlayerSlug = res.playerSlug || null;
     needsPinSetup = !!res.needsPinSetup;
+    unreadBadgeCount = res.unreadBadgeCount || 0;
   } catch {
     playerAuthed = false;
     currentPlayerName = null;
@@ -1362,6 +1364,7 @@ async function refreshPlayerAuth() {
     currentPlayerSlug = null;
   }
   updatePlayerNavLinks();
+  updateBadgeBellUI(unreadBadgeCount);
   // Lets any page's own script react to a login/logout finishing (e.g. the
   // homepage re-showing/hiding "Set date & location" once it knows who's
   // logged in) without common.js needing to know what each page does.
@@ -1821,6 +1824,178 @@ document.querySelectorAll('.player-login-link').forEach((el) => {
       openPlayerLoginModal();
     }
   });
+});
+
+// --- Badge notification bell -----------------------------------------
+// A player earns a badge server-side the instant a match finishes (see
+// badgeEngine.syncPlayerBadges) — this is what surfaces that as a small
+// bell in the topbar. Fed by GET /player/session's unreadBadgeCount (kept
+// current on every page load via refreshPlayerAuth above, exactly like the
+// rest of the player session) and, once opened, the full list from
+// GET /player/badge-notifications. All of it — the bell, its dropdown, and
+// the "Congratulations" modal — is built here rather than living as static
+// markup in every page, so it works sitewide without needing to touch (and
+// keep byte-identical) the shared block across all 7 core HTML files. A
+// page with no topbar at all (the embed views) just never gets one —
+// ensureBadgeBellUI bails out the moment it can't find `.topbar-right`.
+let badgeBellEl = null;
+let badgeBellBubbleEl = null;
+let badgeNotifPanelEl = null;
+let badgeCongratsModalEl = null;
+let badgeNotifCache = null;
+
+// Mirrors badgeIconInner in badges.js (not reused directly — that file
+// isn't loaded on every page, only player.html/rankings.html, while the
+// bell has to work everywhere).
+function badgeIconMarkup(icon) {
+  return icon && icon.startsWith('/badge-icons/')
+    ? `<img src="${escapeHtml(icon)}" alt="">`
+    : escapeHtml(icon || '🏅');
+}
+
+function ensureBadgeBellUI() {
+  if (badgeBellEl) return badgeBellEl;
+  const topbarRight = document.querySelector('.topbar-right');
+  if (!topbarRight) return null;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'badge-bell-btn';
+  btn.className = 'badge-bell-btn';
+  btn.setAttribute('aria-label', t('notif.bellLabel'));
+  btn.innerHTML = '🔔<span class="badge-bell-bubble" id="badge-bell-bubble" hidden>0</span>';
+  topbarRight.insertBefore(btn, topbarRight.firstChild);
+  badgeBellEl = btn;
+  badgeBellBubbleEl = btn.querySelector('.badge-bell-bubble');
+
+  const panel = document.createElement('div');
+  panel.className = 'badge-notif-panel';
+  panel.id = 'badge-notif-panel';
+  panel.hidden = true;
+  panel.innerHTML = `
+    <div class="badge-notif-panel-header">${t('notif.heading')}</div>
+    <div class="badge-notif-list" id="badge-notif-list"></div>
+  `;
+  topbarRight.appendChild(panel);
+  badgeNotifPanelEl = panel;
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleBadgeNotifPanel();
+  });
+  document.addEventListener('click', (e) => {
+    if (!panel.hidden && !panel.contains(e.target) && e.target !== btn) panel.hidden = true;
+  });
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.id = 'badge-congrats-modal';
+  modal.style.display = 'none';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:400px;text-align:center">
+      <button type="button" class="close" aria-label="Close">&times;</button>
+      <div id="badge-congrats-content"></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  // Same reasoning as install-ios-modal above — this element didn't exist
+  // yet when the generic [data-close]/.modal-backdrop listeners ran at
+  // page load, so it needs its own close wiring.
+  modal.querySelector('.close').addEventListener('click', () => { modal.style.display = 'none'; });
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+  badgeCongratsModalEl = modal;
+
+  return btn;
+}
+
+// Called on every refreshPlayerAuth() (page load, login, logout) and again
+// after a notification is marked read. `count` undefined leaves whatever's
+// currently shown untouched — only whether the bell itself is shown/hidden
+// gets re-evaluated every time.
+function updateBadgeBellUI(count) {
+  const shouldShow = !!(playerAuthed && currentPlayerId);
+  const btn = shouldShow ? ensureBadgeBellUI() : badgeBellEl;
+  if (!btn) return;
+  // Explicit 'inline-flex', not '' — clearing the inline style would just
+  // fall back to .badge-bell-btn's own default of display:none in the
+  // stylesheet (it starts hidden there since most visitors never get one).
+  btn.style.display = shouldShow ? 'inline-flex' : 'none';
+  if (!shouldShow) {
+    if (badgeNotifPanelEl) badgeNotifPanelEl.hidden = true;
+    return;
+  }
+  if (count === undefined || !badgeBellBubbleEl) return;
+  badgeBellBubbleEl.hidden = count <= 0;
+  badgeBellBubbleEl.textContent = count > 99 ? '99+' : String(count);
+}
+
+async function toggleBadgeNotifPanel() {
+  if (!badgeNotifPanelEl) return;
+  const opening = badgeNotifPanelEl.hidden;
+  badgeNotifPanelEl.hidden = !opening;
+  if (!opening) return;
+  const list = document.getElementById('badge-notif-list');
+  list.innerHTML = `<div class="badge-notif-empty">${t('notif.loading')}</div>`;
+  try {
+    badgeNotifCache = await api('/player/badge-notifications');
+    renderBadgeNotifList();
+  } catch {
+    list.innerHTML = `<div class="badge-notif-empty">${t('notif.loadError')}</div>`;
+  }
+}
+
+function renderBadgeNotifList() {
+  const list = document.getElementById('badge-notif-list');
+  if (!list) return;
+  if (!badgeNotifCache || !badgeNotifCache.length) {
+    list.innerHTML = `<div class="badge-notif-empty">${t('notif.empty')}</div>`;
+    return;
+  }
+  list.innerHTML = badgeNotifCache.map((n) => `
+    <button type="button" class="badge-notif-item${n.seen ? '' : ' unread'}" data-notif-id="${n.id}">
+      <div class="badge-notif-icon">${badgeIconMarkup(n.badge.icon)}</div>
+      <div class="badge-notif-text">
+        <div class="badge-notif-title">${t('notif.earnedTitle', { badge: escapeHtml(n.badge.name) })}</div>
+        <div class="badge-notif-date">${fmtDateShort(n.earnedAt)}</div>
+      </div>
+      ${n.seen ? '' : '<span class="badge-notif-dot"></span>'}
+    </button>
+  `).join('');
+}
+
+function openBadgeCongratsModal(notif) {
+  if (!badgeCongratsModalEl) return;
+  const content = document.getElementById('badge-congrats-content');
+  content.innerHTML = `
+    <div class="badge-congrats-icon">${badgeIconMarkup(notif.badge.icon)}</div>
+    <h3 class="badge-congrats-title">${t('notif.congratsTitle')}</h3>
+    <p class="badge-congrats-intro">${t('notif.congratsIntro')}</p>
+    <div class="badge-congrats-badge-name">${escapeHtml(notif.badge.name)}</div>
+    <p class="badge-congrats-desc">${escapeHtml(notif.badge.description)}</p>
+  `;
+  badgeCongratsModalEl.style.display = 'flex';
+}
+
+// Clicking any notification (read or not) reopens its congrats modal —
+// only an unread one also marks itself read and drops the bell's count.
+document.addEventListener('click', async (e) => {
+  const item = e.target.closest('.badge-notif-item');
+  if (!item || !badgeNotifCache) return;
+  const id = Number(item.dataset.notifId);
+  const notif = badgeNotifCache.find((n) => n.id === id);
+  if (!notif) return;
+  if (badgeNotifPanelEl) badgeNotifPanelEl.hidden = true;
+  openBadgeCongratsModal(notif);
+  if (!notif.seen) {
+    notif.seen = true;
+    item.classList.remove('unread');
+    const dot = item.querySelector('.badge-notif-dot');
+    if (dot) dot.remove();
+    try {
+      const res = await api(`/player/badge-notifications/${id}/read`, { method: 'POST' });
+      updateBadgeBellUI(res.unreadBadgeCount);
+    } catch { /* worst case the bubble count is stale until the next page load */ }
+  }
 });
 
 refreshPlayerAuth();

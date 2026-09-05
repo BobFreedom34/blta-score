@@ -5,6 +5,7 @@ const engine = require('../matchEngine');
 const { sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail } = require('../mailer');
 const { sendPush } = require('../push');
 const { isAdmin, getPlayerId, requireLoggedIn, requireAdmin, stripPrivateFields } = require('../auth');
+const badgeEngine = require('../badgeEngine');
 
 const router = express.Router();
 
@@ -181,6 +182,18 @@ function nowIso() {
 
 function deriveWinnerId(state, row) {
   return state.winner === 1 ? row.player1_id : state.winner === 2 ? row.player2_id : null;
+}
+
+// Called after any write that can leave a match FINISHED (a normal finish,
+// a manually-entered result, or a set correction that completes an
+// already-live match) — see badgeEngine.syncPlayerBadges for what actually
+// counts. A no-op for anything else (UNFINISHED/LIVE/PLANNED), so callers
+// can just always call this on the post-write row rather than tracking
+// which branch they're in.
+function syncBadgesIfFinished(row) {
+  if (row.status !== 'FINISHED') return;
+  badgeEngine.syncPlayerBadges(row.player1_id);
+  badgeEngine.syncPlayerBadges(row.player2_id);
 }
 
 function broadcast(req, row) {
@@ -1230,6 +1243,7 @@ router.post('/:token/score', requireLoggedIn, (req, res) => {
   }
 
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  syncBadgesIfFinished(updated);
   const payload = broadcast(req, updated);
   res.json(payload);
 });
@@ -1307,6 +1321,7 @@ router.post('/:token/finish', requireLoggedIn, async (req, res) => {
     .run(ts, winnerId, endReason, ts, row.id);
 
   let updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  syncBadgesIfFinished(updated);
   const payload = broadcast(req, updated);
   res.json(payload);
 
@@ -1405,6 +1420,7 @@ router.post('/:token/manual-result', requireLoggedIn, async (req, res) => {
   `).run(JSON.stringify(state), winnerId, scheduledAt, endReason, location, scheduledAt, ts, row.id);
 
   let updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  syncBadgesIfFinished(updated);
   const payload = broadcast(req, updated);
   res.json(payload);
 

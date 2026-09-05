@@ -557,6 +557,29 @@ if (badgeCount === 0) {
   ].forEach((row) => seedBadge.run(...row));
 }
 
+// One row per badge a player has ever earned — the moment it's recorded
+// (not just "do they currently qualify", which src/badgeEngine.js can
+// already tell you by recomputing from match history any time) is what
+// makes a notification bell possible at all. Written by
+// badgeEngine.syncPlayerBadges() right after a match actually finishes
+// (see src/routes/matches.js), and once more, in bulk, by
+// badgeEngine.backfillIfNeeded() the very first time this table is empty
+// — that backfill marks everything a player already holds as seen=1, so
+// shipping this feature doesn't retroactively "notify" the whole league
+// about badges they've held for months. seen flips to 1 the moment the
+// player opens that specific notification (see routes/player.js).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS player_badges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    badge_id INTEGER NOT NULL,
+    seen INTEGER NOT NULL DEFAULT 0,
+    earned_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_player_badges_unique ON player_badges(player_id, badge_id);
+  CREATE INDEX IF NOT EXISTS idx_player_badges_player ON player_badges(player_id);
+`);
+
 // Admin overrides for the (otherwise scraped-from-blta.sk) rankings page —
 // keyed by table + the player's name exactly as it appears in that scraped
 // table, since a scraped row doesn't always resolve to a local player row

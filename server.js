@@ -9,6 +9,7 @@ const { Server } = require('socket.io');
 
 const db = require('./src/db');
 const engine = require('./src/matchEngine');
+const badgeEngine = require('./src/badgeEngine');
 const playersRouter = require('./src/routes/players');
 const matchesRouter = require('./src/routes/matches');
 const adminRouter = require('./src/routes/admin');
@@ -24,6 +25,11 @@ const io = new Server(server, {
   cors: { origin: '*' },
 });
 app.set('io', io);
+
+// One-time bootstrap — see badgeEngine.backfillIfNeeded's own comment for
+// why this has to run before any real traffic hits the badge notification
+// endpoints (routes/player.js) or the matches routes that create new ones.
+badgeEngine.backfillIfNeeded();
 
 app.use(cors());
 app.use(express.json());

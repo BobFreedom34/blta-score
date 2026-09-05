@@ -417,6 +417,15 @@ const TRANSLATIONS = {
     'badge.group.COMEBACK': 'Comeback',
     'badge.group.STRAIGHT_SETS': 'Bez straty setu',
 
+    'notif.bellLabel': 'Upozornenia',
+    'notif.heading': 'Upozornenia',
+    'notif.loading': 'Načítavam…',
+    'notif.loadError': 'Upozornenia sa nepodarilo načítať',
+    'notif.empty': 'Zatiaľ žiadne upozornenia',
+    'notif.earnedTitle': 'Získal si odznak: {badge}',
+    'notif.congratsTitle': '🎉 Gratulujeme!',
+    'notif.congratsIntro': 'Práve si získal nový odznak',
+
     'common.ok': 'OK',
 
     'page.matchTitle': 'Tennis SCORE — Zápas',
@@ -922,6 +931,15 @@ const TRANSLATIONS = {
     'badge.group.BAGEL': 'Bagel',
     'badge.group.COMEBACK': 'Comeback',
     'badge.group.STRAIGHT_SETS': 'Straight Sets',
+
+    'notif.bellLabel': 'Notifications',
+    'notif.heading': 'Notifications',
+    'notif.loading': 'Loading…',
+    'notif.loadError': "Couldn't load notifications",
+    'notif.empty': 'No notifications yet',
+    'notif.earnedTitle': 'You earned a badge: {badge}',
+    'notif.congratsTitle': '🎉 Congratulations!',
+    'notif.congratsIntro': "You've just earned a new badge",
 
     'common.ok': 'OK',
 

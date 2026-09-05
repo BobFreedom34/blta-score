@@ -31,6 +31,14 @@ function sessionInfo({ isPlayerFlag, player }) {
 router.get('/session', (req, res) => {
   const playerId = auth.getPlayerId(req);
   const player = playerId ? db.prepare('SELECT id, name, slug, login_pin FROM players WHERE id = ?').get(playerId) : null;
+  // Cheap enough to compute on every page load (a single indexed COUNT) —
+  // lets the nav bell's unread bubble (see common.js) stay in sync without
+  // its own separate poll. 0 for a logged-out visitor or an admin with no
+  // player identity of their own, same as every other player-only field
+  // this route reports.
+  const unreadBadgeCount = playerId
+    ? db.prepare('SELECT COUNT(*) AS c FROM player_badges WHERE player_id = ? AND seen = 0').get(playerId).c
+    : 0;
   res.json({
     ...sessionInfo({ isPlayerFlag: auth.isPlayer(req), player }),
     // True for a player who's logged in (their phone was confirmed) but
@@ -41,7 +49,45 @@ router.get('/session', (req, res) => {
     // sit logged in without a code by closing the modal or navigating
     // away from it — the very next page re-opens it, forced.
     needsPinSetup: !!(player && !player.login_pin),
+    unreadBadgeCount,
   });
+});
+
+// A player's own badge-earned notifications, newest first — the list
+// behind the nav bell's dropdown (see common.js). Player-only: there's no
+// meaningful "my notifications" for a bare admin session with no specific
+// player identity, so this 401s the same way a missing player cookie
+// always does elsewhere, rather than silently returning an empty list.
+router.get('/badge-notifications', (req, res) => {
+  const playerId = auth.getPlayerId(req);
+  if (!playerId) return res.status(401).json({ error: 'Please log in to see your notifications' });
+  const rows = db.prepare(`
+    SELECT pb.id, pb.seen, pb.earned_at,
+           bd.id AS badge_id, bd.name, bd.description, bd.icon
+    FROM player_badges pb
+    JOIN badge_definitions bd ON bd.id = pb.badge_id
+    WHERE pb.player_id = ?
+    ORDER BY pb.earned_at DESC, pb.id DESC
+  `).all(playerId);
+  res.json(rows.map((r) => ({
+    id: r.id,
+    seen: !!r.seen,
+    earnedAt: r.earned_at,
+    badge: { id: r.badge_id, name: r.name, description: r.description, icon: r.icon },
+  })));
+});
+
+// Marks one notification read — called the moment its "Congratulations"
+// modal is opened (see common.js), not on merely opening the dropdown
+// list, so the unread count only drops for badges actually looked at.
+router.post('/badge-notifications/:id/read', (req, res) => {
+  const playerId = auth.getPlayerId(req);
+  if (!playerId) return res.status(401).json({ error: 'Please log in to do this' });
+  const row = db.prepare('SELECT * FROM player_badges WHERE id = ?').get(req.params.id);
+  if (!row || row.player_id !== playerId) return res.status(404).json({ error: 'Notification not found' });
+  db.prepare('UPDATE player_badges SET seen = 1 WHERE id = ?').run(row.id);
+  const unreadBadgeCount = db.prepare('SELECT COUNT(*) AS c FROM player_badges WHERE player_id = ? AND seen = 0').get(playerId).c;
+  res.json({ ok: true, unreadBadgeCount });
 });
 
 // Digits only — everything else (spaces, dashes, a leading +, a country

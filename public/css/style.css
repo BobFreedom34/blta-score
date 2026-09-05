@@ -115,6 +115,9 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
      below), so it needs its own flex-shrink:0 to keep its natural width
      rather than getting squeezed by .nav-links' flex:1. */
   flex-shrink: 0;
+  /* Anchors #badge-notif-panel (a child appended here by common.js), which
+     positions itself absolute against this instead of the page. */
+  position: relative;
 }
 .nav-toggle {
   display: none;
@@ -1237,6 +1240,127 @@ datalist {}
 #badge-zoom-content .badge-name.locked { color: var(--gray); }
 #badge-zoom-content .badge-condition { color: var(--gray); font-size: 15px; margin-top: 8px; }
 #badge-zoom-content .badge-medal { width: 320px; height: 320px; font-size: 136px; margin: 0 auto 16px; }
+
+/* ---------- Badge notification bell (injected by common.js — see
+   ensureBadgeBellUI) ---------- */
+.badge-bell-btn {
+  display: none; /* switched to inline-flex via JS once a specific player is logged in */
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: none;
+  border: none;
+  color: var(--white);
+  font-size: 19px;
+  line-height: 1;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.badge-bell-btn:hover { background: rgba(255,255,255,0.08); }
+.badge-bell-bubble {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: var(--white);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+}
+.badge-notif-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  z-index: 45;
+}
+.badge-notif-panel-header {
+  padding: 12px 14px;
+  font-weight: 800;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  border-bottom: 1px solid var(--gray-light);
+  position: sticky;
+  top: 0;
+  background: var(--white);
+}
+.badge-notif-empty {
+  padding: 24px 14px;
+  text-align: center;
+  color: var(--gray);
+  font-size: 13px;
+}
+.badge-notif-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--gray-light);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  position: relative;
+}
+.badge-notif-item:last-child { border-bottom: none; }
+.badge-notif-item:hover { background: var(--gray-light); }
+.badge-notif-item.unread { background: rgba(231,78,25,0.06); }
+.badge-notif-icon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: var(--gray-light);
+}
+.badge-notif-icon img { width: 100%; height: 100%; border-radius: inherit; object-fit: contain; }
+.badge-notif-text { min-width: 0; }
+.badge-notif-title { font-size: 12.5px; font-weight: 700; color: var(--ink); line-height: 1.3; }
+.badge-notif-date { font-size: 11px; color: var(--gray); margin-top: 2px; }
+.badge-notif-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--orange);
+  margin-left: auto;
+}
+/* The "Congratulations" modal — reuses .modal-backdrop/.modal, same as
+   #badge-zoom-modal, but with its own bigger celebratory layout instead of
+   badgeItemHtml's plain grid-item look. */
+.badge-congrats-icon {
+  width: 140px;
+  height: 140px;
+  margin: 4px auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+}
+.badge-congrats-icon img { width: 100%; height: 100%; object-fit: contain; }
+.badge-congrats-title { margin: 0 0 4px; font-size: 22px; }
+.badge-congrats-intro { color: var(--gray); font-size: 13px; margin: 0 0 10px; }
+.badge-congrats-badge-name { font-weight: 800; font-size: 17px; color: var(--ink); }
+.badge-congrats-desc { color: var(--gray); font-size: 14px; margin-top: 6px; }
 
 /* ---------- Head-to-head ---------- */
 .section-label {
