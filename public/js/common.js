@@ -917,6 +917,30 @@ function isOverdueUnresolved(m) {
   });
 })();
 
+// Below 1024px (the same breakpoint .nav-links' own hamburger-menu CSS
+// switches on), #lang-switcher moves out of the sticky top bar and into
+// the hamburger dropdown instead — there's only room up there for the
+// notification bell now (see .badge-bell-wrap's own order:10 in
+// style.css, which is what actually keeps it to the right of the
+// language switcher on desktop once this moves it back). This physically
+// relocates the one real #lang-switcher element rather than keeping two
+// copies in sync — its .lang-btn click handlers (see initLangSwitcher in
+// i18n.js) stay attached either way, since moving a node never detaches
+// its listeners.
+(function initLangSwitcherPlacement() {
+  const langSwitcher = document.getElementById('lang-switcher');
+  const topbarRight = document.querySelector('.topbar-right');
+  const navLinks = document.getElementById('nav-links');
+  if (!langSwitcher || !topbarRight || !navLinks) return;
+  const mq = window.matchMedia('(max-width: 1024px)');
+  function place(isMobile) {
+    const target = isMobile ? navLinks : topbarRight;
+    if (langSwitcher.parentElement !== target) target.appendChild(langSwitcher);
+  }
+  place(mq.matches);
+  mq.addEventListener('change', (e) => place(e.matches));
+})();
+
 // Desktop-only scroll-to-top button — skipped on pages with no topbar
 // (the embed views), which are short widgets that don't need it.
 (function initScrollTop() {
@@ -1858,14 +1882,30 @@ function ensureBadgeBellUI() {
   const topbarRight = document.querySelector('.topbar-right');
   if (!topbarRight) return null;
 
+  // Its own wrapper (position:relative), deliberately not put on
+  // .topbar-right itself — .nav-toggle also lives in .topbar-right, and
+  // its own centering (position:absolute; left:50%) resolves against
+  // whatever the *nearest* positioned ancestor is. Putting position on
+  // .topbar-right directly made that .topbar-right's own narrow,
+  // right-aligned box instead of .topbar — silently recentering the
+  // hamburger into the language switcher instead of the middle of the
+  // bar. See the matching comment on .badge-bell-wrap in style.css.
+  const wrap = document.createElement('span');
+  wrap.className = 'badge-bell-wrap';
+  // Its visual position (always to the right of #lang-switcher on desktop)
+  // actually comes from .badge-bell-wrap's own order:10 in style.css, not
+  // this append — kept as appendChild anyway since that's the more
+  // sensible DOM position regardless.
+  topbarRight.appendChild(wrap);
+
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.id = 'badge-bell-btn';
   btn.className = 'badge-bell-btn';
   btn.setAttribute('aria-label', t('notif.bellLabel'));
   btn.innerHTML = '🔔<span class="badge-bell-bubble" id="badge-bell-bubble" hidden>0</span>';
-  topbarRight.insertBefore(btn, topbarRight.firstChild);
-  badgeBellEl = btn;
+  wrap.appendChild(btn);
+  badgeBellEl = wrap;
   badgeBellBubbleEl = btn.querySelector('.badge-bell-bubble');
 
   const panel = document.createElement('div');
@@ -1876,7 +1916,7 @@ function ensureBadgeBellUI() {
     <div class="badge-notif-panel-header">${t('notif.heading')}</div>
     <div class="badge-notif-list" id="badge-notif-list"></div>
   `;
-  topbarRight.appendChild(panel);
+  wrap.appendChild(panel);
   badgeNotifPanelEl = panel;
 
   btn.addEventListener('click', (e) => {
@@ -1905,7 +1945,7 @@ function ensureBadgeBellUI() {
   modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
   badgeCongratsModalEl = modal;
 
-  return btn;
+  return wrap;
 }
 
 // Called on every refreshPlayerAuth() (page load, login, logout) and again
