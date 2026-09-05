@@ -917,28 +917,43 @@ function isOverdueUnresolved(m) {
   });
 })();
 
-// Below 1024px (the same breakpoint .nav-links' own hamburger-menu CSS
-// switches on), #lang-switcher moves out of the sticky top bar and into
-// the hamburger dropdown instead — there's only room up there for the
-// notification bell now (see .badge-bell-wrap's own order:10 in
-// style.css, which is what actually keeps it to the right of the
-// language switcher on desktop once this moves it back). This physically
-// relocates the one real #lang-switcher element rather than keeping two
-// copies in sync — its .lang-btn click handlers (see initLangSwitcher in
-// i18n.js) stay attached either way, since moving a node never detaches
-// its listeners.
-(function initLangSwitcherPlacement() {
+// #lang-switcher stays in .topbar-right at every width (its own order:2,
+// lower than .badge-bell-wrap's order:10 in style.css, is what keeps it to
+// the left of the notification bell everywhere) — but below 1024px there's
+// only room for one pill at a time, so it collapses to just the active
+// language; tapping it reveals the other one(s) to switch to instead of a
+// real dropdown. Desktop is untouched — every pill always shows there.
+(function initLangSwitcherCollapse() {
   const langSwitcher = document.getElementById('lang-switcher');
-  const topbarRight = document.querySelector('.topbar-right');
-  const navLinks = document.getElementById('nav-links');
-  if (!langSwitcher || !topbarRight || !navLinks) return;
+  if (!langSwitcher) return;
   const mq = window.matchMedia('(max-width: 1024px)');
-  function place(isMobile) {
-    const target = isMobile ? navLinks : topbarRight;
-    if (langSwitcher.parentElement !== target) target.appendChild(langSwitcher);
+  function apply(isMobile) {
+    langSwitcher.classList.toggle('lang-switcher-collapsible', isMobile);
+    if (!isMobile) langSwitcher.classList.remove('expanded');
   }
-  place(mq.matches);
-  mq.addEventListener('change', (e) => place(e.matches));
+  apply(mq.matches);
+  mq.addEventListener('change', (e) => apply(e.matches));
+
+  // Tapping the (visible, active) pill while collapsed just reveals the
+  // rest instead of switching language — .lang-btn's own click handler
+  // (initLangSwitcher in i18n.js) already no-ops for the active button
+  // regardless, so this only ever adds the reveal, never fights it.
+  // Tapping an actually-different language (only reachable once expanded)
+  // still goes straight through to that handler and reloads as normal.
+  langSwitcher.addEventListener('click', (e) => {
+    const btn = e.target.closest('.lang-btn');
+    if (!btn || !btn.classList.contains('active')) return;
+    if (langSwitcher.classList.contains('lang-switcher-collapsible')) {
+      langSwitcher.classList.toggle('expanded');
+    }
+  });
+  // Collapses again on a tap elsewhere without picking a language, same
+  // spirit as #nav-links' own click-outside-closes handling above.
+  document.addEventListener('click', (e) => {
+    if (langSwitcher.classList.contains('expanded') && !langSwitcher.contains(e.target)) {
+      langSwitcher.classList.remove('expanded');
+    }
+  });
 })();
 
 // Desktop-only scroll-to-top button — skipped on pages with no topbar

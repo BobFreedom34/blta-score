@@ -191,6 +191,15 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .lang-btn:hover { background: rgba(255,255,255,0.08); color: var(--white); }
 .lang-btn.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 .lang-flag { width: 15px; height: 11px; object-fit: cover; border-radius: 2px; }
+/* Below 1024px there's only room in the sticky bar for one pill at a time
+   (see .badge-bell-wrap's own order:10, which is what keeps the
+   notification bell to the right of this regardless of width) — .lang-
+   switcher-collapsible hides every non-active pill, and .expanded (toggled
+   by initLangSwitcherCollapse in common.js) reveals them again once the
+   visible pill is tapped. Desktop never gets either class, so every pill
+   always shows there. */
+.lang-switcher-collapsible .lang-btn:not(.active) { display: none; }
+.lang-switcher-collapsible.expanded .lang-btn { display: inline-flex; }
 
 /* 1024px rather than the usual ~680px mobile breakpoint used elsewhere in
    this file — deliberately wide enough to also cover a tablet in
@@ -201,20 +210,13 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
    otherwise wrap awkwardly instead of failing cleanly down to this
    hamburger menu. */
 @media (max-width: 1024px) {
-  /* #lang-switcher itself is moved out of .topbar-right and into
-     #nav-links below this width by initLangSwitcherPlacement in
-     common.js — .topbar-right only ever holds the notification bell
-     here, pinned to the far right by .topbar-inner's own
-     justify-content:space-between, once .nav-toggle (below) is out of
-     .topbar-right's flex flow entirely. See .nav-links .lang-switcher
-     further down for how it looks once it lands in the dropdown instead. */
   /* Centered rather than left in .topbar-right — the toggle is the main
      way in to the rest of the site at this width, so it gets the same
      prominent middle position .nav-links itself takes above 1024px,
-     rather than being just another icon crowded against the bell.
-     Positioned against .topbar (position:sticky), not .topbar-right, for
-     exactly that reason — it needs to escape .topbar-right's own
-     right-aligned position to get there. */
+     rather than being just another icon crowded against the language
+     switcher and the bell. Positioned against .topbar (position:sticky),
+     not .topbar-right, for exactly that reason — it needs to escape
+     .topbar-right's own right-aligned position to get there. */
   .nav-toggle {
     display: block;
     position: absolute;
@@ -238,21 +240,6 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   }
   .nav-links.open { display: flex; }
   .nav-links a { text-align: center; padding: 12px; font-size: 16px; }
-  /* #lang-switcher itself (moved here from .topbar-right by
-     initLangSwitcherPlacement in common.js, not a copy) lands as the last
-     row in the dropdown — .lang-switcher's own order:2 (see above) sorts
-     it after every plain nav <a>, which all default to order:0. Its
-     normal row layout (the two pills side by side) still applies; this
-     just adds the padding/divider that makes it read as its own row
-     rather than a cramped continuation of "+ Nový zápas" above it. */
-  .nav-links .lang-switcher {
-    justify-content: center;
-    gap: 12px;
-    padding: 14px 12px 6px;
-    margin-top: 4px;
-    border-top: 1px solid rgba(255,255,255,0.12);
-  }
-  .nav-links .lang-btn { padding: 8px 16px; font-size: 13px; }
 }
 /* An inline SVG rather than an emoji glyph — unlike text, an emoji's color
    is baked into the glyph itself and ignores CSS color entirely (varies
@@ -1259,12 +1246,9 @@ datalist {}
   display: none; /* switched to inline-flex via JS once a specific player is logged in */
   align-items: center;
   /* Higher than .lang-switcher's own order:2 (see above), so the bell
-     always renders to its right on desktop regardless of which of the two
-     actually got inserted into .topbar-right first — flex order settles
-     that, not DOM/append order. Below 1024px .lang-switcher isn't in
-     .topbar-right at all any more (moved into #nav-links — see
-     initLangSwitcherPlacement in common.js), so the bell is the only
-     thing left in there and this has no effect either way. */
+     always renders to its right — at every width, .lang-switcher lives in
+     .topbar-right too — regardless of which of the two actually got
+     inserted first; flex order settles that, not DOM/append order. */
   order: 10;
 }
 .badge-bell-btn {
