@@ -49,11 +49,20 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   z-index: 30;
 }
 .topbar-inner {
-  max-width: 1080px;
+  /* Wider than .container's own 1080px on purpose — the nav has grown to
+     8+ items over time, and a header is a reasonable place to be a bit
+     roomier than the body content column beneath it. */
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 14px 16px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
+  /* A no-op above 1024px — .nav-links' own flex:1 there already consumes
+     every bit of free space itself, leaving none for this to distribute.
+     Below 1024px, .nav-links stops taking up flex space at all (it
+     becomes the absolutely-positioned dropdown panel instead — see its
+     own max-width:1024px override), so this is what still pins .brand
+     left and .topbar-right right in that case. */
   justify-content: space-between;
   gap: 12px;
 }
@@ -64,6 +73,10 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   font-weight: 800;
   font-size: 18px;
   letter-spacing: 0.02em;
+  /* Never gives up its own natural width to .nav-links' flex:1 below,
+     same as .topbar-right — those two are what .nav-links actually
+     centers itself between. */
+  flex-shrink: 0;
 }
 .brand-logo {
   height: 34px;
@@ -97,9 +110,19 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   display: flex;
   align-items: center;
   gap: 10px;
+  /* Same reasoning as .brand above — it's a sibling of .nav-links now
+     (not a parent — see the topbar-inner markup comment on .nav-links
+     below), so it needs its own flex-shrink:0 to keep its natural width
+     rather than getting squeezed by .nav-links' flex:1. */
+  flex-shrink: 0;
 }
 .nav-toggle {
   display: none;
+  /* Unrelated to .nav-links' own order now (it left .topbar-right
+     entirely — see the comment on .nav-links below) — this is only here
+     so the mobile-only .lang-switcher{order:1} override below still
+     reliably lands it to this button's left within .topbar-right, their
+     shared parent. */
   order: 3;
   background: none;
   border: none;
@@ -111,26 +134,45 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   border-radius: 8px;
 }
 .nav-toggle:hover { background: rgba(255,255,255,0.08); }
+/* A direct child of .topbar-inner in the markup — a sibling of .brand and
+   .topbar-right, not nested inside the latter — specifically so it can
+   take flex:1 and center its own content in whatever room that leaves
+   between them. That's what actually keeps this from either overlapping
+   its neighbors or wrapping unpredictably as more items get added: real
+   flex space negotiation with .brand/.topbar-right's own widths, not a
+   fixed breakpoint guessing how much room they'll need. min-width:0
+   overrides flexbox's default min-width:auto (which would otherwise let
+   this refuse to shrink below its content's natural width and overflow
+   instead) so it can actually flex-wrap once there's truly no room left,
+   rather than pushing past .topbar-right's edge. The mobile dropdown
+   below (max-width:680px) turns this into something else entirely
+   (a toggled, absolutely-positioned panel) — position:absolute there
+   still resolves against .topbar (position:sticky), not .topbar-inner,
+   same as it always has, since .topbar-inner itself is never given its
+   own position. */
 .nav-links {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
-  gap: 6px;
+  justify-content: center;
+  gap: 3px;
   flex-wrap: wrap;
-  order: 1;
 }
 .nav-links a {
-  padding: 8px 12px;
+  padding: 7px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: #d8d8d8;
+  white-space: nowrap;
 }
 .nav-links a:hover { background: rgba(255,255,255,0.08); color: var(--white); }
 .install-app-btn {
-  padding: 8px 12px;
+  padding: 7px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -139,23 +181,57 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   border: none;
   font-family: inherit;
   cursor: pointer;
+  white-space: nowrap;
 }
 .install-app-btn:hover { background: rgba(255,255,255,0.08); color: var(--white); }
-@media (max-width: 680px) { .install-app-btn { text-align: center; padding: 12px; } }
+@media (max-width: 1024px) { .install-app-btn { text-align: center; padding: 12px; } }
 .nav-links a.active { background: var(--orange); color: var(--white); }
 .lang-switcher { display: flex; gap: 4px; align-items: center; order: 2; }
 .lang-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; color: #d8d8d8; background: none; border: 1px solid rgba(255,255,255,0.25); cursor: pointer; font-family: inherit; }
 .lang-btn:hover { background: rgba(255,255,255,0.08); color: var(--white); }
 .lang-btn.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 .lang-flag { width: 15px; height: 11px; object-fit: cover; border-radius: 2px; }
+/* Desktop only — stacks the language pills one above the other instead of
+   side by side, since .topbar-right has vertical room to spare there but
+   .nav-links (flex:1, centered) doesn't need .lang-switcher to stay
+   narrow. Reverts to the row layout above at tablet/mobile widths (see
+   the max-width:1024px block below), where .lang-switcher sits alone in
+   the sticky bar next to the hamburger and reads better as a compact row. */
+@media (min-width: 1025px) {
+  .lang-switcher { flex-direction: column; gap: 4px; align-items: stretch; }
+  .lang-btn { justify-content: center; }
+}
 
-@media (max-width: 680px) {
-  /* The lang switcher lives in .topbar-right, a sibling of the collapsible
-     .nav-links dropdown — so unlike the nav links, it stays visible in the
-     sticky top bar at all times on mobile instead of hiding until the
-     hamburger menu is opened. order:1 puts it just left of the toggle. */
+/* 1024px rather than the usual ~680px mobile breakpoint used elsewhere in
+   this file — deliberately wide enough to also cover a tablet in
+   landscape (1024px is the standard iPad landscape width), not just
+   phones and portrait tablets. The centered desktop nav (see .nav-links'
+   own flex:1 rule above) needs real room on either side to stay a single
+   tidy row; a tablet's width is exactly the range where it would
+   otherwise wrap awkwardly instead of failing cleanly down to this
+   hamburger menu. */
+@media (max-width: 1024px) {
+  /* .lang-switcher stays visible in the sticky top bar at all times below
+     this width (unlike .nav-links, which hides until the hamburger menu
+     opens it) and stays pinned to the far right — .topbar-inner's own
+     justify-content:space-between above is what does that, once
+     .nav-toggle (below) is out of .topbar-right's flex flow and .lang-
+     switcher is the only thing actually left in it. */
   .lang-switcher { order: 1; }
-  .nav-toggle { display: block; }
+  /* Centered rather than left with .lang-switcher in .topbar-right — the
+     toggle is the main way in to the rest of the site at this width, so
+     it gets the same prominent middle position .nav-links itself takes
+     above 1024px, rather than being just another icon crowded next to
+     the language switcher. Positioned against .topbar (position:sticky),
+     not .topbar-right, for exactly that reason — it needs to escape
+     .topbar-right's own right-aligned position to get there. */
+  .nav-toggle {
+    display: block;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
   .nav-links {
     display: none;
     position: absolute;
