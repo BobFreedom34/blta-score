@@ -978,6 +978,39 @@ function isOverdueUnresolved(m) {
   });
 })();
 
+// The person-icon button next to #lang-switcher — replaces the old
+// two-tier "utility strip" (a separate bar above .topbar) entirely.
+// #auth-menu-panel holds the exact same #player-login-link/
+// #nav-register-link elements every other page already had — their own
+// click handlers (openPlayerLoginModal, logout, etc. — see
+// updatePlayerNavLinks and the .player-login-link/.nav-register-link
+// listeners further down) are untouched, this only adds the show/hide
+// toggle around them. Same open/close pattern as the notification bell's
+// own panel (toggleBadgeNotifPanel) and #nav-links' own dropdown above.
+(function initAuthMenu() {
+  const btn = document.getElementById('auth-menu-btn');
+  const panel = document.getElementById('auth-menu-panel');
+  if (!btn || !panel) return;
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const opening = panel.hidden;
+    panel.hidden = !opening;
+    btn.setAttribute('aria-expanded', String(opening));
+  });
+  panel.addEventListener('click', (e) => {
+    if (e.target.closest('a')) {
+      panel.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (!panel.hidden && !panel.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+      panel.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+})();
+
 // Desktop-only scroll-to-top button — skipped on pages with no topbar
 // (the embed views), which are short widgets that don't need it.
 (function initScrollTop() {

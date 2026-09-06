@@ -40,99 +40,71 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   padding: 0 16px 48px;
 }
 
-/* ---------- Utility strip ---------- */
-/* A slim, non-sticky strip above .topbar reserved for account actions —
-   scrolls away with the page instead of pinning permanently, since
-   .topbar's own position:sticky below already keeps the primary nav
-   (and the notification bell/language switcher it carries) reachable at
-   all times; there's no need to spend that same permanent screen space
-   twice. --charcoal here (lighter than .topbar's --ink) plus the bottom
-   border is what actually separates the two bars, not a change of
-   surface — same two-shades-of-dark pairing #nav-links' own mobile
-   dropdown already uses against .topbar. */
-.utility-strip {
-  background: var(--charcoal);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-.utility-strip-inner {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 6px 16px;
+/* ---------- Account menu ---------- */
+/* A single person-icon button living in .topbar-right, next to
+   .lang-switcher — replaces the old two-tier "utility strip" entirely
+   (a separate bar above .topbar with its own Login/Registration pills):
+   one compact icon here instead, opening a small dropdown with those
+   same two actions on click. Its own wrapper (position:relative) for the
+   same reason .badge-bell-wrap gets one rather than .topbar-right
+   itself — .nav-toggle also lives in .topbar-right, and its own
+   centering (position:absolute; left:50%) resolves against whichever
+   ancestor is *nearest* positioned; putting position here directly would
+   silently recenter the hamburger into this icon instead of the middle
+   of the bar below 1024px. */
+.auth-menu-wrap {
+  position: relative;
   display: flex;
-  justify-content: flex-end;
   align-items: center;
-  gap: 14px;
 }
-/* A white pill, same weight as .utility-register-btn's solid orange one
-   below — both read as buttons now, sitting side by side as a clear
-   "sign in / join" pair rather than one plain link next to one button. */
-.utility-link {
-  display: inline-flex;
+.auth-menu-btn {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 14px;
-  border-radius: 999px;
-  font-size: 10.5px;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 8px;
+  background: none;
+  border: none;
+  color: var(--white);
+  cursor: pointer;
+}
+.auth-menu-btn:hover { background: rgba(255,255,255,0.08); }
+.auth-menu-btn svg { fill: var(--white); display: block; }
+.auth-menu-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 180px;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  z-index: 45;
+  overflow: hidden;
+}
+.auth-menu-item {
+  display: block;
+  padding: 12px 16px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  background: var(--white);
   color: var(--ink);
 }
-.utility-link:hover { background: var(--gray-light); }
+.auth-menu-item:not(:last-child) { border-bottom: 1px solid var(--gray-light); }
+.auth-menu-item:hover { background: var(--gray-light); }
+/* .nav-register-link's text is solid orange here — the one action a
+   first-time visitor most needs to notice — while .player-login-link
+   (or, once logged in, its own "log out" text — see updatePlayerNavLinks
+   in common.js) stays plain ink, same weighting the old pill pair used
+   (white/quiet vs. solid orange). */
+.auth-menu-item.nav-register-link { color: var(--orange); }
 /* .nav-icon's own SVG is normally a flat var(--white) (see further
-   down) — overridden here so the little person icon matches this pill's
-   own dark-on-white text instead of vanishing against it. */
-.utility-link .nav-icon svg { fill: var(--ink); }
-.utility-register-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 14px;
-  border-radius: 999px;
-  font-size: 10.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  background: var(--orange);
-  color: var(--white);
-}
-.utility-register-btn:hover { background: var(--orange-dark); }
-/* Both pills duplicate into #nav-links too (see .nav-links-auth-row
-   below), where they're also a plain `a` — .nav-links a's own
-   color:#d8d8d8 (further down) is one class + one element, edging out
-   .utility-link/.utility-register-btn's one-class-alone color and
-   silently graying out what's supposed to be solid black-on-white or
-   white-on-orange text. .nav-links .utility-link/-btn (two classes)
-   outranks it back. */
-.nav-links .utility-link { color: var(--ink); }
-.nav-links .utility-register-btn { color: var(--white); }
-/* Same outranking problem again on :hover — .nav-links a:hover (further
-   down) ties these on class-count, then wins on its extra `a` element,
-   which would otherwise repaint the login pill's hover state white-on-
-   white. .nav-links .utility-link:hover (three classes) outranks that. */
-.nav-links .utility-link:hover { background: var(--gray-light); color: var(--ink); }
-.nav-links .utility-register-btn:hover { background: var(--orange-dark); color: var(--white); }
-
-/* Same login/register pair, once more inside the hamburger dropdown (see
-   #nav-links below) — kept reachable there too rather than only in the
-   always-visible strip above, same .utility-link/.utility-register-btn
-   pill look, just centered as their own row instead of packed to the
-   right. Explicitly hidden above 1024px: #nav-links itself is the
-   always-visible *inline* primary nav on desktop (only the hamburger
-   dropdown below 1024px — see the max-width:1024px block further down),
-   so without this it rendered a second, wrapped copy of these same two
-   pills directly in the desktop bar, under the real nav links. */
-.nav-links-auth-row {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  padding: 14px 12px 4px;
-  margin-top: 6px;
-  border-top: 1px solid rgba(255,255,255,0.12);
-}
-@media (min-width: 1025px) {
-  .nav-links-auth-row { display: none; }
-}
+   down) — overridden here so the little person icon next to "Prihlásiť
+   sa" matches this white dropdown's dark text instead of vanishing
+   against it. */
+.auth-menu-item .nav-icon svg { fill: var(--ink); }
 
 /* ---------- Top bar ---------- */
 .topbar {
