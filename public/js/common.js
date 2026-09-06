@@ -122,10 +122,32 @@ async function openEditMatchModal(m, isAdminUser, onSaved) {
   }
 
   document.getElementById('edit-match-category').value = m.category;
-  document.getElementById('edit-match-date').value = toDateValue(m.scheduledAt);
-  document.getElementById('edit-match-time').value = toTimeValue(m.scheduledAt);
+  const dateInput = document.getElementById('edit-match-date');
+  const timeInput = document.getElementById('edit-match-time');
+  dateInput.value = toDateValue(m.scheduledAt);
+  timeInput.value = toTimeValue(m.scheduledAt);
   document.getElementById('edit-match-location').value = m.location || '';
   document.getElementById('edit-match-notes').value = m.notes || '';
+
+  // Unscheduling isn't just "clear the date field and save" without any
+  // prompt for it — an empty date input has no visible affordance for
+  // that (no obvious way to blank a native date picker, especially on
+  // mobile), so this button does it explicitly instead. Only shown once
+  // there's actually a date to clear, and kept in sync as the field
+  // itself changes rather than fixed to whatever it was when the modal
+  // opened — save (below) already treats an empty date the same way
+  // (scheduledAt: null), this is just what makes that reachable at all.
+  const clearDateBtn = document.getElementById('edit-match-clear-date');
+  if (clearDateBtn) {
+    const syncClearDateBtn = () => { clearDateBtn.style.display = dateInput.value ? '' : 'none'; };
+    syncClearDateBtn();
+    dateInput.oninput = syncClearDateBtn;
+    clearDateBtn.onclick = () => {
+      dateInput.value = '';
+      timeInput.value = '';
+      syncClearDateBtn();
+    };
+  }
 
   // Format can only actually be changed server-side while LIVE or
   // PLANNED (see PATCH /:token/format) — hidden here rather than shown
