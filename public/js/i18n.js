@@ -27,7 +27,7 @@ const TRANSLATIONS = {
     'nav.rankings': 'Rebríček',
     'nav.lookingToPlay': 'Hľadám súpera',
     'nav.newMatch': '+ Nový zápas',
-    'nav.loginPlayer': 'PRIHLÁSIŤ SA AKO HRÁČ',
+    'nav.loginPlayer': 'PRIHLÁSIŤ SA',
     'nav.logout': 'ODHLÁSIŤ SA',
     'nav.logoutWithName': 'ODHLÁSIŤ SA ({name})',
 
@@ -548,7 +548,7 @@ const TRANSLATIONS = {
     'nav.rankings': 'Rankings',
     'nav.lookingToPlay': 'Looking to play',
     'nav.newMatch': '+ New match',
-    'nav.loginPlayer': 'LOG IN AS PLAYER',
+    'nav.loginPlayer': 'LOGIN',
     'nav.logout': 'LOG OUT',
     'nav.logoutWithName': 'LOG OUT ({name})',
 
