@@ -28,17 +28,26 @@ function sessionInfo({ isPlayerFlag, player }) {
   };
 }
 
+// Two independent sources feed the one notification bell (see
+// GET /notifications below) — badges (player_badges) and chat messages
+// (chat_notifications). Summed here so both the session payload and every
+// mark-read response can report one combined count without duplicating
+// the two queries at each call site.
+function countUnreadNotifications(playerId) {
+  const badges = db.prepare('SELECT COUNT(*) AS c FROM player_badges WHERE player_id = ? AND seen = 0').get(playerId).c;
+  const chats = db.prepare('SELECT COUNT(*) AS c FROM chat_notifications WHERE player_id = ? AND seen = 0').get(playerId).c;
+  return badges + chats;
+}
+
 router.get('/session', (req, res) => {
   const playerId = auth.getPlayerId(req);
   const player = playerId ? db.prepare('SELECT id, name, slug, login_pin FROM players WHERE id = ?').get(playerId) : null;
-  // Cheap enough to compute on every page load (a single indexed COUNT) —
-  // lets the nav bell's unread bubble (see common.js) stay in sync without
-  // its own separate poll. 0 for a logged-out visitor or an admin with no
+  // Cheap enough to compute on every page load (two indexed COUNTs) — lets
+  // the nav bell's unread bubble (see common.js) stay in sync without its
+  // own separate poll. 0 for a logged-out visitor or an admin with no
   // player identity of their own, same as every other player-only field
   // this route reports.
-  const unreadBadgeCount = playerId
-    ? db.prepare('SELECT COUNT(*) AS c FROM player_badges WHERE player_id = ? AND seen = 0').get(playerId).c
-    : 0;
+  const unreadNotificationCount = playerId ? countUnreadNotifications(playerId) : 0;
   res.json({
     ...sessionInfo({ isPlayerFlag: auth.isPlayer(req), player }),
     // True for a player who's logged in (their phone was confirmed) but
@@ -49,45 +58,86 @@ router.get('/session', (req, res) => {
     // sit logged in without a code by closing the modal or navigating
     // away from it — the very next page re-opens it, forced.
     needsPinSetup: !!(player && !player.login_pin),
-    unreadBadgeCount,
+    unreadNotificationCount,
   });
 });
 
-// A player's own badge-earned notifications, newest first — the list
-// behind the nav bell's dropdown (see common.js). Player-only: there's no
-// meaningful "my notifications" for a bare admin session with no specific
-// player identity, so this 401s the same way a missing player cookie
-// always does elsewhere, rather than silently returning an empty list.
-router.get('/badge-notifications', (req, res) => {
+// A player's own notifications, newest first — the list behind the nav
+// bell's dropdown (see common.js). Merges two unrelated sources into one
+// feed: a badge newly earned (player_badges) and someone posting in a
+// match's chat that this player is in (chat_notifications) — each item
+// carries a `type` the client branches on to render/handle it
+// differently (a "Congratulations" modal for a badge; a jump to the
+// match for a chat message). Player-only: there's no meaningful "my
+// notifications" for a bare admin session with no specific player
+// identity, so this 401s the same way a missing player cookie always
+// does elsewhere, rather than silently returning an empty list.
+router.get('/notifications', (req, res) => {
   const playerId = auth.getPlayerId(req);
   if (!playerId) return res.status(401).json({ error: 'Please log in to see your notifications' });
-  const rows = db.prepare(`
-    SELECT pb.id, pb.seen, pb.earned_at,
+
+  const badgeRows = db.prepare(`
+    SELECT pb.id, pb.seen, pb.earned_at AS created_at,
            bd.id AS badge_id, bd.name, bd.description, bd.icon
     FROM player_badges pb
     JOIN badge_definitions bd ON bd.id = pb.badge_id
     WHERE pb.player_id = ?
-    ORDER BY pb.earned_at DESC, pb.id DESC
-  `).all(playerId);
-  res.json(rows.map((r) => ({
+  `).all(playerId).map((r) => ({
+    type: 'BADGE',
     id: r.id,
     seen: !!r.seen,
-    earnedAt: r.earned_at,
+    createdAt: r.created_at,
     badge: { id: r.badge_id, name: r.name, description: r.description, icon: r.icon },
-  })));
+  }));
+
+  const chatRows = db.prepare(`
+    SELECT cn.id, cn.seen, cn.created_at,
+           m.share_token AS match_token, m.player1_id, m.player2_id,
+           msg.author, msg.body,
+           p1.name AS p1_name, p2.name AS p2_name
+    FROM chat_notifications cn
+    JOIN matches m ON m.id = cn.match_id
+    JOIN messages msg ON msg.id = cn.message_id
+    JOIN players p1 ON p1.id = m.player1_id
+    JOIN players p2 ON p2.id = m.player2_id
+    WHERE cn.player_id = ?
+  `).all(playerId).map((r) => ({
+    type: 'CHAT_MESSAGE',
+    id: r.id,
+    seen: !!r.seen,
+    createdAt: r.created_at,
+    chat: {
+      matchToken: r.match_token,
+      author: r.author,
+      body: r.body,
+      // "The other player" from this notification's own recipient's point
+      // of view — shown so the dropdown reads "new message in your match
+      // vs. X" rather than just a bare match token.
+      opponentName: r.player1_id === playerId ? r.p2_name : r.p1_name,
+    },
+  }));
+
+  const merged = [...badgeRows, ...chatRows].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  res.json(merged);
 });
 
-// Marks one notification read — called the moment its "Congratulations"
-// modal is opened (see common.js), not on merely opening the dropdown
-// list, so the unread count only drops for badges actually looked at.
-router.post('/badge-notifications/:id/read', (req, res) => {
+// Marks one notification read — for a badge, called the moment its
+// "Congratulations" modal is opened; for a chat message, the moment it's
+// clicked (which also navigates to the match) — see common.js. Not on
+// merely opening the dropdown list, so the unread count only drops for
+// things actually looked at. :type picks which table owns :id (their id
+// sequences are independent, so a bare numeric id alone can't tell them
+// apart — see GET /notifications above for where each type comes from).
+router.post('/notifications/:type/:id/read', (req, res) => {
   const playerId = auth.getPlayerId(req);
   if (!playerId) return res.status(401).json({ error: 'Please log in to do this' });
-  const row = db.prepare('SELECT * FROM player_badges WHERE id = ?').get(req.params.id);
+  const { type, id } = req.params;
+  const table = type === 'badge' ? 'player_badges' : type === 'chat' ? 'chat_notifications' : null;
+  if (!table) return res.status(400).json({ error: 'Invalid notification type' });
+  const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
   if (!row || row.player_id !== playerId) return res.status(404).json({ error: 'Notification not found' });
-  db.prepare('UPDATE player_badges SET seen = 1 WHERE id = ?').run(row.id);
-  const unreadBadgeCount = db.prepare('SELECT COUNT(*) AS c FROM player_badges WHERE player_id = ? AND seen = 0').get(playerId).c;
-  res.json({ ok: true, unreadBadgeCount });
+  db.prepare(`UPDATE ${table} SET seen = 1 WHERE id = ?`).run(row.id);
+  res.json({ ok: true, unreadNotificationCount: countUnreadNotifications(playerId) });
 });
 
 // Digits only — everything else (spaces, dashes, a leading +, a country

@@ -525,6 +525,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .match-quick-edit-btn:hover { opacity: 1; }
 .match-card-notes {
   font-size: 12px;
+  font-weight: 600;
   color: var(--gray);
   overflow: hidden;
   text-overflow: ellipsis;

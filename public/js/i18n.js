@@ -423,6 +423,7 @@ const TRANSLATIONS = {
     'notif.loadError': 'Upozornenia sa nepodarilo načítať',
     'notif.empty': 'Zatiaľ žiadne upozornenia',
     'notif.earnedTitle': 'Získal si odznak: {badge}',
+    'notif.chatTitle': '💬 Nová správa od {author}',
     'notif.congratsTitle': '🎉 Gratulujeme!',
     'notif.congratsIntro': 'Práve si získal nový odznak',
 
@@ -939,6 +940,7 @@ const TRANSLATIONS = {
     'notif.loadError': "Couldn't load notifications",
     'notif.empty': 'No notifications yet',
     'notif.earnedTitle': 'You earned a badge: {badge}',
+    'notif.chatTitle': '💬 New message from {author}',
     'notif.congratsTitle': '🎉 Congratulations!',
     'notif.congratsIntro': "You've just earned a new badge",
 

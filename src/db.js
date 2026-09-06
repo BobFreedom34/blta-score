@@ -580,6 +580,26 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_player_badges_player ON player_badges(player_id);
 `);
 
+// One row per (player, chat message) — both players in a match get one of
+// these the instant anyone posts to that match's public chat (see
+// POST /:token/messages in routes/matches.js), same "record the moment,
+// not just the current state" idea as player_badges above, and shown
+// alongside it in the same notification bell (GET /player/notifications
+// merges both tables — see routes/player.js). No backfill needed here the
+// way player_badges got one: this table starts truly empty, so there's no
+// existing chat history to retroactively notify anyone about.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS chat_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    match_id INTEGER NOT NULL,
+    message_id INTEGER NOT NULL,
+    seen INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_chat_notifications_player ON chat_notifications(player_id);
+`);
+
 // Admin overrides for the (otherwise scraped-from-blta.sk) rankings page —
 // keyed by table + the player's name exactly as it appears in that scraped
 // table, since a scraped row doesn't always resolve to a local player row

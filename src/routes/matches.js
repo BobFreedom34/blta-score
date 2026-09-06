@@ -1520,6 +1520,17 @@ router.post('/:token/messages', (req, res) => {
     .run(row.id, author, body, ts);
   const message = serializeMessage({ id: result.lastInsertRowid, author, body, created_at: ts });
 
+  // Chat is open/anonymous (no login required to post — author is just
+  // whatever name was typed), so there's no reliable way to tell whether
+  // the poster *is* one of the two players here. Simplest correct
+  // behavior per how this is meant to work: always notify both, even if
+  // one of them happened to be the one writing.
+  const notifyChat = db.prepare(
+    'INSERT INTO chat_notifications (player_id, match_id, message_id, seen) VALUES (?, ?, ?, 0)'
+  );
+  notifyChat.run(row.player1_id, row.id, result.lastInsertRowid);
+  notifyChat.run(row.player2_id, row.id, result.lastInsertRowid);
+
   req.app.get('io').to(`match:${row.share_token}`).emit('message:new', { token: row.share_token, message });
   res.status(201).json(message);
 });

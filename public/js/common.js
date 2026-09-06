@@ -1409,7 +1409,7 @@ document.querySelectorAll('.nav-register-link').forEach((el) => {
 
 async function refreshPlayerAuth() {
   let needsPinSetup = false;
-  let unreadBadgeCount = 0;
+  let unreadNotificationCount = 0;
   try {
     const res = await api('/player/session');
     playerAuthed = !!res.isPlayer;
@@ -1417,7 +1417,7 @@ async function refreshPlayerAuth() {
     currentPlayerId = res.playerId || null;
     currentPlayerSlug = res.playerSlug || null;
     needsPinSetup = !!res.needsPinSetup;
-    unreadBadgeCount = res.unreadBadgeCount || 0;
+    unreadNotificationCount = res.unreadNotificationCount || 0;
   } catch {
     playerAuthed = false;
     currentPlayerName = null;
@@ -1425,7 +1425,7 @@ async function refreshPlayerAuth() {
     currentPlayerSlug = null;
   }
   updatePlayerNavLinks();
-  updateBadgeBellUI(unreadBadgeCount);
+  updateBadgeBellUI(unreadNotificationCount);
   // Lets any page's own script react to a login/logout finishing (e.g. the
   // homepage re-showing/hiding "Set date & location" once it knows who's
   // logged in) without common.js needing to know what each page does.
@@ -1887,23 +1887,30 @@ document.querySelectorAll('.player-login-link').forEach((el) => {
   });
 });
 
-// --- Badge notification bell -----------------------------------------
-// A player earns a badge server-side the instant a match finishes (see
-// badgeEngine.syncPlayerBadges) — this is what surfaces that as a small
-// bell in the topbar. Fed by GET /player/session's unreadBadgeCount (kept
-// current on every page load via refreshPlayerAuth above, exactly like the
-// rest of the player session) and, once opened, the full list from
-// GET /player/badge-notifications. All of it — the bell, its dropdown, and
-// the "Congratulations" modal — is built here rather than living as static
-// markup in every page, so it works sitewide without needing to touch (and
-// keep byte-identical) the shared block across all 7 core HTML files. A
-// page with no topbar at all (the embed views) just never gets one —
-// ensureBadgeBellUI bails out the moment it can't find `.topbar-right`.
+// --- Notification bell ------------------------------------------------
+// Two unrelated things land here: a player earning a badge server-side
+// the instant a match finishes (see badgeEngine.syncPlayerBadges), and
+// someone posting in a match's chat that this player is in (see
+// POST /:token/messages in routes/matches.js) — this is what surfaces
+// both as one small bell in the topbar. Fed by GET /player/session's
+// unreadNotificationCount (kept current on every page load via
+// refreshPlayerAuth above, exactly like the rest of the player session)
+// and, once opened, the merged list from GET /player/notifications, each
+// item carrying a `type` ('BADGE' or 'CHAT_MESSAGE') this branches on to
+// render and handle it. Still named badge-* throughout below (bell/panel/
+// item CSS classes included) since the badge was what this started as —
+// not worth a sitewide rename now that it's grown a second use. All of it
+// — the bell, its dropdown, and the badge "Congratulations" modal — is
+// built here rather than living as static markup in every page, so it
+// works sitewide without needing to touch (and keep byte-identical) the
+// shared block across all 7 core HTML files. A page with no topbar at all
+// (the embed views) just never gets one — ensureBadgeBellUI bails out the
+// moment it can't find `.topbar-right`.
 let badgeBellEl = null;
 let badgeBellBubbleEl = null;
 let badgeNotifPanelEl = null;
 let badgeCongratsModalEl = null;
-let badgeNotifCache = null;
+let badgeNotifCache = null; // holds every notification type, despite the name
 
 // Mirrors badgeIconInner in badges.js (not reused directly — that file
 // isn't loaded on every page, only player.html/rankings.html, while the
@@ -2014,11 +2021,18 @@ async function toggleBadgeNotifPanel() {
   const list = document.getElementById('badge-notif-list');
   list.innerHTML = `<div class="badge-notif-empty">${t('notif.loading')}</div>`;
   try {
-    badgeNotifCache = await api('/player/badge-notifications');
+    badgeNotifCache = await api('/player/notifications');
     renderBadgeNotifList();
   } catch {
     list.innerHTML = `<div class="badge-notif-empty">${t('notif.loadError')}</div>`;
   }
+}
+
+// Chat message bodies can run up to 500 characters (see routes/matches.js)
+// — nowhere near reasonable for one dropdown row, so this clips it the
+// same way a card-list preview would.
+function truncateForNotif(text, max) {
+  return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
 }
 
 function renderBadgeNotifList() {
@@ -2028,16 +2042,25 @@ function renderBadgeNotifList() {
     list.innerHTML = `<div class="badge-notif-empty">${t('notif.empty')}</div>`;
     return;
   }
-  list.innerHTML = badgeNotifCache.map((n) => `
-    <button type="button" class="badge-notif-item${n.seen ? '' : ' unread'}" data-notif-id="${n.id}">
-      <div class="badge-notif-icon">${badgeIconMarkup(n.badge.icon)}</div>
+  list.innerHTML = badgeNotifCache.map((n) => {
+    const icon = n.type === 'BADGE' ? badgeIconMarkup(n.badge.icon) : '💬';
+    const title = n.type === 'BADGE'
+      ? t('notif.earnedTitle', { badge: escapeHtml(n.badge.name) })
+      : t('notif.chatTitle', { author: escapeHtml(n.chat.author) });
+    const subtitle = n.type === 'BADGE'
+      ? fmtDateShort(n.createdAt)
+      : escapeHtml(truncateForNotif(n.chat.body, 80));
+    return `
+    <button type="button" class="badge-notif-item${n.seen ? '' : ' unread'}" data-notif-type="${n.type}" data-notif-id="${n.id}">
+      <div class="badge-notif-icon">${icon}</div>
       <div class="badge-notif-text">
-        <div class="badge-notif-title">${t('notif.earnedTitle', { badge: escapeHtml(n.badge.name) })}</div>
-        <div class="badge-notif-date">${fmtDateShort(n.earnedAt)}</div>
+        <div class="badge-notif-title">${title}</div>
+        <div class="badge-notif-date">${subtitle}</div>
       </div>
       ${n.seen ? '' : '<span class="badge-notif-dot"></span>'}
     </button>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function openBadgeCongratsModal(notif) {
@@ -2053,26 +2076,40 @@ function openBadgeCongratsModal(notif) {
   badgeCongratsModalEl.style.display = 'flex';
 }
 
-// Clicking any notification (read or not) reopens its congrats modal —
-// only an unread one also marks itself read and drops the bell's count.
+// A badge and a chat notification each have their own independent id
+// sequence (separate DB tables — see GET /player/notifications in
+// routes/player.js), so the two together are what actually identify one
+// row here; a bare id alone could match either.
+function findNotif(type, id) {
+  return badgeNotifCache && badgeNotifCache.find((n) => n.type === type && n.id === id);
+}
+
+// Clicking a badge notification (read or not) reopens its congrats modal
+// in place; clicking a chat one jumps straight to that match, where the
+// message actually lives — there's no equivalent standalone view for it
+// to reopen. Either way, only an unread one also marks itself read and
+// drops the bell's count first.
 document.addEventListener('click', async (e) => {
   const item = e.target.closest('.badge-notif-item');
   if (!item || !badgeNotifCache) return;
+  const type = item.dataset.notifType;
   const id = Number(item.dataset.notifId);
-  const notif = badgeNotifCache.find((n) => n.id === id);
+  const notif = findNotif(type, id);
   if (!notif) return;
   if (badgeNotifPanelEl) badgeNotifPanelEl.hidden = true;
-  openBadgeCongratsModal(notif);
+  if (notif.type === 'BADGE') openBadgeCongratsModal(notif);
   if (!notif.seen) {
     notif.seen = true;
     item.classList.remove('unread');
     const dot = item.querySelector('.badge-notif-dot');
     if (dot) dot.remove();
     try {
-      const res = await api(`/player/badge-notifications/${id}/read`, { method: 'POST' });
-      updateBadgeBellUI(res.unreadBadgeCount);
+      const urlType = notif.type === 'BADGE' ? 'badge' : 'chat';
+      const res = await api(`/player/notifications/${urlType}/${id}/read`, { method: 'POST' });
+      updateBadgeBellUI(res.unreadNotificationCount);
     } catch { /* worst case the bubble count is stale until the next page load */ }
   }
+  if (notif.type === 'CHAT_MESSAGE') window.location.href = `/match/${notif.chat.matchToken}`;
 });
 
 refreshPlayerAuth();
