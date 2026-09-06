@@ -624,13 +624,19 @@ function render(m) {
   const dateValue = m.scheduledAt ? fmtDateLong(m.scheduledAt)
     : awaitingProposal ? `<span style="color:var(--gray)">${t('match.awaitingResponse')}</span>`
     : fmtDateLong(m.scheduledAt);
+  // Same "only while still PLANNED" rule as the balls-icon marker on match
+  // cards (see ballsIconHtml in common.js) — once the match is live/finished
+  // this stops being useful information to surface.
+  const ballsPlayerName = (m.status === 'PLANNED' && m.ballsPlayer)
+    ? (m.ballsPlayer === 1 ? m.player1.name : m.player2.name)
+    : null;
 
   root.innerHTML = `
     <div class="match-header">
       <div>
         ${categoryBadge(m.category)} ${statusBadge(m)}${m.status === 'LIVE' ? ` <span class="badge badge-viewers" id="viewer-count-badge">👀 ${viewerCount !== null ? viewerCount : '…'} ${t('match.watching')}</span>` : ''}
         <h1 style="margin-top:8px"><a class="player-name-link" href="/player/${m.player1.slug || m.player1.id}">${escapeHtml(m.player1.name)}</a><a class="player-info-link" href="/player/${m.player1.slug || m.player1.id}" title="${escapeHtml(t('common.viewProfileTitle', { name: m.player1.name }))}">i</a> <span style="color:var(--gray-dim);font-weight:500">${t('match.vsLabel')}</span> <a class="player-name-link" href="/player/${m.player2.slug || m.player2.id}">${escapeHtml(m.player2.name)}</a><a class="player-info-link" href="/player/${m.player2.slug || m.player2.id}" title="${escapeHtml(t('common.viewProfileTitle', { name: m.player2.name }))}">i</a></h1>
-        <div style="color:var(--gray-dim);font-size:13px">${m.formatLabel}</div>
+        <div style="color:var(--gray-dim);font-size:13px">${m.formatLabel}${ballsPlayerName ? ` &nbsp;·&nbsp; ${ballsIconHtml(m, m.ballsPlayer)} ${escapeHtml(ballsPlayerName)}` : ''}</div>
       </div>
     </div>
 
