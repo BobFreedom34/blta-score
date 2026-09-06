@@ -233,12 +233,18 @@ router.get('/', (req, res) => {
   }
   if (noDate === '1') {
     clauses.push('m.scheduled_at IS NULL');
-  } else if (hasDate === '1') {
-    clauses.push('m.scheduled_at IS NOT NULL');
-  } else if (from && to) {
-    clauses.push('m.scheduled_at BETWEEN @from AND @to');
-    params.from = from;
-    params.to = to;
+  } else {
+    // hasDate and a from/to range can combine (e.g. "Scheduled" tab +
+    // "Tomorrow" time filter) — BETWEEN already implies NOT NULL, so listing
+    // both is redundant but harmless when a caller sends just one of them.
+    if (hasDate === '1') {
+      clauses.push('m.scheduled_at IS NOT NULL');
+    }
+    if (from && to) {
+      clauses.push('m.scheduled_at BETWEEN @from AND @to');
+      params.from = from;
+      params.to = to;
+    }
   }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   // Planned matches: soonest-scheduled first, undated ones grouped at the end

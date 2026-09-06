@@ -40,6 +40,16 @@ function getWeekRange(offsetWeeks) {
   return { from: monday.toISOString(), to: sunday.toISOString() };
 }
 
+// {from, to} for the currently-selected time filter, or null when it's
+// "Kedykoľvek" (any time) or "Bez dátumu" (handled separately via noDate).
+function currentTimeFilterRange() {
+  if (currentTimeFilter === 'today') return getDayRange(0);
+  if (currentTimeFilter === 'tomorrow') return getDayRange(1);
+  if (currentTimeFilter === 'this_week') return getWeekRange(0);
+  if (currentTimeFilter === 'next_week') return getWeekRange(1);
+  return null;
+}
+
 // Google Calendar's "quick add" URL — no API/auth needed, just opens their
 // prefilled event form in a new tab for the viewer to save themselves.
 // Duration isn't tracked for a match that hasn't started, so this defaults
@@ -186,25 +196,21 @@ function buildFilterParamsForSpec(spec) {
 
   if (spec.dateFilter === 'has') {
     params.set('hasDate', '1');
+    // These matches already have a real date, so "Dnes"/"Zajtra"/etc. can
+    // still narrow them further — only "Bez dátumu" makes no sense here.
+    const range = currentTimeFilterRange();
+    if (range) {
+      params.set('from', range.from);
+      params.set('to', range.to);
+    }
   } else if (spec.dateFilter === 'none') {
     params.set('noDate', '1');
+    // No date on these matches at all, so the time filter has nothing to narrow.
   } else if (spec.status === 'PLANNED' || spec.status === 'FINISHED' || spec.status === 'UNFINISHED') {
-    if (currentTimeFilter === 'today') {
-      const { from, to } = getDayRange(0);
-      params.set('from', from);
-      params.set('to', to);
-    } else if (currentTimeFilter === 'tomorrow') {
-      const { from, to } = getDayRange(1);
-      params.set('from', from);
-      params.set('to', to);
-    } else if (currentTimeFilter === 'this_week') {
-      const { from, to } = getWeekRange(0);
-      params.set('from', from);
-      params.set('to', to);
-    } else if (currentTimeFilter === 'next_week') {
-      const { from, to } = getWeekRange(1);
-      params.set('from', from);
-      params.set('to', to);
+    const range = currentTimeFilterRange();
+    if (range) {
+      params.set('from', range.from);
+      params.set('to', range.to);
     } else if (currentTimeFilter === 'tbd') {
       params.set('noDate', '1');
     }
@@ -327,10 +333,20 @@ async function refreshCounts() {
   }
 }
 
+// "K naplánovaniu" (no date at all) and "Naživo" (a live match's status
+// isn't about scheduled_at) have nothing for the time filter to narrow —
+// grey the control out there instead of leaving it silently inert.
+function updateTimeFilterAvailability() {
+  const spec = FILTERS[currentFilter];
+  const disabled = currentFilter === 'LIVE' || (spec && spec.dateFilter === 'none');
+  document.getElementById('filter-time').disabled = disabled;
+}
+
 function activateTab(tab) {
   document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
   tab.classList.add('active');
   currentFilter = tab.dataset.filter;
+  updateTimeFilterAvailability();
   loadMatches();
 }
 
@@ -349,6 +365,7 @@ document.querySelectorAll('.tab').forEach((tab) => {
   });
 });
 document.querySelector(`.tab[data-filter="${currentFilter}"]`).classList.add('active');
+updateTimeFilterAvailability();
 
 document.getElementById('filter-q').addEventListener('input', (e) => {
   currentQuery = e.target.value.trim();
