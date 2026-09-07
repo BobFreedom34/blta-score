@@ -56,7 +56,7 @@ router.get('/login-events', auth.requireAdmin, (req, res) => {
 // correctly.
 router.post('/backup-now', auth.requireAdmin, async (req, res) => {
   const result = await backup.runBackup();
-  if (result.skipped) return res.status(400).json({ error: 'Backup is not configured — set GOOGLE_SERVICE_ACCOUNT_KEY and GOOGLE_DRIVE_BACKUP_FOLDER_ID.' });
+  if (result.skipped) return res.status(400).json({ error: 'Backup is not configured — set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REFRESH_TOKEN and GOOGLE_DRIVE_BACKUP_FOLDER_ID.' });
   if (!result.ok) return res.status(500).json({ error: result.error });
   res.json(result);
 });

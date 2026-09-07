@@ -1,35 +1,45 @@
-// Daily off-site backup of the SQLite database to a Google Drive folder,
-// via a Google service account (see .env.example for setup steps) — the
-// persistent disk on Render survives a redeploy, but has no backup of its
-// own, so this is the actual disaster-recovery story for real match/player
-// data (losing a laptop, by contrast, loses nothing here — see db.js's
-// dataDir and README).
+// Daily off-site backup of the SQLite database to a Google Drive folder —
+// the persistent disk on Render survives a redeploy, but has no backup of
+// its own, so this is the actual disaster-recovery story for real
+// match/player data (losing a laptop, by contrast, loses nothing here —
+// see db.js's dataDir and README).
+//
+// Uses OAuth2 delegated as the account's own user, not a service account:
+// Google Drive gives service accounts zero storage quota of their own on
+// a personal (non-Workspace) account — even writing into a folder shared
+// with it as Editor is rejected with storageQuotaExceeded — so files have
+// to be created as the real user instead. See .env.example for the
+// one-time setup (a Cloud OAuth client + running
+// scripts/get-drive-refresh-token.js once to mint the refresh token).
 const fs = require('fs');
 const path = require('path');
-const { GoogleAuth } = require('google-auth-library');
+const { OAuth2Client } = require('google-auth-library');
 const db = require('./db');
 const mailer = require('./mailer');
 
-const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 const RETENTION_DAYS = Number(process.env.BACKUP_RETENTION_DAYS || 30);
 const DB_FILE = path.join(db.dataDir, 'blta-score.db');
 
 function isConfigured() {
-  return !!(process.env.GOOGLE_SERVICE_ACCOUNT_KEY && process.env.GOOGLE_DRIVE_BACKUP_FOLDER_ID);
+  return !!(
+    process.env.GOOGLE_OAUTH_CLIENT_ID &&
+    process.env.GOOGLE_OAUTH_CLIENT_SECRET &&
+    process.env.GOOGLE_OAUTH_REFRESH_TOKEN &&
+    process.env.GOOGLE_DRIVE_BACKUP_FOLDER_ID
+  );
 }
 
-let authClient = null;
+let oauthClient = null;
 function getAuth() {
-  if (!authClient) {
-    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
-    authClient = new GoogleAuth({ credentials, scopes: SCOPES });
+  if (!oauthClient) {
+    oauthClient = new OAuth2Client(process.env.GOOGLE_OAUTH_CLIENT_ID, process.env.GOOGLE_OAUTH_CLIENT_SECRET);
+    oauthClient.setCredentials({ refresh_token: process.env.GOOGLE_OAUTH_REFRESH_TOKEN });
   }
-  return authClient;
+  return oauthClient;
 }
 
 async function getAccessToken() {
-  const client = await getAuth().getClient();
-  const { token } = await client.getAccessToken();
+  const { token } = await getAuth().getAccessToken();
   return token;
 }
 
@@ -105,7 +115,7 @@ function snapshotDbFile() {
 
 async function runBackup() {
   if (!isConfigured()) {
-    console.warn('[backup] GOOGLE_SERVICE_ACCOUNT_KEY / GOOGLE_DRIVE_BACKUP_FOLDER_ID not set — skipping backup. See .env.example.');
+    console.warn('[backup] Google OAuth env vars not fully set — skipping backup. See .env.example.');
     return { skipped: true };
   }
   const stamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -131,7 +141,7 @@ async function runBackup() {
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 function startScheduledBackups() {
   if (!isConfigured()) {
-    console.log('[backup] Google Drive backup is not configured — see .env.example (GOOGLE_SERVICE_ACCOUNT_KEY / GOOGLE_DRIVE_BACKUP_FOLDER_ID). Backups are OFF.');
+    console.log('[backup] Google Drive backup is not configured — see .env.example (GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET / GOOGLE_OAUTH_REFRESH_TOKEN / GOOGLE_DRIVE_BACKUP_FOLDER_ID). Backups are OFF.');
     return;
   }
   // A few minutes after boot (not instantly — let the rest of startup
