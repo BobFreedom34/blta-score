@@ -622,6 +622,34 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_play_request_notifications_player ON play_request_notifications(player_id);
 `);
 
+// One row per "someone proposed times for a match" or "your proposed time
+// was confirmed" (see inferProposedBy and its call sites, and
+// POST /:token/respond-proposal, in routes/matches.js), shown alongside
+// the other notification types in the same bell. kind distinguishes the
+// two ('RECEIVED' vs 'CONFIRMED'); other_player_id is who proposed (for a
+// RECEIVED row) or who confirmed (for a CONFIRMED row) — not required to
+// still exist as a player by the time this is read, same spirit as
+// chat_notifications' bare match_id (an unresolvable player_id just means
+// the click-through/name lookup quietly falls back). References match_id
+// rather than copying the match's own details in, unlike
+// play_request_notifications — a match is far less likely to be deleted
+// out from under this than a looking-to-play post is (see that table's own
+// comment for why it went the other way), so a plain INNER JOIN in
+// GET /player/notifications is enough: if the match is ever gone, the
+// notification just quietly stops showing up, nothing to clean up here.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS proposal_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    match_id INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    other_player_id INTEGER,
+    seen INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_proposal_notifications_player ON proposal_notifications(player_id);
+`);
+
 // Admin overrides for the (otherwise scraped-from-blta.sk) rankings page —
 // keyed by table + the player's name exactly as it appears in that scraped
 // table, since a scraped row doesn't always resolve to a local player row

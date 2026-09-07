@@ -98,7 +98,7 @@ function ltpSlotIso(day, step) {
 // compact a height would be unreadable clutter, and the hour is really
 // all a glance needs.
 function renderLtpGrid(wrapId, days, cellHtml) {
-  const dayHead = (d) => `${d.toLocaleDateString(undefined, { weekday: 'short' })}<br>${d.toLocaleDateString(undefined, { day: 'numeric', month: 'numeric' })}`;
+  const dayHead = (d) => `${weekdayShort(d)}<br>${d.getDate()}.${d.getMonth() + 1}`;
   let html = '<div class="availability-grid avail-grid-compact"><div class="avail-corner"></div>';
   for (const d of days) html += `<div class="avail-day-head">${dayHead(d)}</div>`;
   ltpTimeSteps().forEach((step) => {
@@ -132,7 +132,7 @@ function createLtpAvailabilityPicker({
   }
 
   function renderWeekTabs() {
-    const fmt = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    const fmt = (d) => `${d.getDate()} ${monthShort(d)}`;
     const weeks = [days.slice(0, 7), days.slice(7, 14)];
     document.getElementById(weekTabsId).innerHTML = weeks.map((wdays, i) => `
       <button type="button" class="tab${i === activeWeek ? ' active' : ''}" data-week="${i}">${t('match.weekLabel', { n: i + 1 })}<span>${fmt(wdays[0])} – ${fmt(wdays[wdays.length - 1])}</span></button>
@@ -322,10 +322,8 @@ function groupBlockedRanges(blockedSlots) {
 function fmtSlotRange(startIso, endIso) {
   const start = new Date(startIso);
   const end = new Date(endIso);
-  const datePart = start.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-  const startTime = start.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  const endTime = end.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  return `${datePart}, ${startTime}–${endTime}`;
+  const datePart = `${weekdayShort(start)} ${start.getDate()} ${monthShort(start)}`;
+  return `${datePart}, ${hhmm(start)}–${hhmm(end)}`;
 }
 
 // The text list backing up the calendar's own greyed-out blocked cells —
@@ -470,9 +468,7 @@ function renderMyPostArea() {
 function fmtSlot(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  const datePart = d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-  const timePart = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  return `${datePart}, ${timePart}`;
+  return `${weekdayShort(d)} ${d.getDate()} ${monthShort(d)}, ${hhmm(d)}`;
 }
 
 function boardPostHtml(post) {
@@ -618,7 +614,7 @@ function buildPickSlotDays() {
 
 function renderPickSlotWeekTabs() {
   const weeks = [pickSlotDays.slice(0, 7), pickSlotDays.slice(7, 14)];
-  const fmt = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const fmt = (d) => `${d.getDate()} ${monthShort(d)}`;
   document.getElementById('pick-slot-week-tabs').innerHTML = weeks.map((days, i) => `
     <button type="button" class="tab${i === pickSlotActiveWeek ? ' active' : ''}" data-week="${i}">${t('match.weekLabel', { n: i + 1 })}<span>${fmt(days[0])} – ${fmt(days[days.length - 1])}</span></button>
   `).join('');

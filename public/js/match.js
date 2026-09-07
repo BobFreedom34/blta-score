@@ -368,6 +368,13 @@ function oneProposalCardHtml(m, which) {
         </div>
         <input type="text" id="${idPrefix}-venue-input" placeholder="${t('quickSchedule.placePlaceholder')}" style="margin-top:8px;width:100%">
       </div>
+      ${/* Once admin has actually set who brings the balls/reserves the
+           court for an admin-created match (via the Edit match modal),
+           offering the choice again here — to whichever player happens to
+           be the one confirming a proposed time — would let them override
+           that. Each field is checked independently: admin might have set
+           one and left the other for the players to sort out themselves. */
+        (m.createdByAdmin && m.ballsPlayer) ? '' : `
       <div class="field">
         <label><svg viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px"><circle cx="12" cy="12" r="11" fill="#d4ee4e" stroke="#a8c93a" stroke-width="1"/><path d="M3 6c3.2 2.6 3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M21 6c-3.2 2.6-3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg> <span>${t('newMatch.whoBringsBalls')}</span> <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${t('common.optional')}</span></label>
         <div class="server-choice-row balls-choice-row" id="${idPrefix}-balls-choice-row">
@@ -375,6 +382,8 @@ function oneProposalCardHtml(m, which) {
           <button type="button" class="btn btn-outline btn-block" data-value="2">${escapeHtml(m.player2.name)}</button>
         </div>
       </div>
+      `}
+      ${(m.createdByAdmin && m.courtPlayer) ? '' : `
       <div class="field">
         <label>📞 <span>${t('newMatch.whoReservesCourt')}</span> <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${t('common.optional')}</span></label>
         <div class="server-choice-row balls-choice-row" id="${idPrefix}-court-choice-row">
@@ -382,9 +391,10 @@ function oneProposalCardHtml(m, which) {
           <button type="button" class="btn btn-outline btn-block" data-value="2">${escapeHtml(m.player2.name)}</button>
         </div>
       </div>
+      `}
       <button type="button" class="btn btn-primary btn-block" id="confirm-${idPrefix}-btn" disabled style="margin-top:6px">${t('match.confirmBtn')}</button>
       <div id="${idPrefix}-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
-      ${showCounterProposeLink ? `<button type="button" class="edit-link" id="counter-propose-link" style="margin-top:12px">${t('match.cantMakeAny')}</button>` : ''}
+      ${showCounterProposeLink ? `<button type="button" class="btn btn-green btn-block" id="counter-propose-link" style="margin-top:12px">${t('match.cantMakeAny')}</button>` : ''}
     </div>
   `;
 }
@@ -436,7 +446,7 @@ function attachProposalCardHandlers(m, which) {
 
   function renderProposalWeekTabs() {
     const tabsEl = document.getElementById(`${idPrefix}-week-tabs`);
-    const fmt = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    const fmt = (d) => `${d.getDate()} ${monthShort(d)}`;
     tabsEl.innerHTML = proposalWeeks.map((days, i) => `
       <button type="button" class="tab${i === proposalActiveWeek ? ' active' : ''}" data-week="${i}">${t('match.weekLabel', { n: i + 1 })}<span>${fmt(days[0])} – ${fmt(days[days.length - 1])}</span></button>
     `).join('');
@@ -451,7 +461,7 @@ function attachProposalCardHandlers(m, which) {
 
   function renderProposalGrid() {
     const days = proposalWeeks[proposalActiveWeek];
-    const dayHead = (d) => `${d.toLocaleDateString(undefined, { weekday: 'short' })}<br>${d.toLocaleDateString(undefined, { day: 'numeric', month: 'numeric' })}`;
+    const dayHead = (d) => `${weekdayShort(d)}<br>${d.getDate()}.${d.getMonth() + 1}`;
     let html = `<div class="availability-grid" style="grid-template-columns:44px repeat(${days.length}, 1fr)"><div class="avail-corner"></div>`;
     for (const d of days) html += `<div class="avail-day-head">${dayHead(d)}</div>`;
     for (let h = 7; h < 22; h++) {
@@ -525,14 +535,17 @@ function attachProposalCardHandlers(m, which) {
     confirmBtn.disabled = true;
     proposalErrorEl.textContent = '';
     try {
+      const body = { slot: selectedSlot, venue: selectedVenue || '' };
+      // Only actually included when that field's row exists — it doesn't
+      // when admin already set it for an admin-created match (see
+      // oneProposalCardHtml above). Sending an explicit ballsPlayer: null
+      // in that case would tell the server to clear admin's setting; simply
+      // omitting the key instead leaves whatever's already on the match.
+      if (document.getElementById(`${idPrefix}-balls-choice-row`)) body.ballsPlayer = proposalBallsPicker.getPicked();
+      if (document.getElementById(`${idPrefix}-court-choice-row`)) body.courtPlayer = proposalCourtPicker.getPicked();
       const updated = await api(`/matches/${matchToken}/respond-proposal`, {
         method: 'POST',
-        body: {
-          slot: selectedSlot,
-          venue: selectedVenue || '',
-          ballsPlayer: proposalBallsPicker.getPicked(),
-          courtPlayer: proposalCourtPicker.getPicked(),
-        },
+        body,
       });
       toast(t('match.timeConfirmed'));
       render(updated);

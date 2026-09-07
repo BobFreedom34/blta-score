@@ -17,6 +17,52 @@ function getPlayer(id) {
   return db.prepare('SELECT * FROM players WHERE id = ?').get(id);
 }
 
+// Which of player1/player2 is proposing a time — "who's proposing" is an
+// optional field on the client (see proposeTimes.whoProposing), but that
+// optionality shouldn't be what decides whether respond-proposal's own
+// "can't confirm the times you proposed yourself" check (further down)
+// and the opponent-only pick rule actually work: a logged-in player is
+// always known server-side regardless of whether they bothered filling in
+// that display field. An explicit 1/2 from the client wins outright
+// (covers admin setting this up, or a player naming the *other* side as
+// proposer); otherwise, if whoever's actually logged in is one of this
+// match's two players, that's the proposer; otherwise genuinely unknown
+// (e.g. an anonymous counter-propose via the share link, or admin/a
+// non-participant creating the match) — stays null, same as before.
+function inferProposedBy(req, explicitValue, player1Id, player2Id) {
+  if (explicitValue === 1 || explicitValue === 2) return explicitValue;
+  const playerId = getPlayerId(req);
+  if (playerId === player1Id) return 1;
+  if (playerId === player2Id) return 2;
+  return null;
+}
+
+// Bell notification for "someone proposed times for this match" (see the
+// notification bell in common.js, merged in GET /player/notifications) —
+// the recipient is always whichever of the two players didn't propose it,
+// so this can only actually fire once proposedBy is known one way or the
+// other (see inferProposedBy above for when that is/isn't the case; a
+// still-null proposedBy — admin set it up, or nobody was logged in for an
+// anonymous counter-propose — has no single "the other player" to notify).
+function notifyProposalReceived(row, proposedBy) {
+  if (proposedBy !== 1 && proposedBy !== 2) return;
+  const recipientId = proposedBy === 1 ? row.player2_id : row.player1_id;
+  const proposerId = proposedBy === 1 ? row.player1_id : row.player2_id;
+  db.prepare('INSERT INTO proposal_notifications (player_id, match_id, kind, other_player_id) VALUES (?, ?, ?, ?)')
+    .run(recipientId, row.id, 'RECEIVED', proposerId);
+}
+
+// Bell notification for "your proposed time was confirmed" — mirrors
+// sendProposalConfirmedEmail's own recipient (matched.proposerPlayerId in
+// respond-proposal below), just for the bell instead of an optional email
+// address. Only fires when the proposer is actually a known player — same
+// reasoning as notifyProposalReceived above.
+function notifyProposalConfirmed(matchId, proposerPlayerId, confirmerPlayerId) {
+  if (!proposerPlayerId) return;
+  db.prepare('INSERT INTO proposal_notifications (player_id, match_id, kind, other_player_id) VALUES (?, ?, ?, ?)')
+    .run(proposerPlayerId, matchId, 'CONFIRMED', confirmerPlayerId || null);
+}
+
 // Emails everyone subscribed to this match/type who hasn't been notified yet.
 async function notifySubscribers(matchId, type, updated) {
   const subs = db.prepare('SELECT * FROM match_notifications WHERE match_id = ? AND type = ? AND sent = 0').all(matchId, type);
@@ -403,6 +449,7 @@ router.post('/', requireLoggedIn, (req, res) => {
   const p2 = resolvePlayer(player2Id, player2Name);
   if (!p1 || !p2) return res.status(400).json({ error: 'Both players are required' });
   if (p1.id === p2.id) return res.status(400).json({ error: 'Players must be different' });
+  if (proposalSlots) proposedBy = inferProposedBy(req, proposedBy, p1.id, p2.id);
 
   const state = engine.initState(format);
   const info = db.prepare(`
@@ -434,6 +481,7 @@ router.post('/', requireLoggedIn, (req, res) => {
   });
 
   const row = db.prepare('SELECT * FROM matches WHERE id = ?').get(info.lastInsertRowid);
+  if (proposalSlots) notifyProposalReceived(row, proposedBy);
   const payload = broadcast(req, row);
   res.status(201).json(payload);
 });
@@ -588,13 +636,14 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
       fields.proposal_notify_email = email;
     }
 
+    let explicitProposedBy;
     if (req.body.proposedBy !== undefined && req.body.proposedBy !== null) {
-      const proposedBy = Number(req.body.proposedBy);
-      if (![1, 2].includes(proposedBy)) {
+      explicitProposedBy = Number(req.body.proposedBy);
+      if (![1, 2].includes(explicitProposedBy)) {
         return res.status(400).json({ error: 'proposedBy must be 1 or 2' });
       }
-      fields.proposed_by = proposedBy;
     }
+    fields.proposed_by = inferProposedBy(req, explicitProposedBy, row.player1_id, row.player2_id);
   }
   if (Object.keys(fields).length === 0) {
     return res.status(400).json({ error: 'No editable fields provided' });
@@ -602,6 +651,10 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
   const setClause = Object.keys(fields).map((k) => `${k} = @${k}`).join(', ');
   db.prepare(`UPDATE matches SET ${setClause}, updated_at = @updated_at WHERE id = @id`)
     .run({ ...fields, updated_at: nowIso(), id: row.id });
+  // Only the "propose times" branch above ever sets proposal_slots — every
+  // other PATCH use (editing location/notes/balls/etc.) leaves this key
+  // absent from fields entirely, so this can't misfire on an unrelated edit.
+  if (fields.proposal_slots) notifyProposalReceived(row, fields.proposed_by);
 
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);
@@ -713,6 +766,11 @@ router.post('/:token/respond-proposal', (req, res) => {
   }
   // A player can only pick from the *other* player's calendar, not confirm
   // their own offer — admin is exempt, same as the login check above.
+  // proposerPlayerId is reliable for this now regardless of whether "who's
+  // proposing" was actually filled in (see inferProposedBy above) — it's
+  // null only when genuinely nobody logged in as either player made this
+  // specific proposal (admin set it up, or an anonymous counter-propose),
+  // in which case there's no "self" to guard against anyway.
   if (!isAdmin(req) && matched.proposerPlayerId && matched.proposerPlayerId === requestingPlayerId) {
     return res.status(403).json({ error: "You can't confirm the times you proposed yourself — wait for the other player to pick one" });
   }
@@ -722,6 +780,7 @@ router.post('/:token/respond-proposal', (req, res) => {
       counter_proposal_slots = NULL, counter_proposal_venues = NULL, counter_proposed_by = NULL, counter_proposal_notify_email = NULL
     WHERE id = ?
   `).run(slot, venue, ballsPlayer, courtPlayer, nowIso(), row.id);
+  notifyProposalConfirmed(row.id, matched.proposerPlayerId, isAdmin(req) ? null : requestingPlayerId);
 
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);
@@ -779,13 +838,19 @@ router.post('/:token/counter-propose', (req, res) => {
     return res.status(400).json({ error: 'Too many venues (max 10)' });
   }
 
-  let proposedBy = null;
+  let proposedBy;
   if (req.body.proposedBy !== undefined && req.body.proposedBy !== null) {
     proposedBy = Number(req.body.proposedBy);
     if (![1, 2].includes(proposedBy)) {
       return res.status(400).json({ error: 'proposedBy must be 1 or 2' });
     }
   }
+  // This route takes no login at all (the share link is the only access
+  // control — see its own comment above), but if whoever's submitting the
+  // counter-proposal DOES happen to have a player session, and it's one of
+  // this match's own two players, that's worth using — same reasoning as
+  // inferProposedBy's own doc comment.
+  proposedBy = inferProposedBy(req, proposedBy, row.player1_id, row.player2_id);
   let proposalNotifyEmail = null;
   if (typeof req.body.proposalNotifyEmail === 'string' && req.body.proposalNotifyEmail.trim()) {
     const email = req.body.proposalNotifyEmail.trim().toLowerCase();
@@ -802,6 +867,7 @@ router.post('/:token/counter-propose', (req, res) => {
     db.prepare('UPDATE matches SET proposal_slots = ?, proposal_venues = ?, proposed_by = ?, proposal_notify_email = ?, updated_at = ? WHERE id = ?')
       .run(JSON.stringify(proposalSlots), JSON.stringify(trimmedVenues), proposedBy, proposalNotifyEmail, nowIso(), row.id);
   }
+  notifyProposalReceived(row, proposedBy);
 
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);
@@ -868,13 +934,14 @@ router.patch('/:token/proposal', requireLoggedIn, (req, res) => {
     return res.status(400).json({ error: 'Too many venues (max 10)' });
   }
 
-  let proposedBy = null;
+  let proposedBy;
   if (req.body.proposedBy !== undefined && req.body.proposedBy !== null) {
     proposedBy = Number(req.body.proposedBy);
     if (![1, 2].includes(proposedBy)) {
       return res.status(400).json({ error: 'proposedBy must be 1 or 2' });
     }
   }
+  proposedBy = inferProposedBy(req, proposedBy, row.player1_id, row.player2_id);
   let proposalNotifyEmail = null;
   if (typeof req.body.proposalNotifyEmail === 'string' && req.body.proposalNotifyEmail.trim()) {
     const email = req.body.proposalNotifyEmail.trim().toLowerCase();

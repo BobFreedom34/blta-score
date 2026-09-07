@@ -1,0 +1,217 @@
+<!--
+  blta.sk prelink script — rewrites each schedule row's link from the
+  plain WordPress event page to the matching score.blta.sk live match,
+  and each player name to their score.blta.sk profile.
+
+  This file lives ONLY here for version control — it is not loaded by
+  any app. The live copy is pasted into a Custom HTML block on blta.sk
+  (see the sync-match-league skill in blta-score/.claude/skills/, which
+  references it). To deploy a change, copy this file's contents and
+  replace that Custom HTML block's contents on blta.sk directly.
+
+  2026-09-07: added a fallback for disambiguating a rematch when the
+  WordPress event's own date is a placeholder (see linkEvents below) —
+  the import sheet writes a fake 31.12.2026 date into every
+  not-yet-scheduled match without also marking it "tbd", so SportsPress
+  doesn't flag it as TBD and the old code trusted that fake date, found
+  no real candidate within 2 days of it, and gave up rather than falling
+  back to the one still-unscheduled score.blta.sk match for that pair.
+-->
+<script>
+(function () {
+  var PLAYERS_API = 'https://score.blta.sk/api/players';
+  var MATCHES_API = 'https://score.blta.sk/api/matches';
+  var PROFILE_BASE = 'https://score.blta.sk/player/';
+  var MATCH_BASE = 'https://score.blta.sk/match/';
+  var WP_PLAYER_PREFIX = /^https?:\/\/(www\.)?blta\.sk\/player\//;
+  var WP_EVENT_PREFIX = /^https?:\/\/(www\.)?blta\.sk\/event\//;
+  var CELL_SELECTOR = 'td.data-home, td.data-away';
+  var ROW_SELECTOR = 'tr[itemtype="http://schema.org/SportsEvent"]';
+  var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, A: 1, TEXTAREA: 1, INPUT: 1 };
+  // A rematch's date has to land within this window of the SportPress
+  // event's own date to be trusted as the right one, so a clearly-wrong
+  // pick is skipped rather than linked with false confidence.
+  var DATE_WINDOW_MS = 2 * 24 * 3600 * 1000;
+
+  function normalize(name) {
+    // Strip apostrophes entirely (not just the straight one) so a WordPress
+    // "smart quote" like O'Neil still matches a plain O'Neil typed elsewhere.
+    return name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/['‘’]/g, '').replace(/\s+/g, ' ').trim();
+  }
+  function pairKey(a, b) {
+    return [normalize(a), normalize(b)].sort().join('|');
+  }
+  function retarget(link, href) {
+    link.href = href;
+    // Every prelinked player/match link should open in a new tab —
+    // rel="noopener" is the standard safe pairing with target="_blank" (it
+    // keeps that new tab from getting a handle back to this window).
+    link.target = '_blank';
+    link.rel = 'noopener';
+  }
+
+  function linkPlayers(players) {
+    var byName = {};
+    players.forEach(function (p) {
+      byName[normalize(p.name)] = p.slug || p.id;
+    });
+
+    var wpLinks = [].slice.call(document.querySelectorAll('a[href]')).filter(function (a) {
+      return WP_PLAYER_PREFIX.test(a.href);
+    });
+
+    // Pass 1: resolve each link by its own visible text, or (for a
+    // photo-only thumbnail link with no text) the alt text of an <img>
+    // inside it.
+    var hrefToPath = {};
+    wpLinks.forEach(function (link) {
+      var text = link.textContent.replace(/\s+/g, ' ').trim();
+      if (!text) {
+        var img = link.querySelector('img[alt]');
+        if (img) text = img.getAttribute('alt').trim();
+      }
+      var path = byName[normalize(text)];
+      if (path) hrefToPath[link.href] = path;
+    });
+
+    // Pass 2: apply the resolved path to every link that shares that exact
+    // original blta.sk URL — this is what catches a photo thumbnail whose
+    // own link has no matchable text but links to the same player page as
+    // an adjacent caption resolved in pass 1.
+    wpLinks.forEach(function (link) {
+      var path = hrefToPath[link.href];
+      if (path) retarget(link, PROFILE_BASE + path);
+    });
+
+    // Match-result cells that have no link at all yet.
+    document.querySelectorAll(CELL_SELECTOR).forEach(function (cell) {
+      if (cell.querySelector('a')) return;
+      var text = cell.textContent.replace(/\s+/g, ' ').trim();
+      var path = byName[normalize(text)];
+      if (!path) return;
+      var link = document.createElement('a');
+      retarget(link, PROFILE_BASE + path);
+      while (cell.firstChild) link.appendChild(cell.firstChild);
+      cell.appendChild(link);
+    });
+
+    // Plain hand-typed text elsewhere (e.g. a "Winners" page listing names
+    // in a <strong> tag, no table/link involved) — only linked when an
+    // entire text node is exactly a player's name and it isn't already
+    // inside a link (checked via closest('a'), not just the immediate
+    // parent, so this never creates a nested <a>).
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (node) {
+        if (!node.textContent.trim()) return NodeFilter.FILTER_REJECT;
+        var el = node.parentElement;
+        if (!el || SKIP_TAGS[el.tagName] || el.closest('a')) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    var toLink = [];
+    var node;
+    while ((node = walker.nextNode())) {
+      var text = node.textContent.replace(/\s+/g, ' ').trim();
+      var path = byName[normalize(text)];
+      if (path) toLink.push([node, path]);
+    }
+    toLink.forEach(function (pair) {
+      var n = pair[0];
+      var path = pair[1];
+      var link = document.createElement('a');
+      retarget(link, PROFILE_BASE + path);
+      link.textContent = n.textContent;
+      n.parentNode.replaceChild(link, n);
+    });
+  }
+
+  function linkEvents(matches) {
+    var byPair = {};
+    matches.forEach(function (m) {
+      var key = pairKey(m.player1.name, m.player2.name);
+      (byPair[key] = byPair[key] || []).push({ token: m.token, scheduledAt: m.scheduledAt });
+    });
+
+    document.querySelectorAll(ROW_SELECTOR).forEach(function (row) {
+      var homeEl = row.querySelector('.data-home');
+      var awayEl = row.querySelector('.data-away');
+      if (!homeEl || !awayEl) return;
+      var p1 = homeEl.textContent.replace(/\s+/g, ' ').trim();
+      var p2 = awayEl.textContent.replace(/\s+/g, ' ').trim();
+      var candidates = byPair[pairKey(p1, p2)];
+      if (!candidates || !candidates.length) return;
+
+      var token;
+      if (candidates.length === 1) {
+        token = candidates[0].token;
+      } else {
+        // This pair has met/is scheduled more than once — use the event's
+        // own date to pick the right match instead of guessing.
+        //
+        // SportPress always writes SOME value into startDate's content
+        // attribute, even for a match whose time is still TBD — it's the
+        // moment the page happened to render, not a real date, so it can't
+        // be trusted at all in that case. The reliable signal is the "tbd"
+        // class SportPress itself puts on the time cell — checked instead
+        // of trusting the attribute's mere presence.
+        var dateEl = row.querySelector('[itemprop="startDate"]');
+        var timeCell = row.querySelector('.data-time');
+        var isTbd = !!(timeCell && timeCell.classList.contains('tbd'));
+        var wpDateStr = (dateEl && !isTbd) ? dateEl.getAttribute('content') : null;
+        var wpDate = wpDateStr ? new Date(wpDateStr) : null;
+
+        var best = null;
+        var bestDiff = Infinity;
+        if (wpDate) {
+          candidates.forEach(function (c) {
+            if (!c.scheduledAt) return;
+            var diff = Math.abs(new Date(c.scheduledAt) - wpDate);
+            if (diff < bestDiff) { bestDiff = diff; best = c; }
+          });
+        }
+
+        if (best && bestDiff <= DATE_WINDOW_MS) {
+          token = best.token;
+        } else {
+          // No trustworthy date match — either blta.sk shows "TBD" for
+          // real, or (the import sheet's own placeholder-date case) it
+          // shows some date but nothing on score.blta.sk lands anywhere
+          // near it. Either way, fall back to the one still-unscheduled
+          // score.blta.sk candidate for this pair, if there's exactly
+          // one — that's exactly what an as-yet-unscheduled blta.sk entry
+          // should point at. With zero or several such candidates there's
+          // genuinely no way to tell them apart, so this still skips
+          // rather than guessing wrong.
+          var undated = candidates.filter(function (c) { return !c.scheduledAt; });
+          if (undated.length === 1) {
+            token = undated[0].token;
+          } else {
+            return;
+          }
+        }
+      }
+
+      row.querySelectorAll('a[href]').forEach(function (a) {
+        if (!WP_EVENT_PREFIX.test(a.href)) return;
+        retarget(a, MATCH_BASE + token);
+      });
+    });
+  }
+
+  function run() {
+    Promise.all([
+      fetch(PLAYERS_API).then(function (r) { return r.json(); }),
+      fetch(MATCHES_API).then(function (r) { return r.json(); }),
+    ]).then(function (results) {
+      linkPlayers(results[0]);
+      linkEvents(results[1]);
+    }).catch(function () { /* fail silently — page still works without links */ });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', run);
+  } else {
+    run();
+  }
+})();
+</script>

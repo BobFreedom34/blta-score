@@ -439,7 +439,7 @@ function matchesPerMonthHtml(matches, idSuffix, containerWidth) {
   const months = [];
   for (let i = 11; i >= 0; i -= 1) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({ year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString(undefined, { month: 'short' }), count: 0 });
+    months.push({ year: d.getFullYear(), month: d.getMonth(), label: monthShort(d), count: 0 });
   }
   matches.forEach((m) => {
     const d = new Date(m.scheduledAt || m.startTime || m.createdAt);

@@ -333,6 +333,7 @@ const TRANSLATIONS = {
 
     'common.dateTbd': 'Dátum TBD',
     'common.weekdaysShort': 'Ne,Po,Ut,St,Št,Pi,So',
+    'common.monthsShort': 'jan,feb,mar,apr,máj,jún,júl,aug,sep,okt,nov,dec',
     'common.endReason.WALKOVER': 'Kontumácia',
     'common.endReason.RETIREMENT': 'Skreč',
     'common.endReason.UNFINISHED': 'Ponechané nedokončené',
@@ -431,8 +432,11 @@ const TRANSLATIONS = {
     'notif.congratsTitle': '🎉 Gratulujeme!',
     'notif.congratsIntro': 'Práve si získal nový odznak',
     'notif.playRequestTitle': '👋 {name} chce s tebou hrať',
+    'notif.proposalReceivedTitle': '📅 {name} ti navrhol termíny',
+    'notif.proposalConfirmedTitle': '✅ {name} potvrdil termín zápasu',
 
     'common.ok': 'OK',
+    'common.someone': 'Niekto',
 
     'page.matchTitle': 'Tennis SCORE — Zápas',
     'match.mtbAbbrev': 'MTB',
@@ -855,6 +859,7 @@ const TRANSLATIONS = {
 
     'common.dateTbd': 'Date TBD',
     'common.weekdaysShort': 'Sun,Mon,Tue,Wed,Thu,Fri,Sat',
+    'common.monthsShort': 'Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec',
     'common.endReason.WALKOVER': 'Walkover',
     'common.endReason.RETIREMENT': 'Retirement',
     'common.endReason.UNFINISHED': 'Left unfinished',
@@ -953,8 +958,11 @@ const TRANSLATIONS = {
     'notif.congratsTitle': '🎉 Congratulations!',
     'notif.congratsIntro': "You've just earned a new badge",
     'notif.playRequestTitle': '👋 {name} wants to play with you',
+    'notif.proposalReceivedTitle': '📅 {name} proposed times to you',
+    'notif.proposalConfirmedTitle': '✅ {name} confirmed a time',
 
     'common.ok': 'OK',
+    'common.someone': 'Someone',
 
     'page.matchTitle': 'Tennis SCORE — Match',
     'match.mtbAbbrev': 'MTB',

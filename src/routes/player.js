@@ -28,16 +28,18 @@ function sessionInfo({ isPlayerFlag, player }) {
   };
 }
 
-// Three independent sources feed the one notification bell (see
+// Four independent sources feed the one notification bell (see
 // GET /notifications below) — badges (player_badges), chat messages
-// (chat_notifications), and looking-to-play requests (play_request_notifications).
-// Summed here so both the session payload and every mark-read response can
-// report one combined count without duplicating these queries at each call site.
+// (chat_notifications), looking-to-play requests (play_request_notifications),
+// and match proposals (proposal_notifications). Summed here so both the
+// session payload and every mark-read response can report one combined
+// count without duplicating these queries at each call site.
 function countUnreadNotifications(playerId) {
   const badges = db.prepare('SELECT COUNT(*) AS c FROM player_badges WHERE player_id = ? AND seen = 0').get(playerId).c;
   const chats = db.prepare('SELECT COUNT(*) AS c FROM chat_notifications WHERE player_id = ? AND seen = 0').get(playerId).c;
   const playRequests = db.prepare('SELECT COUNT(*) AS c FROM play_request_notifications WHERE player_id = ? AND seen = 0').get(playerId).c;
-  return badges + chats + playRequests;
+  const proposals = db.prepare('SELECT COUNT(*) AS c FROM proposal_notifications WHERE player_id = ? AND seen = 0').get(playerId).c;
+  return badges + chats + playRequests + proposals;
 }
 
 router.get('/session', (req, res) => {
@@ -136,7 +138,29 @@ router.get('/notifications', (req, res) => {
     },
   }));
 
-  const merged = [...badgeRows, ...chatRows, ...playRequestRows].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const proposalRows = db.prepare(`
+    SELECT pn.id, pn.seen, pn.created_at, pn.kind,
+           m.share_token AS match_token, m.category,
+           op.name AS other_player_name, op.slug AS other_player_slug
+    FROM proposal_notifications pn
+    JOIN matches m ON m.id = pn.match_id
+    LEFT JOIN players op ON op.id = pn.other_player_id
+    WHERE pn.player_id = ?
+  `).all(playerId).map((r) => ({
+    type: 'PROPOSAL',
+    id: r.id,
+    seen: !!r.seen,
+    createdAt: r.created_at,
+    proposal: {
+      kind: r.kind,
+      matchToken: r.match_token,
+      category: r.category,
+      otherPlayerName: r.other_player_name,
+      otherPlayerSlug: r.other_player_slug,
+    },
+  }));
+
+  const merged = [...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json(merged);
 });
 
@@ -154,6 +178,7 @@ router.post('/notifications/:type/:id/read', (req, res) => {
   const table = type === 'badge' ? 'player_badges'
     : type === 'chat' ? 'chat_notifications'
     : type === 'play_request' ? 'play_request_notifications'
+    : type === 'proposal' ? 'proposal_notifications'
     : null;
   if (!table) return res.status(400).json({ error: 'Invalid notification type' });
   const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);

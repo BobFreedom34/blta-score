@@ -449,7 +449,7 @@ function createAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
   }
 
   function renderWeekTabs() {
-    const fmt = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    const fmt = (d) => `${d.getDate()} ${monthShort(d)}`;
     const label = (days) => `${fmt(days[0])} – ${fmt(days[days.length - 1])}`;
     const weeks = [proposalDays.slice(0, 7), proposalDays.slice(7, 14)];
     document.getElementById(weekTabsId).innerHTML = weeks.map((days, i) => `
@@ -466,7 +466,7 @@ function createAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
 
   function renderGrid() {
     const days = proposalDays.slice(activeWeek * 7, activeWeek * 7 + 7);
-    const dayHead = (d) => `${d.toLocaleDateString(undefined, { weekday: 'short' })}<br>${d.toLocaleDateString(undefined, { day: 'numeric', month: 'numeric' })}`;
+    const dayHead = (d) => `${weekdayShort(d)}<br>${d.getDate()}.${d.getMonth() + 1}`;
     let html = '<div class="availability-grid"><div class="avail-corner"></div>';
     for (const d of days) html += `<div class="avail-day-head">${dayHead(d)}</div>`;
     for (let h = START_HOUR; h < END_HOUR; h++) {
@@ -1259,25 +1259,38 @@ function flagImgHtml(nationality, cssClass) {
   return `<img class="${cssClass}" src="https://flagcdn.com/${code}.svg" alt="${code.toUpperCase()}">`;
 }
 
+// Shared building blocks for every date/time label in the app — driven by
+// the site's own SK/EN toggle (t()), never the visitor's browser/OS locale
+// (toLocaleDateString(undefined, ...) and friends silently follow THAT
+// instead, which is how a calendar grid ended up showing English weekday
+// names to a visitor who has this site itself set to Slovak). Numeric
+// punctuation (d.m., 24h HH:MM) stays the same regardless of language,
+// same "reads the same for everyone" spirit fmtDateShort below already
+// had — only the weekday/month text actually switches with the toggle.
+function weekdayShort(d) {
+  return t('common.weekdaysShort').split(',')[d.getDay()];
+}
+function monthShort(d) {
+  return t('common.monthsShort').split(',')[d.getMonth()];
+}
+function hhmm(d) {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 // Fixed Ddd d.m.yyyy, HH:MM format (not locale-dependent) so it reads the
 // same for every visitor regardless of their browser's locale settings.
 function fmtDateShort(iso) {
   if (!iso) return t('common.dateTbd');
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  const weekday = t('common.weekdaysShort').split(',')[d.getDay()];
-  return `${weekday} ${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}, ${hh}:${mm}`;
+  return `${weekdayShort(d)} ${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}, ${hhmm(d)}`;
 }
 
 function fmtDateLong(iso) {
   if (!iso) return t('common.dateTbd');
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
-    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
-  });
+  return `${weekdayShort(d)} ${String(d.getDate()).padStart(2, '0')}. ${monthShort(d)} ${d.getFullYear()}, ${hhmm(d)}`;
 }
 
 function toast(message) {
@@ -1924,15 +1937,17 @@ document.querySelectorAll('.player-login-link').forEach((el) => {
 // Two unrelated things land here: a player earning a badge server-side
 // the instant a match finishes (see badgeEngine.syncPlayerBadges),
 // someone posting in a match's chat that this player is in (see
-// POST /:token/messages in routes/matches.js), and someone picking a time
-// on this player's looking-to-play post (see POST /availability/:id/join
-// in routes/availability.js) — this is what surfaces all three as one
-// small bell in the topbar. Fed by GET /player/session's
-// unreadNotificationCount (kept current on every page load via
-// refreshPlayerAuth above, exactly like the rest of the player session)
-// and, once opened, the merged list from GET /player/notifications, each
-// item carrying a `type` ('BADGE', 'CHAT_MESSAGE', or 'PLAY_REQUEST') this
-// branches on to render and handle it. Still named badge-* throughout below (bell/panel/
+// POST /:token/messages in routes/matches.js), someone picking a time on
+// this player's looking-to-play post (see POST /availability/:id/join in
+// routes/availability.js), and someone proposing/confirming times on a
+// match of theirs (see notifyProposalReceived/notifyProposalConfirmed in
+// routes/matches.js) — this is what surfaces all of these as one small
+// bell in the topbar. Fed by GET /player/session's unreadNotificationCount
+// (kept current on every page load via refreshPlayerAuth above, exactly
+// like the rest of the player session) and, once opened, the merged list
+// from GET /player/notifications, each item carrying a `type` ('BADGE',
+// 'CHAT_MESSAGE', 'PLAY_REQUEST', or 'PROPOSAL') this branches on to
+// render and handle it. Still named badge-* throughout below (bell/panel/
 // item CSS classes included) since the badge was what this started as —
 // not worth a sitewide rename now that it's grown a second use. All of it
 // — the bell, its dropdown, and the badge "Congratulations" modal — is
@@ -2087,10 +2102,15 @@ function renderBadgeNotifList() {
       icon = '💬';
       title = t('notif.chatTitle', { author: escapeHtml(n.chat.author) });
       subtitle = escapeHtml(truncateForNotif(n.chat.body, 80));
-    } else { // PLAY_REQUEST
+    } else if (n.type === 'PLAY_REQUEST') {
       icon = '👋';
       title = t('notif.playRequestTitle', { name: escapeHtml(n.playRequest.joinerName) });
       subtitle = fmtDateShort(n.playRequest.slot);
+    } else { // PROPOSAL
+      const name = escapeHtml(n.proposal.otherPlayerName || t('common.someone'));
+      icon = n.proposal.kind === 'CONFIRMED' ? '✅' : '📅';
+      title = t(n.proposal.kind === 'CONFIRMED' ? 'notif.proposalConfirmedTitle' : 'notif.proposalReceivedTitle', { name });
+      subtitle = fmtDateShort(n.createdAt);
     }
     return `
     <button type="button" class="badge-notif-item${n.seen ? '' : ' unread'}" data-notif-type="${n.type}" data-notif-id="${n.id}">
@@ -2146,12 +2166,16 @@ document.addEventListener('click', async (e) => {
     const dot = item.querySelector('.badge-notif-dot');
     if (dot) dot.remove();
     try {
-      const urlType = notif.type === 'BADGE' ? 'badge' : notif.type === 'CHAT_MESSAGE' ? 'chat' : 'play_request';
+      const urlType = notif.type === 'BADGE' ? 'badge'
+        : notif.type === 'CHAT_MESSAGE' ? 'chat'
+        : notif.type === 'PLAY_REQUEST' ? 'play_request'
+        : 'proposal';
       const res = await api(`/player/notifications/${urlType}/${id}/read`, { method: 'POST' });
       updateBadgeBellUI(res.unreadNotificationCount);
     } catch { /* worst case the bubble count is stale until the next page load */ }
   }
   if (notif.type === 'CHAT_MESSAGE') window.location.href = `/match/${notif.chat.matchToken}`;
+  if (notif.type === 'PROPOSAL') window.location.href = `/match/${notif.proposal.matchToken}`;
   if (notif.type === 'PLAY_REQUEST') window.location.href = '/looking-to-play';
 });
 
