@@ -1124,7 +1124,12 @@ function openCounterProposeModal(m, { editing = false } = {}) {
     : null;
   counterProposerPicker.reset(forcedProposer != null ? forcedProposer : (editing ? (m.counterProposedBy || null) : null), { lock: forcedProposer != null });
   document.getElementById('counter-proposer-optional-hint').style.display = forcedProposer != null ? 'none' : '';
-  document.getElementById('counter-notify-email').value = '';
+  // Prefilled from the proposer's own profile on a brand-new counter-offer
+  // (same condition as openProposeTimesModal in common.js) — left blank
+  // when editing an existing one instead, since the server can't tell
+  // "still blank on purpose" from "never had an email" and there's no way
+  // to read back what's already stored to show it here.
+  document.getElementById('counter-notify-email').value = (forcedProposer != null && !editing) ? (currentPlayerEmail || '') : '';
   document.getElementById('counter-propose-error').textContent = '';
   document.getElementById('counter-propose-modal-title').textContent = editing ? t('match.editYourProposedTimes') : t('match.proposeOwnTimesInstead');
   document.getElementById('counter-propose-modal-desc').textContent = editing

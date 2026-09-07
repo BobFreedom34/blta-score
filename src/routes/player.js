@@ -44,7 +44,7 @@ function countUnreadNotifications(playerId) {
 
 router.get('/session', (req, res) => {
   const playerId = auth.getPlayerId(req);
-  const player = playerId ? db.prepare('SELECT id, name, slug, login_pin FROM players WHERE id = ?').get(playerId) : null;
+  const player = playerId ? db.prepare('SELECT id, name, slug, login_pin, email FROM players WHERE id = ?').get(playerId) : null;
   // Cheap enough to compute on every page load (two indexed COUNTs) — lets
   // the nav bell's unread bubble (see common.js) stay in sync without its
   // own separate poll. 0 for a logged-out visitor or an admin with no
@@ -62,6 +62,11 @@ router.get('/session', (req, res) => {
     // away from it — the very next page re-opens it, forced.
     needsPinSetup: !!(player && !player.login_pin),
     unreadNotificationCount,
+    // The player's own email, for prefilling "email me when someone
+    // confirms a time" on the propose-times modal (see common.js) — safe
+    // to send back here since this is always the logged-in player reading
+    // their own session, never someone else's.
+    playerEmail: player ? player.email : null,
   });
 });
 

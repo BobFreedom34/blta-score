@@ -641,7 +641,10 @@ function openProposeTimesModal(token, p1Name, p2Name, p1Id, p2Id, onSuccess) {
     : null;
   proposeProposerPicker.reset(forcedProposer, { lock: forcedProposer != null });
   document.getElementById('modal-proposer-optional-hint').style.display = forcedProposer != null ? 'none' : '';
-  document.getElementById('modal-notify-email').value = '';
+  // Prefilled from the proposer's own profile when they have an email on
+  // file — same "we already know who's proposing" condition as the picker
+  // above, so this never guesses whose email to fill in.
+  document.getElementById('modal-notify-email').value = forcedProposer != null ? (currentPlayerEmail || '') : '';
   document.getElementById('propose-times-error').textContent = '';
   document.getElementById('propose-times-modal').style.display = 'flex';
 }
@@ -1404,6 +1407,12 @@ let currentPlayerId = null;
 // /player/:id still resolves without a slug, but the slug is what every
 // other profile link on the site already uses).
 let currentPlayerSlug = null;
+// Only meaningful alongside currentPlayerId — used to prefill "email me
+// when someone confirms a time" on the propose-times/counter-propose
+// modals (see openProposeTimesModal below and openCounterProposeModal in
+// match.js) whenever the player already has one on file, rather than
+// making them type it in again for every proposal.
+let currentPlayerEmail = null;
 
 function updatePlayerNavLinks() {
   document.querySelectorAll('.player-login-link').forEach((el) => {
@@ -1462,6 +1471,7 @@ async function refreshPlayerAuth() {
     currentPlayerName = res.playerName || null;
     currentPlayerId = res.playerId || null;
     currentPlayerSlug = res.playerSlug || null;
+    currentPlayerEmail = res.playerEmail || null;
     needsPinSetup = !!res.needsPinSetup;
     unreadNotificationCount = res.unreadNotificationCount || 0;
   } catch {
@@ -1469,6 +1479,7 @@ async function refreshPlayerAuth() {
     currentPlayerName = null;
     currentPlayerId = null;
     currentPlayerSlug = null;
+    currentPlayerEmail = null;
   }
   updatePlayerNavLinks();
   updateBadgeBellUI(unreadNotificationCount);
@@ -1924,6 +1935,7 @@ document.querySelectorAll('.player-login-link').forEach((el) => {
       currentPlayerName = null;
       currentPlayerId = null;
       currentPlayerSlug = null;
+      currentPlayerEmail = null;
       updatePlayerNavLinks();
       window.dispatchEvent(new Event('blta:auth-changed'));
       toast('Logged out');
