@@ -2119,7 +2119,16 @@ function renderBadgeNotifList() {
       title = t('notif.playRequestTitle', { name: escapeHtml(n.playRequest.joinerName) });
       subtitle = fmtDateShort(n.playRequest.slot);
     } else { // PROPOSAL
-      const name = escapeHtml(n.proposal.otherPlayerName || t('common.someone'));
+      // A missing otherPlayerName means something different depending on
+      // kind: for RECEIVED it's genuinely unknown (see notifyProposalReceived
+      // in routes/matches.js — only fires once a proposer is known, so this
+      // shouldn't actually happen, but 'someone' is a safe fallback). For
+      // CONFIRMED it specifically means admin confirmed it rather than the
+      // other match player (the proposer can't confirm their own offer, and
+      // only admin or that other player can respond at all — see
+      // respond-proposal — so a null confirmer there is always admin).
+      const fallbackName = n.proposal.kind === 'CONFIRMED' ? t('common.admin') : t('common.someone');
+      const name = escapeHtml(n.proposal.otherPlayerName || fallbackName);
       icon = n.proposal.kind === 'CONFIRMED' ? '✅' : '📅';
       title = t(n.proposal.kind === 'CONFIRMED' ? 'notif.proposalConfirmedTitle' : 'notif.proposalReceivedTitle', { name });
       subtitle = fmtDateShort(n.createdAt);

@@ -25,17 +25,20 @@ function getPlayer(id) {
 // "can't confirm the times you proposed yourself" check (further down)
 // and the opponent-only pick rule actually work: a logged-in player is
 // always known server-side regardless of whether they bothered filling in
-// that display field. An explicit 1/2 from the client wins outright
-// (covers admin setting this up, or a player naming the *other* side as
-// proposer); otherwise, if whoever's actually logged in is one of this
-// match's two players, that's the proposer; otherwise genuinely unknown
-// (e.g. an anonymous counter-propose via the share link, or admin/a
-// non-participant creating the match) — stays null, same as before.
+// that display field. Session identity wins outright whenever whoever's
+// actually logged in is one of this match's two players — deliberately
+// checked BEFORE the client's own explicit value, so a real player can't
+// defeat the self-block by simply claiming (via a direct API call) to be
+// the other side. The explicit 1/2 is only trusted as a fallback, which in
+// practice only ever fires for admin — setting this up on a match neither
+// player is logged in for. Otherwise genuinely unknown (admin/a
+// non-participant creating the match without naming either side) — stays
+// null, same as before.
 function inferProposedBy(req, explicitValue, player1Id, player2Id) {
-  if (explicitValue === 1 || explicitValue === 2) return explicitValue;
   const playerId = getPlayerId(req);
   if (playerId === player1Id) return 1;
   if (playerId === player2Id) return 2;
+  if (explicitValue === 1 || explicitValue === 2) return explicitValue;
   return null;
 }
 
@@ -819,22 +822,32 @@ router.post('/:token/respond-proposal', (req, res) => {
   }
 });
 
-// Public "counter-propose" endpoint — instead of picking one of the
-// offered slots, the other player submits their own times/venues as a
-// second, independent proposal. Same trust model as respond-proposal above
-// (the link is the only access control, deliberately no
-// requireLoggedIn/checkMatchAccess). Writes to the counter_proposal_*
-// columns rather than overwriting proposal_slots — both calendars then
-// show up on the match page side by side (see proposalCardHtml in
-// match.js), and either one can still be confirmed via
+// Instead of picking one of the offered slots, the other player submits
+// their own times/venues as a second, independent proposal. Writes to the
+// counter_proposal_* columns rather than overwriting proposal_slots — both
+// calendars then show up on the match page side by side (see
+// proposalCardHtml in match.js), and either one can still be confirmed via
 // POST /:token/respond-proposal. Calling this again just re-submits the
 // counter-proposal (its own "Edit" reaches this same route). Falls back to
-// writing the first proposal instead if there somehow isn't one yet — the
-// UI never reaches this route without one, but a direct API call shouldn't
-// 400 for it.
+// writing the first proposal instead if there somehow isn't one yet.
+//
+// Requires being logged in as one of this match's two players (or admin) —
+// same gate as respond-proposal below, and for the same reason: this used
+// to be fully public (link-only access, no login), but that let a player
+// submit a proposal anonymously with nobody recorded as its proposer, which
+// silently defeated the "can't confirm your own proposed times" rule (see
+// inferProposedBy above) — an unattributed proposal has no "self" to block.
+// Since actually confirming a time already requires this same login, there
+// was never a genuinely anonymous end-to-end flow to preserve here.
 router.post('/:token/counter-propose', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
+  const requestingPlayerId = getPlayerId(req);
+  if (!isAdmin(req)) {
+    if (!requestingPlayerId || (requestingPlayerId !== row.player1_id && requestingPlayerId !== row.player2_id)) {
+      return res.status(403).json({ error: 'Log in as one of the two players in this match to propose times' });
+    }
+  }
   if (row.scheduled_at) {
     return res.status(409).json({ error: 'This match has already been scheduled' });
   }

@@ -743,12 +743,14 @@ function attachHandlers(m) {
 
   // "Propose your own times instead" — only present on the primary card
   // while there's no counter-proposal yet (see oneProposalCardHtml).
-  // Deliberately NOT behind requirePlayerAuth — same public, share-link
-  // trust model as viewing the card, unlike actually confirming a slot
-  // (see attachProposalCardHandlers), which does require being one of the
-  // two match players.
+  // Requires login (see requirePlayerAuth), same as the "Edit" link above —
+  // used to be open to anyone with the link, but that let a proposal go in
+  // with nobody recorded as its proposer, which silently defeated the
+  // "can't confirm your own proposed times" rule server-side (see
+  // inferProposedBy in routes/matches.js). Confirming a slot already
+  // requires this same login, so nothing genuinely anonymous was lost.
   const counterProposeLink = document.getElementById('counter-propose-link');
-  if (counterProposeLink) counterProposeLink.addEventListener('click', () => openCounterProposeModal(m));
+  if (counterProposeLink) counterProposeLink.addEventListener('click', () => requirePlayerAuth(() => openCounterProposeModal(m)));
 
   root.querySelectorAll('.btn-giant, .btn-minus').forEach((btn) => {
     btn.addEventListener('click', () => requirePlayerAuth(async () => {
@@ -1096,14 +1098,15 @@ document.getElementById('edit-proposal-form').addEventListener('submit', async (
 // availability as a second, independent proposal rather than picking from
 // what's offered (see POST /:token/counter-propose — it no longer
 // replaces the first proposal, both stand side by side, see
-// oneProposalCardHtml). Deliberately public (see attachProposalCardHandlers
-// above) — no login needed to submit a counter-proposal, same share-link
-// trust model as viewing the card (unlike actually confirming a slot,
-// which does require being one of the two match players). Reused for
-// editing an existing counter-proposal too (its own "Edit" link reaches
-// here with `editing: true`) — same form, pre-filled instead of starting
-// empty, same POST route since it already just overwrites whatever
-// counter-proposal is there.
+// oneProposalCardHtml). Requires login as one of the two match players (see
+// requirePlayerAuth at the counter-propose-link handler above), so
+// forcedProposer below is always resolvable in practice — the server
+// relies on that same session identity to know who's proposing regardless
+// of what this optional field says (see inferProposedBy in
+// routes/matches.js). Reused for editing an existing counter-proposal too
+// (its own "Edit" link reaches here with `editing: true`) — same form,
+// pre-filled instead of starting empty, same POST route since it already
+// just overwrites whatever counter-proposal is there.
 const counterAvailabilityPicker = createAvailabilityPicker({ weekTabsId: 'counter-week-tabs', gridWrapId: 'counter-availability-grid-wrap', slotCountId: 'counter-slot-count' });
 const counterVenuePicker = createVenueChipPicker({ listId: 'counter-venue-chip-list', inputId: 'counter-venue-input', addBtnId: 'counter-venue-add-btn' });
 const counterProposerPicker = createStaticPlayerChoicePicker('counter-proposer-choice-row');
@@ -1115,9 +1118,9 @@ function openCounterProposeModal(m, { editing = false } = {}) {
   counterVenuePicker.clear();
   if (editing) counterVenuePicker.setVenues(m.counterProposalVenues || []);
   counterProposerPicker.setNames(m.player1.name, m.player2.name);
-  // Deliberately public (see the comment above) so most visitors here
-  // aren't logged in as anyone in particular — but if this happens to be
-  // one of the two match players, lock the answer to them same as the
+  // Login is required to reach this modal now (see the comment above), so
+  // this resolves in practice — kept as a fallback (unlocked, optional)
+  // for the edge case of a logged-in admin opening it, same pattern as the
   // other proposer pickers.
   const forcedProposer = (playerAuthed && currentPlayerId)
     ? (currentPlayerId === m.player1.id ? 1 : currentPlayerId === m.player2.id ? 2 : null)

@@ -437,6 +437,7 @@ const TRANSLATIONS = {
 
     'common.ok': 'OK',
     'common.someone': 'Niekto',
+    'common.admin': 'Admin',
 
     'page.matchTitle': 'Tennis SCORE — Zápas',
     'match.mtbAbbrev': 'MTB',
@@ -963,6 +964,7 @@ const TRANSLATIONS = {
 
     'common.ok': 'OK',
     'common.someone': 'Someone',
+    'common.admin': 'Admin',
 
     'page.matchTitle': 'Tennis SCORE — Match',
     'match.mtbAbbrev': 'MTB',

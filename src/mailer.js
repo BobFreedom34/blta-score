@@ -30,7 +30,18 @@ function matchLink(match) {
   return `${process.env.PUBLIC_URL || ''}/match/${match.share_token}`;
 }
 
-const END_REASON_LABELS = { WALKOVER: 'Walkover', RETIREMENT: 'Retirement', UNFINISHED: 'Left unfinished' };
+// Only FRIENDLY has its own Slovak label site-wide (see category.FRIENDLY in
+// i18n.js) — every other category name (ELITE, NEXT_GEN, ...) is used as-is
+// in the UI too, so this mirrors that instead of inventing translations for
+// names that stay in English everywhere else.
+const CATEGORY_LABELS = { FRIENDLY: 'PRIATEĽSKÝ' };
+function categoryLabel(category) {
+  return CATEGORY_LABELS[category] || category.replace('_', ' ');
+}
+
+// Matches the Slovak labels already used for these on the match page (see
+// common.endReason.* in i18n.js).
+const END_REASON_LABELS = { WALKOVER: 'Kontumácia', RETIREMENT: 'Skreč', UNFINISHED: 'Ponechané nedokončené' };
 
 async function sendMatchFinishedEmail(match, player1, player2) {
   const t = getTransporter();
@@ -40,23 +51,23 @@ async function sendMatchFinishedEmail(match, player1, player2) {
   }
   const state = JSON.parse(match.state);
   const score = describeMatch(state);
-  const winnerName = match.winner_id === player1.id ? player1.name : match.winner_id === player2.id ? player2.name : 'Not determined (retired/ended early)';
+  const winnerName = match.winner_id === player1.id ? player1.name : match.winner_id === player2.id ? player2.name : 'Neurčený (skrečovaný/ukončený predčasne)';
   const durationMin = match.start_time && match.end_time
     ? Math.round((new Date(match.end_time) - new Date(match.start_time)) / 60000)
     : null;
 
-  const subject = `Match finished: ${player1.name} vs ${player2.name} (${match.category.replace('_', ' ')})`;
+  const subject = `Zápas ukončený: ${player1.name} vs ${player2.name} (${categoryLabel(match.category)})`;
   const text = [
-    `Category: ${match.category.replace('_', ' ')}`,
-    `Players: ${player1.name} vs ${player2.name}`,
-    `Winner: ${winnerName}`,
-    `Score: ${score || '-'}${match.end_reason && END_REASON_LABELS[match.end_reason] ? ` (${END_REASON_LABELS[match.end_reason]})` : ''}`,
-    `Location: ${match.location || '-'}`,
-    `Scheduled: ${fmtDate(match.scheduled_at)}`,
-    `Started: ${fmtDate(match.start_time)}`,
-    `Finished: ${fmtDate(match.end_time)}`,
-    durationMin != null ? `Duration: ${durationMin} min` : null,
-    `Link: ${matchLink(match)}`,
+    `Kategória: ${categoryLabel(match.category)}`,
+    `Hráči: ${player1.name} vs ${player2.name}`,
+    `Víťaz: ${winnerName}`,
+    `Skóre: ${score || '-'}${match.end_reason && END_REASON_LABELS[match.end_reason] ? ` (${END_REASON_LABELS[match.end_reason]})` : ''}`,
+    `Miesto: ${match.location || '-'}`,
+    `Naplánované: ${fmtDate(match.scheduled_at)}`,
+    `Začiatok: ${fmtDate(match.start_time)}`,
+    `Koniec: ${fmtDate(match.end_time)}`,
+    durationMin != null ? `Trvanie: ${durationMin} min` : null,
+    `Odkaz: ${matchLink(match)}`,
   ].filter(Boolean).join('\n');
 
   await t.sendMail({
@@ -76,13 +87,13 @@ async function sendMatchStartedEmailTo(match, player1, player2, toEmail) {
     console.warn('[mailer] SMTP not configured — skipping match-started notification.');
     return false;
   }
-  const subject = `Match started: ${player1.name} vs ${player2.name}`;
+  const subject = `Zápas začal: ${player1.name} vs ${player2.name}`;
   const lines = [
-    `${player1.name} vs ${player2.name} just started!`,
-    `Category: ${match.category.replace('_', ' ')}`,
+    `${player1.name} vs ${player2.name} práve začal!`,
+    `Kategória: ${categoryLabel(match.category)}`,
   ];
-  if (match.location) lines.push(`Location: ${match.location}`);
-  lines.push(`Watch live: ${matchLink(match)}`);
+  if (match.location) lines.push(`Miesto: ${match.location}`);
+  lines.push(`Sledovať naživo: ${matchLink(match)}`);
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
@@ -105,16 +116,16 @@ async function sendMatchFinishedEmailTo(match, player1, player2, toEmail) {
   const score = describeMatch(state);
   const winnerName = match.winner_id === player1.id ? player1.name : match.winner_id === player2.id ? player2.name : null;
   const reasonLabel = match.end_reason && END_REASON_LABELS[match.end_reason] ? END_REASON_LABELS[match.end_reason] : null;
-  const resultText = [score, reasonLabel].filter(Boolean).join(' — ') || 'No result';
+  const resultText = [score, reasonLabel].filter(Boolean).join(' — ') || 'Bez výsledku';
 
-  const subject = `Match finished: ${player1.name} vs ${player2.name}`;
+  const subject = `Zápas skončil: ${player1.name} vs ${player2.name}`;
   const lines = [
     `${player1.name} vs ${player2.name}`,
-    `Result: ${resultText}${winnerName ? ` — ${winnerName} wins` : ''}`,
-    `Date: ${fmtDate(match.start_time || match.scheduled_at)}`,
+    `Výsledok: ${resultText}${winnerName ? ` — víťaz ${winnerName}` : ''}`,
+    `Dátum: ${fmtDate(match.start_time || match.scheduled_at)}`,
   ];
-  if (match.location) lines.push(`Location: ${match.location}`);
-  lines.push(`Link: ${matchLink(match)}`);
+  if (match.location) lines.push(`Miesto: ${match.location}`);
+  lines.push(`Odkaz: ${matchLink(match)}`);
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
@@ -135,12 +146,12 @@ async function sendProposalConfirmedEmail(match, player1, player2, toEmail) {
     console.warn('[mailer] SMTP not configured — skipping proposal-confirmed email.');
     return false;
   }
-  const subject = `Time confirmed: ${player1.name} vs ${player2.name}`;
+  const subject = `Termín potvrdený: ${player1.name} vs ${player2.name}`;
   const lines = [
-    `A time has been picked for the match you proposed: ${player1.name} vs ${player2.name}.`,
-    `When: ${fmtDate(match.scheduled_at)}`,
-    `Where: ${match.location || '-'}`,
-    `Link: ${matchLink(match)}`,
+    `Pre zápas, ktorý si navrhol, bol vybraný termín: ${player1.name} vs ${player2.name}.`,
+    `Kedy: ${fmtDate(match.scheduled_at)}`,
+    `Kde: ${match.location || '-'}`,
+    `Odkaz: ${matchLink(match)}`,
   ];
 
   await t.sendMail({
@@ -163,10 +174,10 @@ async function sendProposalReceivedEmail(match, proposer, recipient) {
     console.warn('[mailer] SMTP not configured — skipping proposal-received email.');
     return false;
   }
-  const subject = `${proposer.name} proposed times to play!`;
+  const subject = `${proposer.name} ti navrhol termíny na hru!`;
   const lines = [
-    `${proposer.name} proposed some times to play your match on Tennis SCORE.`,
-    `Pick the one that works for you here: ${matchLink(match)}`,
+    `${proposer.name} ti navrhol termíny na váš zápas na Tennis SCORE.`,
+    `Vyber si ten, ktorý ti vyhovuje, tu: ${matchLink(match)}`,
   ];
 
   await t.sendMail({
@@ -191,14 +202,14 @@ async function sendPinResetEmail(player, token) {
     console.warn('[mailer] SMTP not configured — skipping login-code reset email.');
     return false;
   }
-  const subject = 'Reset your BLTA Score login code';
+  const subject = 'Obnovenie prihlasovacieho kódu pre BLTA Score';
   const text = [
-    `Hi ${player.name},`,
+    `Ahoj ${player.name},`,
     '',
-    'Someone (hopefully you) requested to reset your BLTA Score login code.',
-    `Set a new one here: ${resetCodeLink(token)}`,
+    'Niekto (dúfajme, že ty) požiadal o obnovenie tvojho prihlasovacieho kódu pre BLTA Score.',
+    `Nastav si nový tu: ${resetCodeLink(token)}`,
     '',
-    "This link works for 1 hour. If you didn't request this, you can just ignore this email.",
+    'Tento odkaz platí 1 hodinu. Ak si o to nežiadal, tento e-mail jednoducho ignoruj.',
   ].join('\n');
 
   await t.sendMail({
@@ -219,11 +230,11 @@ async function sendAdminResetRequestEmail(player) {
     console.warn('[mailer] SMTP not configured — skipping admin reset-request email.');
     return false;
   }
-  const subject = `Login code reset requested: ${player.name}`;
+  const subject = `Žiadosť o reset prihlasovacieho kódu: ${player.name}`;
   const text = [
-    `${player.name} (phone ${player.phone || '-'}) has requested their BLTA Score login code be reset.`,
-    "They have no email on file, so there's no self-service link to send them.",
-    'Reset it from their profile page (Upraviť profil → Resetovať prihlasovací kód) once you\'ve confirmed it\'s really them.',
+    `${player.name} (telefón ${player.phone || '-'}) požiadal o reset svojho prihlasovacieho kódu pre BLTA Score.`,
+    'Nemá uvedený e-mail, takže mu nie je možné poslať odkaz na samoobslužný reset.',
+    'Resetuj ho z jeho profilu (Upraviť profil → Resetovať prihlasovací kód) po tom, čo si overíš, že je to naozaj on.',
   ].join('\n');
 
   await t.sendMail({
@@ -249,14 +260,14 @@ async function sendNewRegistrationEmail(player) {
     console.warn('[mailer] SMTP not configured — skipping new-registration email.');
     return false;
   }
-  const subject = `New player registration: ${player.name}`;
+  const subject = `Nová registrácia hráča: ${player.name}`;
   const text = [
     player.claimed
-      ? `${player.name} just claimed their existing player entry on BLTA Score (it had no phone/email on file before now):`
-      : 'A new player just registered themselves on BLTA Score:',
-    `Name: ${player.name}`,
-    `Phone: ${player.phone}`,
-    `Email: ${player.email}`,
+      ? `${player.name} si práve priradil svoj existujúci profil hráča na BLTA Score (doteraz nemal uvedený telefón ani e-mail):`
+      : 'Nový hráč sa práve zaregistroval na BLTA Score:',
+    `Meno: ${player.name}`,
+    `Telefón: ${player.phone}`,
+    `E-mail: ${player.email}`,
   ].join('\n');
 
   await t.sendMail({
@@ -281,13 +292,13 @@ async function sendPlayRequestEmail(owner, joiner, slot, message) {
     console.warn('[mailer] SMTP not configured — skipping play-request email.');
     return false;
   }
-  const subject = `${joiner.name} wants to play with you!`;
+  const subject = `${joiner.name} chce s tebou hrať!`;
   const lines = [
-    `${joiner.name} saw your "Looking to play" post on Tennis SCORE and picked one of your free times for a friendly match:`,
-    `When: ${fmtDate(slot)}`,
+    `${joiner.name} videl tvoj príspevok „Chcem hrať“ na Tennis SCORE a vybral si jeden z tvojich voľných termínov na priateľský zápas:`,
+    `Kedy: ${fmtDate(slot)}`,
   ];
-  if (message) lines.push(`Their message: "${message}"`);
-  lines.push(`See it here: ${process.env.PUBLIC_URL || ''}/looking-to-play`);
+  if (message) lines.push(`Jeho odkaz: "${message}"`);
+  lines.push(`Pozri si to tu: ${process.env.PUBLIC_URL || ''}/looking-to-play`);
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
@@ -309,11 +320,11 @@ async function sendPlayRequestAcceptedEmail(owner, joiner, slot, matchToken) {
     console.warn('[mailer] SMTP not configured — skipping play-request-accepted email.');
     return false;
   }
-  const subject = `${owner.name} accepted your time to play!`;
+  const subject = `${owner.name} prijal tvoj termín na hru!`;
   const lines = [
-    `${owner.name} accepted the time you picked on Tennis SCORE — you're set to play a friendly match.`,
-    `When: ${fmtDate(slot)}`,
-    `Match: ${process.env.PUBLIC_URL || ''}/match/${matchToken}`,
+    `${owner.name} prijal termín, ktorý si si vybral na Tennis SCORE — máte dohodnutý priateľský zápas.`,
+    `Kedy: ${fmtDate(slot)}`,
+    `Zápas: ${process.env.PUBLIC_URL || ''}/match/${matchToken}`,
   ];
 
   await t.sendMail({
@@ -334,11 +345,11 @@ async function sendPlayRequestDeniedEmail(owner, joiner, reason) {
     console.warn('[mailer] SMTP not configured — skipping play-request-denied email.');
     return false;
   }
-  const subject = `${owner.name} can't make that time`;
+  const subject = `${owner.name} ti v tomto termíne nemôže vyhovieť`;
   const lines = [
-    `${owner.name} wasn't able to accept the time you picked on Tennis SCORE.`,
-    `Their note: "${reason}"`,
-    `See their other free times: ${process.env.PUBLIC_URL || ''}/looking-to-play`,
+    `${owner.name} nemohol prijať termín, ktorý si si vybral na Tennis SCORE.`,
+    `Jeho poznámka: "${reason}"`,
+    `Pozri si jeho ďalšie voľné termíny: ${process.env.PUBLIC_URL || ''}/looking-to-play`,
   ];
 
   await t.sendMail({
@@ -354,19 +365,21 @@ async function sendPlayRequestDeniedEmail(owner, joiner, reason) {
 // fails — the whole point of that backup is disaster recovery, so a
 // silent failure there is worse than a silent failure almost anywhere
 // else in the app. Same admin address as the other admin-facing emails.
+// The error message itself is left untranslated (it's whatever the Drive
+// API/Node threw) — only the surrounding text is Slovak.
 async function sendBackupFailedEmail(err) {
   const t = getTransporter();
   if (!t) {
     console.warn('[mailer] SMTP not configured — skipping backup-failed alert email.');
     return false;
   }
-  const subject = 'BLTA Score: database backup failed';
+  const subject = 'BLTA Score: záloha databázy zlyhala';
   const text = [
-    "Today's automatic backup of the BLTA Score database to Google Drive failed:",
+    'Dnešná automatická záloha databázy BLTA Score na Google Drive zlyhala:',
     '',
     err && err.message ? err.message : String(err),
     '',
-    "The site itself is unaffected — this only means today's off-site backup didn't happen. Check the Render logs for the full error.",
+    'Samotná stránka nie je ovplyvnená — znamená to len, že dnešná záloha mimo servera sa neuskutočnila. Kompletnú chybu nájdeš v Render logoch.',
   ].join('\n');
 
   await t.sendMail({
