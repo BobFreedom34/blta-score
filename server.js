@@ -10,6 +10,7 @@ const { Server } = require('socket.io');
 const db = require('./src/db');
 const engine = require('./src/matchEngine');
 const badgeEngine = require('./src/badgeEngine');
+const backup = require('./src/backup');
 const playersRouter = require('./src/routes/players');
 const matchesRouter = require('./src/routes/matches');
 const adminRouter = require('./src/routes/admin');
@@ -30,6 +31,7 @@ app.set('io', io);
 // why this has to run before any real traffic hits the badge notification
 // endpoints (routes/player.js) or the matches routes that create new ones.
 badgeEngine.backfillIfNeeded();
+backup.startScheduledBackups();
 
 app.use(cors());
 app.use(express.json());

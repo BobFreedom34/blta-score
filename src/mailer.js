@@ -324,8 +324,36 @@ async function sendPlayRequestDeniedEmail(owner, joiner, reason) {
   return true;
 }
 
+// Sent when the daily Google Drive database backup (see src/backup.js)
+// fails — the whole point of that backup is disaster recovery, so a
+// silent failure there is worse than a silent failure almost anywhere
+// else in the app. Same admin address as the other admin-facing emails.
+async function sendBackupFailedEmail(err) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping backup-failed alert email.');
+    return false;
+  }
+  const subject = 'BLTA Score: database backup failed';
+  const text = [
+    "Today's automatic backup of the BLTA Score database to Google Drive failed:",
+    '',
+    err && err.message ? err.message : String(err),
+    '',
+    "The site itself is unaffected — this only means today's off-site backup didn't happen. Check the Render logs for the full error.",
+  ].join('\n');
+
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
+    subject,
+    text,
+  });
+  return true;
+}
+
 module.exports = {
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendPlayRequestEmail,
-  sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail,
+  sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail, sendBackupFailedEmail,
 };
