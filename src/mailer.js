@@ -152,6 +152,32 @@ async function sendProposalConfirmedEmail(match, player1, player2, toEmail) {
   return true;
 }
 
+// Sent to the other player the moment someone proposes (or counter-
+// proposes) times for a match — see notifyProposalReceived in
+// routes/matches.js, which fires this alongside the in-app bell
+// notification. Only actually sent when the recipient has an email on
+// file, same as every other "someone did something" email in this file.
+async function sendProposalReceivedEmail(match, proposer, recipient) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping proposal-received email.');
+    return false;
+  }
+  const subject = `${proposer.name} proposed times to play!`;
+  const lines = [
+    `${proposer.name} proposed some times to play your match on Tennis SCORE.`,
+    `Pick the one that works for you here: ${matchLink(match)}`,
+  ];
+
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: recipient.email,
+    subject,
+    text: lines.join('\n'),
+  });
+  return true;
+}
+
 // Self-service login-code recovery (see POST /player/forgot-pin) — the
 // link lands on the dedicated public/reset-code.html page, not anywhere
 // requiring an existing session (the whole point is the player has none).
@@ -354,6 +380,7 @@ async function sendBackupFailedEmail(err) {
 
 module.exports = {
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
+  sendProposalReceivedEmail,
   sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendPlayRequestEmail,
   sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail, sendBackupFailedEmail,
 };

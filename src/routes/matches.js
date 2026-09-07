@@ -2,7 +2,9 @@ const crypto = require('crypto');
 const express = require('express');
 const db = require('../db');
 const engine = require('../matchEngine');
-const { sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail } = require('../mailer');
+const {
+  sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail, sendProposalReceivedEmail,
+} = require('../mailer');
 const { sendPush } = require('../push');
 const { isAdmin, getPlayerId, requireLoggedIn, requireAdmin, stripPrivateFields } = require('../auth');
 const badgeEngine = require('../badgeEngine');
@@ -37,19 +39,27 @@ function inferProposedBy(req, explicitValue, player1Id, player2Id) {
   return null;
 }
 
-// Bell notification for "someone proposed times for this match" (see the
-// notification bell in common.js, merged in GET /player/notifications) —
-// the recipient is always whichever of the two players didn't propose it,
-// so this can only actually fire once proposedBy is known one way or the
-// other (see inferProposedBy above for when that is/isn't the case; a
-// still-null proposedBy — admin set it up, or nobody was logged in for an
-// anonymous counter-propose — has no single "the other player" to notify).
+// Bell notification (plus an email, if the recipient has one on file) for
+// "someone proposed times for this match" — the recipient is always
+// whichever of the two players didn't propose it, so this can only
+// actually fire once proposedBy is known one way or the other (see
+// inferProposedBy above for when that is/isn't the case; a still-null
+// proposedBy — admin set it up, or nobody was logged in for an anonymous
+// counter-propose — has no single "the other player" to notify).
 function notifyProposalReceived(row, proposedBy) {
   if (proposedBy !== 1 && proposedBy !== 2) return;
   const recipientId = proposedBy === 1 ? row.player2_id : row.player1_id;
   const proposerId = proposedBy === 1 ? row.player1_id : row.player2_id;
   db.prepare('INSERT INTO proposal_notifications (player_id, match_id, kind, other_player_id) VALUES (?, ?, ?, ?)')
     .run(recipientId, row.id, 'RECEIVED', proposerId);
+
+  const recipient = getPlayer(recipientId);
+  const proposer = getPlayer(proposerId);
+  if (recipient && recipient.email && proposer) {
+    sendProposalReceivedEmail(row, proposer, recipient).catch((err) => {
+      console.error('[matches] failed to send proposal-received email:', err.message);
+    });
+  }
 }
 
 // Bell notification for "your proposed time was confirmed" — mirrors
@@ -786,11 +796,25 @@ router.post('/:token/respond-proposal', (req, res) => {
   const payload = broadcast(req, updated);
   res.json(payload);
 
+  const p1 = getPlayer(updated.player1_id);
+  const p2 = getPlayer(updated.player2_id);
   if (matched.notifyEmail) {
-    const p1 = getPlayer(updated.player1_id);
-    const p2 = getPlayer(updated.player2_id);
     sendProposalConfirmedEmail(updated, p1, p2, matched.notifyEmail).catch((err) => {
       console.error('[matches] failed to send proposal-confirmed email:', err.message);
+    });
+  }
+  // Also email the proposer's own profile address, alongside the bell
+  // notification (see notifyProposalConfirmed above) — matched.notifyEmail
+  // above is a one-off address the proposer optionally typed in just for
+  // this proposal, separate from (and not necessarily the same as)
+  // whatever's actually on file for them, so this can't just reuse that
+  // same check. Skipped if it's the exact same address already covered
+  // above, so a proposer who used their own profile email for both doesn't
+  // get the same email twice.
+  const proposer = matched.proposerPlayerId === updated.player1_id ? p1 : matched.proposerPlayerId === updated.player2_id ? p2 : null;
+  if (proposer && proposer.email && proposer.email !== matched.notifyEmail) {
+    sendProposalConfirmedEmail(updated, p1, p2, proposer.email).catch((err) => {
+      console.error('[matches] failed to send proposal-confirmed profile email:', err.message);
     });
   }
 });

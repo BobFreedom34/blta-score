@@ -101,7 +101,7 @@ const TRANSLATIONS = {
     'common.save': 'Uložiť',
 
     'proposeTimes.title': 'Navrhnúť termíny súperovi',
-    'proposeTimes.desc': 'Označte časy ZAČIATKU ZÁPASU, kedy môžete hrať, a niekoľko miest, ktoré vám vyhovujú — súper si jeden vyberie cez zdieľaný odkaz na zápas.',
+    'proposeTimes.desc': 'Označte časy ZAČIATKU ZÁPASU, kedy môžete hrať, a niekoľko miest, ktoré vám vyhovujú — súper dostane notifikáciu do emailu, sem do aplikácie a takisto mu viete zaslať navrhované termíny do Whatsapp správy.',
     'proposeTimes.venues': 'Preferované miesta',
     'proposeTimes.add': 'Pridať',
     'proposeTimes.whoProposing': 'Kto navrhuje?',
@@ -631,7 +631,7 @@ const TRANSLATIONS = {
     'common.save': 'Save',
 
     'proposeTimes.title': 'Propose times for the opponent',
-    'proposeTimes.desc': "Mark every time you could play and a few venues you're happy with — the other player picks one via the match's share link.",
+    'proposeTimes.desc': "Mark the START times you could play, and a few venues you're happy with — the other player gets notified by email, right here in the app, and you can also send them the proposed times over WhatsApp.",
     'proposeTimes.venues': 'Preferred venues',
     'proposeTimes.add': 'Add',
     'proposeTimes.whoProposing': "Who's proposing?",
