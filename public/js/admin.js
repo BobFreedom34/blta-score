@@ -38,12 +38,32 @@ function renderLoggedIn() {
       <a href="/badges-admin" style="text-decoration:underline">manage badges</a>,
       and can view the <a href="/login-history" style="text-decoration:underline">login history</a>.
     </p>
-    <button type="button" class="btn btn-outline" id="logout-btn">Log out</button>
+    <button type="button" class="btn btn-outline" id="backup-now-btn">📦 Back up now</button>
+    <button type="button" class="btn btn-outline" id="logout-btn" style="margin-top:10px">Log out</button>
   `;
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await api('/admin/logout', { method: 'POST' });
     toast('Logged out');
     renderLoggedOut();
+  });
+  // Manual trigger for the daily Google Drive backup (see src/backup.js) —
+  // mainly for right after setting it up, or whenever you just want to be
+  // sure a fresh copy exists without waiting for the next scheduled run.
+  document.getElementById('backup-now-btn').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = 'Backing up…';
+    const mb = (n) => (n / (1024 * 1024)).toFixed(1);
+    try {
+      const result = await api('/admin/backup-now', { method: 'POST' });
+      toast(`Backup done — ${mb(result.bytes)} MB database${result.files ? ` + ${mb(result.files.bytes)} MB files` : ''}`);
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
   });
 }
 

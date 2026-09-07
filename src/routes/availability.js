@@ -165,10 +165,31 @@ function serializePost(row, req) {
   return payload;
 }
 
+// A post with no free time left to offer — every marked slot is either
+// already in the past, or blocked because it turned into a real accepted
+// match (see getBlockedSlots) — has nothing left to do here, so it's
+// deleted outright (and its joins with it) rather than just hidden from
+// the board, same as the owner explicitly closing it themselves. Runs at
+// the top of GET / below, the one route every page load actually hits, so
+// this needs no separate cron/scheduled job of its own.
+function pruneExpiredPosts() {
+  const rows = db.prepare('SELECT id, days FROM availability_posts').all();
+  const now = Date.now();
+  for (const row of rows) {
+    const blockedIsos = new Set(getBlockedSlots(row.id).map((b) => b.iso));
+    const hasFreeFutureSlot = JSON.parse(row.days).some((s) => !blockedIsos.has(s) && new Date(s).getTime() > now);
+    if (!hasFreeFutureSlot) {
+      db.prepare('DELETE FROM availability_joins WHERE post_id = ?').run(row.id);
+      db.prepare('DELETE FROM availability_posts WHERE id = ?').run(row.id);
+    }
+  }
+}
+
 // Public board — anyone can browse who's looking for a match, same as
 // every other read in this app (matches, players, rankings); only posting
 // and joining require being logged in as a specific player.
 router.get('/', (req, res) => {
+  pruneExpiredPosts();
   const rows = db.prepare('SELECT * FROM availability_posts ORDER BY created_at DESC').all();
   res.json(rows.map((row) => serializePost(row, req)));
 });
@@ -266,11 +287,15 @@ router.post('/:id/join', requirePlayerIdentity, async (req, res) => {
   if (changed) {
     const owner = getPlayer(row.player_id);
     const joiner = getPlayer(playerId);
-    if (owner && owner.email && joiner) {
-      try {
-        await sendPlayRequestEmail(owner, joiner, slot, message);
-      } catch (err) {
-        console.error('[availability] play-request email failed:', err.message);
+    if (owner && joiner) {
+      db.prepare('INSERT INTO play_request_notifications (player_id, joiner_player_id, slot, message) VALUES (?, ?, ?, ?)')
+        .run(owner.id, joiner.id, slot, message);
+      if (owner.email) {
+        try {
+          await sendPlayRequestEmail(owner, joiner, slot, message);
+        } catch (err) {
+          console.error('[availability] play-request email failed:', err.message);
+        }
       }
     }
   }

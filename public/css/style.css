@@ -2024,21 +2024,44 @@ a.rank-name:hover { text-decoration: underline; }
 .availability-post-photo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 /* The join trigger — sits right next to the name (see boardPostHtml in
    looking-to-play.js) and opens the post owner's own free-time calendar
-   in a single-pick modal (#pick-slot-grid-wrap below). Plain and round
-   rather than a labeled button since the calendar itself, not this icon,
-   is the actual point of interest. */
+   in a single-pick modal (#pick-slot-grid-wrap below). Labeled (icon +
+   "See X's free times to play") rather than a bare icon, since a round
+   calendar glyph alone doesn't read as clickable/explain what it does. */
 .availability-calendar-btn {
-  width: 30px;
-  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255,255,255,0.12);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: normal;
+  text-align: left;
+}
+.availability-calendar-btn:hover { background: rgba(255,255,255,0.22); }
+/* Copies a direct link to this post's "pick a time" modal — separate from
+   the calendar button above (that opens the modal in-app; this gets a URL
+   to send someone instead), so it stays a plain icon rather than another
+   labeled pill competing for attention on the same row. */
+.availability-share-btn {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: none;
   background: rgba(255,255,255,0.12);
-  font-size: 15px;
+  color: var(--white);
+  font-size: 13px;
   line-height: 1;
   cursor: pointer;
   flex-shrink: 0;
 }
-.availability-calendar-btn:hover { background: rgba(255,255,255,0.22); }
+.availability-share-btn:hover { background: rgba(255,255,255,0.22); }
 .availability-join-count { font-size: 12px; color: var(--gray-dim); }
 /* One row per player who joined — shown only to the post's own owner (or
    an admin), on their My post card (see interestedListHtml). */

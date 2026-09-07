@@ -272,6 +272,10 @@ const TRANSLATIONS = {
     'lookingToPlay.deniedToast': 'Žiadosť zamietnutá',
     'lookingToPlay.blockedListHeading': 'Naplánované z tejto ponuky',
     'lookingToPlay.viewMatch': 'Zobraziť zápas',
+    'lookingToPlay.seeFreeTimesBtn': '📅 Pozrieť voľné termíny: {name}',
+    'lookingToPlay.seeFreeTimesLoginBtn': '📅 Prihlásiť sa a pozrieť termíny',
+    'lookingToPlay.shareBtnTitle': 'Skopírovať odkaz na tieto termíny',
+    'lookingToPlay.postGone': 'Táto ponuka už nie je dostupná — voľné termíny medzitým vypršali alebo boli zrušené.',
 
     'common.loading': 'Načítavam…',
 
@@ -426,6 +430,7 @@ const TRANSLATIONS = {
     'notif.chatTitle': '💬 Nová správa od {author}',
     'notif.congratsTitle': '🎉 Gratulujeme!',
     'notif.congratsIntro': 'Práve si získal nový odznak',
+    'notif.playRequestTitle': '👋 {name} chce s tebou hrať',
 
     'common.ok': 'OK',
 
@@ -789,6 +794,10 @@ const TRANSLATIONS = {
     'lookingToPlay.deniedToast': 'Request declined',
     'lookingToPlay.blockedListHeading': 'Scheduled from this post',
     'lookingToPlay.viewMatch': 'View match',
+    'lookingToPlay.seeFreeTimesBtn': "📅 See {name}'s free times to play",
+    'lookingToPlay.seeFreeTimesLoginBtn': '📅 Log in to see free times',
+    'lookingToPlay.shareBtnTitle': 'Copy a link to these free times',
+    'lookingToPlay.postGone': "This post isn't available anymore — its free times have since expired or been closed.",
 
     'common.loading': 'Loading…',
 
@@ -943,6 +952,7 @@ const TRANSLATIONS = {
     'notif.chatTitle': '💬 New message from {author}',
     'notif.congratsTitle': '🎉 Congratulations!',
     'notif.congratsIntro': "You've just earned a new badge",
+    'notif.playRequestTitle': '👋 {name} wants to play with you',
 
     'common.ok': 'OK',
 

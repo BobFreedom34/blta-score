@@ -28,15 +28,16 @@ function sessionInfo({ isPlayerFlag, player }) {
   };
 }
 
-// Two independent sources feed the one notification bell (see
-// GET /notifications below) — badges (player_badges) and chat messages
-// (chat_notifications). Summed here so both the session payload and every
-// mark-read response can report one combined count without duplicating
-// the two queries at each call site.
+// Three independent sources feed the one notification bell (see
+// GET /notifications below) — badges (player_badges), chat messages
+// (chat_notifications), and looking-to-play requests (play_request_notifications).
+// Summed here so both the session payload and every mark-read response can
+// report one combined count without duplicating these queries at each call site.
 function countUnreadNotifications(playerId) {
   const badges = db.prepare('SELECT COUNT(*) AS c FROM player_badges WHERE player_id = ? AND seen = 0').get(playerId).c;
   const chats = db.prepare('SELECT COUNT(*) AS c FROM chat_notifications WHERE player_id = ? AND seen = 0').get(playerId).c;
-  return badges + chats;
+  const playRequests = db.prepare('SELECT COUNT(*) AS c FROM play_request_notifications WHERE player_id = ? AND seen = 0').get(playerId).c;
+  return badges + chats + playRequests;
 }
 
 router.get('/session', (req, res) => {
@@ -63,15 +64,17 @@ router.get('/session', (req, res) => {
 });
 
 // A player's own notifications, newest first — the list behind the nav
-// bell's dropdown (see common.js). Merges two unrelated sources into one
-// feed: a badge newly earned (player_badges) and someone posting in a
-// match's chat that this player is in (chat_notifications) — each item
-// carries a `type` the client branches on to render/handle it
-// differently (a "Congratulations" modal for a badge; a jump to the
-// match for a chat message). Player-only: there's no meaningful "my
-// notifications" for a bare admin session with no specific player
-// identity, so this 401s the same way a missing player cookie always
-// does elsewhere, rather than silently returning an empty list.
+// bell's dropdown (see common.js). Merges three unrelated sources into
+// one feed: a badge newly earned (player_badges), someone posting in a
+// match's chat that this player is in (chat_notifications), and someone
+// picking a time on this player's looking-to-play post
+// (play_request_notifications) — each item carries a `type` the client
+// branches on to render/handle it differently (a "Congratulations" modal
+// for a badge; a jump to the match for a chat message; a jump to the
+// looking-to-play board for a play request). Player-only: there's no
+// meaningful "my notifications" for a bare admin session with no specific
+// player identity, so this 401s the same way a missing player cookie
+// always does elsewhere, rather than silently returning an empty list.
 router.get('/notifications', (req, res) => {
   const playerId = auth.getPlayerId(req);
   if (!playerId) return res.status(401).json({ error: 'Please log in to see your notifications' });
@@ -117,7 +120,23 @@ router.get('/notifications', (req, res) => {
     },
   }));
 
-  const merged = [...badgeRows, ...chatRows].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const playRequestRows = db.prepare(`
+    SELECT prn.id, prn.seen, prn.created_at, prn.slot, prn.message,
+           j.name AS joiner_name, j.slug AS joiner_slug
+    FROM play_request_notifications prn
+    JOIN players j ON j.id = prn.joiner_player_id
+    WHERE prn.player_id = ?
+  `).all(playerId).map((r) => ({
+    type: 'PLAY_REQUEST',
+    id: r.id,
+    seen: !!r.seen,
+    createdAt: r.created_at,
+    playRequest: {
+      joinerName: r.joiner_name, joinerSlug: r.joiner_slug, slot: r.slot, message: r.message,
+    },
+  }));
+
+  const merged = [...badgeRows, ...chatRows, ...playRequestRows].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json(merged);
 });
 
@@ -132,7 +151,10 @@ router.post('/notifications/:type/:id/read', (req, res) => {
   const playerId = auth.getPlayerId(req);
   if (!playerId) return res.status(401).json({ error: 'Please log in to do this' });
   const { type, id } = req.params;
-  const table = type === 'badge' ? 'player_badges' : type === 'chat' ? 'chat_notifications' : null;
+  const table = type === 'badge' ? 'player_badges'
+    : type === 'chat' ? 'chat_notifications'
+    : type === 'play_request' ? 'play_request_notifications'
+    : null;
   if (!table) return res.status(400).json({ error: 'Invalid notification type' });
   const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
   if (!row || row.player_id !== playerId) return res.status(404).json({ error: 'Notification not found' });

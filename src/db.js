@@ -600,6 +600,28 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_chat_notifications_player ON chat_notifications(player_id);
 `);
 
+// One row per "someone picked a time on your looking-to-play post" (see
+// POST /availability/:id/join in routes/availability.js), shown alongside
+// player_badges/chat_notifications in the same notification bell (GET
+// /player/notifications). Deliberately denormalized (joiner_player_id +
+// slot + message copied straight in, not just a post_id to join back
+// against) rather than referencing availability_posts — a post can be
+// deleted outright once it expires or the owner closes it (see
+// pruneExpiredPosts in routes/availability.js), and this notification
+// should keep reading fine after that, same as a real email already would.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS play_request_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    joiner_player_id INTEGER NOT NULL,
+    slot TEXT NOT NULL,
+    message TEXT NOT NULL DEFAULT '',
+    seen INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_play_request_notifications_player ON play_request_notifications(player_id);
+`);
+
 // Admin overrides for the (otherwise scraped-from-blta.sk) rankings page —
 // keyed by table + the player's name exactly as it appears in that scraped
 // table, since a scraped row doesn't always resolve to a local player row

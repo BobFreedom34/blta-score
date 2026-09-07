@@ -1922,15 +1922,17 @@ document.querySelectorAll('.player-login-link').forEach((el) => {
 
 // --- Notification bell ------------------------------------------------
 // Two unrelated things land here: a player earning a badge server-side
-// the instant a match finishes (see badgeEngine.syncPlayerBadges), and
+// the instant a match finishes (see badgeEngine.syncPlayerBadges),
 // someone posting in a match's chat that this player is in (see
-// POST /:token/messages in routes/matches.js) — this is what surfaces
-// both as one small bell in the topbar. Fed by GET /player/session's
+// POST /:token/messages in routes/matches.js), and someone picking a time
+// on this player's looking-to-play post (see POST /availability/:id/join
+// in routes/availability.js) — this is what surfaces all three as one
+// small bell in the topbar. Fed by GET /player/session's
 // unreadNotificationCount (kept current on every page load via
 // refreshPlayerAuth above, exactly like the rest of the player session)
 // and, once opened, the merged list from GET /player/notifications, each
-// item carrying a `type` ('BADGE' or 'CHAT_MESSAGE') this branches on to
-// render and handle it. Still named badge-* throughout below (bell/panel/
+// item carrying a `type` ('BADGE', 'CHAT_MESSAGE', or 'PLAY_REQUEST') this
+// branches on to render and handle it. Still named badge-* throughout below (bell/panel/
 // item CSS classes included) since the badge was what this started as —
 // not worth a sitewide rename now that it's grown a second use. All of it
 // — the bell, its dropdown, and the badge "Congratulations" modal — is
@@ -2076,13 +2078,20 @@ function renderBadgeNotifList() {
     return;
   }
   list.innerHTML = badgeNotifCache.map((n) => {
-    const icon = n.type === 'BADGE' ? badgeIconMarkup(n.badge.icon) : '💬';
-    const title = n.type === 'BADGE'
-      ? t('notif.earnedTitle', { badge: escapeHtml(n.badge.name) })
-      : t('notif.chatTitle', { author: escapeHtml(n.chat.author) });
-    const subtitle = n.type === 'BADGE'
-      ? fmtDateShort(n.createdAt)
-      : escapeHtml(truncateForNotif(n.chat.body, 80));
+    let icon; let title; let subtitle;
+    if (n.type === 'BADGE') {
+      icon = badgeIconMarkup(n.badge.icon);
+      title = t('notif.earnedTitle', { badge: escapeHtml(n.badge.name) });
+      subtitle = fmtDateShort(n.createdAt);
+    } else if (n.type === 'CHAT_MESSAGE') {
+      icon = '💬';
+      title = t('notif.chatTitle', { author: escapeHtml(n.chat.author) });
+      subtitle = escapeHtml(truncateForNotif(n.chat.body, 80));
+    } else { // PLAY_REQUEST
+      icon = '👋';
+      title = t('notif.playRequestTitle', { name: escapeHtml(n.playRequest.joinerName) });
+      subtitle = fmtDateShort(n.playRequest.slot);
+    }
     return `
     <button type="button" class="badge-notif-item${n.seen ? '' : ' unread'}" data-notif-type="${n.type}" data-notif-id="${n.id}">
       <div class="badge-notif-icon">${icon}</div>
@@ -2137,12 +2146,13 @@ document.addEventListener('click', async (e) => {
     const dot = item.querySelector('.badge-notif-dot');
     if (dot) dot.remove();
     try {
-      const urlType = notif.type === 'BADGE' ? 'badge' : 'chat';
+      const urlType = notif.type === 'BADGE' ? 'badge' : notif.type === 'CHAT_MESSAGE' ? 'chat' : 'play_request';
       const res = await api(`/player/notifications/${urlType}/${id}/read`, { method: 'POST' });
       updateBadgeBellUI(res.unreadNotificationCount);
     } catch { /* worst case the bubble count is stale until the next page load */ }
   }
   if (notif.type === 'CHAT_MESSAGE') window.location.href = `/match/${notif.chat.matchToken}`;
+  if (notif.type === 'PLAY_REQUEST') window.location.href = '/looking-to-play';
 });
 
 refreshPlayerAuth();

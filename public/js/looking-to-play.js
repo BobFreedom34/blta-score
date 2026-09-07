@@ -20,6 +20,29 @@ const listEl = document.getElementById('availability-list');
 let posts = [];
 let myPostPicker = null;
 
+// Deep-link support: a share button (see sharePostUrl below) copies a
+// plain ?post=<id> link back to this same page. Opening it should jump
+// straight into that post's "pick a time" modal — but that needs BOTH the
+// post list (loadPosts) AND auth state (refreshPlayerAuth in common.js,
+// which fires 'blta:auth-changed' once either way, logged in or not) to
+// have resolved first, and those two requests race each other, so this
+// runs from both completion points and only actually fires once both
+// flags are set.
+let postsLoaded = false;
+let authReady = false;
+let autoOpenHandled = false;
+function maybeAutoOpenFromQuery() {
+  if (autoOpenHandled || !postsLoaded || !authReady) return;
+  autoOpenHandled = true;
+  const postId = Number(new URLSearchParams(window.location.search).get('post'));
+  if (!postId) return;
+  const post = posts.find((p) => p.id === postId);
+  if (post && post.mine) return; // it's your own post — nothing to open
+  if (!post) { toast(t('lookingToPlay.postGone')); return; }
+  if (currentPlayerId) openPickSlotModal(postId);
+  else openPlayerLoginModal(() => openPickSlotModal(postId));
+}
+
 // ---------- Shared calendar plumbing ----------
 const LTP_START_HOUR = 7;
 const LTP_END_HOUR = 22; // exclusive — last slot starts at 21:30
@@ -463,9 +486,12 @@ function boardPostHtml(post) {
   const blockedIsos = new Set((post.blockedSlots || []).map((b) => b.iso));
   const freeSlotCount = post.slots.filter((s) => !blockedIsos.has(s)).length;
 
-  // The calendar icon next to the name is the actual join trigger (opens
-  // openPickSlotModal below) — not shown at all once there's nothing left
-  // to do here (it's your own post, or you've already picked a time).
+  // The labeled calendar button next to the name is the actual join
+  // trigger (opens openPickSlotModal below) — not shown at all once
+  // there's nothing left to do here (it's your own post, or you've
+  // already picked a time). The share icon is independent of that state —
+  // sharing the link makes sense even for your own post or one you've
+  // already joined, so it always renders.
   let calendarBtn = '';
   let statusBadge = '';
   if (post.mine) {
@@ -473,16 +499,17 @@ function boardPostHtml(post) {
   } else if (post.joinedByMe) {
     statusBadge = `<span class="badge" style="background:var(--gray-light);color:var(--gray);margin-left:auto">${t('lookingToPlay.joined')}</span>`;
   } else if (currentPlayerId) {
-    calendarBtn = `<button type="button" class="availability-calendar-btn" data-pick="${post.id}" title="${escapeHtml(t('match.pickATime'))}">📅</button>`;
+    calendarBtn = `<button type="button" class="availability-calendar-btn" data-pick="${post.id}">${escapeHtml(t('lookingToPlay.seeFreeTimesBtn', { name: post.player.name }))}</button>`;
   } else {
-    calendarBtn = `<button type="button" class="availability-calendar-btn" data-pick-login="1" title="${escapeHtml(t('match.pickATime'))}">📅</button>`;
+    calendarBtn = `<button type="button" class="availability-calendar-btn" data-pick-login="${post.id}">${escapeHtml(t('lookingToPlay.seeFreeTimesLoginBtn'))}</button>`;
   }
+  const shareBtn = `<button type="button" class="availability-share-btn" data-share="${post.id}" title="${escapeHtml(t('lookingToPlay.shareBtnTitle'))}">🔗</button>`;
 
   // Same card chrome as a match card (see .match-card.availability-post in
   // style.css): a top row of "badges" (here, just how many free times are
   // on offer) plus location on the right, then the same dark .scoreboard
   // box a finished match card shows its result in — here it's the player,
-  // the calendar icon that opens their times, and their join state.
+  // the calendar button that opens their times, and their join state.
   return `
     <div class="match-card availability-post" data-id="${post.id}">
       <div class="match-card-top">
@@ -493,6 +520,7 @@ function boardPostHtml(post) {
         <div class="availability-player-row">
           <a href="/player/${post.player.slug || post.player.id}" class="availability-player-name">${photo}${escapeHtml(post.player.name)}</a>
           ${calendarBtn}
+          ${shareBtn}
           ${statusBadge}
         </div>
       </div>
@@ -500,6 +528,14 @@ function boardPostHtml(post) {
       ${post.joinCount > 0 ? `<div class="availability-join-count">${post.joinCount} 👋</div>` : ''}
     </div>
   `;
+}
+
+// The link a share button copies always points back here with ?post=,
+// picked up by maybeAutoOpenFromQuery below — a plain query param rather
+// than a dedicated route, since this is still the same board page/data,
+// just told which card to jump straight into.
+function sharePostUrl(postId) {
+  return `${window.location.origin}/looking-to-play?post=${postId}`;
 }
 
 function renderBoard() {
@@ -513,7 +549,13 @@ function renderBoard() {
     btn.addEventListener('click', () => openPickSlotModal(Number(btn.dataset.pick)));
   });
   listEl.querySelectorAll('[data-pick-login]').forEach((btn) => {
-    btn.addEventListener('click', () => openPlayerLoginModal(() => loadPosts()));
+    const postId = Number(btn.dataset.pickLogin);
+    btn.addEventListener('click', () => openPlayerLoginModal(() => openPickSlotModal(postId)));
+  });
+  listEl.querySelectorAll('[data-share]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      copyToClipboard(sharePostUrl(btn.dataset.share)).then(() => toast(t('share.linkCopied')));
+    });
   });
 }
 
@@ -525,6 +567,8 @@ async function loadPosts() {
   } catch (err) {
     listEl.innerHTML = `<div class="empty-state">${escapeHtml(t('lookingToPlay.couldNotLoad', { error: err.message }))}</div>`;
   }
+  postsLoaded = true;
+  maybeAutoOpenFromQuery();
 }
 
 // ---------- "Pick a time" modal ----------
@@ -652,6 +696,11 @@ document.getElementById('looking-to-play-login-link').addEventListener('click', 
 // what changes right after a login/logout elsewhere on the page (see
 // common.js dispatching this same event there). Re-rendering on it keeps
 // the My post area and every calendar button in sync either way.
-window.addEventListener('blta:auth-changed', () => { renderMyPostArea(); renderBoard(); });
+window.addEventListener('blta:auth-changed', () => {
+  renderMyPostArea();
+  renderBoard();
+  authReady = true;
+  maybeAutoOpenFromQuery();
+});
 
 loadPosts();
