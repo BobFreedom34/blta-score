@@ -2036,6 +2036,7 @@ a.rank-name:hover { text-decoration: underline; }
   border: none;
   background: rgba(255,255,255,0.12);
   color: var(--white);
+  font-family: inherit;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
@@ -2056,6 +2057,7 @@ a.rank-name:hover { text-decoration: underline; }
   border: none;
   background: rgba(255,255,255,0.12);
   color: var(--white);
+  font-family: inherit;
   font-size: 13px;
   line-height: 1;
   cursor: pointer;
