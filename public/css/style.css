@@ -914,18 +914,32 @@ datalist {}
 .avail-corner { background: transparent; }
 .avail-day-head { font-size: 11px; font-weight: 700; text-align: center; padding: 4px 2px; color: var(--gray); line-height: 1.3; }
 .avail-time-label { font-size: 11px; color: var(--gray-dim); text-align: right; padding: 5px 6px 5px 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.avail-cell { height: 25px; border-radius: 4px; background: var(--gray-light); cursor: pointer; touch-action: none; }
+.avail-cell { height: 25px; border-radius: 4px; background: var(--gray-light); cursor: pointer; touch-action: none; position: relative; }
 .avail-cell:hover { background: #e2e2e2; }
 .avail-cell.selected { background: var(--orange); }
 .avail-cell.selected:hover { background: var(--orange-dark); }
+/* The exact time a selected cell represents, e.g. "07:30" — half-hour
+   cells (see .avail-grid-compact below) look identical to their neighbor
+   until you've actually picked one, so this is what tells you which one
+   you got. Absolutely positioned to fill the cell regardless of its
+   height (25px here, 13px in the compact grid), so one rule covers both
+   instead of needing a compact-specific override. */
+.avail-cell-time {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: 800; color: #fff; line-height: 1; pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
 
-/* "Looking to play" board's own calendars (looking-to-play.js's
-   renderLtpGrid) — half-hour steps instead of whole ones means twice the
-   rows of the propose-times grid above, so each row is shrunk well below
-   .avail-cell's own 25px to keep the whole thing from doubling in height.
-   Only the on-the-hour row gets a label and a slightly heavier top edge
-   (.hour-start) — labeling every half-hour row at this height would be
-   unreadable clutter, and the hour mark alone is enough to scan by. */
+/* Every half-hour-stepped calendar in the app — the "Looking to play" board
+   (looking-to-play.js's renderLtpGrid) and createAvailabilityPicker's own
+   grid (common.js, used by "propose times"/edit/counter-propose) alike.
+   Half-hour steps means twice the rows a whole-hour grid would need, so
+   each row is shrunk well below .avail-cell's own 25px to keep the whole
+   thing from doubling in height. Only the on-the-hour row gets a label and
+   a slightly heavier top edge (.hour-start) — labeling every half-hour row
+   at this height would be unreadable clutter, and the hour mark alone is
+   enough to scan by; the exact half-hour a selected cell represents shows
+   up right on the cell itself instead (see .avail-cell-time above). */
 .avail-grid-compact { gap: 1px; }
 .avail-grid-compact .avail-cell { height: 13px; border-radius: 2px; }
 .avail-grid-compact .avail-time-label { font-size: 9px; padding: 1px 6px 0 0; }

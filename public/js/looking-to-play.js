@@ -4,14 +4,16 @@
 // (common.js), other players can pick one of those times to request a
 // match, and the post's owner gets notified (email, if they have one on
 // file — see POST /:id/join server-side). This page's own calendar is its
-// own fork of that widget, not a direct reuse of it — it starts today
-// (not tomorrow) and steps by half hours instead of whole ones, both
-// deliberately different from how a match proposal's own calendar works,
-// so sharing the one function would mean bolting page-specific options
-// onto something otherwise fine as it is. See the LTP_*/buildLtpDays/
-// renderLtpGrid helpers below. currentPlayerId/playerAuthed/api/t/toast/
-// escapeHtml/openPlayerLoginModal/categoryBadge/BLTA_CATEGORIES all come
-// from common.js, loaded before this file.
+// own fork of that widget, not a direct reuse of it — it starts today (not
+// tomorrow), which is the one genuine difference left (both step by half
+// hours — createAvailabilityPicker used to be whole-hour-only, but that
+// was a difference of degree, not of the kind that's worth keeping two
+// implementations over on its own), so sharing the one function would
+// still mean bolting page-specific options onto something otherwise fine
+// as it is. See the LTP_*/buildLtpDays/renderLtpGrid helpers below.
+// currentPlayerId/playerAuthed/api/t/toast/escapeHtml/openPlayerLoginModal/
+// categoryBadge/BLTA_CATEGORIES all come from common.js, loaded before
+// this file.
 
 const myPostCard = document.getElementById('my-post-card');
 const loginRequiredCard = document.getElementById('login-required-card');
@@ -90,6 +92,17 @@ function ltpSlotIso(day, step) {
   return d.toISOString();
 }
 
+// "07:30" for a given slot's iso — shown inside a selected cell (see
+// avail-cell-time in style.css) so picking one of a pair of otherwise
+// visually identical half-hour cells actually tells you which one you
+// got. hhmm (common.js) round-trips correctly straight off the iso
+// itself since ltpSlotIso above set those same hour/minute fields in
+// local time — no need to thread the {hour, minute} step through to
+// setupDragSelect's paint(), which only ever has the cell's dataset.iso.
+function cellTimeLabel(iso) {
+  return hhmm(new Date(iso));
+}
+
 // Draws the day-head row plus one row per half-hour step into `wrapId` —
 // the skeleton both this page's grids share, differing only in what
 // `cellHtml(day, step, onHour)` returns for each cell. Rows land on the
@@ -154,7 +167,8 @@ function createLtpAvailabilityPicker({
       if (blocked) {
         return `<div class="avail-cell blocked${onHour ? ' hour-start' : ''}" data-iso="${iso}" title="${escapeHtml(blocked.opponentName || '')}"></div>`;
       }
-      return `<div class="avail-cell${selectedSlots.has(iso) ? ' selected' : ''}${onHour ? ' hour-start' : ''}" data-iso="${iso}"></div>`;
+      const isSelected = selectedSlots.has(iso);
+      return `<div class="avail-cell${isSelected ? ' selected' : ''}${onHour ? ' hour-start' : ''}" data-iso="${iso}">${isSelected ? `<span class="avail-cell-time">${cellTimeLabel(iso)}</span>` : ''}</div>`;
     });
   }
 
@@ -170,8 +184,18 @@ function createLtpAvailabilityPicker({
     function paint(cell) {
       if (!cell || cell === lastCell || cell.classList.contains('blocked')) return;
       lastCell = cell;
-      if (paintValue) { selectedSlots.add(cell.dataset.iso); cell.classList.add('selected'); }
-      else { selectedSlots.delete(cell.dataset.iso); cell.classList.remove('selected'); }
+      // innerHTML (not just the class) so the cell's own avail-cell-time
+      // label (see renderGrid above) stays in sync during a drag, without
+      // a full renderGrid() re-render on every cell painted over.
+      if (paintValue) {
+        selectedSlots.add(cell.dataset.iso);
+        cell.classList.add('selected');
+        cell.innerHTML = `<span class="avail-cell-time">${cellTimeLabel(cell.dataset.iso)}</span>`;
+      } else {
+        selectedSlots.delete(cell.dataset.iso);
+        cell.classList.remove('selected');
+        cell.innerHTML = '';
+      }
       updateSlotCount();
     }
 
@@ -636,7 +660,7 @@ function renderPickSlotGrid() {
     const iso = ltpSlotIso(d, step);
     const isOffered = offered.has(iso);
     const isSelected = iso === pickSlotSelected;
-    return `<div class="avail-cell${isOffered ? ' proposed' : ''}${isSelected ? ' selected' : ''}${onHour ? ' hour-start' : ''}" data-iso="${iso}" data-offered="${isOffered ? '1' : '0'}"></div>`;
+    return `<div class="avail-cell${isOffered ? ' proposed' : ''}${isSelected ? ' selected' : ''}${onHour ? ' hour-start' : ''}" data-iso="${iso}" data-offered="${isOffered ? '1' : '0'}">${isSelected ? `<span class="avail-cell-time">${cellTimeLabel(iso)}</span>` : ''}</div>`;
   });
 
   document.querySelectorAll('#pick-slot-grid-wrap .avail-cell[data-offered="1"]').forEach((cell) => {

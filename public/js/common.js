@@ -421,7 +421,8 @@ function createStaticPlayerChoicePicker(rowId) {
 // to whenever the page happened to load.
 function createAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
   const START_HOUR = 7;
-  const END_HOUR = 22; // exclusive — last slot starts at 21:00
+  const END_HOUR = 22; // exclusive — last slot starts at 21:30
+  const STEP_MIN = 30;
   let proposalDays = [];
   const selectedSlots = new Set();
   let activeWeek = 0;
@@ -437,9 +438,22 @@ function createAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
     }
   }
 
-  function slotIso(day, hour) {
+  // Every half-hour mark between START_HOUR and END_HOUR, as {hour, minute}
+  // pairs — same shape and step as looking-to-play.js's own ltpTimeSteps,
+  // kept as a separate copy rather than a shared import for the same
+  // reason this whole picker stays its own fork of that page's (see the
+  // comment above): this one starts the day window tomorrow, not today.
+  function timeSteps() {
+    const steps = [];
+    for (let mins = START_HOUR * 60; mins < END_HOUR * 60; mins += STEP_MIN) {
+      steps.push({ hour: Math.floor(mins / 60), minute: mins % 60 });
+    }
+    return steps;
+  }
+
+  function slotIso(day, step) {
     const d = new Date(day);
-    d.setHours(hour, 0, 0, 0);
+    d.setHours(step.hour, step.minute, 0, 0);
     return d.toISOString();
   }
 
@@ -467,15 +481,24 @@ function createAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
   function renderGrid() {
     const days = proposalDays.slice(activeWeek * 7, activeWeek * 7 + 7);
     const dayHead = (d) => `${weekdayShort(d)}<br>${d.getDate()}.${d.getMonth() + 1}`;
-    let html = '<div class="availability-grid"><div class="avail-corner"></div>';
+    // avail-grid-compact: same treatment as looking-to-play.js's own
+    // half-hour grid (style.css) — double the rows of the old whole-hour
+    // version needs the shorter row height to keep the grid from doubling
+    // in height; only the on-the-hour row gets a label and heavier top
+    // edge (.hour-start), the half-hour row in between stays unlabeled
+    // (an hour mark is enough to scan by) but is just as selectable, and
+    // shows its own exact time once picked (see .avail-cell-time).
+    let html = '<div class="availability-grid avail-grid-compact"><div class="avail-corner"></div>';
     for (const d of days) html += `<div class="avail-day-head">${dayHead(d)}</div>`;
-    for (let h = START_HOUR; h < END_HOUR; h++) {
-      html += `<div class="avail-time-label">${String(h).padStart(2, '0')}:00</div>`;
+    timeSteps().forEach((step) => {
+      const onHour = step.minute === 0;
+      html += `<div class="avail-time-label${onHour ? ' hour-start' : ''}">${onHour ? `${String(step.hour).padStart(2, '0')}:00` : ''}</div>`;
       for (const d of days) {
-        const iso = slotIso(d, h);
-        html += `<div class="avail-cell${selectedSlots.has(iso) ? ' selected' : ''}" data-iso="${iso}"></div>`;
+        const iso = slotIso(d, step);
+        const isSelected = selectedSlots.has(iso);
+        html += `<div class="avail-cell${isSelected ? ' selected' : ''}${onHour ? ' hour-start' : ''}" data-iso="${iso}">${isSelected ? `<span class="avail-cell-time">${hhmm(new Date(iso))}</span>` : ''}</div>`;
       }
-    }
+    });
     html += '</div>';
     document.getElementById(gridWrapId).innerHTML = html;
   }
@@ -489,8 +512,18 @@ function createAvailabilityPicker({ weekTabsId, gridWrapId, slotCountId }) {
     function paint(cell) {
       if (!cell || cell === lastCell) return;
       lastCell = cell;
-      if (paintValue) { selectedSlots.add(cell.dataset.iso); cell.classList.add('selected'); }
-      else { selectedSlots.delete(cell.dataset.iso); cell.classList.remove('selected'); }
+      // innerHTML (not just the class) so the cell's own avail-cell-time
+      // label (see renderGrid above) stays in sync during a drag, without
+      // a full renderGrid() re-render on every cell painted over.
+      if (paintValue) {
+        selectedSlots.add(cell.dataset.iso);
+        cell.classList.add('selected');
+        cell.innerHTML = `<span class="avail-cell-time">${hhmm(new Date(cell.dataset.iso))}</span>`;
+      } else {
+        selectedSlots.delete(cell.dataset.iso);
+        cell.classList.remove('selected');
+        cell.innerHTML = '';
+      }
       updateSlotCount();
     }
 

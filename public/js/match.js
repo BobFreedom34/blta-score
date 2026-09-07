@@ -334,6 +334,22 @@ function canManageProposalCard(m, isAdminUser, proposedByValue) {
   return canManageMatch(m, isAdminUser);
 }
 
+// True when the currently logged-in player is specifically named as THIS
+// card's own proposer — mirrors the server-side self-block in
+// POST /:token/respond-proposal (matched.proposerPlayerId ===
+// requestingPlayerId), deliberately without the isAdminUser/generic-access
+// branches canManageProposalCard has: admin can still pick from either
+// card (respond-proposal exempts admin from the self-block too), and a
+// card with nobody named (proposedByValue null) has no "self" to block. A
+// card only ever renders read-only (see oneProposalCardHtml) when this is
+// true for a real logged-in player, not merely because someone generally
+// manages the match.
+function isOwnProposalCard(proposedByValue, player1Id, player2Id) {
+  if (proposedByValue !== 1 && proposedByValue !== 2) return false;
+  const ownerPlayerId = proposedByValue === 1 ? player1Id : player2Id;
+  return !!(playerAuthed && currentPlayerId === ownerPlayerId);
+}
+
 function oneProposalCardHtml(m, which) {
   const isPrimary = which === 'primary';
   const idPrefix = isPrimary ? 'proposal' : 'counter-proposal';
@@ -344,16 +360,39 @@ function oneProposalCardHtml(m, which) {
   // Only offer "propose your own times instead" while there's just the one
   // calendar up — with two players there's no room for a third.
   const showCounterProposeLink = isPrimary && !m.counterProposalSlots;
+  const editDeleteHtml = canManageProposalCard(m, isAdminUser, proposedBy) ? `
+    <div style="display:flex;gap:10px">
+      <button type="button" class="edit-link" id="edit-${idPrefix}-link">${t('common.edit')}</button>
+      <button type="button" class="edit-link" id="delete-${idPrefix}-link" style="color:var(--danger)">${t('common.delete')}</button>
+    </div>
+  ` : '';
+
+  // Rendered as a plain read-only "waiting" card instead of an interactive
+  // picker when the viewer is this card's own proposer (see
+  // isOwnProposalCard) — letting them click through their own calendar was
+  // real (attachProposalCardHandlers used to wire it up same as anyone
+  // else's), even though actually confirming it would always 403
+  // server-side (respond-proposal's self-block), which reads as "I can
+  // still pick my own date" when it in fact never goes through. Edit/
+  // Delete still work exactly as before (see attachProposalCardHandlers).
+  if (isOwnProposalCard(proposedBy, m.player1.id, m.player2.id)) {
+    return `
+      <div class="card" id="${idPrefix}-card" style="margin-bottom:16px;border:2px solid var(--orange)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">${t('match.pickATime')}</div>
+          ${editDeleteHtml}
+        </div>
+        <p style="font-size:13px;color:var(--gray);margin:6px 0 4px">${t('match.cantConfirmOwnProposal')}</p>
+        <div style="font-size:13px;color:var(--gray-dim);font-weight:600">${t('match.awaitingResponse')}</div>
+      </div>
+    `;
+  }
+
   return `
     <div class="card" id="${idPrefix}-card" style="margin-bottom:16px;border:2px solid var(--orange)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">${t('match.pickATime')}</div>
-        ${canManageProposalCard(m, isAdminUser, proposedBy) ? `
-          <div style="display:flex;gap:10px">
-            <button type="button" class="edit-link" id="edit-${idPrefix}-link">${t('common.edit')}</button>
-            <button type="button" class="edit-link" id="delete-${idPrefix}-link" style="color:var(--danger)">${t('common.delete')}</button>
-          </div>
-        ` : ''}
+        ${editDeleteHtml}
       </div>
       <p style="font-size:13px;color:var(--gray);margin:6px 0 16px">${proposerName ? t('match.proposedByForSentence', { name: escapeHtml(proposerName) }) : t('match.proposedGenericForSentence')}</p>
       <div class="field">
@@ -419,6 +458,50 @@ function attachProposalCardHandlers(m, which) {
   const card = document.getElementById(`${idPrefix}-card`);
   if (!card) return;
 
+  // oneProposalCardHtml renders this card read-only (Edit/Delete only, no
+  // grid/venue/confirm elements at all) whenever the viewer is this card's
+  // own proposer — see isOwnProposalCard there for why. Nothing below this
+  // point exists in the DOM to wire up in that case; skip straight to the
+  // Edit/Delete handlers both branches share, at the bottom of this
+  // function.
+  if (!isOwnProposalCard(proposedBy, m.player1.id, m.player2.id)) {
+    attachInteractiveProposalPicker(m, which, idPrefix, proposedBy, proposerPlayerId, card);
+  }
+
+  // "Edit" — the proposer changing their own offer. Requires login (same
+  // as editing Location/Date), unlike everything else on this card.
+  const editProposalLink = document.getElementById(`edit-${idPrefix}-link`);
+  if (editProposalLink) editProposalLink.addEventListener('click', () => requirePlayerAuth(() => (isPrimary ? openEditProposalModal(m) : openCounterProposeModal(m, { editing: true }))));
+
+  // "Delete" — cancels this proposal outright. Dedicated endpoint per card
+  // (see DELETE /:token/proposal and /:token/counter-proposal) rather than
+  // PATCH /:token, since each is authorized by who this specific card names
+  // as its proposer, not general match-management access — see
+  // canManageProposalCard above and authorizeProposalDelete server-side.
+  // Deleting the primary card takes any counter-proposal with it (nothing
+  // left to counter).
+  const deleteProposalLink = document.getElementById(`delete-${idPrefix}-link`);
+  if (deleteProposalLink) deleteProposalLink.addEventListener('click', () => requirePlayerAuth(async () => {
+    if (!confirm(t('match.deleteProposalConfirm'))) return;
+    deleteProposalLink.disabled = true;
+    try {
+      const updated = await api(`/matches/${matchToken}/${isPrimary ? 'proposal' : 'counter-proposal'}`, { method: 'DELETE' });
+      toast(t('match.proposalDeleted'));
+      render(updated);
+    } catch (err) {
+      toast(err.message);
+      deleteProposalLink.disabled = false;
+    }
+  }));
+}
+
+// The grid/venue/balls/court/confirm wiring for a proposal card that isn't
+// the viewer's own (split out of attachProposalCardHandlers above so the
+// read-only own-card branch there can skip straight past all of it instead
+// of nesting this whole block one indent deeper).
+function attachInteractiveProposalPicker(m, which, idPrefix, proposedBy, proposerPlayerId, card) {
+  const isPrimary = which === 'primary';
+  const slots = isPrimary ? m.proposalSlots : m.counterProposalSlots;
   let selectedSlot = null;
   let selectedVenue = null;
   const confirmBtn = document.getElementById(`confirm-${idPrefix}-btn`);
@@ -462,17 +545,24 @@ function attachProposalCardHandlers(m, which) {
   function renderProposalGrid() {
     const days = proposalWeeks[proposalActiveWeek];
     const dayHead = (d) => `${weekdayShort(d)}<br>${d.getDate()}.${d.getMonth() + 1}`;
-    let html = `<div class="availability-grid" style="grid-template-columns:44px repeat(${days.length}, 1fr)"><div class="avail-corner"></div>`;
+    // avail-grid-compact + half-hour rows: matches createAvailabilityPicker
+    // (common.js), which is what actually built this proposal's slots —
+    // any of them could land on the half-hour now, so every half-hour row
+    // needs a cell here for proposalSlotSet to actually find a match in.
+    let html = `<div class="availability-grid avail-grid-compact" style="grid-template-columns:44px repeat(${days.length}, 1fr)"><div class="avail-corner"></div>`;
     for (const d of days) html += `<div class="avail-day-head">${dayHead(d)}</div>`;
-    for (let h = 7; h < 22; h++) {
-      html += `<div class="avail-time-label">${String(h).padStart(2, '0')}:00</div>`;
+    for (let mins = 7 * 60; mins < 22 * 60; mins += 30) {
+      const hour = Math.floor(mins / 60);
+      const minute = mins % 60;
+      const onHour = minute === 0;
+      html += `<div class="avail-time-label${onHour ? ' hour-start' : ''}">${onHour ? `${String(hour).padStart(2, '0')}:00` : ''}</div>`;
       for (const d of days) {
         const cellDate = new Date(d);
-        cellDate.setHours(h, 0, 0, 0);
+        cellDate.setHours(hour, minute, 0, 0);
         const iso = cellDate.toISOString();
         const isProposed = proposalSlotSet.has(iso);
         const isSelected = iso === selectedSlot;
-        html += `<div class="avail-cell${isProposed ? ' proposed' : ''}${isSelected ? ' selected' : ''}" data-iso="${iso}" data-proposed="${isProposed ? '1' : '0'}"></div>`;
+        html += `<div class="avail-cell${isProposed ? ' proposed' : ''}${isSelected ? ' selected' : ''}${onHour ? ' hour-start' : ''}" data-iso="${iso}" data-proposed="${isProposed ? '1' : '0'}">${isSelected ? `<span class="avail-cell-time">${hhmm(new Date(iso))}</span>` : ''}</div>`;
       }
     }
     html += '</div>';
@@ -552,32 +642,6 @@ function attachProposalCardHandlers(m, which) {
     } catch (err) {
       proposalErrorEl.textContent = err.message;
       confirmBtn.disabled = false;
-    }
-  }));
-
-  // "Edit" — the proposer changing their own offer. Requires login (same
-  // as editing Location/Date), unlike everything else on this card.
-  const editProposalLink = document.getElementById(`edit-${idPrefix}-link`);
-  if (editProposalLink) editProposalLink.addEventListener('click', () => requirePlayerAuth(() => (isPrimary ? openEditProposalModal(m) : openCounterProposeModal(m, { editing: true }))));
-
-  // "Delete" — cancels this proposal outright. Dedicated endpoint per card
-  // (see DELETE /:token/proposal and /:token/counter-proposal) rather than
-  // PATCH /:token, since each is authorized by who this specific card names
-  // as its proposer, not general match-management access — see
-  // canManageProposalCard above and authorizeProposalDelete server-side.
-  // Deleting the primary card takes any counter-proposal with it (nothing
-  // left to counter).
-  const deleteProposalLink = document.getElementById(`delete-${idPrefix}-link`);
-  if (deleteProposalLink) deleteProposalLink.addEventListener('click', () => requirePlayerAuth(async () => {
-    if (!confirm(t('match.deleteProposalConfirm'))) return;
-    deleteProposalLink.disabled = true;
-    try {
-      const updated = await api(`/matches/${matchToken}/${isPrimary ? 'proposal' : 'counter-proposal'}`, { method: 'DELETE' });
-      toast(t('match.proposalDeleted'));
-      render(updated);
-    } catch (err) {
-      toast(err.message);
-      deleteProposalLink.disabled = false;
     }
   }));
 }
