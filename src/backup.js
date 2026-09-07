@@ -13,12 +13,23 @@
 // scripts/get-drive-refresh-token.js once to mint the refresh token).
 const fs = require('fs');
 const path = require('path');
+const archiver = require('archiver');
 const { OAuth2Client } = require('google-auth-library');
 const db = require('./db');
 const mailer = require('./mailer');
 
 const RETENTION_DAYS = Number(process.env.BACKUP_RETENTION_DAYS || 30);
-const DB_FILE = path.join(db.dataDir, 'blta-score.db');
+const DB_FILENAME = 'blta-score.db';
+const DB_FILE = path.join(db.dataDir, DB_FILENAME);
+// Everything else on the persistent disk that isn't the database itself
+// (badge icons today — see routes/badges.js's ICONS_DIR — and whatever
+// else ends up living there later) gets zipped up as a second file. The
+// database only stores a path like /badge-icons/whatever.png, never the
+// image bytes, so skipping this would silently lose every such upload.
+// Deliberately generic (everything under dataDir except the db and its
+// WAL/SHM siblings) rather than a hardcoded "badge-icons" list, so a
+// future upload feature is covered here automatically.
+const DB_SIDE_FILES = new Set([DB_FILENAME, `${DB_FILENAME}-wal`, `${DB_FILENAME}-shm`]);
 
 function isConfigured() {
   return !!(
@@ -44,11 +55,10 @@ async function getAccessToken() {
 }
 
 // Plain multipart/related upload built by hand (metadata JSON part + the
-// db file's raw bytes) rather than pulling in the full `googleapis`
-// package just for this one call — google-auth-library alone handles the
-// service-account JWT exchange, and a Drive upload is one fetch away from
-// there.
-async function uploadFile(token, name, buffer) {
+// file's raw bytes) rather than pulling in the full `googleapis` package
+// just for this one call — google-auth-library alone handles the OAuth
+// token refresh, and a Drive upload is one fetch away from there.
+async function uploadFile(token, name, buffer, mimeType) {
   const boundary = 'blta-score-backup-boundary';
   const metadata = { name, parents: [process.env.GOOGLE_DRIVE_BACKUP_FOLDER_ID] };
   const body = Buffer.concat([
@@ -57,7 +67,7 @@ async function uploadFile(token, name, buffer) {
       'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
       `${JSON.stringify(metadata)}\r\n` +
       `--${boundary}\r\n` +
-      'Content-Type: application/x-sqlite3\r\n\r\n'
+      `Content-Type: ${mimeType}\r\n\r\n`
     ),
     buffer,
     Buffer.from(`\r\n--${boundary}--`),
@@ -78,11 +88,12 @@ async function uploadFile(token, name, buffer) {
 }
 
 // Deletes backups older than RETENTION_DAYS from the same folder, so it
-// doesn't grow forever — one file/day means this is just "keep the last
-// RETENTION_DAYS days" in practice.
+// doesn't grow forever — one .db + one files.zip per day means this is
+// just "keep the last RETENTION_DAYS days" in practice. The 'blta-score-'
+// prefix covers both blta-score-backup-*.db and blta-score-files-*.zip.
 async function pruneOldBackups(token) {
   const folderId = process.env.GOOGLE_DRIVE_BACKUP_FOLDER_ID;
-  const q = encodeURIComponent(`'${folderId}' in parents and trashed = false and name contains 'blta-score-backup-'`);
+  const q = encodeURIComponent(`'${folderId}' in parents and trashed = false and name contains 'blta-score-'`);
   const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,createdTime)&pageSize=1000`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -113,20 +124,68 @@ function snapshotDbFile() {
   return fs.readFileSync(DB_FILE);
 }
 
+// Recursively lists every file under dataDir except the database itself
+// and its WAL/SHM siblings, preserving their relative path.
+function listNonDbFiles(dir, baseDir) {
+  let results = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    const rel = path.relative(baseDir, full);
+    if (entry.isDirectory()) {
+      results = results.concat(listNonDbFiles(full, baseDir));
+    } else if (entry.isFile() && !DB_SIDE_FILES.has(rel)) {
+      results.push({ full, rel });
+    }
+  }
+  return results;
+}
+
+// Zips every non-database file on the persistent disk into one in-memory
+// buffer, preserving their relative folder structure. Returns null
+// (rather than an empty zip) when there's nothing to back up yet.
+function zipDataFiles() {
+  return new Promise((resolve, reject) => {
+    const files = listNonDbFiles(db.dataDir, db.dataDir);
+    if (!files.length) return resolve(null);
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    const chunks = [];
+    archive.on('data', (chunk) => chunks.push(chunk));
+    archive.on('error', reject);
+    archive.on('end', () => resolve(Buffer.concat(chunks)));
+    // Zip entry names are always forward-slash, regardless of the host
+    // OS's path separator (only matters when running this on Windows —
+    // production is Linux, where path.sep is already '/').
+    files.forEach(({ full, rel }) => archive.file(full, { name: rel.split(path.sep).join('/') }));
+    archive.finalize();
+  });
+}
+
 async function runBackup() {
   if (!isConfigured()) {
     console.warn('[backup] Google OAuth env vars not fully set — skipping backup. See .env.example.');
     return { skipped: true };
   }
   const stamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  const name = `blta-score-backup-${stamp}.db`;
+  const dbName = `blta-score-backup-${stamp}.db`;
   try {
-    const buffer = snapshotDbFile();
     const token = await getAccessToken();
-    const file = await uploadFile(token, name, buffer);
+
+    const dbBuffer = snapshotDbFile();
+    const dbFile = await uploadFile(token, dbName, dbBuffer, 'application/x-sqlite3');
+    console.log(`[backup] Uploaded ${dbName} (${dbBuffer.length} bytes) to Google Drive as file ${dbFile.id}.`);
+
+    let filesResult = null;
+    const filesBuffer = await zipDataFiles();
+    if (filesBuffer) {
+      const filesName = `blta-score-files-${stamp}.zip`;
+      const filesFile = await uploadFile(token, filesName, filesBuffer, 'application/zip');
+      console.log(`[backup] Uploaded ${filesName} (${filesBuffer.length} bytes) to Google Drive as file ${filesFile.id}.`);
+      filesResult = { name: filesName, id: filesFile.id, bytes: filesBuffer.length };
+    }
+
     await pruneOldBackups(token);
-    console.log(`[backup] Uploaded ${name} (${buffer.length} bytes) to Google Drive as file ${file.id}.`);
-    return { ok: true, name, id: file.id, bytes: buffer.length };
+    return { ok: true, name: dbName, id: dbFile.id, bytes: dbBuffer.length, files: filesResult };
   } catch (err) {
     console.error('[backup] Backup failed:', err);
     try {
