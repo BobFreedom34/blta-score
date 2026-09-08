@@ -36,9 +36,25 @@ function sessionInfo({ isPlayerFlag, player }) {
 // count without duplicating these queries at each call site.
 function countUnreadNotifications(playerId) {
   const badges = db.prepare('SELECT COUNT(*) AS c FROM player_badges WHERE player_id = ? AND seen = 0').get(playerId).c;
-  const chats = db.prepare('SELECT COUNT(*) AS c FROM chat_notifications WHERE player_id = ? AND seen = 0').get(playerId).c;
+  // chat_notifications and proposal_notifications reference a match_id that
+  // can go away outright (the match gets deleted) — GET /notifications
+  // below already only counts as "real" whatever its own INNER JOIN to
+  // matches actually finds, so a notification whose match is gone quietly
+  // stops appearing there. This has to filter the exact same way, or a
+  // deleted match's still-unseen notification inflates the bell forever
+  // with nothing in the list to ever click and clear it.
+  const chats = db.prepare(`
+    SELECT COUNT(*) AS c FROM chat_notifications cn
+    JOIN matches m ON m.id = cn.match_id
+    JOIN messages msg ON msg.id = cn.message_id
+    WHERE cn.player_id = ? AND cn.seen = 0
+  `).get(playerId).c;
   const playRequests = db.prepare('SELECT COUNT(*) AS c FROM play_request_notifications WHERE player_id = ? AND seen = 0').get(playerId).c;
-  const proposals = db.prepare('SELECT COUNT(*) AS c FROM proposal_notifications WHERE player_id = ? AND seen = 0').get(playerId).c;
+  const proposals = db.prepare(`
+    SELECT COUNT(*) AS c FROM proposal_notifications pn
+    JOIN matches m ON m.id = pn.match_id
+    WHERE pn.player_id = ? AND pn.seen = 0
+  `).get(playerId).c;
   return badges + chats + playRequests + proposals;
 }
 

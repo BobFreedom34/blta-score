@@ -635,8 +635,12 @@ db.exec(`
 // play_request_notifications — a match is far less likely to be deleted
 // out from under this than a looking-to-play post is (see that table's own
 // comment for why it went the other way), so a plain INNER JOIN in
-// GET /player/notifications is enough: if the match is ever gone, the
-// notification just quietly stops showing up, nothing to clean up here.
+// GET /player/notifications is enough there: if the match is ever gone,
+// the notification just quietly stops showing up. countUnreadNotifications
+// (routes/player.js) has to apply that same JOIN too, though, or a
+// deleted match's still-unseen row inflates the bell's count forever with
+// nothing left in the list to click and clear it (a real bug this once
+// was — the count and the list disagreeing is what actually surfaced it).
 db.exec(`
   CREATE TABLE IF NOT EXISTS proposal_notifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
