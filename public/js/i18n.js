@@ -190,7 +190,7 @@ const TRANSLATIONS = {
     'login.error.phoneAlreadyRegistered': 'Toto telefónne číslo je už zaregistrované — skúste sa prihlásiť.',
     'login.registerSubmit': 'Zaregistrovať sa',
 
-    'referee.btn': 'Referee',
+    'referee.btn': '🧑‍⚖️ Rozhodca',
     'referee.title': 'Prihlásiť sa ako rozhodca',
     'referee.headline': 'Zadajte kód rozhodcu',
     'referee.intro': '5-miestny kód, ktorý vám poskytol organizátor turnaja — nemusíte byť hráč ani prihlásený, tento kód vám umožní spustiť a viesť live zápas.',
@@ -727,7 +727,7 @@ const TRANSLATIONS = {
     'login.error.phoneAlreadyRegistered': 'This phone number is already registered to a player — try logging in instead.',
     'login.registerSubmit': 'Register',
 
-    'referee.btn': 'Referee',
+    'referee.btn': '🧑‍⚖️ Referee',
     'referee.title': 'Log in as referee',
     'referee.headline': 'Enter the referee code',
     'referee.intro': "The 5-digit code the tournament organizer gave you — you don't need to be a player or logged in, this code lets you start and run a live match.",
