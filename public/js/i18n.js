@@ -434,6 +434,8 @@ const TRANSLATIONS = {
     'notif.playRequestTitle': '👋 {name} chce s tebou hrať',
     'notif.proposalReceivedTitle': '📅 {name} ti navrhol termíny',
     'notif.proposalConfirmedTitle': '✅ {name} potvrdil termín zápasu',
+    'notif.rankingUpTitle': '📈 V BLTA rebríčku si sa posunul o {amount} hore — teraz si na {rank}. mieste',
+    'notif.rankingDownTitle': '📉 V BLTA rebríčku si klesol o {amount} dole — teraz si na {rank}. mieste',
 
     'common.ok': 'OK',
     'common.someone': 'Niekto',
@@ -961,6 +963,8 @@ const TRANSLATIONS = {
     'notif.playRequestTitle': '👋 {name} wants to play with you',
     'notif.proposalReceivedTitle': '📅 {name} proposed times to you',
     'notif.proposalConfirmedTitle': '✅ {name} confirmed a time',
+    'notif.rankingUpTitle': '📈 You climbed {amount} places in the BLTA ranking — now #{rank}',
+    'notif.rankingDownTitle': '📉 You dropped {amount} places in the BLTA ranking — now #{rank}',
 
     'common.ok': 'OK',
     'common.someone': 'Someone',

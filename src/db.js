@@ -689,6 +689,36 @@ db.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_ranking_snapshots_unique ON ranking_snapshots(table_key, player_name COLLATE NOCASE, snapshot_week);
 `);
 
+// One row per "you moved N places in the ranking" bell notification — see
+// getMoves()'s isNewWeek flag in rankingSnapshots.js, which is what
+// actually triggers this (the moment a new week's snapshot is recorded,
+// not every mid-week /api/rankings request the live arrows also react
+// to — see that file's own comment for why those two are different
+// cadences on purpose). Only ever written for the main "blta" table (see
+// routes/rankings.js), matching the feature's own scope, but table_key is
+// still stored rather than assumed, in case that ever widens. No FK to
+// ranking_snapshots itself — direction/amount/new_rank are copied straight
+// in (same reasoning as play_request_notifications' own denormalization)
+// so this reads back fine forever regardless of how many more weeks of
+// snapshots pile up after it. The unique index guards the same rare
+// concurrent-first-request-of-the-week race ranking_snapshots' own index
+// does — see getMoves.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ranking_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    table_key TEXT NOT NULL,
+    direction TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    new_rank INTEGER NOT NULL,
+    snapshot_week TEXT NOT NULL,
+    seen INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_ranking_notifications_player ON ranking_notifications(player_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_ranking_notifications_unique ON ranking_notifications(player_id, table_key, snapshot_week);
+`);
+
 // Admin-visible login history (see auth.js's logInPlayer, the single
 // choke point every real/first phone login, registration, and PIN reset
 // all funnel through — one row per session actually started, not per

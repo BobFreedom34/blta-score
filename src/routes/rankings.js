@@ -50,13 +50,16 @@ router.get('/', async (req, res) => {
   // name resolves to a local player who has them set.
   const players = db.prepare('SELECT id, name, slug, nationality, birthday FROM players').all();
   const bySlug = {};
+  const byPlayerId = {};
   const byNationality = {};
   const byAge = {};
   players.forEach((p) => {
-    bySlug[normalize(p.name)] = p.slug;
-    if (p.nationality) byNationality[normalize(p.name)] = p.nationality;
+    const key = normalize(p.name);
+    bySlug[key] = p.slug;
+    byPlayerId[key] = p.id;
+    if (p.nationality) byNationality[key] = p.nationality;
     const age = computeAge(p.birthday);
-    if (age !== null) byAge[normalize(p.name)] = age;
+    if (age !== null) byAge[key] = age;
   });
 
   const overrides = db.prepare('SELECT table_key, player_name, points FROM ranking_overrides').all();
@@ -68,7 +71,34 @@ router.get('/', async (req, res) => {
     // the snapshot rolled forward, once a week) from this table's actual
     // rank order, before overrides are layered on: an admin correcting a
     // points value doesn't itself count as blta.sk-reported movement.
-    const moves = getMoves(t.key, t.rows.map((r) => ({ name: normalize(r.name), rank: r.rank })));
+    const {
+      moves, isNewWeek, weekMoves, currentWeek,
+    } = getMoves(t.key, t.rows.map((r) => ({ name: normalize(r.name), rank: r.rank })));
+
+    // Bell notification for "you moved in the ranking" — only the main
+    // overall BLTA table (see rankBadgeHtml in common.js for the same
+    // "blta" table, not the per-category Race ones, being singled out
+    // elsewhere for the same reason), and only on the one call per week
+    // that's actually rolling the snapshot forward (weekMoves/isNewWeek —
+    // see getMoves' own doc comment), not on every mid-week page view.
+    // Silently skipped for a scraped name that doesn't resolve to a local
+    // player, same as everywhere else here (slug/nationality/age all do
+    // the same `|| null` fallback) — no local account, nowhere to put a
+    // bell notification.
+    if (t.key === 'blta' && isNewWeek) {
+      const insert = db.prepare(`
+        INSERT OR IGNORE INTO ranking_notifications
+          (player_id, table_key, direction, amount, new_rank, snapshot_week)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+      Object.entries(weekMoves).forEach(([normName, move]) => {
+        const playerId = byPlayerId[normName];
+        if (!playerId) return;
+        const row = t.rows.find((r) => normalize(r.name) === normName);
+        if (!row) return;
+        insert.run(playerId, t.key, move.direction, move.amount, row.rank, currentWeek);
+      });
+    }
 
     return {
       key: t.key,

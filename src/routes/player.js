@@ -28,12 +28,13 @@ function sessionInfo({ isPlayerFlag, player }) {
   };
 }
 
-// Four independent sources feed the one notification bell (see
+// Five independent sources feed the one notification bell (see
 // GET /notifications below) — badges (player_badges), chat messages
 // (chat_notifications), looking-to-play requests (play_request_notifications),
-// and match proposals (proposal_notifications). Summed here so both the
-// session payload and every mark-read response can report one combined
-// count without duplicating these queries at each call site.
+// match proposals (proposal_notifications), and ranking moves
+// (ranking_notifications). Summed here so both the session payload and
+// every mark-read response can report one combined count without
+// duplicating these queries at each call site.
 function countUnreadNotifications(playerId) {
   const badges = db.prepare('SELECT COUNT(*) AS c FROM player_badges WHERE player_id = ? AND seen = 0').get(playerId).c;
   // chat_notifications and proposal_notifications reference a match_id that
@@ -55,7 +56,11 @@ function countUnreadNotifications(playerId) {
     JOIN matches m ON m.id = pn.match_id
     WHERE pn.player_id = ? AND pn.seen = 0
   `).get(playerId).c;
-  return badges + chats + playRequests + proposals;
+  // ranking_notifications is self-contained (direction/amount/new_rank
+  // copied straight in, no match/post reference to go stale — see its own
+  // comment in db.js), so no existence-check join needed here.
+  const rankings = db.prepare('SELECT COUNT(*) AS c FROM ranking_notifications WHERE player_id = ? AND seen = 0').get(playerId).c;
+  return badges + chats + playRequests + proposals + rankings;
 }
 
 router.get('/session', (req, res) => {
@@ -87,17 +92,21 @@ router.get('/session', (req, res) => {
 });
 
 // A player's own notifications, newest first — the list behind the nav
-// bell's dropdown (see common.js). Merges three unrelated sources into
-// one feed: a badge newly earned (player_badges), someone posting in a
-// match's chat that this player is in (chat_notifications), and someone
-// picking a time on this player's looking-to-play post
-// (play_request_notifications) — each item carries a `type` the client
-// branches on to render/handle it differently (a "Congratulations" modal
-// for a badge; a jump to the match for a chat message; a jump to the
-// looking-to-play board for a play request). Player-only: there's no
-// meaningful "my notifications" for a bare admin session with no specific
-// player identity, so this 401s the same way a missing player cookie
-// always does elsewhere, rather than silently returning an empty list.
+// bell's dropdown (see common.js). Merges five unrelated sources into one
+// feed: a badge newly earned (player_badges), someone posting in a match's
+// chat that this player is in (chat_notifications), someone picking a time
+// on this player's looking-to-play post (play_request_notifications),
+// someone proposing/confirming a match time (proposal_notifications, see
+// further down), and this player moving in the main BLTA ranking
+// (ranking_notifications, see further down still) — each item carries a
+// `type` the client branches on to render/handle it differently (a
+// "Congratulations" modal for a badge; a jump to the match for a chat
+// message or proposal; a jump to the looking-to-play board for a play
+// request; a jump to the rankings page for a ranking move). Player-only:
+// there's no meaningful "my notifications" for a bare admin session with
+// no specific player identity, so this 401s the same way a missing player
+// cookie always does elsewhere, rather than silently returning an empty
+// list.
 router.get('/notifications', (req, res) => {
   const playerId = auth.getPlayerId(req);
   if (!playerId) return res.status(401).json({ error: 'Please log in to see your notifications' });
@@ -181,7 +190,21 @@ router.get('/notifications', (req, res) => {
     },
   }));
 
-  const merged = [...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const rankingRows = db.prepare(`
+    SELECT id, seen, created_at, table_key, direction, amount, new_rank
+    FROM ranking_notifications
+    WHERE player_id = ?
+  `).all(playerId).map((r) => ({
+    type: 'RANKING',
+    id: r.id,
+    seen: !!r.seen,
+    createdAt: r.created_at,
+    ranking: {
+      tableKey: r.table_key, direction: r.direction, amount: r.amount, newRank: r.new_rank,
+    },
+  }));
+
+  const merged = [...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows, ...rankingRows].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json(merged);
 });
 
@@ -200,6 +223,7 @@ router.post('/notifications/:type/:id/read', (req, res) => {
     : type === 'chat' ? 'chat_notifications'
     : type === 'play_request' ? 'play_request_notifications'
     : type === 'proposal' ? 'proposal_notifications'
+    : type === 'ranking' ? 'ranking_notifications'
     : null;
   if (!table) return res.status(400).json({ error: 'Invalid notification type' });
   const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);

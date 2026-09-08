@@ -2151,7 +2151,7 @@ function renderBadgeNotifList() {
       icon = '👋';
       title = t('notif.playRequestTitle', { name: escapeHtml(n.playRequest.joinerName) });
       subtitle = fmtDateShort(n.playRequest.slot);
-    } else { // PROPOSAL
+    } else if (n.type === 'PROPOSAL') {
       // A missing otherPlayerName means something different depending on
       // kind: for RECEIVED it's genuinely unknown (see notifyProposalReceived
       // in routes/matches.js — only fires once a proposer is known, so this
@@ -2164,6 +2164,12 @@ function renderBadgeNotifList() {
       const name = escapeHtml(n.proposal.otherPlayerName || fallbackName);
       icon = n.proposal.kind === 'CONFIRMED' ? '✅' : '📅';
       title = t(n.proposal.kind === 'CONFIRMED' ? 'notif.proposalConfirmedTitle' : 'notif.proposalReceivedTitle', { name });
+      subtitle = fmtDateShort(n.createdAt);
+    } else { // RANKING
+      icon = n.ranking.direction === 'up' ? '📈' : '📉';
+      title = t(n.ranking.direction === 'up' ? 'notif.rankingUpTitle' : 'notif.rankingDownTitle', {
+        amount: n.ranking.amount, rank: n.ranking.newRank,
+      });
       subtitle = fmtDateShort(n.createdAt);
     }
     return `
@@ -2223,6 +2229,7 @@ document.addEventListener('click', async (e) => {
       const urlType = notif.type === 'BADGE' ? 'badge'
         : notif.type === 'CHAT_MESSAGE' ? 'chat'
         : notif.type === 'PLAY_REQUEST' ? 'play_request'
+        : notif.type === 'RANKING' ? 'ranking'
         : 'proposal';
       const res = await api(`/player/notifications/${urlType}/${id}/read`, { method: 'POST' });
       updateBadgeBellUI(res.unreadNotificationCount);
@@ -2231,6 +2238,7 @@ document.addEventListener('click', async (e) => {
   if (notif.type === 'CHAT_MESSAGE') window.location.href = `/match/${notif.chat.matchToken}`;
   if (notif.type === 'PROPOSAL') window.location.href = `/match/${notif.proposal.matchToken}`;
   if (notif.type === 'PLAY_REQUEST') window.location.href = '/looking-to-play';
+  if (notif.type === 'RANKING') window.location.href = '/rankings';
 });
 
 refreshPlayerAuth();
