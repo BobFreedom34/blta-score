@@ -15,10 +15,13 @@ const db = require('./db');
 
 const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 
-function badgeSetWonZero(m, pid) {
+// Every set THIS match had that pid won 6-0 (0, 1, or 2 for a double-
+// bagel best-of-3) — a count, not a yes/no, so BAGEL below can support a
+// real threshold ("win N 6-0 sets", not just "have you ever won one").
+function countBagelSets(m, pid) {
   const sets = m.sets || [];
   const isP1 = m.player1Id === pid;
-  return sets.some((s) => (isP1 && s.p1 === 6 && s.p2 === 0) || (!isP1 && s.p2 === 6 && s.p1 === 0));
+  return sets.filter((s) => (isP1 && s.p1 === 6 && s.p2 === 0) || (!isP1 && s.p2 === 6 && s.p1 === 0)).length;
 }
 
 function badgeWonAfterLosingFirstSet(m, pid) {
@@ -63,8 +66,11 @@ function computeBadgeMetrics(playerId, finished) {
     WINS: wins.length,
     WIN_STREAK: maxStreak,
     CATEGORY_SWEEP: BLTA_CATEGORIES.every((c) => winCategories.has(c)) ? 1 : 0,
-    BAGEL: wins.some((m) => badgeSetWonZero(m, pid)) ? 1 : 0,
-    COMEBACK: wins.some((m) => badgeWonAfterLosingFirstSet(m, pid)) ? 1 : 0,
+    BAGEL: wins.reduce((sum, m) => sum + countBagelSets(m, pid), 0),
+    // A count of matches (not sets — there's only ever one "1st set" per
+    // match), same reasoning as BAGEL above needing one: a threshold can
+    // now distinguish "came back once" from "makes a habit of it".
+    COMEBACK: wins.filter((m) => badgeWonAfterLosingFirstSet(m, pid)).length,
     STRAIGHT_SETS: wins.filter((m) => badgeWonWithoutDroppingSet(m, pid)).length,
   };
 }

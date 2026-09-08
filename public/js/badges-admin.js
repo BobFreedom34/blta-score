@@ -10,8 +10,14 @@ const LOGIC_TYPES = [
   { value: 'WIN_STREAK', label: 'Win streak ≥', groupLabel: 'Win Streak', needsThreshold: true },
   { value: 'STRAIGHT_SETS', label: 'Straight-set wins (no sets dropped) ≥', groupLabel: 'Straight Sets', needsThreshold: true },
   { value: 'CATEGORY_SWEEP', label: 'Win in Elite, Next Gen and Novice', groupLabel: 'Versatility', needsThreshold: false },
-  { value: 'BAGEL', label: 'Win a set 6–0', groupLabel: 'Bagel', needsThreshold: false },
-  { value: 'COMEBACK', label: 'Win after losing the 1st set', groupLabel: 'Comeback', needsThreshold: false },
+  // Counts individual 6-0 sets won (see countBagelSets in badgeEngine.js/
+  // badges.js) — a double-bagel match (6-0, 6-0) counts as 2, not 1 — so a
+  // threshold actually distinguishes "won a set 6-0 once" from "made a
+  // habit of it", unlike before this needed one.
+  { value: 'BAGEL', label: 'Sets won 6–0 ≥', groupLabel: 'Bagel', needsThreshold: true },
+  // Counts matches, not sets (see badgeEngine.js/badges.js) — same reason
+  // as BAGEL just above needing one.
+  { value: 'COMEBACK', label: 'Comeback wins (lost 1st set) ≥', groupLabel: 'Comeback', needsThreshold: true },
 ];
 
 function needsThreshold(logicType) {
@@ -114,7 +120,11 @@ function readBadgeForm(prefix) {
 
 function badgeRowHtml(badge) {
   const type = LOGIC_TYPES.find((t) => t.value === badge.logicType);
-  const conditionText = type ? (type.needsThreshold ? `${type.label} ${badge.threshold}` : type.label) : badge.logicType;
+  // Same "no threshold set yet means 1" fallback as the engine itself
+  // (computeEarnedBadgeIds/computeEarnedBadges) — matters for BAGEL badges
+  // saved before it gained a threshold field, which still have a bare
+  // null in the database until someone opens and re-saves them.
+  const conditionText = type ? (type.needsThreshold ? `${type.label} ${badge.threshold != null ? badge.threshold : 1}` : type.label) : badge.logicType;
   return `
     <div class="badge-row" data-id="${badge.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
       <div class="badge-row-view" style="display:flex;align-items:center;gap:12px">

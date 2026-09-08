@@ -26,7 +26,12 @@ const upload = multer({
 const LOGIC_TYPES = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP', 'BAGEL', 'COMEBACK', 'STRAIGHT_SETS'];
 // These logic types are count-based (need a threshold); the rest are
 // pass/fail conditions computed straight from a player's match history.
-const THRESHOLD_TYPES = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'STRAIGHT_SETS'];
+// BAGEL/COMEBACK moved here once badgeEngine.js's own metrics for them
+// became real counts (individual 6-0 sets, and comeback wins) instead of
+// a bare yes/no — kept in sync with badges-admin.js's own client-side
+// LOGIC_TYPES.needsThreshold flags, which this independently re-validates
+// server-side rather than trusting the client's word for it.
+const THRESHOLD_TYPES = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'STRAIGHT_SETS', 'BAGEL', 'COMEBACK'];
 
 function serialize(row) {
   return {
