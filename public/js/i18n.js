@@ -190,6 +190,14 @@ const TRANSLATIONS = {
     'login.error.phoneAlreadyRegistered': 'Toto telefónne číslo je už zaregistrované — skúste sa prihlásiť.',
     'login.registerSubmit': 'Zaregistrovať sa',
 
+    'referee.btn': 'Referee',
+    'referee.title': 'Prihlásiť sa ako rozhodca',
+    'referee.headline': 'Zadajte kód rozhodcu',
+    'referee.intro': '5-miestny kód, ktorý vám poskytol organizátor turnaja — nemusíte byť hráč ani prihlásený, tento kód vám umožní spustiť a viesť live zápas.',
+    'referee.success': 'Prihlásené ako rozhodca — teraz môžete viesť live zápas.',
+    'referee.error.notConfigured': 'Prihlásenie pre rozhodcov ešte nie je nastavené — požiadajte admina, aby nastavil kód rozhodcu.',
+    'referee.error.wrongCode': 'Nesprávny kód.',
+
     'resetCode.pageTitle': 'Tennis SCORE — Obnoviť kód',
     'resetCode.headline': 'Nastavte si nový kód',
     'resetCode.intro': 'Vytvorte si nový 5-miestny kód. Použijete ho spolu s vaším telefónnym číslom pri každom ďalšom prihlásení.',
@@ -718,6 +726,14 @@ const TRANSLATIONS = {
     'login.error.nameAlreadyExists': 'A player with that name already exists — ask an admin, or log in instead if this is you.',
     'login.error.phoneAlreadyRegistered': 'This phone number is already registered to a player — try logging in instead.',
     'login.registerSubmit': 'Register',
+
+    'referee.btn': 'Referee',
+    'referee.title': 'Log in as referee',
+    'referee.headline': 'Enter the referee code',
+    'referee.intro': "The 5-digit code the tournament organizer gave you — you don't need to be a player or logged in, this code lets you start and run a live match.",
+    'referee.success': "Logged in as referee — you can now run a live match.",
+    'referee.error.notConfigured': 'Referee login is not set up yet — ask an admin to set a referee code.',
+    'referee.error.wrongCode': 'Incorrect code.',
 
     'resetCode.pageTitle': 'Tennis SCORE — Reset code',
     'resetCode.headline': 'Set your new code',

@@ -490,6 +490,33 @@
   </div>
 </div>
 
+<!-- Referee login modal — a single shared code (set by admin), not tied
+     to any player/admin account, that unlocks live-scoring on THIS match
+     (see the "Referee" button in match.js and src/routes/referee.js).
+     Same OTP-box design as the player login's own PIN step above. -->
+<div class="modal-backdrop" id="referee-login-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="referee-login-modal" aria-label="Close">&times;</button>
+    <div style="text-transform:uppercase;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--gray)" data-i18n="referee.title">Prihlásiť sa ako rozhodca</div>
+    <h3 style="font-weight:700;text-transform:none;margin-top:4px" data-i18n="referee.headline">Zadajte kód rozhodcu</h3>
+    <p style="font-size:14px;color:var(--ink);line-height:1.5" data-i18n="referee.intro">5-miestny kód, ktorý vám poskytol organizátor turnaja — nemusíte byť hráč ani prihlásený, tento kód vám umožní spustiť a viesť live zápas.</p>
+    <form id="referee-login-form">
+      <div class="field">
+        <div class="otp-group" id="referee-login-input-otp">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" autocomplete="off">
+        </div>
+        <input type="hidden" id="referee-login-input">
+      </div>
+      <div id="referee-login-error" style="color:var(--danger);font-weight:600;margin:8px 0;text-align:center"></div>
+      <button type="submit" class="btn btn-primary btn-block" data-i18n="login.submit">Prihlásiť sa</button>
+    </form>
+  </div>
+</div>
+
 <footer class="site-footer">
   <div class="site-footer-inner">
     <span>BLTA Score</span>

@@ -40,6 +40,22 @@ function renderLoggedIn() {
     </p>
     <button type="button" class="btn btn-outline" id="backup-now-btn">📦 Back up now</button>
     <button type="button" class="btn btn-outline" id="logout-btn" style="margin-top:10px">Log out</button>
+
+    <hr style="margin:20px 0;border:none;border-top:1px solid var(--gray-light)">
+    <h3 style="margin-top:0">Referee code</h3>
+    <p style="color:var(--gray);font-size:13px">
+      A shared 5-digit code — anyone who enters it on a match page's "Referee" button can start and
+      run that match's live score, without a player or admin account of their own. Handy for someone
+      officiating who isn't in the BLTA system. Set (or replace) it here; there's no way to look up an
+      existing one once set, only rotate it.
+    </p>
+    <p id="referee-code-status" style="font-weight:700"></p>
+    <form id="referee-code-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+      <input type="text" inputmode="numeric" maxlength="5" id="referee-code-input" placeholder="12345" style="width:120px">
+      <button type="submit" class="btn btn-primary">Set code</button>
+      <button type="button" class="btn btn-outline" id="referee-code-clear-btn">Turn off</button>
+    </form>
+    <div id="referee-code-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
   `;
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await api('/admin/logout', { method: 'POST' });
@@ -64,6 +80,50 @@ function renderLoggedIn() {
       btn.disabled = false;
       btn.textContent = original;
     }
+  });
+
+  const statusEl = document.getElementById('referee-code-status');
+  async function refreshRefereeStatus() {
+    try {
+      const { isSet } = await api('/referee/admin/status');
+      statusEl.textContent = isSet ? '🟢 A referee code is set.' : '⚪ No referee code set — the Referee button on match pages won’t work until you set one.';
+    } catch (err) {
+      statusEl.textContent = '';
+    }
+  }
+  refreshRefereeStatus();
+
+  document.getElementById('referee-code-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('referee-code-error');
+    errorEl.textContent = '';
+    const input = document.getElementById('referee-code-input');
+    const code = input.value.trim();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    try {
+      await api('/referee/admin/code', { method: 'PUT', body: { code } });
+      input.value = '';
+      toast('Referee code set');
+      refreshRefereeStatus();
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
+    submitBtn.disabled = false;
+  });
+
+  document.getElementById('referee-code-clear-btn').addEventListener('click', async (e) => {
+    if (!confirm('Turn off referee login? The Referee button on match pages will stop working until a new code is set.')) return;
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    try {
+      await api('/referee/admin/code', { method: 'DELETE' });
+      toast('Referee code cleared');
+      refreshRefereeStatus();
+    } catch (err) {
+      toast(err.message);
+    }
+    btn.disabled = false;
   });
 }
 

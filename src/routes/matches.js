@@ -6,7 +6,9 @@ const {
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail, sendProposalReceivedEmail,
 } = require('../mailer');
 const { sendPush } = require('../push');
-const { isAdmin, getPlayerId, requireLoggedIn, requireAdmin, stripPrivateFields } = require('../auth');
+const {
+  isAdmin, getPlayerId, requireLoggedIn, requireAdmin, stripPrivateFields, isReferee, requireLoggedInOrReferee,
+} = require('../auth');
 const badgeEngine = require('../badgeEngine');
 
 const router = express.Router();
@@ -233,6 +235,23 @@ function checkMatchAccess(req, res, row) {
   }
   res.status(403).json({ error: 'You can only manage matches you play in (if an admin created them) or matches you created yourself' });
   return false;
+}
+
+// Same shape as checkMatchAccess above, but also lets a referee session
+// through (see auth.js's isReferee) — used ONLY on the live-scoring
+// routes below (start/pause/resume/score/undo/finish/restart/unfinished/
+// resume-later/finish-as-is, each paired with requireLoggedInOrReferee
+// instead of plain requireLoggedIn), never on the broader match-
+// management ones (editing location/date, deleting the match, format/
+// set-style setup) — a referee isn't a stand-in for a real player or
+// admin there, only for live scoring. Deliberately doesn't fall through
+// to checkMatchAccess's own ownership rules for a referee: anyone with
+// the shared code can control ANY match's live score, by design (that's
+// the whole point of a courtside referee who isn't one of the two
+// players and doesn't have a BLTA account).
+function checkLiveScoreAccess(req, res, row) {
+  if (isReferee(req)) return true;
+  return checkMatchAccess(req, res, row);
 }
 
 function nowIso() {
@@ -1053,10 +1072,10 @@ router.delete('/:token/counter-proposal', requireLoggedIn, (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/start', requireLoggedIn, async (req, res) => {
+router.post('/:token/start', requireLoggedInOrReferee, async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!checkMatchAccess(req, res, row)) return;
+  if (!checkLiveScoreAccess(req, res, row)) return;
   if (row.status !== 'PLANNED') {
     return res.status(400).json({ error: 'Only planned matches can be started' });
   }
@@ -1139,10 +1158,10 @@ router.patch('/:token/set-style', requireLoggedIn, (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/pause', requireLoggedIn, (req, res) => {
+router.post('/:token/pause', requireLoggedInOrReferee, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!checkMatchAccess(req, res, row)) return;
+  if (!checkLiveScoreAccess(req, res, row)) return;
   if (row.status !== 'LIVE') {
     return res.status(400).json({ error: 'Only a live match can be paused' });
   }
@@ -1156,10 +1175,10 @@ router.post('/:token/pause', requireLoggedIn, (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/resume', requireLoggedIn, (req, res) => {
+router.post('/:token/resume', requireLoggedInOrReferee, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!checkMatchAccess(req, res, row)) return;
+  if (!checkLiveScoreAccess(req, res, row)) return;
   if (row.status !== 'LIVE') {
     return res.status(400).json({ error: 'Only a live match can be resumed' });
   }
@@ -1181,10 +1200,10 @@ router.post('/:token/resume', requireLoggedIn, (req, res) => {
 // picks up exactly where it left off. Not FINISHED, so it's automatically
 // excluded from stats/badges same as any other non-finished match — that
 // stays true for as long as it sits here, whether or not it's ever resumed.
-router.post('/:token/unfinished', requireLoggedIn, (req, res) => {
+router.post('/:token/unfinished', requireLoggedInOrReferee, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!checkMatchAccess(req, res, row)) return;
+  if (!checkLiveScoreAccess(req, res, row)) return;
   if (row.status !== 'LIVE') {
     return res.status(400).json({ error: 'Only a live match can be marked unfinished' });
   }
@@ -1200,10 +1219,10 @@ router.post('/:token/unfinished', requireLoggedIn, (req, res) => {
 // location and start again — the score/state carries over untouched (only
 // the live-scoring "Start" flow actually resets nothing itself; it just
 // stops using a fresh initState the way match creation does).
-router.post('/:token/resume-later', requireLoggedIn, (req, res) => {
+router.post('/:token/resume-later', requireLoggedInOrReferee, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!checkMatchAccess(req, res, row)) return;
+  if (!checkLiveScoreAccess(req, res, row)) return;
   if (row.status !== 'UNFINISHED') {
     return res.status(400).json({ error: 'Only an unfinished match can be resumed this way' });
   }
@@ -1221,10 +1240,10 @@ router.post('/:token/resume-later', requireLoggedIn, (req, res) => {
 // (same trick as WALKOVER) so it's permanently excluded from stats/badges/
 // H2H, same as everywhere else that filters those out — this never
 // reached a real conclusion, so it shouldn't count as one.
-router.post('/:token/finish-as-is', requireLoggedIn, async (req, res) => {
+router.post('/:token/finish-as-is', requireLoggedInOrReferee, async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!checkMatchAccess(req, res, row)) return;
+  if (!checkLiveScoreAccess(req, res, row)) return;
   if (row.status !== 'UNFINISHED') {
     return res.status(400).json({ error: 'Only an unfinished match can be finished this way' });
   }
@@ -1263,10 +1282,10 @@ router.post('/:token/finish-as-is', requireLoggedIn, async (req, res) => {
   });
 });
 
-router.post('/:token/restart', requireLoggedIn, (req, res) => {
+router.post('/:token/restart', requireLoggedInOrReferee, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!checkMatchAccess(req, res, row)) return;
+  if (!checkLiveScoreAccess(req, res, row)) return;
   if (row.status === 'FINISHED') {
     if (!isAdmin(req)) {
       return res.status(403).json({ error: 'Only an admin can restart a finished match' });
@@ -1287,10 +1306,10 @@ router.post('/:token/restart', requireLoggedIn, (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/score', requireLoggedIn, (req, res) => {
+router.post('/:token/score', requireLoggedInOrReferee, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!checkMatchAccess(req, res, row)) return;
+  if (!checkLiveScoreAccess(req, res, row)) return;
   if (row.status === 'PLANNED') {
     return res.status(400).json({ error: 'Match must be live to update the score' });
   }
@@ -1358,10 +1377,10 @@ router.post('/:token/score', requireLoggedIn, (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/undo', requireLoggedIn, (req, res) => {
+router.post('/:token/undo', requireLoggedInOrReferee, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!checkMatchAccess(req, res, row)) return;
+  if (!checkLiveScoreAccess(req, res, row)) return;
   if (row.status === 'FINISHED' && !isAdmin(req)) {
     return res.status(403).json({ error: 'Only an admin can edit a finished match' });
   }
@@ -1379,10 +1398,10 @@ router.post('/:token/undo', requireLoggedIn, (req, res) => {
   res.json(payload);
 });
 
-router.post('/:token/finish', requireLoggedIn, async (req, res) => {
+router.post('/:token/finish', requireLoggedInOrReferee, async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!checkMatchAccess(req, res, row)) return;
+  if (!checkLiveScoreAccess(req, res, row)) return;
   if (row.status !== 'LIVE') {
     return res.status(400).json({ error: 'Only live matches can be finished' });
   }

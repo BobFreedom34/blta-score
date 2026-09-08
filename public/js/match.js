@@ -674,6 +674,14 @@ function render(m) {
   // rejected after clicking — so these require being logged in already
   // AND passing canManageMatch, not either alone.
   const canControlLive = isAdminUser || (playerAuthed && canManageMatch(m, isAdminUser));
+  // A referee session (see the "Referee" button below and
+  // requireLiveScoreAuth in common.js) unlocks the SAME Stop/Restart/
+  // Finish/Unfinished buttons canControlLive does — but kept as its own
+  // flag, only fed into controlsHtml below, rather than folded into
+  // canControlLive itself: that one also feeds `deletable` further down,
+  // and a referee (anyone who knows the shared code, not a specific
+  // player or admin) should never get to delete a match.
+  const canControlLiveOrReferee = canControlLive || refereeAuthed;
   // Location/Date/Category/Notes all go through the same PATCH /:token +
   // checkMatchAccess path server-side, so they're gated together
   // client-side too — admin can always edit (even a finished match).
@@ -718,7 +726,7 @@ function render(m) {
     </div>
 
     ${scoreboardHtml(m, durationHtml)}
-    ${controlsHtml(m, canControlLive)}
+    ${controlsHtml(m, canControlLiveOrReferee)}
 
     <div class="info-grid">
       <div class="info-item">
@@ -754,6 +762,7 @@ function render(m) {
     <div class="match-actions">
       <button class="btn btn-yellow" id="share-btn">${t('match.shareBtn')}</button>
       <button class="btn" id="embed-btn">${t('match.embedBtn')}</button>
+      <button class="btn btn-dark" id="referee-btn">${t('referee.btn')}</button>
       ${locationEditable ? `<button class="btn" id="edit-match-btn">${t('match.editMatchBtn')}</button>` : ''}
       ${m.status === 'FINISHED' ? `<button class="btn btn-green" id="whatsapp-result-btn">${t('match.sendToWhatsapp')}</button>` : ''}
       ${deletable ? `<button class="btn btn-danger" id="delete-btn">${t('match.deleteMatchBtn')}</button>` : ''}
@@ -768,15 +777,18 @@ function render(m) {
 }
 
 function attachHandlers(m) {
-  // Start live match / Enter result manually: prompt login if logged out
-  // (requirePlayerAuth), then — the moment login is confirmed — reject
-  // immediately with checkMatchAccess's own message if this isn't a match
-  // this player can manage, rather than only rejecting after
-  // they've filled out and submitted the schedule/first-server/result
-  // form. Same pattern as handlePlannedActionClick in app.js.
+  // Start live match: prompt login if logged out — or a referee code,
+  // via requireLiveScoreAuth (common.js) — then, the moment either is
+  // confirmed, reject immediately with checkMatchAccess's own message if
+  // this isn't a match this player can manage (a referee session always
+  // passes that check instead, see below), rather than only rejecting
+  // after they've filled out and submitted the schedule/first-server
+  // form. Same pattern as handlePlannedActionClick in app.js. Enter
+  // result manually, just below, stays requirePlayerAuth-only — that one
+  // isn't part of a referee's live-scoring scope.
   const startBtn = document.getElementById('start-btn');
-  if (startBtn) startBtn.addEventListener('click', () => requirePlayerAuth(() => {
-    if (!canManageMatch(m, isAdminUser)) {
+  if (startBtn) startBtn.addEventListener('click', () => requireLiveScoreAuth(() => {
+    if (!refereeAuthed && !canManageMatch(m, isAdminUser)) {
       showAccessDeniedModal(t('accessDenied.message'));
       return;
     }
@@ -817,7 +829,7 @@ function attachHandlers(m) {
   if (counterProposeLink) counterProposeLink.addEventListener('click', () => requirePlayerAuth(() => openCounterProposeModal(m)));
 
   root.querySelectorAll('.btn-giant, .btn-minus').forEach((btn) => {
-    btn.addEventListener('click', () => requirePlayerAuth(async () => {
+    btn.addEventListener('click', () => requireLiveScoreAuth(async () => {
       root.querySelectorAll('.btn-giant, .btn-minus').forEach((b) => b.disabled = true);
       const body = { player: Number(btn.dataset.player), delta: Number(btn.dataset.delta) };
       // Ordinary in-progress scoring goes through the plain path so the
@@ -871,12 +883,12 @@ function attachHandlers(m) {
   });
 
   // Stop/Resume/Restart/Finish/Mark-unfinished/Resume-later/Finish-as-is
-  // are now hidden from render() entirely unless canControlLive was true
-  // (see there) — this recheck is just the same belt-and-braces pattern
-  // start-btn/manual-result-btn/openEditMatch already use, for the rare
-  // case a stale render leaves one of these clickable a beat too long.
+  // are now hidden from render() entirely unless canControlLiveOrReferee
+  // was true (see there) — this recheck is just the same belt-and-braces
+  // pattern start-btn/manual-result-btn/openEditMatch already use, for the
+  // rare case a stale render leaves one of these clickable a beat too long.
   function guardCanControl() {
-    if (!canManageMatch(m, isAdminUser)) {
+    if (!refereeAuthed && !canManageMatch(m, isAdminUser)) {
       showAccessDeniedModal(t('accessDenied.message'));
       return false;
     }
@@ -884,21 +896,21 @@ function attachHandlers(m) {
   }
 
   const pauseBtn = document.getElementById('pause-btn');
-  if (pauseBtn) pauseBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+  if (pauseBtn) pauseBtn.addEventListener('click', () => requireLiveScoreAuth(async () => {
     if (!guardCanControl()) return;
     try { render(await api(`/matches/${matchToken}/pause`, { method: 'POST' })); }
     catch (err) { toast(err.message); }
   }));
 
   const resumeBtn = document.getElementById('resume-btn');
-  if (resumeBtn) resumeBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+  if (resumeBtn) resumeBtn.addEventListener('click', () => requireLiveScoreAuth(async () => {
     if (!guardCanControl()) return;
     try { render(await api(`/matches/${matchToken}/resume`, { method: 'POST' })); }
     catch (err) { toast(err.message); }
   }));
 
   const restartBtn = document.getElementById('restart-btn');
-  if (restartBtn) restartBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+  if (restartBtn) restartBtn.addEventListener('click', () => requireLiveScoreAuth(async () => {
     if (!guardCanControl()) return;
     if (!confirm(t('match.restartConfirm'))) return;
     restartBtn.disabled = true;
@@ -907,7 +919,7 @@ function attachHandlers(m) {
   }));
 
   const finishBtn = document.getElementById('finish-btn');
-  if (finishBtn) finishBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+  if (finishBtn) finishBtn.addEventListener('click', () => requireLiveScoreAuth(async () => {
     if (!guardCanControl()) return;
     // Free Play never reaches state.status === 'COMPLETE' on its own — but
     // if one player has clearly won more sets, finishing is just a normal
@@ -929,7 +941,7 @@ function attachHandlers(m) {
   }));
 
   const unfinishedBtn = document.getElementById('unfinished-btn');
-  if (unfinishedBtn) unfinishedBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+  if (unfinishedBtn) unfinishedBtn.addEventListener('click', () => requireLiveScoreAuth(async () => {
     if (!guardCanControl()) return;
     if (!confirm(t('match.unfinishedConfirm'))) return;
     unfinishedBtn.disabled = true;
@@ -938,7 +950,7 @@ function attachHandlers(m) {
   }));
 
   const resumeLaterBtn = document.getElementById('resume-later-btn');
-  if (resumeLaterBtn) resumeLaterBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+  if (resumeLaterBtn) resumeLaterBtn.addEventListener('click', () => requireLiveScoreAuth(async () => {
     if (!guardCanControl()) return;
     resumeLaterBtn.disabled = true;
     try {
@@ -949,7 +961,7 @@ function attachHandlers(m) {
   }));
 
   const finishAsIsBtn = document.getElementById('finish-as-is-btn');
-  if (finishAsIsBtn) finishAsIsBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+  if (finishAsIsBtn) finishAsIsBtn.addEventListener('click', () => requireLiveScoreAuth(async () => {
     if (!guardCanControl()) return;
     if (!confirm(t('match.finishAsIsConfirm'))) return;
     finishAsIsBtn.disabled = true;
@@ -1012,6 +1024,8 @@ function attachHandlers(m) {
   ));
   const embedBtn = document.getElementById('embed-btn');
   if (embedBtn) embedBtn.addEventListener('click', () => openEmbedModal(m));
+  const refereeBtn = document.getElementById('referee-btn');
+  if (refereeBtn) refereeBtn.addEventListener('click', () => openRefereeLoginModal());
   const whatsappResultBtn = document.getElementById('whatsapp-result-btn');
   if (whatsappResultBtn) whatsappResultBtn.addEventListener('click', () => openWhatsAppResultModal(m));
 
@@ -1248,6 +1262,40 @@ document.getElementById('counter-propose-form').addEventListener('submit', async
     );
   } catch (err) {
     errorEl.textContent = err.message;
+  }
+  submitBtn.disabled = false;
+});
+
+// "Referee" — a shared code (set by admin), no player/admin account
+// involved at all, letting anyone who knows it control this (or any)
+// match's live scoring — see requireLiveScoreAuth in common.js and
+// src/routes/referee.js. Wired once here (not per-render, unlike most of
+// this file's other handlers) since the modal itself is static markup in
+// match.html, not something render() rebuilds.
+function openRefereeLoginModal() {
+  document.getElementById('referee-login-error').textContent = '';
+  otpClear('referee-login-input');
+  document.getElementById('referee-login-modal').style.display = 'flex';
+  otpFocus('referee-login-input');
+}
+
+document.getElementById('referee-login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('referee-login-error');
+  errorEl.textContent = '';
+  const code = document.getElementById('referee-login-input').value.trim();
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  try {
+    await api('/referee/login', { method: 'POST', body: { code } });
+    refereeAuthed = true;
+    document.getElementById('referee-login-modal').style.display = 'none';
+    toast(t('referee.success'));
+    if (current) render(current);
+  } catch (err) {
+    errorEl.textContent = refereeErrorText(err);
+    otpClear('referee-login-input');
+    otpFocus('referee-login-input');
   }
   submitBtn.disabled = false;
 });

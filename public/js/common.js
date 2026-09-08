@@ -1427,8 +1427,16 @@ async function checkAdmin() {
 //
 // There used to be a second, more limited "anonymous" login here too (its
 // own shared code) — it's been removed entirely; phone number is now the
-// only way in besides admin.
+// only way in besides admin. refereeAuthed below is a deliberately
+// narrower re-introduction of that same "shared code, no real account"
+// idea for one specific purpose — see its own comment.
 let playerAuthed = false;
+// A referee session (see the "Referee" button/modal in match.js,
+// src/routes/referee.js) — unlike playerAuthed above, this carries no
+// identity at all, just a yes/no, and only ever matters to
+// requireLiveScoreAuth below (used ONLY by match.js's live-scoring button
+// handlers) — nothing else in the app checks it or should.
+let refereeAuthed = false;
 let currentPlayerName = null;
 // Null for a pure admin session (no player cookie) or no session at all —
 // only set once a *specific* player is logged in via their phone number.
@@ -1507,12 +1515,14 @@ async function refreshPlayerAuth() {
     currentPlayerEmail = res.playerEmail || null;
     needsPinSetup = !!res.needsPinSetup;
     unreadNotificationCount = res.unreadNotificationCount || 0;
+    refereeAuthed = !!res.isReferee;
   } catch {
     playerAuthed = false;
     currentPlayerName = null;
     currentPlayerId = null;
     currentPlayerSlug = null;
     currentPlayerEmail = null;
+    refereeAuthed = false;
   }
   updatePlayerNavLinks();
   updateBadgeBellUI(unreadNotificationCount);
@@ -1581,6 +1591,18 @@ function loginErrorText(err) {
   const key = `login.error.${code}`;
   const vars = code === 'incorrectCode' ? { count: err.data.attemptsLeft, word: attemptsWord(err.data.attemptsLeft) } : undefined;
   const translated = t(key, vars);
+  return translated === key ? err.message : translated;
+}
+
+// Same mechanism as loginErrorText above, for POST /referee/login's own
+// errorCode ('notConfigured'/'wrongCode') — a separate function rather
+// than widening loginErrorText's own login.error.* namespace, since these
+// are unrelated errors under their own referee.error.* keys.
+function refereeErrorText(err) {
+  const code = err.data && err.data.errorCode;
+  if (!code) return err.message;
+  const key = `referee.error.${code}`;
+  const translated = t(key);
   return translated === key ? err.message : translated;
 }
 
@@ -1956,6 +1978,18 @@ if (playerLoginModalEl) {
 // normal toast(err.message) path.
 function requirePlayerAuth(onReady) {
   if (playerAuthed) { onReady(); return; }
+  openPlayerLoginModal(onReady);
+}
+
+// Same idea as requirePlayerAuth, but also lets a referee session through
+// (see refereeAuthed above) — used ONLY by match.js's live-scoring button
+// handlers (start/score/undo/pause/resume/restart/finish/unfinished/
+// resume-later/finish-as-is, mirroring exactly the routes in
+// routes/matches.js gated by requireLoggedInOrReferee there), never as a
+// general replacement for requirePlayerAuth elsewhere — a referee isn't a
+// stand-in for a real player or admin on anything but live scoring.
+function requireLiveScoreAuth(onReady) {
+  if (playerAuthed || refereeAuthed) { onReady(); return; }
   openPlayerLoginModal(onReady);
 }
 

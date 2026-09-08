@@ -719,6 +719,25 @@ db.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_ranking_notifications_unique ON ranking_notifications(player_id, table_key, snapshot_week);
 `);
 
+// A single shared code that lets anyone who knows it control live scoring
+// on ANY match — the "Referee" button on the match page (see
+// routes/referee.js, auth.js's isReferee) — without being a specific
+// player or admin. One row, id fixed at 1 (the CHECK enforces that, so a
+// stray second INSERT fails loudly instead of silently creating an
+// ambiguous second code). No row at all (the normal starting state) means
+// the feature is simply off — nobody can log in as referee until an admin
+// sets one. Hashed the same way a player's own login_pin is (see hashPin/
+// verifyPin in auth.js) rather than stored in plain text, even though it's
+// a shared secret rather than a personal one — same reasoning as
+// PLAYER_CODE never being logged/stored bare elsewhere in this app.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS referee_code (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    code_hash TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+
 // Admin-visible login history (see auth.js's logInPlayer, the single
 // choke point every real/first phone login, registration, and PIN reset
 // all funnel through — one row per session actually started, not per

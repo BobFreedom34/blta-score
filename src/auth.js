@@ -3,6 +3,7 @@ const db = require('./db');
 
 const COOKIE_NAME = 'blta_admin';
 const PLAYER_COOKIE_NAME = 'blta_player';
+const REFEREE_COOKIE_NAME = 'blta_referee';
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const isSecure = (process.env.PUBLIC_URL || '').startsWith('https://');
 
@@ -59,6 +60,29 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// A referee session — anyone who entered the one shared referee code (see
+// routes/referee.js) — is deliberately its own tier, not folded into
+// isPlayer/isAdmin above: it grants no player identity and no general
+// match-management rights, only live-scoring control on whichever match
+// they're looking at (see checkLiveScoreAccess in routes/matches.js and
+// requireLoggedInOrReferee below, both used ONLY on the live-scoring
+// routes — start/pause/resume/score/undo/finish/restart/unfinished/
+// resume-later/finish-as-is — not the broader checkMatchAccess-gated ones
+// like editing location/date or deleting the match). Same boolean-cookie
+// shape as isAdmin above, since there's no specific identity to track —
+// just "this browser proved it knows the code" — not a specific referee.
+function isReferee(req) {
+  return req.signedCookies && req.signedCookies[REFEREE_COOKIE_NAME] === 'ok';
+}
+
+function logInReferee(res) {
+  res.cookie(REFEREE_COOKIE_NAME, 'ok', cookieOptions());
+}
+
+function logOutReferee(res) {
+  res.clearCookie(REFEREE_COOKIE_NAME, cookieOptions());
+}
+
 // A specific player, identified by their phone number at login (see
 // routes/player.js) — the cookie holds that player's id, not just a
 // boolean, so match-editing rights can be scoped to "this player" instead
@@ -108,10 +132,28 @@ function requirePlayer(req, res, next) {
 // third, more limited "anonymous" login tier here (a shared code, for
 // someone with no real BLTA player account) that this also accepted — it's
 // been removed entirely: only a real player (a phone number on file) or an
-// admin can log in at all now.
+// admin can log in at all now. The referee tier below (isReferee) is a
+// deliberately narrower re-introduction of "a shared code, no real
+// account" for one specific purpose (live-scoring a match courtside) — it
+// intentionally does NOT plug into requireLoggedIn/isPlayer here, so it
+// stays scoped to exactly the routes that opt into
+// requireLoggedInOrReferee instead of quietly reopening every one of
+// these general routes the way the old anonymous tier did.
 function requireLoggedIn(req, res, next) {
   if (!isPlayer(req)) {
     return res.status(401).json({ error: 'Please log in to do this' });
+  }
+  next();
+}
+
+// Same as requireLoggedIn, but also accepts a referee session (see
+// isReferee above) — used ONLY on the live-scoring routes in
+// routes/matches.js (see their own comments for the exact list), which
+// also swap checkMatchAccess for checkLiveScoreAccess. Not a general
+// replacement for requireLoggedIn elsewhere.
+function requireLoggedInOrReferee(req, res, next) {
+  if (!isPlayer(req) && !isReferee(req)) {
+    return res.status(401).json({ error: 'Please log in, or enter the referee code, to do this' });
   }
   next();
 }
@@ -142,7 +184,8 @@ function stripPrivateFields(player, req) {
 }
 
 module.exports = {
-  COOKIE_NAME, PLAYER_COOKIE_NAME, isAdmin, logIn, logOut, requireAdmin,
+  COOKIE_NAME, PLAYER_COOKIE_NAME, REFEREE_COOKIE_NAME, isAdmin, logIn, logOut, requireAdmin,
   isPlayer, getPlayerId, logInPlayer, logOutPlayer, requirePlayer,
   requireLoggedIn, hashPin, verifyPin, canSeePrivateFields, stripPrivateFields,
+  isReferee, logInReferee, logOutReferee, requireLoggedInOrReferee,
 };
