@@ -311,9 +311,38 @@ function decideByCompletedSets(state) {
   return a > b ? 1 : 2;
 }
 
+function isTiebreakSetScore(p1, p2) {
+  return (p1 === 7 && p2 === 6) || (p1 === 6 && p2 === 7);
+}
+
 function isValidSetScore(p1, p2) {
-  if ((p1 === 7 && p2 === 6) || (p1 === 6 && p2 === 7)) return true;
+  if (isTiebreakSetScore(p1, p2)) return true;
   return (p1 >= 6 || p2 >= 6) && Math.abs(p1 - p2) >= 2;
+}
+
+// The real tiebreak point score for a manually-entered 7-6/6-7 set (e.g.
+// "7-6(4)" instead of just "7-6") — raw.tbP1/raw.tbP2, both optional.
+// Returns null (no placeholder like "(0)", which would misrepresent what
+// was actually played) unless the set's own game score is actually a
+// tiebreak set AND real point values were given. Throws the same
+// user-facing way an invalid game score does if what's given isn't a
+// legal, decisive tiebreak, or doesn't agree with who actually won the set.
+function tiebreakFromRaw(raw, p1, p2, setWinner) {
+  if (!setWinner || !isTiebreakSetScore(p1, p2)) return null;
+  const { tbP1, tbP2 } = raw;
+  if (tbP1 === undefined || tbP1 === null || tbP1 === '' || tbP2 === undefined || tbP2 === null || tbP2 === '') return null;
+  const a = Number(tbP1);
+  const b = Number(tbP2);
+  if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0) {
+    throw new Error('Invalid tiebreak score');
+  }
+  if (Math.max(a, b) < 7 || Math.abs(a - b) < 2) {
+    throw new Error('Tiebreak score must reach at least 7 points, won by 2');
+  }
+  if ((a > b ? 1 : 2) !== setWinner) {
+    throw new Error("Tiebreak score doesn't match who won the set");
+  }
+  return { p1: a, p2: b };
 }
 
 // Builds a finished match state directly from a list of already-known set
@@ -365,9 +394,12 @@ function buildResultFromSets(formatKey, rawSets, explicitWinner) {
         throw new Error(`Set ${i + 1} doesn't have a valid winner`);
       }
       const setWinner = decided ? (p1 > p2 ? 1 : 2) : null;
-      // No placeholder tiebreak object for a 7-6 set — the real point score
-      // wasn't entered, and a fake "(0)" sub-score would be misleading.
-      set = { p1, p2, tiebreak: null, isSuperTiebreak: false, winner: setWinner };
+      // The real tiebreak point score, if a 7-6/6-7 set and one was given
+      // (see tiebreakFromRaw) — null otherwise, deliberately never a fake
+      // placeholder like "(0)" for a tiebreak set that just wasn't recorded.
+      set = {
+        p1, p2, tiebreak: tiebreakFromRaw(raw, p1, p2, setWinner), isSuperTiebreak: false, winner: setWinner,
+      };
     }
 
     sets.push(set);
@@ -436,7 +468,11 @@ function buildStateFromSets(formatKey, rawSets) {
         throw new Error(`Set ${i + 1} doesn't have a valid winner`);
       }
       const setWinner = decided ? (p1 > p2 ? 1 : 2) : null;
-      set = { p1, p2, tiebreak: null, isSuperTiebreak: false, winner: setWinner };
+      // See tiebreakFromRaw's own comment (buildResultFromSets above) —
+      // same optional real tiebreak score, same reasoning.
+      set = {
+        p1, p2, tiebreak: tiebreakFromRaw(raw, p1, p2, setWinner), isSuperTiebreak: false, winner: setWinner,
+      };
     }
 
     sets.push(set);

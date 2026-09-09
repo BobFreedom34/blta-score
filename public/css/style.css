@@ -1536,6 +1536,36 @@ datalist {}
 }
 .manual-set-input:focus { border-color: var(--orange); outline: none; }
 
+/* A regular set's own optional real tiebreak score (e.g. the "(4)" in
+   "7-6(4)") — same shape as .manual-set-fields/-field/-dash above, just
+   visibly secondary (smaller, lighter) since it's exposed conditionally
+   and isn't required. Kept as its own classes rather than reusing
+   .manual-set-fields/.manual-set-input/[data-player] — those get queried
+   by name elsewhere in match.js, and sharing them here would make that
+   querying ambiguous between a row's main score and its tiebreak score. */
+.manual-tiebreak-row { display: flex; align-items: flex-end; gap: 10px; margin-top: 8px; }
+.manual-tiebreak-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.manual-tiebreak-field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.manual-tiebreak-input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1.5px solid #ddd;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--gray);
+}
+.manual-tiebreak-input:focus { border-color: var(--orange); outline: none; }
+
 /* ---------- Match chat ---------- */
 .chat-messages {
   max-height: 260px;

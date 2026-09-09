@@ -1437,14 +1437,54 @@ function manualResultRowsHtml(m) {
             <input type="number" min="0" max="99" inputmode="numeric" class="manual-set-input" data-player="2">
           </div>
         </div>
+        ${isDeciderTB ? '' : `
+        <div class="manual-tiebreak-row" style="display:none">
+          <div class="manual-tiebreak-field">
+            <label>${t('match.tiebreakScoreLabel')} <span style="font-weight:400;color:var(--gray-dim);font-size:11px">${t('common.optional')}</span></label>
+            <input type="number" min="0" max="99" inputmode="numeric" class="manual-tiebreak-input" data-tb-player="1">
+          </div>
+          <div class="manual-set-dash">–</div>
+          <div class="manual-tiebreak-field">
+            <label>&nbsp;</label>
+            <input type="number" min="0" max="99" inputmode="numeric" class="manual-tiebreak-input" data-tb-player="2">
+          </div>
+        </div>
+        `}
       </div>
     `;
   }
   return rows;
 }
 
+// A regular (non-decider) set's own real tiebreak point score — e.g.
+// "7-6(4)" instead of a bare "7-6" — only ever makes sense once its game
+// score actually IS a 7-6/6-7 tiebreak set, so the little sub-fields for
+// it (see manualResultRowsHtml) stay hidden the rest of the time instead
+// of cluttering every row with an input that's normally irrelevant. Wired
+// once per row here rather than per-keystroke reformatting, since a
+// row's own two game-score inputs are what decide whether its sibling
+// tiebreak row applies.
+function wireManualTiebreakToggle(row) {
+  const tbRow = row.querySelector('.manual-tiebreak-row');
+  if (!tbRow) return; // the decider (super-tiebreak) row has no sibling tiebreak fields
+  const p1Input = row.querySelector('.manual-set-input[data-player="1"]');
+  const p2Input = row.querySelector('.manual-set-input[data-player="2"]');
+  const update = () => {
+    const p1 = Number(p1Input.value);
+    const p2 = Number(p2Input.value);
+    const isTiebreakSet = (p1 === 7 && p2 === 6) || (p1 === 6 && p2 === 7);
+    tbRow.style.display = isTiebreakSet ? 'flex' : 'none';
+    if (!isTiebreakSet) {
+      tbRow.querySelectorAll('.manual-tiebreak-input').forEach((inp) => { inp.value = ''; });
+    }
+  };
+  p1Input.addEventListener('input', update);
+  p2Input.addEventListener('input', update);
+}
+
 function openManualResultModal(m) {
   document.getElementById('manual-result-sets').innerHTML = manualResultRowsHtml(m);
+  document.querySelectorAll('#manual-result-sets .manual-set-row').forEach(wireManualTiebreakToggle);
   document.getElementById('manual-result-location').value = m.location || '';
   document.getElementById('manual-result-date').value = toDateValue(m.scheduledAt);
   document.getElementById('manual-result-time').value = toTimeValue(m.scheduledAt);
@@ -1517,7 +1557,26 @@ function openManualResultModal(m) {
         errorEl.textContent = t('match.fillBothScores');
         return;
       }
-      sets.push({ p1: Number(p1raw), p2: Number(p2raw) });
+      const set = { p1: Number(p1raw), p2: Number(p2raw) };
+      // The real tiebreak score (see manualResultRowsHtml/wireManualTiebreakToggle)
+      // only actually exists in the DOM — and is only ever visible — for a
+      // 7-6/6-7 set; harmless to look for on every row regardless; only
+      // sent along when at least one of the two boxes has something in it,
+      // same "fully optional, never fabricated" spirit as the server side.
+      const tbRow = row.querySelector('.manual-tiebreak-row');
+      if (tbRow) {
+        const tb1raw = tbRow.querySelector('[data-tb-player="1"]').value.trim();
+        const tb2raw = tbRow.querySelector('[data-tb-player="2"]').value.trim();
+        if (tb1raw !== '' || tb2raw !== '') {
+          if (tb1raw === '' || tb2raw === '') {
+            errorEl.textContent = t('match.fillBothTiebreakScores');
+            return;
+          }
+          set.tbP1 = Number(tb1raw);
+          set.tbP2 = Number(tb2raw);
+        }
+      }
+      sets.push(set);
     }
 
     const body = { sets, location, scheduledAt };
