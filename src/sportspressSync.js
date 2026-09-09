@@ -1,11 +1,14 @@
 // Pushes a finished match's result into the corresponding SportsPress
 // event on blta.sk (the WordPress site), via the sportspress-sheets-importer
-// plugin's own POST /wp-json/ssi/v1/push-result endpoint — see that
-// plugin's README for exactly what it does and doesn't touch (short
-// version: it finds the ONE existing sp_event that already has both named
-// players as participants and fills in sets-won, per-set games, an
-// optional match tiebreak score, and the played date; it never creates
-// anything, and does nothing rather than guess when the match can't be
+// plugin's own POST /wp-json/ssi/v1/push-result endpoint, and can undo
+// that via POST /wp-json/ssi/v1/clear-result when a match is un-finished
+// or deleted — see that plugin's README for exactly what each does and
+// doesn't touch (short version: push-result finds the ONE existing
+// sp_event that already has both named players as participants and fills
+// in sets-won, per-set games, an optional match tiebreak score, and the
+// played date; clear-result finds the one such event that currently has a
+// result and blanks just the score keys back out. Neither ever creates
+// anything, and both do nothing rather than guess when the match can't be
 // found or is ambiguous).
 //
 // Fire-and-forget, same pattern as sendMatchFinishedEmail's own call sites
@@ -20,6 +23,15 @@ const SPORTSPRESS_APP_PASSWORD = process.env.SPORTSPRESS_API_APP_PASSWORD;
 
 function isConfigured() {
   return !!(SPORTSPRESS_URL && SPORTSPRESS_USER && SPORTSPRESS_APP_PASSWORD);
+}
+
+function authHeader() {
+  const auth = Buffer.from(`${SPORTSPRESS_USER}:${SPORTSPRESS_APP_PASSWORD}`).toString('base64');
+  return { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` };
+}
+
+function endpoint(path) {
+  return `${SPORTSPRESS_URL.replace(/\/+$/, '')}/wp-json/ssi/v1/${path}`;
 }
 
 // `match` is a raw matches table row (needs .state, .player1_id, .player2_id,
@@ -74,10 +86,9 @@ async function pushResultToSportsPress(match, player1, player2) {
   if (tiebreak) body.tiebreak = tiebreak;
 
   try {
-    const auth = Buffer.from(`${SPORTSPRESS_USER}:${SPORTSPRESS_APP_PASSWORD}`).toString('base64');
-    const res = await fetch(`${SPORTSPRESS_URL.replace(/\/+$/, '')}/wp-json/ssi/v1/push-result`, {
+    const res = await fetch(endpoint('push-result'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+      headers: authHeader(),
       body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
@@ -98,4 +109,35 @@ async function pushResultToSportsPress(match, player1, player2) {
   }
 }
 
-module.exports = { pushResultToSportsPress, isConfigured };
+// Undoes a previous pushResultToSportsPress() for these two players — used
+// when a match is un-finished (restarted) or deleted, so the SportsPress
+// event stops showing a score that's no longer real. `player1`/`player2`
+// are player rows (needs .name); no match/state needed since this just
+// blanks whatever score currently exists for this pair. A no-op (logged,
+// not an error) when there's nothing recorded to clear, or it's genuinely
+// ambiguous which event to touch.
+async function clearResultFromSportsPress(player1, player2) {
+  if (!isConfigured()) return;
+
+  try {
+    const res = await fetch(endpoint('clear-result'), {
+      method: 'POST',
+      headers: authHeader(),
+      body: JSON.stringify({ player1_name: player1.name, player2_name: player2.name }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.error('[sportspressSync] clear-result HTTP error:', res.status, data.message || data.error || '');
+      return;
+    }
+    if ('cleared' === data.status) {
+      console.log(`[sportspressSync] cleared SportsPress event #${data.event_id} (${player1.name} vs ${player2.name})`);
+    } else {
+      console.warn(`[sportspressSync] clear-result: ${data.status} — ${data.message || ''}`);
+    }
+  } catch (err) {
+    console.error('[sportspressSync] clear-result failed:', err.message);
+  }
+}
+
+module.exports = { pushResultToSportsPress, clearResultFromSportsPress, isConfigured };

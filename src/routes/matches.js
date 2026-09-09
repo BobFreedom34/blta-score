@@ -10,7 +10,7 @@ const {
   isAdmin, getPlayerId, requireLoggedIn, requireAdmin, stripPrivateFields, isReferee, requireLoggedInOrReferee,
 } = require('../auth');
 const badgeEngine = require('../badgeEngine');
-const { pushResultToSportsPress } = require('../sportspressSync');
+const { pushResultToSportsPress, clearResultFromSportsPress } = require('../sportspressSync');
 const { pushRankingPoints, reverseRankingPoints } = require('../rankingPointsSync');
 
 const router = express.Router();
@@ -316,6 +316,34 @@ async function reconcileRankingPoints(previousRow, updatedRow) {
       db.prepare('UPDATE matches SET ranking_points_snapshot = ? WHERE id = ?')
         .run(JSON.stringify(snapshot), updatedRow.id);
     }
+  }
+}
+
+// Mirrors reconcileRankingPoints above, but for the SportsPress event's own
+// score (push-result/clear-result) rather than the ranking table: clears
+// whatever score was previously pushed if the match is no longer FINISHED
+// (a restart, or a correction that un-decides it), then pushes the current
+// result if it is FINISHED (a first-time finish, or a correction that
+// leaves it decided but with a different score). Unlike ranking points,
+// this isn't restricted to ELITE/NEXT_GEN/NOVICE — any category can have a
+// real SportsPress event, so push-result's own "no matching event" outcome
+// is what filters out matches with no WordPress counterpart. Fire-and-
+// forget: never blocks or fails the caller's own response.
+async function reconcileSportsPressResult(previousRow, updatedRow) {
+  const p1 = getPlayer(updatedRow.player1_id);
+  const p2 = getPlayer(updatedRow.player2_id);
+
+  if (previousRow && previousRow.status === 'FINISHED' && updatedRow.status !== 'FINISHED') {
+    await clearResultFromSportsPress(p1, p2).catch((err) => {
+      console.error('[matches] failed to clear SportsPress result:', err.message);
+    });
+    return;
+  }
+
+  if (updatedRow.status === 'FINISHED') {
+    await pushResultToSportsPress(updatedRow, p1, p2).catch((err) => {
+      console.error('[matches] failed to push result to SportsPress:', err.message);
+    });
   }
 }
 
@@ -773,6 +801,16 @@ router.delete('/:token', requireLoggedIn, (req, res) => {
         console.error('[matches] failed to reverse ranking points on delete:', err.message);
       });
     }
+  }
+
+  // Same idea for the SportsPress event's own score — a deleted match's
+  // result shouldn't linger on the corresponding event either.
+  if (row.status === 'FINISHED') {
+    const p1 = getPlayer(row.player1_id);
+    const p2 = getPlayer(row.player2_id);
+    clearResultFromSportsPress(p1, p2).catch((err) => {
+      console.error('[matches] failed to clear SportsPress result on delete:', err.message);
+    });
   }
 });
 
@@ -1377,6 +1415,11 @@ router.post('/:token/restart', requireLoggedInOrReferee, (req, res) => {
   reconcileRankingPoints(row, updated).catch((err) => {
     console.error('[matches] failed to reconcile ranking points:', err.message);
   });
+  // Same idea for the SportsPress event's own score — a restarted match's
+  // result is no longer real, so clear whatever was pushed for it.
+  reconcileSportsPressResult(row, updated).catch((err) => {
+    console.error('[matches] failed to reconcile SportsPress result:', err.message);
+  });
 });
 
 router.post('/:token/score', requireLoggedInOrReferee, (req, res) => {
@@ -1454,11 +1497,15 @@ router.post('/:token/score', requireLoggedInOrReferee, (req, res) => {
   // either way, whatever ranking points that result previously earned may
   // no longer be right. Only set corrections can do this (isSetCorrection
   // — plain live +1/-1 scoring never touches an already-decided result),
-  // and reconcileRankingPoints is a no-op in both directions when there's
-  // nothing to reverse and nothing new to award.
+  // and reconcileRankingPoints/reconcileSportsPressResult are no-ops in
+  // both directions when there's nothing to reverse and nothing new to
+  // push/award.
   if (isSetCorrection) {
     reconcileRankingPoints(row, updated).catch((err) => {
       console.error('[matches] failed to reconcile ranking points:', err.message);
+    });
+    reconcileSportsPressResult(row, updated).catch((err) => {
+      console.error('[matches] failed to reconcile SportsPress result:', err.message);
     });
   }
 });
@@ -1551,8 +1598,8 @@ router.post('/:token/finish', requireLoggedInOrReferee, async (req, res) => {
   // Independent of the email above (and of each other) — one failing
   // shouldn't stop the others, same as notifySubscribers/notifyPushSubscribers
   // just below already don't wait on the email either.
-  pushResultToSportsPress(updated, finishedP1, finishedP2).catch((err) => {
-    console.error('[matches] failed to push result to SportsPress:', err.message);
+  reconcileSportsPressResult(row, updated).catch((err) => {
+    console.error('[matches] failed to reconcile SportsPress result:', err.message);
   });
   reconcileRankingPoints(row, updated).catch((err) => {
     console.error('[matches] failed to reconcile ranking points:', err.message);
@@ -1656,8 +1703,8 @@ router.post('/:token/manual-result', requireLoggedIn, async (req, res) => {
   } catch (err) {
     console.error('[matches] failed to send finished-match email:', err.message);
   }
-  pushResultToSportsPress(updated, manualP1, manualP2).catch((err) => {
-    console.error('[matches] failed to push result to SportsPress:', err.message);
+  reconcileSportsPressResult(row, updated).catch((err) => {
+    console.error('[matches] failed to reconcile SportsPress result:', err.message);
   });
   reconcileRankingPoints(row, updated).catch((err) => {
     console.error('[matches] failed to reconcile ranking points:', err.message);
