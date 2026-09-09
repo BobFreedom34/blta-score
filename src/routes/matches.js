@@ -10,6 +10,7 @@ const {
   isAdmin, getPlayerId, requireLoggedIn, requireAdmin, stripPrivateFields, isReferee, requireLoggedInOrReferee,
 } = require('../auth');
 const badgeEngine = require('../badgeEngine');
+const { pushResultToSportsPress } = require('../sportspressSync');
 
 const router = express.Router();
 
@@ -1454,14 +1455,20 @@ router.post('/:token/finish', requireLoggedInOrReferee, async (req, res) => {
   const payload = broadcast(req, updated);
   res.json(payload);
 
+  const finishedP1 = getPlayer(updated.player1_id);
+  const finishedP2 = getPlayer(updated.player2_id);
   try {
-    const p1 = getPlayer(updated.player1_id);
-    const p2 = getPlayer(updated.player2_id);
-    await sendMatchFinishedEmail(updated, p1, p2);
+    await sendMatchFinishedEmail(updated, finishedP1, finishedP2);
     db.prepare('UPDATE matches SET notified = 1 WHERE id = ?').run(row.id);
   } catch (err) {
     console.error('[matches] failed to send finished-match email:', err.message);
   }
+  // Independent of the email above (and of each other) — one failing
+  // shouldn't stop the others, same as notifySubscribers/notifyPushSubscribers
+  // just below already don't wait on the email either.
+  pushResultToSportsPress(updated, finishedP1, finishedP2).catch((err) => {
+    console.error('[matches] failed to push result to SportsPress:', err.message);
+  });
   notifySubscribers(row.id, 'FINISH', updated).catch((err) => {
     console.error('[matches] failed to send finish notifications:', err.message);
   });
@@ -1553,14 +1560,17 @@ router.post('/:token/manual-result', requireLoggedIn, async (req, res) => {
   const payload = broadcast(req, updated);
   res.json(payload);
 
+  const manualP1 = getPlayer(updated.player1_id);
+  const manualP2 = getPlayer(updated.player2_id);
   try {
-    const p1 = getPlayer(updated.player1_id);
-    const p2 = getPlayer(updated.player2_id);
-    await sendMatchFinishedEmail(updated, p1, p2);
+    await sendMatchFinishedEmail(updated, manualP1, manualP2);
     db.prepare('UPDATE matches SET notified = 1 WHERE id = ?').run(row.id);
   } catch (err) {
     console.error('[matches] failed to send finished-match email:', err.message);
   }
+  pushResultToSportsPress(updated, manualP1, manualP2).catch((err) => {
+    console.error('[matches] failed to push result to SportsPress:', err.message);
+  });
   notifySubscribers(row.id, 'FINISH', updated).catch((err) => {
     console.error('[matches] failed to send finish notifications:', err.message);
   });
