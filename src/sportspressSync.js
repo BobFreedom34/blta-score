@@ -47,7 +47,10 @@ async function pushResultToSportsPress(match, player1, player2) {
     player1_sets: player1Sets,
     player2_sets: player2Sets,
   };
-  if (dateSource) body.date = String(dateSource).slice(0, 10);
+  // Full ISO UTC datetime (not just the date) — WordPress converts this to
+  // the site's own local timezone itself (get_date_from_gmt), so the real
+  // match time shows correctly rather than defaulting to midnight/TBD.
+  if (dateSource) body.date = String(dateSource);
 
   // Per-set games for the S1..S5 columns, plus a separate match/super
   // tiebreak score (the "T" column) — a super-tiebreak "set" replaces a
