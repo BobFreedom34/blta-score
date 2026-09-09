@@ -112,10 +112,12 @@ async function pushResultToSportsPress(match, player1, player2) {
 // Undoes a previous pushResultToSportsPress() for these two players — used
 // when a match is un-finished (restarted) or deleted, so the SportsPress
 // event stops showing a score that's no longer real. `player1`/`player2`
-// are player rows (needs .name); no match/state needed since this just
-// blanks whatever score currently exists for this pair. A no-op (logged,
-// not an error) when there's nothing recorded to clear, or it's genuinely
-// ambiguous which event to touch.
+// are player rows (needs .name); no match/date needed — if these two have
+// a result on more than one event (repeat opponents across seasons, or
+// several test pushes each landing on a different event), the plugin picks
+// whichever was modified most recently rather than needing a date to break
+// the tie. A no-op (logged, not an error) when there's nothing recorded to
+// clear, or genuinely ambiguous even by that measure.
 async function clearResultFromSportsPress(player1, player2) {
   if (!isConfigured()) return;
 
