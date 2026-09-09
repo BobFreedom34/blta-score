@@ -11,6 +11,7 @@ const {
 } = require('../auth');
 const badgeEngine = require('../badgeEngine');
 const { pushResultToSportsPress } = require('../sportspressSync');
+const { pushRankingPoints, reverseRankingPoints } = require('../rankingPointsSync');
 
 const router = express.Router();
 
@@ -273,6 +274,49 @@ function syncBadgesIfFinished(row) {
   if (row.status !== 'FINISHED') return;
   badgeEngine.syncPlayerBadges(row.player1_id);
   badgeEngine.syncPlayerBadges(row.player2_id);
+}
+
+// Reverses any ranking points already awarded for `previousRow` (if it has
+// a stored snapshot — most matches don't, either because they were never
+// finished before, aren't a ranked category, or were finished before this
+// feature existed — see db.js's own comment on the column), then — if
+// `updatedRow` is now FINISHED — awards fresh points for its current
+// result and stores the new snapshot. Together this keeps the "BLTA
+// GENERAL" table correct not just on a first-time finish but through a
+// score correction, an un-finish (restart), or before a delete. A no-op in
+// both directions for a match with nothing to reverse and no new result to
+// award (e.g. correcting an already-unranked FRIENDLY match), so callers
+// can just always call this on the post-write row rather than tracking
+// which branch they're in. Fire-and-forget: never blocks or fails the
+// caller's own response.
+async function reconcileRankingPoints(previousRow, updatedRow) {
+  if (previousRow && previousRow.ranking_points_snapshot) {
+    let snapshot = null;
+    try {
+      snapshot = JSON.parse(previousRow.ranking_points_snapshot);
+    } catch {
+      snapshot = null;
+    }
+    if (snapshot) {
+      await reverseRankingPoints(snapshot).catch((err) => {
+        console.error('[matches] failed to reverse ranking points:', err.message);
+      });
+    }
+    db.prepare('UPDATE matches SET ranking_points_snapshot = NULL WHERE id = ?').run(updatedRow.id);
+  }
+
+  if (updatedRow.status === 'FINISHED') {
+    const p1 = getPlayer(updatedRow.player1_id);
+    const p2 = getPlayer(updatedRow.player2_id);
+    const snapshot = await pushRankingPoints(updatedRow, p1, p2).catch((err) => {
+      console.error('[matches] failed to push ranking points:', err.message);
+      return null;
+    });
+    if (snapshot) {
+      db.prepare('UPDATE matches SET ranking_points_snapshot = ? WHERE id = ?')
+        .run(JSON.stringify(snapshot), updatedRow.id);
+    }
+  }
 }
 
 function broadcast(req, row) {
@@ -711,6 +755,25 @@ router.delete('/:token', requireLoggedIn, (req, res) => {
   db.prepare('DELETE FROM matches WHERE id = ?').run(row.id);
   req.app.get('io').emit('matches:changed', { token: row.share_token, status: 'DELETED' });
   res.status(204).end();
+
+  // The row (and its ranking_points_snapshot) is already gone from the DB
+  // at this point — reverse straight from the snapshot captured above,
+  // there's nothing left to update afterward. A no-op when the deleted
+  // match was never finished, wasn't a ranked category, or predates this
+  // feature (no snapshot to reverse).
+  if (row.ranking_points_snapshot) {
+    let snapshot = null;
+    try {
+      snapshot = JSON.parse(row.ranking_points_snapshot);
+    } catch {
+      snapshot = null;
+    }
+    if (snapshot) {
+      reverseRankingPoints(snapshot).catch((err) => {
+        console.error('[matches] failed to reverse ranking points on delete:', err.message);
+      });
+    }
+  }
 });
 
 // "Respond to a proposed time" endpoint. Player A created this match with
@@ -1305,6 +1368,15 @@ router.post('/:token/restart', requireLoggedInOrReferee, (req, res) => {
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   const payload = broadcast(req, updated);
   res.json(payload);
+
+  // Restarting always leaves the match PLANNED (never FINISHED), so this
+  // only ever reverses whatever points a prior finish had earned — never
+  // awards anything new. A no-op when there's nothing to reverse (the
+  // match was never finished, wasn't a ranked category, or predates this
+  // feature).
+  reconcileRankingPoints(row, updated).catch((err) => {
+    console.error('[matches] failed to reconcile ranking points:', err.message);
+  });
 });
 
 router.post('/:token/score', requireLoggedInOrReferee, (req, res) => {
@@ -1376,6 +1448,19 @@ router.post('/:token/score', requireLoggedInOrReferee, (req, res) => {
   syncBadgesIfFinished(updated);
   const payload = broadcast(req, updated);
   res.json(payload);
+
+  // A set correction can change an already-finished match's result, or
+  // flip it out of FINISHED entirely (isNowComplete === false above) —
+  // either way, whatever ranking points that result previously earned may
+  // no longer be right. Only set corrections can do this (isSetCorrection
+  // — plain live +1/-1 scoring never touches an already-decided result),
+  // and reconcileRankingPoints is a no-op in both directions when there's
+  // nothing to reverse and nothing new to award.
+  if (isSetCorrection) {
+    reconcileRankingPoints(row, updated).catch((err) => {
+      console.error('[matches] failed to reconcile ranking points:', err.message);
+    });
+  }
 });
 
 router.post('/:token/undo', requireLoggedInOrReferee, (req, res) => {
@@ -1468,6 +1553,9 @@ router.post('/:token/finish', requireLoggedInOrReferee, async (req, res) => {
   // just below already don't wait on the email either.
   pushResultToSportsPress(updated, finishedP1, finishedP2).catch((err) => {
     console.error('[matches] failed to push result to SportsPress:', err.message);
+  });
+  reconcileRankingPoints(row, updated).catch((err) => {
+    console.error('[matches] failed to reconcile ranking points:', err.message);
   });
   notifySubscribers(row.id, 'FINISH', updated).catch((err) => {
     console.error('[matches] failed to send finish notifications:', err.message);
@@ -1570,6 +1658,9 @@ router.post('/:token/manual-result', requireLoggedIn, async (req, res) => {
   }
   pushResultToSportsPress(updated, manualP1, manualP2).catch((err) => {
     console.error('[matches] failed to push result to SportsPress:', err.message);
+  });
+  reconcileRankingPoints(row, updated).catch((err) => {
+    console.error('[matches] failed to reconcile ranking points:', err.message);
   });
   notifySubscribers(row.id, 'FINISH', updated).catch((err) => {
     console.error('[matches] failed to send finish notifications:', err.message);

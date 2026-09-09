@@ -286,6 +286,18 @@ if (!matchColumns.includes('league')) {
   db.exec('ALTER TABLE matches ADD COLUMN league TEXT');
 }
 
+// A snapshot of exactly what rankingPointsSync.js last awarded for this
+// match on the "BLTA GENERAL" table (JSON: {tableId, raceKey, awards:
+// {wpPlayerId: points}}), or NULL if no points have been awarded (not yet
+// pushed, not a ranked category, or already reversed). Lets a later score
+// correction, restart, or delete reverse exactly what was given before
+// awarding anything new — see reconcileRankingPoints() in
+// routes/matches.js. NULL for every match finished before this column
+// existed; those have no automated award to reverse.
+if (!matchColumns.includes('ranking_points_snapshot')) {
+  db.exec('ALTER TABLE matches ADD COLUMN ranking_points_snapshot TEXT');
+}
+
 const playerColumns = db.prepare('PRAGMA table_info(players)').all().map((c) => c.name);
 if (!playerColumns.includes('photo_url')) {
   db.exec('ALTER TABLE players ADD COLUMN photo_url TEXT');
