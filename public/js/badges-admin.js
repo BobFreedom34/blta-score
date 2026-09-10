@@ -19,22 +19,38 @@ const LOGIC_TYPES = [
   // as BAGEL just above needing one.
   { value: 'COMEBACK', label: 'Comeback wins (lost 1st set) ≥', groupLabel: 'Comeback', needsThreshold: true },
   // "threshold" here isn't a count — it's the target day as MMDD (Jan 1
-  // -> 101, Dec 25 -> 1225). Earned by playing any match on that calendar
-  // day, win or lose. thresholdLabel/thresholdHint override the generic
-  // "Threshold" field wording for this one type.
+  // -> 101, Dec 25 -> 1225), still stored in the same threshold column,
+  // but entered via a month + day picker (isDate) instead of the numeric
+  // threshold field, since the year genuinely doesn't matter.
   {
     value: 'CALENDAR_DATE',
     label: 'Play a match on a specific calendar day',
     groupLabel: 'Special Days',
     needsThreshold: true,
-    thresholdLabel: 'Date as MMDD',
-    thresholdHint: 'e.g. 101 for Jan 1, 704 for Jul 4, 1225 for Dec 25',
+    isDate: true,
   },
 ];
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+// Feb allows 29 — a "played on Feb 29" badge is legal, it just only
+// triggers in leap years. Mirrors DAYS_IN_MONTH in src/routes/badges.js.
+const DAYS_IN_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 function needsThreshold(logicType) {
   const type = LOGIC_TYPES.find((t) => t.value === logicType);
   return type ? type.needsThreshold : false;
+}
+
+function isDateType(logicType) {
+  const type = LOGIC_TYPES.find((t) => t.value === logicType);
+  return !!(type && type.isDate);
+}
+
+// Numeric threshold field (count-based types) vs. the month/day picker
+// (CALENDAR_DATE) vs. neither (pass/fail types) — exactly one of the three
+// at a time.
+function usesNumericThreshold(logicType) {
+  return needsThreshold(logicType) && !isDateType(logicType);
 }
 
 function logicOptionsHtml(selected) {
@@ -45,6 +61,22 @@ function badgeMedalInner(icon) {
   return icon && icon.startsWith('/badge-icons/')
     ? `<img src="${escapeHtml(icon)}" alt="" style="width:100%;height:100%;border-radius:var(--radius);object-fit:contain">`
     : (icon || '');
+}
+
+// Month + day <select>s for CALENDAR_DATE. Pre-fills from an existing
+// badge's MMDD threshold when editing; defaults to Jan 1 for a new one.
+function datePickerHtml(prefix, mmdd) {
+  const month = mmdd ? Math.floor(mmdd / 100) : 1;
+  const day = mmdd ? mmdd % 100 : 1;
+  const monthOpts = MONTHS.map((name, i) => `<option value="${i + 1}" ${i + 1 === month ? 'selected' : ''}>${name}</option>`).join('');
+  const dayOpts = Array.from({ length: DAYS_IN_MONTH[month - 1] }, (_, i) => `<option value="${i + 1}" ${i + 1 === day ? 'selected' : ''}>${i + 1}</option>`).join('');
+  return `
+    <div style="display:flex;gap:8px">
+      <select id="${prefix}-date-month" style="flex:1">${monthOpts}</select>
+      <select id="${prefix}-date-day" style="width:90px">${dayOpts}</select>
+    </div>
+    <div style="font-size:12px;color:var(--gray);margin-top:4px">The year doesn't matter — earned by playing on this month and day, any year.</div>
+  `;
 }
 
 function badgeFormHtml(prefix, badge) {
@@ -75,9 +107,12 @@ function badgeFormHtml(prefix, badge) {
       <select id="${prefix}-logicType">${logicOptionsHtml(b.logicType)}</select>
     </div>
     <div class="field" id="${prefix}-threshold-field">
-      <label id="${prefix}-threshold-label">Threshold</label>
-      <input type="number" id="${prefix}-threshold" value="${b.threshold != null ? b.threshold : ''}" min="1" step="1">
-      <div id="${prefix}-threshold-hint" style="font-size:12px;color:var(--gray);margin-top:4px"></div>
+      <label>Threshold</label>
+      <input type="number" id="${prefix}-threshold" value="${b.threshold != null && !isDateType(b.logicType) ? b.threshold : ''}" min="1" step="1">
+    </div>
+    <div class="field" id="${prefix}-date-field">
+      <label>Date</label>
+      ${datePickerHtml(prefix, isDateType(b.logicType) && b.threshold != null ? b.threshold : null)}
     </div>
     <div class="field">
       <label>Sort order (lower shows first within its unlock-condition group)</label>
@@ -88,17 +123,24 @@ function badgeFormHtml(prefix, badge) {
 
 function wireThresholdToggle(prefix) {
   const select = document.getElementById(`${prefix}-logicType`);
-  const field = document.getElementById(`${prefix}-threshold-field`);
-  const labelEl = document.getElementById(`${prefix}-threshold-label`);
-  const hintEl = document.getElementById(`${prefix}-threshold-hint`);
+  const thresholdField = document.getElementById(`${prefix}-threshold-field`);
+  const dateField = document.getElementById(`${prefix}-date-field`);
   const update = () => {
-    const type = LOGIC_TYPES.find((t) => t.value === select.value);
-    field.style.display = (type && type.needsThreshold) ? '' : 'none';
-    labelEl.textContent = (type && type.thresholdLabel) || 'Threshold';
-    hintEl.textContent = (type && type.thresholdHint) || '';
+    thresholdField.style.display = usesNumericThreshold(select.value) ? '' : 'none';
+    dateField.style.display = isDateType(select.value) ? '' : 'none';
   };
   select.addEventListener('change', update);
   update();
+
+  // Keep the day options in step with the chosen month (Apr has 30, Feb
+  // 29, ...) — clamp the current pick down if it no longer fits.
+  const monthEl = document.getElementById(`${prefix}-date-month`);
+  const dayEl = document.getElementById(`${prefix}-date-day`);
+  monthEl.addEventListener('change', () => {
+    const maxDay = DAYS_IN_MONTH[Number(monthEl.value) - 1];
+    const current = Math.min(Number(dayEl.value) || 1, maxDay);
+    dayEl.innerHTML = Array.from({ length: maxDay }, (_, i) => `<option value="${i + 1}" ${i + 1 === current ? 'selected' : ''}>${i + 1}</option>`).join('');
+  });
 }
 
 function wireIconPreview(prefix) {
@@ -128,12 +170,22 @@ async function uploadIconIfSelected(prefix, badgeId) {
 
 function readBadgeForm(prefix) {
   const logicType = document.getElementById(`${prefix}-logicType`).value;
+  let threshold = null;
+  if (isDateType(logicType)) {
+    // Store the month + day as MMDD (Jan 1 -> 101) in the same threshold
+    // column every other type uses.
+    const month = Number(document.getElementById(`${prefix}-date-month`).value);
+    const day = Number(document.getElementById(`${prefix}-date-day`).value);
+    threshold = month * 100 + day;
+  } else if (needsThreshold(logicType)) {
+    threshold = Number(document.getElementById(`${prefix}-threshold`).value);
+  }
   return {
     name: document.getElementById(`${prefix}-name`).value.trim(),
     description: document.getElementById(`${prefix}-description`).value.trim(),
     icon: document.getElementById(`${prefix}-icon`).value.trim(),
     logicType,
-    threshold: needsThreshold(logicType) ? Number(document.getElementById(`${prefix}-threshold`).value) : null,
+    threshold,
     sortOrder: Number(document.getElementById(`${prefix}-sortOrder`).value) || 0,
   };
 }
