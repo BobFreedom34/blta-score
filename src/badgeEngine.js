@@ -15,6 +15,24 @@ const db = require('./db');
 
 const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 
+// The league runs in Slovakia — a match played just after midnight local
+// time is stored as the previous day in UTC, so a CALENDAR_DATE badge
+// ("played on Jan 1") has to compare the wall-clock date the players
+// actually saw, not the raw UTC date. Returns the month/day as one integer
+// MMDD (Jan 1 -> 101, Dec 25 -> 1225) to match how the badge stores its
+// target date in `threshold`. Kept identical to badges.js's own copy.
+const LEAGUE_TZ = 'Europe/Bratislava';
+function localMonthDay(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: LEAGUE_TZ, month: '2-digit', day: '2-digit' }).formatToParts(d);
+  const mm = Number(parts.find((p) => p.type === 'month').value);
+  const dd = Number(parts.find((p) => p.type === 'day').value);
+  if (!mm || !dd) return null;
+  return mm * 100 + dd;
+}
+
 // Every set THIS match had that pid won 6-0 (0, 1, or 2 for a double-
 // bagel best-of-3) — a count, not a yes/no, so BAGEL below can support a
 // real threshold ("win N 6-0 sets", not just "have you ever won one").
@@ -72,6 +90,10 @@ function computeBadgeMetrics(playerId, finished) {
     // now distinguish "came back once" from "makes a habit of it".
     COMEBACK: wins.filter((m) => badgeWonAfterLosingFirstSet(m, pid)).length,
     STRAIGHT_SETS: wins.filter((m) => badgeWonWithoutDroppingSet(m, pid)).length,
+    // Every calendar day (as MMDD) this player has actually played on —
+    // win or lose, it just has to be a real, counted match. A
+    // CALENDAR_DATE badge is earned when its own target day is in here.
+    PLAY_DATES: new Set(counted.map((m) => localMonthDay(m.scheduledAt || m.startTime || m.createdAt)).filter((d) => d != null)),
   };
 }
 
@@ -79,6 +101,12 @@ function computeEarnedBadgeIds(playerId, finished, badgeDefs) {
   const metrics = computeBadgeMetrics(playerId, finished);
   const earned = new Set();
   badgeDefs.forEach((def) => {
+    // Calendar-date badges are an exact match on the target day, not a
+    // "reached a threshold" comparison like every other type.
+    if (def.logic_type === 'CALENDAR_DATE') {
+      if (def.threshold != null && metrics.PLAY_DATES.has(def.threshold)) earned.add(def.id);
+      return;
+    }
     const value = metrics[def.logic_type] || 0;
     const need = def.threshold != null ? def.threshold : 1;
     if (value >= need) earned.add(def.id);

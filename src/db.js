@@ -539,13 +539,53 @@ db.exec(`
     name TEXT NOT NULL,
     description TEXT NOT NULL,
     icon TEXT NOT NULL,
-    logic_type TEXT NOT NULL CHECK (logic_type IN ('GAMES_PLAYED','WINS','WIN_STREAK','CATEGORY_SWEEP','BAGEL','COMEBACK','STRAIGHT_SETS')),
+    logic_type TEXT NOT NULL,
     threshold INTEGER,
     sort_order INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 `);
+
+// The original table baked the allowed logic types into a CHECK clause;
+// that just meant every new badge type (CALENDAR_DATE was the one that
+// forced this) needed a table rebuild to widen it. routes/badges.js
+// already validates logic_type server-side against its own LOGIC_TYPES
+// list, so the CHECK was pure redundancy — drop it once, same
+// rebuild-without-CHECK trick as the matches table above, and future
+// types need no migration at all. Carries columns forward via PRAGMA
+// rather than a hardcoded list.
+function badgeDefsTableHasLogicCheck() {
+  const row = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='badge_definitions'").get();
+  return !!(row && /CHECK\s*\(\s*logic_type/i.test(row.sql));
+}
+
+if (badgeDefsTableHasLogicCheck()) {
+  const cols = db.prepare('PRAGMA table_info(badge_definitions)').all().map((c) => c.name).join(', ');
+  db.exec('BEGIN');
+  try {
+    db.exec('ALTER TABLE badge_definitions RENAME TO badge_definitions_old');
+    db.exec(`
+      CREATE TABLE badge_definitions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL,
+        icon TEXT NOT NULL,
+        logic_type TEXT NOT NULL,
+        threshold INTEGER,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+    db.exec(`INSERT INTO badge_definitions (${cols}) SELECT ${cols} FROM badge_definitions_old`);
+    db.exec('DROP TABLE badge_definitions_old');
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
 
 // Seed the original 10 badges once, the first time this table is empty —
 // after that, admins own this data entirely (add/edit/delete via the

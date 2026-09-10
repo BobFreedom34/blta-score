@@ -18,6 +18,18 @@ const LOGIC_TYPES = [
   // Counts matches, not sets (see badgeEngine.js/badges.js) — same reason
   // as BAGEL just above needing one.
   { value: 'COMEBACK', label: 'Comeback wins (lost 1st set) ≥', groupLabel: 'Comeback', needsThreshold: true },
+  // "threshold" here isn't a count — it's the target day as MMDD (Jan 1
+  // -> 101, Dec 25 -> 1225). Earned by playing any match on that calendar
+  // day, win or lose. thresholdLabel/thresholdHint override the generic
+  // "Threshold" field wording for this one type.
+  {
+    value: 'CALENDAR_DATE',
+    label: 'Play a match on a specific calendar day',
+    groupLabel: 'Special Days',
+    needsThreshold: true,
+    thresholdLabel: 'Date as MMDD',
+    thresholdHint: 'e.g. 101 for Jan 1, 704 for Jul 4, 1225 for Dec 25',
+  },
 ];
 
 function needsThreshold(logicType) {
@@ -63,8 +75,9 @@ function badgeFormHtml(prefix, badge) {
       <select id="${prefix}-logicType">${logicOptionsHtml(b.logicType)}</select>
     </div>
     <div class="field" id="${prefix}-threshold-field">
-      <label>Threshold</label>
+      <label id="${prefix}-threshold-label">Threshold</label>
       <input type="number" id="${prefix}-threshold" value="${b.threshold != null ? b.threshold : ''}" min="1" step="1">
+      <div id="${prefix}-threshold-hint" style="font-size:12px;color:var(--gray);margin-top:4px"></div>
     </div>
     <div class="field">
       <label>Sort order (lower shows first within its unlock-condition group)</label>
@@ -76,7 +89,14 @@ function badgeFormHtml(prefix, badge) {
 function wireThresholdToggle(prefix) {
   const select = document.getElementById(`${prefix}-logicType`);
   const field = document.getElementById(`${prefix}-threshold-field`);
-  const update = () => { field.style.display = needsThreshold(select.value) ? '' : 'none'; };
+  const labelEl = document.getElementById(`${prefix}-threshold-label`);
+  const hintEl = document.getElementById(`${prefix}-threshold-hint`);
+  const update = () => {
+    const type = LOGIC_TYPES.find((t) => t.value === select.value);
+    field.style.display = (type && type.needsThreshold) ? '' : 'none';
+    labelEl.textContent = (type && type.thresholdLabel) || 'Threshold';
+    hintEl.textContent = (type && type.thresholdHint) || '';
+  };
   select.addEventListener('change', update);
   update();
 }
@@ -118,13 +138,32 @@ function readBadgeForm(prefix) {
   };
 }
 
+// MMDD -> "Jan 1" for the admin list's readout. Bad/missing values just
+// fall back to showing the raw number.
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function monthDayLabel(mmdd) {
+  const month = Math.floor(mmdd / 100);
+  const day = mmdd % 100;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return String(mmdd);
+  return `${MONTH_ABBR[month - 1]} ${day}`;
+}
+
 function badgeRowHtml(badge) {
   const type = LOGIC_TYPES.find((t) => t.value === badge.logicType);
   // Same "no threshold set yet means 1" fallback as the engine itself
   // (computeEarnedBadgeIds/computeEarnedBadges) — matters for BAGEL badges
   // saved before it gained a threshold field, which still have a bare
   // null in the database until someone opens and re-saves them.
-  const conditionText = type ? (type.needsThreshold ? `${type.label} ${badge.threshold != null ? badge.threshold : 1}` : type.label) : badge.logicType;
+  let conditionText;
+  if (!type) {
+    conditionText = badge.logicType;
+  } else if (badge.logicType === 'CALENDAR_DATE') {
+    conditionText = `Play on ${badge.threshold != null ? monthDayLabel(badge.threshold) : '—'}`;
+  } else if (type.needsThreshold) {
+    conditionText = `${type.label} ${badge.threshold != null ? badge.threshold : 1}`;
+  } else {
+    conditionText = type.label;
+  }
   return `
     <div class="badge-row" data-id="${badge.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
       <div class="badge-row-view" style="display:flex;align-items:center;gap:12px">

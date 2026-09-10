@@ -23,7 +23,7 @@ const upload = multer({
   },
 });
 
-const LOGIC_TYPES = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP', 'BAGEL', 'COMEBACK', 'STRAIGHT_SETS'];
+const LOGIC_TYPES = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP', 'BAGEL', 'COMEBACK', 'STRAIGHT_SETS', 'CALENDAR_DATE'];
 // These logic types are count-based (need a threshold); the rest are
 // pass/fail conditions computed straight from a player's match history.
 // BAGEL/COMEBACK moved here once badgeEngine.js's own metrics for them
@@ -31,7 +31,21 @@ const LOGIC_TYPES = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP', 'BA
 // a bare yes/no — kept in sync with badges-admin.js's own client-side
 // LOGIC_TYPES.needsThreshold flags, which this independently re-validates
 // server-side rather than trusting the client's word for it.
-const THRESHOLD_TYPES = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'STRAIGHT_SETS', 'BAGEL', 'COMEBACK'];
+// CALENDAR_DATE also needs the threshold field, but it isn't a count —
+// it holds the target day as MMDD (Jan 1 -> 101, Dec 25 -> 1225), so it's
+// validated separately below rather than as a "must be >= 1" count.
+const THRESHOLD_TYPES = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'STRAIGHT_SETS', 'BAGEL', 'COMEBACK', 'CALENDAR_DATE'];
+
+// Longest day each month can have — Feb is 29 so a "played on Feb 29"
+// badge is still allowed (leap years exist), it just never triggers in a
+// common year, same as any other day nobody happens to play on.
+const DAYS_IN_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+function validMonthDay(mmdd) {
+  if (!Number.isInteger(mmdd)) return false;
+  const month = Math.floor(mmdd / 100);
+  const day = mmdd % 100;
+  return month >= 1 && month <= 12 && day >= 1 && day <= DAYS_IN_MONTH[month - 1];
+}
 
 function serialize(row) {
   return {
@@ -64,7 +78,11 @@ function validateBody(body, currentIcon) {
   let threshold = null;
   if (needsThreshold) {
     threshold = Number(body.threshold);
-    if (!Number.isInteger(threshold) || threshold < 1) {
+    if (logicType === 'CALENDAR_DATE') {
+      if (!validMonthDay(threshold)) {
+        return { error: 'Enter the date as MMDD — e.g. 101 for Jan 1, 1225 for Dec 25' };
+      }
+    } else if (!Number.isInteger(threshold) || threshold < 1) {
       return { error: 'Threshold must be a positive whole number for this logic type' };
     }
   }

@@ -21,6 +21,24 @@ function badgeWonWithoutDroppingSet(m, pid) {
   return sets.every((s) => s.winner === playerSetNum);
 }
 
+// The league runs in Slovakia — a match played just after midnight local
+// time is stored as the previous day in UTC, so a CALENDAR_DATE badge
+// ("played on Jan 1") has to compare the wall-clock date the players
+// actually saw. Returns the month/day as one integer MMDD (Jan 1 -> 101,
+// Dec 25 -> 1225), matching how the badge stores its target in `threshold`.
+// Kept identical to badgeEngine.js's own copy.
+const LEAGUE_TZ = 'Europe/Bratislava';
+function localMonthDay(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: LEAGUE_TZ, month: '2-digit', day: '2-digit' }).formatToParts(d);
+  const mm = Number(parts.find((p) => p.type === 'month').value);
+  const dd = Number(parts.find((p) => p.type === 'day').value);
+  if (!mm || !dd) return null;
+  return mm * 100 + dd;
+}
+
 // One numeric (or 0/1) value per logic type a badge definition can key off
 // — a badge is earned once its metric reaches its threshold (or, for the
 // threshold-less pass/fail types, once the metric is truthy).
@@ -57,6 +75,9 @@ function computeBadgeMetrics(playerId, finished) {
     // now distinguish "came back once" from "makes a habit of it".
     COMEBACK: wins.filter((m) => badgeWonAfterLosingFirstSet(m, pid)).length,
     STRAIGHT_SETS: wins.filter((m) => badgeWonWithoutDroppingSet(m, pid)).length,
+    // Every calendar day (as MMDD) this player has actually played on —
+    // win or lose, it just has to be a real, counted match.
+    PLAY_DATES: new Set(counted.map((m) => localMonthDay(m.scheduledAt || m.startTime || m.createdAt)).filter((d) => d != null)),
   };
 }
 
@@ -66,6 +87,12 @@ function computeEarnedBadges(playerId, finished, badgeDefs) {
   const metrics = computeBadgeMetrics(playerId, finished);
   const earned = new Set();
   badgeDefs.forEach((def) => {
+    // Calendar-date badges are an exact match on the target day, not a
+    // "reached a threshold" comparison like every other type.
+    if (def.logicType === 'CALENDAR_DATE') {
+      if (def.threshold != null && metrics.PLAY_DATES.has(def.threshold)) earned.add(def.id);
+      return;
+    }
     const value = metrics[def.logicType] || 0;
     const need = def.threshold != null ? def.threshold : 1;
     if (value >= need) earned.add(def.id);
@@ -100,7 +127,7 @@ function badgesGridHtml(badgeDefs, earnedSet) {
 // derived from whatever badges happen to exist, so the section order in
 // the modal stays stable even as badges are added/removed/reordered
 // within a type.
-const BADGE_GROUP_ORDER = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP', 'BAGEL', 'COMEBACK', 'STRAIGHT_SETS'];
+const BADGE_GROUP_ORDER = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP', 'BAGEL', 'COMEBACK', 'STRAIGHT_SETS', 'CALENDAR_DATE'];
 
 // Full grid for the "show all badges" modal — same badges, but with the
 // unlock condition written out under each one instead of hidden in a

@@ -429,6 +429,7 @@ const TRANSLATIONS = {
     'badge.group.BAGEL': 'Bagel',
     'badge.group.COMEBACK': 'Comeback',
     'badge.group.STRAIGHT_SETS': 'Bez straty setu',
+    'badge.group.CALENDAR_DATE': 'Špeciálne dni',
 
     'notif.bellLabel': 'Upozornenia',
     'notif.heading': 'Upozornenia',
@@ -968,6 +969,7 @@ const TRANSLATIONS = {
     'badge.group.BAGEL': 'Bagel',
     'badge.group.COMEBACK': 'Comeback',
     'badge.group.STRAIGHT_SETS': 'Straight Sets',
+    'badge.group.CALENDAR_DATE': 'Special Days',
 
     'notif.bellLabel': 'Notifications',
     'notif.heading': 'Notifications',
