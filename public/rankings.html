@@ -174,12 +174,27 @@
   <div class="site-footer-inner">
     <span>BLTA Score</span>
     <div style="display:flex;gap:12px">
+      <button type="button" id="embed-rankings-btn" style="background:none;border:none;color:inherit;font:inherit;text-decoration:underline;cursor:pointer;padding:0" data-i18n="footer.embedList">Vložiť tento zoznam</button>
       <a href="/badges-admin" class="footer-badges-link" style="display:none" data-i18n="footer.manageBadges">Spravovať odznaky</a>
       <a href="/login-history" class="footer-login-history-link" style="display:none" data-i18n="footer.loginHistory">História prihlásení</a>
       <a href="/admin">Admin</a>
     </div>
   </div>
 </footer>
+
+<!-- Embed modal (same markup/ids as index.html/match.html — common.js's
+     generic [data-close]/.modal-backdrop wiring handles closing it) -->
+<div class="modal-backdrop" id="embed-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="embed-modal" aria-label="Close">&times;</button>
+    <h3 data-i18n="embed.title">Vložiť do WordPress</h3>
+    <p style="font-size:13px;color:var(--gray)" data-i18n="embed.desc">Vložte toto do bloku „Custom HTML“ na vašej stránke blta.sk:</p>
+    <div class="code-box" id="embed-code"></div>
+    <div class="share-row">
+      <button class="btn btn-outline btn-sm" id="copy-embed-btn" data-i18n="embed.copyCode">Kopírovať kód</button>
+    </div>
+  </div>
+</div>
 
 <script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>

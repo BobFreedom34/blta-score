@@ -284,6 +284,23 @@ async function load() {
   renderTable();
 }
 
+// "Embed this list" — same modal/pattern as index.html's own
+// embed-list-btn and match.js's openEmbedModal. The button/modal only
+// exist on the real page's markup, not embed-rankings.html itself (which
+// also loads this same file), so this is naturally a no-op there.
+const embedRankingsBtn = document.getElementById('embed-rankings-btn');
+if (embedRankingsBtn) {
+  embedRankingsBtn.addEventListener('click', () => {
+    const src = `${window.location.origin}/embed/rankings`;
+    const code = `<iframe src="${src}" width="100%" height="800" frameborder="0" style="border:0;width:100%"></iframe>`;
+    document.getElementById('embed-code').textContent = code;
+    document.getElementById('copy-embed-btn').onclick = () => {
+      copyToClipboard(code).then(() => toast(t('embed.copied')));
+    };
+    document.getElementById('embed-modal').style.display = 'flex';
+  });
+}
+
 // Skipped entirely in embed mode — an embedded widget never shows edit
 // controls, so there's no reason to even ask, and this way an
 // admin viewing the embedded iframe elsewhere never sees the edit UI
