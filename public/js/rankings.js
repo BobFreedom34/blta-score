@@ -10,6 +10,16 @@ let rankingsData = null;
 let activeTab = null;
 let isAdminUser = false;
 
+// Shared by embed-rankings.html (see server.js's /embed/rankings route) —
+// same tabs/table rendering as the real page, just with admin point-editing
+// suppressed (an iframe embedded on blta.sk shouldn't expose edit controls
+// even if the viewer happens to be logged into score.blta.sk as admin in
+// another tab) and player links opened in a new tab instead of navigating
+// the iframe itself, same convention as embed-match.js's own "Full match"
+// link.
+const IS_EMBED = document.body.classList.contains('embed');
+const PLAYER_LINK_ATTRS = IS_EMBED ? ' target="_blank" rel="noopener"' : '';
+
 // The "Badges" tab isn't scraped from blta.sk like the others — it's built
 // locally from this app's own badge system (see badges.js), same
 // computeEarnedBadges() the player profile and Players pages use, just run
@@ -123,7 +133,7 @@ function renderBadgesTable(table) {
   const rowsHtml = visibleRows.map((r) => {
     const flag = flagImgHtml(r.nationality, 'rank-flag-icon');
     const nameHtml = r.slug
-      ? `<a href="/player/${escapeHtml(r.slug)}" class="rank-name">${flag}${escapeHtml(r.name)}</a>`
+      ? `<a href="/player/${escapeHtml(r.slug)}" class="rank-name"${PLAYER_LINK_ATTRS}>${flag}${escapeHtml(r.name)}</a>`
       : `<span class="rank-name">${flag}${escapeHtml(r.name)}</span>`;
     const iconsHtml = iconDefs.map((b) => {
       const earned = r.earned.has(b.id);
@@ -160,9 +170,9 @@ function renderTable() {
   const rowsHtml = visibleRows.map(({ r, i }) => {
     const flag = flagImgHtml(r.nationality, 'rank-flag-icon');
     const nameHtml = r.slug
-      ? `<a href="/player/${escapeHtml(r.slug)}" class="rank-name">${flag}${escapeHtml(r.name)}</a>`
+      ? `<a href="/player/${escapeHtml(r.slug)}" class="rank-name"${PLAYER_LINK_ATTRS}>${flag}${escapeHtml(r.name)}</a>`
       : `<span class="rank-name">${flag}${escapeHtml(r.name)}</span>`;
-    const editLink = isAdminUser
+    const editLink = (isAdminUser && !IS_EMBED)
       ? `<button type="button" class="rank-edit-link" data-action="edit-points">${t('common.edit')}</button>`
       : '';
     return `
@@ -180,7 +190,7 @@ function renderTable() {
   }).join('');
   listEl.innerHTML = `<div class="rank-table">${headerRowHtml(table)}${rowsHtml}</div>`;
 
-  if (isAdminUser) attachEditHandlers(table);
+  if (isAdminUser && !IS_EMBED) attachEditHandlers(table);
 }
 
 function attachEditHandlers(table) {
@@ -274,8 +284,14 @@ async function load() {
   renderTable();
 }
 
-checkAdmin().then((result) => {
-  isAdminUser = result;
-  if (rankingsData) renderTable();
-});
+// Skipped entirely in embed mode — an embedded widget never shows edit
+// controls, so there's no reason to even ask, and this way an
+// admin viewing the embedded iframe elsewhere never sees the edit UI
+// unexpectedly appear in it.
+if (!IS_EMBED) {
+  checkAdmin().then((result) => {
+    isAdminUser = result;
+    if (rankingsData) renderTable();
+  });
+}
 load();

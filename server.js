@@ -109,6 +109,7 @@ app.get('/player/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'player.
 app.get('/embed/match/:token', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-match.html')));
 app.get('/embed/live', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-live.html')));
 app.get('/embed/compact', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-compact.html')));
+app.get('/embed/rankings', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-rankings.html')));
 app.get('/compact', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'compact.html')));
 app.get('/compactblta', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'compactblta.html')));
 
