@@ -895,10 +895,13 @@ if (!availabilityPostColumns.includes('categories')) {
 // one, and only one level of nesting is allowed (enforced in
 // routes/headerItems.js, not here). label_en is nullable — a custom item an
 // admin only bothers to type once falls back to label_sk on the English
-// site rather than disappearing. "My profile" is deliberately NOT part of
-// this table: it's tied to player-login state and stays its own fixed,
-// non-editable nav item (see .nav-my-profile-link + updatePlayerNavLinks in
-// common.js).
+// site rather than disappearing. is_my_profile marks the single row that
+// stands in for the "My profile" link — that link's actual label/href/click
+// behavior stays driven by player-login state (see .nav-my-profile-link +
+// updatePlayerNavLinks in common.js), not by this table's label_sk/label_en/
+// link columns, so routes/headerItems.js only ever lets its sort_order be
+// edited — but giving it a real row here is what lets an admin move it
+// anywhere among the other items instead of it being stuck in a fixed spot.
 db.exec(`
   CREATE TABLE IF NOT EXISTS header_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -907,9 +910,15 @@ db.exec(`
     label_en TEXT,
     link TEXT NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
+    is_my_profile INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 `);
+
+const headerItemColumns = db.prepare('PRAGMA table_info(header_items)').all().map((c) => c.name);
+if (!headerItemColumns.includes('is_my_profile')) {
+  db.exec('ALTER TABLE header_items ADD COLUMN is_my_profile INTEGER NOT NULL DEFAULT 0');
+}
 
 // Seed the header with the site's existing static nav links, once — after
 // that, admins own this list entirely (see /header-admin), same pattern as
@@ -926,6 +935,19 @@ if (headerItemCount === 0) {
     ['Hľadám súpera', 'Looking to play', '/looking-to-play', 3],
     ['+ Nový zápas', '+ New match', '/new-match', 4],
   ].forEach(([labelSk, labelEn, link, sortOrder]) => seedHeaderItem.run(labelSk, labelEn, link, sortOrder));
+}
+
+// The "My profile" placeholder row — seeded once, separately from the block
+// above, so it also gets created for a database that already had header_items
+// rows before this row existed (i.e. everyone who deployed the header manager
+// before this). Appended at the end by default; an admin can drag... er,
+// re-sort it via /header-admin like any other item.
+const myProfileRowCount = db.prepare('SELECT COUNT(*) AS c FROM header_items WHERE is_my_profile = 1').get().c;
+if (myProfileRowCount === 0) {
+  const maxSortOrder = db.prepare('SELECT MAX(sort_order) AS m FROM header_items').get().m;
+  db.prepare(
+    'INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, is_my_profile) VALUES (NULL, ?, ?, ?, ?, 1)'
+  ).run('Môj profil', 'My profile', '#', (maxSortOrder == null ? 0 : maxSortOrder) + 1);
 }
 
 module.exports = db;

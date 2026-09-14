@@ -967,6 +967,17 @@ function isOverdueUnresolved(m) {
 // labelSk — falls back to labelSk when an item has no English label yet,
 // same "don't just disappear" fallback t() itself uses for a missing key.
 // A page with no placeholder (the reset-code page, embeds) is a no-op.
+//
+// Built via real DOM nodes rather than one innerHTML string because the
+// item flagged isMyProfile isn't rendered fresh at all — it's the site's
+// existing static #nav-my-profile-link element (still present in every
+// page's markup) physically MOVED into position here. That element already
+// carries its own id/class, a click listener bound to it once at script
+// load (see the .nav-my-profile-link listener below), and gets its href
+// kept current by updatePlayerNavLinks() — recreating it from scratch here
+// would leave a lookalike node with none of that wiring. appendChild on a
+// node already in the document simply relocates it, so all of that survives
+// untouched; only its position among the other items changes.
 async function renderHeaderNav() {
   const container = document.getElementById('header-dynamic-items');
   if (!container) return;
@@ -978,17 +989,49 @@ async function renderHeaderNav() {
   }
   const labelFor = (item) => (currentLang === 'en' && item.labelEn) ? item.labelEn : item.labelSk;
   const isActive = (link) => link === window.location.pathname;
-  const linkHtml = (item) => `<a href="${escapeHtml(item.link)}" class="${isActive(item.link) ? 'active' : ''}">${escapeHtml(labelFor(item))}</a>`;
-  container.innerHTML = items.map((item) => {
-    if (!item.children || !item.children.length) return linkHtml(item);
-    return `
-      <div class="nav-item-dropdown">
-        ${linkHtml(item)}
-        <button type="button" class="nav-caret" aria-label="Show more">▾</button>
-        <div class="nav-submenu">${item.children.map(linkHtml).join('')}</div>
-      </div>
-    `;
-  }).join('');
+  const myProfileEl = document.getElementById('nav-my-profile-link');
+  const makeLink = (item) => {
+    const a = document.createElement('a');
+    a.href = item.link;
+    a.textContent = labelFor(item);
+    if (isActive(item.link)) a.className = 'active';
+    return a;
+  };
+  const frag = document.createDocumentFragment();
+  items.forEach((item) => {
+    if (item.isMyProfile) {
+      if (myProfileEl) frag.appendChild(myProfileEl);
+      return;
+    }
+    if (!item.children || !item.children.length) {
+      frag.appendChild(makeLink(item));
+      return;
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'nav-item-dropdown';
+    // The label + caret live in their own row (.nav-item-dropdown-toggle)
+    // separate from .nav-submenu below — that's what lets the submenu
+    // switch from an absolute-positioned popover (desktop) to a plain
+    // collapsed block (mobile) via CSS alone, without the toggle row's own
+    // layout needing to change between the two.
+    const toggle = document.createElement('div');
+    toggle.className = 'nav-item-dropdown-toggle';
+    toggle.appendChild(makeLink(item));
+    const caret = document.createElement('button');
+    caret.type = 'button';
+    caret.className = 'nav-caret';
+    caret.setAttribute('aria-label', 'Show more');
+    caret.textContent = '▾';
+    toggle.appendChild(caret);
+    wrap.appendChild(toggle);
+    const submenu = document.createElement('div');
+    submenu.className = 'nav-submenu';
+    item.children.forEach((child) => submenu.appendChild(makeLink(child)));
+    wrap.appendChild(submenu);
+    frag.appendChild(wrap);
+  });
+  container.innerHTML = '';
+  container.appendChild(frag);
 }
 renderHeaderNav();
 
@@ -1018,16 +1061,28 @@ document.addEventListener('click', (e) => {
   const toggle = document.getElementById('nav-toggle');
   const links = document.getElementById('nav-links');
   if (!toggle || !links) return;
+  // Resets any expanded sub-item dropdown whenever the off-canvas panel
+  // itself closes, so it's always collapsed again the next time it opens —
+  // otherwise a dropdown left open from a previous visit would just sit
+  // there expanded on the very next rolldown instead of needing its own tap.
+  const closeAllDropdowns = () => {
+    links.querySelectorAll('.nav-item-dropdown.open').forEach((d) => d.classList.remove('open'));
+  };
   toggle.addEventListener('click', (e) => {
     e.stopPropagation();
-    links.classList.toggle('open');
+    const nowOpen = links.classList.toggle('open');
+    if (!nowOpen) closeAllDropdowns();
   });
   links.addEventListener('click', (e) => {
-    if (e.target.tagName === 'A') links.classList.remove('open');
+    if (e.target.tagName === 'A') {
+      links.classList.remove('open');
+      closeAllDropdowns();
+    }
   });
   document.addEventListener('click', (e) => {
     if (links.classList.contains('open') && !links.contains(e.target) && e.target !== toggle) {
       links.classList.remove('open');
+      closeAllDropdowns();
     }
   });
 })();

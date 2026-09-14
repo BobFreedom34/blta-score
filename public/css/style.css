@@ -246,7 +246,14 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
    in .nav-item-dropdown so its .nav-submenu panel has a positioned
    ancestor to anchor against. */
 #header-dynamic-items { display: contents; }
-.nav-item-dropdown { position: relative; display: flex; align-items: center; }
+/* .nav-item-dropdown itself is a plain block (not flex) so its two
+   children — the toggle row and the .nav-submenu panel below it — stack
+   normally; only .nav-item-dropdown-toggle (the label + caret) is a flex
+   row, kept as its own element rather than making the whole dropdown flex
+   so the same row-then-panel-below shape works unchanged on mobile,
+   without a flex-direction:column override. */
+.nav-item-dropdown { position: relative; }
+.nav-item-dropdown-toggle { display: flex; align-items: center; }
 .nav-caret {
   background: none;
   border: none;
@@ -270,13 +277,19 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   overflow: hidden;
   padding: 6px 0;
 }
-/* Hover reveals it on desktop for anyone with a mouse; .open (toggled by
-   the caret click handler in common.js) is what makes it reachable by
-   touch or keyboard too, same dual mechanism .auth-menu-panel doesn't need
-   (it has no hover affordance at all) but a nav dropdown does since the
-   parent link itself stays clickable. */
-.nav-item-dropdown:hover .nav-submenu,
+/* .open (toggled by the caret click handler in common.js) is the ONLY
+   trigger on a touch device — .nav-item-dropdown.open applies at every
+   width unconditionally, so a tap always works. The :hover variant is
+   deliberately scoped to (hover: hover) and (pointer: fine) — real mouse
+   hardware — rather than left unscoped: an unscoped :hover rule also
+   matches on many touch browsers, which apply a "sticky" :hover state to
+   whatever was last tapped until something else is tapped, so tapping the
+   caret to collapse a dropdown would toggle .open off correctly but the
+   panel would stay visually expanded anyway via this rule alone. */
 .nav-item-dropdown.open .nav-submenu { display: block; }
+@media (hover: hover) and (pointer: fine) {
+  .nav-item-dropdown:hover .nav-submenu { display: block; }
+}
 .nav-submenu a {
   display: block;
   padding: 10px 16px;
@@ -360,15 +373,23 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   }
   .nav-links.open { display: flex; }
   .nav-links a { text-align: center; padding: 12px; font-size: 16px; }
-  /* No hover on a touch device, so the off-canvas panel just shows every
-     sub-item indented beneath its parent all the time instead of needing
-     a tap-to-reveal step — the panel's already a scrollable dropdown, so
-     there's no real space pressure pushing toward a collapsed/expandable
-     version here the way a permanently-visible desktop bar would need. */
-  .nav-item-dropdown { flex-direction: column; align-items: stretch; }
-  .nav-caret { display: none; }
-  .nav-submenu {
+  /* Collapsed until tapped, same as desktop's .open toggle — a touch
+     device has no hover, so the caret is what expands it here instead of
+     it ever showing automatically. Kept collapsed by default rather than
+     always expanded so a parent with several sub-items doesn't push
+     everything below it down the panel before anyone's even asked to see
+     them. */
+  .nav-item-dropdown-toggle { justify-content: center; position: relative; }
+  .nav-caret {
     display: block;
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+  .nav-submenu {
     position: static;
     background: none;
     box-shadow: none;

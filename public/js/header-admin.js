@@ -47,7 +47,27 @@ function readHeaderItemForm(prefix) {
   };
 }
 
+// "My profile" is a fixed nav entry the site itself drives (see
+// .nav-my-profile-link/updatePlayerNavLinks in common.js) — its label and
+// link aren't real settings here (routes/headerItems.js ignores them on
+// PATCH), only where it sits among the other items is, so its row only
+// ever offers an "Edit position" action, never Delete or + Sub-item.
 function headerItemRowHtml(item, isSub) {
+  if (item.isMyProfile) {
+    return `
+      <div class="header-item-row" data-id="${item.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:160px">
+            <div style="font-weight:700">Môj profil / My profile</div>
+            <div style="font-size:12px;color:var(--gray)">Fixed nav item tied to player login — only its position here is editable.</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0">
+            <button type="button" class="btn btn-sm btn-outline" data-action="edit">Edit position</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
   const label = item.labelEn ? `${item.labelSk} / ${item.labelEn}` : item.labelSk;
   return `
     <div class="header-item-row" data-id="${item.id}" style="border-bottom:1px solid var(--gray-light);padding:${isSub ? '10px 4px 10px 24px' : '14px 4px'}">
@@ -69,8 +89,12 @@ function headerItemRowHtml(item, isSub) {
 // A top-level item's own row, its children's rows right beneath (indented),
 // and an empty slot where the "+ Sub-item" button injects an add form —
 // kept as a separate sibling rather than nested inside the row itself so
-// opening it doesn't disturb the row's own edit/delete buttons.
+// opening it doesn't disturb the row's own edit/delete buttons. My profile
+// never has children or a + Sub-item slot, so it's just its own row.
 function itemBlockHtml(item) {
+  if (item.isMyProfile) {
+    return `<div class="header-item-block" data-item-id="${item.id}">${headerItemRowHtml(item, false)}</div>`;
+  }
   const childRows = (item.children || []).map((c) => headerItemRowHtml(c, true)).join('');
   return `
     <div class="header-item-block" data-item-id="${item.id}">
@@ -101,6 +125,36 @@ function attachHandlers() {
     const item = itemsById.get(id);
 
     rowEl.querySelector('[data-action="edit"]').addEventListener('click', () => {
+      if (item.isMyProfile) {
+        rowEl.innerHTML = `
+          <form class="edit-header-item-form">
+            <div class="field">
+              <label>Sort order (lower shows first)</label>
+              <input type="number" id="edit-${id}-sortOrder" value="${item.sortOrder != null ? item.sortOrder : 0}" step="1" style="width:80px">
+            </div>
+            <div id="edit-${id}-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+            <div style="display:flex;gap:8px">
+              <button type="submit" class="btn btn-sm btn-primary">Save</button>
+              <button type="button" class="btn btn-sm btn-outline" data-action="cancel">Cancel</button>
+            </div>
+          </form>
+        `;
+        rowEl.querySelector('[data-action="cancel"]').addEventListener('click', renderList);
+        rowEl.querySelector('.edit-header-item-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const errorEl = document.getElementById(`edit-${id}-error`);
+          errorEl.textContent = '';
+          try {
+            const sortOrder = Number(document.getElementById(`edit-${id}-sortOrder`).value) || 0;
+            await api(`/header-items/${id}`, { method: 'PATCH', body: { sortOrder } });
+            toast('Position saved');
+            await loadItems();
+          } catch (err) {
+            errorEl.textContent = err.message;
+          }
+        });
+        return;
+      }
       rowEl.innerHTML = `
         <form class="edit-header-item-form">
           ${headerItemFormHtml('edit-' + id, item)}
@@ -128,20 +182,23 @@ function attachHandlers() {
       });
     });
 
-    rowEl.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-      const childCount = (item.children || []).length;
-      const msg = childCount
-        ? `Delete "${item.labelSk}" and its ${childCount} sub-item(s)?`
-        : `Delete "${item.labelSk}"?`;
-      if (!confirm(msg)) return;
-      try {
-        await api(`/header-items/${id}`, { method: 'DELETE' });
-        toast('Header item deleted');
-        await loadItems();
-      } catch (err) {
-        toast(err.message);
-      }
-    });
+    const deleteBtn = rowEl.querySelector('[data-action="delete"]');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', async () => {
+        const childCount = (item.children || []).length;
+        const msg = childCount
+          ? `Delete "${item.labelSk}" and its ${childCount} sub-item(s)?`
+          : `Delete "${item.labelSk}"?`;
+        if (!confirm(msg)) return;
+        try {
+          await api(`/header-items/${id}`, { method: 'DELETE' });
+          toast('Header item deleted');
+          await loadItems();
+        } catch (err) {
+          toast(err.message);
+        }
+      });
+    }
 
     const addSubBtn = rowEl.querySelector('[data-action="add-sub"]');
     if (addSubBtn) {
