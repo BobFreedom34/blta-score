@@ -890,4 +890,42 @@ if (!availabilityPostColumns.includes('categories')) {
   db.exec("ALTER TABLE availability_posts ADD COLUMN categories TEXT NOT NULL DEFAULT '[]'");
 }
 
+// The site's top nav (see #header-dynamic-items in every page + renderHeaderNav
+// in common.js) — a top-level item has parent_id NULL; a sub-item points at
+// one, and only one level of nesting is allowed (enforced in
+// routes/headerItems.js, not here). label_en is nullable — a custom item an
+// admin only bothers to type once falls back to label_sk on the English
+// site rather than disappearing. "My profile" is deliberately NOT part of
+// this table: it's tied to player-login state and stays its own fixed,
+// non-editable nav item (see .nav-my-profile-link + updatePlayerNavLinks in
+// common.js).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS header_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    parent_id INTEGER REFERENCES header_items(id),
+    label_sk TEXT NOT NULL,
+    label_en TEXT,
+    link TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+
+// Seed the header with the site's existing static nav links, once — after
+// that, admins own this list entirely (see /header-admin), same pattern as
+// badge_definitions above.
+const headerItemCount = db.prepare('SELECT COUNT(*) AS c FROM header_items').get().c;
+if (headerItemCount === 0) {
+  const seedHeaderItem = db.prepare(
+    'INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order) VALUES (NULL, ?, ?, ?, ?)'
+  );
+  [
+    ['Zápasy', 'Matches', '/', 0],
+    ['Hráči', 'Players', '/players', 1],
+    ['Rebríček', 'Rankings', '/rankings', 2],
+    ['Hľadám súpera', 'Looking to play', '/looking-to-play', 3],
+    ['+ Nový zápas', '+ New match', '/new-match', 4],
+  ].forEach(([labelSk, labelEn, link, sortOrder]) => seedHeaderItem.run(labelSk, labelEn, link, sortOrder));
+}
+
 module.exports = db;

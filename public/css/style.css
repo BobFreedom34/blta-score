@@ -235,6 +235,60 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   white-space: nowrap;
 }
 .nav-links a:hover { background: rgba(255,255,255,0.08); color: var(--white); }
+/* Admin-managed header items (see /header-admin, GET /api/header-items) —
+   #header-dynamic-items is the fixed placeholder every page's static
+   nav-links markup keeps; renderHeaderNav() in common.js fills it in.
+   display:contents makes the wrapper itself invisible to flex layout, so
+   every rendered item is a direct flex child of .nav-links exactly like
+   the plain <a> tags it replaced — .nav-links' own centering/gap/wrap
+   rules need that to keep working unmodified. A plain item (no children)
+   renders as just an <a>, same as before; one with sub-items gets wrapped
+   in .nav-item-dropdown so its .nav-submenu panel has a positioned
+   ancestor to anchor against. */
+#header-dynamic-items { display: contents; }
+.nav-item-dropdown { position: relative; display: flex; align-items: center; }
+.nav-caret {
+  background: none;
+  border: none;
+  color: #d8d8d8;
+  cursor: pointer;
+  padding: 7px 8px 7px 0;
+  font-size: 9px;
+  line-height: 1;
+}
+.nav-caret:hover { color: var(--white); }
+.nav-submenu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 180px;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  z-index: 45;
+  overflow: hidden;
+  padding: 6px 0;
+}
+/* Hover reveals it on desktop for anyone with a mouse; .open (toggled by
+   the caret click handler in common.js) is what makes it reachable by
+   touch or keyboard too, same dual mechanism .auth-menu-panel doesn't need
+   (it has no hover affordance at all) but a nav dropdown does since the
+   parent link itself stays clickable. */
+.nav-item-dropdown:hover .nav-submenu,
+.nav-item-dropdown.open .nav-submenu { display: block; }
+.nav-submenu a {
+  display: block;
+  padding: 10px 16px;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.nav-submenu a:hover { background: var(--gray-light); color: var(--ink); }
 .install-app-btn {
   padding: 7px 10px;
   border-radius: 999px;
@@ -306,6 +360,22 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   }
   .nav-links.open { display: flex; }
   .nav-links a { text-align: center; padding: 12px; font-size: 16px; }
+  /* No hover on a touch device, so the off-canvas panel just shows every
+     sub-item indented beneath its parent all the time instead of needing
+     a tap-to-reveal step — the panel's already a scrollable dropdown, so
+     there's no real space pressure pushing toward a collapsed/expandable
+     version here the way a permanently-visible desktop bar would need. */
+  .nav-item-dropdown { flex-direction: column; align-items: stretch; }
+  .nav-caret { display: none; }
+  .nav-submenu {
+    display: block;
+    position: static;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+  }
+  .nav-submenu a { color: #d8d8d8; padding: 10px 12px; font-size: 14px; text-align: center; }
+  .nav-submenu a:hover { background: rgba(255,255,255,0.08); color: var(--white); }
 }
 /* An inline SVG rather than an emoji glyph — unlike text, an emoji's color
    is baked into the glyph itself and ignores CSS color entirely (varies

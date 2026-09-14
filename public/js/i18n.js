@@ -86,6 +86,7 @@ const TRANSLATIONS = {
 
     'footer.embedList': 'Vložiť tento zoznam',
     'footer.manageBadges': 'Spravovať odznaky',
+    'footer.manageHeader': 'Spravovať hlavičku',
     'footer.loginHistory': 'História prihlásení',
 
     'embed.title': 'Vložiť do WordPress',
@@ -634,6 +635,7 @@ const TRANSLATIONS = {
 
     'footer.embedList': 'Embed this list',
     'footer.manageBadges': 'Manage badges',
+    'footer.manageHeader': 'Manage header',
     'footer.loginHistory': 'Login history',
 
     'embed.title': 'Embed on WordPress',

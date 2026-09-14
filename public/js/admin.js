@@ -36,6 +36,7 @@ function renderLoggedIn() {
       You'll now see Add / Edit / Delete on the <a href="/players" style="text-decoration:underline">Players</a> page,
       can correct the score or location of a finished match, can
       <a href="/badges-admin" style="text-decoration:underline">manage badges</a>,
+      can <a href="/header-admin" style="text-decoration:underline">manage the site header</a>,
       and can view the <a href="/login-history" style="text-decoration:underline">login history</a>.
     </p>
     <button type="button" class="btn btn-outline" id="backup-now-btn">📦 Back up now</button>

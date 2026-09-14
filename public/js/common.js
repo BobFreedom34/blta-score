@@ -957,6 +957,63 @@ function isOverdueUnresolved(m) {
   return Date.now() - new Date(m.scheduledAt).getTime() > 24 * 60 * 60 * 1000;
 }
 
+// Renders the admin-managed header items (see /header-admin, GET
+// /api/header-items) into the #header-dynamic-items placeholder every
+// page's nav keeps — a plain item (no children) renders just like the
+// static <a> tags it replaced; an item with sub-items gets wrapped in
+// .nav-item-dropdown so it can carry both its own link and a
+// hover/tap dropdown of children (see .nav-submenu in style.css).
+// currentLang (from i18n.js, loaded before this script) picks labelEn vs.
+// labelSk — falls back to labelSk when an item has no English label yet,
+// same "don't just disappear" fallback t() itself uses for a missing key.
+// A page with no placeholder (the reset-code page, embeds) is a no-op.
+async function renderHeaderNav() {
+  const container = document.getElementById('header-dynamic-items');
+  if (!container) return;
+  let items;
+  try {
+    items = await api('/header-items');
+  } catch {
+    return; // leave the placeholder empty rather than break the whole topbar
+  }
+  const labelFor = (item) => (currentLang === 'en' && item.labelEn) ? item.labelEn : item.labelSk;
+  const isActive = (link) => link === window.location.pathname;
+  const linkHtml = (item) => `<a href="${escapeHtml(item.link)}" class="${isActive(item.link) ? 'active' : ''}">${escapeHtml(labelFor(item))}</a>`;
+  container.innerHTML = items.map((item) => {
+    if (!item.children || !item.children.length) return linkHtml(item);
+    return `
+      <div class="nav-item-dropdown">
+        ${linkHtml(item)}
+        <button type="button" class="nav-caret" aria-label="Show more">▾</button>
+        <div class="nav-submenu">${item.children.map(linkHtml).join('')}</div>
+      </div>
+    `;
+  }).join('');
+}
+renderHeaderNav();
+
+// The caret click toggles .open for touch/keyboard reachability (hover
+// alone, via :hover in style.css, already covers a mouse) — delegated on
+// document rather than bound per-caret since the caret buttons don't exist
+// yet until renderHeaderNav's fetch resolves. Clicking anywhere outside an
+// open dropdown closes it, same convention as the auth menu/lang switcher
+// below.
+document.addEventListener('click', (e) => {
+  const caret = e.target.closest('.nav-caret');
+  if (caret) {
+    e.preventDefault();
+    e.stopPropagation();
+    const dropdown = caret.closest('.nav-item-dropdown');
+    const wasOpen = dropdown.classList.contains('open');
+    document.querySelectorAll('.nav-item-dropdown.open').forEach((d) => d.classList.remove('open'));
+    if (!wasOpen) dropdown.classList.add('open');
+    return;
+  }
+  document.querySelectorAll('.nav-item-dropdown.open').forEach((d) => {
+    if (!d.contains(e.target)) d.classList.remove('open');
+  });
+});
+
 (function initMobileNav() {
   const toggle = document.getElementById('nav-toggle');
   const links = document.getElementById('nav-links');
@@ -2337,7 +2394,7 @@ async function subscribeToPush(matchToken, type) {
 if (!document.body.classList.contains('embed')) {
   checkAdmin().then((isAdminUser) => {
     if (!isAdminUser) return;
-    document.querySelectorAll('.footer-badges-link, .footer-login-history-link').forEach((el) => { el.style.display = ''; });
+    document.querySelectorAll('.footer-badges-link, .footer-header-link, .footer-login-history-link').forEach((el) => { el.style.display = ''; });
   });
 }
 
