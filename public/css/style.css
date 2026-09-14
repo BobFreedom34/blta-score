@@ -1193,11 +1193,34 @@ datalist {}
   flex-shrink: 0;
 }
 .player-avatar { object-fit: cover; background: var(--gray-light); }
+/* Wraps the avatar (photo or initials fallback) so the admin-only edit/
+   remove buttons below can be positioned relative to it. align-self:
+   flex-start keeps the wrap's own height pinned to the avatar's 168px
+   instead of stretching to match .player-header-main's taller content —
+   .player-avatar-row's align-items: stretch would otherwise do that. */
+.player-avatar-wrap { position: relative; flex-shrink: 0; align-self: flex-start; }
+.avatar-edit-btn, .avatar-remove-btn {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  line-height: 1;
+}
+.avatar-edit-btn { right: -6px; bottom: -6px; background: var(--orange); color: var(--white); }
+.avatar-remove-btn { right: -6px; top: -6px; background: var(--danger); color: var(--white); }
 /* On mobile the photo becomes a full-width square banner above the name,
    instead of a small square beside it — there just isn't room for both
    at a readable size on a phone. */
 @media (max-width: 480px) {
   .player-avatar-row { flex-direction: column; align-items: stretch; gap: 14px; }
+  .player-avatar-wrap { align-self: stretch; }
   .player-avatar, .player-avatar-fallback { width: 100%; height: auto; aspect-ratio: 1 / 1; }
   .player-avatar-fallback { font-size: 64px; }
   /* The rank number + flag stay stacked exactly like on desktop, but that

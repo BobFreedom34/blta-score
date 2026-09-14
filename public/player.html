@@ -44,7 +44,12 @@
 
 <div class="container">
   <div class="player-avatar-row">
-    <div class="player-avatar-fallback" id="player-avatar">?</div>
+    <div class="player-avatar-wrap" id="player-avatar-wrap">
+      <div class="player-avatar-fallback" id="player-avatar">?</div>
+      <button type="button" class="avatar-edit-btn" id="avatar-edit-btn" style="display:none">📷</button>
+      <button type="button" class="avatar-remove-btn" id="avatar-remove-btn" style="display:none">✕</button>
+      <input type="file" id="avatar-photo-input" accept="image/png,image/jpeg" style="display:none">
+    </div>
     <div class="player-header-main">
       <div class="player-rank-badge" id="player-rank-badge" style="display:none"></div>
       <span class="player-flag" id="player-flag"></span>

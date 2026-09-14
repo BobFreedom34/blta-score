@@ -841,6 +841,57 @@ function initials(name) {
   return (first + last).toUpperCase();
 }
 
+// Swaps #player-avatar between the photo <img> and the initials fallback
+// div (same choice the initial page load makes) — reused after an
+// admin uploads or removes a photo so the avatar updates without a full
+// page reload. The remove button only ever makes sense once a photo
+// exists; the edit button's own visibility (admin or not) never changes
+// per player, so it's set once at load instead of here.
+function renderAvatar(player) {
+  const current = document.getElementById('player-avatar');
+  current.outerHTML = player.photo_url
+    ? `<img class="player-avatar" id="player-avatar" src="${escapeHtml(player.photo_url)}" alt="${escapeHtml(player.name)}">`
+    : `<div class="player-avatar-fallback" id="player-avatar">${escapeHtml(initials(player.name))}</div>`;
+  document.getElementById('avatar-remove-btn').style.display = (isAdminUser && player.photo_url) ? '' : 'none';
+}
+
+document.getElementById('avatar-edit-btn').title = t('players.photoUpload');
+document.getElementById('avatar-remove-btn').title = t('players.removePhoto');
+
+document.getElementById('avatar-edit-btn').addEventListener('click', () => {
+  document.getElementById('avatar-photo-input').click();
+});
+
+document.getElementById('avatar-photo-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('photo', file);
+  try {
+    const res = await fetch(`/api/players/${playerId}/photo`, { method: 'POST', body: formData });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || t('players.photoUploadFailed'));
+    }
+    currentPlayer = await res.json();
+    renderAvatar(currentPlayer);
+    toast(t('players.updated'));
+  } catch (err) {
+    toast(err.message);
+  }
+});
+
+document.getElementById('avatar-remove-btn').addEventListener('click', async () => {
+  try {
+    currentPlayer = await api(`/players/${playerId}/photo`, { method: 'DELETE' });
+    renderAvatar(currentPlayer);
+    toast(t('players.photoRemoved'));
+  } catch (err) {
+    toast(err.message);
+  }
+});
+
 // First name on its own (lighter) line, surname on the line below (bold) —
 // falls back to a single line if the name is only one word.
 function nameLinesHtml(name) {
@@ -1029,12 +1080,8 @@ document.getElementById('player-bio-form').addEventListener('submit', async (e) 
       rankEl.style.display = '';
     }
     document.title = `${player.name} — Tennis SCORE`;
-    const avatarEl = document.getElementById('player-avatar');
-    if (player.photo_url) {
-      avatarEl.outerHTML = `<img class="player-avatar" id="player-avatar" src="${escapeHtml(player.photo_url)}" alt="${escapeHtml(player.name)}">`;
-    } else {
-      avatarEl.textContent = initials(player.name);
-    }
+    document.getElementById('avatar-edit-btn').style.display = isAdminUser ? '' : 'none';
+    renderAvatar(player);
     renderBio();
   } catch {
     nameEl.textContent = t('player.notFound');
