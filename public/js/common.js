@@ -1678,6 +1678,23 @@ function canManageMatch(m, isAdminUser) {
   return true;
 }
 
+// Mirrors checkLiveScoreAccess server-side (routes/matches.js) — narrower
+// than canManageMatch just above on purpose: that one also lets a match's
+// mere CREATOR manage it (right for editing location/date or deleting a
+// match you organized), but running the live score is a different
+// permission — only an admin or one of the two actual players, never
+// someone who just set the match up for two other people. Same logged-out
+// "decide once requirePlayerAuth resolves" convention as canManageMatch
+// (see its own comment above) — a referee session is checked separately
+// wherever this is used (see requireLiveScoreAuth/refereeAuthed), not here.
+function canManageLiveScore(m, isAdminUser) {
+  if (isAdminUser) return true;
+  if (playerAuthed && currentPlayerId) {
+    return currentPlayerId === m.player1.id || currentPlayerId === m.player2.id;
+  }
+  return true;
+}
+
 // "N attempt(s) left" needs real plural forms in Slovak (1/2-4/5+), not
 // just an English-style singular/plural switch — used only by
 // loginErrorText's incorrectCode case below.

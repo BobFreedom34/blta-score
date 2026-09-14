@@ -663,25 +663,31 @@ function render(m) {
       ? `<div class="timer">${Math.max(1, Math.round((new Date(m.endTime) - new Date(m.startTime)) / 60000))} min</div>`
       : '<div class="timer">00:00</div>');
 
-  // canManageMatch alone deliberately returns true for a logged-out
-  // visitor (see common.js) — that's the right call for flows like
-  // starting a planned match or responding to a proposal, which are meant
-  // to be visible to anyone with the share link and only actually decided
-  // once requirePlayerAuth resolves who's clicking. Editing/deleting the
-  // match and controlling a live one are different: a spectator watching
-  // someone else's live match (or just holding the link, logged out)
-  // shouldn't see Stop/Restart/Finish/Edit/Delete at all, not just get
-  // rejected after clicking — so these require being logged in already
-  // AND passing canManageMatch, not either alone.
+  // canManageMatch/canManageLiveScore alone deliberately return true for a
+  // logged-out visitor (see common.js) — that's the right call for flows
+  // like starting a planned match or responding to a proposal, which are
+  // meant to be visible to anyone with the share link and only actually
+  // decided once requirePlayerAuth resolves who's clicking. Editing/
+  // deleting the match and controlling a live one are different: a
+  // spectator watching someone else's live match (or just holding the
+  // link, logged out) shouldn't see Stop/Restart/Finish/Edit/Delete at
+  // all, not just get rejected after clicking — so these require being
+  // logged in already AND passing the relevant check, not either alone.
+  //
+  // canControlLiveScore uses canManageLiveScore, NOT canManageMatch:
+  // running a live match's score is narrower than general match
+  // management (see canManageLiveScore's own comment) — a player who
+  // merely created this match for two other people shouldn't see
+  // Stop/Restart/Finish for it, even though they're allowed to edit its
+  // location/date or delete it (see locationEditable/deletable below,
+  // still on canManageMatch/canControlLive).
+  const canControlLiveScore = isAdminUser || (playerAuthed && canManageLiveScore(m, isAdminUser));
+  const canControlLiveScoreOrReferee = canControlLiveScore || refereeAuthed;
+  // Kept as its own, separately-computed flag (still on the broader
+  // canManageMatch) purely because `deletable` below mirrors DELETE
+  // /:token, which — unlike the live-scoring routes — still goes through
+  // checkMatchAccess server-side, creator allowance included.
   const canControlLive = isAdminUser || (playerAuthed && canManageMatch(m, isAdminUser));
-  // A referee session (see the "Referee" button below and
-  // requireLiveScoreAuth in common.js) unlocks the SAME Stop/Restart/
-  // Finish/Unfinished buttons canControlLive does — but kept as its own
-  // flag, only fed into controlsHtml below, rather than folded into
-  // canControlLive itself: that one also feeds `deletable` further down,
-  // and a referee (anyone who knows the shared code, not a specific
-  // player or admin) should never get to delete a match.
-  const canControlLiveOrReferee = canControlLive || refereeAuthed;
   // Location/Date/Category/Notes all go through the same PATCH /:token +
   // checkMatchAccess path server-side, so they're gated together
   // client-side too — admin can always edit (even a finished match).
@@ -726,7 +732,7 @@ function render(m) {
     </div>
 
     ${scoreboardHtml(m, durationHtml)}
-    ${controlsHtml(m, canControlLiveOrReferee)}
+    ${controlsHtml(m, canControlLiveScoreOrReferee)}
 
     <div class="info-grid">
       <div class="info-item">
@@ -779,16 +785,19 @@ function render(m) {
 function attachHandlers(m) {
   // Start live match: prompt login if logged out — or a referee code,
   // via requireLiveScoreAuth (common.js) — then, the moment either is
-  // confirmed, reject immediately with checkMatchAccess's own message if
-  // this isn't a match this player can manage (a referee session always
-  // passes that check instead, see below), rather than only rejecting
-  // after they've filled out and submitted the schedule/first-server
-  // form. Same pattern as handlePlannedActionClick in app.js. Enter
-  // result manually, just below, stays requirePlayerAuth-only — that one
-  // isn't part of a referee's live-scoring scope.
+  // confirmed, reject immediately with an access-denied message if this
+  // isn't a match this player is actually in (a referee session always
+  // passes that check instead, see below; an admin always passes it too —
+  // see canManageLiveScore), rather than only rejecting after they've
+  // filled out and submitted the schedule/first-server form. Same pattern
+  // as handlePlannedActionClick in app.js. Enter result manually, just
+  // below, stays requirePlayerAuth-only — that one isn't part of a
+  // referee's live-scoring scope, and (unlike starting/scoring a live
+  // match) is still fine for a match's creator even if they don't play in
+  // it — see canManageMatch/checkMatchAccess.
   const startBtn = document.getElementById('start-btn');
   if (startBtn) startBtn.addEventListener('click', () => requireLiveScoreAuth(() => {
-    if (!refereeAuthed && !canManageMatch(m, isAdminUser)) {
+    if (!refereeAuthed && !canManageLiveScore(m, isAdminUser)) {
       showAccessDeniedModal(t('accessDenied.message'));
       return;
     }
@@ -883,12 +892,12 @@ function attachHandlers(m) {
   });
 
   // Stop/Resume/Restart/Finish/Mark-unfinished/Resume-later/Finish-as-is
-  // are now hidden from render() entirely unless canControlLiveOrReferee
+  // are now hidden from render() entirely unless canControlLiveScoreOrReferee
   // was true (see there) — this recheck is just the same belt-and-braces
   // pattern start-btn/manual-result-btn/openEditMatch already use, for the
   // rare case a stale render leaves one of these clickable a beat too long.
   function guardCanControl() {
-    if (!refereeAuthed && !canManageMatch(m, isAdminUser)) {
+    if (!refereeAuthed && !canManageLiveScore(m, isAdminUser)) {
       showAccessDeniedModal(t('accessDenied.message'));
       return false;
     }

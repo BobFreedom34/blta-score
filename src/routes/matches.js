@@ -239,21 +239,29 @@ function checkMatchAccess(req, res, row) {
   return false;
 }
 
-// Same shape as checkMatchAccess above, but also lets a referee session
-// through (see auth.js's isReferee) — used ONLY on the live-scoring
-// routes below (start/pause/resume/score/undo/finish/restart/unfinished/
-// resume-later/finish-as-is, each paired with requireLoggedInOrReferee
-// instead of plain requireLoggedIn), never on the broader match-
-// management ones (editing location/date, deleting the match, format/
-// set-style setup) — a referee isn't a stand-in for a real player or
-// admin there, only for live scoring. Deliberately doesn't fall through
-// to checkMatchAccess's own ownership rules for a referee: anyone with
-// the shared code can control ANY match's live score, by design (that's
-// the whole point of a courtside referee who isn't one of the two
-// players and doesn't have a BLTA account).
+// Deliberately narrower than checkMatchAccess above, not just "that plus a
+// referee" — used ONLY on the live-scoring routes below (start/pause/
+// resume/score/undo/finish/restart/unfinished/resume-later/finish-as-is,
+// each paired with requireLoggedInOrReferee instead of plain
+// requireLoggedIn), never on the broader match-management ones (editing
+// location/date, deleting the match, format/set-style setup).
+// checkMatchAccess's created_by_player_id allowance — "the player who set
+// this match up can manage it, even if they're not one of the two people
+// playing" — is the right call for logistics like location/date or
+// deleting a match you organized, but running the live score is a
+// different permission: only an admin, a referee (anyone with the shared
+// code — by design, that's the whole point of a courtside referee who
+// isn't one of the two players and doesn't have a BLTA account), or one of
+// the two actual players may start/stop/score it. Without this narrower
+// check, any logged-in player could create a match naming two other
+// people as player1/player2 and then start/control its live score purely
+// by virtue of being its creator.
 function checkLiveScoreAccess(req, res, row) {
-  if (isReferee(req)) return true;
-  return checkMatchAccess(req, res, row);
+  if (isAdmin(req) || isReferee(req)) return true;
+  const playerId = getPlayerId(req);
+  if (playerId && (playerId === row.player1_id || playerId === row.player2_id)) return true;
+  res.status(403).json({ error: 'Only the players in this match, an admin, or a referee can control the live score' });
+  return false;
 }
 
 function nowIso() {
