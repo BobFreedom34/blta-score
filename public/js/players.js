@@ -88,10 +88,18 @@ function attachRowHandlers() {
     const player = players.find((p) => String(p.id) === id);
 
     row.querySelector('[data-action="edit"]').addEventListener('click', () => {
+      const photoPreviewInner = player.photo_url
+        ? `<img src="${escapeHtml(player.photo_url)}" alt="" style="width:100%;height:100%;object-fit:cover">`
+        : '';
       row.innerHTML = `
         <input type="text" class="edit-name-input" value="${escapeHtml(player.name)}" maxlength="60" placeholder="${escapeHtml(t('players.namePlaceholder'))}">
         <input type="text" class="edit-phone-input" inputmode="numeric" value="${player.phone ? escapeHtml(player.phone) : ''}" placeholder="0903111222" maxlength="10">
         <input type="email" class="edit-email-input" value="${player.email ? escapeHtml(player.email) : ''}" placeholder="meno@example.com" maxlength="100">
+        <div class="edit-photo-row" style="display:flex;align-items:center;gap:8px">
+          <div class="edit-photo-preview" style="width:36px;height:36px;border-radius:50%;overflow:hidden;background:var(--gray-light);flex-shrink:0">${photoPreviewInner}</div>
+          <input type="file" class="edit-photo-input" accept="image/png,image/jpeg" title="${escapeHtml(t('players.photoUpload'))}">
+          <button type="button" class="btn btn-sm btn-outline edit-remove-photo-btn" data-action="remove-photo" style="${player.photo_url ? '' : 'display:none'}">${t('players.removePhoto')}</button>
+        </div>
         <div class="player-row-actions">
           <button type="button" class="btn btn-sm btn-primary" data-action="save">${t('common.save')}</button>
           <button type="button" class="btn btn-sm btn-outline" data-action="cancel">${t('common.cancel')}</button>
@@ -100,8 +108,34 @@ function attachRowHandlers() {
       const nameInput = row.querySelector('.edit-name-input');
       const phoneInput = row.querySelector('.edit-phone-input');
       const emailInput = row.querySelector('.edit-email-input');
+      const photoInput = row.querySelector('.edit-photo-input');
+      const photoPreview = row.querySelector('.edit-photo-preview');
+      const removePhotoBtn = row.querySelector('.edit-remove-photo-btn');
       nameInput.focus();
       nameInput.select();
+
+      photoInput.addEventListener('change', () => {
+        const file = photoInput.files[0];
+        if (!file) return;
+        photoPreview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="" style="width:100%;height:100%;object-fit:cover">`;
+        removePhotoBtn.style.display = 'none';
+      });
+
+      // Immediate, not bundled into Save below — same "just do it" pattern
+      // as the toggle-hidden/delete buttons elsewhere in this file, rather
+      // than requiring a separate Save click for something this simple.
+      removePhotoBtn.addEventListener('click', async () => {
+        try {
+          await api(`/players/${id}/photo`, { method: 'DELETE' });
+          player.photo_url = null;
+          photoPreview.innerHTML = '';
+          photoInput.value = '';
+          removePhotoBtn.style.display = 'none';
+          toast(t('players.photoRemoved'));
+        } catch (err) {
+          toast(err.message);
+        }
+      });
 
       row.querySelector('[data-action="cancel"]').addEventListener('click', render);
       const save = async () => {
@@ -121,6 +155,16 @@ function attachRowHandlers() {
           // profile" modal already uses for it.
           if (email !== (player.email || '')) {
             await api(`/players/${id}/bio`, { method: 'PATCH', body: { email } });
+          }
+          const photoFile = photoInput.files[0];
+          if (photoFile) {
+            const formData = new FormData();
+            formData.append('photo', photoFile);
+            const res = await fetch(`/api/players/${id}/photo`, { method: 'POST', body: formData });
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}));
+              throw new Error(data.error || t('players.photoUploadFailed'));
+            }
           }
           toast(t('players.updated'));
           loadPlayers();

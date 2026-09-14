@@ -43,6 +43,7 @@ app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }));
 // Uploaded badge icons live on the persistent disk (see src/db.js's
 // dataDir), not under public/, so they survive redeploys.
 app.use('/badge-icons', express.static(path.join(db.dataDir, 'badge-icons')));
+app.use('/player-photos', express.static(path.join(db.dataDir, 'player-photos')));
 
 app.use('/api/players', playersRouter);
 app.use('/api/matches', matchesRouter);

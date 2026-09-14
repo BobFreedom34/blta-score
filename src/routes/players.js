@@ -1,8 +1,40 @@
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 const express = require('express');
+const multer = require('multer');
 const db = require('../db');
 const { requireAdmin, isAdmin, isPlayer, getPlayerId, stripPrivateFields } = require('../auth');
 
 const router = express.Router();
+
+// Same "persistent disk, not public/" reasoning as badges.js's own
+// ICONS_DIR — public/ is replaced fresh from git on every deploy, which
+// would silently delete every uploaded profile photo on the next push.
+const PHOTOS_DIR = path.join(db.dataDir, 'player-photos');
+if (!fs.existsSync(PHOTOS_DIR)) fs.mkdirSync(PHOTOS_DIR, { recursive: true });
+
+const PHOTO_MIME_EXT = { 'image/png': '.png', 'image/jpeg': '.jpg' };
+const uploadPhoto = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    cb(null, Object.prototype.hasOwnProperty.call(PHOTO_MIME_EXT, file.mimetype));
+  },
+});
+
+function isUploadedPhoto(url) {
+  return typeof url === 'string' && url.startsWith('/player-photos/');
+}
+
+// Only cleans up a file this endpoint itself uploaded — a photo_url set
+// some other way (e.g. a plain external URL via PATCH /:id) is left alone,
+// same "don't touch what you didn't create" rule as badges.js's own
+// deleteIconFile.
+function deletePhotoFile(url) {
+  if (!isUploadedPhoto(url)) return;
+  fs.unlink(path.join(PHOTOS_DIR, path.basename(url)), () => { /* fine if it's already gone */ });
+}
 
 // A profile can only be edited by an admin, or by the specific logged-in
 // player it belongs to (see checkPlayerAccess below) — no shared code, no
@@ -114,6 +146,40 @@ router.patch('/:id', requireAdmin, (req, res) => {
 
   const photoUrl = req.body.photoUrl !== undefined ? (req.body.photoUrl || null) : player.photo_url;
   db.prepare('UPDATE players SET name = ?, photo_url = ? WHERE id = ?').run(name, photoUrl, player.id);
+  res.json(stripPrivateFields(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id), req));
+});
+
+// Separate from the JSON PATCH above since it's the one place this router
+// deals with a file instead of a JSON body — invoking multer's middleware
+// manually (rather than listing it declaratively) lets a bad upload
+// (oversized, wrong type) come back as a normal JSON error instead of
+// falling through to Express's default HTML error page. Same pattern as
+// routes/badges.js's own icon upload.
+router.post('/:id/photo', requireAdmin, (req, res) => {
+  uploadPhoto.single('photo')(req, res, (err) => {
+    if (err) {
+      const message = err.code === 'LIMIT_FILE_SIZE' ? 'Image must be under 2MB' : 'Could not process the uploaded file';
+      return res.status(400).json({ error: message });
+    }
+    const player = findPlayerByIdOrSlug(req.params.id);
+    if (!player) return res.status(404).json({ error: 'Player not found' });
+    if (!req.file) return res.status(400).json({ error: 'Upload a PNG or JPG image' });
+
+    const ext = PHOTO_MIME_EXT[req.file.mimetype];
+    const filename = `player-${player.id}-${crypto.randomBytes(6).toString('hex')}${ext}`;
+    fs.writeFileSync(path.join(PHOTOS_DIR, filename), req.file.buffer);
+    const photoUrl = `/player-photos/${filename}`;
+    deletePhotoFile(player.photo_url);
+    db.prepare('UPDATE players SET photo_url = ? WHERE id = ?').run(photoUrl, player.id);
+    res.json(stripPrivateFields(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id), req));
+  });
+});
+
+router.delete('/:id/photo', requireAdmin, (req, res) => {
+  const player = findPlayerByIdOrSlug(req.params.id);
+  if (!player) return res.status(404).json({ error: 'Player not found' });
+  deletePhotoFile(player.photo_url);
+  db.prepare('UPDATE players SET photo_url = NULL WHERE id = ?').run(player.id);
   res.json(stripPrivateFields(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id), req));
 });
 
@@ -265,6 +331,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
     });
   }
 
+  deletePhotoFile(player.photo_url);
   db.prepare('DELETE FROM players WHERE id = ?').run(player.id);
   res.status(204).end();
 });
