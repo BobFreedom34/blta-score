@@ -562,6 +562,16 @@
   </div>
 </div>
 
+<!-- Zoomed profile photo — opened by clicking the avatar itself when it's a
+     real photo (see the #player-avatar-wrap click handler in player.js);
+     the initials fallback isn't clickable, there's nothing to zoom into. -->
+<div class="modal-backdrop" id="avatar-zoom-modal" style="display:none">
+  <div class="modal" style="max-width:480px;text-align:center">
+    <button type="button" class="close" data-close="avatar-zoom-modal" aria-label="Close">&times;</button>
+    <img id="avatar-zoom-img" src="" alt="" style="display:block;width:100%;border-radius:var(--radius)">
+  </div>
+</div>
+
 <footer class="site-footer">
   <div class="site-footer-inner">
     <span>BLTA Score</span>

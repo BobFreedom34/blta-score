@@ -892,6 +892,19 @@ document.getElementById('avatar-remove-btn').addEventListener('click', async () 
   }
 });
 
+// Delegated on the wrapper (not #player-avatar directly) since renderAvatar
+// replaces that element's outerHTML on every upload/remove — a listener
+// bound straight to it would be lost the next time a photo changes. Only
+// fires when the click target is actually the <img> (a real photo); the
+// initials fallback is a plain div with nothing to zoom into, and the
+// edit/remove buttons are separate elements so they never reach this check.
+document.getElementById('player-avatar-wrap').addEventListener('click', (e) => {
+  if (e.target.id !== 'player-avatar' || e.target.tagName !== 'IMG') return;
+  document.getElementById('avatar-zoom-img').src = e.target.src;
+  document.getElementById('avatar-zoom-img').alt = e.target.alt;
+  document.getElementById('avatar-zoom-modal').style.display = 'flex';
+});
+
 // First name on its own (lighter) line, surname on the line below (bold) —
 // falls back to a single line if the name is only one word.
 function nameLinesHtml(name) {

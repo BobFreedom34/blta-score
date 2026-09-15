@@ -1283,7 +1283,7 @@ datalist {}
   border-radius: var(--radius);
   flex-shrink: 0;
 }
-.player-avatar { object-fit: cover; background: var(--gray-light); }
+.player-avatar { object-fit: cover; background: var(--gray-light); cursor: pointer; }
 /* Wraps the avatar (photo or initials fallback) so the admin-only edit/
    remove buttons below can be positioned relative to it. align-self:
    flex-start keeps the wrap's own height pinned to the avatar's 168px
