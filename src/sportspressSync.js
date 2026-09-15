@@ -17,6 +17,8 @@
 // "not found" response for that is completely normal, not an error. This
 // never blocks or fails the actual match-finishing flow either way,
 // regardless of whether blta.sk is reachable, configured, or finds a match.
+const engine = require('./matchEngine');
+
 const SPORTSPRESS_URL = process.env.SPORTSPRESS_SITE_URL; // e.g. https://www.blta.sk
 const SPORTSPRESS_USER = process.env.SPORTSPRESS_API_USER;
 const SPORTSPRESS_APP_PASSWORD = process.env.SPORTSPRESS_API_APP_PASSWORD;
@@ -46,10 +48,27 @@ async function pushResultToSportsPress(match, player1, player2) {
     return;
   }
   const setsWon = state.setsWon || {};
-  const player1Sets = Number(setsWon[1] || 0);
-  const player2Sets = Number(setsWon[2] || 0);
-  // 0-0 means nothing was actually decided by sets (e.g. a walkover before
-  // a single game was played) — nothing meaningful to push.
+  let player1Sets = Number(setsWon[1] || 0);
+  let player2Sets = Number(setsWon[2] || 0);
+
+  // A walkover or retirement counts as a clean sweep for the winner
+  // regardless of whatever partial score state.setsWon actually holds —
+  // often 0-0, since a walkover by definition happens before a game is
+  // played, and a retirement can happen before either player has closed
+  // out a single set. Without this override the 0-0 guard just below would
+  // silently skip pushing a result for exactly those matches. Mirrors the
+  // same override in rankingPointsSync.js's pushRankingPoints.
+  const isForfeit = (match.end_reason === 'WALKOVER' || match.end_reason === 'RETIREMENT') && match.winner_id;
+  const format = engine.FORMATS[match.format];
+  if (isForfeit && format && Number.isFinite(format.setsToWin)) {
+    const winnerIsPlayer1 = match.winner_id === match.player1_id;
+    player1Sets = winnerIsPlayer1 ? format.setsToWin : 0;
+    player2Sets = winnerIsPlayer1 ? 0 : format.setsToWin;
+  }
+
+  // 0-0 at this point can only mean a normally-scored match that genuinely
+  // has nothing decided yet (the forfeit case above always produces a real
+  // sweep) — nothing meaningful to push.
   if (player1Sets === 0 && player2Sets === 0) return;
 
   const dateSource = match.scheduled_at || match.start_time || match.updated_at || '';
@@ -69,8 +88,12 @@ async function pushResultToSportsPress(match, player1, player2) {
   // full deciding set rather than being an extra numbered set of its own
   // (see matchEngine.js's own construction of isSuperTiebreak sets, where
   // .p1/.p2 ARE the tiebreak points), so it's kept out of `sets` and sent
-  // as `tiebreak` instead.
-  const playedSets = Array.isArray(state.sets)
+  // as `tiebreak` instead. Skipped entirely for a forced walkover/
+  // retirement sweep — player1Sets/player2Sets above already say 2-0 (or
+  // 3-0/1-0 depending on format), and there's no real per-set score to
+  // report alongside that, whatever partial games state.sets happens to
+  // hold from before the match was stopped.
+  const playedSets = (!isForfeit && Array.isArray(state.sets))
     ? state.sets.filter((s) => s && (s.winner || s.p1 > 0 || s.p2 > 0 || (s.tiebreak && (s.tiebreak.p1 > 0 || s.tiebreak.p2 > 0))))
     : [];
   const games = [];

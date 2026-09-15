@@ -24,6 +24,8 @@
 //
 // Uses the SAME SPORTSPRESS_* env vars as sportspressSync.js — both hit
 // the same WordPress plugin/site.
+const engine = require('./matchEngine');
+
 const SPORTSPRESS_URL = process.env.SPORTSPRESS_SITE_URL; // e.g. https://www.blta.sk
 const SPORTSPRESS_USER = process.env.SPORTSPRESS_API_USER;
 const SPORTSPRESS_APP_PASSWORD = process.env.SPORTSPRESS_API_APP_PASSWORD;
@@ -55,10 +57,28 @@ async function pushRankingPoints(match, player1, player2) {
     return null;
   }
   const setsWon = state.setsWon || {};
-  const player1Sets = Number(setsWon[1] || 0);
-  const player2Sets = Number(setsWon[2] || 0);
-  // 0-0 means nothing was actually decided by sets (e.g. a walkover before
-  // a single game was played) — nothing meaningful to award.
+  let player1Sets = Number(setsWon[1] || 0);
+  let player2Sets = Number(setsWon[2] || 0);
+
+  // A walkover or retirement counts as a clean sweep for the winner
+  // regardless of whatever partial score state.setsWon actually holds —
+  // often 0-0, since a walkover by definition happens before a game is
+  // played, and a retirement can happen before either player has closed
+  // out a single set. Without this override the 0-0 guard just below would
+  // silently skip awarding points for exactly those matches — standard
+  // league scoring, and also the only way this ever awards anything for a
+  // forfeited match at all.
+  const isForfeit = (match.end_reason === 'WALKOVER' || match.end_reason === 'RETIREMENT') && match.winner_id;
+  const format = engine.FORMATS[match.format];
+  if (isForfeit && format && Number.isFinite(format.setsToWin)) {
+    const winnerIsPlayer1 = match.winner_id === match.player1_id;
+    player1Sets = winnerIsPlayer1 ? format.setsToWin : 0;
+    player2Sets = winnerIsPlayer1 ? 0 : format.setsToWin;
+  }
+
+  // 0-0 at this point can only mean a normally-scored match that genuinely
+  // has nothing decided yet (the forfeit case above always produces a real
+  // sweep) — nothing meaningful to award.
   if (player1Sets === 0 && player2Sets === 0) return null;
 
   const body = {
