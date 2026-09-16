@@ -206,7 +206,7 @@ const TRANSLATIONS = {
     'resetCode.invalidTitle': 'Neplatný alebo expirovaný odkaz',
     'resetCode.invalidText': 'Skúste sa znova prihlásiť a požiadajte o nový odkaz cez „Zabudli ste kód?“.',
 
-    'page.homeTitle': 'Tennis SCORE — Živé zápasy',
+    'page.homeTitle': 'Tennis SCORE',
     'calendar.eventTitle': '{p1} vs {p2} — zápas BLTA',
 
     'common.edit': 'Upraviť',
@@ -751,7 +751,7 @@ const TRANSLATIONS = {
     'resetCode.invalidTitle': 'Invalid or expired link',
     'resetCode.invalidText': 'Try logging in again and request a new link via "Forgot your code?".',
 
-    'page.homeTitle': 'Tennis SCORE — Live Matches',
+    'page.homeTitle': 'Tennis SCORE',
     'calendar.eventTitle': '{p1} vs {p2} — BLTA match',
 
     'common.edit': 'Edit',
