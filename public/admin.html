@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tennis SCORE — Admin</title>
+<title>Tennis SCORE — Backend</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" href="/favicon.png">
@@ -22,18 +22,29 @@
   </div>
 </div>
 
-<div class="container" style="max-width:420px">
-  <h1 style="margin-top:22px">Admin</h1>
-  <div id="admin-root" class="card">Loading…</div>
+<div class="container">
+  <h1 style="margin-top:22px">Backend</h1>
+  <!-- Section nav for the whole admin backend — reuses the site's existing
+       .tabs/.tab pill component (same one the matches/player-stats tabs
+       use) rather than a new sidebar pattern, so it's already responsive
+       and visually consistent. Hidden until common.js's admin check
+       confirms this visitor is actually an admin (same reveal-on-admin
+       pattern the old scattered footer links used) — a logged-out visitor
+       just sees the login form below, nothing else. -->
+  <div class="tabs admin-tabs" style="display:none">
+    <a href="/admin" class="tab active">Overview</a>
+    <a href="/header-admin" class="tab">Menu</a>
+    <a href="/badges-admin" class="tab">Badges</a>
+    <a href="/players" class="tab">Players</a>
+    <a href="/login-history" class="tab">Login History</a>
+  </div>
+  <div id="admin-root" class="card" style="max-width:420px">Loading…</div>
 </div>
 
 <footer class="site-footer">
   <div class="site-footer-inner">
     <span>BLTA Score</span>
     <div style="display:flex;gap:12px">
-      <a href="/badges-admin" class="footer-badges-link" style="display:none">Manage badges</a>
-      <a href="/header-admin" class="footer-header-link" style="display:none">Manage header</a>
-      <a href="/login-history" class="footer-login-history-link" style="display:none">Login history</a>
       <a href="/admin">Admin</a>
     </div>
   </div>

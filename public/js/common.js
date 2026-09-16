@@ -2460,13 +2460,16 @@ async function subscribeToPush(matchToken, type) {
   await api(`/matches/${matchToken}/push-subscribe`, { method: 'POST', body: { subscription: subscription.toJSON(), type } });
 }
 
-// Reveals the "Manage badges" and "Login history" footer links only for a
-// logged-in admin — hidden by default in the HTML so neither ever flashes
-// visible for everyone else while this check is in flight.
+// Reveals the backend section-nav tabs (Overview/Menu/Badges/Players/Login
+// History — see .admin-tabs in admin.html/badges-admin.html/header-admin.html/
+// login-history.html) only for a logged-in admin — hidden by default in the
+// HTML so it never flashes visible for everyone else while this check is in
+// flight. A plain visitor just sees that page's own content (or, on admin.html,
+// the login form) with no section nav at all.
 if (!document.body.classList.contains('embed')) {
   checkAdmin().then((isAdminUser) => {
     if (!isAdminUser) return;
-    document.querySelectorAll('.footer-badges-link, .footer-header-link, .footer-login-history-link').forEach((el) => { el.style.display = ''; });
+    document.querySelectorAll('.admin-tabs').forEach((el) => { el.style.display = ''; });
   });
 }
 

@@ -23,7 +23,15 @@
 </div>
 
 <div class="container">
-  <h1 style="margin-top:22px">Manage header</h1>
+  <h1 style="margin-top:22px">Backend</h1>
+  <div class="tabs admin-tabs" style="display:none">
+    <a href="/admin" class="tab">Overview</a>
+    <a href="/header-admin" class="tab active">Menu</a>
+    <a href="/badges-admin" class="tab">Badges</a>
+    <a href="/players" class="tab">Players</a>
+    <a href="/login-history" class="tab">Login History</a>
+  </div>
+  <h2 style="margin:18px 0 4px">Menu</h2>
   <p style="color:var(--gray-dim)">The links shown in the site's top nav — shown here in the order they'll appear. Give an item its own sub-items to turn it into a dropdown.</p>
 
   <div id="header-admin-root">Loading…</div>
@@ -33,9 +41,6 @@
   <div class="site-footer-inner">
     <span>BLTA Score</span>
     <div style="display:flex;gap:12px">
-      <a href="/badges-admin" class="footer-badges-link" style="display:none">Manage badges</a>
-      <a href="/header-admin" class="footer-header-link" style="display:none">Manage header</a>
-      <a href="/login-history" class="footer-login-history-link" style="display:none">Login history</a>
       <a href="/admin">Admin</a>
     </div>
   </div>

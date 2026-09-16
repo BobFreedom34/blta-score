@@ -30,14 +30,19 @@ function renderLoggedOut() {
 }
 
 function renderLoggedIn() {
+  // common.js's own admin-tabs reveal (see near the bottom of that file)
+  // only runs once, at page load — which already happened before this
+  // login (there's no page reload in between, just this AJAX call), so it
+  // saw isAdminUser as false and left .admin-tabs hidden. Reached again
+  // here every time this page transitions into the logged-in view,
+  // including right after a fresh login, not just on a page load that was
+  // already authenticated.
+  document.querySelectorAll('.admin-tabs').forEach((el) => { el.style.display = ''; });
   root.innerHTML = `
     <p style="margin-top:0">✅ You're logged in as admin on this device.</p>
     <p style="color:var(--gray);font-size:13px">
-      You'll now see Add / Edit / Delete on the <a href="/players" style="text-decoration:underline">Players</a> page,
-      can correct the score or location of a finished match, can
-      <a href="/badges-admin" style="text-decoration:underline">manage badges</a>,
-      can <a href="/header-admin" style="text-decoration:underline">manage the site header</a>,
-      and can view the <a href="/login-history" style="text-decoration:underline">login history</a>.
+      You'll now see Add / Edit / Delete on the Players page, and can correct the score or location of a
+      finished match — the rest of the backend (Menu, Badges, Login History) is in the tabs above.
     </p>
     <button type="button" class="btn btn-outline" id="backup-now-btn">📦 Back up now</button>
     <button type="button" class="btn btn-outline" id="logout-btn" style="margin-top:10px">Log out</button>
