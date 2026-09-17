@@ -302,6 +302,27 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   white-space: nowrap;
 }
 .nav-submenu a:hover { background: var(--gray-light); color: var(--ink); }
+/* Count pill for the "Looking to play" nav item — how many players
+   currently have an open post on that board (see attachLookingToPlayBadge
+   in common.js). Lives as a child of the nav <a> itself, same "pill inside
+   a pill" pattern .tab .count already uses elsewhere, just orange/white
+   instead of that one's neutral grey — this is a live "N people want a
+   match right now" signal, worth standing out more than a plain count. */
+.nav-item-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: var(--orange);
+  color: var(--white);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 16px;
+}
 .install-app-btn {
   padding: 7px 10px;
   border-radius: 999px;

@@ -995,6 +995,11 @@ async function renderHeaderNav() {
     a.href = item.link;
     a.textContent = labelFor(item);
     if (isActive(item.link)) a.className = 'active';
+    // Tagged (not matched later by href, which could be relative/absolute
+    // inconsistently) so attachLookingToPlayBadge can find whichever nav
+    // item currently points here, however an admin has it labeled or
+    // nested — see /header-admin.
+    if (item.link === '/looking-to-play') a.dataset.navBadgeTarget = 'looking-to-play';
     return a;
   };
   const frag = document.createDocumentFragment();
@@ -1032,8 +1037,32 @@ async function renderHeaderNav() {
   });
   container.innerHTML = '';
   container.appendChild(frag);
+  attachLookingToPlayBadge();
 }
 renderHeaderNav();
+
+// Small orange "N" pill next to whichever nav item links to /looking-to-play
+// — one row per player currently posted there (GET /api/availability
+// upserts to exactly one open post per player and already prunes expired
+// ones server-side — see routes/availability.js), so its response length
+// is already the right count with no extra filtering needed here. Skipped
+// entirely (not just left at 0) when the board is empty, same "don't show
+// a badge for nothing" convention the notification bell uses.
+async function attachLookingToPlayBadge() {
+  const link = document.querySelector('[data-nav-badge-target="looking-to-play"]');
+  if (!link) return;
+  let posts;
+  try {
+    posts = await api('/availability');
+  } catch {
+    return;
+  }
+  if (!posts.length) return;
+  const badge = document.createElement('span');
+  badge.className = 'nav-item-badge';
+  badge.textContent = posts.length;
+  link.appendChild(badge);
+}
 
 // The caret click toggles .open for touch/keyboard reachability (hover
 // alone, via :hover in style.css, already covers a mouse) — delegated on
