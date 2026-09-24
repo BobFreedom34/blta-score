@@ -2357,12 +2357,16 @@ function renderBadgeNotifList() {
       icon = n.proposal.kind === 'CONFIRMED' ? '✅' : '📅';
       title = t(n.proposal.kind === 'CONFIRMED' ? 'notif.proposalConfirmedTitle' : 'notif.proposalReceivedTitle', { name });
       subtitle = fmtDateShort(n.createdAt);
-    } else { // RANKING
+    } else if (n.type === 'RANKING') {
       icon = n.ranking.direction === 'up' ? '📈' : '📉';
       title = t(n.ranking.direction === 'up' ? 'notif.rankingUpTitle' : 'notif.rankingDownTitle', {
         amount: n.ranking.amount, rank: n.ranking.newRank,
       });
       subtitle = fmtDateShort(n.createdAt);
+    } else { // BADGE_REMINDER
+      icon = badgeIconMarkup(n.badge.icon);
+      title = t('notif.reminderListTitle', { badge: escapeHtml(n.badge.name) });
+      subtitle = escapeHtml(truncateForNotif(n.badge.description, 80));
     }
     return `
     <button type="button" class="badge-notif-item${n.seen ? '' : ' unread'}" data-notif-type="${n.type}" data-notif-id="${n.id}">
@@ -2390,6 +2394,27 @@ function openBadgeCongratsModal(notif) {
   badgeCongratsModalEl.style.display = 'flex';
 }
 
+// Same modal element/markup as the earned-badge one above, just reminder
+// wording instead of congratulations — a CALENDAR_DATE badge whose day is
+// 3 days out and this player doesn't hold yet (see
+// sendCalendarDateReminders in badgeEngine.js). currentPlayerName is
+// already known by the time this can ever fire (the bell itself only
+// exists for a logged-in player — see updateBadgeBellUI), so the greeting
+// can always use it directly.
+function openBadgeReminderModal(notif) {
+  if (!badgeCongratsModalEl) return;
+  const content = document.getElementById('badge-congrats-content');
+  content.innerHTML = `
+    <div class="badge-congrats-icon">${badgeIconMarkup(notif.badge.icon)}</div>
+    <h3 class="badge-congrats-title">${t('notif.reminderTitle')}</h3>
+    <p class="badge-congrats-intro">${t('notif.reminderIntro', { name: escapeHtml(currentPlayerName || '') })}</p>
+    <div class="badge-congrats-badge-name">${escapeHtml(notif.badge.name)}</div>
+    <p class="badge-congrats-desc">${escapeHtml(notif.badge.description)}</p>
+    <p class="badge-congrats-cta">${t('notif.reminderCta')}</p>
+  `;
+  badgeCongratsModalEl.style.display = 'flex';
+}
+
 // A badge and a chat notification each have their own independent id
 // sequence (separate DB tables — see GET /player/notifications in
 // routes/player.js), so the two together are what actually identify one
@@ -2412,6 +2437,7 @@ document.addEventListener('click', async (e) => {
   if (!notif) return;
   if (badgeNotifPanelEl) badgeNotifPanelEl.hidden = true;
   if (notif.type === 'BADGE') openBadgeCongratsModal(notif);
+  if (notif.type === 'BADGE_REMINDER') openBadgeReminderModal(notif);
   if (!notif.seen) {
     notif.seen = true;
     item.classList.remove('unread');
@@ -2422,6 +2448,7 @@ document.addEventListener('click', async (e) => {
         : notif.type === 'CHAT_MESSAGE' ? 'chat'
         : notif.type === 'PLAY_REQUEST' ? 'play_request'
         : notif.type === 'RANKING' ? 'ranking'
+        : notif.type === 'BADGE_REMINDER' ? 'badge_reminder'
         : 'proposal';
       const res = await api(`/player/notifications/${urlType}/${id}/read`, { method: 'POST' });
       updateBadgeBellUI(res.unreadNotificationCount);

@@ -564,11 +564,12 @@ function renderStats() {
 let badgeDefsCache = null;
 let earnedBadgesCache = null;
 // Raw per-logic-type counts (games played, wins, current win streak, ...) —
-// computeEarnedBadges only ever hands back which badges are earned, not how
-// close the rest are, so this is fetched separately (same underlying
-// computeBadgeMetrics, just not thrown away) purely to drive the progress
-// bar under each badge in the detailed views (see badgeProgressFor in
-// badges.js). Never touches computeEarnedBadges' own contract.
+// computeEarnedBadges only ever hands back earned badges and how many times
+// (badgeId -> count), not how close the rest are, so this is fetched
+// separately (same underlying computeBadgeMetrics, just not thrown away)
+// purely to drive the progress bar under each badge in the detailed views
+// (see badgeProgressFor in badges.js). Never touches computeEarnedBadges'
+// own contract.
 let badgeMetricsCache = null;
 
 // Clips the profile-page badges grid to exactly 2 visual rows by measuring
@@ -627,8 +628,8 @@ document.addEventListener('click', (e) => {
   if (!item || !badgeDefsCache) return;
   const badge = badgeDefsCache.find((b) => b.id === Number(item.dataset.badgeId));
   if (!badge) return;
-  const earned = item.dataset.earned === '1';
-  document.getElementById('badge-zoom-content').innerHTML = badgeItemHtml(badge, earned, true, badgeMetricsCache);
+  const count = Number(item.dataset.earnedCount || 0);
+  document.getElementById('badge-zoom-content').innerHTML = badgeItemHtml(badge, count, true, badgeMetricsCache);
   document.getElementById('badge-zoom-modal').style.display = 'flex';
 });
 

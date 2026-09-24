@@ -203,7 +203,7 @@ function monthDayLabel(mmdd) {
 function badgeRowHtml(badge) {
   const type = LOGIC_TYPES.find((t) => t.value === badge.logicType);
   // Same "no threshold set yet means 1" fallback as the engine itself
-  // (computeEarnedBadgeIds/computeEarnedBadges) — matters for BAGEL badges
+  // (computeEarnedBadgeInstances/computeEarnedBadges) — matters for BAGEL badges
   // saved before it gained a threshold field, which still have a bare
   // null in the database until someone opens and re-saves them.
   let conditionText;

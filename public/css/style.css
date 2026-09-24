@@ -1398,6 +1398,7 @@ datalist {}
 }
 .badge-item { text-align: center; }
 .badge-medal {
+  position: relative;
   width: 90px;
   height: 90px;
   border-radius: var(--radius);
@@ -1408,6 +1409,27 @@ datalist {}
   margin: 0 auto 8px;
   background: transparent;
 }
+/* How many years a CALENDAR_DATE badge has been earned (see
+   computeEarnedBadges in badges.js) — only ever rendered past ×1, so
+   seeing it at all already means "you did this more than once". */
+.badge-count {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--orange);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+#badge-zoom-content .badge-count { top: 6px; right: 6px; min-width: 32px; height: 32px; font-size: 17px; }
 /* No background/shadow of its own to dim, so "locked" is carried entirely
    by the icon itself — grayscale plus reduced opacity — same as before. */
 .badge-medal.locked { filter: grayscale(1); opacity: 0.45; }
@@ -1605,6 +1627,7 @@ datalist {}
 .badge-congrats-intro { color: var(--gray); font-size: 13px; margin: 0 0 10px; }
 .badge-congrats-badge-name { font-weight: 800; font-size: 17px; color: var(--ink); }
 .badge-congrats-desc { color: var(--gray); font-size: 14px; margin-top: 6px; }
+.badge-congrats-cta { color: var(--orange); font-weight: 700; font-size: 14px; margin-top: 12px; }
 
 /* ---------- Head-to-head ---------- */
 .section-label {

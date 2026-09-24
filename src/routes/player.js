@@ -28,12 +28,13 @@ function sessionInfo({ isPlayerFlag, player }) {
   };
 }
 
-// Five independent sources feed the one notification bell (see
+// Six independent sources feed the one notification bell (see
 // GET /notifications below) — badges (player_badges), chat messages
 // (chat_notifications), looking-to-play requests (play_request_notifications),
-// match proposals (proposal_notifications), and ranking moves
-// (ranking_notifications). Summed here so both the session payload and
-// every mark-read response can report one combined count without
+// match proposals (proposal_notifications), ranking moves
+// (ranking_notifications), and an upcoming CALENDAR_DATE badge
+// (badge_reminder_notifications). Summed here so both the session payload
+// and every mark-read response can report one combined count without
 // duplicating these queries at each call site.
 function countUnreadNotifications(playerId) {
   const badges = db.prepare('SELECT COUNT(*) AS c FROM player_badges WHERE player_id = ? AND seen = 0').get(playerId).c;
@@ -60,7 +61,16 @@ function countUnreadNotifications(playerId) {
   // copied straight in, no match/post reference to go stale — see its own
   // comment in db.js), so no existence-check join needed here.
   const rankings = db.prepare('SELECT COUNT(*) AS c FROM ranking_notifications WHERE player_id = ? AND seen = 0').get(playerId).c;
-  return badges + chats + playRequests + proposals + rankings;
+  // badge_reminder_notifications is self-contained too (see its own
+  // comment in db.js) — a badge_id referencing a since-deleted badge would
+  // just mean an admin removed it, in which case GET /notifications below
+  // already drops that row via its own JOIN, same as chats/proposals above.
+  const badgeReminders = db.prepare(`
+    SELECT COUNT(*) AS c FROM badge_reminder_notifications brn
+    JOIN badge_definitions bd ON bd.id = brn.badge_id
+    WHERE brn.player_id = ? AND brn.seen = 0
+  `).get(playerId).c;
+  return badges + chats + playRequests + proposals + rankings + badgeReminders;
 }
 
 router.get('/session', (req, res) => {
@@ -98,21 +108,23 @@ router.get('/session', (req, res) => {
 });
 
 // A player's own notifications, newest first — the list behind the nav
-// bell's dropdown (see common.js). Merges five unrelated sources into one
+// bell's dropdown (see common.js). Merges six unrelated sources into one
 // feed: a badge newly earned (player_badges), someone posting in a match's
 // chat that this player is in (chat_notifications), someone picking a time
 // on this player's looking-to-play post (play_request_notifications),
 // someone proposing/confirming a match time (proposal_notifications, see
-// further down), and this player moving in the main BLTA ranking
-// (ranking_notifications, see further down still) — each item carries a
-// `type` the client branches on to render/handle it differently (a
-// "Congratulations" modal for a badge; a jump to the match for a chat
-// message or proposal; a jump to the looking-to-play board for a play
-// request; a jump to the rankings page for a ranking move). Player-only:
-// there's no meaningful "my notifications" for a bare admin session with
-// no specific player identity, so this 401s the same way a missing player
-// cookie always does elsewhere, rather than silently returning an empty
-// list.
+// further down), this player moving in the main BLTA ranking
+// (ranking_notifications, see further down still), and an upcoming
+// CALENDAR_DATE badge 3 days out that they don't hold yet
+// (badge_reminder_notifications, see further down still) — each item
+// carries a `type` the client branches on to render/handle it differently
+// (a "Congratulations" modal for a badge or a "don't miss it" reminder
+// modal for one coming up; a jump to the match for a chat message or
+// proposal; a jump to the looking-to-play board for a play request; a jump
+// to the rankings page for a ranking move). Player-only: there's no
+// meaningful "my notifications" for a bare admin session with no specific
+// player identity, so this 401s the same way a missing player cookie
+// always does elsewhere, rather than silently returning an empty list.
 router.get('/notifications', (req, res) => {
   const playerId = auth.getPlayerId(req);
   if (!playerId) return res.status(401).json({ error: 'Please log in to see your notifications' });
@@ -210,7 +222,28 @@ router.get('/notifications', (req, res) => {
     },
   }));
 
-  const merged = [...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows, ...rankingRows].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  // "A CALENDAR_DATE badge's day is coming up and you don't have it yet" —
+  // see sendCalendarDateReminders in badgeEngine.js for what actually
+  // writes these (a daily check, not triggered by a player/match action
+  // like every other notification here). Same nested `badge` shape as
+  // badgeRows above on purpose, so the client's BADGE-handling code
+  // (icon/name/description) works unchanged for this type too.
+  const badgeReminderRows = db.prepare(`
+    SELECT brn.id, brn.seen, brn.created_at,
+           bd.id AS badge_id, bd.name, bd.description, bd.icon
+    FROM badge_reminder_notifications brn
+    JOIN badge_definitions bd ON bd.id = brn.badge_id
+    WHERE brn.player_id = ?
+  `).all(playerId).map((r) => ({
+    type: 'BADGE_REMINDER',
+    id: r.id,
+    seen: !!r.seen,
+    createdAt: r.created_at,
+    badge: { id: r.badge_id, name: r.name, description: r.description, icon: r.icon },
+  }));
+
+  const merged = [...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows, ...rankingRows, ...badgeReminderRows]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json(merged);
 });
 
@@ -230,6 +263,7 @@ router.post('/notifications/:type/:id/read', (req, res) => {
     : type === 'play_request' ? 'play_request_notifications'
     : type === 'proposal' ? 'proposal_notifications'
     : type === 'ranking' ? 'ranking_notifications'
+    : type === 'badge_reminder' ? 'badge_reminder_notifications'
     : null;
   if (!table) return res.status(400).json({ error: 'Invalid notification type' });
   const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);

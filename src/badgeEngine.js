@@ -33,6 +33,18 @@ function localMonthDay(dateStr) {
   return mm * 100 + dd;
 }
 
+// The calendar year a match's date falls on, same league-timezone
+// reasoning as localMonthDay — which year a CALENDAR_DATE badge was
+// earned in is what makes it earnable again the following year (see
+// computeEarnedBadgeInstances below).
+function localYear(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  const year = Number(new Intl.DateTimeFormat('en-US', { timeZone: LEAGUE_TZ, year: 'numeric' }).format(d));
+  return year || null;
+}
+
 // Every set THIS match had that pid won 6-0 (0, 1, or 2 for a double-
 // bagel best-of-3) — a count, not a yes/no, so BAGEL below can support a
 // real threshold ("win N 6-0 sets", not just "have you ever won one").
@@ -90,28 +102,43 @@ function computeBadgeMetrics(playerId, finished) {
     // now distinguish "came back once" from "makes a habit of it".
     COMEBACK: wins.filter((m) => badgeWonAfterLosingFirstSet(m, pid)).length,
     STRAIGHT_SETS: wins.filter((m) => badgeWonWithoutDroppingSet(m, pid)).length,
-    // Every calendar day (as MMDD) this player has actually played on —
-    // win or lose, it just has to be a real, counted match. A
-    // CALENDAR_DATE badge is earned when its own target day is in here.
-    PLAY_DATES: new Set(counted.map((m) => localMonthDay(m.scheduledAt || m.startTime || m.createdAt)).filter((d) => d != null)),
+    // Every calendar day (as MMDD) this player has actually played on,
+    // mapped to *which years* — win or lose, it just has to be a real,
+    // counted match. A CALENDAR_DATE badge is earned once for every year
+    // its own target day shows up in here (see computeEarnedBadgeInstances
+    // below), not just once ever like every other badge type.
+    PLAY_DATE_YEARS: counted.reduce((map, m) => {
+      const dateStr = m.scheduledAt || m.startTime || m.createdAt;
+      const mmdd = localMonthDay(dateStr);
+      const year = localYear(dateStr);
+      if (mmdd == null || year == null) return map;
+      if (!map.has(mmdd)) map.set(mmdd, new Set());
+      map.get(mmdd).add(year);
+      return map;
+    }, new Map()),
   };
 }
 
-function computeEarnedBadgeIds(playerId, finished, badgeDefs) {
+// One entry per badge *instance* a player has earned — {badgeId, year}.
+// year is null for every logic type except CALENDAR_DATE, which gets one
+// entry per year its target day was actually played on (see
+// PLAY_DATE_YEARS above) instead of the single pass/fail every other type
+// gets.
+function computeEarnedBadgeInstances(playerId, finished, badgeDefs) {
   const metrics = computeBadgeMetrics(playerId, finished);
-  const earned = new Set();
+  const instances = [];
   badgeDefs.forEach((def) => {
-    // Calendar-date badges are an exact match on the target day, not a
-    // "reached a threshold" comparison like every other type.
     if (def.logic_type === 'CALENDAR_DATE') {
-      if (def.threshold != null && metrics.PLAY_DATES.has(def.threshold)) earned.add(def.id);
+      if (def.threshold == null) return;
+      const years = metrics.PLAY_DATE_YEARS.get(def.threshold);
+      if (years) years.forEach((year) => instances.push({ badgeId: def.id, year }));
       return;
     }
     const value = metrics[def.logic_type] || 0;
     const need = def.threshold != null ? def.threshold : 1;
-    if (value >= need) earned.add(def.id);
+    if (value >= need) instances.push({ badgeId: def.id, year: null });
   });
-  return earned;
+  return instances;
 }
 
 // Flat shape mirroring what the client's badges.js expects off a serialized
@@ -144,24 +171,33 @@ function loadFinishedMatchesForBadges(playerId) {
 // previously, or backfilled as already-held) is left untouched. Call this
 // after any write that can finish, re-finish, or score-correct a match
 // (see routes/matches.js) for both players in it.
+// Same "already recorded?" key for both a DB row and a freshly-computed
+// instance — a plain badge_id for a NULL year, "badgeId:year" for a
+// CALENDAR_DATE one, so a repeat earn in a new year doesn't collide with
+// (or get blocked by) the row from a previous year.
+function instanceKey(badgeId, year) {
+  return year == null ? String(badgeId) : `${badgeId}:${year}`;
+}
+
 function syncPlayerBadges(playerId) {
   const pid = Number(playerId);
   if (!Number.isInteger(pid) || pid <= 0) return [];
   const badgeDefs = db.prepare('SELECT * FROM badge_definitions').all();
   if (!badgeDefs.length) return [];
   const finished = loadFinishedMatchesForBadges(pid);
-  const earnedIds = computeEarnedBadgeIds(pid, finished, badgeDefs);
+  const instances = computeEarnedBadgeInstances(pid, finished, badgeDefs);
   const already = new Set(
-    db.prepare('SELECT badge_id FROM player_badges WHERE player_id = ?').all(pid).map((r) => r.badge_id)
+    db.prepare('SELECT badge_id, earned_year FROM player_badges WHERE player_id = ?').all(pid)
+      .map((r) => instanceKey(r.badge_id, r.earned_year))
   );
-  const newlyEarned = [...earnedIds].filter((id) => !already.has(id));
+  const newlyEarned = instances.filter((inst) => !already.has(instanceKey(inst.badgeId, inst.year)));
   if (!newlyEarned.length) return [];
   // node:sqlite's DatabaseSync has no .transaction() helper (that's a
   // better-sqlite3-ism) — a handful of inserts at most per call, so a
   // plain loop is fine without one.
-  const insert = db.prepare('INSERT INTO player_badges (player_id, badge_id, seen) VALUES (?, ?, 0)');
-  newlyEarned.forEach((id) => insert.run(pid, id));
-  return badgeDefs.filter((b) => newlyEarned.includes(b.id));
+  const insert = db.prepare('INSERT INTO player_badges (player_id, badge_id, earned_year, seen) VALUES (?, ?, ?, 0)');
+  newlyEarned.forEach((inst) => insert.run(pid, inst.badgeId, inst.year));
+  return newlyEarned.map((inst) => badgeDefs.find((b) => b.id === inst.badgeId));
 }
 
 // One-time bootstrap, called once from server.js at startup — marks every
@@ -177,12 +213,80 @@ function backfillIfNeeded() {
   const badgeDefs = db.prepare('SELECT * FROM badge_definitions').all();
   if (!badgeDefs.length) return;
   const players = db.prepare('SELECT id FROM players').all();
-  const insert = db.prepare('INSERT INTO player_badges (player_id, badge_id, seen) VALUES (?, ?, 1)');
+  const insert = db.prepare('INSERT INTO player_badges (player_id, badge_id, earned_year, seen) VALUES (?, ?, ?, 1)');
   players.forEach(({ id }) => {
     const finished = loadFinishedMatchesForBadges(id);
-    const earnedIds = computeEarnedBadgeIds(id, finished, badgeDefs);
-    earnedIds.forEach((badgeId) => insert.run(id, badgeId));
+    const instances = computeEarnedBadgeInstances(id, finished, badgeDefs);
+    instances.forEach((inst) => insert.run(id, inst.badgeId, inst.year));
   });
 }
 
-module.exports = { syncPlayerBadges, backfillIfNeeded };
+// The month/day (as MMDD, same encoding badge_definitions.threshold uses
+// for a CALENDAR_DATE badge) and calendar year `daysAhead` days from now,
+// in the league's own timezone — see localMonthDay above for why that
+// matters (a match just after local midnight shouldn't read as the wrong
+// day; same reasoning applies to "which day is 3 days from today"). year
+// is what lets sendCalendarDateReminders scope "already reminded" per
+// year (see badge_reminder_notifications' own unique index in db.js) — a
+// bare MMDD repeats every year, so the reminder has to too.
+function mmddInDays(daysAhead) {
+  const target = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: LEAGUE_TZ, month: '2-digit', day: '2-digit', year: 'numeric',
+  }).formatToParts(target);
+  const mm = Number(parts.find((p) => p.type === 'month').value);
+  const dd = Number(parts.find((p) => p.type === 'day').value);
+  const year = Number(parts.find((p) => p.type === 'year').value);
+  return { mmdd: mm * 100 + dd, year };
+}
+
+// Checked once a day (see startScheduledReminders below): for every
+// CALENDAR_DATE badge whose target day falls exactly 3 days from today,
+// give every player who doesn't already hold it *for that target year* a
+// bell notification ("a special day is coming up, play on it and it's
+// yours" — see openBadgeReminderModal in common.js for the actual
+// wording). CALENDAR_DATE badges are earnable again every year (see
+// computeEarnedBadgeInstances), so unlike every other badge type this
+// exclusion is scoped to earned_year, not "ever earned" — otherwise a
+// player who earned it once would stop getting reminded in later years
+// they haven't replayed it in. In practice this WHERE clause never
+// excludes anyone (the target day is always still 3 days in the future,
+// so nobody could have a finished match on it yet this year) — it's kept
+// year-scoped anyway so the logic stays correct if that ever changes.
+// INSERT OR IGNORE relies on badge_reminder_notifications' own unique
+// index (player_id, badge_id, target_year) to silently no-op anyone
+// already reminded this year, including anyone this runs twice for on the
+// same day for any reason (a restart, a clock change) — never a duplicate
+// notification either way.
+function sendCalendarDateReminders() {
+  const { mmdd, year } = mmddInDays(3);
+  const badgeDefs = db.prepare("SELECT * FROM badge_definitions WHERE logic_type = 'CALENDAR_DATE' AND threshold = ?").all(mmdd);
+  if (!badgeDefs.length) return;
+  const players = db.prepare('SELECT id FROM players').all();
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO badge_reminder_notifications (player_id, badge_id, target_year)
+    VALUES (?, ?, ?)
+  `);
+  badgeDefs.forEach((badge) => {
+    const alreadyEarnedThisYear = new Set(
+      db.prepare('SELECT player_id FROM player_badges WHERE badge_id = ? AND earned_year = ?').all(badge.id, year).map((r) => r.player_id)
+    );
+    players.forEach(({ id }) => {
+      if (alreadyEarnedThisYear.has(id)) return;
+      insert.run(id, badge.id, year);
+    });
+  });
+}
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+// A few minutes after boot (not instantly — let the rest of startup settle
+// first), then every 24h for as long as the process stays up — same
+// pattern as src/backup.js's own daily schedule.
+function startScheduledReminders() {
+  setTimeout(() => { sendCalendarDateReminders(); }, 2 * 60 * 1000);
+  setInterval(() => { sendCalendarDateReminders(); }, ONE_DAY_MS);
+}
+
+module.exports = {
+  syncPlayerBadges, backfillIfNeeded, sendCalendarDateReminders, startScheduledReminders,
+};

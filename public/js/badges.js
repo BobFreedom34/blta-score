@@ -39,6 +39,16 @@ function localMonthDay(dateStr) {
   return mm * 100 + dd;
 }
 
+// The calendar year a match's date falls on, same league-timezone
+// reasoning as localMonthDay. Kept identical to badgeEngine.js's own copy.
+function localYear(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  const year = Number(new Intl.DateTimeFormat('en-US', { timeZone: LEAGUE_TZ, year: 'numeric' }).format(d));
+  return year || null;
+}
+
 // One numeric (or 0/1) value per logic type a badge definition can key off
 // — a badge is earned once its metric reaches its threshold (or, for the
 // threshold-less pass/fail types, once the metric is truthy).
@@ -84,27 +94,45 @@ function computeBadgeMetrics(playerId, finished) {
     // now distinguish "came back once" from "makes a habit of it".
     COMEBACK: wins.filter((m) => badgeWonAfterLosingFirstSet(m, pid)).length,
     STRAIGHT_SETS: wins.filter((m) => badgeWonWithoutDroppingSet(m, pid)).length,
-    // Every calendar day (as MMDD) this player has actually played on —
-    // win or lose, it just has to be a real, counted match.
-    PLAY_DATES: new Set(counted.map((m) => localMonthDay(m.scheduledAt || m.startTime || m.createdAt)).filter((d) => d != null)),
+    // Every calendar day (as MMDD) this player has actually played on,
+    // mapped to *which years* — win or lose, it just has to be a real,
+    // counted match. A CALENDAR_DATE badge is earned once for every year
+    // its target day shows up in here, not just once ever like every
+    // other badge type (see computeEarnedBadges below).
+    PLAY_DATE_YEARS: counted.reduce((map, m) => {
+      const dateStr = m.scheduledAt || m.startTime || m.createdAt;
+      const mmdd = localMonthDay(dateStr);
+      const year = localYear(dateStr);
+      if (mmdd == null || year == null) return map;
+      if (!map.has(mmdd)) map.set(mmdd, new Set());
+      map.get(mmdd).add(year);
+      return map;
+    }, new Map()),
   };
 }
 
 // badgeDefs come from GET /api/badges — admin-managed, not hardcoded, so
 // this is always computed from a player's whole career, not filtered.
+// Returns badgeId -> how many times it's been earned, not just whether it
+// has: every logic type except CALENDAR_DATE only ever earns once (count
+// is always 1 if present at all), but a CALENDAR_DATE badge earns again
+// every year its target day is played on — the count is how many distinct
+// years that's happened, and is what drives the "x2"-style badge shown on
+// an already-earned badge's icon (see badgeItemHtml below).
 function computeEarnedBadges(playerId, finished, badgeDefs) {
   const metrics = computeBadgeMetrics(playerId, finished);
-  const earned = new Set();
+  const earned = new Map();
   badgeDefs.forEach((def) => {
-    // Calendar-date badges are an exact match on the target day, not a
-    // "reached a threshold" comparison like every other type.
+    // Calendar-date badges earn once per year the target day was played
+    // on, not a single pass/fail like every other type.
     if (def.logicType === 'CALENDAR_DATE') {
-      if (def.threshold != null && metrics.PLAY_DATES.has(def.threshold)) earned.add(def.id);
+      const years = def.threshold != null ? metrics.PLAY_DATE_YEARS.get(def.threshold) : null;
+      if (years && years.size) earned.set(def.id, years.size);
       return;
     }
     const value = metrics[def.logicType] || 0;
     const need = def.threshold != null ? def.threshold : 1;
-    if (value >= need) earned.add(def.id);
+    if (value >= need) earned.set(def.id, 1);
   });
   return earned;
 }
@@ -149,12 +177,17 @@ function badgeProgressHtml(progress) {
 
 // metrics is only ever passed (and only ever rendered) alongside
 // detailed:true — the compact profile grid stays icon+name only, same as
-// before.
-function badgeItemHtml(b, earned, detailed, metrics) {
+// before. count is how many times this badge has been earned (0 if not
+// earned at all) — only ever >1 for a CALENDAR_DATE badge replayed in a
+// later year (see computeEarnedBadges above), which gets a small "×N"
+// marker on its icon so a repeat feels distinct from a first-time earn.
+function badgeItemHtml(b, count, detailed, metrics) {
+  const earned = count > 0;
   const classes = earned ? '' : ' locked';
+  const countBadge = count > 1 ? `<div class="badge-count">×${count}</div>` : '';
   return `
-    <div class="badge-item" data-badge-id="${b.id}" data-earned="${earned ? '1' : '0'}">
-      <div class="badge-medal${classes}" title="${escapeHtml(b.description)}">${badgeIconInner(b.icon)}</div>
+    <div class="badge-item" data-badge-id="${b.id}" data-earned="${earned ? '1' : '0'}" data-earned-count="${count}">
+      <div class="badge-medal${classes}" title="${escapeHtml(b.description)}">${badgeIconInner(b.icon)}${countBadge}</div>
       <div class="badge-name${classes}">${escapeHtml(b.name)}</div>
       ${detailed ? `<div class="badge-condition">${escapeHtml(b.description)}</div>` : ''}
       ${detailed && metrics ? badgeProgressHtml(badgeProgressFor(b, metrics)) : ''}
@@ -164,8 +197,8 @@ function badgeItemHtml(b, earned, detailed, metrics) {
 
 // Compact grid for the profile page — icon + name only, description as a
 // hover tooltip.
-function badgesGridHtml(badgeDefs, earnedSet) {
-  return badgeDefs.map((b) => badgeItemHtml(b, earnedSet.has(b.id), false)).join('');
+function badgesGridHtml(badgeDefs, earnedMap) {
+  return badgeDefs.map((b) => badgeItemHtml(b, earnedMap.get(b.id) || 0, false)).join('');
 }
 
 // Same order as LOGIC_TYPES in src/routes/badges.js — fixed rather than
@@ -181,13 +214,13 @@ const BADGE_GROUP_ORDER = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP
 // heading, so badges that work the same way sit together instead of one
 // undifferentiated grid — a type with no badges yet just contributes no
 // section, rather than an empty heading.
-function badgesModalGridHtml(badgeDefs, earnedSet, metrics) {
+function badgesModalGridHtml(badgeDefs, earnedMap, metrics) {
   const parts = [];
   BADGE_GROUP_ORDER.forEach((logicType) => {
     const group = badgeDefs.filter((b) => b.logicType === logicType);
     if (!group.length) return;
     parts.push(`<div class="badge-group-heading">${escapeHtml(t(`badge.group.${logicType}`))}</div>`);
-    parts.push(...group.map((b) => badgeItemHtml(b, earnedSet.has(b.id), true, metrics)));
+    parts.push(...group.map((b) => badgeItemHtml(b, earnedMap.get(b.id) || 0, true, metrics)));
   });
   return parts.join('');
 }

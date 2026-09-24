@@ -33,6 +33,7 @@ app.set('io', io);
 // why this has to run before any real traffic hits the badge notification
 // endpoints (routes/player.js) or the matches routes that create new ones.
 badgeEngine.backfillIfNeeded();
+badgeEngine.startScheduledReminders();
 backup.startScheduledBackups();
 
 app.use(cors());

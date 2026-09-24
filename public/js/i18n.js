@@ -450,6 +450,10 @@ const TRANSLATIONS = {
     'notif.proposalConfirmedTitle': '✅ {name} potvrdil termín zápasu',
     'notif.rankingUpTitle': '📈 V BLTA rebríčku si sa posunul o {amount} hore — teraz si na {rank}. mieste',
     'notif.rankingDownTitle': '📉 V BLTA rebríčku si klesol o {amount} dole — teraz si na {rank}. mieste',
+    'notif.reminderListTitle': '📅 Blíži sa: {badge}',
+    'notif.reminderTitle': '📅 Blíži sa výnimočný deň!',
+    'notif.reminderIntro': 'Ahoj {name}, blíži sa výnimočný deň a môžeš získať tento odznak, ak si zahráš práve vtedy:',
+    'notif.reminderCta': 'Nenechaj si ho ujsť!',
 
     'common.ok': 'OK',
     'common.someone': 'Niekto',
@@ -995,6 +999,10 @@ const TRANSLATIONS = {
     'notif.proposalConfirmedTitle': '✅ {name} confirmed a time',
     'notif.rankingUpTitle': '📈 You climbed {amount} places in the BLTA ranking — now #{rank}',
     'notif.rankingDownTitle': '📉 You dropped {amount} places in the BLTA ranking — now #{rank}',
+    'notif.reminderListTitle': '📅 Coming up: {badge}',
+    'notif.reminderTitle': '📅 A special day is coming up!',
+    'notif.reminderIntro': "Hi {name}, a special day is nearing and you can get this badge if you play on that day:",
+    'notif.reminderCta': "Don't let it get away!",
 
     'common.ok': 'OK',
     'common.someone': 'Someone',

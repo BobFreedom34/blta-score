@@ -620,6 +620,13 @@ if (badgeCount === 0) {
 // shipping this feature doesn't retroactively "notify" the whole league
 // about badges they've held for months. seen flips to 1 the moment the
 // player opens that specific notification (see routes/player.js).
+//
+// Every other logic type earns at most once ever, so earned_year stays
+// NULL for those rows. A CALENDAR_DATE badge is different — it's tied to a
+// specific day that comes back every year, so playing on it in 2025 and
+// again in 2026 is two separate earns, each its own row (and its own
+// congrats notification) — see computeEarnedBadgeInstances in
+// badgeEngine.js. earned_year is what row this is for.
 db.exec(`
   CREATE TABLE IF NOT EXISTS player_badges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -628,9 +635,20 @@ db.exec(`
     seen INTEGER NOT NULL DEFAULT 0,
     earned_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_player_badges_unique ON player_badges(player_id, badge_id);
   CREATE INDEX IF NOT EXISTS idx_player_badges_player ON player_badges(player_id);
 `);
+const playerBadgeColumns = db.prepare('PRAGMA table_info(player_badges)').all().map((c) => c.name);
+if (!playerBadgeColumns.includes('earned_year')) {
+  db.exec('ALTER TABLE player_badges ADD COLUMN earned_year INTEGER');
+}
+// COALESCE(earned_year, 0) instead of plain earned_year: SQL treats NULLs
+// as distinct from each other in a unique index, so a bare
+// (player_id, badge_id, earned_year) index would happily let a
+// non-repeatable badge (earned_year always NULL) get a duplicate row —
+// the exact bug this index exists to prevent for those. 0 is a safe
+// stand-in since no real earned_year is ever 0.
+db.exec('DROP INDEX IF EXISTS idx_player_badges_unique');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_player_badges_unique ON player_badges(player_id, badge_id, COALESCE(earned_year, 0))');
 
 // One row per (player, chat message) — both players in a match get one of
 // these the instant anyone posts to that match's public chat (see
@@ -769,6 +787,28 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_ranking_notifications_player ON ranking_notifications(player_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_ranking_notifications_unique ON ranking_notifications(player_id, table_key, snapshot_week);
+`);
+
+// One row per "a CALENDAR_DATE badge's target day is 3 days away and you
+// don't have it yet" bell notification — see sendCalendarDateReminders in
+// badgeEngine.js, which is what actually writes these (a daily check, not
+// triggered by any player/match action the way every other notification
+// table here is). target_year is what makes the unique index below allow
+// the SAME badge to remind the SAME player again next year if they still
+// haven't earned it by then — a CALENDAR_DATE badge's threshold is only
+// ever a bare MMDD (see badge_definitions), it repeats every year, so
+// "already notified" has to be scoped per year too, not just per badge.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS badge_reminder_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    badge_id INTEGER NOT NULL,
+    target_year INTEGER NOT NULL,
+    seen INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_badge_reminder_notifications_player ON badge_reminder_notifications(player_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_badge_reminder_notifications_unique ON badge_reminder_notifications(player_id, badge_id, target_year);
 `);
 
 // A single shared code that lets anyone who knows it control live scoring
