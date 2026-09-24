@@ -69,6 +69,15 @@ function computeBadgeMetrics(playerId, finished) {
     WINS: wins.length,
     WIN_STREAK: maxStreak,
     CATEGORY_SWEEP: BLTA_CATEGORIES.every((c) => winCategories.has(c)) ? 1 : 0,
+    // Display-only — how many of the 3 *BLTA* categories specifically have
+    // been won so far, for the progress bar (see badgeProgressFor). Only
+    // counting BLTA_CATEGORIES, not winCategories.size, matters here: a win
+    // in FRIENDLY/VIP_CUP/ATA_TENNIS adds a distinct category to
+    // winCategories but does nothing toward "win in Elite, Next Gen and
+    // Novice" — counting it would show progress (even a false "3/3") for
+    // categories that can never actually satisfy the real earning check
+    // just above, which correctly only ever tests BLTA_CATEGORIES.
+    CATEGORY_SWEEP_COUNT: BLTA_CATEGORIES.filter((c) => winCategories.has(c)).length,
     BAGEL: wins.reduce((sum, m) => sum + countBagelSets(m, pid), 0),
     // A count of matches (not sets — there's only ever one "1st set" per
     // match), same reasoning as BAGEL above needing one: a threshold can
@@ -106,13 +115,49 @@ function badgeIconInner(icon) {
   return icon.startsWith('/badge-icons/') ? `<img src="${escapeHtml(icon)}" alt="">` : icon;
 }
 
-function badgeItemHtml(b, earned, detailed) {
+// {value, need} for the progress bar under a badge in the detailed views
+// (the "show all badges" modal and the zoomed single-badge view) — null
+// for CALENDAR_DATE, which isn't a "how far along" metric (you either
+// played on that calendar day or you didn't, there's no partial credit).
+// CATEGORY_SWEEP uses the richer CATEGORY_SWEEP_COUNT (0-3 categories won)
+// instead of its own plain 0/1 earning field, so its bar can show real
+// progress toward "win in all three divisions" instead of jumping straight
+// from empty to full. value is clamped to need so an already-earned badge
+// reads as a clean, full bar (e.g. "10/10") rather than overshooting past
+// its own threshold once someone keeps playing.
+function badgeProgressFor(def, metrics) {
+  if (def.logicType === 'CALENDAR_DATE') return null;
+  if (def.logicType === 'CATEGORY_SWEEP') {
+    const need = BLTA_CATEGORIES.length;
+    return { value: Math.min(metrics.CATEGORY_SWEEP_COUNT || 0, need), need };
+  }
+  const need = def.threshold != null ? def.threshold : 1;
+  const value = Math.min(metrics[def.logicType] || 0, need);
+  return { value, need };
+}
+
+function badgeProgressHtml(progress) {
+  if (!progress) return '';
+  const pct = progress.need > 0 ? Math.round((progress.value / progress.need) * 100) : 100;
+  return `
+    <div class="badge-progress">
+      <div class="badge-progress-bar"><div class="badge-progress-fill" style="width:${pct}%"></div></div>
+      <div class="badge-progress-label">${progress.value}/${progress.need}</div>
+    </div>
+  `;
+}
+
+// metrics is only ever passed (and only ever rendered) alongside
+// detailed:true — the compact profile grid stays icon+name only, same as
+// before.
+function badgeItemHtml(b, earned, detailed, metrics) {
   const classes = earned ? '' : ' locked';
   return `
     <div class="badge-item" data-badge-id="${b.id}" data-earned="${earned ? '1' : '0'}">
       <div class="badge-medal${classes}" title="${escapeHtml(b.description)}">${badgeIconInner(b.icon)}</div>
       <div class="badge-name${classes}">${escapeHtml(b.name)}</div>
       ${detailed ? `<div class="badge-condition">${escapeHtml(b.description)}</div>` : ''}
+      ${detailed && metrics ? badgeProgressHtml(badgeProgressFor(b, metrics)) : ''}
     </div>
   `;
 }
@@ -136,13 +181,13 @@ const BADGE_GROUP_ORDER = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP
 // heading, so badges that work the same way sit together instead of one
 // undifferentiated grid — a type with no badges yet just contributes no
 // section, rather than an empty heading.
-function badgesModalGridHtml(badgeDefs, earnedSet) {
+function badgesModalGridHtml(badgeDefs, earnedSet, metrics) {
   const parts = [];
   BADGE_GROUP_ORDER.forEach((logicType) => {
     const group = badgeDefs.filter((b) => b.logicType === logicType);
     if (!group.length) return;
     parts.push(`<div class="badge-group-heading">${escapeHtml(t(`badge.group.${logicType}`))}</div>`);
-    parts.push(...group.map((b) => badgeItemHtml(b, earnedSet.has(b.id), true)));
+    parts.push(...group.map((b) => badgeItemHtml(b, earnedSet.has(b.id), true, metrics)));
   });
   return parts.join('');
 }

@@ -563,6 +563,13 @@ function renderStats() {
 // and cached, since they don't change mid-session.
 let badgeDefsCache = null;
 let earnedBadgesCache = null;
+// Raw per-logic-type counts (games played, wins, current win streak, ...) —
+// computeEarnedBadges only ever hands back which badges are earned, not how
+// close the rest are, so this is fetched separately (same underlying
+// computeBadgeMetrics, just not thrown away) purely to drive the progress
+// bar under each badge in the detailed views (see badgeProgressFor in
+// badges.js). Never touches computeEarnedBadges' own contract.
+let badgeMetricsCache = null;
 
 // Clips the profile-page badges grid to exactly 2 visual rows by measuring
 // where row 3 would start — grid columns are responsive (auto-fill), so a
@@ -599,6 +606,7 @@ async function renderBadges() {
   if (!badgeDefsCache) badgeDefsCache = await api('/badges');
   const finished = rawGroups[3] || [];
   earnedBadgesCache = computeEarnedBadges(playerId, finished, badgeDefsCache);
+  badgeMetricsCache = computeBadgeMetrics(playerId, finished);
   document.getElementById('badges-grid').innerHTML = badgesGridHtml(badgeDefsCache, earnedBadgesCache);
   document.getElementById('badges-ratio').textContent = badgeDefsCache.length
     ? `${earnedBadgesCache.size}/${badgeDefsCache.length}`
@@ -607,7 +615,7 @@ async function renderBadges() {
 }
 
 function openBadgesModal() {
-  document.getElementById('badges-modal-grid').innerHTML = badgesModalGridHtml(badgeDefsCache, earnedBadgesCache);
+  document.getElementById('badges-modal-grid').innerHTML = badgesModalGridHtml(badgeDefsCache, earnedBadgesCache, badgeMetricsCache);
   document.getElementById('badges-modal').style.display = 'flex';
 }
 
@@ -620,7 +628,7 @@ document.addEventListener('click', (e) => {
   const badge = badgeDefsCache.find((b) => b.id === Number(item.dataset.badgeId));
   if (!badge) return;
   const earned = item.dataset.earned === '1';
-  document.getElementById('badge-zoom-content').innerHTML = badgeItemHtml(badge, earned, true);
+  document.getElementById('badge-zoom-content').innerHTML = badgeItemHtml(badge, earned, true, badgeMetricsCache);
   document.getElementById('badge-zoom-modal').style.display = 'flex';
 });
 

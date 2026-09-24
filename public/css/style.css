@@ -1445,6 +1445,26 @@ datalist {}
 #badge-zoom-content .badge-name.locked { color: var(--gray); }
 #badge-zoom-content .badge-condition { color: var(--gray); font-size: 15px; margin-top: 8px; }
 #badge-zoom-content .badge-medal { width: 320px; height: 320px; font-size: 136px; margin: 0 auto 16px; }
+/* Progress toward a badge's own threshold — only ever rendered in the
+   detailed views (the "show all badges" modal and the zoomed single-badge
+   view, both on a white card — see badgeProgressFor/badgeItemHtml in
+   badges.js), never the compact profile grid. The track is the "still to
+   go" red, .badge-progress-fill is the achieved green portion growing over
+   it left-to-right; overflow:hidden on the rounded track is what clips the
+   fill's own square corners into a pill shape at both 0% and 100%, rather
+   than needing conditional border-radius logic on the fill itself. */
+.badge-progress { margin-top: 6px; }
+.badge-progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--danger);
+  overflow: hidden;
+}
+.badge-progress-fill { height: 100%; background: var(--green); }
+.badge-progress-label { font-size: 10px; font-weight: 700; color: var(--gray); margin-top: 3px; }
+#badge-zoom-content .badge-progress { max-width: 220px; margin: 10px auto 0; }
+#badge-zoom-content .badge-progress-bar { height: 10px; }
+#badge-zoom-content .badge-progress-label { font-size: 13px; margin-top: 6px; }
 
 /* ---------- Badge notification bell (injected by common.js — see
    ensureBadgeBellUI) ---------- */
