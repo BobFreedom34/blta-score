@@ -412,6 +412,101 @@ async function renderRankTrend() {
   }
 }
 
+// Same sparkline shape as rankTrendHtml, for CourtIQ band instead of BLTA
+// rank — one point per match this player was rated in (see
+// src/courtIQBackfill.js), oldest to newest. Unlike rank, a HIGHER band is
+// always better, so — unlike rankTrendHtml — this needs no axis inversion:
+// the line just climbs when the player's CourtIQ climbs, same as the
+// win-rate chart.
+function courtiqTrendHtml(history, containerWidth) {
+  if (!history || history.length < 2) return '';
+  const bands = history.map((h) => h.band);
+  const minBand = Math.min(...bands);
+  const maxBand = Math.max(...bands);
+  const range = Math.max(0.1, maxBand - minBand);
+  const w = Math.max(120, Math.round(containerWidth || 280));
+  const chartH = 64;
+  const labelSpace = 14;
+  const h = chartH + labelSpace;
+  const padX = 8;
+  const padY = 8;
+  const yFor = (band) => labelSpace + (h - labelSpace - padY) - ((band - minBand) / range) * (chartH - padY * 2);
+  const stepX = (w - padX * 2) / (history.length - 1);
+  const coords = history.map((pt, i) => [padX + i * stepX, yFor(pt.band)]);
+  const linePath = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const baseline = h - padY;
+  const areaPath = `${linePath} L${coords[coords.length - 1][0].toFixed(1)},${baseline.toFixed(1)} `
+    + `L${coords[0][0].toFixed(1)},${baseline.toFixed(1)} Z`;
+  const gradId = 'courtiq-trend-gradient';
+  const currentBand = history[history.length - 1].band;
+  const pointLabels = coords.map(([x, y], i) => `
+    <span style="left:${(x / w * 100).toFixed(2)}%;top:${((y - 5) / h * 100).toFixed(2)}%">${history[i].band.toFixed(1)}</span>
+  `).join('');
+  return `
+    <div class="trend-sparkline">
+      <div class="form-guide-label">${t('courtiq.trend')}</div>
+      <div class="rank-trend-chart">
+        <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px">
+          <defs>
+            <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--orange)" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="var(--orange)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <line x1="${padX}" y1="${baseline.toFixed(1)}" x2="${w - padX}" y2="${baseline.toFixed(1)}" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+          <path d="${areaPath}" fill="url(#${gradId})" stroke="none"/>
+          <path d="${linePath}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          ${coords.map(([x, y]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5" fill="var(--orange)"/>`).join('')}
+        </svg>
+        <div class="rank-trend-labels">${pointLabels}</div>
+      </div>
+      <div class="trend-value">${currentBand.toFixed(1)}</div>
+    </div>
+  `;
+}
+
+// Fetches and renders this player's CourtIQ card (see src/routes/courtiq.js)
+// — hidden entirely (courtiq-card left empty) for a player who hasn't been
+// rated yet at all (gamesPlayed 0: a brand-new player, or one whose only
+// matches so far were walkovers, which don't count — see
+// src/courtIQBackfill.js), same "just don't show the section" convention
+// h2h-section already uses for a player with no head-to-head history yet.
+async function renderCourtIQ() {
+  const el = document.getElementById('courtiq-card');
+  if (!el || !playerId) return;
+  let data;
+  try {
+    data = await api(`/courtiq/player/${playerId}`);
+  } catch {
+    el.innerHTML = '';
+    return;
+  }
+  if (!data.gamesPlayed) {
+    el.innerHTML = '';
+    return;
+  }
+  const provisionalTag = data.provisional
+    ? `<span class="courtiq-provisional-tag" title="${escapeHtml(t('courtiq.provisional'))}">?</span>`
+    : '';
+  el.innerHTML = `
+    <div class="section-label">${escapeHtml(t('courtiq.cardLabel'))}</div>
+    <div class="courtiq-summary">
+      <div class="courtiq-band-big">${data.band.toFixed(1)}${provisionalTag}</div>
+      <div class="courtiq-meta">
+        <div>${escapeHtml(t('courtiq.ratingCol'))}: ${data.rating}</div>
+        <div>${escapeHtml(t('courtiq.gamesPlayed', { count: data.gamesPlayed }))}</div>
+      </div>
+    </div>
+    <div id="courtiq-trend-inner"></div>
+  `;
+  const trendEl = document.getElementById('courtiq-trend-inner');
+  if (data.history.length >= 2) {
+    trendEl.innerHTML = '<div class="trend-sparkline"><div class="rank-trend-chart"></div></div>';
+    const containerWidth = trendEl.querySelector('.rank-trend-chart').clientWidth;
+    trendEl.innerHTML = courtiqTrendHtml(data.history, containerWidth);
+  }
+}
+
 // winRateTrendHtml needs the chart's real container width up front (see
 // its comment) — renders an empty measuring shell first, reads its
 // clientWidth, then the real chart. Skipped entirely (left blank, like
@@ -772,6 +867,7 @@ async function load() {
     renderStats();
     await renderBadges();
     renderRankTrend();
+    renderCourtIQ();
     renderH2H();
     render();
   } catch (err) {

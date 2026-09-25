@@ -990,6 +990,20 @@ if (myProfileRowCount === 0) {
   ).run('Môj profil', 'My profile', '#', (maxSortOrder == null ? 0 : maxSortOrder) + 1);
 }
 
+// Same "add it once, even to an install that already has header_items rows"
+// treatment as the "My profile" row just above — this table only ever
+// seeds automatically when it's completely empty (see the block that seeds
+// Zápasy/Hráči/Rebríček/... near the top of this file), so a database that
+// already existed before CourtIQ shipped would otherwise never get a nav
+// link to /courtiq at all.
+const courtIQNavCount = db.prepare("SELECT COUNT(*) AS c FROM header_items WHERE link = '/courtiq'").get().c;
+if (courtIQNavCount === 0) {
+  const maxSortOrder = db.prepare('SELECT MAX(sort_order) AS m FROM header_items').get().m;
+  db.prepare(
+    'INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order) VALUES (NULL, ?, ?, ?, ?)'
+  ).run('CourtIQ', 'CourtIQ', '/courtiq', (maxSortOrder == null ? 0 : maxSortOrder) + 1);
+}
+
 // CourtIQ — a locally-computed Glicko-2 skill rating (see
 // src/courtIQEngine.js for the math), entirely separate from the "BLTA
 // GENERAL" ranking above (ranking_overrides/ranking_snapshots), which is

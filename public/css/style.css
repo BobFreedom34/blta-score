@@ -1372,6 +1372,12 @@ datalist {}
 .statistics-card .section-label { margin: 0 0 12px; }
 .statistics-card .section-header { margin: 0 0 12px; }
 
+/* ---------- CourtIQ card (player profile) ---------- */
+.courtiq-summary { display: flex; align-items: center; gap: 16px; }
+.courtiq-band-big { font-size: 44px; font-weight: 800; color: var(--orange); line-height: 1; }
+.courtiq-meta { color: var(--gray-dim); font-size: 13px; display: flex; flex-direction: column; gap: 3px; }
+#courtiq-trend-inner { margin-top: 14px; max-width: 320px; }
+
 /* ---------- Badges ---------- */
 .section-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 40px 0 12px; }
 .section-header .section-label { margin: 0; }
@@ -2054,6 +2060,27 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 }
 .rank-badges-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .rank-badges-cell .rank-name { flex: 1 1 auto; min-width: 0; }
+/* CourtIQ leaderboard: pos | player | band (the headline number, reuses
+   .rank-points) | raw rating | games played. */
+.rank-grid-courtiq {
+  grid-template-columns: 30px minmax(150px, 1.6fr) 70px 70px 70px;
+  min-width: 460px;
+}
+.courtiq-provisional-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: var(--gray-light);
+  color: var(--gray);
+  font-size: 10px;
+  font-weight: 800;
+  vertical-align: 2px;
+}
+.card-dark .courtiq-provisional-tag { background: rgba(255,255,255,0.15); color: var(--gray-dim); }
 /* A fanned "avatar stack": each icon after the first overlaps the previous
    one by half its own width, and later icons paint over earlier ones
    (plain DOM order already does that — no z-index needed) — the whole
