@@ -24,17 +24,27 @@ function toPublicRating(row) {
   };
 }
 
-// The full leaderboard — every player who's been rated at least once,
-// highest rating first. A player who's never played a ratable match
-// (src/courtIQBackfill.js's own scope: WALKOVER/UNFINISHED excluded)
-// simply has no courtiq_ratings row and doesn't appear here at all, same
-// "no row yet = not shown" convention the rankings/badges tables already
-// use for a player with 0 of whatever's being counted.
+// The full leaderboard — every BLTA player who's been rated at least
+// once, highest rating first. The rating itself is still computed from a
+// player's ENTIRE match history (BLTA and Friendly/VIP Cup/ATA Tennis
+// alike — see src/courtIQBackfill.js), unchanged; this table just hides
+// anyone who's never actually played a finished BLTA (Elite/Next Gen/
+// Novice) match, so a player who's only ever played Friendly matches
+// doesn't clutter what's meant to read as a BLTA standings table. A
+// player who's never played a ratable match at all still simply has no
+// courtiq_ratings row and doesn't appear here either way, same "no row
+// yet = not shown" convention the rankings/badges tables already use.
 router.get('/', (req, res) => {
   const rows = db.prepare(`
     SELECT cr.*, p.name, p.slug, p.nationality
     FROM courtiq_ratings cr
     JOIN players p ON p.id = cr.player_id
+    WHERE EXISTS (
+      SELECT 1 FROM matches m
+      WHERE (m.player1_id = cr.player_id OR m.player2_id = cr.player_id)
+        AND m.category IN ('ELITE', 'NEXT_GEN', 'NOVICE')
+        AND m.status = 'FINISHED'
+    )
     ORDER BY cr.rating DESC
   `).all();
 
