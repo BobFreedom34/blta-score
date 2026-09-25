@@ -30,11 +30,12 @@ function matchLink(match) {
   return `${process.env.PUBLIC_URL || ''}/match/${match.share_token}`;
 }
 
-// Only FRIENDLY has its own Slovak label site-wide (see category.FRIENDLY in
-// i18n.js) — every other category name (ELITE, NEXT_GEN, ...) is used as-is
-// in the UI too, so this mirrors that instead of inventing translations for
-// names that stay in English everywhere else.
-const CATEGORY_LABELS = { FRIENDLY: 'PRIATEĽSKÝ' };
+// Only FRIENDLY and OTHER have their own Slovak label site-wide (see
+// category.FRIENDLY/category.OTHER in i18n.js) — every other category name
+// (ELITE, NEXT_GEN, ...) is used as-is in the UI too, so this mirrors that
+// instead of inventing translations for names that stay in English
+// everywhere else.
+const CATEGORY_LABELS = { FRIENDLY: 'PRIATEĽSKÝ', OTHER: 'INÉ' };
 function categoryLabel(category) {
   return CATEGORY_LABELS[category] || category.replace('_', ' ');
 }

@@ -17,7 +17,7 @@ const { pushRankingPoints, reverseRankingPoints } = require('../rankingPointsSyn
 const router = express.Router();
 
 const MAX_HISTORY = 30;
-const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE', 'FRIENDLY', 'VIP_CUP', 'ATA_TENNIS'];
+const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE', 'FRIENDLY', 'VIP_CUP', 'ATA_TENNIS', 'OTHER'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function getPlayer(id) {
