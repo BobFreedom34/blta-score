@@ -1246,7 +1246,13 @@ datalist {}
 .player-courtiq-badge { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
 .player-courtiq-label-row { display: flex; align-items: center; }
 .player-courtiq-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--white); opacity: 0.7; }
-.player-courtiq-value { font-size: 44px; font-weight: 800; color: var(--white); line-height: 1; }
+/* -webkit-text-stroke reinforces the weight itself, not just the requested
+   font-weight number — mobile Safari/Chrome render a bare font-weight:800
+   noticeably thinner than desktop does (the system sans-serif fallback
+   here has no real 800/900 weight of its own, so both platforms fake it,
+   just by different amounts), and this closes that gap so the number reads
+   equally bold everywhere. */
+.player-courtiq-value { font-size: 44px; font-weight: 800; color: var(--white); line-height: 1; -webkit-text-stroke: 0.6px currentColor; }
 .player-flag-img { display: block; height: 28px; width: auto; border-radius: 3px; box-shadow: var(--shadow); }
 .player-upcoming-stat {
   margin-top: 16px;
@@ -1386,7 +1392,7 @@ datalist {}
 
 /* ---------- CourtIQ card (player profile) ---------- */
 .courtiq-summary { display: flex; align-items: center; gap: 16px; }
-.courtiq-band-big { font-size: 44px; font-weight: 800; color: var(--orange); line-height: 1; }
+.courtiq-band-big { font-size: 44px; font-weight: 800; color: var(--orange); line-height: 1; -webkit-text-stroke: 0.6px currentColor; }
 .courtiq-meta { color: var(--gray-dim); font-size: 13px; display: flex; flex-direction: column; gap: 3px; }
 #courtiq-trend-inner { margin-top: 14px; width: 100%; }
 
