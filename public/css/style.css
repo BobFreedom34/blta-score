@@ -1228,7 +1228,7 @@ datalist {}
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content: space-between;
 }
 .player-rank-badge { font-size: 28px; font-weight: 800; color: var(--orange); line-height: 1; }
 /* .player-header-main stretches to the avatar's full height (see
@@ -1313,8 +1313,8 @@ datalist {}
 .player-first-name { font-weight: 400; }
 .player-surname { font-weight: 800; }
 .player-avatar, .player-avatar-fallback {
-  width: 208px;
-  height: 208px;
+  width: 260px;
+  height: 260px;
   border-radius: var(--radius);
   flex-shrink: 0;
 }
