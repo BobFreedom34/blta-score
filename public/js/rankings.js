@@ -65,6 +65,16 @@ async function buildBadgesTable() {
   return { key: 'badges', label: t('rankings.badgesTab'), pointsLabel: t('rankings.badgesCol'), rows };
 }
 
+// The CourtIQ tab isn't scraped from blta.sk either — it's this app's own
+// Glicko-2 skill rating (see src/courtIQEngine.js), already fully computed
+// server-side, so this just reshapes GET /api/courtiq's response into the
+// same {key, label, rows} shape every other tab uses, unlike buildBadgesTable
+// which has to compute its own numbers client-side.
+async function buildCourtIQTable() {
+  const { rows } = await api('/courtiq');
+  return { key: 'courtiq', label: t('rankings.courtiqTab'), rows };
+}
+
 function renderTabs() {
   const tabsEl = document.getElementById('rankings-tabs');
   tabsEl.innerHTML = rankingsData.tables.map((t) => `
@@ -153,9 +163,51 @@ function renderBadgesTable(table) {
   listEl.innerHTML = `<div class="rank-table">${headerHtml}${rowsHtml}</div>`;
 }
 
+// CourtIQ's own row shape (band/rating/games played, plus the "?"
+// provisional marker — see src/routes/courtiq.js) doesn't match the
+// scraped tables' age/matches/points columns, so — same reasoning as
+// renderBadgesTable above — it gets its own render function and its own
+// grid (.rank-grid-courtiq, shared with the player profile's old standalone
+// leaderboard) rather than folding into the generic one below.
+function renderCourtIQTable(table) {
+  const listEl = document.getElementById('rankings-list');
+  if (!table.rows.length) {
+    listEl.innerHTML = `<p style="color:var(--gray)">${t('courtiq.none')}</p>`;
+    return;
+  }
+  const headerHtml = `
+    <div class="rank-table-header rank-grid rank-grid-courtiq">
+      <div class="rank-col-pos"></div>
+      <div class="rank-col-player">${t('courtiq.playerCol')}</div>
+      <div class="rank-col-points">${t('courtiq.cardLabel')}</div>
+      <div class="rank-col-matches">${t('courtiq.ratingCol')}</div>
+      <div class="rank-col-matches">${t('courtiq.gamesCol')}</div>
+    </div>`;
+  const rowsHtml = table.rows.map((r) => {
+    const flag = flagImgHtml(r.nationality, 'rank-flag-icon');
+    const nameHtml = r.slug
+      ? `<a href="/player/${escapeHtml(r.slug)}" class="rank-name"${PLAYER_LINK_ATTRS}>${flag}${escapeHtml(r.name)}</a>`
+      : `<span class="rank-name">${flag}${escapeHtml(r.name)}</span>`;
+    const provisionalTag = r.provisional
+      ? `<span class="courtiq-provisional-tag" title="${escapeHtml(t('courtiq.provisional'))}">?</span>`
+      : '';
+    return `
+      <div class="rank-row rank-grid rank-grid-courtiq">
+        <div class="rank-pos"><span class="rank-pos-num">${r.rank}</span></div>
+        ${nameHtml}
+        <div class="rank-points">${r.band.toFixed(1)}${provisionalTag}</div>
+        <div class="rank-col-matches">${r.rating}</div>
+        <div class="rank-col-matches">${r.gamesPlayed}</div>
+      </div>
+    `;
+  }).join('');
+  listEl.innerHTML = `<div class="rank-table">${headerHtml}${rowsHtml}</div>`;
+}
+
 function renderTable() {
   const table = rankingsData.tables.find((t) => t.key === activeTab);
   if (table && table.key === 'badges') return renderBadgesTable(table);
+  if (table && table.key === 'courtiq') return renderCourtIQTable(table);
   const listEl = document.getElementById('rankings-list');
   // Skip anyone with no points at all (null) or exactly 0 — keeping the
   // original index (not the filtered position) on each entry so the
@@ -260,13 +312,18 @@ function startEdit(rowEl, table) {
 
 async function load() {
   let badgesTableResult;
+  let courtIQTableResult;
   try {
-    [rankingsData, badgesTableResult] = await Promise.all([
+    [rankingsData, badgesTableResult, courtIQTableResult] = await Promise.all([
       api('/rankings'),
       buildBadgesTable().catch((err) => {
         // Non-fatal — the scraped tables still work without it, just minus
         // the one locally-computed tab.
         console.error('[rankings] badges tab failed to build:', err.message);
+        return null;
+      }),
+      buildCourtIQTable().catch((err) => {
+        console.error('[rankings] CourtIQ tab failed to build:', err.message);
         return null;
       }),
     ]);
@@ -275,6 +332,10 @@ async function load() {
     document.getElementById('rankings-list').innerHTML = `<p style="color:var(--danger)">${escapeHtml(err.message)}</p>`;
     return;
   }
+  // Right after the first (BLTA overall) tab, not appended at the end like
+  // Badges — CourtIQ is meant to sit next to BLTA specifically, not buried
+  // after the Race/Tournament tabs.
+  if (courtIQTableResult) rankingsData.tables.splice(1, 0, courtIQTableResult);
   if (badgesTableResult) rankingsData.tables.push(badgesTableResult);
   if (!activeTab || !rankingsData.tables.some((t) => t.key === activeTab)) {
     activeTab = rankingsData.tables[0] && rankingsData.tables[0].key;

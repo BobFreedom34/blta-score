@@ -990,19 +990,13 @@ if (myProfileRowCount === 0) {
   ).run('Môj profil', 'My profile', '#', (maxSortOrder == null ? 0 : maxSortOrder) + 1);
 }
 
-// Same "add it once, even to an install that already has header_items rows"
-// treatment as the "My profile" row just above — this table only ever
-// seeds automatically when it's completely empty (see the block that seeds
-// Zápasy/Hráči/Rebríček/... near the top of this file), so a database that
-// already existed before CourtIQ shipped would otherwise never get a nav
-// link to /courtiq at all.
-const courtIQNavCount = db.prepare("SELECT COUNT(*) AS c FROM header_items WHERE link = '/courtiq'").get().c;
-if (courtIQNavCount === 0) {
-  const maxSortOrder = db.prepare('SELECT MAX(sort_order) AS m FROM header_items').get().m;
-  db.prepare(
-    'INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order) VALUES (NULL, ?, ?, ?, ?)'
-  ).run('CourtIQ', 'CourtIQ', '/courtiq', (maxSortOrder == null ? 0 : maxSortOrder) + 1);
-}
+// CourtIQ briefly shipped as its own /courtiq nav item (and seeded itself
+// into header_items the same way the "My profile" row above does) before
+// becoming a tab on the existing Rankings page instead (see rankings.js) —
+// this removes that row from any install that already has it. Cheap to run
+// unconditionally on every boot rather than guarding it like the seeds
+// above: a DELETE of a row that's already gone is a no-op either way.
+db.exec("DELETE FROM header_items WHERE link = '/courtiq'");
 
 // CourtIQ — a locally-computed Glicko-2 skill rating (see
 // src/courtIQEngine.js for the math), entirely separate from the "BLTA

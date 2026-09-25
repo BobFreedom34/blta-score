@@ -2034,6 +2034,15 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 /* ---------- Rankings ---------- */
 .card-dark { background: var(--ink); color: var(--white); }
 #rankings-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
+/* CourtIQ's own tab is always green (not just on .active, like every other
+   tab here) so it reads as its own distinct kind of ranking — a locally
+   computed skill rating, not a scraped points table — at a glance. */
+#rankings-tabs .tab[data-key="courtiq"],
+#rankings-tabs .tab[data-key="courtiq"].active {
+  background: var(--green);
+  color: var(--white);
+  border-color: var(--green);
+}
 /* A real table: rank / player / age / matches / points as actual columns,
    not player+matches stacked in one cell — the header row and every data
    row share this exact column template so everything lines up. A fixed
