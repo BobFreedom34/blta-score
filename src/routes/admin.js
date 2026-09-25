@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db');
 const auth = require('../auth');
 const backup = require('../backup');
+const courtIQBackfill = require('../courtIQBackfill');
 
 const router = express.Router();
 
@@ -58,6 +59,17 @@ router.post('/backup-now', auth.requireAdmin, async (req, res) => {
   const result = await backup.runBackup();
   if (result.skipped) return res.status(400).json({ error: 'Backup is not configured — set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REFRESH_TOKEN and GOOGLE_DRIVE_BACKUP_FOLDER_ID.' });
   if (!result.ok) return res.status(500).json({ error: result.error });
+  res.json(result);
+});
+
+// Manual trigger for scripts/backfillCourtIQ.js's own replay (see
+// src/courtIQBackfill.js) — lets an admin rebuild CourtIQ ratings from the
+// admin panel itself, on a deployed instance, without needing shell access
+// to run the CLI script directly. Always wipes and rebuilds from scratch;
+// safe to click again any time (e.g. after a score correction, or after a
+// constant in courtIQEngine.js changes).
+router.post('/courtiq/backfill', auth.requireAdmin, (req, res) => {
+  const result = courtIQBackfill.runBackfill();
   res.json(result);
 });
 

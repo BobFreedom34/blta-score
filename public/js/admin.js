@@ -45,6 +45,7 @@ function renderLoggedIn() {
       finished match — the rest of the backend (Menu, Badges, Login History) is in the tabs above.
     </p>
     <button type="button" class="btn btn-outline" id="backup-now-btn">📦 Back up now</button>
+    <button type="button" class="btn btn-outline" id="courtiq-backfill-btn">🎾 Run CourtIQ backfill</button>
     <button type="button" class="btn btn-outline" id="logout-btn" style="margin-top:10px">Log out</button>
 
     <hr style="margin:20px 0;border:none;border-top:1px solid var(--gray-light)">
@@ -80,6 +81,28 @@ function renderLoggedIn() {
     try {
       const result = await api('/admin/backup-now', { method: 'POST' });
       toast(`Backup done — ${mb(result.bytes)} MB database${result.files ? ` + ${mb(result.files.bytes)} MB files` : ''}`);
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  });
+
+  // Rebuilds CourtIQ (see src/courtIQBackfill.js) from every finished match,
+  // from scratch — safe to click again any time, e.g. after correcting an
+  // old match's score or after a rating constant is tuned.
+  document.getElementById('courtiq-backfill-btn').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = 'Running…';
+    try {
+      const result = await api('/admin/courtiq/backfill', { method: 'POST' });
+      const topLine = result.top.length
+        ? ` — top: ${result.top.map((p) => `${p.name} (${p.band}${p.provisional ? '?' : ''})`).join(', ')}`
+        : '';
+      toast(`CourtIQ rebuilt — ${result.ratedPlayers} players from ${result.ratedMatches} matches in ${result.seconds}s${topLine}`);
     } catch (err) {
       toast(err.message);
     } finally {

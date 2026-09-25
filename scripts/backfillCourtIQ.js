@@ -12,115 +12,18 @@
 //
 //   node scripts/backfillCourtIQ.js
 //
-// Scope, matching what was agreed before this was built: every category
-// counts (BLTA and friendly/exhibition alike) toward one single global
-// CourtIQ rating per player — a WALKOVER or an UNFINISHED match does not
-// count at all (no tennis was actually decided), same convention
-// src/badgeEngine.js already uses for badges/stats. A RETIREMENT DOES
-// count, using whatever partial score was actually played.
-const db = require('../src/db');
-const courtIQ = require('../src/courtIQEngine');
+// The actual replay lives in src/courtIQBackfill.js — this is a thin CLI
+// wrapper around it (see that file's own header for scope: which matches
+// count, category, etc.) so the admin panel's "Run CourtIQ backfill"
+// button (routes/admin.js) can trigger the exact same logic in-process,
+// without needing shell access to wherever this is deployed.
+const { runBackfill } = require('../src/courtIQBackfill');
 
-function matchDateOf(row) {
-  return row.scheduled_at || row.start_time || row.created_at;
-}
-
-function loadRatableMatches() {
-  const rows = db.prepare(`
-    SELECT * FROM matches
-    WHERE status = 'FINISHED'
-      AND winner_id IS NOT NULL
-      AND (end_reason IS NULL OR end_reason NOT IN ('WALKOVER', 'UNFINISHED'))
-  `).all();
-  return rows.sort((a, b) => {
-    const dateDiff = new Date(matchDateOf(a)) - new Date(matchDateOf(b));
-    return dateDiff !== 0 ? dateDiff : a.id - b.id;
+const result = runBackfill();
+console.log(`Rated ${result.ratedPlayers} player(s) from ${result.ratedMatches} match(es) in ${result.seconds}s${result.skipped ? ` (skipped ${result.skipped} unresolvable match(es))` : ''}.`);
+if (result.top.length) {
+  console.log('\nTop 5 by rating:');
+  result.top.forEach((p) => {
+    console.log(`  ${p.name}: ${p.rating} -> CourtIQ ${p.band}${p.provisional ? ' (provisional)' : ''}`);
   });
 }
-
-function main() {
-  const started = Date.now();
-  const matches = loadRatableMatches();
-  console.log(`Replaying ${matches.length} finished match(es)...`);
-
-  db.exec('DELETE FROM courtiq_rating_history');
-  db.exec('DELETE FROM courtiq_ratings');
-
-  // player_id -> { rating, deviation, volatility, lastMatchAt, gamesPlayed }
-  const states = new Map();
-  function stateFor(playerId) {
-    if (!states.has(playerId)) {
-      states.set(playerId, { ...courtIQ.defaultRatingState(), lastMatchAt: null, gamesPlayed: 0 });
-    }
-    return states.get(playerId);
-  }
-
-  const insertHistory = db.prepare(`
-    INSERT INTO courtiq_rating_history (player_id, match_id, rating, deviation, volatility)
-    VALUES (?, ?, ?, ?, ?)
-  `);
-
-  let skipped = 0;
-  matches.forEach((row) => {
-    let state;
-    try {
-      state = JSON.parse(row.state);
-    } catch {
-      skipped += 1;
-      return;
-    }
-    const sets = state.sets || [];
-    const winner = row.winner_id === row.player1_id ? 1 : row.winner_id === row.player2_id ? 2 : null;
-    if (!winner) {
-      skipped += 1;
-      return;
-    }
-    const matchDate = matchDateOf(row);
-    if (!matchDate) {
-      skipped += 1;
-      return;
-    }
-
-    const p1Before = stateFor(row.player1_id);
-    const p2Before = stateFor(row.player2_id);
-    const { player1, player2 } = courtIQ.processMatch({
-      player1: p1Before, player2: p2Before, winner, sets, matchDate,
-    });
-
-    states.set(row.player1_id, {
-      ...player1, lastMatchAt: matchDate, gamesPlayed: p1Before.gamesPlayed + 1,
-    });
-    states.set(row.player2_id, {
-      ...player2, lastMatchAt: matchDate, gamesPlayed: p2Before.gamesPlayed + 1,
-    });
-
-    insertHistory.run(row.player1_id, row.id, player1.rating, player1.deviation, player1.volatility);
-    insertHistory.run(row.player2_id, row.id, player2.rating, player2.deviation, player2.volatility);
-  });
-
-  const insertRating = db.prepare(`
-    INSERT INTO courtiq_ratings (player_id, rating, deviation, volatility, games_played, last_match_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-  states.forEach((state, playerId) => {
-    insertRating.run(playerId, state.rating, state.deviation, state.volatility, state.gamesPlayed, state.lastMatchAt);
-  });
-
-  const seconds = ((Date.now() - started) / 1000).toFixed(1);
-  console.log(`Rated ${states.size} player(s) from ${matches.length - skipped} match(es) in ${seconds}s${skipped ? ` (skipped ${skipped} unresolvable match(es))` : ''}.`);
-
-  const top5 = [...states.entries()]
-    .sort((a, b) => b[1].rating - a[1].rating)
-    .slice(0, 5);
-  if (top5.length) {
-    console.log('\nTop 5 by rating:');
-    top5.forEach(([playerId, state]) => {
-      const name = db.prepare('SELECT name FROM players WHERE id = ?').get(playerId)?.name || `#${playerId}`;
-      const band = courtIQ.ratingToBand(state.rating).toFixed(1);
-      const provisional = courtIQ.isProvisional(state.deviation, state.gamesPlayed) ? ' (provisional)' : '';
-      console.log(`  ${name}: ${state.rating.toFixed(0)} -> CourtIQ ${band}${provisional}`);
-    });
-  }
-}
-
-main();
