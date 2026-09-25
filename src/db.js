@@ -990,4 +990,52 @@ if (myProfileRowCount === 0) {
   ).run('Môj profil', 'My profile', '#', (maxSortOrder == null ? 0 : maxSortOrder) + 1);
 }
 
+// CourtIQ — a locally-computed Glicko-2 skill rating (see
+// src/courtIQEngine.js for the math), entirely separate from the "BLTA
+// GENERAL" ranking above (ranking_overrides/ranking_snapshots), which is
+// scraped from blta.sk and keyed by player name rather than computed from
+// match results at all. One row per player holding their CURRENT
+// rating/deviation/volatility — updated in place the moment a match
+// finishes (see routes/matches.js), and rebuilt from scratch by
+// scripts/backfillCourtIQ.js, which replays full match history through the
+// same courtIQEngine functions in chronological order. last_match_at (not
+// just updated_at) is what lets a future match apply the right amount of
+// inactivity widening — updated_at changes on backfill re-runs even for a
+// date-shifted match, last_match_at doesn't.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS courtiq_ratings (
+    player_id INTEGER PRIMARY KEY REFERENCES players(id),
+    rating REAL NOT NULL,
+    deviation REAL NOT NULL,
+    volatility REAL NOT NULL,
+    games_played INTEGER NOT NULL DEFAULT 0,
+    last_match_at TEXT,
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+
+// One row per player per match they were rated in — the rating/deviation
+// exactly as it stood right AFTER that match, so a rating-history chart can
+// plot the trend over time instead of only ever showing the current
+// number. Rebuilt wholesale by scripts/backfillCourtIQ.js on every re-run
+// rather than patched incrementally — Glicko-2 is path-dependent, so
+// there's no cheap way to fix one match's row without touching every row
+// after it anyway (see courtIQEngine.js's own header comment). The unique
+// index is also what the live hook (routes/matches.js) checks to tell "a
+// brand-new finish" from "a correction to an already-rated match" — the
+// latter is a no-op live (it needs a full backfill re-run to be correct).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS courtiq_rating_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL REFERENCES players(id),
+    match_id INTEGER NOT NULL REFERENCES matches(id),
+    rating REAL NOT NULL,
+    deviation REAL NOT NULL,
+    volatility REAL NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_courtiq_rating_history_player ON courtiq_rating_history(player_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_courtiq_rating_history_unique ON courtiq_rating_history(player_id, match_id);
+`);
+
 module.exports = db;

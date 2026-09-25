@@ -10,6 +10,7 @@ const {
   isAdmin, getPlayerId, requireLoggedIn, requireAdmin, stripPrivateFields, isReferee, requireLoggedInOrReferee,
 } = require('../auth');
 const badgeEngine = require('../badgeEngine');
+const courtIQ = require('../courtIQEngine');
 const { pushResultToSportsPress, clearResultFromSportsPress } = require('../sportspressSync');
 const { pushRankingPoints, reverseRankingPoints } = require('../rankingPointsSync');
 
@@ -282,6 +283,63 @@ function syncBadgesIfFinished(row) {
   if (row.status !== 'FINISHED') return;
   badgeEngine.syncPlayerBadges(row.player1_id);
   badgeEngine.syncPlayerBadges(row.player2_id);
+}
+
+// Same trigger as syncBadgesIfFinished above, but CourtIQ (see
+// src/courtIQEngine.js) only ever runs this ONCE per match — a WALKOVER or
+// UNFINISHED match never counts (no tennis was actually decided), and a
+// match whose match_id already has a courtiq_rating_history row (the
+// unique index in db.js) is a correction to an already-rated result, which
+// this deliberately leaves alone: Glicko-2 is path-dependent, so patching
+// just this one match's numbers in place would leave every match rated
+// after it subtly wrong. Re-run scripts/backfillCourtIQ.js to pick up a
+// correction like that instead.
+function syncCourtIQIfFinished(row) {
+  if (row.status !== 'FINISHED' || !row.winner_id) return;
+  if (row.end_reason === 'WALKOVER' || row.end_reason === 'UNFINISHED') return;
+  const alreadyRated = db.prepare('SELECT 1 FROM courtiq_rating_history WHERE match_id = ?').get(row.id);
+  if (alreadyRated) return;
+
+  const winner = row.winner_id === row.player1_id ? 1 : row.winner_id === row.player2_id ? 2 : null;
+  const matchDate = row.scheduled_at || row.start_time || row.created_at;
+  if (!winner || !matchDate) return;
+
+  let state;
+  try {
+    state = JSON.parse(row.state);
+  } catch {
+    return;
+  }
+
+  const loadCourtIQ = (playerId) => {
+    const stored = db.prepare('SELECT * FROM courtiq_ratings WHERE player_id = ?').get(playerId);
+    return stored
+      ? { rating: stored.rating, deviation: stored.deviation, volatility: stored.volatility, lastMatchAt: stored.last_match_at, gamesPlayed: stored.games_played }
+      : { ...courtIQ.defaultRatingState(), lastMatchAt: null, gamesPlayed: 0 };
+  };
+  const p1Before = loadCourtIQ(row.player1_id);
+  const p2Before = loadCourtIQ(row.player2_id);
+
+  const { player1, player2 } = courtIQ.processMatch({
+    player1: p1Before, player2: p2Before, winner, sets: state.sets || [], matchDate,
+  });
+
+  const upsert = db.prepare(`
+    INSERT INTO courtiq_ratings (player_id, rating, deviation, volatility, games_played, last_match_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    ON CONFLICT(player_id) DO UPDATE SET
+      rating = excluded.rating, deviation = excluded.deviation, volatility = excluded.volatility,
+      games_played = excluded.games_played, last_match_at = excluded.last_match_at, updated_at = excluded.updated_at
+  `);
+  upsert.run(row.player1_id, player1.rating, player1.deviation, player1.volatility, p1Before.gamesPlayed + 1, matchDate);
+  upsert.run(row.player2_id, player2.rating, player2.deviation, player2.volatility, p2Before.gamesPlayed + 1, matchDate);
+
+  const insertHistory = db.prepare(`
+    INSERT INTO courtiq_rating_history (player_id, match_id, rating, deviation, volatility)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  insertHistory.run(row.player1_id, row.id, player1.rating, player1.deviation, player1.volatility);
+  insertHistory.run(row.player2_id, row.id, player2.rating, player2.deviation, player2.volatility);
 }
 
 // Reverses any ranking points already awarded for `previousRow` (if it has
@@ -1497,6 +1555,7 @@ router.post('/:token/score', requireLoggedInOrReferee, (req, res) => {
 
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   syncBadgesIfFinished(updated);
+  syncCourtIQIfFinished(updated);
   const payload = broadcast(req, updated);
   res.json(payload);
 
@@ -1592,6 +1651,7 @@ router.post('/:token/finish', requireLoggedInOrReferee, async (req, res) => {
 
   let updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   syncBadgesIfFinished(updated);
+  syncCourtIQIfFinished(updated);
   const payload = broadcast(req, updated);
   res.json(payload);
 
@@ -1700,6 +1760,7 @@ router.post('/:token/manual-result', requireLoggedIn, async (req, res) => {
 
   let updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   syncBadgesIfFinished(updated);
+  syncCourtIQIfFinished(updated);
   const payload = broadcast(req, updated);
   res.json(payload);
 
