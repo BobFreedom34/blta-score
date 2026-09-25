@@ -2415,6 +2415,40 @@ function openBadgeReminderModal(notif) {
   badgeCongratsModalEl.style.display = 'flex';
 }
 
+// "What is CourtIQ?" — a small always-there "?" button sits next to the
+// word "CourtIQ" everywhere it appears as a heading/label (the player
+// profile header badge, the full CourtIQ card, the Rankings tab's column
+// header — see .courtiq-info-btn in player.html/player.js/rankings.js),
+// all opening this one shared modal. Built lazily on first click, same
+// "doesn't exist until it's needed" pattern as badgeCongratsModalEl above
+// — it needs its own close wiring for the same reason that one does.
+let courtIQInfoModalEl = null;
+function ensureCourtIQInfoModal() {
+  if (courtIQInfoModalEl) return courtIQInfoModalEl;
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.id = 'courtiq-info-modal';
+  modal.style.display = 'none';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:420px">
+      <button type="button" class="close" aria-label="Close">&times;</button>
+      <h3 style="margin-top:0">${escapeHtml(t('courtiq.infoTitle'))}</h3>
+      <p style="color:var(--gray);font-size:14px;line-height:1.5">${escapeHtml(t('courtiq.infoBody1'))}</p>
+      <p style="color:var(--gray);font-size:14px;line-height:1.5">${escapeHtml(t('courtiq.infoBody2'))}</p>
+      <p style="color:var(--gray);font-size:14px;line-height:1.5;margin-bottom:0">${escapeHtml(t('courtiq.infoBody3'))}</p>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector('.close').addEventListener('click', () => { modal.style.display = 'none'; });
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+  courtIQInfoModalEl = modal;
+  return modal;
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.courtiq-info-btn')) return;
+  ensureCourtIQInfoModal().style.display = 'flex';
+});
+
 // A badge and a chat notification each have their own independent id
 // sequence (separate DB tables — see GET /player/notifications in
 // routes/player.js), so the two together are what actually identify one

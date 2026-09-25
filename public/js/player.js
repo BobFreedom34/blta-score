@@ -500,7 +500,7 @@ async function renderCourtIQ() {
     ? `<span class="courtiq-provisional-tag" title="${escapeHtml(t('courtiq.provisional'))}">?</span>`
     : '';
   el.innerHTML = `
-    <div class="section-label">${escapeHtml(t('courtiq.cardLabel'))}</div>
+    <div class="section-label">${escapeHtml(t('courtiq.cardLabel'))}<button type="button" class="courtiq-info-btn" aria-label="What is CourtIQ?">?</button></div>
     <div class="courtiq-summary">
       <div class="courtiq-band-big">${data.band.toFixed(1)}${provisionalTag}</div>
       <div class="courtiq-meta">

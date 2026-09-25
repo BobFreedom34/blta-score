@@ -1244,6 +1244,7 @@ datalist {}
    continued number. Same 44px size as .courtiq-band-big in that card below,
    so the number reads as consistently "the same number" wherever it shows. */
 .player-courtiq-badge { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+.player-courtiq-label-row { display: flex; align-items: center; }
 .player-courtiq-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--white); opacity: 0.7; }
 .player-courtiq-value { font-size: 44px; font-weight: 800; color: var(--white); line-height: 1; }
 .player-flag-img { display: block; height: 28px; width: auto; border-radius: 3px; box-shadow: var(--shadow); }
@@ -2083,8 +2084,8 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 /* CourtIQ leaderboard: pos | player | band (the headline number, reuses
    .rank-points) | raw rating | games played. */
 .rank-grid-courtiq {
-  grid-template-columns: 30px minmax(150px, 1.6fr) 70px 70px 70px;
-  min-width: 460px;
+  grid-template-columns: 30px minmax(150px, 1.6fr) 95px 70px 70px;
+  min-width: 485px;
 }
 .courtiq-provisional-tag {
   display: inline-flex;
@@ -2101,6 +2102,31 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   vertical-align: 2px;
 }
 .card-dark .courtiq-provisional-tag { background: rgba(255,255,255,0.15); color: var(--gray-dim); }
+/* "What is CourtIQ?" — sits next to the word CourtIQ wherever it's used as
+   a heading/label (player header badge, the full card, the Rankings tab
+   column header); opens #courtiq-info-modal (see common.js). A real
+   <button>, not just a styled span — this is interactive, unlike the
+   provisional tag right above. */
+.courtiq-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.18);
+  color: var(--white);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.courtiq-info-btn:hover { background: rgba(255,255,255,0.3); }
 /* A fanned "avatar stack": each icon after the first overlaps the previous
    one by half its own width, and later icons paint over earlier ones
    (plain DOM order already does that — no z-index needed) — the whole
