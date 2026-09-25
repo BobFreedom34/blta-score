@@ -473,17 +473,28 @@ function courtiqTrendHtml(history, containerWidth) {
 // h2h-section already uses for a player with no head-to-head history yet.
 async function renderCourtIQ() {
   const el = document.getElementById('courtiq-card');
+  const headerBadge = document.getElementById('player-courtiq-badge');
   if (!el || !playerId) return;
   let data;
   try {
     data = await api(`/courtiq/player/${playerId}`);
   } catch {
     el.innerHTML = '';
+    if (headerBadge) headerBadge.style.display = 'none';
     return;
   }
   if (!data.gamesPlayed) {
     el.innerHTML = '';
+    if (headerBadge) headerBadge.style.display = 'none';
     return;
+  }
+  // Same compact "number + label" readout as the header badge just below —
+  // right under the BLTA rank badge (see player.html), so a visitor sees
+  // both headline numbers together instead of having to scroll down to the
+  // full CourtIQ card for the very first thing it shows anyway.
+  if (headerBadge) {
+    document.getElementById('player-courtiq-value').textContent = data.band.toFixed(1);
+    headerBadge.style.display = '';
   }
   const provisionalTag = data.provisional
     ? `<span class="courtiq-provisional-tag" title="${escapeHtml(t('courtiq.provisional'))}">?</span>`

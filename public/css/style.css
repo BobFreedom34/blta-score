@@ -1232,13 +1232,20 @@ datalist {}
 }
 .player-rank-badge { font-size: 28px; font-weight: 800; color: var(--orange); line-height: 1; }
 /* .player-header-main stretches to the avatar's full height (see
-   align-items: stretch above), and the rank badge — first child, no auto
-   margin — packs against its top edge same as before. These two auto
-   margins then split whatever's left over evenly above/below the flag so
-   it and the name center as a pair in that remaining space, rather than
-   just trailing the rank at the top with empty space left below. */
-.player-flag { display: block; margin-top: auto; }
-.player-name-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: auto; }
+   align-items: stretch above) — the rank badge packs against its top edge,
+   and everything below (flag, name, CourtIQ) flows in normal order via the
+   column's own gap, filling the taller avatar-height column top to bottom. */
+.player-flag { display: block; }
+.player-name-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* CourtIQ readout right under the name — the full band + rating + trend
+   chart still lives further down in #courtiq-card (see renderCourtIQ in
+   player.js), this is just "the headline number" up top too. White (unlike
+   the orange rank badge) so the two read as distinct rankings, not one
+   continued number. Same 44px size as .courtiq-band-big in that card below,
+   so the number reads as consistently "the same number" wherever it shows. */
+.player-courtiq-badge { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+.player-courtiq-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--white); opacity: 0.7; }
+.player-courtiq-value { font-size: 44px; font-weight: 800; color: var(--white); line-height: 1; }
 .player-flag-img { display: block; height: 28px; width: auto; border-radius: 3px; box-shadow: var(--shadow); }
 .player-upcoming-stat {
   margin-top: 16px;
@@ -1299,8 +1306,8 @@ datalist {}
 .player-first-name { font-weight: 400; }
 .player-surname { font-weight: 800; }
 .player-avatar, .player-avatar-fallback {
-  width: 168px;
-  height: 168px;
+  width: 208px;
+  height: 208px;
   border-radius: var(--radius);
   flex-shrink: 0;
 }
@@ -1342,7 +1349,7 @@ datalist {}
      one column and the name the other without changing the markup. */
   .player-header-main {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto 1fr auto;
     grid-template-rows: auto auto;
     align-items: center;
     column-gap: 14px;
@@ -1351,6 +1358,10 @@ datalist {}
   .player-rank-badge { grid-row: 1; grid-column: 1; margin: 0; }
   .player-flag { grid-row: 2; grid-column: 1; margin: 0; }
   .player-name-row { grid-row: 1 / 3; grid-column: 2; margin: 0; }
+  /* Its own third column, beside the name, rather than a full-width row
+     below everything — label-over-number (see .player-courtiq-badge's base
+     column layout) still holds within this column. */
+  .player-courtiq-badge { grid-row: 1 / 3; grid-column: 3; margin: 0; }
 }
 .player-avatar-fallback {
   background: var(--ink);
