@@ -270,6 +270,13 @@ function formGuideHtml(matches) {
 // also flattened the end-of-line circle marker into a thin ellipse on a
 // wide (desktop) container; matching viewBox width to the real pixel
 // width makes the scale factor exactly 1:1 in both axes instead.
+// At least this many points get their own "N%" label directly on the
+// line (evenly spaced, always including the first and last) — same
+// labeled-point treatment rankTrendHtml/courtiqTrendHtml give every one
+// of their points, just thinned out here since a win-rate trend can have
+// far more points (one per match ever played) than either of those.
+const WIN_RATE_LABEL_COUNT = 4;
+
 function winRateTrendHtml(matches, idSuffix, containerWidth) {
   const chronological = matches
     .filter((m) => m.winnerId)
@@ -281,10 +288,12 @@ function winRateTrendHtml(matches, idSuffix, containerWidth) {
     return Math.round((wins / (i + 1)) * 100);
   });
   const w = Math.max(120, Math.round(containerWidth || 280));
-  const h = 64;
+  const chartH = 120;
+  const labelSpace = 14; // headroom for each labeled point's own "N%" label, above the line
+  const h = chartH + labelSpace;
   const padX = 8;
   const padY = 8;
-  const yFor = (pct) => padY + ((100 - pct) / 100) * (h - padY * 2);
+  const yFor = (pct) => labelSpace + padY + ((100 - pct) / 100) * (chartH - padY * 2);
   const stepX = (w - padX * 2) / (points.length - 1);
   const coords = points.map((pct, i) => [padX + i * stepX, yFor(pct)]);
   const linePath = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
@@ -297,22 +306,37 @@ function winRateTrendHtml(matches, idSuffix, containerWidth) {
   }).join('');
   const gradId = `trend-gradient-${idSuffix}`;
   const [lastX, lastY] = coords[coords.length - 1];
+  // Evenly spaced indices across the whole line, deduplicated (a short
+  // history can have fewer than WIN_RATE_LABEL_COUNT distinct points to
+  // pick — that just means every point ends up labeled).
+  const labelCount = Math.min(WIN_RATE_LABEL_COUNT, points.length);
+  const labelIndices = [...new Set(Array.from({ length: labelCount }, (_, i) => (
+    Math.round((i * (points.length - 1)) / (labelCount - 1 || 1))
+  )))];
+  const pointLabels = labelIndices.map((i) => {
+    const [x, y] = coords[i];
+    return `<span style="left:${(x / w * 100).toFixed(2)}%;top:${((y - 5) / h * 100).toFixed(2)}%">${points[i]}%</span>`;
+  }).join('');
   return `
     <div class="trend-sparkline">
       <div class="form-guide-label">${t('player.winRateTrend')}</div>
-      <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px">
-        <defs>
-          <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="var(--orange)" stop-opacity="0.35"/>
-            <stop offset="100%" stop-color="var(--orange)" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-        ${gridLines}
-        <line x1="${padX}" y1="${baseline.toFixed(1)}" x2="${w - padX}" y2="${baseline.toFixed(1)}" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
-        <path d="${areaPath}" fill="url(#${gradId})" stroke="none"/>
-        <path d="${linePath}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="3" fill="var(--orange)"/>
-      </svg>
+      <div class="rank-trend-chart">
+        <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px">
+          <defs>
+            <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--orange)" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="var(--orange)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          ${gridLines}
+          <line x1="${padX}" y1="${baseline.toFixed(1)}" x2="${w - padX}" y2="${baseline.toFixed(1)}" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+          <path d="${areaPath}" fill="url(#${gradId})" stroke="none"/>
+          <path d="${linePath}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          ${labelIndices.map((i) => `<circle cx="${coords[i][0].toFixed(1)}" cy="${coords[i][1].toFixed(1)}" r="2.5" fill="var(--orange)"/>`).join('')}
+          <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="3" fill="var(--orange)"/>
+        </svg>
+        <div class="rank-trend-labels">${pointLabels}</div>
+      </div>
       <div class="trend-value">${points[points.length - 1]}%</div>
     </div>
   `;
@@ -341,7 +365,7 @@ function rankTrendHtml(history, containerWidth) {
   // to real pixel width makes the scale factor exactly 1:1 in both axes,
   // so nothing needs stretching in the first place.
   const w = Math.max(120, Math.round(containerWidth || 280));
-  const chartH = 64;
+  const chartH = 120;
   const labelSpace = 14; // headroom for each point's own "#N" label, above the line
   const h = chartH + labelSpace;
   const padX = 8;
@@ -440,7 +464,7 @@ function courtiqTrendHtml(history, containerWidth) {
   const maxBand = Math.max(...bands);
   const range = Math.max(0.1, maxBand - minBand);
   const w = Math.max(120, Math.round(containerWidth || 280));
-  const chartH = 64;
+  const chartH = 120;
   const labelSpace = 14;
   const h = chartH + labelSpace;
   const padX = 8;
@@ -574,7 +598,7 @@ function matchesPerMonthHtml(matches, idSuffix, containerWidth) {
   });
   const maxCount = Math.max(1, ...months.map((b) => b.count));
   const w = Math.max(180, Math.round(containerWidth || 280));
-  const barAreaH = 64;
+  const barAreaH = 120;
   const labelSpace = 14; // headroom for each bar's own count, above it
   const axisSpace = 16; // month abbreviation, below the baseline
   const h = labelSpace + barAreaH + axisSpace;
