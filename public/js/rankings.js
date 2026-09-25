@@ -179,7 +179,7 @@ function renderCourtIQTable(table) {
     <div class="rank-table-header rank-grid rank-grid-courtiq">
       <div class="rank-col-pos"></div>
       <div class="rank-col-player">${t('courtiq.playerCol')}</div>
-      <div class="rank-col-points">${t('courtiq.cardLabel')}<button type="button" class="courtiq-info-btn" aria-label="What is CourtIQ?">?</button></div>
+      <div class="rank-col-points">${t('courtiq.cardLabel')}<button type="button" class="courtiq-info-btn" aria-label="What is CourtIQ?">i</button></div>
       <div class="rank-col-matches">${t('courtiq.ratingCol')}</div>
       <div class="rank-col-matches">${t('courtiq.gamesCol')}</div>
     </div>`;

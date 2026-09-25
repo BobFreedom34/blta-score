@@ -412,6 +412,21 @@ async function renderRankTrend() {
   }
 }
 
+// How many of the most recent rated matches the CourtIQ trend chart plots
+// — a player with a long history would otherwise cram dozens of points
+// into a chart that's only ever meant to show the recent trend, not a
+// full career log. Matches the same three breakpoints the rest of the
+// site's CSS uses (480px mobile, else desktop) plus a tablet band between
+// them; read once at render time, same "sized once at load, not
+// re-measured on resize" convention every other trend chart here already
+// follows.
+function courtiqTrendPointLimit() {
+  const w = window.innerWidth;
+  if (w <= 480) return 8;
+  if (w <= 1024) return 15;
+  return 20;
+}
+
 // Same sparkline shape as rankTrendHtml, for CourtIQ band instead of BLTA
 // rank — one point per match this player was rated in (see
 // src/courtIQBackfill.js), oldest to newest. Unlike rank, a HIGHER band is
@@ -488,19 +503,22 @@ async function renderCourtIQ() {
     if (headerBadge) headerBadge.style.display = 'none';
     return;
   }
-  // Same compact "number + label" readout as the header badge just below —
-  // right under the BLTA rank badge (see player.html), so a visitor sees
-  // both headline numbers together instead of having to scroll down to the
-  // full CourtIQ card for the very first thing it shows anyway.
-  if (headerBadge) {
-    document.getElementById('player-courtiq-value').textContent = data.band.toFixed(1);
-    headerBadge.style.display = '';
-  }
   const provisionalTag = data.provisional
     ? `<span class="courtiq-provisional-tag" title="${escapeHtml(t('courtiq.provisional'))}">?</span>`
     : '';
+  // Same compact "number + label" readout as the header badge just below —
+  // right under the BLTA rank badge (see player.html), so a visitor sees
+  // both headline numbers together instead of having to scroll down to the
+  // full CourtIQ card for the very first thing it shows anyway. Same
+  // provisional "?" as the full card's big number below, not just the
+  // band value on its own — otherwise this compact readout would silently
+  // drop that "still settling" signal the full card takes care to show.
+  if (headerBadge) {
+    document.getElementById('player-courtiq-value').innerHTML = `${data.band.toFixed(1)}${provisionalTag}`;
+    headerBadge.style.display = '';
+  }
   el.innerHTML = `
-    <div class="section-label">${escapeHtml(t('courtiq.cardLabel'))}<button type="button" class="courtiq-info-btn" aria-label="What is CourtIQ?">?</button></div>
+    <div class="section-label">${escapeHtml(t('courtiq.cardLabel'))}<button type="button" class="courtiq-info-btn" aria-label="What is CourtIQ?">i</button></div>
     <div class="courtiq-summary">
       <div class="courtiq-band-big">${data.band.toFixed(1)}${provisionalTag}</div>
       <div class="courtiq-meta">
@@ -511,10 +529,11 @@ async function renderCourtIQ() {
     <div id="courtiq-trend-inner"></div>
   `;
   const trendEl = document.getElementById('courtiq-trend-inner');
-  if (data.history.length >= 2) {
+  const recentHistory = data.history.slice(-courtiqTrendPointLimit());
+  if (recentHistory.length >= 2) {
     trendEl.innerHTML = '<div class="trend-sparkline"><div class="rank-trend-chart"></div></div>';
     const containerWidth = trendEl.querySelector('.rank-trend-chart').clientWidth;
-    trendEl.innerHTML = courtiqTrendHtml(data.history, containerWidth);
+    trendEl.innerHTML = courtiqTrendHtml(recentHistory, containerWidth);
   }
 }
 
