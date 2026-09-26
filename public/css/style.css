@@ -2071,6 +2071,16 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   border: 1px solid var(--orange);
   box-shadow: 0 0 18px rgba(231, 78, 25, 0.25);
 }
+/* One-line explainer for whichever ranking tab is active (text pulled from
+   blta.sk/rebricky/ for the scraped tables, and matching the CourtIQ info
+   modal's own wording for that tab) — sits between the tab pills and the
+   table itself, swapped out by rankings.js on every tab switch. */
+.rankings-desc {
+  font-size: 13px;
+  color: var(--gray-dim);
+  margin: 10px 0 14px;
+  line-height: 1.4;
+}
 #rankings-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 /* CourtIQ's own tab is always green (not just on .active, like every other
    tab here) so it reads as its own distinct kind of ranking — a locally

@@ -87,6 +87,8 @@ function renderTabs() {
       renderTable();
     });
   });
+  const descEl = document.getElementById('rankings-desc');
+  if (descEl) descEl.textContent = t(`rankings.desc.${activeTab}`);
 }
 
 function pointsDisplayHtml(r) {
