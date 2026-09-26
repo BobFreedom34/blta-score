@@ -1256,7 +1256,7 @@ datalist {}
 .player-courtiq-value { font-size: 44px; font-weight: 800; color: var(--white); line-height: 1; -webkit-text-stroke: 0.6px currentColor; }
 .player-flag-img { display: block; height: 28px; width: auto; border-radius: 3px; box-shadow: var(--shadow); }
 .player-upcoming-stat {
-  margin-top: 16px;
+  margin-top: 24px;
   width: 168px;
   padding: 8px 14px;
   display: flex;
@@ -1287,7 +1287,7 @@ datalist {}
   .player-upcoming-stat { width: 100%; }
 }
 .bio-flag-icon { width: 20px; height: auto; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
-.player-bio-header { display: flex; justify-content: flex-end; margin-top: 12px; }
+.player-bio-header { display: flex; justify-content: flex-end; margin-top: 24px; }
 .player-bio-edit-btn { background: var(--white); color: var(--ink); font-size: 11px; padding: 5px 10px; }
 .player-bio-card {
   background: var(--ink);
@@ -1392,6 +1392,12 @@ datalist {}
   border: 1px solid var(--orange);
   box-shadow: 0 0 18px rgba(231, 78, 25, 0.25);
 }
+/* The CourtIQ card sits right after the bio header/edit-profile button,
+   not another big card — 56px there would stick out next to the equal,
+   tighter 24px gaps everywhere else in this avatar/bio/CourtIQ run. Every
+   other .statistics-card (Statistics, Badges) keeps the bigger 56px break,
+   unaffected since this only targets the one with this specific id. */
+#courtiq-card { margin-top: 24px; }
 .statistics-card .section-label { margin: 0 0 12px; }
 .statistics-card .section-header { margin: 0 0 12px; }
 
