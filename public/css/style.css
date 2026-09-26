@@ -1297,6 +1297,8 @@ datalist {}
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px 32px;
+  border: 1px solid var(--orange);
+  box-shadow: 0 0 18px rgba(231, 78, 25, 0.25);
 }
 @media (max-width: 680px) { .player-bio-card { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 480px) { .player-bio-card { grid-template-columns: 1fr; } }
@@ -1387,6 +1389,8 @@ datalist {}
   border-radius: var(--radius);
   padding: 20px;
   margin-top: 56px;
+  border: 1px solid var(--orange);
+  box-shadow: 0 0 18px rgba(231, 78, 25, 0.25);
 }
 .statistics-card .section-label { margin: 0 0 12px; }
 .statistics-card .section-header { margin: 0 0 12px; }
