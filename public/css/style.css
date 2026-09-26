@@ -2061,7 +2061,16 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 .badge-medal-mini img { border-radius: inherit; }
 
 /* ---------- Rankings ---------- */
-.card-dark { background: var(--ink); color: var(--white); }
+/* Same thin orange border + soft glow as the player profile's black cards
+   (.player-bio-card/.statistics-card) — one rule here covers every ranking
+   table (BLTA, CourtIQ, Race, Tournaments, Badges), since they all share
+   this one .card-dark wrapper and just swap its contents per active tab. */
+.card-dark {
+  background: var(--ink);
+  color: var(--white);
+  border: 1px solid var(--orange);
+  box-shadow: 0 0 18px rgba(231, 78, 25, 0.25);
+}
 #rankings-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 /* CourtIQ's own tab is always green (not just on .active, like every other
    tab here) so it reads as its own distinct kind of ranking — a locally
