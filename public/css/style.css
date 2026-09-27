@@ -653,27 +653,34 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 /* ---------- Match list ---------- */
 .match-list { display: flex; flex-direction: column; gap: 12px; }
 .match-card {
+  --accent: var(--orange);
   background: var(--white);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 25%, transparent);
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   cursor: pointer;
-  border-left: 5px solid transparent;
+  border: 1px solid var(--accent);
+  border-left: 5px solid var(--accent);
 }
-.match-card:hover { box-shadow: var(--shadow-lg); }
-.match-card.status-LIVE { border-left-color: var(--danger); }
-.match-card.status-FINISHED { border-left-color: var(--green); }
-.match-card.status-UNFINISHED { border-left-color: var(--yellow); }
-.match-card.status-PLANNED.has-date { border-left-color: var(--green); }
-.match-card.status-PLANNED:not(.has-date) { border-left-color: var(--gray); }
+.match-card:hover { box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent); }
+/* --accent drives the border, left-accent bar, and glow together — set it
+   once per status/result and every one of those follows, instead of a
+   plain orange border regardless of status (grey/planned, live, finished,
+   won/lost each get their own color border+glow to match the left bar
+   they've always had). */
+.match-card.status-LIVE { --accent: var(--danger); }
+.match-card.status-FINISHED { --accent: var(--green); }
+.match-card.status-UNFINISHED { --accent: var(--yellow); }
+.match-card.status-PLANNED.has-date { --accent: var(--green); }
+.match-card.status-PLANNED:not(.has-date) { --accent: var(--gray); }
 /* Player profile match list only (see matchCardHtml in player.js) — a
    decided result recolors the accent bar by win/loss instead of the plain
    "finished = green" status color every other match list uses. */
-.match-card.result-won { border-left-color: var(--green); }
-.match-card.result-lost { border-left-color: var(--danger); }
+.match-card.result-won { --accent: var(--green); }
+.match-card.result-lost { --accent: var(--danger); }
 .match-card-top {
   display: flex;
   justify-content: space-between;
