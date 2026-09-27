@@ -99,7 +99,7 @@
         <label for="quick-schedule-date">Date &amp; time</label>
         <div style="display:flex;gap:8px">
           <input type="date" id="quick-schedule-date" style="flex:1">
-          <input type="time" id="quick-schedule-time" style="flex:1">
+          <input type="text" inputmode="numeric" class="time-input" placeholder="HH:MM" maxlength="5" autocomplete="off" id="quick-schedule-time" style="flex:1">
         </div>
       </div>
       <div id="quick-schedule-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>

@@ -9,8 +9,8 @@ function endReasonLabel(reason) {
 
 // Shared by match.js (per-match date/time edit fields) and any page that
 // opens a match-editing modal of its own (see openQuickEditMatchModal
-// below) — <input type="date">/<input type="time"> want the local
-// wall-clock date/time, not the ISO string's UTC one.
+// below) — <input type="date">/.time-input want the local wall-clock
+// date/time, not the ISO string's UTC one.
 function pad(n) { return String(n).padStart(2, '0'); }
 function toDateValue(iso) {
   if (!iso) return '';
@@ -24,6 +24,33 @@ function toTimeValue(iso) {
   if (Number.isNaN(d.getTime())) return '';
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+// .time-input fields (every match date/time form) used to be a plain
+// <input type="time">, but on Android Chrome tapping into one only opens
+// the clock-face picker dialog — there's no way to type the hour/minute
+// digits with the keyboard like you can on desktop. This reproduces the
+// same "HH:MM" value contract with a plain text field instead, so every
+// existing reader (toTimeValue's counterpart, new Date(`${date}T${time}`)
+// calls) keeps working unchanged, while typing works identically on every
+// platform.
+function setupTimeInputs() {
+  document.querySelectorAll('input.time-input').forEach((input) => {
+    if (input.dataset.timeInputReady) return;
+    input.dataset.timeInputReady = '1';
+    input.addEventListener('input', () => {
+      const digits = input.value.replace(/\D/g, '').slice(0, 4);
+      input.value = digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits;
+    });
+    input.addEventListener('blur', () => {
+      const digits = input.value.replace(/\D/g, '');
+      if (!digits) { input.value = ''; return; }
+      const hh = Math.min(23, parseInt(digits.slice(0, 2), 10) || 0);
+      const mm = Math.min(59, parseInt(digits.slice(2, 4), 10) || 0);
+      input.value = `${pad(hh)}:${pad(mm)}`;
+    });
+  });
+}
+setupTimeInputs();
 
 // ---------- Shared match-creation form pieces ----------
 // Used by new-match.js (pick one fixed date) and by match.js's

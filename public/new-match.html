@@ -78,7 +78,7 @@
       <label for="scheduledAtDate" data-i18n="newMatch.dateTimeLabel">Dátum a čas</label>
       <div style="display:flex;gap:8px">
         <input type="date" id="scheduledAtDate" style="flex:1">
-        <input type="time" id="scheduledAtTime" style="flex:1">
+        <input type="text" inputmode="numeric" class="time-input" placeholder="HH:MM" maxlength="5" autocomplete="off" id="scheduledAtTime" style="flex:1">
       </div>
       <small data-i18n="newMatch.dateTimeHint">Nepovinné — nechajte prázdne, ak zápas zatiaľ nie je naplánovaný, a nastavte to neskôr na stránke zápasu.</small>
     </div>
