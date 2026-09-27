@@ -227,6 +227,5 @@ document.getElementById('filter-q').addEventListener('input', (e) => {
 (async () => {
   isAdminUser = await checkAdmin();
   document.getElementById('add-player-card').style.display = isAdminUser ? '' : 'none';
-  document.getElementById('admin-required-card').style.display = isAdminUser ? 'none' : '';
   loadPlayers();
 })();

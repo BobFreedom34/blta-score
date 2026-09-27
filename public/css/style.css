@@ -2261,6 +2261,19 @@ a.rank-name:hover { text-decoration: underline; }
 .card-dark .rank-edit-link { color: var(--gray-dim); }
 .rank-points .edit-points-input { text-align: right; width: 100%; max-width: 90px; }
 
+/* .btn-outline's default border (var(--ink), near-black) is invisible on
+   any dark card — used wherever one sits inside .card-dark (the rank
+   table's own edit-points Cancel button, the Players list's admin row
+   actions below), not just the one caller that first hit it. */
+.card-dark .btn-outline { border-color: var(--gray-dim); color: var(--white); }
+.card-dark .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+
+/* ---------- Players list (dark card) ---------- */
+.card-dark .player-group-heading { border-bottom-color: rgba(255, 255, 255, 0.18); }
+.card-dark .player-row { border-bottom-color: rgba(255, 255, 255, 0.12); }
+.card-dark .player-phone, .card-dark .player-email { color: var(--gray-dim); }
+.card-dark .badge-hidden { background: rgba(255, 255, 255, 0.12); color: var(--gray-dim); }
+
 /* On a narrow screen, points is the number people actually came to check —
    it moves right after the player name (both in a resized column template
    and via `order`, since a grid item's `order` doesn't change which

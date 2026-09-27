@@ -40,7 +40,6 @@
 
 <div class="container">
   <h1 style="margin-top:22px" data-i18n="players.heading">Hráči</h1>
-  <p style="color:var(--gray-dim)" data-i18n="players.intro">Pridajte každého hráča ligy sem raz — potom si ho vyberiete zo zoznamu pri vytváraní zápasu.</p>
 
   <div class="card" style="margin-bottom:20px" id="add-player-card">
     <form id="add-player-form" style="display:flex;gap:10px;flex-wrap:wrap">
@@ -48,16 +47,10 @@
       <button type="submit" class="btn btn-primary" data-i18n="players.addPlayer">+ Pridať hráča</button>
     </form>
   </div>
-  <div class="card" style="margin-bottom:20px;display:none" id="admin-required-card">
-    <p style="margin:0;color:var(--gray)">
-      <span data-i18n="players.adminRequiredBefore">Ktoréhokoľvek existujúceho hráča môže pri plánovaní zápasu vybrať ktokoľvek — pridávanie, premenovanie alebo odstraňovanie hráčov tu si vyžaduje prihlásenie ako admin.</span>
-      <a href="/admin" style="text-decoration:underline;color:var(--orange)" data-i18n="players.loginAsAdmin">Prihlásiť sa ako admin</a>.
-    </p>
-  </div>
 
   <input type="text" id="filter-q" placeholder="Hľadať hráčov…" data-i18n-placeholder="players.searchPlaceholder" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px;margin-bottom:14px">
 
-  <div class="card">
+  <div class="card card-dark">
     <div id="player-list" data-i18n="players.loading">Načítavam…</div>
   </div>
 </div>
