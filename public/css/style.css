@@ -653,22 +653,27 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 /* ---------- Match list ---------- */
 .match-list { display: flex; flex-direction: column; gap: 12px; }
 .match-card {
-  background: var(--ink);
-  color: var(--white);
+  background: var(--white);
   border-radius: var(--radius);
-  border: 1px solid var(--orange);
-  box-shadow: 0 0 18px rgba(231, 78, 25, 0.25);
+  box-shadow: var(--shadow);
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   cursor: pointer;
+  border-left: 5px solid transparent;
 }
-.match-card:hover { box-shadow: 0 0 24px rgba(231, 78, 25, 0.4); }
-/* Status/result no longer get their own border color (a single orange
-   border+glow now covers every card, same treatment as the profile and
-   rankings cards) — differentiation lives entirely in the badge colors
-   below instead. */
+.match-card:hover { box-shadow: var(--shadow-lg); }
+.match-card.status-LIVE { border-left-color: var(--danger); }
+.match-card.status-FINISHED { border-left-color: var(--green); }
+.match-card.status-UNFINISHED { border-left-color: var(--yellow); }
+.match-card.status-PLANNED.has-date { border-left-color: var(--green); }
+.match-card.status-PLANNED:not(.has-date) { border-left-color: var(--gray); }
+/* Player profile match list only (see matchCardHtml in player.js) — a
+   decided result recolors the accent bar by win/loss instead of the plain
+   "finished = green" status color every other match list uses. */
+.match-card.result-won { border-left-color: var(--green); }
+.match-card.result-lost { border-left-color: var(--danger); }
 .match-card-top {
   display: flex;
   justify-content: space-between;
@@ -678,7 +683,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 }
 .match-card-meta {
   font-size: 12px;
-  color: var(--gray-dim);
+  color: var(--gray);
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
@@ -701,13 +706,13 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .match-card-notes {
   font-size: 12px;
   font-weight: 600;
-  color: var(--gray-dim);
+  color: var(--gray);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .match-players-box {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--gray-light);
   border-radius: var(--radius);
   padding: 14px 16px;
 }
@@ -721,29 +726,8 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   font-weight: 800;
   font-size: 18px;
 }
-.match-players .vs { color: var(--gray-dim); font-weight: 500; font-size: 12px; margin: 1px 0; }
+.match-players .vs { color: var(--gray); font-weight: 500; font-size: 12px; margin: 1px 0; }
 .match-players .winner { color: var(--green-light); }
-
-/* Category/status pills and the notify buttons all used to assume a
-   white card behind them — outline style (transparent fill, colored
-   border+text via currentColor) instead of a solid fill reads correctly
-   against the card's own dark background, same "borrow the color as an
-   accent, not a fill" idea as the rest of the dark-card treatment. */
-.match-card .badge { background: color-mix(in srgb, currentColor 18%, transparent); border: 1.5px solid currentColor; }
-.match-card .badge-ELITE { color: var(--yellow); }
-.match-card .badge-NEXT_GEN { color: var(--orange); }
-.match-card .badge-NOVICE { color: var(--green-light); }
-.match-card .badge-FRIENDLY { color: var(--yellow); }
-.match-card .badge-VIP_CUP { color: var(--white); }
-.match-card .badge-ATA_TENNIS { color: #4a90d9; }
-.match-card .badge-OTHER { color: var(--gray-dim); }
-.match-card .badge-status { background: color-mix(in srgb, currentColor 18%, transparent); border: 1.5px solid currentColor; color: var(--gray-dim); }
-.match-card .badge-status.status-LIVE { color: var(--orange); }
-.match-card .badge-status.status-PLANNED-dated { color: var(--green-light); }
-.match-card .badge-status.status-FINISHED { color: var(--white); }
-.match-card .badge-status.status-UNFINISHED { color: var(--yellow); }
-.match-card .btn-outline { border-color: var(--gray-dim); color: var(--white); }
-.match-card .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
 
 /* ---------- Compact match list (/compact, for WordPress embedding) ---------- */
 /* A grid, not a flex row: every card shares the same column widths, so date
