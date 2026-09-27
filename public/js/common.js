@@ -7,6 +7,15 @@ function endReasonLabel(reason) {
   return END_REASON_LABELS[reason] ? t(`common.endReason.${reason}`) : null;
 }
 
+// Shared by player.js (profile avatar fallback) and players.js (list row
+// mini avatar) — first + last initial, uppercased.
+function initials(name) {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0] ? parts[0][0] : '';
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+  return (first + last).toUpperCase();
+}
+
 // Shared by match.js (per-match date/time edit fields) and any page that
 // opens a match-editing modal of its own (see openQuickEditMatchModal
 // below) — <input type="date">/.time-input want the local wall-clock

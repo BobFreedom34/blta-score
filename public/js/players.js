@@ -26,9 +26,15 @@ function playerRowHtml(p) {
         <button type="button" class="btn btn-sm btn-danger" data-action="delete">${t('common.delete')}</button>
       </div>
   ` : '';
+  const avatar = p.photo_url
+    ? `<img class="player-row-avatar" src="${escapeHtml(p.photo_url)}" alt="">`
+    : `<div class="player-row-avatar player-row-avatar-fallback">${escapeHtml(initials(p.name))}</div>`;
   return `
     <div class="player-row${p.hidden ? ' player-row-hidden' : ''}" data-id="${p.id}">
-      <a class="player-name" href="/player/${p.slug || p.id}">${escapeHtml(p.name)}</a>
+      <div class="player-name-cell">
+        ${avatar}
+        <a class="player-name" href="/player/${p.slug || p.id}">${escapeHtml(p.name)}</a>
+      </div>
       ${hiddenBadge}
       ${phone}
       ${email}

@@ -993,13 +993,6 @@ document.getElementById('reset-filters-btn').addEventListener('click', () => {
   render();
 });
 
-function initials(name) {
-  const parts = name.trim().split(/\s+/);
-  const first = parts[0] ? parts[0][0] : '';
-  const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
-  return (first + last).toUpperCase();
-}
-
 // Swaps #player-avatar between the photo <img> and the initials fallback
 // div (same choice the initial page load makes) — reused after an
 // admin uploads or removes a photo so the avatar updates without a full
