@@ -213,6 +213,7 @@ const TRANSLATIONS = {
     'common.edit': 'Upraviť',
     'common.delete': 'Vymazať',
     'common.cancel': 'Zrušiť',
+    'common.pickTime': 'Vybrať čas',
 
     'page.playersTitle': 'Tennis SCORE — Hráči',
     'players.heading': 'Hráči',
@@ -784,6 +785,7 @@ const TRANSLATIONS = {
     'common.edit': 'Edit',
     'common.delete': 'Delete',
     'common.cancel': 'Cancel',
+    'common.pickTime': 'Pick a time',
 
     'page.playersTitle': 'Tennis SCORE — Players',
     'players.heading': 'Players',

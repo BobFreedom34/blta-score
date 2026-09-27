@@ -38,14 +38,47 @@ function toTimeValue(iso) {
 // <input type="time">, but on Android Chrome tapping into one only opens
 // the clock-face picker dialog — there's no way to type the hour/minute
 // digits with the keyboard like you can on desktop. This reproduces the
-// same "HH:MM" value contract with a plain text field instead, so every
-// existing reader (toTimeValue's counterpart, new Date(`${date}T${time}`)
-// calls) keeps working unchanged, while typing works identically on every
-// platform.
+// same "HH:MM" value contract with a plain text field so typing works
+// identically on every platform, but also wraps it with a small clock
+// button that opens a real (hidden) <input type="time">'s native picker —
+// so the picker is still there for whoever wants to tap-and-scroll
+// instead of typing, same as before.
 function setupTimeInputs() {
   document.querySelectorAll('input.time-input').forEach((input) => {
     if (input.dataset.timeInputReady) return;
     input.dataset.timeInputReady = '1';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'time-input-wrap';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+
+    const nativeInput = document.createElement('input');
+    nativeInput.type = 'time';
+    nativeInput.className = 'time-input-native';
+    nativeInput.tabIndex = -1;
+    nativeInput.setAttribute('aria-hidden', 'true');
+    wrap.appendChild(nativeInput);
+
+    const pickerBtn = document.createElement('button');
+    pickerBtn.type = 'button';
+    pickerBtn.className = 'time-input-picker-btn';
+    pickerBtn.setAttribute('aria-label', t('common.pickTime'));
+    pickerBtn.textContent = '🕐';
+    wrap.appendChild(pickerBtn);
+
+    pickerBtn.addEventListener('click', () => {
+      nativeInput.value = /^\d{2}:\d{2}$/.test(input.value) ? input.value : '';
+      if (typeof nativeInput.showPicker === 'function') {
+        try { nativeInput.showPicker(); return; } catch (e) { /* fall through */ }
+      }
+      nativeInput.focus();
+      nativeInput.click();
+    });
+    nativeInput.addEventListener('change', () => {
+      input.value = nativeInput.value;
+    });
+
     input.addEventListener('input', () => {
       const digits = input.value.replace(/\D/g, '').slice(0, 4);
       input.value = digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits;
