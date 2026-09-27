@@ -22,8 +22,9 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: #191919;
-  background: radial-gradient(ellipse 90% 75% at 55% 40%, #454545 0%, #333333 35%, #232323 65%, #191919 100%);
+  background: #0D0D0D;
+  background: linear-gradient(135deg, #0D0D0D 25.0%, #2E2E2E 75.0%); /* fallback: engines without oklab interpolation */
+  background: linear-gradient(135deg in oklab, #0D0D0D 25.0%, #2E2E2E 75.0%);
   background-attachment: fixed;
   color: var(--ink);
   font-family: 'Montserrat', Helvetica, Arial, sans-serif;
