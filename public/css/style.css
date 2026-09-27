@@ -920,9 +920,15 @@ datalist {}
   color: var(--white);
   border-radius: var(--radius);
   padding: 18px;
-  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--orange);
+  box-shadow: 0 0 18px rgba(231, 78, 25, 0.25);
   overflow-x: auto;
 }
+/* The compact variant sits nested inside a .match-card, which already
+   carries its own status-colored border+glow (see above) — a second glow
+   stacked right inside it would just double up, so this cancels the
+   scoreboard's own border/shadow rather than layering two. */
+.scoreboard-compact { border: none; box-shadow: none; }
 .scoreboard th.timer-cell { text-align: left; padding: 0 8px 10px 0; }
 .timer-cell .timer { display: inline-block; width: auto; background: rgba(255,255,255,0.16); color: var(--white); }
 .timer-cell .timer.timer-paused { background: var(--yellow); color: var(--ink); }

@@ -766,7 +766,7 @@ function render(m) {
     ${chatHtml()}
 
     <div class="match-actions">
-      <button class="btn btn-yellow" id="share-btn">${t('match.shareBtn')}</button>
+      <button class="btn btn-green" id="share-btn">${t('match.shareBtn')}</button>
       <button class="btn" id="embed-btn">${t('match.embedBtn')}</button>
       <button class="btn btn-dark" id="referee-btn">${t('referee.btn')}</button>
       ${locationEditable ? `<button class="btn" id="edit-match-btn">${t('match.editMatchBtn')}</button>` : ''}
