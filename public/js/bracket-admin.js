@@ -68,6 +68,13 @@ function createFormHtml() {
           <label>Draw size <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(rounds up to the next power of two)</span></label>
           <input type="number" id="bracket-manual-size" min="2" max="256" value="8" style="width:100px;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
         </div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400">
+            <input type="checkbox" id="bracket-auto-create-matches" checked>
+            Automatically create a match for each pairing
+          </label>
+          <p style="font-size:12px;color:var(--gray-dim);margin:2px 0 0">Uncheck this for a past/historical bracket — the games already happened outside the app, so you'll enter each result directly instead of playing a match through it.</p>
+        </div>
         <div id="create-bracket-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
         <button type="submit" class="btn btn-primary" style="margin-top:6px">Create bracket</button>
       </form>
@@ -78,6 +85,7 @@ function createFormHtml() {
 function resetCreateForm() {
   document.getElementById('bracket-name').value = '';
   document.getElementById('bracket-entries-list').innerHTML = '';
+  document.getElementById('bracket-auto-create-matches').checked = true;
   entryRowCounter = 0;
   addEntryRow();
   addEntryRow();
@@ -107,7 +115,8 @@ function wireCreateForm() {
       const name = document.getElementById('bracket-name').value.trim();
       const format = document.querySelector('input[name="format"]:checked').value;
       const seeded = document.querySelector('input[name="bracket-mode"]:checked').value === 'seeded';
-      const body = { name, format };
+      const autoCreateMatches = document.getElementById('bracket-auto-create-matches').checked;
+      const body = { name, format, autoCreateMatches };
 
       if (seeded) {
         const rows = Array.from(document.querySelectorAll('.bracket-entry-row'));
@@ -155,7 +164,7 @@ function renderList() {
       <div class="bracket-admin-row" data-id="${b.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div style="flex:1;min-width:160px">
-            <div style="font-weight:700">${escapeHtml(b.name)}</div>
+            <div style="font-weight:700">${escapeHtml(b.name)}${b.autoCreateMatches === false ? ' <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">Historical</span>' : ''}</div>
             <div style="font-size:12px;color:var(--gray)">${b.size}-draw · ${escapeHtml(formatLabel(b.format))}</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
@@ -216,10 +225,19 @@ function nodeStatusText(node) {
     const scoreText = node.match.scoreSummary ? ` — ${escapeHtml(node.match.scoreSummary)}` : '';
     return `${p1} vs ${p2} <span style="color:var(--gray-dim)">(${escapeHtml(node.match.status)}${scoreText})</span> <a href="/match/${node.match.token}" target="_blank" rel="noopener" style="text-decoration:underline">Open match</a>`;
   }
+  if (node.isManualResult) {
+    const winnerName = node.winnerId === (node.player1 && node.player1.id) ? p1 : p2;
+    const scoreText = node.scoreSummary ? ` — ${escapeHtml(node.scoreSummary)}` : '';
+    return `${p1} vs ${p2} <span style="color:var(--green-light)">(winner: ${winnerName}${scoreText})</span>`;
+  }
   return `${p1} vs ${p2}`;
 }
 
 function slotAssignFormHtml(node) {
+  // A bye's empty slot is intentional (a phantom seed beyond the entry
+  // count, not a real pairing waiting to be filled in) — never offer to
+  // assign a player into it.
+  if (node.isBye) return '';
   const needP1 = !node.player1;
   const needP2 = !node.player2;
   if (!needP1 && !needP2) return '';
@@ -243,6 +261,27 @@ function slotAssignFormHtml(node) {
   `;
 }
 
+// Shown instead of (well, alongside — it only ever renders once both
+// players are actually seated) a "Open match" link when this node has no
+// real match yet — the historical-bracket path (autoCreateMatches off at
+// creation, see createFormHtml), or a one-off node on an otherwise live
+// bracket that never got a match. Picks the winner via two named buttons
+// rather than a select — one click, no submit needed to change a
+// selection first.
+function recordResultFormHtml(node) {
+  if (!node.player1 || !node.player2 || node.match || node.isManualResult || node.isBye) return '';
+  return `
+    <form class="bracket-result-form" data-node-id="${node.id}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--gray-dim)">Winner:</span>
+      <label style="display:flex;align-items:center;gap:4px;font-weight:400;font-size:13px"><input type="radio" name="winner-${node.id}" value="${node.player1.id}" required>${escapeHtml(node.player1.name)}</label>
+      <label style="display:flex;align-items:center;gap:4px;font-weight:400;font-size:13px"><input type="radio" name="winner-${node.id}" value="${node.player2.id}">${escapeHtml(node.player2.name)}</label>
+      <input type="text" id="result-${node.id}-score" placeholder="Score (optional, e.g. 6-2, 6-4)" style="width:190px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+      <button type="submit" class="btn btn-sm btn-primary">Record result</button>
+      <span class="bracket-result-error" style="color:var(--danger);font-weight:600;font-size:12px"></span>
+    </form>
+  `;
+}
+
 async function renderManagePanel(bracketId, slotEl) {
   const data = await api(`/brackets/${bracketId}`);
   const byRound = new Map();
@@ -262,6 +301,7 @@ async function renderManagePanel(bracketId, slotEl) {
             <div style="padding:6px 4px;border-bottom:1px solid var(--gray-light);font-size:13px">
               <div>${n.seed1 ? `<span style="color:var(--gray-dim)">(${n.seed1})</span> ` : ''}${nodeStatusText(n)}${n.seed2 ? ` <span style="color:var(--gray-dim)">(${n.seed2})</span>` : ''}</div>
               ${slotAssignFormHtml(n)}
+              ${recordResultFormHtml(n)}
             </div>
           `).join('')}
         </div>
@@ -271,35 +311,61 @@ async function renderManagePanel(bracketId, slotEl) {
 
   data.nodes.forEach((n) => {
     const form = slotEl.querySelector(`.bracket-slot-form[data-node-id="${n.id}"]`);
-    if (!form) return;
-    if (!n.player1) setupAutocomplete(`slot-${n.id}-p1`, `slot-${n.id}-p1-list`);
-    if (!n.player2) setupAutocomplete(`slot-${n.id}-p2`, `slot-${n.id}-p2-list`);
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const errorEl = form.querySelector('.bracket-slot-error');
-      errorEl.textContent = '';
-      const resolve = (elId) => {
-        const el = document.getElementById(elId);
-        if (!el) return undefined; // slot already filled — not part of this form
-        const raw = el.value.trim();
-        if (!raw) return null;
-        const player = allPlayers.find((p) => p.name.toLowerCase() === raw.toLowerCase());
-        if (!player) throw new Error(`"${raw}" isn't a known player`);
-        return player.id;
-      };
-      try {
-        const p1Resolved = resolve(`slot-${n.id}-p1`);
-        const p2Resolved = resolve(`slot-${n.id}-p2`);
-        const body = {};
-        body.player1Id = p1Resolved !== undefined ? p1Resolved : (n.player1 ? n.player1.id : null);
-        body.player2Id = p2Resolved !== undefined ? p2Resolved : (n.player2 ? n.player2.id : null);
-        await api(`/brackets/${bracketId}/slots/${n.id}`, { method: 'PATCH', body });
-        toast('Slot updated');
-        await renderManagePanel(bracketId, slotEl);
-      } catch (err) {
-        errorEl.textContent = err.message;
-      }
-    });
+    if (form) {
+      if (!n.player1) setupAutocomplete(`slot-${n.id}-p1`, `slot-${n.id}-p1-list`);
+      if (!n.player2) setupAutocomplete(`slot-${n.id}-p2`, `slot-${n.id}-p2-list`);
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errorEl = form.querySelector('.bracket-slot-error');
+        errorEl.textContent = '';
+        const resolve = (elId) => {
+          const el = document.getElementById(elId);
+          if (!el) return undefined; // slot already filled — not part of this form
+          const raw = el.value.trim();
+          if (!raw) return null;
+          const player = allPlayers.find((p) => p.name.toLowerCase() === raw.toLowerCase());
+          if (!player) throw new Error(`"${raw}" isn't a known player`);
+          return player.id;
+        };
+        try {
+          const p1Resolved = resolve(`slot-${n.id}-p1`);
+          const p2Resolved = resolve(`slot-${n.id}-p2`);
+          const body = {};
+          body.player1Id = p1Resolved !== undefined ? p1Resolved : (n.player1 ? n.player1.id : null);
+          body.player2Id = p2Resolved !== undefined ? p2Resolved : (n.player2 ? n.player2.id : null);
+          await api(`/brackets/${bracketId}/slots/${n.id}`, { method: 'PATCH', body });
+          toast('Slot updated');
+          await renderManagePanel(bracketId, slotEl);
+        } catch (err) {
+          errorEl.textContent = err.message;
+        }
+      });
+    }
+
+    const resultForm = slotEl.querySelector(`.bracket-result-form[data-node-id="${n.id}"]`);
+    if (resultForm) {
+      resultForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errorEl = resultForm.querySelector('.bracket-result-error');
+        errorEl.textContent = '';
+        const picked = resultForm.querySelector(`input[name="winner-${n.id}"]:checked`);
+        if (!picked) {
+          errorEl.textContent = 'Pick a winner';
+          return;
+        }
+        const score = document.getElementById(`result-${n.id}-score`).value.trim();
+        try {
+          await api(`/brackets/${bracketId}/nodes/${n.id}/result`, {
+            method: 'PATCH',
+            body: { winnerId: Number(picked.value), score: score || undefined },
+          });
+          toast('Result recorded');
+          await renderManagePanel(bracketId, slotEl);
+        } catch (err) {
+          errorEl.textContent = err.message;
+        }
+      });
+    }
   });
 }
 

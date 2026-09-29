@@ -38,6 +38,12 @@ function serializeNodeMatch(matchId) {
 }
 
 function serializeNode(node) {
+  const match = serializeNodeMatch(node.match_id);
+  // A node is "decided" by exactly one of two sources — a real match's own
+  // winner_id (the live case), or manual_winner_id (see recordManualResult
+  // in bracketEngine.js — a past/historical bracket, or a one-off manual
+  // override). winnerId/scoreSummary below fold whichever applies into one
+  // shape so bracket.js doesn't need to know which source it came from.
   return {
     id: node.id,
     round: node.round,
@@ -47,7 +53,10 @@ function serializeNode(node) {
     player1: serializePlayer(node.player1_id ? db.prepare('SELECT * FROM players WHERE id = ?').get(node.player1_id) : null),
     player2: serializePlayer(node.player2_id ? db.prepare('SELECT * FROM players WHERE id = ?').get(node.player2_id) : null),
     isBye: !!node.is_bye,
-    match: serializeNodeMatch(node.match_id),
+    match,
+    winnerId: match ? match.winnerId : node.manual_winner_id,
+    scoreSummary: match ? match.scoreSummary : node.manual_score,
+    isManualResult: !match && !!node.manual_winner_id,
     nextBracketMatchId: node.next_bracket_match_id,
     nextSlot: node.next_slot,
   };
@@ -62,6 +71,7 @@ function serializeBracket(bracketId) {
     format: tree.bracket.format,
     formatLabel: engine.FORMATS[tree.bracket.format] ? engine.FORMATS[tree.bracket.format].label : tree.bracket.format,
     size: tree.bracket.size,
+    autoCreateMatches: !!tree.bracket.auto_create_matches,
     rounds: bracketEngine.roundCount(tree.bracket.size),
     createdAt: tree.bracket.created_at,
     nodes: tree.nodes.map(serializeNode),
@@ -74,7 +84,7 @@ function serializeBracket(bracketId) {
 router.get('/', auth.requireAdmin, (req, res) => {
   const rows = db.prepare('SELECT * FROM brackets ORDER BY id DESC').all();
   res.json(rows.map((r) => ({
-    id: r.id, name: r.name, format: r.format, size: r.size, createdAt: r.created_at,
+    id: r.id, name: r.name, format: r.format, size: r.size, autoCreateMatches: !!r.auto_create_matches, createdAt: r.created_at,
   })));
 });
 
@@ -90,9 +100,14 @@ router.get('/:id', (req, res) => {
 // from the count) or a bare `size` (manual — an empty tree the admin fills
 // in slot by slot afterwards via PATCH .../slots/:nodeId). Exactly one of
 // the two is expected; entries wins if both are somehow sent.
+// autoCreateMatches (default true) — false for a past/historical bracket:
+// slots still fill in exactly the same way, but no `matches` row gets
+// created for any of them, and results are entered directly via PATCH
+// .../nodes/:nodeId/result instead of by playing/scoring a real match.
 router.post('/', auth.requireAdmin, (req, res) => {
   const name = (req.body.name || '').trim();
   const format = req.body.format;
+  const autoCreateMatches = req.body.autoCreateMatches !== false;
   if (!name) return res.status(400).json({ error: 'Name is required' });
   if (!engine.FORMATS[format]) return res.status(400).json({ error: 'Invalid match format' });
 
@@ -117,7 +132,9 @@ router.post('/', auth.requireAdmin, (req, res) => {
       playerIds.add(playerId);
     }
     const entries = rawEntries.map((e) => ({ playerId: Number(e.playerId), seed: Number(e.seed) }));
-    const bracketId = bracketEngine.createBracket({ name, format, entries });
+    const bracketId = bracketEngine.createBracket({
+      name, format, entries, autoCreateMatches,
+    });
     return res.status(201).json(serializeBracket(bracketId));
   }
 
@@ -126,7 +143,7 @@ router.post('/', auth.requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Give either a list of seeded players, or a draw size (2-256) for a manual draw' });
   }
   const bracketId = bracketEngine.createBracket({
-    name, format, entries: null, size,
+    name, format, entries: null, size, autoCreateMatches,
   });
   res.status(201).json(serializeBracket(bracketId));
 });
@@ -170,6 +187,7 @@ router.patch('/:id/slots/:nodeId', auth.requireAdmin, (req, res) => {
   const node = db.prepare('SELECT * FROM bracket_matches WHERE id = ? AND bracket_id = ?').get(nodeId, bracketId);
   if (!node) return res.status(404).json({ error: 'Slot not found' });
   if (node.match_id) return res.status(400).json({ error: 'This slot already has a match — edit the match itself instead' });
+  if (node.manual_winner_id) return res.status(400).json({ error: 'This slot already has a result recorded' });
 
   const resolve = (raw) => {
     if (raw === null || raw === undefined) return null;
@@ -186,6 +204,31 @@ router.patch('/:id/slots/:nodeId', auth.requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Both slots have the same player' });
   }
   bracketEngine.setSlotPlayers(nodeId, player1Id, player2Id);
+  res.json(serializeBracket(bracketId));
+});
+
+// Records a node's result directly — no real match involved. For a
+// past/historical bracket (autoCreateMatches off at creation), or to patch
+// a one-off node on a live bracket that never got a match. Only valid once
+// both players are seated and only before any real match exists for this
+// node (if one does, the result belongs on the match itself, via the
+// normal finish/manual-result endpoints — which will advance the bracket
+// through the usual live hook instead).
+router.patch('/:id/nodes/:nodeId/result', auth.requireAdmin, (req, res) => {
+  const bracketId = Number(req.params.id);
+  const nodeId = Number(req.params.nodeId);
+  const node = db.prepare('SELECT * FROM bracket_matches WHERE id = ? AND bracket_id = ?').get(nodeId, bracketId);
+  if (!node) return res.status(404).json({ error: 'Slot not found' });
+  if (node.match_id) return res.status(400).json({ error: 'This slot has a real match — enter the result on the match itself' });
+  if (node.manual_winner_id) return res.status(400).json({ error: 'This slot already has a result recorded' });
+  if (!node.player1_id || !node.player2_id) return res.status(400).json({ error: 'Both players need to be set before a result can be recorded' });
+
+  const winnerId = Number(req.body.winnerId);
+  if (![node.player1_id, node.player2_id].includes(winnerId)) {
+    return res.status(400).json({ error: 'winnerId must be one of this slot\'s two players' });
+  }
+  const score = typeof req.body.score === 'string' ? req.body.score.trim().slice(0, 100) : null;
+  bracketEngine.recordManualResult(nodeId, winnerId, score || null);
   res.json(serializeBracket(bracketId));
 });
 

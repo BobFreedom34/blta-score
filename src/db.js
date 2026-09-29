@@ -1101,4 +1101,31 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_bracket_matches_match_id ON bracket_matches(match_id);
 `);
 
+// Lets a bracket record a past/historical draw where the individual
+// matches were never actually played inside this app — set once at
+// creation (see routes/brackets.js), off by default is wrong (most
+// brackets ARE live), so this defaults ON and an admin unchecks it for a
+// "just enter the results" historical draw. When 0, bracketEngine's
+// maybeCreateMatch becomes a no-op: a slot's two players get filled in
+// exactly the same way, but no `matches` row is created for it, and the
+// winner has to be set directly (see manual_winner_id below) instead of
+// by finishing a real match.
+if (!db.prepare('PRAGMA table_info(brackets)').all().some((c) => c.name === 'auto_create_matches')) {
+  db.exec('ALTER TABLE brackets ADD COLUMN auto_create_matches INTEGER NOT NULL DEFAULT 1');
+}
+
+// A node's result can come from exactly one of two places: a real match
+// (match_id, winner read from matches.winner_id — the normal, live case)
+// or here, set directly by an admin via PATCH .../nodes/:id/result when
+// the bracket has auto_create_matches off. manual_score is a free-text
+// display string ("6-2, 6-4") purely for the public page — never parsed,
+// unlike a real match's own set-by-set state.
+const bracketMatchColumns = db.prepare('PRAGMA table_info(bracket_matches)').all().map((c) => c.name);
+if (!bracketMatchColumns.includes('manual_winner_id')) {
+  db.exec('ALTER TABLE bracket_matches ADD COLUMN manual_winner_id INTEGER REFERENCES players(id)');
+}
+if (!bracketMatchColumns.includes('manual_score')) {
+  db.exec('ALTER TABLE bracket_matches ADD COLUMN manual_score TEXT');
+}
+
 module.exports = db;

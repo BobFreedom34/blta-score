@@ -10,7 +10,10 @@ const bracketId = window.location.pathname.split('/').filter(Boolean).pop();
 function slotHtml(node, which) {
   const player = which === 1 ? node.player1 : node.player2;
   const seed = which === 1 ? node.seed1 : node.seed2;
-  const isWinner = node.match && node.match.winnerId && player && node.match.winnerId === player.id;
+  // node.winnerId already folds together a real match's winner_id and a
+  // historical/manual result's own winner (see serializeNode in
+  // routes/brackets.js) — this doesn't need to know which one it is.
+  const isWinner = node.winnerId && player && node.winnerId === player.id;
   // playerNameLink (common.js) — a clickable <span> with its own
   // stopPropagation, not a real <a> — because the whole match card below
   // is ALSO clickable (to the match itself); a real <a> nested inside
@@ -28,6 +31,7 @@ function slotHtml(node, which) {
 
 function matchMetaHtml(node) {
   if (node.isBye) return `<div class="bracket-match-meta">Bye</div>`;
+  if (node.isManualResult) return `<div class="bracket-match-meta">${escapeHtml(node.scoreSummary || 'Result recorded')}</div>`;
   if (!node.match) return '';
   const m = node.match;
   if (m.status === 'LIVE') return `<div class="bracket-match-meta" style="color:var(--orange)">● Live</div>`;
@@ -55,7 +59,8 @@ function render(data) {
   document.getElementById('bracket-title').textContent = data.name;
 
   const finalNode = data.nodes.find((n) => n.round === data.rounds);
-  const championId = finalNode && finalNode.match && finalNode.match.status === 'FINISHED' ? finalNode.match.winnerId : null;
+  const finalDecided = finalNode && ((finalNode.match && finalNode.match.status === 'FINISHED') || finalNode.isManualResult);
+  const championId = finalDecided ? finalNode.winnerId : null;
   const championPlayer = finalNode && championId
     ? [finalNode.player1, finalNode.player2].find((p) => p && p.id === championId)
     : (finalNode && finalNode.isBye ? (finalNode.player1 || finalNode.player2) : null);

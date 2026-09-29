@@ -81,6 +81,10 @@ function buildEmptyTree(bracketId, size) {
 function maybeCreateMatch(node) {
   if (node.match_id || !node.player1_id || !node.player2_id) return node;
   const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(node.bracket_id);
+  // A past/historical bracket (see routes/brackets.js's autoCreateMatches
+  // option) never gets real matches at all — the admin records each
+  // node's winner directly instead, via recordManualResult below.
+  if (!bracket.auto_create_matches) return node;
   const state = engine.initState(bracket.format);
   const info = db.prepare(`
     INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, notes)
@@ -162,14 +166,19 @@ function applySeeding(bracketId, entries, size) {
 // "auto-generate" admin flow), the draw size is derived from the entrant
 // count and round 1 is seeded immediately. Without entries (the "manual"
 // flow), `size` is used directly — an empty tree the admin fills in one
-// slot at a time afterwards via setSlotPlayers below.
+// slot at a time afterwards via setSlotPlayers below. autoCreateMatches
+// (default true) is stored on the bracket itself and read back by
+// maybeCreateMatch on every node it ever touches — false is for a
+// past/historical draw where the games already happened outside this app,
+// so nothing here should try to create a live, scoreable match for them.
 function createBracket({
-  name, format, entries, size,
+  name, format, entries, size, autoCreateMatches,
 }) {
   const drawSize = entries && entries.length > 0
     ? nextPowerOfTwo(entries.length)
     : nextPowerOfTwo(Math.max(size || 2, 2));
-  const info = db.prepare('INSERT INTO brackets (name, format, size) VALUES (?, ?, ?)').run(name, format, drawSize);
+  const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches) VALUES (?, ?, ?, ?)')
+    .run(name, format, drawSize, autoCreateMatches === false ? 0 : 1);
   const bracketId = info.lastInsertRowid;
   buildEmptyTree(bracketId, drawSize);
   if (entries && entries.length > 0) applySeeding(bracketId, entries, drawSize);
@@ -197,6 +206,26 @@ function setSlotPlayers(nodeId, player1Id, player2Id) {
   return node;
 }
 
+// Directly decides a node's winner without ever creating or requiring a
+// real match — for a past/historical bracket (auto_create_matches off),
+// or to patch a one-off node on an otherwise live bracket that never got
+// a match for some reason. `score` is a free-text display string ("6-2,
+// 6-4"), never parsed — this is display-only, unlike a real match's own
+// set-by-set state. Same advancement as a live match finishing: the
+// winner is written into the next round and, if that fills it, either a
+// match gets created there too (if this bracket auto-creates) or it's
+// left for another manual result.
+function recordManualResult(nodeId, winnerId, score) {
+  db.prepare(`
+    UPDATE bracket_matches
+    SET manual_winner_id = ?, manual_score = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE id = ?
+  `).run(winnerId, score || null, nodeId);
+  const node = db.prepare('SELECT * FROM bracket_matches WHERE id = ?').get(nodeId);
+  advanceWinner(node, winnerId);
+  return node;
+}
+
 // The live hook's entry point (called from routes/matches.js once a match
 // is confirmed FINISHED with a winner) — no-op if this match isn't part of
 // any bracket at all, which is the common case for every ordinary match.
@@ -221,6 +250,7 @@ module.exports = {
   createBracket,
   applySeeding,
   setSlotPlayers,
+  recordManualResult,
   advanceWinner,
   syncBracketIfFinished,
   getBracketTree,
