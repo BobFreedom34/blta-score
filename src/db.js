@@ -1046,4 +1046,59 @@ db.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_courtiq_rating_history_unique ON courtiq_rating_history(player_id, match_id);
 `);
 
+// A standalone single-elimination playoff draw ("Pavúk") — a freestanding
+// named tournament (e.g. "Summer Rally Series 2026 — Elite"), not tied to
+// the league category enum matches.category otherwise validates against.
+// format is applied to every match this bracket generates (see
+// bracketEngine.js); size is the draw size AFTER rounding the entry count
+// up to the next power of two (byes fill the gap) — stored so the admin UI
+// and public display both know the tree shape without recomputing it from
+// bracket_matches every time.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS brackets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    format TEXT NOT NULL DEFAULT 'BO3_STB',
+    size INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+
+// One row per node in the single-elimination tree — every pairing, every
+// round, including the not-yet-known later rounds (created empty up front
+// so next_bracket_match_id can point at a real row from the very start).
+// round is 1-based (1 = first round); position is 0-based within that
+// round. seed1/seed2 are only ever set on round 1 (from the seeding
+// algorithm) and exist purely for display ("(3)" next to a name) — winner
+// advancement itself only cares about player1_id/player2_id. match_id is
+// NULL until both of a node's players are known (see bracketEngine.js's
+// maybeCreateMatch) — a bracket slot doesn't need a real scoreable match
+// to exist before then. next_bracket_match_id/next_slot is where THIS
+// node's eventual winner gets written (NULL on the final). is_bye means
+// exactly one of player1_id/player2_id is set and the other slot was never
+// going to be filled (not enough real entrants for a full power-of-two
+// draw) — that lone player advances immediately, with no match played.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS bracket_matches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bracket_id INTEGER NOT NULL REFERENCES brackets(id),
+    round INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    seed1 INTEGER,
+    seed2 INTEGER,
+    player1_id INTEGER REFERENCES players(id),
+    player2_id INTEGER REFERENCES players(id),
+    is_bye INTEGER NOT NULL DEFAULT 0,
+    match_id INTEGER REFERENCES matches(id),
+    next_bracket_match_id INTEGER REFERENCES bracket_matches(id),
+    next_slot INTEGER,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_bracket_matches_bracket ON bracket_matches(bracket_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_bracket_matches_unique_slot ON bracket_matches(bracket_id, round, position);
+  CREATE INDEX IF NOT EXISTS idx_bracket_matches_match_id ON bracket_matches(match_id);
+`);
+
 module.exports = db;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tennis SCORE — Backend</title>
+<title>Tennis SCORE — Manage brackets</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" href="/favicon.png">
@@ -24,22 +24,18 @@
 
 <div class="container">
   <h1 style="margin-top:22px">Backend</h1>
-  <!-- Section nav for the whole admin backend — reuses the site's existing
-       .tabs/.tab pill component (same one the matches/player-stats tabs
-       use) rather than a new sidebar pattern, so it's already responsive
-       and visually consistent. Hidden until common.js's admin check
-       confirms this visitor is actually an admin (same reveal-on-admin
-       pattern the old scattered footer links used) — a logged-out visitor
-       just sees the login form below, nothing else. -->
   <div class="tabs admin-tabs" style="display:none">
-    <a href="/admin" class="tab active">Overview</a>
+    <a href="/admin" class="tab">Overview</a>
     <a href="/header-admin" class="tab">Menu</a>
     <a href="/badges-admin" class="tab">Badges</a>
     <a href="/players" class="tab">Players</a>
-    <a href="/bracket-admin" class="tab">Brackets</a>
+    <a href="/bracket-admin" class="tab active">Brackets</a>
     <a href="/login-history" class="tab">Login History</a>
   </div>
-  <div id="admin-root" class="card" style="max-width:420px">Loading…</div>
+  <h2 style="margin:18px 0 4px">Playoff brackets</h2>
+  <p style="color:var(--gray-dim)">Freestanding single-elimination draws — add players manually or auto-generate from seeds. Once a slot has two players, a normal match is created for it automatically; submitting that match's result advances the winner into the next round.</p>
+
+  <div id="bracket-admin-root">Loading…</div>
 </div>
 
 <footer class="site-footer">
@@ -53,6 +49,6 @@
 
 <script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
-<script src="/js/admin.js"></script>
+<script src="/js/bracket-admin.js"></script>
 </body>
 </html>

@@ -295,6 +295,7 @@ const TRANSLATIONS = {
     'common.loading': 'Načítavam…',
 
     'page.rankingsTitle': 'Tennis SCORE — Rebríček',
+    'page.bracketTitle': 'Tennis SCORE — Pavúk',
     'rankings.heading': 'Rebríček',
     'rankings.none': 'Zatiaľ žiadne poradie.',
     'rankings.playerCol': 'Hráč',
@@ -867,6 +868,7 @@ const TRANSLATIONS = {
     'common.loading': 'Loading…',
 
     'page.rankingsTitle': 'Tennis SCORE — Rankings',
+    'page.bracketTitle': 'Tennis SCORE — Bracket',
     'rankings.heading': 'Rankings',
     'rankings.none': 'No standings yet.',
     'rankings.playerCol': 'Player',

@@ -22,6 +22,7 @@ const availabilityRouter = require('./src/routes/availability');
 const refereeRouter = require('./src/routes/referee');
 const headerItemsRouter = require('./src/routes/headerItems');
 const courtIQRouter = require('./src/routes/courtiq');
+const bracketsRouter = require('./src/routes/brackets');
 
 const app = express();
 const server = http.createServer(app);
@@ -59,6 +60,7 @@ app.use('/api/availability', availabilityRouter);
 app.use('/api/referee', refereeRouter);
 app.use('/api/header-items', headerItemsRouter);
 app.use('/api/courtiq', courtIQRouter);
+app.use('/api/brackets', bracketsRouter);
 
 // Pretty routes -> static HTML pages (the page JS reads the share token from the URL).
 const matchTemplate = fs.readFileSync(path.join(PUBLIC_DIR, 'match.html'), 'utf8');
@@ -112,10 +114,12 @@ app.get('/match/:token', (req, res) => {
   res.send(matchTemplate.replace(MATCH_TITLE_RE, metaTags));
 });
 app.get('/player/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'player.html')));
+app.get('/bracket/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'bracket.html')));
 app.get('/embed/match/:token', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-match.html')));
 app.get('/embed/live', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-live.html')));
 app.get('/embed/compact', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-compact.html')));
 app.get('/embed/rankings', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-rankings.html')));
+app.get('/embed/bracket/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-bracket.html')));
 app.get('/compact', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'compact.html')));
 app.get('/compactblta', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'compactblta.html')));
 

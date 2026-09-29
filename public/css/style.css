@@ -2506,3 +2506,48 @@ a.rank-name:hover { text-decoration: underline; }
 #pick-slot-grid-wrap .avail-cell.proposed:hover { background: #ffe8dc; }
 #pick-slot-grid-wrap .avail-cell.proposed.selected { background: var(--orange); border-color: var(--orange-dark); }
 #pick-slot-grid-wrap .avail-cell.proposed.selected:hover { background: var(--orange-dark); }
+
+/* ---------- Playoff bracket ---------- */
+/* Round columns placed with explicit grid-row start/span (computed in
+   bracket.js from each node's round+position — see the CSS Grid math
+   there) rather than plain flex spacing: a later round's match needs to
+   sit exactly centered between the two earlier matches that feed into
+   it, and a fixed row-unit grid is what makes that line up precisely
+   without measuring anything in JS. */
+.bracket-wrap { overflow-x: auto; padding: 20px; }
+.bracket-grid { display: grid; column-gap: 24px; min-width: max-content; }
+.bracket-col-header {
+  grid-row: 1;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--orange);
+  text-align: center;
+  padding-bottom: 10px;
+}
+/* min-width: 0 on every level down to .bracket-slot-name — a flex/grid
+   item's default min-width is auto (= its content's intrinsic width), which
+   silently defeats text-overflow/nowrap on anything inside unless every
+   ancestor in the chain is told it's allowed to shrink below that. */
+.bracket-node { display: flex; align-items: center; padding: 4px 0; min-width: 0; }
+.bracket-match-card {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--white);
+}
+.bracket-match-card-clickable { cursor: pointer; }
+.bracket-match-card-clickable:hover { background: rgba(255, 255, 255, 0.12); }
+.bracket-slot { display: flex; align-items: center; padding: 2px 0; font-weight: 600; min-width: 0; }
+.bracket-slot.winner { color: var(--green-light); font-weight: 800; }
+.bracket-slot-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bracket-seed { color: var(--gray-dim); font-size: 11px; margin-right: 4px; font-weight: 400; }
+.bracket-vs-divider { border-top: 1px solid rgba(255, 255, 255, 0.15); margin: 3px 0; }
+.bracket-match-meta { font-size: 11px; color: var(--gray-dim); margin-top: 5px; }
+.bracket-champion { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.bracket-champion-name { font-weight: 800; color: var(--orange); font-size: 15px; }

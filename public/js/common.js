@@ -94,6 +94,16 @@ function setupTimeInputs() {
 }
 setupTimeInputs();
 
+// Shared by bracket.js (public draw display) and bracket-admin.js (slot
+// management) — the last three rounds of any bracket have fixed names
+// regardless of draw size; anything earlier than that just counts up.
+function bracketRoundLabel(round, totalRounds) {
+  if (round === totalRounds) return 'Final';
+  if (round === totalRounds - 1) return 'Semi-finals';
+  if (round === totalRounds - 2) return 'Quarter-finals';
+  return `Round ${round}`;
+}
+
 // ---------- Shared match-creation form pieces ----------
 // Used by new-match.js (pick one fixed date) and by match.js's
 // edit-proposal/counter-propose modals (propose several times/venues

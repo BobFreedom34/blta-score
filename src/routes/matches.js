@@ -11,6 +11,7 @@ const {
 } = require('../auth');
 const badgeEngine = require('../badgeEngine');
 const courtIQ = require('../courtIQEngine');
+const bracketEngine = require('../bracketEngine');
 const { pushResultToSportsPress, clearResultFromSportsPress } = require('../sportspressSync');
 const { pushRankingPoints, reverseRankingPoints } = require('../rankingPointsSync');
 
@@ -1556,6 +1557,7 @@ router.post('/:token/score', requireLoggedInOrReferee, (req, res) => {
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   syncBadgesIfFinished(updated);
   syncCourtIQIfFinished(updated);
+  bracketEngine.syncBracketIfFinished(updated);
   const payload = broadcast(req, updated);
   res.json(payload);
 
@@ -1652,6 +1654,7 @@ router.post('/:token/finish', requireLoggedInOrReferee, async (req, res) => {
   let updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   syncBadgesIfFinished(updated);
   syncCourtIQIfFinished(updated);
+  bracketEngine.syncBracketIfFinished(updated);
   const payload = broadcast(req, updated);
   res.json(payload);
 
@@ -1761,6 +1764,7 @@ router.post('/:token/manual-result', requireLoggedIn, async (req, res) => {
   let updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   syncBadgesIfFinished(updated);
   syncCourtIQIfFinished(updated);
+  bracketEngine.syncBracketIfFinished(updated);
   const payload = broadcast(req, updated);
   res.json(payload);
 
