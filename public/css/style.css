@@ -2529,8 +2529,10 @@ a.rank-name:hover { text-decoration: underline; }
 /* min-width: 0 on every level down to .bracket-slot-name — a flex/grid
    item's default min-width is auto (= its content's intrinsic width), which
    silently defeats text-overflow/nowrap on anything inside unless every
-   ancestor in the chain is told it's allowed to shrink below that. */
-.bracket-node { display: flex; align-items: center; padding: 4px 0; min-width: 0; }
+   ancestor in the chain is told it's allowed to shrink below that.
+   position: relative so the connector-line pseudo-elements below (::before/
+   ::after) can position themselves against this node specifically. */
+.bracket-node { position: relative; display: flex; align-items: center; padding: 6px 0; min-width: 0; }
 .bracket-match-card {
   display: block;
   width: 100%;
@@ -2545,9 +2547,54 @@ a.rank-name:hover { text-decoration: underline; }
 .bracket-match-card-clickable:hover { background: rgba(255, 255, 255, 0.12); }
 .bracket-slot { display: flex; align-items: center; padding: 2px 0; font-weight: 600; min-width: 0; }
 .bracket-slot.winner { color: var(--green-light); font-weight: 800; }
+/* Same yellow "decided" checkmark the live scoreboard's own winner row
+   uses (see tr.winner-row td.name-cell::after) — kept alongside the
+   green text color here rather than replacing it, since green is what
+   already reads as "winner" throughout the rest of the bracket. */
+.bracket-slot.winner .bracket-slot-name::after { content: " \2713"; color: var(--yellow); }
 .bracket-slot-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bracket-seed { color: var(--gray-dim); font-size: 11px; margin-right: 4px; font-weight: 400; }
 .bracket-vs-divider { border-top: 1px solid rgba(255, 255, 255, 0.15); margin: 3px 0; }
 .bracket-match-meta { font-size: 11px; color: var(--gray-dim); margin-top: 5px; }
 .bracket-champion { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+
+/* Connector lines between rounds — same grey as .bracket-vs-divider
+   above, so the "line between the names" and "line between the matches"
+   read as one consistent visual language. Each non-final node draws an
+   outgoing elbow (::after) bending toward its sibling's shared parent —
+   down for the top/even child, up for the bottom/odd one — using
+   --connector-len (set inline per node in bracket.js: half that node's
+   own row-span in pixels, which is exactly the distance from its center
+   to its parent's, by the tree's own math). Each non-round-1 node draws
+   a short incoming stub (::before) the same 12px (half the column gap)
+   the elbow travels horizontally, so the two always meet flush in the
+   middle of the gap with no separate connecting element needed. */
+.bracket-node--incoming::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+.bracket-node--top::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: 12px;
+  height: var(--connector-len);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+.bracket-node--bottom::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: calc(50% - var(--connector-len));
+  width: 12px;
+  height: var(--connector-len);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
 .bracket-champion-name { font-weight: 800; color: var(--orange); font-size: 15px; }

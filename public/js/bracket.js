@@ -7,6 +7,15 @@
 // markup, so the wiring below is naturally a no-op there.
 const bracketId = window.location.pathname.split('/').filter(Boolean).pop();
 
+// Pixel height of one "row unit" in the grid (see render()'s
+// grid-template-rows) — a round-1 node spans 2 of these, round 2 spans 4,
+// and so on (span = 2^round). Sized to comfortably fit a match card's
+// real content (measured ~81px at the old 36px/unit, which only gave
+// round 1 72px and made its cards visibly collide) rather than the
+// tightest round-1 case, so every round gets the same breathing room
+// round 2 always had.
+const ROW_HEIGHT = 50;
+
 function slotHtml(node, which) {
   const player = which === 1 ? node.player1 : node.player2;
   const seed = which === 1 ? node.seed1 : node.seed2;
@@ -51,7 +60,22 @@ function nodeHtml(node) {
   // navigation instead, same trick playerNameLink itself uses.
   const clickNav = node.match ? ` onclick="window.location.href='/match/${node.match.token}'"` : '';
   const cardClass = node.match ? 'bracket-match-card bracket-match-card-clickable' : 'bracket-match-card';
-  return `<div class="bracket-node" style="grid-column:${node.round};grid-row:${node.position * (2 ** node.round) + 2} / span ${2 ** node.round}"><div class="${cardClass}"${clickNav}>${inner}</div></div>`;
+
+  // Connector lines into the next round (see the CSS for the actual
+  // drawing) — every node except the final draws one out, bending down
+  // (::after, "top" — even position) or up ("bottom" — odd position) to
+  // meet its sibling exactly at their shared parent's vertical center;
+  // every node except round 1 draws a short incoming stub (::before). The
+  // two meet in the middle of the column gap without needing a separate
+  // element, because a child's distance to its parent's center is always
+  // exactly half its own row-span — see bracketEngine's tree math.
+  const span = 2 ** node.round;
+  const connectorClasses = [];
+  if (node.nextBracketMatchId) connectorClasses.push(node.position % 2 === 0 ? 'bracket-node--top' : 'bracket-node--bottom');
+  if (node.round > 1) connectorClasses.push('bracket-node--incoming');
+  const connectorLen = (span / 2) * ROW_HEIGHT;
+
+  return `<div class="bracket-node${connectorClasses.length ? ` ${connectorClasses.join(' ')}` : ''}" style="grid-column:${node.round};grid-row:${node.position * span + 2} / span ${span};--connector-len:${connectorLen}px"><div class="${cardClass}"${clickNav}>${inner}</div></div>`;
 }
 
 function render(data) {
@@ -81,7 +105,7 @@ function render(data) {
 
   document.getElementById('bracket-root').innerHTML = `
     <div class="bracket-wrap card card-dark">
-      <div class="bracket-grid" style="grid-template-columns:repeat(${totalColumns}, minmax(180px, 1fr));grid-template-rows:auto repeat(${data.size}, 36px)">
+      <div class="bracket-grid" style="grid-template-columns:repeat(${totalColumns}, minmax(180px, 1fr));grid-template-rows:auto repeat(${data.size}, ${ROW_HEIGHT}px)">
         ${headerHtml}
         ${nodesHtml}
         ${championHtml}

@@ -228,7 +228,7 @@ function nodeStatusText(node) {
   if (node.isManualResult) {
     const winnerName = node.winnerId === (node.player1 && node.player1.id) ? p1 : p2;
     const scoreText = node.scoreSummary ? ` — ${escapeHtml(node.scoreSummary)}` : '';
-    return `${p1} vs ${p2} <span style="color:var(--green-light)">(winner: ${winnerName}${scoreText})</span>`;
+    return `${p1} vs ${p2} <span style="color:var(--green-light)">(winner: ${winnerName}${scoreText})</span> <button type="button" class="bracket-edit-result-btn" data-node-id="${node.id}" style="background:none;border:none;color:var(--orange);text-decoration:underline;cursor:pointer;font-size:12px;padding:0;margin-left:4px">Edit</button>`;
   }
   return `${p1} vs ${p2}`;
 }
@@ -267,19 +267,52 @@ function slotAssignFormHtml(node) {
 // creation, see createFormHtml), or a one-off node on an otherwise live
 // bracket that never got a match. Picks the winner via two named buttons
 // rather than a select — one click, no submit needed to change a
-// selection first.
-function recordResultFormHtml(node) {
-  if (!node.player1 || !node.player2 || node.match || node.isManualResult || node.isBye) return '';
+// selection first. Also reused (isEdit=true) for editing an
+// already-recorded result — same fields, pre-filled with the current
+// winner/score, injected on demand when the "Edit" button next to a
+// decided node is clicked (see wireResultForm/bracket-edit-result-btn
+// below) rather than shown inline for every already-decided node.
+function recordResultFormHtml(node, isEdit) {
+  if (!node.player1 || !node.player2 || node.match || node.isBye) return '';
+  if (node.isManualResult && !isEdit) return '';
   return `
     <form class="bracket-result-form" data-node-id="${node.id}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap">
       <span style="font-size:12px;color:var(--gray-dim)">Winner:</span>
-      <label style="display:flex;align-items:center;gap:4px;font-weight:400;font-size:13px"><input type="radio" name="winner-${node.id}" value="${node.player1.id}" required>${escapeHtml(node.player1.name)}</label>
-      <label style="display:flex;align-items:center;gap:4px;font-weight:400;font-size:13px"><input type="radio" name="winner-${node.id}" value="${node.player2.id}">${escapeHtml(node.player2.name)}</label>
-      <input type="text" id="result-${node.id}-score" placeholder="Score (optional, e.g. 6-2, 6-4)" style="width:190px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
-      <button type="submit" class="btn btn-sm btn-primary">Record result</button>
+      <label style="display:flex;align-items:center;gap:4px;font-weight:400;font-size:13px"><input type="radio" name="winner-${node.id}" value="${node.player1.id}" ${node.winnerId === node.player1.id ? 'checked' : ''} required>${escapeHtml(node.player1.name)}</label>
+      <label style="display:flex;align-items:center;gap:4px;font-weight:400;font-size:13px"><input type="radio" name="winner-${node.id}" value="${node.player2.id}" ${node.winnerId === node.player2.id ? 'checked' : ''}>${escapeHtml(node.player2.name)}</label>
+      <input type="text" id="result-${node.id}-score" value="${escapeHtml(node.scoreSummary || '')}" placeholder="Score (optional, e.g. 6-2, 6-4)" style="width:190px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+      <button type="submit" class="btn btn-sm btn-primary">${isEdit ? 'Update result' : 'Record result'}</button>
+      ${isEdit ? '<button type="button" class="btn btn-sm btn-outline" data-action="cancel-edit-result">Cancel</button>' : ''}
       <span class="bracket-result-error" style="color:var(--danger);font-weight:600;font-size:12px"></span>
     </form>
   `;
+}
+
+// Wires a .bracket-result-form's submit — shared by the always-present
+// "record result" form and an "edit result" form injected on demand,
+// since both PATCH the exact same endpoint with the exact same body.
+function wireResultForm(form, bracketId, nodeId, slotEl) {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = form.querySelector('.bracket-result-error');
+    errorEl.textContent = '';
+    const picked = form.querySelector(`input[name="winner-${nodeId}"]:checked`);
+    if (!picked) {
+      errorEl.textContent = 'Pick a winner';
+      return;
+    }
+    const score = document.getElementById(`result-${nodeId}-score`).value.trim();
+    try {
+      await api(`/brackets/${bracketId}/nodes/${nodeId}/result`, {
+        method: 'PATCH',
+        body: { winnerId: Number(picked.value), score: score || undefined },
+      });
+      toast('Result recorded');
+      await renderManagePanel(bracketId, slotEl);
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
+  });
 }
 
 async function renderManagePanel(bracketId, slotEl) {
@@ -302,6 +335,7 @@ async function renderManagePanel(bracketId, slotEl) {
               <div>${n.seed1 ? `<span style="color:var(--gray-dim)">(${n.seed1})</span> ` : ''}${nodeStatusText(n)}${n.seed2 ? ` <span style="color:var(--gray-dim)">(${n.seed2})</span>` : ''}</div>
               ${slotAssignFormHtml(n)}
               ${recordResultFormHtml(n)}
+              <div class="bracket-edit-result-slot" data-edit-id="${n.id}"></div>
             </div>
           `).join('')}
         </div>
@@ -343,27 +377,16 @@ async function renderManagePanel(bracketId, slotEl) {
     }
 
     const resultForm = slotEl.querySelector(`.bracket-result-form[data-node-id="${n.id}"]`);
-    if (resultForm) {
-      resultForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const errorEl = resultForm.querySelector('.bracket-result-error');
-        errorEl.textContent = '';
-        const picked = resultForm.querySelector(`input[name="winner-${n.id}"]:checked`);
-        if (!picked) {
-          errorEl.textContent = 'Pick a winner';
-          return;
-        }
-        const score = document.getElementById(`result-${n.id}-score`).value.trim();
-        try {
-          await api(`/brackets/${bracketId}/nodes/${n.id}/result`, {
-            method: 'PATCH',
-            body: { winnerId: Number(picked.value), score: score || undefined },
-          });
-          toast('Result recorded');
-          await renderManagePanel(bracketId, slotEl);
-        } catch (err) {
-          errorEl.textContent = err.message;
-        }
+    if (resultForm) wireResultForm(resultForm, bracketId, n.id, slotEl);
+
+    const editBtn = slotEl.querySelector(`.bracket-edit-result-btn[data-node-id="${n.id}"]`);
+    if (editBtn) {
+      editBtn.addEventListener('click', () => {
+        const editSlot = slotEl.querySelector(`.bracket-edit-result-slot[data-edit-id="${n.id}"]`);
+        editSlot.innerHTML = recordResultFormHtml(n, true);
+        const editForm = editSlot.querySelector('.bracket-result-form');
+        wireResultForm(editForm, bracketId, n.id, slotEl);
+        editForm.querySelector('[data-action="cancel-edit-result"]').addEventListener('click', () => { editSlot.innerHTML = ''; });
       });
     }
   });
