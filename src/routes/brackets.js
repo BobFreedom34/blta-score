@@ -12,6 +12,11 @@ const bracketEngine = require('../bracketEngine');
 
 const router = express.Router();
 
+// Same list matches.js validates category against — duplicated locally
+// rather than imported since matches.js doesn't export it either (each
+// route file just keeps its own copy, matching the existing convention).
+const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE', 'FRIENDLY', 'VIP_CUP', 'ATA_TENNIS', 'OTHER'];
+
 function serializePlayer(player) {
   if (!player) return null;
   const stripped = auth.stripPrivateFields(player, {});
@@ -70,6 +75,7 @@ function serializeBracket(bracketId) {
     name: tree.bracket.name,
     format: tree.bracket.format,
     formatLabel: engine.FORMATS[tree.bracket.format] ? engine.FORMATS[tree.bracket.format].label : tree.bracket.format,
+    category: tree.bracket.category || null,
     size: tree.bracket.size,
     autoCreateMatches: !!tree.bracket.auto_create_matches,
     rounds: bracketEngine.roundCount(tree.bracket.size),
@@ -84,7 +90,13 @@ function serializeBracket(bracketId) {
 router.get('/', auth.requireAdmin, (req, res) => {
   const rows = db.prepare('SELECT * FROM brackets ORDER BY id DESC').all();
   res.json(rows.map((r) => ({
-    id: r.id, name: r.name, format: r.format, size: r.size, autoCreateMatches: !!r.auto_create_matches, createdAt: r.created_at,
+    id: r.id,
+    name: r.name,
+    format: r.format,
+    category: r.category || null,
+    size: r.size,
+    autoCreateMatches: !!r.auto_create_matches,
+    createdAt: r.created_at,
   })));
 });
 
@@ -108,8 +120,14 @@ router.post('/', auth.requireAdmin, (req, res) => {
   const name = (req.body.name || '').trim();
   const format = req.body.format;
   const autoCreateMatches = req.body.autoCreateMatches !== false;
+  // Optional — a bracket stays freestanding (every generated match is
+  // OTHER, see bracketEngine.js's maybeCreateMatch) unless tied to one of
+  // the real BLTA categories here.
+  const rawCategory = typeof req.body.category === 'string' ? req.body.category.trim() : '';
+  const category = rawCategory || null;
   if (!name) return res.status(400).json({ error: 'Name is required' });
   if (!engine.FORMATS[format]) return res.status(400).json({ error: 'Invalid match format' });
+  if (category && !CATEGORIES.includes(category)) return res.status(400).json({ error: 'Invalid category' });
 
   const rawEntries = Array.isArray(req.body.entries) ? req.body.entries : null;
   if (rawEntries) {
@@ -133,7 +151,7 @@ router.post('/', auth.requireAdmin, (req, res) => {
     }
     const entries = rawEntries.map((e) => ({ playerId: Number(e.playerId), seed: Number(e.seed) }));
     const bracketId = bracketEngine.createBracket({
-      name, format, entries, autoCreateMatches,
+      name, format, entries, autoCreateMatches, category,
     });
     return res.status(201).json(serializeBracket(bracketId));
   }
@@ -143,7 +161,7 @@ router.post('/', auth.requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Give either a list of seeded players, or a draw size (2-256) for a manual draw' });
   }
   const bracketId = bracketEngine.createBracket({
-    name, format, entries: null, size, autoCreateMatches,
+    name, format, entries: null, size, autoCreateMatches, category,
   });
   res.status(201).json(serializeBracket(bracketId));
 });

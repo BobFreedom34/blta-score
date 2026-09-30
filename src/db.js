@@ -1114,6 +1114,16 @@ if (!db.prepare('PRAGMA table_info(brackets)').all().some((c) => c.name === 'aut
   db.exec('ALTER TABLE brackets ADD COLUMN auto_create_matches INTEGER NOT NULL DEFAULT 1');
 }
 
+// NULL (the default) keeps a bracket fully freestanding — every match it
+// generates is category OTHER, same as before this column existed. Set to
+// one of the real BLTA categories instead so a bracket tied to an actual
+// league cycle (e.g. "ELITE - Summer Rally Series") shows up correctly in
+// category filters/player history rather than being lumped into OTHER —
+// see bracketEngine.js's maybeCreateMatch, the only place this is read.
+if (!db.prepare('PRAGMA table_info(brackets)').all().some((c) => c.name === 'category')) {
+  db.exec('ALTER TABLE brackets ADD COLUMN category TEXT');
+}
+
 // A node's result can come from exactly one of two places: a real match
 // (match_id, winner read from matches.winner_id — the normal, live case)
 // or here, set directly by an admin via PATCH .../nodes/:id/result when

@@ -53,6 +53,19 @@ function createFormHtml() {
           <div id="bracket-format-options"></div>
         </div>
         <div class="field">
+          <label for="bracket-category">Category <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional — tags the matches this bracket creates)</span></label>
+          <select id="bracket-category" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
+            <option value="">None (freestanding)</option>
+            <option value="ELITE">BLTA ELITE</option>
+            <option value="NEXT_GEN">BLTA NEXT GEN</option>
+            <option value="NOVICE">BLTA NOVICE</option>
+            <option value="FRIENDLY">FRIENDLY</option>
+            <option value="VIP_CUP">VIP CUP</option>
+            <option value="ATA_TENNIS">ATA TENNIS</option>
+            <option value="OTHER">OTHER</option>
+          </select>
+        </div>
+        <div class="field">
           <label>How should the draw be filled?</label>
           <div style="display:flex;gap:16px;margin-top:4px">
             <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="bracket-mode" value="seeded" checked> Auto-generate from seeds</label>
@@ -84,6 +97,7 @@ function createFormHtml() {
 
 function resetCreateForm() {
   document.getElementById('bracket-name').value = '';
+  document.getElementById('bracket-category').value = '';
   document.getElementById('bracket-entries-list').innerHTML = '';
   document.getElementById('bracket-auto-create-matches').checked = true;
   entryRowCounter = 0;
@@ -114,9 +128,11 @@ function wireCreateForm() {
     try {
       const name = document.getElementById('bracket-name').value.trim();
       const format = document.querySelector('input[name="format"]:checked').value;
+      const category = document.getElementById('bracket-category').value;
       const seeded = document.querySelector('input[name="bracket-mode"]:checked').value === 'seeded';
       const autoCreateMatches = document.getElementById('bracket-auto-create-matches').checked;
       const body = { name, format, autoCreateMatches };
+      if (category) body.category = category;
 
       if (seeded) {
         const rows = Array.from(document.querySelectorAll('.bracket-entry-row'));
@@ -164,7 +180,7 @@ function renderList() {
       <div class="bracket-admin-row" data-id="${b.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div class="bracket-name-cell" style="flex:1;min-width:160px">
-            <div class="bracket-name-display" style="font-weight:700">${escapeHtml(b.name)}${b.autoCreateMatches === false ? ' <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">Historical</span>' : ''}</div>
+            <div class="bracket-name-display" style="font-weight:700">${escapeHtml(b.name)}${b.category ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.category)}</span>` : ''}${b.autoCreateMatches === false ? ' <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">Historical</span>' : ''}</div>
             <div style="font-size:12px;color:var(--gray)">${b.size}-draw · ${escapeHtml(formatLabel(b.format))}</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">

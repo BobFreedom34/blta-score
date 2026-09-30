@@ -73,11 +73,11 @@ function buildEmptyTree(bracketId, size) {
 // its players are known — same INSERT shape as POST /api/matches (see
 // routes/matches.js), minus the fields that only make sense for a
 // player-initiated match (proposals, created_by_player_id, etc). Category
-// is always OTHER: a bracket is a freestanding tournament, not tied to the
-// BLTA league categories that column otherwise validates against
-// elsewhere. Unscheduled (no location/date) — an admin sets those the same
-// "Set date & location" way as any other planned match, once the pairing
-// is known.
+// is the bracket's own (see routes/brackets.js's category option) if it
+// was tied to one of the real BLTA categories, or OTHER for a genuinely
+// freestanding tournament (bracket.category left unset). Unscheduled (no
+// location/date) — an admin sets those the same "Set date & location" way
+// as any other planned match, once the pairing is known.
 function maybeCreateMatch(node) {
   if (node.match_id || !node.player1_id || !node.player2_id) return node;
   const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(node.bracket_id);
@@ -88,9 +88,10 @@ function maybeCreateMatch(node) {
   const state = engine.initState(bracket.format);
   const info = db.prepare(`
     INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, notes)
-    VALUES (?, 'OTHER', ?, ?, '', NULL, ?, 'PLANNED', ?, '[]', 1, ?)
+    VALUES (?, ?, ?, ?, '', NULL, ?, 'PLANNED', ?, '[]', 1, ?)
   `).run(
     crypto.randomUUID(),
+    bracket.category || 'OTHER',
     node.player1_id,
     node.player2_id,
     bracket.format,
@@ -172,13 +173,13 @@ function applySeeding(bracketId, entries, size) {
 // past/historical draw where the games already happened outside this app,
 // so nothing here should try to create a live, scoreable match for them.
 function createBracket({
-  name, format, entries, size, autoCreateMatches,
+  name, format, entries, size, autoCreateMatches, category,
 }) {
   const drawSize = entries && entries.length > 0
     ? nextPowerOfTwo(entries.length)
     : nextPowerOfTwo(Math.max(size || 2, 2));
-  const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches) VALUES (?, ?, ?, ?)')
-    .run(name, format, drawSize, autoCreateMatches === false ? 0 : 1);
+  const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category) VALUES (?, ?, ?, ?, ?)')
+    .run(name, format, drawSize, autoCreateMatches === false ? 0 : 1, category || null);
   const bracketId = info.lastInsertRowid;
   buildEmptyTree(bracketId, drawSize);
   if (entries && entries.length > 0) applySeeding(bracketId, entries, drawSize);
