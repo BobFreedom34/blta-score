@@ -11,6 +11,21 @@ function formatLabel(key) {
   return t(`format.${key}.label`) || key;
 }
 
+const CATEGORY_OPTIONS = [
+  ['', 'None (freestanding)'],
+  ['ELITE', 'BLTA ELITE'],
+  ['NEXT_GEN', 'BLTA NEXT GEN'],
+  ['NOVICE', 'BLTA NOVICE'],
+  ['FRIENDLY', 'FRIENDLY'],
+  ['VIP_CUP', 'VIP CUP'],
+  ['ATA_TENNIS', 'ATA TENNIS'],
+  ['OTHER', 'OTHER'],
+];
+
+function categoryOptionsHtml(selected) {
+  return CATEGORY_OPTIONS.map(([value, label]) => `<option value="${value}" ${(selected || '') === value ? 'selected' : ''}>${label}</option>`).join('');
+}
+
 // ---------- Create form ----------
 
 function entryRowHtml(rowId, seedDefault) {
@@ -55,14 +70,7 @@ function createFormHtml() {
         <div class="field">
           <label for="bracket-category">Category <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional — tags the matches this bracket creates)</span></label>
           <select id="bracket-category" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
-            <option value="">None (freestanding)</option>
-            <option value="ELITE">BLTA ELITE</option>
-            <option value="NEXT_GEN">BLTA NEXT GEN</option>
-            <option value="NOVICE">BLTA NOVICE</option>
-            <option value="FRIENDLY">FRIENDLY</option>
-            <option value="VIP_CUP">VIP CUP</option>
-            <option value="ATA_TENNIS">ATA TENNIS</option>
-            <option value="OTHER">OTHER</option>
+            ${categoryOptionsHtml('')}
           </select>
         </div>
         <div class="field">
@@ -185,7 +193,7 @@ function renderList() {
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
             <a href="/bracket/${b.id}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
-            <button type="button" class="btn btn-sm btn-outline" data-action="rename">Rename</button>
+            <button type="button" class="btn btn-sm btn-outline" data-action="rename">Edit</button>
             <button type="button" class="btn btn-sm btn-outline" data-action="manage">${openManagePanels.has(b.id) ? 'Hide slots' : 'Manage slots'}</button>
             <button type="button" class="btn btn-sm btn-danger" data-action="delete">Delete</button>
           </div>
@@ -218,6 +226,9 @@ function renderList() {
       nameCell.innerHTML = `
         <form class="bracket-rename-form" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           <input type="text" class="bracket-rename-input" value="${escapeHtml(b.name)}" maxlength="120" required style="flex:1;min-width:160px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px;font-weight:700">
+          <select class="bracket-rename-category" style="padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+            ${categoryOptionsHtml(b.category)}
+          </select>
           <button type="submit" class="btn btn-sm btn-primary">Save</button>
           <button type="button" class="btn btn-sm btn-outline" data-action="cancel-rename">Cancel</button>
           <span class="bracket-rename-error" style="color:var(--danger);font-weight:600;font-size:12px;width:100%"></span>
@@ -225,6 +236,7 @@ function renderList() {
       `;
       const form = nameCell.querySelector('.bracket-rename-form');
       const input = form.querySelector('.bracket-rename-input');
+      const categorySelect = form.querySelector('.bracket-rename-category');
       input.focus();
       input.select();
       form.querySelector('[data-action="cancel-rename"]').addEventListener('click', renderList);
@@ -235,8 +247,8 @@ function renderList() {
         const name = input.value.trim();
         if (!name) { errorEl.textContent = 'Name cannot be empty'; return; }
         try {
-          await api(`/brackets/${id}`, { method: 'PATCH', body: { name } });
-          toast('Bracket renamed');
+          await api(`/brackets/${id}`, { method: 'PATCH', body: { name, category: categorySelect.value } });
+          toast('Bracket updated');
           await loadBrackets();
         } catch (err) {
           errorEl.textContent = err.message;

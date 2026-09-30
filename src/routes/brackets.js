@@ -176,6 +176,11 @@ router.patch('/:id', auth.requireAdmin, (req, res) => {
     if (!name) return res.status(400).json({ error: 'Name cannot be empty' });
     fields.name = name;
   }
+  if (Object.prototype.hasOwnProperty.call(req.body, 'category')) {
+    const rawCategory = typeof req.body.category === 'string' ? req.body.category.trim() : '';
+    if (rawCategory && !CATEGORIES.includes(rawCategory)) return res.status(400).json({ error: 'Invalid category' });
+    fields.category = rawCategory || null;
+  }
   if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Nothing to update' });
   const sets = Object.keys(fields).map((k) => `${k} = @${k}`).join(', ');
   db.prepare(`UPDATE brackets SET ${sets}, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = @id`)
