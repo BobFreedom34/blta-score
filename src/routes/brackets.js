@@ -215,13 +215,15 @@ router.patch('/:id/slots/:nodeId', auth.requireAdmin, (req, res) => {
 // itself, via the normal finish/manual-result endpoints — which will
 // advance the bracket through the usual live hook instead).
 //
-// Editing an already-recorded result is allowed, but only while the
-// winner hasn't been built on top of yet: if the next round's node is
-// itself already decided (its own match, or its own manual result), the
-// old winner here may already have gone on to win THAT node too, and
-// silently swapping this result out from under it would leave a
-// decided later round pointing at a player who's no longer even in it.
-// Clear the next round's result first in that case.
+// Editing an already-recorded result is always allowed when the winner
+// stays the same (a score correction/typo fix) — nothing downstream
+// depends on which player won, only on WHO won, so there's nothing to
+// re-propagate. It's only blocked when the winner itself is CHANGING and
+// the next round's node is already decided (its own match, or its own
+// manual result): the old winner here may already have gone on to win
+// THAT node too, and silently swapping this result out from under it
+// would leave a decided later round pointing at a player who's no longer
+// even in it. Clear the next round's result first in that case.
 router.patch('/:id/nodes/:nodeId/result', auth.requireAdmin, (req, res) => {
   const bracketId = Number(req.params.id);
   const nodeId = Number(req.params.nodeId);
@@ -229,17 +231,19 @@ router.patch('/:id/nodes/:nodeId/result', auth.requireAdmin, (req, res) => {
   if (!node) return res.status(404).json({ error: 'Slot not found' });
   if (node.match_id) return res.status(400).json({ error: 'This slot has a real match — enter the result on the match itself' });
   if (!node.player1_id || !node.player2_id) return res.status(400).json({ error: 'Both players need to be set before a result can be recorded' });
-  if (node.manual_winner_id && node.next_bracket_match_id) {
-    const nextNode = db.prepare('SELECT * FROM bracket_matches WHERE id = ?').get(node.next_bracket_match_id);
-    if (nextNode.match_id || nextNode.manual_winner_id) {
-      return res.status(400).json({ error: "Clear the next round's result first before changing this one" });
-    }
-  }
 
   const winnerId = Number(req.body.winnerId);
   if (![node.player1_id, node.player2_id].includes(winnerId)) {
     return res.status(400).json({ error: 'winnerId must be one of this slot\'s two players' });
   }
+  const winnerChanging = node.manual_winner_id && node.manual_winner_id !== winnerId;
+  if (winnerChanging && node.next_bracket_match_id) {
+    const nextNode = db.prepare('SELECT * FROM bracket_matches WHERE id = ?').get(node.next_bracket_match_id);
+    if (nextNode.match_id || nextNode.manual_winner_id) {
+      return res.status(400).json({ error: "Clear the next round's result first before changing the winner" });
+    }
+  }
+
   const score = typeof req.body.score === 'string' ? req.body.score.trim().slice(0, 100) : null;
   bracketEngine.recordManualResult(nodeId, winnerId, score || null);
   res.json(serializeBracket(bracketId));

@@ -163,12 +163,13 @@ function renderList() {
     ? brackets.map((b) => `
       <div class="bracket-admin-row" data-id="${b.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <div style="flex:1;min-width:160px">
-            <div style="font-weight:700">${escapeHtml(b.name)}${b.autoCreateMatches === false ? ' <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">Historical</span>' : ''}</div>
+          <div class="bracket-name-cell" style="flex:1;min-width:160px">
+            <div class="bracket-name-display" style="font-weight:700">${escapeHtml(b.name)}${b.autoCreateMatches === false ? ' <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">Historical</span>' : ''}</div>
             <div style="font-size:12px;color:var(--gray)">${b.size}-draw · ${escapeHtml(formatLabel(b.format))}</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
             <a href="/bracket/${b.id}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
+            <button type="button" class="btn btn-sm btn-outline" data-action="rename">Rename</button>
             <button type="button" class="btn btn-sm btn-outline" data-action="manage">${openManagePanels.has(b.id) ? 'Hide slots' : 'Manage slots'}</button>
             <button type="button" class="btn btn-sm btn-danger" data-action="delete">Delete</button>
           </div>
@@ -193,6 +194,38 @@ function renderList() {
       slot.innerHTML = '<p style="color:var(--gray-dim);margin:10px 4px">Loading…</p>';
       await renderManagePanel(id, slot);
       renderList();
+    });
+
+    rowEl.querySelector('[data-action="rename"]').addEventListener('click', () => {
+      const b = brackets.find((x) => x.id === id);
+      const nameCell = rowEl.querySelector('.bracket-name-cell');
+      nameCell.innerHTML = `
+        <form class="bracket-rename-form" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <input type="text" class="bracket-rename-input" value="${escapeHtml(b.name)}" maxlength="120" required style="flex:1;min-width:160px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px;font-weight:700">
+          <button type="submit" class="btn btn-sm btn-primary">Save</button>
+          <button type="button" class="btn btn-sm btn-outline" data-action="cancel-rename">Cancel</button>
+          <span class="bracket-rename-error" style="color:var(--danger);font-weight:600;font-size:12px;width:100%"></span>
+        </form>
+      `;
+      const form = nameCell.querySelector('.bracket-rename-form');
+      const input = form.querySelector('.bracket-rename-input');
+      input.focus();
+      input.select();
+      form.querySelector('[data-action="cancel-rename"]').addEventListener('click', renderList);
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errorEl = form.querySelector('.bracket-rename-error');
+        errorEl.textContent = '';
+        const name = input.value.trim();
+        if (!name) { errorEl.textContent = 'Name cannot be empty'; return; }
+        try {
+          await api(`/brackets/${id}`, { method: 'PATCH', body: { name } });
+          toast('Bracket renamed');
+          await loadBrackets();
+        } catch (err) {
+          errorEl.textContent = err.message;
+        }
+      });
     });
 
     rowEl.querySelector('[data-action="delete"]').addEventListener('click', async () => {
