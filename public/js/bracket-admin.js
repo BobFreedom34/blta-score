@@ -80,7 +80,7 @@ function createFormHtml() {
             <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="bracket-mode" value="manual"> Manual (empty draw)</label>
           </div>
         </div>
-        <div id="bracket-seeded-section">
+        <div id="bracket-seeded-section" style="margin-bottom:16px">
           <label style="font-weight:700;display:block;margin-bottom:6px">Players <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(seed 1 = best — byes go to the top seeds if the count isn't a power of two)</span></label>
           <div id="bracket-entries-list"></div>
           <button type="button" class="btn btn-sm btn-outline" id="add-entry-row-btn" style="margin-top:4px">+ Add player</button>
@@ -91,7 +91,7 @@ function createFormHtml() {
         </div>
         <div class="field">
           <label style="display:flex;align-items:center;gap:6px;font-weight:400">
-            <input type="checkbox" id="bracket-auto-create-matches" checked>
+            <input type="checkbox" id="bracket-auto-create-matches" checked style="width:auto;flex-shrink:0;margin:0">
             Automatically create a match for each pairing
           </label>
           <p style="font-size:12px;color:var(--gray-dim);margin:2px 0 0">Uncheck this for a past/historical bracket — the games already happened outside the app, so you'll enter each result directly instead of playing a match through it.</p>
