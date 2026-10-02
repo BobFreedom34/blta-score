@@ -46,9 +46,9 @@ function matchCardHtml(m) {
         ${categoryBadge(m.category)}
         ${statusBadge(m)}
         <div class="match-card-meta" style="margin-left:auto">
-          ${m.location ? `<span>📍 ${escapeHtml(m.location)}</span>` : ''}
-          ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>🗓 ${fmtDateShort(m.scheduledAt)}</span>`}
-          ${(m.status !== 'FINISHED' || isAdminUser) && canManageMatch(m, isAdminUser) ? `<button type="button" class="match-quick-edit-btn" data-token="${m.token}" title="${escapeHtml(t('match.editMatchBtn'))}">✏️</button>` : ''}
+          ${m.location ? `<span>${courtIcon('pin')}${escapeHtml(m.location)}</span>` : ''}
+          ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>${courtIcon('calendar')}${fmtDateShort(m.scheduledAt)}</span>`}
+          ${(m.status !== 'FINISHED' || isAdminUser) && canManageMatch(m, isAdminUser) ? `<button type="button" class="match-quick-edit-btn" data-token="${m.token}" title="${escapeHtml(t('match.editMatchBtn'))}">${courtIcon('pencil')}</button>` : ''}
         </div>
       </div>
       ${m.notes ? `<div class="match-card-notes">${escapeHtml(m.notes)}</div>` : ''}

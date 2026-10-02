@@ -480,11 +480,13 @@ const COURT_ICON_PATHS = {
   ball: '<circle cx="12" cy="12" r="10"/><path d="M5 5c3.5 3.5 3.5 10.5 0 14"/><path d="M19 5c-3.5 3.5-3.5 10.5 0 14"/>',
   layers: '<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   directions: '<polygon points="3 11 22 2 13 21 11 13 3 11"/>',
 };
 
 function courtIcon(name) {
-  return `<svg class="court-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${COURT_ICON_PATHS[name]}</svg>`;
+  return `<svg class="venue-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${COURT_ICON_PATHS[name]}</svg>`;
 }
 
 function venueHasIndoor(v) { return v.courtType === 'INDOOR' || v.courtType === 'BOTH'; }

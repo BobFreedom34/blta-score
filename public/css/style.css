@@ -2627,7 +2627,7 @@ a.rank-name:hover { text-decoration: underline; }
 @media (max-width: 640px) { .courts-grid { grid-template-columns: 1fr; } }
 .courts-empty, .court-muted { color: rgba(255, 255, 255, 0.72); padding: 14px 2px; grid-column: 1 / -1; }
 
-.court-icon { width: 18px; height: 18px; flex: 0 0 18px; }
+.venue-icon { width: 18px; height: 18px; flex: 0 0 18px; }
 .court-card {
   position: relative;
   background: #0a0a0a;
@@ -2643,15 +2643,15 @@ a.rank-name:hover { text-decoration: underline; }
 .court-card:hover { border-color: rgba(231, 78, 25, 0.7); }
 .court-card-head { display: block; padding-right: 30px; }
 .court-card-arrow { position: absolute; top: 24px; right: 24px; color: #8b8f98; display: flex; }
-.court-card-arrow .court-icon { width: 17px; height: 17px; }
+.court-card-arrow .venue-icon { width: 17px; height: 17px; }
 .court-card:hover .court-card-arrow { color: var(--orange); }
 .court-card-name { font-size: 20px; font-weight: 800; line-height: 1.2; margin: 0; letter-spacing: -0.01em; }
 .court-card-area { color: #8b8f98; font-size: 13px; margin-top: 5px; }
 .court-lines { display: flex; flex-direction: column; gap: 9px; }
 .court-line { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: #b8bcc4; line-height: 1.4; }
-.court-line .court-icon { margin-top: 1px; color: #8b8f98; }
+.court-line .venue-icon { margin-top: 1px; color: #8b8f98; }
 .court-line:hover { color: var(--orange); }
-.court-line:hover .court-icon { color: var(--orange); }
+.court-line:hover .venue-icon { color: var(--orange); }
 .court-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .court-chip {
   background: #1c1c1f;
@@ -2676,7 +2676,7 @@ a.rank-name:hover { text-decoration: underline; }
   font-size: 14px;
   transition: background 0.15s ease, transform 0.06s ease;
 }
-.court-btn .court-icon { width: 16px; height: 16px; flex-basis: 16px; }
+.court-btn .venue-icon { width: 16px; height: 16px; flex-basis: 16px; }
 .court-btn:hover { background: #2a2a2e; }
 .court-btn:active { transform: translateY(1px); }
 .court-btn-primary { background: var(--orange); color: var(--white); }
@@ -2689,7 +2689,7 @@ a.rank-name:hover { text-decoration: underline; }
 .court-title { color: var(--white); font-size: 32px; margin: 8px 0 10px; }
 .court-meta { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; color: rgba(255, 255, 255, 0.85); font-size: 14px; margin-bottom: 16px; }
 .court-meta-address { display: inline-flex; align-items: center; gap: 8px; }
-.court-meta-address .court-icon { color: #8b8f98; }
+.court-meta-address .venue-icon { color: #8b8f98; }
 a.court-meta-address:hover { color: var(--orange); }
 .court-actions-hero { margin: 0 0 18px; }
 .court-desc { color: rgba(255, 255, 255, 0.82); line-height: 1.6; max-width: 70ch; margin: 0 0 8px; }
@@ -2720,3 +2720,81 @@ a.court-meta-address:hover { color: var(--orange); }
 .court-info-label { color: #8b8f98; font-size: 12px; font-weight: 600; }
 .court-info-value { font-weight: 700; margin-top: 3px; word-break: break-word; }
 .court-info-value a:hover { color: var(--orange); }
+
+/* ---------- Match cards (dark, same look as the Courts cards) ---------- */
+/* Scoped away from the WordPress embeds (body.embed), which keep their light look. */
+body:not(.embed) .match-card {
+  --accent: var(--orange);
+  background: #0a0a0a;
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  box-shadow: none;
+  padding: 22px 22px 20px;
+  gap: 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+body:not(.embed) .match-card:hover { border-color: rgba(231, 78, 25, 0.7); box-shadow: none; }
+body:not(.embed) .match-card.status-LIVE {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 1px rgba(231, 78, 25, 0.35), 0 0 28px rgba(231, 78, 25, 0.2);
+}
+body:not(.embed) .match-card.status-LIVE:hover { box-shadow: 0 0 0 1px rgba(231, 78, 25, 0.5), 0 0 32px rgba(231, 78, 25, 0.3); }
+/* Planned with a date: green border, green glow on hover. Not yet scheduled: grey border, grey glow on hover. */
+body:not(.embed) .match-card.status-PLANNED.has-date { border-color: #34b863; }
+body:not(.embed) .match-card.status-PLANNED.has-date:hover { border-color: #34b863; box-shadow: 0 0 24px rgba(52, 184, 99, 0.4); }
+body:not(.embed) .match-card.status-PLANNED:not(.has-date) { border-color: #6f737c; }
+body:not(.embed) .match-card.status-PLANNED:not(.has-date):hover { border-color: #9ea2ab; box-shadow: 0 0 24px rgba(158, 162, 171, 0.35); }
+/* Player profile only: a decided result has a green (won) or red (lost) border, glowing on hover. */
+body:not(.embed) .match-card.result-won { border-color: #34b863; }
+body:not(.embed) .match-card.result-won:hover { border-color: #34b863; box-shadow: 0 0 24px rgba(52, 184, 99, 0.4); }
+body:not(.embed) .match-card.result-lost { border-color: #e5483a; }
+body:not(.embed) .match-card.result-lost:hover { border-color: #e5483a; box-shadow: 0 0 24px rgba(229, 72, 58, 0.4); }
+
+body:not(.embed) .match-card-top { gap: 8px 10px; }
+body:not(.embed) .match-card-meta { color: #8b8f98; font-size: 12.5px; gap: 6px 14px; }
+body:not(.embed) .match-card-meta > span { display: inline-flex; align-items: center; gap: 6px; }
+body:not(.embed) .match-card-meta .venue-icon { width: 14px; height: 14px; flex-basis: 14px; }
+body:not(.embed) .match-quick-edit-btn { display: inline-flex; color: #8b8f98; opacity: 1; }
+body:not(.embed) .match-quick-edit-btn .venue-icon { width: 15px; height: 15px; flex-basis: 15px; }
+body:not(.embed) .match-quick-edit-btn:hover { color: var(--orange); }
+body:not(.embed) .match-card-notes { color: #8b8f98; }
+
+/* Badges become tinted chips on the dark card (the solid ones vanish on black). */
+body:not(.embed) .match-card .badge { border-radius: 8px; padding: 5px 11px; font-size: 11px; }
+body:not(.embed) .match-card .badge-ELITE { background: rgba(255, 184, 2, 0.14); color: var(--yellow); }
+body:not(.embed) .match-card .badge-NEXT_GEN { background: rgba(231, 78, 25, 0.18); color: #ff8a5c; }
+body:not(.embed) .match-card .badge-NOVICE { background: rgba(62, 207, 110, 0.16); color: #5fd88a; }
+body:not(.embed) .match-card .badge-FRIENDLY { background: var(--yellow); color: var(--ink); }
+body:not(.embed) .match-card .badge-VIP_CUP { background: rgba(176, 108, 255, 0.2); color: #c9a2ff; }
+body:not(.embed) .match-card .badge-ATA_TENNIS { background: rgba(90, 140, 255, 0.18); color: #8fb2ff; }
+body:not(.embed) .match-card .badge-OTHER { background: #1c1c1f; color: #b8bcc4; }
+body:not(.embed) .match-card .badge-status { background: #1c1c1f; color: #b8bcc4; }
+body:not(.embed) .match-card .badge-status.status-LIVE { background: var(--orange); color: var(--white); }
+body:not(.embed) .match-card .badge-status.status-PLANNED-dated { background: rgba(62, 207, 110, 0.16); color: #5fd88a; }
+body:not(.embed) .match-card .badge-status.status-FINISHED { background: rgba(255, 255, 255, 0.1); color: #d6d8dd; }
+body:not(.embed) .match-card .badge-status.status-UNFINISHED { background: rgba(255, 184, 2, 0.14); color: var(--yellow); }
+
+/* Inner panels: a slightly lighter black with a hairline, not the old light grey. */
+body:not(.embed) .match-players-box,
+body:not(.embed) .match-card .scoreboard {
+  background: #141416;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 18px;
+  box-shadow: none;
+}
+body:not(.embed) .match-players-box { padding: 16px 18px; }
+body:not(.embed) .match-players .name { color: var(--white); }
+body:not(.embed) .match-players .vs { color: #8b8f98; }
+body:not(.embed) .match-players .winner { color: var(--orange); }
+body:not(.embed) .match-score { color: var(--white); }
+body:not(.embed) .match-score-format { color: #8b8f98; font-weight: 700; }
+
+body:not(.embed) .match-card .btn-outline { background: #1c1c1f; color: var(--white); border: none; border-radius: 12px; }
+body:not(.embed) .match-card .btn-outline:hover { background: #2a2a2e; box-shadow: none; }
+body:not(.embed) .match-card .availability-day-pill { background: #1c1c1f; color: #d6d8dd; }
+body:not(.embed) .match-card .overdue-warning { background: rgba(231, 78, 25, 0.12); color: #ff8a5c; }
+
+@media (max-width: 680px) {
+  body:not(.embed) .match-card { padding: 18px 16px 16px; border-radius: 20px; }
+}
