@@ -2763,8 +2763,8 @@ a.court-meta-address:hover { color: var(--orange); }
 body:not(.embed) .match-card {
   --accent: var(--orange);
   --bar: transparent;
-  --glow: 158, 162, 171;
-  --g: 0.25;
+  --glow: 128, 132, 140;
+  --g: 0.2;
   position: relative;
   overflow: hidden;
   background: #0a0a0a;
@@ -2773,9 +2773,9 @@ body:not(.embed) .match-card {
   border-radius: 24px;
   box-shadow:
     -4px 0 18px -4px rgba(var(--glow), var(--g)),
-    4px 0 18px -4px rgba(158, 162, 171, var(--g)),
-    0 -4px 18px -4px rgba(158, 162, 171, var(--g)),
-    0 4px 18px -4px rgba(158, 162, 171, var(--g));
+    4px 0 18px -4px rgba(128, 132, 140, var(--g)),
+    0 -4px 18px -4px rgba(128, 132, 140, var(--g)),
+    0 4px 18px -4px rgba(128, 132, 140, var(--g));
   padding: 22px 22px 20px;
   gap: 14px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -2783,7 +2783,7 @@ body:not(.embed) .match-card {
 /* Slim status bar on the left edge: a dimmed version of the status colour. Borders stay neutral. */
 body:not(.embed) .match-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--bar); }
 /* Every match card has the same soft grey glow on all four sides, stronger on hover; the status colour lives on the left bar only. */
-body:not(.embed) .match-card:hover { --g: 0.4; border-color: rgba(255, 255, 255, 0.8); }
+body:not(.embed) .match-card:hover { --g: 0.32; border-color: rgba(255, 255, 255, 0.8); }
 body:not(.embed) .match-card.status-LIVE { --bar: color-mix(in srgb, #e74e19 45%, #0a0a0a); }
 /* Planned with a date: green bar. Not yet scheduled: grey bar. */
 body:not(.embed) .match-card.status-PLANNED.has-date { --bar: var(--status-green); }
