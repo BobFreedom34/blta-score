@@ -2760,29 +2760,23 @@ body:not(.embed) .match-card {
   color: var(--white);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
-  box-shadow: none;
+  box-shadow: 0 0 14px rgba(158, 162, 171, 0.22);
   padding: 22px 22px 20px;
   gap: 14px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 /* Slim status bar on the left edge: a dimmed version of the status colour. Borders stay neutral. */
 body:not(.embed) .match-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--bar); }
-body:not(.embed) .match-card:hover { border-color: rgba(255, 255, 255, 0.26); box-shadow: none; }
-body:not(.embed) .match-card.status-LIVE { --bar: color-mix(in srgb, #e74e19 45%, #0a0a0a); box-shadow: 0 0 22px rgba(231, 78, 25, 0.16); }
-body:not(.embed) .match-card.status-LIVE:hover { box-shadow: 0 0 14px rgba(231, 78, 25, 0.3); }
-/* Planned with a date: green bar, green glow on hover. Not yet scheduled: grey bar, grey glow on hover. */
+/* Every match card has the same soft grey glow, a bit stronger on hover; the status colour lives on the left bar only. */
+body:not(.embed) .match-card:hover { border-color: rgba(255, 255, 255, 0.26); box-shadow: 0 0 14px rgba(158, 162, 171, 0.45); }
+body:not(.embed) .match-card.status-LIVE { --bar: color-mix(in srgb, #e74e19 45%, #0a0a0a); }
+/* Planned with a date: green bar. Not yet scheduled: grey bar. */
 body:not(.embed) .match-card.status-PLANNED.has-date { --bar: color-mix(in srgb, #34b863 38%, #0a0a0a); }
-body:not(.embed) .match-card.status-PLANNED.has-date:hover { box-shadow: 0 0 12px rgba(52, 184, 99, 0.4); }
 body:not(.embed) .match-card.status-PLANNED:not(.has-date) { --bar: color-mix(in srgb, #8b8f98 30%, #0a0a0a); }
-body:not(.embed) .match-card.status-PLANNED:not(.has-date):hover { box-shadow: 0 0 12px rgba(158, 162, 171, 0.35); }
 body:not(.embed) .match-card.status-UNFINISHED { --bar: color-mix(in srgb, #ffb802 34%, #0a0a0a); }
-/* Finished: grey glow on hover (player profile wins/losses override this below). */
-body:not(.embed) .match-card.status-FINISHED:hover { box-shadow: 0 0 12px rgba(158, 162, 171, 0.35); }
-/* Player profile only: a decided result gets a green (won) or red (lost) bar, glowing on hover. */
+/* Player profile only: a decided result gets a green (won) or red (lost) bar. */
 body:not(.embed) .match-card.result-won { --bar: color-mix(in srgb, #34b863 38%, #0a0a0a); }
-body:not(.embed) .match-card.result-won:hover { box-shadow: 0 0 12px rgba(52, 184, 99, 0.4); }
 body:not(.embed) .match-card.result-lost { --bar: color-mix(in srgb, #e5483a 38%, #0a0a0a); }
-body:not(.embed) .match-card.result-lost:hover { box-shadow: 0 0 12px rgba(229, 72, 58, 0.4); }
 
 /* A bit more air between cards; the heading keeps its original distance to the card below it. */
 body:not(.embed) .match-list:not(.compact-match-list) { gap: 18px; }
