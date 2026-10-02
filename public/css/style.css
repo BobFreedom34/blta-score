@@ -2725,6 +2725,9 @@ a.court-meta-address:hover { color: var(--orange); }
 /* Scoped away from the WordPress embeds (body.embed), which keep their light look. */
 body:not(.embed) .match-card {
   --accent: var(--orange);
+  --bar: transparent;
+  position: relative;
+  overflow: hidden;
   background: #0a0a0a;
   color: var(--white);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -2734,22 +2737,24 @@ body:not(.embed) .match-card {
   gap: 14px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-body:not(.embed) .match-card:hover { border-color: rgba(231, 78, 25, 0.7); box-shadow: none; }
-body:not(.embed) .match-card.status-LIVE {
-  border-color: var(--orange);
-  box-shadow: 0 0 0 1px rgba(231, 78, 25, 0.35), 0 0 28px rgba(231, 78, 25, 0.2);
-}
-body:not(.embed) .match-card.status-LIVE:hover { box-shadow: 0 0 0 1px rgba(231, 78, 25, 0.5), 0 0 32px rgba(231, 78, 25, 0.3); }
-/* Planned with a date: green border, green glow on hover. Not yet scheduled: grey border, grey glow on hover. */
-body:not(.embed) .match-card.status-PLANNED.has-date { border-color: #34b863; }
-body:not(.embed) .match-card.status-PLANNED.has-date:hover { border-color: #34b863; box-shadow: 0 0 24px rgba(52, 184, 99, 0.4); }
-body:not(.embed) .match-card.status-PLANNED:not(.has-date) { border-color: #6f737c; }
-body:not(.embed) .match-card.status-PLANNED:not(.has-date):hover { border-color: #9ea2ab; box-shadow: 0 0 24px rgba(158, 162, 171, 0.35); }
-/* Player profile only: a decided result has a green (won) or red (lost) border, glowing on hover. */
-body:not(.embed) .match-card.result-won { border-color: #34b863; }
-body:not(.embed) .match-card.result-won:hover { border-color: #34b863; box-shadow: 0 0 24px rgba(52, 184, 99, 0.4); }
-body:not(.embed) .match-card.result-lost { border-color: #e5483a; }
-body:not(.embed) .match-card.result-lost:hover { border-color: #e5483a; box-shadow: 0 0 24px rgba(229, 72, 58, 0.4); }
+/* Slim status bar on the left edge: a dimmed version of the status colour. Borders stay neutral. */
+body:not(.embed) .match-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--bar); }
+body:not(.embed) .match-card:hover { border-color: rgba(255, 255, 255, 0.26); box-shadow: none; }
+body:not(.embed) .match-card.status-LIVE { --bar: color-mix(in srgb, #e74e19 45%, #0a0a0a); box-shadow: 0 0 22px rgba(231, 78, 25, 0.16); }
+body:not(.embed) .match-card.status-LIVE:hover { box-shadow: 0 0 14px rgba(231, 78, 25, 0.3); }
+/* Planned with a date: green bar, green glow on hover. Not yet scheduled: grey bar, grey glow on hover. */
+body:not(.embed) .match-card.status-PLANNED.has-date { --bar: color-mix(in srgb, #34b863 38%, #0a0a0a); }
+body:not(.embed) .match-card.status-PLANNED.has-date:hover { box-shadow: 0 0 12px rgba(52, 184, 99, 0.4); }
+body:not(.embed) .match-card.status-PLANNED:not(.has-date) { --bar: color-mix(in srgb, #8b8f98 30%, #0a0a0a); }
+body:not(.embed) .match-card.status-PLANNED:not(.has-date):hover { box-shadow: 0 0 12px rgba(158, 162, 171, 0.35); }
+body:not(.embed) .match-card.status-UNFINISHED { --bar: color-mix(in srgb, #ffb802 34%, #0a0a0a); }
+/* Finished: grey glow on hover (player profile wins/losses override this below). */
+body:not(.embed) .match-card.status-FINISHED:hover { box-shadow: 0 0 12px rgba(158, 162, 171, 0.35); }
+/* Player profile only: a decided result gets a green (won) or red (lost) bar, glowing on hover. */
+body:not(.embed) .match-card.result-won { --bar: color-mix(in srgb, #34b863 38%, #0a0a0a); }
+body:not(.embed) .match-card.result-won:hover { box-shadow: 0 0 12px rgba(52, 184, 99, 0.4); }
+body:not(.embed) .match-card.result-lost { --bar: color-mix(in srgb, #e5483a 38%, #0a0a0a); }
+body:not(.embed) .match-card.result-lost:hover { box-shadow: 0 0 12px rgba(229, 72, 58, 0.4); }
 
 /* A bit more air between cards; the heading keeps its original distance to the card below it. */
 body:not(.embed) .match-list:not(.compact-match-list) { gap: 18px; }
