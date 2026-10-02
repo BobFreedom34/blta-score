@@ -466,6 +466,27 @@ function courtsCountLabel(n) {
   return t(`courts.count.${key}`, { count: n });
 }
 
+// Outline icons (Feather-style paths) for the Courts pages.
+const COURT_ICON_PATHS = {
+  pin: '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
+  phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+  mail: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/>',
+  arrow: '<path d="M7 17 17 7"/><path d="M7 7h10v10"/>',
+  instagram: '<rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><path d="M17.5 6.5h.01"/>',
+  facebook: '<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  price: '<path d="M18 7c-1.2-1.6-3-2.5-5-2.5a6.5 6.5 0 0 0 0 13c2 0 3.8-.9 5-2.5"/><path d="M4 10h9"/><path d="M4 14h9"/>',
+  ball: '<circle cx="12" cy="12" r="10"/><path d="M5 5c3.5 3.5 3.5 10.5 0 14"/><path d="M19 5c-3.5 3.5-3.5 10.5 0 14"/>',
+  layers: '<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  directions: '<polygon points="3 11 22 2 13 21 11 13 3 11"/>',
+};
+
+function courtIcon(name) {
+  return `<svg class="court-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${COURT_ICON_PATHS[name]}</svg>`;
+}
+
 function venueHasIndoor(v) { return v.courtType === 'INDOOR' || v.courtType === 'BOTH'; }
 function venueHasOutdoor(v) { return v.courtType === 'OUTDOOR' || v.courtType === 'BOTH'; }
 

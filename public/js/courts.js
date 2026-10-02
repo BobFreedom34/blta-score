@@ -19,22 +19,22 @@ function filterMatches(v) {
 function cardHtml(v) {
   const detailUrl = `/courts/${encodeURIComponent(v.slug)}`;
   const lines = [];
-  if (v.address) lines.push(`<a class="court-line" href="${escapeHtml(venueMapsUrl(v))}" target="_blank" rel="noopener noreferrer"><span class="court-line-icon">📍</span>${escapeHtml(v.address)}</a>`);
-  if (v.phone) lines.push(`<a class="court-line" href="${escapeHtml(venueTelHref(v.phone))}"><span class="court-line-icon">📞</span>${escapeHtml(v.phone)}</a>`);
+  if (v.address) lines.push(`<a class="court-line" href="${escapeHtml(venueMapsUrl(v))}" target="_blank" rel="noopener noreferrer">${courtIcon('pin')}<span>${escapeHtml(v.address)}</span></a>`);
+  if (v.phone) lines.push(`<a class="court-line" href="${escapeHtml(venueTelHref(v.phone))}">${courtIcon('phone')}<span>${escapeHtml(v.phone)}</span></a>`);
   const chips = venueChipsHtml(v);
   const actions = [];
-  if (v.website) actions.push(`<a class="btn btn-sm btn-outline" href="${escapeHtml(v.website)}" target="_blank" rel="noopener noreferrer">🌐 ${escapeHtml(t('courts.website'))}</a>`);
-  if (v.bookingUrl) actions.push(`<a class="btn btn-sm btn-primary" href="${escapeHtml(v.bookingUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('courts.book'))}</a>`);
-  actions.push(`<a class="btn btn-sm btn-dark" href="${detailUrl}">${escapeHtml(t('courts.details'))}</a>`);
+  if (v.website) actions.push(`<a class="court-btn" href="${escapeHtml(v.website)}" target="_blank" rel="noopener noreferrer">${courtIcon('globe')}${escapeHtml(t('courts.website'))}</a>`);
+  if (v.bookingUrl) actions.push(`<a class="court-btn court-btn-primary" href="${escapeHtml(v.bookingUrl)}" target="_blank" rel="noopener noreferrer">${courtIcon('arrow')}${escapeHtml(t('courts.book'))}</a>`);
   return `
     <article class="court-card">
-      <a class="court-card-head" href="${detailUrl}">
+      <a class="court-card-head" href="${detailUrl}" aria-label="${escapeHtml(t('courts.details'))}: ${escapeHtml(v.name)}">
+        <span class="court-card-arrow">${courtIcon('arrow')}</span>
         <h3 class="court-card-name">${escapeHtml(v.name)}</h3>
         ${v.area ? `<div class="court-card-area">${escapeHtml(v.area)}</div>` : ''}
       </a>
       ${lines.length ? `<div class="court-lines">${lines.join('')}</div>` : ''}
       ${chips ? `<div class="court-chips">${chips}</div>` : ''}
-      <div class="court-actions">${actions.join('')}</div>
+      ${actions.length ? `<div class="court-actions">${actions.join('')}</div>` : ''}
     </article>
   `;
 }

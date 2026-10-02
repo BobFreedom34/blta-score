@@ -19,22 +19,22 @@ function externalLink(url, text) {
 
 function infoRowsHtml(v) {
   const rows = [];
-  if (v.address) rows.push(infoRow('📍', t('court.address'), externalLink(venueMapsUrl(v), [v.address, v.area].filter(Boolean).join(' — '))));
-  else if (v.area) rows.push(infoRow('📍', t('court.address'), escapeHtml(v.area)));
-  if (v.phone) rows.push(infoRow('📞', t('court.phone'), `<a href="${escapeHtml(venueTelHref(v.phone))}">${escapeHtml(v.phone)}</a>`));
-  if (v.email) rows.push(infoRow('✉️', t('court.email'), `<a href="mailto:${escapeHtml(v.email)}">${escapeHtml(v.email)}</a>`));
-  if (v.website) rows.push(infoRow('🌐', t('court.website'), externalLink(v.website, venueHostLabel(v.website))));
-  if (v.instagram) rows.push(infoRow('📷', 'Instagram', externalLink(`https://www.instagram.com/${encodeURIComponent(v.instagram)}/`, `@${v.instagram}`)));
-  if (v.facebook) rows.push(infoRow('👍', 'Facebook', externalLink(v.facebook, venueHostLabel(v.facebook))));
+  if (v.address) rows.push(infoRow(courtIcon('pin'), t('court.address'), externalLink(venueMapsUrl(v), [v.address, v.area].filter(Boolean).join(' — '))));
+  else if (v.area) rows.push(infoRow(courtIcon('pin'), t('court.address'), escapeHtml(v.area)));
+  if (v.phone) rows.push(infoRow(courtIcon('phone'), t('court.phone'), `<a href="${escapeHtml(venueTelHref(v.phone))}">${escapeHtml(v.phone)}</a>`));
+  if (v.email) rows.push(infoRow(courtIcon('mail'), t('court.email'), `<a href="mailto:${escapeHtml(v.email)}">${escapeHtml(v.email)}</a>`));
+  if (v.website) rows.push(infoRow(courtIcon('globe'), t('court.website'), externalLink(v.website, venueHostLabel(v.website))));
+  if (v.instagram) rows.push(infoRow(courtIcon('instagram'), 'Instagram', externalLink(`https://www.instagram.com/${encodeURIComponent(v.instagram)}/`, `@${v.instagram}`)));
+  if (v.facebook) rows.push(infoRow(courtIcon('facebook'), 'Facebook', externalLink(v.facebook, venueHostLabel(v.facebook))));
   if (v.courtsCount || v.courtType) {
     const parts = [v.courtsCount ? courtsCountLabel(v.courtsCount) : '', v.courtType ? t(`courtType.${v.courtType}`) : ''].filter(Boolean);
-    rows.push(infoRow('🎾', t('court.courts'), escapeHtml(parts.join(' · '))));
+    rows.push(infoRow(courtIcon('ball'), t('court.courts'), escapeHtml(parts.join(' · '))));
   }
-  if (v.surfaces.length) rows.push(infoRow('🟧', t('court.surface'), escapeHtml(v.surfaces.map((s) => t(`surface.${s}`)).join(', '))));
-  if (v.openingHours) rows.push(infoRow('🕒', t('court.hours'), escapeHtml(v.openingHours)));
-  if (v.price) rows.push(infoRow('💶', t('court.price'), escapeHtml(v.price)));
+  if (v.surfaces.length) rows.push(infoRow(courtIcon('layers'), t('court.surface'), escapeHtml(v.surfaces.map((s) => t(`surface.${s}`)).join(', '))));
+  if (v.openingHours) rows.push(infoRow(courtIcon('clock'), t('court.hours'), escapeHtml(v.openingHours)));
+  if (v.price) rows.push(infoRow(courtIcon('price'), t('court.price'), escapeHtml(v.price)));
   if (v.facilities.length) {
-    rows.push(infoRow('✅', t('court.facilities'), `<div class="court-chips">${v.facilities.map((f) => `<span class="court-chip">${escapeHtml(t(`facility.${f}`))}</span>`).join('')}</div>`));
+    rows.push(infoRow(courtIcon('check'), t('court.facilities'), `<div class="court-chips">${v.facilities.map((f) => `<span class="court-chip">${escapeHtml(t(`facility.${f}`))}</span>`).join('')}</div>`));
   }
   return rows.join('');
 }
@@ -76,16 +76,16 @@ function matchesSectionHtml(matches) {
 function render(v) {
   document.title = `${v.name} — Tennis SCORE`;
   const meta = [];
-  if (v.address) meta.push(`<a class="court-meta-address" href="${escapeHtml(venueMapsUrl(v))}" target="_blank" rel="noopener noreferrer">📍 ${escapeHtml(v.address)}</a>`);
-  else if (v.area) meta.push(`<span class="court-meta-address">📍 ${escapeHtml(v.area)}</span>`);
+  if (v.address) meta.push(`<a class="court-meta-address" href="${escapeHtml(venueMapsUrl(v))}" target="_blank" rel="noopener noreferrer">${courtIcon('pin')}${escapeHtml(v.address)}</a>`);
+  else if (v.area) meta.push(`<span class="court-meta-address">${courtIcon('pin')}${escapeHtml(v.area)}</span>`);
   if (v.courtType) meta.push(`<span class="court-chip court-chip-type">${escapeHtml(t(`courtType.${v.courtType}`))}</span>`);
   if (v.price) meta.push(`<span class="court-chip">${escapeHtml(v.price)}</span>`);
 
   const actions = [];
-  if (v.bookingUrl) actions.push(`<a class="btn btn-primary" href="${escapeHtml(v.bookingUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('courts.book'))}</a>`);
-  if (v.website) actions.push(`<a class="btn" href="${escapeHtml(v.website)}" target="_blank" rel="noopener noreferrer">🌐 ${escapeHtml(t('courts.website'))}</a>`);
-  if (v.phone) actions.push(`<a class="btn" href="${escapeHtml(venueTelHref(v.phone))}">📞 ${escapeHtml(t('courts.call'))}</a>`);
-  if (v.lat != null || v.address) actions.push(`<a class="btn" href="${escapeHtml(venueMapsUrl(v))}" target="_blank" rel="noopener noreferrer">🧭 ${escapeHtml(t('courts.directions'))}</a>`);
+  if (v.bookingUrl) actions.push(`<a class="court-btn court-btn-primary" href="${escapeHtml(v.bookingUrl)}" target="_blank" rel="noopener noreferrer">${courtIcon('arrow')}${escapeHtml(t('courts.book'))}</a>`);
+  if (v.website) actions.push(`<a class="court-btn" href="${escapeHtml(v.website)}" target="_blank" rel="noopener noreferrer">${courtIcon('globe')}${escapeHtml(t('courts.website'))}</a>`);
+  if (v.phone) actions.push(`<a class="court-btn" href="${escapeHtml(venueTelHref(v.phone))}">${courtIcon('phone')}${escapeHtml(t('courts.call'))}</a>`);
+  if (v.lat != null || v.address) actions.push(`<a class="court-btn" href="${escapeHtml(venueMapsUrl(v))}" target="_blank" rel="noopener noreferrer">${courtIcon('directions')}${escapeHtml(t('courts.directions'))}</a>`);
 
   const info = infoRowsHtml(v);
   root.innerHTML = `
