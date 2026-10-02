@@ -2751,6 +2751,9 @@ body:not(.embed) .match-card.result-won:hover { border-color: #34b863; box-shado
 body:not(.embed) .match-card.result-lost { border-color: #e5483a; }
 body:not(.embed) .match-card.result-lost:hover { border-color: #e5483a; box-shadow: 0 0 24px rgba(229, 72, 58, 0.4); }
 
+/* A bit more air between cards; the heading keeps its original distance to the card below it. */
+body:not(.embed) .match-list:not(.compact-match-list) { gap: 18px; }
+body:not(.embed) .match-list:not(.compact-match-list) .match-list-heading { margin-bottom: 6px; }
 body:not(.embed) .match-card-top { gap: 8px 10px; }
 body:not(.embed) .match-card-meta { color: #8b8f98; font-size: 12.5px; gap: 6px 14px; }
 body:not(.embed) .match-card-meta > span { display: inline-flex; align-items: center; gap: 6px; }
