@@ -117,6 +117,7 @@ const TRANSLATIONS = {
     'filters.nextWeek': 'Budúci týždeň',
     'filters.noDate': 'Bez dátumu',
     'filters.reset': 'Zrušiť filtre',
+    'filters.toggle': 'Filtre',
 
     'status.PLANNED': 'K naplánovaniu',
     'status.LIVE': 'Naživo',
@@ -751,6 +752,7 @@ const TRANSLATIONS = {
     'filters.nextWeek': 'Next week',
     'filters.noDate': 'No date (TBD)',
     'filters.reset': 'Reset filters',
+    'filters.toggle': 'Filters',
 
     'status.PLANNED': 'Planned',
     'status.LIVE': 'Live',

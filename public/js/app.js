@@ -367,6 +367,22 @@ document.querySelectorAll('.tab').forEach((tab) => {
 document.querySelector(`.tab[data-filter="${currentFilter}"]`).classList.add('active');
 updateTimeFilterAvailability();
 
+// "Filtre" chip: opens/closes the category + time selects and shows how many of them are set.
+const filtersToggle = document.getElementById('filters-toggle');
+const filtersPanel = document.getElementById('filters-panel');
+const filterCountEl = document.getElementById('filter-count');
+function updateFilterCount() {
+  const n = (currentCategory ? 1 : 0) + (currentTimeFilter ? 1 : 0);
+  filterCountEl.textContent = n;
+  filterCountEl.hidden = n === 0;
+  filtersToggle.classList.toggle('active', n > 0 || !filtersPanel.hidden);
+}
+filtersToggle.addEventListener('click', () => {
+  filtersPanel.hidden = !filtersPanel.hidden;
+  filtersToggle.setAttribute('aria-expanded', String(!filtersPanel.hidden));
+  updateFilterCount();
+});
+
 document.getElementById('filter-q').addEventListener('input', (e) => {
   currentQuery = e.target.value.trim();
   clearTimeout(debounceTimer);
@@ -374,10 +390,12 @@ document.getElementById('filter-q').addEventListener('input', (e) => {
 });
 document.getElementById('filter-category').addEventListener('change', (e) => {
   currentCategory = e.target.value;
+  updateFilterCount();
   loadMatches();
 });
 document.getElementById('filter-time').addEventListener('change', (e) => {
   currentTimeFilter = e.target.value;
+  updateFilterCount();
   loadMatches();
 });
 document.getElementById('reset-filters-btn').addEventListener('click', () => {
@@ -387,6 +405,7 @@ document.getElementById('reset-filters-btn').addEventListener('click', () => {
   document.getElementById('filter-q').value = '';
   document.getElementById('filter-category').value = '';
   document.getElementById('filter-time').value = '';
+  updateFilterCount();
   loadMatches();
   refreshCounts();
   refreshMyMatchesCount();
