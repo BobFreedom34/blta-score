@@ -19,16 +19,44 @@
 
 * { box-sizing: border-box; }
 
+/* The dark base colour lives on <html> only (the canvas): the aura layers below blend against it,
+   so <body> itself must stay transparent or it would paint over them. */
+html { background: #100e0b; }
 html, body {
   margin: 0;
   padding: 0;
-  background: #0D0D0D;
-  background: linear-gradient(135deg, #0D0D0D 25.0%, #2E2E2E 75.0%); /* fallback: engines without oklab interpolation */
-  background: linear-gradient(135deg in oklab, #0D0D0D 25.0%, #2E2E2E 75.0%);
-  background-attachment: fixed;
   color: var(--ink);
   font-family: 'Montserrat', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Page background: "Graphite Flow" aura ---------- */
+/* Four blurred slate-grey glows blended with "screen", fixed behind the content. Built from the
+   pseudo-elements of <html> and <body> (painted in this order: html::before, body::before,
+   body::after, html::after). The dark base colour is on <html>, which the blend modes composite
+   against. Skipped on the WordPress embeds. */
+html:not(.embed)::before,
+body:not(.embed)::before,
+body:not(.embed)::after,
+html:not(.embed)::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  transform: translateZ(0);
+  will-change: transform;
+}
+html:not(.embed)::before { background: radial-gradient(ellipse 55% 45% at 35% 50%, rgba(100, 116, 139, 0.6) 0%, transparent 60%); filter: blur(113px); }
+body:not(.embed)::before { background: radial-gradient(ellipse 40% 50% at 68% 38%, rgba(148, 163, 184, 0.5) 0%, transparent 55%); filter: blur(125px); }
+body:not(.embed)::after { background: radial-gradient(ellipse 30% 35% at 30% 72%, rgba(71, 85, 105, 0.45) 0%, transparent 50%); filter: blur(100px); }
+html:not(.embed)::after { background: radial-gradient(ellipse 22% 25% at 78% 75%, rgba(203, 213, 225, 0.3) 0%, transparent 45%); filter: blur(88px); }
+@media (min-width: 900px) {
+  html:not(.embed)::before { filter: blur(162px); }
+  body:not(.embed)::before { filter: blur(180px); }
+  body:not(.embed)::after { filter: blur(144px); }
+  html:not(.embed)::after { filter: blur(126px); }
 }
 
 a { color: inherit; text-decoration: none; }
