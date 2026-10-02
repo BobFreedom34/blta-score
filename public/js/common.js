@@ -480,13 +480,24 @@ const COURT_ICON_PATHS = {
   ball: '<circle cx="12" cy="12" r="10"/><path d="M5 5c3.5 3.5 3.5 10.5 0 14"/><path d="M19 5c-3.5 3.5-3.5 10.5 0 14"/>',
   layers: '<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
+  bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  calendarPlus: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"/>',
+  live: '<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M4.9 19.1a10 10 0 0 1 0-14.2"/>',
+  checkCircle: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  pauseCircle: '<circle cx="12" cy="12" r="10"/><path d="M10 15V9M14 15V9"/>',
   calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
   pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   directions: '<polygon points="3 11 22 2 13 21 11 13 3 11"/>',
 };
 
 function courtIcon(name) {
-  return `<svg class="venue-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${COURT_ICON_PATHS[name]}</svg>`;
+  return `<svg class="venue-icon" data-icon="${name}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${COURT_ICON_PATHS[name]}</svg>`;
+}
+
+// Section headings of the match lists (Live / Scheduled / Planned / Finished / Unfinished).
+const MATCH_HEADING_ICONS = { liveHeading: 'live', scheduledHeading: 'calendar', plannedHeading: 'clock', finishedHeading: 'checkCircle', unfinishedHeading: 'pauseCircle' };
+function matchHeadingHtml(key) {
+  return `<span class="match-heading-label">${courtIcon(MATCH_HEADING_ICONS[key])}${t(`matches.${key}`)}</span>`;
 }
 
 function venueHasIndoor(v) { return v.courtType === 'INDOOR' || v.courtType === 'BOTH'; }

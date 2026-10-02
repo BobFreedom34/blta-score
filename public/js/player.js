@@ -67,8 +67,8 @@ function matchCardHtml(m) {
       ${isOverdueUnresolved(m) ? `<div class="overdue-warning">${t('matches.overdueWarning')}</div>` : ''}
       ${m.status === 'PLANNED' && !m.scheduledAt ? `
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-          <button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}"><span class="btn-text-full">${t('matches.setDateLocation')}</span><span class="btn-text-compact">${t('matches.setDateLocationShort')}</span></button>
-          <button type="button" class="btn btn-sm btn-outline propose-times-btn" data-token="${m.token}" data-p1-id="${m.player1.id}" data-p2-id="${m.player2.id}" data-p1-name="${escapeHtml(m.player1.name)}" data-p2-name="${escapeHtml(m.player2.name)}">${t('matches.proposeTimes')}</button>
+          <button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}">${courtIcon('calendar')}<span class="btn-text-full">${t('matches.setDateLocation')}</span><span class="btn-text-compact">${t('matches.setDateLocationShort')}</span></button>
+          <button type="button" class="btn btn-sm btn-outline propose-times-btn" data-token="${m.token}" data-p1-id="${m.player1.id}" data-p2-id="${m.player2.id}" data-p1-name="${escapeHtml(m.player1.name)}" data-p2-name="${escapeHtml(m.player2.name)}">${courtIcon('clock')}${t('matches.proposeTimes')}</button>
         </div>
       ` : ''}
     </a>
@@ -78,13 +78,13 @@ function matchCardHtml(m) {
 // Headings are read live via a getter (not plain strings) so a language
 // switch picks them up without this array needing to be rebuilt.
 const GROUPS = [
-  { get heading() { return t('matches.liveHeading'); }, params: { status: 'LIVE' } },
-  { get heading() { return t('matches.scheduledHeading'); }, params: { status: 'PLANNED', hasDate: '1' } },
-  { get heading() { return t('matches.plannedHeading'); }, params: { status: 'PLANNED', noDate: '1' } },
-  { get heading() { return t('matches.finishedHeading'); }, params: { status: 'FINISHED' } },
+  { get heading() { return matchHeadingHtml('liveHeading'); }, params: { status: 'LIVE' } },
+  { get heading() { return matchHeadingHtml('scheduledHeading'); }, params: { status: 'PLANNED', hasDate: '1' } },
+  { get heading() { return matchHeadingHtml('plannedHeading'); }, params: { status: 'PLANNED', noDate: '1' } },
+  { get heading() { return matchHeadingHtml('finishedHeading'); }, params: { status: 'FINISHED' } },
   // Appended at the end, not inserted — rawGroups[3] is relied on elsewhere
   // as "the Finished group" and must keep that index.
-  { get heading() { return t('matches.unfinishedHeading'); }, params: { status: 'UNFINISHED' } },
+  { get heading() { return matchHeadingHtml('unfinishedHeading'); }, params: { status: 'UNFINISHED' } },
 ];
 
 function matchYear(m) {

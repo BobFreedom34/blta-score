@@ -82,13 +82,13 @@ function notifyButtonsHtml(m) {
   // Compact mobile labels drop the "Notify:"/"Notified:" wording and keep
   // just the icon (✓ once done, same as the full label) + the bare word —
   // see .notify-btn .btn-text-compact in style.css for where these show.
-  const startLabelShort = `${startDone ? '✓' : '🔔'} ${t('matches.startShort')}${startCountSuffix}`;
-  const finishLabelShort = `${finishDone ? '✓' : '🔔'} ${t('matches.finishShort')}${finishCountSuffix}`;
+  const startLabelShort = `${t('matches.startShort')}${startCountSuffix}`;
+  const finishLabelShort = `${t('matches.finishShort')}${finishCountSuffix}`;
   return `
     <div class="notify-buttons-row">
-      <button type="button" class="btn btn-sm btn-outline add-calendar-btn" data-url="${escapeHtml(googleCalendarUrl(m))}"><span class="cal-full">${t('matches.addToCalendar')}</span><span class="cal-compact">📅+</span></button>
-      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="START" ${startDone ? 'disabled' : ''}><span class="btn-text-full">${startLabelFull}</span><span class="btn-text-compact">${startLabelShort}</span></button>
-      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="FINISH" ${finishDone ? 'disabled' : ''}><span class="btn-text-full">${finishLabelFull}</span><span class="btn-text-compact">${finishLabelShort}</span></button>
+      <button type="button" class="btn btn-sm btn-outline add-calendar-btn" data-url="${escapeHtml(googleCalendarUrl(m))}">${courtIcon('calendarPlus')}<span class="cal-full">${t('matches.addToCalendar')}</span></button>
+      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="START" ${startDone ? 'disabled' : ''}>${courtIcon(startDone ? 'check' : 'bell')}<span class="btn-text-full">${startLabelFull}</span><span class="btn-text-compact">${startLabelShort}</span></button>
+      <button type="button" class="btn btn-sm btn-outline notify-btn" data-token="${m.token}" data-type="FINISH" ${finishDone ? 'disabled' : ''}>${courtIcon(finishDone ? 'check' : 'bell')}<span class="btn-text-full">${finishLabelFull}</span><span class="btn-text-compact">${finishLabelShort}</span></button>
     </div>
   `;
 }
@@ -146,8 +146,8 @@ function matchCardHtml(m) {
       ${isOverdueUnresolved(m) ? `<div class="overdue-warning">${t('matches.overdueWarning')}</div>` : ''}
       ${m.status === 'PLANNED' && !m.scheduledAt ? `
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-          <button type="button" class="btn btn-sm btn-outline quick-schedule-btn" ${plannedActionDataAttrs(m)}><span class="btn-text-full">${t('matches.setDateLocation')}</span><span class="btn-text-compact">${t('matches.setDateLocationShort')}</span></button>
-          <button type="button" class="btn btn-sm btn-outline propose-times-btn" ${plannedActionDataAttrs(m)} data-p1-name="${escapeHtml(m.player1.name)}" data-p2-name="${escapeHtml(m.player2.name)}">${t('matches.proposeTimes')}</button>
+          <button type="button" class="btn btn-sm btn-outline quick-schedule-btn" ${plannedActionDataAttrs(m)}>${courtIcon('calendar')}<span class="btn-text-full">${t('matches.setDateLocation')}</span><span class="btn-text-compact">${t('matches.setDateLocationShort')}</span></button>
+          <button type="button" class="btn btn-sm btn-outline propose-times-btn" ${plannedActionDataAttrs(m)} data-p1-name="${escapeHtml(m.player1.name)}" data-p2-name="${escapeHtml(m.player2.name)}">${courtIcon('clock')}${t('matches.proposeTimes')}</button>
         </div>
       ` : ''}
       ${m.status === 'PLANNED' && m.scheduledAt ? notifyButtonsHtml(m) : ''}
@@ -167,15 +167,15 @@ function buildMatchListHtml(matches, liveMatches) {
   // Live sits in its own group above Scheduled/Not yet scheduled, and only
   // appears at all when there's something live right now.
   if (liveMatches && liveMatches.length) {
-    parts.push(`<div class="match-list-heading">${t('matches.liveHeading')}</div>`);
+    parts.push(`<div class="match-list-heading">${matchHeadingHtml('liveHeading')}</div>`);
     parts.push(...liveMatches.map(matchCardHtml));
   }
   matches.forEach((m, i) => {
     const curScheduled = !!m.scheduledAt;
     if (i === 0) {
-      parts.push(`<div class="match-list-heading">${t(curScheduled ? 'matches.scheduledHeading' : 'matches.plannedHeading')}</div>`);
+      parts.push(`<div class="match-list-heading">${matchHeadingHtml(curScheduled ? 'scheduledHeading' : 'plannedHeading')}</div>`);
     } else if (matches[i - 1].scheduledAt && !curScheduled) {
-      parts.push(`<div class="match-list-heading">${t('matches.plannedHeading')}</div>`);
+      parts.push(`<div class="match-list-heading">${matchHeadingHtml('plannedHeading')}</div>`);
     }
     parts.push(matchCardHtml(m));
   });
@@ -229,11 +229,11 @@ function buildFilterParams(filterKey) {
 // Finished / Unfinished — rather than the single-status ALL tab, since a
 // player's own matches should include their finished history too.
 const MY_MATCHES_GROUPS = [
-  { get heading() { return t('matches.liveHeading'); }, params: { status: 'LIVE' } },
-  { get heading() { return t('matches.scheduledHeading'); }, params: { status: 'PLANNED', dateFilter: 'has' } },
-  { get heading() { return t('matches.plannedHeading'); }, params: { status: 'PLANNED', dateFilter: 'none' } },
-  { get heading() { return t('matches.finishedHeading'); }, params: { status: 'FINISHED' } },
-  { get heading() { return t('matches.unfinishedHeading'); }, params: { status: 'UNFINISHED' } },
+  { get heading() { return matchHeadingHtml('liveHeading'); }, params: { status: 'LIVE' } },
+  { get heading() { return matchHeadingHtml('scheduledHeading'); }, params: { status: 'PLANNED', dateFilter: 'has' } },
+  { get heading() { return matchHeadingHtml('plannedHeading'); }, params: { status: 'PLANNED', dateFilter: 'none' } },
+  { get heading() { return matchHeadingHtml('finishedHeading'); }, params: { status: 'FINISHED' } },
+  { get heading() { return matchHeadingHtml('unfinishedHeading'); }, params: { status: 'UNFINISHED' } },
 ];
 
 async function loadMyMatches() {
