@@ -2768,20 +2768,20 @@ body:not(.embed) .match-quick-edit-btn .venue-icon { width: 15px; height: 15px; 
 body:not(.embed) .match-quick-edit-btn:hover { color: var(--orange); }
 body:not(.embed) .match-card-notes { color: #8b8f98; }
 
-/* Badges become soft tinted chips on the dark card (muted fills and text, not solid colour). */
-body:not(.embed) .match-card .badge { border-radius: 8px; padding: 5px 11px; font-size: 11px; }
-body:not(.embed) .match-card .badge-ELITE { background: rgba(255, 184, 2, 0.06); color: #dcb04a; box-shadow: inset 0 0 0 1px rgba(255, 184, 2, 0.32); }
-body:not(.embed) .match-card .badge-NEXT_GEN { background: rgba(231, 78, 25, 0.14); color: #e8795a; }
-body:not(.embed) .match-card .badge-NOVICE { background: rgba(62, 207, 110, 0.12); color: #62c586; }
-body:not(.embed) .match-card .badge-FRIENDLY { background: rgba(255, 184, 2, 0.16); color: #e3b84f; }
-body:not(.embed) .match-card .badge-VIP_CUP { background: rgba(176, 108, 255, 0.15); color: #b99be0; }
-body:not(.embed) .match-card .badge-ATA_TENNIS { background: rgba(90, 140, 255, 0.14); color: #86a5e6; }
-body:not(.embed) .match-card .badge-OTHER { background: #1c1c1f; color: #a9adb6; }
-body:not(.embed) .match-card .badge-status { background: #1c1c1f; color: #a9adb6; }
-body:not(.embed) .match-card .badge-status.status-LIVE { background: rgba(231, 78, 25, 0.3); color: #ff9b78; }
-body:not(.embed) .match-card .badge-status.status-PLANNED-dated { background: rgba(62, 207, 110, 0.12); color: #62c586; }
-body:not(.embed) .match-card .badge-status.status-FINISHED { background: rgba(255, 255, 255, 0.08); color: #c4c7ce; }
-body:not(.embed) .match-card .badge-status.status-UNFINISHED { background: rgba(255, 184, 2, 0.12); color: #dcb04a; }
+/* Pills are outlines: one colour for the text and the border, never a fill. */
+body:not(.embed) .match-card .badge { background: transparent; border: 1px solid currentColor; border-radius: 8px; padding: 4px 10px; font-size: 11px; box-shadow: none; }
+body:not(.embed) .match-card .badge-ELITE { color: #e0a82e; }
+body:not(.embed) .match-card .badge-NEXT_GEN { color: #e8795a; }
+body:not(.embed) .match-card .badge-NOVICE { color: #e58bb8; }
+body:not(.embed) .match-card .badge-FRIENDLY { color: #ece26a; }
+body:not(.embed) .match-card .badge-VIP_CUP { color: #b99be0; }
+body:not(.embed) .match-card .badge-ATA_TENNIS { color: #86a5e6; }
+body:not(.embed) .match-card .badge-OTHER { color: #a9adb6; }
+body:not(.embed) .match-card .badge-status { color: #a9adb6; }
+body:not(.embed) .match-card .badge-status.status-LIVE { color: #f0825c; }
+body:not(.embed) .match-card .badge-status.status-PLANNED-dated { color: #62c586; }
+body:not(.embed) .match-card .badge-status.status-FINISHED { color: #a9adb6; }
+body:not(.embed) .match-card .badge-status.status-UNFINISHED { color: #d9a06a; }
 
 /* Inner panels: a slightly lighter black with a hairline, not the old light grey. */
 body:not(.embed) .match-players-box,
