@@ -967,6 +967,48 @@ db.exec(`
   );
 `);
 
+// Everything the public /courts pages show about a venue. All optional —
+// a venue created with just a name (the original behaviour) stays valid.
+// surfaces/facilities hold JSON arrays of fixed keys (see src/venues.js),
+// so the pages can translate them instead of showing admin-typed text.
+// seeded_at marks a venue whose details were filled in once by
+// src/venueSeed.js, so a later edit (or clearing a field) is never
+// overwritten by the seed on the next boot.
+const venueColumns = db.prepare('PRAGMA table_info(venues)').all().map((c) => c.name);
+Object.entries({
+  slug: 'TEXT',
+  area: 'TEXT',
+  address: 'TEXT',
+  phone: 'TEXT',
+  email: 'TEXT',
+  website: 'TEXT',
+  booking_url: 'TEXT',
+  instagram: 'TEXT',
+  facebook: 'TEXT',
+  court_type: 'TEXT',
+  courts_count: 'INTEGER',
+  surfaces: 'TEXT',
+  opening_hours: 'TEXT',
+  price: 'TEXT',
+  facilities: 'TEXT',
+  description: 'TEXT',
+  lat: 'REAL',
+  lng: 'REAL',
+  seeded_at: 'TEXT',
+}).forEach(([column, type]) => {
+  if (!venueColumns.includes(column)) db.exec(`ALTER TABLE venues ADD COLUMN ${column} ${type}`);
+});
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_venues_slug ON venues(slug)');
+
+// One-shot markers for data migrations that must never re-run (e.g. adding a
+// default menu item an admin may later delete on purpose).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS app_flags (
+    key TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+
 const headerItemColumns = db.prepare('PRAGMA table_info(header_items)').all().map((c) => c.name);
 if (!headerItemColumns.includes('is_my_profile')) {
   db.exec('ALTER TABLE header_items ADD COLUMN is_my_profile INTEGER NOT NULL DEFAULT 0');

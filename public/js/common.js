@@ -456,6 +456,47 @@ function setupVenueAutocomplete(inputId) {
 ['location', 'start-schedule-location', 'manual-result-location', 'edit-match-location', 'modal-venue-input']
   .forEach(setupVenueAutocomplete);
 
+// ---------- Venue display helpers (/courts and /courts/<slug>) ----------
+
+// Slovak has three plural forms (1 kurt / 2–4 kurty / 5+ kurtov).
+function courtsCountLabel(n) {
+  const key = currentLang === 'sk'
+    ? (n === 1 ? 'one' : (n >= 2 && n <= 4 ? 'few' : 'many'))
+    : (n === 1 ? 'one' : 'few');
+  return t(`courts.count.${key}`, { count: n });
+}
+
+function venueHasIndoor(v) { return v.courtType === 'INDOOR' || v.courtType === 'BOTH'; }
+function venueHasOutdoor(v) { return v.courtType === 'OUTDOOR' || v.courtType === 'BOTH'; }
+
+// A phone field can hold several numbers ("a / b"); the tel: link dials the first.
+function venueTelHref(phone) {
+  const first = String(phone).split(/\s\/\s|,|;/)[0];
+  return `tel:${first.replace(/[^\d+]/g, '')}`;
+}
+
+function venueMapsUrl(v) {
+  const query = v.lat != null && v.lng != null ? `${v.lat},${v.lng}` : (v.address || v.name);
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+function venueHostLabel(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
+}
+
+// Diacritic- and case-insensitive, so "ruzinov" finds "Ružinov".
+function foldText(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+function venueChipsHtml(v) {
+  const chips = [];
+  if (v.courtType) chips.push(`<span class="court-chip court-chip-type">${escapeHtml(t(`courtType.${v.courtType}`))}</span>`);
+  if (v.courtsCount) chips.push(`<span class="court-chip">${escapeHtml(courtsCountLabel(v.courtsCount))}</span>`);
+  if (v.surfaces && v.surfaces.length) chips.push(`<span class="court-chip">${escapeHtml(v.surfaces.map((s) => t(`surface.${s}`)).join(', '))}</span>`);
+  return chips.join('');
+}
+
 // Two-button "pick one of the two players" widget for a match still being
 // created — optional, defaults to nobody picked. Button labels track
 // whatever's currently typed into the #player1/#player2 name fields

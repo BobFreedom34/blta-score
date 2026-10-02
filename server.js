@@ -35,6 +35,7 @@ app.set('io', io);
 // One-time bootstrap — see badgeEngine.backfillIfNeeded's own comment for
 // why this has to run before any real traffic hits the badge notification
 // endpoints (routes/player.js) or the matches routes that create new ones.
+require('./src/venueSeed').run();
 badgeEngine.backfillIfNeeded();
 badgeEngine.startScheduledReminders();
 backup.startScheduledBackups();
@@ -117,6 +118,7 @@ app.get('/match/:token', (req, res) => {
 });
 app.get('/player/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'player.html')));
 app.get('/bracket/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'bracket.html')));
+app.get('/courts/:slug', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'court.html')));
 app.get('/embed/match/:token', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-match.html')));
 app.get('/embed/live', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-live.html')));
 app.get('/embed/compact', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-compact.html')));
