@@ -345,7 +345,9 @@ async function loadPlayers() {
 
 // Custom autocomplete instead of a native <datalist>, which mobile Safari in
 // particular renders inconsistently (often not showing suggestions at all).
-function setupAutocomplete(inputId, listId) {
+// getNames defaults to the player-name list; pass another function to
+// suggest something else (see setupVenueAutocomplete).
+function setupAutocomplete(inputId, listId, getNames = () => allPlayers.map((p) => p.name)) {
   const input = document.getElementById(inputId);
   const list = document.getElementById(listId);
   // Guards the case where this page doesn't actually have these fields
@@ -360,13 +362,13 @@ function setupAutocomplete(inputId, listId) {
   function currentMatches() {
     const q = input.value.trim().toLowerCase();
     if (!q) return [];
-    return allPlayers.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8);
+    return getNames().filter((name) => name.toLowerCase().includes(q)).slice(0, 8);
   }
 
   function render() {
     const matches = currentMatches();
     list.innerHTML = matches.map((p, i) => `
-      <div class="autocomplete-item${i === activeIndex ? ' active' : ''}" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}</div>
+      <div class="autocomplete-item${i === activeIndex ? ' active' : ''}" data-name="${escapeHtml(p)}">${escapeHtml(p)}</div>
     `).join('');
     list.classList.toggle('open', matches.length > 0);
   }
@@ -420,6 +422,39 @@ function setupAutocomplete(inputId, listId) {
 // markup.
 setupAutocomplete('edit-match-player1', 'edit-match-player1-suggestions');
 setupAutocomplete('edit-match-player2', 'edit-match-player2-suggestions');
+
+// Admin-managed tennis venues (/venues-admin) suggested while typing a
+// match's location. The location itself stays free text — these are only
+// suggestions, so a place that isn't in the list can still be typed in.
+let venueNames = [];
+let venuesRequested = false;
+function loadVenues() {
+  if (venuesRequested) return;
+  venuesRequested = true;
+  api('/venues').then((rows) => { venueNames = rows.map((v) => v.name); }).catch(() => { venuesRequested = false; });
+}
+
+// Wraps an existing plain text input in an autocomplete container on the
+// fly, so each page's markup doesn't need its own suggestion-list div.
+function setupVenueAutocomplete(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input || input.dataset.venueAutocomplete) return;
+  input.dataset.venueAutocomplete = '1';
+  const wrap = document.createElement('div');
+  wrap.className = 'autocomplete';
+  if (input.style.flex) wrap.style.flex = input.style.flex;
+  const list = document.createElement('div');
+  list.className = 'autocomplete-list';
+  list.id = `${inputId}-venue-suggestions`;
+  input.parentNode.insertBefore(wrap, input);
+  wrap.appendChild(input);
+  wrap.appendChild(list);
+  loadVenues();
+  setupAutocomplete(inputId, list.id, () => venueNames);
+}
+
+['location', 'start-schedule-location', 'manual-result-location', 'edit-match-location', 'modal-venue-input']
+  .forEach(setupVenueAutocomplete);
 
 // Two-button "pick one of the two players" widget for a match still being
 // created — optional, defaults to nobody picked. Button labels track

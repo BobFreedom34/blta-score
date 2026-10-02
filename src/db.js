@@ -955,6 +955,18 @@ db.exec(`
   );
 `);
 
+// Tennis court venues an admin maintains (names only for now) — offered as
+// autocomplete suggestions wherever a match's location is typed in. The
+// match's own `location` column stays free text, so deleting/renaming a
+// venue here never touches existing matches.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS venues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+
 const headerItemColumns = db.prepare('PRAGMA table_info(header_items)').all().map((c) => c.name);
 if (!headerItemColumns.includes('is_my_profile')) {
   db.exec('ALTER TABLE header_items ADD COLUMN is_my_profile INTEGER NOT NULL DEFAULT 0');

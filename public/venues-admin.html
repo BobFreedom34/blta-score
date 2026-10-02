@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tennis SCORE — Manage brackets</title>
+<title>Tennis SCORE — Manage venues</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" href="/favicon.png">
@@ -29,14 +29,14 @@
     <a href="/header-admin" class="tab">Menu</a>
     <a href="/badges-admin" class="tab">Badges</a>
     <a href="/players" class="tab">Players</a>
-    <a href="/bracket-admin" class="tab active">Brackets</a>
-    <a href="/venues-admin" class="tab">Venues</a>
+    <a href="/bracket-admin" class="tab">Brackets</a>
+    <a href="/venues-admin" class="tab active">Venues</a>
     <a href="/login-history" class="tab">Login History</a>
   </div>
-  <h2 style="margin:18px 0 4px">Playoff brackets</h2>
-  <p style="color:var(--gray-dim)">Freestanding single-elimination draws — add players manually or auto-generate from seeds. By default, a normal match is created for each pairing and finishing it advances the winner; for a past/historical bracket you can turn that off and record each result directly instead.</p>
+  <h2 style="margin:18px 0 4px">Venues</h2>
+  <p style="color:var(--gray-dim)">Tennis court venues. Anyone typing a match location (new match, set date &amp; location, edit match, proposed venues) gets these as search suggestions — a place that isn't listed can still be typed in freely.</p>
 
-  <div id="bracket-admin-root">Loading…</div>
+  <div id="venues-admin-root">Loading…</div>
 </div>
 
 <footer class="site-footer">
@@ -50,6 +50,6 @@
 
 <script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
-<script src="/js/bracket-admin.js"></script>
+<script src="/js/venues-admin.js"></script>
 </body>
 </html>

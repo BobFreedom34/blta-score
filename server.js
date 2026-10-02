@@ -23,6 +23,7 @@ const refereeRouter = require('./src/routes/referee');
 const headerItemsRouter = require('./src/routes/headerItems');
 const courtIQRouter = require('./src/routes/courtiq');
 const bracketsRouter = require('./src/routes/brackets');
+const venuesRouter = require('./src/routes/venues');
 
 const app = express();
 const server = http.createServer(app);
@@ -61,6 +62,7 @@ app.use('/api/referee', refereeRouter);
 app.use('/api/header-items', headerItemsRouter);
 app.use('/api/courtiq', courtIQRouter);
 app.use('/api/brackets', bracketsRouter);
+app.use('/api/venues', venuesRouter);
 
 // Pretty routes -> static HTML pages (the page JS reads the share token from the URL).
 const matchTemplate = fs.readFileSync(path.join(PUBLIC_DIR, 'match.html'), 'utf8');
