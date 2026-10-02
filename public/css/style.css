@@ -15,6 +15,7 @@
   --radius: 14px;
   --shadow: 0 2px 10px rgba(10, 10, 10, 0.08);
   --shadow-lg: 0 10px 30px rgba(10, 10, 10, 0.16);
+  --status-green: #2e8b57; /* the planned/won green: date pill text + border and the left status bar */
   --fill-grey: #1e1e22; /* dark grey fill for panels, buttons and chips on the black cards */
 }
 
@@ -2768,7 +2769,7 @@ body:not(.embed) .match-card {
   overflow: hidden;
   background: #0a0a0a;
   color: var(--white);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 24px;
   box-shadow:
     -4px 0 18px -4px rgba(var(--glow), var(--g)),
@@ -2782,14 +2783,14 @@ body:not(.embed) .match-card {
 /* Slim status bar on the left edge: a dimmed version of the status colour. Borders stay neutral. */
 body:not(.embed) .match-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--bar); }
 /* Every match card has the same soft grey glow on all four sides, stronger on hover; the status colour lives on the left bar only. */
-body:not(.embed) .match-card:hover { --g: 0.4; border-color: #fff; }
+body:not(.embed) .match-card:hover { --g: 0.4; border-color: rgba(255, 255, 255, 0.8); }
 body:not(.embed) .match-card.status-LIVE { --bar: color-mix(in srgb, #e74e19 45%, #0a0a0a); }
 /* Planned with a date: green bar. Not yet scheduled: grey bar. */
-body:not(.embed) .match-card.status-PLANNED.has-date { --bar: color-mix(in srgb, #34b863 38%, #0a0a0a); }
+body:not(.embed) .match-card.status-PLANNED.has-date { --bar: var(--status-green); }
 body:not(.embed) .match-card.status-PLANNED:not(.has-date) { --bar: color-mix(in srgb, #8b8f98 30%, #0a0a0a); }
 body:not(.embed) .match-card.status-UNFINISHED { --bar: color-mix(in srgb, #ffb802 34%, #0a0a0a); }
 /* Player profile only: a decided result gets a green (won) or red (lost) bar. */
-body:not(.embed) .match-card.result-won { --bar: color-mix(in srgb, #34b863 38%, #0a0a0a); }
+body:not(.embed) .match-card.result-won { --bar: var(--status-green); }
 body:not(.embed) .match-card.result-lost { --bar: color-mix(in srgb, #e5483a 38%, #0a0a0a); }
 
 /* Generous space between cards; the heading keeps its original distance to the card below it. */
@@ -2811,7 +2812,7 @@ body:not(.embed) .match-card-notes { color: #8b8f98; font-size: 12.5px; font-wei
 body:not(.embed) .match-card .badge { background: transparent; border: 1px solid currentColor; border-radius: 8px; padding: 4px 10px; font-size: 11px; box-shadow: none; }
 body:not(.embed) .match-card .badge-status { color: #a9adb6; }
 body:not(.embed) .match-card .badge-status.status-LIVE { color: #ee3340; }
-body:not(.embed) .match-card .badge-status.status-PLANNED-dated { color: #62c586; }
+body:not(.embed) .match-card .badge-status.status-PLANNED-dated { color: var(--status-green); }
 body:not(.embed) .match-card .badge-status.status-FINISHED { color: #a9adb6; }
 body:not(.embed) .match-card .badge-status.status-UNFINISHED { color: #d9a06a; }
 /* Competitions outside the BLTA league, on the dark pages: friendly = solid white pill with black text; VIP cup, ATA tennis and other =
