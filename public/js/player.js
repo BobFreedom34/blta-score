@@ -50,8 +50,8 @@ function matchCardHtml(m) {
           ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>${courtIcon('calendar')}${fmtDateShort(m.scheduledAt)}</span>`}
           ${(m.status !== 'FINISHED' || isAdminUser) && canManageMatch(m, isAdminUser) ? `<button type="button" class="match-quick-edit-btn" data-token="${m.token}" title="${escapeHtml(t('match.editMatchBtn'))}">${courtIcon('pencil')}</button>` : ''}
         </div>
+        ${m.notes ? `<div class="match-card-notes">${escapeHtml(m.notes)}</div>` : ''}
       </div>
-      ${m.notes ? `<div class="match-card-notes">${escapeHtml(m.notes)}</div>` : ''}
       ${scoreboard || `
         <div class="match-players-box">
           <div class="match-players">
