@@ -681,13 +681,18 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
-.badge-ELITE { background: var(--ink); color: var(--yellow); }
-.badge-NEXT_GEN { background: var(--orange); color: var(--white); }
-.badge-NOVICE { background: var(--green); color: var(--white); }
-.badge-FRIENDLY { background: var(--yellow); color: var(--ink); }
-.badge-VIP_CUP { background: var(--ink); color: var(--white); }
-.badge-ATA_TENNIS { background: var(--blue-dark); color: var(--white); }
-.badge-OTHER { background: var(--gray); color: var(--white); }
+/* Category pills are always the brand orange (the same as the ranking number), outline only, on every page. */
+.badge-ELITE, .badge-NEXT_GEN, .badge-NOVICE, .badge-FRIENDLY, .badge-VIP_CUP, .badge-ATA_TENNIS, .badge-OTHER {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  color: var(--orange);
+  border: 1px solid var(--orange);
+}
+/* Level dots inside the pill (see levelDotsHtml in common.js): filled = reached, hollow = not. */
+.level-dots { display: inline-flex; gap: 3px; margin-right: 6px; }
+.level-dots i { width: 6px; height: 6px; box-sizing: border-box; border-radius: 50%; border: 1px solid currentColor; }
+.level-dots i.on { background: currentColor; }
 
 .badge-status { background: var(--gray-light); color: var(--gray); }
 .badge-status.status-LIVE { background: var(--orange); color: var(--white); animation: live-blink 1.8s ease-in-out infinite; }
@@ -696,6 +701,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   50% { opacity: 0.45; }
 }
 .badge-status.status-PLANNED { background: var(--gray-light); color: var(--charcoal); }
+body:not(.embed) .badge-status.status-LIVE { background: #ee3340; }
 .badge-status.status-PLANNED-dated { background: var(--green); color: var(--white); }
 .badge-status.status-FINISHED { background: var(--ink); color: var(--white); }
 .badge-status.status-UNFINISHED { background: var(--yellow); color: var(--ink); }
@@ -996,6 +1002,7 @@ datalist {}
 .scoreboard td.name-cell { text-align: left; font-weight: 800; font-size: 18px; }
 .scoreboard .sub-tb { font-size: 11px; color: #9a9a9a; margin-left: 2px; }
 .scoreboard tr.winner-row td.name-cell::after { content: " \2713"; color: var(--yellow); }
+body:not(.embed) .scoreboard tr.winner-row td.name-cell::after { color: var(--orange); }
 .player-info-btn, .player-info-link {
   display: inline-flex;
   align-items: center;
@@ -2789,6 +2796,8 @@ body:not(.embed) .match-card.result-lost { --bar: color-mix(in srgb, #e5483a 38%
 body:not(.embed) .match-list:not(.compact-match-list) { gap: 26px; }
 body:not(.embed) .match-list:not(.compact-match-list) .match-list-heading { margin-bottom: 6px; }
 body:not(.embed) .match-card-top { gap: 10px; }
+/* The time of a dated match: plain white text right after the date pill. */
+body:not(.embed) .match-card .status-time { color: var(--white); font-size: 12.5px; font-weight: 700; margin-left: -4px; }
 body:not(.embed) .match-card-top > .match-card-notes { order: 3; flex: 1 1 100%; min-width: 0; }
 body:not(.embed) .match-card-meta { color: #8b8f98; font-size: 12.5px; gap: 6px 14px; }
 body:not(.embed) .match-card-meta > span { display: inline-flex; align-items: center; gap: 6px; }
@@ -2798,17 +2807,10 @@ body:not(.embed) .match-quick-edit-btn .venue-icon { width: 15px; height: 15px; 
 body:not(.embed) .match-quick-edit-btn:hover { color: var(--orange); }
 body:not(.embed) .match-card-notes { color: #8b8f98; font-size: 12.5px; font-weight: 400; }
 
-/* Pills are outlines: one colour for the text and the border, never a fill. */
+/* Pills are outlines: one colour for the text and the border, never a fill (category pills are orange, see .badge-ELITE etc.). */
 body:not(.embed) .match-card .badge { background: transparent; border: 1px solid currentColor; border-radius: 8px; padding: 4px 10px; font-size: 11px; box-shadow: none; }
-body:not(.embed) .match-card .badge-ELITE { color: #e0a82e; }
-body:not(.embed) .match-card .badge-NEXT_GEN { color: #e8795a; }
-body:not(.embed) .match-card .badge-NOVICE { color: #e58bb8; }
-body:not(.embed) .match-card .badge-FRIENDLY { color: #ece26a; }
-body:not(.embed) .match-card .badge-VIP_CUP { color: #b99be0; }
-body:not(.embed) .match-card .badge-ATA_TENNIS { color: #86a5e6; }
-body:not(.embed) .match-card .badge-OTHER { color: #a9adb6; }
 body:not(.embed) .match-card .badge-status { color: #a9adb6; }
-body:not(.embed) .match-card .badge-status.status-LIVE { color: #f0825c; }
+body:not(.embed) .match-card .badge-status.status-LIVE { color: #ee3340; }
 body:not(.embed) .match-card .badge-status.status-PLANNED-dated { color: #62c586; }
 body:not(.embed) .match-card .badge-status.status-FINISHED { color: #a9adb6; }
 body:not(.embed) .match-card .badge-status.status-UNFINISHED { color: #d9a06a; }
@@ -2831,7 +2833,24 @@ body:not(.embed) .match-score-format { color: #8b8f98; font-weight: 700; }
 body:not(.embed) .match-card .btn-outline { background: var(--fill-grey); color: var(--white); border: none; border-radius: 12px; }
 body:not(.embed) .match-card .btn-outline:hover { background: #2c2c31; box-shadow: none; }
 body:not(.embed) .match-card .availability-day-pill { background: var(--fill-grey); color: #d6d8dd; }
-body:not(.embed) .match-card .overdue-warning { background: rgba(231, 78, 25, 0.12); color: #ff8a5c; }
+/* The overdue note is styled like a category pill: orange outline, no fill, same size and type. */
+body:not(.embed) .match-card .overdue-warning {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  max-width: 100%;
+  background: transparent;
+  color: var(--orange);
+  border: 1px solid var(--orange);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+body:not(.embed) .match-card .overdue-warning .venue-icon { width: 13px; height: 13px; flex-basis: 13px; }
 
 /* Section headings: outline icon (orange for Live), same family as the venue/date icons. */
 body:not(.embed) .match-heading-label { display: inline-flex; align-items: center; gap: 10px; }
@@ -2847,7 +2866,7 @@ body:not(.embed) .match-card .notify-btn:disabled .venue-icon { color: #5fd88a; 
      and the venue on the right (same font). */
   body:not(.embed) .match-card:not(.availability-post) .match-card-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0 10px; }
   body:not(.embed) .match-card:not(.availability-post) .match-card-top::after { content: ''; flex: 0 0 100%; order: 2; }
-  body:not(.embed) .match-card:not(.availability-post) .match-card-top > .badge { order: 1; }
+  body:not(.embed) .match-card:not(.availability-post) .match-card-top > .badge, body:not(.embed) .match-card:not(.availability-post) .match-card-top > .status-time { order: 1; }
   body:not(.embed) .match-card:not(.availability-post) .match-card-top > .match-card-notes { order: 3; flex: 1 1 0; min-width: 0; margin-top: 10px; white-space: normal; overflow: visible; text-overflow: clip; }
   body:not(.embed) .match-card:not(.availability-post) .match-card-top > .match-card-meta { order: 4; flex: 0 1 auto; max-width: 100%; margin-top: 10px; margin-left: auto; justify-content: flex-end; }
   body:not(.embed) .match-card:not(.availability-post) .match-card-top:has(> .match-card-notes) > .match-card-meta { max-width: 65%; }

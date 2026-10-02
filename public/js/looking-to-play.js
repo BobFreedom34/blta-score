@@ -56,7 +56,7 @@ const LTP_DAYS_AHEAD = 14;
 // though it reuses that same badge-ELITE/NEXT_GEN/NOVICE color coding.
 const LEVEL_LABELS = { ELITE: 'ELITE', NEXT_GEN: 'NEXT GEN', NOVICE: 'NOVICE' };
 function levelBadge(category) {
-  return `<span class="badge badge-${category}">${LEVEL_LABELS[category] || category}</span>`;
+  return `<span class="badge badge-${category}">${levelDotsHtml(category)}${LEVEL_LABELS[category] || category}</span>`;
 }
 
 // Today plus the next LTP_DAYS_AHEAD - 1 days — unlike createAvailabilityPicker's

@@ -485,6 +485,7 @@ const COURT_ICON_PATHS = {
   live: '<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M4.9 19.1a10 10 0 0 1 0-14.2"/>',
   checkCircle: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
   pauseCircle: '<circle cx="12" cy="12" r="10"/><path d="M10 15V9M14 15V9"/>',
+  alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
   calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
   pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   directions: '<polygon points="3 11 22 2 13 21 11 13 3 11"/>',
@@ -1496,8 +1497,17 @@ function categoryLabel(category) {
   return hasTranslation ? t(key) : (CATEGORY_LABELS[category] || category);
 }
 
+// The three BLTA league levels show three dots before the name: ELITE all filled, NEXT GEN two, NOVICE one.
+// The other categories (friendly, VIP cup, ATA tennis, other) are not levels and get no dots.
+const CATEGORY_LEVEL_DOTS = { ELITE: 3, NEXT_GEN: 2, NOVICE: 1 };
+function levelDotsHtml(category) {
+  const filled = CATEGORY_LEVEL_DOTS[category];
+  if (!filled) return '';
+  return `<span class="level-dots" aria-hidden="true">${[1, 2, 3].map((i) => `<i class="${i <= filled ? 'on' : ''}"></i>`).join('')}</span>`;
+}
+
 function categoryBadge(category) {
-  return `<span class="badge badge-${category}">${categoryLabel(category)}</span>`;
+  return `<span class="badge badge-${category}">${levelDotsHtml(category)}${categoryLabel(category)}</span>`;
 }
 
 // One-line card shared by the /compact page and the /embed/compact widget:
@@ -1545,10 +1555,17 @@ function compactMatchCardHtml(m) {
 
 // Accepts either a match object (preferred, so a scheduled Planned match can
 // show its date/time instead of just "Planned") or a plain status string.
-function statusBadge(m) {
+// opts.splitTime (match cards only): the pill holds just the date, the time follows as plain text.
+function statusBadge(m, opts) {
   const status = typeof m === 'string' ? m : m.status;
   const scheduledAt = typeof m === 'string' ? null : m.scheduledAt;
   if (status === 'PLANNED' && scheduledAt) {
+    if (opts && opts.splitTime) {
+      const d = new Date(scheduledAt);
+      if (!Number.isNaN(d.getTime())) {
+        return `<span class="badge badge-status status-PLANNED-dated">${weekdayShort(d)} ${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}</span><span class="status-time">${hhmm(d)}</span>`;
+      }
+    }
     return `<span class="badge badge-status status-PLANNED-dated">${fmtDateShort(scheduledAt)}</span>`;
   }
   const key = `status.${status}`;
