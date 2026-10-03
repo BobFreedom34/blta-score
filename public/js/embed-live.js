@@ -16,6 +16,9 @@ const dateFilter = statusFilter === 'PLANNED' && ['has', 'none'].includes(params
 // by app.js's embed-list-btn handler when the page it was generated from
 // had a category picked or restricted (e.g. /compactblta).
 const categoryFilter = params.get('category') || null;
+// Embedded lists show only the first six matches (newest finished / next scheduled), unless ?limit=N says otherwise.
+const limitParam = parseInt(params.get('limit'), 10);
+const MATCH_LIMIT = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 50) : 6;
 
 const headingHtml = (icon, text) => `<span class="match-heading-label">${courtIcon(icon)}${text}</span>`;
 const HEADERS = {
@@ -106,7 +109,7 @@ async function load() {
     if (dateFilter === 'has') qs.set('hasDate', '1');
     else if (dateFilter === 'none') qs.set('noDate', '1');
     if (categoryFilter) qs.set('category', categoryFilter);
-    const matches = await api(`/matches?${qs.toString()}`);
+    const matches = (await api(`/matches?${qs.toString()}`)).slice(0, MATCH_LIMIT);
     const body = matches.length
       ? `<div class="match-list${COMPACT_MODE ? ' compact-match-list' : ''}">${buildListHtml(matches)}</div>`
       : `<div class="empty-state" style="padding:24px">${emptyMessage()}</div>`;
