@@ -3426,3 +3426,9 @@ html.embed::before, html.embed::after { display: none; }
 
 .compact-date-category { min-width: max-content; }
 .compact-card .badge { flex: 0 0 auto; }
+
+/* Embeds: scheduled matches use the same grey border as every other match (the lime border stays on the main site). */
+body.embed .match-card.status-PLANNED.has-date, body.embed .match-card.status-PLANNED.has-date:hover { border-color: rgba(255, 255, 255, 0.55); }
+body.embed .match-card.status-PLANNED.has-date:hover { border-color: rgba(255, 255, 255, 0.8); }
+body.embed .compact-card.status-PLANNED.has-date { border-color: rgba(255, 255, 255, 0.35); }
+body.embed .compact-card.status-PLANNED.has-date:hover { border-color: rgba(255, 255, 255, 0.7); }
