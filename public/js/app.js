@@ -595,7 +595,10 @@ socket.on('matches:changed', () => {
   isAdminUser = await checkAdmin();
   await refreshPlayerAuth();
   updateMyMatchesTabState();
-  loadMatches();
+  // Arriving from the bottom menu's "My matches" on another page (?view=my).
+  const myTabBtn = document.getElementById('tab-MY_MATCHES');
+  if (new URLSearchParams(window.location.search).get('view') === 'my' && playerAuthed && currentPlayerId && myTabBtn) activateTab(myTabBtn);
+  else loadMatches();
   refreshCounts();
   refreshMyMatchesCount();
   // Re-render once a *later* login/logout finishes (see the

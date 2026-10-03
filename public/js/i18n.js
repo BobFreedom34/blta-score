@@ -21,6 +21,8 @@ try {
 const TRANSLATIONS = {
   sk: {
     'nav.matches': 'Zápasy',
+    'bottomNav.home': 'Domov',
+    'bottomNav.menu': 'Menu',
     'nav.myProfile': 'Môj profil',
     'nav.register': 'Registrácia',
     'nav.players': 'Hráči',
@@ -656,6 +658,8 @@ const TRANSLATIONS = {
   },
   en: {
     'nav.matches': 'Matches',
+    'bottomNav.home': 'Home',
+    'bottomNav.menu': 'Menu',
     'nav.myProfile': 'My profile',
     'nav.register': 'Register',
     'nav.players': 'Players',

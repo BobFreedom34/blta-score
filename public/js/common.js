@@ -500,6 +500,15 @@ const COURT_ICON_PATHS = {
   message: '<path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/>',
   trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
   eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+  user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  barChart: '<path d="M12 20V10M18 20V4M6 20v-4"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  logIn: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>',
+  logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+  userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
 };
 
 function courtIcon(name) {
@@ -1404,6 +1413,116 @@ document.addEventListener('click', (e) => {
     btn.classList.toggle('visible', window.scrollY > 400);
   });
   btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+})();
+
+// Phone bottom menu: Home / My matches / My profile / Rankings (shown by CSS below ~1024px, where the top menu collapses).
+// Skipped on embeds and the admin tools.
+(function initBottomNav() {
+  if (!document.querySelector('.topbar') || document.body.classList.contains('embed')) return;
+  if (/admin|login-history/.test(window.location.pathname)) return;
+  const path = window.location.pathname;
+  const onHome = path === '/';
+  const myView = new URLSearchParams(window.location.search).get('view') === 'my';
+  const items = [
+    { key: 'home', href: '/', icon: 'home', label: t('bottomNav.home') },
+    { key: 'matches', href: '/?view=my', icon: 'ball', label: t('tabs.myMatches') },
+    { key: 'profile', href: '#', icon: 'user', label: t('nav.myProfile') },
+    { key: 'rankings', href: '/rankings', icon: 'barChart', label: t('nav.rankings') },
+    { key: 'menu', href: '#', icon: 'menu', label: t('bottomNav.menu') },
+  ];
+  const nav = document.createElement('nav');
+  nav.className = 'bottom-nav';
+  nav.setAttribute('aria-label', 'Main');
+  nav.innerHTML = items.map((i) => `<a class="bottom-nav-item" data-nav="${i.key}" href="${i.href}">${courtIcon(i.icon)}<span>${escapeHtml(i.label)}</span></a>`).join('');
+  document.body.appendChild(nav);
+  document.body.classList.add('has-bottom-nav');
+  const el = (k) => nav.querySelector(`[data-nav="${k}"]`);
+
+  let menuOpen = false;
+  const setActive = () => {
+    const myTab = document.getElementById('tab-MY_MATCHES');
+    const myActive = onHome && (myTab ? myTab.classList.contains('active') : myView);
+    // While the menu sheet is open, only the Menu item is highlighted.
+    el('home').classList.toggle('active', !menuOpen && onHome && !myActive);
+    el('matches').classList.toggle('active', !menuOpen && myActive);
+    el('rankings').classList.toggle('active', !menuOpen && path.startsWith('/rankings'));
+    el('profile').classList.toggle('active', !menuOpen && path.startsWith('/player/') && el('profile').getAttribute('href') === path);
+    el('menu').classList.toggle('active', menuOpen);
+  };
+  setActive();
+  // Home page: the status tabs change without a reload, so follow them.
+  const bar = document.querySelector('.filter-bar');
+  if (bar) new MutationObserver(setActive).observe(bar, { attributes: true, attributeFilter: ['class'], subtree: true });
+
+  el('home').addEventListener('click', (e) => {
+    if (!onHome) return;
+    e.preventDefault();
+    const all = document.querySelector('.tab[data-filter="ALL"]');
+    if (all && !all.classList.contains('active')) all.click();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  el('matches').addEventListener('click', (e) => {
+    e.preventDefault();
+    const myTab = document.getElementById('tab-MY_MATCHES');
+    if (onHome && myTab) { myTab.click(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    requirePlayerAuth(() => { window.location.href = '/?view=my'; });
+  });
+  el('profile').addEventListener('click', (e) => {
+    if (playerAuthed && currentPlayerId) return; // real href already set
+    e.preventDefault();
+    requirePlayerAuth(() => { window.location.href = `/player/${currentPlayerSlug || currentPlayerId}`; });
+  });
+  const syncProfile = () => {
+    el('profile').href = (playerAuthed && currentPlayerId) ? `/player/${currentPlayerSlug || currentPlayerId}` : '#';
+    setActive();
+  };
+  window.addEventListener('blta:auth-changed', syncProfile);
+
+  // Menu: a sheet above the bar with every item of the top menu (the admin-managed ones too) plus log in / out.
+  const sheet = document.createElement('div');
+  sheet.className = 'menu-sheet';
+  sheet.hidden = true;
+  sheet.innerHTML = '<div class="menu-sheet-backdrop"></div><div class="menu-sheet-panel" id="menu-sheet-panel"></div>';
+  document.body.appendChild(sheet);
+  const panel = sheet.querySelector('.menu-sheet-panel');
+  const closeSheet = () => { sheet.hidden = true; menuOpen = false; setActive(); };
+  const rowIcon = (href) => {
+    if (href === '/') return 'ball';
+    if (href.startsWith('/players')) return 'users';
+    if (href.startsWith('/rankings')) return 'barChart';
+    if (href.startsWith('/courts')) return 'pin';
+    if (href.startsWith('/looking-to-play')) return 'search';
+    if (href.startsWith('/new-match')) return 'calendarPlus';
+    return 'arrow';
+  };
+  const openSheet = () => {
+    const seen = new Set();
+    const rows = [];
+    document.querySelectorAll('#nav-links a').forEach((a) => {
+      const href = a.getAttribute('href');
+      if (a.id === 'nav-my-profile-link' || !href || href === '#' || seen.has(href)) return;
+      seen.add(href);
+      rows.push(`<a class="menu-sheet-row" href="${escapeHtml(href)}">${courtIcon(rowIcon(href))}<span>${escapeHtml(a.textContent.trim())}</span></a>`);
+    });
+    const login = document.getElementById('player-login-link');
+    const register = document.getElementById('nav-register-link');
+    if (register && register.style.display !== 'none') rows.push('<button type="button" class="menu-sheet-row" data-proxy="nav-register-link">' + courtIcon('userPlus') + '<span>' + escapeHtml(register.textContent.trim()) + '</span></button>');
+    if (login) rows.push('<button type="button" class="menu-sheet-row" data-proxy="player-login-link">' + courtIcon(playerAuthed ? 'logOut' : 'logIn') + '<span>' + escapeHtml(login.textContent.trim()) + '</span></button>');
+    panel.innerHTML = rows.join('');
+    sheet.hidden = false;
+    menuOpen = true;
+    setActive();
+  };
+  el('menu').addEventListener('click', (e) => { e.preventDefault(); if (sheet.hidden) openSheet(); else closeSheet(); });
+  sheet.querySelector('.menu-sheet-backdrop').addEventListener('click', closeSheet);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheet.hidden) closeSheet(); });
+  panel.addEventListener('click', (e) => {
+    const proxy = e.target.closest('[data-proxy]');
+    if (!proxy) return;
+    closeSheet();
+    const target = document.getElementById(proxy.dataset.proxy);
+    if (target) target.click();
+  });
 })();
 
 document.querySelectorAll('[data-close]').forEach((el) => {
