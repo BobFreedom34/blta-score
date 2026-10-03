@@ -16,7 +16,7 @@
   --shadow: 0 2px 10px rgba(10, 10, 10, 0.08);
   --shadow-lg: 0 10px 30px rgba(10, 10, 10, 0.16);
   --status-green: #2e8b57; /* the planned/won green: date pill text + border and the left status bar */
-  --fill-grey: #1e1e22; /* dark grey fill for panels, buttons and chips on the black cards */
+  --fill-grey: #2c2c32; /* dark grey fill for panels, buttons and chips on the black cards */
 }
 
 * { box-sizing: border-box; }
