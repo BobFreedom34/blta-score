@@ -3161,3 +3161,43 @@ body.match-page .btn, body.match-page .tab, body.match-page .edit-link, body.mat
 body.match-page .timer, body.match-page .badge, body.match-page .lang-btn, body.match-page .proposal-option { border-radius: 8px; }
 
 body.match-page #match-root .card .edit-link { border-radius: 8px; }
+
+/* tab pills everywhere (rankings, player stats, courts...) share the 8px corners of the other pills; embeds keep their own look */
+body:not(.embed) .tab, body:not(.embed) .filter-bar .seg .tab { border-radius: 8px; }
+
+body:not(.embed) .lang-btn { border-radius: 8px; }
+
+/* Player profile: the head-to-head table is a black card with an orange border, like the cards above it. */
+body:not(.match-page):not(.embed) .h2h-card { background: var(--ink); color: var(--white); border: 1px solid var(--orange); border-radius: var(--radius); box-shadow: 0 0 18px rgba(231, 78, 25, 0.25); }
+body:not(.match-page):not(.embed) .h2h-card .h2h-row { border-bottom-color: rgba(255, 255, 255, 0.12); }
+body:not(.match-page):not(.embed) .h2h-card .h2h-name { color: var(--white); }
+body:not(.match-page):not(.embed) .h2h-card .h2h-name:hover { color: var(--orange); }
+body:not(.match-page):not(.embed) .h2h-card .h2h-bar { background: rgba(255, 255, 255, 0.12); }
+body:not(.match-page):not(.embed) .h2h-card .h2h-toggle { border-radius: 0 0 var(--radius) var(--radius); }
+body:not(.match-page):not(.embed) .h2h-card .h2h-toggle:hover { background: var(--fill-grey); }
+
+/* Player profile filters: same dark selects and plain reset button as the home page filter panel. */
+#player-filters select {
+  flex: 1 1 160px;
+  min-width: 0;
+  background: var(--fill-grey);
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-family: inherit;
+  font-size: 14px;
+}
+#player-filters select:disabled { opacity: 0.45; }
+#player-filters .btn-outline { background: transparent; color: #b8bcc4; border: none; box-shadow: none; padding: 10px 6px; }
+#player-filters .btn-outline:hover { color: var(--white); box-shadow: none; }
+
+/* Tab pills (rankings, player stats, courts...): grey like the home page filters instead of white. */
+body:not(.embed):not(.compact-page) .tab:not(.active):not(.tab-locked) { background: var(--fill-grey); color: var(--white); box-shadow: none; border-color: transparent; }
+body:not(.embed):not(.compact-page) .tab:not(.active) .count { background: rgba(255, 255, 255, 0.12); color: var(--white); }
+body:not(.embed):not(.compact-page) .filter-bar .tab:not(.active) { background: transparent; }
+
+/* Player profile stat tiles: grey panels with white text, like the other grey fills. */
+body:not(.match-page):not(.embed) .info-item { background: var(--fill-grey); color: var(--white); box-shadow: none; border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 14px; }
+body:not(.match-page):not(.embed) .info-item .label { color: #a9adb6; }
+body:not(.match-page):not(.embed) .info-item .value { color: var(--white); }

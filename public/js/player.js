@@ -804,13 +804,13 @@ function opponentRecords() {
 function h2hRowHtml(rec) {
   const total = rec.wins + rec.losses;
   const winPct = Math.round((rec.wins / total) * 100);
-  const scoreColor = rec.wins > rec.losses ? 'var(--green)' : rec.wins < rec.losses ? 'var(--danger)' : 'var(--gray)';
+  const scoreColor = rec.wins > rec.losses ? 'var(--status-green)' : rec.wins < rec.losses ? '#e5483a' : '#8b8f98';
   return `
     <div class="h2h-row">
       <a class="h2h-name" href="/player/${rec.opponent.slug || rec.opponent.id}">${escapeHtml(rec.opponent.name)}</a>
       <div class="h2h-record">
         <div class="h2h-bar">
-          <div style="width:${winPct}%;background:var(--green)"></div><div style="width:${100 - winPct}%;background:var(--danger)"></div>
+          <div style="width:${winPct}%;background:var(--status-green)"></div><div style="width:${100 - winPct}%;background:var(--danger)"></div>
         </div>
         <span class="h2h-score" style="color:${scoreColor}">${rec.wins} — ${rec.losses}</span>
       </div>
