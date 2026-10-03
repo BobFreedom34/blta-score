@@ -534,7 +534,7 @@ function boardPostHtml(post) {
     <div class="match-card availability-post" data-id="${post.id}">
       <div class="match-card-top">
         <div class="availability-post-days">${post.categories.map(levelBadge).join('')}<span class="availability-day-pill">${escapeHtml(t('lookingToPlay.slotsCount', { count: freeSlotCount }))}</span></div>
-        ${post.location ? `<div class="match-card-meta" style="margin-left:auto"><span>📍 ${escapeHtml(post.location)}</span></div>` : ''}
+        ${post.location ? `<div class="match-card-meta" style="margin-left:auto"><span>${courtIcon('pin')}${escapeHtml(post.location)}</span></div>` : ''}
       </div>
       <div class="scoreboard">
         <div class="availability-player-row">

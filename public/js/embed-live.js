@@ -17,13 +17,14 @@ const dateFilter = statusFilter === 'PLANNED' && ['has', 'none'].includes(params
 // had a category picked or restricted (e.g. /compactblta).
 const categoryFilter = params.get('category') || null;
 
+const headingHtml = (icon, text) => `<span class="match-heading-label">${courtIcon(icon)}${text}</span>`;
 const HEADERS = {
-  PLANNED: '🗓 Planned matches',
-  LIVE: '🔴 Live now',
-  FINISHED: '✅ Finished matches',
-  UNFINISHED: '⏹ Unfinished matches',
+  PLANNED: headingHtml('calendar', 'Planned matches'),
+  LIVE: headingHtml('live', 'Live now'),
+  FINISHED: headingHtml('checkCircle', 'Finished matches'),
+  UNFINISHED: headingHtml('pauseCircle', 'Unfinished matches'),
 };
-const PLANNED_DATE_HEADERS = { has: '📅 Scheduled matches', none: '🕓 Planned' };
+const PLANNED_DATE_HEADERS = { has: headingHtml('calendar', 'Scheduled matches'), none: headingHtml('clock', 'Planned') };
 const EMPTY_MESSAGES = {
   PLANNED: 'No planned matches right now.',
   LIVE: 'No live matches right now.',
@@ -56,8 +57,8 @@ function matchCardHtml(m) {
         ${categoryBadge(m.category)}
         ${statusBadge(m)}
         <div class="match-card-meta" style="margin-left:auto">
-          ${m.location ? `<span>📍 ${escapeHtml(m.location)}</span>` : ''}
-          ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>🗓 ${fmtDateShort(m.scheduledAt)}</span>`}
+          ${m.location ? `<span>${courtIcon('pin')}${escapeHtml(m.location)}</span>` : ''}
+          ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>${courtIcon('calendar')}${fmtDateShort(m.scheduledAt)}</span>`}
         </div>
       </div>
       ${m.notes ? `<div class="match-card-notes">${escapeHtml(m.notes)}</div>` : ''}
@@ -73,7 +74,7 @@ function matchCardHtml(m) {
           </div>
         </div>
       `}
-      ${isOverdueUnresolved(m) ? '<div class="overdue-warning">⚠️ Overdue — no result recorded yet</div>' : ''}
+      ${isOverdueUnresolved(m) ? `<div class="overdue-warning">${courtIcon('alert')}Overdue — no result recorded yet</div>` : ''}
     </a>
   `;
 }
@@ -89,9 +90,9 @@ function buildListHtml(matches) {
   matches.forEach((m, i) => {
     const curScheduled = !!m.scheduledAt;
     if (i === 0) {
-      parts.push(`<div class="match-list-heading">${curScheduled ? '📅 Scheduled' : '🕓 Planned'}</div>`);
+      parts.push(`<div class="match-list-heading">${curScheduled ? headingHtml('calendar', 'Scheduled') : headingHtml('clock', 'Planned')}</div>`);
     } else if (matches[i - 1].scheduledAt && !curScheduled) {
-      parts.push('<div class="match-list-heading">🕓 Planned</div>');
+      parts.push(`<div class="match-list-heading">${headingHtml('clock', 'Planned')}</div>`);
     }
     parts.push(matchCardHtml(m));
   });

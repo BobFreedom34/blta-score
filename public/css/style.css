@@ -37,10 +37,10 @@ html, body {
    pseudo-elements of <html> and <body> (painted in this order: html::before, body::before,
    body::after, html::after). The dark base colour is on <html>, which the blend modes composite
    against. Skipped on the WordPress embeds. */
-html:not(.embed)::before,
-body:not(.embed)::before,
-body:not(.embed)::after,
-html:not(.embed)::after {
+html:not(.embed-light)::before,
+body:not(.embed-light)::before,
+body:not(.embed-light)::after,
+html:not(.embed-light)::after {
   content: '';
   position: fixed;
   inset: 0;
@@ -50,15 +50,15 @@ html:not(.embed)::after {
   transform: translateZ(0);
   will-change: transform;
 }
-html:not(.embed)::before { background: radial-gradient(ellipse 55% 45% at 35% 50%, rgba(100, 116, 139, 0.6) 0%, transparent 60%); filter: blur(113px); }
-body:not(.embed)::before { background: radial-gradient(ellipse 40% 50% at 68% 38%, rgba(148, 163, 184, 0.5) 0%, transparent 55%); filter: blur(125px); }
-body:not(.embed)::after { background: radial-gradient(ellipse 30% 35% at 30% 72%, rgba(71, 85, 105, 0.45) 0%, transparent 50%); filter: blur(100px); }
-html:not(.embed)::after { background: radial-gradient(ellipse 22% 25% at 78% 75%, rgba(203, 213, 225, 0.3) 0%, transparent 45%); filter: blur(88px); }
+html:not(.embed-light)::before { background: radial-gradient(ellipse 55% 45% at 35% 50%, rgba(100, 116, 139, 0.6) 0%, transparent 60%); filter: blur(113px); }
+body:not(.embed-light)::before { background: radial-gradient(ellipse 40% 50% at 68% 38%, rgba(148, 163, 184, 0.5) 0%, transparent 55%); filter: blur(125px); }
+body:not(.embed-light)::after { background: radial-gradient(ellipse 30% 35% at 30% 72%, rgba(71, 85, 105, 0.45) 0%, transparent 50%); filter: blur(100px); }
+html:not(.embed-light)::after { background: radial-gradient(ellipse 22% 25% at 78% 75%, rgba(203, 213, 225, 0.3) 0%, transparent 45%); filter: blur(88px); }
 @media (min-width: 900px) {
-  html:not(.embed)::before { filter: blur(162px); }
-  body:not(.embed)::before { filter: blur(180px); }
-  body:not(.embed)::after { filter: blur(144px); }
-  html:not(.embed)::after { filter: blur(126px); }
+  html:not(.embed-light)::before { filter: blur(162px); }
+  body:not(.embed-light)::before { filter: blur(180px); }
+  body:not(.embed-light)::after { filter: blur(144px); }
+  html:not(.embed-light)::after { filter: blur(126px); }
 }
 
 a { color: inherit; text-decoration: none; }
@@ -702,7 +702,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   50% { opacity: 0.45; }
 }
 .badge-status.status-PLANNED { background: var(--gray-light); color: var(--charcoal); }
-body:not(.embed) .badge-status.status-LIVE { background: #ee3340; }
+body:not(.embed-light) .badge-status.status-LIVE { background: #ee3340; }
 .badge-status.status-PLANNED-dated { background: var(--green); color: var(--white); }
 .badge-status.status-FINISHED { background: var(--ink); color: var(--white); }
 .badge-status.status-UNFINISHED { background: var(--yellow); color: var(--ink); }
@@ -1003,7 +1003,7 @@ datalist {}
 .scoreboard td.name-cell { text-align: left; font-weight: 800; font-size: 18px; }
 .scoreboard .sub-tb { font-size: 11px; color: #9a9a9a; margin-left: 2px; }
 .scoreboard tr.winner-row td.name-cell::after { content: " \2713"; color: var(--yellow); }
-body:not(.embed) .scoreboard tr.winner-row td.name-cell::after { color: var(--orange); }
+body:not(.embed-light) .scoreboard tr.winner-row td.name-cell::after { color: var(--orange); }
 .player-info-btn, .player-info-link {
   display: inline-flex;
   align-items: center;
@@ -2015,7 +2015,7 @@ body:not(.embed) .scoreboard tr.winner-row td.name-cell::after { color: var(--or
 }
 
 /* ---------- Embed views ---------- */
-html.embed, body.embed { background: transparent; }
+body.embed { background: transparent; }
 .embed .container { padding: 10px; max-width: none; }
 
 footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); margin-top: 24px; }
@@ -2761,8 +2761,8 @@ a.court-meta-address:hover { color: var(--orange); }
 .court-info-value a:hover { color: var(--orange); }
 
 /* ---------- Match cards (dark, same look as the Courts cards) ---------- */
-/* Scoped away from the WordPress embeds (body.embed), which keep their light look. */
-body:not(.embed) .match-card {
+/* The WordPress embeds (body.embed) use the same dark look; the .embed-light opt-out class is not used by any page. */
+body:not(.embed-light) .match-card {
   --accent: var(--orange);
   --bar: transparent;
   --glow: 128, 132, 140;
@@ -2783,67 +2783,67 @@ body:not(.embed) .match-card {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 /* Slim status bar on the left edge: a dimmed version of the status colour. Borders stay neutral. */
-body:not(.embed) .match-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--bar); }
+body:not(.embed-light) .match-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--bar); }
 /* Every match card has the same soft grey glow on all four sides, stronger on hover; the status colour lives on the left bar only. */
-body:not(.embed) .match-card:hover { --g: 0.32; border-color: rgba(255, 255, 255, 0.8); }
-body:not(.embed) .match-card.status-LIVE { --bar: color-mix(in srgb, #ff5500 45%, #0a0a0a); }
+body:not(.embed-light) .match-card:hover { --g: 0.32; border-color: rgba(255, 255, 255, 0.8); }
+body:not(.embed-light) .match-card.status-LIVE { --bar: color-mix(in srgb, #ff5500 45%, #0a0a0a); }
 /* Planned with a date: green bar. Not yet scheduled: grey bar. */
-body:not(.embed) .match-card.status-PLANNED.has-date { --bar: var(--status-green); }
-body:not(.embed) .match-card.status-PLANNED:not(.has-date) { --bar: color-mix(in srgb, #8b8f98 30%, #0a0a0a); }
-body:not(.embed) .match-card.status-UNFINISHED { --bar: color-mix(in srgb, #ffb802 34%, #0a0a0a); }
+body:not(.embed-light) .match-card.status-PLANNED.has-date { --bar: var(--status-green); }
+body:not(.embed-light) .match-card.status-PLANNED:not(.has-date) { --bar: color-mix(in srgb, #8b8f98 30%, #0a0a0a); }
+body:not(.embed-light) .match-card.status-UNFINISHED { --bar: color-mix(in srgb, #ffb802 34%, #0a0a0a); }
 /* Player profile only: a decided result gets a green (won) or red (lost) bar. */
-body:not(.embed) .match-card.result-won { --bar: var(--status-green); }
-body:not(.embed) .match-card.result-lost { --bar: color-mix(in srgb, #e5483a 38%, #0a0a0a); }
+body:not(.embed-light) .match-card.result-won { --bar: var(--status-green); }
+body:not(.embed-light) .match-card.result-lost { --bar: color-mix(in srgb, #e5483a 38%, #0a0a0a); }
 
 /* Generous space between cards; the heading keeps its original distance to the card below it. */
-body:not(.embed) .match-list:not(.compact-match-list) { gap: 26px; }
-body:not(.embed) .match-list:not(.compact-match-list) .match-list-heading { margin-bottom: 6px; }
-body:not(.embed) .match-card-top { gap: 10px; }
+body:not(.embed-light) .match-list:not(.compact-match-list) { gap: 26px; }
+body:not(.embed-light) .match-list:not(.compact-match-list) .match-list-heading { margin-bottom: 6px; }
+body:not(.embed-light) .match-card-top { gap: 10px; }
 /* The time of a dated match: plain white text right after the date pill. */
-body:not(.embed) .match-card .status-time { color: var(--white); font-size: 12.5px; font-weight: 700; margin-left: -4px; }
-body:not(.embed) .match-card-top > .match-card-notes { order: 3; flex: 1 1 100%; min-width: 0; }
-body:not(.embed) .match-card-meta { color: #8b8f98; font-size: 12.5px; gap: 6px 14px; }
-body:not(.embed) .match-card-meta > span { display: inline-flex; align-items: center; gap: 6px; }
-body:not(.embed) .match-card-meta .venue-icon { width: 14px; height: 14px; flex-basis: 14px; }
-body:not(.embed) .match-quick-edit-btn { display: inline-flex; color: #8b8f98; opacity: 1; }
-body:not(.embed) .match-quick-edit-btn .venue-icon { width: 15px; height: 15px; flex-basis: 15px; }
-body:not(.embed) .match-quick-edit-btn:hover { color: var(--orange); }
-body:not(.embed) .match-card-notes { color: #8b8f98; font-size: 12.5px; font-weight: 400; }
+body:not(.embed-light) .match-card .status-time { color: var(--white); font-size: 12.5px; font-weight: 700; margin-left: -4px; }
+body:not(.embed-light) .match-card-top > .match-card-notes { order: 3; flex: 1 1 100%; min-width: 0; }
+body:not(.embed-light) .match-card-meta { color: #8b8f98; font-size: 12.5px; gap: 6px 14px; }
+body:not(.embed-light) .match-card-meta > span { display: inline-flex; align-items: center; gap: 6px; }
+body:not(.embed-light) .match-card-meta .venue-icon { width: 14px; height: 14px; flex-basis: 14px; }
+body:not(.embed-light) .match-quick-edit-btn { display: inline-flex; color: #8b8f98; opacity: 1; }
+body:not(.embed-light) .match-quick-edit-btn .venue-icon { width: 15px; height: 15px; flex-basis: 15px; }
+body:not(.embed-light) .match-quick-edit-btn:hover { color: var(--orange); }
+body:not(.embed-light) .match-card-notes { color: #8b8f98; font-size: 12.5px; font-weight: 400; }
 
 /* Pills are outlines: one colour for the text and the border, never a fill (category pills are orange, see .badge-ELITE etc.). */
-body:not(.embed) .match-card .badge { background: transparent; border: 1px solid currentColor; border-radius: 8px; padding: 4px 10px; font-size: 11px; box-shadow: none; }
-body:not(.embed) .match-card .badge-status { color: #a9adb6; }
-body:not(.embed) .match-card .badge-status.status-LIVE { color: #ee3340; }
-body:not(.embed) .match-card .badge-status.status-PLANNED-dated { color: var(--status-green); }
-body:not(.embed) .match-card .badge-status.status-FINISHED { color: #a9adb6; }
-body:not(.embed) .match-card .badge-status.status-UNFINISHED { color: #d9a06a; }
+body:not(.embed-light) .match-card .badge { background: transparent; border: 1px solid currentColor; border-radius: 8px; padding: 4px 10px; font-size: 11px; box-shadow: none; }
+body:not(.embed-light) .match-card .badge-status { color: #a9adb6; }
+body:not(.embed-light) .match-card .badge-status.status-LIVE { color: #ee3340; }
+body:not(.embed-light) .match-card .badge-status.status-PLANNED-dated { color: var(--status-green); }
+body:not(.embed-light) .match-card .badge-status.status-FINISHED { color: #a9adb6; }
+body:not(.embed-light) .match-card .badge-status.status-UNFINISHED { color: #d9a06a; }
 /* Competitions outside the BLTA league, on the dark pages: friendly = solid white pill with black text; VIP cup, ATA tennis and other =
    white outline with white text. (The white embeds and the white compact list keep the orange outline, white would be invisible there.) */
-body:not(.embed):not(.compact-page) .badge-FRIENDLY { background: #fff; color: #0a0a0a; border-color: #fff; }
-body:not(.embed):not(.compact-page) .badge-VIP_CUP,
-body:not(.embed):not(.compact-page) .badge-ATA_TENNIS,
-body:not(.embed):not(.compact-page) .badge-OTHER { color: #fff; border-color: #fff; }
+body:not(.embed-light):not(.embed-light) .badge-FRIENDLY { background: #fff; color: #0a0a0a; border-color: #fff; }
+body:not(.embed-light):not(.embed-light) .badge-VIP_CUP,
+body:not(.embed-light):not(.embed-light) .badge-ATA_TENNIS,
+body:not(.embed-light):not(.embed-light) .badge-OTHER { color: #fff; border-color: #fff; }
 
 /* Inner panels: a slightly lighter black with a hairline, not the old light grey. */
-body:not(.embed) .match-players-box,
-body:not(.embed) .match-card .scoreboard {
+body:not(.embed-light) .match-players-box,
+body:not(.embed-light) .match-card .scoreboard {
   background: var(--fill-grey);
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 18px;
   box-shadow: none;
 }
-body:not(.embed) .match-players-box { padding: 16px 18px; }
-body:not(.embed) .match-players .name { color: var(--white); }
-body:not(.embed) .match-players .vs { color: #8b8f98; }
-body:not(.embed) .match-players .winner { color: var(--orange); }
-body:not(.embed) .match-score { color: var(--white); }
-body:not(.embed) .match-score-format { color: #8b8f98; font-weight: 700; }
+body:not(.embed-light) .match-players-box { padding: 16px 18px; }
+body:not(.embed-light) .match-players .name { color: var(--white); }
+body:not(.embed-light) .match-players .vs { color: #8b8f98; }
+body:not(.embed-light) .match-players .winner { color: var(--orange); }
+body:not(.embed-light) .match-score { color: var(--white); }
+body:not(.embed-light) .match-score-format { color: #8b8f98; font-weight: 700; }
 
-body:not(.embed) .match-card .btn-outline { background: var(--fill-grey); color: var(--white); border: none; border-radius: 12px; }
-body:not(.embed) .match-card .btn-outline:hover { background: #2c2c31; box-shadow: none; }
-body:not(.embed) .match-card .availability-day-pill { background: var(--fill-grey); color: #d6d8dd; }
+body:not(.embed-light) .match-card .btn-outline { background: var(--fill-grey); color: var(--white); border: none; border-radius: 12px; }
+body:not(.embed-light) .match-card .btn-outline:hover { background: #2c2c31; box-shadow: none; }
+body:not(.embed-light) .match-card .availability-day-pill { background: var(--fill-grey); color: #d6d8dd; }
 /* The overdue note is styled like a category pill: orange outline, no fill, same size and type. */
-body:not(.embed) .match-card .overdue-warning {
+body:not(.embed-light) .match-card .overdue-warning {
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
@@ -2859,26 +2859,26 @@ body:not(.embed) .match-card .overdue-warning {
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
-body:not(.embed) .match-card .overdue-warning .venue-icon { width: 13px; height: 13px; flex-basis: 13px; }
+body:not(.embed-light) .match-card .overdue-warning .venue-icon { width: 13px; height: 13px; flex-basis: 13px; }
 
 /* Section headings: outline icon (orange for Live), same family as the venue/date icons. */
-body:not(.embed) .match-heading-label { display: inline-flex; align-items: center; gap: 10px; }
-body:not(.embed) .match-heading-label .venue-icon { width: 24px; height: 24px; flex: 0 0 24px; color: #8b8f98; }
-body:not(.embed) .match-heading-label .venue-icon[data-icon="live"] { color: var(--orange); }
+body:not(.embed-light) .match-heading-label { display: inline-flex; align-items: center; gap: 10px; }
+body:not(.embed-light) .match-heading-label .venue-icon { width: 24px; height: 24px; flex: 0 0 24px; color: #8b8f98; }
+body:not(.embed-light) .match-heading-label .venue-icon[data-icon="live"] { color: var(--orange); }
 /* Button icons: same gray outline style as the venue and date icons. */
-body:not(.embed) .match-card .btn .venue-icon { width: 15px; height: 15px; flex: 0 0 15px; color: #8b8f98; }
-body:not(.embed) .match-card .notify-btn:disabled .venue-icon { color: #5fd88a; }
+body:not(.embed-light) .match-card .btn .venue-icon { width: 15px; height: 15px; flex: 0 0 15px; color: #8b8f98; }
+body:not(.embed-light) .match-card .notify-btn:disabled .venue-icon { color: #5fd88a; }
 
 @media (max-width: 680px) {
-  body:not(.embed) .match-card { padding: 18px 16px 16px; border-radius: 20px; }
+  body:not(.embed-light) .match-card { padding: 18px 16px 16px; border-radius: 20px; }
   /* Phone: both pills on the left of the first line; second line has the additional info on the left
      and the venue on the right (same font). */
-  body:not(.embed) .match-card:not(.availability-post) .match-card-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0 10px; }
-  body:not(.embed) .match-card:not(.availability-post) .match-card-top::after { content: ''; flex: 0 0 100%; order: 2; }
-  body:not(.embed) .match-card:not(.availability-post) .match-card-top > .badge, body:not(.embed) .match-card:not(.availability-post) .match-card-top > .status-time { order: 1; }
-  body:not(.embed) .match-card:not(.availability-post) .match-card-top > .match-card-notes { order: 3; flex: 1 1 0; min-width: 0; margin-top: 10px; white-space: normal; overflow: visible; text-overflow: clip; }
-  body:not(.embed) .match-card:not(.availability-post) .match-card-top > .match-card-meta { order: 4; flex: 0 1 auto; max-width: 100%; margin-top: 10px; margin-left: auto; justify-content: flex-end; }
-  body:not(.embed) .match-card:not(.availability-post) .match-card-top:has(> .match-card-notes) > .match-card-meta { max-width: 65%; }
+  body:not(.embed-light) .match-card:not(.availability-post) .match-card-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0 10px; }
+  body:not(.embed-light) .match-card:not(.availability-post) .match-card-top::after { content: ''; flex: 0 0 100%; order: 2; }
+  body:not(.embed-light) .match-card:not(.availability-post) .match-card-top > .badge, body:not(.embed-light) .match-card:not(.availability-post) .match-card-top > .status-time { order: 1; }
+  body:not(.embed-light) .match-card:not(.availability-post) .match-card-top > .match-card-notes { order: 3; flex: 1 1 0; min-width: 0; margin-top: 10px; white-space: normal; overflow: visible; text-overflow: clip; }
+  body:not(.embed-light) .match-card:not(.availability-post) .match-card-top > .match-card-meta { order: 4; flex: 0 1 auto; max-width: 100%; margin-top: 10px; margin-left: auto; justify-content: flex-end; }
+  body:not(.embed-light) .match-card:not(.availability-post) .match-card-top:has(> .match-card-notes) > .match-card-meta { max-width: 65%; }
 }
 
 /* ---------- Home page filter bar: segmented control + chips + one "Filtre" chip ---------- */
@@ -3165,18 +3165,18 @@ body.match-page .timer, body.match-page .badge, body.match-page .lang-btn, body.
 body.match-page #match-root .card .edit-link { border-radius: 8px; }
 
 /* tab pills everywhere (rankings, player stats, courts...) share the 8px corners of the other pills; embeds keep their own look */
-body:not(.embed) .tab, body:not(.embed) .filter-bar .seg .tab { border-radius: 8px; }
+body:not(.embed-light) .tab, body:not(.embed-light) .filter-bar .seg .tab { border-radius: 8px; }
 
-body:not(.embed) .lang-btn { border-radius: 8px; }
+body:not(.embed-light) .lang-btn { border-radius: 8px; }
 
 /* Player profile: the head-to-head table is a black card with an orange border, like the cards above it. */
-body:not(.match-page):not(.embed) .h2h-card { background: var(--ink); color: var(--white); border: 1px solid var(--orange); border-radius: var(--radius); box-shadow: 0 0 18px rgba(255, 85, 0, 0.25); }
-body:not(.match-page):not(.embed) .h2h-card .h2h-row { border-bottom-color: rgba(255, 255, 255, 0.12); }
-body:not(.match-page):not(.embed) .h2h-card .h2h-name { color: var(--white); }
-body:not(.match-page):not(.embed) .h2h-card .h2h-name:hover { color: var(--orange); }
-body:not(.match-page):not(.embed) .h2h-card .h2h-bar { background: rgba(255, 255, 255, 0.12); }
-body:not(.match-page):not(.embed) .h2h-card .h2h-toggle { border-radius: 0 0 var(--radius) var(--radius); }
-body:not(.match-page):not(.embed) .h2h-card .h2h-toggle:hover { background: var(--fill-grey); }
+body:not(.match-page):not(.embed-light) .h2h-card { background: var(--ink); color: var(--white); border: 1px solid var(--orange); border-radius: var(--radius); box-shadow: 0 0 18px rgba(255, 85, 0, 0.25); }
+body:not(.match-page):not(.embed-light) .h2h-card .h2h-row { border-bottom-color: rgba(255, 255, 255, 0.12); }
+body:not(.match-page):not(.embed-light) .h2h-card .h2h-name { color: var(--white); }
+body:not(.match-page):not(.embed-light) .h2h-card .h2h-name:hover { color: var(--orange); }
+body:not(.match-page):not(.embed-light) .h2h-card .h2h-bar { background: rgba(255, 255, 255, 0.12); }
+body:not(.match-page):not(.embed-light) .h2h-card .h2h-toggle { border-radius: 0 0 var(--radius) var(--radius); }
+body:not(.match-page):not(.embed-light) .h2h-card .h2h-toggle:hover { background: var(--fill-grey); }
 
 /* Player profile filters: same dark selects and plain reset button as the home page filter panel. */
 #player-filters select {
@@ -3195,14 +3195,14 @@ body:not(.match-page):not(.embed) .h2h-card .h2h-toggle:hover { background: var(
 #player-filters .btn-outline:hover { color: var(--white); box-shadow: none; }
 
 /* Tab pills (rankings, player stats, courts...): grey like the home page filters instead of white. */
-body:not(.embed):not(.compact-page) .tab:not(.active):not(.tab-locked) { background: var(--fill-grey); color: var(--white); box-shadow: none; border-color: transparent; }
-body:not(.embed):not(.compact-page) .tab:not(.active) .count { background: rgba(255, 255, 255, 0.12); color: var(--white); }
-body:not(.embed):not(.compact-page) .filter-bar .tab:not(.active) { background: transparent; }
+body:not(.embed-light):not(.embed-light) .tab:not(.active):not(.tab-locked) { background: var(--fill-grey); color: var(--white); box-shadow: none; border-color: transparent; }
+body:not(.embed-light):not(.embed-light) .tab:not(.active) .count { background: rgba(255, 255, 255, 0.12); color: var(--white); }
+body:not(.embed-light):not(.embed-light) .filter-bar .tab:not(.active) { background: transparent; }
 
 /* Player profile stat tiles: grey panels with white text, like the other grey fills. */
-body:not(.match-page):not(.embed) .info-item { background: var(--fill-grey); color: var(--white); box-shadow: none; border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 14px; }
-body:not(.match-page):not(.embed) .info-item .label { color: #a9adb6; }
-body:not(.match-page):not(.embed) .info-item .value { color: var(--white); }
+body:not(.match-page):not(.embed-light) .info-item { background: var(--fill-grey); color: var(--white); box-shadow: none; border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 14px; }
+body:not(.match-page):not(.embed-light) .info-item .label { color: #a9adb6; }
+body:not(.match-page):not(.embed-light) .info-item .value { color: var(--white); }
 
 /* Grey search field (players page), same look as the search box on the home page. */
 input.grey-search {
@@ -3221,8 +3221,8 @@ input.grey-search::placeholder { color: #8b8f98; }
 input.grey-search:focus { outline: none; border-color: var(--orange); }
 
 /* BLTA league category pills: a fluorescent orange, as bright as the lime green (text, border and level dots). */
-body:not(.embed) .badge-ELITE, body:not(.embed) .badge-NEXT_GEN, body:not(.embed) .badge-NOVICE,
-body:not(.embed) .match-card .overdue-warning { color: #ff5500; border-color: #ff5500; }
+body:not(.embed-light) .badge-ELITE, body:not(.embed-light) .badge-NEXT_GEN, body:not(.embed-light) .badge-NOVICE,
+body:not(.embed-light) .match-card .overdue-warning { color: #ff5500; border-color: #ff5500; }
 
 /* One green everywhere: the lime #b2fa06. Text sitting on it is dark. */
 .btn-green, #tab-MY_MATCHES:not(.tab-locked), #count-SCHEDULED, .badge-status.status-PLANNED-dated, .badge-viewers,
@@ -3230,19 +3230,15 @@ body:not(.embed) .match-card .overdue-warning { color: #ff5500; border-color: #f
 #rankings-tabs .tab[data-key="courtiq"], #rankings-tabs .tab[data-key="courtiq"].active { color: #0a0a0a; }
 .form-square.win { color: #0a0a0a; }
 /* White surfaces (modals, embeds, compact lists) keep a darker green so it stays readable on white. */
-.modal, body.embed, body.compact-page { --green: #105a1e; --green-light: #14712a; }
-.modal .btn-green, body.embed .btn-green, body.compact-page .btn-green,
-body.embed .badge-status.status-PLANNED-dated, body.compact-page .badge-status.status-PLANNED-dated,
-body.embed .badge-viewers, body.compact-page .badge-viewers,
-body.embed .compact-card.status-FINISHED .compact-result, body.compact-page .compact-card.status-FINISHED .compact-result,
-body.embed .form-square.win, body.compact-page .form-square.win { color: #fff; }
+.modal { --green: #105a1e; --green-light: #14712a; }
+.modal .btn-green { color: #fff; }
 
 /* Match cards: no coloured bar on the left edge any more; cards that used the green bar (planned with a date, won) get a green border instead. */
-body:not(.embed) .match-card::before { display: none; }
-body:not(.embed) .match-card.status-PLANNED.has-date,
-body:not(.embed) .match-card.result-won { border-color: var(--status-green); }
-body:not(.embed) .match-card.status-PLANNED.has-date:hover,
-body:not(.embed) .match-card.result-won:hover { border-color: var(--status-green); }
+body:not(.embed-light) .match-card::before { display: none; }
+body:not(.embed-light) .match-card.status-PLANNED.has-date,
+body:not(.embed-light) .match-card.result-won { border-color: var(--status-green); }
+body:not(.embed-light) .match-card.status-PLANNED.has-date:hover,
+body:not(.embed-light) .match-card.result-won:hover { border-color: var(--status-green); }
 
 /* ---------- Phone bottom menu (Home / My matches / My profile / Rankings) ---------- */
 .bottom-nav { display: none; }
@@ -3369,3 +3365,57 @@ body:not(.embed) .match-card.result-won:hover { border-color: var(--status-green
   .nav-submenu a { padding: 12px 16px 12px 50px; font-size: 12px; }
   .nav-submenu a::before { display: none; }
 }
+
+/* Embeds: status pills outside a match card get the same outlined 8px look as inside one. */
+body.embed .badge { background: transparent; border: 1px solid currentColor; border-radius: 8px; padding: 4px 10px; font-size: 11px; box-shadow: none; }
+body.embed .badge-status { color: #a9adb6; }
+body.embed .badge-status.status-LIVE { color: #ee3340; animation: none; }
+body.embed .badge-status.status-PLANNED-dated { color: var(--status-green); }
+body.embed .badge-status.status-FINISHED { color: #a9adb6; }
+body.embed .badge-status.status-UNFINISHED { color: #d9a06a; }
+
+/* Compact lists (/compact, /compactblta and the compact embed): dark rows in the app style. */
+.compact-card { background: #0a0a0a; color: var(--white); border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 14px; box-shadow: none; }
+.compact-card:hover { border-color: rgba(255, 255, 255, 0.7); box-shadow: none; }
+.compact-card.status-LIVE, .compact-card.status-FINISHED, .compact-card.status-PLANNED { border-left-color: rgba(255, 255, 255, 0.35); }
+.compact-card.status-PLANNED.has-date { border-color: var(--status-green); }
+.compact-card.status-LIVE { border-color: var(--orange); }
+.compact-date, .compact-place, .compact-card .scoreboard-reason { color: #a9adb6; }
+.compact-live { color: #ee3340; }
+.compact-players .winner { color: var(--status-green); }
+.compact-result { background: var(--fill-grey); color: var(--white); border-radius: 8px; }
+.compact-card.status-FINISHED .compact-result { background: var(--status-green); color: #0a0a0a; }
+.compact-card.status-LIVE .compact-result { background: var(--orange); color: var(--white); }
+.compact-card .scoreboard { background: var(--fill-grey); color: var(--white); border: none; }
+.compact-card .scoreboard .set-win { color: var(--status-green); }
+body.compact-page .filters input[type="text"], body.compact-page .filters select {
+  background: var(--fill-grey); color: var(--white); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
+}
+body.compact-page .filters input[type="text"]::placeholder { color: #8b8f98; }
+body.compact-page .filters .btn-outline { background: transparent; color: #b8bcc4; border: none; box-shadow: none; }
+.compact-match-list { scrollbar-color: #4a4a52 transparent; }
+.compact-match-list::-webkit-scrollbar { height: 8px; }
+.compact-match-list::-webkit-scrollbar-track { background: transparent; }
+.compact-match-list::-webkit-scrollbar-thumb { background: #4a4a52; border-radius: 8px; }
+body.compact-page .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
+body.compact-page .tab.active .count { background: rgba(255, 255, 255, 0.22); color: var(--white); }
+
+/* Emoji replacements: outline icons next to text on cards, compact rows and embeds. */
+.badge { white-space: nowrap; }
+.court-icon, .proposal-icon { display: inline-flex; vertical-align: middle; margin-left: 6px; }
+.court-icon .venue-icon, .proposal-icon .venue-icon { width: 14px; height: 14px; flex: 0 0 14px; color: #a9adb6; }
+.compact-live, .compact-place, .paused-label { display: inline-flex; align-items: center; gap: 5px; }
+.compact-live .venue-icon, .compact-place .venue-icon, .paused-label .venue-icon { width: 13px; height: 13px; flex: 0 0 13px; }
+.compact-place .venue-icon { color: #8b8f98; }
+.match-card-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.match-card-meta .venue-icon { width: 14px; height: 14px; flex: 0 0 14px; color: #8b8f98; }
+.match-heading-label { display: inline-flex; align-items: center; gap: 10px; }
+.match-heading-label .venue-icon { width: 22px; height: 22px; flex: 0 0 22px; color: #8b8f98; }
+.bracket-champion-name .venue-icon { width: 20px; height: 20px; vertical-align: -4px; margin-right: 6px; color: var(--status-green); }
+.overdue-warning .venue-icon { width: 13px; height: 13px; flex: 0 0 13px; }
+
+.embed-match-foot { margin-top: 10px; font-size: 12px; color: #a9adb6; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.embed-match-foot .venue-icon { width: 14px; height: 14px; flex: 0 0 14px; color: #8b8f98; }
+.embed-match-foot a { color: var(--white); }
+
+.compact-place { justify-content: flex-end; text-align: right; }

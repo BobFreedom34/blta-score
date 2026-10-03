@@ -371,17 +371,21 @@ updateTimeFilterAvailability();
 const filtersToggle = document.getElementById('filters-toggle');
 const filtersPanel = document.getElementById('filters-panel');
 const filterCountEl = document.getElementById('filter-count');
+// The compact pages share this script but have no "Filtre" chip, so every use below is guarded.
 function updateFilterCount() {
+  if (!filtersToggle) return;
   const n = (currentCategory ? 1 : 0) + (currentTimeFilter ? 1 : 0);
   filterCountEl.textContent = n;
   filterCountEl.hidden = n === 0;
   filtersToggle.classList.toggle('active', n > 0 || !filtersPanel.hidden);
 }
-filtersToggle.addEventListener('click', () => {
-  filtersPanel.hidden = !filtersPanel.hidden;
-  filtersToggle.setAttribute('aria-expanded', String(!filtersPanel.hidden));
-  updateFilterCount();
-});
+if (filtersToggle) {
+  filtersToggle.addEventListener('click', () => {
+    filtersPanel.hidden = !filtersPanel.hidden;
+    filtersToggle.setAttribute('aria-expanded', String(!filtersPanel.hidden));
+    updateFilterCount();
+  });
+}
 
 document.getElementById('filter-q').addEventListener('input', (e) => {
   currentQuery = e.target.value.trim();

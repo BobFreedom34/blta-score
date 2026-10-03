@@ -98,7 +98,7 @@ function render(data) {
   const championHtml = `
     <div class="bracket-node bracket-champion" style="grid-column:${totalColumns};grid-row:2 / span ${data.size}">
       ${championPlayer
-    ? `<div class="bracket-champion-name">🏆 ${escapeHtml(championPlayer.name)}</div>`
+    ? `<div class="bracket-champion-name">${courtIcon('trophy')}${escapeHtml(championPlayer.name)}</div>`
     : `<span style="color:var(--gray-dim);font-size:12px">TBD</span>`}
     </div>
   `;

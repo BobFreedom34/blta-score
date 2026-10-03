@@ -504,6 +504,7 @@ const COURT_ICON_PATHS = {
   user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   barChart: '<path d="M12 20V10M18 20V4M6 20v-4"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/>',
   users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
   search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   logIn: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>',
@@ -1001,7 +1002,7 @@ function cardDurationHtml(m) {
     const mm = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
     const ss = String(secs % 60).padStart(2, '0');
     const text = h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
-    return `<div class="timer${m.pausedAt ? ' timer-paused' : ''}">${text}</div>${m.pausedAt ? '<div class="paused-label">⏸ PAUSED</div>' : ''}`;
+    return `<div class="timer${m.pausedAt ? ' timer-paused' : ''}">${text}</div>${m.pausedAt ? `<div class="paused-label">${courtIcon('pauseCircle')}PAUSED</div>` : ''}`;
   }
   if (m.status === 'FINISHED' && m.startTime && m.endTime) {
     const mins = Math.max(1, Math.round((new Date(m.endTime) - new Date(m.startTime)) / 60000));
@@ -1087,7 +1088,7 @@ function ballsIconHtml(m, playerNum) {
 // the SVG case above, so no <title> child needed here.
 function courtIconHtml(m, playerNum) {
   if (m.status !== 'PLANNED' || m.courtPlayer !== playerNum) return '';
-  return `<span class="court-icon" title="${escapeHtml(t('common.reservesCourtTitle'))}">📞</span>`;
+  return `<span class="court-icon" title="${escapeHtml(t('common.reservesCourtTitle'))}">${courtIcon('phone')}</span>`;
 }
 
 // Same idea again, for whichever player made a "propose times" offer
@@ -1100,7 +1101,7 @@ function courtIconHtml(m, playerNum) {
 // beyond proposedBy/counterProposedBy actually being this player.
 function proposalIconHtml(m, playerNum) {
   if (m.status !== 'PLANNED' || (m.proposedBy !== playerNum && m.counterProposedBy !== playerNum)) return '';
-  return `<span class="proposal-icon" title="${escapeHtml(t('common.proposalTitle'))}">🕓</span>`;
+  return `<span class="proposal-icon" title="${escapeHtml(t('common.proposalTitle'))}">${courtIcon('clock')}</span>`;
 }
 
 // Compact per-set scoreboard for a match card (LIVE/FINISHED) — same dark
@@ -1654,7 +1655,7 @@ function compactDateOnly(iso) {
 }
 
 function compactDateHtml(m) {
-  if (m.status === 'LIVE') return '<span class="compact-live">🔴 LIVE</span>';
+  if (m.status === 'LIVE') return `<span class="compact-live">${courtIcon('live')}LIVE</span>`;
   return escapeHtml(compactDateOnly(m.scheduledAt) || 'Date TBD');
 }
 
@@ -1668,7 +1669,7 @@ function compactMatchCardHtml(m) {
   // show, same cases cardScoreboardHtml itself returns '' for.
   const scoreboard = cardScoreboardHtml(m, { compact: true });
   return `
-    <a class="compact-card status-${m.status}" href="${window.location.origin}/match/${m.token}"${window.top !== window.self ? ' target="_blank" rel="noopener"' : ''}>
+    <a class="compact-card status-${m.status}${m.status === 'PLANNED' && m.scheduledAt ? ' has-date' : ''}" href="${window.location.origin}/match/${m.token}"${window.top !== window.self ? ' target="_blank" rel="noopener"' : ''}>
       <span class="compact-date-category">
         ${categoryBadge(m.category)}
         <span class="compact-date">${compactDateHtml(m)}</span>
@@ -1678,7 +1679,7 @@ function compactMatchCardHtml(m) {
         <span class="${winnerP2 ? 'winner' : ''}">${escapeHtml(m.player2.name)}${ballsIconHtml(m, 2)}${courtIconHtml(m, 2)}${proposalIconHtml(m, 2)}</span>
       </span>
       ${scoreboard || `<span class="compact-result">${matchScoreHtml(m)}</span>`}
-      <span class="compact-place">${m.location ? `📍 ${escapeHtml(m.location)}` : ''}</span>
+      <span class="compact-place">${m.location ? `${courtIcon('pin')}${escapeHtml(m.location)}` : ''}</span>
     </a>
   `;
 }

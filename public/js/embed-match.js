@@ -29,8 +29,8 @@ function render(m) {
         <tbody>${row(1, m.player1)}${row(2, m.player2)}</tbody>
       </table>
     </div>
-    <div style="margin-top:8px;font-size:11px;color:var(--gray)">
-      ${m.location ? `📍 ${escapeHtml(m.location)} · ` : ''}${fmtDateShort(m.scheduledAt)}
+    <div class="embed-match-foot">
+      ${m.location ? `${courtIcon('pin')}${escapeHtml(m.location)} · ` : ''}${fmtDateShort(m.scheduledAt)}
       · <a href="${window.location.origin}/match/${m.token}" target="_blank" rel="noopener" style="text-decoration:underline">Full match ↗</a>
     </div>
   `;
