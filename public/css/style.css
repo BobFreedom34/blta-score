@@ -15,7 +15,7 @@
   --radius: 14px;
   --shadow: 0 2px 10px rgba(10, 10, 10, 0.08);
   --shadow-lg: 0 10px 30px rgba(10, 10, 10, 0.16);
-  --status-green: #2e8b57; /* the planned/won green: date pill text + border and the left status bar */
+  --status-green: #b2fa06; /* the planned/won green: date pill text + border and the left status bar */
   --fill-grey: #37373e; /* dark grey fill for panels, buttons and chips on the black cards */
 }
 
@@ -2910,7 +2910,7 @@ body:not(.embed) .match-card .notify-btn:disabled .venue-icon { color: #5fd88a; 
 }
 
 /* "My matches" turns green once the player is logged in (locked = greyed out) */
-.filter-bar .seg #tab-MY_MATCHES:not(.tab-locked) { background: var(--status-green); color: var(--white); border-color: var(--status-green); }
+.filter-bar .seg #tab-MY_MATCHES:not(.tab-locked) { background: var(--status-green); color: #0a0a0a; border-color: var(--status-green); }
 .filter-bar .seg #tab-MY_MATCHES:not(.tab-locked).active { box-shadow: 0 0 0 2px var(--white) inset; }
 .filter-bar .seg #tab-MY_MATCHES:not(.tab-locked) .count { background: transparent; color: inherit; opacity: 1; }
 
@@ -3037,7 +3037,7 @@ body.match-page #match-root .btn {
 body.match-page #match-root .btn:hover { border-color: rgba(255, 255, 255, 0.75); box-shadow: none; }
 body.match-page #match-root .btn-primary { background: var(--orange); border-color: var(--orange); }
 body.match-page #match-root .btn-primary:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
-body.match-page #match-root .btn-green { background: var(--status-green); border-color: var(--status-green); }
+body.match-page #match-root .btn-green { background: var(--status-green); border-color: var(--status-green); color: #0a0a0a; }
 body.match-page #match-root .btn-green:hover { filter: brightness(1.12); border-color: var(--status-green); }
 body.match-page #match-root .btn-dark { background: var(--fill-grey); border-color: rgba(255, 255, 255, 0.12); }
 body.match-page #match-root .btn-danger { background: transparent; color: #ff7a6e; border-color: rgba(229, 72, 58, 0.6); }
@@ -3219,3 +3219,7 @@ input.grey-search {
 #add-player-card { margin-top: 22px; }
 input.grey-search::placeholder { color: #8b8f98; }
 input.grey-search:focus { outline: none; border-color: var(--orange); }
+
+/* BLTA league category pills: a brighter orange than the brand orange (text, border and level dots). */
+body:not(.embed) .badge-ELITE, body:not(.embed) .badge-NEXT_GEN, body:not(.embed) .badge-NOVICE,
+body:not(.embed) .match-card .overdue-warning { color: #ff6a2b; border-color: #ff6a2b; }
