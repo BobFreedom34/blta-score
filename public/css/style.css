@@ -3236,3 +3236,10 @@ body.embed .badge-status.status-PLANNED-dated, body.compact-page .badge-status.s
 body.embed .badge-viewers, body.compact-page .badge-viewers,
 body.embed .compact-card.status-FINISHED .compact-result, body.compact-page .compact-card.status-FINISHED .compact-result,
 body.embed .form-square.win, body.compact-page .form-square.win { color: #fff; }
+
+/* Match cards: no coloured bar on the left edge any more; cards that used the green bar (planned with a date, won) get a green border instead. */
+body:not(.embed) .match-card::before { display: none; }
+body:not(.embed) .match-card.status-PLANNED.has-date,
+body:not(.embed) .match-card.result-won { border-color: var(--status-green); }
+body:not(.embed) .match-card.status-PLANNED.has-date:hover,
+body:not(.embed) .match-card.result-won:hover { border-color: var(--status-green); }
