@@ -90,6 +90,11 @@ function startTimer(m) {
 
 // setCell is shared from common.js (also used by a match card's compact scoreboard).
 
+// Button/label text with an outline icon instead of the leading emoji baked into the translation.
+function stripEmoji(text) { return String(text).replace(/^[\p{Extended_Pictographic}\u200d\ufe0f\s]+/u, ''); }
+function iconLabel(icon, text) { return `${courtIcon(icon)}<span>${escapeHtml(stripEmoji(text))}</span>`; }
+function viewersHtml(count) { return `${courtIcon('eye')}${count} ${escapeHtml(t('match.watching'))}`; }
+
 function scoreboardHtml(m, durationHtml) {
   const state = m.state;
   const setsToShow = state.sets;
@@ -102,12 +107,12 @@ function scoreboardHtml(m, durationHtml) {
       const isCurrent = m.status === 'LIVE' && i === state.currentSet;
       return `<td class="set-score ${isCurrent ? 'current' : ''}">${setCell(s, playerNum)}</td>`;
     }).join('');
-    const ball = serving === playerNum ? `<span class="serve-ball" title="${escapeHtml(t('match.servingTitle'))}">🟡</span>` : '';
+    const ball = serving === playerNum ? `<span class="serve-ball" title="${escapeHtml(t('match.servingTitle'))}">${courtIcon('ball')}</span>` : '';
     return `<tr class="${isWinner ? 'winner-row' : ''}"><td class="name-cell">${ball}${escapeHtml(player.name)}</td>${cells}</tr>`;
   };
 
   return `
-    <div class="scoreboard">
+    <div class="scoreboard status-${m.status}">
       <table>
         <thead><tr><th class="timer-cell">${durationHtml || ''}</th>${headerCells}</tr></thead>
         <tbody>
@@ -171,11 +176,11 @@ function scoreControlsHtml(m, { showFinish, showRestart, canControlLive }) {
     <div class="match-actions">
       ${canControlLive ? `
       ${showFinish ? (m.pausedAt
-        ? `<button class="btn" id="resume-btn">${t('match.resumeMatch')}</button>`
-        : `<button class="btn" id="pause-btn">${t('match.stopMatch')}</button>`) : ''}
-      ${showRestart ? `<button class="btn" id="restart-btn">${t('match.restartMatch')}</button>` : ''}
-      ${showFinish ? `<button class="btn btn-dark" id="finish-btn">${t('match.finishMatchBtn')}</button>` : ''}
-      ${showFinish ? `<button class="btn btn-outline" id="unfinished-btn" title="${escapeHtml(t('match.matchUnfinishedTitle'))}">${t('match.matchUnfinishedBtn')}</button>` : ''}
+        ? `<button class="btn" id="resume-btn">${iconLabel('playCircle', t('match.resumeMatch'))}</button>`
+        : `<button class="btn" id="pause-btn">${iconLabel('pauseCircle', t('match.stopMatch'))}</button>`) : ''}
+      ${showRestart ? `<button class="btn" id="restart-btn">${iconLabel('restart', t('match.restartMatch'))}</button>` : ''}
+      ${showFinish ? `<button class="btn btn-dark" id="finish-btn">${iconLabel('flag', t('match.finishMatchBtn'))}</button>` : ''}
+      ${showFinish ? `<button class="btn btn-outline" id="unfinished-btn" title="${escapeHtml(t('match.matchUnfinishedTitle'))}">${iconLabel('stopCircle', t('match.matchUnfinishedBtn'))}</button>` : ''}
       ` : ''}
     </div>
   `;
@@ -185,8 +190,8 @@ function controlsHtml(m, canControlLive) {
   if (m.status === 'PLANNED') {
     return `
       <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="btn btn-primary" id="start-btn" style="flex:1;padding:12px 10px;font-size:13px;text-transform:uppercase">${t('match.startLiveMatch')}</button>
-        <button class="btn btn-green" id="manual-result-btn" style="flex:1;padding:12px 10px;font-size:13px;text-transform:uppercase">${t('match.enterResultManually')}</button>
+        <button class="btn btn-primary" id="start-btn" style="flex:1;padding:12px 10px;font-size:13px;text-transform:uppercase">${iconLabel('live', t('match.startLiveMatch'))}</button>
+        <button class="btn btn-green" id="manual-result-btn" style="flex:1;padding:12px 10px;font-size:13px;text-transform:uppercase">${iconLabel('clipboard', t('match.enterResultManually'))}</button>
       </div>
     `;
   }
@@ -195,14 +200,14 @@ function controlsHtml(m, canControlLive) {
   }
   if (m.status === 'UNFINISHED') {
     return `
-      <div class="card" style="margin-top:16px;text-align:center">
-        <div style="font-size:13px;color:var(--gray);font-weight:700;letter-spacing:0.03em;text-transform:uppercase">${t('status.UNFINISHED')}</div>
-        <div style="font-size:16px;font-weight:700;color:var(--ink);margin-top:4px">${t('match.unfinishedDesc')}</div>
+      <div class="card result-card status-UNFINISHED">
+        <div class="result-card-label">${t('status.UNFINISHED')}</div>
+        <div class="result-card-text">${t('match.unfinishedDesc')}</div>
       </div>
       ${canControlLive ? `
-      <button class="btn btn-primary btn-block" id="resume-later-btn" style="padding:16px;font-size:16px;margin-top:10px;text-transform:uppercase">${t('match.setNewDateResume')}</button>
-      <button class="btn btn-dark btn-block" id="finish-as-is-btn" style="margin-top:10px">${t('match.finishAsIs')}</button>
-      <button class="btn btn-block" id="restart-btn" style="margin-top:10px">${t('match.restartFromScratch')}</button>
+      <button class="btn btn-primary btn-block" id="resume-later-btn" style="padding:16px;font-size:16px;margin-top:10px;text-transform:uppercase">${iconLabel('calendar', t('match.setNewDateResume'))}</button>
+      <button class="btn btn-dark btn-block" id="finish-as-is-btn" style="margin-top:10px">${iconLabel('flag', t('match.finishAsIs'))}</button>
+      <button class="btn btn-block" id="restart-btn" style="margin-top:10px">${iconLabel('restart', t('match.restartFromScratch'))}</button>
       ` : ''}
     `;
   }
@@ -210,10 +215,10 @@ function controlsHtml(m, canControlLive) {
   const winnerName = m.winnerId === m.player1.id ? m.player1.name : m.winnerId === m.player2.id ? m.player2.name : null;
   const reasonLabel = m.endReason ? endReasonLabel(m.endReason) : null;
   const winnerCard = `
-    <div class="card" style="margin-top:16px;text-align:center">
-      <div style="font-size:13px;color:var(--gray);font-weight:700;letter-spacing:0.03em;text-transform:uppercase">${t('match.winner')}</div>
-      <div style="font-size:22px;font-weight:800;color:var(--green-light)">${winnerName ? escapeHtml(winnerName) : t('match.endedNoResult')}</div>
-      ${reasonLabel ? `<div style="font-size:12px;color:var(--gray);font-weight:700;margin-top:4px">${escapeHtml(reasonLabel)}</div>` : ''}
+    <div class="card result-card status-FINISHED">
+      <div class="result-card-label">${t('match.winner')}</div>
+      <div class="result-card-winner">${winnerName ? escapeHtml(winnerName) : t('match.endedNoResult')}</div>
+      ${reasonLabel ? `<div class="result-card-reason">${escapeHtml(reasonLabel)}</div>` : ''}
     </div>
   `;
   if (!isAdminUser) return winnerCard;
@@ -249,10 +254,10 @@ function chatHtml() {
   const savedName = localStorage.getItem('blta_chat_name') || '';
   return `
     <div class="card chat-card" style="margin-bottom:16px">
-      <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em">${t('match.chatLabel')}</div>
+      <div class="label card-label">${t('match.chatLabel')}</div>
       <div class="chat-messages" id="chat-messages">
         ${messages.length === 0
-          ? `<div class="chat-empty">${t('match.noMessagesYet')}</div>`
+          ? `<div class="chat-empty">${escapeHtml(t('match.noMessagesYet').replace(/\s*[\p{Extended_Pictographic}\u200d\ufe0f]+$/u, ''))}</div>`
           : messages.map(chatMessageHtml).join('')}
       </div>
       <form id="chat-form">
@@ -286,7 +291,7 @@ async function ensureH2H(m) {
       prior.forEach((x) => { if (x.winnerId === m.player1.id) wins += 1; else losses += 1; });
       const total = wins + losses;
       const pct = Math.round((wins / total) * 100);
-      const scoreColor = wins > losses ? 'var(--green)' : wins < losses ? 'var(--danger)' : 'var(--gray)';
+      const scoreColor = wins > losses ? 'var(--status-green)' : wins < losses ? '#e5483a' : '#8b8f98';
       h2hHtml = `
         <div class="section-label">${t('player.h2h')}</div>
         <div class="h2h-card">
@@ -297,7 +302,7 @@ async function ensureH2H(m) {
               <a class="h2h-name" href="/player/${m.player2.slug || m.player2.id}" style="text-align:right">${escapeHtml(m.player2.name)}</a>
             </div>
             <div class="h2h-bar" style="width:100%">
-              <div style="width:${pct}%;background:var(--green)"></div><div style="width:${100 - pct}%;background:var(--danger)"></div>
+              <div style="width:${pct}%;background:var(--status-green)"></div><div style="width:${100 - pct}%;background:var(--danger)"></div>
             </div>
           </div>
         </div>
@@ -379,7 +384,7 @@ function oneProposalCardHtml(m, which) {
     return `
       <div class="card" id="${idPrefix}-card" style="margin-bottom:16px;border:2px solid var(--orange)">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-          <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">${t('match.pickATime')}</div>
+          <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">${iconLabel('calendar', t('match.pickATime'))}</div>
           ${editDeleteHtml}
         </div>
         <p style="font-size:13px;color:var(--gray);margin:6px 0 4px">${t('match.cantConfirmOwnProposal')}</p>
@@ -391,7 +396,7 @@ function oneProposalCardHtml(m, which) {
   return `
     <div class="card" id="${idPrefix}-card" style="margin-bottom:16px;border:2px solid var(--orange)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">${t('match.pickATime')}</div>
+        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--orange-dark);font-weight:800;letter-spacing:0.03em">${iconLabel('calendar', t('match.pickATime'))}</div>
         ${editDeleteHtml}
       </div>
       <p style="font-size:13px;color:var(--gray);margin:6px 0 16px">${proposerName ? t('match.proposedByForSentence', { name: escapeHtml(proposerName) }) : t('match.proposedGenericForSentence')}</p>
@@ -415,7 +420,7 @@ function oneProposalCardHtml(m, which) {
            one and left the other for the players to sort out themselves. */
         (m.createdByAdmin && m.ballsPlayer) ? '' : `
       <div class="field">
-        <label><svg viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px"><circle cx="12" cy="12" r="11" fill="#d4ee4e" stroke="#a8c93a" stroke-width="1"/><path d="M3 6c3.2 2.6 3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M21 6c-3.2 2.6-3.2 8.8 0 12" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg> <span>${t('newMatch.whoBringsBalls')}</span> <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${t('common.optional')}</span></label>
+        <label>${courtIcon('ball')} <span>${t('newMatch.whoBringsBalls')}</span> <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${t('common.optional')}</span></label>
         <div class="server-choice-row balls-choice-row" id="${idPrefix}-balls-choice-row">
           <button type="button" class="btn btn-outline btn-block" data-value="1">${escapeHtml(m.player1.name)}</button>
           <button type="button" class="btn btn-outline btn-block" data-value="2">${escapeHtml(m.player2.name)}</button>
@@ -424,7 +429,7 @@ function oneProposalCardHtml(m, which) {
       `}
       ${(m.createdByAdmin && m.courtPlayer) ? '' : `
       <div class="field">
-        <label>📞 <span>${t('newMatch.whoReservesCourt')}</span> <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${t('common.optional')}</span></label>
+        <label>${courtIcon('phone')} <span>${t('newMatch.whoReservesCourt')}</span> <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${t('common.optional')}</span></label>
         <div class="server-choice-row balls-choice-row" id="${idPrefix}-court-choice-row">
           <button type="button" class="btn btn-outline btn-block" data-value="1">${escapeHtml(m.player1.name)}</button>
           <button type="button" class="btn btn-outline btn-block" data-value="2">${escapeHtml(m.player2.name)}</button>
@@ -658,7 +663,7 @@ function render(m) {
   // Always shows a timer chip, even before the match has started (a static
   // 00:00) — only actually starts counting once startTimer() runs, for LIVE.
   const durationHtml = m.status === 'LIVE'
-    ? `<div class="timer${m.pausedAt ? ' timer-paused' : ''}" id="timer">00:00</div>${m.pausedAt ? '<div class="paused-label">⏸ PAUSED</div>' : ''}`
+    ? `<div class="timer${m.pausedAt ? ' timer-paused' : ''}" id="timer">00:00</div>${m.pausedAt ? `<div class="paused-label">${courtIcon('pauseCircle')}PAUSED</div>` : ''}`
     : (m.startTime && m.endTime
       ? `<div class="timer">${Math.max(1, Math.round((new Date(m.endTime) - new Date(m.startTime)) / 60000))} min</div>`
       : '<div class="timer">00:00</div>');
@@ -725,7 +730,7 @@ function render(m) {
   root.innerHTML = `
     <div class="match-header">
       <div>
-        ${categoryBadge(m.category)} ${statusBadge(m)}${m.status === 'LIVE' ? ` <span class="badge badge-viewers" id="viewer-count-badge">👀 ${viewerCount !== null ? viewerCount : '…'} ${t('match.watching')}</span>` : ''}
+        ${categoryBadge(m.category)} ${statusBadge(m, { splitTime: true })}${m.status === 'LIVE' ? ` <span class="badge badge-viewers" id="viewer-count-badge">${viewersHtml(viewerCount !== null ? viewerCount : '…')}</span>` : ''}
         <h1 style="margin-top:8px"><a class="player-name-link" href="/player/${m.player1.slug || m.player1.id}">${escapeHtml(m.player1.name)}</a><a class="player-info-link" href="/player/${m.player1.slug || m.player1.id}" title="${escapeHtml(t('common.viewProfileTitle', { name: m.player1.name }))}">i</a> <span style="color:var(--gray-dim);font-weight:500">${t('match.vsLabel')}</span> <a class="player-name-link" href="/player/${m.player2.slug || m.player2.id}">${escapeHtml(m.player2.name)}</a><a class="player-info-link" href="/player/${m.player2.slug || m.player2.id}" title="${escapeHtml(t('common.viewProfileTitle', { name: m.player2.name }))}">i</a></h1>
         <div style="color:var(--gray-dim);font-size:13px">${m.formatLabel}${ballsPlayerName ? ` &nbsp;·&nbsp; ${ballsIconHtml(m, m.ballsPlayer)} ${escapeHtml(ballsPlayerName)}` : ''}</div>
       </div>
@@ -758,7 +763,7 @@ function render(m) {
 
     ${m.notes ? `
       <div class="card" style="margin-bottom:16px">
-        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em">${t('newMatch.notesLabel')}</div>
+        <div class="label card-label">${t('newMatch.notesLabel')}</div>
         <div class="value" id="notes-display" style="margin-top:4px;white-space:pre-wrap;font-weight:600">${escapeHtml(m.notes)}</div>
       </div>
     ` : ''}
@@ -766,12 +771,12 @@ function render(m) {
     ${chatHtml()}
 
     <div class="match-actions">
-      <button class="btn btn-green" id="share-btn">${t('match.shareBtn')}</button>
-      <button class="btn" id="embed-btn">${t('match.embedBtn')}</button>
-      <button class="btn btn-dark" id="referee-btn">${t('referee.btn')}</button>
-      ${locationEditable ? `<button class="btn" id="edit-match-btn">${t('match.editMatchBtn')}</button>` : ''}
-      ${m.status === 'FINISHED' ? `<button class="btn btn-green" id="whatsapp-result-btn">${t('match.sendToWhatsapp')}</button>` : ''}
-      ${deletable ? `<button class="btn btn-danger" id="delete-btn">${t('match.deleteMatchBtn')}</button>` : ''}
+      <button class="btn btn-green" id="share-btn">${iconLabel('link', t('match.shareBtn'))}</button>
+      <button class="btn" id="embed-btn">${iconLabel('code', t('match.embedBtn'))}</button>
+      <button class="btn btn-dark" id="referee-btn">${iconLabel('userCheck', t('referee.btn'))}</button>
+      ${locationEditable ? `<button class="btn" id="edit-match-btn">${iconLabel('pencil', t('match.editMatchBtn'))}</button>` : ''}
+      ${m.status === 'FINISHED' ? `<button class="btn btn-green" id="whatsapp-result-btn">${iconLabel('message', t('match.sendToWhatsapp'))}</button>` : ''}
+      ${deletable ? `<button class="btn btn-danger" id="delete-btn">${iconLabel('trash', t('match.deleteMatchBtn'))}</button>` : ''}
     </div>
   `;
 
@@ -1659,7 +1664,7 @@ async function init() {
     if (room !== `match:${matchToken}`) return;
     viewerCount = count;
     const badge = document.getElementById('viewer-count-badge');
-    if (badge) badge.textContent = `👀 ${count} ${t('match.watching')}`;
+    if (badge) badge.innerHTML = viewersHtml(count);
   });
 }
 init();

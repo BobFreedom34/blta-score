@@ -257,7 +257,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 }
 .nav-links a {
   padding: 7px 10px;
-  border-radius: 999px;
+  border-radius: 8px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -2968,3 +2968,188 @@ body:not(.embed) .match-card .notify-btn:disabled .venue-icon { color: #5fd88a; 
 .filters-panel select:disabled { opacity: 0.45; }
 .filters-panel .btn-outline { background: transparent; color: #b8bcc4; border: none; box-shadow: none; padding: 10px 6px; }
 .filters-panel .btn-outline:hover { color: var(--white); box-shadow: none; }
+
+/* ---------- Match page (dark, same look as the home page cards) ---------- */
+/* Scoped to body.match-page so the player profile, embeds and other pages keep their own styles. */
+body.match-page #match-root { --glow: 128, 132, 140; }
+body.match-page .match-header { margin-top: 26px; margin-bottom: 20px; }
+body.match-page .match-header h1 { line-height: 1.15; }
+
+/* every panel: black card, thin white border, soft grey glow on all four sides */
+body.match-page .scoreboard,
+body.match-page .info-item,
+body.match-page .score-controls .player-controls,
+body.match-page .h2h-card,
+body.match-page #match-root .card {
+  position: relative;
+  background: #0a0a0a;
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    -4px 0 18px -4px rgba(128, 132, 140, 0.2),
+    4px 0 18px -4px rgba(128, 132, 140, 0.2),
+    0 -4px 18px -4px rgba(128, 132, 140, 0.2),
+    0 4px 18px -4px rgba(128, 132, 140, 0.2);
+}
+body.match-page .scoreboard,
+body.match-page .score-controls .player-controls,
+body.match-page #match-root .card { border-radius: 24px; }
+body.match-page .info-item,
+body.match-page .h2h-card { border-radius: 18px; }
+body.match-page #match-root .card { padding: 20px 22px; }
+
+/* status bar on the left edge of the scoreboard and result cards (same colours as the home page cards) */
+body.match-page .scoreboard, body.match-page #match-root .result-card { --bar: transparent; overflow: hidden; }
+body.match-page .scoreboard::before, body.match-page #match-root .result-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--bar);
+}
+body.match-page .scoreboard { padding: 22px 22px 18px; overflow-x: auto; }
+body.match-page .scoreboard.status-LIVE { --bar: color-mix(in srgb, #e74e19 45%, #0a0a0a); }
+body.match-page .scoreboard.status-PLANNED { --bar: color-mix(in srgb, #8b8f98 30%, #0a0a0a); }
+body.match-page .scoreboard.status-FINISHED, body.match-page .result-card.status-FINISHED { --bar: var(--status-green); }
+body.match-page .scoreboard.status-UNFINISHED, body.match-page .result-card.status-UNFINISHED { --bar: color-mix(in srgb, #ffb802 34%, #0a0a0a); }
+body.match-page .scoreboard th { color: #8b8f98; letter-spacing: 0.06em; }
+body.match-page .scoreboard td.set-score.current { color: var(--orange); }
+body.match-page .timer { background: var(--fill-grey); }
+body.match-page .timer-cell .timer { background: var(--fill-grey); }
+
+/* winner / unfinished card */
+body.match-page .result-card { text-align: center; margin-top: 20px; }
+body.match-page .result-card-label { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8f98; }
+body.match-page .result-card-winner { font-size: 24px; font-weight: 800; color: var(--white); margin-top: 4px; }
+body.match-page .result-card-text { font-size: 16px; font-weight: 700; margin-top: 4px; }
+body.match-page .result-card-reason { font-size: 12px; font-weight: 700; color: #8b8f98; margin-top: 4px; }
+
+/* buttons: outline pills, solid orange / green for the main actions */
+body.match-page #match-root .btn {
+  background: transparent;
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  box-shadow: none;
+  padding: 10px 18px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+body.match-page #match-root .btn:hover { border-color: rgba(255, 255, 255, 0.75); box-shadow: none; }
+body.match-page #match-root .btn-primary { background: var(--orange); border-color: var(--orange); }
+body.match-page #match-root .btn-primary:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
+body.match-page #match-root .btn-green { background: var(--status-green); border-color: var(--status-green); }
+body.match-page #match-root .btn-green:hover { filter: brightness(1.12); border-color: var(--status-green); }
+body.match-page #match-root .btn-dark { background: var(--fill-grey); border-color: rgba(255, 255, 255, 0.12); }
+body.match-page #match-root .btn-danger { background: transparent; color: #ff7a6e; border-color: rgba(229, 72, 58, 0.6); }
+body.match-page #match-root .btn-danger:hover { background: rgba(229, 72, 58, 0.14); border-color: #e5483a; }
+body.match-page #match-root .btn-outline { border-width: 1px; border-color: rgba(255, 255, 255, 0.3); }
+body.match-page #match-root #unfinished-btn { border-color: rgba(255, 255, 255, 0.3); }
+
+/* scoring panels */
+body.match-page .score-controls { gap: 18px; margin: 22px 0; }
+body.match-page .score-controls .player-controls { padding: 20px 14px; gap: 12px; }
+body.match-page .score-controls .player-controls .pname { font-size: 15px; color: var(--white); }
+body.match-page #match-root .btn-giant { border-radius: 18px; text-transform: none; letter-spacing: 0; background: var(--orange); border-color: var(--orange); }
+body.match-page #match-root .btn-giant:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
+body.match-page #match-root .btn-score-number { font-size: 56px; padding: 20px 10px; letter-spacing: 0; }
+body.match-page #match-root .btn-minus { background: var(--fill-grey); border-color: rgba(255, 255, 255, 0.1); border-radius: 14px; text-transform: none; font-size: 14px; }
+body.match-page .set-picker-btn { background: transparent; color: var(--white); border: 1px solid rgba(255, 255, 255, 0.3); }
+body.match-page .set-picker-btn.active { border-color: var(--orange); background: rgba(231, 78, 25, 0.12); color: var(--orange); }
+body.match-page .set-picker-score { color: #8b8f98; }
+body.match-page .set-picker-btn.active .set-picker-score { color: var(--orange); }
+
+/* Place / Date / Category tiles */
+body.match-page .info-grid { gap: 14px; margin: 22px 0; }
+body.match-page .info-item { padding: 14px 16px; }
+body.match-page .info-item .label, body.match-page .card-label { color: #8b8f98; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+body.match-page .info-item .value { color: var(--white); font-size: 15px; margin-top: 4px; }
+
+/* head-to-head, notes, chat */
+body.match-page .h2h-row { border-bottom-color: rgba(255, 255, 255, 0.1); }
+body.match-page .h2h-name { color: var(--white); }
+body.match-page .h2h-name:hover { color: var(--orange); }
+body.match-page .h2h-bar { background: rgba(255, 255, 255, 0.12); }
+body.match-page .h2h-toggle:hover { background: var(--fill-grey); }
+body.match-page .chat-message { background: var(--fill-grey); }
+body.match-page .chat-message-meta, body.match-page .chat-empty { color: #8b8f98; }
+body.match-page #chat-form input[type="text"] {
+  background: var(--fill-grey);
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+body.match-page #chat-form input[type="text"]::placeholder { color: #8b8f98; }
+body.match-page #chat-form input[type="text"]:focus { border-color: var(--orange); outline: none; }
+body.match-page #chat-form .btn-sm { padding: 8px 16px; }
+
+/* proposal cards ("Pick a time") on the dark match page */
+body.match-page #match-root .card .label { color: var(--orange); }
+body.match-page #match-root .card p { color: #b8bcc4 !important; }
+body.match-page #match-root .card .field label { color: var(--white); }
+body.match-page #match-root .card .field small { color: #8b8f98; }
+body.match-page #match-root .card .field label span { color: #8b8f98 !important; }
+body.match-page #match-root .card .field input, body.match-page #match-root .card .field select, body.match-page #match-root .card .field textarea,
+body.match-page #proposal-card input[type="text"], body.match-page #counter-proposal-card input[type="text"] {
+  background: var(--fill-grey);
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+body.match-page #match-root .card .field input::placeholder { color: #8b8f98; }
+body.match-page #match-root .card .field input:focus { border-color: var(--orange); outline: none; }
+body.match-page #match-root .card .edit-link { color: var(--white); background: transparent; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 999px; padding: 5px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+body.match-page #match-root .card .edit-link:hover { border-color: rgba(255, 255, 255, 0.75); }
+body.match-page #match-root .card .edit-link[id^="delete-"] { color: #ff7a6e !important; border-color: rgba(229, 72, 58, 0.6); }
+body.match-page .week-picker-tabs .tab { background: transparent; color: var(--white); box-shadow: none; border: 1px solid rgba(255, 255, 255, 0.3); }
+body.match-page .week-picker-tabs .tab.active { background: var(--orange); border-color: var(--orange); }
+body.match-page .avail-day-head { color: #8b8f98; }
+body.match-page .avail-time-label { color: #8b8f98; }
+body.match-page .avail-cell { background: rgba(255, 255, 255, 0.07); }
+body.match-page .avail-cell:hover, body.match-page #proposal-grid-wrap .avail-cell:hover, body.match-page #counter-proposal-grid-wrap .avail-cell:hover { background: rgba(255, 255, 255, 0.12); }
+body.match-page .avail-cell.selected { background: var(--orange); }
+body.match-page #proposal-grid-wrap .avail-cell.proposed, body.match-page #counter-proposal-grid-wrap .avail-cell.proposed { background: rgba(231, 78, 25, 0.22); border: 1.5px solid var(--orange); }
+body.match-page #proposal-grid-wrap .avail-cell.proposed:hover, body.match-page #counter-proposal-grid-wrap .avail-cell.proposed:hover { background: rgba(231, 78, 25, 0.38); }
+body.match-page #proposal-grid-wrap .avail-cell.proposed.selected, body.match-page #counter-proposal-grid-wrap .avail-cell.proposed.selected { background: var(--orange); }
+body.match-page .avail-grid-compact .hour-start { border-top-color: rgba(255, 255, 255, 0.14); }
+body.match-page .proposal-option.selected, body.match-page #match-root .btn-outline.selected, body.match-page #match-root .btn-outline.active { border-color: var(--orange); background: rgba(231, 78, 25, 0.14); color: var(--orange); }
+body.match-page #match-root .btn:disabled { opacity: 0.4; }
+
+body.match-page #match-root .card .card-label { color: #8b8f98; }
+
+/* outline icons on the match page (buttons, labels, badges) */
+body.match-page #match-root .btn .venue-icon { width: 16px; height: 16px; flex: 0 0 16px; }
+body.match-page #match-root .btn-giant .venue-icon, body.match-page #match-root .btn-score-number .venue-icon { display: none; }
+body.match-page .serve-ball { display: inline-flex; vertical-align: middle; margin-right: 8px; }
+body.match-page .serve-ball .venue-icon { width: 16px; height: 16px; flex-basis: 16px; color: #ffb802; }
+body.match-page .badge-viewers { display: inline-flex; align-items: center; gap: 5px; }
+body.match-page .badge-viewers .venue-icon { width: 13px; height: 13px; flex-basis: 13px; }
+body.match-page .paused-label { display: inline-flex; align-items: center; gap: 5px; }
+body.match-page .paused-label .venue-icon { width: 13px; height: 13px; flex-basis: 13px; }
+body.match-page #match-root .card .label { display: flex; align-items: center; gap: 6px; }
+body.match-page #match-root .card .label .venue-icon { width: 14px; height: 14px; flex-basis: 14px; }
+body.match-page #match-root .card .field label .venue-icon { width: 15px; height: 15px; flex-basis: 15px; vertical-align: -3px; margin-right: 2px; color: #8b8f98; }
+
+/* match page header pills: same outlined, 8px-cornered pills as on the home page cards */
+body.match-page .match-header .badge { background: transparent; border: 1px solid currentColor; border-radius: 8px; padding: 4px 10px; font-size: 11px; box-shadow: none; animation: none; }
+body.match-page .match-header .badge-status { color: #a9adb6; }
+body.match-page .match-header .badge-status.status-LIVE { color: #ee3340; }
+body.match-page .match-header .badge-status.status-PLANNED-dated { color: var(--status-green); }
+body.match-page .match-header .badge-status.status-FINISHED { color: #a9adb6; }
+body.match-page .match-header .badge-status.status-UNFINISHED { color: #d9a06a; }
+body.match-page .match-header .badge-viewers { color: var(--status-green); }
+body.match-page .match-header .badge-FRIENDLY { background: #fff; color: #0a0a0a; border-color: #fff; }
+
+body.match-page .match-header .status-time { color: var(--white); font-size: 12.5px; font-weight: 700; margin-left: 2px; vertical-align: middle; }
+
+body.match-page #match-root #start-btn, body.match-page #match-root #manual-result-btn { border-radius: 8px; }
+
+body.match-page #match-root .match-actions .btn { border-radius: 8px; }
+
+/* only the scoreboard keeps the glow; the other panels are plain bordered cards */
+body.match-page .info-item,
+body.match-page .score-controls .player-controls,
+body.match-page .h2h-card,
+body.match-page #match-root .card { box-shadow: none; }
+
+body.match-page .match-header .badge { display: inline-flex; align-items: center; vertical-align: middle; line-height: 1.3; }
+
+body.match-page .scoreboard::before { display: none; }
