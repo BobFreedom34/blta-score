@@ -2882,7 +2882,6 @@ body:not(.embed) .match-card .notify-btn:disabled .venue-icon { color: #5fd88a; 
 /* ---------- Home page filter bar: segmented control + chips + one "Filtre" chip ---------- */
 /* Scoped to .filter-bar so the .tab pills on other pages (rankings, stats, courts) stay as they are. */
 .filter-bar { margin: 22px 0 40px; display: flex; flex-direction: column; gap: 14px; }
-.filter-top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .filter-bar .tab {
   box-shadow: none;
   text-transform: uppercase;
@@ -2892,10 +2891,11 @@ body:not(.embed) .match-card .notify-btn:disabled .venue-icon { color: #5fd88a; 
   border: 1px solid transparent;
 }
 .filter-bar .tab .count { background: transparent; color: inherit; opacity: 0.65; padding: 0; font-size: 11px; }
-.filter-bar #count-ALL, .filter-bar #count-SCHEDULED, .filter-bar #count-LIVE, .filter-bar #count-FINISHED { background: transparent; color: inherit; }
+.filter-bar #count-ALL, .filter-bar #count-UNSCHEDULED, .filter-bar #count-SCHEDULED, .filter-bar #count-LIVE, .filter-bar #count-FINISHED, .filter-bar #count-UNFINISHED { background: transparent; color: inherit; }
 
 /* the segmented control */
 .filter-bar .seg { display: inline-flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; background: var(--fill-grey); border-radius: 14px; padding: 4px; gap: 2px; }
+.filter-bar .seg { align-self: flex-start; }
 .filter-bar .seg::-webkit-scrollbar { display: none; }
 .filter-bar .seg .tab, .filter-bar .seg .tab[data-filter="FINISHED"] { background: transparent; color: #b8bcc4; border-radius: 10px; padding: 9px 14px; }
 .filter-bar .seg .tab.active, .filter-bar .seg .tab[data-filter="FINISHED"].active { background: var(--orange); color: var(--white); border-color: var(--orange); }
@@ -2907,18 +2907,10 @@ body:not(.embed) .match-card .notify-btn:disabled .venue-icon { color: #5fd88a; 
   100% { box-shadow: 0 0 0 0 rgba(238, 51, 64, 0); }
 }
 
-/* the secondary views as outline chips */
-.filter-bar .filter-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.filter-bar .filter-chips .tab, .filter-bar .filter-chips #tab-MY_MATCHES:not(.tab-locked) {
-  background: transparent;
-  color: var(--white);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-size: 11px;
-}
-.filter-bar .filter-chips .tab.active { color: var(--orange); border-color: var(--orange); }
-.filter-bar .filter-chips #tab-MY_MATCHES:not(.tab-locked) .count { background: transparent; color: inherit; }
+/* "My matches" turns green once the player is logged in (locked = greyed out) */
+.filter-bar .seg #tab-MY_MATCHES:not(.tab-locked) { background: var(--status-green); color: var(--white); border-color: var(--status-green); }
+.filter-bar .seg #tab-MY_MATCHES:not(.tab-locked).active { box-shadow: 0 0 0 2px var(--white) inset; }
+.filter-bar .seg #tab-MY_MATCHES:not(.tab-locked) .count { background: transparent; color: inherit; opacity: 1; }
 
 /* search + the Filtre chip */
 .filter-row { display: flex; gap: 10px; align-items: center; }
