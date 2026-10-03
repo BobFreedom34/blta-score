@@ -2639,7 +2639,8 @@ a.rank-name:hover { text-decoration: underline; }
 /* ---------- Courts (/courts, /courts/<slug>) ---------- */
 /* Near-black cards with a hairline border and orange accents. */
 .courts-summary { color: rgba(255, 255, 255, 0.72); margin: 4px 0 16px; font-size: 14px; line-height: 1.5; }
-.courts-toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+.courts-toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 22px 0 0; }
+#courts-summary { margin: 10px 0 14px; }
 .courts-search {
   flex: 1 1 240px;
   min-width: 0;
@@ -2668,7 +2669,8 @@ a.rank-name:hover { text-decoration: underline; }
 .court-card {
   position: relative;
   background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--orange);
+  box-shadow: 0 0 18px rgba(231, 78, 25, 0.25);
   border-radius: 24px;
   padding: 26px 26px 24px;
   display: flex;
@@ -2677,7 +2679,7 @@ a.rank-name:hover { text-decoration: underline; }
   color: var(--white);
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
-.court-card:hover { border-color: rgba(231, 78, 25, 0.7); }
+.court-card:hover { box-shadow: 0 0 24px rgba(231, 78, 25, 0.4); }
 .court-card-head { display: block; padding-right: 30px; }
 .court-card-arrow { position: absolute; top: 24px; right: 24px; color: #8b8f98; display: flex; }
 .court-card-arrow .venue-icon { width: 17px; height: 17px; }
@@ -2750,7 +2752,7 @@ a.court-meta-address:hover { color: var(--orange); }
 .court-match-players .winner { color: var(--orange); }
 .court-match-vs { color: #8b8f98; font-weight: 600; margin: 0 4px; }
 .court-match-score { color: #b8bcc4; font-size: 13px; margin-top: 3px; }
-.court-info { background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 24px; padding: 6px 24px; margin-top: 10px; color: var(--white); }
+.court-info { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: 0 0 18px rgba(231, 78, 25, 0.25); border-radius: 24px; padding: 6px 24px; margin-top: 10px; color: var(--white); }
 .court-info-row { display: flex; gap: 16px; padding: 15px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .court-info-row:last-child { border-bottom: none; }
 .court-info-icon { flex: 0 0 20px; color: #8b8f98; display: flex; padding-top: 2px; }
@@ -3212,7 +3214,8 @@ input.grey-search {
   padding: 12px 14px;
   font-family: inherit;
   font-size: 14px;
-  margin-bottom: 14px;
+  margin: 18px 0 14px;
 }
+#add-player-card { margin-top: 22px; }
 input.grey-search::placeholder { color: #8b8f98; }
 input.grey-search:focus { outline: none; border-color: var(--orange); }

@@ -93,12 +93,12 @@ function render(v) {
     <div class="court-meta">${meta.join('')}</div>
     ${actions.length ? `<div class="court-actions court-actions-hero">${actions.join('')}</div>` : ''}
     ${v.description ? `<p class="court-desc">${escapeHtml(v.description)}</p>` : ''}
-    ${matchesSectionHtml(v.matches)}
     ${info ? `<h2 class="court-section-title">${escapeHtml(t('court.infoHeading'))}</h2><div class="court-info">${info}</div>` : ''}
     ${v.lat != null && v.lng != null ? `
       <h2 class="court-section-title">${escapeHtml(t('court.whereHeading'))}</h2>
       <div id="court-map" class="courts-map"></div>
     ` : ''}
+    ${matchesSectionHtml(v.matches)}
   `;
 
   if (v.lat != null && v.lng != null && typeof L !== 'undefined') {
