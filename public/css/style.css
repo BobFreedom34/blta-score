@@ -3419,3 +3419,7 @@ body.compact-page .tab.active .count { background: rgba(255, 255, 255, 0.22); co
 .embed-match-foot a { color: var(--white); }
 
 .compact-place { justify-content: flex-end; text-align: right; }
+
+/* Embeds: no page background of their own, so the host page shows through (cards and panels stay dark). */
+html.embed, html.embed body, body.embed { background: transparent; }
+html.embed::before, html.embed::after { display: none; }
