@@ -292,7 +292,7 @@ function interestedListHtml(post) {
     ? joins.map((j) => {
       let statusLine = '';
       if (j.status === 'ACCEPTED') {
-        statusLine = `<span class="badge" style="background:var(--green);color:var(--white)">${t('lookingToPlay.accepted')}</span>${j.matchToken ? ` <a href="/match/${j.matchToken}" class="edit-link">${t('lookingToPlay.viewMatch')}</a>` : ''}`;
+        statusLine = `<span class="badge" style="background:var(--green);color:#0a0a0a">${t('lookingToPlay.accepted')}</span>${j.matchToken ? ` <a href="/match/${j.matchToken}" class="edit-link">${t('lookingToPlay.viewMatch')}</a>` : ''}`;
       } else if (j.status === 'DENIED') {
         statusLine = `<span class="badge" style="background:var(--gray-light);color:var(--gray)">${t('lookingToPlay.deniedLabel')}</span> <span class="availability-join-message">“${escapeHtml(j.denyReason)}”</span>`;
       }

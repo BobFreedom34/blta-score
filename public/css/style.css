@@ -1,9 +1,9 @@
 :root {
-  --orange: #e74e19;
-  --orange-dark: #c73f10;
+  --orange: #ff5500;
+  --orange-dark: #e04a00;
   --yellow: #ffb802;
-  --green: #105a1e;
-  --green-light: #14712a;
+  --green: #b2fa06;
+  --green-light: #b2fa06;
   --ink: #0a0a0a;
   --charcoal: #202124;
   --gray: #656565;
@@ -576,13 +576,13 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 #count-FINISHED { background: rgba(255,255,255,0.16); color: var(--white); }
 .tab-live .live-dot {
   width: 8px; height: 8px; border-radius: 50%; background: var(--orange);
-  box-shadow: 0 0 0 0 rgba(231,78,25,0.6);
+  box-shadow: 0 0 0 0 rgba(255, 85, 0,0.6);
   animation: pulse 1.6s infinite;
 }
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(231,78,25,0.55); }
-  70% { box-shadow: 0 0 0 8px rgba(231,78,25,0); }
-  100% { box-shadow: 0 0 0 0 rgba(231,78,25,0); }
+  0% { box-shadow: 0 0 0 0 rgba(255, 85, 0,0.55); }
+  70% { box-shadow: 0 0 0 8px rgba(255, 85, 0,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 85, 0,0); }
 }
 
 /* ---------- Filters ---------- */
@@ -979,7 +979,7 @@ datalist {}
   border-radius: var(--radius);
   padding: 18px;
   border: 1px solid var(--orange);
-  box-shadow: 0 0 18px rgba(231, 78, 25, 0.25);
+  box-shadow: 0 0 18px rgba(255, 85, 0, 0.25);
   overflow-x: auto;
 }
 /* The compact variant sits nested inside a .match-card, which already
@@ -1371,7 +1371,7 @@ body:not(.embed) .scoreboard tr.winner-row td.name-cell::after { color: var(--or
   grid-template-columns: repeat(3, 1fr);
   gap: 8px 32px;
   border: 1px solid var(--orange);
-  box-shadow: 0 0 18px rgba(231, 78, 25, 0.25);
+  box-shadow: 0 0 18px rgba(255, 85, 0, 0.25);
 }
 @media (max-width: 680px) { .player-bio-card { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 480px) { .player-bio-card { grid-template-columns: 1fr; } }
@@ -1463,7 +1463,7 @@ body:not(.embed) .scoreboard tr.winner-row td.name-cell::after { color: var(--or
   padding: 20px;
   margin-top: 56px;
   border: 1px solid var(--orange);
-  box-shadow: 0 0 18px rgba(231, 78, 25, 0.25);
+  box-shadow: 0 0 18px rgba(255, 85, 0, 0.25);
 }
 /* The CourtIQ card sits right after the bio header/edit-profile button,
    not another big card — 56px there would stick out next to the equal,
@@ -1694,7 +1694,7 @@ body:not(.embed) .scoreboard tr.winner-row td.name-cell::after { color: var(--or
 }
 .badge-notif-item:last-child { border-bottom: none; }
 .badge-notif-item:hover { background: var(--gray-light); }
-.badge-notif-item.unread { background: rgba(231,78,25,0.06); }
+.badge-notif-item.unread { background: rgba(255, 85, 0,0.06); }
 .badge-notif-icon {
   flex-shrink: 0;
   width: 34px;
@@ -2159,7 +2159,7 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   background: var(--ink);
   color: var(--white);
   border: 1px solid var(--orange);
-  box-shadow: 0 0 18px rgba(231, 78, 25, 0.25);
+  box-shadow: 0 0 18px rgba(255, 85, 0, 0.25);
 }
 /* One-line explainer for whichever ranking tab is active (text pulled from
    blta.sk/rebricky/ for the scraped tables, and matching the CourtIQ info
@@ -2657,7 +2657,7 @@ a.rank-name:hover { text-decoration: underline; }
 .courts-toolbar .tabs { margin: 0; }
 .courts-filters .tab { background: #0a0a0a; color: var(--white); border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: none; }
 .courts-filters .tab .count { background: var(--fill-grey); color: #d6d8dd; }
-.courts-filters .tab:hover { border-color: rgba(231, 78, 25, 0.7); }
+.courts-filters .tab:hover { border-color: rgba(255, 85, 0, 0.7); }
 .courts-filters .tab.active { background: var(--orange); border-color: var(--orange); }
 .courts-filters .tab.active .count { background: rgba(255, 255, 255, 0.22); color: var(--white); }
 .courts-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
@@ -2670,7 +2670,7 @@ a.rank-name:hover { text-decoration: underline; }
   position: relative;
   background: #0a0a0a;
   border: 1px solid var(--orange);
-  box-shadow: 0 0 18px rgba(231, 78, 25, 0.25);
+  box-shadow: 0 0 18px rgba(255, 85, 0, 0.25);
   border-radius: 24px;
   padding: 26px 26px 24px;
   display: flex;
@@ -2679,7 +2679,7 @@ a.rank-name:hover { text-decoration: underline; }
   color: var(--white);
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
-.court-card:hover { box-shadow: 0 0 24px rgba(231, 78, 25, 0.4); }
+.court-card:hover { box-shadow: 0 0 24px rgba(255, 85, 0, 0.4); }
 .court-card-head { display: block; padding-right: 30px; }
 .court-card-arrow { position: absolute; top: 24px; right: 24px; color: #8b8f98; display: flex; }
 .court-card-arrow .venue-icon { width: 17px; height: 17px; }
@@ -2700,7 +2700,7 @@ a.rank-name:hover { text-decoration: underline; }
   font-size: 12px;
   font-weight: 700;
 }
-.court-chip-type { background: rgba(231, 78, 25, 0.16); color: #ff8a5c; }
+.court-chip-type { background: rgba(255, 85, 0, 0.16); color: #ff8a5c; }
 .court-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 2px; }
 .court-btn {
   display: inline-flex;
@@ -2744,7 +2744,7 @@ a.court-meta-address:hover { color: var(--orange); }
   color: var(--white);
   transition: border-color 0.15s ease;
 }
-.court-match:hover { border-color: rgba(231, 78, 25, 0.7); }
+.court-match:hover { border-color: rgba(255, 85, 0, 0.7); }
 .court-match-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: #8b8f98; }
 .court-match-date { margin-left: auto; }
 .court-match-live { color: var(--orange); font-weight: 800; }
@@ -2752,7 +2752,7 @@ a.court-meta-address:hover { color: var(--orange); }
 .court-match-players .winner { color: var(--orange); }
 .court-match-vs { color: #8b8f98; font-weight: 600; margin: 0 4px; }
 .court-match-score { color: #b8bcc4; font-size: 13px; margin-top: 3px; }
-.court-info { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: 0 0 18px rgba(231, 78, 25, 0.25); border-radius: 24px; padding: 6px 24px; margin-top: 10px; color: var(--white); }
+.court-info { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: 0 0 18px rgba(255, 85, 0, 0.25); border-radius: 24px; padding: 6px 24px; margin-top: 10px; color: var(--white); }
 .court-info-row { display: flex; gap: 16px; padding: 15px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .court-info-row:last-child { border-bottom: none; }
 .court-info-icon { flex: 0 0 20px; color: #8b8f98; display: flex; padding-top: 2px; }
@@ -2786,7 +2786,7 @@ body:not(.embed) .match-card {
 body:not(.embed) .match-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--bar); }
 /* Every match card has the same soft grey glow on all four sides, stronger on hover; the status colour lives on the left bar only. */
 body:not(.embed) .match-card:hover { --g: 0.32; border-color: rgba(255, 255, 255, 0.8); }
-body:not(.embed) .match-card.status-LIVE { --bar: color-mix(in srgb, #e74e19 45%, #0a0a0a); }
+body:not(.embed) .match-card.status-LIVE { --bar: color-mix(in srgb, #ff5500 45%, #0a0a0a); }
 /* Planned with a date: green bar. Not yet scheduled: grey bar. */
 body:not(.embed) .match-card.status-PLANNED.has-date { --bar: var(--status-green); }
 body:not(.embed) .match-card.status-PLANNED:not(.has-date) { --bar: color-mix(in srgb, #8b8f98 30%, #0a0a0a); }
@@ -3006,7 +3006,7 @@ body.match-page .scoreboard::before, body.match-page #match-root .result-card::b
   content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--bar);
 }
 body.match-page .scoreboard { padding: 22px 22px 18px; overflow-x: auto; }
-body.match-page .scoreboard.status-LIVE { --bar: color-mix(in srgb, #e74e19 45%, #0a0a0a); }
+body.match-page .scoreboard.status-LIVE { --bar: color-mix(in srgb, #ff5500 45%, #0a0a0a); }
 body.match-page .scoreboard.status-PLANNED { --bar: color-mix(in srgb, #8b8f98 30%, #0a0a0a); }
 body.match-page .scoreboard.status-FINISHED, body.match-page .result-card.status-FINISHED { --bar: var(--status-green); }
 body.match-page .scoreboard.status-UNFINISHED, body.match-page .result-card.status-UNFINISHED { --bar: color-mix(in srgb, #ffb802 34%, #0a0a0a); }
@@ -3054,7 +3054,7 @@ body.match-page #match-root .btn-giant:hover { background: var(--orange-dark); b
 body.match-page #match-root .btn-score-number { font-size: 56px; padding: 20px 10px; letter-spacing: 0; }
 body.match-page #match-root .btn-minus { background: var(--fill-grey); border-color: rgba(255, 255, 255, 0.1); border-radius: 8px; text-transform: none; font-size: 14px; }
 body.match-page .set-picker-btn { background: transparent; color: var(--white); border: 1px solid rgba(255, 255, 255, 0.3); }
-body.match-page .set-picker-btn.active { border-color: var(--orange); background: rgba(231, 78, 25, 0.12); color: var(--orange); }
+body.match-page .set-picker-btn.active { border-color: var(--orange); background: rgba(255, 85, 0, 0.12); color: var(--orange); }
 body.match-page .set-picker-score { color: #8b8f98; }
 body.match-page .set-picker-btn.active .set-picker-score { color: var(--orange); }
 
@@ -3108,11 +3108,11 @@ body.match-page .avail-time-label { color: #8b8f98; }
 body.match-page .avail-cell { background: rgba(255, 255, 255, 0.07); }
 body.match-page .avail-cell:hover, body.match-page #proposal-grid-wrap .avail-cell:hover, body.match-page #counter-proposal-grid-wrap .avail-cell:hover { background: rgba(255, 255, 255, 0.12); }
 body.match-page .avail-cell.selected { background: var(--orange); }
-body.match-page #proposal-grid-wrap .avail-cell.proposed, body.match-page #counter-proposal-grid-wrap .avail-cell.proposed { background: rgba(231, 78, 25, 0.22); border: 1.5px solid var(--orange); }
-body.match-page #proposal-grid-wrap .avail-cell.proposed:hover, body.match-page #counter-proposal-grid-wrap .avail-cell.proposed:hover { background: rgba(231, 78, 25, 0.38); }
+body.match-page #proposal-grid-wrap .avail-cell.proposed, body.match-page #counter-proposal-grid-wrap .avail-cell.proposed { background: rgba(255, 85, 0, 0.22); border: 1.5px solid var(--orange); }
+body.match-page #proposal-grid-wrap .avail-cell.proposed:hover, body.match-page #counter-proposal-grid-wrap .avail-cell.proposed:hover { background: rgba(255, 85, 0, 0.38); }
 body.match-page #proposal-grid-wrap .avail-cell.proposed.selected, body.match-page #counter-proposal-grid-wrap .avail-cell.proposed.selected { background: var(--orange); }
 body.match-page .avail-grid-compact .hour-start { border-top-color: rgba(255, 255, 255, 0.14); }
-body.match-page .proposal-option.selected, body.match-page #match-root .btn-outline.selected, body.match-page #match-root .btn-outline.active { border-color: var(--orange); background: rgba(231, 78, 25, 0.14); color: var(--orange); }
+body.match-page .proposal-option.selected, body.match-page #match-root .btn-outline.selected, body.match-page #match-root .btn-outline.active { border-color: var(--orange); background: rgba(255, 85, 0, 0.14); color: var(--orange); }
 body.match-page #match-root .btn:disabled { opacity: 0.4; }
 
 body.match-page #match-root .card .card-label { color: #8b8f98; }
@@ -3170,7 +3170,7 @@ body:not(.embed) .tab, body:not(.embed) .filter-bar .seg .tab { border-radius: 8
 body:not(.embed) .lang-btn { border-radius: 8px; }
 
 /* Player profile: the head-to-head table is a black card with an orange border, like the cards above it. */
-body:not(.match-page):not(.embed) .h2h-card { background: var(--ink); color: var(--white); border: 1px solid var(--orange); border-radius: var(--radius); box-shadow: 0 0 18px rgba(231, 78, 25, 0.25); }
+body:not(.match-page):not(.embed) .h2h-card { background: var(--ink); color: var(--white); border: 1px solid var(--orange); border-radius: var(--radius); box-shadow: 0 0 18px rgba(255, 85, 0, 0.25); }
 body:not(.match-page):not(.embed) .h2h-card .h2h-row { border-bottom-color: rgba(255, 255, 255, 0.12); }
 body:not(.match-page):not(.embed) .h2h-card .h2h-name { color: var(--white); }
 body:not(.match-page):not(.embed) .h2h-card .h2h-name:hover { color: var(--orange); }
@@ -3220,6 +3220,19 @@ input.grey-search {
 input.grey-search::placeholder { color: #8b8f98; }
 input.grey-search:focus { outline: none; border-color: var(--orange); }
 
-/* BLTA league category pills: a brighter orange than the brand orange (text, border and level dots). */
+/* BLTA league category pills: a fluorescent orange, as bright as the lime green (text, border and level dots). */
 body:not(.embed) .badge-ELITE, body:not(.embed) .badge-NEXT_GEN, body:not(.embed) .badge-NOVICE,
-body:not(.embed) .match-card .overdue-warning { color: #ff6a2b; border-color: #ff6a2b; }
+body:not(.embed) .match-card .overdue-warning { color: #ff5500; border-color: #ff5500; }
+
+/* One green everywhere: the lime #b2fa06. Text sitting on it is dark. */
+.btn-green, #tab-MY_MATCHES:not(.tab-locked), #count-SCHEDULED, .badge-status.status-PLANNED-dated, .badge-viewers,
+.compact-card.status-FINISHED .compact-result, .form-square.win,
+#rankings-tabs .tab[data-key="courtiq"], #rankings-tabs .tab[data-key="courtiq"].active { color: #0a0a0a; }
+.form-square.win { color: #0a0a0a; }
+/* White surfaces (modals, embeds, compact lists) keep a darker green so it stays readable on white. */
+.modal, body.embed, body.compact-page { --green: #105a1e; --green-light: #14712a; }
+.modal .btn-green, body.embed .btn-green, body.compact-page .btn-green,
+body.embed .badge-status.status-PLANNED-dated, body.compact-page .badge-status.status-PLANNED-dated,
+body.embed .badge-viewers, body.compact-page .badge-viewers,
+body.embed .compact-card.status-FINISHED .compact-result, body.compact-page .compact-card.status-FINISHED .compact-result,
+body.embed .form-square.win, body.compact-page .form-square.win { color: #fff; }
