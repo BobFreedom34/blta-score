@@ -807,7 +807,7 @@ body:not(.embed-light) .badge-status.status-LIVE { background: #ee3340; }
   box-shadow: var(--shadow);
   padding: 8px 20px;
   display: grid;
-  grid-template-columns: minmax(100px, auto) minmax(160px, auto) minmax(90px, auto) minmax(120px, 1fr);
+  grid-template-columns: max-content minmax(160px, auto) minmax(90px, auto) minmax(120px, 1fr);
   align-items: center;
   gap: 16px;
   cursor: pointer;
@@ -3423,3 +3423,6 @@ body.compact-page .tab.active .count { background: rgba(255, 255, 255, 0.22); co
 /* Embeds: no page background of their own, so the host page shows through (cards and panels stay dark). */
 html.embed, html.embed body, body.embed { background: transparent; }
 html.embed::before, html.embed::after { display: none; }
+
+.compact-date-category { min-width: max-content; }
+.compact-card .badge { flex: 0 0 auto; }
