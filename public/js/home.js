@@ -60,8 +60,110 @@ async function loadHome() {
   if (seasons === null) throw new Error('seasons');
   const season = pickSeason(seasons);
   const standings = season ? await soft(api(`/seasons/${season.id}/standings`), null) : null;
-  return { season, standings, live, finished, upcoming, weekMatches, looking, rankings };
+  return { seasons, season, standings, live, finished, upcoming, weekMatches, looking, rankings };
 }
+
+// ---------- season timeline ----------
+
+// "Sep – Dec 2026" / "Dec 2025 – Apr 2026"
+function monthRange(startIso, endIso) {
+  const a = new Date(`${startIso}T12:00:00`);
+  const b = new Date(`${endIso}T12:00:00`);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return '';
+  const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+  const left = a.getFullYear() === b.getFullYear() ? cap(monthShort(a)) : `${cap(monthShort(a))} ${a.getFullYear()}`;
+  return `${left} – ${cap(monthShort(b))} ${b.getFullYear()}`;
+}
+
+function seasonState(s, today) {
+  if (s.startDate && s.endDate) {
+    if (s.endDate < today) return 'past';
+    if (s.startDate > today) return 'future';
+    return 'now';
+  }
+  return 'future';
+}
+
+// All seasons in date order: finished ones greyed out, the running one highlighted, the coming ones outlined.
+function timelineHtml(d) {
+  const seasons = [...(d.seasons || [])].sort((a, b) => String(a.startDate || '9999').localeCompare(String(b.startDate || '9999')));
+  if (seasons.length < 2) return '';
+  const today = new Date().toISOString().slice(0, 10);
+  const label = { past: t('home.tlPast'), now: t('home.tlNow'), future: t('home.tlFuture') };
+  const cards = seasons.map((s) => {
+    const state = seasonState(s, today);
+    let elapsed = 0;
+    if (state === 'now') {
+      const span = dayNum(s.endDate) - dayNum(s.startDate) + 1;
+      elapsed = Math.max(0, Math.min(100, ((dayNum(today) - dayNum(s.startDate) + 1) / span) * 100));
+    }
+    const href = state !== 'future' || s.groups.length ? `/tables?season=${s.id}` : '';
+    const range = s.startDate && s.endDate ? monthRange(s.startDate, s.endDate) : '';
+    const inner = `
+      <div class="home-tl-body">
+        <span class="home-tl-chip">${state === 'now' ? '<i></i>' : ''}${escapeHtml(label[state])}</span>
+        <div class="home-tl-name">${escapeHtml(s.name)}</div>
+        <div class="home-tl-range">${escapeHtml(range)}</div>
+      </div>`;
+    return href
+      ? `<a class="home-tl ${state}" style="--p:${elapsed.toFixed(1)}%" href="${href}"${state === 'now' ? ' data-current="1"' : ''}>${inner}</a>`
+      : `<div class="home-tl ${state}" style="--p:${elapsed.toFixed(1)}%">${inner}</div>`;
+  }).join('');
+  return `<div class="home-tl-wrap" id="home-tl-wrap">
+    <button type="button" class="home-tl-nav prev" aria-label="←">‹</button>
+    <div class="home-timeline" id="home-timeline" aria-label="${escapeHtml(t('home.timeline'))}">${cards}</div>
+    <button type="button" class="home-tl-nav next" aria-label="→">›</button>
+  </div>`;
+}
+
+// The row scrolls sideways when it is wider than the screen: show which sides have more (edge fade + arrows),
+// let a mouse drag it, and keep the running season in view.
+function updateTimelineEdges() {
+  const wrap = document.getElementById('home-tl-wrap');
+  const row = document.getElementById('home-timeline');
+  if (!wrap || !row) return;
+  const max = row.scrollWidth - row.clientWidth;
+  wrap.classList.toggle('can-prev', row.scrollLeft > 4);
+  wrap.classList.toggle('can-next', row.scrollLeft < max - 4);
+}
+
+function initTimelineScroll(keepLeft) {
+  const wrap = document.getElementById('home-tl-wrap');
+  const row = document.getElementById('home-timeline');
+  if (!wrap || !row) return;
+  const cur = row.querySelector('[data-current]');
+  if (typeof keepLeft === 'number') row.scrollLeft = keepLeft;
+  else if (cur && row.scrollWidth > row.clientWidth) row.scrollLeft = Math.max(0, cur.offsetLeft - (row.clientWidth - cur.offsetWidth) / 2);
+  row.addEventListener('scroll', updateTimelineEdges, { passive: true });
+  wrap.querySelector('.prev').addEventListener('click', () => row.scrollBy({ left: -row.clientWidth * 0.7, behavior: 'smooth' }));
+  wrap.querySelector('.next').addEventListener('click', () => row.scrollBy({ left: row.clientWidth * 0.7, behavior: 'smooth' }));
+
+  // Drag with a mouse (touch and trackpads already scroll natively).
+  let startX = 0;
+  let startLeft = 0;
+  let dragging = false;
+  let moved = false;
+  row.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    dragging = true; moved = false; startX = e.clientX; startLeft = row.scrollLeft;
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) > 5) { moved = true; row.classList.add('dragging'); }
+    if (moved) row.scrollLeft = startLeft - dx;
+  });
+  window.addEventListener('pointerup', () => {
+    if (!dragging) return;
+    dragging = false;
+    row.classList.remove('dragging');
+  });
+  // A drag must not count as a click on a season card.
+  row.addEventListener('click', (e) => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } }, true);
+  updateTimelineEdges();
+}
+
+window.addEventListener('resize', updateTimelineEdges);
 
 // ---------- pieces ----------
 
@@ -312,8 +414,11 @@ function sub(d) {
 
 function renderHome() {
   const d = homeData;
+  const oldRow = document.getElementById('home-timeline');
+  const keepLeft = oldRow ? oldRow.scrollLeft : undefined;
   rootEl.innerHTML = `
     ${sub(d)}
+    ${timelineHtml(d)}
     ${progressHtml(d)}
     ${d.season ? statsHtml(d) : ''}
     ${leadersHtml(d)}
@@ -321,6 +426,7 @@ function renderHome() {
     ${rankingAndLookingHtml(d)}
     ${moversHtml(d)}
     ${liveHtml(d)}`;
+  initTimelineScroll(keepLeft);
 }
 
 async function refreshHome() {

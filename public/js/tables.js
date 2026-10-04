@@ -19,6 +19,9 @@ let groupId = null; // null = all groups of the category
 
 // The season whose dates include today; otherwise the newest one that has matches.
 function pickDefaultSeason() {
+  // /tables?season=ID (the home page's season timeline links here) wins over the automatic choice.
+  const wanted = Number(new URLSearchParams(window.location.search).get('season'));
+  if (wanted && seasons.some((s) => s.id === wanted)) return wanted;
   const today = new Date().toISOString().slice(0, 10);
   const current = seasons.find((s) => s.startDate && s.endDate && s.startDate <= today && today <= s.endDate && s.groups.length);
   return (current || seasons.find((s) => s.matchCount > 0) || seasons[0] || {}).id || null;
