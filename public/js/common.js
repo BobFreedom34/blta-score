@@ -504,6 +504,7 @@ const COURT_ICON_PATHS = {
   user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   barChart: '<path d="M12 20V10M18 20V4M6 20v-4"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  table: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
   trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/>',
   users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
   search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
@@ -1428,8 +1429,8 @@ document.addEventListener('click', (e) => {
     { key: 'home', href: '/', icon: 'home', label: t('bottomNav.home') },
     { key: 'matches', href: '/?view=my', icon: 'ball', label: t('tabs.myMatches') },
     { key: 'profile', href: '#', icon: 'user', label: t('nav.myProfile') },
+    { key: 'tables', href: '/tables', icon: 'table', label: t('bottomNav.tables') },
     { key: 'rankings', href: '/rankings', icon: 'barChart', label: t('nav.rankings') },
-    { key: 'menu', href: '#', icon: 'menu', label: t('bottomNav.menu') },
   ];
   const nav = document.createElement('nav');
   nav.className = 'bottom-nav';
@@ -1439,16 +1440,14 @@ document.addEventListener('click', (e) => {
   document.body.classList.add('has-bottom-nav');
   const el = (k) => nav.querySelector(`[data-nav="${k}"]`);
 
-  let menuOpen = false;
   const setActive = () => {
     const myTab = document.getElementById('tab-MY_MATCHES');
     const myActive = onHome && (myTab ? myTab.classList.contains('active') : myView);
-    // While the menu sheet is open, only the Menu item is highlighted.
-    el('home').classList.toggle('active', !menuOpen && onHome && !myActive);
-    el('matches').classList.toggle('active', !menuOpen && myActive);
-    el('rankings').classList.toggle('active', !menuOpen && path.startsWith('/rankings'));
-    el('profile').classList.toggle('active', !menuOpen && path.startsWith('/player/') && el('profile').getAttribute('href') === path);
-    el('menu').classList.toggle('active', menuOpen);
+    el('home').classList.toggle('active', onHome && !myActive);
+    el('matches').classList.toggle('active', myActive);
+    el('tables').classList.toggle('active', path.startsWith('/tables'));
+    el('rankings').classList.toggle('active', path.startsWith('/rankings'));
+    el('profile').classList.toggle('active', path.startsWith('/player/') && el('profile').getAttribute('href') === path);
   };
   setActive();
   // Home page: the status tabs change without a reload, so follow them.
@@ -1479,51 +1478,6 @@ document.addEventListener('click', (e) => {
   };
   window.addEventListener('blta:auth-changed', syncProfile);
 
-  // Menu: a sheet above the bar with every item of the top menu (the admin-managed ones too) plus log in / out.
-  const sheet = document.createElement('div');
-  sheet.className = 'menu-sheet';
-  sheet.hidden = true;
-  sheet.innerHTML = '<div class="menu-sheet-backdrop"></div><div class="menu-sheet-panel" id="menu-sheet-panel"></div>';
-  document.body.appendChild(sheet);
-  const panel = sheet.querySelector('.menu-sheet-panel');
-  const closeSheet = () => { sheet.hidden = true; menuOpen = false; setActive(); };
-  const rowIcon = (href) => {
-    if (href === '/') return 'ball';
-    if (href.startsWith('/players')) return 'users';
-    if (href.startsWith('/rankings')) return 'barChart';
-    if (href.startsWith('/courts')) return 'pin';
-    if (href.startsWith('/looking-to-play')) return 'search';
-    if (href.startsWith('/new-match')) return 'calendarPlus';
-    return 'arrow';
-  };
-  const openSheet = () => {
-    const seen = new Set();
-    const rows = [];
-    document.querySelectorAll('#nav-links a').forEach((a) => {
-      const href = a.getAttribute('href');
-      if (a.id === 'nav-my-profile-link' || !href || href === '#' || seen.has(href)) return;
-      seen.add(href);
-      rows.push(`<a class="menu-sheet-row" href="${escapeHtml(href)}">${courtIcon(rowIcon(href))}<span>${escapeHtml(a.textContent.trim())}</span></a>`);
-    });
-    const login = document.getElementById('player-login-link');
-    const register = document.getElementById('nav-register-link');
-    if (register && register.style.display !== 'none') rows.push('<button type="button" class="menu-sheet-row" data-proxy="nav-register-link">' + courtIcon('userPlus') + '<span>' + escapeHtml(register.textContent.trim()) + '</span></button>');
-    if (login) rows.push('<button type="button" class="menu-sheet-row" data-proxy="player-login-link">' + courtIcon(playerAuthed ? 'logOut' : 'logIn') + '<span>' + escapeHtml(login.textContent.trim()) + '</span></button>');
-    panel.innerHTML = rows.join('');
-    sheet.hidden = false;
-    menuOpen = true;
-    setActive();
-  };
-  el('menu').addEventListener('click', (e) => { e.preventDefault(); if (sheet.hidden) openSheet(); else closeSheet(); });
-  sheet.querySelector('.menu-sheet-backdrop').addEventListener('click', closeSheet);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheet.hidden) closeSheet(); });
-  panel.addEventListener('click', (e) => {
-    const proxy = e.target.closest('[data-proxy]');
-    if (!proxy) return;
-    closeSheet();
-    const target = document.getElementById(proxy.dataset.proxy);
-    if (target) target.click();
-  });
 })();
 
 document.querySelectorAll('[data-close]').forEach((el) => {

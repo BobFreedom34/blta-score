@@ -117,4 +117,17 @@ function run(db) {
   }
 }
 
-module.exports = { run, assign, indexSeasons, fold, BLTA_CATEGORIES };
+// The "Tables" menu item, added once (an admin can rename, move or delete it afterwards).
+function ensureTablesMenuItem(db) {
+  if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'menu_tables_added'").get()) return;
+  if (!db.prepare("SELECT 1 FROM header_items WHERE link = '/tables'").get()) {
+    const rankings = db.prepare("SELECT sort_order FROM header_items WHERE link = '/rankings' AND parent_id IS NULL").get();
+    const maxSort = db.prepare('SELECT MAX(sort_order) AS m FROM header_items').get().m;
+    const sortOrder = rankings ? rankings.sort_order : (maxSort == null ? 0 : maxSort) + 1;
+    db.prepare('INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order) VALUES (NULL, ?, ?, ?, ?)')
+      .run('Tabuľky', 'Tables', '/tables', sortOrder);
+  }
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_tables_added')").run();
+}
+
+module.exports = { run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem };

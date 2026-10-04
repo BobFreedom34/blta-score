@@ -43,6 +43,11 @@ try {
 } catch (err) {
   console.error('Season seeding failed (will retry on next start):', err);
 }
+try {
+  require('./src/seasonSeed').ensureTablesMenuItem(db);
+} catch (err) {
+  console.error('Tables menu item failed:', err);
+}
 badgeEngine.backfillIfNeeded();
 badgeEngine.startScheduledReminders();
 backup.startScheduledBackups();

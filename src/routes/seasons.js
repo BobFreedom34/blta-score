@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireAdmin } = require('../auth');
+const { computeGroupStandings } = require('../standings');
 
 const router = express.Router();
 
@@ -59,6 +60,41 @@ function serializeSeason(s) {
 router.get('/', (req, res) => {
   const rows = db.prepare('SELECT * FROM seasons ORDER BY COALESCE(start_date, \'\') DESC, id DESC').all();
   res.json(rows.map(serializeSeason));
+});
+
+// Public: the group tables of one season, calculated from the matches tagged with each group (see standings.js).
+// Recalculated on every request, so it is always in step with the matches.
+router.get('/:id/standings', (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  const groups = db.prepare('SELECT * FROM season_groups WHERE season_id = ? ORDER BY sort_order, name COLLATE NOCASE').all(season.id);
+  const players = new Map();
+  const playerStmt = db.prepare('SELECT id, name, slug FROM players WHERE id = ?');
+  const result = groups.map((g) => {
+    const rows = db.prepare('SELECT player1_id, player2_id, winner_id, status, end_reason, state FROM matches WHERE group_id = ?').all(g.id);
+    const records = rows.map((r) => {
+      [r.player1_id, r.player2_id].forEach((pid) => { if (!players.has(pid)) players.set(pid, playerStmt.get(pid)); });
+      return { player1Id: r.player1_id, player2Id: r.player2_id, winnerId: r.winner_id, status: r.status, endReason: r.end_reason, state: JSON.parse(r.state) };
+    });
+    const table = computeGroupStandings(records, players);
+    return {
+      id: g.id,
+      name: g.name,
+      category: g.category,
+      matchesCounted: records.filter((r) => r.status === 'FINISHED').length,
+      matchesTotal: records.length,
+      rows: table.map((x) => ({
+        position: x.position,
+        player: { id: x.player.id, name: x.player.name, slug: x.player.slug },
+        points: x.points,
+        played: x.played,
+        wins: x.wins,
+        losses: x.losses,
+        setDiff: x.setDiff,
+      })),
+    };
+  });
+  res.json({ id: season.id, name: season.name, slug: season.slug, startDate: season.start_date, endDate: season.end_date, groups: result });
 });
 
 router.post('/', requireAdmin, (req, res) => {

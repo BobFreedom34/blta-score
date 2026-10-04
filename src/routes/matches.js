@@ -542,7 +542,7 @@ router.patch('/:token/season', requireAdmin, (req, res) => {
   const { seasonId, groupId } = req.body;
   if (seasonId === null && (groupId === null || groupId === undefined)) {
     db.prepare('UPDATE matches SET season_id = NULL, group_id = NULL, updated_at = ? WHERE id = ?').run(nowIso(), row.id);
-    return res.json(serialize(db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id)));
+    return res.json(broadcast(req, db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id)));
   }
   if (!BLTA_CATEGORIES.includes(row.category)) {
     return res.status(400).json({ error: 'Seasons and groups only apply to BLTA league matches (Elite, Next Gen, Novice)' });
@@ -565,7 +565,7 @@ router.patch('/:token/season', requireAdmin, (req, res) => {
   }
   db.prepare('UPDATE matches SET season_id = ?, group_id = ?, updated_at = ? WHERE id = ?')
     .run(season ? season.id : null, group ? group.id : null, nowIso(), row.id);
-  res.json(serialize(db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id)));
+  res.json(broadcast(req, db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id)));
 });
 
 router.post('/', requireLoggedIn, (req, res) => {
