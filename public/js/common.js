@@ -1417,17 +1417,15 @@ document.addEventListener('click', (e) => {
   btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 })();
 
-// Phone bottom menu: Home / My matches / My profile / Rankings (shown by CSS below ~1024px, where the top menu collapses).
+// Phone bottom menu: Home / Matches / My profile / Tables / Rankings (shown by CSS below ~1024px, where the top menu collapses).
 // Skipped on embeds and the admin tools.
 (function initBottomNav() {
   if (!document.querySelector('.topbar') || document.body.classList.contains('embed')) return;
   if (/admin|login-history/.test(window.location.pathname)) return;
   const path = window.location.pathname;
-  const onHome = path === '/';
-  const myView = new URLSearchParams(window.location.search).get('view') === 'my';
   const items = [
     { key: 'home', href: '/', icon: 'home', label: t('bottomNav.home') },
-    { key: 'matches', href: '/?view=my', icon: 'ball', label: t('tabs.myMatches') },
+    { key: 'matches', href: '/matches', icon: 'ball', label: t('nav.matches') },
     { key: 'profile', href: '#', icon: 'user', label: t('nav.myProfile') },
     { key: 'tables', href: '/tables', icon: 'table', label: t('bottomNav.tables') },
     { key: 'rankings', href: '/rankings', icon: 'barChart', label: t('nav.rankings') },
@@ -1441,32 +1439,14 @@ document.addEventListener('click', (e) => {
   const el = (k) => nav.querySelector(`[data-nav="${k}"]`);
 
   const setActive = () => {
-    const myTab = document.getElementById('tab-MY_MATCHES');
-    const myActive = onHome && (myTab ? myTab.classList.contains('active') : myView);
-    el('home').classList.toggle('active', onHome && !myActive);
-    el('matches').classList.toggle('active', myActive);
+    el('home').classList.toggle('active', path === '/');
+    el('matches').classList.toggle('active', path === '/matches');
     el('tables').classList.toggle('active', path.startsWith('/tables'));
     el('rankings').classList.toggle('active', path.startsWith('/rankings'));
     el('profile').classList.toggle('active', path.startsWith('/player/') && el('profile').getAttribute('href') === path);
   };
   setActive();
-  // Home page: the status tabs change without a reload, so follow them.
-  const bar = document.querySelector('.filter-bar');
-  if (bar) new MutationObserver(setActive).observe(bar, { attributes: true, attributeFilter: ['class'], subtree: true });
 
-  el('home').addEventListener('click', (e) => {
-    if (!onHome) return;
-    e.preventDefault();
-    const all = document.querySelector('.tab[data-filter="ALL"]');
-    if (all && !all.classList.contains('active')) all.click();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-  el('matches').addEventListener('click', (e) => {
-    e.preventDefault();
-    const myTab = document.getElementById('tab-MY_MATCHES');
-    if (onHome && myTab) { myTab.click(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
-    requirePlayerAuth(() => { window.location.href = '/?view=my'; });
-  });
   el('profile').addEventListener('click', (e) => {
     if (playerAuthed && currentPlayerId) return; // real href already set
     e.preventDefault();

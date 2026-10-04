@@ -438,6 +438,7 @@ function broadcast(req, row) {
 
 router.get('/', (req, res) => {
   const { status, category, q, from, to, noDate, hasDate, playerId } = req.query;
+  const limit = Math.max(0, Math.min(500, parseInt(req.query.limit, 10) || 0));
   const clauses = [];
   const params = {};
   if (status) {
@@ -510,6 +511,8 @@ router.get('/', (req, res) => {
     const needle = q.toLowerCase();
     rows = rows.filter((r) => r.p1_name.toLowerCase().includes(needle) || r.p2_name.toLowerCase().includes(needle));
   }
+  // Optional cap (the home page only needs the latest few); no limit = everything, as before.
+  if (limit) rows = rows.slice(0, limit);
   res.json(rows.map(serialize));
 });
 

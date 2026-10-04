@@ -1,0 +1,305 @@
+// League overview (the home page): series progress, league numbers, group leaders, latest results, upcoming
+// matches, the top of the rankings, players looking for a match and a line for matches being played live.
+// Everything is read from the same APIs the other pages use and refreshes whenever a match changes.
+
+const rootEl = document.getElementById('home-root');
+
+const HOME_CATEGORY_ORDER = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+const HOME_CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
+
+let homeData = null;
+let homeCategory = null; // selected tab of the group leaders
+
+// ---------- helpers ----------
+
+function dayMonth(iso) {
+  if (!iso) return '';
+  const [y, m, d] = String(iso).slice(0, 10).split('-');
+  return `${Number(d)}.${Number(m)}.${y}`;
+}
+
+// "So 10.10. 18:00" — the chip on an upcoming match.
+function chipDate(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${weekdayShort(d)} ${d.getDate()}.${d.getMonth() + 1}. ${hhmm(d)}`;
+}
+
+function weekRange() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+  return { from: start.toISOString(), to: new Date(end.getTime() - 1).toISOString() };
+}
+
+// The season whose dates include today; otherwise the newest one that has matches.
+function pickSeason(seasons) {
+  const today = new Date().toISOString().slice(0, 10);
+  const current = seasons.find((s) => s.startDate && s.endDate && s.startDate <= today && today <= s.endDate && s.groups.length);
+  return current || seasons.find((s) => s.matchCount > 0) || seasons[0] || null;
+}
+
+function soft(promise, fallback) {
+  return promise.catch(() => fallback);
+}
+
+// ---------- data ----------
+
+async function loadHome() {
+  const nowMinus = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const week = weekRange();
+  const [seasons, live, finished, upcoming, weekMatches, looking, rankings] = await Promise.all([
+    soft(api('/seasons'), null),
+    soft(api('/matches?status=LIVE'), []),
+    soft(api('/matches?status=FINISHED&limit=4'), []),
+    soft(api(`/matches?status=PLANNED&hasDate=1&from=${encodeURIComponent(nowMinus)}&to=${encodeURIComponent('2100-01-01T00:00:00.000Z')}&limit=4`), []),
+    soft(api(`/matches?from=${encodeURIComponent(week.from)}&to=${encodeURIComponent(week.to)}`), []),
+    soft(api('/availability'), []),
+    soft(api('/rankings'), null),
+  ]);
+  if (seasons === null) throw new Error('seasons');
+  const season = pickSeason(seasons);
+  const standings = season ? await soft(api(`/seasons/${season.id}/standings`), null) : null;
+  return { season, standings, live, finished, upcoming, weekMatches, looking, rankings };
+}
+
+// ---------- pieces ----------
+
+function secTitle(label, note, linkHref, linkText) {
+  return `<div class="home-sec-title"><span class="l">${escapeHtml(label)}${note ? `<span>${escapeHtml(note)}</span>` : ''}</span>${linkHref ? `<a href="${linkHref}">${escapeHtml(linkText)}</a>` : ''}</div>`;
+}
+
+function progressHtml(d) {
+  const { season, standings } = d;
+  if (!season) return `<div class="empty-state">${escapeHtml(t('home.noSeason'))}</div>`;
+  const groups = standings ? standings.groups : [];
+  const counted = groups.reduce((s, g) => s + (g.matchesCounted || 0), 0);
+  const total = groups.reduce((s, g) => s + (g.matchesTotal || 0), 0);
+  const today = new Date().toISOString().slice(0, 10);
+  const over = (standings && standings.frozen) || (season.endDate && season.endDate < today);
+  const pct = total ? Math.min(100, Math.round((counted / total) * 100)) : 0;
+  const right = over ? t('home.seasonOver') : (total ? t('home.playedOf', { done: counted, total }) : '');
+  return `
+    <div class="home-season">
+      <div class="home-season-top"><b>${escapeHtml(t('home.seasonProgress'))}</b><span>${escapeHtml(right)}</span></div>
+      ${over ? '' : `<div class="home-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>`}
+    </div>`;
+}
+
+function statsHtml(d) {
+  const groups = d.standings ? d.standings.groups : [];
+  const frozen = d.standings && d.standings.frozen;
+  const counted = groups.reduce((s, g) => s + (g.matchesCounted || 0), 0);
+  const players = groups.reduce((s, g) => s + g.rows.length, 0);
+  const weekLive = d.weekMatches.filter((m) => m.status === 'LIVE').length;
+  const tile = (k, v, s) => `<div class="home-stat"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(String(v))}</div><div class="s">${escapeHtml(s)}</div></div>`;
+  return `<div class="home-stats">
+    ${tile(t('home.statPlayed'), frozen ? '–' : counted, t('home.statPlayedSub'))}
+    ${tile(t('home.statPlayers'), players, t('home.statPlayersSub', { n: groups.length }))}
+    ${tile(t('home.statWeek'), d.weekMatches.length, t('home.statWeekSub', { n: weekLive }))}
+    ${tile(t('home.statLooking'), d.looking.length, t('home.statLookingSub'))}
+  </div>`;
+}
+
+function leadersHtml(d) {
+  const groups = d.standings ? d.standings.groups : [];
+  const cats = HOME_CATEGORY_ORDER.filter((c) => groups.some((g) => g.category === c));
+  if (!cats.length) return '';
+  if (!cats.includes(homeCategory)) homeCategory = cats[0];
+  const inCat = groups.filter((g) => g.category === homeCategory);
+  const card = (g) => {
+    const top = g.rows.slice(0, 3);
+    const started = top.length && top[0].played > 0;
+    return `
+    <div class="home-col">
+      <h3 class="home-grp-t">${escapeHtml(g.name)}</h3>
+      <div class="home-card">
+        ${started ? `
+        <div class="home-t-head"><span>#</span><span>${escapeHtml(t('tables.player'))}</span><span>${escapeHtml(t('tables.points'))}</span></div>
+        ${top.map((r) => `
+        <div class="home-t-row">
+          <span class="pos">${r.position}</span>
+          ${r.player.slug || r.player.id ? `<a class="nm" href="/player/${encodeURIComponent(r.player.slug || r.player.id)}">${escapeHtml(r.player.name)}</a>` : `<span class="nm">${escapeHtml(r.player.name)}</span>`}
+          <span class="pts">${r.points}</span>
+        </div>`).join('')}` : `<div class="home-empty">${escapeHtml(t('home.noGames'))}</div>`}
+      </div>
+    </div>`;
+  };
+  return `
+  <section class="home-sec" id="home-leaders">
+    ${secTitle(t('home.leaders'), '', '/tables', t('home.allTables'))}
+    <div class="tabs" id="home-cats" role="tablist">${cats.map((c) => `<button type="button" class="tab${c === homeCategory ? ' active' : ''}" data-cat="${c}">${HOME_CATEGORY_NAMES[c]}</button>`).join('')}</div>
+    <div class="home-cols-3">${inCat.map(card).join('')}</div>
+  </section>`;
+}
+
+// scoreSummary lists each set as player1-player2 ("1-6, 3-6"); a result reads better from the winner's side.
+function winnerScore(m, winnerIsP1) {
+  const text = m.scoreSummary || '';
+  if (winnerIsP1) return text;
+  return text.split(', ').map((set) => set.replace(/^(\d+)-(\d+)/, '$2-$1')).join(', ');
+}
+
+function resultRow(m) {
+  const winnerIsP1 = m.winnerId === m.player1.id;
+  const w = winnerIsP1 ? m.player1 : m.player2;
+  const l = winnerIsP1 ? m.player2 : m.player1;
+  const walkover = m.endReason === 'WALKOVER';
+  const sets = m.state && m.state.setsWon ? m.state.setsWon : {};
+  const ws = Number(sets[winnerIsP1 ? 1 : 2]) || 0;
+  const ls = Number(sets[winnerIsP1 ? 2 : 1]) || 0;
+  const where = m.group ? m.group.name : categoryLabel(m.category);
+  const when = dayMonth(m.scheduledAt || m.endTime);
+  return `
+  <a class="home-m-row" href="/match/${m.token}">
+    <div><div class="n"><span class="w">${escapeHtml(w.name)}</span> · ${escapeHtml(l.name)}</div><div class="s">${escapeHtml([where, when].filter(Boolean).join(' · '))}</div></div>
+    <div class="r">${walkover ? 'w/o' : `${ws} : ${ls}`}<small>${escapeHtml(walkover ? t('home.walkover') : winnerScore(m, winnerIsP1))}</small></div>
+  </a>`;
+}
+
+function upcomingRow(m) {
+  const where = m.group ? m.group.name : categoryLabel(m.category);
+  return `
+  <a class="home-m-row" href="/match/${m.token}">
+    <div><div class="n"><b>${escapeHtml(m.player1.name)}</b> · ${escapeHtml(m.player2.name)}</div><div class="s">${escapeHtml([where, m.location].filter(Boolean).join(' · '))}</div></div>
+    <span class="home-chip date">${escapeHtml(chipDate(m.scheduledAt))}</span>
+  </a>`;
+}
+
+function matchesBlockHtml(d) {
+  return `
+  <section class="home-sec">
+    <div class="home-cols">
+      <div class="home-col">
+        ${secTitle(t('home.results'), '', '/matches', t('home.all'))}
+        <div class="home-card">${d.finished.length ? d.finished.map(resultRow).join('') : `<div class="home-empty">${escapeHtml(t('home.noResults'))}</div>`}</div>
+      </div>
+      <div class="home-col">
+        ${secTitle(t('home.upcoming'), '', '/matches', t('home.all'))}
+        <div class="home-card">${d.upcoming.length ? d.upcoming.map(upcomingRow).join('') : `<div class="home-empty">${escapeHtml(t('home.noUpcoming'))}</div>`}</div>
+      </div>
+    </div>
+  </section>`;
+}
+
+function blta(d) {
+  const table = d.rankings && d.rankings.tables ? d.rankings.tables.find((x) => x.key === 'blta') : null;
+  return table && table.rows.length ? table.rows : null;
+}
+
+function moveHtml(move) {
+  if (!move) return '<span class="mv none">–</span>';
+  return `<span class="mv ${move.direction === 'up' ? 'up' : 'down'}">${move.direction === 'up' ? '▲' : '▼'} ${move.amount}</span>`;
+}
+
+function rankingHtml(rows) {
+  return `
+  <div class="home-col">
+    ${secTitle(t('home.ranking'), t('home.top5'), '/rankings', t('home.whole'))}
+    <div class="home-card">
+      <div class="home-t-head rank"><span>#</span><span>${escapeHtml(t('tables.player'))}</span><span>${escapeHtml(t('home.change'))}</span><span>${escapeHtml(t('tables.points'))}</span></div>
+      ${rows.slice(0, 5).map((r) => `
+      <div class="home-t-row rank">
+        <span class="pos">${r.rank}</span>
+        ${r.slug ? `<a class="nm" href="/player/${encodeURIComponent(r.slug)}">${escapeHtml(r.name)}</a>` : `<span class="nm">${escapeHtml(r.name)}</span>`}
+        ${moveHtml(r.move)}
+        <span class="pts">${escapeHtml(String(r.points))}</span>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function nextSlot(post) {
+  const now = Date.now();
+  const iso = (post.slots || []).filter((s) => new Date(s).getTime() > now).sort()[0];
+  return iso ? chipDate(iso) : '';
+}
+
+function lookingHtml(posts) {
+  return `
+  <div class="home-col">
+    ${secTitle(t('home.looking'), posts.length ? String(posts.length) : '', '/looking-to-play', t('home.everyone'))}
+    <div class="home-card">
+      ${posts.length ? posts.slice(0, 4).map((p) => {
+        const cats = (p.categories || []).map((c) => categoryLabel(c)).join(' · ');
+        const sub = [cats, nextSlot(p), p.location || t('home.anywhere')].filter(Boolean).join(' · ');
+        return `
+      <a class="home-m-row" href="/looking-to-play">
+        <div><div class="n"><b>${escapeHtml(p.player ? p.player.name : '')}</b></div><div class="s">${escapeHtml(sub)}</div></div>
+        <span class="home-chip btn">${escapeHtml(t('home.play'))}</span>
+      </a>`;
+      }).join('') : `<div class="home-empty">${escapeHtml(t('home.noLooking'))}</div>`}
+    </div>
+  </div>`;
+}
+
+function rankingAndLookingHtml(d) {
+  const rows = blta(d);
+  if (!rows && !d.looking.length) return '';
+  return `<section class="home-sec"><div class="home-cols">${rows ? rankingHtml(rows) : ''}${lookingHtml(d.looking)}</div></section>`;
+}
+
+function moversHtml(d) {
+  const rows = blta(d);
+  if (!rows) return '';
+  const ups = rows.filter((r) => r.move && r.move.direction === 'up').sort((a, b) => b.move.amount - a.move.amount);
+  const downs = rows.filter((r) => r.move && r.move.direction === 'down').sort((a, b) => b.move.amount - a.move.amount);
+  const tile = (k, r, text, cls) => `<div class="home-mv"><div class="k">${escapeHtml(k)}</div><div class="nm">${escapeHtml(r.name)}</div><div class="d ${cls}">${escapeHtml(text)}</div></div>`;
+  const tiles = [tile(t('home.moverLeader'), rows[0], `#1 · ${rows[0].points}`, '')];
+  if (ups[0]) tiles.push(tile(t('home.moverUp'), ups[0], `▲ ${ups[0].move.amount} · #${ups[0].rank}`, 'up'));
+  if (downs[0]) tiles.push(tile(t('home.moverDown'), downs[0], `▼ ${downs[0].move.amount} · #${downs[0].rank}`, 'down'));
+  return `<section class="home-sec">${secTitle(t('home.movers'), '', '/rankings', t('home.whole'))}<div class="home-movers n${tiles.length}">${tiles.join('')}</div></section>`;
+}
+
+function liveHtml(d) {
+  if (!d.live.length) return '';
+  const items = d.live.slice(0, 2).map((m) => `<a class="item" href="/match/${m.token}"><b>${escapeHtml(m.player1.name)}</b> ${escapeHtml(m.scoreSummary || '–')} <b>${escapeHtml(m.player2.name)}</b></a>`).join('<span class="sep">·</span>');
+  return `<section class="home-sec home-sec-live"><div class="home-live"><span class="p"><i></i>${escapeHtml(t('home.live'))} · ${d.live.length}</span>${items}<a class="go" href="/matches">${escapeHtml(t('home.watch'))}</a></div></section>`;
+}
+
+// ---------- render ----------
+
+function sub(d) {
+  if (!d.season) return '';
+  const end = d.season.endDate ? ` · ${t('home.endsOn', { date: dayMonth(d.season.endDate) })}` : '';
+  return `<p class="home-sub"><b>${escapeHtml(d.season.name)}</b>${escapeHtml(end)}</p>`;
+}
+
+function renderHome() {
+  const d = homeData;
+  rootEl.innerHTML = `
+    ${sub(d)}
+    ${progressHtml(d)}
+    ${d.season ? statsHtml(d) : ''}
+    ${leadersHtml(d)}
+    ${matchesBlockHtml(d)}
+    ${rankingAndLookingHtml(d)}
+    ${moversHtml(d)}
+    ${liveHtml(d)}`;
+}
+
+async function refreshHome() {
+  try {
+    homeData = await loadHome();
+  } catch {
+    if (!homeData) rootEl.innerHTML = `<div class="empty-state">${escapeHtml(t('home.loadError'))}</div>`;
+    return;
+  }
+  renderHome();
+}
+
+rootEl.addEventListener('click', (e) => {
+  const b = e.target.closest('#home-cats [data-cat]');
+  if (!b || !homeData) return;
+  homeCategory = b.dataset.cat;
+  renderHome();
+});
+
+(async () => {
+  await refreshHome();
+  if (typeof io === 'function') {
+    const socket = io();
+    let timer = null;
+    socket.on('matches:changed', () => { clearTimeout(timer); timer = setTimeout(refreshHome, 800); });
+  }
+})();

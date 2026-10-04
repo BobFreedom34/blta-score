@@ -54,6 +54,11 @@ try {
 } catch (err) {
   console.error('Tables menu item failed:', err);
 }
+try {
+  require('./src/seasonSeed').ensureHomeMenuItem(db);
+} catch (err) {
+  console.error('Home menu item failed:', err);
+}
 badgeEngine.backfillIfNeeded();
 badgeEngine.startScheduledReminders();
 backup.startScheduledBackups();
@@ -63,6 +68,13 @@ app.use(express.json());
 app.use(cookieParser(process.env.SESSION_SECRET || 'dev-only-insecure-secret'));
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
+// The match list (with all its filters) lives at /matches now; / is the league overview. Old links to the list
+// carry a query (/?view=my, shared filter links), so any / with a query is forwarded there.
+app.get('/', (req, res, next) => {
+  const q = req.originalUrl.indexOf('?');
+  if (q === -1) return next();
+  res.redirect(302, '/matches' + req.originalUrl.slice(q));
+});
 app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }));
 // Uploaded badge icons live on the persistent disk (see src/db.js's
 // dataDir), not under public/, so they survive redeploys.

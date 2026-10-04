@@ -29,7 +29,7 @@ blta-score/
     routes/matches.js         ← REST API: /api/matches/...
     routes/admin.js           ← REST API: /api/admin/login, /logout, /session
   public/                     ← everything the browser loads directly, no build step
-    index.html, match.html, new-match.html, players.html, admin.html
+    index.html (league overview), matches.html (match list), match.html, new-match.html, players.html, admin.html
     embed-live.html, embed-match.html   ← stripped-down pages made for <iframe>
     css/style.css              ← all styling, using blta.sk's brand colors as CSS variables
     js/*.js                    ← one plain JS file per page, talks to the REST API + Socket.IO
@@ -403,12 +403,13 @@ Account → Security → 2-Step Verification → App Passwords).
 | What you want to change | File |
 |---|---|
 | Colors, fonts, spacing, look & feel | `public/css/style.css` (all colors are CSS variables at the top) |
-| Home page layout / tabs / filters | `public/index.html` + `public/js/app.js` |
+| Match list layout / tabs / filters (page `/matches`) | `public/matches.html` + `public/js/app.js` |
+| Home page (league overview: series progress, group leaders, results, rankings…) | `public/index.html` + `public/js/home.js` (styles: `/* Home: league overview */` in `public/css/style.css`) |
 | The "new match" form (fields, format options) | `public/new-match.html` + `public/js/new-match.js` |
 | The live scoring screen | `public/match.html` + `public/js/match.js` |
 | What the WordPress embeds look like | `public/embed-live.html`, `public/embed-match.html` + matching `.js` files |
 | Match formats / tennis scoring rules | `src/matchEngine.js` — see the `FORMATS` object at the top |
-| Categories (currently Elite / Next Gen / Novice / Friendly) | Add the new value to `CATEGORIES` in `src/routes/matches.js`, then add a matching `<option>` in `public/new-match.html` and `public/index.html`, and a badge color in `public/css/style.css` (search `badge-FRIENDLY` for the pattern) |
+| Categories (currently Elite / Next Gen / Novice / Friendly) | Add the new value to `CATEGORIES` in `src/routes/matches.js`, then add a matching `<option>` in `public/new-match.html` and `public/matches.html`, and a badge color in `public/css/style.css` (search `badge-FRIENDLY` for the pattern) |
 | The finished-match email content | `src/mailer.js` |
 | What the admin account can do | `src/routes/matches.js` and `src/routes/players.js` — search for `isAdmin`/`requireAdmin` to see every gated action |
 

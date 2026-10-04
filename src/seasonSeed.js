@@ -179,4 +179,16 @@ function ensureTablesMenuItem(db) {
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_tables_added')").run();
 }
 
-module.exports = { run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, fixWinterStart };
+// The match list moved from / to /matches when the league overview became the home page. One time: menu items that
+// pointed at / now point at /matches, and a new first item "Domov"/"Home" points at the overview. After that
+// the admin owns the menu again.
+function ensureHomeMenuItem(db) {
+  if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'menu_home_matches'").get()) return;
+  db.prepare("UPDATE header_items SET link = '/matches' WHERE link = '/'").run();
+  const first = db.prepare('SELECT MIN(sort_order) AS m FROM header_items').get().m;
+  db.prepare('INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order) VALUES (NULL, ?, ?, ?, ?)')
+    .run('Domov', 'Home', '/', (first == null ? 0 : first) - 1);
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_home_matches')").run();
+}
+
+module.exports = { run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, fixWinterStart };
