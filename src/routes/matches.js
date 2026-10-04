@@ -671,13 +671,39 @@ router.post('/', requireLoggedIn, (req, res) => {
   if (p1.id === p2.id) return res.status(400).json({ error: 'Players must be different' });
   if (proposalSlots) proposedBy = inferProposedBy(req, proposedBy, p1.id, p2.id);
 
+  // Season and group (BLTA categories only) can be set by an admin right when creating the match.
+  let seasonId = null;
+  let groupId = null;
+  if ((req.body.seasonId !== undefined && req.body.seasonId !== null) || (req.body.groupId !== undefined && req.body.groupId !== null)) {
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Only an admin can set the season and group' });
+    if (!BLTA_CATEGORIES.includes(category)) {
+      return res.status(400).json({ error: 'Seasons and groups only apply to BLTA league matches (Elite, Next Gen, Novice)' });
+    }
+    if (req.body.groupId !== undefined && req.body.groupId !== null) {
+      const group = db.prepare('SELECT * FROM season_groups WHERE id = ?').get(Number(req.body.groupId));
+      if (!group) return res.status(400).json({ error: 'That group does not exist' });
+      if (group.category !== category) return res.status(400).json({ error: 'The group is in a different category than this match' });
+      if (req.body.seasonId !== undefined && req.body.seasonId !== null && Number(req.body.seasonId) !== group.season_id) {
+        return res.status(400).json({ error: 'That group does not belong to the selected season' });
+      }
+      groupId = group.id;
+      seasonId = group.season_id;
+    } else {
+      const season = db.prepare('SELECT id FROM seasons WHERE id = ?').get(Number(req.body.seasonId));
+      if (!season) return res.status(400).json({ error: 'That season does not exist' });
+      seasonId = season.id;
+    }
+  }
+
   const state = engine.initState(format);
   const info = db.prepare(`
-    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, created_by_player_id, notes, balls_player, court_player, proposal_slots, proposal_venues, proposal_notify_email, proposed_by)
-    VALUES (@share_token, @category, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @created_by_player_id, @notes, @balls_player, @court_player, @proposal_slots, @proposal_venues, @proposal_notify_email, @proposed_by)
+    INSERT INTO matches (share_token, category, season_id, group_id, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, created_by_player_id, notes, balls_player, court_player, proposal_slots, proposal_venues, proposal_notify_email, proposed_by)
+    VALUES (@share_token, @category, @season_id, @group_id, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @created_by_player_id, @notes, @balls_player, @court_player, @proposal_slots, @proposal_venues, @proposal_notify_email, @proposed_by)
   `).run({
     share_token: crypto.randomUUID(),
     category,
+    season_id: seasonId,
+    group_id: groupId,
     player1_id: p1.id,
     player2_id: p2.id,
     location: (location || '').trim(),
