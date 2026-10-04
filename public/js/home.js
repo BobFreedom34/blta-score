@@ -81,7 +81,7 @@ function progressHtml(d) {
   const right = over ? t('home.seasonOver') : (total ? t('home.playedOf', { done: counted, total }) : '');
   return `
     <div class="home-season">
-      <div class="home-season-top"><b>${escapeHtml(t('home.seasonProgress'))}</b><span>${escapeHtml(right)}</span></div>
+      <div class="home-season-top"><b>${escapeHtml(t('home.seasonProgress'))}${!over && total ? `<em class="pct">${pct} %</em>` : ''}</b><span>${escapeHtml(right)}</span></div>
       ${over ? '' : `<div class="home-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>`}
     </div>`;
 }

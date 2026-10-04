@@ -3492,6 +3492,7 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
 .home-season { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 18px; padding: 16px 20px; }
 .home-season-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .home-season-top b { font-weight: 800; letter-spacing: 0.02em; }
+.home-season-top b .pct { font-style: normal; color: var(--green); margin-left: 12px; }
 .home-season-top span { color: #d3d6dc; font-weight: 700; font-size: 13px; }
 .home-bar { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.16); overflow: hidden; margin-top: 12px; }
 .home-bar i { display: block; height: 100%; background: var(--green); border-radius: 99px; }
