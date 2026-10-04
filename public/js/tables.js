@@ -17,11 +17,6 @@ let standings = null;
 let category = null;
 let groupId = null; // null = all groups of the category
 
-function initials(name) {
-  const parts = String(name).trim().split(/\s+/);
-  return ((parts[0] || '')[0] + ((parts[1] || '')[0] || '')).toUpperCase();
-}
-
 // The season whose dates include today; otherwise the newest one that has matches.
 function pickDefaultSeason() {
   const today = new Date().toISOString().slice(0, 10);
@@ -65,8 +60,8 @@ function tableHtml(group) {
           <div class="grp-row">
             <span class="grp-pos">${r.position}</span>
             ${r.player.id
-              ? `<a class="grp-name" href="/player/${encodeURIComponent(r.player.slug || r.player.id)}"><em>${escapeHtml(initials(r.player.name))}</em><b>${escapeHtml(r.player.name)}</b></a>`
-              : `<span class="grp-name"><em>${escapeHtml(initials(r.player.name))}</em><b>${escapeHtml(r.player.name)}</b></span>`}
+              ? `<a class="grp-name" href="/player/${encodeURIComponent(r.player.slug || r.player.id)}"><b>${escapeHtml(r.player.name)}</b></a>`
+              : `<span class="grp-name"><b>${escapeHtml(r.player.name)}</b></span>`}
             <span class="grp-pts">${r.points}</span>
             <span class="dim">${r.played}</span>
             <span class="dim">${r.wins}</span>
