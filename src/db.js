@@ -1192,4 +1192,37 @@ if (!bracketMatchColumns.includes('manual_score')) {
   db.exec('ALTER TABLE bracket_matches ADD COLUMN manual_score TEXT');
 }
 
+// League seasons ("Autumn Finals Series 2026") and their groups ("Babolat", "Technifibre"…). Every group belongs
+// to one BLTA category, and a match (BLTA categories only) can be tagged with a season and a group — set by an
+// admin, or once by seasonSeed.js for the matches that already existed. The group tables are calculated from these.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS seasons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    start_date TEXT,
+    end_date TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_seasons_slug ON seasons(slug)');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS season_groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id INTEGER NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL CHECK (category IN ('ELITE', 'NEXT_GEN', 'NOVICE')),
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (season_id, name)
+  );
+`);
+const matchSeasonColumns = db.prepare('PRAGMA table_info(matches)').all().map((c) => c.name);
+if (!matchSeasonColumns.includes('season_id')) {
+  db.exec('ALTER TABLE matches ADD COLUMN season_id INTEGER REFERENCES seasons(id) ON DELETE SET NULL');
+}
+if (!matchSeasonColumns.includes('group_id')) {
+  db.exec('ALTER TABLE matches ADD COLUMN group_id INTEGER REFERENCES season_groups(id) ON DELETE SET NULL');
+}
+
 module.exports = db;

@@ -153,6 +153,19 @@ function serializePlayer(player) {
   return stripPrivateFields(player, {});
 }
 
+const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+
+// A BLTA-league match's season ("Autumn Finals Series 2026") and group ("Babolat") — see seasons/season_groups in
+// db.js. Null for non-league categories and for league matches nobody has tagged yet.
+function seasonAndGroup(row) {
+  const season = row.season_id ? db.prepare('SELECT id, name, slug FROM seasons WHERE id = ?').get(row.season_id) : null;
+  const group = row.group_id ? db.prepare('SELECT id, name, category FROM season_groups WHERE id = ?').get(row.group_id) : null;
+  return {
+    season: season ? { id: season.id, name: season.name, slug: season.slug } : null,
+    group: group ? { id: group.id, name: group.name, category: group.category } : null,
+  };
+}
+
 function serialize(row) {
   const p1 = getPlayer(row.player1_id);
   const p2 = getPlayer(row.player2_id);
@@ -163,6 +176,7 @@ function serialize(row) {
     token: row.share_token,
     category: row.category,
     league: row.league || null,
+    ...seasonAndGroup(row),
     location: row.location,
     notes: row.notes || '',
     scheduledAt: row.scheduled_at,
@@ -520,6 +534,40 @@ router.patch('/:token/league', requireAdmin, (req, res) => {
   res.json(serialize(updated));
 });
 
+// Admin-only: which season and group a BLTA-league match belongs to. A group needs its season and has to be of
+// the same category as the match; null clears. (Also used by the match page's admin editor.)
+router.patch('/:token/season', requireAdmin, (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  const { seasonId, groupId } = req.body;
+  if (seasonId === null && (groupId === null || groupId === undefined)) {
+    db.prepare('UPDATE matches SET season_id = NULL, group_id = NULL, updated_at = ? WHERE id = ?').run(nowIso(), row.id);
+    return res.json(serialize(db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id)));
+  }
+  if (!BLTA_CATEGORIES.includes(row.category)) {
+    return res.status(400).json({ error: 'Seasons and groups only apply to BLTA league matches (Elite, Next Gen, Novice)' });
+  }
+  let season = null;
+  let group = null;
+  if (groupId !== undefined && groupId !== null) {
+    group = db.prepare('SELECT * FROM season_groups WHERE id = ?').get(Number(groupId));
+    if (!group) return res.status(400).json({ error: 'That group does not exist' });
+    if (group.category !== row.category) {
+      return res.status(400).json({ error: 'The group is in a different category than this match' });
+    }
+    season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(group.season_id);
+    if (seasonId !== undefined && seasonId !== null && Number(seasonId) !== group.season_id) {
+      return res.status(400).json({ error: 'That group does not belong to the selected season' });
+    }
+  } else if (seasonId !== undefined && seasonId !== null) {
+    season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(seasonId));
+    if (!season) return res.status(400).json({ error: 'That season does not exist' });
+  }
+  db.prepare('UPDATE matches SET season_id = ?, group_id = ?, updated_at = ? WHERE id = ?')
+    .run(season ? season.id : null, group ? group.id : null, nowIso(), row.id);
+  res.json(serialize(db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id)));
+});
+
 router.post('/', requireLoggedIn, (req, res) => {
   const { category, location, scheduledAt, format, notes } = req.body;
   let { player1Id, player2Id, player1Name, player2Name } = req.body;
@@ -698,6 +746,14 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
   }
   if (req.body.category && CATEGORIES.includes(req.body.category)) {
     fields.category = req.body.category;
+    // The season/group only exist for BLTA categories, and a group is of one category — keep that true.
+    if (!BLTA_CATEGORIES.includes(req.body.category)) {
+      fields.season_id = null;
+      fields.group_id = null;
+    } else if (row.group_id) {
+      const g = db.prepare('SELECT category FROM season_groups WHERE id = ?').get(row.group_id);
+      if (!g || g.category !== req.body.category) fields.group_id = null;
+    }
   }
   if (typeof req.body.notes === 'string') {
     if (req.body.notes.length > 1000) {

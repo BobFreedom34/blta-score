@@ -72,6 +72,19 @@
   </div>
 </div>
 
+<!-- Season & group (admin only, BLTA categories only) -->
+<div class="modal-backdrop" id="season-modal" style="display:none">
+  <div class="modal">
+    <button type="button" class="close" data-close="season-modal" aria-label="Close">&times;</button>
+    <h3 data-i18n="match.seasonModalTitle">Season and group</h3>
+    <p style="font-size:13px;color:var(--gray);margin:-6px 0 12px" data-i18n="match.seasonModalHint">Only for BLTA league categories.</p>
+    <div class="field"><label data-i18n="match.seasonLabel">Season</label><select id="season-select"></select></div>
+    <div class="field"><label data-i18n="match.groupLabel">Group</label><select id="group-select"></select></div>
+    <div id="season-error" style="color:var(--danger);font-weight:600;margin-bottom:8px"></div>
+    <button type="button" class="btn btn-primary btn-block" id="season-save-btn" data-i18n="common.save">Uložiť</button>
+  </div>
+</div>
+
 <!-- Embed modal -->
 <div class="modal-backdrop" id="embed-modal" style="display:none">
   <div class="modal">

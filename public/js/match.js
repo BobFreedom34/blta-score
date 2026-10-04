@@ -755,6 +755,17 @@ function render(m) {
         <div class="value" id="category-display">${categoryLabel(m.category)}</div>
         ${locationEditable ? `<button type="button" class="edit-link info-item-edit-link" data-action="open-edit-match">${t('common.edit')}</button>` : ''}
       </div>
+      ${['ELITE', 'NEXT_GEN', 'NOVICE'].includes(m.category) ? `
+      <div class="info-item">
+        <div class="label">${t('match.seasonLabel')}</div>
+        <div class="value" id="season-display">${m.season ? escapeHtml(m.season.name) : `<span style="color:var(--gray)">${t('player.bio.notSet')}</span>`}</div>
+        ${isAdminUser ? `<button type="button" class="edit-link" data-action="edit-season">${t('common.edit')}</button>` : ''}
+      </div>
+      <div class="info-item">
+        <div class="label">${t('match.groupLabel')}</div>
+        <div class="value" id="group-display">${m.group ? escapeHtml(m.group.name) : `<span style="color:var(--gray)">${t('player.bio.notSet')}</span>`}</div>
+        ${isAdminUser ? `<button type="button" class="edit-link" data-action="edit-season">${t('common.edit')}</button>` : ''}
+      </div>` : ''}
     </div>
 
     ${awaitingProposal ? proposalCardHtml(m) : ''}
@@ -787,7 +798,46 @@ function render(m) {
   ensureH2H(m);
 }
 
+// Admin editor for the season and group of a BLTA-league match.
+async function openSeasonModal(m) {
+  const modal = document.getElementById('season-modal');
+  const seasonSel = document.getElementById('season-select');
+  const groupSel = document.getElementById('group-select');
+  const errorEl = document.getElementById('season-error');
+  errorEl.textContent = '';
+  const seasons = await api('/seasons');
+  const none = `<option value="">${escapeHtml(t('match.noneOption'))}</option>`;
+  seasonSel.innerHTML = none + seasons.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  seasonSel.value = m.season ? String(m.season.id) : '';
+  const fillGroups = () => {
+    const season = seasons.find((s) => String(s.id) === seasonSel.value);
+    const groups = season ? season.groups.filter((g) => g.category === m.category) : [];
+    groupSel.innerHTML = none + groups.map((g) => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
+    groupSel.value = m.group && groups.some((g) => g.id === m.group.id) ? String(m.group.id) : '';
+    groupSel.disabled = !season;
+  };
+  seasonSel.onchange = () => { m = { ...m, group: null }; fillGroups(); };
+  fillGroups();
+  document.getElementById('season-save-btn').onclick = async () => {
+    errorEl.textContent = '';
+    try {
+      const body = seasonSel.value
+        ? { seasonId: Number(seasonSel.value), groupId: groupSel.value ? Number(groupSel.value) : null }
+        : { seasonId: null, groupId: null };
+      const updated = await api(`/matches/${matchToken}/season`, { method: 'PATCH', body });
+      modal.style.display = 'none';
+      render(updated);
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
+  };
+  modal.style.display = 'flex';
+}
+
 function attachHandlers(m) {
+  document.querySelectorAll('[data-action="edit-season"]').forEach((btn) => {
+    btn.addEventListener('click', () => openSeasonModal(m));
+  });
   // Start live match: prompt login if logged out — or a referee code,
   // via requireLiveScoreAuth (common.js) — then, the moment either is
   // confirmed, reject immediately with an access-denied message if this

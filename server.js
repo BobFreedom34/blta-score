@@ -24,6 +24,7 @@ const headerItemsRouter = require('./src/routes/headerItems');
 const courtIQRouter = require('./src/routes/courtiq');
 const bracketsRouter = require('./src/routes/brackets');
 const venuesRouter = require('./src/routes/venues');
+const seasonsRouter = require('./src/routes/seasons');
 
 const app = express();
 const server = http.createServer(app);
@@ -36,6 +37,12 @@ app.set('io', io);
 // why this has to run before any real traffic hits the badge notification
 // endpoints (routes/player.js) or the matches routes that create new ones.
 require('./src/venueSeed').run();
+try {
+  const seeded = require('./src/seasonSeed').run(db);
+  if (!seeded.skipped) console.log('Seasons seeded: tagged ' + seeded.tagged + ' of ' + seeded.total + ' BLTA matches');
+} catch (err) {
+  console.error('Season seeding failed (will retry on next start):', err);
+}
 badgeEngine.backfillIfNeeded();
 badgeEngine.startScheduledReminders();
 backup.startScheduledBackups();
@@ -64,6 +71,7 @@ app.use('/api/header-items', headerItemsRouter);
 app.use('/api/courtiq', courtIQRouter);
 app.use('/api/brackets', bracketsRouter);
 app.use('/api/venues', venuesRouter);
+app.use('/api/seasons', seasonsRouter);
 
 // Pretty routes -> static HTML pages (the page JS reads the share token from the URL).
 const matchTemplate = fs.readFileSync(path.join(PUBLIC_DIR, 'match.html'), 'utf8');
