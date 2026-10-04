@@ -3446,3 +3446,10 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
   .compact-match-list > .match-list-heading { grid-column: 1 / -1; }
   .compact-match-list > .compact-card { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; }
 }
+
+/* Never clip or overflow the end of a row: the format and place columns are as wide as their text. */
+.compact-card { grid-template-columns: max-content minmax(160px, auto) max-content minmax(max-content, 1fr); }
+.compact-place { overflow: visible; text-overflow: clip; }
+@supports (grid-template-columns: subgrid) {
+  .compact-match-list { grid-template-columns: max-content minmax(160px, max-content) max-content minmax(max-content, 1fr); }
+}
