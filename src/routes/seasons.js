@@ -93,7 +93,7 @@ router.get('/:id/standings', (req, res) => {
   const players = new Map();
   const playerStmt = db.prepare('SELECT id, name, slug FROM players WHERE id = ?');
   const result = groups.map((g) => {
-    const rows = db.prepare('SELECT player1_id, player2_id, winner_id, status, end_reason, state, COALESCE(scheduled_at, end_time, created_at) AS d FROM matches WHERE group_id = ?').all(g.id);
+    const rows = db.prepare('SELECT player1_id, player2_id, winner_id, status, end_reason, state, COALESCE(scheduled_at, end_time, created_at) AS d FROM matches WHERE group_id = ? AND COALESCE(stage, \'GROUP\') = \'GROUP\'').all(g.id);
     const records = rows.map((r) => {
       [r.player1_id, r.player2_id].forEach((pid) => { if (!players.has(pid)) players.set(pid, playerStmt.get(pid)); });
       return { player1Id: r.player1_id, player2Id: r.player2_id, winnerId: r.winner_id, status: r.status, endReason: r.end_reason, date: r.d, state: JSON.parse(r.state) };

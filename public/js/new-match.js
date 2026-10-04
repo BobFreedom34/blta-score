@@ -11,6 +11,8 @@ const seasonField = document.getElementById('season-field');
 const groupField = document.getElementById('group-field');
 const seasonSelect = document.getElementById('season');
 const groupSelect = document.getElementById('group');
+const stageField = document.getElementById('stage-field');
+const stageSelect = document.getElementById('stage');
 let seasonsList = [];
 let isAdminCreator = false;
 
@@ -19,6 +21,7 @@ function renderSeasonFields() {
   const show = isAdminCreator && isBlta;
   seasonField.style.display = show ? '' : 'none';
   groupField.style.display = show ? '' : 'none';
+  stageField.style.display = show ? '' : 'none';
   if (!show) return;
   const none = `<option value="">${escapeHtml(t('match.noneOption'))}</option>`;
   const keepSeason = seasonSelect.value;
@@ -87,6 +90,7 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
           ...(isAdminCreator && BLTA_CATEGORIES.includes(category) && seasonSelect.value
             ? { seasonId: Number(seasonSelect.value), groupId: groupSelect.value ? Number(groupSelect.value) : null }
             : {}),
+          ...(isAdminCreator && BLTA_CATEGORIES.includes(category) && stageSelect.value === 'PLAYOFF' ? { stage: 'PLAYOFF' } : {}),
         },
       });
       window.location.href = `/match/${match.token}`;

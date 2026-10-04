@@ -154,6 +154,7 @@ function serializePlayer(player) {
 }
 
 const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+const MATCH_STAGES = ['GROUP', 'PLAYOFF'];
 
 // A BLTA-league match's season ("Autumn Finals Series 2026") and group ("Babolat") — see seasons/season_groups in
 // db.js. Null for non-league categories and for league matches nobody has tagged yet.
@@ -177,6 +178,7 @@ function serialize(row) {
     category: row.category,
     league: row.league || null,
     ...seasonAndGroup(row),
+    stage: row.stage === 'PLAYOFF' ? 'PLAYOFF' : 'GROUP',
     location: row.location,
     notes: row.notes || '',
     scheduledAt: row.scheduled_at,
@@ -542,13 +544,23 @@ router.patch('/:token/league', requireAdmin, (req, res) => {
 router.patch('/:token/season', requireAdmin, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  const { seasonId, groupId } = req.body;
+  const { seasonId, groupId, stage } = req.body;
+  if (stage !== undefined && !MATCH_STAGES.includes(stage)) {
+    return res.status(400).json({ error: 'Stage must be GROUP or PLAYOFF' });
+  }
+  const nextStage = stage !== undefined ? stage : (row.stage === 'PLAYOFF' ? 'PLAYOFF' : 'GROUP');
   if (seasonId === null && (groupId === null || groupId === undefined)) {
-    db.prepare('UPDATE matches SET season_id = NULL, group_id = NULL, updated_at = ? WHERE id = ?').run(nowIso(), row.id);
+    db.prepare('UPDATE matches SET season_id = NULL, group_id = NULL, stage = ?, updated_at = ? WHERE id = ?').run(nextStage, nowIso(), row.id);
     return res.json(broadcast(req, db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id)));
   }
   if (!BLTA_CATEGORIES.includes(row.category)) {
-    return res.status(400).json({ error: 'Seasons and groups only apply to BLTA league matches (Elite, Next Gen, Novice)' });
+    return res.status(400).json({ error: 'Seasons, groups and stages only apply to BLTA league matches (Elite, Next Gen, Novice)' });
+  }
+  // Only the stage was sent: leave the season and group alone.
+  if (seasonId === undefined && groupId === undefined) {
+    if (stage === undefined) return res.status(400).json({ error: 'Nothing to change' });
+    db.prepare('UPDATE matches SET stage = ?, updated_at = ? WHERE id = ?').run(nextStage, nowIso(), row.id);
+    return res.json(broadcast(req, db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id)));
   }
   let season = null;
   let group = null;
@@ -566,8 +578,8 @@ router.patch('/:token/season', requireAdmin, (req, res) => {
     season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(seasonId));
     if (!season) return res.status(400).json({ error: 'That season does not exist' });
   }
-  db.prepare('UPDATE matches SET season_id = ?, group_id = ?, updated_at = ? WHERE id = ?')
-    .run(season ? season.id : null, group ? group.id : null, nowIso(), row.id);
+  db.prepare('UPDATE matches SET season_id = ?, group_id = ?, stage = ?, updated_at = ? WHERE id = ?')
+    .run(season ? season.id : null, group ? group.id : null, nextStage, nowIso(), row.id);
   res.json(broadcast(req, db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id)));
 });
 
@@ -698,15 +710,27 @@ router.post('/', requireLoggedIn, (req, res) => {
     }
   }
 
+  // Stage (group stage / play-off): admin only, BLTA categories only.
+  let stage = 'GROUP';
+  if (req.body.stage !== undefined && req.body.stage !== null && req.body.stage !== 'GROUP') {
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Only an admin can set the stage' });
+    if (!BLTA_CATEGORIES.includes(category)) {
+      return res.status(400).json({ error: 'Stages only apply to BLTA league matches (Elite, Next Gen, Novice)' });
+    }
+    if (!MATCH_STAGES.includes(req.body.stage)) return res.status(400).json({ error: 'Stage must be GROUP or PLAYOFF' });
+    stage = req.body.stage;
+  }
+
   const state = engine.initState(format);
   const info = db.prepare(`
-    INSERT INTO matches (share_token, category, season_id, group_id, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, created_by_player_id, notes, balls_player, court_player, proposal_slots, proposal_venues, proposal_notify_email, proposed_by)
-    VALUES (@share_token, @category, @season_id, @group_id, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @created_by_player_id, @notes, @balls_player, @court_player, @proposal_slots, @proposal_venues, @proposal_notify_email, @proposed_by)
+    INSERT INTO matches (share_token, category, season_id, group_id, stage, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, created_by_player_id, notes, balls_player, court_player, proposal_slots, proposal_venues, proposal_notify_email, proposed_by)
+    VALUES (@share_token, @category, @season_id, @group_id, @stage, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @created_by_player_id, @notes, @balls_player, @court_player, @proposal_slots, @proposal_venues, @proposal_notify_email, @proposed_by)
   `).run({
     share_token: crypto.randomUUID(),
     category,
     season_id: seasonId,
     group_id: groupId,
+    stage,
     player1_id: p1.id,
     player2_id: p2.id,
     location: (location || '').trim(),

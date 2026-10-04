@@ -765,6 +765,11 @@ function render(m) {
         <div class="label">${t('match.groupLabel')}</div>
         <div class="value" id="group-display">${m.group ? escapeHtml(m.group.name) : `<span style="color:var(--gray)">${t('player.bio.notSet')}</span>`}</div>
         ${isAdminUser ? `<button type="button" class="edit-link" data-action="edit-season">${t('common.edit')}</button>` : ''}
+      </div>
+      <div class="info-item">
+        <div class="label">${t('match.stageLabel')}</div>
+        <div class="value" id="stage-display">${t(m.stage === 'PLAYOFF' ? 'match.stagePlayoff' : 'match.stageGroup')}</div>
+        ${isAdminUser ? `<button type="button" class="edit-link" data-action="edit-season">${t('common.edit')}</button>` : ''}
       </div>` : ''}
     </div>
 
@@ -803,8 +808,10 @@ async function openSeasonModal(m) {
   const modal = document.getElementById('season-modal');
   const seasonSel = document.getElementById('season-select');
   const groupSel = document.getElementById('group-select');
+  const stageSel = document.getElementById('stage-select');
   const errorEl = document.getElementById('season-error');
   errorEl.textContent = '';
+  stageSel.value = m.stage === 'PLAYOFF' ? 'PLAYOFF' : 'GROUP';
   const seasons = await api('/seasons');
   const none = `<option value="">${escapeHtml(t('match.noneOption'))}</option>`;
   seasonSel.innerHTML = none + seasons.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
@@ -822,8 +829,8 @@ async function openSeasonModal(m) {
     errorEl.textContent = '';
     try {
       const body = seasonSel.value
-        ? { seasonId: Number(seasonSel.value), groupId: groupSel.value ? Number(groupSel.value) : null }
-        : { seasonId: null, groupId: null };
+        ? { seasonId: Number(seasonSel.value), groupId: groupSel.value ? Number(groupSel.value) : null, stage: stageSel.value }
+        : { seasonId: null, groupId: null, stage: stageSel.value };
       const updated = await api(`/matches/${matchToken}/season`, { method: 'PATCH', body });
       modal.style.display = 'none';
       render(updated);

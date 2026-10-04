@@ -1224,5 +1224,10 @@ if (!matchSeasonColumns.includes('season_id')) {
 if (!matchSeasonColumns.includes('group_id')) {
   db.exec('ALTER TABLE matches ADD COLUMN group_id INTEGER REFERENCES season_groups(id) ON DELETE SET NULL');
 }
+// 'GROUP' = a group-stage match (counts in the group table), 'PLAYOFF' = a play-off match (never counts in it).
+// Every existing match is GROUP; an admin marks play-off matches from the current season on.
+if (!matchSeasonColumns.includes('stage')) {
+  db.exec("ALTER TABLE matches ADD COLUMN stage TEXT NOT NULL DEFAULT 'GROUP'");
+}
 
 module.exports = db;
