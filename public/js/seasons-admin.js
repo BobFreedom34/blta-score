@@ -2,6 +2,45 @@ const root = document.getElementById('seasons-admin-root');
 
 let seasons = [];
 
+// Which season cards are unfolded. Remembered in this browser; the first time only the running season is open.
+const OPEN_KEY = 'blta_seasons_admin_open';
+let openIds = null;
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function seasonStatus(s) {
+  const today = todayIso();
+  if (s.startDate && s.endDate) {
+    if (s.endDate < today) return 'past';
+    if (s.startDate > today) return 'future';
+    return 'now';
+  }
+  return 'future';
+}
+
+function initOpenIds() {
+  if (openIds) return;
+  try {
+    const stored = JSON.parse(localStorage.getItem(OPEN_KEY));
+    if (Array.isArray(stored)) openIds = new Set(stored);
+  } catch { /* no saved state */ }
+  if (!openIds) openIds = new Set(seasons.filter((s) => seasonStatus(s) === 'now').map((s) => s.id));
+}
+
+function saveOpenIds() {
+  try { localStorage.setItem(OPEN_KEY, JSON.stringify([...openIds])); } catch { /* ignore */ }
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return `${Number(d)}.${Number(m)}.${y}`;
+}
+
+const STATUS_LABEL = { now: 'Running', past: 'Finished', future: 'Upcoming' };
+
 const CATEGORIES = [
   ['ELITE', 'Elite'],
   ['NEXT_GEN', 'Next Gen'],
@@ -50,7 +89,7 @@ function renderAdmin() {
     const errorEl = document.getElementById('add-season-error');
     errorEl.textContent = '';
     try {
-      await api('/seasons', {
+      const created = await api('/seasons', {
         method: 'POST',
         body: {
           name: document.getElementById('season-name').value.trim(),
@@ -59,6 +98,7 @@ function renderAdmin() {
         },
       });
       e.target.reset();
+      if (created && created.id) { initOpenIds(); openIds.add(created.id); saveOpenIds(); }
       toast('Season added');
       await load();
     } catch (err) {
@@ -71,6 +111,7 @@ function renderAdmin() {
 
 async function load() {
   seasons = await api('/seasons');
+  initOpenIds();
   renderList();
 }
 
@@ -89,7 +130,15 @@ function groupRowHtml(g) {
 function seasonHtml(s) {
   const byCategory = CATEGORIES.map(([key]) => s.groups.filter((g) => g.category === key).length);
   return `
-    <div class="card season-admin-card" data-season="${s.id}" style="margin-bottom:20px">
+    <details class="card season-admin-card" data-season="${s.id}"${openIds.has(s.id) ? ' open' : ''} style="margin-bottom:12px">
+      <summary class="sa-sum">
+        <svg class="sa-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        <span class="sa-name">${escapeHtml(s.name)}</span>
+        <span class="sa-dates">${escapeHtml(s.startDate && s.endDate ? `${fmtDate(s.startDate)} – ${fmtDate(s.endDate)}` : '')}</span>
+        <span class="sa-chip ${seasonStatus(s)}">${STATUS_LABEL[seasonStatus(s)]}</span>
+        <span class="sa-count">${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'} · ${s.matchCount} ${s.matchCount === 1 ? 'match' : 'matches'}</span>
+      </summary>
+      <div class="sa-body">
       <form class="season-edit-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
         <label style="flex:1;min-width:220px;font-size:12px;font-weight:700">Season
           <input type="text" data-field="name" value="${escapeHtml(s.name)}" maxlength="120" required style="display:block;width:100%;margin-top:4px;${inputStyle}">
@@ -118,7 +167,8 @@ function seasonHtml(s) {
         </select>
         <button type="submit" class="btn btn-sm btn-primary">Add group</button>
       </form>
-    </div>
+      </div>
+    </details>
   `;
 }
 
@@ -128,8 +178,13 @@ function renderList() {
     listEl.innerHTML = '<div class="card"><div class="empty-state">No seasons yet.</div></div>';
     return;
   }
-  listEl.innerHTML = seasons.map(seasonHtml).join('');
+  listEl.innerHTML = `<div class="sa-bar"><button type="button" data-fold="open">Expand all</button><span>·</span><button type="button" data-fold="close">Collapse all</button></div>` + seasons.map(seasonHtml).join('');
   listEl.querySelectorAll('.season-admin-card').forEach(wireSeason);
+  listEl.querySelectorAll('[data-fold]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      listEl.querySelectorAll('.season-admin-card').forEach((c) => { c.open = btn.dataset.fold === 'open'; });
+    });
+  });
 }
 
 function wireSeason(card) {
@@ -137,6 +192,10 @@ function wireSeason(card) {
   const season = seasons.find((s) => s.id === id);
   const errorEl = card.querySelector('.season-error');
   const fail = (err) => { errorEl.textContent = err.message; };
+  card.addEventListener('toggle', () => {
+    if (card.open) openIds.add(id); else openIds.delete(id);
+    saveOpenIds();
+  });
 
   card.querySelector('.season-edit-form').addEventListener('submit', async (e) => {
     e.preventDefault();
