@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { requireAdmin } = require('../auth');
 const { computeGroupStandings } = require('../standings');
+const { FROZEN } = require('../frozenStandings');
 
 const router = express.Router();
 
@@ -68,20 +69,41 @@ router.get('/:id/standings', (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
   const groups = db.prepare('SELECT * FROM season_groups WHERE season_id = ? ORDER BY sort_order, name COLLATE NOCASE').all(season.id);
+  // Finished seasons show the official final tables copied from blta.sk (src/frozenStandings.js); the current
+  // season and the later ones are calculated from the matches below.
+  const frozen = FROZEN[season.slug];
+  if (frozen) {
+    const fold = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’`´]/g, "'").replace(/s+/g, ' ').trim().toLowerCase();
+    const byName = new Map(db.prepare('SELECT id, name, slug FROM players').all().map((p) => [fold(p.name), p]));
+    return res.json({
+      id: season.id, name: season.name, slug: season.slug, startDate: season.start_date, endDate: season.end_date, frozen: true,
+      groups: groups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        category: g.category,
+        matchesCounted: null,
+        matchesTotal: null,
+        rows: (frozen[g.name.toLowerCase()] || []).map((r) => {
+          const p = byName.get(fold(r.name));
+          return { position: r.position, player: { id: p ? p.id : null, name: r.name, slug: p ? p.slug : null }, points: r.points, played: r.played, wins: r.wins, losses: r.losses, setDiff: r.setDiff };
+        }),
+      })),
+    });
+  }
   const players = new Map();
   const playerStmt = db.prepare('SELECT id, name, slug FROM players WHERE id = ?');
   const result = groups.map((g) => {
-    const rows = db.prepare('SELECT player1_id, player2_id, winner_id, status, end_reason, state FROM matches WHERE group_id = ?').all(g.id);
+    const rows = db.prepare('SELECT player1_id, player2_id, winner_id, status, end_reason, state, COALESCE(scheduled_at, end_time, created_at) AS d FROM matches WHERE group_id = ?').all(g.id);
     const records = rows.map((r) => {
       [r.player1_id, r.player2_id].forEach((pid) => { if (!players.has(pid)) players.set(pid, playerStmt.get(pid)); });
-      return { player1Id: r.player1_id, player2Id: r.player2_id, winnerId: r.winner_id, status: r.status, endReason: r.end_reason, state: JSON.parse(r.state) };
+      return { player1Id: r.player1_id, player2Id: r.player2_id, winnerId: r.winner_id, status: r.status, endReason: r.end_reason, date: r.d, state: JSON.parse(r.state) };
     });
     const table = computeGroupStandings(records, players);
     return {
       id: g.id,
       name: g.name,
       category: g.category,
-      matchesCounted: records.filter((r) => r.status === 'FINISHED').length,
+      matchesCounted: table.reduce((sum, x) => sum + x.played, 0) / 2,
       matchesTotal: records.length,
       rows: table.map((x) => ({
         position: x.position,
@@ -94,7 +116,7 @@ router.get('/:id/standings', (req, res) => {
       })),
     };
   });
-  res.json({ id: season.id, name: season.name, slug: season.slug, startDate: season.start_date, endDate: season.end_date, groups: result });
+  res.json({ id: season.id, name: season.name, slug: season.slug, startDate: season.start_date, endDate: season.end_date, frozen: false, groups: result });
 });
 
 router.post('/', requireAdmin, (req, res) => {

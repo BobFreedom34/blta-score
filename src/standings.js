@@ -3,9 +3,11 @@
 // Points: a 2-0 win is 3 points (loser 0); a 2-1 win is 2 points for the winner and 1 for the loser.
 // Table columns: points, matches played, wins, losses, set difference ("+/-").
 // A walkover is always 3 points for the player who got it (0 for the other), booked as a 2-0 win.
-// Order: points; then, when exactly two players are level on points, their head-to-head match; then set
-// difference, wins and game difference. Players whose numbers are all equal share a position.
-// (The league's "overall BLTA ranking" tiebreak sits between wins and game difference; it is not used yet.)
+// Each pair of players counts once: the first finished match between them (by date). Later meetings — play-offs,
+// and the same match entered twice — don't add to the table.
+// Order (as on the blta.sk tables): points, then set difference, then wins. Players level on all three share a
+// position; within such a block the list order falls back to the head-to-head match (when exactly two are level),
+// game difference and name — that order is only cosmetic, the position number is the same.
 //
 // Everything here is a pure function of the match list, so the tables can never drift from the matches:
 // they are recalculated on every request.
@@ -31,7 +33,7 @@ function gameCounts(record) {
   return { 1: g1, 2: g2 };
 }
 
-// record: { player1Id, player2Id, winnerId, status, endReason, state: { setsWon, sets } }
+// record: { player1Id, player2Id, winnerId, status, endReason, date, state: { setsWon, sets } }
 // Returns { winnerSide, sets1, sets2, games1, games2, pts1, pts2 } or null when the match doesn't count
 // (not finished, no winner, or marked unfinished).
 function scoreRecord(record) {
@@ -73,11 +75,15 @@ function computeGroupStandings(matches, players) {
   };
   const h2h = new Map(); // `${a}|${b}` -> points a took off b
 
-  for (const m of matches) {
-    row(m.player1Id);
-    row(m.player2Id);
+  matches.forEach((m) => { row(m.player1Id); row(m.player2Id); });
+  const byDate = [...matches].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+  const counted = new Set();
+  for (const m of byDate) {
     const r = scoreRecord(m);
     if (!r) continue;
+    const pair = m.player1Id < m.player2Id ? `${m.player1Id}-${m.player2Id}` : `${m.player2Id}-${m.player1Id}`;
+    if (counted.has(pair)) continue;
+    counted.add(pair);
     const a = row(m.player1Id);
     const b = row(m.player2Id);
     a.played += 1;
@@ -112,15 +118,15 @@ function computeGroupStandings(matches, players) {
 
   const compare = (x, y) =>
     (y.points - x.points)
-    || (y.h2hPoints - x.h2hPoints)
     || (y.setDiff - x.setDiff)
     || (y.wins - x.wins)
+    || (y.h2hPoints - x.h2hPoints)
     || (y.gameDiff - x.gameDiff)
     || String(x.player.name).localeCompare(String(y.player.name), 'sk');
   list.sort(compare);
 
   // Position: players with identical numbers on every compared column share a position.
-  const same = (x, y) => x.points === y.points && x.h2hPoints === y.h2hPoints && x.setDiff === y.setDiff && x.wins === y.wins && x.gameDiff === y.gameDiff;
+  const same = (x, y) => x.points === y.points && x.setDiff === y.setDiff && x.wins === y.wins;
   list.forEach((x, i) => { x.position = i > 0 && same(list[i - 1], x) ? list[i - 1].position : i + 1; });
   return list;
 }

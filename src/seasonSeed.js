@@ -117,6 +117,55 @@ function run(db) {
   }
 }
 
+// One-off correction: Winter Opening Series 2026 was drawn on 21.12.2025 and its first group matches were played
+// in the last days of December, so those matches belong to it, not to the previous season (whose play-offs ended
+// before). Moves the season boundary and re-tags only the BLTA matches dated 21–31 December 2025 that are still
+// tagged with the previous season. Runs once.
+function fixWinterStart(db) {
+  if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'seasons_winter_start_fix'").get()) return { skipped: true };
+  const first = db.prepare("SELECT id FROM seasons WHERE slug = 'blta-nulty-rocnik-2025'").get();
+  const winter = db.prepare("SELECT id FROM seasons WHERE slug = 'winter-opening-series-2026'").get();
+  let moved = 0;
+  db.exec('BEGIN');
+  try {
+    if (first && winter) {
+      db.prepare("UPDATE seasons SET end_date = '2025-12-20' WHERE id = ? AND end_date = '2025-12-31'").run(first.id);
+      db.prepare("UPDATE seasons SET start_date = '2025-12-21' WHERE id = ? AND start_date = '2026-01-01'").run(winter.id);
+      const indexed = indexSeasons(SEASONS);
+      const groupId = {};
+      SEASONS.forEach((s) => {
+        const sid = db.prepare('SELECT id FROM seasons WHERE slug = ?').get(s.slug);
+        if (!sid) return;
+        s.groups.forEach((g) => {
+          const row = db.prepare('SELECT id FROM season_groups WHERE season_id = ? AND name = ?').get(sid.id, g.name);
+          if (row) groupId[`${s.slug}|${g.name}`] = row.id;
+        });
+      });
+      const rows = db.prepare(`
+        SELECT m.id, m.category, m.notes, COALESCE(m.scheduled_at, m.end_time, m.created_at) AS d, p1.name AS n1, p2.name AS n2
+        FROM matches m
+        JOIN players p1 ON p1.id = m.player1_id
+        JOIN players p2 ON p2.id = m.player2_id
+        WHERE m.category IN ('ELITE', 'NEXT_GEN', 'NOVICE') AND m.season_id = ?
+          AND substr(COALESCE(m.scheduled_at, m.end_time, m.created_at), 1, 10) BETWEEN '2025-12-21' AND '2025-12-31'
+      `).all(first.id);
+      const update = db.prepare('UPDATE matches SET season_id = ?, group_id = ? WHERE id = ?');
+      for (const r of rows) {
+        const res = assign({ category: r.category, notes: r.notes, date: r.d, player1: r.n1, player2: r.n2 }, indexed);
+        if (res.seasonSlug !== 'winter-opening-series-2026') continue;
+        update.run(winter.id, res.groupName ? (groupId[`${res.seasonSlug}|${res.groupName}`] || null) : null, r.id);
+        moved += 1;
+      }
+    }
+    db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('seasons_winter_start_fix')").run();
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  return { skipped: false, moved };
+}
+
 // The "Tables" menu item, added once (an admin can rename, move or delete it afterwards).
 function ensureTablesMenuItem(db) {
   if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'menu_tables_added'").get()) return;
@@ -130,4 +179,4 @@ function ensureTablesMenuItem(db) {
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_tables_added')").run();
 }
 
-module.exports = { run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem };
+module.exports = { run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, fixWinterStart };

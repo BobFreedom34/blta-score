@@ -54,7 +54,7 @@ function renderTabs() {
 function tableHtml(group) {
   return `
     <section class="grp-section">
-      <h2 class="grp-title">${escapeHtml(group.name)} <span>${escapeHtml(t('tables.counted', { done: group.matchesCounted, total: group.matchesTotal }))}</span></h2>
+      <h2 class="grp-title">${escapeHtml(group.name)}${group.matchesCounted === null ? '' : ` <span>${escapeHtml(t('tables.counted', { done: group.matchesCounted, total: group.matchesTotal }))}</span>`}</h2>
       <div class="card card-dark grp-card">
         <div class="grp-head">
           <span>#</span><span>${escapeHtml(t('tables.player'))}</span><span>${escapeHtml(t('tables.points'))}</span><span>${escapeHtml(t('tables.matches'))}</span><span>${escapeHtml(t('tables.wins'))}</span><span>${escapeHtml(t('tables.losses'))}</span><span>+/−</span>
@@ -64,7 +64,9 @@ function tableHtml(group) {
           return `
           <div class="grp-row">
             <span class="grp-pos">${r.position}</span>
-            <a class="grp-name" href="/player/${encodeURIComponent(r.player.slug || r.player.id)}"><em>${escapeHtml(initials(r.player.name))}</em><b>${escapeHtml(r.player.name)}</b></a>
+            ${r.player.id
+              ? `<a class="grp-name" href="/player/${encodeURIComponent(r.player.slug || r.player.id)}"><em>${escapeHtml(initials(r.player.name))}</em><b>${escapeHtml(r.player.name)}</b></a>`
+              : `<span class="grp-name"><em>${escapeHtml(initials(r.player.name))}</em><b>${escapeHtml(r.player.name)}</b></span>`}
             <span class="grp-pts">${r.points}</span>
             <span class="dim">${r.played}</span>
             <span class="dim">${r.wins}</span>
@@ -85,7 +87,7 @@ function renderTables() {
   }
   rootEl.innerHTML = groups.map(tableHtml).join('');
   const dates = standings.startDate && standings.endDate ? ` · ${escapeHtml(formatDate(standings.startDate))} – ${escapeHtml(formatDate(standings.endDate))}` : '';
-  legendEl.innerHTML = `${escapeHtml(t('tables.rules'))}<br>${escapeHtml(standings.name)}${dates}`;
+  legendEl.innerHTML = `${escapeHtml(t('tables.rules'))}<br>${escapeHtml(standings.name)}${dates}${standings.frozen ? `<br>${escapeHtml(t('tables.frozen'))}` : ''}`;
 }
 
 async function loadStandings() {

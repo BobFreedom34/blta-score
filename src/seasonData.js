@@ -12,7 +12,7 @@ const SEASONS = [
     name: 'BLTA Nultý Ročník',
     slug: 'blta-nulty-rocnik-2025',
     from: '2025-01-01',
-    to: '2025-12-31',
+    to: '2025-12-20',
     anyCategory: true,
     groups: [
       { name: 'Novak', category: 'ELITE', players: ['Michal Bori', 'Tomáš Podhorný', 'Peter Laučík', 'Tomasz Szopinski', 'Ľubomír Šimkovič', 'Lubo Šimuna', 'Ladislav Nagy', 'Lukáš Hnilica'] },
@@ -23,7 +23,7 @@ const SEASONS = [
   {
     name: 'Winter Opening Series 2026',
     slug: 'winter-opening-series-2026',
-    from: '2026-01-01',
+    from: '2025-12-21',
     to: '2026-04-30',
     groups: [
       { name: 'The Demon', category: 'ELITE', players: ['Pavol Blahut', 'Pavol Piroha', 'Michal Bori', 'Jakub Paločný', 'Matej Varga', 'Augusta Tobiášová', 'Peter Laučík'] },

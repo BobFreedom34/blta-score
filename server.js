@@ -44,6 +44,12 @@ try {
   console.error('Season seeding failed (will retry on next start):', err);
 }
 try {
+  const fixed = require('./src/seasonSeed').fixWinterStart(db);
+  if (!fixed.skipped) console.log('Winter season start corrected: moved ' + fixed.moved + ' matches');
+} catch (err) {
+  console.error('Winter start fix failed (will retry on next start):', err);
+}
+try {
   require('./src/seasonSeed').ensureTablesMenuItem(db);
 } catch (err) {
   console.error('Tables menu item failed:', err);
