@@ -3459,7 +3459,7 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
 #tables-cats, #tables-groups { margin: 0 0 14px; }
 #tables-cats:empty, #tables-groups:empty { display: none; }
 #tables-cats .tab.active, #tables-groups .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
-.grp-title { font-weight: 800; font-size: 17px; letter-spacing: 0.06em; color: var(--orange); text-transform: uppercase; margin: 0 0 12px; }
+.grp-title { font-weight: 800; font-size: 17px; letter-spacing: 0.06em; color: var(--green); text-transform: uppercase; margin: 0 0 12px; }
 .grp-section + .grp-section .grp-title { margin-top: 56px; }
 /* The gap under the pills equals the gap between two groups (the 14px pill margin collapses into it). */
 .grp-section:first-child .grp-title { margin-top: 56px; }
