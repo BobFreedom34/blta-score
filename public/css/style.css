@@ -3432,3 +3432,17 @@ body.embed .match-card.status-PLANNED.has-date, body.embed .match-card.status-PL
 body.embed .match-card.status-PLANNED.has-date:hover { border-color: rgba(255, 255, 255, 0.8); }
 body.embed .compact-card.status-PLANNED.has-date { border-color: rgba(255, 255, 255, 0.35); }
 body.embed .compact-card.status-PLANNED.has-date:hover { border-color: rgba(255, 255, 255, 0.7); }
+
+
+/* Compact lists keep one line per row and scroll sideways when narrow, but every row is as wide as the widest one. */
+.compact-match-list { display: grid; grid-template-columns: minmax(max-content, 1fr); }
+.compact-match-list > .compact-card { width: 100%; }
+.compact-match-list > .match-list-heading { position: sticky; left: 0; justify-self: start; width: calc(100vw - 32px); }
+body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px); }
+
+/* Where the browser supports it, the rows also share their column tracks so the pill, names, score and place line up from row to row. */
+@supports (grid-template-columns: subgrid) {
+  .compact-match-list { grid-template-columns: max-content minmax(160px, max-content) minmax(90px, max-content) minmax(120px, 1fr); }
+  .compact-match-list > .match-list-heading { grid-column: 1 / -1; }
+  .compact-match-list > .compact-card { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; }
+}
