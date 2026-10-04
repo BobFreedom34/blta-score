@@ -2,7 +2,7 @@
 //
 // Points: a 2-0 win is 3 points (loser 0); a 2-1 win is 2 points for the winner and 1 for the loser.
 // Table columns: points, matches played, wins, losses, set difference ("+/-").
-// A walkover is booked as a 2-0 win for the player who got it.
+// A walkover is always 3 points for the player who got it (0 for the other), booked as a 2-0 win.
 // Order: points; then, when exactly two players are level on points, their head-to-head match; then set
 // difference, wins and game difference. Players whose numbers are all equal share a position.
 // (The league's "overall BLTA ranking" tiebreak sits between wins and game difference; it is not used yet.)
@@ -41,7 +41,8 @@ function scoreRecord(record) {
   const state = record.state || {};
   let { 1: sets1, 2: sets2 } = sideSets(state);
   // A walkover (or any result with no sets on the board) is booked as a 2-0 win.
-  if (sets1 === 0 && sets2 === 0) {
+  const walkover = record.endReason === 'WALKOVER';
+  if (walkover || (sets1 === 0 && sets2 === 0)) {
     sets1 = winnerSide === 1 ? 2 : 0;
     sets2 = winnerSide === 2 ? 2 : 0;
   }
