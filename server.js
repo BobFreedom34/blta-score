@@ -63,6 +63,17 @@ try {
   console.error('Home menu item failed:', err);
 }
 try {
+  const r = require('./src/seasonRounds').assignAutumn2026Rounds(db);
+  if (r.assigned) console.log(`Autumn Finals rounds: set the round of ${r.assigned} matches${r.missing.length ? `; ${r.missing.length} listed pairs have no match in the app` : ''}`);
+} catch (err) {
+  console.error('Autumn Finals rounds failed (will retry on next start):', err);
+}
+try {
+  require('./src/seasonSeed').ensureScheduleMenuItem(db);
+} catch (err) {
+  console.error('Schedule menu item failed:', err);
+}
+try {
   require('./src/scheduleSeed').seedScheduleEvents(db);
 } catch (err) {
   console.error('Schedule events seed failed (will retry on next start):', err);

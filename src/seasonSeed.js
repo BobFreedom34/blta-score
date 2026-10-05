@@ -191,4 +191,24 @@ function ensureHomeMenuItem(db) {
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_home_matches')").run();
 }
 
-module.exports = { run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, fixWinterStart };
+// The "Harmonogram" menu item (the schedule page), added once right after "Tabuľky" (an admin can rename, move or delete it
+// afterwards).
+function ensureScheduleMenuItem(db) {
+  if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'menu_schedule_added'").get()) return;
+  if (!db.prepare("SELECT 1 FROM header_items WHERE link = '/harmonogram'").get()) {
+    const tables = db.prepare("SELECT sort_order FROM header_items WHERE link = '/tables' AND parent_id IS NULL").get();
+    let sortOrder;
+    if (tables) {
+      sortOrder = tables.sort_order + 1;
+      db.prepare('UPDATE header_items SET sort_order = sort_order + 1 WHERE parent_id IS NULL AND sort_order >= ?').run(sortOrder);
+    } else {
+      const maxSort = db.prepare('SELECT MAX(sort_order) AS m FROM header_items').get().m;
+      sortOrder = (maxSort == null ? 0 : maxSort) + 1;
+    }
+    db.prepare('INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order) VALUES (NULL, ?, ?, ?, ?)')
+      .run('Harmonogram', 'Schedule', '/harmonogram', sortOrder);
+  }
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_schedule_added')").run();
+}
+
+module.exports = { run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, fixWinterStart };

@@ -432,8 +432,6 @@ async function renderPanel() {
     if (key !== tab) return; // another tab was opened meanwhile
   }
   panel.innerHTML = panelHtml();
-  // a tab with its own row of buttons under these (the categories, the rounds) keeps them close; the big gap comes after that row
-  document.getElementById('sv-tabs').classList.toggle('has-sub', !!panel.querySelector('#sv-cats, #sv-rounds'));
   if (key === 'playoff') fillBrackets();
 }
 

@@ -297,6 +297,19 @@ function wireSeason(card) {
     } catch (err) { fail(err); }
   });
 
+  // "Registration open" takes effect the moment it is ticked or unticked, without waiting for "Save season"
+  const openBox = card.querySelector('[data-field="registrationOpen"]');
+  openBox.addEventListener('change', async () => {
+    try {
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { registrationOpen: openBox.checked } });
+      season.registrationOpen = openBox.checked;
+      toast(openBox.checked ? 'Registration opened' : 'Registration closed');
+    } catch (err) {
+      openBox.checked = !openBox.checked;
+      fail(err);
+    }
+  });
+
   // registrations from the season page's form: contact details, the paid tick, delete
   const regsBtn = card.querySelector('[data-action="show-regs"]');
   const regsList = card.querySelector('.season-regs-list');
