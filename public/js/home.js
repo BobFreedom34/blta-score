@@ -51,7 +51,7 @@ async function loadHome() {
   const week = weekRange();
   const playerId = loggedInPlayer();
   mineFor = playerId;
-  const [seasons, live, finished, upcoming, weekMatches, looking, rankings, mine] = await Promise.all([
+  const [seasons, live, finished, upcoming, weekMatches, looking, rankings, mine, iq] = await Promise.all([
     soft(api('/seasons'), null),
     soft(api('/matches?status=LIVE'), []),
     soft(api('/matches?status=FINISHED&limit=4'), []),
@@ -60,11 +60,12 @@ async function loadHome() {
     soft(api('/availability'), []),
     soft(api('/rankings'), null),
     playerId ? soft(api(`/matches?playerId=${playerId}`), []) : Promise.resolve(null),
+    playerId ? soft(api(`/courtiq/player/${playerId}`), null) : Promise.resolve(null),
   ]);
   if (seasons === null) throw new Error('seasons');
   const season = pickSeason(seasons);
   const standings = season ? await soft(api(`/seasons/${season.id}/standings`), null) : null;
-  return { seasons, season, standings, live, finished, upcoming, weekMatches, looking, rankings, mine, playerId };
+  return { seasons, season, standings, live, finished, upcoming, weekMatches, looking, rankings, mine, iq, playerId };
 }
 
 // ---------- "My season": only for a logged-in player ----------
@@ -101,7 +102,13 @@ function mineHtml(d) {
   // form: the last five decided matches, oldest to newest
   const form = mine.filter((m) => m.status === 'FINISHED' && m.winnerId).sort((a, b) => matchTime(a) - matchTime(b)).slice(-5);
 
-  if (!next && !row && !form.length) return '';
+  // overall BLTA ranking position (the same table as the Rankings page)
+  const rankRows = blta(d);
+  const ranked = rankRows && currentPlayerSlug ? rankRows.find((r) => r.slug && r.slug === currentPlayerSlug) : null;
+  // CourtIQ: rated at least once when gamesPlayed > 0
+  const iq = d.iq && d.iq.gamesPlayed > 0 && d.iq.band !== null ? d.iq : null;
+
+  if (!next && !row && !form.length && !ranked && !iq) return '';
 
   let nextCell;
   if (next) {
@@ -153,11 +160,46 @@ function mineHtml(d) {
         ${form.length ? `<div class="home-mine-form">${squares}</div><div class="s"><span class="home-mine-dim">${escapeHtml(t('home.mineFormSub', { w: wins, l: form.length - wins }))}</span></div>` : `<div class="v dim">${escapeHtml(t('home.mineNoForm'))}</div>`}
       </div>`;
 
+  let rankCell = '';
+  if (rankRows) {
+    rankCell = ranked
+      ? `
+      <a class="home-mine-cell" href="/rankings">
+        <div class="k">${escapeHtml(t('home.mineRank'))}</div>
+        <div class="v">${ranked.rank}.<small>${escapeHtml(t('home.minePosOf', { n: rankRows.length }))}</small></div>
+        <div class="s"><span class="home-mine-dim">${escapeHtml(t('home.minePts', { n: ranked.points }))}</span>${ranked.move ? `<span class="home-mine-move ${ranked.move.direction === 'up' ? 'up' : 'down'}">${ranked.move.direction === 'up' ? '▲' : '▼'} ${ranked.move.amount}</span>` : ''}</div>
+      </a>`
+      : `
+      <a class="home-mine-cell" href="/rankings">
+        <div class="k">${escapeHtml(t('home.mineRank'))}</div>
+        <div class="v dim">${escapeHtml(t('home.mineNotRanked'))}</div>
+      </a>`;
+  }
+
+  let iqCell = '';
+  if (d.iq) {
+    const profile = `/player/${encodeURIComponent(currentPlayerSlug || pid)}`;
+    iqCell = iq
+      ? `
+      <a class="home-mine-cell" href="${profile}">
+        <div class="k">${escapeHtml(t('home.mineIq'))}</div>
+        <div class="v">${iq.band.toFixed(1)}${iq.provisional ? `<small title="${escapeHtml(t('courtiq.provisional'))}">?</small>` : ''}</div>
+        <div class="s"><span class="home-mine-dim">${escapeHtml(t('courtiq.ratingCol'))} ${iq.rating}</span><span class="home-mine-dim">${escapeHtml(t('courtiq.gamesPlayed', { count: iq.gamesPlayed }))}</span></div>
+      </a>`
+      : `
+      <a class="home-mine-cell" href="${profile}">
+        <div class="k">${escapeHtml(t('home.mineIq'))}</div>
+        <div class="v dim">${escapeHtml(t('home.mineNotRated'))}</div>
+      </a>`;
+  }
+
+  // how many tiles there are: on a tablet the next-match tile has a row to itself and the rest sit in pairs
+  const tileCount = 2 + (row && group ? 2 : 0) + (rankCell ? 1 : 0) + (iqCell ? 1 : 0);
   const note = [d.season && d.season.name, group && group.name].filter(Boolean).join(' · ');
   return `
   <section class="home-mine">
     ${secTitle(t('home.mine'), note, '', '')}
-    <div class="home-mine-grid">${nextCell}${groupCells}${formCell}</div>
+    <div class="home-mine-grid${tileCount % 2 === 0 ? ' rest-odd' : ''}">${nextCell}${groupCells}${formCell}${rankCell}${iqCell}</div>
   </section>`;
 }
 

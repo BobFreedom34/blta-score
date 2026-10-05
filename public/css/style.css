@@ -3512,7 +3512,8 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
 /* "My season": the logged-in player's own block at the top of the home page */
 .home-mine { margin: 0 0 48px; }
 .home-mine .home-sec-title { margin-bottom: 14px; }
-.home-mine-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.2fr; gap: 12px; }
+.home-mine-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.home-mine-grid > :last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
 .home-mine-cell { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 16px 18px; color: var(--white); display: flex; flex-direction: column; min-width: 0; }
 .home-mine-cell.next { background: #0a0a0a; border-color: rgba(255, 255, 255, 0.55); }
 a.home-mine-cell:hover { border-color: var(--orange); }
@@ -3522,6 +3523,9 @@ a.home-mine-cell:hover { border-color: var(--orange); }
 .home-mine-cell .v small { font-size: 13px; font-weight: 700; color: #c3c7cf; margin-left: 6px; }
 .home-mine-cell .s { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; font-size: 13px; font-weight: 700; }
 .home-mine-dim { color: #c3c7cf; font-size: 12px; font-weight: 600; }
+.home-mine-move { font-size: 12px; font-weight: 800; }
+.home-mine-move.up { color: var(--green); }
+.home-mine-move.down { color: #ff7a6e; }
 .home-mine-form { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
 .home-bar.mini { height: 6px; margin-top: 12px; }
 .home-chip.live { background: var(--orange); color: var(--white); }
@@ -3529,6 +3533,8 @@ a.home-mine-cell:hover { border-color: var(--orange); }
   .home-mine { margin-bottom: 40px; }
   .home-mine-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .home-mine-cell.next { grid-column: 1 / -1; }
+  .home-mine-grid > :last-child:nth-child(3n + 1) { grid-column: auto; }
+  .home-mine-grid.rest-odd > :last-child { grid-column: 1 / -1; }
 }
 
 /* season timeline: finished seasons greyed out, the running one highlighted, upcoming ones outlined */
