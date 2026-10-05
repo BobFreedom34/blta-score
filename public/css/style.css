@@ -3475,9 +3475,9 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
   font-weight: 700;
   text-transform: uppercase;
 }
-#tables-cats, #tables-groups { margin: 0 0 14px; }
-#tables-cats:empty, #tables-groups:empty { display: none; }
-#tables-cats .tab.active, #tables-groups .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
+#tables-cats, #tables-phase, #tables-groups { margin: 0 0 14px; }
+#tables-cats:empty, #tables-phase:empty, #tables-groups:empty { display: none; }
+#tables-cats .tab.active, #tables-phase .tab.active, #tables-groups .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 .grp-title { font-weight: 800; font-size: 17px; letter-spacing: 0.06em; color: var(--green); text-transform: uppercase; margin: 0 0 12px; }
 .grp-section + .grp-section .grp-title { margin-top: 56px; }
 /* The gap under the pills equals the gap between two groups (the 14px pill margin collapses into it). */
@@ -3499,7 +3499,7 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
   .grp-card .grp-head span:nth-child(5), .grp-card .grp-head span:nth-child(6), .grp-card .grp-row > span:nth-child(5), .grp-card .grp-row > span:nth-child(6) { display: none; }
 }
 
-@media (max-width: 680px) { #tables-cats, #tables-groups { margin: 0 -16px 14px; } }
+@media (max-width: 680px) { #tables-cats, #tables-phase, #tables-groups { margin: 0 -16px 14px; } }
 
 
 /* ---------- Home: league overview ---------- */

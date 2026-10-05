@@ -63,6 +63,13 @@ router.get('/', (req, res) => {
   res.json(rows.map(serializeSeason));
 });
 
+// Public: the brackets (play-off draws) tied to a season — the league tables page shows them under "Play-off".
+router.get('/:id/brackets', (req, res) => {
+  const season = db.prepare('SELECT id FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  res.json(db.prepare('SELECT id, name, category FROM brackets WHERE season_id = ? ORDER BY id').all(season.id));
+});
+
 // Public: the group tables of one season, calculated from the matches tagged with each group (see standings.js).
 // Recalculated on every request, so it is always in step with the matches.
 router.get('/:id/standings', (req, res) => {
