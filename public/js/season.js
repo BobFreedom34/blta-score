@@ -1,6 +1,6 @@
 // Season page (/season/<slug>): one page per season that gathers what already lives elsewhere in the app — the numbers of the
 // season (from its dates, groups and players), the group tables, the latest results and next matches, the round schedule, the
-// players, the play-off bracket — each as a short block with a link to the full page. Only the entry fee, prize money, draw
+// players, the play-off bracket — as tabs: only the chosen tab is shown, and a tab loads its data when it is first opened. Only the entry fee, prize money, draw
 // date, description, gallery link and the "paid" ticks are entered for this page (backend > Seasons).
 // Data: GET /api/seasons/by-slug/:slug, /api/seasons/:id/standings, /api/seasons/:id/brackets, /api/matches?seasonId=…
 
@@ -19,7 +19,8 @@ let roundMatches = [];
 let category = null;
 let round = null;
 const bracketData = new Map(); // bracket id -> full bracket, cleared whenever the data is refreshed
-let spyOff = null;
+let tab = null; // the open tab: info, tables, results, schedule, players, playoff or gallery
+const loaded = new Set(); // tabs whose data is loaded and still current
 
 function todayIso() {
   const d = new Date();
@@ -121,8 +122,9 @@ function matchRowHtml(m, withMeta = true) {
     </a>`;
 }
 
-function secHead(id, title, linkHref, linkText, count) {
-  return `<div class="sv-sec-h"><h2>${escapeHtml(title)}${count ? `<em>${escapeHtml(String(count))}</em>` : ''}</h2>${linkHref ? `<a href="${linkHref}">${escapeHtml(linkText)} ›</a>` : ''}</div>`;
+function secHead(id, title, linkHref, linkText) {
+  if (!title && !linkHref) return '';
+  return `<div class="sv-sec-h">${title ? `<h2>${escapeHtml(title)}</h2>` : '<span></span>'}${linkHref ? `<a href="${linkHref}">${escapeHtml(linkText)} ›</a>` : ''}</div>`;
 }
 
 function headerHtml() {
@@ -159,12 +161,14 @@ function tilesHtml() {
     season.drawDate ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileDraw'))}</div><div class="v sm">${escapeHtml(formatDate(season.drawDate))}</div></div>` : '',
     season.prizeMoney ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tilePrize'))}</div><div class="v sm">${escapeHtml(season.prizeMoney)}</div></div>` : '',
   ].join('');
-  const info = season.info ? `<p class="sv-info">${escapeHtml(season.info)}</p>` : '';
-  return `<div class="sv-tiles" id="sv-info">${tiles}</div>${info}`;
+  return `<div class="sv-tiles">${tiles}</div>`;
+}
+
+function infoHtml() {
+  return season.info ? `<p class="sv-info">${escapeHtml(season.info)}</p>` : '';
 }
 
 function resultsHtml() {
-  if (!results.length && !upcoming.length) return '';
   const rows = (list, empty) => (list.length ? list.map(matchRowHtml).join('') : `<div class="sv-empty">${escapeHtml(empty)}</div>`);
   return `
     <section class="sv-sec" id="sv-results">
@@ -184,8 +188,7 @@ function tablesHtml() {
   const frozen = standings.frozen ? `<p class="sv-note">${escapeHtml(t('tables.frozen'))}</p>` : '';
   return `
     <section class="sv-sec" id="sv-tables">
-      ${secHead('tables', t('season.tables'), `/tables?season=${season.id}`, t('season.fullTables'))}
-      <div class="tabs" id="sv-cats">${pills}</div>
+      <div class="tabs" id="sv-cats">${pills}<a class="sv-more" href="/tables?season=${season.id}">${escapeHtml(t('season.fullTables'))} ›</a></div>
       <div class="sv-gl">${groups.filter((g) => g.category === category).map(groupTableHtml).join('')}</div>
       ${frozen}
     </section>`;
@@ -209,8 +212,7 @@ function scheduleHtml() {
   });
   return `
     <section class="sv-sec" id="sv-schedule">
-      ${secHead('schedule', t('season.schedule'), `/matches?season=${season.id}`, t('season.allMatches'))}
-      <div class="sv-rounds" id="sv-rounds">${pills}</div>
+      <div class="sv-rounds" id="sv-rounds">${pills}<a class="sv-more" href="/matches?season=${season.id}">${escapeHtml(t('season.allMatches'))} ›</a></div>
       <div class="sv-box">${html || `<div class="sv-empty">${escapeHtml(t('season.noSchedule'))}</div>`}</div>
     </section>`;
 }
@@ -227,7 +229,7 @@ function playersHtml() {
   }).join('');
   return `
     <section class="sv-sec" id="sv-players">
-      ${secHead('players', t('season.players'), '/players', t('season.allPlayers'), list.length)}
+      ${secHead('players', '', '/players', t('season.allPlayers'))}
       <div class="sv-pl">${rows}</div>
     </section>`;
 }
@@ -238,7 +240,7 @@ function playoffHtml() {
   const body = brackets.length
     ? brackets.map((b) => `<div class="sv-bracket" data-bracket="${b.id}"><h3 class="grp-title">${escapeHtml(CATEGORY_NAMES[b.category] || '')} · ${escapeHtml(b.name)}</h3><div class="sv-bracket-body">${escapeHtml(t('common.loading'))}</div></div>`).join('')
     : `<div class="sv-empty">${escapeHtml(t('season.playoffSoon'))}</div>`;
-  return `<section class="sv-sec" id="sv-playoff">${secHead('playoff', t('season.playoff'))}${body}</section>`;
+  return `<section class="sv-sec" id="sv-playoff">${secHead('playoff', '')}${body}</section>`;
 }
 
 async function fillBrackets() {
@@ -255,84 +257,109 @@ async function fillBrackets() {
 
 function galleryHtml() {
   if (!season.galleryUrl) return '';
-  return `<section class="sv-sec" id="sv-gallery">${secHead('gallery', t('season.gallery'))}<a class="sv-gallery-btn" href="${escapeHtml(season.galleryUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.galleryOpen'))}</a></section>`;
+  return `<section class="sv-sec" id="sv-gallery">${secHead('gallery', '')}<a class="sv-gallery-btn" href="${escapeHtml(season.galleryUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.galleryOpen'))}</a></section>`;
+}
+
+// ---------- tabs ----------
+
+// The tabs, always all of them in the same order; `has` says whether the season has anything for that tab yet (an empty tab
+// shows a short note instead).
+function availableTabs() {
+  const hasGroups = !!(standings && standings.groups.length);
+  const players = playersList().length;
+  return [
+    { key: 'info', label: t('season.navInfo'), has: !!season.info },
+    { key: 'tables', label: t('season.navTables'), has: hasGroups },
+    { key: 'results', label: t('season.navResults'), has: season.matchCount > 0 },
+    { key: 'schedule', label: t('season.navSchedule'), has: (season.rounds || []).length > 0 },
+    { key: 'players', label: t('season.navPlayers'), has: players > 0, count: players },
+    { key: 'playoff', label: t('season.navPlayoff'), has: brackets.length > 0 || (hasGroups && statusOf() !== 'past') },
+    { key: 'gallery', label: t('season.navGallery'), has: !!season.galleryUrl },
+  ];
+}
+
+function panelHtml() {
+  const html = tab === 'tables' ? tablesHtml()
+    : tab === 'results' ? resultsHtml()
+      : tab === 'schedule' ? scheduleHtml()
+        : tab === 'players' ? playersHtml()
+          : tab === 'playoff' ? playoffHtml()
+            : tab === 'gallery' ? galleryHtml()
+              : infoHtml();
+  return html || `<div class="sv-empty">${escapeHtml(t(`season.empty.${tab}`))}</div>`;
+}
+
+// Loads what the open tab needs the first time it is opened (the header and the tables are loaded with the page).
+async function ensureLoaded() {
+  if (loaded.has(tab)) return;
+  if (tab === 'results') await loadBlocks();
+  if (tab === 'schedule') await loadRound();
+  loaded.add(tab);
 }
 
 // ---------- page ----------
 
-function render() {
-  const sections = [
-    ['sv-info', 'season.navInfo', true],
-    ['sv-tables', 'season.navTables', !!tablesHtml()],
-    ['sv-results', 'season.navResults', !!resultsHtml()],
-    ['sv-schedule', 'season.navSchedule', !!scheduleHtml()],
-    ['sv-players', 'season.navPlayers', !!playersHtml()],
-    ['sv-playoff', 'season.navPlayoff', !!playoffHtml()],
-    ['sv-gallery', 'season.navGallery', !!galleryHtml()],
-  ].filter((s) => s[2]);
-  const nav = `<nav class="sv-nav" id="sv-nav">${sections.map(([id, label]) => `<a href="#${id}" data-target="${id}">${escapeHtml(t(label))}</a>`).join('')}</nav>`;
-  rootEl.innerHTML = `${headerHtml()}${tilesHtml()}${nav}${tablesHtml()}${resultsHtml()}${scheduleHtml()}${playersHtml()}${playoffHtml()}${galleryHtml()}`;
-  fillBrackets();
-  initNav();
+function renderTabs() {
+  const tabs = availableTabs();
+  if (!tabs.some((x) => x.key === tab)) tab = (tabs.find((x) => x.has) || tabs[0]).key;
+  const el = document.getElementById('sv-tabs');
+  el.innerHTML = tabs.map((x) => `<button type="button" class="tab${x.key === tab ? ' active' : ''}" data-tab="${x.key}">${escapeHtml(x.label)}${x.count ? `<small>${x.count}</small>` : ''}</button>`).join('');
 }
 
-// The section menu sticks under the top bar and marks the section being read.
-function initNav() {
-  const nav = document.getElementById('sv-nav');
-  if (!nav) return;
-  const topbar = document.querySelector('.topbar');
-  const top = topbar ? topbar.getBoundingClientRect().height : 56;
-  nav.style.top = `${top}px`;
-  if (spyOff) spyOff();
-  let queued = false;
-  const update = () => {
-    queued = false;
-    const line = top + nav.offsetHeight + 24;
-    let current = nav.querySelector('a');
-    nav.querySelectorAll('a').forEach((a) => {
-      const el = document.getElementById(a.dataset.target);
-      if (el && el.getBoundingClientRect().top <= line) current = a;
-    });
-    nav.querySelectorAll('a').forEach((a) => a.classList.toggle('on', a === current));
-    if (current && nav.scrollWidth > nav.clientWidth) {
-      const target = current.offsetLeft - 16;
-      if (Math.abs(nav.scrollLeft - target) > 40) nav.scrollTo({ left: target, behavior: 'smooth' });
-    }
-  };
-  const onScroll = () => { if (!queued) { queued = true; requestAnimationFrame(update); } };
-  window.addEventListener('scroll', onScroll, { passive: true });
-  spyOff = () => window.removeEventListener('scroll', onScroll);
-  update();
-  nav.addEventListener('click', (e) => {
-    const a = e.target.closest('a[data-target]');
-    if (!a) return;
-    e.preventDefault();
-    const el = document.getElementById(a.dataset.target);
-    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - top - nav.offsetHeight - 14, behavior: 'smooth' });
-  });
+async function renderPanel() {
+  renderTabs();
+  const panel = document.getElementById('sv-panel');
+  const key = tab;
+  if (!loaded.has(key)) {
+    panel.innerHTML = `<div class="sv-empty">${escapeHtml(t('common.loading'))}</div>`;
+    await ensureLoaded();
+    if (key !== tab) return; // another tab was opened meanwhile
+  }
+  panel.innerHTML = panelHtml();
+  // a tab with its own row of buttons under these (the categories, the rounds) keeps them close; the big gap comes after that row
+  document.getElementById('sv-tabs').classList.toggle('has-sub', !!panel.querySelector('#sv-cats, #sv-rounds'));
+  if (key === 'playoff') fillBrackets();
+}
+
+function render() {
+  rootEl.innerHTML = `${headerHtml()}${tilesHtml()}<div class="tabs" id="sv-tabs" role="tablist"></div><div id="sv-panel" class="sv-panel"></div>`;
+  return renderPanel();
+}
+
+function openTab(key) {
+  tab = key;
+  try { history.replaceState(null, '', `#${key}`); } catch { /* the address just stays as it is */ }
+  renderPanel();
 }
 
 rootEl.addEventListener('click', async (e) => {
-  const cat = e.target.closest('#sv-cats [data-cat]');
-  if (cat) { category = cat.dataset.cat; render(); return; }
-  const r = e.target.closest('#sv-rounds [data-round]');
+  const tabBtn = e.target.closest('#sv-tabs [data-tab]');
+  if (tabBtn) { openTab(tabBtn.dataset.tab); return; }
+  const cat = e.target.closest('#sv-panel [data-cat]');
+  if (cat) { category = cat.dataset.cat; renderPanel(); return; }
+  const r = e.target.closest('#sv-panel [data-round]');
   if (r) {
     round = Number(r.dataset.round);
     await loadRound();
-    const y = window.scrollY;
-    render();
-    window.scrollTo(0, y);
+    renderPanel();
   }
 });
 
+window.addEventListener('hashchange', () => {
+  const key = window.location.hash.slice(1);
+  if (key && availableTabs().some((x) => x.key === key) && key !== tab) openTab(key);
+});
+
+// A match changed somewhere: the numbers, tables and the open tab are loaded again (the other tabs when they are opened).
 let refreshTimer = null;
 async function refresh() {
   try {
     season = await api(`/seasons/by-slug/${encodeURIComponent(slug)}`);
-    await Promise.all([loadStandings(), loadBlocks(), loadRound()]);
+    await loadStandings();
   } catch { return; }
+  loaded.clear();
   const y = window.scrollY;
-  render();
+  await render();
   window.scrollTo(0, y);
 }
 
@@ -345,9 +372,9 @@ async function refresh() {
   }
   document.title = `${season.name} — Tennis SCORE`;
   round = pickRound();
-  await Promise.all([loadStandings(), loadBlocks(), loadRound()]);
-  render();
-  // a match changed somewhere: refresh the tables and match blocks (a moment later, so a burst of points is one refresh)
+  await loadStandings();
+  tab = window.location.hash.slice(1) || null; // renderTabs picks the first tab with content when there is none
+  await render();
   if (typeof io === 'function') {
     io().on('matches:changed', () => {
       clearTimeout(refreshTimer);
