@@ -770,7 +770,12 @@ function render(m) {
         <div class="label">${t('match.stageLabel')}</div>
         <div class="value" id="stage-display">${t(m.stage === 'PLAYOFF' ? 'match.stagePlayoff' : 'match.stageGroup')}</div>
         ${isAdminUser ? `<button type="button" class="edit-link" data-action="edit-season">${t('common.edit')}</button>` : ''}
-      </div>` : ''}
+      </div>
+      ${m.round && m.stage !== 'PLAYOFF' ? `
+      <div class="info-item">
+        <div class="label">${t('match.roundLabel')}</div>
+        <div class="value" id="round-display">${m.round}</div>
+      </div>` : ''}` : ''}
     </div>
 
     ${awaitingProposal ? proposalCardHtml(m) : ''}

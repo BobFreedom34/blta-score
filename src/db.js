@@ -1235,4 +1235,26 @@ if (!db.prepare('PRAGMA table_info(brackets)').all().some((c) => c.name === 'sea
   db.exec('ALTER TABLE brackets ADD COLUMN season_id INTEGER REFERENCES seasons(id) ON DELETE SET NULL');
 }
 
+// Who plays in a group this season (the season maker fills it, the schedule is made from it). A player is in one group
+// per season (checked in routes/seasons.js). withdrawn_at: the player left mid-season; their unplayed matches became
+// walkovers for the opponents and no new matches are made for them. (Foreign keys are off in this database, so rows
+// of a deleted group are removed by the route, not by a cascade.)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS season_group_members (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    group_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    withdrawn_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    UNIQUE (group_id, player_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_season_group_members_player ON season_group_members(player_id);
+`);
+
+// The round a group-stage match belongs to (1..n inside its group); NULL for matches made before rounds existed.
+if (!db.prepare('PRAGMA table_info(matches)').all().some((c) => c.name === 'round')) {
+  db.exec('ALTER TABLE matches ADD COLUMN round INTEGER');
+}
+
 module.exports = db;

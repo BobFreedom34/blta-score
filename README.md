@@ -403,6 +403,7 @@ Account → Security → 2-Step Verification → App Passwords).
 | What you want to change | File |
 |---|---|
 | Colors, fonts, spacing, look & feel | `public/css/style.css` (all colors are CSS variables at the top) |
+| Season maker (players of each group, round-robin schedule, withdrawals → walkovers) | `src/roundRobin.js` (schedule maths), season routes in `src/routes/seasons.js`, admin screen `public/js/seasons-admin.js` (tables `season_group_members`, `matches.round`) |
 | Link-preview picture of a finished match (WhatsApp etc., 1200×630 PNG at `/match/:token/preview.png`) | `src/shareImage.js` (fonts in `assets/fonts`), meta tags in `server.js` |
 | Match list layout / tabs / filters (page `/matches`) | `public/matches.html` + `public/js/app.js` |
 | Home page (league overview: series progress, group leaders, results, rankings…) | `public/index.html` + `public/js/home.js` (styles: `/* Home: league overview */` in `public/css/style.css`) |

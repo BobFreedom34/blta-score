@@ -180,6 +180,7 @@ function serialize(row) {
     league: row.league || null,
     ...seasonAndGroup(row),
     stage: row.stage === 'PLAYOFF' ? 'PLAYOFF' : 'GROUP',
+    round: row.round || null,
     location: row.location,
     notes: row.notes || '',
     scheduledAt: row.scheduled_at,

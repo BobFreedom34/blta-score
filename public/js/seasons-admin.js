@@ -5,6 +5,9 @@ let seasons = [];
 // Which season cards are unfolded. Remembered in this browser; the first time only the running season is open.
 const OPEN_KEY = 'blta_seasons_admin_open';
 let openIds = null;
+const openPanels = new Set(); // groups whose players panel is unfolded
+const previewOpen = new Set(); // seasons whose schedule preview is shown
+const FORMAT_KEYS = ['BO1', 'BO3', 'BO3_STB', 'BO5', 'BO5_STB'];
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -115,16 +118,74 @@ async function load() {
   renderList();
 }
 
+// The players of a group (a player is in one group per season) and the way to add or withdraw them.
+function playersPanelHtml(g) {
+  const chips = g.members.map((m) => `
+    <span class="sg-chip${m.withdrawn ? ' out' : ''}">${escapeHtml(m.name)}${m.withdrawn ? ' <em>withdrawn</em>' : ''}
+      ${m.withdrawn ? '' : `<button type="button" class="sg-link" data-action="withdraw" data-player="${m.id}" title="Withdraw: their unplayed matches become walkovers">Withdraw</button>`}
+      <button type="button" class="sg-x" data-action="remove-member" data-player="${m.id}" title="Remove (only before the player has matches)">&times;</button>
+    </span>`).join('');
+  return `
+    <div class="sg-panel" data-panel="${g.id}"${openPanels.has(g.id) ? '' : ' hidden'}>
+      <div class="sg-chips">${chips || '<span class="sg-empty">No players yet.</span>'}</div>
+      <form class="sg-add">
+        <div class="autocomplete" style="flex:1;min-width:200px;position:relative">
+          <input type="text" id="sg-add-${g.id}" placeholder="Player name" autocomplete="off" style="width:100%;${inputStyle}">
+          <div class="autocomplete-list" id="sg-add-list-${g.id}"></div>
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary">Add player</button>
+        ${!g.members.length && g.matchCount ? '<button type="button" class="btn btn-sm btn-outline" data-action="import-members">Import players from matches</button>' : ''}
+      </form>
+      <div class="sg-chooser"></div>
+    </div>`;
+}
+
 function groupRowHtml(g) {
   return `
-    <div class="season-group-row" data-group="${g.id}" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--gray-light)">
-      <input type="text" data-field="name" value="${escapeHtml(g.name)}" maxlength="80" style="flex:1;min-width:140px;${inputStyle}">
-      <select data-field="category" style="${inputStyle}">${categoryOptions(g.category)}</select>
-      <span style="font-size:12px;color:var(--gray);min-width:70px">${g.matchCount} ${g.matchCount === 1 ? 'match' : 'matches'}</span>
-      <button type="button" class="btn btn-sm btn-outline" data-action="save-group">Save</button>
-      <button type="button" class="btn btn-sm btn-danger" data-action="delete-group">Delete</button>
+    <div class="season-group" data-group-wrap="${g.id}">
+      <div class="season-group-row" data-group="${g.id}" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--gray-light)">
+        <input type="text" data-field="name" value="${escapeHtml(g.name)}" maxlength="80" style="flex:1;min-width:140px;${inputStyle}">
+        <select data-field="category" style="${inputStyle}">${categoryOptions(g.category)}</select>
+        <span style="font-size:12px;color:var(--gray);min-width:70px">${g.matchCount} ${g.matchCount === 1 ? 'match' : 'matches'}</span>
+        <button type="button" class="btn btn-sm btn-outline" data-action="toggle-players">Players (${g.activeMemberCount})</button>
+        <button type="button" class="btn btn-sm btn-outline" data-action="save-group">Save</button>
+        <button type="button" class="btn btn-sm btn-danger" data-action="delete-group">Delete</button>
+      </div>
+      ${playersPanelHtml(g)}
     </div>
   `;
+}
+
+// The schedule of the whole season: preview first, then create the matches.
+function scheduleSectionHtml() {
+  return `
+    <div class="sg-schedule">
+      <div class="sg-sched-title">Schedule</div>
+      <div class="sg-sched-note">Rounds follow from the number of players in each group (6 players: 5 rounds · 7 players: 7 rounds, one player rests each round). Creates planned matches without dates. Running it again only adds the matches that are missing, for example for a player added later.</div>
+      <div class="sg-sched-actions">
+        <label>Match format
+          <select class="sg-format" style="${inputStyle}">${FORMAT_KEYS.map((k) => `<option value="${k}"${k === 'BO3_STB' ? ' selected' : ''}>${escapeHtml(t('format.' + k + '.label'))}</option>`).join('')}</select>
+        </label>
+        <button type="button" class="btn btn-sm btn-outline" data-action="preview-schedule">Preview schedule</button>
+        <button type="button" class="btn btn-sm btn-primary" data-action="create-schedule">Create matches</button>
+      </div>
+      <div class="sg-preview"></div>
+    </div>`;
+}
+
+function schedulePreviewHtml(data) {
+  if (!data.groups.length) return '<div class="sg-empty">This season has no groups yet.</div>';
+  const total = data.groups.reduce((sum, g) => sum + g.toCreate, 0);
+  const catLabel = (key) => (CATEGORIES.find(([k]) => k === key) || [key, key])[1];
+  const groups = data.groups.map((g) => {
+    const head = `<div class="sg-group-head"><b>${escapeHtml(g.name)}</b> <span class="sg-cat">${escapeHtml(catLabel(g.category))}</span> · ${g.activeCount} players · ${g.rounds.length} rounds · ${g.existing} existing · <b>${g.toCreate} to create</b></div>`;
+    if (g.activeCount < 2) return `<div class="sg-group">${head}<div class="sg-empty">Add at least 2 players.</div></div>`;
+    const pair = (m) => `<span class="sg-pair${m.exists ? '' : ' new'}">${escapeHtml(m.p1.name)} – ${escapeHtml(m.p2.name)}</span>`;
+    const rounds = g.rounds.map((r) => `<div class="sg-round"><span class="sg-rn">Round ${r.round}</span><span class="sg-pairs">${r.matches.map(pair).join('')}</span>${r.rest.length ? `<span class="sg-rest">rests: ${escapeHtml(r.rest.join(', '))}</span>` : ''}</div>`).join('');
+    const loose = g.unassigned.length ? `<div class="sg-round"><span class="sg-rn">No round</span><span class="sg-pairs">${g.unassigned.map(pair).join('')}</span></div>` : '';
+    return `<div class="sg-group">${head}${rounds}${loose}</div>`;
+  }).join('');
+  return `<div class="sg-total">${total ? `${total} matches would be created (shown in orange)` : 'Nothing to create — every pair already has a match'}</div>${groups}`;
 }
 
 function seasonHtml(s) {
@@ -167,6 +228,7 @@ function seasonHtml(s) {
         </select>
         <button type="submit" class="btn btn-sm btn-primary">Add group</button>
       </form>
+      ${scheduleSectionHtml()}
       </div>
     </details>
   `;
@@ -229,6 +291,12 @@ function wireSeason(card) {
     } catch (err) { fail(err); }
   });
 
+  card.querySelectorAll('.season-group').forEach((wrap) => {
+    const gid = Number(wrap.dataset.groupWrap);
+    wireGroupPanel(wrap, season.groups.find((g) => g.id === gid), fail);
+  });
+  wireSchedule(card, id, fail);
+
   card.querySelectorAll('.season-group-row').forEach((row) => {
     const groupId = Number(row.dataset.group);
     const group = season.groups.find((g) => g.id === groupId);
@@ -243,7 +311,7 @@ function wireSeason(card) {
     });
     row.querySelector('[data-action="delete-group"]').addEventListener('click', async () => {
       const extra = group.matchCount ? ` ${group.matchCount} matches will lose their group (they stay in the season).` : '';
-      if (!confirm(`Delete group "${group.name}"?${extra}`)) return;
+      if (!confirm(`Delete group "${group.name}" and its player list?${extra}`)) return;
       try {
         await api(`/seasons/groups/${groupId}`, { method: 'DELETE' });
         toast('Group deleted');
@@ -253,8 +321,115 @@ function wireSeason(card) {
   });
 }
 
+// ---------- players of a group ----------
+
+function wireGroupPanel(wrap, group, fail) {
+  const row = wrap.querySelector('.season-group-row');
+  const panel = wrap.querySelector('.sg-panel');
+  const chooser = panel.querySelector('.sg-chooser');
+  const input = panel.querySelector(`#sg-add-${group.id}`);
+  row.querySelector('[data-action="toggle-players"]').addEventListener('click', () => {
+    panel.hidden = !panel.hidden;
+    if (panel.hidden) openPanels.delete(group.id); else openPanels.add(group.id);
+  });
+  setupAutocomplete(`sg-add-${group.id}`, `sg-add-list-${group.id}`);
+
+  const add = async (body) => {
+    chooser.innerHTML = '';
+    try {
+      await api(`/seasons/groups/${group.id}/members`, { method: 'POST', body });
+      toast('Player added');
+      openPanels.add(group.id);
+      await load();
+    } catch (err) {
+      const d = err.data || {};
+      if (d.code === 'SIMILAR_PLAYERS' || d.code === 'UNKNOWN_PLAYER') showChooser(d);
+      else fail(err);
+    }
+  };
+  // A typed name that matches nobody exactly: pick an existing player or explicitly create a new one.
+  const showChooser = (d) => {
+    const title = d.code === 'SIMILAR_PLAYERS' ? `Is “${escapeHtml(d.typed)}” one of these players?` : `There is no player “${escapeHtml(d.typed)}” yet.`;
+    chooser.innerHTML = `
+      <div class="sg-choose-title">${title}</div>
+      <div class="sg-choose-buttons">
+        ${d.suggestions.map((p) => `<button type="button" class="btn btn-sm btn-outline" data-pick="${p.id}">${escapeHtml(p.name)}</button>`).join('')}
+        <button type="button" class="btn btn-sm btn-primary" data-new="1">No — create new player “${escapeHtml(d.typed)}”</button>
+        <button type="button" class="sg-link" data-cancel="1">Cancel</button>
+      </div>`;
+    chooser.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => add({ playerId: Number(b.dataset.pick) })));
+    chooser.querySelector('[data-new]').addEventListener('click', () => add({ name: d.typed, confirmNew: true }));
+    chooser.querySelector('[data-cancel]').addEventListener('click', () => { chooser.innerHTML = ''; });
+  };
+  panel.querySelector('.sg-add').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = input.value.trim();
+    if (name) add({ name });
+  });
+
+  panel.querySelectorAll('[data-action="withdraw"]').forEach((b) => b.addEventListener('click', async () => {
+    const member = group.members.find((m) => m.id === Number(b.dataset.player));
+    if (!confirm(`Withdraw ${member.name} from ${group.name}?\n\nEvery match they have not played yet becomes a walkover win for the opponent (3 points), and no new matches are made for them.`)) return;
+    try {
+      const res = await api(`/seasons/groups/${group.id}/members/${member.id}/withdraw`, { method: 'POST' });
+      toast(`${member.name} withdrew — ${res.walkovers} walkover${res.walkovers === 1 ? '' : 's'} recorded`);
+      openPanels.add(group.id);
+      await load();
+    } catch (err) { fail(err); }
+  }));
+  panel.querySelectorAll('[data-action="remove-member"]').forEach((b) => b.addEventListener('click', async () => {
+    const member = group.members.find((m) => m.id === Number(b.dataset.player));
+    if (!confirm(`Remove ${member.name} from ${group.name}?`)) return;
+    try {
+      await api(`/seasons/groups/${group.id}/members/${member.id}`, { method: 'DELETE' });
+      openPanels.add(group.id);
+      await load();
+    } catch (err) { fail(err); }
+  }));
+  const importBtn = panel.querySelector('[data-action="import-members"]');
+  if (importBtn) {
+    importBtn.addEventListener('click', async () => {
+      try {
+        const res = await api(`/seasons/groups/${group.id}/members/import`, { method: 'POST' });
+        toast(`${res.added} player${res.added === 1 ? '' : 's'} imported${res.inOtherGroup ? ` (${res.inOtherGroup} already in another group)` : ''}`);
+        openPanels.add(group.id);
+        await load();
+      } catch (err) { fail(err); }
+    });
+  }
+}
+
+// ---------- schedule of a season ----------
+
+function wireSchedule(card, seasonId, fail) {
+  const previewEl = card.querySelector('.sg-preview');
+  const loadPreview = async () => {
+    const data = await api(`/seasons/${seasonId}/schedule-preview`);
+    previewEl.innerHTML = schedulePreviewHtml(data);
+    previewOpen.add(seasonId);
+    return data;
+  };
+  card.querySelector('[data-action="preview-schedule"]').addEventListener('click', async () => {
+    try { await loadPreview(); } catch (err) { fail(err); }
+  });
+  card.querySelector('[data-action="create-schedule"]').addEventListener('click', async () => {
+    try {
+      const data = await loadPreview();
+      const total = data.groups.reduce((sum, g) => sum + g.toCreate, 0);
+      if (!total) { toast('Nothing to create — every pair already has a match'); return; }
+      const groupsWith = data.groups.filter((g) => g.toCreate > 0).length;
+      if (!confirm(`Create ${total} planned matches in ${groupsWith} group${groupsWith === 1 ? '' : 's'}?\n\nThey get no date yet; the players agree it themselves.`)) return;
+      const res = await api(`/seasons/${seasonId}/schedule`, { method: 'POST', body: { format: card.querySelector('.sg-format').value } });
+      toast(`${res.created} matches created`);
+      await load();
+    } catch (err) { fail(err); }
+  });
+  if (previewOpen.has(seasonId)) loadPreview().catch(() => {});
+}
+
 (async () => {
   const isAdminUser = await checkAdmin();
   if (!isAdminUser) return renderLoggedOut();
+  await loadPlayers();
   renderAdmin();
 })();
