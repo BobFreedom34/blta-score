@@ -1084,9 +1084,8 @@ function playerInfoBtn(player) {
 const RANK_BY_NAME = new Map();
 const RANKS_READY = (async () => {
   try {
-    const data = await api('/rankings');
-    const blta = data.tables.find((t) => t.key === 'blta');
-    if (blta) blta.rows.forEach((r) => RANK_BY_NAME.set(r.name, r.rank));
+    const { ranks } = await api('/rankings/ranks');
+    Object.entries(ranks).forEach(([name, rank]) => RANK_BY_NAME.set(name, rank));
   } catch { /* no badges this load — not worth failing the page over */ }
 })();
 
@@ -1299,25 +1298,24 @@ async function renderHeaderNav() {
 renderHeaderNav();
 
 // Small orange "N" pill next to whichever nav item links to /looking-to-play
-// — one row per player currently posted there (GET /api/availability
-// upserts to exactly one open post per player and already prunes expired
-// ones server-side — see routes/availability.js), so its response length
-// is already the right count with no extra filtering needed here. Skipped
+// — one row per player currently posted there (GET /api/availability/count
+// counts the open posts, one per player, after pruning expired ones
+// server-side — see routes/availability.js). Skipped
 // entirely (not just left at 0) when the board is empty, same "don't show
 // a badge for nothing" convention the notification bell uses.
 async function attachLookingToPlayBadge() {
   const link = document.querySelector('[data-nav-badge-target="looking-to-play"]');
   if (!link) return;
-  let posts;
+  let count;
   try {
-    posts = await api('/availability');
+    ({ count } = await api('/availability/count'));
   } catch {
     return;
   }
-  if (!posts.length) return;
+  if (!count) return;
   const badge = document.createElement('span');
   badge.className = 'nav-item-badge';
-  badge.textContent = posts.length;
+  badge.textContent = count;
   link.appendChild(badge);
 }
 
@@ -1579,7 +1577,23 @@ function otpSetDisabled(hiddenInputId, disabled) {
   if (boxes) boxes.forEach((b) => { b.disabled = disabled; });
 }
 
+// The session ("who is logged in, and is it an admin") is asked for once and shared: common.js, checkAdmin() and the
+// pages' own start-up all want it within the same moment. Reused for a few seconds only, and dropped by any write (a
+// login, a logout, a referee code), so a later call always sees the current state.
+let sessionRequest = null;
+let sessionRequestAt = 0;
+function loadSession() {
+  if (!sessionRequest || Date.now() - sessionRequestAt > 10000) {
+    sessionRequestAt = Date.now();
+    const request = api('/player/session');
+    sessionRequest = request;
+    request.catch(() => { if (sessionRequest === request) sessionRequest = null; });
+  }
+  return sessionRequest;
+}
+
 async function api(path, options = {}) {
+  if (options.method && options.method !== 'GET') sessionRequest = null;
   const res = await fetch(`/api${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
@@ -1868,7 +1882,7 @@ function showAccessDeniedModal(message) {
 
 async function checkAdmin() {
   try {
-    const res = await api('/admin/session');
+    const res = await loadSession();
     return !!res.isAdmin;
   } catch {
     return false;
@@ -1964,7 +1978,7 @@ async function refreshPlayerAuth() {
   let needsPinSetup = false;
   let unreadNotificationCount = 0;
   try {
-    const res = await api('/player/session');
+    const res = await loadSession();
     playerAuthed = !!res.isPlayer;
     currentPlayerName = res.playerName || null;
     currentPlayerId = res.playerId || null;
@@ -2989,7 +3003,7 @@ if (!document.body.classList.contains('embed')) {
   banner.setAttribute('aria-label', t('install.bannerTitle'));
   banner.innerHTML = `
     <div class="install-banner-row">
-      <img src="/icon-192.png" alt="" class="install-banner-icon">
+      <img src="/icon-64.png" alt="" class="install-banner-icon">
       <strong class="install-banner-title">${t('install.bannerTitle')}</strong>
       <button type="button" class="install-banner-close" data-action="dismiss" aria-label="${t('install.notNow')}">&times;</button>
     </div>

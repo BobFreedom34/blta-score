@@ -1257,4 +1257,14 @@ if (!db.prepare('PRAGMA table_info(matches)').all().some((c) => c.name === 'roun
   db.exec('ALTER TABLE matches ADD COLUMN round INTEGER');
 }
 
+// Lookups the lists and the group tables make on every request: a player's matches (either side), a group's or a
+// season's matches, and the date order. Without these each one reads the whole matches table.
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_matches_player1 ON matches(player1_id);
+  CREATE INDEX IF NOT EXISTS idx_matches_player2 ON matches(player2_id);
+  CREATE INDEX IF NOT EXISTS idx_matches_group ON matches(group_id);
+  CREATE INDEX IF NOT EXISTS idx_matches_season ON matches(season_id);
+  CREATE INDEX IF NOT EXISTS idx_matches_scheduled_at ON matches(scheduled_at);
+`);
+
 module.exports = db;

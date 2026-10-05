@@ -37,13 +37,11 @@ function computeAge(birthday) {
   return age;
 }
 
-router.get('/', async (req, res) => {
-  let data;
-  try {
-    data = await getRankings();
-  } catch (err) {
-    return res.status(502).json({ error: `Could not load rankings from ${SOURCE_URL}: ${err.message}` });
-  }
+// Everything /api/rankings returns (and the once-a-week snapshot / bell-notification roll it does on the way). Throws
+// when blta.sk can't be read. The slim /ranks route below goes through the same function, so asking for the small
+// answer still keeps the weekly roll running.
+async function buildRankings() {
+  const data = await getRankings();
 
   // Nationality and age aren't part of the scraped blta.sk data — they only
   // exist on a player's bio here, so they can only show up when the scraped
@@ -121,7 +119,30 @@ router.get('/', async (req, res) => {
     };
   });
 
-  res.json({ fetchedAt: data.fetchedAt, sourceUrl: SOURCE_URL, tables });
+  return { fetchedAt: data.fetchedAt, sourceUrl: SOURCE_URL, tables };
+}
+
+router.get('/', async (req, res) => {
+  try {
+    res.json(await buildRankings());
+  } catch (err) {
+    res.status(502).json({ error: `Could not load rankings from ${SOURCE_URL}: ${err.message}` });
+  }
+});
+
+// Just "name -> overall BLTA rank" (a few kB instead of ~80 kB): every page shows a #rank next to ranked players and only
+// needs this. Cached by the browser for five minutes — the rankings themselves are re-read from blta.sk every 30.
+router.get('/ranks', async (req, res) => {
+  try {
+    const data = await buildRankings();
+    const blta = data.tables.find((t) => t.key === 'blta');
+    const ranks = {};
+    if (blta) blta.rows.forEach((r) => { ranks[r.name] = r.rank; });
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ ranks });
+  } catch (err) {
+    res.status(502).json({ error: `Could not load rankings from ${SOURCE_URL}: ${err.message}` });
+  }
 });
 
 // Weekly rank history for one player in one table — the data behind the

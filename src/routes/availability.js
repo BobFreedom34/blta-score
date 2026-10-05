@@ -194,6 +194,13 @@ router.get('/', (req, res) => {
   res.json(rows.map((row) => serializePost(row, req)));
 });
 
+// Just how many players are on the board — the little number on the nav item (every page shows it), without sending
+// every post. Prunes expired posts first, like the list does, so the two always agree.
+router.get('/count', (req, res) => {
+  pruneExpiredPosts();
+  res.json({ count: db.prepare('SELECT COUNT(*) AS n FROM availability_posts').get().n });
+});
+
 // Upsert: a player only ever has one active post (idx_availability_posts_player
 // enforces this at the DB level too), so posting again while one already
 // exists just updates it in place — the natural way to edit your own

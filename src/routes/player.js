@@ -104,6 +104,8 @@ router.get('/session', (req, res) => {
     // its own session route so the client picks it up in the same
     // once-per-page-load request it already makes for player status.
     isReferee: auth.isReferee(req),
+    // Also whether this is an admin session, so a page needs one session request, not this one plus /admin/session.
+    isAdmin: auth.isAdmin(req),
   });
 });
 
