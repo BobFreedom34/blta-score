@@ -156,7 +156,7 @@ function rowHtml(e, today) {
   return `
     <div class="sch-row ${status}">
       <div class="sch-date">${escapeHtml(dateRange(e))}<small>${escapeHtml(yearText(e))}</small></div>
-      <div class="sch-info"><div class="sch-name">${escapeHtml(e.name)} ${tags}</div><div class="sch-sub">${sub}</div>${bar}</div>
+      <div class="sch-info${e.logoUrl ? ' with-logo' : ''}">${e.logoUrl ? `<img class="sch-logo" src="${escapeHtml(e.logoUrl)}" alt="" loading="lazy">` : ''}<div class="sch-text"><div class="sch-name">${escapeHtml(e.name)} ${tags}</div><div class="sch-sub">${sub}</div>${bar}</div></div>
       ${more}
     </div>`;
 }

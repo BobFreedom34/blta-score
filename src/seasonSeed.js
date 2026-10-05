@@ -211,4 +211,15 @@ function ensureScheduleMenuItem(db) {
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_schedule_added')").run();
 }
 
-module.exports = { run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, fixWinterStart };
+// The season logos from blta.sk (saved in /public/img/seasons), set once on the seasons that have none: one logo per series
+// type, so Winter Opening 2026 and 2027 share the winter one. After that an admin owns them (the "Logo" field in /seasons-admin).
+function ensureSeasonLogos(db) {
+  if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'season_logos_seeded'").get()) return;
+  const logos = [['winter-opening-%', 'winter'], ['summer-rally-%', 'summer'], ['autumn-finals-%', 'autumn'], ['blta-nulty-rocnik%', 'blta']];
+  logos.forEach(([pattern, file]) => {
+    db.prepare("UPDATE seasons SET logo_url = ? WHERE slug LIKE ? AND (logo_url IS NULL OR logo_url = '')").run(`/img/seasons/${file}.png`, pattern);
+  });
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('season_logos_seeded')").run();
+}
+
+module.exports = { ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, fixWinterStart };

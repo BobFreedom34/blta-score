@@ -92,37 +92,35 @@ function statusOf() {
   return 'now';
 }
 
-// The players of the season: the group lists (with their paid tick); a finished season whose lists were never filled uses
-// the names in its final tables.
-function playersList() {
-  const registered = season.registrations || [];
-  if (registered.length) return registered.map((r) => ({ id: r.slug || null, name: r.name, slug: r.slug, category: r.category, paid: r.paid }));
-  const groups = season.groups || [];
-  const members = groups.flatMap((g) => g.members.filter((m) => !m.withdrawn).map((m) => ({ id: m.id, name: m.name, slug: m.slug, category: g.category, paid: m.paid })));
-  if (members.length) return members;
-  return (standings ? standings.groups : []).flatMap((g) => g.rows.map((r) => ({ id: r.player.id, name: r.player.name, slug: r.player.slug, category: g.category, paid: null })));
+// The players of the season grouped like the season itself: category -> group -> players. A group's list is its members
+// (backend), else the names in its table; a registered player not yet placed in a group waits in "ungrouped". `paid` is
+// true/false when known (a registration or a group member), null when it is not tracked (a finished season).
+function playersModel() {
+  const regs = new Map((season.registrations || []).map((r) => [nameKey(r.name), r]));
+  const tables = new Map((standings ? standings.groups : []).map((g) => [g.id, g]));
+  const placed = new Set();
+  const cats = CATEGORY_ORDER.map((category) => ({ category, groups: [] }));
+  (season.groups || []).forEach((g) => {
+    const members = g.members.filter((m) => !m.withdrawn);
+    let people;
+    if (members.length) {
+      people = members.map((m) => ({ name: m.name, slug: m.slug, paid: !!(m.paid || (regs.get(nameKey(m.name)) || {}).paid) }));
+    } else {
+      const table = tables.get(g.id);
+      people = (table ? table.rows : []).map((r) => {
+        const reg = regs.get(nameKey(r.player.name));
+        return { name: r.player.name, slug: r.player.slug, paid: reg ? reg.paid : null };
+      });
+    }
+    people.forEach((p) => placed.add(nameKey(p.name)));
+    const cat = cats.find((c) => c.category === g.category);
+    if (cat && people.length) cat.groups.push({ name: g.name, players: people }); // a group without players has nothing to show yet
+  });
+  const ungrouped = (season.registrations || []).filter((r) => !placed.has(nameKey(r.name))).map((r) => ({ name: r.name, slug: r.slug, paid: r.paid, category: r.category }));
+  const total = cats.reduce((sum, c) => sum + c.groups.reduce((a, g) => a + g.players.length, 0), 0) + ungrouped.length;
+  return { cats: cats.filter((c) => c.groups.length), ungrouped, total };
 }
 
-function matchRowHtml(m, withMeta = true) {
-  const done = m.status === 'FINISHED';
-  const live = m.status === 'LIVE';
-  const sets = (m.state && m.state.setsWon) || { 1: 0, 2: 0 };
-  const mid = done
-    ? `<span class="sc">${sets[1]} : ${sets[2]}</span>`
-    : live
-      ? `<span class="sc live">${escapeHtml(t('home.live'))}</span>`
-      : `<span class="sc tbd">${escapeHtml(m.scheduledAt ? compactDateOnly(m.scheduledAt) : t('season.noDate'))}</span>`;
-  const meta = !withMeta ? '' : [
-    m.group ? `${CATEGORY_NAMES[m.group.category] || m.group.category} · ${m.group.name}` : '',
-    m.round ? t('season.roundN', { n: m.round }) : '',
-    done && m.scheduledAt ? compactDateOnly(m.scheduledAt) : '',
-  ].filter(Boolean).join(' · ');
-  return `
-    <a class="sv-m" href="/match/${m.token}">
-      <span class="a${done && m.winnerId === m.player1.id ? ' w' : ''}">${escapeHtml(m.player1.name)}</span>${mid}<span class="b${done && m.winnerId === m.player2.id ? ' w' : ''}">${escapeHtml(m.player2.name)}</span>
-      ${meta ? `<span class="meta">${escapeHtml(meta)}</span>` : ''}
-    </a>`;
-}
 
 function secHead(id, title, linkHref, linkText) {
   if (!title && !linkHref) return '';
@@ -155,15 +153,21 @@ function headerHtml() {
   const state = status === 'now' ? `<span class="sv-chip now">${escapeHtml(t('schedule.running'))}</span>`
     : status === 'past' ? `<span class="sv-chip w">${escapeHtml(t('season.over'))}</span>`
       : `<span class="sv-chip w">${escapeHtml(t('season.upcomingChip'))}</span>`;
+  const logo = season.logoUrl ? `<img class="sv-logo" src="${escapeHtml(season.logoUrl)}" alt="">` : '';
   return `
-    <div class="sv-crumb"><a href="/harmonogram">${escapeHtml(t('schedule.heading'))}</a> › ${escapeHtml(termText())}</div>
-    <h1 class="sv-title">${escapeHtml(season.name)}</h1>
-    <div class="sv-chips"><span class="sv-chip l">${escapeHtml(t('schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
+    <div class="sv-head${logo ? ' with-logo' : ''}">
+      ${logo}
+      <div class="sv-head-main">
+        <div class="sv-crumb"><a href="/harmonogram">${escapeHtml(t('schedule.heading'))}</a> › ${escapeHtml(termText())}</div>
+        <h1 class="sv-title">${escapeHtml(season.name)}</h1>
+        <div class="sv-chips"><span class="sv-chip l">${escapeHtml(t('schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
+      </div>
+    </div>
     <div class="sv-progress">${seasonProgressHtml(season, standings)}</div>`;
 }
 
 function tilesHtml() {
-  const players = playersList().length;
+  const players = playersModel().total;
   const groupCount = (season.groups || []).length || (standings ? standings.groups.length : 0);
   const tile = (key, value, sub) => `<div class="sv-tile"><div class="k">${escapeHtml(t(key))}</div><div class="v">${value}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</div></div>`;
   const cats = CATEGORY_ORDER.filter((c) => (season.groups || []).some((g) => g.category === c) || (standings && standings.groups.some((g) => g.category === c)));
@@ -178,19 +182,40 @@ function tilesHtml() {
   return `<div class="sv-tiles">${tiles}</div>`;
 }
 
+// The description, laid out: the sentences as a lead card, "Label: value" lines as fact tiles, a short last line as the
+// sign-off. (Plain text typed in the backend; blank lines separate the blocks.)
 function infoHtml() {
-  return season.info ? `<p class="sv-info">${escapeHtml(season.info)}</p>` : '';
+  if (!season.info) return '';
+  const blocks = season.info.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+  const lead = [];
+  const facts = [];
+  let sign = '';
+  blocks.forEach((block, i) => {
+    const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+    const pairs = lines.map((l) => l.match(/^([^:]{2,40}):\s*(.+)$/));
+    if (pairs.every(Boolean)) pairs.forEach((m) => facts.push([m[1], m[2]]));
+    else if (i === blocks.length - 1 && lines.length === 1 && lines[0].length <= 40 && i > 0) sign = lines[0];
+    else lead.push(lines.join(' '));
+  });
+  return `
+    <div class="sv-about">
+      ${lead.length ? `<div class="sv-about-lead">${lead.map((p) => `<p>${escapeHtml(p)}</p>`).join('')}</div>` : ''}
+      ${facts.length ? `<div class="sv-facts">${facts.map(([k, v]) => `<div class="sv-fact"><span>${escapeHtml(k)}</span><b>${escapeHtml(v)}</b></div>`).join('')}</div>` : ''}
+      ${sign ? `<div class="sv-sign">${escapeHtml(sign)}</div>` : ''}
+    </div>`;
 }
 
+// The same two cards as the home page (rows from match-rows.js): the latest results and the next matches.
 function resultsHtml() {
-  const rows = (list, empty) => (list.length ? list.map(matchRowHtml).join('') : `<div class="sv-empty">${escapeHtml(empty)}</div>`);
-  return `
-    <section class="sv-sec" id="sv-results">
-      <div class="sv-two">
-        <div>${secHead('results', t('season.results'), `/matches?season=${season.id}&tab=FINISHED`, t('season.allResults'))}<div class="sv-box">${rows(results, t('season.noResults'))}</div></div>
-        <div>${secHead('upcoming', t('season.upcoming'), `/matches?season=${season.id}`, t('season.allMatches'))}<div class="sv-box">${rows(upcoming, t('season.noUpcoming'))}</div></div>
-      </div>
-    </section>`;
+  const col = (title, href, rows, empty) => `
+    <div class="home-col">
+      ${secTitle(title, '', href, t('home.all'))}
+      <div class="home-card">${rows.length ? rows.join('') : `<div class="home-empty">${escapeHtml(empty)}</div>`}</div>
+    </div>`;
+  return `<div class="home-cols">
+    ${col(t('home.results'), `/matches?season=${season.id}&tab=FINISHED`, results.map(resultRow), t('home.noResults'))}
+    ${col(t('home.upcoming'), `/matches?season=${season.id}`, upcoming.map(upcomingRow), t('home.noUpcoming'))}
+  </div>`;
 }
 
 function tablesHtml() {
@@ -208,44 +233,61 @@ function tablesHtml() {
     </section>`;
 }
 
+// One match of the round in a group card: the two names stacked, the result or the date on the right.
+function scheduleRow(m) {
+  const done = m.status === 'FINISHED';
+  const sets = (m.state && m.state.setsWon) || { 1: 0, 2: 0 };
+  const right = done ? `<span class="rs">${sets[1]} : ${sets[2]}</span>`
+    : m.status === 'LIVE' ? `<span class="rs live">${escapeHtml(t('home.live'))}</span>`
+      : m.scheduledAt ? `<span class="rs date">${escapeHtml(chipDate(m.scheduledAt))}</span>`
+        : '<span class="rs tbd">—</span>';
+  return `<a class="sv-rg-m" href="/match/${m.token}"><span class="pl"><span class="${done && m.winnerId === m.player1.id ? 'w' : ''}">${escapeHtml(m.player1.name)}</span><span class="${done && m.winnerId === m.player2.id ? 'w' : ''}">${escapeHtml(m.player2.name)}</span></span>${right}</a>`;
+}
+
+// The Rozpis tab: the rounds as buttons (with how far each is), and the chosen round as one small card per group.
 function scheduleHtml() {
   const rounds = season.rounds || [];
   if (!rounds.length) return '';
-  const pills = rounds.map((r) => `<button type="button" class="sv-round${r.round === round ? ' cur' : ''}${r.finished >= r.total ? ' done' : ''}" data-round="${r.round}">${escapeHtml(t('season.roundN', { n: r.round }))}<small>${r.finished}/${r.total}</small></button>`).join('');
+  const pills = rounds.map((r) => `<button type="button" class="sv-round${r.round === round ? ' cur' : ''}" data-round="${r.round}" style="--p:${Math.round((r.finished / Math.max(1, r.total)) * 100)}%"><b>${escapeHtml(t('season.roundN', { n: r.round }))}</b><small>${r.finished}/${r.total}</small></button>`).join('');
   const order = new Map((season.groups || []).map((g, i) => [g.id, i]));
-  const sorted = [...roundMatches].sort((a, b) => (order.get(a.group && a.group.id) ?? 99) - (order.get(b.group && b.group.id) ?? 99));
-  let html = '';
-  let last = null;
-  sorted.forEach((m) => {
-    const key = m.group ? m.group.id : 0;
-    if (key !== last) {
-      last = key;
-      html += `<div class="sv-ghead">${m.group ? `${escapeHtml(CATEGORY_NAMES[m.group.category] || m.group.category)} · <b>${escapeHtml(m.group.name)}</b>` : ''}</div>`;
-    }
-    html += matchRowHtml(m, false);
+  const byGroup = new Map();
+  roundMatches.forEach((m) => {
+    const id = m.group ? m.group.id : 0;
+    if (!byGroup.has(id)) byGroup.set(id, { group: m.group, list: [] });
+    byGroup.get(id).list.push(m);
   });
+  const cards = [...byGroup.entries()].sort((a, b) => (order.get(a[0]) ?? 99) - (order.get(b[0]) ?? 99)).map(([, { group, list }]) => `
+    <div class="sv-rg-card">
+      <div class="sv-rg-h"><b>${escapeHtml(group ? group.name : '')}</b><span>${escapeHtml(group ? (CATEGORY_NAMES[group.category] || '') : '')}</span></div>
+      ${list.map(scheduleRow).join('')}
+    </div>`).join('');
   return `
     <section class="sv-sec" id="sv-schedule">
       <div class="sv-rounds" id="sv-rounds">${pills}<a class="sv-more" href="/matches?season=${season.id}">${escapeHtml(t('season.allMatches'))} ›</a></div>
-      <div class="sv-box">${html || `<div class="sv-empty">${escapeHtml(t('season.noSchedule'))}</div>`}</div>
+      <div class="sv-rg">${cards || `<div class="sv-empty">${escapeHtml(t('season.noSchedule'))}</div>`}</div>
     </section>`;
 }
 
+// The Hráči tab: the players divided by category and group — a small card per group.
 function playersHtml() {
-  const list = playersList();
-  if (!list.length) return '';
-  const showPaid = !!(season.entryFee || season.paymentUrl) && list.some((p) => p.paid !== null);
-  const loc = currentLang === 'en' ? 'en' : 'sk';
-  const rows = [...list].sort((a, b) => a.name.localeCompare(b.name, loc)).map((p) => {
-    const name = p.id ? `<a href="/player/${encodeURIComponent(p.slug || p.id)}">${escapeHtml(p.name)}</a>` : escapeHtml(p.name);
-    const paid = showPaid ? `<span class="${p.paid ? 'ok' : 'no'}">${escapeHtml(p.paid ? `✓ ${t('season.paid')}` : `— ${t('season.unpaid')}`)}</span>` : '';
-    return `<div><span>${name} <em>${escapeHtml(CATEGORY_NAMES[p.category] || '')}</em></span>${paid}</div>`;
-  }).join('');
-  return `
-    <section class="sv-sec" id="sv-players">
-      ${secHead('players', '', '/players', t('season.allPlayers'))}
-      <div class="sv-pl">${rows}</div>
-    </section>`;
+  const model = playersModel();
+  if (!model.total) return '';
+  const showPaid = !!(season.entryFee || season.paymentUrl);
+  const person = (p, withCat) => {
+    const name = p.slug ? `<a href="/player/${encodeURIComponent(p.slug)}">${escapeHtml(p.name)}</a>` : escapeHtml(p.name);
+    const paid = showPaid && p.paid !== null && p.paid !== undefined ? `<span class="${p.paid ? 'ok' : 'no'}" title="${escapeHtml(p.paid ? t('season.paid') : t('season.unpaid'))}">${p.paid ? '✓' : '—'}</span>` : '';
+    return `<div class="sv-pp"><span class="nm">${name}${withCat ? ` <em>${escapeHtml(CATEGORY_NAMES[p.category] || '')}</em>` : ''}</span>${paid}</div>`;
+  };
+  const card = (title, people, withCat) => `<div class="sv-pcard"><div class="sv-pcard-h"><b>${escapeHtml(title)}</b><span>${people.length}</span></div>${people.map((p) => person(p, withCat)).join('')}</div>`;
+  const sections = model.cats.map((c) => {
+    const count = c.groups.reduce((sum, g) => sum + g.players.length, 0);
+    return `<div class="sv-cat-h">${escapeHtml(CATEGORY_NAMES[c.category])}<em>${count}</em></div><div class="sv-pg">${c.groups.map((g) => card(g.name, g.players, false)).join('')}</div>`;
+  });
+  if (model.ungrouped.length) {
+    sections.push(`<div class="sv-cat-h">${escapeHtml(t('season.noGroupYet'))}<em>${model.ungrouped.length}</em></div><div class="sv-pg">${card(t('season.noGroupCard'), model.ungrouped, true)}</div>`);
+  }
+  const legend = showPaid ? `<p class="sv-note">✓ ${escapeHtml(t('season.paid'))} · — ${escapeHtml(t('season.unpaid'))}</p>` : '';
+  return `<section class="sv-sec" id="sv-players">${sections.join('')}${legend}</section>`;
 }
 
 function playoffHtml() {
@@ -382,7 +424,7 @@ async function openRegisterModal() {
 // shows a short note instead).
 function availableTabs() {
   const hasGroups = !!(standings && standings.groups.length);
-  const players = playersList().length;
+  const players = playersModel().total;
   return [
     { key: 'info', label: t('season.navInfo'), has: !!season.info },
     { key: 'tables', label: t('season.navTables'), has: hasGroups },

@@ -69,6 +69,11 @@ try {
   console.error('Autumn Finals rounds failed (will retry on next start):', err);
 }
 try {
+  require('./src/seasonSeed').ensureSeasonLogos(db);
+} catch (err) {
+  console.error('Season logos failed:', err);
+}
+try {
   require('./src/seasonSeed').ensureScheduleMenuItem(db);
 } catch (err) {
   console.error('Schedule menu item failed:', err);

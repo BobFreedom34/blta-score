@@ -75,6 +75,7 @@ function serializeSeason(s) {
     info: s.info || '',
     galleryUrl: s.gallery_url || '',
     paymentUrl: s.payment_url || '',
+    logoUrl: s.logo_url || '',
     registrationOpen: !!s.registration_open,
     matchCount: db.prepare('SELECT COUNT(*) AS n FROM matches WHERE season_id = ?').get(s.id).n,
     groups: groups.map(serializeGroup),
@@ -284,14 +285,16 @@ router.patch('/:id', requireAdmin, (req, res) => {
   const info = text('info', season.info, 2000);
   const gallery = text('galleryUrl', season.gallery_url, 500);
   const payment = text('paymentUrl', season.payment_url, 500);
+  const logo = text('logoUrl', season.logo_url, 300);
   const draw = req.body.drawDate !== undefined ? parseDate(req.body.drawDate) : { value: season.draw_date };
-  const bad = fee.error || prize.error || info.error || gallery.error || payment.error || draw.error;
+  const bad = fee.error || prize.error || info.error || gallery.error || payment.error || logo.error || draw.error;
   if (bad) return res.status(400).json({ error: bad });
   if (gallery.value && !/^https?:\/\//i.test(gallery.value)) return res.status(400).json({ error: 'The gallery link must start with http:// or https://' });
   if (payment.value && !/^https?:\/\//i.test(payment.value)) return res.status(400).json({ error: 'The payment link must start with http:// or https://' });
+  if (logo.value && !/^(https?:\/\/|\/)/i.test(logo.value)) return res.status(400).json({ error: 'The logo must be a link starting with http://, https:// or /' });
   const open = req.body.registrationOpen === undefined ? season.registration_open : (req.body.registrationOpen ? 1 : 0);
-  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, registration_open = ? WHERE id = ?')
-    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, open, season.id);
+  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, logo_url = ?, registration_open = ? WHERE id = ?')
+    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, season.id);
   res.json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
 });
 

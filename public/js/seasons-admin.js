@@ -224,6 +224,9 @@ function seasonHtml(s) {
         <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Gallery link
           <input type="text" data-field="galleryUrl" value="${escapeHtml(s.galleryUrl || '')}" maxlength="500" placeholder="https://…" style="display:block;width:100%;margin-top:4px;${inputStyle}">
         </label>
+        <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Logo (image link, e.g. /img/seasons/autumn.png)
+          <input type="text" data-field="logoUrl" value="${escapeHtml(s.logoUrl || '')}" maxlength="300" style="display:block;width:100%;margin-top:4px;${inputStyle}">
+        </label>
         <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Payment link (Stripe) — the "Úhrada štartovného online" button
           <input type="text" data-field="paymentUrl" value="${escapeHtml(s.paymentUrl || '')}" maxlength="500" placeholder="https://buy.stripe.com/…" style="display:block;width:100%;margin-top:4px;${inputStyle}">
         </label>
@@ -291,7 +294,7 @@ function wireSeason(card) {
     errorEl.textContent = '';
     const f = (name) => e.target.querySelector(`[data-field="${name}"]`).value;
     try {
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: f('info') } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: f('info') } });
       toast('Season saved');
       await load();
     } catch (err) { fail(err); }

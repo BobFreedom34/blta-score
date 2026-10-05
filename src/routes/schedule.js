@@ -36,6 +36,7 @@ router.get('/', (req, res) => {
     endDate: s.end_date || s.start_date,
     venue: '',
     link: `/season/${s.slug}`,
+    logoUrl: s.logo_url || '',
     categories: CATEGORIES,
   }));
   const events = db.prepare('SELECT * FROM schedule_events').all().map(serializeEvent);
