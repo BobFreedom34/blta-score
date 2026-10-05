@@ -122,6 +122,7 @@ async function load() {
 function playersPanelHtml(g) {
   const chips = g.members.map((m) => `
     <span class="sg-chip${m.withdrawn ? ' out' : ''}">${escapeHtml(m.name)}${m.withdrawn ? ' <em>withdrawn</em>' : ''}
+      <button type="button" class="sg-link" data-action="toggle-paid" data-player="${m.id}" title="Entry fee paid? (shown on the season page)">${m.paid ? 'Paid ✓' : 'Not paid'}</button>
       ${m.withdrawn ? '' : `<button type="button" class="sg-link" data-action="withdraw" data-player="${m.id}" title="Withdraw: their unplayed matches become walkovers">Withdraw</button>`}
       <button type="button" class="sg-x" data-action="remove-member" data-player="${m.id}" title="Remove (only before the player has matches)">&times;</button>
     </span>`).join('');
@@ -210,6 +211,22 @@ function seasonHtml(s) {
         <label style="font-size:12px;font-weight:700">Ends
           <input type="date" data-field="endDate" value="${escapeHtml(s.endDate || '')}" style="display:block;margin-top:4px;${inputStyle}">
         </label>
+        <div style="flex-basis:100%;margin-top:6px;font-size:12px;font-weight:800;color:var(--gray)">Season page <a href="/season/${escapeHtml(s.slug)}" target="_blank" style="color:var(--orange);text-decoration:underline">/season/${escapeHtml(s.slug)}</a> — all optional</div>
+        <label style="font-size:12px;font-weight:700">Entry fee
+          <input type="text" data-field="entryFee" value="${escapeHtml(s.entryFee || '')}" maxlength="40" placeholder="e.g. 20 €" style="display:block;margin-top:4px;width:110px;${inputStyle}">
+        </label>
+        <label style="font-size:12px;font-weight:700">Draw date
+          <input type="date" data-field="drawDate" value="${escapeHtml(s.drawDate || '')}" style="display:block;margin-top:4px;${inputStyle}">
+        </label>
+        <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Prize money
+          <input type="text" data-field="prizeMoney" value="${escapeHtml(s.prizeMoney || '')}" maxlength="120" style="display:block;width:100%;margin-top:4px;${inputStyle}">
+        </label>
+        <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Gallery link
+          <input type="text" data-field="galleryUrl" value="${escapeHtml(s.galleryUrl || '')}" maxlength="500" placeholder="https://…" style="display:block;width:100%;margin-top:4px;${inputStyle}">
+        </label>
+        <label style="flex-basis:100%;font-size:12px;font-weight:700">Description
+          <textarea data-field="info" rows="3" maxlength="2000" style="display:block;width:100%;margin-top:4px;${inputStyle}">${escapeHtml(s.info || '')}</textarea>
+        </label>
         <button type="submit" class="btn btn-sm btn-outline">Save season</button>
         <button type="button" class="btn btn-sm btn-danger" data-action="delete-season">Delete season</button>
       </form>
@@ -264,7 +281,7 @@ function wireSeason(card) {
     errorEl.textContent = '';
     const f = (name) => e.target.querySelector(`[data-field="${name}"]`).value;
     try {
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: f('info') } });
       toast('Season saved');
       await load();
     } catch (err) { fail(err); }
@@ -367,6 +384,14 @@ function wireGroupPanel(wrap, group, fail) {
     if (name) add({ name });
   });
 
+  panel.querySelectorAll('[data-action="toggle-paid"]').forEach((b) => b.addEventListener('click', async () => {
+    const member = group.members.find((m) => m.id === Number(b.dataset.player));
+    try {
+      await api(`/seasons/groups/${group.id}/members/${member.id}`, { method: 'PATCH', body: { paid: !member.paid } });
+      openPanels.add(group.id);
+      await load();
+    } catch (err) { fail(err); }
+  }));
   panel.querySelectorAll('[data-action="withdraw"]').forEach((b) => b.addEventListener('click', async () => {
     const member = group.members.find((m) => m.id === Number(b.dataset.player));
     if (!confirm(`Withdraw ${member.name} from ${group.name}?\n\nEvery match they have not played yet becomes a walkover win for the opponent (3 points), and no new matches are made for them.`)) return;

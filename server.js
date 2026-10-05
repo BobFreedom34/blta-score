@@ -27,6 +27,7 @@ const courtIQRouter = require('./src/routes/courtiq');
 const bracketsRouter = require('./src/routes/brackets');
 const venuesRouter = require('./src/routes/venues');
 const seasonsRouter = require('./src/routes/seasons');
+const scheduleRouter = require('./src/routes/schedule');
 
 const app = express();
 const server = http.createServer(app);
@@ -60,6 +61,11 @@ try {
   require('./src/seasonSeed').ensureHomeMenuItem(db);
 } catch (err) {
   console.error('Home menu item failed:', err);
+}
+try {
+  require('./src/scheduleSeed').seedScheduleEvents(db);
+} catch (err) {
+  console.error('Schedule events seed failed (will retry on next start):', err);
 }
 badgeEngine.backfillIfNeeded();
 badgeEngine.startScheduledReminders();
@@ -122,6 +128,7 @@ app.use('/api/courtiq', courtIQRouter);
 app.use('/api/brackets', bracketsRouter);
 app.use('/api/venues', venuesRouter);
 app.use('/api/seasons', seasonsRouter);
+app.use('/api/schedule', scheduleRouter);
 
 // Pretty routes -> static HTML pages (the page JS reads the share token from the URL).
 const matchTemplate = fs.readFileSync(path.join(PUBLIC_DIR, 'match.html'), 'utf8');
@@ -224,6 +231,7 @@ ${imageTags}<meta name="twitter:card" content="${hasResultImage ? 'summary_large
 });
 app.get('/player/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'player.html')));
 app.get('/bracket/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'bracket.html')));
+app.get('/season/:slug', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'season.html')));
 app.get('/courts/:slug', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'court.html')));
 app.get('/embed/match/:token', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-match.html')));
 app.get('/embed/live', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-live.html')));

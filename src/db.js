@@ -1257,6 +1257,32 @@ if (!db.prepare('PRAGMA table_info(matches)').all().some((c) => c.name === 'roun
   db.exec('ALTER TABLE matches ADD COLUMN round INTEGER');
 }
 
+// What the season page (/season/<slug>) shows besides the tables and matches: the entry fee, the prize money, the draw date,
+// a short description and a link to the photo gallery (all optional text, edited in /seasons-admin); and, per player of a
+// group, whether the entry fee is paid.
+const seasonInfoColumns = db.prepare('PRAGMA table_info(seasons)').all().map((c) => c.name);
+['entry_fee', 'prize_money', 'draw_date', 'info', 'gallery_url'].forEach((col) => {
+  if (!seasonInfoColumns.includes(col)) db.exec(`ALTER TABLE seasons ADD COLUMN ${col} TEXT`);
+});
+if (!db.prepare('PRAGMA table_info(season_group_members)').all().some((c) => c.name === 'paid')) {
+  db.exec('ALTER TABLE season_group_members ADD COLUMN paid INTEGER NOT NULL DEFAULT 0');
+}
+
+// Tournaments and other events of the schedule page (/harmonogram). League seasons are not stored here — the page reads
+// them from the seasons table. categories: comma list of ELITE, NEXT_GEN, NOVICE.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS schedule_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT,
+    venue TEXT NOT NULL DEFAULT '',
+    link TEXT NOT NULL DEFAULT '',
+    categories TEXT NOT NULL DEFAULT 'ELITE,NEXT_GEN,NOVICE',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+
 // Lookups the lists and the group tables make on every request: a player's matches (either side), a group's or a
 // season's matches, and the date order. Without these each one reads the whole matches table.
 db.exec(`

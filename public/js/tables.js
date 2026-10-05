@@ -59,33 +59,6 @@ function renderTabs() {
     : '';
 }
 
-function tableHtml(group) {
-  return `
-    <section class="grp-section">
-      <h2 class="grp-title">${escapeHtml(group.name)}${group.matchesCounted === null ? '' : ` <span>${escapeHtml(t('tables.counted', { done: group.matchesCounted, total: group.matchesTotal }))}</span>`}</h2>
-      <div class="card card-dark grp-card">
-        <div class="grp-head">
-          <span>#</span><span>${escapeHtml(t('tables.player'))}</span><span>${escapeHtml(t('tables.points'))}</span><span>${escapeHtml(t('tables.matches'))}</span><span>${escapeHtml(t('tables.wins'))}</span><span>${escapeHtml(t('tables.losses'))}</span><span>+/−</span>
-        </div>
-        ${group.rows.length ? group.rows.map((r) => {
-          const d = r.setDiff;
-          return `
-          <div class="grp-row">
-            <span class="grp-pos">${r.position}</span>
-            ${r.player.id
-              ? `<a class="grp-name" href="/player/${encodeURIComponent(r.player.slug || r.player.id)}"><b>${escapeHtml(r.player.name)}</b></a>`
-              : `<span class="grp-name"><b>${escapeHtml(r.player.name)}</b></span>`}
-            <span class="grp-pts">${r.points}</span>
-            <span class="dim">${r.played}</span>
-            <span class="dim">${r.wins}</span>
-            <span class="dim">${r.losses}</span>
-            <span class="${d > 0 ? 'pos' : d < 0 ? 'neg' : 'dim'}">${d > 0 ? `+${d}` : d}</span>
-          </div>`;
-        }).join('') : `<div class="empty-state" style="padding:18px 0">${escapeHtml(t('tables.noPlayers'))}</div>`}
-      </div>
-    </section>`;
-}
-
 // The bracket(s) of the chosen season and category, drawn the same way as on the bracket page.
 async function renderBrackets() {
   const run = (bracketRun += 1);
@@ -119,7 +92,7 @@ function renderTables() {
     legendEl.textContent = '';
     return;
   }
-  rootEl.innerHTML = groups.map(tableHtml).join('');
+  rootEl.innerHTML = groups.map(groupTableHtml).join('');
   const dates = standings.startDate && standings.endDate ? ` · ${escapeHtml(formatDate(standings.startDate))} – ${escapeHtml(formatDate(standings.endDate))}` : '';
   legendEl.innerHTML = `${escapeHtml(t('tables.rules'))}<br>${escapeHtml(standings.name)}${dates}${standings.frozen ? `<br>${escapeHtml(t('tables.frozen'))}` : ''}`;
 }

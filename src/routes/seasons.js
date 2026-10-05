@@ -41,10 +41,10 @@ function parseDate(value) {
 // The players of a group, in the order they were added.
 function groupMembers(groupId) {
   return db.prepare(`
-    SELECT m.player_id AS id, p.name, p.slug, m.withdrawn_at
+    SELECT m.player_id AS id, p.name, p.slug, m.withdrawn_at, m.paid
     FROM season_group_members m JOIN players p ON p.id = m.player_id
     WHERE m.group_id = ? ORDER BY m.sort_order, m.id
-  `).all(groupId).map((r) => ({ id: r.id, name: r.name, slug: r.slug, withdrawn: !!r.withdrawn_at }));
+  `).all(groupId).map((r) => ({ id: r.id, name: r.name, slug: r.slug, withdrawn: !!r.withdrawn_at, paid: !!r.paid }));
 }
 
 function serializeGroup(g) {
@@ -68,6 +68,11 @@ function serializeSeason(s) {
     slug: s.slug,
     startDate: s.start_date,
     endDate: s.end_date,
+    entryFee: s.entry_fee || '',
+    prizeMoney: s.prize_money || '',
+    drawDate: s.draw_date || null,
+    info: s.info || '',
+    galleryUrl: s.gallery_url || '',
     matchCount: db.prepare('SELECT COUNT(*) AS n FROM matches WHERE season_id = ?').get(s.id).n,
     groups: groups.map(serializeGroup),
   };
@@ -80,6 +85,19 @@ router.get('/', (req, res) => {
 });
 
 // Public: the brackets (play-off draws) tied to a season — the league tables page shows them under "Play-off".
+// The season page: one season by its slug, with its rounds (the group-stage rounds the season maker numbered, with how many
+// of their matches are finished).
+router.get('/by-slug/:slug', (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE slug = ?').get(req.params.slug);
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  const rounds = db.prepare(`
+    SELECT round, COUNT(*) AS total, SUM(CASE WHEN status = 'FINISHED' THEN 1 ELSE 0 END) AS finished
+    FROM matches WHERE season_id = ? AND round IS NOT NULL AND COALESCE(stage, 'GROUP') = 'GROUP'
+    GROUP BY round ORDER BY round
+  `).all(season.id).map((r) => ({ round: r.round, total: r.total, finished: r.finished }));
+  res.json({ ...serializeSeason(season), rounds });
+});
+
 router.get('/:id/brackets', (req, res) => {
   const season = db.prepare('SELECT id FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
@@ -167,7 +185,23 @@ router.patch('/:id', requireAdmin, (req, res) => {
   const end = req.body.endDate !== undefined ? parseDate(req.body.endDate) : { value: season.end_date };
   if (start.error || end.error) return res.status(400).json({ error: start.error || end.error });
   if (start.value && end.value && start.value > end.value) return res.status(400).json({ error: 'The end date is before the start date' });
-  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ? WHERE id = ?').run(name, start.value, end.value, season.id);
+  // the season page's optional texts: left as they are when not sent, cleared with an empty string
+  const text = (key, current, max) => {
+    if (req.body[key] === undefined) return { value: current };
+    const v = String(req.body[key] || '').trim();
+    if (v.length > max) return { error: `${key} is too long (max ${max} characters)` };
+    return { value: v || null };
+  };
+  const fee = text('entryFee', season.entry_fee, 40);
+  const prize = text('prizeMoney', season.prize_money, 120);
+  const info = text('info', season.info, 2000);
+  const gallery = text('galleryUrl', season.gallery_url, 500);
+  const draw = req.body.drawDate !== undefined ? parseDate(req.body.drawDate) : { value: season.draw_date };
+  const bad = fee.error || prize.error || info.error || gallery.error || draw.error;
+  if (bad) return res.status(400).json({ error: bad });
+  if (gallery.value && !/^https?:\/\//i.test(gallery.value)) return res.status(400).json({ error: 'The gallery link must start with http:// or https://' });
+  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ? WHERE id = ?')
+    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, season.id);
   res.json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
 });
 
@@ -281,6 +315,18 @@ router.post('/groups/:groupId/members', requireAdmin, (req, res) => {
   const next = db.prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM season_group_members WHERE group_id = ?').get(group.id).n;
   db.prepare('INSERT INTO season_group_members (group_id, player_id, sort_order) VALUES (?, ?, ?)').run(group.id, player.id, next);
   res.status(201).json(serializeGroup(group));
+});
+
+// Marks whether a player of the group has paid the entry fee (shown on the season page).
+router.patch('/groups/:groupId/members/:playerId', requireAdmin, (req, res) => {
+  const group = groupOr404(req, res);
+  if (!group) return;
+  const playerId = Number(req.params.playerId);
+  if (!db.prepare('SELECT 1 FROM season_group_members WHERE group_id = ? AND player_id = ?').get(group.id, playerId)) {
+    return res.status(404).json({ error: 'That player is not in this group' });
+  }
+  db.prepare('UPDATE season_group_members SET paid = ? WHERE group_id = ? AND player_id = ?').run(req.body && req.body.paid ? 1 : 0, group.id, playerId);
+  res.json(serializeGroup(group));
 });
 
 // Removing is only for a mistake: once the player has matches in the group they have to be withdrawn instead.

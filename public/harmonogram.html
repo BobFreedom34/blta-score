@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title data-i18n="page.tablesTitle">Tennis SCORE — Tabuľky</title>
+<title data-i18n="page.scheduleTitle">Tennis SCORE — Harmonogram</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
@@ -39,14 +39,16 @@
 </div>
 
 <div class="container">
-  <h1 style="margin-top:22px" data-i18n="tables.heading">Ligové tabuľky</h1>
+  <h1 style="margin-top:22px" data-i18n="schedule.heading">Harmonogram</h1>
+  <p class="home-sub" data-i18n="schedule.sub">Rozpis ligy a turnajov</p>
 
-  <select class="grey-select" id="tables-season" aria-label="Season"></select>
-  <div class="tabs" id="tables-cats" role="tablist"></div>
-  <div class="tabs" id="tables-phase" role="tablist"></div>
-  <div class="tabs" id="tables-groups" role="tablist"></div>
-  <div id="tables-root" data-i18n="common.loading">Načítavam…</div>
-  <p class="rankings-desc" id="tables-legend"></p>
+  <div class="tabs" id="sch-years" role="tablist"></div>
+  <div class="sch-filters">
+    <select class="grey-select" id="sch-cat" aria-label="Category"></select>
+    <select class="grey-select" id="sch-type" aria-label="Type"></select>
+  </div>
+  <div id="sch-timeline"></div>
+  <div id="sch-root" data-i18n="common.loading">Načítavam…</div>
 </div>
 
 <!-- Log in as player modal -->
@@ -176,9 +178,6 @@
 
 <script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
-<script src="/socket.io/socket.io.min.js"></script>
-<script src="/js/bracket-view.js"></script>
-<script src="/js/group-table.js"></script>
-<script src="/js/tables.js"></script>
+<script src="/js/harmonogram.js"></script>
 </body>
 </html>

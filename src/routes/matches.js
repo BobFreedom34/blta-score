@@ -444,6 +444,8 @@ function broadcast(req, row) {
 // Returns the WHERE clause and its bound params.
 function matchFilters(query) {
   const { status, category, from, to, noDate, hasDate, playerId } = query;
+  const seasonId = parseInt(query.seasonId, 10);
+  const round = parseInt(query.round, 10);
   const clauses = [];
   const params = {};
   if (status) {
@@ -464,6 +466,15 @@ function matchFilters(query) {
       clauses.push(`m.category IN (${cats.map((_, i) => `@category${i}`).join(', ')})`);
       cats.forEach((c, i) => { params[`category${i}`] = c; });
     }
+  }
+  // one season (the season page and the matches page's ?season=) and, inside it, one round of the schedule
+  if (Number.isInteger(seasonId)) {
+    clauses.push('m.season_id = @seasonId');
+    params.seasonId = seasonId;
+  }
+  if (Number.isInteger(round)) {
+    clauses.push('m.round = @round');
+    params.round = round;
   }
   if (playerId) {
     clauses.push('(m.player1_id = @playerId OR m.player2_id = @playerId)');
@@ -547,7 +558,7 @@ router.get('/', (req, res) => {
 router.get('/counts', (req, res) => {
   const { category, q, from, to, tbd, playerId } = req.query;
   const range = from && to ? { from, to } : null;
-  const base = { ...(category ? { category } : {}), ...(q ? { q } : {}) };
+  const base = { ...(category ? { category } : {}), ...(q ? { q } : {}), ...(req.query.seasonId ? { seasonId: req.query.seasonId } : {}) };
   // The time filter narrows Planned / Finished / Unfinished (a range, or "no date"); the Scheduled tab only takes a range,
   // "Not yet scheduled" has no date to narrow and Live ignores it.
   const timed = range || (tbd === '1' ? { noDate: '1' } : {});

@@ -15,6 +15,10 @@ const FILTERS = {
 const PAGE_SIZE = 50;
 let shownCount = PAGE_SIZE;
 let pagingKey = '';
+// /matches?season=ID&tab=FINISHED (the season page's "all results" / "all matches" links): only that season's matches, on
+// the chosen tab. A small bar above the list names the season and clears the filter.
+const SEASON_FILTER = Number(new URLSearchParams(window.location.search).get('season')) || null;
+const TAB_PARAM = new URLSearchParams(window.location.search).get('tab');
 let currentFilter = 'ALL';
 let currentQuery = '';
 let currentCategory = '';
@@ -197,6 +201,7 @@ function buildMatchListHtml(matches, liveMatches) {
 function buildFilterParamsForSpec(spec) {
   const params = new URLSearchParams();
   if (spec.status) params.set('status', spec.status);
+  if (SEASON_FILTER) params.set('seasonId', String(SEASON_FILTER));
   if (currentQuery) params.set('q', currentQuery);
   if (currentCategory) params.set('category', currentCategory);
   else if (FORCED_CATEGORIES.length) params.set('category', FORCED_CATEGORIES.join(','));
@@ -347,6 +352,7 @@ function refreshCounts() {
     params.set('tbd', '1');
   }
   if (playerAuthed && currentPlayerId) params.set('playerId', currentPlayerId);
+  if (SEASON_FILTER) params.set('seasonId', String(SEASON_FILTER));
   countsRequest = (async () => {
     try {
       const counts = await api(`/matches/counts?${params.toString()}`);
@@ -374,6 +380,17 @@ function updateTimeFilterAvailability() {
   const spec = FILTERS[currentFilter];
   const disabled = currentFilter === 'LIVE' || (spec && spec.dateFilter === 'none');
   document.getElementById('filter-time').disabled = disabled;
+}
+
+// The bar above the list while a season filter from the URL is on.
+async function showSeasonFilterNote() {
+  if (!SEASON_FILTER) return;
+  let name = '';
+  try { name = ((await api('/seasons')).find((x) => x.id === SEASON_FILTER) || {}).name || ''; } catch { /* the bar just has no name */ }
+  const note = document.createElement('div');
+  note.className = 'season-filter-note';
+  note.innerHTML = `<span>${escapeHtml(t('matches.seasonOnly'))}<b>${escapeHtml(name)}</b></span><a href="/matches">${escapeHtml(t('matches.seasonClear'))} ×</a>`;
+  listEl.parentNode.insertBefore(note, listEl);
 }
 
 function activateTab(tab) {
@@ -636,9 +653,11 @@ socket.on('matches:changed', () => {
   // Arriving from the bottom menu's "My matches" on another page (?view=my).
   const myTabBtn = document.getElementById('tab-MY_MATCHES');
   if (new URLSearchParams(window.location.search).get('view') === 'my' && playerAuthed && currentPlayerId && myTabBtn) activateTab(myTabBtn);
+  else if (TAB_PARAM && FILTERS[TAB_PARAM] && document.getElementById(`tab-${TAB_PARAM}`)) activateTab(document.getElementById(`tab-${TAB_PARAM}`));
   else loadMatches();
   refreshCounts();
   refreshMyMatchesCount();
+  showSeasonFilterNote();
   // Re-render once a *later* login/logout finishes (see the
   // blta:auth-changed dispatch in common.js) — registered only after the
   // refreshPlayerAuth() call above so its own initial dispatch doesn't
