@@ -3710,3 +3710,11 @@ a.home-tl.now:hover .home-tl-body { border-color: var(--orange); }
 .sa-body { padding: 16px 18px 18px; }
 .sa-bar { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; font-size: 12px; font-weight: 700; color: var(--gray-dim); }
 .sa-bar button { background: none; border: none; padding: 0; font: inherit; color: var(--orange); cursor: pointer; text-decoration: underline; }
+
+/* "Did you mean?" dialog when a typed player name looks like existing players */
+.similar-block { margin: 0 0 16px; }
+.similar-typed { font-weight: 800; margin-bottom: 8px; }
+.similar-opt { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 6px; border: 1.5px solid var(--gray-light); border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 14px; }
+.similar-opt:hover { border-color: var(--orange); }
+.similar-opt input { accent-color: var(--orange); width: 18px; height: 18px; flex: 0 0 18px; }
+.similar-opt.new { border-style: dashed; color: var(--gray); }

@@ -302,8 +302,8 @@ async function openEditMatchModal(m, isAdminUser, onSaved) {
     if (isAdminUser && playersField) {
       const name1 = document.getElementById('edit-match-player1').value.trim();
       const name2 = document.getElementById('edit-match-player2').value.trim();
-      const p1 = allPlayers.find((p) => p.name.toLowerCase() === name1.toLowerCase());
-      const p2 = allPlayers.find((p) => p.name.toLowerCase() === name2.toLowerCase());
+      const p1 = findPlayerByTypedName(name1);
+      const p2 = findPlayerByTypedName(name2);
       if (!p1 || !p2) {
         errorEl.textContent = t('match.editPickFromSuggestions');
         submitBtn.disabled = false;
@@ -360,9 +360,20 @@ function setupAutocomplete(inputId, listId, getNames = () => allPlayers.map((p) 
   let activeIndex = -1;
 
   function currentMatches() {
-    const q = input.value.trim().toLowerCase();
+    const q = input.value.trim();
     if (!q) return [];
-    return getNames().filter((name) => name.toLowerCase().includes(q)).slice(0, 8);
+    const first = searchTokens(q)[0] || '';
+    const rank = (name) => {
+      const words = searchTokens(name);
+      if (words.join(' ').startsWith(searchTokens(q).join(' '))) return 0;
+      return words.some((w) => w.startsWith(first)) ? 1 : 2;
+    };
+    return getNames()
+      .filter((name) => matchesQuery(name, q))
+      .map((name, i) => ({ name, i, r: rank(name) }))
+      .sort((a, b) => a.r - b.r || a.i - b.i)
+      .slice(0, 8)
+      .map((x) => x.name);
   }
 
   function render() {
@@ -544,6 +555,40 @@ function venueHostLabel(url) {
 // Diacritic- and case-insensitive, so "ruzinov" finds "Ružinov".
 function foldText(s) {
   return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+// Search and name matching that forgives how people type: capitals, accents, punctuation, extra spaces and word order
+// ("szalay jan" finds "Jan Szalay", "tomas" finds "Tomáš"). Mirrors src/nameMatch.js on the server.
+const SEARCH_SPECIAL = { 'ł': 'l', 'đ': 'd', 'ø': 'o', 'ß': 'ss', 'æ': 'ae', 'œ': 'oe', 'ð': 'd', 'þ': 'th' };
+function searchTokens(text) {
+  return foldText(text)
+    .replace(/[łđøßæœðþ]/g, (c) => SEARCH_SPECIAL[c])
+    .replace(/['’`´]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean);
+}
+// every word typed appears somewhere in the text, in any order
+function matchesQuery(text, query) {
+  const q = searchTokens(query);
+  if (!q.length) return true;
+  const hay = searchTokens(text).join(' ');
+  return q.every((tok) => hay.includes(tok));
+}
+function nameKey(text) {
+  return searchTokens(text).sort().join(' ');
+}
+// The existing player a typed name means: the same name, or the same once accents/capitals/word order are ignored
+// (the oldest one when an old duplicate exists). null when it matches nobody.
+function findPlayerByTypedName(name) {
+  const lower = String(name || '').trim().toLowerCase();
+  if (!lower) return null;
+  const exact = allPlayers.find((p) => p.name.toLowerCase() === lower);
+  if (exact) return exact;
+  const key = nameKey(name);
+  if (!key) return null;
+  return allPlayers.filter((p) => nameKey(p.name) === key).sort((a, b) => a.id - b.id)[0] || null;
 }
 
 function venueChipsHtml(v) {

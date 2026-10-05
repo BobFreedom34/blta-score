@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const express = require('express');
 const db = require('../db');
 const engine = require('../matchEngine');
+const nameMatch = require('../nameMatch');
 const {
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail, sendProposalReceivedEmail,
 } = require('../mailer');
@@ -510,8 +511,7 @@ router.get('/', (req, res) => {
   // String.prototype.toLowerCase() handles this correctly for all of
   // Slovak's diacritics.
   if (q) {
-    const needle = q.toLowerCase();
-    rows = rows.filter((r) => r.p1_name.toLowerCase().includes(needle) || r.p2_name.toLowerCase().includes(needle));
+    rows = rows.filter((r) => nameMatch.matchesQuery(`${r.p1_name} ${r.p2_name}`, q));
   }
   // Optional cap (the home page only needs the latest few); no limit = everything, as before.
   if (limit) rows = rows.slice(0, limit);
@@ -670,18 +670,42 @@ router.post('/', requireLoggedIn, (req, res) => {
   // tier that once set this to 1 has been removed entirely (see
   // checkMatchAccess's comment above), but the column itself stays for
   // existing historical rows.
-  const resolvePlayer = (id, name) => {
-    if (id) return getPlayer(id);
+  // A typed name is matched to an existing player ignoring capitals, accents, spacing and word order (so "Tomas Paulen"
+  // is "Tomáš Paulen"). A name that is only SIMILAR to existing players is not guessed: the request is answered with
+  // 409 and the lookalikes, and the page asks which one is meant (or confirms a genuinely new player with confirmNew).
+  // Nobody is created until every name is settled, so a conflict never leaves a stray player behind.
+  const confirmNew = req.body.confirmNew && typeof req.body.confirmNew === 'object' ? req.body.confirmNew : {};
+  let everyone = null;
+  const decide = (field, id, name) => {
+    if (id) return { player: getPlayer(id) };
     const trimmed = (name || '').trim();
-    if (!trimmed) return null;
+    if (!trimmed) return { player: null };
     const existing = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE').get(trimmed);
-    if (existing) return existing;
-    const info = db.prepare('INSERT INTO players (name, created_by_anonymous) VALUES (?, ?)').run(trimmed, 0);
-    return getPlayer(info.lastInsertRowid);
+    if (existing) return { player: existing };
+    if (!everyone) everyone = db.prepare('SELECT id, name FROM players').all();
+    const { exact, similar } = nameMatch.findSimilar(trimmed, everyone);
+    if (exact) return { player: getPlayer(exact.id) };
+    if (similar.length && !confirmNew[field]) {
+      return { conflict: { field, typed: trimmed, suggestions: similar.map((p) => ({ id: p.id, name: p.name })) } };
+    }
+    return { create: trimmed };
+  };
+  const d1 = decide('player1', player1Id, player1Name);
+  const d2 = decide('player2', player2Id, player2Name);
+  const conflicts = [d1.conflict, d2.conflict].filter(Boolean);
+  if (conflicts.length) {
+    return res.status(409).json({ error: 'Similar players already exist — choose who you mean', code: 'SIMILAR_PLAYERS', conflicts });
+  }
+  const make = (d) => {
+    if (d.create) {
+      const info = db.prepare('INSERT INTO players (name, created_by_anonymous) VALUES (?, ?)').run(d.create, 0);
+      return getPlayer(info.lastInsertRowid);
+    }
+    return d.player;
   };
 
-  const p1 = resolvePlayer(player1Id, player1Name);
-  const p2 = resolvePlayer(player2Id, player2Name);
+  const p1 = make(d1);
+  const p2 = make(d2);
   if (!p1 || !p2) return res.status(400).json({ error: 'Both players are required' });
   if (p1.id === p2.id) return res.status(400).json({ error: 'Players must be different' });
   if (proposalSlots) proposedBy = inferProposedBy(req, proposedBy, p1.id, p2.id);

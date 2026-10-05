@@ -149,7 +149,7 @@ function wireCreateForm() {
           const rowId = row.dataset.rowId;
           const rawName = document.getElementById(`entry-${rowId}-name`).value.trim();
           if (!rawName) continue;
-          const player = allPlayers.find((p) => p.name.toLowerCase() === rawName.toLowerCase());
+          const player = findPlayerByTypedName(rawName);
           if (!player) throw new Error(`"${rawName}" isn't a known player — pick one from the suggestions`);
           const seed = Number(document.getElementById(`entry-${rowId}-seed`).value);
           if (!Number.isInteger(seed) || seed < 1) throw new Error(`Give "${rawName}" a whole-number seed`);
@@ -418,7 +418,7 @@ async function renderManagePanel(bracketId, slotEl) {
           if (!el) return undefined; // slot already filled — not part of this form
           const raw = el.value.trim();
           if (!raw) return null;
-          const player = allPlayers.find((p) => p.name.toLowerCase() === raw.toLowerCase());
+          const player = findPlayerByTypedName(raw);
           if (!player) throw new Error(`"${raw}" isn't a known player`);
           return player.id;
         };

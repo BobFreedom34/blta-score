@@ -6,6 +6,8 @@ const multer = require('multer');
 const db = require('../db');
 const { requireAdmin, isAdmin, isPlayer, getPlayerId, stripPrivateFields } = require('../auth');
 
+const nameMatch = require('../nameMatch');
+
 const router = express.Router();
 
 // Same "persistent disk, not public/" reasoning as badges.js's own
@@ -97,8 +99,7 @@ router.get('/', (req, res) => {
   // fail to match "Šarudy" (capital Š) even though it's clearly the same
   // word — JS's toLowerCase() handles accented letters correctly.
   if (q) {
-    const needle = q.toLowerCase();
-    rows = rows.filter((p) => p.name.toLowerCase().includes(needle));
+    rows = rows.filter((p) => nameMatch.matchesQuery(p.name, q));
   }
   // `hidden` is deliberately NOT filtered out here — this same endpoint
   // also feeds the rankings page's Badges tab and the match-creation
@@ -125,6 +126,8 @@ router.post('/', requireAdmin, (req, res) => {
 
   const existing = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE').get(name);
   if (existing) return res.status(200).json(stripPrivateFields(existing, req));
+  const twin = nameMatch.findSimilar(name, db.prepare('SELECT id, name FROM players').all()).exact;
+  if (twin) return res.status(200).json(stripPrivateFields(db.prepare('SELECT * FROM players WHERE id = ?').get(twin.id), req));
 
   const slug = uniqueSlugFor(name, null);
   const info = db.prepare('INSERT INTO players (name, slug) VALUES (?, ?)').run(name, slug);

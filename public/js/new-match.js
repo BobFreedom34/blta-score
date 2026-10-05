@@ -65,38 +65,72 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
     errorEl.textContent = t('newMatch.errorBothNames');
     return;
   }
-  if (player1Name.toLowerCase() === player2Name.toLowerCase()) {
+  if (nameKey(player1Name) === nameKey(player2Name)) {
     errorEl.textContent = t('newMatch.errorSameName');
     return;
   }
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
 
-  requirePlayerAuth(async () => {
+  const body = (extra) => ({
+    player1Name,
+    player2Name,
+    category,
+    location,
+    scheduledAt: scheduledAtDate ? new Date(`${scheduledAtDate}T${scheduledAtTime || '00:00'}`).toISOString() : null,
+    format,
+    notes,
+    ballsPlayer: getBallsPlayer(),
+    courtPlayer: getCourtPlayer(),
+    ...(isAdminCreator && BLTA_CATEGORIES.includes(category) && seasonSelect.value
+      ? { seasonId: Number(seasonSelect.value), groupId: groupSelect.value ? Number(groupSelect.value) : null }
+      : {}),
+    ...(isAdminCreator && BLTA_CATEGORIES.includes(category) && stageSelect.value === 'PLAYOFF' ? { stage: 'PLAYOFF' } : {}),
+    ...extra,
+  });
+
+  // extra: what the user decided about similar names so far ({ player1Id, confirmNew: { player2: true } }…)
+  const send = async (extra) => {
     submitBtn.disabled = true;
     try {
-      const match = await api('/matches', {
-        method: 'POST',
-        body: {
-          player1Name,
-          player2Name,
-          category,
-          location,
-          scheduledAt: scheduledAtDate ? new Date(`${scheduledAtDate}T${scheduledAtTime || '00:00'}`).toISOString() : null,
-          format,
-          notes,
-          ballsPlayer: getBallsPlayer(),
-          courtPlayer: getCourtPlayer(),
-          ...(isAdminCreator && BLTA_CATEGORIES.includes(category) && seasonSelect.value
-            ? { seasonId: Number(seasonSelect.value), groupId: groupSelect.value ? Number(groupSelect.value) : null }
-            : {}),
-          ...(isAdminCreator && BLTA_CATEGORIES.includes(category) && stageSelect.value === 'PLAYOFF' ? { stage: 'PLAYOFF' } : {}),
-        },
-      });
+      const match = await api('/matches', { method: 'POST', body: body(extra) });
       window.location.href = `/match/${match.token}`;
     } catch (err) {
-      errorEl.textContent = err.message;
+      if (err.data && err.data.code === 'SIMILAR_PLAYERS') {
+        askWhoIsMeant(err.data.conflicts, extra, send);
+      } else {
+        errorEl.textContent = err.message;
+      }
       submitBtn.disabled = false;
     }
-  });
+  };
+
+  requirePlayerAuth(() => send({}));
 });
+
+// The server found players with a similar name to a typed one. Ask, for each, whether it is one of them or really a
+// new player — so a typo never creates a duplicate and a genuinely new opponent can still be added.
+function askWhoIsMeant(conflicts, previous, send) {
+  const modal = document.getElementById('similar-modal');
+  const list = document.getElementById('similar-list');
+  const errorEl = document.getElementById('similar-error');
+  errorEl.textContent = '';
+  list.innerHTML = conflicts.map((c) => `
+    <div class="similar-block" data-field="${c.field}">
+      <div class="similar-typed">${escapeHtml(t(c.field === 'player1' ? 'newMatch.similarPlayer1' : 'newMatch.similarPlayer2', { name: c.typed }))}</div>
+      ${c.suggestions.map((p) => `<label class="similar-opt"><input type="radio" name="similar-${c.field}" value="${p.id}"><span>${escapeHtml(p.name)}</span></label>`).join('')}
+      <label class="similar-opt new"><input type="radio" name="similar-${c.field}" value="new"><span>${escapeHtml(t('newMatch.similarCreateNew', { name: c.typed }))}</span></label>
+    </div>`).join('');
+  document.getElementById('similar-continue-btn').onclick = () => {
+    const extra = { ...previous, confirmNew: { ...(previous.confirmNew || {}) } };
+    for (const c of conflicts) {
+      const picked = list.querySelector(`input[name="similar-${c.field}"]:checked`);
+      if (!picked) { errorEl.textContent = t('newMatch.similarPickError'); return; }
+      if (picked.value === 'new') extra.confirmNew[c.field] = true;
+      else extra[`${c.field}Id`] = Number(picked.value);
+    }
+    modal.style.display = 'none';
+    send(extra);
+  };
+  modal.style.display = 'flex';
+}

@@ -13,7 +13,7 @@ function filterMatches(v) {
   if (filter === 'INDOOR' && !venueHasIndoor(v)) return false;
   if (filter === 'OUTDOOR' && !venueHasOutdoor(v)) return false;
   if (!query) return true;
-  return foldText(`${v.name} ${v.area || ''} ${v.address || ''}`).includes(query);
+  return matchesQuery(`${v.name} ${v.area || ''} ${v.address || ''}`, query);
 }
 
 function cardHtml(v) {
@@ -91,7 +91,7 @@ filtersEl.addEventListener('click', (e) => {
 });
 
 searchEl.addEventListener('input', () => {
-  query = foldText(searchEl.value.trim());
+  query = searchEl.value.trim();
   render();
 });
 
