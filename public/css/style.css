@@ -3519,6 +3519,8 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
 a.home-mine-cell:hover { border-color: var(--orange); }
 .home-mine-cell .k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .home-mine-cell .v { font-size: 22px; font-weight: 800; line-height: 1.15; margin-top: 8px; }
+/* numbers are as big as in the league-number tiles below (28px) */
+.home-mine-cell .v.num { font-size: 28px; line-height: 1.1; margin-top: 6px; }
 .home-mine-cell .v.dim { color: #c3c7cf; font-size: 15px; font-weight: 700; }
 .home-mine-cell .v small { font-size: 13px; font-weight: 700; color: #c3c7cf; margin-left: 6px; }
 .home-mine-cell .s { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; font-size: 13px; font-weight: 700; }

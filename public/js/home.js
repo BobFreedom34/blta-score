@@ -138,12 +138,12 @@ function mineHtml(d) {
     groupCells = `
       <div class="home-mine-cell">
         <div class="k">${escapeHtml(t('home.minePos'))}</div>
-        <div class="v">${row.position}.<small>${escapeHtml(t('home.minePosOf', { n: group.rows.length }))}</small></div>
+        <div class="v num">${row.position}.<small>${escapeHtml(t('home.minePosOf', { n: group.rows.length }))}</small></div>
         <div class="s"><span>${escapeHtml(group.name)}</span><span class="home-mine-dim">${escapeHtml(t('home.minePts', { n: row.points }))}</span></div>
       </div>
       <div class="home-mine-cell">
         <div class="k">${escapeHtml(t('home.mineLeft'))}</div>
-        <div class="v">${left}</div>
+        <div class="v num">${left}</div>
         <div class="s"><span class="home-mine-dim">${escapeHtml(t('home.minePlayed', { done: row.played, total: opponents }))}</span></div>
         <div class="home-bar mini"><i style="width:${pct}%"></i></div>
       </div>`;
@@ -166,7 +166,7 @@ function mineHtml(d) {
       ? `
       <a class="home-mine-cell" href="/rankings">
         <div class="k">${escapeHtml(t('home.mineRank'))}</div>
-        <div class="v">${ranked.rank}.<small>${escapeHtml(t('home.minePosOf', { n: rankRows.length }))}</small></div>
+        <div class="v num">${ranked.rank}.<small>${escapeHtml(t('home.minePosOf', { n: rankRows.length }))}</small></div>
         <div class="s"><span class="home-mine-dim">${escapeHtml(t('home.minePts', { n: ranked.points }))}</span>${ranked.move ? `<span class="home-mine-move ${ranked.move.direction === 'up' ? 'up' : 'down'}">${ranked.move.direction === 'up' ? '▲' : '▼'} ${ranked.move.amount}</span>` : ''}</div>
       </a>`
       : `
@@ -183,7 +183,7 @@ function mineHtml(d) {
       ? `
       <a class="home-mine-cell" href="${profile}">
         <div class="k">${escapeHtml(t('home.mineIq'))}</div>
-        <div class="v">${iq.band.toFixed(1)}${iq.provisional ? `<small title="${escapeHtml(t('courtiq.provisional'))}">?</small>` : ''}</div>
+        <div class="v num">${iq.band.toFixed(1)}${iq.provisional ? `<small title="${escapeHtml(t('courtiq.provisional'))}">?</small>` : ''}</div>
         <div class="s"><span class="home-mine-dim">${escapeHtml(t('courtiq.ratingCol'))} ${iq.rating}</span><span class="home-mine-dim">${escapeHtml(t('courtiq.gamesPlayed', { count: iq.gamesPlayed }))}</span></div>
       </a>`
       : `
