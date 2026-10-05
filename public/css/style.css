@@ -3529,6 +3529,22 @@ a.home-mine-cell:hover { border-color: var(--orange); }
 .home-mine-move.up { color: var(--green); }
 .home-mine-move.down { color: #ff7a6e; }
 .home-mine-form { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+/* The number tiles: the big number on the left, a few lines beside it behind a thin divider. */
+.home-mine-body { display: flex; align-items: center; gap: 14px; margin-top: 10px; flex: 1; min-width: 0; }
+.home-mine-body .big { font-size: 64px; font-weight: 800; line-height: 0.9; letter-spacing: -0.03em; flex-shrink: 0; }
+.home-mine-body .big sup { font-size: 24px; font-weight: 800; vertical-align: top; position: relative; top: 4px; margin-left: 2px; letter-spacing: 0; }
+.home-mine-body .big.lead { color: var(--green); }
+.home-mine-body .side { display: flex; flex-direction: column; gap: 3px; min-width: 0; border-left: 1px solid rgba(255, 255, 255, 0.14); padding-left: 14px; }
+.home-mine-body .side .of { font-size: 15px; font-weight: 800; }
+.home-mine-body .side .grp { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-mine-body .side .pts { color: #c3c7cf; font-size: 12px; font-weight: 600; }
+/* a narrow tile (two to a row on a phone) has no room beside the number: the lines go under it */
+@media (max-width: 600px) {
+  .home-mine-body { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .home-mine-body .big { font-size: 52px; }
+  .home-mine-body .big sup { font-size: 20px; }
+  .home-mine-body .side { border-left: 0; padding-left: 0; }
+}
 .home-bar.mini { height: 6px; margin-top: 12px; }
 .home-chip.live { background: var(--orange); color: var(--white); }
 @media (max-width: 900px) {

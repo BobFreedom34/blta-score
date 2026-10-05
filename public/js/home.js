@@ -130,23 +130,38 @@ function mineHtml(d) {
       </div>`;
   }
 
+  // Every number tile has the same build: the big number on the left, a few lines beside it behind a thin divider.
+  // A leader (first place, nothing left to play, more wins than losses) gets the number in green.
+  const tile = ({ href, label, num, sup, green, lines, below }) => `
+      <${href ? `a class="home-mine-cell" href="${href}"` : 'div class="home-mine-cell"'}>
+        <div class="k">${escapeHtml(label)}</div>
+        <div class="home-mine-body">
+          <div class="big${green ? ' lead' : ''}">${num}${sup ? `<sup>${sup}</sup>` : ''}</div>
+          <div class="side">${lines}</div>
+        </div>${below || ''}
+      </${href ? 'a' : 'div'}>`;
+  const of = (text) => `<span class="of">${escapeHtml(text)}</span>`;
+  const grp = (text) => `<span class="grp">${escapeHtml(text)}</span>`;
+  const pts = (text) => `<span class="pts">${escapeHtml(text)}</span>`;
+
   let groupCells = '';
   if (row && group) {
     const opponents = Math.max(0, group.rows.length - 1);
     const left = Math.max(0, opponents - row.played);
     const pct = opponents ? Math.min(100, Math.round((row.played / opponents) * 100)) : 0;
-    groupCells = `
-      <div class="home-mine-cell">
-        <div class="k">${escapeHtml(t('home.minePos'))}</div>
-        <div class="v num">${row.position}.<small>${escapeHtml(t('home.minePosOf', { n: group.rows.length }))}</small></div>
-        <div class="s"><span>${escapeHtml(group.name)}</span><span class="home-mine-dim">${escapeHtml(t('home.minePts', { n: row.points }))}</span></div>
-      </div>
-      <div class="home-mine-cell">
-        <div class="k">${escapeHtml(t('home.mineLeft'))}</div>
-        <div class="v num">${left}</div>
-        <div class="s"><span class="home-mine-dim">${escapeHtml(t('home.minePlayed', { done: row.played, total: opponents }))}</span></div>
-        <div class="home-bar mini"><i style="width:${pct}%"></i></div>
-      </div>`;
+    groupCells = tile({
+      label: t('home.minePos'),
+      num: row.position,
+      sup: '.',
+      green: row.position === 1,
+      lines: of(t('home.minePlayers', { n: group.rows.length })) + grp(group.name) + pts(t('home.minePts', { n: row.points })),
+    }) + tile({
+      label: t('home.mineLeft'),
+      num: left,
+      green: left === 0 && opponents > 0,
+      lines: of(t('home.minePlayed', { done: row.played, total: opponents })),
+      below: `<div class="home-bar mini"><i style="width:${pct}%"></i></div>`,
+    });
   }
 
   const wins = form.filter((m) => m.winnerId === pid).length;
@@ -154,21 +169,33 @@ function mineHtml(d) {
     const won = m.winnerId === pid;
     return `<a class="form-square ${won ? 'win' : 'loss'}" href="/match/${m.token}" title="${escapeHtml(opponentOf(m).name)}">${won ? 'W' : 'L'}</a>`;
   }).join('');
-  const formCell = `
+  const formCell = form.length
+    ? tile({
+      label: t('home.mineForm'),
+      num: wins,
+      green: wins > form.length - wins,
+      lines: of(t('home.mineFormSub', { w: wins, l: form.length - wins })) + pts(t('home.mineLastN', { n: form.length })),
+      below: `<div class="home-mine-form">${squares}</div>`,
+    })
+    : `
       <div class="home-mine-cell">
         <div class="k">${escapeHtml(t('home.mineForm'))}</div>
-        ${form.length ? `<div class="home-mine-form">${squares}</div><div class="s"><span class="home-mine-dim">${escapeHtml(t('home.mineFormSub', { w: wins, l: form.length - wins }))}</span></div>` : `<div class="v dim">${escapeHtml(t('home.mineNoForm'))}</div>`}
+        <div class="v dim">${escapeHtml(t('home.mineNoForm'))}</div>
       </div>`;
 
   let rankCell = '';
   if (rankRows) {
     rankCell = ranked
-      ? `
-      <a class="home-mine-cell" href="/rankings">
-        <div class="k">${escapeHtml(t('home.mineRank'))}</div>
-        <div class="v num">${ranked.rank}.<small>${escapeHtml(t('home.minePosOf', { n: rankRows.length }))}</small></div>
-        <div class="s"><span class="home-mine-dim">${escapeHtml(t('home.minePts', { n: ranked.points }))}</span>${ranked.move ? `<span class="home-mine-move ${ranked.move.direction === 'up' ? 'up' : 'down'}">${ranked.move.direction === 'up' ? '▲' : '▼'} ${ranked.move.amount}</span>` : ''}</div>
-      </a>`
+      ? tile({
+        href: '/rankings',
+        label: t('home.mineRank'),
+        num: ranked.rank,
+        sup: '.',
+        green: ranked.rank === 1,
+        lines: of(t('home.minePlayers', { n: rankRows.length }))
+          + pts(t('home.minePts', { n: ranked.points }))
+          + (ranked.move ? `<span class="home-mine-move ${ranked.move.direction === 'up' ? 'up' : 'down'}">${ranked.move.direction === 'up' ? '▲' : '▼'} ${ranked.move.amount}</span>` : ''),
+      })
       : `
       <a class="home-mine-cell" href="/rankings">
         <div class="k">${escapeHtml(t('home.mineRank'))}</div>
@@ -180,12 +207,13 @@ function mineHtml(d) {
   if (d.iq) {
     const profile = `/player/${encodeURIComponent(currentPlayerSlug || pid)}`;
     iqCell = iq
-      ? `
-      <a class="home-mine-cell" href="${profile}">
-        <div class="k">${escapeHtml(t('home.mineIq'))}</div>
-        <div class="v num">${iq.band.toFixed(1)}${iq.provisional ? `<small title="${escapeHtml(t('courtiq.provisional'))}">?</small>` : ''}</div>
-        <div class="s"><span class="home-mine-dim">${escapeHtml(t('courtiq.ratingCol'))} ${iq.rating}</span><span class="home-mine-dim">${escapeHtml(t('courtiq.gamesPlayed', { count: iq.gamesPlayed }))}</span></div>
-      </a>`
+      ? tile({
+        href: profile,
+        label: t('home.mineIq'),
+        num: iq.band.toFixed(1),
+        sup: iq.provisional ? `<span title="${escapeHtml(t('courtiq.provisional'))}">?</span>` : '',
+        lines: of(`${t('courtiq.ratingCol')} ${iq.rating}`) + pts(t('courtiq.gamesPlayed', { count: iq.gamesPlayed })),
+      })
       : `
       <a class="home-mine-cell" href="${profile}">
         <div class="k">${escapeHtml(t('home.mineIq'))}</div>
