@@ -9,6 +9,7 @@ const { Server } = require('socket.io');
 
 const db = require('./src/db');
 const engine = require('./src/matchEngine');
+const shareImage = require('./src/shareImage');
 const badgeEngine = require('./src/badgeEngine');
 const backup = require('./src/backup');
 const playersRouter = require('./src/routes/players');
@@ -112,6 +113,41 @@ function escapeHtmlAttr(str) {
   ));
 }
 
+// The data the result image is drawn from (see src/shareImage.js).
+function matchImageData(row) {
+  const player = (id) => db.prepare('SELECT id, name FROM players WHERE id = ?').get(id);
+  return {
+    player1: player(row.player1_id),
+    player2: player(row.player2_id),
+    winnerId: row.winner_id,
+    endReason: row.end_reason,
+    category: row.category,
+    league: row.league,
+    season: row.season_id ? db.prepare('SELECT name FROM seasons WHERE id = ?').get(row.season_id) : null,
+    group: row.group_id ? db.prepare('SELECT name FROM season_groups WHERE id = ?').get(row.group_id) : null,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    scheduledAt: row.scheduled_at,
+    location: row.location,
+    state: JSON.parse(row.state),
+  };
+}
+
+// 1200x630 result picture used as the link preview (WhatsApp, Messenger…) of a finished match. The link's ?v= is the
+// match's updated_at, so the picture is cached for a long time but a corrected result gets a new address.
+app.get('/match/:token/preview.png', (req, res) => {
+  const row = db.prepare('SELECT * FROM matches WHERE share_token = ?').get(req.params.token);
+  if (!row) return res.status(404).end();
+  try {
+    const png = shareImage.cachedPng(row.share_token, row.updated_at, matchImageData(row));
+    res.set({ 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
+    return res.send(png);
+  } catch (err) {
+    console.error('Result image failed for match', row.share_token, err);
+    return res.redirect(302, '/img/blta-logo.png');
+  }
+});
+
 // Chat apps (WhatsApp, etc.) read Open Graph tags from the raw HTML response
 // without running any JS, so the title/description shown in a shared link
 // preview has to be baked in server-side here rather than set later by
@@ -135,13 +171,26 @@ app.get('/match/:token', (req, res) => {
   }
 
   const origin = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  // A finished match shows its result as the preview picture; anything else keeps the BLTA logo.
+  const hasResultImage = row.status === 'FINISHED' && !!row.winner_id;
+  const imageUrl = hasResultImage
+    ? `${origin}/match/${row.share_token}/preview.png?v=${encodeURIComponent(row.updated_at || '')}`
+    : `${origin}/img/blta-logo.png`;
+  const imageTags = hasResultImage
+    ? `<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="${shareImage.WIDTH}">
+<meta property="og:image:height" content="${shareImage.HEIGHT}">
+<meta property="og:image:alt" content="${escapeHtmlAttr(title)}">
+`
+    : '';
   const metaTags = `<title>${escapeHtmlAttr(title)}</title>
 <meta property="og:title" content="${escapeHtmlAttr(title)}">
 <meta property="og:description" content="${escapeHtmlAttr(description)}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="${escapeHtmlAttr(origin)}/match/${row.share_token}">
-<meta property="og:image" content="${escapeHtmlAttr(origin)}/img/blta-logo.png">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="${escapeHtmlAttr(imageUrl)}">
+${imageTags}<meta name="twitter:card" content="${hasResultImage ? 'summary_large_image' : 'summary'}">
+<meta name="twitter:image" content="${escapeHtmlAttr(imageUrl)}">
 <meta name="twitter:title" content="${escapeHtmlAttr(title)}">
 <meta name="twitter:description" content="${escapeHtmlAttr(description)}">`;
 
