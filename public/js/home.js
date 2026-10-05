@@ -259,7 +259,8 @@ function timelineHtml(d) {
       const span = dayNum(s.endDate) - dayNum(s.startDate) + 1;
       elapsed = Math.max(0, Math.min(100, ((dayNum(today) - dayNum(s.startDate) + 1) / span) * 100));
     }
-    const href = state !== 'future' || s.groups.length ? `/tables?season=${s.id}` : '';
+    // every season has its own page (/season/<name>); an upcoming one without groups yet shows its empty tabs
+    const href = `/season/${encodeURIComponent(s.slug)}`;
     const range = s.startDate && s.endDate ? monthRange(s.startDate, s.endDate) : '';
     const inner = `
       <div class="home-tl-body">

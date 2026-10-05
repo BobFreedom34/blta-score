@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const engine = require('../matchEngine');
 const nameMatch = require('../nameMatch');
 const roundRobin = require('../roundRobin');
+const { sendSeasonRegistrationEmail } = require('../mailer');
 
 const router = express.Router();
 
@@ -73,6 +74,8 @@ function serializeSeason(s) {
     drawDate: s.draw_date || null,
     info: s.info || '',
     galleryUrl: s.gallery_url || '',
+    paymentUrl: s.payment_url || '',
+    registrationOpen: !!s.registration_open,
     matchCount: db.prepare('SELECT COUNT(*) AS n FROM matches WHERE season_id = ?').get(s.id).n,
     groups: groups.map(serializeGroup),
   };
@@ -95,7 +98,91 @@ router.get('/by-slug/:slug', (req, res) => {
     FROM matches WHERE season_id = ? AND round IS NOT NULL AND COALESCE(stage, 'GROUP') = 'GROUP'
     GROUP BY round ORDER BY round
   `).all(season.id).map((r) => ({ round: r.round, total: r.total, finished: r.finished }));
-  res.json({ ...serializeSeason(season), rounds });
+  const registrations = db.prepare(`
+    SELECT r.name, r.category, r.paid, p.slug AS player_slug
+    FROM season_registrations r LEFT JOIN players p ON p.id = r.player_id
+    WHERE r.season_id = ? ORDER BY r.created_at, r.id
+  `).all(season.id).map((r) => ({ name: r.name, category: r.category, paid: !!r.paid, slug: r.player_slug || null }));
+  res.json({ ...serializeSeason(season), rounds, registrations });
+});
+
+// ---------- registration to a season ----------
+
+// Registering is public, so it is limited: a few per hour from one address, plus a hidden field a person never fills in.
+const registerAttempts = new Map();
+function tooManyRegistrations(ip) {
+  const now = Date.now();
+  const recent = (registerAttempts.get(ip) || []).filter((t) => now - t < 60 * 60 * 1000);
+  recent.push(now);
+  registerAttempts.set(ip, recent);
+  return recent.length > 6;
+}
+
+function registrationOpen(season) {
+  const today = new Date().toISOString().slice(0, 10);
+  return !!season.registration_open && !(season.end_date && season.end_date < today);
+}
+
+router.post('/:id/registrations', async (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  const body = req.body || {};
+  if (body.website) return res.status(201).json({ ok: true }); // the hidden field was filled in: a bot, pretend it worked
+  if (!registrationOpen(season)) return res.status(403).json({ code: 'REGISTRATION_CLOSED', error: 'Registration for this season is closed' });
+  if (tooManyRegistrations((String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()) || req.ip)) return res.status(429).json({ error: 'Too many registrations from this address — try again later' });
+
+  const typed = typeof body.name === 'string' ? body.name.replace(/\s+/g, ' ').trim() : '';
+  const email = typeof body.email === 'string' ? body.email.trim() : '';
+  const phone = typeof body.phone === 'string' ? body.phone.replace(/[^\d+]/g, '') : '';
+  if (typed.length < 3 || typed.length > 80) return res.status(400).json({ code: 'BAD_NAME', error: 'Enter your name and surname' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120) return res.status(400).json({ code: 'BAD_EMAIL', error: 'Enter a valid e-mail address' });
+  if (phone.replace(/\D/g, '').length < 9 || phone.length > 20) return res.status(400).json({ code: 'BAD_PHONE', error: 'Enter a valid phone number' });
+  if (!BLTA_CATEGORIES.includes(body.category)) return res.status(400).json({ code: 'BAD_CATEGORY', error: 'Choose a category' });
+
+  // who is this: a chosen existing player, a typed name that is one, or a new name
+  const players = db.prepare('SELECT id, name FROM players').all();
+  let player = null;
+  if (body.playerId !== undefined && body.playerId !== null && body.playerId !== '') {
+    player = players.find((p) => p.id === Number(body.playerId)) || null;
+    if (!player) return res.status(400).json({ code: 'BAD_NAME', error: 'That player does not exist' });
+  } else {
+    const { exact, similar } = nameMatch.findSimilar(typed, players);
+    player = exact || null;
+    if (!player && similar.length && !body.confirmNew) {
+      return res.status(409).json({ code: 'SIMILAR_PLAYERS', typed, suggestions: similar.map((p) => ({ id: p.id, name: p.name })) });
+    }
+  }
+  const name = player ? player.name : typed;
+  const already = db.prepare('SELECT id, player_id, name FROM season_registrations WHERE season_id = ?').all(season.id)
+    .some((r) => (player && r.player_id === player.id) || nameMatch.key(r.name) === nameMatch.key(name));
+  if (already) return res.status(409).json({ code: 'ALREADY_REGISTERED', error: 'This player is already registered for the season' });
+
+  db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(season.id, player ? player.id : null, name, phone, email, body.category);
+  const total = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?').get(season.id).n;
+  // the e-mail to the admin must never make the registration fail
+  sendSeasonRegistrationEmail(season, { name, phone, email, category: body.category, isNew: !player }, total)
+    .catch((err) => console.error('[season registration] admin e-mail failed:', err.message));
+  res.status(201).json({ ok: true, name, category: body.category, paymentUrl: season.payment_url || '' });
+});
+
+// The admin's list: with the contact details (never sent to the public page).
+router.get('/:id/registrations', requireAdmin, (req, res) => {
+  const rows = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(Number(req.params.id));
+  res.json(rows.map((r) => ({ id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, createdAt: r.created_at, playerId: r.player_id })));
+});
+
+router.patch('/registrations/:rid', requireAdmin, (req, res) => {
+  const row = db.prepare('SELECT id FROM season_registrations WHERE id = ?').get(Number(req.params.rid));
+  if (!row) return res.status(404).json({ error: 'Registration not found' });
+  db.prepare('UPDATE season_registrations SET paid = ? WHERE id = ?').run(req.body && req.body.paid ? 1 : 0, row.id);
+  res.json({ ok: true });
+});
+
+router.delete('/registrations/:rid', requireAdmin, (req, res) => {
+  const info = db.prepare('DELETE FROM season_registrations WHERE id = ?').run(Number(req.params.rid));
+  if (!info.changes) return res.status(404).json({ error: 'Registration not found' });
+  res.json({ ok: true });
 });
 
 router.get('/:id/brackets', (req, res) => {
@@ -196,12 +283,15 @@ router.patch('/:id', requireAdmin, (req, res) => {
   const prize = text('prizeMoney', season.prize_money, 120);
   const info = text('info', season.info, 2000);
   const gallery = text('galleryUrl', season.gallery_url, 500);
+  const payment = text('paymentUrl', season.payment_url, 500);
   const draw = req.body.drawDate !== undefined ? parseDate(req.body.drawDate) : { value: season.draw_date };
-  const bad = fee.error || prize.error || info.error || gallery.error || draw.error;
+  const bad = fee.error || prize.error || info.error || gallery.error || payment.error || draw.error;
   if (bad) return res.status(400).json({ error: bad });
   if (gallery.value && !/^https?:\/\//i.test(gallery.value)) return res.status(400).json({ error: 'The gallery link must start with http:// or https://' });
-  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ? WHERE id = ?')
-    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, season.id);
+  if (payment.value && !/^https?:\/\//i.test(payment.value)) return res.status(400).json({ error: 'The payment link must start with http:// or https://' });
+  const open = req.body.registrationOpen === undefined ? season.registration_open : (req.body.registrationOpen ? 1 : 0);
+  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, registration_open = ? WHERE id = ?')
+    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, open, season.id);
   res.json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
 });
 
@@ -212,6 +302,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
   if (!season) return res.status(404).json({ error: 'Season not found' });
   db.prepare('UPDATE matches SET group_id = NULL WHERE season_id = ?').run(season.id);
   db.prepare('DELETE FROM season_group_members WHERE group_id IN (SELECT id FROM season_groups WHERE season_id = ?)').run(season.id);
+  db.prepare('DELETE FROM season_registrations WHERE season_id = ?').run(season.id);
   db.prepare('DELETE FROM seasons WHERE id = ?').run(season.id);
   res.json({ ok: true });
 });

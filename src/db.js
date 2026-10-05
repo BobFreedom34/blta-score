@@ -1261,12 +1261,34 @@ if (!db.prepare('PRAGMA table_info(matches)').all().some((c) => c.name === 'roun
 // a short description and a link to the photo gallery (all optional text, edited in /seasons-admin); and, per player of a
 // group, whether the entry fee is paid.
 const seasonInfoColumns = db.prepare('PRAGMA table_info(seasons)').all().map((c) => c.name);
-['entry_fee', 'prize_money', 'draw_date', 'info', 'gallery_url'].forEach((col) => {
+['entry_fee', 'prize_money', 'draw_date', 'info', 'gallery_url', 'payment_url'].forEach((col) => {
   if (!seasonInfoColumns.includes(col)) db.exec(`ALTER TABLE seasons ADD COLUMN ${col} TEXT`);
 });
 if (!db.prepare('PRAGMA table_info(season_group_members)').all().some((c) => c.name === 'paid')) {
   db.exec('ALTER TABLE season_group_members ADD COLUMN paid INTEGER NOT NULL DEFAULT 0');
 }
+
+// Entering a season: the "Registrácia" form of the season page. payment_url is the link of the online entry-fee payment (a
+// Stripe payment link); registration_open lets an admin close the form. A registration keeps the contact details for the
+// admin only; the season page shows just the name, category and whether it is paid. player_id is set when the name is an
+// existing player (an admin links a new name later, by adding it to a group).
+if (!db.prepare('PRAGMA table_info(seasons)').all().some((c) => c.name === 'registration_open')) {
+  db.exec('ALTER TABLE seasons ADD COLUMN registration_open INTEGER NOT NULL DEFAULT 1');
+}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS season_registrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id INTEGER NOT NULL,
+    player_id INTEGER,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    email TEXT NOT NULL,
+    category TEXT NOT NULL,
+    paid INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_season_registrations_season ON season_registrations(season_id);
+`);
 
 // Tournaments and other events of the schedule page (/harmonogram). League seasons are not stored here — the page reads
 // them from the seasons table. categories: comma list of ELITE, NEXT_GEN, NOVICE.

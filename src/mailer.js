@@ -392,7 +392,37 @@ async function sendBackupFailedEmail(err) {
   return true;
 }
 
+// A player entered a season through the season page's registration form: tells the admin who, in which category and how to
+// reach them (the reply goes to the player).
+async function sendSeasonRegistrationEmail(season, registration, total) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping season-registration email.');
+    return false;
+  }
+  const text = [
+    `Nová registrácia do série ${season.name}:`,
+    '',
+    `Meno: ${registration.name}${registration.isNew ? ' (nové meno — zatiaľ nie je medzi hráčmi)' : ''}`,
+    `Kategória: ${categoryLabel(registration.category)}`,
+    `Telefón: ${registration.phone}`,
+    `E-mail: ${registration.email}`,
+    '',
+    `Prihlásených v sérii: ${total}`,
+    `Zoznam a úhrady: ${process.env.PUBLIC_URL || ''}/seasons-admin`,
+  ].join('\n');
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
+    replyTo: registration.email,
+    subject: `Registrácia do série: ${registration.name} (${categoryLabel(registration.category)})`,
+    text,
+  });
+  return true;
+}
+
 module.exports = {
+  sendSeasonRegistrationEmail,
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendProposalReceivedEmail,
   sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendPlayRequestEmail,

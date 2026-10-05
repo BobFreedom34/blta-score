@@ -95,6 +95,8 @@ function statusOf() {
 // The players of the season: the group lists (with their paid tick); a finished season whose lists were never filled uses
 // the names in its final tables.
 function playersList() {
+  const registered = season.registrations || [];
+  if (registered.length) return registered.map((r) => ({ id: r.slug || null, name: r.name, slug: r.slug, category: r.category, paid: r.paid }));
   const groups = season.groups || [];
   const members = groups.flatMap((g) => g.members.filter((m) => !m.withdrawn).map((m) => ({ id: m.id, name: m.name, slug: m.slug, category: g.category, paid: m.paid })));
   if (members.length) return members;
@@ -127,6 +129,18 @@ function secHead(id, title, linkHref, linkText) {
   return `<div class="sv-sec-h">${title ? `<h2>${escapeHtml(title)}</h2>` : '<span></span>'}${linkHref ? `<a href="${linkHref}">${escapeHtml(linkText)} ›</a>` : ''}</div>`;
 }
 
+// "Registrácia" (opens the form) and "Úhrada štartovného online" (the Stripe payment link set in the backend).
+function actionsHtml(status) {
+  const buttons = [];
+  if (status !== 'past') {
+    buttons.push(season.registrationOpen
+      ? `<button type="button" class="sv-btn primary" id="sv-register">${escapeHtml(t('season.register'))}</button>`
+      : `<span class="sv-btn off">${escapeHtml(t('season.registerClosed'))}</span>`);
+  }
+  if (season.paymentUrl) buttons.push(`<a class="sv-btn pay" href="${escapeHtml(season.paymentUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.payOnline'))}</a>`);
+  return buttons.length ? `<span class="sv-actions">${buttons.join('')}</span>` : '';
+}
+
 function headerHtml() {
   const status = statusOf();
   const today = todayIso();
@@ -144,7 +158,7 @@ function headerHtml() {
   return `
     <div class="sv-crumb"><a href="/harmonogram">${escapeHtml(t('schedule.heading'))}</a> › ${escapeHtml(termText())}</div>
     <h1 class="sv-title">${escapeHtml(season.name)}</h1>
-    <div class="sv-chips"><span class="sv-chip l">${escapeHtml(t('schedule.league'))}</span>${state}${note}</div>
+    <div class="sv-chips"><span class="sv-chip l">${escapeHtml(t('schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
     <div class="sv-progress">${seasonProgressHtml(season, standings)}</div>`;
 }
 
@@ -220,7 +234,7 @@ function scheduleHtml() {
 function playersHtml() {
   const list = playersList();
   if (!list.length) return '';
-  const showPaid = !!season.entryFee && list.some((p) => p.paid !== null);
+  const showPaid = !!(season.entryFee || season.paymentUrl) && list.some((p) => p.paid !== null);
   const loc = currentLang === 'en' ? 'en' : 'sk';
   const rows = [...list].sort((a, b) => a.name.localeCompare(b.name, loc)).map((p) => {
     const name = p.id ? `<a href="/player/${encodeURIComponent(p.slug || p.id)}">${escapeHtml(p.name)}</a>` : escapeHtml(p.name);
@@ -258,6 +272,108 @@ async function fillBrackets() {
 function galleryHtml() {
   if (!season.galleryUrl) return '';
   return `<section class="sv-sec" id="sv-gallery">${secHead('gallery', '')}<a class="sv-gallery-btn" href="${escapeHtml(season.galleryUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.galleryOpen'))}</a></section>`;
+}
+
+// ---------- registration ----------
+
+// The form: one name field that suggests the existing players (a new name can just be typed), phone, e-mail and category.
+// A name close to an existing player asks "did you mean …?" before it is taken as a new one.
+async function openRegisterModal() {
+  await loadPlayers();
+  const wrap = document.createElement('div');
+  wrap.className = 'modal-backdrop';
+  wrap.innerHTML = `
+    <div class="modal sv-reg" role="dialog" aria-modal="true">
+      <button type="button" class="close" data-close aria-label="${escapeHtml(t('season.regClose'))}">&times;</button>
+      <h3>${escapeHtml(t('season.regTitle'))}</h3>
+      <div class="sv-reg-season">${escapeHtml(season.name)}</div>
+      <form id="sv-reg-form" novalidate>
+        <div class="field">
+          <label for="sv-reg-name">${escapeHtml(t('season.regName'))}</label>
+          <div class="autocomplete"><input type="text" id="sv-reg-name" autocomplete="off" maxlength="80"><div class="autocomplete-list" id="sv-reg-name-list"></div></div>
+          <small>${escapeHtml(t('season.regNameHint'))}</small>
+        </div>
+        <div class="field"><label for="sv-reg-phone">${escapeHtml(t('season.regPhone'))}</label><input type="tel" id="sv-reg-phone" autocomplete="tel" maxlength="20" placeholder="0903 111 222"></div>
+        <div class="field"><label for="sv-reg-email">${escapeHtml(t('season.regEmail'))}</label><input type="email" id="sv-reg-email" autocomplete="email" maxlength="120"></div>
+        <div class="field"><label for="sv-reg-cat">${escapeHtml(t('season.regCategory'))}</label>
+          <select id="sv-reg-cat"><option value="">${escapeHtml(t('season.regChoose'))}</option>${CATEGORY_ORDER.map((c) => `<option value="${c}">${escapeHtml(CATEGORY_NAMES[c])}</option>`).join('')}</select>
+        </div>
+        <input type="text" id="sv-reg-website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
+        <div class="sv-reg-similar" id="sv-reg-similar"></div>
+        <div class="sv-reg-error" id="sv-reg-error"></div>
+        <p class="sv-reg-note">${escapeHtml(t('season.regNote'))}</p>
+        <button type="submit" class="btn btn-primary btn-block" id="sv-reg-send">${escapeHtml(t('season.regSend'))}</button>
+      </form>
+    </div>`;
+  document.body.appendChild(wrap);
+  const $ = (id) => wrap.querySelector(`#sv-reg-${id}`);
+  const close = () => wrap.remove();
+  wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('[data-close]')) close(); });
+  setupAutocomplete('sv-reg-name', 'sv-reg-name-list');
+  if (playerAuthed && currentPlayerName) $('name').value = currentPlayerName;
+  if (typeof currentPlayerEmail === 'string' && currentPlayerEmail) $('email').value = currentPlayerEmail;
+  $('name').focus();
+
+  let chosenId = null; // a player picked from the "did you mean" list
+  const fail = (msg) => { $('error').textContent = msg; $('similar').innerHTML = ''; };
+
+  async function send(confirmNew) {
+    $('error').textContent = '';
+    const typed = $('name').value.replace(/\s+/g, ' ').trim();
+    const phone = $('phone').value.trim();
+    const email = $('email').value.trim();
+    const category = $('cat').value;
+    if (typed.length < 3) return fail(t('season.regErrName'));
+    if (phone.replace(/\D/g, '').length < 9) return fail(t('season.regErrPhone'));
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(t('season.regErrEmail'));
+    if (!category) return fail(t('season.regErrCategory'));
+    const known = chosenId ? { id: chosenId } : findPlayerByTypedName(typed);
+    const button = $('send');
+    button.disabled = true;
+    button.textContent = t('season.regSending');
+    try {
+      const res = await api(`/seasons/${season.id}/registrations`, {
+        method: 'POST',
+        body: { name: typed, phone, email, category, website: $('website').value, ...(known ? { playerId: known.id } : {}), ...(confirmNew ? { confirmNew: true } : {}) },
+      });
+      const pay = res && res.paymentUrl
+        ? `<p>${escapeHtml(t('season.regPayHint'))}</p><a class="btn btn-primary btn-block" href="${escapeHtml(res.paymentUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.payOnline'))}</a>`
+        : '';
+      wrap.querySelector('.modal').innerHTML = `
+        <button type="button" class="close" data-close aria-label="${escapeHtml(t('season.regClose'))}">&times;</button>
+        <h3>${escapeHtml(t('season.regThanks', { name: (res && res.name) || typed }))}</h3>
+        <p>${escapeHtml(t('season.regDone'))}</p>${pay}
+        <button type="button" class="btn btn-outline btn-block" data-close style="margin-top:10px">${escapeHtml(t('season.regClose'))}</button>`;
+      refresh(); // the new name appears in the players tab
+    } catch (err) {
+      button.disabled = false;
+      button.textContent = t('season.regSend');
+      const d = err.data || {};
+      if (d.code === 'SIMILAR_PLAYERS') {
+        $('similar').innerHTML = `<div class="sv-reg-similar-title">${escapeHtml(t('season.regSimilar'))}</div>`
+          + d.suggestions.map((p) => `<button type="button" class="sv-reg-opt" data-id="${p.id}">${escapeHtml(p.name)}</button>`).join('')
+          + `<button type="button" class="sv-reg-opt new" data-new>${escapeHtml(t('season.regNewName'))}</button>`;
+        return;
+      }
+      $('similar').innerHTML = '';
+      const msg = { ALREADY_REGISTERED: 'season.regAlready', REGISTRATION_CLOSED: 'season.regClosedErr', BAD_NAME: 'season.regErrName', BAD_EMAIL: 'season.regErrEmail', BAD_PHONE: 'season.regErrPhone', BAD_CATEGORY: 'season.regErrCategory' }[d.code];
+      $('error').textContent = t(msg || 'season.regError');
+    }
+  }
+
+  $('similar').addEventListener('click', (e) => {
+    const opt = e.target.closest('.sv-reg-opt');
+    if (!opt) return;
+    if (opt.dataset.id) {
+      chosenId = Number(opt.dataset.id);
+      $('name').value = opt.textContent;
+      send(false);
+    } else {
+      send(true);
+    }
+  });
+  $('name').addEventListener('input', () => { chosenId = null; $('similar').innerHTML = ''; });
+  wrap.querySelector('#sv-reg-form').addEventListener('submit', (e) => { e.preventDefault(); send(false); });
 }
 
 // ---------- tabs ----------
@@ -333,6 +449,7 @@ function openTab(key) {
 }
 
 rootEl.addEventListener('click', async (e) => {
+  if (e.target.closest('#sv-register')) { openRegisterModal(); return; }
   const tabBtn = e.target.closest('#sv-tabs [data-tab]');
   if (tabBtn) { openTab(tabBtn.dataset.tab); return; }
   const cat = e.target.closest('#sv-panel [data-cat]');

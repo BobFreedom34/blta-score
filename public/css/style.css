@@ -3911,3 +3911,25 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-gallery-btn:hover { border-color: var(--orange); }
 @media (max-width: 900px) { #sv-cats, .sv-rounds { margin-bottom: 40px; } #sv-tabs { margin-bottom: 40px; } #sv-tabs.has-sub { margin-bottom: 14px; } .sv-chips { margin-bottom: 40px; } #sv-tabs { margin-top: 40px; } .sv-gl, .sv-two { row-gap: 40px; } .sv-bracket { margin-bottom: 40px; } }
 @media (max-width: 700px) { .sv-title { font-size: 26px; } .sv-gl { grid-template-columns: 1fr; } }
+
+/* season page: registration + payment buttons and the registration form */
+.sv-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.sv-btn { display: inline-flex; align-items: center; padding: 9px 16px; border-radius: 10px; font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; border: 1px solid transparent; cursor: pointer; white-space: nowrap; }
+.sv-btn.primary { background: var(--orange); color: var(--white); }
+.sv-btn.primary:hover { background: var(--orange-dark); }
+.sv-btn.pay { background: transparent; border-color: var(--green); color: var(--green); }
+.sv-btn.pay:hover { background: var(--green); color: #0a0a0a; }
+.sv-btn.off { background: var(--fill-grey); color: #8b8f98; border-color: rgba(255, 255, 255, 0.1); cursor: default; }
+.sv-reg h3 { margin: 0 0 2px; }
+.sv-reg-season { color: var(--gray); font-weight: 700; font-size: 13px; margin: 0 0 16px; }
+.sv-reg .field small { color: var(--gray); }
+.sv-reg-error { color: var(--danger); font-weight: 700; font-size: 13px; min-height: 0; margin: 0 0 10px; }
+.sv-reg-error:empty { display: none; }
+.sv-reg-note { color: var(--gray); font-size: 12px; margin: 0 0 12px; }
+.sv-reg-similar { margin: 0 0 12px; }
+.sv-reg-similar:empty { display: none; }
+.sv-reg-similar-title { font-weight: 800; font-size: 13px; margin: 0 0 8px; }
+.sv-reg-opt { display: block; width: 100%; text-align: left; font-family: inherit; font-size: 14px; font-weight: 700; padding: 10px 12px; margin: 0 0 6px; border: 1.5px solid var(--gray-light); border-radius: 10px; background: var(--white); cursor: pointer; }
+.sv-reg-opt:hover { border-color: var(--orange); }
+.sv-reg-opt.new { color: var(--gray); font-weight: 600; }
+@media (max-width: 700px) { .sv-actions { margin-left: 0; width: 100%; } }

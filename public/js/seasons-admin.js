@@ -224,12 +224,22 @@ function seasonHtml(s) {
         <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Gallery link
           <input type="text" data-field="galleryUrl" value="${escapeHtml(s.galleryUrl || '')}" maxlength="500" placeholder="https://…" style="display:block;width:100%;margin-top:4px;${inputStyle}">
         </label>
+        <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Payment link (Stripe) — the "Úhrada štartovného online" button
+          <input type="text" data-field="paymentUrl" value="${escapeHtml(s.paymentUrl || '')}" maxlength="500" placeholder="https://buy.stripe.com/…" style="display:block;width:100%;margin-top:4px;${inputStyle}">
+        </label>
+        <label style="font-size:12px;font-weight:700;display:flex;gap:6px;align-items:center;padding-bottom:9px">
+          <input type="checkbox" data-field="registrationOpen"${s.registrationOpen ? ' checked' : ''}> Registration open
+        </label>
         <label style="flex-basis:100%;font-size:12px;font-weight:700">Description
           <textarea data-field="info" rows="3" maxlength="2000" style="display:block;width:100%;margin-top:4px;${inputStyle}">${escapeHtml(s.info || '')}</textarea>
         </label>
         <button type="submit" class="btn btn-sm btn-outline">Save season</button>
         <button type="button" class="btn btn-sm btn-danger" data-action="delete-season">Delete season</button>
       </form>
+      <div class="season-regs" style="margin:10px 0 0">
+        <button type="button" class="btn btn-sm btn-outline" data-action="show-regs">Registrations</button>
+        <div class="season-regs-list" hidden style="margin-top:10px"></div>
+      </div>
       <div style="font-size:12px;color:var(--gray);margin:8px 0 12px">
         ${s.matchCount} tagged ${s.matchCount === 1 ? 'match' : 'matches'} ·
         ${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'}
@@ -281,9 +291,48 @@ function wireSeason(card) {
     errorEl.textContent = '';
     const f = (name) => e.target.querySelector(`[data-field="${name}"]`).value;
     try {
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: f('info') } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: f('info') } });
       toast('Season saved');
       await load();
+    } catch (err) { fail(err); }
+  });
+
+  // registrations from the season page's form: contact details, the paid tick, delete
+  const regsBtn = card.querySelector('[data-action="show-regs"]');
+  const regsList = card.querySelector('.season-regs-list');
+  const catLabel = (key) => (CATEGORIES.find(([k]) => k === key) || [key, key])[1];
+  async function loadRegs() {
+    try {
+      const rows = await api(`/seasons/${id}/registrations`);
+      regsBtn.textContent = `Registrations (${rows.length})`;
+      regsList.innerHTML = rows.length ? rows.map((r) => `
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #eee" data-reg="${r.id}">
+          <div style="flex:1;min-width:220px">
+            <strong>${escapeHtml(r.name)}</strong> <span class="sa-chip future">${escapeHtml(catLabel(r.category))}</span>${r.playerId ? '' : ' <span style="font-size:11px;color:var(--gray)">new name</span>'}
+            <div style="font-size:12px;color:var(--gray)">${escapeHtml(r.phone)} · <a href="mailto:${escapeHtml(r.email)}" style="color:var(--orange)">${escapeHtml(r.email)}</a> · ${escapeHtml(fmtDate(r.createdAt.slice(0, 10)))}</div>
+          </div>
+          <button type="button" class="sg-link" data-reg-paid="${r.paid ? 0 : 1}">${r.paid ? 'Paid ✓' : 'Not paid'}</button>
+          <button type="button" class="sg-x" data-reg-del title="Delete this registration">&times;</button>
+        </div>`).join('') : '<div class="sg-empty">No registrations yet.</div>';
+    } catch (err) { fail(err); }
+  }
+  regsBtn.addEventListener('click', async () => {
+    regsList.hidden = !regsList.hidden;
+    if (!regsList.hidden) await loadRegs();
+  });
+  regsList.addEventListener('click', async (e) => {
+    const row = e.target.closest('[data-reg]');
+    if (!row) return;
+    const rid = row.dataset.reg;
+    try {
+      if (e.target.closest('[data-reg-paid]')) {
+        await api(`/seasons/registrations/${rid}`, { method: 'PATCH', body: { paid: e.target.closest('[data-reg-paid]').dataset.regPaid === '1' } });
+        await loadRegs();
+      } else if (e.target.closest('[data-reg-del]')) {
+        if (!confirm('Delete this registration?')) return;
+        await api(`/seasons/registrations/${rid}`, { method: 'DELETE' });
+        await loadRegs();
+      }
     } catch (err) { fail(err); }
   });
 
