@@ -130,19 +130,20 @@ function mineHtml(d) {
       </div>`;
   }
 
-  // Every number tile has the same build: the big number on the left, a few lines beside it behind a thin divider.
-  // A leader (first place, nothing left to play, more wins than losses) gets the number in green.
-  const tile = ({ href, label, num, sup, green, lines, below }) => `
+  // Every number tile has the same build: the big number on the left, at most two lines beside it behind a thin divider.
+    const tile = ({ href, label, num, sup, lines, below }) => `
       <${href ? `a class="home-mine-cell" href="${href}"` : 'div class="home-mine-cell"'}>
         <div class="k">${escapeHtml(label)}</div>
         <div class="home-mine-body">
-          <div class="big${green ? ' lead' : ''}">${num}${sup ? `<sup>${sup}</sup>` : ''}</div>
+          <div class="big">${num}${sup ? `<sup>${sup}</sup>` : ''}</div>
           <div class="side">${lines}</div>
         </div>${below || ''}
       </${href ? 'a' : 'div'}>`;
   const of = (text) => `<span class="of">${escapeHtml(text)}</span>`;
   const grp = (text) => `<span class="grp">${escapeHtml(text)}</span>`;
   const pts = (text) => `<span class="pts">${escapeHtml(text)}</span>`;
+  // two small facts on one line
+  const together = (...parts) => `<span class="row">${parts.join('')}</span>`;
 
   let groupCells = '';
   if (row && group) {
@@ -151,14 +152,11 @@ function mineHtml(d) {
     const pct = opponents ? Math.min(100, Math.round((row.played / opponents) * 100)) : 0;
     groupCells = tile({
       label: t('home.minePos'),
-      num: row.position,
-      sup: '.',
-      green: row.position === 1,
-      lines: of(t('home.minePlayers', { n: group.rows.length })) + grp(group.name) + pts(t('home.minePts', { n: row.points })),
+      num: `${row.position}.`,
+      lines: of(t('home.minePlayers', { n: group.rows.length })) + together(grp(group.name), pts(t('home.minePts', { n: row.points }))),
     }) + tile({
       label: t('home.mineLeft'),
       num: left,
-      green: left === 0 && opponents > 0,
       lines: of(t('home.minePlayed', { done: row.played, total: opponents })),
       below: `<div class="home-bar mini"><i style="width:${pct}%"></i></div>`,
     });
@@ -173,7 +171,6 @@ function mineHtml(d) {
     ? tile({
       label: t('home.mineForm'),
       num: wins,
-      green: wins > form.length - wins,
       lines: of(t('home.mineFormSub', { w: wins, l: form.length - wins })) + pts(t('home.mineLastN', { n: form.length })),
       below: `<div class="home-mine-form">${squares}</div>`,
     })
@@ -189,12 +186,9 @@ function mineHtml(d) {
       ? tile({
         href: '/rankings',
         label: t('home.mineRank'),
-        num: ranked.rank,
-        sup: '.',
-        green: ranked.rank === 1,
+        num: `${ranked.rank}.`,
         lines: of(t('home.minePlayers', { n: rankRows.length }))
-          + pts(t('home.minePts', { n: ranked.points }))
-          + (ranked.move ? `<span class="home-mine-move ${ranked.move.direction === 'up' ? 'up' : 'down'}">${ranked.move.direction === 'up' ? '▲' : '▼'} ${ranked.move.amount}</span>` : ''),
+          + together(pts(t('home.minePts', { n: ranked.points })), ranked.move ? `<span class="home-mine-move ${ranked.move.direction === 'up' ? 'up' : 'down'}">${ranked.move.direction === 'up' ? '▲' : '▼'} ${ranked.move.amount}</span>` : ''),
       })
       : `
       <a class="home-mine-cell" href="/rankings">
