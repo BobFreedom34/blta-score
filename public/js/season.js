@@ -18,6 +18,8 @@ let upcoming = [];
 let roundMatches = [];
 let category = null;
 let round = null;
+let schedCat = 'ALL'; // the Rozpis tab's category and group choice
+let schedGroup = 'ALL';
 const bracketData = new Map(); // bracket id -> full bracket, cleared whenever the data is refreshed
 let tab = null; // the open tab: info, tables, results, schedule, players, playoff or gallery
 const loaded = new Set(); // tabs whose data is loaded and still current
@@ -70,8 +72,14 @@ async function loadBlocks() {
   upcoming = [...live, ...planned].slice(0, 5);
 }
 
+// The matches of the chosen round, or (round === 'ALL') of every round — the group-stage matches that have a round.
 async function loadRound() {
-  roundMatches = round === null ? [] : await api(`/matches?seasonId=${season.id}&round=${round}`).catch(() => []);
+  if (round === null) { roundMatches = []; return; }
+  if (round === 'ALL') {
+    roundMatches = (await api(`/matches?seasonId=${season.id}`).catch(() => [])).filter((m) => m.round);
+    return;
+  }
+  roundMatches = await api(`/matches?seasonId=${season.id}&round=${round}`).catch(() => []);
 }
 
 // The round to show first: the first one that still has matches to play, else the last.
@@ -92,33 +100,31 @@ function statusOf() {
   return 'now';
 }
 
-// The players of the season grouped like the season itself: category -> group -> players. A group's list is its members
-// (backend), else the names in its table; a registered player not yet placed in a group waits in "ungrouped". `paid` is
-// true/false when known (a registration or a group member), null when it is not tracked (a finished season).
+// The players of the season by category (the group is not shown): a group's members (backend), else the names in the group
+// tables of a finished season, plus everyone who registered. `paid` is true/false when known (a registration or a group
+// member), null when it is not tracked.
 function playersModel() {
   const regs = new Map((season.registrations || []).map((r) => [nameKey(r.name), r]));
   const tables = new Map((standings ? standings.groups : []).map((g) => [g.id, g]));
-  const placed = new Set();
-  const cats = CATEGORY_ORDER.map((category) => ({ category, groups: [] }));
+  const people = new Map();
+  const add = (name, slug, category, paid) => {
+    const key = nameKey(name);
+    const known = people.get(key);
+    if (known) { if (paid === true) known.paid = true; return; }
+    people.set(key, { name, slug, category, paid });
+  };
   (season.groups || []).forEach((g) => {
     const members = g.members.filter((m) => !m.withdrawn);
-    let people;
-    if (members.length) {
-      people = members.map((m) => ({ name: m.name, slug: m.slug, paid: !!(m.paid || (regs.get(nameKey(m.name)) || {}).paid) }));
-    } else {
-      const table = tables.get(g.id);
-      people = (table ? table.rows : []).map((r) => {
-        const reg = regs.get(nameKey(r.player.name));
-        return { name: r.player.name, slug: r.player.slug, paid: reg ? reg.paid : null };
-      });
-    }
-    people.forEach((p) => placed.add(nameKey(p.name)));
-    const cat = cats.find((c) => c.category === g.category);
-    if (cat && people.length) cat.groups.push({ name: g.name, players: people }); // a group without players has nothing to show yet
+    if (members.length) members.forEach((m) => add(m.name, m.slug, g.category, !!(m.paid || (regs.get(nameKey(m.name)) || {}).paid)));
+    else ((tables.get(g.id) || { rows: [] }).rows).forEach((r) => add(r.player.name, r.player.slug, g.category, regs.has(nameKey(r.player.name)) ? regs.get(nameKey(r.player.name)).paid : null));
   });
-  const ungrouped = (season.registrations || []).filter((r) => !placed.has(nameKey(r.name))).map((r) => ({ name: r.name, slug: r.slug, paid: r.paid, category: r.category }));
-  const total = cats.reduce((sum, c) => sum + c.groups.reduce((a, g) => a + g.players.length, 0), 0) + ungrouped.length;
-  return { cats: cats.filter((c) => c.groups.length), ungrouped, total };
+  (season.registrations || []).forEach((r) => add(r.name, r.slug, r.category, r.paid));
+  const loc = currentLang === 'en' ? 'en' : 'sk';
+  const cats = CATEGORY_ORDER.map((category) => ({
+    category,
+    players: [...people.values()].filter((p) => p.category === category).sort((a, b) => a.name.localeCompare(b.name, loc)),
+  })).filter((c) => c.players.length);
+  return { cats, total: people.size };
 }
 
 
@@ -182,26 +188,32 @@ function tilesHtml() {
   return `<div class="sv-tiles">${tiles}</div>`;
 }
 
-// The description, laid out: the sentences as a lead card, "Label: value" lines as fact tiles, a short last line as the
-// sign-off. (Plain text typed in the backend; blank lines separate the blocks.)
+// The description: "Label: value" lines become fact tiles (shown first), the rest is the text card. Rich text from the backend
+// editor is already cleaned on the server; an older plain-text description works too.
 function infoHtml() {
   if (!season.info) return '';
-  const blocks = season.info.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+  const raw = season.info;
+  const html = /<[a-z][\s\S]*>/i.test(raw)
+    ? raw
+    : raw.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean).map((b) => `<p>${escapeHtml(b).replace(/\n/g, '<br>')}</p>`).join('');
+  const box = document.createElement('div');
+  box.innerHTML = html;
+  const nodes = [...box.childNodes].map((n) => (n.nodeType === 3 ? (n.textContent.trim() ? Object.assign(document.createElement('p'), { textContent: n.textContent.trim() }) : null) : n)).filter(Boolean);
   const lead = [];
   const facts = [];
-  let sign = '';
-  blocks.forEach((block, i) => {
-    const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
-    const pairs = lines.map((l) => l.match(/^([^:]{2,40}):\s*(.+)$/));
-    if (pairs.every(Boolean)) pairs.forEach((m) => facts.push([m[1], m[2]]));
-    else if (i === blocks.length - 1 && lines.length === 1 && lines[0].length <= 40 && i > 0) sign = lines[0];
-    else lead.push(lines.join(' '));
+  const KV = /^([^:]{2,40}):\s*(.+)$/;
+  nodes.forEach((n) => {
+    if (n.tagName === 'P') {
+      const lines = n.innerHTML.split(/<br\s*\/?>/i).map((l) => { const d = document.createElement('div'); d.innerHTML = l; return d.textContent.trim(); }).filter(Boolean);
+      const pairs = lines.map((l) => l.match(KV));
+      if (lines.length && pairs.every(Boolean) && lines.every((l) => l.length <= 90)) { pairs.forEach((m) => facts.push([m[1], m[2]])); return; }
+    }
+    lead.push(n.outerHTML);
   });
   return `
     <div class="sv-about">
-      ${lead.length ? `<div class="sv-about-lead">${lead.map((p) => `<p>${escapeHtml(p)}</p>`).join('')}</div>` : ''}
       ${facts.length ? `<div class="sv-facts">${facts.map(([k, v]) => `<div class="sv-fact"><span>${escapeHtml(k)}</span><b>${escapeHtml(v)}</b></div>`).join('')}</div>` : ''}
-      ${sign ? `<div class="sv-sign">${escapeHtml(sign)}</div>` : ''}
+      ${lead.length ? `<div class="sv-about-lead">${lead.join('')}</div>` : ''}
     </div>`;
 }
 
@@ -233,61 +245,83 @@ function tablesHtml() {
     </section>`;
 }
 
-// One match of the round in a group card: the two names stacked, the result or the date on the right.
+// One match of the round on a single line: name · result / date · name.
 function scheduleRow(m) {
   const done = m.status === 'FINISHED';
   const sets = (m.state && m.state.setsWon) || { 1: 0, 2: 0 };
-  const right = done ? `<span class="rs">${sets[1]} : ${sets[2]}</span>`
+  const mid = done ? `<span class="rs">${sets[1]} : ${sets[2]}</span>`
     : m.status === 'LIVE' ? `<span class="rs live">${escapeHtml(t('home.live'))}</span>`
       : m.scheduledAt ? `<span class="rs date">${escapeHtml(chipDate(m.scheduledAt))}</span>`
         : '<span class="rs tbd">—</span>';
-  return `<a class="sv-rg-m" href="/match/${m.token}"><span class="pl"><span class="${done && m.winnerId === m.player1.id ? 'w' : ''}">${escapeHtml(m.player1.name)}</span><span class="${done && m.winnerId === m.player2.id ? 'w' : ''}">${escapeHtml(m.player2.name)}</span></span>${right}</a>`;
+  return `<a class="sv-rl-m" href="/match/${m.token}"><span class="a${done && m.winnerId === m.player1.id ? ' w' : ''}">${escapeHtml(m.player1.name)}</span>${mid}<span class="b${done && m.winnerId === m.player2.id ? ' w' : ''}">${escapeHtml(m.player2.name)}</span></a>`;
 }
 
-// The Rozpis tab: the rounds as buttons (with how far each is), and the chosen round as one small card per group.
+// The Rozpis tab: the rounds on one line (and "Všetky kolá"), then the category and the group to choose, then the matches — a
+// line each, under a small heading per group (and per round when all rounds are shown).
 function scheduleHtml() {
   const rounds = season.rounds || [];
   if (!rounds.length) return '';
-  const pills = rounds.map((r) => `<button type="button" class="sv-round${r.round === round ? ' cur' : ''}" data-round="${r.round}" style="--p:${Math.round((r.finished / Math.max(1, r.total)) * 100)}%"><b>${escapeHtml(t('season.roundN', { n: r.round }))}</b><small>${r.finished}/${r.total}</small></button>`).join('');
-  const order = new Map((season.groups || []).map((g, i) => [g.id, i]));
-  const byGroup = new Map();
-  roundMatches.forEach((m) => {
-    const id = m.group ? m.group.id : 0;
-    if (!byGroup.has(id)) byGroup.set(id, { group: m.group, list: [] });
-    byGroup.get(id).list.push(m);
-  });
-  const cards = [...byGroup.entries()].sort((a, b) => (order.get(a[0]) ?? 99) - (order.get(b[0]) ?? 99)).map(([, { group, list }]) => `
-    <div class="sv-rg-card">
-      <div class="sv-rg-h"><b>${escapeHtml(group ? group.name : '')}</b><span>${escapeHtml(group ? (CATEGORY_NAMES[group.category] || '') : '')}</span></div>
-      ${list.map(scheduleRow).join('')}
-    </div>`).join('');
+  const groups = season.groups || [];
+  const cats = CATEGORY_ORDER.filter((c) => groups.some((g) => g.category === c));
+  if (schedCat !== 'ALL' && !cats.includes(schedCat)) schedCat = 'ALL';
+  const inCat = groups.filter((g) => schedCat === 'ALL' || g.category === schedCat);
+  if (schedGroup !== 'ALL' && !inCat.some((g) => g.id === schedGroup)) schedGroup = 'ALL';
+  const sum = (key) => rounds.reduce((a, r) => a + r[key], 0);
+  const allPill = `<button type="button" class="sv-round${round === 'ALL' ? ' cur' : ''}" data-round="ALL" style="--p:${Math.round((sum('finished') / Math.max(1, sum('total'))) * 100)}%"><b>${escapeHtml(t('season.allRounds'))}</b><small>${sum('finished')}/${sum('total')}</small></button>`;
+  const roundPills = allPill + rounds.map((r) => `<button type="button" class="sv-round${r.round === round ? ' cur' : ''}" data-round="${r.round}" style="--p:${Math.round((r.finished / Math.max(1, r.total)) * 100)}%"><b>${escapeHtml(t('season.roundN', { n: r.round }))}</b><small>${r.finished}/${r.total}</small></button>`).join('');
+  const tab = (attr, value, label, active) => `<button type="button" class="tab${active ? ' active' : ''}" ${attr}="${value}">${escapeHtml(label)}</button>`;
+  const catRow = tab('data-sc', 'ALL', t('season.schedAll'), schedCat === 'ALL') + cats.map((c) => tab('data-sc', c, CATEGORY_NAMES[c], schedCat === c)).join('');
+  const groupRow = tab('data-sg', 'ALL', t('season.schedAllGroups'), schedGroup === 'ALL') + inCat.map((g) => tab('data-sg', g.id, g.name, schedGroup === g.id)).join('');
+  const shown = roundMatches.filter((m) => (schedCat === 'ALL' || (m.group && m.group.category === schedCat)) && (schedGroup === 'ALL' || (m.group && m.group.id === schedGroup)));
+  const order = new Map(groups.map((g, i) => [g.id, i]));
+  // the matches of one round as lines under a heading per group
+  const byGroup = (matches) => {
+    const map = new Map();
+    matches.forEach((m) => {
+      const id = m.group ? m.group.id : 0;
+      if (!map.has(id)) map.set(id, { group: m.group, list: [] });
+      map.get(id).list.push(m);
+    });
+    return [...map.entries()].sort((a, b) => (order.get(a[0]) ?? 99) - (order.get(b[0]) ?? 99)).map(([, { group, list }]) => `
+      <div class="sv-rl-h">${group ? `${escapeHtml(CATEGORY_NAMES[group.category] || '')} · <b>${escapeHtml(group.name)}</b>` : ''}</div>
+      ${list.map(scheduleRow).join('')}`).join('');
+  };
+  const body = round === 'ALL'
+    ? rounds.map((r) => {
+      const ms = shown.filter((m) => m.round === r.round);
+      return ms.length ? `<div class="sv-rl-round">${escapeHtml(t('season.roundN', { n: r.round }))}</div>${byGroup(ms)}` : '';
+    }).join('')
+    : byGroup(shown);
   return `
     <section class="sv-sec" id="sv-schedule">
-      <div class="sv-rounds" id="sv-rounds">${pills}<a class="sv-more" href="/matches?season=${season.id}">${escapeHtml(t('season.allMatches'))} ›</a></div>
-      <div class="sv-rg">${cards || `<div class="sv-empty">${escapeHtml(t('season.noSchedule'))}</div>`}</div>
+      <div class="sv-filters">
+        <div class="sv-rounds" id="sv-rounds">${roundPills}</div>
+        <div class="tabs sv-line" id="sv-sched-cats">${catRow}<a class="sv-more" href="/matches?season=${season.id}">${escapeHtml(t('season.allMatches'))} ›</a></div>
+        <div class="tabs sv-line" id="sv-sched-groups">${groupRow}</div>
+      </div>
+      <div class="sv-rl">${body || `<div class="sv-empty">${escapeHtml(t('season.noSchedule'))}</div>`}</div>
     </section>`;
 }
 
-// The Hráči tab: the players divided by category and group — a small card per group.
+// The Hráči tab: one numbered table per category — # | Meno | Štartovné (when the season has an entry fee).
 function playersHtml() {
   const model = playersModel();
   if (!model.total) return '';
-  const showPaid = !!(season.entryFee || season.paymentUrl);
-  const person = (p, withCat) => {
-    const name = p.slug ? `<a href="/player/${encodeURIComponent(p.slug)}">${escapeHtml(p.name)}</a>` : escapeHtml(p.name);
-    const paid = showPaid && p.paid !== null && p.paid !== undefined ? `<span class="${p.paid ? 'ok' : 'no'}" title="${escapeHtml(p.paid ? t('season.paid') : t('season.unpaid'))}">${p.paid ? '✓' : '—'}</span>` : '';
-    return `<div class="sv-pp"><span class="nm">${name}${withCat ? ` <em>${escapeHtml(CATEGORY_NAMES[p.category] || '')}</em>` : ''}</span>${paid}</div>`;
-  };
-  const card = (title, people, withCat) => `<div class="sv-pcard"><div class="sv-pcard-h"><b>${escapeHtml(title)}</b><span>${people.length}</span></div>${people.map((p) => person(p, withCat)).join('')}</div>`;
-  const sections = model.cats.map((c) => {
-    const count = c.groups.reduce((sum, g) => sum + g.players.length, 0);
-    return `<div class="sv-cat-h">${escapeHtml(CATEGORY_NAMES[c.category])}<em>${count}</em></div><div class="sv-pg">${c.groups.map((g) => card(g.name, g.players, false)).join('')}</div>`;
-  });
-  if (model.ungrouped.length) {
-    sections.push(`<div class="sv-cat-h">${escapeHtml(t('season.noGroupYet'))}<em>${model.ungrouped.length}</em></div><div class="sv-pg">${card(t('season.noGroupCard'), model.ungrouped, true)}</div>`);
-  }
-  const legend = showPaid ? `<p class="sv-note">✓ ${escapeHtml(t('season.paid'))} · — ${escapeHtml(t('season.unpaid'))}</p>` : '';
-  return `<section class="sv-sec" id="sv-players">${sections.join('')}${legend}</section>`;
+  const showPaid = !!(season.entryFee || season.paymentUrl || (season.registrations || []).some((r) => r.paid));
+  const tables = model.cats.map((c) => {
+    const rows = c.players.map((p, i) => {
+      const name = p.slug ? `<a href="/player/${encodeURIComponent(p.slug)}">${escapeHtml(p.name)}</a>` : escapeHtml(p.name);
+      const paid = p.paid === null || p.paid === undefined ? '<span class="no">–</span>' : (p.paid ? `<span class="ok">✓ ${escapeHtml(t('season.paid'))}</span>` : `<span class="no">${escapeHtml(t('season.unpaid'))}</span>`);
+      return `<div class="sv-pr"><span class="n">${i + 1}</span><span class="nm">${name}</span>${showPaid ? `<span class="fee">${paid}</span>` : ''}</div>`;
+    }).join('');
+    return `
+      <div class="sv-ptable">
+        <div class="sv-ptable-t">${escapeHtml(CATEGORY_NAMES[c.category])}<em>${c.players.length}</em></div>
+        <div class="sv-pr head"><span class="n">#</span><span class="nm">${escapeHtml(t('season.colName'))}</span>${showPaid ? `<span class="fee">${escapeHtml(t('season.colFee'))}</span>` : ''}</div>
+        ${rows}
+      </div>`;
+  }).join('');
+  return `<section class="sv-sec" id="sv-players"><div class="sv-pt">${tables}</div></section>`;
 }
 
 function playoffHtml() {
@@ -494,9 +528,13 @@ rootEl.addEventListener('click', async (e) => {
   if (tabBtn) { openTab(tabBtn.dataset.tab); return; }
   const cat = e.target.closest('#sv-panel [data-cat]');
   if (cat) { category = cat.dataset.cat; renderPanel(); return; }
+  const sc = e.target.closest('#sv-panel [data-sc]');
+  if (sc) { schedCat = sc.dataset.sc; schedGroup = 'ALL'; renderPanel(); return; }
+  const sg = e.target.closest('#sv-panel [data-sg]');
+  if (sg) { schedGroup = sg.dataset.sg === 'ALL' ? 'ALL' : Number(sg.dataset.sg); renderPanel(); return; }
   const r = e.target.closest('#sv-panel [data-round]');
   if (r) {
-    round = Number(r.dataset.round);
+    round = r.dataset.round === 'ALL' ? 'ALL' : Number(r.dataset.round);
     await loadRound();
     renderPanel();
   }

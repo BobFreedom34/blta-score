@@ -55,6 +55,13 @@ function categoryOptions(selected) {
   return CATEGORIES.map(([key, label]) => `<option value="${key}"${key === selected ? ' selected' : ''}>${label}</option>`).join('');
 }
 
+// The stored description is cleaned HTML, or plain text from before the editor existed (blank lines = paragraphs).
+function richText(value) {
+  const text = String(value || '');
+  if (/<[a-z][\s\S]*>/i.test(text)) return text;
+  return text.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean).map((b) => `<p>${escapeHtml(b).replace(/\n/g, '<br>')}</p>`).join('');
+}
+
 function renderLoggedOut() {
   root.innerHTML = `
     <div class="card">
@@ -233,9 +240,19 @@ function seasonHtml(s) {
         <label style="font-size:12px;font-weight:700;display:flex;gap:6px;align-items:center;padding-bottom:9px">
           <input type="checkbox" data-field="registrationOpen"${s.registrationOpen ? ' checked' : ''}> Registration open
         </label>
-        <label style="flex-basis:100%;font-size:12px;font-weight:700">Description
-          <textarea data-field="info" rows="3" maxlength="2000" style="display:block;width:100%;margin-top:4px;${inputStyle}">${escapeHtml(s.info || '')}</textarea>
-        </label>
+        <div style="flex-basis:100%;font-size:12px;font-weight:700">Description <span style="font-weight:600;color:var(--gray)">— a "Label: value" line becomes a fact tile on the page</span>
+          <div class="rte-toolbar">
+            <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+            <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+            <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+            <button type="button" data-cmd="heading" title="Heading">H</button>
+            <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">• List</button>
+            <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+            <button type="button" data-cmd="link" title="Link">Link</button>
+            <button type="button" data-cmd="removeFormat" title="Remove formatting">Clear</button>
+          </div>
+          <div class="rte" contenteditable="true" data-rte>${richText(s.info)}</div>
+        </div>
         <button type="submit" class="btn btn-sm btn-outline">Save season</button>
         <button type="button" class="btn btn-sm btn-danger" data-action="delete-season">Delete season</button>
       </form>
@@ -294,10 +311,35 @@ function wireSeason(card) {
     errorEl.textContent = '';
     const f = (name) => e.target.querySelector(`[data-field="${name}"]`).value;
     try {
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: f('info') } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML } });
       toast('Season saved');
       await load();
     } catch (err) { fail(err); }
+  });
+
+  // the description editor: toolbar buttons act on the selection; pasting keeps only the text
+  const rte = card.querySelector('[data-rte]');
+  try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch { /* not supported: the server turns divs into paragraphs */ }
+  card.querySelectorAll('.rte-toolbar [data-cmd]').forEach((btn) => {
+    btn.addEventListener('mousedown', (e) => e.preventDefault()); // keep the selection in the editor
+    btn.addEventListener('click', () => {
+      rte.focus();
+      const cmd = btn.dataset.cmd;
+      if (cmd === 'link') {
+        const url = prompt('Link address (https://…)');
+        if (url) document.execCommand('createLink', false, url);
+      } else if (cmd === 'heading') {
+        const inHeading = document.queryCommandValue('formatBlock').toLowerCase() === 'h3';
+        document.execCommand('formatBlock', false, inHeading ? 'p' : 'h3');
+      } else {
+        document.execCommand(cmd, false, null);
+      }
+    });
+  });
+  rte.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertHTML', false, richText(text));
   });
 
   // "Registration open" takes effect the moment it is ticked or unticked, without waiting for "Save season"
@@ -325,7 +367,7 @@ function wireSeason(card) {
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #eee" data-reg="${r.id}">
           <div style="flex:1;min-width:220px">
             <strong>${escapeHtml(r.name)}</strong> <span class="sa-chip future">${escapeHtml(catLabel(r.category))}</span>${r.playerId ? '' : ' <span style="font-size:11px;color:var(--gray)">new name</span>'}
-            <div style="font-size:12px;color:var(--gray)">${escapeHtml(r.phone)} · <a href="mailto:${escapeHtml(r.email)}" style="color:var(--orange)">${escapeHtml(r.email)}</a> · ${escapeHtml(fmtDate(r.createdAt.slice(0, 10)))}</div>
+            <div style="font-size:12px;color:var(--gray)">${r.phone || r.email ? `${escapeHtml(r.phone)} · <a href="mailto:${escapeHtml(r.email)}" style="color:var(--orange)">${escapeHtml(r.email)}</a>` : 'imported from blta.sk (no contact details)'} · ${escapeHtml(fmtDate(r.createdAt.slice(0, 10)))}</div>
           </div>
           <button type="button" class="sg-link" data-reg-paid="${r.paid ? 0 : 1}">${r.paid ? 'Paid ✓' : 'Not paid'}</button>
           <button type="button" class="sg-x" data-reg-del title="Delete this registration">&times;</button>

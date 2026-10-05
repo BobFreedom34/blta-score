@@ -222,4 +222,18 @@ function ensureSeasonLogos(db) {
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('season_logos_seeded')").run();
 }
 
-module.exports = { ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, fixWinterStart };
+// One time: removes the closing "Športu zdar !" line from the season descriptions (plain text or the editor's HTML).
+function removeDescriptionSignOff(db) {
+  if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'season_info_signoff_removed'").get()) return;
+  const update = db.prepare('UPDATE seasons SET info = ? WHERE id = ?');
+  db.prepare("SELECT id, info FROM seasons WHERE info LIKE '%zdar%'").all().forEach((row) => {
+    const cleaned = row.info
+      .replace(/<p>\s*Športu zdar\s*!?\s*<\/p>/gi, '')
+      .replace(/(^|\n)\s*Športu zdar\s*!?\s*(?=\n|$)/gi, '$1')
+      .replace(/\s+$/, '');
+    if (cleaned !== row.info) update.run(cleaned || null, row.id);
+  });
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('season_info_signoff_removed')").run();
+}
+
+module.exports = { removeDescriptionSignOff, ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, fixWinterStart };

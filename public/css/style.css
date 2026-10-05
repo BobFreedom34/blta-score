@@ -3913,15 +3913,14 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 @media (max-width: 700px) { .sv-actions { margin-left: 0; width: 100%; } }
 
 /* season page: basic info, rounds, players */
-.sv-about { display: grid; gap: 14px; max-width: 920px; }
-.sv-about-lead { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid var(--orange); border-radius: 18px; padding: 20px 24px; }
+.sv-about { display: grid; gap: 14px; }
+.sv-about-lead { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 18px; padding: 22px 26px; }
 .sv-about-lead p { margin: 0; color: #e6e8ec; font-size: 15px; font-weight: 500; line-height: 1.7; }
 .sv-about-lead p + p { margin-top: 12px; }
 .sv-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 .sv-fact { background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 14px; padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; }
 .sv-fact span { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .sv-fact b { color: var(--white); font-size: 20px; font-weight: 800; line-height: 1.15; }
-.sv-sign { color: var(--green); font-size: 17px; font-weight: 800; letter-spacing: 0.02em; padding-top: 4px; }
 .sv-round { position: relative; overflow: hidden; display: flex; align-items: baseline; gap: 8px; padding: 9px 14px 11px; }
 .sv-round b { font-size: 13px; font-weight: 800; }
 .sv-round small { display: inline; margin: 0; color: #a9adb6; font-weight: 700; font-size: 11px; }
@@ -3963,3 +3962,65 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sch-text { min-width: 0; flex: 1; }
 .sch-logo { width: 64px; height: auto; flex: 0 0 auto; }
 @media (max-width: 700px) { .sv-logo { width: 72px; } .sv-head.with-logo { gap: 14px; } .sch-logo { width: 52px; } }
+
+/* description text (rich) inside the lead card */
+.sv-about-lead strong, .sv-about-lead b { color: var(--white); font-weight: 800; }
+.sv-about-lead a { color: var(--orange); text-decoration: underline; }
+.sv-about-lead ul, .sv-about-lead ol { margin: 12px 0 0 22px; padding: 0; color: #e6e8ec; font-size: 15px; line-height: 1.7; }
+.sv-about-lead h3 { margin: 18px 0 6px; font-size: 16px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--white); }
+.sv-about-lead h3:first-child { margin-top: 0; }
+.sv-about-lead blockquote { margin: 12px 0 0; padding-left: 14px; border-left: 3px solid var(--orange); color: #c3c7cf; }
+.sv-about-lead > * + * { margin-top: 12px; }
+.sv-about-lead > ul, .sv-about-lead > ol { margin-top: 12px; }
+
+/* Rozpis: filters and one line per match */
+.sv-filters { display: grid; gap: 14px; margin: 0 0 48px; }
+.sv-filters .sv-rounds, .sv-filters .tabs { margin: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; align-items: center; }
+.sv-filters .tabs .tab { white-space: nowrap; flex: 0 0 auto; }
+.sv-filters .sv-round { flex: 0 0 auto; }
+#sv-sched-cats .tab.active, #sv-sched-groups .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
+.sv-rl { background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 18px; padding: 4px 22px 10px; }
+.sv-rl-h { color: #8b8f98; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 16px 0 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.18); }
+.sv-rl-h b { color: var(--green); }
+.sv-rl-m { display: grid; grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); color: var(--white); text-decoration: none; font-size: 14px; font-weight: 700; }
+.sv-rl-m:last-child { border-bottom: none; }
+.sv-rl-m .a { text-align: right; }
+.sv-rl-m .a, .sv-rl-m .b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sv-rl-m .w { color: var(--green); }
+.sv-rl-m .rs { justify-self: center; font-size: 15px; font-weight: 800; white-space: nowrap; }
+.sv-rl-m .rs.date { font-size: 11px; color: var(--green); border: 1px solid var(--green); border-radius: 8px; padding: 3px 8px; }
+.sv-rl-m .rs.live { font-size: 11px; background: var(--orange); border-radius: 8px; padding: 3px 8px; }
+.sv-rl-m .rs.tbd { color: #6e727c; }
+.sv-rl-m:hover .a, .sv-rl-m:hover .b { color: var(--orange); }
+.sv-rl-m:hover .w { color: var(--green); }
+@media (max-width: 700px) { .sv-rl { padding: 4px 14px 8px; } .sv-rl-m { grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr); gap: 8px; font-size: 13px; } .sv-rl-m .rs.date { font-size: 10px; padding: 2px 5px; } }
+
+/* Hráči: one numbered table per category */
+.sv-pt { display: grid; gap: 48px; }
+.sv-ptable { background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 18px; padding: 4px 22px 10px; }
+.sv-ptable-t { padding: 16px 0 10px; font-size: 17px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.sv-ptable-t em { font-style: normal; color: #c3c7cf; font-size: 12px; letter-spacing: 0; margin-left: 10px; }
+.sv-pr { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-size: 14px; font-weight: 700; }
+.sv-pr:last-child { border-bottom: none; }
+.sv-pr.head { color: #8b8f98; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(255, 255, 255, 0.18); padding-top: 4px; }
+.sv-pr .n { color: var(--orange); font-weight: 800; }
+.sv-pr.head .n { color: #8b8f98; }
+.sv-pr a { color: var(--white); text-decoration: none; }
+.sv-pr a:hover { color: var(--orange); }
+.sv-pr .fee { text-align: right; min-width: 90px; }
+.sv-pr .ok { color: var(--green); font-weight: 800; }
+.sv-pr .no { color: #6e727c; }
+@media (max-width: 900px) { .sv-filters { margin-bottom: 40px; } .sv-pt { gap: 40px; } }
+
+/* backend: the description editor */
+.rte-toolbar { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 0; }
+.rte-toolbar button { font-family: inherit; font-size: 12px; font-weight: 700; padding: 5px 10px; border: 1.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; cursor: pointer; }
+.rte-toolbar button:hover { border-color: var(--orange); }
+.rte { min-height: 140px; max-height: 420px; overflow-y: auto; margin-top: 6px; padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; font-size: 14px; font-weight: 500; line-height: 1.6; }
+.rte:focus { outline: none; border-color: var(--orange); }
+.rte p { margin: 0 0 8px; } .rte h3 { margin: 10px 0 4px; font-size: 15px; } .rte ul, .rte ol { margin: 4px 0 8px 22px; } .rte a { color: var(--orange); }
+
+/* Rozpis, all rounds: a heading per round */
+.sv-rl-round { margin: 22px -22px 0; padding: 12px 22px; background: var(--fill-grey); font-size: 14px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
+.sv-rl-round:first-child { margin-top: 4px; border-radius: 14px 14px 0 0; }
+@media (max-width: 700px) { .sv-rl-round { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; } }

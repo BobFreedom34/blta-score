@@ -33,6 +33,47 @@ function uniqueSlug(base, exceptId) {
   }
 }
 
+// The season description can be formatted in the backend editor. Only a small set of tags survives (paragraphs, line breaks,
+// bold / italic / underline, lists, a heading, a quote and links to http(s)/mailto); every other tag is dropped, attributes are
+// rebuilt by us, and text is escaped — so what is stored is safe to show on the public page as it is.
+const HTML_TAGS = { p: 'p', div: 'p', br: 'br', strong: 'strong', b: 'strong', em: 'em', i: 'em', u: 'u', ul: 'ul', ol: 'ol', li: 'li', h3: 'h3', h4: 'h3', blockquote: 'blockquote', a: 'a' };
+function escapeText(text) {
+  return text.replace(/&(?![a-zA-Z]+;|#\d+;)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function sanitizeHtml(input) {
+  const html = String(input || '');
+  const tag = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)((?:\s[^<>]*)?)>/g;
+  const open = [];
+  let out = '';
+  let last = 0;
+  let m;
+  while ((m = tag.exec(html))) {
+    out += escapeText(html.slice(last, m.index));
+    last = tag.lastIndex;
+    const name = HTML_TAGS[m[2].toLowerCase()];
+    if (!name) continue;
+    if (name === 'br') { out += '<br>'; continue; }
+    if (m[1] === '/') {
+      if (open.includes(name)) {
+        let top;
+        do { top = open.pop(); out += `</${top}>`; } while (top !== name);
+      }
+      continue;
+    }
+    let attrs = '';
+    if (name === 'a') {
+      const href = m[3].match(/href\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+      const url = href ? (href[1] !== undefined ? href[1] : href[2]).trim() : '';
+      if (/^(https?:\/\/|mailto:)/i.test(url)) attrs = ` href="${url.replace(/&(?![a-zA-Z]+;|#\d+;)/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}" target="_blank" rel="noopener"`;
+    }
+    out += `<${name}${attrs}>`;
+    open.push(name);
+  }
+  out += escapeText(html.slice(last));
+  while (open.length) out += `</${open.pop()}>`;
+  return out;
+}
+
 function parseDate(value) {
   if (value === undefined || value === null || value === '') return { value: null };
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return { error: 'Dates must look like 2026-09-07' };
@@ -282,7 +323,13 @@ router.patch('/:id', requireAdmin, (req, res) => {
   };
   const fee = text('entryFee', season.entry_fee, 40);
   const prize = text('prizeMoney', season.prize_money, 120);
-  const info = text('info', season.info, 2000);
+  // the description: cleaned HTML; nothing left but empty tags/spaces means "no description"
+  let info = { value: season.info };
+  if (req.body.info !== undefined) {
+    const clean = sanitizeHtml(req.body.info).trim();
+    const empty = !clean.replace(/<[^>]*>|&nbsp;|\s/g, '');
+    info = clean.length > 8000 ? { error: 'The description is too long' } : { value: empty ? null : clean };
+  }
   const gallery = text('galleryUrl', season.gallery_url, 500);
   const payment = text('paymentUrl', season.payment_url, 500);
   const logo = text('logoUrl', season.logo_url, 300);
