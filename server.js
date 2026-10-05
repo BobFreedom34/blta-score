@@ -76,7 +76,13 @@ app.get('/', (req, res, next) => {
   if (q === -1) return next();
   res.redirect(302, '/matches' + req.originalUrl.slice(q));
 });
-app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }));
+app.use(express.static(PUBLIC_DIR, {
+  extensions: ['html'],
+  // The font files never change under the same name: let browsers keep them for a year.
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.woff2')) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  },
+}));
 // Uploaded badge icons live on the persistent disk (see src/db.js's
 // dataDir), not under public/, so they survive redeploys.
 app.use('/badge-icons', express.static(path.join(db.dataDir, 'badge-icons')));

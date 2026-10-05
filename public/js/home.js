@@ -49,7 +49,7 @@ function soft(promise, fallback) {
 async function loadHome() {
   const nowMinus = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const week = weekRange();
-  const playerId = playerAuthed && currentPlayerId ? currentPlayerId : null;
+  const playerId = loggedInPlayer();
   mineFor = playerId;
   const [seasons, live, finished, upcoming, weekMatches, looking, rankings, mine] = await Promise.all([
     soft(api('/seasons'), null),
@@ -528,6 +528,10 @@ function renderHome() {
   initTimelineScroll(keepLeft);
 }
 
+function loggedInPlayer() {
+  return playerAuthed && currentPlayerId ? currentPlayerId : null;
+}
+
 async function refreshHome() {
   try {
     homeData = await loadHome();
@@ -536,12 +540,14 @@ async function refreshHome() {
     return;
   }
   renderHome();
+  // On a plain reload the login status is usually read while this page data is still loading, so it was unknown when
+  // this load started. If it differs from what this load used, load again with it (mineFor now matches, so it stops there).
+  if (loggedInPlayer() !== mineFor) refreshHome();
 }
 
 // The session is read after the page loads (and changes on login/logout): load the player's own data when it does.
 window.addEventListener('blta:auth-changed', () => {
-  const now = playerAuthed && currentPlayerId ? currentPlayerId : null;
-  if (homeData && now !== mineFor) refreshHome();
+  if (homeData && loggedInPlayer() !== mineFor) refreshHome();
 });
 
 rootEl.addEventListener('click', (e) => {
