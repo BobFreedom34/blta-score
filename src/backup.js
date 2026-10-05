@@ -197,16 +197,60 @@ async function runBackup() {
   }
 }
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+// Whether today's database backup is already in the Drive folder (same UTC
+// date stamp and file name runBackup() uses). Every deploy restarts the app,
+// and with auto-deploy on every commit that used to mean a fresh ~26 MB
+// upload per restart — this lets a restart see that today is already
+// covered. Throws on a non-OK response so the caller can tell "no backup
+// yet" apart from "couldn't find out".
+async function backupExistsForToday(token) {
+  const folderId = process.env.GOOGLE_DRIVE_BACKUP_FOLDER_ID;
+  const stamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD, as in runBackup()
+  const dbName = `blta-score-backup-${stamp}.db`;
+  const q = encodeURIComponent(`'${folderId}' in parents and trashed = false and name = '${dbName}'`);
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=1`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Drive lookup failed: ${res.status} ${await res.text()}`);
+  }
+  const { files } = await res.json();
+  return !!(files && files.length);
+}
+
+// The scheduled run: back up only if today's backup isn't there yet. If the
+// lookup itself fails, skip this round rather than upload anyway — an upload
+// on a failed check is exactly how a flaky restart loop would burn bandwidth
+// again; the next hourly check simply tries again. (The manual "back up now"
+// admin route calls runBackup() directly and still forces a backup.)
+async function runBackupIfNeeded() {
+  if (!isConfigured()) return { skipped: true };
+  try {
+    const token = await getAccessToken();
+    if (await backupExistsForToday(token)) {
+      return { skipped: true };
+    }
+  } catch (err) {
+    console.warn('[backup] Could not check whether today\'s backup already exists — skipping this round:', err.message);
+    return { skipped: true };
+  }
+  return runBackup();
+}
+
+const ONE_HOUR_MS = 60 * 60 * 1000;
 function startScheduledBackups() {
   if (!isConfigured()) {
     console.log('[backup] Google Drive backup is not configured — see .env.example (GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET / GOOGLE_OAUTH_REFRESH_TOKEN / GOOGLE_DRIVE_BACKUP_FOLDER_ID). Backups are OFF.');
     return;
   }
   // A few minutes after boot (not instantly — let the rest of startup
-  // settle first), then every 24h for as long as the process stays up.
-  setTimeout(() => { runBackup(); }, 3 * 60 * 1000);
-  setInterval(() => { runBackup(); }, ONE_DAY_MS);
+  // settle first), then an hourly check for as long as the process stays
+  // up. The check is cheap (one Drive lookup); the upload only happens when
+  // today's backup is missing, so a restart or redeploy no longer re-uploads
+  // ~26 MB each time (that was eating Render's outbound bandwidth allowance
+  // and leaving duplicate same-day files in the Drive folder).
+  setTimeout(runBackupIfNeeded, 3 * 60 * 1000);
+  setInterval(runBackupIfNeeded, ONE_HOUR_MS);
 }
 
 module.exports = { isConfigured, runBackup, startScheduledBackups };
