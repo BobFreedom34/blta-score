@@ -3757,3 +3757,8 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sg-pairs { display: flex; gap: 6px 14px; flex-wrap: wrap; }
 .sg-pair.new { color: var(--orange-dark); font-weight: 700; }
 .sg-rest { color: var(--gray); font-size: 12px; margin-left: auto; }
+
+/* "Load more" under the matches list */
+.load-more-wrap { text-align: center; margin: 28px 0 8px; }
+.load-more-btn { background: var(--fill-grey); color: var(--white); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; padding: 13px 26px; font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; }
+.load-more-btn:hover { border-color: rgba(255, 255, 255, 0.55); }

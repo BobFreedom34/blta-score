@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -64,6 +65,10 @@ badgeEngine.backfillIfNeeded();
 badgeEngine.startScheduledReminders();
 backup.startScheduledBackups();
 
+// Brotli / gzip for everything that compresses well (JSON, HTML, JS, CSS, SVG; images and fonts are skipped by the
+// package itself). Registered first, before the static files and every route, so all of them are covered. Responses
+// under 1 kB are left alone, and the ETag the next middleware sets still works with it (304 Not Modified).
+app.use(compression());
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser(process.env.SESSION_SECRET || 'dev-only-insecure-secret'));
@@ -76,13 +81,28 @@ app.get('/', (req, res, next) => {
   if (q === -1) return next();
   res.redirect(302, '/matches' + req.originalUrl.slice(q));
 });
-app.use(express.static(PUBLIC_DIR, {
+// Static files. ETag and Last-Modified stay on (the defaults, spelled out), so anything that is revalidated costs a
+// 304 and no body. Cache lifetimes:
+//  - fonts: a year, immutable (they never change under the same name);
+//  - images and icons: 30 days (brand assets that rarely change; replace one by giving it a new file name);
+//  - JS and CSS: these files are NOT versioned by name, so by default they are revalidated on every load (ETag) and a
+//    deploy reaches everyone at once. A script or stylesheet requested with a version in the URL (/js/home.js?v=abc)
+//    is fixed content by definition and is kept for a year, immutable. No page uses that yet.
+//  - HTML pages: revalidated on every load.
+const IMAGE_FILE = /\.(png|jpe?g|gif|svg|webp|avif|ico)$/i;
+const staticFiles = express.static(PUBLIC_DIR, {
   extensions: ['html'],
-  // The font files never change under the same name: let browsers keep them for a year.
+  etag: true,
+  lastModified: true,
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.woff2')) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    else if (IMAGE_FILE.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=2592000');
   },
-}));
+});
+app.use((req, res, next) => {
+  if (req.query.v && /\.(js|css)$/.test(req.path)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  staticFiles(req, res, next);
+});
 // Uploaded badge icons live on the persistent disk (see src/db.js's
 // dataDir), not under public/, so they survive redeploys.
 app.use('/badge-icons', express.static(path.join(db.dataDir, 'badge-icons')));

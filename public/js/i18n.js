@@ -204,6 +204,7 @@ const TRANSLATIONS = {
     'status.FINISHED': 'Ukončený',
     'status.UNFINISHED': 'Nedokončený',
 
+    'matches.loadMore': 'Načítať ďalšie',
     'matches.loading': 'Načítavam zápasy…',
     'matches.noneOfType': 'Žiadne zápasy — {label}.',
     'matches.noneFiltered': 'Žiadne zápasy — {label} — nezodpovedajú vašim filtrom.',
@@ -936,6 +937,7 @@ const TRANSLATIONS = {
     'status.FINISHED': 'Finished',
     'status.UNFINISHED': 'Unfinished',
 
+    'matches.loadMore': 'Load more',
     'matches.loading': 'Loading matches…',
     'matches.noneOfType': 'No {label} matches.',
     'matches.noneFiltered': 'No {label} matches match your filters.',

@@ -109,6 +109,9 @@ async function load() {
     if (dateFilter === 'has') qs.set('hasDate', '1');
     else if (dateFilter === 'none') qs.set('noDate', '1');
     if (categoryFilter) qs.set('category', categoryFilter);
+    // Only as many as the widget shows: the server cuts the list (same order), so a finished-matches embed no longer
+    // downloads every match ever played to keep six.
+    qs.set('limit', String(MATCH_LIMIT));
     const matches = (await api(`/matches?${qs.toString()}`)).slice(0, MATCH_LIMIT);
     const body = matches.length
       ? `<div class="match-list${COMPACT_MODE ? ' compact-match-list' : ''}">${buildListHtml(matches)}</div>`

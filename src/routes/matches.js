@@ -440,9 +440,10 @@ function broadcast(req, row) {
   return payload;
 }
 
-router.get('/', (req, res) => {
-  const { status, category, q, from, to, noDate, hasDate, playerId } = req.query;
-  const limit = Math.max(0, Math.min(500, parseInt(req.query.limit, 10) || 0));
+// The filters of the matches list (also used by the counts below), applied to a query-string-like object.
+// Returns the WHERE clause and its bound params.
+function matchFilters(query) {
+  const { status, category, from, to, noDate, hasDate, playerId } = query;
   const clauses = [];
   const params = {};
   if (status) {
@@ -484,6 +485,13 @@ router.get('/', (req, res) => {
     }
   }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  return { where, params };
+}
+
+// The matching rows (with both player names), in the list's order. Used by the list route.
+function selectMatchRows(query) {
+  const { status, q } = query;
+  const { where, params } = matchFilters(query);
   // Planned matches: soonest-scheduled first, undated ones grouped at the end
   // (the frontend divides the two groups with a visual line). Finished
   // matches: most recently finished first.
@@ -514,9 +522,54 @@ router.get('/', (req, res) => {
   if (q) {
     rows = rows.filter((r) => nameMatch.matchesQuery(`${r.p1_name} ${r.p2_name}`, q));
   }
-  // Optional cap (the home page only needs the latest few); no limit = everything, as before.
+  return rows;
+}
+
+// How many matches match — same filters as the list, without building a single match payload (the list builds ~6
+// queries per match; a count needs one). With a name search the names are still needed, so that path reads the rows.
+function countMatchRows(query) {
+  if (query.q) return selectMatchRows(query).length;
+  const { where, params } = matchFilters(query);
+  return db.prepare(`SELECT COUNT(*) AS n FROM matches m ${where}`).get(params).n;
+}
+
+router.get('/', (req, res) => {
+  const limit = Math.max(0, Math.min(500, parseInt(req.query.limit, 10) || 0));
+  let rows = selectMatchRows(req.query);
+  // Optional cap (the home page and the embeds only need the latest few); no limit = everything, as before.
   if (limit) rows = rows.slice(0, limit);
   res.json(rows.map(serialize));
+});
+
+// The numbers on the matches page's tabs in one small response instead of downloading every list just to count it.
+// Takes the page's own filters — category (a list is fine), q (name search), from/to (a time range) or tbd=1 ("no date")
+// — and optionally playerId for the "My matches" total. The counts follow exactly what each tab's list would show.
+router.get('/counts', (req, res) => {
+  const { category, q, from, to, tbd, playerId } = req.query;
+  const range = from && to ? { from, to } : null;
+  const base = { ...(category ? { category } : {}), ...(q ? { q } : {}) };
+  // The time filter narrows Planned / Finished / Unfinished (a range, or "no date"); the Scheduled tab only takes a range,
+  // "Not yet scheduled" has no date to narrow and Live ignores it.
+  const timed = range || (tbd === '1' ? { noDate: '1' } : {});
+  const count = (extra, extraBase = base) => countMatchRows({ ...extraBase, ...extra });
+  const live = count({ status: 'LIVE' });
+  const counts = {
+    ALL: count({ status: 'PLANNED', ...timed }) + live,
+    SCHEDULED: count({ status: 'PLANNED', hasDate: '1', ...(range || {}) }),
+    UNSCHEDULED: count({ status: 'PLANNED', noDate: '1' }),
+    LIVE: live,
+    FINISHED: count({ status: 'FINISHED', ...timed }),
+    UNFINISHED: count({ status: 'UNFINISHED', ...timed }),
+  };
+  if (playerId) {
+    const mine = { ...base, playerId: String(playerId) };
+    counts.MY_MATCHES = count({ status: 'LIVE' }, mine)
+      + count({ status: 'PLANNED', hasDate: '1', ...(range || {}) }, mine)
+      + count({ status: 'PLANNED', noDate: '1' }, mine)
+      + count({ status: 'FINISHED', ...timed }, mine)
+      + count({ status: 'UNFINISHED', ...timed }, mine);
+  }
+  res.json(counts);
 });
 
 router.get('/:token', (req, res) => {

@@ -8,6 +8,13 @@ const FILTERS = {
   FINISHED: { status: 'FINISHED', label: 'tabs.finished' },
   UNFINISHED: { status: 'UNFINISHED', label: 'tabs.unfinished' },
 };
+// The list shows 50 matches at first and a "Load more" button adds 50 more, instead of downloading every match ever
+// played. `shownCount` is how many are on screen; every refresh (a score changed somewhere, a filter changed) asks for
+// exactly that many, so the list never jumps or repeats when a match finishes. A different tab / search / category /
+// time filter starts again at 50.
+const PAGE_SIZE = 50;
+let shownCount = PAGE_SIZE;
+let pagingKey = '';
 let currentFilter = 'ALL';
 let currentQuery = '';
 let currentCategory = '';
@@ -258,17 +265,10 @@ async function loadMyMatches() {
   }
 }
 
-async function refreshMyMatchesCount() {
-  const el = document.getElementById('count-MY_MATCHES');
-  if (!el || !playerAuthed || !currentPlayerId) return;
-  try {
-    const totals = await Promise.all(MY_MATCHES_GROUPS.map((g) => {
-      const params = buildFilterParamsForSpec(g.params);
-      params.set('playerId', currentPlayerId);
-      return api(`/matches?${params.toString()}`);
-    }));
-    el.textContent = totals.reduce((sum, matches) => sum + matches.length, 0);
-  } catch { /* ignore */ }
+// The "My matches" total comes with the other counts (see refreshCounts), so this is just an alias for callers that
+// only care about it (login / logout).
+function refreshMyMatchesCount() {
+  return refreshCounts();
 }
 
 // The tab is always visible (first in the row), but only makes sense for a
@@ -291,46 +291,80 @@ function updateMyMatchesTabState() {
 async function loadMatches() {
   if (currentFilter === 'MY_MATCHES') return loadMyMatches();
   await RANKS_READY;
+  const key = JSON.stringify([currentFilter, currentQuery, currentCategory, currentTimeFilter]);
+  if (key !== pagingKey) { pagingKey = key; shownCount = PAGE_SIZE; }
   const params = buildFilterParams(currentFilter);
+  params.set('limit', String(shownCount + 1));
   try {
     // "All Matches" also folds in a Live group up top, on the same
     // search/category filters — a separate request since the API only
     // takes one status per call.
-    const [matches, liveMatches] = await Promise.all([
+    const [fetched, liveMatches] = await Promise.all([
       api(`/matches?${params.toString()}`),
       currentFilter === 'ALL' ? api(`/matches?${buildFilterParams('LIVE').toString()}`) : Promise.resolve([]),
     ]);
+    const hasMore = fetched.length > shownCount;
+    const matches = hasMore ? fetched.slice(0, shownCount) : fetched;
     if (matches.length === 0 && liveMatches.length === 0) {
       const hasFilters = currentQuery || currentCategory || currentTimeFilter;
       const label = t(FILTERS[currentFilter].label).toLowerCase();
       listEl.innerHTML = `<div class="empty-state">${escapeHtml(t(hasFilters ? 'matches.noneFiltered' : 'matches.noneOfType', { label }))}</div>`;
     } else {
-      listEl.innerHTML = buildMatchListHtml(matches, liveMatches);
+      listEl.innerHTML = buildMatchListHtml(matches, liveMatches) + (hasMore ? loadMoreHtml(liveMatches.length) : '');
     }
   } catch (err) {
     listEl.innerHTML = `<div class="empty-state">${escapeHtml(t('matches.couldNotLoad', { error: err.message }))}</div>`;
   }
 }
 
-async function refreshCounts() {
-  for (const key of Object.keys(FILTERS)) {
+// "Load more (651)": how many are still hidden, from the tab's own number (the "All" tab's number also counts the live
+// matches, which are listed separately above and are not paged).
+function loadMoreHtml(liveCount) {
+  const total = Number((document.getElementById(`count-${currentFilter}`) || {}).textContent);
+  const rest = Number.isFinite(total) ? total - (currentFilter === 'ALL' ? liveCount : 0) - shownCount : 0;
+  return `<div class="load-more-wrap"><button type="button" class="load-more-btn" id="load-more-btn">${escapeHtml(t('matches.loadMore'))}${rest > 0 ? ` (${rest})` : ''}</button></div>`;
+}
+listEl.addEventListener('click', (e) => {
+  if (!e.target.closest('#load-more-btn')) return;
+  shownCount += PAGE_SIZE;
+  loadMatches();
+});
+
+// All the tab numbers from one small request (GET /api/matches/counts) with the same filters the lists use, instead of
+// downloading every list just to count it. Calls that arrive while one is running share it.
+let countsRequest = null;
+function refreshCounts() {
+  if (countsRequest) return countsRequest;
+  const params = new URLSearchParams();
+  if (currentQuery) params.set('q', currentQuery);
+  if (currentCategory) params.set('category', currentCategory);
+  else if (FORCED_CATEGORIES.length) params.set('category', FORCED_CATEGORIES.join(','));
+  const range = currentTimeFilterRange();
+  if (range) {
+    params.set('from', range.from);
+    params.set('to', range.to);
+  } else if (currentTimeFilter === 'tbd') {
+    params.set('tbd', '1');
+  }
+  if (playerAuthed && currentPlayerId) params.set('playerId', currentPlayerId);
+  countsRequest = (async () => {
     try {
-      const params = buildFilterParams(key);
-      let matches = await api(`/matches?${params.toString()}`);
-      if (key === 'ALL') {
-        const liveMatches = await api(`/matches?${buildFilterParams('LIVE').toString()}`);
-        matches = matches.concat(liveMatches);
+      const counts = await api(`/matches/counts?${params.toString()}`);
+      for (const key of Object.keys(FILTERS)) {
+        const el = document.getElementById(`count-${key}`);
+        if (el) el.textContent = counts[key];
       }
-      const el = document.getElementById(`count-${key}`);
-      if (el) el.textContent = matches.length;
       // Unfinished matches are the exception, not the norm — the tab stays
       // out of the way entirely until there's actually one to see.
-      if (key === 'UNFINISHED') {
-        const tabBtn = document.getElementById('tab-UNFINISHED');
-        if (tabBtn) tabBtn.style.display = matches.length ? '' : 'none';
-      }
-    } catch { /* ignore */ }
-  }
+      const tabBtn = document.getElementById('tab-UNFINISHED');
+      if (tabBtn) tabBtn.style.display = counts.UNFINISHED ? '' : 'none';
+      const mine = document.getElementById('count-MY_MATCHES');
+      if (mine && counts.MY_MATCHES !== undefined) mine.textContent = counts.MY_MATCHES;
+    } catch { /* ignore */ } finally {
+      countsRequest = null;
+    }
+  })();
+  return countsRequest;
 }
 
 // "K naplánovaniu" (no date at all) and "Naživo" (a live match's status
