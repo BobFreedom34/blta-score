@@ -3019,6 +3019,8 @@ body.match-page .timer-cell .timer { background: var(--fill-grey); }
 body.match-page .result-card { text-align: center; margin-top: 20px; }
 body.match-page .result-card-label { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8f98; }
 body.match-page .result-card-winner { font-size: 24px; font-weight: 800; color: var(--white); margin-top: 4px; }
+/* the winner's name is green (a match with no winner keeps the white text) */
+body.match-page .result-card-winner.has-winner { color: var(--status-green); }
 body.match-page .result-card-text { font-size: 16px; font-weight: 700; margin-top: 4px; }
 body.match-page .result-card-reason { font-size: 12px; font-weight: 700; color: #8b8f98; margin-top: 4px; }
 
@@ -3487,6 +3489,28 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
 .home-sub { color: #d3d6dc; font-weight: 600; font-size: 14px; margin: 0 0 22px; }
 .home-sub b { color: var(--white); font-weight: 800; }
 .home .empty-state { padding: 28px 12px; }
+
+/* "My season": the logged-in player's own block at the top of the home page */
+.home-mine { margin: 0 0 48px; }
+.home-mine .home-sec-title { margin-bottom: 14px; }
+.home-mine-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.2fr; gap: 12px; }
+.home-mine-cell { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 16px 18px; color: var(--white); display: flex; flex-direction: column; min-width: 0; }
+.home-mine-cell.next { background: #0a0a0a; border-color: rgba(255, 255, 255, 0.55); }
+a.home-mine-cell:hover { border-color: var(--orange); }
+.home-mine-cell .k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.home-mine-cell .v { font-size: 22px; font-weight: 800; line-height: 1.15; margin-top: 8px; }
+.home-mine-cell .v.dim { color: #c3c7cf; font-size: 15px; font-weight: 700; }
+.home-mine-cell .v small { font-size: 13px; font-weight: 700; color: #c3c7cf; margin-left: 6px; }
+.home-mine-cell .s { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; font-size: 13px; font-weight: 700; }
+.home-mine-dim { color: #c3c7cf; font-size: 12px; font-weight: 600; }
+.home-mine-form { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.home-bar.mini { height: 6px; margin-top: 12px; }
+.home-chip.live { background: var(--orange); color: var(--white); }
+@media (max-width: 900px) {
+  .home-mine { margin-bottom: 40px; }
+  .home-mine-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-mine-cell.next { grid-column: 1 / -1; }
+}
 
 /* season timeline: finished seasons greyed out, the running one highlighted, upcoming ones outlined */
 /* The gap below the timeline is a full section gap (48px, 40px on tablet/phone), like between the sections further down. */

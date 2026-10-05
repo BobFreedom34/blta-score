@@ -217,7 +217,7 @@ function controlsHtml(m, canControlLive) {
   const winnerCard = `
     <div class="card result-card status-FINISHED">
       <div class="result-card-label">${t('match.winner')}</div>
-      <div class="result-card-winner">${winnerName ? escapeHtml(winnerName) : t('match.endedNoResult')}</div>
+      <div class="result-card-winner${winnerName ? ' has-winner' : ''}">${winnerName ? escapeHtml(winnerName) : t('match.endedNoResult')}</div>
       ${reasonLabel ? `<div class="result-card-reason">${escapeHtml(reasonLabel)}</div>` : ''}
     </div>
   `;

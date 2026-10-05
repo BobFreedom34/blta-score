@@ -9,6 +9,7 @@ const HOME_CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Nov
 
 let homeData = null;
 let homeCategory = null; // selected tab of the group leaders
+let mineFor = null; // the player the "My season" card was loaded for
 
 // ---------- helpers ----------
 
@@ -48,7 +49,9 @@ function soft(promise, fallback) {
 async function loadHome() {
   const nowMinus = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const week = weekRange();
-  const [seasons, live, finished, upcoming, weekMatches, looking, rankings] = await Promise.all([
+  const playerId = playerAuthed && currentPlayerId ? currentPlayerId : null;
+  mineFor = playerId;
+  const [seasons, live, finished, upcoming, weekMatches, looking, rankings, mine] = await Promise.all([
     soft(api('/seasons'), null),
     soft(api('/matches?status=LIVE'), []),
     soft(api('/matches?status=FINISHED&limit=4'), []),
@@ -56,11 +59,106 @@ async function loadHome() {
     soft(api(`/matches?from=${encodeURIComponent(week.from)}&to=${encodeURIComponent(week.to)}`), []),
     soft(api('/availability'), []),
     soft(api('/rankings'), null),
+    playerId ? soft(api(`/matches?playerId=${playerId}`), []) : Promise.resolve(null),
   ]);
   if (seasons === null) throw new Error('seasons');
   const season = pickSeason(seasons);
   const standings = season ? await soft(api(`/seasons/${season.id}/standings`), null) : null;
-  return { seasons, season, standings, live, finished, upcoming, weekMatches, looking, rankings };
+  return { seasons, season, standings, live, finished, upcoming, weekMatches, looking, rankings, mine, playerId };
+}
+
+// ---------- "My season": only for a logged-in player ----------
+
+function matchTime(m) {
+  return new Date(m.scheduledAt || m.startTime || m.endTime || m.createdAt).getTime();
+}
+
+function mineHtml(d) {
+  if (!d.playerId || !d.mine) return '';
+  const pid = Number(d.playerId);
+  const mine = d.mine;
+  const opponentOf = (m) => (m.player1.id === pid ? m.player2 : m.player1);
+
+  // the player's place in a group of the current season
+  const groups = d.standings ? d.standings.groups : [];
+  let group = null;
+  let row = null;
+  groups.some((g) => {
+    const r = g.rows.find((x) => x.player && Number(x.player.id) === pid);
+    if (r) { group = g; row = r; return true; }
+    return false;
+  });
+
+  // next match: a live one first, then the soonest dated one, then one still without a date
+  const now = Date.now();
+  const live = mine.find((m) => m.status === 'LIVE');
+  const dated = mine
+    .filter((m) => m.status === 'PLANNED' && m.scheduledAt && new Date(m.scheduledAt).getTime() >= now - 60 * 60 * 1000)
+    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+  const undated = mine.filter((m) => m.status === 'PLANNED' && !m.scheduledAt);
+  const next = live || dated[0] || undated[0] || null;
+
+  // form: the last five decided matches, oldest to newest
+  const form = mine.filter((m) => m.status === 'FINISHED' && m.winnerId).sort((a, b) => matchTime(a) - matchTime(b)).slice(-5);
+
+  if (!next && !row && !form.length) return '';
+
+  let nextCell;
+  if (next) {
+    const opp = opponentOf(next);
+    const sub = live
+      ? `<span class="home-chip live">${escapeHtml(t('home.live'))}</span>`
+      : (next.scheduledAt ? `<span class="home-chip date">${escapeHtml(chipDate(next.scheduledAt))}</span>` : `<span class="home-mine-dim">${escapeHtml(t('home.mineNoDate'))}</span>`);
+    nextCell = `
+      <a class="home-mine-cell next" href="/match/${next.token}">
+        <div class="k">${escapeHtml(t('home.mineNext'))}</div>
+        <div class="v">${escapeHtml(opp.name)}</div>
+        <div class="s">${sub}${next.location ? `<span class="home-mine-dim">${escapeHtml(next.location)}</span>` : ''}</div>
+      </a>`;
+  } else {
+    nextCell = `
+      <div class="home-mine-cell next">
+        <div class="k">${escapeHtml(t('home.mineNext'))}</div>
+        <div class="v dim">${escapeHtml(t('home.mineNoNext'))}</div>
+      </div>`;
+  }
+
+  let groupCells = '';
+  if (row && group) {
+    const opponents = Math.max(0, group.rows.length - 1);
+    const left = Math.max(0, opponents - row.played);
+    const pct = opponents ? Math.min(100, Math.round((row.played / opponents) * 100)) : 0;
+    groupCells = `
+      <div class="home-mine-cell">
+        <div class="k">${escapeHtml(t('home.minePos'))}</div>
+        <div class="v">${row.position}.<small>${escapeHtml(t('home.minePosOf', { n: group.rows.length }))}</small></div>
+        <div class="s"><span>${escapeHtml(group.name)}</span><span class="home-mine-dim">${escapeHtml(t('home.minePts', { n: row.points }))}</span></div>
+      </div>
+      <div class="home-mine-cell">
+        <div class="k">${escapeHtml(t('home.mineLeft'))}</div>
+        <div class="v">${left}</div>
+        <div class="s"><span class="home-mine-dim">${escapeHtml(t('home.minePlayed', { done: row.played, total: opponents }))}</span></div>
+        <div class="home-bar mini"><i style="width:${pct}%"></i></div>
+      </div>`;
+  }
+
+  const wins = form.filter((m) => m.winnerId === pid).length;
+  const squares = form.map((m) => {
+    const won = m.winnerId === pid;
+    return `<a class="form-square ${won ? 'win' : 'loss'}" href="/match/${m.token}" title="${escapeHtml(opponentOf(m).name)}">${won ? 'W' : 'L'}</a>`;
+  }).join('');
+  const formCell = `
+      <div class="home-mine-cell">
+        <div class="k">${escapeHtml(t('home.mineForm'))}</div>
+        ${form.length ? `<div class="home-mine-form">${squares}</div><div class="s"><span class="home-mine-dim">${escapeHtml(t('home.mineFormSub', { w: wins, l: form.length - wins }))}</span></div>` : `<div class="v dim">${escapeHtml(t('home.mineNoForm'))}</div>`}
+      </div>`;
+
+  const note = [d.season && d.season.name, group && group.name].filter(Boolean).join(' · ');
+  return `
+  <section class="home-mine">
+    ${secTitle(t('home.mine'), note, '', '')}
+    <div class="home-mine-grid">${nextCell}${groupCells}${formCell}</div>
+  </section>`;
 }
 
 // ---------- season timeline ----------
@@ -418,6 +516,7 @@ function renderHome() {
   const keepLeft = oldRow ? oldRow.scrollLeft : undefined;
   rootEl.innerHTML = `
     ${sub(d)}
+    ${mineHtml(d)}
     ${timelineHtml(d)}
     ${progressHtml(d)}
     ${d.season ? statsHtml(d) : ''}
@@ -438,6 +537,12 @@ async function refreshHome() {
   }
   renderHome();
 }
+
+// The session is read after the page loads (and changes on login/logout): load the player's own data when it does.
+window.addEventListener('blta:auth-changed', () => {
+  const now = playerAuthed && currentPlayerId ? currentPlayerId : null;
+  if (homeData && now !== mineFor) refreshHome();
+});
 
 rootEl.addEventListener('click', (e) => {
   const b = e.target.closest('#home-cats [data-cat]');
