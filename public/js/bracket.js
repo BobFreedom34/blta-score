@@ -80,7 +80,16 @@ function nodeHtml(node) {
 
 function render(data) {
   document.title = `${data.name} — Tennis SCORE`;
-  document.getElementById('bracket-title').textContent = data.name;
+  const titleEl = document.getElementById('bracket-title');
+  titleEl.textContent = data.name;
+  // the season and category the bracket belongs to, under the title
+  const about = [data.season ? data.season.name : '', data.category ? categoryLabel(data.category) : ''].filter(Boolean).join(' · ');
+  if (about) {
+    const sub = document.createElement('span');
+    sub.className = 'bracket-title-sub';
+    sub.textContent = about;
+    titleEl.appendChild(sub);
+  }
 
   const finalNode = data.nodes.find((n) => n.round === data.rounds);
   const finalDecided = finalNode && ((finalNode.match && finalNode.match.status === 'FINISHED') || finalNode.isManualResult);

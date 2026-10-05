@@ -1,6 +1,8 @@
 const root = document.getElementById('bracket-admin-root');
 
 let brackets = [];
+let seasonsList = [];
+const BLTA_CATEGORY_KEYS = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 let entryRowCounter = 0;
 // Tracks which bracket ids currently have their "Manage slots" panel open,
 // so re-rendering the list after a slot assignment can reopen the same
@@ -25,6 +27,24 @@ const CATEGORY_OPTIONS = [
 function categoryOptionsHtml(selected) {
   return CATEGORY_OPTIONS.map(([value, label]) => `<option value="${value}" ${(selected || '') === value ? 'selected' : ''}>${label}</option>`).join('');
 }
+
+function seasonOptionsHtml(selectedId) {
+  return `<option value="">— none —</option>` + seasonsList.map((x) => `<option value="${x.id}" ${Number(selectedId) === x.id ? 'selected' : ''}>${escapeHtml(x.name)}</option>`).join('');
+}
+
+// A season only goes with a BLTA category: the season picker is switched off (and cleared) for any other category.
+function syncSeasonSelect(categorySelect, seasonSelect) {
+  const isBlta = BLTA_CATEGORY_KEYS.includes(categorySelect.value);
+  seasonSelect.disabled = !isBlta;
+  if (!isBlta) seasonSelect.value = '';
+}
+root.addEventListener('change', (e) => {
+  if (e.target.id === 'bracket-category') {
+    syncSeasonSelect(e.target, document.getElementById('bracket-season'));
+  } else if (e.target.classList && e.target.classList.contains('bracket-rename-category')) {
+    syncSeasonSelect(e.target, e.target.closest('form').querySelector('.bracket-rename-season'));
+  }
+});
 
 // ---------- Create form ----------
 
@@ -74,6 +94,12 @@ function createFormHtml() {
           </select>
         </div>
         <div class="field">
+          <label for="bracket-season">Season <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional — needs a BLTA category; the matches it creates get this season and count as play-off matches)</span></label>
+          <select id="bracket-season" disabled style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
+            ${seasonOptionsHtml('')}
+          </select>
+        </div>
+        <div class="field">
           <label>How should the draw be filled?</label>
           <div style="display:flex;gap:16px;margin-top:4px">
             <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="bracket-mode" value="seeded" checked> Auto-generate from seeds</label>
@@ -106,6 +132,9 @@ function createFormHtml() {
 function resetCreateForm() {
   document.getElementById('bracket-name').value = '';
   document.getElementById('bracket-category').value = '';
+  const seasonReset = document.getElementById('bracket-season');
+  seasonReset.value = '';
+  seasonReset.disabled = true;
   document.getElementById('bracket-entries-list').innerHTML = '';
   document.getElementById('bracket-auto-create-matches').checked = true;
   entryRowCounter = 0;
@@ -141,6 +170,8 @@ function wireCreateForm() {
       const autoCreateMatches = document.getElementById('bracket-auto-create-matches').checked;
       const body = { name, format, autoCreateMatches };
       if (category) body.category = category;
+      const seasonId = document.getElementById('bracket-season').value;
+      if (seasonId) body.seasonId = Number(seasonId);
 
       if (seeded) {
         const rows = Array.from(document.querySelectorAll('.bracket-entry-row'));
@@ -188,7 +219,7 @@ function renderList() {
       <div class="bracket-admin-row" data-id="${b.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div class="bracket-name-cell" style="flex:1;min-width:160px">
-            <div class="bracket-name-display" style="font-weight:700">${escapeHtml(b.name)}${b.category ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.category)}</span>` : ''}${b.autoCreateMatches === false ? ' <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">Historical</span>' : ''}</div>
+            <div class="bracket-name-display" style="font-weight:700">${escapeHtml(b.name)}${b.category ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.category)}</span>` : ''}${b.seasonName ? ` <span style="font-size:11px;font-weight:700;color:var(--charcoal);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.seasonName)}</span>` : ''}${b.autoCreateMatches === false ? ' <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">Historical</span>' : ''}</div>
             <div style="font-size:12px;color:var(--gray)">${b.size}-draw · ${escapeHtml(formatLabel(b.format))}</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
@@ -229,6 +260,9 @@ function renderList() {
           <select class="bracket-rename-category" style="padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
             ${categoryOptionsHtml(b.category)}
           </select>
+          <select class="bracket-rename-season" ${BLTA_CATEGORY_KEYS.includes(b.category) ? '' : 'disabled'} title="Season (needs a BLTA category)" style="padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+            ${seasonOptionsHtml(b.seasonId)}
+          </select>
           <button type="submit" class="btn btn-sm btn-primary">Save</button>
           <button type="button" class="btn btn-sm btn-outline" data-action="cancel-rename">Cancel</button>
           <span class="bracket-rename-error" style="color:var(--danger);font-weight:600;font-size:12px;width:100%"></span>
@@ -237,6 +271,7 @@ function renderList() {
       const form = nameCell.querySelector('.bracket-rename-form');
       const input = form.querySelector('.bracket-rename-input');
       const categorySelect = form.querySelector('.bracket-rename-category');
+      const seasonSelect = form.querySelector('.bracket-rename-season');
       input.focus();
       input.select();
       form.querySelector('[data-action="cancel-rename"]').addEventListener('click', renderList);
@@ -247,7 +282,7 @@ function renderList() {
         const name = input.value.trim();
         if (!name) { errorEl.textContent = 'Name cannot be empty'; return; }
         try {
-          await api(`/brackets/${id}`, { method: 'PATCH', body: { name, category: categorySelect.value } });
+          await api(`/brackets/${id}`, { method: 'PATCH', body: { name, category: categorySelect.value, seasonId: seasonSelect.value ? Number(seasonSelect.value) : null } });
           toast('Bracket updated');
           await loadBrackets();
         } catch (err) {
@@ -482,5 +517,6 @@ function renderLoggedOut() {
   const isAdminUser = await checkAdmin();
   if (!isAdminUser) return renderLoggedOut();
   await loadPlayers();
+  try { seasonsList = await api('/seasons'); } catch { seasonsList = []; }
   renderAdmin();
 })();

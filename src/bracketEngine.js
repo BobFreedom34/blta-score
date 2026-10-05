@@ -78,6 +78,14 @@ function buildEmptyTree(bracketId, size) {
 // freestanding tournament (bracket.category left unset). Unscheduled (no
 // location/date) — an admin sets those the same "Set date & location" way
 // as any other planned match, once the pairing is known.
+const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+
+// A bracket tied to a BLTA category is a play-off draw: its matches are play-off matches (they never count in a
+// group table) and carry the bracket's season, but belong to no group.
+function matchStageFor(bracket) {
+  return BLTA_CATEGORIES.includes(bracket.category) ? 'PLAYOFF' : 'GROUP';
+}
+
 function maybeCreateMatch(node) {
   if (node.match_id || !node.player1_id || !node.player2_id) return node;
   const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(node.bracket_id);
@@ -87,11 +95,13 @@ function maybeCreateMatch(node) {
   if (!bracket.auto_create_matches) return node;
   const state = engine.initState(bracket.format);
   const info = db.prepare(`
-    INSERT INTO matches (share_token, category, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, notes)
-    VALUES (?, ?, ?, ?, '', NULL, ?, 'PLANNED', ?, '[]', 1, ?)
+    INSERT INTO matches (share_token, category, season_id, stage, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, notes)
+    VALUES (?, ?, ?, ?, ?, ?, '', NULL, ?, 'PLANNED', ?, '[]', 1, ?)
   `).run(
     crypto.randomUUID(),
     bracket.category || 'OTHER',
+    bracket.season_id || null,
+    matchStageFor(bracket),
     node.player1_id,
     node.player2_id,
     bracket.format,
@@ -173,13 +183,13 @@ function applySeeding(bracketId, entries, size) {
 // past/historical draw where the games already happened outside this app,
 // so nothing here should try to create a live, scoreable match for them.
 function createBracket({
-  name, format, entries, size, autoCreateMatches, category,
+  name, format, entries, size, autoCreateMatches, category, seasonId,
 }) {
   const drawSize = entries && entries.length > 0
     ? nextPowerOfTwo(entries.length)
     : nextPowerOfTwo(Math.max(size || 2, 2));
-  const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category) VALUES (?, ?, ?, ?, ?)')
-    .run(name, format, drawSize, autoCreateMatches === false ? 0 : 1, category || null);
+  const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category, season_id) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(name, format, drawSize, autoCreateMatches === false ? 0 : 1, category || null, seasonId || null);
   const bracketId = info.lastInsertRowid;
   buildEmptyTree(bracketId, drawSize);
   if (entries && entries.length > 0) applySeeding(bracketId, entries, drawSize);
@@ -244,6 +254,22 @@ function getBracketTree(bracketId) {
   return { bracket, nodes };
 }
 
+// After the bracket's category or season was changed: the matches it has already created follow. Season and play-off
+// stage are plain labels, so every one of them is updated; the category of a FINISHED match is left alone (its
+// ranking points were already worked out under the old category).
+function syncBracketMatches(bracketId) {
+  const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(bracketId);
+  if (!bracket) return 0;
+  const ids = db.prepare('SELECT match_id FROM bracket_matches WHERE bracket_id = ? AND match_id IS NOT NULL').all(bracketId).map((r) => r.match_id);
+  const labels = db.prepare('UPDATE matches SET season_id = ?, stage = ?, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\') WHERE id = ?');
+  const category = db.prepare('UPDATE matches SET category = ? WHERE id = ? AND status != \'FINISHED\'');
+  ids.forEach((id) => {
+    labels.run(bracket.season_id || null, matchStageFor(bracket), id);
+    category.run(bracket.category || 'OTHER', id);
+  });
+  return ids.length;
+}
+
 module.exports = {
   nextPowerOfTwo,
   standardSeedOrder,
@@ -255,4 +281,5 @@ module.exports = {
   advanceWinner,
   syncBracketIfFinished,
   getBracketTree,
+  syncBracketMatches,
 };

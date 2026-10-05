@@ -16,6 +16,28 @@ const router = express.Router();
 // rather than imported since matches.js doesn't export it either (each
 // route file just keeps its own copy, matching the existing convention).
 const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE', 'FRIENDLY', 'VIP_CUP', 'ATA_TENNIS', 'OTHER'];
+const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+
+// A season is optional, but it only goes with a BLTA category (the same rule as for a match). Returns an error text
+// or null.
+function seasonProblem(seasonId, category) {
+  if (seasonId === null || seasonId === undefined) return null;
+  if (!db.prepare('SELECT 1 FROM seasons WHERE id = ?').get(seasonId)) return 'That season does not exist';
+  if (!BLTA_CATEGORIES.includes(category)) return 'A season needs a BLTA category (Elite, Next Gen or Novice)';
+  return null;
+}
+
+function parseSeasonId(raw) {
+  if (raw === undefined || raw === null || raw === '') return null;
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : NaN;
+}
+
+function seasonOf(seasonId) {
+  if (!seasonId) return null;
+  const row = db.prepare('SELECT id, name FROM seasons WHERE id = ?').get(seasonId);
+  return row ? { id: row.id, name: row.name } : null;
+}
 
 function serializePlayer(player) {
   if (!player) return null;
@@ -76,6 +98,7 @@ function serializeBracket(bracketId) {
     format: tree.bracket.format,
     formatLabel: engine.FORMATS[tree.bracket.format] ? engine.FORMATS[tree.bracket.format].label : tree.bracket.format,
     category: tree.bracket.category || null,
+    season: seasonOf(tree.bracket.season_id),
     size: tree.bracket.size,
     autoCreateMatches: !!tree.bracket.auto_create_matches,
     rounds: bracketEngine.roundCount(tree.bracket.size),
@@ -94,6 +117,8 @@ router.get('/', auth.requireAdmin, (req, res) => {
     name: r.name,
     format: r.format,
     category: r.category || null,
+    seasonId: r.season_id || null,
+    seasonName: (seasonOf(r.season_id) || {}).name || null,
     size: r.size,
     autoCreateMatches: !!r.auto_create_matches,
     createdAt: r.created_at,
@@ -128,6 +153,10 @@ router.post('/', auth.requireAdmin, (req, res) => {
   if (!name) return res.status(400).json({ error: 'Name is required' });
   if (!engine.FORMATS[format]) return res.status(400).json({ error: 'Invalid match format' });
   if (category && !CATEGORIES.includes(category)) return res.status(400).json({ error: 'Invalid category' });
+  const seasonId = parseSeasonId(req.body.seasonId);
+  if (Number.isNaN(seasonId)) return res.status(400).json({ error: 'Invalid season' });
+  const problem = seasonProblem(seasonId, category);
+  if (problem) return res.status(400).json({ error: problem });
 
   const rawEntries = Array.isArray(req.body.entries) ? req.body.entries : null;
   if (rawEntries) {
@@ -151,7 +180,7 @@ router.post('/', auth.requireAdmin, (req, res) => {
     }
     const entries = rawEntries.map((e) => ({ playerId: Number(e.playerId), seed: Number(e.seed) }));
     const bracketId = bracketEngine.createBracket({
-      name, format, entries, autoCreateMatches, category,
+      name, format, entries, autoCreateMatches, category, seasonId,
     });
     return res.status(201).json(serializeBracket(bracketId));
   }
@@ -161,7 +190,7 @@ router.post('/', auth.requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Give either a list of seeded players, or a draw size (2-256) for a manual draw' });
   }
   const bracketId = bracketEngine.createBracket({
-    name, format, entries: null, size, autoCreateMatches, category,
+    name, format, entries: null, size, autoCreateMatches, category, seasonId,
   });
   res.status(201).json(serializeBracket(bracketId));
 });
@@ -181,10 +210,30 @@ router.patch('/:id', auth.requireAdmin, (req, res) => {
     if (rawCategory && !CATEGORIES.includes(rawCategory)) return res.status(400).json({ error: 'Invalid category' });
     fields.category = rawCategory || null;
   }
+  if (Object.prototype.hasOwnProperty.call(req.body, 'seasonId')) {
+    const seasonId = parseSeasonId(req.body.seasonId);
+    if (Number.isNaN(seasonId)) return res.status(400).json({ error: 'Invalid season' });
+    fields.season_id = seasonId;
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, 'category') || Object.prototype.hasOwnProperty.call(fields, 'season_id')) {
+    const finalCategory = Object.prototype.hasOwnProperty.call(fields, 'category') ? fields.category : bracket.category;
+    let finalSeason = Object.prototype.hasOwnProperty.call(fields, 'season_id') ? fields.season_id : bracket.season_id;
+    // Changing a bracket to a non-BLTA category drops its season (the two only go together).
+    if (finalSeason && !BLTA_CATEGORIES.includes(finalCategory) && !Object.prototype.hasOwnProperty.call(fields, 'season_id')) {
+      finalSeason = null;
+      fields.season_id = null;
+    }
+    const problem = seasonProblem(finalSeason || null, finalCategory);
+    if (problem) return res.status(400).json({ error: problem });
+  }
   if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Nothing to update' });
   const sets = Object.keys(fields).map((k) => `${k} = @${k}`).join(', ');
   db.prepare(`UPDATE brackets SET ${sets}, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = @id`)
     .run({ ...fields, id });
+  // The matches this bracket already created follow its new category / season.
+  if (Object.prototype.hasOwnProperty.call(fields, 'category') || Object.prototype.hasOwnProperty.call(fields, 'season_id')) {
+    bracketEngine.syncBracketMatches(id);
+  }
   res.json(serializeBracket(id));
 });
 

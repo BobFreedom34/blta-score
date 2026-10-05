@@ -3723,3 +3723,6 @@ a.home-tl.now:hover .home-tl-body { border-color: var(--orange); }
 body:not(.embed-light) .rank-name.is-me,
 body:not(.embed-light) .grp-name.is-me,
 body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
+
+/* season / category line under a bracket's title */
+.bracket-title-sub { display: block; font-size: 14px; font-weight: 600; color: #c3c7cf; margin-top: 6px; letter-spacing: 0; }

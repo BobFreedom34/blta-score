@@ -1230,4 +1230,9 @@ if (!matchSeasonColumns.includes('stage')) {
   db.exec("ALTER TABLE matches ADD COLUMN stage TEXT NOT NULL DEFAULT 'GROUP'");
 }
 
+// A bracket (play-off draw) can belong to a season; the matches it creates then carry that season.
+if (!db.prepare('PRAGMA table_info(brackets)').all().some((c) => c.name === 'season_id')) {
+  db.exec('ALTER TABLE brackets ADD COLUMN season_id INTEGER REFERENCES seasons(id) ON DELETE SET NULL');
+}
+
 module.exports = db;
