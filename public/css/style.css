@@ -3718,3 +3718,8 @@ a.home-tl.now:hover .home-tl-body { border-color: var(--orange); }
 .similar-opt:hover { border-color: var(--orange); }
 .similar-opt input { accent-color: var(--orange); width: 18px; height: 18px; flex: 0 0 18px; }
 .similar-opt.new { border-style: dashed; color: var(--gray); }
+
+/* the logged-in player's own name (see highlightMyName in common.js) */
+body:not(.embed-light) .rank-name.is-me,
+body:not(.embed-light) .grp-name.is-me,
+body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }

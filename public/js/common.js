@@ -3026,3 +3026,28 @@ if (!document.body.classList.contains('embed')) {
   // for the banner's Install button to actually do.
   if (isIOS) setTimeout(maybeShowBanner, 1500);
 })();
+
+// A logged-in player sees their own name in green in the rankings, the league tables and the home page tables.
+// Done here once for every page: names in those lists are links to /player/<slug>, so the one that points at the
+// logged-in player's own profile gets the class "is-me" (re-applied whenever a page redraws its lists or the login changes).
+const MY_NAME_SELECTOR = '.rank-name, .grp-name, .home-t-row .nm';
+function highlightMyName() {
+  const key = playerAuthed ? (currentPlayerSlug || currentPlayerId) : null;
+  const mine = key ? `/player/${key}` : null;
+  document.querySelectorAll(MY_NAME_SELECTOR).forEach((el) => {
+    let href = el.getAttribute('href');
+    if (href) { try { href = decodeURIComponent(href); } catch { /* keep as is */ } }
+    el.classList.toggle('is-me', !!mine && href === mine);
+  });
+}
+(function watchMyName() {
+  let queued = false;
+  const schedule = () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => { queued = false; highlightMyName(); });
+  };
+  window.addEventListener('blta:auth-changed', schedule);
+  if (document.body) new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+  schedule();
+})();
