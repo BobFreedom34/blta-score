@@ -21,6 +21,7 @@ let round = null;
 let schedCat = 'ALL'; // the Rozpis tab's category and group choice
 let schedGroup = 'ALL';
 let playersCat = 'ALL'; // the Hráči tab's category filter
+let playoffCat = 'ALL'; // the Play-off tab's category filter
 const bracketData = new Map(); // bracket id -> full bracket, cleared whenever the data is refreshed
 let tab = null; // the open tab: info, tables, results, schedule, players, playoff or gallery
 const loaded = new Set(); // tabs whose data is loaded and still current
@@ -327,13 +328,23 @@ function playersHtml() {
   return `<section class="sv-sec" id="sv-players">${filter}<div class="sv-pt">${tables}</div></section>`;
 }
 
+// The Play-off tab: a category filter, then the brackets of the season (a bracket whose name already says the category is
+// not given the category twice).
 function playoffHtml() {
   const hasGroups = standings && standings.groups.length;
   if (!brackets.length && (statusOf() === 'past' || !hasGroups)) return '';
-  const body = brackets.length
-    ? brackets.map((b) => `<div class="sv-bracket" data-bracket="${b.id}"><h3 class="grp-title">${escapeHtml(CATEGORY_NAMES[b.category] || '')} · ${escapeHtml(b.name)}</h3><div class="sv-bracket-body">${escapeHtml(t('common.loading'))}</div></div>`).join('')
-    : `<div class="sv-empty">${escapeHtml(t('season.playoffSoon'))}</div>`;
-  return `<section class="sv-sec" id="sv-playoff">${secHead('playoff', '')}${body}</section>`;
+  if (!brackets.length) return `<section class="sv-sec" id="sv-playoff"><div class="sv-empty">${escapeHtml(t('season.playoffSoon'))}</div></section>`;
+  const cats = CATEGORY_ORDER.filter((c) => brackets.some((b) => b.category === c));
+  if (playoffCat !== 'ALL' && !cats.includes(playoffCat)) playoffCat = 'ALL';
+  const btn = (value, label, count) => `<button type="button" class="tab${playoffCat === value ? ' active' : ''}" data-oc="${value}">${escapeHtml(label)}<small>${count}</small></button>`;
+  const filter = `<div class="tabs sv-line" id="sv-pcats">${btn('ALL', t('season.schedAll'), brackets.length)}${cats.map((c) => btn(c, CATEGORY_NAMES[c], brackets.filter((b) => b.category === c).length)).join('')}</div>`;
+  const title = (b) => {
+    const cat = CATEGORY_NAMES[b.category] || '';
+    return cat && !b.name.toLowerCase().includes(cat.toLowerCase()) ? `${cat} · ${b.name}` : b.name;
+  };
+  const body = brackets.filter((b) => playoffCat === 'ALL' || b.category === playoffCat)
+    .map((b) => `<div class="sv-bracket" data-bracket="${b.id}"><h3 class="grp-title">${escapeHtml(title(b))}</h3><div class="sv-bracket-body">${escapeHtml(t('common.loading'))}</div></div>`).join('');
+  return `<section class="sv-sec" id="sv-playoff">${filter}${body}</section>`;
 }
 
 async function fillBrackets() {
@@ -531,6 +542,8 @@ rootEl.addEventListener('click', async (e) => {
   if (tabBtn) { openTab(tabBtn.dataset.tab); return; }
   const cat = e.target.closest('#sv-panel [data-cat]');
   if (cat) { category = cat.dataset.cat; renderPanel(); return; }
+  const oc = e.target.closest('#sv-panel [data-oc]');
+  if (oc) { playoffCat = oc.dataset.oc; renderPanel(); return; }
   const pc = e.target.closest('#sv-panel [data-pc]');
   if (pc) { playersCat = pc.dataset.pc; renderPanel(); return; }
   const sc = e.target.closest('#sv-panel [data-sc]');

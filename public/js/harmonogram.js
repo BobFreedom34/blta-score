@@ -148,17 +148,19 @@ function rowHtml(e, today) {
     extra = ` · ${t('schedule.startsIn', { n, d: dayWord(n) })}`;
   }
   const tags = `<span class="sch-tag${isLeague ? '' : ' tour'}">${escapeHtml(t(isLeague ? 'schedule.league' : 'schedule.tournament'))}</span>`
-    + (status === 'now' ? `<span class="sch-tag now">${escapeHtml(t('schedule.running'))}</span>` : '');
+    + (status === 'now' ? `<span class="sch-tag now">${escapeHtml(t('schedule.running'))}</span>` : '')
+    + (status === 'past' ? `<span class="sch-tag past">${escapeHtml(t('schedule.finishedTag'))}</span>` : '');
   const sub = `${e.venue ? `${escapeHtml(e.venue)} · ` : ''}<b>${escapeHtml(categoriesText(e))}</b>${escapeHtml(extra)}`;
-  const more = e.link
-    ? `<a class="sch-go" href="${escapeHtml(e.link)}"${/^https?:/i.test(e.link) ? ' target="_blank" rel="noopener"' : ''}>${escapeHtml(t('schedule.more'))} ›</a>`
-    : '<span></span>';
+  const more = e.link ? `<span class="sch-go">${escapeHtml(t('schedule.more'))} ›</span>` : '<span></span>';
+  const open = e.link
+    ? `<a class="sch-row link ${status}" href="${escapeHtml(e.link)}"${/^https?:/i.test(e.link) ? ' target="_blank" rel="noopener"' : ''}>`
+    : `<div class="sch-row ${status}">`;
   return `
-    <div class="sch-row ${status}">
+    ${open}
       <div class="sch-date">${escapeHtml(dateRange(e))}<small>${escapeHtml(yearText(e))}</small></div>
       <div class="sch-info${e.logoUrl ? ' with-logo' : ''}">${e.logoUrl ? `<img class="sch-logo" src="${escapeHtml(e.logoUrl)}" alt="" loading="lazy">` : ''}<div class="sch-text"><div class="sch-name">${escapeHtml(e.name)} ${tags}</div><div class="sch-sub">${sub}</div>${bar}</div></div>
       ${more}
-    </div>`;
+    ${e.link ? '</a>' : '</div>'}`;
 }
 
 function render() {
@@ -186,7 +188,9 @@ function render() {
   });
   rootEl.innerHTML = [...byMonth.keys()].sort((a, b) => a - b).map((month) => {
     const name = new Date(year, month, 1, 12).toLocaleDateString(locale(), { month: 'long' });
-    return `<div class="sch-month-title">${escapeHtml(name)}</div><div class="sch-card">${byMonth.get(month).map((e) => rowHtml(e, today)).join('')}</div>`;
+    const states = byMonth.get(month).map((e) => statusOf(e, today));
+    const tone = states.includes('now') ? ' now' : (states.every((x) => x === 'past') ? ' past' : '');
+    return `<div class="sch-month-title">${escapeHtml(name)}</div><div class="sch-card${tone}">${byMonth.get(month).map((e) => rowHtml(e, today)).join('')}</div>`;
   }).join('');
 }
 

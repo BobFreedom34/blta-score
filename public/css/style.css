@@ -3821,20 +3821,23 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sch-card { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: 0 0 18px rgba(255, 85, 0, 0.25); border-radius: var(--radius); padding: 4px 22px; }
 .sch-row { display: grid; grid-template-columns: 170px minmax(0, 1fr) auto; align-items: center; gap: 18px; padding: 16px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
 .sch-row:last-child { border-bottom: none; }
-.sch-row.past { opacity: 0.55; }
-.sch-date { color: var(--orange); font-weight: 800; font-size: 20px; letter-spacing: -0.01em; line-height: 1.1; }
-.sch-date small { display: block; color: #8b8f98; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 4px; }
+.sch-row.past .sch-info, .sch-row.past .sch-go { opacity: 0.55; }
+.sch-date { color: var(--white); font-weight: 800; font-size: 20px; letter-spacing: -0.01em; line-height: 1.1; }
+.sch-date small { display: block; color: #c3c7cf; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 4px; }
 .sch-name { color: var(--white); font-weight: 800; font-size: 18px; line-height: 1.2; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
 .sch-sub { color: #a9adb6; font-weight: 600; font-size: 13px; margin-top: 5px; }
 .sch-sub b { color: var(--white); font-weight: 700; }
 .sch-tag { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--green); color: var(--green); }
 .sch-tag.tour { border-color: var(--orange); color: var(--orange); }
 .sch-tag.now { background: var(--green); border-color: var(--green); color: #0a0a0a; }
-.sch-go { color: #8b8f98; font-weight: 800; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; white-space: nowrap; }
-.sch-go:hover { color: var(--orange); }
+.sch-row.link { color: inherit; text-decoration: none; cursor: pointer; }
+.sch-row.link:hover { background: rgba(255, 255, 255, 0.04); }
+.sch-go { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.35); color: var(--white); font-weight: 800; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.sch-row.link:hover .sch-go { border-color: var(--orange); color: var(--orange); }
 .sch-row .home-bar.mini { margin-top: 10px; max-width: 360px; }
 @media (max-width: 700px) {
-  .sch-row { grid-template-columns: 1fr; gap: 8px; }
+  .sch-row { grid-template-columns: 1fr; gap: 10px; }
+  .sch-row .sch-go { justify-self: end; }
   .sch-card { padding: 4px 16px; }
   .sch-tl-wrap { padding: 14px 14px 12px; }
 }
@@ -4047,3 +4050,11 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 #sv-pcats .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 #sv-pcats .tab small { color: rgba(255, 255, 255, 0.65); font-weight: 700; margin-left: 6px; }
 @media (max-width: 900px) { #sv-pcats { margin-bottom: 40px; } }
+
+/* schedule list: the card of a running season is green, a month with only finished events is grey */
+.sch-card.now { border-color: var(--green); box-shadow: 0 0 18px rgba(178, 250, 6, 0.25); }
+.sch-card.past { border-color: rgba(255, 255, 255, 0.28); box-shadow: 0 0 18px rgba(128, 132, 140, 0.2); }
+.sch-tag.past { border-color: #8b8f98; color: #c3c7cf; }
+/* finished events: the date is grey like the rest of the row */
+.sch-row.past .sch-date { color: #8b8f98; }
+.sch-row.past .sch-date small { color: #6e727c; }
