@@ -251,6 +251,7 @@ function timelineHtml(d) {
     const range = s.startDate && s.endDate ? monthRange(s.startDate, s.endDate) : '';
     const inner = `
       <div class="home-tl-body">
+        ${s.logoUrl ? `<img class="home-tl-logo" src="${escapeHtml(s.logoUrl)}" alt="" loading="lazy">` : ''}
         <span class="home-tl-chip">${state === 'now' ? '<i></i>' : ''}${escapeHtml(label[state])}</span>
         <div class="home-tl-name">${escapeHtml(s.name)}</div>
         <div class="home-tl-range">${escapeHtml(range)}</div>
@@ -472,8 +473,10 @@ function renderHome() {
   const d = homeData;
   const oldRow = document.getElementById('home-timeline');
   const keepLeft = oldRow ? oldRow.scrollLeft : undefined;
+  document.getElementById('home-sub').innerHTML = sub(d);
+  const headLogo = document.getElementById('home-head-logo');
+  if (d.season && d.season.logoUrl) { headLogo.src = d.season.logoUrl; headLogo.hidden = false; } else { headLogo.hidden = true; }
   rootEl.innerHTML = `
-    ${sub(d)}
     ${mineHtml(d)}
     ${timelineHtml(d)}
     ${progressHtml(d)}

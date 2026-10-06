@@ -3505,7 +3505,7 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
 /* ---------- Home: league overview ---------- */
 .container.home { color: var(--white); }
 .home-h1 { margin: 22px 0 6px; }
-.home-sub { color: #d3d6dc; font-weight: 600; font-size: 14px; margin: 0 0 22px; }
+.home-sub { color: #d3d6dc; font-weight: 600; font-size: 14px; margin: 0; }
 .home-sub b { color: var(--white); font-weight: 800; }
 .home .empty-state { padding: 28px 12px; }
 
@@ -4024,3 +4024,12 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-rl-round { margin: 22px -22px 0; padding: 12px 22px; background: var(--fill-grey); font-size: 14px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
 .sv-rl-round:first-child { margin-top: 4px; border-radius: 14px 14px 0 0; }
 @media (max-width: 700px) { .sv-rl-round { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; } }
+
+/* season logos on the home page: next to the heading and on the timeline cards */
+.home-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 48px; } /* the same gap as between the blocks below */
+.home-head-text { min-width: 0; }
+.home-head-logo { height: 92px; width: auto; flex: 0 0 auto; }
+.home-tl-body { position: relative; }
+.home-tl-logo { position: absolute; top: 12px; right: 12px; width: 46px; height: auto; }
+@media (max-width: 900px) { .home-head { margin-bottom: 40px; } }
+@media (max-width: 700px) { .home-head-logo { height: 64px; } .home-tl-logo { width: 40px; } }
