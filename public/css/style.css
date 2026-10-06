@@ -3575,12 +3575,8 @@ a.home-mine-cell:hover { border-color: var(--orange); }
 .home-tl-nav.next { right: -6px; }
 @media (hover: hover) {
   .home-tl-wrap.can-prev .home-tl-nav.prev, .home-tl-wrap.can-next .home-tl-nav.next { display: block; }
-  .home-timeline { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.3) transparent; cursor: grab; }
-  .home-timeline::-webkit-scrollbar { display: block; height: 6px; }
-  .home-timeline::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.3); border-radius: 99px; }
-  /* the thin scrollbar is ~10px tall; take it out of the gap below the row so the gap from the cards stays a full section gap */
-  .home-tl-wrap.can-prev, .home-tl-wrap.can-next { margin-bottom: 38px; }
-  @media (max-width: 900px) { .home-tl-wrap.can-prev, .home-tl-wrap.can-next { margin-bottom: 30px; } }
+  /* no scrollbar: the arrow buttons, dragging with the mouse and the touch swipe move the row */
+  .home-timeline { cursor: grab; }
 }
 .home-tl { position: relative; flex: 1 0 190px; min-width: 190px; padding-top: 22px; color: var(--white); scroll-snap-align: center; }
 .home-tl::before { content: ''; position: absolute; top: 6px; left: 0; right: -12px; height: 2px; background: rgba(255, 255, 255, 0.2); }
