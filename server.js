@@ -29,6 +29,7 @@ const venuesRouter = require('./src/routes/venues');
 const seasonsRouter = require('./src/routes/seasons');
 const scheduleRouter = require('./src/routes/schedule');
 const seoRouter = require('./src/routes/seo');
+const carouselRouter = require('./src/routes/carousel');
 const seo = require('./src/seo');
 
 const app = express();
@@ -167,6 +168,7 @@ app.use((req, res, next) => {
 // dataDir), not under public/, so they survive redeploys.
 app.use('/badge-icons', express.static(path.join(db.dataDir, 'badge-icons')));
 app.use('/player-photos', express.static(path.join(db.dataDir, 'player-photos')));
+app.use('/carousel-images', express.static(path.join(db.dataDir, 'carousel'), { maxAge: '30d' }));
 
 app.use('/api/players', playersRouter);
 app.use('/api/matches', matchesRouter);
@@ -184,6 +186,7 @@ app.use('/api/venues', venuesRouter);
 app.use('/api/seasons', seasonsRouter);
 app.use('/api/schedule', scheduleRouter);
 app.use('/api/seo', seoRouter);
+app.use('/api/carousel', carouselRouter);
 
 // Pretty routes -> static HTML pages (the page JS reads the share token from the URL).
 const matchTemplate = fs.readFileSync(path.join(PUBLIC_DIR, 'match.html'), 'utf8');

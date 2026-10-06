@@ -1013,6 +1013,15 @@ const headerItemColumns = db.prepare('PRAGMA table_info(header_items)').all().ma
 if (!headerItemColumns.includes('is_my_profile')) {
   db.exec('ALTER TABLE header_items ADD COLUMN is_my_profile INTEGER NOT NULL DEFAULT 0');
 }
+// An item shown as a green button in the top menu (a switch on the item in /header-admin).
+if (!headerItemColumns.includes('highlight')) {
+  db.exec('ALTER TABLE header_items ADD COLUMN highlight INTEGER NOT NULL DEFAULT 0');
+}
+// Once: the main menu item "Liga" becomes a green button (after that the switch in /header-admin owns it).
+if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'menu_liga_green'").get()) {
+  db.prepare("UPDATE header_items SET highlight = 1 WHERE parent_id IS NULL AND lower(label_sk) = 'liga'").run();
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_liga_green')").run();
+}
 
 // Seed the header with the site's existing static nav links, once — after
 // that, admins own this list entirely (see /header-admin), same pattern as
@@ -1308,6 +1317,28 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 `);
+
+// The image carousel at the top of the home page (Backend > Carousel). The pictures are files on the persistent disk
+// (<data dir>/carousel), image_url is their /carousel-images/… address.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS carousel_slides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    image_url TEXT NOT NULL,
+    caption_sk TEXT NOT NULL DEFAULT '',
+    caption_en TEXT NOT NULL DEFAULT '',
+    link TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+
+// A slide's heading is caption_sk / caption_en; the thin line under it is the subtext.
+const carouselColumns = db.prepare('PRAGMA table_info(carousel_slides)').all().map((c) => c.name);
+if (!carouselColumns.includes('subtext_sk')) {
+  db.exec("ALTER TABLE carousel_slides ADD COLUMN subtext_sk TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE carousel_slides ADD COLUMN subtext_en TEXT NOT NULL DEFAULT ''");
+}
 
 // Lookups the lists and the group tables make on every request: a player's matches (either side), a group's or a
 // season's matches, and the date order. Without these each one reads the whole matches table.

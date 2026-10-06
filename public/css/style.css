@@ -4087,3 +4087,119 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-rl-m { max-width: 460px; }
 .sv-rl-m .a, .sv-rl-m .b { text-align: center; }
 .sv-rl-m { margin-left: auto; margin-right: auto; }
+
+/* Home: the image carousel at the top (Backend > Carousel) */
+.home-carousel { position: relative; margin: 22px 0 0; border-radius: 18px; overflow: hidden; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); }
+.home-carousel[hidden] { display: none; }
+.home-carousel + .home-head { margin-top: 48px; }
+.hc-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -ms-overflow-style: none; }
+.hc-track::-webkit-scrollbar { display: none; }
+.hc-slide { position: relative; flex: 0 0 100%; scroll-snap-align: start; display: block; aspect-ratio: 16 / 6; color: var(--white); text-decoration: none; }
+.hc-slide img { width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; -webkit-user-drag: none; }
+.hc-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 48px 22px 22px; background: linear-gradient(to top, rgba(0, 0, 0, 0.78), transparent); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); }
+.hc-caption b { display: block; font-size: 26px; font-weight: 800; line-height: 1.2; }
+.hc-caption small { display: block; margin-top: 4px; font-size: 15px; font-weight: 300; line-height: 1.4; color: #e6e8ec; }
+.hc-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(10, 10, 10, 0.55); color: var(--white); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 0 3px; }
+.hc-arrow:hover { background: var(--orange); border-color: var(--orange); }
+.hc-arrow.prev { left: 12px; }
+.hc-arrow.next { right: 12px; }
+.hc-dots { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; gap: 7px; pointer-events: none; }
+.hc-dot { pointer-events: auto; width: 8px; height: 8px; padding: 0; border-radius: 50%; border: none; background: rgba(255, 255, 255, 0.45); cursor: pointer; }
+.hc-dot.on { background: var(--orange); width: 22px; border-radius: 8px; }
+@media (max-width: 900px) { .home-carousel + .home-head { margin-top: 40px; } }
+@media (max-width: 700px) {
+  .hc-slide { aspect-ratio: 16 / 9; }
+  .hc-caption { padding: 30px 14px 28px; }
+  .hc-caption b { font-size: 17px; }
+  .hc-caption small { font-size: 12px; margin-top: 2px; }
+  .hc-arrow { display: none; }
+}
+
+/* A menu item shown as a green button (Backend > Menu: "Show as a green button") */
+.nav-links a.nav-btn-green, .nav-links .nav-item-dropdown-toggle a.nav-btn-green { background: var(--green); color: #0a0a0a; font-weight: 800; }
+.nav-links a.nav-btn-green:hover, .nav-links .nav-item-dropdown-toggle a.nav-btn-green:hover { background: #c9ff3d; color: #0a0a0a; }
+.nav-links a.nav-btn-green.active { background: var(--green); color: #0a0a0a; }
+.nav-links a.nav-btn-green::before, .nav-links a.nav-btn-green:hover::before, .nav-links a.nav-btn-green.active::before { background: #0a0a0a; }
+
+/* Phone menu: icons for the items that had only the arrow (Zápasy, Tabuľky, Harmonogram, a season, and the dropdown parents such as Liga and VIAC) */
+@media (max-width: 1024px) {
+  .nav-links a[href="/matches"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath%20d%3D%27M22%2012h-4l-3%209L9%203l-3%209H2%27%2F%3E%3C/svg%3E"); }
+  .nav-links a[href="/tables"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect%20x%3D%273%27%20y%3D%273%27%20width%3D%2718%27%20height%3D%2718%27%20rx%3D%272%27%2F%3E%3Cpath%20d%3D%27M3%209h18M3%2015h18M9%203v18%27%2F%3E%3C/svg%3E"); }
+  .nav-links a[href="/harmonogram"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect%20x%3D%273%27%20y%3D%274%27%20width%3D%2718%27%20height%3D%2718%27%20rx%3D%272%27%2F%3E%3Cpath%20d%3D%27M16%202v4M8%202v4M3%2010h18M8%2014h.01M12%2014h.01M16%2014h.01M8%2018h.01M12%2018h.01%27%2F%3E%3C/svg%3E"); }
+  .nav-links a[href^="/season/"], .nav-links a[data-nav-icon="trophy"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath%20d%3D%27M6%209H4.5a2.5%202.5%200%200%201%200-5H6M18%209h1.5a2.5%202.5%200%200%200%200-5H18M4%2022h16M10%2014.66V17c0%20.55-.47.98-.97%201.21C7.85%2018.75%207%2020.24%207%2022M14%2014.66V17c0%20.55.47.98.97%201.21C16.15%2018.75%2017%2020.24%2017%2022M18%202H6v7a6%206%200%200%200%2012%200V2Z%27%2F%3E%3C/svg%3E"); }
+  .nav-links a[data-nav-icon="grid"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect%20x%3D%273%27%20y%3D%273%27%20width%3D%277%27%20height%3D%277%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2714%27%20y%3D%273%27%20width%3D%277%27%20height%3D%277%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2714%27%20y%3D%2714%27%20width%3D%277%27%20height%3D%277%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%273%27%20y%3D%2714%27%20width%3D%277%27%20height%3D%277%27%20rx%3D%271%27%2F%3E%3C/svg%3E"); }
+  .nav-links a[data-nav-icon="more"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2712%27%20r%3D%271%27%2F%3E%3Ccircle%20cx%3D%2719%27%20cy%3D%2712%27%20r%3D%271%27%2F%3E%3Ccircle%20cx%3D%275%27%20cy%3D%2712%27%20r%3D%271%27%2F%3E%3C/svg%3E"); }
+}
+
+/* ---------- Menu dropdowns: a dark rounded panel on desktop, an indented list of rounded rows on phones ---------- */
+.nav-caret { transition: transform 0.18s ease, color 0.18s ease; }
+.nav-item-dropdown.open > .nav-item-dropdown-toggle .nav-caret { transform: rotate(180deg); color: var(--orange); }
+@keyframes nav-drop-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+@media (min-width: 1025px) {
+  .nav-item-dropdown:hover > .nav-item-dropdown-toggle .nav-caret { transform: rotate(180deg); color: var(--orange); }
+  .nav-submenu {
+    top: calc(100% + 8px);
+    left: 50%;
+    min-width: 230px;
+    transform: translateX(-50%);
+    background: #0f0f10;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 16px;
+    box-shadow: 0 22px 48px rgba(0, 0, 0, 0.6);
+    padding: 8px;
+    overflow: visible;
+  }
+  /* the little gap above the panel stays part of the dropdown, so the pointer can cross it without closing it */
+  .nav-submenu::before { content: ''; position: absolute; left: 0; right: 0; top: -10px; height: 10px; }
+  /* a small notch pointing at the item */
+  .nav-submenu::after { content: ''; position: absolute; top: -6px; left: 50%; width: 10px; height: 10px; margin-left: -5px; transform: rotate(45deg); background: #0f0f10; border-left: 1px solid rgba(255, 255, 255, 0.16); border-top: 1px solid rgba(255, 255, 255, 0.16); }
+  .nav-item-dropdown.open .nav-submenu, .nav-item-dropdown:hover .nav-submenu { animation: nav-drop-in 0.16s ease-out; }
+  .nav-submenu a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    background: none;
+    color: #e6e8ec;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .nav-submenu a::after { content: '›'; color: transparent; font-size: 17px; line-height: 1; transform: translateX(-4px); transition: transform 0.15s ease, color 0.15s ease; }
+  .nav-submenu a:hover { background: var(--fill-grey); color: var(--orange); }
+  .nav-submenu a:hover::after { color: var(--orange); transform: none; }
+  .nav-submenu a.active { color: var(--status-green); }
+  .nav-submenu a.active::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--status-green); color: transparent; transform: none; }
+  .nav-submenu a + a { margin-top: 2px; }
+}
+
+@media (max-width: 1024px) {
+  .nav-submenu { display: none; position: static; flex-direction: column; gap: 6px; margin: 8px 0 4px 22px; padding: 0 0 0 14px; background: none; border: none; border-left: 2px solid rgba(255, 255, 255, 0.14); border-radius: 0; box-shadow: none; transform: none; min-width: 0; }
+  .nav-item-dropdown.open .nav-submenu { display: flex; animation: nav-drop-in 0.16s ease-out; }
+  .nav-links .nav-submenu a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #141416;
+    color: #e6e8ec;
+    border-radius: 10px;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-align: left;
+  }
+  .nav-links .nav-submenu a::before { display: block; content: ''; width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: #6b6f78; -webkit-mask: none; mask: none; }
+  .nav-links .nav-submenu a::after { display: none; }
+  .nav-links .nav-submenu a:hover { background: var(--fill-grey); color: var(--orange); }
+  .nav-links .nav-submenu a:hover::before { background: var(--orange); }
+  .nav-links .nav-submenu a.active { color: var(--status-green); background: var(--fill-grey); }
+  .nav-links .nav-submenu a.active::before { background: var(--status-green); }
+}
+@media (max-width: 1024px) {
+  /* the caret sits on top of a green button on phones: dark, like its text */
+  .nav-item-dropdown-toggle a.nav-btn-green ~ .nav-caret, .nav-item-dropdown.open > .nav-item-dropdown-toggle a.nav-btn-green ~ .nav-caret { color: #0a0a0a; font-size: 16px; }
+}

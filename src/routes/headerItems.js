@@ -13,6 +13,7 @@ function serialize(row) {
     link: row.link,
     sortOrder: row.sort_order,
     isMyProfile: !!row.is_my_profile,
+    highlight: !!row.highlight,
   };
 }
 
@@ -40,7 +41,7 @@ function validateBody(body) {
     if (parent.parent_id) return { error: "Sub-items can't have their own sub-items" };
     if (parent.is_my_profile) return { error: "The My profile item can't have sub-items" };
   }
-  return { labelSk, labelEn: labelEn || null, link, sortOrder, parentId };
+  return { labelSk, labelEn: labelEn || null, link, sortOrder, parentId, highlight: body.highlight ? 1 : 0 };
 }
 
 // Public — the header has to render for every visitor, logged in or not,
@@ -58,8 +59,8 @@ router.post('/', requireAdmin, (req, res) => {
   const parsed = validateBody(req.body);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const info = db.prepare(
-    'INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order) VALUES (?, ?, ?, ?, ?)'
-  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, parsed.sortOrder);
+    'INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, highlight) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, parsed.sortOrder, parsed.highlight);
   res.status(201).json(serialize(db.prepare('SELECT * FROM header_items WHERE id = ?').get(info.lastInsertRowid)));
 });
 
@@ -86,8 +87,8 @@ router.patch('/:id', requireAdmin, (req, res) => {
     if (hasChildren) return res.status(400).json({ error: 'This item has its own sub-items — remove those first' });
   }
   db.prepare(
-    'UPDATE header_items SET parent_id = ?, label_sk = ?, label_en = ?, link = ?, sort_order = ? WHERE id = ?'
-  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, parsed.sortOrder, item.id);
+    'UPDATE header_items SET parent_id = ?, label_sk = ?, label_en = ?, link = ?, sort_order = ?, highlight = ? WHERE id = ?'
+  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, parsed.sortOrder, parsed.highlight, item.id);
   res.json(serialize(db.prepare('SELECT * FROM header_items WHERE id = ?').get(item.id)));
 });
 

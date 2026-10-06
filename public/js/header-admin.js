@@ -85,6 +85,9 @@ function headerItemFormHtml(prefix, item, opts) {
     </div>
     ${opts && opts.withParent ? parentFieldHtml(prefix, item) : ''}
     <div class="field">
+      <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="${prefix}-highlight"${it.highlight ? ' checked' : ''}> Show as a green button</label>
+    </div>
+    <div class="field">
       <label>Sort order (lower shows first)</label>
       <input type="number" id="${prefix}-sortOrder" value="${it.sortOrder != null ? it.sortOrder : 0}" step="1" style="width:80px">
     </div>
@@ -97,6 +100,7 @@ function readHeaderItemForm(prefix) {
     labelEn: document.getElementById(`${prefix}-labelEn`).value.trim(),
     link: document.getElementById(`${prefix}-link`).value.trim(),
     sortOrder: Number(document.getElementById(`${prefix}-sortOrder`).value) || 0,
+    highlight: document.getElementById(`${prefix}-highlight`).checked,
   };
 }
 
@@ -126,7 +130,7 @@ function headerItemRowHtml(item, isSub) {
     <div class="header-item-row" data-id="${item.id}" style="border-bottom:1px solid var(--gray-light);padding:${isSub ? '10px 4px 10px 24px' : '14px 4px'}">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <div style="flex:1;min-width:160px">
-          <div style="font-weight:700">${isSub ? '↳ ' : ''}${escapeHtml(label)}</div>
+          <div style="font-weight:700">${isSub ? '↳ ' : ''}${escapeHtml(label)}${item.highlight ? ' <span style="font-size:11px;font-weight:800;background:var(--green);color:#0a0a0a;border-radius:6px;padding:1px 7px;margin-left:6px">GREEN</span>' : ''}</div>
           <div style="font-size:12px;color:var(--gray)">${escapeHtml(item.link)}</div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">

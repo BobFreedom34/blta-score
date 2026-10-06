@@ -1251,6 +1251,12 @@ async function renderHeaderNav() {
     a.href = item.link;
     a.textContent = labelFor(item);
     if (isActive(item.link)) a.className = 'active';
+    if (item.highlight) a.classList.add('nav-btn-green'); // a button of its own colour (a switch on the item in /header-admin)
+    // an item that is only a heading for a dropdown has no page of its own: its icon follows its name
+    if (item.link === '#' || (item.children && item.children.length)) {
+      const name = `${item.labelSk} ${item.labelEn || ''}`;
+      a.dataset.navIcon = /liga|league/i.test(name) ? 'trophy' : /viac|more|info/i.test(name) ? 'more' : 'grid';
+    }
     // Tagged (not matched later by href, which could be relative/absolute
     // inconsistently) so attachLookingToPlayBadge can find whichever nav
     // item currently points here, however an admin has it labeled or
