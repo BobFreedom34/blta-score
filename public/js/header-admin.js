@@ -16,9 +16,61 @@ function indexItems() {
   });
 }
 
-function headerItemFormHtml(prefix, item) {
+// The pages of the site an item can point to — picked from a list instead of typing the label and the address.
+const SITE_PAGES = [
+  { sk: 'Domov', en: 'Home', link: '/' },
+  { sk: 'Zápasy', en: 'Matches', link: '/matches' },
+  { sk: 'Hráči', en: 'Players', link: '/players' },
+  { sk: 'Rebríček', en: 'Rankings', link: '/rankings' },
+  { sk: 'Tabuľky', en: 'Tables', link: '/tables' },
+  { sk: 'Kurty', en: 'Courts', link: '/courts' },
+  { sk: 'Harmonogram', en: 'Schedule', link: '/harmonogram' },
+  { sk: 'Hľadám súpera', en: 'Looking to play', link: '/looking-to-play' },
+  { sk: '+ Nový zápas', en: '+ New match', link: '/new-match' },
+];
+let seasonPages = []; // the seasons' own pages, loaded once
+
+function pageChoices() {
+  return [
+    { group: 'Pages', list: SITE_PAGES },
+    { group: 'Seasons', list: seasonPages },
+  ].filter((g) => g.list.length);
+}
+
+function pickerOptionsHtml() {
+  const inMenu = new Set([...itemsById.values()].map((i) => i.link));
+  return '<option value="">— choose a page —</option>' + pageChoices().map((g) => `
+    <optgroup label="${g.group}">${g.list.map((p) => `<option value="${escapeHtml(p.link)}">${escapeHtml(p.sk)}${inMenu.has(p.link) ? ' (already in the menu)' : ''}</option>`).join('')}</optgroup>`).join('');
+}
+
+function pickerHtml(prefix) {
+  return `
+    <div class="field">
+      <label>Pick an existing page <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(fills in the labels and the link below)</span></label>
+      <select class="hi-pick" data-prefix="${prefix}">${pickerOptionsHtml()}</select>
+    </div>`;
+}
+
+// "Show under": where the item sits — at the top of the menu or as a sub-item of one of the main items. An item that has
+// sub-items of its own stays a main item (the menu has two levels).
+function parentFieldHtml(prefix, item) {
+  const hasChildren = item && (item.children || []).length > 0;
+  const options = items.filter((i) => !i.isMyProfile && (!item || i.id !== item.id));
+  return `
+    <div class="field">
+      <label>Show under</label>
+      <select id="${prefix}-parentId"${hasChildren ? ' disabled' : ''}>
+        <option value="">— main item (top of the menu) —</option>
+        ${options.map((i) => `<option value="${i.id}"${item && item.parentId === i.id ? ' selected' : ''}>${escapeHtml(i.labelSk)}</option>`).join('')}
+      </select>
+      ${hasChildren ? '<div style="font-size:12px;color:var(--gray-dim);margin-top:4px">This item has sub-items, so it stays a main item.</div>' : ''}
+    </div>`;
+}
+
+function headerItemFormHtml(prefix, item, opts) {
   const it = item || { labelSk: '', labelEn: '', link: '', sortOrder: 0 };
   return `
+    ${pickerHtml(prefix)}
     <div class="field">
       <label>Label (Slovak)</label>
       <input type="text" id="${prefix}-labelSk" value="${escapeHtml(it.labelSk)}" maxlength="60" required>
@@ -31,6 +83,7 @@ function headerItemFormHtml(prefix, item) {
       <label>Link</label>
       <input type="text" id="${prefix}-link" value="${escapeHtml(it.link)}" maxlength="500" placeholder="/players or https://blta.sk/news" required>
     </div>
+    ${opts && opts.withParent ? parentFieldHtml(prefix, item) : ''}
     <div class="field">
       <label>Sort order (lower shows first)</label>
       <input type="number" id="${prefix}-sortOrder" value="${it.sortOrder != null ? it.sortOrder : 0}" step="1" style="width:80px">
@@ -108,6 +161,8 @@ function itemBlockHtml(item) {
 async function loadItems() {
   items = await api('/header-items');
   indexItems();
+  const topPick = document.querySelector('.hi-pick[data-prefix="add"]');
+  if (topPick) topPick.innerHTML = pickerOptionsHtml();
   renderList();
 }
 
@@ -157,7 +212,7 @@ function attachHandlers() {
       }
       rowEl.innerHTML = `
         <form class="edit-header-item-form">
-          ${headerItemFormHtml('edit-' + id, item)}
+          ${headerItemFormHtml('edit-' + id, item, { withParent: true })}
           <div id="edit-${id}-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
           <div style="display:flex;gap:8px">
             <button type="submit" class="btn btn-sm btn-primary">Save</button>
@@ -172,7 +227,8 @@ function attachHandlers() {
         errorEl.textContent = '';
         try {
           const body = readHeaderItemForm('edit-' + id);
-          body.parentId = item.parentId || null;
+          const parentEl = document.getElementById(`edit-${id}-parentId`);
+          body.parentId = parentEl && !parentEl.disabled ? (parentEl.value ? Number(parentEl.value) : null) : (item.parentId || null);
           await api(`/header-items/${id}`, { method: 'PATCH', body });
           toast('Header item saved');
           await loadItems();
@@ -234,6 +290,25 @@ function attachHandlers() {
   });
 }
 
+// Choosing an existing page fills in the labels and the link of the form it is in.
+root.addEventListener('change', (e) => {
+  const pick = e.target.closest('.hi-pick');
+  if (!pick || !pick.value) return;
+  const prefix = pick.dataset.prefix;
+  const page = pageChoices().flatMap((g) => g.list).find((p) => p.link === pick.value);
+  if (!page) return;
+  document.getElementById(`${prefix}-labelSk`).value = page.sk;
+  document.getElementById(`${prefix}-labelEn`).value = page.en || '';
+  document.getElementById(`${prefix}-link`).value = page.link;
+});
+
+async function loadSeasonPages() {
+  try {
+    const seasons = await api('/seasons');
+    seasonPages = seasons.filter((x) => x.slug).map((x) => ({ sk: x.name, en: x.name, link: `/season/${x.slug}` }));
+  } catch { seasonPages = []; }
+}
+
 function renderAdmin() {
   root.innerHTML = `
     <div class="card" style="margin-bottom:20px">
@@ -266,7 +341,7 @@ function renderAdmin() {
     }
     submitBtn.disabled = false;
   });
-  loadItems();
+  loadSeasonPages().then(loadItems);
 }
 
 function renderLoggedOut() {
