@@ -25,6 +25,7 @@ const SITE_PAGES = [
   { sk: 'Tabuľky', en: 'Tables', link: '/tables' },
   { sk: 'Kurty', en: 'Courts', link: '/courts' },
   { sk: 'Harmonogram', en: 'Schedule', link: '/harmonogram' },
+  { sk: 'Propozície', en: 'Rules', link: '/propozicie' },
   { sk: 'Hľadám súpera', en: 'Looking to play', link: '/looking-to-play' },
   { sk: '+ Nový zápas', en: '+ New match', link: '/new-match' },
 ];

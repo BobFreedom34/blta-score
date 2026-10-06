@@ -50,6 +50,11 @@ const PAGES = [
     description: 'Harmonogram BLTA - Bratislavskej Ligy Tenisových Amatérov - sezóna BLTA Ligy je rozdelená na tri 4-mesačné cykly a niekoľko turnajov.',
   },
   {
+    key: 'propozicie', label: 'Rules (Propozície)', path: '/propozicie', file: 'propozicie.html', blta: 'https://www.blta.sk/propozicie/',
+    title: `Propozície${SUFFIX}`,
+    description: 'Propozície BLTA - kompletné a aktuálne pravidlá ligy a turnajov: kategórie, herný systém, bodovanie, termíny, dohadovanie zápasov a štartovné.',
+  },
+  {
     key: 'looking-to-play', label: 'Looking for an opponent', path: '/looking-to-play', file: 'looking-to-play.html', blta: null,
     title: `Hľadám súpera${SUFFIX}`,
     description: 'Hľadáš súpera na tenis v Bratislave? Pridaj sa k hráčom BLTA, ktorí hľadajú partnera na zápas, a dohodni si hru.',

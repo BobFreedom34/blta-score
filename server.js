@@ -30,6 +30,8 @@ const seasonsRouter = require('./src/routes/seasons');
 const scheduleRouter = require('./src/routes/schedule');
 const seoRouter = require('./src/routes/seo');
 const carouselRouter = require('./src/routes/carousel');
+const rulesRouter = require('./src/routes/rules');
+const rules = require('./src/rules');
 const seo = require('./src/seo');
 
 const app = express();
@@ -131,7 +133,9 @@ const publicOrigin = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${re
 for (const page of seo.PAGES.filter((p) => !p.template)) {
   app.get(page.path, (req, res, next) => {
     try {
-      res.type('html').send(seo.render(page.key, { origin: publicOrigin(req), urlPath: page.path }));
+      const html = seo.render(page.key, { origin: publicOrigin(req), urlPath: page.path });
+      // the propozície text comes from Backend > Rules
+      res.type('html').send(page.key === 'propozicie' ? rules.injectInto(html) : html);
     } catch (err) {
       console.error('SEO page failed', page.key, err);
       next();
@@ -187,6 +191,7 @@ app.use('/api/seasons', seasonsRouter);
 app.use('/api/schedule', scheduleRouter);
 app.use('/api/seo', seoRouter);
 app.use('/api/carousel', carouselRouter);
+app.use('/api/rules', rulesRouter);
 
 // Pretty routes -> static HTML pages (the page JS reads the share token from the URL).
 const matchTemplate = fs.readFileSync(path.join(PUBLIC_DIR, 'match.html'), 'utf8');
