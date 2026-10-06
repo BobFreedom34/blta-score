@@ -4298,3 +4298,13 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .pr-edit { min-height: 160px; max-height: 560px; overflow-y: auto; margin-top: 6px; cursor: text; }
 .pr-edit:focus { outline: none; border-color: var(--orange); }
 .pr-edit table { max-width: 100%; }
+
+/* Home: a bigger gap between the sections (72px, 56px on tablet and phone) */
+.home-head { margin-bottom: 72px; }
+.home-mine { margin-bottom: 72px; }
+.home-sec { margin-top: 72px; }
+@media (max-width: 900px) {
+  .home-head { margin-bottom: 56px; }
+  .home-mine { margin-bottom: 56px; }
+  .home-sec { margin-top: 56px; }
+}
