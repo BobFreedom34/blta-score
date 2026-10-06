@@ -17,9 +17,8 @@ let results = [];
 let upcoming = [];
 let roundMatches = [];
 let category = null;
-let round = null;
-let schedCat = 'ALL'; // the Rozpis tab's category and group choice
-let schedGroup = 'ALL';
+let schedCat = null; // the Rozpis tab's category and group choice (always one of each)
+let schedGroup = null;
 let playersCat = 'ALL'; // the Hráči tab's category filter
 let playoffCat = 'ALL'; // the Play-off tab's category filter
 const bracketData = new Map(); // bracket id -> full bracket, cleared whenever the data is refreshed
@@ -74,22 +73,9 @@ async function loadBlocks() {
   upcoming = [...live, ...planned].slice(0, 5);
 }
 
-// The matches of the chosen round, or (round === 'ALL') of every round — the group-stage matches that have a round.
+// The matches of every round — the group-stage matches that have a round.
 async function loadRound() {
-  if (round === null) { roundMatches = []; return; }
-  if (round === 'ALL') {
-    roundMatches = (await api(`/matches?seasonId=${season.id}`).catch(() => [])).filter((m) => m.round);
-    return;
-  }
-  roundMatches = await api(`/matches?seasonId=${season.id}&round=${round}`).catch(() => []);
-}
-
-// The round to show first: the first one that still has matches to play, else the last.
-function pickRound() {
-  const rounds = season.rounds || [];
-  if (!rounds.length) return null;
-  const open = rounds.find((r) => r.finished < r.total);
-  return (open || rounds[rounds.length - 1]).round;
+  roundMatches = (await api(`/matches?seasonId=${season.id}`).catch(() => [])).filter((m) => m.round);
 }
 
 // ---------- pieces ----------
@@ -258,46 +244,43 @@ function scheduleRow(m) {
   return `<a class="sv-rl-m" href="/match/${m.token}"><span class="a${done && m.winnerId === m.player1.id ? ' w' : ''}">${escapeHtml(m.player1.name)}</span>${mid}<span class="b${done && m.winnerId === m.player2.id ? ' w' : ''}">${escapeHtml(m.player2.name)}</span></a>`;
 }
 
-// The Rozpis tab: the rounds on one line (and "Všetky kolá"), then the category and the group to choose, then the matches — a
-// line each, under a small heading per group (and per round when all rounds are shown).
+// The Rozpis tab: the category and the group to choose, then every round as a block with a card per group and a line per match.
 function scheduleHtml() {
   const rounds = season.rounds || [];
   if (!rounds.length) return '';
   const groups = season.groups || [];
   const cats = CATEGORY_ORDER.filter((c) => groups.some((g) => g.category === c));
-  if (schedCat !== 'ALL' && !cats.includes(schedCat)) schedCat = 'ALL';
-  const inCat = groups.filter((g) => schedCat === 'ALL' || g.category === schedCat);
-  if (schedGroup !== 'ALL' && !inCat.some((g) => g.id === schedGroup)) schedGroup = 'ALL';
-  const sum = (key) => rounds.reduce((a, r) => a + r[key], 0);
-  const allPill = `<button type="button" class="sv-round${round === 'ALL' ? ' cur' : ''}" data-round="ALL" style="--p:${Math.round((sum('finished') / Math.max(1, sum('total'))) * 100)}%"><b>${escapeHtml(t('season.allRounds'))}</b><small>${sum('finished')}/${sum('total')}</small></button>`;
-  const roundPills = allPill + rounds.map((r) => `<button type="button" class="sv-round${r.round === round ? ' cur' : ''}" data-round="${r.round}" style="--p:${Math.round((r.finished / Math.max(1, r.total)) * 100)}%"><b>${escapeHtml(t('season.roundN', { n: r.round }))}</b><small>${r.finished}/${r.total}</small></button>`).join('');
+  if (!cats.includes(schedCat)) schedCat = cats[0] || null;
+  const inCat = groups.filter((g) => g.category === schedCat);
+  if (!inCat.some((g) => g.id === schedGroup)) schedGroup = inCat.length ? inCat[0].id : null;
   const tab = (attr, value, label, active) => `<button type="button" class="tab${active ? ' active' : ''}" ${attr}="${value}">${escapeHtml(label)}</button>`;
-  const catRow = tab('data-sc', 'ALL', t('season.schedAll'), schedCat === 'ALL') + cats.map((c) => tab('data-sc', c, CATEGORY_NAMES[c], schedCat === c)).join('');
-  const groupRow = tab('data-sg', 'ALL', t('season.schedAllGroups'), schedGroup === 'ALL') + inCat.map((g) => tab('data-sg', g.id, g.name, schedGroup === g.id)).join('');
-  const shown = roundMatches.filter((m) => (schedCat === 'ALL' || (m.group && m.group.category === schedCat)) && (schedGroup === 'ALL' || (m.group && m.group.id === schedGroup)));
+  const catRow = cats.map((c) => tab('data-sc', c, CATEGORY_NAMES[c], schedCat === c)).join('');
+  const groupRow = inCat.map((g) => tab('data-sg', g.id, g.name, schedGroup === g.id)).join('');
+  const shown = roundMatches.filter((m) => m.group && m.group.id === schedGroup);
   const order = new Map(groups.map((g, i) => [g.id, i]));
-  // the matches of one round as lines under a heading per group
-  const byGroup = (matches) => {
+  // the matches of one round: a small block per group (laid out side by side), a line per match
+  const groupBlocks = (matches) => {
     const map = new Map();
     matches.forEach((m) => {
       const id = m.group ? m.group.id : 0;
       if (!map.has(id)) map.set(id, { group: m.group, list: [] });
       map.get(id).list.push(m);
     });
-    return [...map.entries()].sort((a, b) => (order.get(a[0]) ?? 99) - (order.get(b[0]) ?? 99)).map(([, { group, list }]) => `
-      <div class="sv-rl-h">${group ? `${escapeHtml(CATEGORY_NAMES[group.category] || '')} · <b>${escapeHtml(group.name)}</b>` : ''}</div>
-      ${list.map(scheduleRow).join('')}`).join('');
+    return [...map.entries()].sort((x, y) => (order.get(x[0]) ?? 99) - (order.get(y[0]) ?? 99)).map(([, { group, list }]) => `
+      <div class="sv-rl-g">
+        <div class="sv-rl-h">${group ? `${escapeHtml(CATEGORY_NAMES[group.category] || '')} · <b>${escapeHtml(group.name)}</b>` : ''}</div>
+        ${list.map(scheduleRow).join('')}
+      </div>`).join('');
   };
-  const body = round === 'ALL'
-    ? rounds.map((r) => {
-      const ms = shown.filter((m) => m.round === r.round);
-      return ms.length ? `<div class="sv-rl-round">${escapeHtml(t('season.roundN', { n: r.round }))}</div>${byGroup(ms)}` : '';
-    }).join('')
-    : byGroup(shown);
+  // every round is a block of its own (a heading bar flush with the top, then its groups)
+  const roundBlock = (heading, matches) => `<div class="sv-rl-block">${heading ? `<div class="sv-rl-round"><b>${escapeHtml(heading.label)}</b><small>${escapeHtml(heading.progress)}</small></div>` : ''}<div class="sv-rl-groups">${groupBlocks(matches)}</div></div>`;
+  const body = rounds.map((r) => {
+    const ms = shown.filter((m) => m.round === r.round);
+    return ms.length ? roundBlock({ label: t('season.roundN', { n: r.round }), progress: `${r.finished}/${r.total}` }, ms) : '';
+  }).join('');
   return `
     <section class="sv-sec" id="sv-schedule">
       <div class="sv-filters">
-        <div class="sv-rounds" id="sv-rounds">${roundPills}</div>
         <div class="tabs sv-line" id="sv-sched-cats">${catRow}<a class="sv-more" href="/matches?season=${season.id}">${escapeHtml(t('season.allMatches'))} ›</a></div>
         <div class="tabs sv-line" id="sv-sched-groups">${groupRow}</div>
       </div>
@@ -548,15 +531,9 @@ rootEl.addEventListener('click', async (e) => {
   const pc = e.target.closest('#sv-panel [data-pc]');
   if (pc) { playersCat = pc.dataset.pc; renderPanel(); return; }
   const sc = e.target.closest('#sv-panel [data-sc]');
-  if (sc) { schedCat = sc.dataset.sc; schedGroup = 'ALL'; renderPanel(); return; }
+  if (sc) { schedCat = sc.dataset.sc; schedGroup = null; renderPanel(); return; }
   const sg = e.target.closest('#sv-panel [data-sg]');
-  if (sg) { schedGroup = sg.dataset.sg === 'ALL' ? 'ALL' : Number(sg.dataset.sg); renderPanel(); return; }
-  const r = e.target.closest('#sv-panel [data-round]');
-  if (r) {
-    round = r.dataset.round === 'ALL' ? 'ALL' : Number(r.dataset.round);
-    await loadRound();
-    renderPanel();
-  }
+  if (sg) { schedGroup = Number(sg.dataset.sg); renderPanel(); }
 });
 
 window.addEventListener('hashchange', () => {
@@ -584,8 +561,7 @@ async function refresh() {
     rootEl.innerHTML = `<div class="empty-state">${escapeHtml(t('season.notFound'))}</div>`;
     return;
   }
-  document.title = `${season.name} — Tennis SCORE`;
-  round = pickRound();
+  if (!document.title.includes(season.name)) document.title = `${season.name} — Tennis SCORE`; // the server already put the title from Backend > SEO
   await loadStandings();
   tab = window.location.hash.slice(1) || null; // renderTabs picks the first tab with content when there is none
   await render();

@@ -1244,7 +1244,7 @@ document.getElementById('player-bio-form').addEventListener('submit', async (e) 
       rankEl.textContent = t('player.bltaRank', { rank });
       rankEl.style.display = '';
     }
-    document.title = `${player.name} — Tennis SCORE`;
+    if (!document.title.includes(player.name)) document.title = `${player.name} — Tennis SCORE`; // the server already put the title from Backend > SEO
     document.getElementById('avatar-edit-btn').style.display = isAdminUser ? '' : 'none';
     renderAvatar(player);
     renderBio();

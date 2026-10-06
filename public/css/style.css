@@ -3779,7 +3779,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .load-more-btn:hover { border-color: rgba(255, 255, 255, 0.55); }
 
 /* ---------- Schedule page (/harmonogram) ---------- */
-#sch-years { margin: 6px 0 16px; }
+#sch-years { margin: 0 0 16px; }
 #sch-years .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 .sch-filters { display: flex; gap: 10px 12px; flex-wrap: wrap; margin: 0 0 22px; }
 .sch-filters .grey-select { flex: 1 1 200px; max-width: 320px; margin: 0; }
@@ -3911,7 +3911,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-reg-opt { display: block; width: 100%; text-align: left; font-family: inherit; font-size: 14px; font-weight: 700; padding: 10px 12px; margin: 0 0 6px; border: 1.5px solid var(--gray-light); border-radius: 10px; background: var(--white); cursor: pointer; }
 .sv-reg-opt:hover { border-color: var(--orange); }
 .sv-reg-opt.new { color: var(--gray); font-weight: 600; }
-@media (max-width: 700px) { .sv-actions { margin-left: 0; width: 100%; } }
+@media (max-width: 700px) { .sv-actions { margin-left: 0; width: 100%; margin-top: 2px; } .sv-btn { padding: 6px 12px; font-size: 11px; border-radius: 8px; } }
 
 /* season page: basic info, rounds, players */
 .sv-about { display: grid; gap: 14px; }
@@ -3980,7 +3980,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-filters .tabs .tab { white-space: nowrap; flex: 0 0 auto; }
 .sv-filters .sv-round { flex: 0 0 auto; }
 #sv-sched-cats .tab.active, #sv-sched-groups .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
-.sv-rl { background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 18px; padding: 4px 22px 10px; }
+.sv-rl { display: grid; gap: 28px; }
 .sv-rl-h { color: #8b8f98; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 16px 0 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.18); }
 .sv-rl-h b { color: var(--green); }
 .sv-rl-m { display: grid; grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); color: var(--white); text-decoration: none; font-size: 14px; font-weight: 700; }
@@ -3994,7 +3994,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-rl-m .rs.tbd { color: #6e727c; }
 .sv-rl-m:hover .a, .sv-rl-m:hover .b { color: var(--orange); }
 .sv-rl-m:hover .w { color: var(--green); }
-@media (max-width: 700px) { .sv-rl { padding: 4px 14px 8px; } .sv-rl-m { grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr); gap: 8px; font-size: 13px; } .sv-rl-m .rs.date { font-size: 10px; padding: 2px 5px; } }
+@media (max-width: 700px) { .sv-rl-m { grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr); gap: 8px; font-size: 13px; } .sv-rl-m .rs.date { font-size: 10px; padding: 2px 5px; } }
 
 /* Hráči: one numbered table per category */
 .sv-pt { display: grid; gap: 48px; }
@@ -4022,9 +4022,6 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .rte p { margin: 0 0 8px; } .rte h3 { margin: 10px 0 4px; font-size: 15px; } .rte ul, .rte ol { margin: 4px 0 8px 22px; } .rte a { color: var(--orange); }
 
 /* Rozpis, all rounds: a heading per round */
-.sv-rl-round { margin: 22px -22px 0; padding: 12px 22px; background: var(--fill-grey); font-size: 14px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
-.sv-rl-round:first-child { margin-top: 4px; border-radius: 14px 14px 0 0; }
-@media (max-width: 700px) { .sv-rl-round { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; } }
 
 /* season logos on the home page: next to the heading and on the timeline cards */
 .home-head { display: flex; align-items: center; justify-content: flex-start; gap: 22px; margin: 22px 0 48px; } /* 48px: the same gap as between the blocks below */
@@ -4067,3 +4064,26 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 
 /* "Aktuálna sezóna": the heading over the timeline, the progress and the league numbers (its gap below is the timeline's own) */
 .home-current > .home-sec-title { margin-bottom: 14px; }
+/* a page heading with its one-line description (Harmonogram): the same gap below as the other pages (48px, 40px on a tablet and phone) */
+.container > .home-sub { margin: 0 0 48px; }
+@media (max-width: 900px) { .container > .home-sub { margin-bottom: 40px; } }
+
+/* Rozpis: one block per round (gap between rounds), the groups side by side, a compact line per match */
+.sv-rl-block { display: block; }
+.sv-rl-round { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 11px 18px; margin: 0 0 12px; border-radius: 14px; background: var(--fill-grey); font-size: 14px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
+.sv-rl-round small { color: #c3c7cf; font-size: 12px; font-weight: 700; letter-spacing: 0; }
+.sv-rl-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.sv-rl-g { min-width: 0; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 14px; padding: 0 16px 8px; align-self: start; }
+.sv-rl-h { padding: 12px 0 5px; }
+.sv-rl-m { grid-template-columns: minmax(0, 1fr) 60px minmax(0, 1fr); gap: 8px; padding: 6px 0; font-size: 13px; }
+.sv-rl-m .rs { font-size: 13px; }
+.sv-rl-m .rs.date { font-size: 10px; padding: 2px 6px; }
+@media (max-width: 700px) { .sv-rl-groups { grid-template-columns: 1fr; } .sv-rl-round { padding: 10px 14px; } }
+
+/* Rozpis: full-width cards (one per group) hanging straight under the round bar; the matches stay on the left */
+.sv-rl-round { margin: 0; border-radius: 14px 14px 0 0; }
+.sv-rl-groups { grid-template-columns: 1fr; gap: 10px; }
+.sv-rl-g:first-child { border-top: none; border-radius: 0 0 14px 14px; }
+.sv-rl-m { max-width: 460px; }
+.sv-rl-m .a, .sv-rl-m .b { text-align: center; }
+.sv-rl-m { margin-left: auto; margin-right: auto; }

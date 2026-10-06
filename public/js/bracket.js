@@ -8,7 +8,7 @@
 const bracketId = window.location.pathname.split('/').filter(Boolean).pop();
 
 function render(data) {
-  document.title = `${data.name} — Tennis SCORE`;
+  if (!document.title.includes(data.name)) document.title = `${data.name} — Tennis SCORE`; // the server already put the title from Backend > SEO
   const titleEl = document.getElementById('bracket-title');
   titleEl.textContent = data.name;
   // the season and category the bracket belongs to, under the title

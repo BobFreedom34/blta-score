@@ -28,6 +28,8 @@ const bracketsRouter = require('./src/routes/brackets');
 const venuesRouter = require('./src/routes/venues');
 const seasonsRouter = require('./src/routes/seasons');
 const scheduleRouter = require('./src/routes/schedule');
+const seoRouter = require('./src/routes/seo');
+const seo = require('./src/seo');
 
 const app = express();
 const server = http.createServer(app);
@@ -122,6 +124,31 @@ app.get('/', (req, res, next) => {
 //    deploy reaches everyone at once. A script or stylesheet requested with a version in the URL (/js/home.js?v=abc)
 //    is fixed content by definition and is kept for a year, immutable. No page uses that yet.
 //  - HTML pages: revalidated on every load.
+// The pages whose <title>, description and link-preview tags come from Backend > SEO (src/seo.js): the fixed ones here, the
+// templates (a season, a player, a venue, a bracket) further down.
+const publicOrigin = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+for (const page of seo.PAGES.filter((p) => !p.template)) {
+  app.get(page.path, (req, res, next) => {
+    try {
+      res.type('html').send(seo.render(page.key, { origin: publicOrigin(req), urlPath: page.path }));
+    } catch (err) {
+      console.error('SEO page failed', page.key, err);
+      next();
+    }
+  });
+}
+app.get('/robots.txt', (req, res) => res.type('text/plain').send(seo.robotsTxt(publicOrigin(req))));
+app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemapXml(publicOrigin(req))));
+// A template page: the saved text with the entity's name in it; an unknown entity gets the plain page.
+function seoTemplate(key, lookup) {
+  return (req, res) => {
+    const page = seo.BY_KEY.get(key);
+    let entity = null;
+    try { entity = lookup(req.params); } catch (err) { console.error('SEO lookup failed', key, err); }
+    if (!entity) return res.sendFile(path.join(PUBLIC_DIR, page.file));
+    return res.type('html').send(seo.render(key, { origin: publicOrigin(req), urlPath: req.path, entity }));
+  };
+}
 const IMAGE_FILE = /\.(png|jpe?g|gif|svg|webp|avif|ico)$/i;
 const staticFiles = express.static(PUBLIC_DIR, {
   extensions: ['html'],
@@ -156,6 +183,7 @@ app.use('/api/brackets', bracketsRouter);
 app.use('/api/venues', venuesRouter);
 app.use('/api/seasons', seasonsRouter);
 app.use('/api/schedule', scheduleRouter);
+app.use('/api/seo', seoRouter);
 
 // Pretty routes -> static HTML pages (the page JS reads the share token from the URL).
 const matchTemplate = fs.readFileSync(path.join(PUBLIC_DIR, 'match.html'), 'utf8');
@@ -256,10 +284,22 @@ ${imageTags}<meta name="twitter:card" content="${hasResultImage ? 'summary_large
 
   res.send(matchTemplate.replace(MATCH_TITLE_RE, metaTags));
 });
-app.get('/player/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'player.html')));
-app.get('/bracket/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'bracket.html')));
-app.get('/season/:slug', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'season.html')));
-app.get('/courts/:slug', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'court.html')));
+app.get('/player/:id', seoTemplate('player', ({ id }) => {
+  const p = db.prepare('SELECT name, photo_url FROM players WHERE slug = ? OR id = ?').get(id, /^\d+$/.test(id) ? Number(id) : -1);
+  return p ? { name: p.name, image: p.photo_url || '' } : null;
+}));
+app.get('/bracket/:id', seoTemplate('bracket', ({ id }) => {
+  const b = /^\d+$/.test(id) ? db.prepare('SELECT name FROM brackets WHERE id = ?').get(Number(id)) : null;
+  return b ? { name: b.name } : null;
+}));
+app.get('/season/:slug', seoTemplate('season', ({ slug }) => {
+  const s = db.prepare('SELECT name, logo_url FROM seasons WHERE slug = ?').get(slug);
+  return s ? { name: s.name, image: s.logo_url || '' } : null;
+}));
+app.get('/courts/:slug', seoTemplate('court', ({ slug }) => {
+  const v = db.prepare('SELECT name FROM venues WHERE slug = ?').get(slug);
+  return v ? { name: v.name } : null;
+}));
 app.get('/embed/match/:token', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-match.html')));
 app.get('/embed/live', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-live.html')));
 app.get('/embed/compact', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-compact.html')));
