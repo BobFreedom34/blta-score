@@ -50,7 +50,7 @@ const PAGES = [
     description: 'Harmonogram BLTA - Bratislavskej Ligy Tenisových Amatérov - sezóna BLTA Ligy je rozdelená na tri 4-mesačné cykly a niekoľko turnajov.',
   },
   {
-    key: 'propozicie', label: 'Rules (Propozície)', path: '/propozicie', file: 'propozicie.html', blta: 'https://www.blta.sk/propozicie/',
+    key: 'propozicie', label: 'Propozície (rules)', path: '/propozicie', file: 'propozicie.html', blta: 'https://www.blta.sk/propozicie/',
     title: `Propozície${SUFFIX}`,
     description: 'Propozície BLTA - kompletné a aktuálne pravidlá ligy a turnajov: kategórie, herný systém, bodovanie, termíny, dohadovanie zápasov a štartovné.',
   },
@@ -85,6 +85,24 @@ const PAGES = [
     description: '{name} - pavúk turnaja BLTA: zápasy, výsledky a postup hráčov.',
   },
 ];
+// A page file added to public/ that is not listed above is picked up by itself: it appears in Backend > SEO with the title and
+// description it already has, gets its own route (/<file name>) and goes into the sitemap — so a new page never has to be
+// remembered here. Not public pages (the backend, embeds, helper pages) are left out. A page with a :param in its address
+// (a season, a player…) cannot be found this way and is listed above by hand.
+const NOT_PUBLIC = /^(admin|login-history|reset-code|compact|compactblta|match)$|^embed-|-admin$/;
+function discoverPages() {
+  const known = new Set(PAGES.map((p) => p.file));
+  fs.readdirSync(PUBLIC_DIR).filter((f) => f.endsWith('.html') && !known.has(f)).forEach((file) => {
+    const base = file.replace(/\.html$/, '');
+    if (NOT_PUBLIC.test(base)) return;
+    const html = fs.readFileSync(path.join(PUBLIC_DIR, file), 'utf8');
+    const title = ((html.match(/<title[^>]*>([^<]*)<\/title>/) || [])[1] || '').trim();
+    const description = ((html.match(/<meta\s+name="description"\s+content="([^"]*)"/) || [])[1] || '').trim();
+    const label = base.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    PAGES.push({ key: base, label: `${label} (new page)`, path: `/${base}`, file, blta: null, title: title || `${label}${SUFFIX}`, description, discovered: true });
+  });
+}
+discoverPages();
 const BY_KEY = new Map(PAGES.map((p) => [p.key, p]));
 
 const LIMITS = { title: 120, description: 320, keywords: 300, ogTitle: 120, ogDescription: 320, ogImage: 500 };

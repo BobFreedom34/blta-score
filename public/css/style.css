@@ -4299,12 +4299,19 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .pr-edit:focus { outline: none; border-color: var(--orange); }
 .pr-edit table { max-width: 100%; }
 
-/* Home: a bigger gap between the sections (72px, 56px on tablet and phone) */
-.home-head { margin-bottom: 72px; }
-.home-mine { margin-bottom: 72px; }
-.home-sec { margin-top: 72px; }
+/* Home: a bigger gap between the sections (88px, 68px on tablet and phone) */
+.home-head { margin-bottom: 88px; }
+.home-mine { margin-bottom: 88px; }
+.home-sec { margin-top: 88px; }
 @media (max-width: 900px) {
-  .home-head { margin-bottom: 56px; }
-  .home-mine { margin-bottom: 56px; }
-  .home-sec { margin-top: 56px; }
+  .home-head { margin-bottom: 68px; }
+  .home-mine { margin-bottom: 68px; }
+  .home-sec { margin-top: 68px; }
+}
+
+/* Home: a thin grey line in the middle of the gap between the sections */
+.home-mine, .home-current, .home-sec { position: relative; }
+.home-mine::before, .home-current::before, .home-sec::before { content: ''; position: absolute; left: 0; right: 0; top: -44px; height: 1px; background: rgba(255, 255, 255, 0.14); pointer-events: none; }
+@media (max-width: 900px) {
+  .home-mine::before, .home-current::before, .home-sec::before { top: -34px; }
 }
