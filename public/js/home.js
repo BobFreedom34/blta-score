@@ -474,6 +474,15 @@ function renderHome() {
   const oldRow = document.getElementById('home-timeline');
   const keepLeft = oldRow ? oldRow.scrollLeft : undefined;
   document.getElementById('home-sub').innerHTML = sub(d);
+  const stateEl = document.getElementById('home-state');
+  if (d.season) {
+    const state = seasonState(d.season, new Date().toISOString().slice(0, 10));
+    stateEl.className = `home-head-state ${state}`;
+    stateEl.innerHTML = `${state === 'now' ? '<i></i>' : ''}${escapeHtml(t({ past: 'home.tlPast', now: 'home.tlNow', future: 'home.tlFuture' }[state]))}`;
+    stateEl.hidden = false;
+  } else {
+    stateEl.hidden = true;
+  }
   const headLogo = document.getElementById('home-head-logo');
   if (d.season && d.season.logoUrl) { headLogo.src = d.season.logoUrl; headLogo.hidden = false; } else { headLogo.hidden = true; }
   rootEl.innerHTML = `

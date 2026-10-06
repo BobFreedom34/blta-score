@@ -4058,3 +4058,12 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 /* finished events: the date is grey like the rest of the row */
 .sch-row.past .sch-date { color: #8b8f98; }
 .sch-row.past .sch-date small { color: #6e727c; }
+
+/* the state of the shown season beside the heading (the same look as the chips on the timeline cards) */
+.home-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; }
+.home-head-state { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+.home-head-state[hidden] { display: none; }
+.home-head-state.now { background: var(--orange); color: var(--white); }
+.home-head-state.past { background: rgba(255, 255, 255, 0.12); color: #c3c7cf; }
+.home-head-state.future { border: 1px solid rgba(255, 255, 255, 0.4); color: var(--white); }
+.home-head-state i { width: 8px; height: 8px; border-radius: 50%; background: var(--white); animation: pulse 1.6s infinite; }
