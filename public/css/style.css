@@ -3484,7 +3484,8 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
 .grp-section:first-child .grp-title { margin-top: 56px; }
 .grp-title span { color: #8b8f98; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; margin-left: 8px; }
 .grp-card.card { padding: 18px; overflow-x: auto; }
-.grp-card .grp-head, .grp-card .grp-row { display: grid; grid-template-columns: 62px minmax(150px, 1.8fr) 56px 76px 40px 40px 56px; align-items: center; gap: 10px; min-width: 520px; }
+/* the seven columns fit the card (no sideways scrollbar): the name column takes what is left and is cut with an ellipsis when it is long */
+.grp-card .grp-head, .grp-card .grp-row { display: grid; grid-template-columns: 28px minmax(90px, 1fr) 46px 62px 34px 34px 46px; align-items: center; gap: 6px; min-width: 0; }
 .grp-card .grp-head { padding: 0 4px 8px; border-bottom: 1.5px solid rgba(255, 255, 255, 0.18); font-size: 11px; font-weight: 700; letter-spacing: 0.03em; color: var(--gray-dim); text-transform: uppercase; }
 .grp-card .grp-row { padding: 10px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); font-size: 14px; }
 .grp-card .grp-row:last-child { border-bottom: none; }
@@ -4026,10 +4027,23 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 @media (max-width: 700px) { .sv-rl-round { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; } }
 
 /* season logos on the home page: next to the heading and on the timeline cards */
-.home-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 48px; } /* the same gap as between the blocks below */
+.home-head { display: flex; align-items: center; justify-content: flex-start; gap: 22px; margin: 22px 0 48px; } /* 48px: the same gap as between the blocks below */
 .home-head-text { min-width: 0; }
+.home-head .home-h1 { margin: 0 0 6px; }
 .home-head-logo { height: 92px; width: auto; flex: 0 0 auto; }
 .home-tl-body { position: relative; }
 .home-tl-logo { position: absolute; top: 12px; right: 12px; width: 46px; height: auto; }
 @media (max-width: 900px) { .home-head { margin-bottom: 40px; } }
 @media (max-width: 700px) { .home-head-logo { height: 64px; } .home-tl-logo { width: 40px; } }
+
+/* season page, phone: every row of buttons runs to the screen edge like the other pages' tab rows, so the first button lines up with the content */
+@media (max-width: 680px) {
+  #sv-tabs, #sv-cats, #sv-pcats, .sv-filters .tabs, .sv-filters .sv-rounds { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+}
+
+/* Hráči: the category filter above the tables (like the one on the Tabuľky tab) */
+#sv-pcats { margin: 0 0 48px; align-items: center; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
+#sv-pcats .tab { white-space: nowrap; flex: 0 0 auto; }
+#sv-pcats .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
+#sv-pcats .tab small { color: rgba(255, 255, 255, 0.65); font-weight: 700; margin-left: 6px; }
+@media (max-width: 900px) { #sv-pcats { margin-bottom: 40px; } }

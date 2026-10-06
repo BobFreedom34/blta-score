@@ -20,6 +20,7 @@ let category = null;
 let round = null;
 let schedCat = 'ALL'; // the Rozpis tab's category and group choice
 let schedGroup = 'ALL';
+let playersCat = 'ALL'; // the Hráči tab's category filter
 const bracketData = new Map(); // bracket id -> full bracket, cleared whenever the data is refreshed
 let tab = null; // the open tab: info, tables, results, schedule, players, playoff or gallery
 const loaded = new Set(); // tabs whose data is loaded and still current
@@ -308,7 +309,9 @@ function playersHtml() {
   const model = playersModel();
   if (!model.total) return '';
   const showPaid = !!(season.entryFee || season.paymentUrl || (season.registrations || []).some((r) => r.paid));
-  const tables = model.cats.map((c) => {
+  if (playersCat !== 'ALL' && !model.cats.some((c) => c.category === playersCat)) playersCat = 'ALL';
+  const filter = `<div class="tabs sv-line" id="sv-pcats"><button type="button" class="tab${playersCat === 'ALL' ? ' active' : ''}" data-pc="ALL">${escapeHtml(t('season.schedAll'))}<small>${model.total}</small></button>${model.cats.map((c) => `<button type="button" class="tab${playersCat === c.category ? ' active' : ''}" data-pc="${c.category}">${escapeHtml(CATEGORY_NAMES[c.category])}<small>${c.players.length}</small></button>`).join('')}</div>`;
+  const tables = model.cats.filter((c) => playersCat === 'ALL' || c.category === playersCat).map((c) => {
     const rows = c.players.map((p, i) => {
       const name = p.slug ? `<a href="/player/${encodeURIComponent(p.slug)}">${escapeHtml(p.name)}</a>` : escapeHtml(p.name);
       const paid = p.paid === null || p.paid === undefined ? '<span class="no">–</span>' : (p.paid ? `<span class="ok">✓ ${escapeHtml(t('season.paid'))}</span>` : `<span class="no">${escapeHtml(t('season.unpaid'))}</span>`);
@@ -321,7 +324,7 @@ function playersHtml() {
         ${rows}
       </div>`;
   }).join('');
-  return `<section class="sv-sec" id="sv-players"><div class="sv-pt">${tables}</div></section>`;
+  return `<section class="sv-sec" id="sv-players">${filter}<div class="sv-pt">${tables}</div></section>`;
 }
 
 function playoffHtml() {
@@ -528,6 +531,8 @@ rootEl.addEventListener('click', async (e) => {
   if (tabBtn) { openTab(tabBtn.dataset.tab); return; }
   const cat = e.target.closest('#sv-panel [data-cat]');
   if (cat) { category = cat.dataset.cat; renderPanel(); return; }
+  const pc = e.target.closest('#sv-panel [data-pc]');
+  if (pc) { playersCat = pc.dataset.pc; renderPanel(); return; }
   const sc = e.target.closest('#sv-panel [data-sc]');
   if (sc) { schedCat = sc.dataset.sc; schedGroup = 'ALL'; renderPanel(); return; }
   const sg = e.target.closest('#sv-panel [data-sg]');
