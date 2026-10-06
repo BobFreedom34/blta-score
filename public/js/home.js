@@ -487,9 +487,12 @@ function renderHome() {
   if (d.season && d.season.logoUrl) { headLogo.src = d.season.logoUrl; headLogo.hidden = false; } else { headLogo.hidden = true; }
   rootEl.innerHTML = `
     ${mineHtml(d)}
-    ${timelineHtml(d)}
-    ${progressHtml(d)}
-    ${d.season ? statsHtml(d) : ''}
+    <section class="home-current">
+      ${d.season ? secTitle(t('home.current'), d.season.name, '', '') : ''}
+      ${timelineHtml(d)}
+      ${progressHtml(d)}
+      ${d.season ? statsHtml(d) : ''}
+    </section>
     ${leadersHtml(d)}
     ${matchesBlockHtml(d)}
     ${rankingAndLookingHtml(d)}

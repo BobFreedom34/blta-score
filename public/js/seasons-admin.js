@@ -368,6 +368,7 @@ function wireSeason(card) {
           <div style="flex:1;min-width:220px">
             <strong>${escapeHtml(r.name)}</strong> <span class="sa-chip future">${escapeHtml(catLabel(r.category))}</span>${r.playerId ? '' : ' <span style="font-size:11px;color:var(--gray)">new name</span>'}
             <div style="font-size:12px;color:var(--gray)">${r.phone || r.email ? `${escapeHtml(r.phone)} · <a href="mailto:${escapeHtml(r.email)}" style="color:var(--orange)">${escapeHtml(r.email)}</a>` : 'imported from blta.sk (no contact details)'} · ${escapeHtml(fmtDate(r.createdAt.slice(0, 10)))}</div>
+            ${r.note ? `<div style="font-size:13px;margin-top:4px;white-space:pre-wrap"><strong>Note:</strong> ${escapeHtml(r.note)}</div>` : ''}
           </div>
           <button type="button" class="sg-link" data-reg-paid="${r.paid ? 0 : 1}">${r.paid ? 'Paid ✓' : 'Not paid'}</button>
           <button type="button" class="sg-x" data-reg-del title="Delete this registration">&times;</button>

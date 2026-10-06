@@ -1289,6 +1289,10 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_season_registrations_season ON season_registrations(season_id);
 `);
+// an optional note from the player (a wish, a question), seen by the admin only
+if (!db.prepare('PRAGMA table_info(season_registrations)').all().some((c) => c.name === 'note')) {
+  db.exec("ALTER TABLE season_registrations ADD COLUMN note TEXT NOT NULL DEFAULT ''");
+}
 
 // Tournaments and other events of the schedule page (/harmonogram). League seasons are not stored here — the page reads
 // them from the seasons table. categories: comma list of ELITE, NEXT_GEN, NOVICE.

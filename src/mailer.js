@@ -407,6 +407,7 @@ async function sendSeasonRegistrationEmail(season, registration, total) {
     `Kategória: ${categoryLabel(registration.category)}`,
     `Telefón: ${registration.phone}`,
     `E-mail: ${registration.email}`,
+    ...(registration.note ? [`Poznámka: ${registration.note}`] : []),
     '',
     `Prihlásených v sérii: ${total}`,
     `Zoznam a úhrady: ${process.env.PUBLIC_URL || ''}/seasons-admin`,

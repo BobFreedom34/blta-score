@@ -388,6 +388,7 @@ async function openRegisterModal() {
         <div class="field"><label for="sv-reg-cat">${escapeHtml(t('season.regCategory'))}</label>
           <select id="sv-reg-cat"><option value="">${escapeHtml(t('season.regChoose'))}</option>${CATEGORY_ORDER.map((c) => `<option value="${c}">${escapeHtml(CATEGORY_NAMES[c])}</option>`).join('')}</select>
         </div>
+        <div class="field"><label for="sv-reg-notetext">${escapeHtml(t('season.regNoteLabel'))}</label><textarea id="sv-reg-notetext" rows="3" maxlength="500" placeholder="${escapeHtml(t('season.regNotePlaceholder'))}"></textarea></div>
         <input type="text" id="sv-reg-website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
         <div class="sv-reg-similar" id="sv-reg-similar"></div>
         <div class="sv-reg-error" id="sv-reg-error"></div>
@@ -424,7 +425,7 @@ async function openRegisterModal() {
     try {
       const res = await api(`/seasons/${season.id}/registrations`, {
         method: 'POST',
-        body: { name: typed, phone, email, category, website: $('website').value, ...(known ? { playerId: known.id } : {}), ...(confirmNew ? { confirmNew: true } : {}) },
+        body: { name: typed, phone, email, category, note: $('notetext').value.trim(), website: $('website').value, ...(known ? { playerId: known.id } : {}), ...(confirmNew ? { confirmNew: true } : {}) },
       });
       const pay = res && res.paymentUrl
         ? `<p>${escapeHtml(t('season.regPayHint'))}</p><a class="btn btn-primary btn-block" href="${escapeHtml(res.paymentUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.payOnline'))}</a>`

@@ -3593,10 +3593,11 @@ a.home-mine-cell:hover { border-color: var(--orange); }
 .home-tl-body { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 14px 16px; height: 100%; }
 .home-tl.past .home-tl-body { background: rgba(55, 55, 62, 0.45); opacity: 0.6; }
 .home-tl.past .home-tl-name { color: #c3c7cf; }
-.home-tl.now .home-tl-body { background: #0a0a0a; border-color: var(--orange); }
-.home-tl.future .home-tl-body { background: transparent; border: 1px dashed rgba(255, 255, 255, 0.35); }
+.home-tl.now .home-tl-body { background: #0a0a0a; border-color: var(--green); box-shadow: 0 0 18px rgba(178, 250, 6, 0.25); }
+.home-tl.future .home-tl-body { background: var(--fill-grey); border: 1px solid var(--orange); box-shadow: none; }
 a.home-tl:hover .home-tl-body { border-color: rgba(255, 255, 255, 0.55); }
-a.home-tl.now:hover .home-tl-body { border-color: var(--orange); }
+a.home-tl.now:hover .home-tl-body { border-color: var(--green); }
+a.home-tl.future:hover .home-tl-body { border-color: var(--orange); }
 .home-tl-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 8px; font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; background: rgba(255, 255, 255, 0.1); color: #c3c7cf; }
 .home-tl.now .home-tl-chip { background: var(--orange); color: var(--white); }
 .home-tl.future .home-tl-chip { background: transparent; border: 1px solid rgba(255, 255, 255, 0.4); color: var(--white); }
@@ -4067,3 +4068,6 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .home-head-state.past { background: rgba(255, 255, 255, 0.12); color: #c3c7cf; }
 .home-head-state.future { border: 1px solid rgba(255, 255, 255, 0.4); color: var(--white); }
 .home-head-state i { width: 8px; height: 8px; border-radius: 50%; background: var(--white); animation: pulse 1.6s infinite; }
+
+/* "Aktuálna sezóna": the heading over the timeline, the progress and the league numbers (its gap below is the timeline's own) */
+.home-current > .home-sec-title { margin-bottom: 14px; }

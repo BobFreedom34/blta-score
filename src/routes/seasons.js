@@ -180,6 +180,8 @@ router.post('/:id/registrations', async (req, res) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120) return res.status(400).json({ code: 'BAD_EMAIL', error: 'Enter a valid e-mail address' });
   if (phone.replace(/\D/g, '').length < 9 || phone.length > 20) return res.status(400).json({ code: 'BAD_PHONE', error: 'Enter a valid phone number' });
   if (!BLTA_CATEGORIES.includes(body.category)) return res.status(400).json({ code: 'BAD_CATEGORY', error: 'Choose a category' });
+  const note = typeof body.note === 'string' ? body.note.replace(/\r\n/g, '\n').trim() : '';
+  if (note.length > 500) return res.status(400).json({ code: 'BAD_NOTE', error: 'The note is too long (max 500 characters)' });
 
   // who is this: a chosen existing player, a typed name that is one, or a new name
   const players = db.prepare('SELECT id, name FROM players').all();
@@ -199,11 +201,11 @@ router.post('/:id/registrations', async (req, res) => {
     .some((r) => (player && r.player_id === player.id) || nameMatch.key(r.name) === nameMatch.key(name));
   if (already) return res.status(409).json({ code: 'ALREADY_REGISTERED', error: 'This player is already registered for the season' });
 
-  db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(season.id, player ? player.id : null, name, phone, email, body.category);
+  db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, note) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(season.id, player ? player.id : null, name, phone, email, body.category, note);
   const total = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?').get(season.id).n;
   // the e-mail to the admin must never make the registration fail
-  sendSeasonRegistrationEmail(season, { name, phone, email, category: body.category, isNew: !player }, total)
+  sendSeasonRegistrationEmail(season, { name, phone, email, category: body.category, note, isNew: !player }, total)
     .catch((err) => console.error('[season registration] admin e-mail failed:', err.message));
   res.status(201).json({ ok: true, name, category: body.category, paymentUrl: season.payment_url || '' });
 });
@@ -211,7 +213,7 @@ router.post('/:id/registrations', async (req, res) => {
 // The admin's list: with the contact details (never sent to the public page).
 router.get('/:id/registrations', requireAdmin, (req, res) => {
   const rows = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(Number(req.params.id));
-  res.json(rows.map((r) => ({ id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, createdAt: r.created_at, playerId: r.player_id })));
+  res.json(rows.map((r) => ({ id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', createdAt: r.created_at, playerId: r.player_id })));
 });
 
 router.patch('/registrations/:rid', requireAdmin, (req, res) => {
