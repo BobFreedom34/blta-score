@@ -29,6 +29,7 @@ const venuesRouter = require('./src/routes/venues');
 const seasonsRouter = require('./src/routes/seasons');
 const scheduleRouter = require('./src/routes/schedule');
 const winnersRouter = require('./src/routes/winners');
+const contactRouter = require('./src/routes/contact');
 const seoRouter = require('./src/routes/seo');
 const carouselRouter = require('./src/routes/carousel');
 const rulesRouter = require('./src/routes/rules');
@@ -104,6 +105,11 @@ try {
   require('./src/seasonSeed').ensureWinnersMenuItem(db);
 } catch (err) {
   console.error('Winners menu item failed:', err);
+}
+try {
+  require('./src/seasonSeed').ensureContactMenuItem(db);
+} catch (err) {
+  console.error('Contact menu item failed:', err);
 }
 try {
   require('./src/winnersSeed').seedWinners(db);
@@ -202,6 +208,7 @@ app.use('/api/venues', venuesRouter);
 app.use('/api/seasons', seasonsRouter);
 app.use('/api/schedule', scheduleRouter);
 app.use('/api/winners', winnersRouter);
+app.use('/api/contact', contactRouter);
 app.use('/api/seo', seoRouter);
 app.use('/api/carousel', carouselRouter);
 app.use('/api/rules', rulesRouter);

@@ -1237,7 +1237,76 @@ function isOverdueUnresolved(m) {
 // A menu item whose link is empty, '#' or anything that is not a page of the site or a web address is only a heading: it opens its
 // sub-items instead of going anywhere.
 function isHeadingLink(link) {
+  if (isContactLink(link)) return false;
   return !link || !/^(\/|https?:\/\/|mailto:|tel:)/i.test(String(link).trim());
+}
+
+// #kontakt is no page: it opens the contact window (the "Kontakt" menu item; any link to #kontakt on a page does the same)
+function isContactLink(link) {
+  return String(link || '').trim().toLowerCase() === '#kontakt';
+}
+
+// ---------- the contact window (menu item "Kontakt") ----------
+// Who runs the league and how to reach them: GET /api/contact (edited in Backend > Menu). Built on first use and shown over
+// whatever page is open; closes with the cross, a click beside it or Escape.
+const CONTACT_ICONS = {
+  facebook: '<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>',
+  instagram: '<rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>',
+  youtube: '<path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>',
+  whatsapp: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+};
+
+function contactWindowHtml(c) {
+  const link = (url) => (/^https?:\/\//i.test(url || '') ? url : '');
+  const lines = [];
+  String(c.address || '').split('\n').map((x) => x.trim()).filter(Boolean).forEach((x) => lines.push(`<p>${escapeHtml(x)}</p>`));
+  if (c.ico) lines.push(`<p><span class="ct-k">${escapeHtml(t('contact.ico'))}</span>${escapeHtml(c.ico)}</p>`);
+  if (c.iban) lines.push(`<p><span class="ct-k">IBAN</span>${escapeHtml(c.iban)}</p>`);
+  const phone = c.phone ? `<div class="ct-block"><div class="ct-label">${escapeHtml(t('contact.mobile'))}</div><a class="ct-value" href="tel:${escapeHtml(String(c.phone).replace(/[^\d+]/g, ''))}">${escapeHtml(c.phone)}</a></div>` : '';
+  const email = c.email ? `<div class="ct-block"><div class="ct-label">${escapeHtml(t('contact.email'))}</div><a class="ct-value" href="mailto:${escapeHtml(c.email)}">${escapeHtml(c.email)}</a></div>` : '';
+  const social = [['facebook', 'Facebook', c.facebookUrl], ['instagram', 'Instagram', c.instagramUrl], ['youtube', 'YouTube', c.youtubeUrl], ['whatsapp', 'WhatsApp', c.whatsappUrl]]
+    .filter(([, , url]) => link(url))
+    .map(([key, name, url]) => `<a href="${escapeHtml(link(url))}" target="_blank" rel="noopener" aria-label="${name}" title="${name}"><svg viewBox="0 0 24 24" aria-hidden="true">${CONTACT_ICONS[key]}</svg></a>`).join('');
+  return `
+    <div class="ct-left">
+      <img class="ct-logo" src="/img/blta-logo.png" alt="BLTA">
+      ${c.orgName ? `<h2 class="ct-title" id="ct-title">${escapeHtml(c.orgName)}</h2>` : ''}
+      <div class="ct-lines">${lines.join('')}</div>
+    </div>
+    <div class="ct-right">
+      ${phone}${email}
+      ${social ? `<div class="ct-social">${social}</div>` : ''}
+    </div>`;
+}
+
+async function openContactModal() {
+  let el = document.getElementById('contact-modal');
+  if (el) return;
+  el = document.createElement('div');
+  el.id = 'contact-modal';
+  el.className = 'ct-backdrop';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.setAttribute('aria-labelledby', 'ct-title');
+  el.innerHTML = `<div class="ct-card"><button type="button" class="ct-close" aria-label="${escapeHtml(t('contact.close'))}">&times;</button><div class="ct-body"></div></div>`;
+  const previousOverflow = document.body.style.overflow;
+  const close = () => {
+    el.remove();
+    document.body.style.overflow = previousOverflow;
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  el.addEventListener('click', (e) => { if (e.target === el || e.target.closest('.ct-close')) close(); });
+  document.addEventListener('keydown', onKey);
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(el);
+  el.querySelector('.ct-close').focus();
+  const body = el.querySelector('.ct-body');
+  try {
+    body.innerHTML = contactWindowHtml(await api('/contact'));
+  } catch {
+    body.innerHTML = `<p style="text-align:center;margin:0">${escapeHtml(t('contact.loadError'))}</p>`;
+  }
 }
 
 async function renderHeaderNav() {
@@ -1255,7 +1324,7 @@ async function renderHeaderNav() {
   const makeLink = (item) => {
     const a = document.createElement('a');
     const heading = isHeadingLink(item.link);
-    a.href = heading ? '#' : item.link;
+    a.href = heading ? '#' : (isContactLink(item.link) ? '#kontakt' : item.link);
     a.textContent = labelFor(item);
     if (heading) a.classList.add('nav-heading'); // opens its sub-items on a tap (the click handler below), goes nowhere
     else if (isActive(item.link)) a.className = 'active';
@@ -1342,6 +1411,13 @@ async function attachLookingToPlayBadge() {
 // open dropdown closes it, same convention as the auth menu/lang switcher
 // below.
 document.addEventListener('click', (e) => {
+  // a link to #kontakt (the Kontakt menu item) opens the contact window
+  const contactLink = e.target.closest('a[href="#kontakt"]');
+  if (contactLink) {
+    e.preventDefault();
+    openContactModal();
+    return;
+  }
   // a heading (an item without a real link) works like its caret anywhere on it; on its own, with nothing under it, it does nothing
   const heading = e.target.closest('a.nav-heading');
   if (heading) {

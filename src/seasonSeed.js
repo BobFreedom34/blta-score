@@ -231,6 +231,18 @@ function ensureWinnersMenuItem(db) {
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_winners_added')").run();
 }
 
+// The "Kontakt" menu item: its link #kontakt opens the contact window instead of a page. Added once at the end of the menu (an
+// admin can rename, move or delete it afterwards).
+function ensureContactMenuItem(db) {
+  if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'menu_contact_added'").get()) return;
+  if (!db.prepare("SELECT 1 FROM header_items WHERE link = '#kontakt'").get()) {
+    const maxSort = db.prepare('SELECT MAX(sort_order) AS m FROM header_items').get().m;
+    db.prepare('INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order) VALUES (NULL, ?, ?, ?, ?)')
+      .run('Kontakt', 'Contact', '#kontakt', (maxSort == null ? 0 : maxSort) + 1);
+  }
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_contact_added')").run();
+}
+
 // The season logos from blta.sk (saved in /public/img/seasons), set once on the seasons that have none: one logo per series
 // type, so Winter Opening 2026 and 2027 share the winter one. After that an admin owns them (the "Logo" field in /seasons-admin).
 function ensureSeasonLogos(db) {
@@ -256,4 +268,4 @@ function removeDescriptionSignOff(db) {
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('season_info_signoff_removed')").run();
 }
 
-module.exports = { removeDescriptionSignOff, ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, ensureWinnersMenuItem, fixWinterStart };
+module.exports = { removeDescriptionSignOff, ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, ensureWinnersMenuItem, ensureContactMenuItem, fixWinterStart };

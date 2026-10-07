@@ -1,5 +1,5 @@
-// Checks of the menu rules (Backend > Menu, /api/header-items): three levels at most, moving an item together with its
-// sub-items, no loops, deleting a branch.
+// Checks of the menu (Backend > Menu): the rules of /api/header-items (three levels at most, moving an item together with its
+// sub-items, no loops, deleting a branch, an optional link) and the contact window (/api/contact, the Kontakt menu item).
 // Run: node scripts/check-header-items.js   (starts its own server on a temporary data directory; touches nothing else)
 const fs = require('fs');
 const os = require('os');
@@ -150,6 +150,45 @@ test('the link is optional: an empty one is stored as #, a heading that only ope
 
 test('a label is still required', async () => {
   assert.strictEqual((await call('POST', '/api/header-items', { labelSk: '', link: '/x' })).status, 400);
+});
+
+// ---------------------------------------------------------------- the contact window (Kontakt)
+test('the Kontakt menu item is there, opening the contact window (#kontakt)', async () => {
+  const kontakt = (await tree()).find((i) => i.link === '#kontakt');
+  assert.ok(kontakt, 'no #kontakt item');
+  assert.strictEqual(kontakt.labelSk, 'Kontakt');
+  assert.strictEqual(kontakt.labelEn, 'Contact');
+});
+
+test('contact: everyone can read it, with the first values of blta.sk', async () => {
+  const r = await call('GET', '/api/contact', undefined, false);
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.json.orgName, 'OZ Ziegelfeld');
+  assert.strictEqual(r.json.ico, '51237971');
+  assert.strictEqual(r.json.email, 'info@blta.sk');
+  assert.match(r.json.facebookUrl, /^https:\/\//);
+});
+
+test('contact: only an admin can change it', async () => {
+  assert.strictEqual((await call('PUT', '/api/contact', { orgName: 'x' }, false)).status, 401);
+});
+
+test('contact: a change is saved, a cleared field stays cleared', async () => {
+  const r = await call('PUT', '/api/contact', { orgName: 'Test Org', address: 'Line 1\nLine 2', ico: '', iban: 'SK00', phone: '0900 000 000', email: 'a@b.sk', facebookUrl: '', instagramUrl: 'https://instagram.com/x', youtubeUrl: '', whatsappUrl: '' });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.json));
+  const back = (await call('GET', '/api/contact', undefined, false)).json;
+  assert.strictEqual(back.orgName, 'Test Org');
+  assert.strictEqual(back.address, 'Line 1\nLine 2');
+  assert.strictEqual(back.ico, '', 'cleared IČO must not come back as the first value');
+  assert.strictEqual(back.facebookUrl, '');
+  assert.strictEqual(back.instagramUrl, 'https://instagram.com/x');
+});
+
+test('contact: bad links, bad email and too long texts are refused', async () => {
+  assert.strictEqual((await call('PUT', '/api/contact', { facebookUrl: 'javascript:alert(1)' })).status, 400);
+  assert.strictEqual((await call('PUT', '/api/contact', { youtubeUrl: 'www.youtube.com/x' })).status, 400);
+  assert.strictEqual((await call('PUT', '/api/contact', { email: 'not an email' })).status, 400);
+  assert.strictEqual((await call('PUT', '/api/contact', { orgName: 'x'.repeat(121) })).status, 400);
 });
 
 async function main() {

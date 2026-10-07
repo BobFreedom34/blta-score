@@ -9,7 +9,8 @@ let itemsById = new Map();
 
 // no real link (empty, '#' or anything that is not a page of the site or a web address): the item is only a heading
 // that opens its sub-items — same rule as the header itself (isHeadingLink in common.js)
-const isHeading = (link) => !link || !/^(\/|https?:\/\/|mailto:|tel:)/i.test(String(link).trim());
+const isContact = (link) => String(link || '').trim().toLowerCase() === '#kontakt';
+const isHeading = (link) => !isContact(link) && (!link || !/^(\/|https?:\/\/|mailto:|tel:)/i.test(String(link).trim()));
 
 function indexItems() {
   itemsById = new Map();
@@ -59,6 +60,7 @@ const SITE_PAGES = [
   { sk: 'Kurty', en: 'Courts', link: '/courts' },
   { sk: 'Harmonogram', en: 'Schedule', link: '/harmonogram' },
   { sk: 'Víťazi', en: 'Winners', link: '/vitazi' },
+  { sk: 'Kontakt', en: 'Contact', link: '#kontakt' },
   { sk: 'Propozície', en: 'Rules', link: '/propozicie' },
   { sk: 'Hľadám súpera', en: 'Looking to play', link: '/looking-to-play' },
   { sk: '+ Nový zápas', en: '+ New match', link: '/new-match' },
@@ -176,7 +178,7 @@ function headerItemRowHtml(item) {
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <div style="flex:1;min-width:160px">
           <div style="font-weight:700">${isSub ? '↳ ' : ''}${escapeHtml(label)}${item.highlight ? ' <span style="font-size:11px;font-weight:800;background:var(--green);color:#0a0a0a;border-radius:6px;padding:1px 7px;margin-left:6px">GREEN</span>' : ''}</div>
-          <div style="font-size:12px;color:var(--gray)">${isHeading(item.link) ? 'heading — opens its sub-items' : escapeHtml(item.link)}</div>
+          <div style="font-size:12px;color:var(--gray)">${isContact(item.link) ? 'opens the contact window' : (isHeading(item.link) ? 'heading — opens its sub-items' : escapeHtml(item.link))}</div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
           ${depth < MAX_DEPTH ? '<button type="button" class="btn btn-sm btn-outline" data-action="add-sub">+ Sub-item</button>' : ''}
@@ -383,6 +385,50 @@ root.addEventListener('change', (e) => {
   document.getElementById(`${prefix}-link`).value = page.link;
 });
 
+// The texts of the contact window the "Kontakt" item opens (GET/PUT /api/contact). A link left empty hides its icon.
+const CONTACT_FIELDS = [
+  ['orgName', 'Name', 'text', 'e.g. OZ Ziegelfeld'],
+  ['address', 'Address', 'area', 'One line per row'],
+  ['ico', 'IČO', 'text', ''],
+  ['iban', 'IBAN', 'text', ''],
+  ['phone', 'Phone', 'text', '0902 955 945'],
+  ['email', 'Email', 'text', 'info@blta.sk'],
+  ['facebookUrl', 'Facebook link', 'text', 'https://www.facebook.com/…  (empty = no icon)'],
+  ['instagramUrl', 'Instagram link', 'text', 'https://www.instagram.com/…  (empty = no icon)'],
+  ['youtubeUrl', 'YouTube link', 'text', 'https://www.youtube.com/…  (empty = no icon)'],
+  ['whatsappUrl', 'WhatsApp link', 'text', 'https://wa.me/421…  (empty = no icon)'],
+];
+
+async function loadContactCard() {
+  const card = document.getElementById('contact-card');
+  let c;
+  try { c = await api('/contact'); } catch (err) { card.textContent = err.message; return; }
+  card.innerHTML = `
+    <h3 style="margin-top:0">Contact window <span style="font-weight:400;color:var(--gray-dim);font-size:13px">— opens from the “Kontakt” menu item (link <code>#kontakt</code>)</span></h3>
+    <form id="contact-form">
+      ${CONTACT_FIELDS.map(([key, label, kind, hint]) => `
+        <div class="field">
+          <label>${label}</label>
+          ${kind === 'area'
+            ? `<textarea id="ct-${key}" rows="2" maxlength="300" placeholder="${escapeHtml(hint)}">${escapeHtml(c[key])}</textarea>`
+            : `<input type="text" id="ct-${key}" maxlength="300" value="${escapeHtml(c[key])}" placeholder="${escapeHtml(hint)}">`}
+        </div>`).join('')}
+      <div id="contact-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <button type="submit" class="btn btn-primary">Save contact window</button>
+    </form>`;
+  document.getElementById('contact-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('contact-error');
+    errorEl.textContent = '';
+    try {
+      await api('/contact', { method: 'PUT', body: Object.fromEntries(CONTACT_FIELDS.map(([key]) => [key, document.getElementById(`ct-${key}`).value])) });
+      toast('Contact window saved');
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
+  });
+}
+
 async function loadSeasonPages() {
   try {
     const seasons = await api('/seasons');
@@ -403,7 +449,9 @@ function renderAdmin() {
     <div class="card">
       <div id="header-items-list">Loading…</div>
     </div>
+    <div class="card" id="contact-card" style="margin-top:20px">Loading…</div>
   `;
+  loadContactCard();
   document.getElementById('add-header-item-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errorEl = document.getElementById('add-header-item-error');

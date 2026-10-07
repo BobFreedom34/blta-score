@@ -1349,6 +1349,14 @@ db.exec(`
   );
 `);
 
+// Small site-wide texts edited in the backend, one JSON value per key ('contact' = the contact window, see routes/contact.js).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS site_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+`);
+
 // The image carousel at the top of the home page (Backend > Carousel). The pictures are files on the persistent disk
 // (<data dir>/carousel), image_url is their /carousel-images/… address.
 db.exec(`
