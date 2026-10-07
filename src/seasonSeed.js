@@ -211,6 +211,26 @@ function ensureScheduleMenuItem(db) {
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_schedule_added')").run();
 }
 
+// The "Víťazi" menu item (the winners page), added once right after "Harmonogram" (an admin can rename, move or delete it
+// afterwards).
+function ensureWinnersMenuItem(db) {
+  if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'menu_winners_added'").get()) return;
+  if (!db.prepare("SELECT 1 FROM header_items WHERE link = '/vitazi'").get()) {
+    const schedule = db.prepare("SELECT sort_order FROM header_items WHERE link = '/harmonogram' AND parent_id IS NULL").get();
+    let sortOrder;
+    if (schedule) {
+      sortOrder = schedule.sort_order + 1;
+      db.prepare('UPDATE header_items SET sort_order = sort_order + 1 WHERE parent_id IS NULL AND sort_order >= ?').run(sortOrder);
+    } else {
+      const maxSort = db.prepare('SELECT MAX(sort_order) AS m FROM header_items').get().m;
+      sortOrder = (maxSort == null ? 0 : maxSort) + 1;
+    }
+    db.prepare('INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order) VALUES (NULL, ?, ?, ?, ?)')
+      .run('Víťazi', 'Winners', '/vitazi', sortOrder);
+  }
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_winners_added')").run();
+}
+
 // The season logos from blta.sk (saved in /public/img/seasons), set once on the seasons that have none: one logo per series
 // type, so Winter Opening 2026 and 2027 share the winter one. After that an admin owns them (the "Logo" field in /seasons-admin).
 function ensureSeasonLogos(db) {
@@ -236,4 +256,4 @@ function removeDescriptionSignOff(db) {
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('season_info_signoff_removed')").run();
 }
 
-module.exports = { removeDescriptionSignOff, ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, fixWinterStart };
+module.exports = { removeDescriptionSignOff, ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, ensureWinnersMenuItem, fixWinterStart };

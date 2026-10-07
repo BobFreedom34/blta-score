@@ -5,3 +5,4 @@ data/*.db-wal
 data/*.db-shm
 data/badge-icons/
 data/player-photos/
+data/winner-photos/

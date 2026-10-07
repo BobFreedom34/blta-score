@@ -50,6 +50,11 @@ const PAGES = [
     description: 'Harmonogram BLTA - Bratislavskej Ligy Tenisových Amatérov - sezóna BLTA Ligy je rozdelená na tri 4-mesačné cykly a niekoľko turnajov.',
   },
   {
+    key: 'vitazi', label: 'Winners (Víťazi)', path: '/vitazi', file: 'vitazi.html', blta: 'https://www.blta.sk/vitazi/',
+    title: `Víťazi${SUFFIX}`,
+    description: 'Víťazi BLTA - Bratislavskej Ligy Tenisových Amatérov: víťazi, finalisti a semifinalisti jednotlivých sérií a turnajov v kategóriách Elite, Next Gen a Novice.',
+  },
+  {
     key: 'propozicie', label: 'Propozície (rules)', path: '/propozicie', file: 'propozicie.html', blta: 'https://www.blta.sk/propozicie/',
     title: `Propozície${SUFFIX}`,
     description: 'Propozície BLTA - kompletné a aktuálne pravidlá ligy a turnajov: kategórie, herný systém, bodovanie, termíny, dohadovanie zápasov a štartovné.',
@@ -252,6 +257,7 @@ function robotsTxt(origin) {
     'Disallow: /venues-admin',
     'Disallow: /seasons-admin',
     'Disallow: /schedule-admin',
+    'Disallow: /winners-admin',
     'Disallow: /seo-admin',
     'Disallow: /login-history',
     'Disallow: /reset-code',

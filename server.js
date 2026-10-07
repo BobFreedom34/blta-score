@@ -28,6 +28,7 @@ const bracketsRouter = require('./src/routes/brackets');
 const venuesRouter = require('./src/routes/venues');
 const seasonsRouter = require('./src/routes/seasons');
 const scheduleRouter = require('./src/routes/schedule');
+const winnersRouter = require('./src/routes/winners');
 const seoRouter = require('./src/routes/seo');
 const carouselRouter = require('./src/routes/carousel');
 const rulesRouter = require('./src/routes/rules');
@@ -98,6 +99,16 @@ try {
   require('./src/scheduleSeed').seedScheduleEvents(db);
 } catch (err) {
   console.error('Schedule events seed failed (will retry on next start):', err);
+}
+try {
+  require('./src/seasonSeed').ensureWinnersMenuItem(db);
+} catch (err) {
+  console.error('Winners menu item failed:', err);
+}
+try {
+  require('./src/winnersSeed').seedWinners(db);
+} catch (err) {
+  console.error('Winners seed failed (will retry on next start):', err);
 }
 badgeEngine.backfillIfNeeded();
 badgeEngine.startScheduledReminders();
@@ -173,6 +184,7 @@ app.use((req, res, next) => {
 app.use('/badge-icons', express.static(path.join(db.dataDir, 'badge-icons')));
 app.use('/player-photos', express.static(path.join(db.dataDir, 'player-photos')));
 app.use('/carousel-images', express.static(path.join(db.dataDir, 'carousel'), { maxAge: '30d' }));
+app.use('/winner-photos', express.static(path.join(db.dataDir, 'winner-photos'), { maxAge: '30d' }));
 
 app.use('/api/players', playersRouter);
 app.use('/api/matches', matchesRouter);
@@ -189,6 +201,7 @@ app.use('/api/brackets', bracketsRouter);
 app.use('/api/venues', venuesRouter);
 app.use('/api/seasons', seasonsRouter);
 app.use('/api/schedule', scheduleRouter);
+app.use('/api/winners', winnersRouter);
 app.use('/api/seo', seoRouter);
 app.use('/api/carousel', carouselRouter);
 app.use('/api/rules', rulesRouter);

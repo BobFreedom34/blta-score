@@ -444,6 +444,20 @@ while the server is running), living wherever `DATA_DIR` points.
   0 3 * * * cp /var/www/blta-score/data/blta-score.db /var/backups/blta-score-$(date +\%F).db
   ```
 
+### Winners page (`/vitazi`)
+
+The public winners page and its editor. Edit it in **Backend → Winners** (`/winners-admin`): an *edition* is a series or
+tournament, it has a *block* per category (or an own title such as "Konečné poradie"), and a block has four places — winner,
+finalist, two semifinalists — each a player from the list or a typed name, with an optional own photo (otherwise the player's
+profile photo is shown). Hiding an edition removes it from the page without deleting it.
+
+- Files: `src/routes/winners.js` (API, `/api/winners`), `src/winnersSeed.js` (one-time load of the blta.sk winners of
+  2026-10-07), `public/vitazi.html` + `public/js/vitazi.js`, `public/winners-admin.html` + `public/js/winners-admin.js`,
+  `.win-*` styles at the end of `public/css/style.css`.
+- Own photos are saved in `<data dir>/winner-photos/` (the persistent disk, included in the Drive backup), not in `public/`.
+- Foreign keys are not enforced in this database, so the router deletes an edition's blocks, places and photo files itself.
+- Check it: `node scripts/check-winners.js` (starts its own server on a temporary data folder; nothing else is touched).
+
 ---
 
 ## 7. Embedding on the blta.sk WordPress site

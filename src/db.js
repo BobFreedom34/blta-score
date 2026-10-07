@@ -1318,6 +1318,37 @@ db.exec(`
   );
 `);
 
+// The winners page (/vitazi, Backend > Winners): an edition (a series or tournament) has category blocks, a block has up to four
+// places (slot 1 winner, 2 finalist, 3 and 4 semifinalists). A place is a player (player_id) or a typed name, with an optional own
+// photo (<data dir>/winner-photos, photo_url is its /winner-photos/… address). Foreign keys are not enforced here (see the
+// PRAGMA above), so the winners router deletes a parent's children itself and reads a missing player/season as "not linked".
+db.exec(`
+  CREATE TABLE IF NOT EXISTS winner_editions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    season_id INTEGER REFERENCES seasons(id) ON DELETE SET NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    visible INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE TABLE IF NOT EXISTS winner_blocks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    edition_id INTEGER NOT NULL REFERENCES winner_editions(id) ON DELETE CASCADE,
+    category TEXT CHECK (category IN ('ELITE', 'NEXT_GEN', 'NOVICE')),
+    title TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS winner_places (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    block_id INTEGER NOT NULL REFERENCES winner_blocks(id) ON DELETE CASCADE,
+    slot INTEGER NOT NULL CHECK (slot BETWEEN 1 AND 4),
+    player_id INTEGER REFERENCES players(id) ON DELETE SET NULL,
+    name TEXT NOT NULL DEFAULT '',
+    photo_url TEXT,
+    UNIQUE (block_id, slot)
+  );
+`);
+
 // The image carousel at the top of the home page (Backend > Carousel). The pictures are files on the persistent disk
 // (<data dir>/carousel), image_url is their /carousel-images/… address.
 db.exec(`

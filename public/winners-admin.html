@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tennis SCORE — Manage SEO</title>
+<title>Tennis SCORE — Manage winners</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
@@ -33,16 +33,16 @@
     <a href="/venues-admin" class="tab">Venues</a>
     <a href="/seasons-admin" class="tab">Seasons</a>
     <a href="/schedule-admin" class="tab">Schedule</a>
-    <a href="/winners-admin" class="tab">Winners</a>
-    <a href="/seo-admin" class="tab active">SEO</a>
+    <a href="/winners-admin" class="tab active">Winners</a>
+    <a href="/seo-admin" class="tab">SEO</a>
     <a href="/carousel-admin" class="tab">Carousel</a>
     <a href="/rules-admin" class="tab">Rules</a>
     <a href="/login-history" class="tab">Login History</a>
   </div>
-  <h2 style="margin:18px 0 4px">SEO</h2>
-  <p style="color:var(--gray-dim)">What Google and link previews (WhatsApp, Facebook…) show for every page: the title, the description, the keywords and the preview picture. The texts of a season, player, court or bracket page take the name in <code>{name}</code>.</p>
+  <h2 style="margin:18px 0 4px">Winners</h2>
+  <p style="color:var(--gray-dim)">What the public <a href="/vitazi" style="text-decoration:underline;color:var(--orange)">/vitazi</a> page shows: an edition per series or tournament, with a block per category and four places (winner, finalist, two semifinalists). Pick players from the list or type a name, and add a photo if you have a better one than the profile photo.</p>
 
-  <div id="seo-admin-root">Loading…</div>
+  <div id="winners-admin-root">Loading…</div>
 </div>
 
 <footer class="site-footer">
@@ -56,6 +56,6 @@
 
 <script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
-<script src="/js/seo-admin.js"></script>
+<script src="/js/winners-admin.js"></script>
 </body>
 </html>
