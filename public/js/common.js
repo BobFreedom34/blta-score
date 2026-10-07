@@ -1264,18 +1264,12 @@ async function renderHeaderNav() {
     if (item.link === '/looking-to-play') a.dataset.navBadgeTarget = 'looking-to-play';
     return a;
   };
-  const frag = document.createDocumentFragment();
-  items.forEach((item) => {
-    if (item.isMyProfile) {
-      if (myProfileEl) frag.appendChild(myProfileEl);
-      return;
-    }
-    if (!item.children || !item.children.length) {
-      frag.appendChild(makeLink(item));
-      return;
-    }
+  // An item with sub-items becomes a dropdown; a sub-item that has sub-items of its own becomes a dropdown inside it (a
+  // fly-out beside the panel on a computer, an indented list on a phone) — three levels at most, see routes/headerItems.js.
+  const buildItem = (item, nested) => {
+    if (!item.children || !item.children.length) return makeLink(item);
     const wrap = document.createElement('div');
-    wrap.className = 'nav-item-dropdown';
+    wrap.className = nested ? 'nav-item-dropdown nav-item-nested' : 'nav-item-dropdown';
     // The label + caret live in their own row (.nav-item-dropdown-toggle)
     // separate from .nav-submenu below — that's what lets the submenu
     // switch from an absolute-positioned popover (desktop) to a plain
@@ -1293,9 +1287,17 @@ async function renderHeaderNav() {
     wrap.appendChild(toggle);
     const submenu = document.createElement('div');
     submenu.className = 'nav-submenu';
-    item.children.forEach((child) => submenu.appendChild(makeLink(child)));
+    item.children.forEach((child) => submenu.appendChild(buildItem(child, true)));
     wrap.appendChild(submenu);
-    frag.appendChild(wrap);
+    return wrap;
+  };
+  const frag = document.createDocumentFragment();
+  items.forEach((item) => {
+    if (item.isMyProfile) {
+      if (myProfileEl) frag.appendChild(myProfileEl);
+      return;
+    }
+    frag.appendChild(buildItem(item, false));
   });
   container.innerHTML = '';
   container.appendChild(frag);
@@ -1338,8 +1340,9 @@ document.addEventListener('click', (e) => {
     e.stopPropagation();
     const dropdown = caret.closest('.nav-item-dropdown');
     const wasOpen = dropdown.classList.contains('open');
-    document.querySelectorAll('.nav-item-dropdown.open').forEach((d) => d.classList.remove('open'));
-    if (!wasOpen) dropdown.classList.add('open');
+    // opening one closes the others, but never the dropdowns it sits inside (a nested one lives in its parent's panel)
+    document.querySelectorAll('.nav-item-dropdown.open').forEach((d) => { if (d !== dropdown && !d.contains(dropdown)) d.classList.remove('open'); });
+    dropdown.classList.toggle('open', !wasOpen);
     return;
   }
   document.querySelectorAll('.nav-item-dropdown.open').forEach((d) => {

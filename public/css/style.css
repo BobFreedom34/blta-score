@@ -336,9 +336,9 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
    whatever was last tapped until something else is tapped, so tapping the
    caret to collapse a dropdown would toggle .open off correctly but the
    panel would stay visually expanded anyway via this rule alone. */
-.nav-item-dropdown.open .nav-submenu { display: block; }
+.nav-item-dropdown.open > .nav-submenu { display: block; }
 @media (hover: hover) and (pointer: fine) {
-  .nav-item-dropdown:hover .nav-submenu { display: block; }
+  .nav-item-dropdown:hover > .nav-submenu { display: block; }
 }
 .nav-submenu a {
   display: block;
@@ -4155,7 +4155,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
   .nav-submenu::before { content: ''; position: absolute; left: 0; right: 0; top: -10px; height: 10px; }
   /* a small notch pointing at the item */
   .nav-submenu::after { content: ''; position: absolute; top: -6px; left: 50%; width: 10px; height: 10px; margin-left: -5px; transform: rotate(45deg); background: #0f0f10; border-left: 1px solid rgba(255, 255, 255, 0.16); border-top: 1px solid rgba(255, 255, 255, 0.16); }
-  .nav-item-dropdown.open .nav-submenu, .nav-item-dropdown:hover .nav-submenu { animation: nav-drop-in 0.16s ease-out; }
+  .nav-item-dropdown.open > .nav-submenu, .nav-item-dropdown:hover > .nav-submenu { animation: nav-drop-in 0.16s ease-out; }
   .nav-submenu a {
     position: relative;
     display: flex;
@@ -4180,7 +4180,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 
 @media (max-width: 1024px) {
   .nav-submenu { display: none; position: static; flex-direction: column; gap: 6px; margin: 8px 0 4px 22px; padding: 0 0 0 14px; background: none; border: none; border-left: 2px solid rgba(255, 255, 255, 0.14); border-radius: 0; box-shadow: none; transform: none; min-width: 0; }
-  .nav-item-dropdown.open .nav-submenu { display: flex; animation: nav-drop-in 0.16s ease-out; }
+  .nav-item-dropdown.open > .nav-submenu { display: flex; animation: nav-drop-in 0.16s ease-out; }
   .nav-links .nav-submenu a {
     display: flex;
     align-items: center;
@@ -4200,6 +4200,21 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
   .nav-links .nav-submenu a.active { color: var(--status-green); background: var(--fill-grey); }
   .nav-links .nav-submenu a.active::before { background: var(--status-green); }
 }
+/* Third level: a sub-item that has sub-items of its own opens a fly-out beside the dropdown on a computer (the arrow shows
+   there is more) and an indented list on a phone (the caret opens it, like a main item's) */
+@media (min-width: 1025px) {
+  .nav-submenu .nav-item-dropdown { position: relative; }
+  .nav-submenu .nav-caret { display: none; }
+  .nav-submenu .nav-item-dropdown-toggle a { flex: 1; }
+  .nav-submenu .nav-item-dropdown-toggle a::after { color: #8b8f98; transform: none; }
+  .nav-submenu .nav-item-dropdown:hover > .nav-item-dropdown-toggle a { background: var(--fill-grey); color: var(--orange); }
+  .nav-submenu .nav-item-dropdown:hover > .nav-item-dropdown-toggle a::after { color: var(--orange); }
+  .nav-submenu .nav-submenu { top: -9px; left: calc(100% + 4px); transform: none; }
+  .nav-submenu .nav-submenu::after { display: none; }
+  .nav-submenu .nav-submenu::before { top: 0; bottom: 0; left: -8px; right: auto; width: 8px; height: auto; }
+  .nav-submenu a + .nav-item-dropdown, .nav-submenu .nav-item-dropdown + a, .nav-submenu .nav-item-dropdown + .nav-item-dropdown { margin-top: 2px; }
+}
+
 @media (max-width: 1024px) {
   /* the caret sits on top of a green button on phones: dark, like its text */
   .nav-item-dropdown-toggle a.nav-btn-green ~ .nav-caret, .nav-item-dropdown.open > .nav-item-dropdown-toggle a.nav-btn-green ~ .nav-caret { color: #0a0a0a; font-size: 16px; }

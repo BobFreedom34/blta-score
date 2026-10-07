@@ -1,19 +1,33 @@
 const root = document.getElementById('header-admin-root');
 
 let items = [];
-// Flat id -> item lookup covering both top-level items and their nested
-// children — GET /header-items already comes back as a tree (each
-// top-level item carries its own `children` array), this just flattens
-// that once per load so edit/delete/add-sub handlers can find any row by
-// its id without walking the tree again.
+// Flat id -> item lookup covering every level — GET /header-items already comes back as a tree (each item carries its own
+// `children` array, up to three levels deep), this flattens it once per load so edit/delete/add-sub handlers can find any
+// row by its id without walking the tree again, and notes each item's `depth` (1 = main item, 2 = sub-item, 3 = sub-sub-item).
+const MAX_DEPTH = 3;
 let itemsById = new Map();
 
 function indexItems() {
   itemsById = new Map();
-  items.forEach((item) => {
+  const walk = (list, depth) => list.forEach((item) => {
+    item.depth = depth;
     itemsById.set(item.id, item);
-    (item.children || []).forEach((child) => itemsById.set(child.id, child));
+    walk(item.children || [], depth + 1);
   });
+  walk(items, 1);
+}
+
+// how many levels an item and everything under it take (1 = no sub-items)
+function heightOf(item) {
+  return 1 + (item.children || []).reduce((max, c) => Math.max(max, heightOf(c)), 0);
+}
+
+function isInside(item, id) {
+  return (item.children || []).some((c) => c.id === id || isInside(c, id));
+}
+
+function descendantCount(item) {
+  return (item.children || []).reduce((n, c) => n + 1 + descendantCount(c), 0);
 }
 
 // The pages of the site an item can point to — picked from a list instead of typing the label and the address.
@@ -53,19 +67,27 @@ function pickerHtml(prefix) {
     </div>`;
 }
 
-// "Show under": where the item sits — at the top of the menu or as a sub-item of one of the main items. An item that has
-// sub-items of its own stays a main item (the menu has two levels).
+// "Show under": where the item sits — at the top of the menu, or under any item that leaves room for it. The menu has three
+// levels (item, sub-item, sub-sub-item), so an item that has sub-items of its own can only go where its whole branch still
+// fits, and never under itself or one of its own sub-items.
 function parentFieldHtml(prefix, item) {
-  const hasChildren = item && (item.children || []).length > 0;
-  const options = items.filter((i) => !i.isMyProfile && (!item || i.id !== item.id));
+  const choices = [];
+  const walk = (list, path) => list.forEach((i) => {
+    const here = [...path, i.labelSk];
+    const fits = i.depth + (item ? heightOf(item) : 1) <= MAX_DEPTH;
+    const inside = item && (i.id === item.id || isInside(item, i.id));
+    if (!i.isMyProfile && fits && !inside) choices.push({ id: i.id, label: here.join(' › ') });
+    walk(i.children || [], here);
+  });
+  walk(items, []);
   return `
     <div class="field">
       <label>Show under</label>
-      <select id="${prefix}-parentId"${hasChildren ? ' disabled' : ''}>
+      <select id="${prefix}-parentId">
         <option value="">— main item (top of the menu) —</option>
-        ${options.map((i) => `<option value="${i.id}"${item && item.parentId === i.id ? ' selected' : ''}>${escapeHtml(i.labelSk)}</option>`).join('')}
+        ${choices.map((c) => `<option value="${c.id}"${item && item.parentId === c.id ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
       </select>
-      ${hasChildren ? '<div style="font-size:12px;color:var(--gray-dim);margin-top:4px">This item has sub-items, so it stays a main item.</div>' : ''}
+      <div style="font-size:12px;color:var(--gray-dim);margin-top:4px">Up to three levels: item › sub-item › sub-sub-item.</div>
     </div>`;
 }
 
@@ -111,7 +133,9 @@ function readHeaderItemForm(prefix) {
 // link aren't real settings here (routes/headerItems.js ignores them on
 // PATCH), only where it sits among the other items is, so its row only
 // ever offers an "Edit position" action, never Delete or + Sub-item.
-function headerItemRowHtml(item, isSub) {
+function headerItemRowHtml(item) {
+  const depth = item.depth || 1;
+  const isSub = depth > 1;
   if (item.isMyProfile) {
     return `
       <div class="header-item-row" data-id="${item.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
@@ -129,14 +153,14 @@ function headerItemRowHtml(item, isSub) {
   }
   const label = item.labelEn ? `${item.labelSk} / ${item.labelEn}` : item.labelSk;
   return `
-    <div class="header-item-row" data-id="${item.id}" style="border-bottom:1px solid var(--gray-light);padding:${isSub ? '10px 4px 10px 24px' : '14px 4px'}">
+    <div class="header-item-row" data-id="${item.id}" style="border-bottom:1px solid var(--gray-light);padding:${isSub ? `10px 4px 10px ${24 * (depth - 1)}px` : '14px 4px'}">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <div style="flex:1;min-width:160px">
           <div style="font-weight:700">${isSub ? '↳ ' : ''}${escapeHtml(label)}${item.highlight ? ' <span style="font-size:11px;font-weight:800;background:var(--green);color:#0a0a0a;border-radius:6px;padding:1px 7px;margin-left:6px">GREEN</span>' : ''}</div>
           <div style="font-size:12px;color:var(--gray)">${escapeHtml(item.link)}</div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
-          ${!isSub ? '<button type="button" class="btn btn-sm btn-outline" data-action="add-sub">+ Sub-item</button>' : ''}
+          ${depth < MAX_DEPTH ? '<button type="button" class="btn btn-sm btn-outline" data-action="add-sub">+ Sub-item</button>' : ''}
           <button type="button" class="btn btn-sm btn-outline" data-action="edit">Edit</button>
           <button type="button" class="btn btn-sm btn-danger" data-action="delete">Delete</button>
         </div>
@@ -145,19 +169,19 @@ function headerItemRowHtml(item, isSub) {
   `;
 }
 
-// A top-level item's own row, its children's rows right beneath (indented),
-// and an empty slot where the "+ Sub-item" button injects an add form —
-// kept as a separate sibling rather than nested inside the row itself so
-// opening it doesn't disturb the row's own edit/delete buttons. My profile
-// never has children or a + Sub-item slot, so it's just its own row.
+// An item's own row, its sub-items right beneath (each one the same again, indented one step further), and an empty slot
+// where the "+ Sub-item" button injects an add form — kept as a separate sibling rather than nested inside the row itself
+// so opening it doesn't disturb the row's own edit/delete buttons. My profile never has children or a + Sub-item slot, so
+// it's just its own row.
 function itemBlockHtml(item) {
+  const cls = (item.depth || 1) === 1 ? 'header-item-block' : 'header-item-node';
   if (item.isMyProfile) {
-    return `<div class="header-item-block" data-item-id="${item.id}">${headerItemRowHtml(item, false)}</div>`;
+    return `<div class="${cls}" data-item-id="${item.id}">${headerItemRowHtml(item)}</div>`;
   }
-  const childRows = (item.children || []).map((c) => headerItemRowHtml(c, true)).join('');
+  const childRows = (item.children || []).map(itemBlockHtml).join('');
   return `
-    <div class="header-item-block" data-item-id="${item.id}">
-      ${headerItemRowHtml(item, false)}
+    <div class="${cls}" data-item-id="${item.id}">
+      ${headerItemRowHtml(item)}
       <div class="header-item-children">${childRows}</div>
       <div class="header-item-add-sub-slot" data-parent-id="${item.id}"></div>
     </div>
@@ -234,7 +258,7 @@ function attachHandlers() {
         try {
           const body = readHeaderItemForm('edit-' + id);
           const parentEl = document.getElementById(`edit-${id}-parentId`);
-          body.parentId = parentEl && !parentEl.disabled ? (parentEl.value ? Number(parentEl.value) : null) : (item.parentId || null);
+          body.parentId = parentEl ? (parentEl.value ? Number(parentEl.value) : null) : (item.parentId || null);
           await api(`/header-items/${id}`, { method: 'PATCH', body });
           toast('Header item saved');
           await loadItems();
@@ -247,7 +271,7 @@ function attachHandlers() {
     const deleteBtn = rowEl.querySelector('[data-action="delete"]');
     if (deleteBtn) {
       deleteBtn.addEventListener('click', async () => {
-        const childCount = (item.children || []).length;
+        const childCount = descendantCount(item);
         const msg = childCount
           ? `Delete "${item.labelSk}" and its ${childCount} sub-item(s)?`
           : `Delete "${item.labelSk}"?`;
@@ -267,7 +291,7 @@ function attachHandlers() {
       addSubBtn.addEventListener('click', () => {
         const slot = document.querySelector(`.header-item-add-sub-slot[data-parent-id="${id}"]`);
         slot.innerHTML = `
-          <form class="add-sub-header-item-form" style="padding:10px 4px 14px 24px;border-bottom:1px solid var(--gray-light)">
+          <form class="add-sub-header-item-form" style="padding:10px 4px 14px ${24 * item.depth}px;border-bottom:1px solid var(--gray-light)">
             ${headerItemFormHtml('add-sub-' + id)}
             <div id="add-sub-${id}-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
             <div style="display:flex;gap:8px">
