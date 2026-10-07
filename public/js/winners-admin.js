@@ -11,10 +11,23 @@
   let editions = [];
   let players = [];
   let seasons = [];
+  let tournaments = [];
   let selectedId = null;
+  let pending = null; // a season or tournament picked from the list that has no edition yet: { title, seasonId } — created on the first save
   let message = '';
 
-  const current = () => editions.find((e) => e.id === selectedId) || null;
+  const current = () => (pending ? null : editions.find((e) => e.id === selectedId) || null);
+
+  // The list: the editions that exist, then every season and tournament that has no edition yet (picking one starts it).
+  function pickerHtml() {
+    const has = (title, seasonId) => editions.some((x) => x.title.toLowerCase() === title.toLowerCase() || (seasonId && x.seasonId === seasonId));
+    const opt = (value, label, on) => `<option value="${value}"${on ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+    const group = (label, items) => (items.length ? `<optgroup label="${label}">${items.join('')}</optgroup>` : '');
+    const made = editions.map((x) => opt(`ed:${x.id}`, x.title + (x.visible ? '' : ' (hidden)'), !pending && x.id === selectedId));
+    const seasonItems = seasons.filter((x) => !has(x.name, x.id)).map((x) => opt(`season:${x.id}`, x.name, pending && pending.key === `season:${x.id}`));
+    const eventItems = tournaments.filter((x) => !has(x.name, null)).map((x) => opt(`event:${x.eventId}`, x.name, pending && pending.key === `event:${x.eventId}`));
+    return group('Editions', made) + group('Seasons — no winners yet', seasonItems) + group('Tournaments — no winners yet', eventItems);
+  }
 
   function playerOptions(selectedPlayerId) {
     return `<option value="">— typed name —</option>${players.map((p) => `<option value="${p.id}"${p.id === selectedPlayerId ? ' selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}`;
@@ -62,34 +75,35 @@
 
   function render() {
     const e = current();
-    const options = editions.map((x) => `<option value="${x.id}"${x.id === selectedId ? ' selected' : ''}>${escapeHtml(x.title)}${x.visible ? '' : ' (hidden)'}</option>`).join('');
+    const ed = e || (pending ? { title: pending.title, seasonId: pending.seasonId, visible: true } : null);
+    const picker = pickerHtml();
     const bar = `
       <div class="card">
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <select id="wa-edition" style="min-width:240px;${field}">${options || '<option value="">No editions yet</option>'}</select>
+          <select id="wa-edition" style="min-width:280px;${field}">${picker || '<option value="">No seasons or editions yet</option>'}</select>
           <button type="button" class="btn btn-primary" data-act="new-edition">+ New edition</button>
         </div>
-        ${e ? `
+        ${ed ? `
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:14px;padding-top:14px;border-top:1px solid #eee">
           <label style="flex:2;min-width:220px;font-size:12px;font-weight:700">Title
-            <input type="text" id="wa-ed-title" maxlength="120" value="${escapeHtml(e.title)}" style="display:block;width:100%;margin-top:4px;${field}">
+            <input type="text" id="wa-ed-title" maxlength="120" value="${escapeHtml(ed.title)}" style="display:block;width:100%;margin-top:4px;${field}">
           </label>
           <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Season page <span style="font-weight:600;color:var(--gray)">(optional link)</span>
             <select id="wa-ed-season" style="display:block;width:100%;margin-top:4px;${field}">
               <option value="">— none —</option>
-              ${seasons.map((s) => `<option value="${s.id}"${s.id === e.seasonId ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
+              ${seasons.map((s) => `<option value="${s.id}"${s.id === ed.seasonId ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
             </select>
           </label>
-          <label style="font-size:13px;font-weight:700;padding-bottom:9px"><input type="checkbox" id="wa-ed-visible"${e.visible ? ' checked' : ''}> Visible on /vitazi</label>
+          ${e ? `<label style="font-size:13px;font-weight:700;padding-bottom:9px"><input type="checkbox" id="wa-ed-visible"${e.visible ? ' checked' : ''}> Visible on /vitazi</label>
           <button type="button" class="btn btn-primary" data-act="save-edition">Save edition</button>
           <button type="button" class="btn btn-outline" data-act="up" title="Show higher on the page">↑</button>
           <button type="button" class="btn btn-outline" data-act="down" title="Show lower on the page">↓</button>
-          <button type="button" class="btn btn-outline" data-act="delete-edition">Delete edition</button>
+          <button type="button" class="btn btn-outline" data-act="delete-edition">Delete edition</button>` : `<button type="button" class="btn btn-primary" data-act="create-edition">Start this edition</button>`}
         </div>` : ''}
         <div id="wa-msg" style="font-weight:600;margin-top:8px;color:var(--danger)">${escapeHtml(message)}</div>
       </div>`;
-    const blocks = e
-      ? e.blocks.map(blockHtml).join('') + '<div style="margin-top:14px"><button type="button" class="btn btn-outline" data-act="add-block">+ Add category block</button></div>'
+    const blocks = ed
+      ? (e ? e.blocks.map(blockHtml).join('') : '') + '<div style="margin-top:14px"><button type="button" class="btn btn-outline" data-act="add-block">+ Add category block</button></div>'
       : '';
     host.innerHTML = bar + blocks;
   }
@@ -106,8 +120,10 @@
   }
 
   async function load() {
-    [editions, players, seasons] = await Promise.all([api('/winners/all'), api('/players'), api('/seasons')]);
-    if (!current()) selectedId = editions.length ? editions[0].id : null;
+    let schedule;
+    [editions, players, seasons, schedule] = await Promise.all([api('/winners/all'), api('/players'), api('/seasons'), api('/schedule')]);
+    tournaments = schedule.filter((x) => x.type === 'TOURNAMENT').sort((a, b) => b.startDate.localeCompare(a.startDate));
+    if (!current() && !pending) selectedId = editions.length ? editions[0].id : null;
     render();
   }
 
@@ -115,7 +131,17 @@
 
   host.addEventListener('change', (ev) => {
     const t = ev.target;
-    if (t.id === 'wa-edition') { selectedId = Number(t.value) || null; message = ''; render(); return; }
+    if (t.id === 'wa-edition') {
+      const [kind, id] = t.value.split(':');
+      pending = null;
+      selectedId = null;
+      if (kind === 'ed') selectedId = Number(id);
+      else if (kind === 'season') { const x = seasons.find((y) => y.id === Number(id)); if (x) pending = { key: t.value, title: x.name, seasonId: x.id }; }
+      else if (kind === 'event') { const x = tournaments.find((y) => y.eventId === Number(id)); if (x) pending = { key: t.value, title: x.name, seasonId: null }; }
+      message = '';
+      render();
+      return;
+    }
     if (t.classList.contains('wa-cat')) blockEl(t).querySelector('.wa-title').style.display = t.value ? 'none' : '';
     if (t.classList.contains('wa-player')) {
       const nameInput = t.closest('.wa-place').querySelector('.wa-name');
@@ -139,6 +165,16 @@
     });
   }
 
+  // the edition of a season or tournament picked from the list, made from the title and season shown
+  async function createPending() {
+    const seasonValue = document.getElementById('wa-ed-season').value;
+    const created = await api('/winners/editions', { method: 'POST', body: { title: document.getElementById('wa-ed-title').value.trim(), seasonId: seasonValue ? Number(seasonValue) : null } });
+    setEdition(created);
+    selectedId = created.id;
+    pending = null;
+    return created;
+  }
+
   host.addEventListener('click', async (ev) => {
     const btn = ev.target.closest('[data-act]');
     if (!btn) return;
@@ -148,7 +184,9 @@
     if (act === 'new-edition') {
       const title = (window.prompt('Title of the new edition (e.g. BLTA Autumn Finals Series 2026)') || '').trim();
       if (!title) return;
-      await run(async () => { const created = await api('/winners/editions', { method: 'POST', body: { title } }); setEdition(created); selectedId = created.id; });
+      await run(async () => { const created = await api('/winners/editions', { method: 'POST', body: { title } }); setEdition(created); selectedId = created.id; pending = null; });
+    } else if (act === 'create-edition' && pending) {
+      await run(createPending);
     } else if (act === 'save-edition' && e) {
       await run(async () => {
         const seasonValue = document.getElementById('wa-ed-season').value;
@@ -172,12 +210,13 @@
     } else if (act === 'delete-edition' && e) {
       if (!window.confirm(`Delete "${e.title}" with all its winners and photos?`)) return;
       await run(async () => { await api(`/winners/editions/${e.id}`, { method: 'DELETE' }); editions = editions.filter((x) => x.id !== e.id); selectedId = editions.length ? editions[0].id : null; });
-    } else if (act === 'add-block' && e) {
+    } else if (act === 'add-block' && (e || pending)) {
       await run(async () => {
-        const used = e.blocks.map((b) => b.category);
+        const edition = e || await createPending();
+        const used = edition.blocks.map((b) => b.category);
         const free = CATS.map(([k]) => k).find((k) => !used.includes(k));
         const body = free ? { category: free } : { title: 'New block' };
-        setEdition(await api(`/winners/editions/${e.id}/blocks`, { method: 'POST', body }));
+        setEdition(await api(`/winners/editions/${edition.id}/blocks`, { method: 'POST', body }));
       });
     } else if (act === 'save-block') {
       const el = blockEl(btn);

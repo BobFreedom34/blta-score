@@ -4373,10 +4373,9 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .win-bronze { --m: #c97a3d; --mt: #1a0e04; }
 .win-card { display: flex; flex-direction: column; background: #0a0a0a; border: 1px solid var(--m); border-radius: 20px; overflow: hidden; box-shadow: 0 0 18px -4px var(--m); color: var(--white); text-decoration: none; }
 a.win-card:hover { box-shadow: 0 0 24px -2px var(--m); }
-.win-ph { position: relative; aspect-ratio: 4 / 5; background: radial-gradient(120% 90% at 50% 20%, #3b3b44, #17171b); display: grid; place-items: center; overflow: hidden; }
-.win-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.win-ph { position: relative; aspect-ratio: 1 / 1; background: radial-gradient(120% 90% at 50% 20%, #3b3b44, #17171b); display: grid; place-items: center; overflow: hidden; }
+.win-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .win-av { width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--m); background: linear-gradient(145deg, #4a4a55, #26262c); display: grid; place-items: center; font-weight: 800; font-size: 34px; letter-spacing: 0.02em; }
-.win-logo { position: absolute; right: 10px; bottom: 10px; width: 44px; height: 44px; opacity: 0.9; }
 .win-lab { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 12px 12px 14px; text-align: center; background: linear-gradient(180deg, color-mix(in srgb, var(--m) 85%, #000), color-mix(in srgb, var(--m) 55%, #000)); color: var(--mt); }
 .win-lab small { display: block; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
 .win-lab b { display: block; font-size: 15px; font-weight: 800; text-transform: uppercase; margin-top: 3px; overflow-wrap: anywhere; }
@@ -4389,5 +4388,4 @@ a.win-card:hover { box-shadow: 0 0 24px -2px var(--m); }
 @media (max-width: 760px) {
   .win-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
   .win-av { width: 72px; height: 72px; font-size: 26px; }
-  .win-logo { width: 34px; height: 34px; }
 }

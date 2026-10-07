@@ -17,7 +17,7 @@ function cardHtml(p) {
     ? `<img class="win-img" src="${escapeHtml(p.photoUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">`
     : `<div class="win-av">${escapeHtml(initials(p.name))}</div>`;
   const inner = `
-    <div class="win-ph">${photo}<img class="win-logo" src="/favicon-64.png" alt=""></div>
+    <div class="win-ph">${photo}</div>
     <div class="win-lab"><small>${escapeHtml(t(labelKey))}</small><b>${escapeHtml(p.name)}</b></div>`;
   if (p.playerId) return `<a class="win-card ${tone}" href="/player/${encodeURIComponent(p.playerSlug || p.playerId)}">${inner}</a>`;
   return `<div class="win-card ${tone}">${inner}</div>`;
