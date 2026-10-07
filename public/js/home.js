@@ -488,7 +488,7 @@ function renderHome() {
   rootEl.innerHTML = `
     ${mineHtml(d)}
     <section class="home-current">
-      ${d.season ? secTitle(t('home.current'), d.season.name, '', '') : ''}
+      ${d.season ? secTitle(t('home.current'), d.season.name, '/harmonogram', t('home.fullSchedule')) : ''}
       ${timelineHtml(d)}
       ${progressHtml(d)}
       ${d.season ? statsHtml(d) : ''}

@@ -4299,6 +4299,11 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .pr-edit:focus { outline: none; border-color: var(--orange); }
 .pr-edit table { max-width: 100%; }
 
+/* Section headings are 20px everywhere (home, season pages, Harmonogram months, Propozície) */
+.home-sec-title .l, .sv-sec-h h2, .sv-cat-h, .sch-month-title, .pr-title { font-size: 20px; line-height: 1.2; }
+.home-sec-title .l span { font-size: 12px; line-height: 1.3; }
+.sv-cat-h small, .sv-cat-h span { font-size: 12px; }
+
 /* Home: a bigger gap between the sections (88px, 68px on tablet and phone) */
 .home-head { margin-bottom: 88px; }
 .home-mine { margin-bottom: 88px; }
