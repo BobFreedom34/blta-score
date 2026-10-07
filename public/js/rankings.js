@@ -92,9 +92,8 @@ function renderTabs() {
 }
 
 function pointsDisplayHtml(r) {
-  const value = r.points === null ? '<span style="color:var(--gray-dim)">–</span>' : escapeHtml(String(r.points));
-  const overriddenMark = r.overridden ? `<span title="${escapeHtml(t('rankings.overriddenTooltip'))}" style="color:var(--orange);font-size:11px;margin-left:4px">✎</span>` : '';
-  return `${value}${overriddenMark}`;
+  // a manually set value looks like any other (no pencil / "set by an admin" note)
+  return r.points === null ? '<span style="color:var(--gray-dim)">–</span>' : escapeHtml(String(r.points));
 }
 
 // Week-over-week movement, e.g. "▲2" in green or "▼1" in red — a plain

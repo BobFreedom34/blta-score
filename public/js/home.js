@@ -530,6 +530,30 @@ rootEl.addEventListener('click', (e) => {
   renderHome();
 });
 
+// The two buttons beside the heading are for visitors who are not logged in: they open the same login / registration window
+// as the menu does. The "i" next to Register explains what it is for (hover, keyboard focus, or a tap on a phone).
+(function homeAuthButtons() {
+  const box = document.getElementById('home-auth');
+  if (!box) return;
+  const wrap = document.getElementById('home-reg-wrap');
+  const info = document.getElementById('home-info');
+  info.setAttribute('aria-label', t('home.infoLabel'));
+  let known = false;
+  const show = () => { known = true; box.hidden = !!playerAuthed; if (box.hidden) wrap.classList.remove('tip-open'); };
+  window.addEventListener('blta:auth-changed', show);
+  setTimeout(() => { if (!known) show(); }, 3000); // in case the session answer came before this script was ready
+  document.getElementById('home-login').addEventListener('click', () => openPlayerLoginModal());
+  document.getElementById('home-register').addEventListener('click', () => openPlayerLoginModal(null, { startAtRegister: true }));
+  const setTip = (open) => { wrap.classList.toggle('tip-open', open); info.setAttribute('aria-expanded', String(open)); };
+  let pinned = false;
+  info.addEventListener('mouseenter', () => setTip(true));
+  info.addEventListener('mouseleave', () => { if (!pinned) setTip(false); });
+  info.addEventListener('focus', () => setTip(true));
+  info.addEventListener('blur', () => { if (!pinned) setTip(false); });
+  info.addEventListener('click', (e) => { e.stopPropagation(); pinned = !pinned; setTip(pinned); });
+  document.addEventListener('click', () => { if (pinned) { pinned = false; setTip(false); } });
+})();
+
 (async () => {
   await refreshHome();
   if (typeof io === 'function') {
