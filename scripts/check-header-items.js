@@ -133,6 +133,25 @@ test('deleting an item deletes its whole branch', async () => {
   assert.ok(rowExists(other.id));
 });
 
+test('the link is optional: an empty one is stored as #, a heading that only opens its sub-items', async () => {
+  const r = await call('POST', '/api/header-items', { labelSk: 'Heading8', link: '' });
+  assert.strictEqual(r.status, 201, JSON.stringify(r.json));
+  assert.strictEqual(r.json.link, '#');
+  const none = await call('POST', '/api/header-items', { labelSk: 'Heading8b' });
+  assert.strictEqual(none.status, 201);
+  assert.strictEqual(none.json.link, '#');
+  // a real link is kept exactly as typed
+  const real = await made('Real8');
+  assert.match(real.link, /^\/x-Real8-/);
+  // editing a heading to an empty link works too
+  const edited = await call('PATCH', `/api/header-items/${r.json.id}`, { labelSk: 'Heading8', link: '' });
+  assert.strictEqual(edited.status, 200);
+});
+
+test('a label is still required', async () => {
+  assert.strictEqual((await call('POST', '/api/header-items', { labelSk: '', link: '/x' })).status, 400);
+});
+
 async function main() {
   let failed = 0;
   try {

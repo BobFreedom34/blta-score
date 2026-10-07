@@ -1234,6 +1234,12 @@ function isOverdueUnresolved(m) {
 // would leave a lookalike node with none of that wiring. appendChild on a
 // node already in the document simply relocates it, so all of that survives
 // untouched; only its position among the other items changes.
+// A menu item whose link is empty, '#' or anything that is not a page of the site or a web address is only a heading: it opens its
+// sub-items instead of going anywhere.
+function isHeadingLink(link) {
+  return !link || !/^(\/|https?:\/\/|mailto:|tel:)/i.test(String(link).trim());
+}
+
 async function renderHeaderNav() {
   const container = document.getElementById('header-dynamic-items');
   if (!container) return;
@@ -1248,12 +1254,14 @@ async function renderHeaderNav() {
   const myProfileEl = document.getElementById('nav-my-profile-link');
   const makeLink = (item) => {
     const a = document.createElement('a');
-    a.href = item.link;
+    const heading = isHeadingLink(item.link);
+    a.href = heading ? '#' : item.link;
     a.textContent = labelFor(item);
-    if (isActive(item.link)) a.className = 'active';
+    if (heading) a.classList.add('nav-heading'); // opens its sub-items on a tap (the click handler below), goes nowhere
+    else if (isActive(item.link)) a.className = 'active';
     if (item.highlight) a.classList.add('nav-btn-green'); // a button of its own colour (a switch on the item in /header-admin)
     // an item that is only a heading for a dropdown has no page of its own: its icon follows its name
-    if (item.link === '#' || (item.children && item.children.length)) {
+    if (isHeadingLink(item.link) || (item.children && item.children.length)) {
       const name = `${item.labelSk} ${item.labelEn || ''}`;
       a.dataset.navIcon = /liga|league/i.test(name) ? 'trophy' : /viac|more|info/i.test(name) ? 'more' : 'grid';
     }
@@ -1334,6 +1342,20 @@ async function attachLookingToPlayBadge() {
 // open dropdown closes it, same convention as the auth menu/lang switcher
 // below.
 document.addEventListener('click', (e) => {
+  // a heading (an item without a real link) works like its caret anywhere on it; on its own, with nothing under it, it does nothing
+  const heading = e.target.closest('a.nav-heading');
+  if (heading) {
+    e.preventDefault();
+    const own = heading.closest('.nav-item-dropdown');
+    const row = heading.parentElement;
+    if (own && row && row.classList.contains('nav-item-dropdown-toggle')) {
+      e.stopPropagation();
+      const wasOpen = own.classList.contains('open');
+      document.querySelectorAll('.nav-item-dropdown.open').forEach((d) => { if (d !== own && !d.contains(own)) d.classList.remove('open'); });
+      own.classList.toggle('open', !wasOpen);
+    }
+    return;
+  }
   const caret = e.target.closest('.nav-caret');
   if (caret) {
     e.preventDefault();
@@ -1367,7 +1389,8 @@ document.addEventListener('click', (e) => {
     if (!nowOpen) closeAllDropdowns();
   });
   links.addEventListener('click', (e) => {
-    if (e.target.tagName === 'A') {
+    // a heading (no real link) only opens its own sub-items, the panel stays open
+    if (e.target.tagName === 'A' && !e.target.classList.contains('nav-heading')) {
       links.classList.remove('open');
       closeAllDropdowns();
     }

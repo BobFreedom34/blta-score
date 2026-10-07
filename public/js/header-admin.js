@@ -7,6 +7,10 @@ let items = [];
 const MAX_DEPTH = 3;
 let itemsById = new Map();
 
+// no real link (empty, '#' or anything that is not a page of the site or a web address): the item is only a heading
+// that opens its sub-items — same rule as the header itself (isHeadingLink in common.js)
+const isHeading = (link) => !link || !/^(\/|https?:\/\/|mailto:|tel:)/i.test(String(link).trim());
+
 function indexItems() {
   itemsById = new Map();
   const walk = (list, depth) => list.forEach((item) => {
@@ -119,8 +123,8 @@ function headerItemFormHtml(prefix, item, opts) {
       <input type="text" id="${prefix}-labelEn" value="${escapeHtml(it.labelEn || '')}" maxlength="60">
     </div>
     <div class="field">
-      <label>Link</label>
-      <input type="text" id="${prefix}-link" value="${escapeHtml(it.link)}" maxlength="500" placeholder="/players or https://blta.sk/news" required>
+      <label>Link <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(leave empty for a heading that only opens its sub-items)</span></label>
+      <input type="text" id="${prefix}-link" value="${escapeHtml(isHeading(it.link) ? '' : it.link)}" maxlength="500" placeholder="/players or https://blta.sk/news">
     </div>
     ${opts && opts.withParent ? parentFieldHtml(prefix, item) : ''}
     <div class="field">
@@ -172,7 +176,7 @@ function headerItemRowHtml(item) {
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <div style="flex:1;min-width:160px">
           <div style="font-weight:700">${isSub ? '↳ ' : ''}${escapeHtml(label)}${item.highlight ? ' <span style="font-size:11px;font-weight:800;background:var(--green);color:#0a0a0a;border-radius:6px;padding:1px 7px;margin-left:6px">GREEN</span>' : ''}</div>
-          <div style="font-size:12px;color:var(--gray)">${escapeHtml(item.link)}</div>
+          <div style="font-size:12px;color:var(--gray)">${isHeading(item.link) ? 'heading — opens its sub-items' : escapeHtml(item.link)}</div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
           ${depth < MAX_DEPTH ? '<button type="button" class="btn btn-sm btn-outline" data-action="add-sub">+ Sub-item</button>' : ''}

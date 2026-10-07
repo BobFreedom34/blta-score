@@ -48,11 +48,12 @@ function descendantIds(id) {
 function validateBody(body, self) {
   const labelSk = (body.labelSk || '').trim();
   const labelEn = (body.labelEn || '').trim();
-  const link = (body.link || '').trim();
+  // A link is optional: an item without a real one (empty, '#' or anything that is not an address) is only a heading that opens
+  // its sub-items. An empty link is stored as '#'.
+  const link = (body.link || '').trim() || '#';
   if (!labelSk) return { error: 'Slovak label is required' };
   if (labelSk.length > 60) return { error: 'Label is too long' };
   if (labelEn.length > 60) return { error: 'Label is too long' };
-  if (!link) return { error: 'Link is required' };
   if (link.length > 500) return { error: 'Link is too long' };
   const sortOrder = Number.isInteger(Number(body.sortOrder)) ? Number(body.sortOrder) : 0;
   let parentId = null;
