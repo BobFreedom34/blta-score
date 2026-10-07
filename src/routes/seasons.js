@@ -210,10 +210,48 @@ router.post('/:id/registrations', async (req, res) => {
   res.status(201).json({ ok: true, name, category: body.category, paymentUrl: season.payment_url || '' });
 });
 
+function serializeRegistration(r) {
+  return { id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', createdAt: r.created_at, playerId: r.player_id };
+}
+
+// The category written in a player's profile ("Next Gen", "ELITE"…) as one of ours, or null.
+function profileCategory(raw) {
+  const key = String(raw || '').toUpperCase().replace(/[^A-Z]/g, '');
+  return key === 'ELITE' ? 'ELITE' : key === 'NEXTGEN' ? 'NEXT_GEN' : key === 'NOVICE' ? 'NOVICE' : null;
+}
+
 // The admin's list: with the contact details (never sent to the public page).
 router.get('/:id/registrations', requireAdmin, (req, res) => {
   const rows = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(Number(req.params.id));
-  res.json(rows.map((r) => ({ id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', createdAt: r.created_at, playerId: r.player_id })));
+  res.json(rows.map(serializeRegistration));
+});
+
+// The admin registers a player who is already in the app, without the registration form: the phone number and the e-mail
+// come from the player's profile unless the admin types others, the category from the profile unless the admin picks one.
+// It works whether or not the season's registration is open, and sends no e-mail.
+router.post('/:id/registrations/admin', requireAdmin, (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  const body = req.body || {};
+  const player = db.prepare('SELECT * FROM players WHERE id = ?').get(Number(body.playerId));
+  if (!player) return res.status(400).json({ error: 'Choose a player from the list' });
+  const category = BLTA_CATEGORIES.includes(body.category) ? body.category : profileCategory(player.category);
+  if (!category) return res.status(400).json({ error: 'Choose a category' });
+
+  const typedPhone = typeof body.phone === 'string' ? body.phone.trim() : '';
+  const phone = String(typedPhone || player.phone || '').replace(/[^\d+]/g, '');
+  if (typedPhone && (phone.replace(/\D/g, '').length < 9 || phone.length > 20)) return res.status(400).json({ error: 'Enter a valid phone number' });
+  const typedEmail = typeof body.email === 'string' ? body.email.trim() : '';
+  const email = typedEmail || String(player.email || '').trim();
+  if (typedEmail && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typedEmail) || typedEmail.length > 120)) return res.status(400).json({ error: 'Enter a valid e-mail address' });
+
+  const already = db.prepare('SELECT player_id, name FROM season_registrations WHERE season_id = ?').all(season.id)
+    .some((r) => r.player_id === player.id || nameMatch.key(r.name) === nameMatch.key(player.name));
+  if (already) return res.status(409).json({ code: 'ALREADY_REGISTERED', error: `${player.name} is already registered for this season` });
+
+  const info = db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, paid) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(season.id, player.id, player.name, phone, email, category, body.paid ? 1 : 0);
+  res.status(201).json(serializeRegistration(db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(info.lastInsertRowid)));
 });
 
 router.patch('/registrations/:rid', requireAdmin, (req, res) => {

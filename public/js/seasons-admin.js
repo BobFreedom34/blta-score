@@ -296,6 +296,19 @@ function renderList() {
   });
 }
 
+// Players for "Add a player" in a season's registrations, with the phone, e-mail and category of their profile (admin only).
+let adminPlayers = null;
+async function loadAdminPlayers() {
+  if (!adminPlayers) adminPlayers = await api('/players');
+  return adminPlayers;
+}
+
+// the category written in a profile ("Next Gen", "ELITE"…) as one of ours, or ''
+function profileCategory(raw) {
+  const key = String(raw || '').toUpperCase().replace(/[^A-Z]/g, '');
+  return key === 'ELITE' ? 'ELITE' : key === 'NEXTGEN' ? 'NEXT_GEN' : key === 'NOVICE' ? 'NOVICE' : '';
+}
+
 function wireSeason(card) {
   const id = Number(card.dataset.season);
   const season = seasons.find((s) => s.id === id);
@@ -359,20 +372,79 @@ function wireSeason(card) {
   const regsBtn = card.querySelector('[data-action="show-regs"]');
   const regsList = card.querySelector('.season-regs-list');
   const catLabel = (key) => (CATEGORIES.find(([k]) => k === key) || [key, key])[1];
+  // "Add a player": an existing player is registered by the admin, no registration form. Their phone, e-mail and category fill
+  // in from the profile (and can be changed for this registration); players already registered are left out of the list.
+  function addPlayerFormHtml(players, rows) {
+    const taken = new Set(rows.map((r) => r.playerId).filter(Boolean));
+    const options = players.filter((p) => !taken.has(p.id)).map((p) => `<option value="${escapeHtml(p.name)}"></option>`).join('');
+    const box = `display:block;margin-top:4px;${inputStyle}`;
+    return `
+      <form class="reg-add" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;padding:2px 0 6px">
+        <label style="flex:2;min-width:220px;font-size:12px;font-weight:700">Add a player
+          <input type="text" data-ra="player" list="reg-players-${id}" placeholder="Start typing a name…" autocomplete="off" style="${box};width:100%">
+          <datalist id="reg-players-${id}">${options}</datalist>
+        </label>
+        <label style="font-size:12px;font-weight:700">Category
+          <select data-ra="category" style="${box}"><option value="">Category…</option>${categoryOptions('')}</select>
+        </label>
+        <label style="flex:1;min-width:130px;font-size:12px;font-weight:700">Phone
+          <input type="text" data-ra="phone" maxlength="20" placeholder="from the profile" style="${box};width:100%">
+        </label>
+        <label style="flex:1;min-width:170px;font-size:12px;font-weight:700">Email
+          <input type="text" data-ra="email" maxlength="120" placeholder="from the profile" style="${box};width:100%">
+        </label>
+        <button type="submit" class="btn btn-sm btn-primary">Add player</button>
+      </form>
+      <div class="reg-add-hint" style="font-size:12px;color:var(--gray);min-height:16px;margin-bottom:8px"></div>`;
+  }
+
+  function wireAddPlayerForm(players) {
+    const form = regsList.querySelector('.reg-add');
+    const hint = regsList.querySelector('.reg-add-hint');
+    const field = (name) => form.querySelector(`[data-ra="${name}"]`);
+    const say = (text, bad) => { hint.textContent = text; hint.style.color = bad ? 'var(--danger)' : 'var(--gray)'; };
+    const byName = (text) => players.find((p) => p.name.toLowerCase() === String(text).trim().toLowerCase());
+    let chosen = null; // the player typed in the first field, with what their profile holds
+    field('player').addEventListener('input', () => {
+      chosen = byName(field('player').value) || null;
+      field('phone').value = chosen && chosen.phone ? chosen.phone : '';
+      field('email').value = chosen && chosen.email ? chosen.email : '';
+      field('category').value = chosen ? profileCategory(chosen.category) : '';
+      if (!chosen) { say(''); return; }
+      const missing = [chosen.phone ? '' : 'phone', chosen.email ? '' : 'email', profileCategory(chosen.category) ? '' : 'category'].filter(Boolean);
+      say(missing.length ? `No ${missing.join(', ')} in the profile yet — fill ${missing.length === 1 ? 'it' : 'them'} in here (only this registration gets it).` : 'Phone, email and category are taken from the profile.');
+    });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!chosen) { say('Choose a player from the list.', true); return; }
+      const body = { playerId: chosen.id, category: field('category').value || undefined };
+      if (field('phone').value.trim() !== (chosen.phone || '')) body.phone = field('phone').value;
+      if (field('email').value.trim() !== (chosen.email || '')) body.email = field('email').value;
+      try {
+        await api(`/seasons/${id}/registrations/admin`, { method: 'POST', body });
+        toast(`${chosen.name} added`);
+        await loadRegs();
+        regsList.querySelector('[data-ra="player"]').focus();
+      } catch (err) { say(err.message, true); }
+    });
+  }
+
   async function loadRegs() {
     try {
       const rows = await api(`/seasons/${id}/registrations`);
       regsBtn.textContent = `Registrations (${rows.length})`;
-      regsList.innerHTML = rows.length ? rows.map((r) => `
+      const players = await loadAdminPlayers();
+      regsList.innerHTML = addPlayerFormHtml(players, rows) + (rows.length ? rows.map((r) => `
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #eee" data-reg="${r.id}">
           <div style="flex:1;min-width:220px">
             <strong>${escapeHtml(r.name)}</strong> <span class="sa-chip future">${escapeHtml(catLabel(r.category))}</span>${r.playerId ? '' : ' <span style="font-size:11px;color:var(--gray)">new name</span>'}
-            <div style="font-size:12px;color:var(--gray)">${r.phone || r.email ? `${escapeHtml(r.phone)} · <a href="mailto:${escapeHtml(r.email)}" style="color:var(--orange)">${escapeHtml(r.email)}</a>` : 'imported from blta.sk (no contact details)'} · ${escapeHtml(fmtDate(r.createdAt.slice(0, 10)))}</div>
+            <div style="font-size:12px;color:var(--gray)">${r.phone || r.email ? `${escapeHtml(r.phone)} · <a href="mailto:${escapeHtml(r.email)}" style="color:var(--orange)">${escapeHtml(r.email)}</a>` : 'no contact details'} · ${escapeHtml(fmtDate(r.createdAt.slice(0, 10)))}</div>
             ${r.note ? `<div style="font-size:13px;margin-top:4px;white-space:pre-wrap"><strong>Note:</strong> ${escapeHtml(r.note)}</div>` : ''}
           </div>
           <button type="button" class="sg-link" data-reg-paid="${r.paid ? 0 : 1}">${r.paid ? 'Paid ✓' : 'Not paid'}</button>
           <button type="button" class="sg-x" data-reg-del title="Delete this registration">&times;</button>
-        </div>`).join('') : '<div class="sg-empty">No registrations yet.</div>';
+        </div>`).join('') : '<div class="sg-empty">No registrations yet.</div>');
+      wireAddPlayerForm(players);
     } catch (err) { fail(err); }
   }
   regsBtn.addEventListener('click', async () => {
