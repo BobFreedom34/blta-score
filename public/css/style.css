@@ -4345,3 +4345,8 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 @keyframes live-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .home-head-state.now { animation: live-blink 2.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .home-head-state.now { animation: none; } }
+
+/* The CourtIQ wordmark: "court" small lowercase, "IQ" big capitals — the same everywhere, whatever the text around it does (uppercase, spacing) */
+.ciq { white-space: nowrap; text-transform: none; letter-spacing: 0; }
+.ciq-c { font-size: 0.68em; font-weight: 700; text-transform: none; letter-spacing: 0.01em; }
+.ciq-iq { font-size: 1.15em; font-weight: 800; text-transform: none; letter-spacing: 0.02em; }

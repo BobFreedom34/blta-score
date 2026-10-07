@@ -3071,3 +3071,65 @@ function highlightMyName() {
   if (document.body) new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
   schedule();
 })();
+
+// "CourtIQ" is always written as the wordmark court|IQ — "court" small lowercase, "IQ" big capitals (see .ciq in style.css). Done here once for every
+// page: every "CourtIQ" in the visible text (translations, labels, buttons, anything a page draws later) is wrapped; titles,
+// tooltips and form fields keep the plain word.
+(function brandCourtIQ() {
+  const FIND = /court\s?iq/i;
+  const SPLIT = /court\s?iq/gi;
+  const SKIP = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'OPTION', 'SELECT', 'TITLE', 'NOSCRIPT', 'CODE', 'PRE']);
+
+  function wrapText(node) {
+    const p = node.parentElement;
+    if (!p || SKIP.has(p.tagName) || p.closest('.ciq, [contenteditable="true"]')) return;
+    const text = node.nodeValue;
+    if (!FIND.test(text)) return;
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    text.replace(SPLIT, (m, at) => {
+      if (at > last) frag.appendChild(document.createTextNode(text.slice(last, at)));
+      const mark = document.createElement('span');
+      mark.className = 'ciq';
+      mark.setAttribute('role', 'text');
+      mark.setAttribute('aria-label', 'CourtIQ');
+      mark.innerHTML = '<span class="ciq-c" aria-hidden="true">court</span><span class="ciq-iq" aria-hidden="true">IQ</span>';
+      frag.appendChild(mark);
+      last = at + m.length;
+      return m;
+    });
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    p.replaceChild(frag, node);
+  }
+
+  function wrapIn(root) {
+    if (!root) return;
+    if (root.nodeType === Node.TEXT_NODE) { wrapText(root); return; }
+    if (root.nodeType !== Node.ELEMENT_NODE || SKIP.has(root.tagName)) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (FIND.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT) });
+    const found = [];
+    while (walker.nextNode()) found.push(walker.currentNode);
+    found.forEach(wrapText);
+  }
+
+  function start() {
+    wrapIn(document.body);
+    let queue = new Set();
+    let queued = false;
+    new MutationObserver((mutations) => {
+      mutations.forEach((m) => {
+        if (m.type === 'characterData') queue.add(m.target);
+        else m.addedNodes.forEach((n) => queue.add(n));
+      });
+      if (queued) return;
+      queued = true;
+      setTimeout(() => { // a timer, not requestAnimationFrame: that stops in a background tab
+        queued = false;
+        const nodes = [...queue];
+        queue = new Set();
+        nodes.forEach((n) => { if (n.isConnected) wrapIn(n); });
+      }, 0);
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
