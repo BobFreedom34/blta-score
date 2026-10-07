@@ -655,6 +655,10 @@ router.post('/', requireLoggedIn, (req, res) => {
   if (!CATEGORIES.includes(category)) {
     return res.status(400).json({ error: 'Invalid category' });
   }
+  // ELITE, NEXT GEN and NOVICE are the league's own categories: only an admin creates a match in one of them
+  if (BLTA_CATEGORIES.includes(category) && !isAdmin(req)) {
+    return res.status(403).json({ error: 'Only an admin can create a match in the ELITE, NEXT GEN or NOVICE category' });
+  }
   if (!engine.FORMATS[format]) {
     return res.status(400).json({ error: 'Invalid match format' });
   }
@@ -887,6 +891,9 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
     fields.scheduled_at = req.body.scheduledAt;
   }
   if (req.body.category && CATEGORIES.includes(req.body.category)) {
+    if (BLTA_CATEGORIES.includes(req.body.category) && req.body.category !== row.category && !isAdmin(req)) {
+      return res.status(403).json({ error: 'Only an admin can move a match to the ELITE, NEXT GEN or NOVICE category' });
+    }
     fields.category = req.body.category;
     // The season/group only exist for BLTA categories, and a group is of one category — keep that true.
     if (!BLTA_CATEGORIES.includes(req.body.category)) {

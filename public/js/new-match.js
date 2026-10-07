@@ -36,9 +36,21 @@ function renderSeasonFields() {
   groupSelect.disabled = !season;
 }
 
+// ELITE, NEXT GEN and NOVICE start greyed out (see new-match.html); only an admin gets them. Until then (and for everyone else) the
+// category is a friendly match.
+const categorySelect = document.getElementById('category');
+let categoryTouched = false;
+categorySelect.value = 'FRIENDLY';
+categorySelect.addEventListener('change', () => { categoryTouched = true; });
 (async () => {
   try {
     isAdminCreator = await checkAdmin();
+    if (isAdminCreator) {
+      BLTA_CATEGORIES.forEach((c) => { const o = categorySelect.querySelector(`option[value="${c}"]`); if (o) o.disabled = false; });
+      if (!categoryTouched) categorySelect.value = 'ELITE'; // the admin's usual default
+    } else {
+      document.getElementById('category-admin-note').style.display = '';
+    }
     if (!isAdminCreator) return;
     seasonsList = await api('/seasons');
     renderSeasonFields();
