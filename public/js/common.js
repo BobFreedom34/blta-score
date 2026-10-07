@@ -3072,7 +3072,7 @@ function highlightMyName() {
   schedule();
 })();
 
-// "CourtIQ" is always written as the wordmark court|IQ — "court" small lowercase, "IQ" big capitals (see .ciq in style.css). Done here once for every
+// "CourtIQ" is always written as the wordmark court|IQ — "court" lowercase, "IQ" capitals, both the same size (see .ciq in style.css). Done here once for every
 // page: every "CourtIQ" in the visible text (translations, labels, buttons, anything a page draws later) is wrapped; titles,
 // tooltips and form fields keep the plain word.
 (function brandCourtIQ() {
