@@ -30,6 +30,21 @@ function descendantCount(item) {
   return (item.children || []).reduce((n, c) => n + 1 + descendantCount(c), 0);
 }
 
+// The menu items that can be moved under `parent` with their own sub-items: not the My profile row, not the parent itself or
+// one of its ancestors/descendants-to-be, not already directly under it, and only where the whole branch still fits in three
+// levels. Labelled with where they are now ("Sezóny" or "Liga › Zápasy").
+function movableInto(parent) {
+  const out = [];
+  const walk = (list, path) => list.forEach((i) => {
+    const here = [...path, i.labelSk];
+    const loops = i.id === parent.id || isInside(i, parent.id);
+    if (!i.isMyProfile && !loops && i.parentId !== parent.id && parent.depth + heightOf(i) <= MAX_DEPTH) out.push({ id: i.id, label: here.join(' › ') });
+    walk(i.children || [], here);
+  });
+  walk(items, []);
+  return out;
+}
+
 // The pages of the site an item can point to — picked from a list instead of typing the label and the address.
 const SITE_PAGES = [
   { sk: 'Domov', en: 'Home', link: '/' },
@@ -290,8 +305,22 @@ function attachHandlers() {
     if (addSubBtn) {
       addSubBtn.addEventListener('click', () => {
         const slot = document.querySelector(`.header-item-add-sub-slot[data-parent-id="${id}"]`);
+        const movable = movableInto(item);
+        const moveHtml = movable.length ? `
+            <div class="field">
+              <label>Move an existing menu item here <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(it keeps its own sub-items)</span></label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <select id="move-in-${id}" style="flex:1;min-width:200px">
+                  <option value="">— choose an item —</option>
+                  ${movable.map((m) => `<option value="${m.id}">${escapeHtml(m.label)}</option>`).join('')}
+                </select>
+                <button type="button" class="btn btn-sm btn-primary" data-action="move-in">Move here</button>
+              </div>
+            </div>
+            <div style="font-size:12px;color:var(--gray-dim);margin:2px 0 12px">…or add a new sub-item:</div>` : '';
         slot.innerHTML = `
           <form class="add-sub-header-item-form" style="padding:10px 4px 14px ${24 * item.depth}px;border-bottom:1px solid var(--gray-light)">
+            ${moveHtml}
             ${headerItemFormHtml('add-sub-' + id)}
             <div id="add-sub-${id}-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
             <div style="display:flex;gap:8px">
@@ -301,6 +330,24 @@ function attachHandlers() {
           </form>
         `;
         slot.querySelector('[data-action="cancel"]').addEventListener('click', () => { slot.innerHTML = ''; });
+        const moveBtn = slot.querySelector('[data-action="move-in"]');
+        if (moveBtn) {
+          moveBtn.addEventListener('click', async () => {
+            const errorEl = document.getElementById(`add-sub-${id}-error`);
+            errorEl.textContent = '';
+            const moving = itemsById.get(Number(document.getElementById(`move-in-${id}`).value));
+            if (!moving) { errorEl.textContent = 'Choose the item to move first'; return; }
+            try {
+              await api(`/header-items/${moving.id}`, { method: 'PATCH', body: {
+                labelSk: moving.labelSk, labelEn: moving.labelEn || '', link: moving.link, sortOrder: moving.sortOrder, highlight: moving.highlight, parentId: id,
+              } });
+              toast(`"${moving.labelSk}" moved under "${item.labelSk}"`);
+              await loadItems();
+            } catch (err) {
+              errorEl.textContent = err.message;
+            }
+          });
+        }
         slot.querySelector('.add-sub-header-item-form').addEventListener('submit', async (e) => {
           e.preventDefault();
           const errorEl = document.getElementById(`add-sub-${id}-error`);
