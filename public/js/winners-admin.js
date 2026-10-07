@@ -1,6 +1,7 @@
 // Backend > Winners (/winners-admin): the editions (series or tournaments) of the public winners page (/vitazi), their category
 // blocks and the four places of each block (winner, finalist, two semifinalists) — a player or a typed name, with an optional
-// own photo (without one the player's profile photo is shown). Data: /api/winners (see src/routes/winners.js).
+// own photo (without one the player's profile photo is shown). Every edition is a fold-out section, and so is each block in it.
+// Data: /api/winners (see src/routes/winners.js).
 (function winnersAdmin() {
   const host = document.getElementById('winners-admin-root');
   if (!host) return;
@@ -8,26 +9,17 @@
   const CATS = [['ELITE', 'Elite'], ['NEXT_GEN', 'Next Gen'], ['NOVICE', 'Novice']];
   const SLOTS = [[1, 'Winner'], [2, 'Finalist'], [3, 'Semifinalist'], [4, 'Semifinalist']];
   const field = 'padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px';
+  const summaryStyle = 'cursor:pointer;font-weight:800;font-size:16px;padding:2px 0';
+  const muted = 'font-weight:600;font-size:13px;color:var(--gray)';
   let editions = [];
   let players = [];
   let seasons = [];
   let tournaments = [];
-  let selectedId = null;
-  let pending = null; // a season or tournament picked from the list that has no edition yet: { title, seasonId } — created on the first save
   let message = '';
+  const openEditions = new Set(); // which sections are unfolded, kept while the page redraws
+  const openBlocks = new Set();
 
-  const current = () => (pending ? null : editions.find((e) => e.id === selectedId) || null);
-
-  // The list: the editions that exist, then every season and tournament that has no edition yet (picking one starts it).
-  function pickerHtml() {
-    const has = (title, seasonId) => editions.some((x) => x.title.toLowerCase() === title.toLowerCase() || (seasonId && x.seasonId === seasonId));
-    const opt = (value, label, on) => `<option value="${value}"${on ? ' selected' : ''}>${escapeHtml(label)}</option>`;
-    const group = (label, items) => (items.length ? `<optgroup label="${label}">${items.join('')}</optgroup>` : '');
-    const made = editions.map((x) => opt(`ed:${x.id}`, x.title + (x.visible ? '' : ' (hidden)'), !pending && x.id === selectedId));
-    const seasonItems = seasons.filter((x) => !has(x.name, x.id)).map((x) => opt(`season:${x.id}`, x.name, pending && pending.key === `season:${x.id}`));
-    const eventItems = tournaments.filter((x) => !has(x.name, null)).map((x) => opt(`event:${x.eventId}`, x.name, pending && pending.key === `event:${x.eventId}`));
-    return group('Editions', made) + group('Seasons — no winners yet', seasonItems) + group('Tournaments — no winners yet', eventItems);
-  }
+  const catLabel = (category) => (CATS.find(([k]) => k === category) || [category, category])[1];
 
   function playerOptions(selectedPlayerId) {
     return `<option value="">— typed name —</option>${players.map((p) => `<option value="${p.id}"${p.id === selectedPlayerId ? ' selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}`;
@@ -54,11 +46,19 @@
       </div>`;
   }
 
+  // "Elite — Róbert Sloboda · 4/4": enough to recognise a folded block
+  function blockSummary(block) {
+    const label = block.category ? catLabel(block.category) : (block.title || 'Untitled');
+    const winner = block.places.find((p) => p.slot === 1);
+    return `${escapeHtml(label)}${winner ? ` <span style="${muted}">— ${escapeHtml(winner.name)}</span>` : ''} <span style="${muted}">· ${block.places.length}/4</span>`;
+  }
+
   function blockHtml(block) {
     const own = !block.category;
     return `
-      <div class="card wa-block" data-block="${block.id}" style="margin-top:14px">
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+      <details class="card wa-block" data-id="${block.id}" style="margin-top:12px"${openBlocks.has(block.id) ? ' open' : ''}>
+        <summary style="${summaryStyle}">${blockSummary(block)}</summary>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 6px">
           <select class="wa-cat" style="${field}">
             ${CATS.map(([k, label]) => `<option value="${k}"${block.category === k ? ' selected' : ''}>${label}</option>`).join('')}
             <option value=""${own ? ' selected' : ''}>Own title…</option>
@@ -70,42 +70,65 @@
         </div>
         ${SLOTS.map(([slot, label]) => placeRowHtml(block, slot, label)).join('')}
         <div style="color:var(--gray);font-size:12px;margin-top:6px">Save the block before uploading photos. Without an own photo the player's profile photo is shown.</div>
-      </div>`;
+      </details>`;
   }
 
-  function render() {
-    const e = current();
-    const ed = e || (pending ? { title: pending.title, seasonId: pending.seasonId, visible: true } : null);
-    const picker = pickerHtml();
-    const bar = `
-      <div class="card">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <select id="wa-edition" style="min-width:280px;${field}">${picker || '<option value="">No seasons or editions yet</option>'}</select>
-          <button type="button" class="btn btn-primary" data-act="new-edition">+ New edition</button>
-        </div>
-        ${ed ? `
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:14px;padding-top:14px;border-top:1px solid #eee">
+  function editionHtml(e) {
+    const places = e.blocks.reduce((n, b) => n + b.places.length, 0);
+    const seasonOptions = seasons.map((s) => `<option value="${s.id}"${s.id === e.seasonId ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
+    return `
+      <details class="card wa-ed" data-id="${e.id}" style="margin-top:12px"${openEditions.has(e.id) ? ' open' : ''}>
+        <summary style="${summaryStyle};font-size:18px">${escapeHtml(e.title)}
+          ${e.visible ? '' : '<span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--danger);margin-left:6px">hidden</span>'}
+          <span style="${muted};margin-left:8px">${e.blocks.length} ${e.blocks.length === 1 ? 'category' : 'categories'} · ${places} winners</span>
+        </summary>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid #eee">
           <label style="flex:2;min-width:220px;font-size:12px;font-weight:700">Title
-            <input type="text" id="wa-ed-title" maxlength="120" value="${escapeHtml(ed.title)}" style="display:block;width:100%;margin-top:4px;${field}">
+            <input type="text" class="wa-ed-title" maxlength="120" value="${escapeHtml(e.title)}" style="display:block;width:100%;margin-top:4px;${field}">
           </label>
           <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Season page <span style="font-weight:600;color:var(--gray)">(optional link)</span>
-            <select id="wa-ed-season" style="display:block;width:100%;margin-top:4px;${field}">
+            <select class="wa-ed-season" style="display:block;width:100%;margin-top:4px;${field}">
               <option value="">— none —</option>
-              ${seasons.map((s) => `<option value="${s.id}"${s.id === ed.seasonId ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
+              ${seasonOptions}
             </select>
           </label>
-          ${e ? `<label style="font-size:13px;font-weight:700;padding-bottom:9px"><input type="checkbox" id="wa-ed-visible"${e.visible ? ' checked' : ''}> Visible on /vitazi</label>
+          <label style="font-size:13px;font-weight:700;padding-bottom:9px"><input type="checkbox" class="wa-ed-visible"${e.visible ? ' checked' : ''}> Visible on /vitazi</label>
           <button type="button" class="btn btn-primary" data-act="save-edition">Save edition</button>
           <button type="button" class="btn btn-outline" data-act="up" title="Show higher on the page">↑</button>
           <button type="button" class="btn btn-outline" data-act="down" title="Show lower on the page">↓</button>
-          <button type="button" class="btn btn-outline" data-act="delete-edition">Delete edition</button>` : `<button type="button" class="btn btn-primary" data-act="create-edition">Start this edition</button>`}
-        </div>` : ''}
-        <div id="wa-msg" style="font-weight:600;margin-top:8px;color:var(--danger)">${escapeHtml(message)}</div>
-      </div>`;
-    const blocks = ed
-      ? (e ? e.blocks.map(blockHtml).join('') : '') + '<div style="margin-top:14px"><button type="button" class="btn btn-outline" data-act="add-block">+ Add category block</button></div>'
-      : '';
-    host.innerHTML = bar + blocks;
+          <button type="button" class="btn btn-outline" data-act="delete-edition">Delete edition</button>
+        </div>
+        ${e.blocks.map(blockHtml).join('')}
+        <div style="margin-top:12px"><button type="button" class="btn btn-outline" data-act="add-block">+ Add category block</button></div>
+      </details>`;
+  }
+
+  // Seasons and tournaments that have no edition yet: picking one starts its winners list.
+  function addPickerHtml() {
+    const has = (title, seasonId) => editions.some((x) => x.title.toLowerCase() === title.toLowerCase() || (seasonId && x.seasonId === seasonId));
+    const opt = (value, label) => `<option value="${value}">${escapeHtml(label)}</option>`;
+    const group = (label, items) => (items.length ? `<optgroup label="${label}">${items.join('')}</optgroup>` : '');
+    const seasonItems = seasons.filter((x) => !has(x.name, x.id)).map((x) => opt(`season:${x.id}`, x.name));
+    const eventItems = tournaments.filter((x) => !has(x.name, null)).map((x) => opt(`event:${x.eventId}`, x.name));
+    if (!seasonItems.length && !eventItems.length) return '';
+    return `<select id="wa-add" style="min-width:300px;${field}"><option value="">Add winners for a season or tournament…</option>${group('Seasons', seasonItems)}${group('Tournaments', eventItems)}</select>`;
+  }
+
+  function render() {
+    const y = window.scrollY;
+    host.innerHTML = `
+      <div class="card">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          ${addPickerHtml()}
+          <button type="button" class="btn btn-primary" data-act="new-edition">+ New edition</button>
+          <span style="flex:1"></span>
+          <button type="button" class="btn btn-sm btn-outline" data-act="fold-all">Fold all</button>
+          <button type="button" class="btn btn-sm btn-outline" data-act="unfold-all">Unfold all</button>
+        </div>
+        <div id="wa-msg" style="font-weight:600;margin-top:${message ? 8 : 0}px;color:var(--danger)">${escapeHtml(message)}</div>
+      </div>
+      ${editions.length ? editions.map(editionHtml).join('') : '<div class="card" style="margin-top:12px;color:var(--gray)">No winners lists yet. Pick a season or tournament above, or start a new edition.</div>'}`;
+    window.scrollTo(0, y);
   }
 
   function setEdition(updated) {
@@ -123,30 +146,38 @@
     let schedule;
     [editions, players, seasons, schedule] = await Promise.all([api('/winners/all'), api('/players'), api('/seasons'), api('/schedule')]);
     tournaments = schedule.filter((x) => x.type === 'TOURNAMENT').sort((a, b) => b.startDate.localeCompare(a.startDate));
-    if (!current() && !pending) selectedId = editions.length ? editions[0].id : null;
     render();
   }
 
-  function blockEl(target) { return target.closest('.wa-block'); }
+  const blockEl = (target) => target.closest('.wa-block');
+  const editionRoot = (target) => target.closest('.wa-ed');
+  const editionIdOf = (target) => Number(editionRoot(target).dataset.id);
 
-  host.addEventListener('change', (ev) => {
+  // remember what is unfolded (the toggle event does not bubble, so it is caught on the way down)
+  host.addEventListener('toggle', (ev) => {
+    const d = ev.target;
+    if (!(d instanceof HTMLDetailsElement)) return;
+    const set = d.classList.contains('wa-ed') ? openEditions : (d.classList.contains('wa-block') ? openBlocks : null);
+    if (!set) return;
+    const id = Number(d.dataset.id);
+    if (d.open) set.add(id); else set.delete(id);
+  }, true);
+
+  host.addEventListener('change', async (ev) => {
     const t = ev.target;
-    if (t.id === 'wa-edition') {
+    if (t.id === 'wa-add') {
       const [kind, id] = t.value.split(':');
-      pending = null;
-      selectedId = null;
-      if (kind === 'ed') selectedId = Number(id);
-      else if (kind === 'season') { const x = seasons.find((y) => y.id === Number(id)); if (x) pending = { key: t.value, title: x.name, seasonId: x.id }; }
-      else if (kind === 'event') { const x = tournaments.find((y) => y.eventId === Number(id)); if (x) pending = { key: t.value, title: x.name, seasonId: null }; }
-      message = '';
-      render();
+      const source = kind === 'season' ? seasons.find((x) => x.id === Number(id)) : tournaments.find((x) => x.eventId === Number(id));
+      if (!source) return;
+      await run(async () => {
+        const created = await api('/winners/editions', { method: 'POST', body: { title: source.name, seasonId: kind === 'season' ? source.id : null } });
+        setEdition(created);
+        openEditions.add(created.id);
+      });
       return;
     }
     if (t.classList.contains('wa-cat')) blockEl(t).querySelector('.wa-title').style.display = t.value ? 'none' : '';
-    if (t.classList.contains('wa-player')) {
-      const nameInput = t.closest('.wa-place').querySelector('.wa-name');
-      nameInput.style.display = t.value ? 'none' : '';
-    }
+    if (t.classList.contains('wa-player')) t.closest('.wa-place').querySelector('.wa-name').style.display = t.value ? 'none' : '';
     if (t.classList.contains('wa-photo-input')) uploadPhoto(t);
   });
 
@@ -165,39 +196,36 @@
     });
   }
 
-  // the edition of a season or tournament picked from the list, made from the title and season shown
-  async function createPending() {
-    const seasonValue = document.getElementById('wa-ed-season').value;
-    const created = await api('/winners/editions', { method: 'POST', body: { title: document.getElementById('wa-ed-title').value.trim(), seasonId: seasonValue ? Number(seasonValue) : null } });
-    setEdition(created);
-    selectedId = created.id;
-    pending = null;
-    return created;
-  }
-
   host.addEventListener('click', async (ev) => {
     const btn = ev.target.closest('[data-act]');
     if (!btn) return;
     const act = btn.dataset.act;
-    const e = current();
 
-    if (act === 'new-edition') {
+    if (act === 'fold-all' || act === 'unfold-all') {
+      const open = act === 'unfold-all';
+      editions.forEach((e) => {
+        if (open) openEditions.add(e.id); else openEditions.delete(e.id);
+        e.blocks.forEach((b) => { if (open) openBlocks.add(b.id); else openBlocks.delete(b.id); });
+      });
+      render();
+    } else if (act === 'new-edition') {
       const title = (window.prompt('Title of the new edition (e.g. BLTA Autumn Finals Series 2026)') || '').trim();
       if (!title) return;
-      await run(async () => { const created = await api('/winners/editions', { method: 'POST', body: { title } }); setEdition(created); selectedId = created.id; pending = null; });
-    } else if (act === 'create-edition' && pending) {
-      await run(createPending);
-    } else if (act === 'save-edition' && e) {
+      await run(async () => { const created = await api('/winners/editions', { method: 'POST', body: { title } }); setEdition(created); openEditions.add(created.id); });
+    } else if (act === 'save-edition') {
+      const root = editionRoot(btn);
+      const id = editionIdOf(btn);
       await run(async () => {
-        const seasonValue = document.getElementById('wa-ed-season').value;
-        setEdition(await api(`/winners/editions/${e.id}`, { method: 'PATCH', body: {
-          title: document.getElementById('wa-ed-title').value.trim(),
+        const seasonValue = root.querySelector('.wa-ed-season').value;
+        setEdition(await api(`/winners/editions/${id}`, { method: 'PATCH', body: {
+          title: root.querySelector('.wa-ed-title').value.trim(),
           seasonId: seasonValue ? Number(seasonValue) : null,
-          visible: document.getElementById('wa-ed-visible').checked,
+          visible: root.querySelector('.wa-ed-visible').checked,
         } }));
       });
-    } else if ((act === 'up' || act === 'down') && e) {
-      const i = editions.findIndex((x) => x.id === e.id);
+    } else if (act === 'up' || act === 'down') {
+      const i = editions.findIndex((x) => x.id === editionIdOf(btn));
+      const e = editions[i];
       const other = editions[act === 'up' ? i - 1 : i + 1];
       if (!other) return;
       await run(async () => {
@@ -207,20 +235,23 @@
         await api(`/winners/editions/${other.id}`, { method: 'PATCH', body: { sortOrder: a } });
         editions = await api('/winners/all');
       });
-    } else if (act === 'delete-edition' && e) {
-      if (!window.confirm(`Delete "${e.title}" with all its winners and photos?`)) return;
-      await run(async () => { await api(`/winners/editions/${e.id}`, { method: 'DELETE' }); editions = editions.filter((x) => x.id !== e.id); selectedId = editions.length ? editions[0].id : null; });
-    } else if (act === 'add-block' && (e || pending)) {
+    } else if (act === 'delete-edition') {
+      const e = editions.find((x) => x.id === editionIdOf(btn));
+      if (!e || !window.confirm(`Delete "${e.title}" with all its winners and photos?`)) return;
+      await run(async () => { await api(`/winners/editions/${e.id}`, { method: 'DELETE' }); editions = editions.filter((x) => x.id !== e.id); });
+    } else if (act === 'add-block') {
+      const e = editions.find((x) => x.id === editionIdOf(btn));
+      if (!e) return;
       await run(async () => {
-        const edition = e || await createPending();
-        const used = edition.blocks.map((b) => b.category);
+        const used = e.blocks.map((b) => b.category);
         const free = CATS.map(([k]) => k).find((k) => !used.includes(k));
-        const body = free ? { category: free } : { title: 'New block' };
-        setEdition(await api(`/winners/editions/${edition.id}/blocks`, { method: 'POST', body }));
+        const updated = await api(`/winners/editions/${e.id}/blocks`, { method: 'POST', body: free ? { category: free } : { title: 'New block' } });
+        setEdition(updated);
+        openBlocks.add(updated.blocks[updated.blocks.length - 1].id);
       });
     } else if (act === 'save-block') {
       const el = blockEl(btn);
-      const blockId = Number(el.dataset.block);
+      const blockId = Number(el.dataset.id);
       await run(async () => {
         const category = el.querySelector('.wa-cat').value || null;
         await api(`/winners/blocks/${blockId}`, { method: 'PATCH', body: { category, title: el.querySelector('.wa-title').value.trim() } });
@@ -229,12 +260,11 @@
           return { slot: Number(row.dataset.slot), playerId: playerId ? Number(playerId) : null, name: playerId ? '' : row.querySelector('.wa-name').value.trim() };
         });
         setEdition(await api(`/winners/blocks/${blockId}/places`, { method: 'PUT', body: { places } }));
-        message = '';
       });
     } else if (act === 'delete-block') {
       if (!window.confirm('Delete this category block with its winners and photos?')) return;
-      const blockId = Number(blockEl(btn).dataset.block);
-      await run(async () => { await api(`/winners/blocks/${blockId}`, { method: 'DELETE' }); setEdition(await api('/winners/all').then((all) => all.find((x) => x.id === e.id))); });
+      const blockId = Number(blockEl(btn).dataset.id);
+      await run(async () => { await api(`/winners/blocks/${blockId}`, { method: 'DELETE' }); editions = await api('/winners/all'); });
     } else if (act === 'upload') {
       const input = document.createElement('input');
       input.type = 'file';
