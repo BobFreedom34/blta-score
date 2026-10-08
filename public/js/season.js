@@ -5,7 +5,7 @@
 // Data: GET /api/seasons/by-slug/:slug, /api/seasons/:id/standings, /api/seasons/:id/brackets, /api/matches?seasonId=…
 
 const rootEl = document.getElementById('sv-root');
-const slug = decodeURIComponent(window.location.pathname.split('/').filter(Boolean)[1] || '');
+const slug = decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '');
 
 const CATEGORY_ORDER = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 const CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };

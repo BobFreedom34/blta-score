@@ -1070,8 +1070,8 @@ function playerInfoBtn(player) {
   // profile page, so that context still opens a new tab.
   const playerPath = player.slug || player.id;
   const nav = window.top === window.self
-    ? `window.location.href='/player/${playerPath}'`
-    : `window.open('/player/${playerPath}','_blank')`;
+    ? `window.location.href='${siteUrl('/player/' + playerPath)}'`
+    : `window.open('${siteUrl('/player/' + playerPath)}','_blank')`;
   return `<button type="button" class="player-info-btn" title="${escapeHtml(t('common.viewProfileTitle', { name: player.name }))}" onclick="event.preventDefault();event.stopPropagation();${nav}">i</button>`;
 }
 
@@ -1100,8 +1100,8 @@ function rankBadgeHtml(name) {
 function playerNameLink(player) {
   const playerPath = player.slug || player.id;
   const nav = window.top === window.self
-    ? `window.location.href='/player/${playerPath}'`
-    : `window.open('/player/${playerPath}','_blank')`;
+    ? `window.location.href='${siteUrl('/player/' + playerPath)}'`
+    : `window.open('${siteUrl('/player/' + playerPath)}','_blank')`;
   return `<span class="player-name-link" onclick="event.preventDefault();event.stopPropagation();${nav}">${rankBadgeHtml(player.name)}${escapeHtml(player.name)}</span>`;
 }
 
@@ -1234,6 +1234,17 @@ function isOverdueUnresolved(m) {
 // would leave a lookalike node with none of that wiring. appendChild on a
 // node already in the document simply relocates it, so all of that survives
 // untouched; only its position among the other items changes.
+// The pages have an address per language (/rebricek, /en/rankings — see localize.js and Backend > SEO), but the code names a page
+// by its "code address" (/rankings, /player/<slug>): the one the menu items are stored with and the links are written with.
+// siteUrl() turns a code address into the address in the language in use (links in the page are rewritten by localize.js itself);
+// currentCodePath() is the code address of the page that is open.
+function siteUrl(address) {
+  return window.BLTA_LOCALIZE && BLTA_LOCALIZE.localUrl ? BLTA_LOCALIZE.localUrl(address) : address;
+}
+function currentCodePath() {
+  return (window.BLTA_LOCALIZE && BLTA_LOCALIZE.page && BLTA_LOCALIZE.page.canonical) || window.location.pathname;
+}
+
 // A menu item whose link is empty, '#' or anything that is not a page of the site or a web address is only a heading: it opens its
 // sub-items instead of going anywhere.
 function isHeadingLink(link) {
@@ -1319,7 +1330,7 @@ async function renderHeaderNav() {
     return; // leave the placeholder empty rather than break the whole topbar
   }
   const labelFor = (item) => (currentLang === 'en' && item.labelEn) ? item.labelEn : item.labelSk;
-  const isActive = (link) => link === window.location.pathname;
+  const isActive = (link) => link === currentCodePath();
   const myProfileEl = document.getElementById('nav-my-profile-link');
   const makeLink = (item) => {
     const a = document.createElement('a');
@@ -1573,7 +1584,7 @@ document.addEventListener('click', (e) => {
 (function initBottomNav() {
   if (!document.querySelector('.topbar') || document.body.classList.contains('embed')) return;
   if (/admin|login-history/.test(window.location.pathname)) return;
-  const path = window.location.pathname;
+  const path = currentCodePath();
   const items = [
     { key: 'home', href: '/', icon: 'home', label: t('bottomNav.home') },
     { key: 'matches', href: '/matches', icon: 'ball', label: t('nav.matches') },
@@ -1594,14 +1605,14 @@ document.addEventListener('click', (e) => {
     el('matches').classList.toggle('active', path === '/matches');
     el('tables').classList.toggle('active', path.startsWith('/tables'));
     el('rankings').classList.toggle('active', path.startsWith('/rankings'));
-    el('profile').classList.toggle('active', path.startsWith('/player/') && el('profile').getAttribute('href') === path);
+    el('profile').classList.toggle('active', path.startsWith('/player/') && !!playerAuthed && !!currentPlayerId && path === `/player/${currentPlayerSlug || currentPlayerId}`);
   };
   setActive();
 
   el('profile').addEventListener('click', (e) => {
     if (playerAuthed && currentPlayerId) return; // real href already set
     e.preventDefault();
-    requirePlayerAuth(() => { window.location.href = `/player/${currentPlayerSlug || currentPlayerId}`; });
+    requirePlayerAuth(() => { window.location.href = siteUrl(`/player/${currentPlayerSlug || currentPlayerId}`); });
   });
   const syncProfile = () => {
     el('profile').href = (playerAuthed && currentPlayerId) ? `/player/${currentPlayerSlug || currentPlayerId}` : '#';
@@ -2065,7 +2076,7 @@ document.querySelectorAll('.nav-my-profile-link').forEach((el) => {
   el.addEventListener('click', (e) => {
     if (playerAuthed && currentPlayerId) return; // real href already set — let it navigate normally
     e.preventDefault();
-    requirePlayerAuth(() => { window.location.href = `/player/${currentPlayerSlug || currentPlayerId}`; });
+    requirePlayerAuth(() => { window.location.href = siteUrl(`/player/${currentPlayerSlug || currentPlayerId}`); });
   });
 });
 
@@ -2928,8 +2939,8 @@ document.addEventListener('click', async (e) => {
   }
   if (notif.type === 'CHAT_MESSAGE') window.location.href = `/match/${notif.chat.matchToken}`;
   if (notif.type === 'PROPOSAL') window.location.href = `/match/${notif.proposal.matchToken}`;
-  if (notif.type === 'PLAY_REQUEST') window.location.href = '/looking-to-play';
-  if (notif.type === 'RANKING') window.location.href = '/rankings';
+  if (notif.type === 'PLAY_REQUEST') window.location.href = siteUrl('/looking-to-play');
+  if (notif.type === 'RANKING') window.location.href = siteUrl('/rankings');
 });
 
 refreshPlayerAuth();
@@ -3159,7 +3170,7 @@ function highlightMyName() {
   document.querySelectorAll(MY_NAME_SELECTOR).forEach((el) => {
     let href = el.getAttribute('href');
     if (href) { try { href = decodeURIComponent(href); } catch { /* keep as is */ } }
-    el.classList.toggle('is-me', !!mine && href === mine);
+    el.classList.toggle('is-me', !!mine && (href === mine || href === siteUrl(mine)));
   });
 }
 (function watchMyName() {

@@ -1113,7 +1113,7 @@ function attachHandlers(m) {
     try {
       await api(`/matches/${matchToken}`, { method: 'DELETE' });
       toast(t('match.matchDeletedToast'));
-      window.location.href = '/matches';
+      window.location.href = siteUrl('/matches');
     } catch (err) {
       toast(err.message);
       deleteBtn.disabled = false;

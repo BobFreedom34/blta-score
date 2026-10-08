@@ -476,6 +476,29 @@ profile photo is shown). Hiding an edition removes it from the page without dele
 - Foreign keys are not enforced in this database, so the router deletes an edition's blocks, places and photo files itself.
 - Check it: `node scripts/check-winners.js` (starts its own server on a temporary data folder; nothing else is touched).
 
+### Addresses and SEO in two languages (`/seo-admin`)
+
+**Backend → SEO** edits, per public page and **per language** (Slovenčina / English tab): the address (slug), the title,
+description, keywords and the link-preview texts and picture. Hiding a page from search engines (noindex) is one switch for both
+languages. The Slovak page lives at `/<slug>` (`/rebricek`), the English one at `/en/<slug>` (`/en/rankings`); the home page is `/`
+and `/en`. The first English texts and slugs are built in (`ENGLISH` in `src/seo.js`) and go in once per page.
+
+- **The code keeps one name per page** — its *code address* (`/rankings`, `/player/<slug>`): menu items in Backend → Menu, links in
+  the page scripts and in stored texts are all written with it. `public/js/localize.js` turns a code address into the address of the
+  language in use: the server uses it for routing, canonical / `hreflang` links and the sitemap; the browser gets it from
+  `GET /js/localize.js` (with the routes of the site added) and rewrites every link of the page (also those added later), the active
+  menu item, the bottom menu and the language switch (it jumps to the same page in the other language). A new link in the code
+  just uses the code address, or `siteUrl('/rankings')` where it is set from a script.
+- **Language comes from the address** on these pages (`/en/…` is English, anything else Slovak); on the pages without an address per
+  language (a match, the backend) the last choice is used.
+- **Changing a slug retires the old address at once: 404, no redirect, no alias** (the backend asks first). The code address of a
+  page (`/rankings`, `/rankings.html`) is retired the same way, and no other page may take it as its slug. The words the app itself
+  uses (`api`, `css`, `admin`, `en`, `match`…) are refused as slugs.
+- A page file added to `public/` shows up here by itself (see `discoverPages` in `src/seo.js`) with the same slug in both languages.
+- Tables: `seo_pages` (Slovak texts, `slug`, `slug_en`, `noindex`) and `seo_pages_en` (English texts). An old database is upgraded on
+  the first start.
+- Check it: `node scripts/check-seo.js` (starts its own server on a temporary data folder; nothing else is touched).
+
 ---
 
 ## 7. Embedding on the blta.sk WordPress site

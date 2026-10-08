@@ -40,7 +40,8 @@
     <a href="/login-history" class="tab">Login History</a>
   </div>
   <h2 style="margin:18px 0 4px">SEO</h2>
-  <p style="color:var(--gray-dim)">What Google and link previews (WhatsApp, Facebook…) show for every page: the title, the description, the keywords and the preview picture. The texts of a season, player, court or bracket page take the name in <code>{name}</code>.</p>
+  <p style="color:var(--gray-dim)">The address (slug) of every page and what Google and link previews (WhatsApp, Facebook…) show for it: the title, the description, the keywords and the preview picture — in Slovak and in English. The Slovak page lives at <code>/slug</code>, the English one at <code>/en/slug</code>, and the language switch jumps between the two. The texts of a season, player, court or bracket page take the name in <code>{name}</code>.</p>
+  <p style="color:var(--orange);font-weight:600">When you change an address the old one stops working at once — there is no redirect, so links, bookmarks and search results that still use it show “not found”.</p>
 
   <div id="seo-admin-root">Loading…</div>
 </div>
@@ -54,6 +55,7 @@
   </div>
 </footer>
 
+<script src="/js/localize.js"></script>
 <script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
 <script src="/js/seo-admin.js"></script>

@@ -299,7 +299,7 @@ async function sendPlayRequestEmail(owner, joiner, slot, message) {
     `Kedy: ${fmtDate(slot)}`,
   ];
   if (message) lines.push(`Jeho odkaz: "${message}"`);
-  lines.push(`Pozri si to tu: ${process.env.PUBLIC_URL || ''}/looking-to-play`);
+  lines.push(`Pozri si to tu: ${process.env.PUBLIC_URL || ''}${require('./seo').pageUrl('/looking-to-play', 'sk')}`);
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
@@ -350,7 +350,7 @@ async function sendPlayRequestDeniedEmail(owner, joiner, reason) {
   const lines = [
     `${owner.name} nemohol prijať termín, ktorý si si vybral na Tennis SCORE.`,
     `Jeho poznámka: "${reason}"`,
-    `Pozri si jeho ďalšie voľné termíny: ${process.env.PUBLIC_URL || ''}/looking-to-play`,
+    `Pozri si jeho ďalšie voľné termíny: ${process.env.PUBLIC_URL || ''}${require('./seo').pageUrl('/looking-to-play', 'sk')}`,
   ];
 
   await t.sendMail({

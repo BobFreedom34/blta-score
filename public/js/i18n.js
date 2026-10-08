@@ -17,6 +17,12 @@ try {
   const saved = localStorage.getItem(LANG_STORAGE_KEY);
   if (saved === 'sk' || saved === 'en') currentLang = saved;
 } catch { /* localStorage unavailable — default to sk */ }
+// A page with an address per language (/rebricek, /en/rankings — see localize.js) is in the language of its address; the choice is
+// remembered for the pages that have no such address (a match, the backend).
+if (typeof BLTA_LOCALIZE !== 'undefined' && BLTA_LOCALIZE.page) {
+  currentLang = BLTA_LOCALIZE.page.lang;
+  try { localStorage.setItem(LANG_STORAGE_KEY, currentLang); } catch { /* ignore */ }
+}
 
 const TRANSLATIONS = {
   sk: {
@@ -1757,7 +1763,10 @@ function t(key, vars) {
 function setLang(lang) {
   currentLang = lang;
   try { localStorage.setItem(LANG_STORAGE_KEY, lang); } catch { /* ignore */ }
-  location.reload();
+  // on a page with an address per language the switch goes to the same page in the other language
+  const other = typeof BLTA_LOCALIZE !== 'undefined' && BLTA_LOCALIZE.switchUrl ? BLTA_LOCALIZE.switchUrl(lang) : null;
+  if (other) location.href = other;
+  else location.reload();
 }
 
 // Walks every element carrying a data-i18n* attribute and fills it in from

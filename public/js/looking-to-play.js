@@ -555,7 +555,7 @@ function boardPostHtml(post) {
 // than a dedicated route, since this is still the same board page/data,
 // just told which card to jump straight into.
 function sharePostUrl(postId) {
-  return `${window.location.origin}/looking-to-play?post=${postId}`;
+  return `${window.location.origin}${siteUrl('/looking-to-play')}?post=${postId}`;
 }
 
 function renderBoard() {

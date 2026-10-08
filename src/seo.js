@@ -109,6 +109,109 @@ function discoverPages() {
 }
 discoverPages();
 const BY_KEY = new Map(PAGES.map((p) => [p.key, p]));
+const LANGS = ['sk', 'en'];
+const LANG_NAME = { sk: 'Slovak', en: 'English' };
+
+// ---------- English ----------
+// The English address (slug) and meta texts every page starts with (the Slovak ones are in PAGES above). Like the Slovak ones they
+// go in once per page; after that Backend > SEO owns them. A page that is not listed (a new page file) starts with its Slovak text.
+const SUFFIX_EN = ' - BLTA - Bratislava Amateur Tennis League';
+const ENGLISH = {
+  home: {
+    slug: '',
+    title: 'BLTA Score - Live scores and tables of the amateur tennis league',
+    description: 'Live scores, tables and the schedule of BLTA - the Bratislava Amateur Tennis League. Follow matches live and check the results and rankings of amateur tennis players.',
+  },
+  matches: {
+    slug: 'matches',
+    title: `Matches${SUFFIX_EN}`,
+    description: 'BLTA matches - live scores, results and the schedule of upcoming matches of the Bratislava amateur tennis league.',
+  },
+  tables: {
+    slug: 'tables',
+    title: `Tables${SUFFIX_EN}`,
+    description: 'BLTA tables - the current standings of the players in the groups of the Elite, Next Gen and Novice categories during the season of the amateur tennis league.',
+  },
+  rankings: {
+    slug: 'rankings',
+    title: `Rankings${SUFFIX_EN}`,
+    description: 'BLTA rankings - the points standings of the league players: the overall ranking, the Race points of each category and the points from tournaments.',
+  },
+  players: {
+    slug: 'players',
+    title: `Players${SUFFIX_EN}`,
+    description: 'BLTA players - a community of recreational and amateur tennis players in Bratislava. Player profiles, statistics and match results.',
+  },
+  courts: {
+    slug: 'courts',
+    title: `Tennis courts in Bratislava${SUFFIX_EN}`,
+    description: 'Tennis courts in Bratislava - an overview of the tennis courts in Bratislava and the surrounding area. Contact details, addresses, maps and links to book a court.',
+  },
+  harmonogram: {
+    slug: 'schedule',
+    title: `Schedule${SUFFIX_EN}`,
+    description: 'BLTA schedule - the season of the BLTA League is divided into three 4-month cycles and several tournaments.',
+  },
+  vitazi: {
+    slug: 'winners',
+    title: `Winners${SUFFIX_EN}`,
+    description: 'BLTA winners - the winners, finalists and semifinalists of each series and tournament of the Bratislava Amateur Tennis League in the Elite, Next Gen and Novice categories.',
+  },
+  propozicie: {
+    slug: 'rules',
+    title: `Rules${SUFFIX_EN}`,
+    description: 'BLTA rules - the complete and current rules of the league and the tournaments: categories, game format, scoring, dates, arranging matches and entry fees.',
+  },
+  'looking-to-play': {
+    slug: 'looking-to-play',
+    title: `Looking for an opponent${SUFFIX_EN}`,
+    description: 'Looking for a tennis opponent in Bratislava? Join the BLTA players who are looking for a partner for a match and arrange a game.',
+  },
+  'new-match': {
+    slug: 'new-match',
+    title: `New match${SUFFIX_EN}`,
+    description: 'Create a new BLTA match and follow its score live.',
+  },
+  season: {
+    slug: 'season',
+    title: `{name}${SUFFIX_EN}`,
+    description: '{name} - a series of the BLTA amateur tennis league: group tables, round schedule, results, players and play-offs. A long-running tennis league for amateur and recreational players in Bratislava.',
+  },
+  player: {
+    slug: 'player',
+    title: `{name} - player${SUFFIX_EN}`,
+    description: '{name} - BLTA player profile: statistics, match results, ranking points and badges.',
+  },
+  court: {
+    slug: 'courts',
+    title: `{name} - tennis court${SUFFIX_EN}`,
+    description: '{name} - a tennis court where the BLTA league is played: address, contact, courts, opening hours and the matches played there.',
+  },
+  bracket: {
+    slug: 'bracket',
+    title: `{name} - bracket${SUFFIX_EN}`,
+    description: '{name} - the BLTA tournament bracket: matches, results and how the players advance.',
+  },
+};
+
+// The part of a page's code address that its slug stands for: 'rankings' for /rankings, 'season' for /season/:slug, '' for home.
+const baseOf = (p) => p.path.split('/')[1] || '';
+const isTemplate = (p) => !!p.template;
+
+function defaultSlug(p, lang) {
+  if (p.path === '/') return '';
+  if (lang === 'en' && ENGLISH[p.key] && ENGLISH[p.key].slug) return ENGLISH[p.key].slug;
+  return baseOf(p);
+}
+
+function defaultValues(p, lang) {
+  const e = lang === 'en' ? ENGLISH[p.key] : null;
+  return {
+    title: e ? e.title : p.title,
+    description: e ? e.description : p.description,
+    keywords: '', ogTitle: '', ogDescription: '', ogImage: '',
+  };
+}
 
 const LIMITS = { title: 120, description: 320, keywords: 300, ogTitle: 120, ogDescription: 320, ogImage: 500 };
 
@@ -123,57 +226,219 @@ db.exec(`
     og_image TEXT NOT NULL DEFAULT '',
     noindex INTEGER NOT NULL DEFAULT 0
   );
+  CREATE TABLE IF NOT EXISTS seo_pages_en (
+    page_key TEXT PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    keywords TEXT NOT NULL DEFAULT '',
+    og_title TEXT NOT NULL DEFAULT '',
+    og_description TEXT NOT NULL DEFAULT '',
+    og_image TEXT NOT NULL DEFAULT ''
+  );
 `);
+// the address of the page in each language (seo_pages itself holds the Slovak texts; the English texts are in seo_pages_en)
+const seoColumns = db.prepare('PRAGMA table_info(seo_pages)').all().map((c) => c.name);
+if (!seoColumns.includes('slug')) db.exec("ALTER TABLE seo_pages ADD COLUMN slug TEXT NOT NULL DEFAULT ''");
+if (!seoColumns.includes('slug_en')) db.exec("ALTER TABLE seo_pages ADD COLUMN slug_en TEXT NOT NULL DEFAULT ''");
 
-// The first values go in once per page; after that the backend owns them (clearing a field is respected).
+// The first values go in once per page; after that the backend owns them (clearing a field is respected). A slug is never empty
+// (except the home page's), so an empty one means "not set yet".
 function seedDefaults() {
-  const insert = db.prepare('INSERT OR IGNORE INTO seo_pages (page_key, title, description, noindex) VALUES (?, ?, ?, ?)');
-  PAGES.forEach((p) => insert.run(p.key, p.title, p.description, p.noindex ? 1 : 0));
+  const insertSk = db.prepare('INSERT OR IGNORE INTO seo_pages (page_key, title, description, noindex) VALUES (?, ?, ?, ?)');
+  const insertEn = db.prepare('INSERT OR IGNORE INTO seo_pages_en (page_key, title, description) VALUES (?, ?, ?)');
+  const setSk = db.prepare("UPDATE seo_pages SET slug = ? WHERE page_key = ? AND slug = ''");
+  const setEn = db.prepare("UPDATE seo_pages SET slug_en = ? WHERE page_key = ? AND slug_en = ''");
+  PAGES.forEach((p) => {
+    insertSk.run(p.key, p.title, p.description, p.noindex ? 1 : 0);
+    const en = defaultValues(p, 'en');
+    insertEn.run(p.key, en.title, en.description);
+    if (p.path !== '/') {
+      setSk.run(defaultSlug(p, 'sk'), p.key);
+      setEn.run(defaultSlug(p, 'en'), p.key);
+    }
+  });
 }
 seedDefaults();
 
-function rowToValues(r) {
+const TABLE = { sk: 'seo_pages', en: 'seo_pages_en' };
+
+function getValues(key, lang = 'sk') {
+  const r = db.prepare(`SELECT * FROM ${TABLE[lang]} WHERE page_key = ?`).get(key);
+  if (!r) return null;
   return {
     title: r.title, description: r.description, keywords: r.keywords,
-    ogTitle: r.og_title, ogDescription: r.og_description, ogImage: r.og_image, noindex: !!r.noindex,
+    ogTitle: r.og_title, ogDescription: r.og_description, ogImage: r.og_image,
+    noindex: noindexOf(key),
   };
 }
 
-function getValues(key) {
-  const r = db.prepare('SELECT * FROM seo_pages WHERE page_key = ?').get(key);
-  return r ? rowToValues(r) : null;
+// hiding a page from search engines is one switch for both languages
+function noindexOf(key) {
+  const r = db.prepare('SELECT noindex FROM seo_pages WHERE page_key = ?').get(key);
+  return !r || !!r.noindex;
 }
 
-// Everything the backend lists: every page with its saved values, the first values (to reset to) and the blta.sk page.
+// ---------- the addresses ----------
+
+const localize = require('../public/js/localize.js');
+const LOCALIZE_SOURCE = fs.readFileSync(path.join(PUBLIC_DIR, 'js', 'localize.js'), 'utf8');
+let routeCache = null;
+let libCache = null;
+let scriptCache = null;
+
+// [{ key, path, template, sk, en }] — the table localize.js works from (the browser gets it too, see clientScript)
+function routes() {
+  if (!routeCache) {
+    const rows = new Map(db.prepare('SELECT page_key, slug, slug_en FROM seo_pages').all().map((r) => [r.page_key, r]));
+    routeCache = PAGES.map((p) => {
+      const r = rows.get(p.key) || {};
+      return {
+        key: p.key, path: p.path, template: isTemplate(p),
+        sk: p.path === '/' ? '' : (r.slug || defaultSlug(p, 'sk')),
+        en: p.path === '/' ? '' : (r.slug_en || defaultSlug(p, 'en')),
+      };
+    });
+  }
+  return routeCache;
+}
+function lib() {
+  if (!libCache) libCache = localize.make(routes());
+  return libCache;
+}
+function forgetRoutes() { routeCache = null; libCache = null; scriptCache = null; }
+
+// /js/localize.js for the browser: the code above plus the routes of the site
+function clientScript() {
+  if (!scriptCache) scriptCache = `${LOCALIZE_SOURCE}\nBLTA_LOCALIZE.boot(${JSON.stringify(routes())});\n`;
+  return scriptCache;
+}
+
+const resolve = (address) => lib().resolve(address);
+// the public address of a code address (/rankings, /player/<slug>) in a language; the code address itself when it is no page
+const pageUrl = (address, lang = 'sk') => lib().toPublic(address, lang) || address;
+
+// The code addresses of the pages are retired as public addresses: once a page's slug is changed, /rankings (and /rankings.html)
+// is gone — no redirect, no alias. Also everything under /en/ that is no page, and /season/<x> and the like when the
+// slug of that page is another one.
+const FILE_BASES = new Set(PAGES.map((p) => p.file.replace(/\.html$/, '')));
+const TEMPLATE_BASES = new Set(PAGES.filter(isTemplate).map(baseOf));
+function isRetired(address) {
+  const p = String(address || '/').replace(/\/+$/, '') || '/';
+  const file = /^\/([^/]+?)(\.html)?$/.exec(p);
+  if (file && FILE_BASES.has(file[1])) return true;
+  const segs = p.split('/');
+  if (segs.length === 3 && TEMPLATE_BASES.has(segs[1])) return true;
+  return p === '/en' || p.startsWith('/en/');
+}
+
+// ---------- editing ----------
+
+// Words an address must not be: the folders and files of the app (a slug is the first part of the address, so /css or /api would
+// be taken by the app first).
+const RESERVED = new Set(['api', 'en', 'match', 'embed', 'compact', 'compactblta', 'socket', 'socket.io', 'robots', 'robots.txt', 'sitemap', 'sitemap.xml',
+  'badge-icons', 'player-photos', 'carousel-images', 'winner-photos']);
+const PAGE_FILES = new Set(PAGES.map((p) => p.file));
+fs.readdirSync(PUBLIC_DIR).forEach((name) => { if (!PAGE_FILES.has(name)) RESERVED.add(name.replace(/\.[^.]+$/, '')); });
+
+// What a typed address becomes: lowercase letters, digits and single hyphens (no accents, no spaces).
+function normalizeSlug(text) {
+  return String(text || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().trim()
+    .replace(/[\s_/]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-').replace(/^-|-$/g, '');
+}
+
+// null when the address is fine for that page in that language, else the reason.
+function checkSlug(page, lang, slug) {
+  if (!slug) return 'the address is required (letters, digits and hyphens)';
+  if (slug.length > 60) return 'the address is too long (max 60 characters)';
+  if (lang === 'sk') {
+    if (RESERVED.has(slug)) return `"${slug}" is used by the app itself — pick another address`;
+    // the code address of another page: that is what the page links in the code still say, and it must stay free of meaning
+    const old = PAGES.find((o) => o.key !== page.key && isTemplate(o) === isTemplate(page) && o.path !== '/' && baseOf(o) === slug);
+    if (old) return `"${slug}" is the old address of "${old.label}" — pick another address`;
+  }
+  const column = lang === 'sk' ? 'slug' : 'slug_en';
+  const clash = db.prepare(`SELECT page_key FROM seo_pages WHERE ${column} = ?`).all(slug)
+    .map((r) => BY_KEY.get(r.page_key)).find((o) => o && o.key !== page.key && isTemplate(o) === isTemplate(page));
+  if (clash) return `"${slug}" is already the ${LANG_NAME[lang]} address of "${clash.label}"`;
+  return null;
+}
+
+// Everything the backend lists: every page with its addresses and saved values in both languages, and the first ones (to reset to).
 function listAll() {
-  return PAGES.map((p) => ({
-    key: p.key, label: p.label, path: p.path, template: !!p.template, blta: p.blta,
-    values: getValues(p.key),
-    defaults: { title: p.title, description: p.description, keywords: '', ogTitle: '', ogDescription: '', ogImage: '', noindex: !!p.noindex },
-  }));
+  const table = new Map(routes().map((r) => [r.key, r]));
+  return PAGES.map((p) => {
+    const route = table.get(p.key);
+    const sk = getValues(p.key, 'sk');
+    const en = getValues(p.key, 'en');
+    const { noindex, ...skValues } = sk;
+    const { noindex: unused, ...enValues } = en;
+    return {
+      key: p.key, label: p.label, path: p.path, template: isTemplate(p), home: p.path === '/', blta: p.blta,
+      slugs: { sk: route.sk, en: route.en },
+      defaultSlugs: { sk: defaultSlug(p, 'sk'), en: defaultSlug(p, 'en') },
+      noindex,
+      values: { sk: skValues, en: enValues },
+      defaults: { sk: defaultValues(p, 'sk'), en: defaultValues(p, 'en') },
+      defaultNoindex: !!p.noindex,
+    };
+  });
 }
 
-// Reads and checks the values of a request body; returns { error } or { values }.
+// Reads and checks the texts of one language; returns { error } or { values }.
 function parseValues(body) {
   const out = {};
-  for (const field of ['title', 'description', 'keywords', 'ogTitle', 'ogDescription', 'ogImage']) {
-    const raw = body[field];
+  for (const field of Object.keys(LIMITS)) {
+    const raw = (body || {})[field];
     const v = typeof raw === 'string' ? raw.replace(/\s+/g, ' ').trim() : '';
     if (v.length > LIMITS[field]) return { error: `${field} is too long (max ${LIMITS[field]} characters)` };
     out[field] = v;
   }
   if (out.ogImage && !/^(https?:\/\/|\/)/.test(out.ogImage)) return { error: 'The preview image must be a full address (https://…) or start with /' };
-  out.noindex = !!body.noindex;
   return { values: out };
 }
 
-function save(key, v) {
-  db.prepare(`
-    INSERT INTO seo_pages (page_key, title, description, keywords, og_title, og_description, og_image, noindex)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(page_key) DO UPDATE SET title = excluded.title, description = excluded.description, keywords = excluded.keywords,
-      og_title = excluded.og_title, og_description = excluded.og_description, og_image = excluded.og_image, noindex = excluded.noindex
-  `).run(key, v.title, v.description, v.keywords, v.ogTitle, v.ogDescription, v.ogImage, v.noindex ? 1 : 0);
+// The body of a save: { noindex, slugs: { sk, en }, sk: { title… }, en: { title… } } -> { error } or { slugs, values, noindex }.
+function parseBody(page, body) {
+  const b = body || {};
+  const out = { slugs: {}, values: {}, noindex: !!b.noindex };
+  for (const lang of LANGS) {
+    const parsed = parseValues(b[lang]);
+    if (parsed.error) return { error: `${LANG_NAME[lang]}: ${parsed.error}` };
+    out.values[lang] = parsed.values;
+    if (page.path === '/') continue;
+    const slug = normalizeSlug((b.slugs || {})[lang]);
+    const problem = checkSlug(page, lang, slug);
+    if (problem) return { error: `${LANG_NAME[lang]}: ${problem}` };
+    out.slugs[lang] = slug;
+  }
+  return out;
+}
+
+function save(page, parsed) {
+  const v = parsed.values;
+  db.exec('BEGIN');
+  try {
+    db.prepare(`
+      UPDATE seo_pages SET title = ?, description = ?, keywords = ?, og_title = ?, og_description = ?, og_image = ?, noindex = ?
+      WHERE page_key = ?
+    `).run(v.sk.title, v.sk.description, v.sk.keywords, v.sk.ogTitle, v.sk.ogDescription, v.sk.ogImage, parsed.noindex ? 1 : 0, page.key);
+    db.prepare(`
+      INSERT INTO seo_pages_en (page_key, title, description, keywords, og_title, og_description, og_image)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(page_key) DO UPDATE SET title = excluded.title, description = excluded.description, keywords = excluded.keywords,
+        og_title = excluded.og_title, og_description = excluded.og_description, og_image = excluded.og_image
+    `).run(page.key, v.en.title, v.en.description, v.en.keywords, v.en.ogTitle, v.en.ogDescription, v.en.ogImage);
+    if (page.path !== '/') db.prepare('UPDATE seo_pages SET slug = ?, slug_en = ? WHERE page_key = ?').run(parsed.slugs.sk, parsed.slugs.en, page.key);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  forgetRoutes();
 }
 
 // ---------- the HTML ----------
@@ -184,14 +449,17 @@ const TEMPLATES = new Map(PAGES.map((p) => [p.key, fs.readFileSync(path.join(PUB
 // The tags the pages carry by hand (the old title, description and link-preview tags) — dropped before the saved ones go in.
 const OLD_TAGS = /<meta\s+(?:name="(?:description|keywords|robots|twitter:[^"]*)"|property="og:[^"]*")[^>]*>[ \t]*\r?\n?/g;
 const TITLE_TAG = /<title[^>]*>[^<]*<\/title>/;
+const HTML_LANG = /<html lang="[^"]*"/;
 
 const ROBOTS_INDEX = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+const OG_LOCALE = { sk: 'sk_SK', en: 'en_GB' };
 
-// `entity` is { name } for a template page; `origin` the public address of the site; `urlPath` the page's own path.
-function render(key, { origin, urlPath, entity }) {
+// `canonical` is the code address of the page (/rankings, /season/<slug>); `lang` the language of the address asked for;
+// `entity` is { name } for a template page; `origin` the public address of the site.
+function render(key, { origin, canonical, lang = 'sk', entity }) {
   const page = BY_KEY.get(key);
   const html = TEMPLATES.get(key);
-  const v = getValues(key);
+  const v = getValues(key, lang);
   if (!page || !html || !v) return html || '';
   const name = entity && entity.name ? entity.name : '';
   const fill = (text) => String(text || '').split('{name}').join(name).replace(/\s+/g, ' ').trim();
@@ -201,49 +469,65 @@ function render(key, { origin, urlPath, entity }) {
   const ogDescription = fill(v.ogDescription) || description;
   const image = v.ogImage || (entity && entity.image) || '/img/blta-logo.png';
   const imageUrl = /^https?:\/\//.test(image) ? image : `${origin}${image.startsWith('/') ? '' : '/'}${image}`;
-  const canonical = `${origin}${urlPath === '/' ? '/' : urlPath.replace(/\/$/, '')}`;
+  const urlOf = (lg) => `${origin}${pageUrl(canonical, lg)}`;
+  const other = lang === 'sk' ? 'en' : 'sk';
   const lines = [
     title ? `<title>${esc(title)}</title>` : '',
     description ? `<meta name="description" content="${esc(description)}">` : '',
     v.keywords ? `<meta name="keywords" content="${esc(v.keywords)}">` : '',
     `<meta name="robots" content="${v.noindex ? 'noindex, nofollow' : ROBOTS_INDEX}">`,
-    `<link rel="canonical" href="${esc(canonical)}">`,
-    '<meta property="og:locale" content="sk_SK">',
+    `<link rel="canonical" href="${esc(urlOf(lang))}">`,
+    `<link rel="alternate" hreflang="sk" href="${esc(urlOf('sk'))}">`,
+    `<link rel="alternate" hreflang="en" href="${esc(urlOf('en'))}">`,
+    `<link rel="alternate" hreflang="x-default" href="${esc(urlOf('sk'))}">`,
+    `<meta property="og:locale" content="${OG_LOCALE[lang]}">`,
+    `<meta property="og:locale:alternate" content="${OG_LOCALE[other]}">`,
     '<meta property="og:type" content="website">',
     '<meta property="og:site_name" content="BLTA Score">',
     ogTitle ? `<meta property="og:title" content="${esc(ogTitle)}">` : '',
     ogDescription ? `<meta property="og:description" content="${esc(ogDescription)}">` : '',
-    `<meta property="og:url" content="${esc(canonical)}">`,
+    `<meta property="og:url" content="${esc(urlOf(lang))}">`,
     `<meta property="og:image" content="${esc(imageUrl)}">`,
     '<meta name="twitter:card" content="summary">',
     ogTitle ? `<meta name="twitter:title" content="${esc(ogTitle)}">` : '',
     ogDescription ? `<meta name="twitter:description" content="${esc(ogDescription)}">` : '',
     `<meta name="twitter:image" content="${esc(imageUrl)}">`,
   ].filter(Boolean).join('\n');
+  const stripped = html.replace(OLD_TAGS, '').replace(HTML_LANG, `<html lang="${lang}"`);
   // without a saved title the page keeps its own (translated) one
   return title
-    ? html.replace(OLD_TAGS, '').replace(TITLE_TAG, () => lines)
-    : html.replace(OLD_TAGS, '').replace(TITLE_TAG, (t) => `${t}\n${lines}`);
+    ? stripped.replace(TITLE_TAG, () => lines)
+    : stripped.replace(TITLE_TAG, (t) => `${t}\n${lines}`);
 }
 
-module.exports = { PAGES, BY_KEY, listAll, parseValues, save, render, getValues };
+module.exports = {
+  PAGES, BY_KEY, LANGS, listAll, parseBody, save, render, getValues,
+  routes, resolve, pageUrl, isRetired, clientScript, normalizeSlug,
+};
 
 // ---------- sitemap.xml and robots.txt ----------
 
-// The pages a search engine may list: the fixed pages and, unless their template is hidden, every season, player, venue and
-// bracket. The paths of the backend, the API, the embeds and the helper pages are kept out by robots.txt.
+// The pages a search engine may list, in both languages (each entry points at the other language): the fixed pages and, unless
+// their template is hidden, every season, player, venue and bracket. The paths of the backend, the API, the embeds and the helper
+// pages are kept out by robots.txt.
 function sitemapXml(origin) {
-  const urls = [];
-  const add = (p, lastmod) => urls.push({ loc: `${origin}${p}`, lastmod });
-  const hidden = (key) => { const v = getValues(key); return !v || v.noindex; };
+  const entries = [];
+  const add = (canonical, lastmod) => entries.push({ canonical, lastmod });
+  const hidden = (key) => noindexOf(key);
   PAGES.filter((p) => !p.template && !hidden(p.key)).forEach((p) => add(p.path));
   const day = (iso) => (iso ? String(iso).slice(0, 10) : undefined);
   if (!hidden('season')) db.prepare('SELECT slug FROM seasons WHERE slug IS NOT NULL').all().forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`));
   if (!hidden('court')) db.prepare('SELECT slug FROM venues WHERE slug IS NOT NULL').all().forEach((r) => add(`/courts/${encodeURIComponent(r.slug)}`));
   if (!hidden('player')) db.prepare('SELECT slug FROM players WHERE slug IS NOT NULL').all().forEach((r) => add(`/player/${encodeURIComponent(r.slug)}`));
   if (!hidden('bracket')) db.prepare('SELECT id, updated_at FROM brackets').all().forEach((r) => add(`/bracket/${r.id}`, day(r.updated_at)));
-  const body = urls.map((u) => `  <url><loc>${esc(u.loc)}</loc>${u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : ''}</url>`).join('\n');
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`;
+  const body = entries.map((e) => {
+    const sk = `${origin}${pageUrl(e.canonical, 'sk')}`;
+    const en = `${origin}${pageUrl(e.canonical, 'en')}`;
+    const alternates = `<xhtml:link rel="alternate" hreflang="sk" href="${esc(sk)}"/><xhtml:link rel="alternate" hreflang="en" href="${esc(en)}"/>`;
+    const lastmod = e.lastmod ? `<lastmod>${e.lastmod}</lastmod>` : '';
+    return [sk, en].map((loc) => `  <url><loc>${esc(loc)}</loc>${lastmod}${alternates}</url>`).join('\n');
+  }).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${body}\n</urlset>\n`;
 }
 
 function robotsTxt(origin) {
@@ -261,7 +545,8 @@ function robotsTxt(origin) {
     'Disallow: /seo-admin',
     'Disallow: /login-history',
     'Disallow: /reset-code',
-    'Disallow: /new-match',
+    `Disallow: ${pageUrl('/new-match', 'sk')}`,
+    `Disallow: ${pageUrl('/new-match', 'en')}`,
     'Disallow: /api/',
     'Disallow: /embed/',
     'Disallow: /compact',

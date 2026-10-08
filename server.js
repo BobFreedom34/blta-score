@@ -139,7 +139,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 app.get('/', (req, res, next) => {
   const q = req.originalUrl.indexOf('?');
   if (q === -1) return next();
-  res.redirect(302, '/matches' + req.originalUrl.slice(q));
+  res.redirect(302, seo.pageUrl('/matches', 'sk') + req.originalUrl.slice(q));
 });
 // Static files. ETag and Last-Modified stay on (the defaults, spelled out), so anything that is revalidated costs a
 // 304 and no body. Cache lifetimes:
@@ -149,33 +149,61 @@ app.get('/', (req, res, next) => {
 //    deploy reaches everyone at once. A script or stylesheet requested with a version in the URL (/js/home.js?v=abc)
 //    is fixed content by definition and is kept for a year, immutable. No page uses that yet.
 //  - HTML pages: revalidated on every load.
-// The pages whose <title>, description and link-preview tags come from Backend > SEO (src/seo.js): the fixed ones here, the
-// templates (a season, a player, a venue, a bracket) further down.
+// The pages whose <title>, description and link-preview tags come from Backend > SEO (src/seo.js). Their addresses are
+// edited there too (a slug per language: /rebricek and /en/rankings), so they are not fixed routes but looked up on every request:
+// the fixed pages and the ones with a name in the address (a season, a player, a venue, a bracket). The code address a page
+// used to have (/rankings, /season/<x>) is retired once its slug is another one: 404, no redirect.
 const publicOrigin = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
-for (const page of seo.PAGES.filter((p) => !p.template)) {
-  app.get(page.path, (req, res, next) => {
-    try {
-      const html = seo.render(page.key, { origin: publicOrigin(req), urlPath: page.path });
-      // the propozície text comes from Backend > Rules
-      res.type('html').send(page.key === 'propozicie' ? rules.injectInto(html) : html);
-    } catch (err) {
-      console.error('SEO page failed', page.key, err);
-      next();
-    }
-  });
-}
+app.get('/js/localize.js', (req, res) => res.type('application/javascript').set('Cache-Control', 'no-cache').send(seo.clientScript()));
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(seo.robotsTxt(publicOrigin(req))));
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemapXml(publicOrigin(req))));
-// A template page: the saved text with the entity's name in it; an unknown entity gets the plain page.
-function seoTemplate(key, lookup) {
-  return (req, res) => {
-    const page = seo.BY_KEY.get(key);
-    let entity = null;
-    try { entity = lookup(req.params); } catch (err) { console.error('SEO lookup failed', key, err); }
-    if (!entity) return res.sendFile(path.join(PUBLIC_DIR, page.file));
-    return res.type('html').send(seo.render(key, { origin: publicOrigin(req), urlPath: req.path, entity }));
-  };
+// the entity behind a template page: { name, image } or null
+const TEMPLATE_ENTITY = {
+  player: (id) => {
+    const p = db.prepare('SELECT name, photo_url FROM players WHERE slug = ? OR id = ?').get(id, /^\d+$/.test(id) ? Number(id) : -1);
+    return p ? { name: p.name, image: p.photo_url || '' } : null;
+  },
+  bracket: (id) => {
+    const b = /^\d+$/.test(id) ? db.prepare('SELECT name FROM brackets WHERE id = ?').get(Number(id)) : null;
+    return b ? { name: b.name } : null;
+  },
+  season: (slug) => {
+    const s = db.prepare('SELECT name, logo_url FROM seasons WHERE slug = ?').get(slug);
+    return s ? { name: s.name, image: s.logo_url || '' } : null;
+  },
+  court: (slug) => {
+    const v = db.prepare('SELECT name FROM venues WHERE slug = ?').get(slug);
+    return v ? { name: v.name } : null;
+  },
+};
+function pageNotFound(res) {
+  res.status(404).type('html').send('<!DOCTYPE html><html lang="sk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
+    + '<meta name="robots" content="noindex"><title>404 - BLTA</title></head><body style="font-family:sans-serif;background:#191919;color:#fff;text-align:center;padding:80px 20px">'
+    + '<h1>404</h1><p>Stránka sa nenašla / Page not found</p><p><a href="/" style="color:#ff8a00">BLTA</a></p></body></html>');
 }
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  const hit = seo.resolve(req.path);
+  if (!hit) return seo.isRetired(req.path) ? pageNotFound(res) : next();
+  const page = seo.BY_KEY.get(hit.key);
+  let entity = null;
+  if (page.template) {
+    try {
+      let param = hit.param;
+      try { param = decodeURIComponent(param); } catch { /* keep it as it is */ }
+      entity = TEMPLATE_ENTITY[hit.key](param);
+    } catch (err) { console.error('SEO lookup failed', hit.key, err); }
+    if (!entity) return res.sendFile(path.join(PUBLIC_DIR, page.file));
+  }
+  try {
+    const html = seo.render(hit.key, { origin: publicOrigin(req), canonical: hit.canonical, lang: hit.lang, entity });
+    // the propozície text comes from Backend > Rules
+    return res.type('html').send(hit.key === 'propozicie' ? rules.injectInto(html) : html);
+  } catch (err) {
+    console.error('SEO page failed', hit.key, err);
+    return next();
+  }
+});
 const IMAGE_FILE = /\.(png|jpe?g|gif|svg|webp|avif|ico)$/i;
 const staticFiles = express.static(PUBLIC_DIR, {
   extensions: ['html'],
@@ -317,22 +345,6 @@ ${imageTags}<meta name="twitter:card" content="${hasResultImage ? 'summary_large
 
   res.send(matchTemplate.replace(MATCH_TITLE_RE, metaTags));
 });
-app.get('/player/:id', seoTemplate('player', ({ id }) => {
-  const p = db.prepare('SELECT name, photo_url FROM players WHERE slug = ? OR id = ?').get(id, /^\d+$/.test(id) ? Number(id) : -1);
-  return p ? { name: p.name, image: p.photo_url || '' } : null;
-}));
-app.get('/bracket/:id', seoTemplate('bracket', ({ id }) => {
-  const b = /^\d+$/.test(id) ? db.prepare('SELECT name FROM brackets WHERE id = ?').get(Number(id)) : null;
-  return b ? { name: b.name } : null;
-}));
-app.get('/season/:slug', seoTemplate('season', ({ slug }) => {
-  const s = db.prepare('SELECT name, logo_url FROM seasons WHERE slug = ?').get(slug);
-  return s ? { name: s.name, image: s.logo_url || '' } : null;
-}));
-app.get('/courts/:slug', seoTemplate('court', ({ slug }) => {
-  const v = db.prepare('SELECT name FROM venues WHERE slug = ?').get(slug);
-  return v ? { name: v.name } : null;
-}));
 app.get('/embed/match/:token', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-match.html')));
 app.get('/embed/live', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-live.html')));
 app.get('/embed/compact', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-compact.html')));
