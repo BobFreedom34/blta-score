@@ -6,7 +6,7 @@ services:
     region: frankfurt
     buildCommand: npm install --omit=dev
     startCommand: npm start
-    healthCheckPath: /
+    healthCheckPath: /healthz
     autoDeploy: true
     disk:
       name: blta-score-data
