@@ -148,11 +148,12 @@ function actionsHtml(status) {
 function seriesWinnersHtml() {
   if (statusOf() !== 'past' || !winnersEdition) return '';
   const cards = winnersEdition.blocks
-    .map((b) => ({ b, places: b.places.filter((p) => p.slot === 1 || p.slot === 2) }))
+    // a series shows its winner and finalist; a tournament all four places (winner, finalist, two semifinalists)
+    .map((b) => ({ b, places: b.places.filter((p) => p.slot === 1 || p.slot === 2 || (isTournament() && (p.slot === 3 || p.slot === 4))) }))
     .filter((x) => x.places.length)
     .map(({ b, places }) => {
       const tiles = places.map((p) => {
-        const [tone, labelKey] = p.slot === 1 ? ['win-gold', 'winners.winner'] : ['win-silver', 'winners.finalist'];
+        const [tone, labelKey] = p.slot === 1 ? ['win-gold', 'winners.winner'] : p.slot === 2 ? ['win-silver', 'winners.finalist'] : ['win-bronze', 'winners.semifinalist'];
         const photo = p.photoUrl
           ? `<img class="sw-img" src="${escapeHtml(p.photoUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">`
           : `<div class="sw-av">${escapeHtml(initials(p.name))}</div>`;
@@ -161,10 +162,10 @@ function seriesWinnersHtml() {
           ? `<a class="sw-tile ${tone}" href="/player/${encodeURIComponent(p.playerSlug || p.playerId)}">${inner}</a>`
           : `<div class="sw-tile ${tone}">${inner}</div>`;
       }).join('');
-      return `<div class="sw-card"><h3 class="sw-cat">${escapeHtml(b.category ? categoryLabel(b.category) : b.title)}</h3><div class="sw-pair">${tiles}</div></div>`;
+      return `<div class="sw-card"><h3 class="sw-cat">${escapeHtml(b.category ? categoryLabel(b.category) : b.title)}</h3><div class="sw-pair${isTournament() ? ' sw-quad' : ''}">${tiles}</div></div>`;
     }).join('');
   if (!cards) return '';
-  return `<section class="sw-sec">${secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle'), '/vitazi', t('season.winnersAll'))}<div class="sw-row">${cards}</div></section>`;
+  return `<section class="sw-sec">${secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle'), '/vitazi', t('season.winnersAll'))}<div class="sw-row${isTournament() ? ' sw-row-quad' : ''}">${cards}</div></section>`;
 }
 
 // a tournament is a season of its own kind: same page, with a "Turnaj" chip, a venue and its own categories
