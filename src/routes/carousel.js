@@ -21,7 +21,7 @@ const upload = multer({
 });
 
 function serialize(r) {
-  return { id: r.id, imageUrl: r.image_url, captionSk: r.caption_sk, captionEn: r.caption_en, subtextSk: r.subtext_sk, subtextEn: r.subtext_en, link: r.link, sortOrder: r.sort_order, active: !!r.active };
+  return { id: r.id, imageUrl: r.image_url, captionSk: r.caption_sk, captionEn: r.caption_en, subtextSk: r.subtext_sk, subtextEn: r.subtext_en, link: r.link, sortOrder: r.sort_order, active: !!r.active, mobileImageUrl: r.mobile_image_url || '' };
 }
 
 function deleteFile(url) {
@@ -86,10 +86,37 @@ router.patch('/:id', requireAdmin, (req, res) => {
   res.json(serialize(db.prepare('SELECT * FROM carousel_slides WHERE id = ?').get(row.id)));
 });
 
+// The picture phones get instead of the main one (16:9). Optional: without it phones get the main picture, cut to 16:9.
+router.post('/:id/mobile-image', requireAdmin, (req, res) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) {
+      const message = err.code === 'LIMIT_FILE_SIZE' ? 'The picture must be under 6 MB' : 'Could not process the uploaded file';
+      return res.status(400).json({ error: message });
+    }
+    if (!req.file) return res.status(400).json({ error: 'Upload a PNG, JPG or WebP picture' });
+    const row = db.prepare('SELECT * FROM carousel_slides WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Slide not found' });
+    const filename = `slide-m-${Date.now()}-${crypto.randomBytes(5).toString('hex')}${MIME_EXT[req.file.mimetype]}`;
+    fs.writeFileSync(path.join(DIR, filename), req.file.buffer);
+    db.prepare('UPDATE carousel_slides SET mobile_image_url = ? WHERE id = ?').run(`/carousel-images/${filename}`, row.id);
+    deleteFile(row.mobile_image_url);
+    res.json(serialize(db.prepare('SELECT * FROM carousel_slides WHERE id = ?').get(row.id)));
+  });
+});
+
+router.delete('/:id/mobile-image', requireAdmin, (req, res) => {
+  const row = db.prepare('SELECT * FROM carousel_slides WHERE id = ?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Slide not found' });
+  db.prepare('UPDATE carousel_slides SET mobile_image_url = NULL WHERE id = ?').run(row.id);
+  deleteFile(row.mobile_image_url);
+  res.json(serialize(db.prepare('SELECT * FROM carousel_slides WHERE id = ?').get(row.id)));
+});
+
 router.delete('/:id', requireAdmin, (req, res) => {
   const row = db.prepare('SELECT * FROM carousel_slides WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Slide not found' });
   deleteFile(row.image_url);
+  deleteFile(row.mobile_image_url);
   db.prepare('DELETE FROM carousel_slides WHERE id = ?').run(row.id);
   res.status(204).end();
 });

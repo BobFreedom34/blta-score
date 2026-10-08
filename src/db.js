@@ -1378,6 +1378,10 @@ if (!carouselColumns.includes('subtext_sk')) {
   db.exec("ALTER TABLE carousel_slides ADD COLUMN subtext_sk TEXT NOT NULL DEFAULT ''");
   db.exec("ALTER TABLE carousel_slides ADD COLUMN subtext_en TEXT NOT NULL DEFAULT ''");
 }
+// The picture phones get instead of the main one (16:9, a file in <data dir>/carousel); empty = the main picture is used.
+if (!carouselColumns.includes('mobile_image_url')) {
+  db.exec('ALTER TABLE carousel_slides ADD COLUMN mobile_image_url TEXT');
+}
 
 // Lookups the lists and the group tables make on every request: a player's matches (either side), a group's or a
 // season's matches, and the date order. Without these each one reads the whole matches table.

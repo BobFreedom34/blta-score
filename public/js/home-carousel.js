@@ -10,7 +10,10 @@
     const en = currentLang === 'en';
     const caption = (en && s.captionEn) ? s.captionEn : s.captionSk;
     const subtext = (en && s.subtextEn) ? s.subtextEn : s.subtextSk;
-    const inner = `<img src="${escapeHtml(s.imageUrl)}" alt="${escapeHtml(caption || '')}" ${index === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} draggable="false">${caption || subtext ? `<span class="hc-caption">${caption ? `<b>${escapeHtml(caption)}</b>` : ''}${subtext ? `<small>${escapeHtml(subtext)}</small>` : ''}</span>` : ''}`;
+    const img = `<img src="${escapeHtml(s.imageUrl)}" alt="${escapeHtml(caption || '')}" ${index === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} draggable="false">`;
+    // phones (up to 700px wide, where the slide is 16:9) get the slide's own mobile picture when it has one
+    const picture = s.mobileImageUrl ? `<picture><source media="(max-width: 700px)" srcset="${escapeHtml(s.mobileImageUrl)}">${img}</picture>` : img;
+    const inner = `${picture}${caption || subtext ? `<span class="hc-caption">${caption ? `<b>${escapeHtml(caption)}</b>` : ''}${subtext ? `<small>${escapeHtml(subtext)}</small>` : ''}</span>` : ''}`;
     return s.link
       ? `<a class="hc-slide" href="${escapeHtml(s.link)}"${/^https?:/.test(s.link) ? ' target="_blank" rel="noopener"' : ''}>${inner}</a>`
       : `<div class="hc-slide">${inner}</div>`;

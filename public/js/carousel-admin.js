@@ -10,7 +10,22 @@
   function rowHtml(s, i) {
     return `
       <div class="ca-row" data-id="${s.id}" style="display:flex;gap:14px;flex-wrap:wrap;padding:14px 0;border-top:1px solid #eee">
-        <img src="${escapeHtml(s.imageUrl)}" alt="" style="width:200px;height:75px;object-fit:cover;border-radius:10px;background:#eee;${s.active ? '' : 'opacity:.4'}">
+        <div style="display:flex;flex-direction:column;gap:12px;width:200px;${s.active ? '' : 'opacity:.4'}">
+          <div>
+            <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:4px">Desktop · 16:10</div>
+            <img src="${escapeHtml(s.imageUrl)}" alt="" style="display:block;width:200px;height:125px;object-fit:cover;border-radius:10px;background:#eee">
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:4px">Mobile · 16:9</div>
+            ${s.mobileImageUrl
+              ? `<img src="${escapeHtml(s.mobileImageUrl)}" alt="" style="display:block;width:200px;height:112px;object-fit:cover;border-radius:10px;background:#eee">`
+              : '<div style="width:200px;height:112px;border-radius:10px;border:1.5px dashed #ccc;display:grid;place-items:center;text-align:center;font-size:12px;font-weight:600;color:var(--gray);padding:0 10px">none — phones get the desktop picture, cut to 16:9</div>'}
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <button type="button" class="btn btn-sm btn-outline" data-act="mobile-upload">${s.mobileImageUrl ? 'Replace' : 'Upload mobile picture'}</button>
+              ${s.mobileImageUrl ? '<button type="button" class="btn btn-sm btn-outline" data-act="mobile-remove">Remove</button>' : ''}
+            </div>
+          </div>
+        </div>
         <div style="flex:1;min-width:240px">
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <label style="flex:1;min-width:180px;font-size:12px;font-weight:700">Heading (Slovak) <span style="font-weight:600;color:var(--gray)">— bold</span>
@@ -48,7 +63,7 @@
     host.innerHTML = `
       <div class="card" style="margin-bottom:16px">
         <h3 style="margin-top:0">Add pictures</h3>
-        <p style="color:var(--gray);margin:0 0 10px;font-size:14px">PNG, JPG or WebP, up to 6 MB each. A wide picture (about 16:6, e.g. 1600 × 600) fills the banner best; on phones it is cut to 16:9 from the middle. Pick several files to add them at once.</p>
+        <p style="color:var(--gray);margin:0 0 10px;font-size:14px">PNG, JPG or WebP, up to 6 MB each. These are the <b>desktop</b> pictures, shown at <b>16:10</b> (e.g. 1600 × 1000). Pick several files to add them at once. Every picture can then get its own <b>mobile</b> picture at <b>16:9</b> (e.g. 1280 × 720) with the button under it; without one, phones get the desktop picture cut to 16:9 from the middle.</p>
         <input type="file" id="ca-files" accept="image/png,image/jpeg,image/webp" multiple>
         <button type="button" class="btn btn-primary" id="ca-upload" style="margin-left:8px">Upload</button>
         <div id="ca-upload-msg" style="font-weight:600;margin-top:8px"></div>
@@ -96,6 +111,28 @@
     document.getElementById('ca-upload-msg').style.color = 'var(--green, #2e9e4f)';
   }
 
+  // the mobile picture of a slide: choose a file, it goes up at once and replaces the previous one
+  host.addEventListener('change', async (e) => {
+    const input = e.target.closest('.ca-mobile-input');
+    if (!input) return;
+    const file = input.files && input.files[0];
+    const id = Number(input.dataset.id);
+    input.remove();
+    if (!file) return;
+    const row = host.querySelector(`.ca-row[data-id="${id}"]`);
+    say(row, 'Uploading…');
+    try {
+      const form = new FormData();
+      form.append('image', file);
+      const res = await fetch(`/api/carousel/${id}/mobile-image`, { method: 'POST', body: form, credentials: 'same-origin' });
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))).error) || 'upload failed');
+      await load();
+      say(host.querySelector(`.ca-row[data-id="${id}"]`), 'Mobile picture saved ✓');
+    } catch (err) {
+      say(row, err.message, true);
+    }
+  });
+
   host.addEventListener('click', async (e) => {
     if (e.target.id === 'ca-upload') { upload(); return; }
     const btn = e.target.closest('[data-act]');
@@ -122,6 +159,18 @@
         const order = slides.map((s) => s.id);
         [order[i], order[j]] = [order[j], order[i]];
         await Promise.all(order.map((sid, n) => api(`/carousel/${sid}`, { method: 'PATCH', body: { sortOrder: n } })));
+        await load();
+      } else if (btn.dataset.act === 'mobile-upload') {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/png,image/jpeg,image/webp';
+        input.className = 'ca-mobile-input';
+        input.dataset.id = String(id);
+        input.style.display = 'none';
+        host.appendChild(input);
+        input.click();
+      } else if (btn.dataset.act === 'mobile-remove') {
+        await api(`/carousel/${id}/mobile-image`, { method: 'DELETE' });
         await load();
       } else if (btn.dataset.act === 'delete') {
         if (!window.confirm('Delete this picture?')) return;
