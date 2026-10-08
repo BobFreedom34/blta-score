@@ -4460,24 +4460,17 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
   }
 }
 
-/* ---------- Season page: the winners of a finished series (instead of the progress bar) ---------- */
-.sw-box { margin-top: 40px; }
-.sw-top { text-align: center; }
-.sw-trophy { width: 38px; height: 38px; stroke: var(--yellow); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.sw-title { margin: 6px 0 0; font-size: 24px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
-.sw-sub { margin: 4px 0 0; color: #c3c7cf; font-size: 14px; font-weight: 600; }
-.sw-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-top: 26px; }
-.sw-card { display: flex; flex-direction: column; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 22px; padding: 16px; }
-.sw-cat { margin: 2px 4px 12px; font-size: 16px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
+/* ---------- Season page: the winners of a finished series (between the numbers and the tabs) ---------- */
+.sw-sec { margin-top: 48px; }
+.sw-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.sw-card { display: flex; flex-direction: column; background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 14px 16px; }
+.sw-cat { margin: 0 0 12px; color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .sw-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; }
-.sw-tile { display: flex; flex-direction: column; background: #0a0a0a; border: 1px solid var(--m); border-radius: 16px; overflow: hidden; color: var(--white); text-decoration: none; box-shadow: 0 0 14px -8px color-mix(in srgb, var(--m) 35%, transparent); }
+.sw-tile { display: flex; flex-direction: column; background: #0a0a0a; border: 1px solid var(--m); border-radius: 12px; overflow: hidden; color: var(--white); text-decoration: none; }
 .sw-ph { aspect-ratio: 1 / 1; background: radial-gradient(120% 90% at 50% 20%, #3b3b44, #17171b); display: grid; place-items: center; overflow: hidden; }
 .sw-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .sw-av { width: 64px; height: 64px; border-radius: 50%; border: 3px solid var(--m); background: linear-gradient(145deg, #4a4a55, #26262c); display: grid; place-items: center; font-weight: 800; font-size: 22px; }
 .sw-l { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 8px 6px 10px; text-align: center; color: var(--mt); background: linear-gradient(180deg, color-mix(in srgb, var(--m) 85%, #000), color-mix(in srgb, var(--m) 55%, #000)); }
 .sw-l small { font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
 .sw-l b { margin-top: 2px; font-size: 13px; font-weight: 800; line-height: 1.2; text-transform: uppercase; overflow-wrap: anywhere; }
-.sw-foot { text-align: center; margin-top: 20px; }
-.sw-all { color: var(--orange); font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; text-decoration: none; }
-.sw-all:hover { color: var(--white); }
-@media (max-width: 700px) { .sw-title { font-size: 20px; } .sw-row { gap: 14px; } }
+@media (max-width: 900px) { .sw-sec { margin-top: 40px; } }
