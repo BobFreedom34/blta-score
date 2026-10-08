@@ -177,7 +177,7 @@ async function sendProposalReceivedEmail(match, proposer, recipient) {
   }
   const subject = `${proposer.name} ti navrhol termíny na hru!`;
   const lines = [
-    `${proposer.name} ti navrhol termíny na váš zápas na Tennis SCORE.`,
+    `${proposer.name} ti navrhol termíny na váš zápas na BLTA.`,
     `Vyber si ten, ktorý ti vyhovuje, tu: ${matchLink(match)}`,
   ];
 
@@ -203,11 +203,11 @@ async function sendPinResetEmail(player, token) {
     console.warn('[mailer] SMTP not configured — skipping login-code reset email.');
     return false;
   }
-  const subject = 'Obnovenie prihlasovacieho kódu pre BLTA Score';
+  const subject = 'Obnovenie prihlasovacieho kódu pre BLTA';
   const text = [
     `Ahoj ${player.name},`,
     '',
-    'Niekto (dúfajme, že ty) požiadal o obnovenie tvojho prihlasovacieho kódu pre BLTA Score.',
+    'Niekto (dúfajme, že ty) požiadal o obnovenie tvojho prihlasovacieho kódu pre BLTA.',
     `Nastav si nový tu: ${resetCodeLink(token)}`,
     '',
     'Tento odkaz platí 1 hodinu. Ak si o to nežiadal, tento e-mail jednoducho ignoruj.',
@@ -233,7 +233,7 @@ async function sendAdminResetRequestEmail(player) {
   }
   const subject = `Žiadosť o reset prihlasovacieho kódu: ${player.name}`;
   const text = [
-    `${player.name} (telefón ${player.phone || '-'}) požiadal o reset svojho prihlasovacieho kódu pre BLTA Score.`,
+    `${player.name} (telefón ${player.phone || '-'}) požiadal o reset svojho prihlasovacieho kódu pre BLTA.`,
     'Nemá uvedený e-mail, takže mu nie je možné poslať odkaz na samoobslužný reset.',
     'Resetuj ho z jeho profilu (Upraviť profil → Resetovať prihlasovací kód) po tom, čo si overíš, že je to naozaj on.',
   ].join('\n');
@@ -264,8 +264,8 @@ async function sendNewRegistrationEmail(player) {
   const subject = `Nová registrácia hráča: ${player.name}`;
   const text = [
     player.claimed
-      ? `${player.name} si práve priradil svoj existujúci profil hráča na BLTA Score (doteraz nemal uvedený telefón ani e-mail):`
-      : 'Nový hráč sa práve zaregistroval na BLTA Score:',
+      ? `${player.name} si práve priradil svoj existujúci profil hráča na BLTA (doteraz nemal uvedený telefón ani e-mail):`
+      : 'Nový hráč sa práve zaregistroval na BLTA:',
     `Meno: ${player.name}`,
     `Telefón: ${player.phone}`,
     `E-mail: ${player.email}`,
@@ -295,7 +295,7 @@ async function sendPlayRequestEmail(owner, joiner, slot, message) {
   }
   const subject = `${joiner.name} chce s tebou hrať!`;
   const lines = [
-    `${joiner.name} videl tvoj príspevok „Chcem hrať“ na Tennis SCORE a vybral si jeden z tvojich voľných termínov na priateľský zápas:`,
+    `${joiner.name} videl tvoj príspevok „Chcem hrať“ na BLTA a vybral si jeden z tvojich voľných termínov na priateľský zápas:`,
     `Kedy: ${fmtDate(slot)}`,
   ];
   if (message) lines.push(`Jeho odkaz: "${message}"`);
@@ -323,7 +323,7 @@ async function sendPlayRequestAcceptedEmail(owner, joiner, slot, matchToken) {
   }
   const subject = `${owner.name} prijal tvoj termín na hru!`;
   const lines = [
-    `${owner.name} prijal termín, ktorý si si vybral na Tennis SCORE — máte dohodnutý priateľský zápas.`,
+    `${owner.name} prijal termín, ktorý si si vybral na BLTA — máte dohodnutý priateľský zápas.`,
     `Kedy: ${fmtDate(slot)}`,
     `Zápas: ${process.env.PUBLIC_URL || ''}/match/${matchToken}`,
   ];
@@ -348,7 +348,7 @@ async function sendPlayRequestDeniedEmail(owner, joiner, reason) {
   }
   const subject = `${owner.name} ti v tomto termíne nemôže vyhovieť`;
   const lines = [
-    `${owner.name} nemohol prijať termín, ktorý si si vybral na Tennis SCORE.`,
+    `${owner.name} nemohol prijať termín, ktorý si si vybral na BLTA.`,
     `Jeho poznámka: "${reason}"`,
     `Pozri si jeho ďalšie voľné termíny: ${process.env.PUBLIC_URL || ''}${require('./seo').pageUrl('/looking-to-play', 'sk')}`,
   ];
@@ -374,9 +374,9 @@ async function sendBackupFailedEmail(err) {
     console.warn('[mailer] SMTP not configured — skipping backup-failed alert email.');
     return false;
   }
-  const subject = 'BLTA Score: záloha databázy zlyhala';
+  const subject = 'BLTA: záloha databázy zlyhala';
   const text = [
-    'Dnešná automatická záloha databázy BLTA Score na Google Drive zlyhala:',
+    'Dnešná automatická záloha databázy BLTA na Google Drive zlyhala:',
     '',
     err && err.message ? err.message : String(err),
     '',

@@ -16,7 +16,7 @@ const SUFFIX = ' - BLTA - Bratislavská Liga Tenisových Amatérov';
 const PAGES = [
   {
     key: 'home', label: 'Overview (home)', path: '/', file: 'index.html', blta: 'https://www.blta.sk/',
-    title: 'BLTA Score - Živé skóre a tabuľky amatérskej tenisovej ligy',
+    title: 'BLTA - Živé skóre a tabuľky amatérskej tenisovej ligy',
     description: 'Živé skóre, tabuľky a harmonogram BLTA - Bratislavskej Ligy Tenisových Amatérov. Sleduj zápasy v priamom prenose, výsledky a rebríčky amatérskych tenistov.',
   },
   {
@@ -119,7 +119,7 @@ const SUFFIX_EN = ' - BLTA - Bratislava Amateur Tennis League';
 const ENGLISH = {
   home: {
     slug: '',
-    title: 'BLTA Score - Live scores and tables of the amateur tennis league',
+    title: 'BLTA - Live scores and tables of the amateur tennis league',
     description: 'Live scores, tables and the schedule of BLTA - the Bratislava Amateur Tennis League. Follow matches live and check the results and rankings of amateur tennis players.',
   },
   matches: {
@@ -259,6 +259,9 @@ function seedDefaults() {
   });
 }
 seedDefaults();
+// the home page used to start with "BLTA Score - …": a title still at that first value becomes the "BLTA - …" one (an edited title is left alone)
+db.prepare("UPDATE seo_pages SET title = ? WHERE page_key = 'home' AND title = ?").run('BLTA - Živé skóre a tabuľky amatérskej tenisovej ligy', 'BLTA Score - Živé skóre a tabuľky amatérskej tenisovej ligy');
+db.prepare("UPDATE seo_pages_en SET title = ? WHERE page_key = 'home' AND title = ?").run('BLTA - Live scores and tables of the amateur tennis league', 'BLTA Score - Live scores and tables of the amateur tennis league');
 
 const TABLE = { sk: 'seo_pages', en: 'seo_pages_en' };
 
@@ -483,7 +486,7 @@ function render(key, { origin, canonical, lang = 'sk', entity }) {
     `<meta property="og:locale" content="${OG_LOCALE[lang]}">`,
     `<meta property="og:locale:alternate" content="${OG_LOCALE[other]}">`,
     '<meta property="og:type" content="website">',
-    '<meta property="og:site_name" content="BLTA Score">',
+    '<meta property="og:site_name" content="BLTA">',
     ogTitle ? `<meta property="og:title" content="${esc(ogTitle)}">` : '',
     ogDescription ? `<meta property="og:description" content="${esc(ogDescription)}">` : '',
     `<meta property="og:url" content="${esc(urlOf(lang))}">`,

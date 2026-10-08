@@ -172,8 +172,8 @@ function buildSvg(match) {
   const logoH = 72;
   parts.push(`<image x="${M}" y="48" width="${Math.round(logoH * LOGO_RATIO)}" height="${logoH}" href="${logo()}"/>`);
   const wordX = M + Math.round(logoH * LOGO_RATIO) + 18;
-  parts.push(`<text x="${wordX}" y="78" font-family="Montserrat" font-weight="600" font-size="15" letter-spacing="5" fill="${COLORS.soft}">TENNIS</text>`);
-  parts.push(`<text x="${wordX}" y="114" font-family="Montserrat" font-weight="800" font-size="38" letter-spacing="1" fill="${COLORS.white}">SCORE</text>`);
+  parts.push(`<text x="${wordX}" y="78" font-family="Montserrat" font-weight="600" font-size="15" letter-spacing="5" fill="${COLORS.soft}">LIGA</text>`);
+  parts.push(`<text x="${wordX}" y="114" font-family="Montserrat" font-weight="800" font-size="38" letter-spacing="1" fill="${COLORS.white}">BLTA</text>`);
 
   let pillRight = WIDTH - M;
   const pillY = 64;
@@ -239,7 +239,9 @@ function buildSvg(match) {
   // footer: season · date · place on the left, address on the right
   const footY = 580;
   parts.push(`<line x1="${M}" y1="540" x2="${WIDTH - M}" y2="540" stroke="#ffffff" stroke-opacity="0.14" stroke-width="1"/>`);
-  const address = 'score.blta.sk';
+  // the site's own address (blta.sk), from PUBLIC_URL
+  let address = 'blta.sk';
+  try { if (process.env.PUBLIC_URL) address = new URL(process.env.PUBLIC_URL).host; } catch { /* keep the default */ }
   const addrW = textWidth(address, 26, 800, 0.5);
   parts.push(`<text x="${WIDTH - M}" y="${footY}" text-anchor="end" font-family="Montserrat" font-weight="800" font-size="26" letter-spacing="0.5" fill="${COLORS.white}">${address}</text>`);
   const room = WIDTH - 2 * M - addrW - 40;

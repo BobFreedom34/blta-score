@@ -1,4 +1,4 @@
-# BLTA Score
+# BLTA
 
 Live score tracking app for the BLTA amateur tennis league, built to run on **score.blta.sk**.
 
@@ -375,7 +375,7 @@ SMTP_SECURE=true
 SMTP_USER=score@blta.sk
 SMTP_PASS=<the score@blta.sk mailbox password>
 NOTIFY_EMAIL=robert.sloboda@gmail.com
-MAIL_FROM="BLTA Score <score@blta.sk>"
+MAIL_FROM="BLTA <score@blta.sk>"
 ```
 
 Finish a test match to confirm the email arrives — if SMTP isn't configured, the app logs a

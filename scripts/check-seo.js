@@ -369,6 +369,33 @@ test('an old database gets addresses and English texts and keeps its Slovak edit
   assert.deepStrictEqual(again, out);
 });
 
+// ---------------------------------------------------------------- the brand name
+test('the home title that still has the old "BLTA Score" first value becomes "BLTA"; an edited title is kept', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'seo-brand-'));
+  try {
+    const dbFile = path.join(dir, 'blta-score.db');
+    const old = new DatabaseSync(dbFile);
+    old.exec(`CREATE TABLE seo_pages (page_key TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', keywords TEXT NOT NULL DEFAULT '', og_title TEXT NOT NULL DEFAULT '', og_description TEXT NOT NULL DEFAULT '', og_image TEXT NOT NULL DEFAULT '', noindex INTEGER NOT NULL DEFAULT 0);
+      CREATE TABLE seo_pages_en (page_key TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', keywords TEXT NOT NULL DEFAULT '', og_title TEXT NOT NULL DEFAULT '', og_description TEXT NOT NULL DEFAULT '', og_image TEXT NOT NULL DEFAULT '');`);
+    old.prepare("INSERT INTO seo_pages (page_key, title) VALUES ('home', 'BLTA Score - Živé skóre a tabuľky amatérskej tenisovej ligy')").run();
+    old.prepare("INSERT INTO seo_pages_en (page_key, title) VALUES ('home', 'My own English title')").run();
+    old.close();
+    const script = "const seo = require('./src/seo'); const h = seo.listAll().find((x) => x.key === 'home'); console.log(JSON.stringify([h.values.sk.title, h.values.en.title]));";
+    const r = spawnSync(process.execPath, ['-e', script], { cwd: ROOT, env: { ...process.env, DATA_DIR: dir }, encoding: 'utf8' });
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.deepStrictEqual(JSON.parse(r.stdout.trim().split(String.fromCharCode(10)).pop()), ['BLTA - Živé skóre a tabuľky amatérskej tenisovej ligy', 'My own English title']);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('the pages say BLTA, not "BLTA Score" or "Tennis SCORE" (og:site_name, manifest, push title)', async () => {
+  const home = await get('/');
+  assert.strictEqual(metaOf(home.text, 'property', 'og:site_name'), 'BLTA');
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'public', 'manifest.json'), 'utf8'));
+  assert.deepStrictEqual([manifest.name, manifest.short_name], ['BLTA', 'BLTA']);
+  const texts = ['public/sw.js', 'public/js/i18n.js', 'src/mailer.js'].map((p) => fs.readFileSync(path.join(ROOT, p), 'utf8')).join(String.fromCharCode(10));
+  assert.ok(!/Tennis SCORE|BLTA Score/.test(texts), 'an old name is left in the texts');
+});
+
 // ---------------------------------------------------------------- run
 async function startServer() {
   child = spawn(process.execPath, ['server.js'], {

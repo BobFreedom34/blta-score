@@ -19,9 +19,9 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch (err) {
-    data = { title: 'BLTA Score', body: event.data ? event.data.text() : '' };
+    data = { title: 'BLTA', body: event.data ? event.data.text() : '' };
   }
-  const title = data.title || 'BLTA Score';
+  const title = data.title || 'BLTA';
   const options = {
     body: data.body || '',
     icon: '/icon-192.png',
