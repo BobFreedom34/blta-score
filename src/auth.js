@@ -31,6 +31,12 @@ function verifyPin(pin, stored) {
   return crypto.timingSafeEqual(candidate, expected);
 }
 
+// Clearing a cookie takes the same options except maxAge (Express 4 warns about it and Express 5 ignores it).
+function clearOptions() {
+  const { maxAge, ...rest } = cookieOptions();
+  return rest;
+}
+
 function cookieOptions() {
   return {
     signed: true,
@@ -50,7 +56,7 @@ function logIn(res) {
 }
 
 function logOut(res) {
-  res.clearCookie(COOKIE_NAME, cookieOptions());
+  res.clearCookie(COOKIE_NAME, clearOptions());
 }
 
 function requireAdmin(req, res, next) {
@@ -80,7 +86,7 @@ function logInReferee(res) {
 }
 
 function logOutReferee(res) {
-  res.clearCookie(REFEREE_COOKIE_NAME, cookieOptions());
+  res.clearCookie(REFEREE_COOKIE_NAME, clearOptions());
 }
 
 // A specific player, identified by their phone number at login (see
@@ -116,7 +122,7 @@ function logInPlayer(res, playerId) {
 }
 
 function logOutPlayer(res) {
-  res.clearCookie(PLAYER_COOKIE_NAME, cookieOptions());
+  res.clearCookie(PLAYER_COOKIE_NAME, clearOptions());
 }
 
 function requirePlayer(req, res, next) {
