@@ -12,6 +12,7 @@ const CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' 
 
 let season = null;
 let standings = null;
+let winnersEdition = null; // the winners list (Backend > Winners) linked to this season, if there is one
 let brackets = [];
 let results = [];
 let upcoming = [];
@@ -59,6 +60,7 @@ async function loadStandings() {
   bracketData.clear();
   try { standings = await api(`/seasons/${season.id}/standings`); } catch { standings = null; }
   try { brackets = await api(`/seasons/${season.id}/brackets`); } catch { brackets = []; }
+  try { winnersEdition = (await api('/winners')).find((e) => e.seasonSlug === season.slug) || null; } catch { winnersEdition = null; }
 }
 
 async function loadBlocks() {
@@ -133,6 +135,36 @@ function actionsHtml(status) {
   return buttons.length ? `<span class="sv-actions">${buttons.join('')}</span>` : '';
 }
 
+// A finished series shows its winners instead of the progress bar: per category the winner and the finalist (slots 1 and 2 of
+// the winners list linked to this season in Backend > Winners). Nothing entered there yet → the progress bar stays.
+function seriesWinnersHtml() {
+  if (statusOf() !== 'past' || !winnersEdition) return '';
+  const cards = winnersEdition.blocks
+    .map((b) => ({ b, places: b.places.filter((p) => p.slot === 1 || p.slot === 2) }))
+    .filter((x) => x.places.length)
+    .map(({ b, places }) => {
+      const tiles = places.map((p) => {
+        const [tone, labelKey] = p.slot === 1 ? ['win-gold', 'winners.winner'] : ['win-silver', 'winners.finalist'];
+        const photo = p.photoUrl
+          ? `<img class="sw-img" src="${escapeHtml(p.photoUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">`
+          : `<div class="sw-av">${escapeHtml(initials(p.name))}</div>`;
+        const inner = `<div class="sw-ph">${photo}</div><div class="sw-l"><small>${escapeHtml(t(labelKey))}</small><b>${escapeHtml(p.name)}</b></div>`;
+        return p.playerId
+          ? `<a class="sw-tile ${tone}" href="/player/${encodeURIComponent(p.playerSlug || p.playerId)}">${inner}</a>`
+          : `<div class="sw-tile ${tone}">${inner}</div>`;
+      }).join('');
+      return `<div class="sw-card"><h3 class="sw-cat">${escapeHtml(b.category ? categoryLabel(b.category) : b.title)}</h3><div class="sw-pair">${tiles}</div></div>`;
+    }).join('');
+  if (!cards) return '';
+  const trophy = '<svg class="sw-trophy" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>';
+  return `
+    <section class="sw-box">
+      <div class="sw-top">${trophy}<h2 class="sw-title">${escapeHtml(t('season.winnersTitle'))}</h2><p class="sw-sub">${escapeHtml(season.name)}</p></div>
+      <div class="sw-row">${cards}</div>
+      <div class="sw-foot"><a class="sw-all" href="/vitazi">${escapeHtml(t('season.winnersAll'))}</a></div>
+    </section>`;
+}
+
 function headerHtml() {
   const status = statusOf();
   const today = todayIso();
@@ -157,7 +189,7 @@ function headerHtml() {
         <div class="sv-chips"><span class="sv-chip l">${escapeHtml(t('schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
       </div>
     </div>
-    <div class="sv-progress">${seasonProgressHtml(season, standings)}</div>`;
+    ${seriesWinnersHtml() || `<div class="sv-progress">${seasonProgressHtml(season, standings)}</div>`}`;
 }
 
 function tilesHtml() {
