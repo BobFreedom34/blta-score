@@ -140,6 +140,22 @@ app.use(express.json());
 app.use(cookieParser(process.env.SESSION_SECRET || 'dev-only-insecure-secret'));
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
+// The old addresses of the site (REDIRECT_HOSTS: a comma list such as score.blta.sk,blta-score.onrender.com) send every page request
+// on to PUBLIC_URL, same path and query, with a permanent redirect — so there is one address (blta.sk) and no duplicate site.
+// Only GET / HEAD are redirected. /api/ and /socket.io/ keep answering on the old address, so a page that is still open there (or an
+// old embed) goes on working until it is reloaded; /healthz is for a host's health check.
+const REDIRECT_HOSTS = new Set(String(process.env.REDIRECT_HOSTS || '').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean));
+if (REDIRECT_HOSTS.size && process.env.PUBLIC_URL) {
+  const target = process.env.PUBLIC_URL.replace(/\/$/, '');
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    const host = String(req.headers.host || '').split(':')[0].toLowerCase();
+    if (!REDIRECT_HOSTS.has(host)) return next();
+    if (req.path === '/healthz' || req.path.startsWith('/api/') || req.path.startsWith('/socket.io/')) return next();
+    return res.redirect(301, target + req.originalUrl);
+  });
+}
+app.get('/healthz', (req, res) => res.type('text/plain').send('ok'));
 // The match list (with all its filters) lives at /matches now; / is the league overview. Old links to the list
 // carry a query (/?view=my, shared filter links), so any / with a query is forwarded there.
 app.get('/', (req, res, next) => {

@@ -16,7 +16,9 @@ services:
       - key: DATA_DIR
         value: /var/data
       - key: PUBLIC_URL
-        value: https://score.blta.sk
+        value: https://blta.sk
+      - key: REDIRECT_HOSTS
+        value: score.blta.sk,blta-score.onrender.com
       - key: SMTP_HOST
         value: smtp.m1.websupport.sk
       - key: SMTP_PORT

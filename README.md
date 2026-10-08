@@ -205,7 +205,9 @@ nano .env
 ```
 
 Set at minimum:
-- `PUBLIC_URL=https://score.blta.sk`
+- `PUBLIC_URL=https://blta.sk` (the one address of the site: share links, emails, canonical links, the sitemap)
+- `REDIRECT_HOSTS=score.blta.sk,blta-score.onrender.com` (optional: the old addresses; a page request on one of them is sent on to `PUBLIC_URL` with a
+  301, same path and query. `/api/`, `/socket.io/` and `/healthz` still answer there, and POST is never redirected. Check: `node scripts/check-redirect.js`)
 - SMTP settings so the "match finished" email — and a player's login-code reset/request emails,
   see §4b — can send (see §5 below for the Gmail setup)
 - `ADMIN_PASSWORD` and `SESSION_SECRET` (see §4) so the admin login works
