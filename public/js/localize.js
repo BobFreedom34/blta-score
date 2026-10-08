@@ -79,6 +79,9 @@
       if (url.origin !== location.origin) return;
       const pub = lib.toPublic(url.pathname + url.search + url.hash, curLang());
       const next = pub ? (/^https?:/i.test(raw) ? url.origin + pub : pub) : raw;
+      // the code address stays on the link, so a style can find "the Players link" whatever its address is (the menu icons do)
+      if (pub) a.setAttribute('data-code', url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') : url.pathname);
+      else a.removeAttribute('data-code');
       if (next !== raw) a.setAttribute('href', next);
       done.set(a, next);
     }
