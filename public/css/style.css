@@ -4466,6 +4466,8 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sw-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
 .sw-card { display: flex; flex-direction: column; background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 14px 16px; }
 .sw-cat { margin: 0 0 12px; color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.sv-fixed-players { margin: 40px 0 8px; }
+.sv-fixed-h { margin: 0 0 12px; font-size: 20px; }
 .sw-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; }
 /* a tournament: one card per category with all four places in a row (two by two on a phone) */
 .sw-row-quad { grid-template-columns: 1fr; }

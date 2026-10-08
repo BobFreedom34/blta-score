@@ -496,7 +496,7 @@ async function openRegisterModal() {
 function availableTabs() {
   const hasGroups = !!(standings && standings.groups.length);
   const players = playersModel().total;
-  return [
+  const tabs = [
     { key: 'info', label: t('season.navInfo'), has: !!season.info },
     { key: 'tables', label: t('season.navTables'), has: hasGroups },
     { key: 'results', label: t('season.navResults'), has: season.matchCount > 0 },
@@ -505,6 +505,19 @@ function availableTabs() {
     { key: 'playoff', label: t('season.navPlayoff'), has: brackets.length > 0 || (hasGroups && statusOf() !== 'past') },
     { key: 'gallery', label: t('season.navGallery'), has: !!season.galleryUrl },
   ];
+  // a tournament shows its players all the time, below the tabs and their content (see fixedPlayersHtml), not in a tab of their own
+  return isTournament() ? tabs.filter((x) => x.key !== 'players') : tabs;
+}
+
+function fixedPlayersHtml() {
+  if (!isTournament()) return '';
+  const list = playersHtml() || `<div class="sv-empty">${escapeHtml(t('season.empty.playersTournament'))}</div>`;
+  return `<div class="sv-fixed-players"><div class="sv-sec-h"><h2>${escapeHtml(t('season.navPlayers'))}</h2></div>${list}</div>`;
+}
+
+function renderFixedPlayers() {
+  const el = document.getElementById('sv-players-fixed');
+  if (el) el.innerHTML = fixedPlayersHtml();
 }
 
 function panelHtml() {
@@ -549,7 +562,8 @@ async function renderPanel() {
 }
 
 function render() {
-  rootEl.innerHTML = `${headerHtml()}${tilesHtml()}${seriesWinnersHtml()}<div class="tabs" id="sv-tabs" role="tablist"></div><div id="sv-panel" class="sv-panel"></div>`;
+  rootEl.innerHTML = `${headerHtml()}${tilesHtml()}${seriesWinnersHtml()}<div class="tabs" id="sv-tabs" role="tablist"></div><div id="sv-panel" class="sv-panel"></div><div id="sv-players-fixed"></div>`;
+  renderFixedPlayers();
   return renderPanel();
 }
 
@@ -567,8 +581,8 @@ rootEl.addEventListener('click', async (e) => {
   if (cat) { category = cat.dataset.cat; renderPanel(); return; }
   const oc = e.target.closest('#sv-panel [data-oc]');
   if (oc) { playoffCat = oc.dataset.oc; renderPanel(); return; }
-  const pc = e.target.closest('#sv-panel [data-pc]');
-  if (pc) { playersCat = pc.dataset.pc; renderPanel(); return; }
+  const pc = e.target.closest('#sv-panel [data-pc], #sv-players-fixed [data-pc]');
+  if (pc) { playersCat = pc.dataset.pc; renderFixedPlayers(); renderPanel(); return; }
   const sc = e.target.closest('#sv-panel [data-sc]');
   if (sc) { schedCat = sc.dataset.sc; schedGroup = null; renderPanel(); return; }
   const sg = e.target.closest('#sv-panel [data-sg]');

@@ -1605,7 +1605,7 @@ document.addEventListener('click', (e) => {
     el('matches').classList.toggle('active', path === '/matches');
     el('tables').classList.toggle('active', path.startsWith('/tables'));
     el('rankings').classList.toggle('active', path.startsWith('/rankings'));
-    el('profile').classList.toggle('active', path.startsWith('/player/') && !!playerAuthed && !!currentPlayerId && path === `/player/${currentPlayerSlug || currentPlayerId}`);
+    el('profile').classList.toggle('active', path.startsWith('/player/') && el('profile').dataset.code === path);
   };
   setActive();
 
@@ -1615,6 +1615,7 @@ document.addEventListener('click', (e) => {
     requirePlayerAuth(() => { window.location.href = siteUrl(`/player/${currentPlayerSlug || currentPlayerId}`); });
   });
   const syncProfile = () => {
+    el('profile').dataset.code = (playerAuthed && currentPlayerId) ? `/player/${currentPlayerSlug || currentPlayerId}` : '';
     el('profile').href = (playerAuthed && currentPlayerId) ? `/player/${currentPlayerSlug || currentPlayerId}` : '#';
     setActive();
   };
