@@ -286,14 +286,9 @@ if (!matchColumns.includes('league')) {
   db.exec('ALTER TABLE matches ADD COLUMN league TEXT');
 }
 
-// A snapshot of exactly what rankingPointsSync.js last awarded for this
-// match on the "BLTA GENERAL" table (JSON: {tableId, raceKey, awards:
-// {wpPlayerId: points}}), or NULL if no points have been awarded (not yet
-// pushed, not a ranked category, or already reversed). Lets a later score
-// correction, restart, or delete reverse exactly what was given before
-// awarding anything new — see reconcileRankingPoints() in
-// routes/matches.js. NULL for every match finished before this column
-// existed; those have no automated award to reverse.
+// Left over from the time the ranking points were sent to blta.sk: a snapshot (JSON) of what was awarded for this match there,
+// or NULL. Nothing writes it any more — the app keeps its own ledger (ranking_awards, see src/rankingPoints.js). It is read
+// once, by src/rankingsSeed.js, to tell which matches already had their points when the app took over the ranking tables.
 if (!matchColumns.includes('ranking_points_snapshot')) {
   db.exec('ALTER TABLE matches ADD COLUMN ranking_points_snapshot TEXT');
 }
@@ -724,11 +719,38 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_proposal_notifications_player ON proposal_notifications(player_id);
 `);
 
-// Admin overrides for the (otherwise scraped-from-blta.sk) rankings page —
-// keyed by table + the player's name exactly as it appears in that scraped
-// table, since a scraped row doesn't always resolve to a local player row
-// (see src/routes/rankings.js). A row here always wins over the live
-// scraped points for that name; deleting it reverts to the scraped value.
+// The ranking tables of this app (src/rankingPoints.js): one row per table and player — BLTA overall, the three race tables
+// (Elite / Next Gen / Novice) and Tournaments. They started as a copy of blta.sk's tables (src/rankingsBaseline.json, loaded
+// once by src/rankingsSeed.js) and are kept up to date by the app itself: a finished BLTA match adds its points, a
+// correction / restart / delete takes exactly those points back (ranking_awards is the ledger of what each match added).
+// points NULL = "no points yet" (shown as a dash). position = the order the row had when it came in, the tie-break.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ranking_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_key TEXT NOT NULL,
+    player_id INTEGER,
+    name TEXT NOT NULL,
+    name_key TEXT NOT NULL,
+    points INTEGER,
+    matches INTEGER NOT NULL DEFAULT 0,
+    position INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_ranking_entries_unique ON ranking_entries(table_key, name_key);
+  CREATE INDEX IF NOT EXISTS idx_ranking_entries_player ON ranking_entries(player_id);
+  CREATE TABLE IF NOT EXISTS ranking_awards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id INTEGER NOT NULL,
+    entry_id INTEGER NOT NULL,
+    points INTEGER NOT NULL,
+    matches_delta INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_ranking_awards_match ON ranking_awards(match_id);
+`);
+
+// Admin overrides of the old, scraped rankings page: no longer used. The ones that existed when the app switched to its own
+// tables were applied to them once (src/rankingsSeed.js); the table is kept only so that import can read it.
 db.exec(`
   CREATE TABLE IF NOT EXISTS ranking_overrides (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

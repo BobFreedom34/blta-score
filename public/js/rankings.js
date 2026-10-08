@@ -1,10 +1,7 @@
-// Rankings page — mirrors the tabbed point standings from blta.sk/rebricky/
-// (BLTA overall, per-category Race points, Tournaments). The numbers come
-// from /api/rankings, which the server keeps in sync by re-reading that
-// page (see src/rankingsScraper.js) — this file just renders whatever it
-// gets back. Admins can override any row's points (see PUT/DELETE
-// /rankings/override) when a number here needs to differ from what's
-// published on blta.sk.
+// Rankings page — the tabbed point standings (BLTA overall, per-category Race points, Tournaments). The numbers come from
+// /api/rankings: the app's own tables (src/rankingPoints.js), which every finished BLTA match adds its points to. This file
+// just renders whatever it gets back. Admins can set any player's points (PUT /rankings/points/<table>/<name>) — that is how
+// bonus points and tournament points are entered.
 
 let rankingsData = null;
 let activeTab = null;
@@ -20,7 +17,7 @@ let isAdminUser = false;
 const IS_EMBED = document.body.classList.contains('embed');
 const PLAYER_LINK_ATTRS = IS_EMBED ? ' target="_blank" rel="noopener"' : '';
 
-// The "Badges" tab isn't scraped from blta.sk like the others — it's built
+// The "Badges" tab isn't one of the points tables like the others — it's built
 // locally from this app's own badge system (see badges.js), same
 // computeEarnedBadges() the player profile and Players pages use, just run
 // once for every player from a single bulk match/badge fetch instead of
@@ -49,8 +46,8 @@ async function buildBadgesTable() {
       name: p.name, slug: p.slug, nationality: p.nationality, points: earned.size, earned,
     };
   });
-  // Same "shared rank on a tie" convention as the scraped tables (see
-  // buildRaceTable in rankingsScraper.js) — a stable sort keeps players
+  // Same "shared rank on a tie" convention as the race tables (see
+  // rankRows in src/rankingPoints.js) — a stable sort keeps players
   // with equal badge counts in their original (alphabetical) order rather
   // than shuffling them.
   const sorted = withCounts.slice().sort((a, b) => b.points - a.points);
@@ -65,7 +62,7 @@ async function buildBadgesTable() {
   return { key: 'badges', label: t('rankings.badgesTab'), pointsLabel: t('rankings.badgesCol'), rows };
 }
 
-// The CourtIQ tab isn't scraped from blta.sk either — it's this app's own
+// The CourtIQ tab isn't a points table either — it's this app's own
 // Glicko-2 skill rating (see src/courtIQEngine.js), already fully computed
 // server-side, so this just reshapes GET /api/courtiq's response into the
 // same {key, label, rows} shape every other tab uses, unlike buildBadgesTable
@@ -241,9 +238,55 @@ function renderTable() {
       </div>
     `;
   }).join('');
-  listEl.innerHTML = `<div class="rank-table">${headerRowHtml(table)}${rowsHtml}</div>`;
+  listEl.innerHTML = `<div class="rank-table">${headerRowHtml(table)}${rowsHtml}</div>${(isAdminUser && !IS_EMBED) ? setPointsFormHtml() : ''}`;
 
-  if (isAdminUser && !IS_EMBED) attachEditHandlers(table);
+  if (isAdminUser && !IS_EMBED) {
+    attachEditHandlers(table);
+    attachSetPointsForm(table);
+  }
+}
+
+// Admin: set the points of any player in this table, also one who is not shown yet (no points so far) — bonus points and
+// tournament points are entered this way. The names of the players come from the Players list.
+let playerNamesCache = null;
+function setPointsFormHtml() {
+  const options = (playerNamesCache || []).map((n) => `<option value="${escapeHtml(n)}"></option>`).join('');
+  return `
+    <form id="set-points-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:22px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.14)">
+      <label style="flex:2;min-width:200px;font-size:12px;font-weight:700;color:#c3c7cf">${t('rankings.setPlayer')}
+        <input type="text" id="sp-name" list="sp-players" autocomplete="off" placeholder="${escapeHtml(t('rankings.setPlayerPlaceholder'))}" style="display:block;width:100%;margin-top:4px;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
+        <datalist id="sp-players">${options}</datalist>
+      </label>
+      <label style="width:110px;font-size:12px;font-weight:700;color:#c3c7cf">${t('rankings.setPoints')}
+        <input type="number" id="sp-points" step="1" style="display:block;width:100%;margin-top:4px;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
+      </label>
+      <button type="submit" class="btn btn-primary">${t('common.save')}</button>
+    </form>`;
+}
+
+async function attachSetPointsForm(table) {
+  if (!playerNamesCache) {
+    try { playerNamesCache = (await api('/players')).map((p) => p.name).sort((a, b) => a.localeCompare(b, 'sk')); } catch { playerNamesCache = []; }
+    const list = document.getElementById('sp-players');
+    if (list) list.innerHTML = playerNamesCache.map((n) => `<option value="${escapeHtml(n)}"></option>`).join('');
+  }
+  const form = document.getElementById('set-points-form');
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('sp-name').value.trim();
+    const raw = document.getElementById('sp-points').value.trim();
+    const points = raw === '' ? null : Number(raw);
+    if (!name) return toast(t('rankings.setPlayerPlaceholder'));
+    if (raw !== '' && !Number.isInteger(points)) return toast(t('rankings.pointsMustBeWhole'));
+    try {
+      await api(`/rankings/points/${table.key}/${encodeURIComponent(name)}`, { method: 'PUT', body: { points } });
+      toast(t('rankings.pointsUpdated'));
+      load();
+    } catch (err) {
+      toast(err.message);
+    }
+  });
 }
 
 function attachEditHandlers(table) {
@@ -265,7 +308,6 @@ function startEdit(rowEl, table) {
     <div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end">
       <button type="button" class="btn btn-sm btn-primary" data-action="save-points">${t('common.save')}</button>
       <button type="button" class="btn btn-sm btn-outline" data-action="cancel-points">${t('common.cancel')}</button>
-      ${row.overridden ? `<button type="button" class="btn btn-sm btn-outline" data-action="clear-points" title="${escapeHtml(t('rankings.resetTitle'))}">${t('rankings.reset')}</button>` : ''}
     </div>
   `;
   const input = pointsEl.querySelector('.edit-points-input');
@@ -282,11 +324,9 @@ function startEdit(rowEl, table) {
       return toast(t('rankings.pointsMustBeWhole'));
     }
     try {
-      await api(`/rankings/override/${table.key}/${encodeURIComponent(row.name)}`, { method: 'PUT', body: { points } });
-      row.points = points;
-      row.overridden = true;
+      await api(`/rankings/points/${table.key}/${encodeURIComponent(row.name)}`, { method: 'PUT', body: { points } });
       toast(t('rankings.pointsUpdated'));
-      renderTable();
+      load(); // the order and the ranks change with the points
     } catch (err) {
       toast(err.message);
     }
@@ -297,18 +337,6 @@ function startEdit(rowEl, table) {
     if (e.key === 'Escape') cancel();
   });
 
-  const clearBtn = pointsEl.querySelector('[data-action="clear-points"]');
-  if (clearBtn) {
-    clearBtn.addEventListener('click', async () => {
-      try {
-        await api(`/rankings/override/${table.key}/${encodeURIComponent(row.name)}`, { method: 'DELETE' });
-        toast(t('rankings.revertedToBlta'));
-        load();
-      } catch (err) {
-        toast(err.message);
-      }
-    });
-  }
 }
 
 async function load() {

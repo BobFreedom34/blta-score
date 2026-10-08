@@ -1,26 +1,12 @@
 const express = require('express');
 const db = require('../db');
 const { requireAdmin } = require('../auth');
-const { getRankings, SOURCE_URL } = require('../rankingsScraper');
+const rankingPoints = require('../rankingPoints');
 const { getMoves, getHistory } = require('../rankingSnapshots');
 
 const router = express.Router();
 
-const TABLE_KEYS = ['blta', 'elite_race', 'next_gen_race', 'novice_race', 'tournaments'];
-
-// Same normalization the blta.sk page itself uses (see the player-linking
-// script embedded there) so a name matches regardless of accents/case/
-// apostrophe style — kept here rather than shared, since that script lives
-// in WordPress, not this repo.
-function normalize(name) {
-  return name
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/['''‘’]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+const { TABLE_KEYS, normalizeName: normalize } = rankingPoints;
 
 // Same age math as the player profile page (player.js's computeAge) —
 // duplicated here rather than shared since that one runs client-side and
@@ -37,51 +23,32 @@ function computeAge(birthday) {
   return age;
 }
 
-// Everything /api/rankings returns (and the once-a-week snapshot / bell-notification roll it does on the way). Throws
-// when blta.sk can't be read. The slim /ranks route below goes through the same function, so asking for the small
-// answer still keeps the weekly roll running.
-async function buildRankings() {
-  const data = await getRankings();
+// Everything /api/rankings returns (and the once-a-week snapshot / bell-notification roll it does on the way). The tables are
+// the app's own (src/rankingPoints.js): a finished BLTA match adds its points, an admin can correct any number. The slim
+// /ranks route below goes through the same function, so asking for the small answer still keeps the weekly roll running.
+function buildRankings() {
+  const data = rankingPoints.getTables();
 
-  // Nationality and age aren't part of the scraped blta.sk data — they only
-  // exist on a player's bio here, so they can only show up when the scraped
-  // name resolves to a local player who has them set.
+  // Slug, nationality and age live on the player's bio here; a row that is not tied to a player (a name that matched nobody)
+  // simply has none of them.
   const players = db.prepare('SELECT id, name, slug, nationality, birthday FROM players').all();
-  const bySlug = {};
-  const byPlayerId = {};
-  const byNationality = {};
-  const byAge = {};
-  players.forEach((p) => {
-    const key = normalize(p.name);
-    bySlug[key] = p.slug;
-    byPlayerId[key] = p.id;
-    if (p.nationality) byNationality[key] = p.nationality;
-    const age = computeAge(p.birthday);
-    if (age !== null) byAge[key] = age;
-  });
-
-  const overrides = db.prepare('SELECT table_key, player_name, points FROM ranking_overrides').all();
-  const byOverrideKey = {};
-  overrides.forEach((o) => { byOverrideKey[`${o.table_key} ${o.player_name}`] = o.points; });
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const byName = new Map(players.map((p) => [normalize(p.name), p]));
+  const playerOf = (row) => (row.playerId && byId.get(row.playerId)) || byName.get(normalize(row.name)) || null;
 
   const tables = data.tables.map((t) => {
     // Week-over-week movement — see src/rankingSnapshots.js. Computed (and
     // the snapshot rolled forward, once a week) from this table's actual
-    // rank order, before overrides are layered on: an admin correcting a
-    // points value doesn't itself count as blta.sk-reported movement.
+    // rank order.
     const {
       moves, isNewWeek, weekMoves, currentWeek,
     } = getMoves(t.key, t.rows.map((r) => ({ name: normalize(r.name), rank: r.rank })));
 
     // Bell notification for "you moved in the ranking" — only the main
-    // overall BLTA table (see rankBadgeHtml in common.js for the same
-    // "blta" table, not the per-category Race ones, being singled out
-    // elsewhere for the same reason), and only on the one call per week
-    // that's actually rolling the snapshot forward (weekMoves/isNewWeek —
-    // see getMoves' own doc comment), not on every mid-week page view.
-    // Silently skipped for a scraped name that doesn't resolve to a local
-    // player, same as everywhere else here (slug/nationality/age all do
-    // the same `|| null` fallback) — no local account, nowhere to put a
+    // overall BLTA table, and only on the one call per week that's actually
+    // rolling the snapshot forward (weekMoves/isNewWeek — see getMoves' own
+    // doc comment), not on every mid-week page view. Silently skipped for a
+    // row that doesn't resolve to a local player: no account, nowhere to put a
     // bell notification.
     if (t.key === 'blta' && isNewWeek) {
       const insert = db.prepare(`
@@ -90,11 +57,10 @@ async function buildRankings() {
         VALUES (?, ?, ?, ?, ?, ?)
       `);
       Object.entries(weekMoves).forEach(([normName, move]) => {
-        const playerId = byPlayerId[normName];
-        if (!playerId) return;
         const row = t.rows.find((r) => normalize(r.name) === normName);
-        if (!row) return;
-        insert.run(playerId, t.key, move.direction, move.amount, row.rank, currentWeek);
+        const player = row && playerOf(row);
+        if (!player) return;
+        insert.run(player.id, t.key, move.direction, move.amount, row.rank, currentWeek);
       });
     }
 
@@ -103,54 +69,53 @@ async function buildRankings() {
       label: t.label,
       pointsLabel: t.pointsLabel,
       rows: t.rows.map((r) => {
-        const normName = normalize(r.name);
-        const overrideKey = `${t.key} ${normName}`;
-        const hasOverride = Object.prototype.hasOwnProperty.call(byOverrideKey, overrideKey);
+        const player = playerOf(r);
         return {
-          ...r,
-          slug: bySlug[normName] || null,
-          nationality: byNationality[normName] || null,
-          age: byAge[normName] ?? null,
-          points: hasOverride ? byOverrideKey[overrideKey] : r.points,
-          overridden: hasOverride,
-          move: moves[normName] || null,
+          rank: r.rank,
+          name: r.name,
+          matches: r.matches,
+          points: r.points,
+          slug: player ? player.slug : null,
+          nationality: player ? player.nationality || null : null,
+          age: player ? computeAge(player.birthday) : null,
+          move: moves[normalize(r.name)] || null,
         };
       }),
     };
   });
 
-  return { fetchedAt: data.fetchedAt, sourceUrl: SOURCE_URL, tables };
+  return { fetchedAt: data.updatedAt || new Date().toISOString(), tables };
 }
 
-router.get('/', async (req, res) => {
+router.get('/', (req, res) => {
   try {
-    res.json(await buildRankings());
+    res.json(buildRankings());
   } catch (err) {
-    res.status(502).json({ error: `Could not load rankings from ${SOURCE_URL}: ${err.message}` });
+    console.error('[rankings] could not build the tables:', err);
+    res.status(500).json({ error: `Could not load the rankings: ${err.message}` });
   }
 });
 
 // Just "name -> overall BLTA rank" (a few kB instead of ~80 kB): every page shows a #rank next to ranked players and only
-// needs this. Cached by the browser for five minutes — the rankings themselves are re-read from blta.sk every 30.
-router.get('/ranks', async (req, res) => {
+// needs this. Cached by the browser for five minutes.
+router.get('/ranks', (req, res) => {
   try {
-    const data = await buildRankings();
+    const data = buildRankings();
     const blta = data.tables.find((t) => t.key === 'blta');
     const ranks = {};
     if (blta) blta.rows.forEach((r) => { ranks[r.name] = r.rank; });
     res.set('Cache-Control', 'public, max-age=300');
     res.json({ ranks });
   } catch (err) {
-    res.status(502).json({ error: `Could not load rankings from ${SOURCE_URL}: ${err.message}` });
+    console.error('[rankings] could not build the ranks:', err);
+    res.status(500).json({ error: `Could not load the rankings: ${err.message}` });
   }
 });
 
 // Weekly rank history for one player in one table — the data behind the
 // rank-trend chart on a player's profile page. Public, like the rest of
-// the rankings data; matched by name (not a local player id) same as
-// everywhere else in this file, since the snapshot itself only ever knew
-// the scraped blta.sk name.
-router.get('/history/:tableKey/:name', async (req, res) => {
+// the rankings data; matched by name, same as the snapshot itself.
+router.get('/history/:tableKey/:name', (req, res) => {
   const { tableKey } = req.params;
   if (!TABLE_KEYS.includes(tableKey)) {
     return res.status(400).json({ error: 'Unknown ranking table' });
@@ -168,8 +133,7 @@ router.get('/history/:tableKey/:name', async (req, res) => {
   // the chart's very last point is always today's real live rank, appended
   // on top of (never replacing) the actual weekly history underneath it.
   try {
-    const data = await getRankings();
-    const table = data.tables.find((t) => t.key === tableKey);
+    const table = rankingPoints.getTables().tables.find((t) => t.key === tableKey);
     const liveRow = table && table.rows.find((r) => normalize(r.name) === normName);
     if (liveRow) {
       const today = new Date().toISOString().slice(0, 10);
@@ -178,27 +142,18 @@ router.get('/history/:tableKey/:name', async (req, res) => {
         history.push({ rank: liveRow.rank, snapshot_week: today });
       }
     }
-  } catch {
-    // Live rankings temporarily unreachable — fall back to whatever
-    // weekly history is already stored rather than failing the chart.
+  } catch (err) {
+    console.error('[rankings] could not read the live rank for the history chart:', err.message);
   }
 
   res.json({ history: history.map((h) => ({ week: h.snapshot_week, rank: h.rank })) });
 });
 
-// Admin-only manual override for one player's points in one table — takes
-// permanent precedence over whatever blta.sk shows for that name, until
-// cleared (see DELETE below). Keyed by normalized name rather than a local
-// player id, since a scraped row doesn't always resolve to one.
-router.put('/override/:tableKey/:name', requireAdmin, (req, res) => {
+// Admin-only: set one player's points in one table (the row is created when the player is not in that table yet — this is how
+// bonus points and tournament points are entered). An empty value puts the player back to "no points yet".
+router.put('/points/:tableKey/:name', requireAdmin, (req, res) => {
   const { tableKey } = req.params;
   const name = decodeURIComponent(req.params.name);
-  if (!TABLE_KEYS.includes(tableKey)) {
-    return res.status(400).json({ error: 'Unknown ranking table' });
-  }
-  if (!name.trim()) {
-    return res.status(400).json({ error: 'Player name is required' });
-  }
 
   let points = null;
   if (req.body.points !== null && req.body.points !== undefined && req.body.points !== '') {
@@ -208,25 +163,9 @@ router.put('/override/:tableKey/:name', requireAdmin, (req, res) => {
     }
   }
 
-  const key = normalize(name);
-  const ts = new Date().toISOString();
-  const existing = db.prepare('SELECT id FROM ranking_overrides WHERE table_key = ? AND player_name = ?').get(tableKey, key);
-  if (existing) {
-    db.prepare('UPDATE ranking_overrides SET points = ?, updated_at = ? WHERE id = ?').run(points, ts, existing.id);
-  } else {
-    db.prepare('INSERT INTO ranking_overrides (table_key, player_name, points, updated_at) VALUES (?, ?, ?, ?)')
-      .run(tableKey, key, points, ts);
-  }
+  const result = rankingPoints.setPoints(tableKey, name, points);
+  if (result.error) return res.status(400).json({ error: result.error });
   res.json({ ok: true, points });
-});
-
-// Clears a manual override, reverting that row back to whatever blta.sk
-// itself shows on the next refresh.
-router.delete('/override/:tableKey/:name', requireAdmin, (req, res) => {
-  const { tableKey } = req.params;
-  const name = decodeURIComponent(req.params.name);
-  db.prepare('DELETE FROM ranking_overrides WHERE table_key = ? AND player_name = ?').run(tableKey, normalize(name));
-  res.json({ ok: true });
 });
 
 module.exports = router;

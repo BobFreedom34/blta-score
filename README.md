@@ -444,6 +444,24 @@ while the server is running), living wherever `DATA_DIR` points.
   0 3 * * * cp /var/www/blta-score/data/blta-score.db /var/backups/blta-score-$(date +\%F).db
   ```
 
+### Rankings (the app's own tables)
+
+The Rankings page (BLTA overall, Elite / Next Gen / Novice race, Tournaments) is calculated and stored by the app itself — nothing
+is read from or sent to blta.sk any more.
+
+- **Points rule** (`src/rankingPoints.js`, from the Propozície): win 2:0 → 3, win 2:1 → 2, loss 1:2 → 1, loss 0:2 → 0, times 10 for
+  Elite, 7 for Next Gen, 4 for Novice (so 30 / 20 / 10 / 0 in Elite). Both players get the points in the overall BLTA table and in
+  the race table of the category. A walkover or retirement is a clean 3 / 0. Only Elite, Next Gen and Novice matches count, and only
+  those decided in two sets.
+- **When:** a finished match adds its points at once. A corrected score, a restarted match or a deleted match first takes back
+  exactly what it added (the ledger is the `ranking_awards` table), so nothing is ever counted twice.
+- **Bonus points, tournament points, any correction:** Rankings page, logged in as admin → *Upraviť* on a row, or the form under the
+  table (it also works for a player who is not in that table yet).
+- **Where the starting numbers came from:** `src/rankingsBaseline.json`, a saved copy of the blta.sk tables (taken on the day the
+  app took over). `src/rankingsSeed.js` loads it once, on the first start, and rebuilds the ledger of the matches that were already
+  counted. After that the file is never read again.
+- **Check:** `node scripts/check-rankings.js`.
+
 ### Winners page (`/vitazi`)
 
 The public winners page and its editor. Edit it in **Backend → Winners** (`/winners-admin`): an *edition* is a series or

@@ -116,6 +116,11 @@ try {
 } catch (err) {
   console.error('Winners seed failed (will retry on next start):', err);
 }
+try {
+  require('./src/rankingsSeed').seedRankings(db);
+} catch (err) {
+  console.error('Rankings seed failed (will retry on next start):', err);
+}
 badgeEngine.backfillIfNeeded();
 badgeEngine.startScheduledReminders();
 backup.startScheduledBackups();
