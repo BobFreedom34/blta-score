@@ -659,7 +659,7 @@ function render(m) {
   // side, GET /match/:token separately bakes the same "P1 vs P2" text into
   // the raw HTML's <title>/og:title for chat-app link previews, which run
   // before any JS — see the comment there for why that duplication exists.
-  document.title = `${m.player1.name} vs ${m.player2.name} — Tennis SCORE`;
+  document.title = `${m.player1.name} vs ${m.player2.name} — BLTA`;
   // Always shows a timer chip, even before the match has started (a static
   // 00:00) — only actually starts counting once startTimer() runs, for LIVE.
   const durationHtml = m.status === 'LIVE'

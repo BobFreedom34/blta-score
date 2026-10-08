@@ -28,17 +28,21 @@ function serializeEvent(e) {
 // backend changes the schedule) and the tournaments / other events added in the backend, soonest first. A league
 // season has every BLTA category; its "more info" is its season page.
 router.get('/', (req, res) => {
-  const seasons = db.prepare("SELECT * FROM seasons WHERE start_date IS NOT NULL AND start_date != ''").all().map((s) => ({
-    type: 'LEAGUE',
-    seasonId: s.id,
-    name: s.name,
-    startDate: s.start_date,
-    endDate: s.end_date || s.start_date,
-    venue: '',
-    link: `/season/${s.slug}`,
-    logoUrl: s.logo_url || '',
-    categories: CATEGORIES,
-  }));
+  const seasons = db.prepare("SELECT * FROM seasons WHERE start_date IS NOT NULL AND start_date != ''").all().map((s) => {
+    const tournament = s.kind === 'TOURNAMENT';
+    const own = parseCategories(s.categories);
+    return {
+      type: tournament ? 'TOURNAMENT' : 'LEAGUE',
+      seasonId: s.id,
+      name: s.name,
+      startDate: s.start_date,
+      endDate: s.end_date || s.start_date,
+      venue: tournament ? (s.venue || '') : '',
+      link: `/season/${s.slug}`,
+      logoUrl: s.logo_url || '',
+      categories: tournament && own.length ? own : CATEGORIES,
+    };
+  });
   const events = db.prepare('SELECT * FROM schedule_events').all().map(serializeEvent);
   const all = [...seasons, ...events].sort((a, b) => (a.startDate + a.name).localeCompare(b.startDate + b.name));
   res.json(all);

@@ -74,7 +74,7 @@ function matchesSectionHtml(matches) {
 }
 
 function render(v) {
-  if (!document.title.includes(v.name)) document.title = `${v.name} — Tennis SCORE`; // the server already put the title from Backend > SEO
+  if (!document.title.includes(v.name)) document.title = `${v.name} — BLTA`; // the server already put the title from Backend > SEO
   const meta = [];
   if (v.address) meta.push(`<a class="court-meta-address" href="${escapeHtml(venueMapsUrl(v))}" target="_blank" rel="noopener noreferrer">${courtIcon('pin')}${escapeHtml(v.address)}</a>`);
   else if (v.area) meta.push(`<span class="court-meta-address">${courtIcon('pin')}${escapeHtml(v.area)}</span>`);

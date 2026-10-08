@@ -102,12 +102,28 @@ function serializeGroup(g) {
   };
 }
 
+const CATEGORY_KEYS = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+const KINDS = ['LEAGUE', 'TOURNAMENT'];
+// the categories of a season as an array (all three when none is saved)
+function parseCategories(raw) {
+  const list = String(raw || '').split(',').filter((c) => CATEGORY_KEYS.includes(c));
+  return list.length ? list : CATEGORY_KEYS;
+}
+// a request's category list as the stored comma text; null = all of them
+function categoriesToStore(list) {
+  const picked = (Array.isArray(list) ? list : []).filter((c) => CATEGORY_KEYS.includes(c));
+  return picked.length && picked.length < CATEGORY_KEYS.length ? CATEGORY_KEYS.filter((c) => picked.includes(c)).join(',') : null;
+}
+
 function serializeSeason(s) {
   const groups = db.prepare('SELECT * FROM season_groups WHERE season_id = ? ORDER BY sort_order, name COLLATE NOCASE').all(s.id);
   return {
     id: s.id,
     name: s.name,
     slug: s.slug,
+    kind: s.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE',
+    venue: s.venue || '',
+    categories: parseCategories(s.categories),
     startDate: s.start_date,
     endDate: s.end_date,
     entryFee: s.entry_fee || '',
@@ -337,10 +353,14 @@ router.post('/', requireAdmin, (req, res) => {
   const end = parseDate(req.body.endDate);
   if (start.error || end.error) return res.status(400).json({ error: start.error || end.error });
   if (start.value && end.value && start.value > end.value) return res.status(400).json({ error: 'The end date is before the start date' });
+  const kind = req.body.kind === undefined ? 'LEAGUE' : req.body.kind;
+  if (!KINDS.includes(kind)) return res.status(400).json({ error: 'The type must be LEAGUE or TOURNAMENT' });
+  const venue = typeof req.body.venue === 'string' ? req.body.venue.trim() : '';
+  if (venue.length > 200) return res.status(400).json({ error: 'Venue is too long (max 200 characters)' });
   const slug = uniqueSlug(slugify(name));
   const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM seasons').get().m;
-  const info = db.prepare('INSERT INTO seasons (name, slug, start_date, end_date, sort_order) VALUES (?, ?, ?, ?, ?)')
-    .run(name, slug, start.value, end.value, maxOrder + 1);
+  const info = db.prepare('INSERT INTO seasons (name, slug, start_date, end_date, sort_order, kind, venue, categories) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(name, slug, start.value, end.value, maxOrder + 1, kind, venue || null, categoriesToStore(req.body.categories));
   res.status(201).json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(info.lastInsertRowid))));
 });
 
@@ -374,14 +394,18 @@ router.patch('/:id', requireAdmin, (req, res) => {
   const payment = text('paymentUrl', season.payment_url, 500);
   const logo = text('logoUrl', season.logo_url, 300);
   const draw = req.body.drawDate !== undefined ? parseDate(req.body.drawDate) : { value: season.draw_date };
-  const bad = fee.error || prize.error || info.error || gallery.error || payment.error || logo.error || draw.error;
+  const venue = text('venue', season.venue, 200);
+  const kind = req.body.kind === undefined ? (season.kind || 'LEAGUE') : req.body.kind;
+  if (!KINDS.includes(kind)) return res.status(400).json({ error: 'The type must be LEAGUE or TOURNAMENT' });
+  const categories = req.body.categories === undefined ? season.categories : categoriesToStore(req.body.categories);
+  const bad = fee.error || prize.error || info.error || gallery.error || payment.error || logo.error || draw.error || venue.error;
   if (bad) return res.status(400).json({ error: bad });
   if (gallery.value && !/^https?:\/\//i.test(gallery.value)) return res.status(400).json({ error: 'The gallery link must start with http:// or https://' });
   if (payment.value && !/^https?:\/\//i.test(payment.value)) return res.status(400).json({ error: 'The payment link must start with http:// or https://' });
   if (logo.value && !/^(https?:\/\/|\/)/i.test(logo.value)) return res.status(400).json({ error: 'The logo must be a link starting with http://, https:// or /' });
   const open = req.body.registrationOpen === undefined ? season.registration_open : (req.body.registrationOpen ? 1 : 0);
-  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, logo_url = ?, registration_open = ? WHERE id = ?')
-    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, season.id);
+  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ? WHERE id = ?')
+    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, kind, venue.value, categories, season.id);
   res.json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
 });
 

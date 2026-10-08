@@ -27,8 +27,8 @@ if (typeof BLTA_LOCALIZE !== 'undefined' && BLTA_LOCALIZE.page) {
 const TRANSLATIONS = {
   sk: {
     'nav.matches': 'Zápasy',
-    'page.scheduleTitle': 'Tennis SCORE — Harmonogram',
-    'page.winnersTitle': 'Tennis SCORE — Víťazi',
+    'page.scheduleTitle': 'BLTA — Harmonogram',
+    'page.winnersTitle': 'BLTA — Víťazi',
     'schedule.heading': 'Harmonogram',
     'schedule.sub': 'Rozpis ligy a turnajov',
     'schedule.allCats': 'Všetky kategórie',
@@ -62,9 +62,10 @@ const TRANSLATIONS = {
     'winners.semifinalist': 'Semifinalista',
     'winners.empty': 'Zatiaľ tu nie sú žiadni víťazi.',
     'winners.loadError': 'Víťazov sa nepodarilo načítať.',
-    'page.tablesTitle': 'Tennis SCORE — Tabuľky',
+    'page.tablesTitle': 'BLTA — Tabuľky',
     'season.over': 'Skončila',
     'season.winnersTitle': 'Víťazi série',
+    'season.winnersTitleTournament': 'Víťazi turnaja',
     'season.winnersAll': 'Všetci víťazi',
     'season.allRounds': 'Všetky kolá',
     'season.colName': 'Meno',
@@ -123,6 +124,7 @@ const TRANSLATIONS = {
     'season.tileFee': 'Štartovné',
     'season.tileDraw': 'Žrebovanie',
     'season.tilePrize': 'Prize money',
+    'season.tileVenue': 'Miesto',
     'season.groupsN': '{n} skupín',
     'season.results': 'Aktuálne výsledky',
     'season.upcoming': 'Naplánované zápasy',
@@ -264,7 +266,7 @@ const TRANSLATIONS = {
     'category.FRIENDLY': 'PRIATEĽSKÝ',
     'category.OTHER': 'INÉ',
 
-    'page.courtsTitle': 'Tennis SCORE — Kurty',
+    'page.courtsTitle': 'BLTA — Kurty',
     'courts.heading': 'Tenisové kurty',
     'courts.summary': '{count} tenisových areálov v Bratislave a okolí.',
     'courts.summaryIndoor': '{count} z nich má krytú halu, takže sa dá hrať celoročne.',
@@ -471,14 +473,14 @@ const TRANSLATIONS = {
     'referee.error.notConfigured': 'Prihlásenie pre rozhodcov ešte nie je nastavené — požiadajte admina, aby nastavil kód rozhodcu.',
     'referee.error.wrongCode': 'Nesprávny kód.',
 
-    'resetCode.pageTitle': 'Tennis SCORE — Obnoviť kód',
+    'resetCode.pageTitle': 'BLTA — Obnoviť kód',
     'resetCode.headline': 'Nastavte si nový kód',
     'resetCode.intro': 'Vytvorte si nový 5-miestny kód. Použijete ho spolu s vaším telefónnym číslom pri každom ďalšom prihlásení.',
     'resetCode.goToSite': 'Prejsť na stránku',
     'resetCode.invalidTitle': 'Neplatný alebo expirovaný odkaz',
     'resetCode.invalidText': 'Skúste sa znova prihlásiť a požiadajte o nový odkaz cez „Zabudli ste kód?“.',
 
-    'page.homeTitle': 'Tennis SCORE',
+    'page.homeTitle': 'BLTA',
     'calendar.eventTitle': '{p1} vs {p2} — zápas BLTA',
 
     'common.edit': 'Upraviť',
@@ -486,7 +488,7 @@ const TRANSLATIONS = {
     'common.cancel': 'Zrušiť',
     'common.pickTime': 'Vybrať čas',
 
-    'page.playersTitle': 'Tennis SCORE — Hráči',
+    'page.playersTitle': 'BLTA — Hráči',
     'players.heading': 'Hráči',
     'players.intro': 'Pridajte každého hráča ligy sem raz — potom si ho vyberiete zo zoznamu pri vytváraní zápasu.',
     'players.newPlayerPlaceholder': 'Celé meno hráča',
@@ -516,7 +518,7 @@ const TRANSLATIONS = {
     'players.hiddenToast': 'Skrytý: {name}',
     'players.shown': 'Zobrazený: {name}',
 
-    'page.lookingToPlayTitle': 'Tennis SCORE — Hľadám súpera',
+    'page.lookingToPlayTitle': 'BLTA — Hľadám súpera',
     'lookingToPlay.heading': 'Hľadám súpera',
     'lookingToPlay.intro': 'Pridajte dni a časy, kedy ste voľní na priateľský zápas — ostatní hráči sa môžu prihlásiť a vy dostanete správu, že si s vami niekto chce zahrať.',
     'lookingToPlay.loginRequired': 'Ak chcete pridať svoju dostupnosť, prihláste sa ako hráč.',
@@ -565,8 +567,8 @@ const TRANSLATIONS = {
 
     'common.loading': 'Načítavam…',
 
-    'page.rankingsTitle': 'Tennis SCORE — Rebríček',
-    'page.bracketTitle': 'Tennis SCORE — Pavúk',
+    'page.rankingsTitle': 'BLTA — Rebríček',
+    'page.bracketTitle': 'BLTA — Pavúk',
     'rankings.heading': 'Rebríček',
     'rankings.none': 'Zatiaľ žiadne poradie.',
     'rankings.playerCol': 'Hráč',
@@ -606,7 +608,7 @@ const TRANSLATIONS = {
     'rankings.moveUpTitle': 'Hore o {amount} od minulého týždňa',
     'rankings.moveDownTitle': 'Dole o {amount} od minulého týždňa',
 
-    'page.newMatchTitle': 'Tennis SCORE — Nový zápas',
+    'page.newMatchTitle': 'BLTA — Nový zápas',
     'newMatch.heading': 'Naplánovať nový zápas',
     'newMatch.intro': 'Vyberte dvoch hráčov (zadaním nového mena ich pridáte), kategóriu a spôsob hry.',
     'newMatch.namePlaceholder': 'Zadajte meno…',
@@ -663,7 +665,7 @@ const TRANSLATIONS = {
     'matches.finishedHeading': 'Ukončené',
     'matches.unfinishedHeading': 'Nedokončené',
 
-    'page.playerTitle': 'Tennis SCORE — Hráč',
+    'page.playerTitle': 'BLTA — Hráč',
     'player.plannedMatchesLabel': 'Plánované<br>zápasy',
     'player.editProfile': 'Upraviť profil',
     'player.statisticsLabel': 'Štatistiky',
@@ -764,7 +766,7 @@ const TRANSLATIONS = {
     'common.someone': 'Niekto',
     'common.admin': 'Admin',
 
-    'page.matchTitle': 'Tennis SCORE — Zápas',
+    'page.matchTitle': 'BLTA — Zápas',
     'match.mtbAbbrev': 'MTB',
     'match.tb7Abbrev': 'TB-7',
     'match.setLabel': 'Set {n}',
@@ -889,8 +891,8 @@ const TRANSLATIONS = {
   },
   en: {
     'nav.matches': 'Matches',
-    'page.scheduleTitle': 'Tennis SCORE — Schedule',
-    'page.winnersTitle': 'Tennis SCORE — Winners',
+    'page.scheduleTitle': 'BLTA — Schedule',
+    'page.winnersTitle': 'BLTA — Winners',
     'schedule.heading': 'Schedule',
     'schedule.sub': 'League and tournament calendar',
     'schedule.allCats': 'All categories',
@@ -924,9 +926,10 @@ const TRANSLATIONS = {
     'winners.semifinalist': 'Semifinalist',
     'winners.empty': 'No winners here yet.',
     'winners.loadError': 'Could not load the winners.',
-    'page.tablesTitle': 'Tennis SCORE — Tables',
+    'page.tablesTitle': 'BLTA — Tables',
     'season.over': 'Finished',
     'season.winnersTitle': 'Series winners',
+    'season.winnersTitleTournament': 'Tournament winners',
     'season.winnersAll': 'All winners',
     'season.allRounds': 'All rounds',
     'season.colName': 'Name',
@@ -985,6 +988,7 @@ const TRANSLATIONS = {
     'season.tileFee': 'Entry fee',
     'season.tileDraw': 'Draw',
     'season.tilePrize': 'Prize money',
+    'season.tileVenue': 'Venue',
     'season.groupsN': '{n} groups',
     'season.results': 'Latest results',
     'season.upcoming': 'Scheduled matches',
@@ -1126,7 +1130,7 @@ const TRANSLATIONS = {
     'category.FRIENDLY': 'FRIENDLY',
     'category.OTHER': 'OTHER',
 
-    'page.courtsTitle': 'Tennis SCORE — Courts',
+    'page.courtsTitle': 'BLTA — Courts',
     'courts.heading': 'Tennis courts',
     'courts.summary': '{count} tennis venues in and around Bratislava.',
     'courts.summaryIndoor': '{count} of them have indoor courts, so you can play all year.',
@@ -1329,14 +1333,14 @@ const TRANSLATIONS = {
     'referee.error.notConfigured': 'Referee login is not set up yet — ask an admin to set a referee code.',
     'referee.error.wrongCode': 'Incorrect code.',
 
-    'resetCode.pageTitle': 'Tennis SCORE — Reset code',
+    'resetCode.pageTitle': 'BLTA — Reset code',
     'resetCode.headline': 'Set your new code',
     'resetCode.intro': "Create a new 5-digit code. You'll use it together with your phone number every time you log in from now on.",
     'resetCode.goToSite': 'Go to the site',
     'resetCode.invalidTitle': 'Invalid or expired link',
     'resetCode.invalidText': 'Try logging in again and request a new link via "Forgot your code?".',
 
-    'page.homeTitle': 'Tennis SCORE',
+    'page.homeTitle': 'BLTA',
     'calendar.eventTitle': '{p1} vs {p2} — BLTA match',
 
     'common.edit': 'Edit',
@@ -1344,7 +1348,7 @@ const TRANSLATIONS = {
     'common.cancel': 'Cancel',
     'common.pickTime': 'Pick a time',
 
-    'page.playersTitle': 'Tennis SCORE — Players',
+    'page.playersTitle': 'BLTA — Players',
     'players.heading': 'Players',
     'players.intro': 'Add every league player here once — then pick them from the list when creating a match.',
     'players.newPlayerPlaceholder': 'Player full name',
@@ -1374,7 +1378,7 @@ const TRANSLATIONS = {
     'players.hiddenToast': 'Hidden {name}',
     'players.shown': 'Unhidden {name}',
 
-    'page.lookingToPlayTitle': 'Tennis SCORE — Looking to Play',
+    'page.lookingToPlayTitle': 'BLTA — Looking to Play',
     'lookingToPlay.heading': 'Looking to play',
     'lookingToPlay.intro': "Add the days and times you're free for a friendly match — other players can join in, and you'll get notified when someone wants to play.",
     'lookingToPlay.loginRequired': 'Log in as a player to add your availability.',
@@ -1423,8 +1427,8 @@ const TRANSLATIONS = {
 
     'common.loading': 'Loading…',
 
-    'page.rankingsTitle': 'Tennis SCORE — Rankings',
-    'page.bracketTitle': 'Tennis SCORE — Bracket',
+    'page.rankingsTitle': 'BLTA — Rankings',
+    'page.bracketTitle': 'BLTA — Bracket',
     'rankings.heading': 'Rankings',
     'rankings.none': 'No standings yet.',
     'rankings.playerCol': 'Player',
@@ -1464,7 +1468,7 @@ const TRANSLATIONS = {
     'rankings.moveUpTitle': 'Up {amount} since last week',
     'rankings.moveDownTitle': 'Down {amount} since last week',
 
-    'page.newMatchTitle': 'Tennis SCORE — New Match',
+    'page.newMatchTitle': 'BLTA — New Match',
     'newMatch.heading': 'Plan a new match',
     'newMatch.intro': "Pick two players (type a new name to add them), a category, and how the match will be played.",
     'newMatch.namePlaceholder': 'Type a name…',
@@ -1521,7 +1525,7 @@ const TRANSLATIONS = {
     'matches.finishedHeading': 'Finished',
     'matches.unfinishedHeading': 'Unfinished',
 
-    'page.playerTitle': 'Tennis SCORE — Player',
+    'page.playerTitle': 'BLTA — Player',
     'player.plannedMatchesLabel': 'Planned<br>matches',
     'player.editProfile': 'Edit profile',
     'player.statisticsLabel': 'Statistics',
@@ -1622,7 +1626,7 @@ const TRANSLATIONS = {
     'common.someone': 'Someone',
     'common.admin': 'Admin',
 
-    'page.matchTitle': 'Tennis SCORE — Match',
+    'page.matchTitle': 'BLTA — Match',
     'match.mtbAbbrev': 'MTB',
     'match.tb7Abbrev': 'TB-7',
     'match.setLabel': 'Set {n}',

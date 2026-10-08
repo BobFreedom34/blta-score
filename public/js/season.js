@@ -43,9 +43,17 @@ function formatDate(iso) {
   return `${Number(d)}.${Number(m)}.${y}`;
 }
 
-// "Sep – Dec 2026" / "Dec 2025 – Apr 2026"
+// "Sep – Dec 2026" / "Dec 2025 – Apr 2026"; a tournament shows its exact days: "27. – 28. 9. 2025"
 function termText() {
-  if (!season.startDate || !season.endDate) return '';
+  if (!season.startDate) return '';
+  if (season.kind === 'TOURNAMENT') {
+    const [y1, m1, d1] = season.startDate.split('-').map(Number);
+    if (!season.endDate || season.endDate === season.startDate) return `${d1}. ${m1}. ${y1}`;
+    const [y2, m2, d2] = season.endDate.split('-').map(Number);
+    if (y1 === y2 && m1 === m2) return `${d1}. – ${d2}. ${m2}. ${y2}`;
+    return `${d1}. ${m1}.${y1 === y2 ? '' : ` ${y1}`} – ${d2}. ${m2}. ${y2}`;
+  }
+  if (!season.endDate) return '';
   const a = new Date(`${season.startDate}T12:00:00`);
   const b = new Date(`${season.endDate}T12:00:00`);
   const loc = currentLang === 'en' ? 'en-GB' : 'sk-SK';
@@ -156,8 +164,11 @@ function seriesWinnersHtml() {
       return `<div class="sw-card"><h3 class="sw-cat">${escapeHtml(b.category ? categoryLabel(b.category) : b.title)}</h3><div class="sw-pair">${tiles}</div></div>`;
     }).join('');
   if (!cards) return '';
-  return `<section class="sw-sec">${secHead('', t('season.winnersTitle'), '/vitazi', t('season.winnersAll'))}<div class="sw-row">${cards}</div></section>`;
+  return `<section class="sw-sec">${secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle'), '/vitazi', t('season.winnersAll'))}<div class="sw-row">${cards}</div></section>`;
 }
+
+// a tournament is a season of its own kind: same page, with a "Turnaj" chip, a venue and its own categories
+const isTournament = () => season.kind === 'TOURNAMENT';
 
 function headerHtml() {
   const status = statusOf();
@@ -180,19 +191,20 @@ function headerHtml() {
       <div class="sv-head-main">
         <div class="sv-crumb"><a href="/harmonogram">${escapeHtml(t('schedule.heading'))}</a> › ${escapeHtml(termText())}</div>
         <h1 class="sv-title">${escapeHtml(season.name)}</h1>
-        <div class="sv-chips"><span class="sv-chip l">${escapeHtml(t('schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
+        <div class="sv-chips"><span class="sv-chip ${isTournament() ? 't' : 'l'}">${escapeHtml(t(isTournament() ? 'schedule.tournament' : 'schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
       </div>
     </div>
-    <div class="sv-progress">${seasonProgressHtml(season, standings)}</div>`;
+    ${isTournament() ? '' : `<div class="sv-progress">${seasonProgressHtml(season, standings)}</div>`}`;
 }
 
 function tilesHtml() {
   const players = playersModel().total;
   const groupCount = (season.groups || []).length || (standings ? standings.groups.length : 0);
   const tile = (key, value, sub) => `<div class="sv-tile"><div class="k">${escapeHtml(t(key))}</div><div class="v">${value}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</div></div>`;
-  const cats = CATEGORY_ORDER.filter((c) => (season.groups || []).some((g) => g.category === c) || (standings && standings.groups.some((g) => g.category === c)));
+  const cats = CATEGORY_ORDER.filter((c) => (isTournament() && (season.categories || []).includes(c)) || (season.groups || []).some((g) => g.category === c) || (standings && standings.groups.some((g) => g.category === c)));
   const tiles = [
     cats.length ? tile('season.tileCats', String(cats.length), cats.map((c) => CATEGORY_NAMES[c]).join(' · ')) : '',
+    season.venue ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileVenue'))}</div><div class="v sm">${escapeHtml(season.venue)}</div></div>` : '',
     termText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileTerm'))}</div><div class="v sm">${escapeHtml(termText())}</div></div>` : '',
     players ? tile('season.tilePlayers', String(players), groupCount ? t('season.groupsN', { n: groupCount }) : '') : '',
     season.entryFee ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div></div>` : '',
@@ -395,7 +407,7 @@ async function openRegisterModal() {
         <div class="field"><label for="sv-reg-phone">${escapeHtml(t('season.regPhone'))}</label><input type="tel" id="sv-reg-phone" autocomplete="tel" maxlength="20" placeholder="0903 111 222"></div>
         <div class="field"><label for="sv-reg-email">${escapeHtml(t('season.regEmail'))}</label><input type="email" id="sv-reg-email" autocomplete="email" maxlength="120"></div>
         <div class="field"><label for="sv-reg-cat">${escapeHtml(t('season.regCategory'))}</label>
-          <select id="sv-reg-cat"><option value="">${escapeHtml(t('season.regChoose'))}</option>${CATEGORY_ORDER.map((c) => `<option value="${c}">${escapeHtml(CATEGORY_NAMES[c])}</option>`).join('')}</select>
+          <select id="sv-reg-cat"><option value="">${escapeHtml(t('season.regChoose'))}</option>${CATEGORY_ORDER.filter((c) => !isTournament() || (season.categories || []).includes(c)).map((c) => `<option value="${c}">${escapeHtml(CATEGORY_NAMES[c])}</option>`).join('')}</select>
         </div>
         <div class="field"><label for="sv-reg-notetext">${escapeHtml(t('season.regNoteLabel'))}</label><textarea id="sv-reg-notetext" rows="3" maxlength="500" placeholder="${escapeHtml(t('season.regNotePlaceholder'))}"></textarea></div>
         <input type="text" id="sv-reg-website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
@@ -587,7 +599,7 @@ async function refresh() {
     rootEl.innerHTML = `<div class="empty-state">${escapeHtml(t('season.notFound'))}</div>`;
     return;
   }
-  if (!document.title.includes(season.name)) document.title = `${season.name} — Tennis SCORE`; // the server already put the title from Backend > SEO
+  if (!document.title.includes(season.name)) document.title = `${season.name} — BLTA`; // the server already put the title from Backend > SEO
   await loadStandings();
   tab = window.location.hash.slice(1) || null; // renderTabs picks the first tab with content when there is none
   await render();

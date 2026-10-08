@@ -102,6 +102,11 @@ try {
   console.error('Schedule events seed failed (will retry on next start):', err);
 }
 try {
+  require('./src/tournamentsSeed').migrateTournaments(db);
+} catch (err) {
+  console.error('Tournaments migration failed (will retry on next start):', err);
+}
+try {
   require('./src/seasonSeed').ensureWinnersMenuItem(db);
 } catch (err) {
   console.error('Winners menu item failed:', err);
@@ -307,7 +312,7 @@ app.get('/match/:token', (req, res) => {
 
   const p1 = db.prepare('SELECT * FROM players WHERE id = ?').get(row.player1_id);
   const p2 = db.prepare('SELECT * FROM players WHERE id = ?').get(row.player2_id);
-  const title = `${p1.name} vs ${p2.name} — Tennis SCORE`;
+  const title = `${p1.name} vs ${p2.name} — BLTA`;
 
   let description;
   if (row.status === 'PLANNED') {

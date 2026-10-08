@@ -50,7 +50,7 @@ async function loadHome() {
     playerId ? soft(api(`/courtiq/player/${playerId}`), null) : Promise.resolve(null),
   ]);
   if (seasons === null) throw new Error('seasons');
-  const season = pickSeason(seasons);
+  const season = pickSeason(seasons.filter((s) => s.kind !== 'TOURNAMENT'));
   const standings = season ? await soft(api(`/seasons/${season.id}/standings`), null) : null;
   return { seasons, season, standings, live, finished, upcoming, weekMatches, looking, rankings, mine, iq, playerId };
 }
@@ -235,7 +235,7 @@ function seasonState(s, today) {
 
 // All seasons in date order: finished ones greyed out, the running one highlighted, the coming ones outlined.
 function timelineHtml(d) {
-  const seasons = [...(d.seasons || [])].sort((a, b) => String(a.startDate || '9999').localeCompare(String(b.startDate || '9999')));
+  const seasons = [...(d.seasons || [])].filter((s) => s.kind !== 'TOURNAMENT').sort((a, b) => String(a.startDate || '9999').localeCompare(String(b.startDate || '9999')));
   if (seasons.length < 2) return '';
   const today = new Date().toISOString().slice(0, 10);
   const label = { past: t('home.tlPast'), now: t('home.tlNow'), future: t('home.tlFuture') };

@@ -111,7 +111,7 @@
     const seasonItems = seasons.filter((x) => !has(x.name, x.id)).map((x) => opt(`season:${x.id}`, x.name));
     const eventItems = tournaments.filter((x) => !has(x.name, null)).map((x) => opt(`event:${x.eventId}`, x.name));
     if (!seasonItems.length && !eventItems.length) return '';
-    return `<select id="wa-add" style="min-width:300px;${field}"><option value="">Add winners for a season or tournament…</option>${group('Seasons', seasonItems)}${group('Tournaments', eventItems)}</select>`;
+    return `<select id="wa-add" style="min-width:300px;${field}"><option value="">Add winners for a season or tournament…</option>${group('Seasons and tournaments', seasonItems)}${group('Other events', eventItems)}</select>`;
   }
 
   function render() {
@@ -145,7 +145,7 @@
   async function load() {
     let schedule;
     [editions, players, seasons, schedule] = await Promise.all([api('/winners/all'), api('/players'), api('/seasons'), api('/schedule')]);
-    tournaments = schedule.filter((x) => x.type === 'TOURNAMENT').sort((a, b) => b.startDate.localeCompare(a.startDate));
+    tournaments = schedule.filter((x) => x.type === 'TOURNAMENT' && x.eventId).sort((a, b) => b.startDate.localeCompare(a.startDate));
     render();
   }
 

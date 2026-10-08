@@ -149,7 +149,8 @@ groupsEl.addEventListener('click', (e) => {
 
 (async () => {
   try {
-    seasons = await api('/seasons');
+    // a tournament is listed here only when it has groups (its brackets are on its own page)
+    seasons = (await api('/seasons')).filter((s) => s.kind !== 'TOURNAMENT' || s.groups.length);
   } catch {
     rootEl.innerHTML = `<div class="empty-state">${escapeHtml(t('tables.noGroups'))}</div>`;
     return;

@@ -476,6 +476,18 @@ profile photo is shown). Hiding an edition removes it from the page without dele
 - Foreign keys are not enforced in this database, so the router deletes an edition's blocks, places and photo files itself.
 - Check it: `node scripts/check-winners.js` (starts its own server on a temporary data folder; nothing else is touched).
 
+### Tournaments (seasons of the type TOURNAMENT)
+
+A tournament is a **season with `kind = 'TOURNAMENT'`** (column on `seasons`), so it has everything a season has — its page
+(`/season/<slug>`: info tiles, description, registration, brackets, matches, gallery) and its winners (Backend → Winners, pick it
+in "Add winners for…") — and is edited in **Backend → Seasons** (*Type* = Tournament adds a venue and the categories it is played in;
+groups are optional). The schedule (`/api/schedule`, `/harmonogram`) lists it with the "Turnaj" tag and the "Viac info" link to its page.
+League-only places (home overview, season timeline, tables page) leave tournaments out (tables show one only if it has groups).
+
+- `src/tournamentsSeed.js` moved the old schedule events into seasons once (flag `tournaments_as_seasons`) and linked a winners
+  edition with the same title. `schedule_events` / Backend → Schedule stay for plain events that need no page.
+- Check: `node scripts/check-tournaments.js`.
+
 ### Addresses and SEO in two languages (`/seo-admin`)
 
 **Backend → SEO** edits, per public page and **per language** (Slovenčina / English tab): the address (slug), the title,

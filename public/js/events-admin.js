@@ -1,4 +1,4 @@
-// Backend > Schedule (/schedule-admin): the tournaments and other events of the public schedule page (/harmonogram), plus a
+// Backend > Schedule (/schedule-admin): the other events (no page of their own) of the public schedule page (/harmonogram), plus a
 // read-only list of the league seasons the schedule takes from Seasons.
 (function eventsAdmin() {
   const host = document.getElementById('events-admin-root');

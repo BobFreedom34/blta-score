@@ -76,10 +76,16 @@ function renderLoggedOut() {
 function renderAdmin() {
   root.innerHTML = `
     <div class="card" style="margin-bottom:20px">
-      <h3 style="margin-top:0">Add a season</h3>
+      <h3 style="margin-top:0">Add a season or a tournament</h3>
       <form id="add-season-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <label style="font-size:12px;font-weight:700">Type
+          <select id="season-kind" style="display:block;margin-top:4px;${inputStyle}">
+            <option value="LEAGUE">League season</option>
+            <option value="TOURNAMENT">Tournament</option>
+          </select>
+        </label>
         <label style="flex:1;min-width:220px;font-size:12px;font-weight:700">Name
-          <input type="text" id="season-name" maxlength="120" placeholder="e.g. Winter Opening Series 2027" required style="display:block;width:100%;margin-top:4px;${inputStyle}">
+          <input type="text" id="season-name" maxlength="120" placeholder="e.g. Winter Opening Series 2027 or Slávia Filozof Cup 2026" required style="display:block;width:100%;margin-top:4px;${inputStyle}">
         </label>
         <label style="font-size:12px;font-weight:700">Starts
           <input type="date" id="season-start" style="display:block;margin-top:4px;${inputStyle}">
@@ -87,7 +93,10 @@ function renderAdmin() {
         <label style="font-size:12px;font-weight:700">Ends
           <input type="date" id="season-end" style="display:block;margin-top:4px;${inputStyle}">
         </label>
-        <button type="submit" class="btn btn-primary">Add season</button>
+        <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Venue <span style="font-weight:600;color:var(--gray)">(optional, for a tournament)</span>
+          <input type="text" id="season-venue" maxlength="200" placeholder="Address or club" style="display:block;width:100%;margin-top:4px;${inputStyle}">
+        </label>
+        <button type="submit" class="btn btn-primary">Add</button>
       </form>
       <div id="add-season-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
     </div>
@@ -105,11 +114,13 @@ function renderAdmin() {
           name: document.getElementById('season-name').value.trim(),
           startDate: document.getElementById('season-start').value || null,
           endDate: document.getElementById('season-end').value || null,
+          kind: document.getElementById('season-kind').value,
+          venue: document.getElementById('season-venue').value.trim(),
         },
       });
       e.target.reset();
       if (created && created.id) { initOpenIds(); openIds.add(created.id); saveOpenIds(); }
-      toast('Season added');
+      toast(created && created.kind === 'TOURNAMENT' ? 'Tournament added' : 'Season added');
       await load();
     } catch (err) {
       errorEl.textContent = err.message;
@@ -203,13 +214,20 @@ function seasonHtml(s) {
       <summary class="sa-sum">
         <svg class="sa-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         <span class="sa-name">${escapeHtml(s.name)}</span>
+        ${s.kind === 'TOURNAMENT' ? '<span class="sa-chip" style="border-color:var(--orange);color:var(--orange)">Tournament</span>' : ''}
         <span class="sa-dates">${escapeHtml(s.startDate && s.endDate ? `${fmtDate(s.startDate)} – ${fmtDate(s.endDate)}` : '')}</span>
         <span class="sa-chip ${seasonStatus(s)}">${STATUS_LABEL[seasonStatus(s)]}</span>
         <span class="sa-count">${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'} · ${s.matchCount} ${s.matchCount === 1 ? 'match' : 'matches'}</span>
       </summary>
       <div class="sa-body">
       <form class="season-edit-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <label style="flex:1;min-width:220px;font-size:12px;font-weight:700">Season
+        <label style="font-size:12px;font-weight:700">Type
+          <select data-field="kind" style="display:block;margin-top:4px;${inputStyle}">
+            <option value="LEAGUE"${s.kind === 'TOURNAMENT' ? '' : ' selected'}>League season</option>
+            <option value="TOURNAMENT"${s.kind === 'TOURNAMENT' ? ' selected' : ''}>Tournament</option>
+          </select>
+        </label>
+        <label style="flex:1;min-width:220px;font-size:12px;font-weight:700">Name
           <input type="text" data-field="name" value="${escapeHtml(s.name)}" maxlength="120" required style="display:block;width:100%;margin-top:4px;${inputStyle}">
         </label>
         <label style="font-size:12px;font-weight:700">Starts
@@ -218,7 +236,15 @@ function seasonHtml(s) {
         <label style="font-size:12px;font-weight:700">Ends
           <input type="date" data-field="endDate" value="${escapeHtml(s.endDate || '')}" style="display:block;margin-top:4px;${inputStyle}">
         </label>
-        <div style="flex-basis:100%;margin-top:6px;font-size:12px;font-weight:800;color:var(--gray)">Season page <a href="/season/${escapeHtml(s.slug)}" target="_blank" style="color:var(--orange);text-decoration:underline">/season/${escapeHtml(s.slug)}</a> — all optional</div>
+        <label class="tournament-only" style="flex:1;min-width:220px;font-size:12px;font-weight:700"${s.kind === 'TOURNAMENT' ? '' : ' hidden'}>Venue
+          <input type="text" data-field="venue" value="${escapeHtml(s.venue || '')}" maxlength="200" placeholder="Address or club" style="display:block;width:100%;margin-top:4px;${inputStyle}">
+        </label>
+        <div class="tournament-only" style="font-size:12px;font-weight:700"${s.kind === 'TOURNAMENT' ? '' : ' hidden'}>Categories
+          <div style="display:flex;gap:12px;margin-top:8px;font-weight:600;font-size:14px">
+            ${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}> ${label}</label>`).join('')}
+          </div>
+        </div>
+        <div style="flex-basis:100%;margin-top:6px;font-size:12px;font-weight:800;color:var(--gray)">${s.kind === 'TOURNAMENT' ? 'Tournament' : 'Season'} page <a href="/season/${escapeHtml(s.slug)}" target="_blank" style="color:var(--orange);text-decoration:underline">/season/${escapeHtml(s.slug)}</a> — all optional</div>
         <label style="font-size:12px;font-weight:700">Entry fee
           <input type="text" data-field="entryFee" value="${escapeHtml(s.entryFee || '')}" maxlength="40" placeholder="e.g. 20 €" style="display:block;margin-top:4px;width:110px;${inputStyle}">
         </label>
@@ -253,8 +279,8 @@ function seasonHtml(s) {
           </div>
           <div class="rte" contenteditable="true" data-rte>${richText(s.info)}</div>
         </div>
-        <button type="submit" class="btn btn-sm btn-outline">Save season</button>
-        <button type="button" class="btn btn-sm btn-danger" data-action="delete-season">Delete season</button>
+        <button type="submit" class="btn btn-sm btn-outline">Save</button>
+        <button type="button" class="btn btn-sm btn-danger" data-action="delete-season">Delete</button>
       </form>
       <div class="season-regs" style="margin:10px 0 0">
         <button type="button" class="btn btn-sm btn-outline" data-action="show-regs">Registrations</button>
@@ -324,10 +350,16 @@ function wireSeason(card) {
     errorEl.textContent = '';
     const f = (name) => e.target.querySelector(`[data-field="${name}"]`).value;
     try {
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML } });
-      toast('Season saved');
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, kind: f('kind'), venue: f('venue'), categories: [...e.target.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat) } });
+      toast('Saved');
       await load();
     } catch (err) { fail(err); }
+  });
+
+  // the venue and categories are for a tournament
+  const kindSelect = card.querySelector('select[data-field="kind"]');
+  kindSelect.addEventListener('change', () => {
+    card.querySelectorAll('.tournament-only').forEach((el) => { el.hidden = kindSelect.value !== 'TOURNAMENT'; });
   });
 
   // the description editor: toolbar buttons act on the selection; pasting keeps only the text

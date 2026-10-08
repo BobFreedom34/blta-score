@@ -3856,6 +3856,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-chips { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0 0; }
 .sv-chip { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid transparent; }
 .sv-chip.l { border-color: var(--green); color: var(--green); }
+.sv-chip.t { border-color: var(--orange); color: var(--orange); }
 .sv-chip.now { background: var(--orange); color: var(--white); }
 .sv-chip.w { border-color: rgba(255, 255, 255, 0.35); color: var(--white); }
 .sv-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 14px 0 0; }
