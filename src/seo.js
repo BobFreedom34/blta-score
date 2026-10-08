@@ -541,6 +541,7 @@ function robotsTxt(origin) {
     'Disallow: /venues-admin',
     'Disallow: /seasons-admin',
     'Disallow: /tournaments-admin',
+    'Disallow: /changelog-admin',
     'Disallow: /schedule-admin',
     'Disallow: /winners-admin',
     'Disallow: /seo-admin',

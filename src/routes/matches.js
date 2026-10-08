@@ -14,6 +14,7 @@ const badgeEngine = require('../badgeEngine');
 const courtIQ = require('../courtIQEngine');
 const bracketEngine = require('../bracketEngine');
 const rankingPoints = require('../rankingPoints');
+const changeLog = require('../changeLog');
 
 const router = express.Router();
 
@@ -366,7 +367,9 @@ function syncCourtIQIfFinished(row) {
 // to take back, nothing to add), so callers can just always call this on the post-write row. It is all local and runs in
 // one database transaction. Never blocks or fails the caller's own response (a failure is only logged).
 async function reconcileRankingPoints(previousRow, updatedRow) {
-  rankingPoints.reconcile(previousRow, updatedRow);
+  const ranking = rankingPoints.reconcile(previousRow, updatedRow);
+  // Backend > Log: what this change did to the ranking points and the group table (a row only when something changed)
+  try { changeLog.logMatchChange(previousRow, updatedRow, ranking); } catch (err) { console.error('[change log]', err.message); }
 }
 
 function broadcast(req, row) {
@@ -995,7 +998,8 @@ router.delete('/:token', requireLoggedIn, (req, res) => {
 
   // A deleted match takes the ranking points it added back with it (a no-op when it added none).
   try {
-    rankingPoints.reverseForMatch(row.id);
+    const ranking = rankingPoints.reverseForMatchWithChanges(row.id);
+    try { changeLog.logMatchDeleted(row, ranking); } catch (err) { console.error('[change log]', err.message); }
   } catch (err) {
     console.error('[matches] failed to reverse ranking points on delete:', err.message);
   }

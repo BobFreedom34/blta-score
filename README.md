@@ -476,6 +476,18 @@ profile photo is shown). Hiding an edition removes it from the page without dele
 - Foreign keys are not enforced in this database, so the router deletes an edition's blocks, places and photo files itself.
 - Check it: `node scripts/check-winners.js` (starts its own server on a temporary data folder; nothing else is touched).
 
+### Points log (`/changelog-admin`)
+
+**Backend → Points log** shows, newest first, what each match changed after it was finished, corrected (restarted and finished again),
+restarted or deleted: the **ranking points** (per player and table: before → after, +/−) and the **league group table** (points, matches
+played and position of the players in the group, also the others whose position moved). A manual correction of the ranking points is
+logged too. A row is written only when something really changed — a live score, a friendly or a match without a group writes nothing —
+and it keeps its own text, so it stays readable after the match or the players are gone. Search for a player, filter by kind, "Show older".
+
+- `src/changeLog.js` (table `change_log`) is called from `routes/matches.js` (after every write and on delete) and `routes/rankings.js`;
+  `rankingPoints.reconcile` returns the net change per player and table. Matches of a season with saved official tables (`frozenStandings`) get no group part.
+- Check: `node scripts/check-changelog.js`.
+
 ### Tournaments (seasons of the type TOURNAMENT)
 
 A tournament is a **season with `kind = 'TOURNAMENT'`** (column on `seasons`), so it has everything a season has — its page

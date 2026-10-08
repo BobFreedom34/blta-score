@@ -165,6 +165,7 @@ router.put('/points/:tableKey/:name', requireAdmin, (req, res) => {
 
   const result = rankingPoints.setPoints(tableKey, name, points);
   if (result.error) return res.status(400).json({ error: result.error });
+  try { require('../changeLog').logManualPoints(result.change); } catch (err) { console.error('[change log]', err.message); }
   res.json({ ok: true, points });
 });
 

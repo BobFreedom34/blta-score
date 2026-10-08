@@ -110,7 +110,7 @@ function entryFor(tableKey, playerId, create = true) {
 // Writes the ledger rows of a match; changes the points of the tables too unless `ledgerOnly` (the points are already in the
 // numbers — used when the ledger of matches awarded before the switch is rebuilt, see rankingsSeed.js; a player who has no row
 // in a table then gets no ledger row either, there is nothing of his to take back). Callers wrap this in a transaction.
-function recordAwards(matchId, computed, ledgerOnly) {
+function recordAwards(matchId, computed, ledgerOnly, collect) {
   const touchPoints = db.prepare("UPDATE ranking_entries SET points = COALESCE(points, 0) + ?, matches = matches + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?");
   const ledger = db.prepare('INSERT INTO ranking_awards (match_id, entry_id, points, matches_delta) VALUES (?, ?, ?, 1)');
   computed.tableKeys.forEach((tableKey) => {
@@ -119,13 +119,15 @@ function recordAwards(matchId, computed, ledgerOnly) {
       if (!entry) return;
       if (!ledgerOnly) touchPoints.run(award.points, entry.id);
       ledger.run(matchId, entry.id, award.points);
+      if (collect) collect.push({ entry_id: entry.id, points: award.points, added: true });
     });
   });
 }
 
 // Takes back everything a match added (nothing happens when it added nothing). Callers wrap this in a transaction.
-function reverseRows(matchId) {
+function reverseRows(matchId, collect) {
   const rows = db.prepare('SELECT * FROM ranking_awards WHERE match_id = ?').all(matchId);
+  if (collect) rows.forEach((r) => collect.push({ entry_id: r.entry_id, points: -r.points }));
   const undo = db.prepare("UPDATE ranking_entries SET points = COALESCE(points, 0) - ?, matches = MAX(0, matches - ?), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?");
   rows.forEach((r) => undo.run(r.points, r.matches_delta, r.entry_id));
   if (rows.length) db.prepare('DELETE FROM ranking_awards WHERE match_id = ?').run(matchId);
@@ -146,19 +148,49 @@ function inTransaction(fn) {
 
 // Brings the tables in line with a match as it is now: what it added before is taken back, then, when it is FINISHED, what it is
 // worth now is added. (previousRow is only there so the callers can keep passing "before" and "after".)
+// Returns what changed in the tables: [{ tableKey, tableLabel, name, before, after, delta }] — the net change per player and table
+// (a corrected result that is worth the same again changes nothing and returns nothing). The change log (src/changeLog.js) shows it.
 function reconcile(previousRow, updatedRow) {
   return inTransaction(() => {
-    reverseRows(updatedRow.id);
+    const moves = [];
+    reverseRows(updatedRow.id, moves);
     if (updatedRow.status === 'FINISHED') {
       const computed = computeAwards(updatedRow);
-      if (computed) recordAwards(updatedRow.id, computed, false);
+      if (computed) recordAwards(updatedRow.id, computed, false, moves);
     }
+    return netChanges(moves);
   });
 }
 
 // For a match that is being deleted.
 function reverseForMatch(matchId) {
   return inTransaction(() => reverseRows(matchId));
+}
+
+// Same, and says what the tables lost (see reconcile).
+function reverseForMatchWithChanges(matchId) {
+  return inTransaction(() => {
+    const moves = [];
+    reverseRows(matchId, moves);
+    return netChanges(moves);
+  });
+}
+
+// moves: [{ entry_id, points }] (points negative for what was taken back) -> the net change per ranking row, with the numbers before
+// and after (read now, after the change).
+function netChanges(moves) {
+  const net = new Map();
+  moves.forEach((m) => net.set(m.entry_id, (net.get(m.entry_id) || 0) + m.points));
+  const out = [];
+  net.forEach((delta, entryId) => {
+    if (!delta) return;
+    const e = db.prepare('SELECT e.table_key, e.points, COALESCE(p.name, e.name) AS name FROM ranking_entries e LEFT JOIN players p ON p.id = e.player_id WHERE e.id = ?').get(entryId);
+    if (!e) return;
+    const table = TABLES.find((t) => t.key === e.table_key);
+    const after = e.points === null ? 0 : e.points;
+    out.push({ tableKey: e.table_key, tableLabel: table ? table.label : e.table_key, name: e.name, before: after - delta, after, delta });
+  });
+  return out;
 }
 
 // ---------------------------------------------------------------- reading and editing
@@ -215,8 +247,9 @@ function setPoints(tableKey, name, points) {
   const existing = db.prepare('SELECT id FROM ranking_entries WHERE table_key = ? AND name_key = ?').get(tableKey, key)
     || db.prepare(`SELECT e.id FROM ranking_entries e JOIN players p ON p.id = e.player_id WHERE e.table_key = ? AND lower(p.name) = lower(?)`).get(tableKey, String(name).trim());
   if (existing) {
+    const was = db.prepare('SELECT e.points, COALESCE(p.name, e.name) AS name FROM ranking_entries e LEFT JOIN players p ON p.id = e.player_id WHERE e.id = ?').get(existing.id);
     db.prepare(`UPDATE ranking_entries SET points = ?, updated_at = ${stamp} WHERE id = ?`).run(points, existing.id);
-    return { ok: true };
+    return { ok: true, change: { tableKey, tableLabel: (TABLES.find((t) => t.key === tableKey) || {}).label || tableKey, name: was.name, before: was.points === null ? 0 : was.points, after: points === null ? 0 : points } };
   }
   const players = db.prepare('SELECT id, name FROM players').all();
   const player = players.find((p) => normalizeName(p.name) === key) || nameMatch.findSimilar(String(name), players).exact || null;
@@ -224,10 +257,10 @@ function setPoints(tableKey, name, points) {
   const next = (db.prepare('SELECT MAX(position) AS m FROM ranking_entries WHERE table_key = ?').get(tableKey).m ?? -1) + 1;
   db.prepare('INSERT INTO ranking_entries (table_key, player_id, name, name_key, points, matches, position) VALUES (?, ?, ?, ?, ?, 0, ?)')
     .run(tableKey, player.id, player.name, normalizeName(player.name), points, next);
-  return { ok: true };
+  return { ok: true, change: { tableKey, tableLabel: (TABLES.find((t) => t.key === tableKey) || {}).label || tableKey, name: player.name, before: 0, after: points === null ? 0 : points } };
 }
 
 module.exports = {
   TABLES, TABLE_KEYS, CATEGORY_RULES, BASE_POINTS,
-  normalizeName, computeAwards, recordAwards, reverseRows, inTransaction, reconcile, reverseForMatch, getTables, setPoints,
+  normalizeName, computeAwards, recordAwards, reverseRows, inTransaction, reconcile, reverseForMatch, reverseForMatchWithChanges, getTables, setPoints,
 };
