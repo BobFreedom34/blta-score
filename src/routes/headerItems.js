@@ -55,7 +55,9 @@ function validateBody(body, self) {
   if (labelSk.length > 60) return { error: 'Label is too long' };
   if (labelEn.length > 60) return { error: 'Label is too long' };
   if (link.length > 500) return { error: 'Link is too long' };
-  const sortOrder = Number.isInteger(Number(body.sortOrder)) ? Number(body.sortOrder) : 0;
+  // no position sent = the item goes to the end of its list (the order is changed with /reorder, by dragging in the backend)
+  const hasOrder = body.sortOrder !== undefined && body.sortOrder !== null && body.sortOrder !== '';
+  const sortOrder = hasOrder ? (Number.isInteger(Number(body.sortOrder)) ? Number(body.sortOrder) : 0) : null;
   let parentId = null;
   if (body.parentId !== undefined && body.parentId !== null && body.parentId !== '') {
     parentId = Number(body.parentId);
@@ -68,6 +70,14 @@ function validateBody(body, self) {
     if (depthOf(parent.id) + below > MAX_DEPTH) return { error: 'The menu has three levels at most (item, sub-item, sub-sub-item)' };
   }
   return { labelSk, labelEn: labelEn || null, link, sortOrder, parentId, highlight: body.highlight ? 1 : 0 };
+}
+
+// the position after the last item of a list (the main items, or the sub-items of a parent)
+function nextOrder(parentId) {
+  const row = parentId === null
+    ? db.prepare('SELECT MAX(sort_order) AS m FROM header_items WHERE parent_id IS NULL').get()
+    : db.prepare('SELECT MAX(sort_order) AS m FROM header_items WHERE parent_id = ?').get(parentId);
+  return (row.m === null || row.m === undefined ? -1 : row.m) + 1;
 }
 
 // Public — the header has to render for every visitor, logged in or not,
@@ -84,8 +94,33 @@ router.post('/', requireAdmin, (req, res) => {
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const info = db.prepare(
     'INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, highlight) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, parsed.sortOrder, parsed.highlight);
+  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, parsed.sortOrder === null ? nextOrder(parsed.parentId) : parsed.sortOrder, parsed.highlight);
   res.status(201).json(serialize(db.prepare('SELECT * FROM header_items WHERE id = ?').get(info.lastInsertRowid)));
+});
+
+// Puts the items of one list (the main items: parentId null; or the sub-items of a parent) in the order given: { parentId, ids }.
+// ids must be exactly the items of that list, each once. The positions are written 0, 1, 2… so no gaps or ties are left.
+router.post('/reorder', requireAdmin, (req, res) => {
+  const body = req.body || {};
+  const parentId = body.parentId === undefined || body.parentId === null || body.parentId === '' ? null : Number(body.parentId);
+  if (parentId !== null && !Number.isInteger(parentId)) return res.status(400).json({ error: 'Invalid parent item' });
+  const ids = Array.isArray(body.ids) ? body.ids.map(Number) : [];
+  const current = (parentId === null
+    ? db.prepare('SELECT id FROM header_items WHERE parent_id IS NULL').all()
+    : db.prepare('SELECT id FROM header_items WHERE parent_id = ?').all(parentId)).map((r) => r.id);
+  if (!ids.every(Number.isInteger) || new Set(ids).size !== ids.length || ids.length !== current.length || !ids.every((id) => current.includes(id))) {
+    return res.status(400).json({ error: 'The list does not match the items of that menu level' });
+  }
+  const set = db.prepare('UPDATE header_items SET sort_order = ? WHERE id = ?');
+  db.exec('BEGIN');
+  try {
+    ids.forEach((id, index) => set.run(index, id));
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  res.json({ ok: true });
 });
 
 router.patch('/:id', requireAdmin, (req, res) => {
@@ -95,16 +130,19 @@ router.patch('/:id', requireAdmin, (req, res) => {
   // My profile's label/link/parent aren't real settings (see the seed
   // comment in db.js) — only where it sits among the other items is.
   if (item.is_my_profile) {
-    const sortOrder = Number.isInteger(Number(req.body.sortOrder)) ? Number(req.body.sortOrder) : item.sort_order;
+    const sortOrder = Number.isInteger(Number(req.body.sortOrder)) && req.body.sortOrder !== null && req.body.sortOrder !== '' ? Number(req.body.sortOrder) : item.sort_order;
     db.prepare('UPDATE header_items SET sort_order = ? WHERE id = ?').run(sortOrder, item.id);
     return res.json(serialize(db.prepare('SELECT * FROM header_items WHERE id = ?').get(item.id)));
   }
 
   const parsed = validateBody(req.body, item);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
+  // no position sent: the item keeps its place, or goes last when it moves to another list
+  const moved = (parsed.parentId || null) !== (item.parent_id || null);
+  const sortOrder = parsed.sortOrder !== null ? parsed.sortOrder : (moved ? nextOrder(parsed.parentId) : item.sort_order);
   db.prepare(
     'UPDATE header_items SET parent_id = ?, label_sk = ?, label_en = ?, link = ?, sort_order = ?, highlight = ? WHERE id = ?'
-  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, parsed.sortOrder, parsed.highlight, item.id);
+  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, sortOrder, parsed.highlight, item.id);
   res.json(serialize(db.prepare('SELECT * FROM header_items WHERE id = ?').get(item.id)));
 });
 

@@ -507,8 +507,8 @@ function availableTabs() {
     { key: 'playoff', label: t('season.navPlayoff'), has: brackets.length > 0 || (hasGroups && statusOf() !== 'past') },
     { key: 'gallery', label: t('season.navGallery'), has: !!season.galleryUrl },
   ];
-  // a tournament shows its players all the time, below the tabs and their content (see fixedPlayersHtml), not in a tab of their own
-  return isTournament() ? tabs.filter((x) => x.key !== 'players') : tabs;
+  // a tournament has only the tabs Základné info, Výsledky, Rozpis and Galéria; its players are shown all the time, below the tab content (see fixedPlayersHtml)
+  return isTournament() ? tabs.filter((x) => ['info', 'results', 'schedule', 'gallery'].includes(x.key)) : tabs;
 }
 
 function fixedPlayersHtml() {

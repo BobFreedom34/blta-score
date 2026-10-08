@@ -4486,3 +4486,14 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sw-l small { font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
 .sw-l b { margin-top: 2px; font-size: 13px; font-weight: 800; line-height: 1.2; text-transform: uppercase; overflow-wrap: anywhere; }
 @media (max-width: 900px) { .sw-sec { margin-top: 40px; } }
+
+/* Backend > Menu: the move controls of a menu item — a drag handle and up / down arrows */
+.hi-move { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.hi-handle { cursor: grab; user-select: none; padding: 6px 4px; color: var(--gray); font-size: 18px; line-height: 1; letter-spacing: -2px; }
+.hi-handle:active { cursor: grabbing; }
+.hi-arrow { width: 28px; height: 28px; border-radius: 8px; border: 1.5px solid #ddd; background: #fff; color: #222; font-size: 15px; line-height: 1; cursor: pointer; }
+.hi-arrow:hover:not(:disabled) { border-color: var(--orange); color: var(--orange); }
+.hi-arrow:disabled { opacity: 0.3; cursor: default; }
+.hi-dragging { opacity: 0.4; }
+.hi-drop-before > .header-item-row { box-shadow: inset 0 3px 0 var(--orange); }
+.hi-drop-after > .header-item-row { box-shadow: inset 0 -3px 0 var(--orange); }

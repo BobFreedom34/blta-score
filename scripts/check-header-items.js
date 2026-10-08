@@ -152,6 +152,63 @@ test('a label is still required', async () => {
   assert.strictEqual((await call('POST', '/api/header-items', { labelSk: '', link: '/x' })).status, 400);
 });
 
+// ---------------------------------------------------------------- the order (arrows and dragging in the backend)
+test('a new item goes to the end of its list, a moved item goes last in its new list', async () => {
+  const parent = await made('OrdParent');
+  const a = await made('OrdA', parent.id);
+  const b = await made('OrdB', parent.id);
+  const c = await made('OrdC', parent.id);
+  assert.ok(a.sortOrder < b.sortOrder && b.sortOrder < c.sortOrder, JSON.stringify([a, b, c].map((x) => x.sortOrder)));
+  const order = async (id) => (find(await tree(), id).children || []).map((x) => x.labelSk);
+  assert.deepStrictEqual(await order(parent.id), ['OrdA', 'OrdB', 'OrdC']);
+  // a main item also goes after the others
+  const topList = (await tree()).map((x) => x.id);
+  const top = await made('OrdTop');
+  const after = (await tree()).map((x) => x.id);
+  assert.strictEqual(after[after.length - 1], top.id);
+  assert.deepStrictEqual(after.slice(0, -1), topList);
+  // moving it under the parent puts it last there, without a position being sent
+  const moved = await call('PATCH', `/api/header-items/${top.id}`, { labelSk: top.labelSk, labelEn: '', link: top.link, parentId: parent.id });
+  assert.strictEqual(moved.status, 200, JSON.stringify(moved.json));
+  assert.deepStrictEqual(await order(parent.id), ['OrdA', 'OrdB', 'OrdC', 'OrdTop']);
+  // editing without a position keeps the place
+  await call('PATCH', `/api/header-items/${b.id}`, { labelSk: 'OrdB2', link: b.link, parentId: parent.id });
+  assert.deepStrictEqual(await order(parent.id), ['OrdA', 'OrdB2', 'OrdC', 'OrdTop']);
+});
+
+test('reorder puts a list in the given order and leaves no gaps', async () => {
+  const parent = await made('RoParent');
+  const [a, b, c] = [await made('RoA', parent.id), await made('RoB', parent.id), await made('RoC', parent.id)];
+  const r = await call('POST', '/api/header-items/reorder', { parentId: parent.id, ids: [c.id, a.id, b.id] });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.json));
+  assert.deepStrictEqual((find(await tree(), parent.id).children).map((x) => [x.labelSk, x.sortOrder]), [['RoC', 0], ['RoA', 1], ['RoB', 2]]);
+  // the main items too (My profile is one of them)
+  const top = (await tree()).map((x) => x.id);
+  const reversed = [...top].reverse();
+  assert.strictEqual((await call('POST', '/api/header-items/reorder', { parentId: null, ids: reversed })).status, 200);
+  assert.deepStrictEqual((await tree()).map((x) => x.id), reversed);
+  assert.strictEqual((await call('POST', '/api/header-items/reorder', { ids: top })).status, 200, 'parentId may be left out for the main items');
+  assert.deepStrictEqual((await tree()).map((x) => x.id), top);
+});
+
+test('reorder refuses a list that is not exactly the items of that level, and needs an admin', async () => {
+  const parent = await made('Ro2Parent');
+  const a = await made('Ro2A', parent.id);
+  const b = await made('Ro2B', parent.id);
+  const other = await made('Ro2Other');
+  const bad = [
+    { parentId: parent.id, ids: [a.id] }, // one missing
+    { parentId: parent.id, ids: [a.id, b.id, other.id] }, // one too many, from another level
+    { parentId: parent.id, ids: [a.id, a.id] }, // twice
+    { parentId: parent.id, ids: [a.id, 999999] },
+    { parentId: parent.id, ids: 'nope' },
+    { parentId: 'x', ids: [] },
+  ];
+  for (const body of bad) assert.strictEqual((await call('POST', '/api/header-items/reorder', body)).status, 400, JSON.stringify(body));
+  assert.deepStrictEqual(find(await tree(), parent.id).children.map((x) => x.id), [a.id, b.id], 'nothing changed');
+  assert.strictEqual((await call('POST', '/api/header-items/reorder', { parentId: parent.id, ids: [b.id, a.id] }, false)).status, 401);
+});
+
 // ---------------------------------------------------------------- the contact window (Kontakt)
 test('the Kontakt menu item is there, opening the contact window (#kontakt)', async () => {
   const kontakt = (await tree()).find((i) => i.link === '#kontakt');

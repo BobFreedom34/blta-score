@@ -14,8 +14,10 @@ const isHeading = (link) => !isContact(link) && (!link || !/^(\/|https?:\/\/|mai
 
 function indexItems() {
   itemsById = new Map();
-  const walk = (list, depth) => list.forEach((item) => {
+  const walk = (list, depth) => list.forEach((item, pos) => {
     item.depth = depth;
+    item.siblings = list; // the list it is in (for the move arrows and dragging)
+    item.pos = pos;
     itemsById.set(item.id, item);
     walk(item.children || [], depth + 1);
   });
@@ -132,10 +134,7 @@ function headerItemFormHtml(prefix, item, opts) {
     <div class="field">
       <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="${prefix}-highlight"${it.highlight ? ' checked' : ''}> Show as a green button</label>
     </div>
-    <div class="field">
-      <label>Sort order (lower shows first)</label>
-      <input type="number" id="${prefix}-sortOrder" value="${it.sortOrder != null ? it.sortOrder : 0}" step="1" style="width:80px">
-    </div>
+    ${item ? '' : '<div style="font-size:12px;color:var(--gray-dim)">A new item goes to the end of its list — move it with the arrows or by dragging the ⋮⋮ handle.</div>'}
   `;
 }
 
@@ -144,9 +143,19 @@ function readHeaderItemForm(prefix) {
     labelSk: document.getElementById(`${prefix}-labelSk`).value.trim(),
     labelEn: document.getElementById(`${prefix}-labelEn`).value.trim(),
     link: document.getElementById(`${prefix}-link`).value.trim(),
-    sortOrder: Number(document.getElementById(`${prefix}-sortOrder`).value) || 0,
     highlight: document.getElementById(`${prefix}-highlight`).checked,
   };
+}
+
+// The handle (drag to a new place in the same list) and the up / down arrows of a row.
+function moveControlsHtml(item) {
+  const first = item.pos === 0;
+  const last = item.pos === (item.siblings || []).length - 1;
+  return `<span class="hi-move">
+      <span class="hi-handle" title="Drag to move" aria-hidden="true">⋮⋮</span>
+      <button type="button" class="hi-arrow" data-action="up" title="Move up"${first ? ' disabled' : ''} aria-label="Move up">↑</button>
+      <button type="button" class="hi-arrow" data-action="down" title="Move down"${last ? ' disabled' : ''} aria-label="Move down">↓</button>
+    </span>`;
 }
 
 // "My profile" is a fixed nav entry the site itself drives (see
@@ -161,12 +170,10 @@ function headerItemRowHtml(item) {
     return `
       <div class="header-item-row" data-id="${item.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          ${moveControlsHtml(item)}
           <div style="flex:1;min-width:160px">
             <div style="font-weight:700">Môj profil / My profile</div>
             <div style="font-size:12px;color:var(--gray)">Fixed nav item tied to player login — only its position here is editable.</div>
-          </div>
-          <div style="display:flex;gap:8px;flex-shrink:0">
-            <button type="button" class="btn btn-sm btn-outline" data-action="edit">Edit position</button>
           </div>
         </div>
       </div>
@@ -176,6 +183,7 @@ function headerItemRowHtml(item) {
   return `
     <div class="header-item-row" data-id="${item.id}" style="border-bottom:1px solid var(--gray-light);padding:${isSub ? `10px 4px 10px ${24 * (depth - 1)}px` : '14px 4px'}">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        ${moveControlsHtml(item)}
         <div style="flex:1;min-width:160px">
           <div style="font-weight:700">${isSub ? '↳ ' : ''}${escapeHtml(label)}${item.highlight ? ' <span style="font-size:11px;font-weight:800;background:var(--green);color:#0a0a0a;border-radius:6px;padding:1px 7px;margin-left:6px">GREEN</span>' : ''}</div>
           <div style="font-size:12px;color:var(--gray)">${isContact(item.link) ? 'opens the contact window' : (isHeading(item.link) ? 'heading — opens its sub-items' : escapeHtml(item.link))}</div>
@@ -230,7 +238,18 @@ function attachHandlers() {
     const id = Number(rowEl.dataset.id);
     const item = itemsById.get(id);
 
-    rowEl.querySelector('[data-action="edit"]').addEventListener('click', () => {
+    // up / down: swap with the neighbour and save the whole list's order
+    rowEl.querySelectorAll('.hi-arrow').forEach((btn) => btn.addEventListener('click', () => {
+      const list = item.siblings.map((x) => x.id);
+      const at = list.indexOf(id);
+      const to = btn.dataset.action === 'up' ? at - 1 : at + 1;
+      if (to < 0 || to >= list.length) return;
+      [list[at], list[to]] = [list[to], list[at]];
+      reorder(item.parentId || null, list);
+    }));
+
+    const editBtn = rowEl.querySelector('[data-action="edit"]');
+    if (editBtn) editBtn.addEventListener('click', () => {
       if (item.isMyProfile) {
         rowEl.innerHTML = `
           <form class="edit-header-item-form">
@@ -345,7 +364,7 @@ function attachHandlers() {
             if (!moving) { errorEl.textContent = 'Choose the item to move first'; return; }
             try {
               await api(`/header-items/${moving.id}`, { method: 'PATCH', body: {
-                labelSk: moving.labelSk, labelEn: moving.labelEn || '', link: moving.link, sortOrder: moving.sortOrder, highlight: moving.highlight, parentId: id,
+                labelSk: moving.labelSk, labelEn: moving.labelEn || '', link: moving.link, highlight: moving.highlight, parentId: id,
               } });
               toast(`"${moving.labelSk}" moved under "${item.labelSk}"`);
               await loadItems();
@@ -372,6 +391,85 @@ function attachHandlers() {
     }
   });
 }
+
+// Saves the order of one list (main items, or the sub-items of a parent) and shows it.
+async function reorder(parentId, ids) {
+  try {
+    await api('/header-items/reorder', { method: 'POST', body: { parentId, ids } });
+    await loadItems();
+  } catch (err) {
+    toast(err.message);
+    await loadItems();
+  }
+}
+
+// Dragging: grab the ⋮⋮ handle of a row and drop it before or after another item of the same list.
+(function dragToReorder() {
+  const BLOCK = '.header-item-block, .header-item-node';
+  let dragged = null;
+  let mark = null;
+  const clear = () => {
+    document.querySelectorAll('.hi-drop-before, .hi-drop-after').forEach((el) => el.classList.remove('hi-drop-before', 'hi-drop-after'));
+    mark = null;
+  };
+  // the item of the dragged one's own list that the pointer is over (walking up from a sub-item to its parent block)
+  const siblingUnder = (target) => {
+    let block = target.closest ? target.closest(BLOCK) : null;
+    while (block && block.parentElement !== dragged.parentElement) block = block.parentElement ? block.parentElement.closest(BLOCK) : null;
+    return block && block !== dragged ? block : null;
+  };
+  const before = (block, y) => {
+    const row = block.querySelector(':scope > .header-item-row');
+    const box = (row || block).getBoundingClientRect();
+    return y < box.top + box.height / 2;
+  };
+
+  root.addEventListener('mousedown', (e) => {
+    const handle = e.target.closest('.hi-handle');
+    if (handle) handle.closest(BLOCK).draggable = true;
+  });
+  root.addEventListener('mouseup', () => { document.querySelectorAll('[draggable="true"]').forEach((el) => { if (el.matches(BLOCK)) el.draggable = false; }); });
+  root.addEventListener('dragstart', (e) => {
+    const block = e.target.closest && e.target.closest(BLOCK);
+    if (!block || !block.draggable) return;
+    e.stopPropagation();
+    dragged = block;
+    block.classList.add('hi-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', block.dataset.itemId);
+  });
+  root.addEventListener('dragover', (e) => {
+    if (!dragged) return;
+    const over = siblingUnder(e.target);
+    if (!over) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    clear();
+    mark = { block: over, before: before(over, e.clientY) };
+    over.classList.add(mark.before ? 'hi-drop-before' : 'hi-drop-after');
+  });
+  root.addEventListener('drop', (e) => {
+    if (!dragged || !mark) return;
+    e.preventDefault();
+    const item = itemsById.get(Number(dragged.dataset.itemId));
+    const target = Number(mark.block.dataset.itemId);
+    const ids = item.siblings.map((x) => x.id).filter((x) => x !== item.id);
+    const at = ids.indexOf(target);
+    ids.splice(mark.before ? at : at + 1, 0, item.id);
+    const parentId = item.parentId || null;
+    clear();
+    dragged.classList.remove('hi-dragging');
+    dragged.draggable = false;
+    dragged = null;
+    if (ids.every((x, i) => x === item.siblings[i].id)) return; // dropped where it was
+    reorder(parentId, ids);
+  });
+  root.addEventListener('dragend', () => {
+    clear();
+    if (dragged) { dragged.classList.remove('hi-dragging'); dragged.draggable = false; }
+    dragged = null;
+  });
+})();
 
 // Choosing an existing page fills in the labels and the link of the form it is in.
 root.addEventListener('change', (e) => {
