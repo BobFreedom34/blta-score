@@ -263,7 +263,7 @@ function myPostFormHtml(existing) {
       </div>
       ${existing ? blockedListHtml(existing) : ''}
       <div class="field">
-        <label>${t('lookingToPlay.levelLabel')} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(${t('common.optional')})</span></label>
+        <label>${t('lookingToPlay.levelLabel')} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${t('common.optional')}</span></label>
         <div class="category-picker" id="my-post-categories">
           ${BLTA_CATEGORIES.map((c) => `<button type="button" class="badge badge-${c} category-toggle${existing && existing.categories && existing.categories.includes(c) ? ' active' : ''}" data-category="${c}">${LEVEL_LABELS[c]}</button>`).join('')}
         </div>
@@ -613,7 +613,7 @@ pickSlotModal.innerHTML = `
       <div class="availability-grid-wrap" id="pick-slot-grid-wrap"></div>
     </div>
     <div class="field">
-      <label>${t('lookingToPlay.messageLabel')} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(${t('common.optional')})</span></label>
+      <label>${t('lookingToPlay.messageLabel')} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${t('common.optional')}</span></label>
       <textarea id="pick-slot-message" rows="2" maxlength="300" placeholder="${escapeHtml(t('lookingToPlay.messagePlaceholder'))}"></textarea>
     </div>
     <button type="button" class="btn btn-primary btn-block" id="pick-slot-confirm-btn" disabled style="margin-top:6px">${t('match.confirmBtn')}</button>

@@ -2450,9 +2450,13 @@ a.rank-name:hover { text-decoration: underline; }
    like the badge the board card itself will show; unselected ones are
    just dimmed rather than restyled, which keeps each one recognizable by
    color even before it's picked. */
-.category-picker { display: flex; gap: 8px; flex-wrap: wrap; }
-.category-toggle { border: none; font-family: inherit; cursor: pointer; opacity: 0.35; transition: opacity 0.15s ease; }
-.category-toggle.active { opacity: 1; }
+/* The level choice (Elite / Next Gen / Novice) of the "looking for an opponent" form: three clear chips — an outlined one is not
+   chosen, a solid orange one with a tick is. (The id keeps these above the orange outline-only badge styles.) */
+.category-picker { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+#my-post-categories .category-toggle { padding: 10px 20px; font-size: 13px; font-family: inherit; cursor: pointer; background: #fff; color: #3a3d44; border: 2px solid #c9ccd3; transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease; }
+#my-post-categories .category-toggle:hover { border-color: var(--orange); color: var(--orange); }
+#my-post-categories .category-toggle.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+#my-post-categories .category-toggle.active::before { content: '✓'; margin-right: 7px; font-size: 14px; line-height: 1; }
 
 /* Board cards deliberately reuse a finished match card's own chrome (white
    card, colored left accent, top badge row, dark .scoreboard box) instead
