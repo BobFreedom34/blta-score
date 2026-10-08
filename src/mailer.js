@@ -401,10 +401,10 @@ async function sendSeasonRegistrationEmail(season, registration, total) {
     return false;
   }
   const text = [
-    `Nová registrácia do ${season.kind === 'TOURNAMENT' ? 'turnaja' : 'série'} ${season.name}:`,
+    `Nová registrácia ${season.kind === 'TOURNAMENT' ? 'na turnaj' : 'do série'} ${season.name}:`,
     '',
     `Meno: ${registration.name}${registration.isNew ? ' (nové meno — zatiaľ nie je medzi hráčmi)' : ''}`,
-    `Kategória: ${categoryLabel(registration.category)}`,
+    ...(registration.category ? [`Kategória: ${categoryLabel(registration.category)}`] : ['Kategória: zaradí admin']),
     `Telefón: ${registration.phone}`,
     `E-mail: ${registration.email}`,
     ...(registration.note ? [`Poznámka: ${registration.note}`] : []),
@@ -416,7 +416,7 @@ async function sendSeasonRegistrationEmail(season, registration, total) {
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
     replyTo: registration.email,
-    subject: `Registrácia do ${season.kind === 'TOURNAMENT' ? 'turnaja' : 'série'}: ${registration.name} (${categoryLabel(registration.category)})`,
+    subject: `Registrácia ${season.kind === 'TOURNAMENT' ? 'na turnaj' : 'do série'}: ${registration.name}${registration.category ? ` (${categoryLabel(registration.category)})` : ''}`,
     text,
   });
   return true;

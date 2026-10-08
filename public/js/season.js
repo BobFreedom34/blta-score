@@ -9,6 +9,7 @@ const slug = decodeURIComponent(window.location.pathname.split('/').filter(Boole
 
 const CATEGORY_ORDER = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 const CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
+const playerCatName = (c) => (c === 'NONE' ? t('season.noCategory') : CATEGORY_NAMES[c]);
 
 let season = null;
 let standings = null;
@@ -116,9 +117,10 @@ function playersModel() {
     if (members.length) members.forEach((m) => add(m.name, m.slug, g.category, !!(m.paid || (regs.get(nameKey(m.name)) || {}).paid)));
     else ((tables.get(g.id) || { rows: [] }).rows).forEach((r) => add(r.player.name, r.player.slug, g.category, regs.has(nameKey(r.player.name)) ? regs.get(nameKey(r.player.name)).paid : null));
   });
-  (season.registrations || []).forEach((r) => add(r.name, r.slug, r.category, r.paid));
+  // a tournament entry may have no category: those players are listed last, under "Bez kategórie"
+  (season.registrations || []).forEach((r) => add(r.name, r.slug, r.category || 'NONE', r.paid));
   const loc = currentLang === 'en' ? 'en' : 'sk';
-  const cats = CATEGORY_ORDER.map((category) => ({
+  const cats = [...CATEGORY_ORDER, 'NONE'].map((category) => ({
     category,
     players: [...people.values()].filter((p) => p.category === category).sort((a, b) => a.name.localeCompare(b.name, loc)),
   })).filter((c) => c.players.length);
@@ -333,7 +335,7 @@ function playersHtml() {
   if (!model.total) return '';
   const showPaid = !!(season.entryFee || season.paymentUrl || (season.registrations || []).some((r) => r.paid));
   if (playersCat !== 'ALL' && !model.cats.some((c) => c.category === playersCat)) playersCat = 'ALL';
-  const filter = `<div class="tabs sv-line" id="sv-pcats"><button type="button" class="tab${playersCat === 'ALL' ? ' active' : ''}" data-pc="ALL">${escapeHtml(t('season.schedAll'))}<small>${model.total}</small></button>${model.cats.map((c) => `<button type="button" class="tab${playersCat === c.category ? ' active' : ''}" data-pc="${c.category}">${escapeHtml(CATEGORY_NAMES[c.category])}<small>${c.players.length}</small></button>`).join('')}</div>`;
+  const filter = `<div class="tabs sv-line" id="sv-pcats"><button type="button" class="tab${playersCat === 'ALL' ? ' active' : ''}" data-pc="ALL">${escapeHtml(t('season.schedAll'))}<small>${model.total}</small></button>${model.cats.map((c) => `<button type="button" class="tab${playersCat === c.category ? ' active' : ''}" data-pc="${c.category}">${escapeHtml(playerCatName(c.category))}<small>${c.players.length}</small></button>`).join('')}</div>`;
   const tables = model.cats.filter((c) => playersCat === 'ALL' || c.category === playersCat).map((c) => {
     const rows = c.players.map((p, i) => {
       const name = p.slug ? `<a href="/player/${encodeURIComponent(p.slug)}">${escapeHtml(p.name)}</a>` : escapeHtml(p.name);
@@ -342,7 +344,7 @@ function playersHtml() {
     }).join('');
     return `
       <div class="sv-ptable">
-        <div class="sv-ptable-t">${escapeHtml(CATEGORY_NAMES[c.category])}<em>${c.players.length}</em></div>
+        <div class="sv-ptable-t">${escapeHtml(playerCatName(c.category))}<em>${c.players.length}</em></div>
         <div class="sv-pr head"><span class="n">#</span><span class="nm">${escapeHtml(t('season.colName'))}</span>${showPaid ? `<span class="fee">${escapeHtml(t('season.colFee'))}</span>` : ''}</div>
         ${rows}
       </div>`;
@@ -397,7 +399,7 @@ async function openRegisterModal() {
   wrap.innerHTML = `
     <div class="modal sv-reg" role="dialog" aria-modal="true">
       <button type="button" class="close" data-close aria-label="${escapeHtml(t('season.regClose'))}">&times;</button>
-      <h3>${escapeHtml(t('season.regTitle'))}</h3>
+      <h3>${escapeHtml(t(isTournament() ? 'season.regTitleTournament' : 'season.regTitle'))}</h3>
       <div class="sv-reg-season">${escapeHtml(season.name)}</div>
       <form id="sv-reg-form" novalidate>
         <div class="field">
@@ -407,9 +409,9 @@ async function openRegisterModal() {
         </div>
         <div class="field"><label for="sv-reg-phone">${escapeHtml(t('season.regPhone'))}</label><input type="tel" id="sv-reg-phone" autocomplete="tel" maxlength="20" placeholder="0903 111 222"></div>
         <div class="field"><label for="sv-reg-email">${escapeHtml(t('season.regEmail'))}</label><input type="email" id="sv-reg-email" autocomplete="email" maxlength="120"></div>
-        <div class="field"><label for="sv-reg-cat">${escapeHtml(t('season.regCategory'))}</label>
+        ${isTournament() ? '' : `<div class="field"><label for="sv-reg-cat">${escapeHtml(t('season.regCategory'))}</label>
           <select id="sv-reg-cat"><option value="">${escapeHtml(t('season.regChoose'))}</option>${CATEGORY_ORDER.filter((c) => !isTournament() || (season.categories || []).includes(c)).map((c) => `<option value="${c}">${escapeHtml(CATEGORY_NAMES[c])}</option>`).join('')}</select>
-        </div>
+        </div>`}
         <div class="field"><label for="sv-reg-notetext">${escapeHtml(t('season.regNoteLabel'))}</label><textarea id="sv-reg-notetext" rows="3" maxlength="500" placeholder="${escapeHtml(t('season.regNotePlaceholder'))}"></textarea></div>
         <input type="text" id="sv-reg-website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
         <div class="sv-reg-similar" id="sv-reg-similar"></div>
@@ -435,11 +437,11 @@ async function openRegisterModal() {
     const typed = $('name').value.replace(/\s+/g, ' ').trim();
     const phone = $('phone').value.trim();
     const email = $('email').value.trim();
-    const category = $('cat').value;
+    const category = isTournament() ? '' : $('cat').value; // a tournament has no category choice: the admin sorts the players
     if (typed.length < 3) return fail(t('season.regErrName'));
     if (phone.replace(/\D/g, '').length < 9) return fail(t('season.regErrPhone'));
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(t('season.regErrEmail'));
-    if (!category) return fail(t('season.regErrCategory'));
+    if (!category && !isTournament()) return fail(t('season.regErrCategory'));
     const known = chosenId ? { id: chosenId } : findPlayerByTypedName(typed);
     const button = $('send');
     button.disabled = true;
@@ -469,7 +471,7 @@ async function openRegisterModal() {
         return;
       }
       $('similar').innerHTML = '';
-      const msg = { ALREADY_REGISTERED: 'season.regAlready', REGISTRATION_CLOSED: 'season.regClosedErr', BAD_NAME: 'season.regErrName', BAD_EMAIL: 'season.regErrEmail', BAD_PHONE: 'season.regErrPhone', BAD_CATEGORY: 'season.regErrCategory' }[d.code];
+      const msg = { ALREADY_REGISTERED: isTournament() ? 'season.regAlreadyTournament' : 'season.regAlready', REGISTRATION_CLOSED: isTournament() ? 'season.regClosedErrTournament' : 'season.regClosedErr', BAD_NAME: 'season.regErrName', BAD_EMAIL: 'season.regErrEmail', BAD_PHONE: 'season.regErrPhone', BAD_CATEGORY: 'season.regErrCategory' }[d.code];
       $('error').textContent = t(msg || 'season.regError');
     }
   }

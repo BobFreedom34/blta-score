@@ -195,7 +195,9 @@ router.post('/:id/registrations', async (req, res) => {
   if (typed.length < 3 || typed.length > 80) return res.status(400).json({ code: 'BAD_NAME', error: 'Enter your name and surname' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120) return res.status(400).json({ code: 'BAD_EMAIL', error: 'Enter a valid e-mail address' });
   if (phone.replace(/\D/g, '').length < 9 || phone.length > 20) return res.status(400).json({ code: 'BAD_PHONE', error: 'Enter a valid phone number' });
-  if (!BLTA_CATEGORIES.includes(body.category)) return res.status(400).json({ code: 'BAD_CATEGORY', error: 'Choose a category' });
+  // a tournament entry has no category: the admin sorts the players into categories afterwards
+  const entryCategory = season.kind === 'TOURNAMENT' ? '' : body.category;
+  if (season.kind !== 'TOURNAMENT' && !BLTA_CATEGORIES.includes(body.category)) return res.status(400).json({ code: 'BAD_CATEGORY', error: 'Choose a category' });
   const note = typeof body.note === 'string' ? body.note.replace(/\r\n/g, '\n').trim() : '';
   if (note.length > 500) return res.status(400).json({ code: 'BAD_NOTE', error: 'The note is too long (max 500 characters)' });
 
@@ -218,12 +220,12 @@ router.post('/:id/registrations', async (req, res) => {
   if (already) return res.status(409).json({ code: 'ALREADY_REGISTERED', error: 'This player is already registered for the season' });
 
   db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, note) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(season.id, player ? player.id : null, name, phone, email, body.category, note);
+    .run(season.id, player ? player.id : null, name, phone, email, entryCategory, note);
   const total = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?').get(season.id).n;
   // the e-mail to the admin must never make the registration fail
-  sendSeasonRegistrationEmail(season, { name, phone, email, category: body.category, note, isNew: !player }, total)
+  sendSeasonRegistrationEmail(season, { name, phone, email, category: entryCategory, note, isNew: !player }, total)
     .catch((err) => console.error('[season registration] admin e-mail failed:', err.message));
-  res.status(201).json({ ok: true, name, category: body.category, paymentUrl: season.payment_url || '' });
+  res.status(201).json({ ok: true, name, category: entryCategory, paymentUrl: season.payment_url || '' });
 });
 
 function serializeRegistration(r) {
@@ -251,8 +253,13 @@ router.post('/:id/registrations/admin', requireAdmin, (req, res) => {
   const body = req.body || {};
   const player = db.prepare('SELECT * FROM players WHERE id = ?').get(Number(body.playerId));
   if (!player) return res.status(400).json({ error: 'Choose a player from the list' });
-  const category = BLTA_CATEGORIES.includes(body.category) ? body.category : profileCategory(player.category);
-  if (!category) return res.status(400).json({ error: 'Choose a category' });
+  // a tournament entry may have no category (category = ''): sent as an empty category, or when the profile has none either
+  const tournament = season.kind === 'TOURNAMENT';
+  let category = null;
+  if (BLTA_CATEGORIES.includes(body.category)) category = body.category;
+  else if (tournament && body.category === '') category = '';
+  else category = profileCategory(player.category) || (tournament ? '' : null);
+  if (category === null) return res.status(400).json({ error: 'Choose a category' });
 
   const typedPhone = typeof body.phone === 'string' ? body.phone.trim() : '';
   const phone = String(typedPhone || player.phone || '').replace(/[^\d+]/g, '');
@@ -270,11 +277,37 @@ router.post('/:id/registrations/admin', requireAdmin, (req, res) => {
   res.status(201).json(serializeRegistration(db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(info.lastInsertRowid)));
 });
 
+// The admin changes a registration: what is sent is changed, the rest stays — paid, category ('' = no category, tournaments only),
+// phone, e-mail and note.
 router.patch('/registrations/:rid', requireAdmin, (req, res) => {
-  const row = db.prepare('SELECT id FROM season_registrations WHERE id = ?').get(Number(req.params.rid));
+  const row = db.prepare('SELECT r.*, s.kind AS season_kind FROM season_registrations r LEFT JOIN seasons s ON s.id = r.season_id WHERE r.id = ?').get(Number(req.params.rid));
   if (!row) return res.status(404).json({ error: 'Registration not found' });
-  db.prepare('UPDATE season_registrations SET paid = ? WHERE id = ?').run(req.body && req.body.paid ? 1 : 0, row.id);
-  res.json({ ok: true });
+  const body = req.body || {};
+  const next = { paid: row.paid, category: row.category, phone: row.phone, email: row.email, note: row.note || '' };
+  if (body.paid !== undefined) next.paid = body.paid ? 1 : 0;
+  if (body.category !== undefined) {
+    if (BLTA_CATEGORIES.includes(body.category)) next.category = body.category;
+    else if (body.category === '' && row.season_kind === 'TOURNAMENT') next.category = '';
+    else return res.status(400).json({ error: 'Choose a category' });
+  }
+  if (body.phone !== undefined) {
+    const phone = String(body.phone || '').trim().replace(/[^\d+]/g, '');
+    if (phone && (phone.replace(/\D/g, '').length < 9 || phone.length > 20)) return res.status(400).json({ error: 'Enter a valid phone number' });
+    next.phone = phone;
+  }
+  if (body.email !== undefined) {
+    const email = String(body.email || '').trim();
+    if (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120)) return res.status(400).json({ error: 'Enter a valid e-mail address' });
+    next.email = email;
+  }
+  if (body.note !== undefined) {
+    const note = String(body.note || '').trim();
+    if (note.length > 500) return res.status(400).json({ error: 'The note is too long (max 500 characters)' });
+    next.note = note;
+  }
+  db.prepare('UPDATE season_registrations SET paid = ?, category = ?, phone = ?, email = ?, note = ? WHERE id = ?')
+    .run(next.paid, next.category, next.phone, next.email, next.note, row.id);
+  res.json({ ok: true, ...serializeRegistration(db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(row.id)) });
 });
 
 router.delete('/registrations/:rid', requireAdmin, (req, res) => {

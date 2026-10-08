@@ -137,10 +137,51 @@ test('bad input is refused and only an admin may change things', async () => {
 test('a tournament can be entered like a season', async () => {
   const made = await call('POST', '/api/seasons', { body: { name: 'Entry Cup', startDate: '2099-05-01', endDate: '2099-05-02', kind: 'TOURNAMENT' } });
   await call('PATCH', `/api/seasons/${made.json.id}`, { body: { registrationOpen: true } });
-  const reg = await call('POST', `/api/seasons/${made.json.id}/registrations`, { cookie: '', body: { name: 'Test Hráč', phone: '0903111222', email: 'a@example.com', category: 'ELITE' } });
+  const reg = await call('POST', `/api/seasons/${made.json.id}/registrations`, { cookie: '', body: { name: 'Test Hráč', phone: '0903111222', email: 'a@example.com' } });
   assert.ok(reg.status === 200 || reg.status === 201, `${reg.status} ${JSON.stringify(reg.json)}`);
+  // no category is asked for, and one that is sent is ignored: the admin sorts the players into categories
+  const sent = await call('POST', `/api/seasons/${made.json.id}/registrations`, { cookie: '', body: { name: 'Druhý Hráč', phone: '0903111333', email: 'b@example.com', category: 'ELITE' } });
+  assert.ok(sent.status === 201, JSON.stringify(sent.json));
   const page = (await call('GET', '/api/seasons/by-slug/entry-cup', { cookie: '' })).json;
+  assert.strictEqual(page.registrations.length, 2);
+  assert.deepStrictEqual(page.registrations.map((r) => r.category), ['', '']);
+});
+
+test('a tournament entry can have no category and an admin can edit any registration', async () => {
+  const player = (await call('POST', '/api/players', { body: { name: 'Bez Kategórie' } })).json;
+  const cup = (await call('POST', '/api/seasons', { body: { name: 'Open Cup', startDate: '2099-06-01', endDate: '2099-06-02', kind: 'TOURNAMENT' } })).json;
+  const league = (await call('POST', '/api/seasons', { body: { name: 'Open League', startDate: '2099-06-01', endDate: '2099-09-01' } })).json;
+  // a tournament: added without a category (sent empty, and the profile has none either)
+  const added = await call('POST', `/api/seasons/${cup.id}/registrations/admin`, { body: { playerId: player.id, category: '' } });
+  assert.strictEqual(added.status, 201, JSON.stringify(added.json));
+  assert.strictEqual(added.json.category, '');
+  // a league season still needs one
+  const refused = await call('POST', `/api/seasons/${league.id}/registrations/admin`, { body: { playerId: player.id, category: '' } });
+  assert.strictEqual(refused.status, 400);
+  assert.strictEqual((await call('POST', `/api/seasons/${league.id}/registrations/admin`, { body: { playerId: player.id, category: 'NOVICE' } })).status, 201);
+  const rid = added.json.id;
+  // editing: only what is sent changes
+  const edited = await call('PATCH', `/api/seasons/registrations/${rid}`, { body: { category: 'NEXT_GEN', phone: '0903 111 222', email: 'a@b.sk', note: 'late entry' } });
+  assert.strictEqual(edited.status, 200, JSON.stringify(edited.json));
+  assert.deepStrictEqual([edited.json.category, edited.json.phone, edited.json.email, edited.json.note], ['NEXT_GEN', '0903111222', 'a@b.sk', 'late entry']);
+  const paid = await call('PATCH', `/api/seasons/registrations/${rid}`, { body: { paid: true } });
+  assert.deepStrictEqual([paid.json.paid, paid.json.category, paid.json.phone, paid.json.note], [true, 'NEXT_GEN', '0903111222', 'late entry']);
+  // back to no category (a tournament only)
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${rid}`, { body: { category: '' } })).json.category, '');
+  const leagueReg = (await call('GET', `/api/seasons/${league.id}/registrations`)).json[0];
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${leagueReg.id}`, { body: { category: '' } })).status, 400);
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${leagueReg.id}`, { body: { category: 'ELITE' } })).json.category, 'ELITE');
+  // bad values
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${rid}`, { body: { phone: '12' } })).status, 400);
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${rid}`, { body: { email: 'nope' } })).status, 400);
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${rid}`, { body: { note: 'x'.repeat(501) } })).status, 400);
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${rid}`, { body: { category: 'JUNIOR' } })).status, 400);
+  assert.strictEqual((await call('PATCH', '/api/seasons/registrations/999999', { body: { paid: true } })).status, 404);
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${rid}`, { body: { paid: true }, cookie: '' })).status, 401);
+  // the public page gets the entry with its (empty) category
+  const page = (await call('GET', '/api/seasons/by-slug/open-cup', { cookie: '' })).json;
   assert.strictEqual(page.registrations.length, 1);
+  assert.strictEqual(page.registrations[0].category, '');
 });
 
 // ---------------------------------------------------------------- upgrading a database that has events

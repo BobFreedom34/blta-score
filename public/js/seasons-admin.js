@@ -402,7 +402,7 @@ function wireSeason(card) {
           <div class="autocomplete"><input type="text" data-ra="player" id="reg-player-${id}" placeholder="Start typing a name or surname…" autocomplete="off" style="${box};width:100%"><div class="autocomplete-list" id="reg-player-list-${id}"></div></div>
         </label>
         <label style="font-size:12px;font-weight:700">Category
-          <select data-ra="category" style="${box}"><option value="">Category…</option>${categoryOptions('')}</select>
+          <select data-ra="category" style="${box}"><option value="">${IS_TOURNAMENT ? 'No category' : 'Category…'}</option>${categoryOptions('')}</select>
         </label>
         <label style="flex:1;min-width:130px;font-size:12px;font-weight:700">Phone
           <input type="text" data-ra="phone" maxlength="20" placeholder="from the profile" style="${box};width:100%">
@@ -429,13 +429,14 @@ function wireSeason(card) {
       field('email').value = chosen && chosen.email ? chosen.email : '';
       field('category').value = chosen ? profileCategory(chosen.category) : '';
       if (!chosen) { say(''); return; }
-      const missing = [chosen.phone ? '' : 'phone', chosen.email ? '' : 'email', profileCategory(chosen.category) ? '' : 'category'].filter(Boolean);
+      const missing = [chosen.phone ? '' : 'phone', chosen.email ? '' : 'email', IS_TOURNAMENT || profileCategory(chosen.category) ? '' : 'category'].filter(Boolean);
       say(missing.length ? `No ${missing.join(', ')} in the profile yet — fill ${missing.length === 1 ? 'it' : 'them'} in here (only this registration gets it).` : 'Phone, email and category are taken from the profile.');
     });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!chosen) { say('Choose a player from the list.', true); return; }
-      const body = { playerId: chosen.id, category: field('category').value || undefined };
+      // a tournament entry may have no category: the empty choice is sent as it is; a league season takes the profile's when none is picked
+      const body = { playerId: chosen.id, category: IS_TOURNAMENT ? field('category').value : (field('category').value || undefined) };
       if (field('phone').value.trim() !== (chosen.phone || '')) body.phone = field('phone').value;
       if (field('email').value.trim() !== (chosen.email || '')) body.email = field('email').value;
       try {
@@ -447,21 +448,49 @@ function wireSeason(card) {
     });
   }
 
+  let editingReg = null; // the registration being edited (its row shows a small form)
+  function regEditHtml(r) {
+    const box = `display:block;margin-top:4px;${inputStyle}`;
+    return `
+        <div style="padding:10px 0;border-top:1px solid #eee" data-reg="${r.id}">
+          <strong>${escapeHtml(r.name)}</strong>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:6px">
+            <label style="font-size:12px;font-weight:700">Category
+              <select data-re="category" style="${box}">${IS_TOURNAMENT ? `<option value="">No category</option>` : ''}${categoryOptions(r.category)}</select>
+            </label>
+            <label style="flex:1;min-width:130px;font-size:12px;font-weight:700">Phone
+              <input type="text" data-re="phone" maxlength="20" value="${escapeHtml(r.phone || '')}" style="${box};width:100%">
+            </label>
+            <label style="flex:1;min-width:170px;font-size:12px;font-weight:700">Email
+              <input type="text" data-re="email" maxlength="120" value="${escapeHtml(r.email || '')}" style="${box};width:100%">
+            </label>
+          </div>
+          <label style="display:block;font-size:12px;font-weight:700;margin-top:8px">Note
+            <textarea data-re="note" rows="2" maxlength="500" style="${box};width:100%">${escapeHtml(r.note || '')}</textarea>
+          </label>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button type="button" class="btn btn-sm btn-primary" data-reg-save>Save</button>
+            <button type="button" class="btn btn-sm btn-outline" data-reg-cancel>Cancel</button>
+          </div>
+        </div>`;
+  }
+
   async function loadRegs() {
     try {
       const rows = await api(`/seasons/${id}/registrations`);
       regsBtn.textContent = `Registrations (${rows.length})`;
       const players = await loadAdminPlayers();
-      regsList.innerHTML = addPlayerFormHtml(players, rows) + (rows.length ? rows.map((r) => `
+      regsList.innerHTML = addPlayerFormHtml(players, rows) + (rows.length ? rows.map((r) => (r.id === editingReg ? regEditHtml(r) : `
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #eee" data-reg="${r.id}">
           <div style="flex:1;min-width:220px">
-            <strong>${escapeHtml(r.name)}</strong> <span class="sa-chip future">${escapeHtml(catLabel(r.category))}</span>${r.playerId ? '' : ' <span style="font-size:11px;color:var(--gray)">new name</span>'}
+            <strong>${escapeHtml(r.name)}</strong> <span class="sa-chip future">${escapeHtml(r.category ? catLabel(r.category) : 'No category')}</span>${r.playerId ? '' : ' <span style="font-size:11px;color:var(--gray)">new name</span>'}
             <div style="font-size:12px;color:var(--gray)">${r.phone || r.email ? `${escapeHtml(r.phone)} · <a href="mailto:${escapeHtml(r.email)}" style="color:var(--orange)">${escapeHtml(r.email)}</a>` : 'no contact details'} · ${escapeHtml(fmtDate(r.createdAt.slice(0, 10)))}</div>
             ${r.note ? `<div style="font-size:13px;margin-top:4px;white-space:pre-wrap"><strong>Note:</strong> ${escapeHtml(r.note)}</div>` : ''}
           </div>
+          <button type="button" class="sg-link" data-reg-edit title="Change the category, phone, e-mail or note">Edit</button>
           <button type="button" class="sg-link" data-reg-paid="${r.paid ? 0 : 1}">${r.paid ? 'Paid ✓' : 'Not paid'}</button>
           <button type="button" class="sg-x" data-reg-del title="Delete this registration">&times;</button>
-        </div>`).join('') : '<div class="sg-empty">No registrations yet.</div>');
+        </div>`)).join('') : '<div class="sg-empty">No registrations yet.</div>');
       wireAddPlayerForm(players);
     } catch (err) { fail(err); }
   }
@@ -474,7 +503,19 @@ function wireSeason(card) {
     if (!row) return;
     const rid = row.dataset.reg;
     try {
-      if (e.target.closest('[data-reg-paid]')) {
+      if (e.target.closest('[data-reg-edit]')) {
+        editingReg = Number(rid);
+        await loadRegs();
+      } else if (e.target.closest('[data-reg-cancel]')) {
+        editingReg = null;
+        await loadRegs();
+      } else if (e.target.closest('[data-reg-save]')) {
+        const val = (name) => row.querySelector(`[data-re="${name}"]`).value;
+        await api(`/seasons/registrations/${rid}`, { method: 'PATCH', body: { category: val('category'), phone: val('phone'), email: val('email'), note: val('note') } });
+        editingReg = null;
+        toast('Registration saved');
+        await loadRegs();
+      } else if (e.target.closest('[data-reg-paid]')) {
         await api(`/seasons/registrations/${rid}`, { method: 'PATCH', body: { paid: e.target.closest('[data-reg-paid]').dataset.regPaid === '1' } });
         await loadRegs();
       } else if (e.target.closest('[data-reg-del]')) {
