@@ -4094,7 +4094,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .home-carousel + .home-head { margin-top: 48px; }
 .hc-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -ms-overflow-style: none; }
 .hc-track::-webkit-scrollbar { display: none; }
-.hc-slide { position: relative; flex: 0 0 100%; scroll-snap-align: start; display: block; aspect-ratio: 16 / 10; color: var(--white); text-decoration: none; }
+.hc-slide { position: relative; flex: 0 0 100%; scroll-snap-align: start; display: block; aspect-ratio: 16 / 6; color: var(--white); text-decoration: none; }
 .hc-slide picture { display: contents; }
 .hc-slide img { width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; -webkit-user-drag: none; }
 .hc-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 120px 26px 26px; background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.78) 35%, rgba(0, 0, 0, 0.4) 70%, transparent 100%); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); }

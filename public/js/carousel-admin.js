@@ -12,8 +12,8 @@
       <div class="ca-row" data-id="${s.id}" style="display:flex;gap:14px;flex-wrap:wrap;padding:14px 0;border-top:1px solid #eee">
         <div style="display:flex;flex-direction:column;gap:12px;width:200px;${s.active ? '' : 'opacity:.4'}">
           <div>
-            <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:4px">Desktop · 16:10</div>
-            <img src="${escapeHtml(s.imageUrl)}" alt="" style="display:block;width:200px;height:125px;object-fit:cover;border-radius:10px;background:#eee">
+            <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:4px">Desktop · 16:6</div>
+            <img src="${escapeHtml(s.imageUrl)}" alt="" style="display:block;width:200px;height:75px;object-fit:cover;border-radius:10px;background:#eee">
           </div>
           <div>
             <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:4px">Mobile · 16:9</div>
@@ -63,7 +63,7 @@
     host.innerHTML = `
       <div class="card" style="margin-bottom:16px">
         <h3 style="margin-top:0">Add pictures</h3>
-        <p style="color:var(--gray);margin:0 0 10px;font-size:14px">PNG, JPG or WebP, up to 6 MB each. These are the <b>desktop</b> pictures, shown at <b>16:10</b> (e.g. 1600 × 1000). Pick several files to add them at once. Every picture can then get its own <b>mobile</b> picture at <b>16:9</b> (e.g. 1280 × 720) with the button under it; without one, phones get the desktop picture cut to 16:9 from the middle.</p>
+        <p style="color:var(--gray);margin:0 0 10px;font-size:14px">PNG, JPG or WebP, up to 6 MB each. These are the <b>desktop</b> pictures: a wide picture (about <b>16:6</b>, e.g. 1600 × 600) fills the banner best. Pick several files to add them at once. Every picture can then get its own <b>mobile</b> picture at <b>16:9</b> (e.g. 1280 × 720) with the button under it; without one, phones get the desktop picture cut to 16:9 from the middle.</p>
         <input type="file" id="ca-files" accept="image/png,image/jpeg,image/webp" multiple>
         <button type="button" class="btn btn-primary" id="ca-upload" style="margin-left:8px">Upload</button>
         <div id="ca-upload-msg" style="font-weight:600;margin-top:8px"></div>
