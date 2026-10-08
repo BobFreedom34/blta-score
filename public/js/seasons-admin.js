@@ -1,9 +1,13 @@
 const root = document.getElementById('seasons-admin-root');
+// The same editor serves two pages: /seasons-admin (league seasons) and /tournaments-admin (tournaments, data-kind="TOURNAMENT").
+const KIND = root && root.dataset.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE';
+const IS_TOURNAMENT = KIND === 'TOURNAMENT';
+const WORD = IS_TOURNAMENT ? 'tournament' : 'season';
 
 let seasons = [];
 
 // Which season cards are unfolded. Remembered in this browser; the first time only the running season is open.
-const OPEN_KEY = 'blta_seasons_admin_open';
+const OPEN_KEY = IS_TOURNAMENT ? 'blta_tournaments_admin_open' : 'blta_seasons_admin_open';
 let openIds = null;
 const openPanels = new Set(); // groups whose players panel is unfolded
 const previewOpen = new Set(); // seasons whose schedule preview is shown
@@ -76,16 +80,10 @@ function renderLoggedOut() {
 function renderAdmin() {
   root.innerHTML = `
     <div class="card" style="margin-bottom:20px">
-      <h3 style="margin-top:0">Add a season or a tournament</h3>
+      <h3 style="margin-top:0">Add a ${WORD}</h3>
       <form id="add-season-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <label style="font-size:12px;font-weight:700">Type
-          <select id="season-kind" style="display:block;margin-top:4px;${inputStyle}">
-            <option value="LEAGUE">League season</option>
-            <option value="TOURNAMENT">Tournament</option>
-          </select>
-        </label>
         <label style="flex:1;min-width:220px;font-size:12px;font-weight:700">Name
-          <input type="text" id="season-name" maxlength="120" placeholder="e.g. Winter Opening Series 2027 or Slávia Filozof Cup 2026" required style="display:block;width:100%;margin-top:4px;${inputStyle}">
+          <input type="text" id="season-name" maxlength="120" placeholder="${IS_TOURNAMENT ? 'e.g. Slávia Filozof Cup 2026' : 'e.g. Winter Opening Series 2027'}" required style="display:block;width:100%;margin-top:4px;${inputStyle}">
         </label>
         <label style="font-size:12px;font-weight:700">Starts
           <input type="date" id="season-start" style="display:block;margin-top:4px;${inputStyle}">
@@ -93,9 +91,9 @@ function renderAdmin() {
         <label style="font-size:12px;font-weight:700">Ends
           <input type="date" id="season-end" style="display:block;margin-top:4px;${inputStyle}">
         </label>
-        <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Venue <span style="font-weight:600;color:var(--gray)">(optional, for a tournament)</span>
+        ${IS_TOURNAMENT ? `<label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Venue <span style="font-weight:600;color:var(--gray)">(optional)</span>
           <input type="text" id="season-venue" maxlength="200" placeholder="Address or club" style="display:block;width:100%;margin-top:4px;${inputStyle}">
-        </label>
+        </label>` : ''}
         <button type="submit" class="btn btn-primary">Add</button>
       </form>
       <div id="add-season-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
@@ -114,13 +112,13 @@ function renderAdmin() {
           name: document.getElementById('season-name').value.trim(),
           startDate: document.getElementById('season-start').value || null,
           endDate: document.getElementById('season-end').value || null,
-          kind: document.getElementById('season-kind').value,
-          venue: document.getElementById('season-venue').value.trim(),
+          kind: KIND,
+          venue: IS_TOURNAMENT ? document.getElementById('season-venue').value.trim() : '',
         },
       });
       e.target.reset();
       if (created && created.id) { initOpenIds(); openIds.add(created.id); saveOpenIds(); }
-      toast(created && created.kind === 'TOURNAMENT' ? 'Tournament added' : 'Season added');
+      toast(IS_TOURNAMENT ? 'Tournament added' : 'Season added');
       await load();
     } catch (err) {
       errorEl.textContent = err.message;
@@ -131,7 +129,7 @@ function renderAdmin() {
 }
 
 async function load() {
-  seasons = await api('/seasons');
+  seasons = (await api('/seasons')).filter((s) => s.kind === KIND);
   initOpenIds();
   renderList();
 }
@@ -214,19 +212,12 @@ function seasonHtml(s) {
       <summary class="sa-sum">
         <svg class="sa-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         <span class="sa-name">${escapeHtml(s.name)}</span>
-        ${s.kind === 'TOURNAMENT' ? '<span class="sa-chip" style="border-color:var(--orange);color:var(--orange)">Tournament</span>' : ''}
         <span class="sa-dates">${escapeHtml(s.startDate && s.endDate ? `${fmtDate(s.startDate)} – ${fmtDate(s.endDate)}` : '')}</span>
         <span class="sa-chip ${seasonStatus(s)}">${STATUS_LABEL[seasonStatus(s)]}</span>
         <span class="sa-count">${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'} · ${s.matchCount} ${s.matchCount === 1 ? 'match' : 'matches'}</span>
       </summary>
       <div class="sa-body">
       <form class="season-edit-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <label style="font-size:12px;font-weight:700">Type
-          <select data-field="kind" style="display:block;margin-top:4px;${inputStyle}">
-            <option value="LEAGUE"${s.kind === 'TOURNAMENT' ? '' : ' selected'}>League season</option>
-            <option value="TOURNAMENT"${s.kind === 'TOURNAMENT' ? ' selected' : ''}>Tournament</option>
-          </select>
-        </label>
         <label style="flex:1;min-width:220px;font-size:12px;font-weight:700">Name
           <input type="text" data-field="name" value="${escapeHtml(s.name)}" maxlength="120" required style="display:block;width:100%;margin-top:4px;${inputStyle}">
         </label>
@@ -236,15 +227,15 @@ function seasonHtml(s) {
         <label style="font-size:12px;font-weight:700">Ends
           <input type="date" data-field="endDate" value="${escapeHtml(s.endDate || '')}" style="display:block;margin-top:4px;${inputStyle}">
         </label>
-        <label class="tournament-only" style="flex:1;min-width:220px;font-size:12px;font-weight:700"${s.kind === 'TOURNAMENT' ? '' : ' hidden'}>Venue
+        <label class="tournament-only" style="flex:1;min-width:220px;font-size:12px;font-weight:700"${IS_TOURNAMENT ? '' : ' hidden'}>Venue
           <input type="text" data-field="venue" value="${escapeHtml(s.venue || '')}" maxlength="200" placeholder="Address or club" style="display:block;width:100%;margin-top:4px;${inputStyle}">
         </label>
-        <div class="tournament-only" style="font-size:12px;font-weight:700"${s.kind === 'TOURNAMENT' ? '' : ' hidden'}>Categories
+        <div class="tournament-only" style="font-size:12px;font-weight:700"${IS_TOURNAMENT ? '' : ' hidden'}>Categories
           <div style="display:flex;gap:12px;margin-top:8px;font-weight:600;font-size:14px">
             ${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}> ${label}</label>`).join('')}
           </div>
         </div>
-        <div style="flex-basis:100%;margin-top:6px;font-size:12px;font-weight:800;color:var(--gray)">${s.kind === 'TOURNAMENT' ? 'Tournament' : 'Season'} page <a href="/season/${escapeHtml(s.slug)}" target="_blank" style="color:var(--orange);text-decoration:underline">/season/${escapeHtml(s.slug)}</a> — all optional</div>
+        <div style="flex-basis:100%;margin-top:6px;font-size:12px;font-weight:800;color:var(--gray)">${IS_TOURNAMENT ? 'Tournament' : 'Season'} page <a href="/season/${escapeHtml(s.slug)}" target="_blank" style="color:var(--orange);text-decoration:underline">/season/${escapeHtml(s.slug)}</a> — all optional</div>
         <label style="font-size:12px;font-weight:700">Entry fee
           <input type="text" data-field="entryFee" value="${escapeHtml(s.entryFee || '')}" maxlength="40" placeholder="e.g. 20 €" style="display:block;margin-top:4px;width:110px;${inputStyle}">
         </label>
@@ -310,7 +301,7 @@ function seasonHtml(s) {
 function renderList() {
   const listEl = document.getElementById('season-list');
   if (!seasons.length) {
-    listEl.innerHTML = '<div class="card"><div class="empty-state">No seasons yet.</div></div>';
+    listEl.innerHTML = `<div class="card"><div class="empty-state">No ${WORD}s yet.</div></div>`;
     return;
   }
   listEl.innerHTML = `<div class="sa-bar"><button type="button" data-fold="open">Expand all</button><span>·</span><button type="button" data-fold="close">Collapse all</button></div>` + seasons.map(seasonHtml).join('');
@@ -350,16 +341,10 @@ function wireSeason(card) {
     errorEl.textContent = '';
     const f = (name) => e.target.querySelector(`[data-field="${name}"]`).value;
     try {
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, kind: f('kind'), venue: f('venue'), categories: [...e.target.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat) } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(IS_TOURNAMENT ? { venue: f('venue'), categories: [...e.target.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat) } : {}) } });
       toast('Saved');
       await load();
     } catch (err) { fail(err); }
-  });
-
-  // the venue and categories are for a tournament
-  const kindSelect = card.querySelector('select[data-field="kind"]');
-  kindSelect.addEventListener('change', () => {
-    card.querySelectorAll('.tournament-only').forEach((el) => { el.hidden = kindSelect.value !== 'TOURNAMENT'; });
   });
 
   // the description editor: toolbar buttons act on the selection; pasting keeps only the text
@@ -406,15 +391,15 @@ function wireSeason(card) {
   const catLabel = (key) => (CATEGORIES.find(([k]) => k === key) || [key, key])[1];
   // "Add a player": an existing player is registered by the admin, no registration form. Their phone, e-mail and category fill
   // in from the profile (and can be changed for this registration); players already registered are left out of the list.
+  let addableNames = [];
   function addPlayerFormHtml(players, rows) {
     const taken = new Set(rows.map((r) => r.playerId).filter(Boolean));
-    const options = players.filter((p) => !taken.has(p.id)).map((p) => `<option value="${escapeHtml(p.name)}"></option>`).join('');
+    addableNames = players.filter((p) => !taken.has(p.id)).map((p) => p.name);
     const box = `display:block;margin-top:4px;${inputStyle}`;
     return `
       <form class="reg-add" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;padding:2px 0 6px">
         <label style="flex:2;min-width:220px;font-size:12px;font-weight:700">Add a player
-          <input type="text" data-ra="player" list="reg-players-${id}" placeholder="Start typing a name…" autocomplete="off" style="${box};width:100%">
-          <datalist id="reg-players-${id}">${options}</datalist>
+          <div class="autocomplete"><input type="text" data-ra="player" id="reg-player-${id}" placeholder="Start typing a name or surname…" autocomplete="off" style="${box};width:100%"><div class="autocomplete-list" id="reg-player-list-${id}"></div></div>
         </label>
         <label style="font-size:12px;font-weight:700">Category
           <select data-ra="category" style="${box}"><option value="">Category…</option>${categoryOptions('')}</select>
@@ -435,6 +420,7 @@ function wireSeason(card) {
     const hint = regsList.querySelector('.reg-add-hint');
     const field = (name) => form.querySelector(`[data-ra="${name}"]`);
     const say = (text, bad) => { hint.textContent = text; hint.style.color = bad ? 'var(--danger)' : 'var(--gray)'; };
+    setupAutocomplete(`reg-player-${id}`, `reg-player-list-${id}`, () => addableNames);
     const byName = (text) => players.find((p) => p.name.toLowerCase() === String(text).trim().toLowerCase());
     let chosen = null; // the player typed in the first field, with what their profile holds
     field('player').addEventListener('input', () => {

@@ -540,6 +540,7 @@ function robotsTxt(origin) {
     'Disallow: /bracket-admin',
     'Disallow: /venues-admin',
     'Disallow: /seasons-admin',
+    'Disallow: /tournaments-admin',
     'Disallow: /schedule-admin',
     'Disallow: /winners-admin',
     'Disallow: /seo-admin',

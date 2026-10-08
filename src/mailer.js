@@ -401,7 +401,7 @@ async function sendSeasonRegistrationEmail(season, registration, total) {
     return false;
   }
   const text = [
-    `Nová registrácia do série ${season.name}:`,
+    `Nová registrácia do ${season.kind === 'TOURNAMENT' ? 'turnaja' : 'série'} ${season.name}:`,
     '',
     `Meno: ${registration.name}${registration.isNew ? ' (nové meno — zatiaľ nie je medzi hráčmi)' : ''}`,
     `Kategória: ${categoryLabel(registration.category)}`,
@@ -409,14 +409,14 @@ async function sendSeasonRegistrationEmail(season, registration, total) {
     `E-mail: ${registration.email}`,
     ...(registration.note ? [`Poznámka: ${registration.note}`] : []),
     '',
-    `Prihlásených v sérii: ${total}`,
-    `Zoznam a úhrady: ${process.env.PUBLIC_URL || ''}/seasons-admin`,
+    `Prihlásených ${season.kind === 'TOURNAMENT' ? 'v turnaji' : 'v sérii'}: ${total}`,
+    `Zoznam a úhrady: ${process.env.PUBLIC_URL || ''}${season.kind === 'TOURNAMENT' ? '/tournaments-admin' : '/seasons-admin'}`,
   ].join('\n');
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
     replyTo: registration.email,
-    subject: `Registrácia do série: ${registration.name} (${categoryLabel(registration.category)})`,
+    subject: `Registrácia do ${season.kind === 'TOURNAMENT' ? 'turnaja' : 'série'}: ${registration.name} (${categoryLabel(registration.category)})`,
     text,
   });
   return true;

@@ -379,7 +379,7 @@ function setupAutocomplete(inputId, listId, getNames = () => allPlayers.map((p) 
   function render() {
     const matches = currentMatches();
     list.innerHTML = matches.map((p, i) => `
-      <div class="autocomplete-item${i === activeIndex ? ' active' : ''}" data-name="${escapeHtml(p)}">${escapeHtml(p)}</div>
+      <div class="autocomplete-item${i === activeIndex ? ' active' : ''}" data-name="${escapeHtml(p)}">${highlightMatch(p, input.value)}</div>
     `).join('');
     list.classList.toggle('open', matches.length > 0);
   }
@@ -424,6 +424,39 @@ function setupAutocomplete(inputId, listId, getNames = () => allPlayers.map((p) 
   input.addEventListener('blur', () => {
     setTimeout(() => list.classList.remove('open'), 100);
   });
+}
+
+// A name as HTML with the typed words in bold ("podh" in "Tomáš Podhorný"): accents, capitals and apostrophes are ignored when
+// looking for them, the text itself is shown as it is.
+function highlightMatch(name, query) {
+  const text = String(name || '');
+  const tokens = searchTokens(query);
+  if (!tokens.length) return escapeHtml(text);
+  let folded = '';
+  const origin = []; // folded index -> index in the text
+  [...text].forEach((ch, i) => {
+    const f = foldText(ch).replace(/['’`´]/g, '');
+    for (let k = 0; k < f.length; k += 1) origin.push(i);
+    folded += f;
+  });
+  const marked = new Set();
+  tokens.forEach((tok) => {
+    let at = folded.indexOf(tok);
+    while (at !== -1) {
+      for (let k = at; k < at + tok.length; k += 1) marked.add(origin[k]);
+      at = folded.indexOf(tok, at + tok.length);
+    }
+  });
+  const chars = [...text];
+  let html = '';
+  let open = false;
+  chars.forEach((ch, i) => {
+    const on = marked.has(i);
+    if (on && !open) { html += '<b>'; open = true; }
+    if (!on && open) { html += '</b>'; open = false; }
+    html += escapeHtml(ch);
+  });
+  return open ? `${html}</b>` : html;
 }
 
 // Wired once here (not inside openEditMatchModal, which runs every time the
