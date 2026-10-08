@@ -4501,3 +4501,12 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .hi-dragging { opacity: 0.4; }
 .hi-drop-before > .header-item-row { box-shadow: inset 0 3px 0 var(--orange); }
 .hi-drop-after > .header-item-row { box-shadow: inset 0 -3px 0 var(--orange); }
+
+/* Phone: a section heading with a name and a link ("Aktuálna sezóna · Autumn Finals Series 2026 … Celý harmonogram →") — the title,
+   the name under it and the link under that, instead of three squeezed columns that ran off the screen */
+@media (max-width: 700px) {
+  .home-sec-title { flex-wrap: wrap; row-gap: 6px; }
+  .home-sec-title .l { display: block; flex: 1 1 100%; min-width: 0; }
+  .home-sec-title .l span { display: block; margin: 4px 0 0; }
+  .home-sec-title a { flex: 1 1 100%; margin: 0; }
+}
