@@ -389,6 +389,8 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 }
 .install-app-btn:hover { background: rgba(255,255,255,0.08); color: var(--white); }
 @media (max-width: 1024px) { .install-app-btn { text-align: center; padding: 12px; } }
+/* the "Inštalovať appku" menu item is for phones and tablets only — not shown in the computer menu (inline display from the script is overridden) */
+@media (min-width: 1025px) { .install-app-btn { display: none !important; } }
 .nav-links a.active { background: var(--orange); color: var(--white); }
 .lang-switcher { display: flex; gap: 4px; align-items: center; order: 2; }
 .lang-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; color: #d8d8d8; background: none; border: 1px solid rgba(255,255,255,0.25); cursor: pointer; font-family: inherit; }
