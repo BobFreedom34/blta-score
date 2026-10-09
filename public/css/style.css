@@ -4602,6 +4602,9 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
   box-shadow: 0 4px 14px rgba(255, 85, 0, 0.4); transition: box-shadow 0.15s, padding 0.15s;
 }
 .booking-btn:hover { box-shadow: 0 6px 18px rgba(255, 85, 0, 0.6); color: #fff; padding-bottom: 9px; }
+.booking-spacer { height: 28px; }
+.booking-btn { transition: box-shadow 0.15s, padding 0.15s, transform 0.25s; }
+.booking-btn.booking-hidden { transform: translateY(-110%); }
 .booking-btn svg { width: 15px; height: 15px; flex: 0 0 15px; }
 @media (min-width: 701px) {
   .booking-btn { right: var(--booking-right, 0px); border-radius: 0 0 12px 12px; }

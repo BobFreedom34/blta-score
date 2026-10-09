@@ -1634,6 +1634,19 @@ document.addEventListener('click', (e) => {
   window.addEventListener('resize', place);
   window.addEventListener('load', place);
   if (window.ResizeObserver) new ResizeObserver(place).observe(topbar); // the menu can wrap or load late
+
+  // a strip of its own under the menu, so the page starts below the button and it never covers the top of the content...
+  const spacer = document.createElement('div');
+  spacer.className = 'booking-spacer';
+  topbar.insertAdjacentElement('afterend', spacer);
+  // ...and it slides away behind the menu while scrolling down and comes back when scrolling up (and at the very top)
+  let last = window.scrollY;
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    if (Math.abs(y - last) < 6) return;
+    a.classList.toggle('booking-hidden', y > last && y > 120);
+    last = y;
+  }, { passive: true });
 })();
 
 // Phone bottom menu: Home / Matches / My profile / Tables / Rankings (shown by CSS below ~1024px, where the top menu collapses).
