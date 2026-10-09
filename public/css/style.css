@@ -4530,7 +4530,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .rv-courts { margin-top: 4px; }
 
 /* the grid: the time down the left, the days (and a column per court) across the top; both stay in view while it scrolls */
-.rv-scroll { --rv-col: 44px; --rv-row: 56px; --rv-head: 34px; --rv-gap: 20px; --rv-courtw: 110px; overflow-x: auto; padding: 18px 10px; margin: -18px -10px; }
+.rv-scroll { --rv-col: 36px; --rv-row: 56px; --rv-head: 34px; --rv-gap: 20px; --rv-courtw: 100px; overflow-x: auto; padding: 18px 10px; margin: -18px -10px; }
 .rv-days { display: grid; gap: var(--rv-gap); min-width: min-content; }
 .rv-day { min-width: min-content; border: 1px solid var(--orange); border-radius: 14px; background: #0b0b0c; overflow: clip; }
 .rv-grid { display: grid; position: relative; width: 100%; min-width: min-content; }

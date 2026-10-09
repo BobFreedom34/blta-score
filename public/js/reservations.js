@@ -68,11 +68,12 @@
     const courts = court === 'ALL' ? data.courts : data.courts.filter((c) => String(c.id) === String(court));
     if (!data.courts.length) return `<div class="empty-state">${escapeHtml(t('rv.noCourts'))}</div>`;
     const slots = data.slots.filter((s) => courts.some((c) => c.id === s.courtId));
+    // the timeline is always 8:00-21:00; a spot outside it (an early or late one) stretches it so it is never cut off
     let startMin = 8 * 60;
-    let endMin = 20 * 60;
+    let endMin = 21 * 60;
     if (slots.length) {
-      startMin = Math.floor(Math.min(...slots.map((s) => mins(s.start))) / 60) * 60;
-      endMin = Math.ceil(Math.max(...slots.map((s) => mins(s.end))) / 60) * 60;
+      startMin = Math.min(startMin, Math.floor(Math.min(...slots.map((s) => mins(s.start))) / 60) * 60);
+      endMin = Math.max(endMin, Math.ceil(Math.max(...slots.map((s) => mins(s.end))) / 60) * 60);
     }
     const colsN = (endMin - startMin) / 30;
     // every day is a card of its own (orange border, a gap to the next): a header row (the day, then the hours) and a row per court
