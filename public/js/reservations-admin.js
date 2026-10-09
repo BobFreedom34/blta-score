@@ -104,6 +104,17 @@
     return out;
   }
 
+  // the length of the spots: set to a value, or made longer / shorter (the start stays, the end moves)
+  function lengthOptions() {
+    const label = (m) => `${m >= 60 ? `${Math.floor(m / 60)} h` : ''}${m % 60 ? `${m >= 60 ? ' ' : ''}${m % 60} min` : ''}`;
+    let out = '<option value="" selected>No change in length</option><optgroup label="Set the length to">';
+    [30, 60, 90, 120, 150, 180, 240].forEach((m) => { out += `<option value="set:${m}">${label(m)}</option>`; });
+    out += '</optgroup><optgroup label="Make every spot">';
+    [30, 60, 90, 120].forEach((m) => { out += `<option value="delta:${m}">${label(m)} longer</option>`; });
+    [30, 60, 90, 120].forEach((m) => { out += `<option value="delta:-${m}">${label(m)} shorter</option>`; });
+    return `${out}</optgroup>`;
+  }
+
   function bulkHtml() {
     const courtBoxes = courts.map((c) => `<label style="font-weight:600;font-size:14px"><input type="checkbox" class="rva-bc" value="${c.id}" checked> ${escapeHtml(c.name)}</label>`).join('');
     const horizon = (() => { const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 60); return d.toISOString().slice(0, 10); })();
@@ -125,6 +136,7 @@
           <div style="font-size:13px;font-weight:800;margin:16px 0 6px">What to change</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
             <label style="${label}">Time <select id="rva-bshift" style="display:block;margin-top:4px;${field}">${shiftOptions()}</select></label>
+            <label style="${label}">Length <select id="rva-blength" style="display:block;margin-top:4px;${field}">${lengthOptions()}</select></label>
             <label style="${label}">Move to court <select id="rva-bcourt" style="display:block;margin-top:4px;${field}"><option value="">keep the court</option>${courts.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select></label>
           </div>
           <label style="display:flex;gap:8px;align-items:center;font-size:14px;font-weight:600;margin-top:12px"><input type="checkbox" id="rva-binc"> Also move spots that players have already reserved <span style="font-weight:600;color:var(--gray)">(they keep their reservation at the new time)</span></label>
@@ -132,7 +144,7 @@
             <button type="button" class="btn btn-outline" id="rva-bpreview"${courts.length ? '' : ' disabled'}>Preview</button>
             <button type="submit" class="btn btn-primary"${courts.length ? '' : ' disabled'}>Apply changes</button>
           </div>
-          <div style="font-size:12px;color:var(--gray);margin-top:8px">A spot that would overlap another one, cross midnight or land in the past is left where it is. “Preview” shows what would happen without changing anything.</div>
+          <div style="font-size:12px;color:var(--gray);margin-top:8px">A spot that would overlap another one, cross midnight, become shorter than 30 minutes or land in the past is left where it is. “Preview” shows what would happen without changing anything.</div>
         </form>
         <div id="rva-bulk-msg" style="margin-top:8px"></div>
       </div>`;
@@ -252,7 +264,11 @@
     });
 
     // change many: Preview shows the result without changing anything; Apply asks once more with the numbers
-    const bulkBody = (dryRun) => ({
+    const bulkBody = (dryRun) => {
+      const [mode, amount] = host.querySelector('#rva-blength').value.split(':');
+      return {
+      lengthMinutes: mode === 'set' ? Number(amount) : undefined,
+      lengthDelta: mode === 'delta' ? Number(amount) : undefined,
       courtIds: [...host.querySelectorAll('.rva-bc:checked')].map((b) => Number(b.value)),
       fromDate: host.querySelector('#rva-bfrom').value,
       toDate: host.querySelector('#rva-bto').value,
@@ -263,12 +279,13 @@
       toCourtId: host.querySelector('#rva-bcourt').value,
       includeReserved: host.querySelector('#rva-binc').checked,
       dryRun,
-    });
+      };
+    };
     const bulkSummary = (r) => {
       const parts = [`${r.matched} spot${r.matched === 1 ? '' : 's'} match`, `${r.moved} ${r.dryRun ? 'would be moved' : 'moved'}`];
       if (r.skippedReserved) parts.push(`${r.skippedReserved} reserved left alone`);
       if (r.skippedConflict) parts.push(`${r.skippedConflict} left alone (would overlap another spot)`);
-      if (r.skippedInvalid) parts.push(`${r.skippedInvalid} left alone (midnight or already over)`);
+      if (r.skippedInvalid) parts.push(`${r.skippedInvalid} left alone (midnight, too short or already over)`);
       return `${parts.join(', ')}.${r.examples && r.examples.length ? ` e.g. ${r.examples.slice(0, 3).join('; ')}` : ''}`;
     };
     host.querySelector('#rva-bpreview').addEventListener('click', async () => {

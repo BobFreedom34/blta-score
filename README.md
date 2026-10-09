@@ -488,7 +488,7 @@ white for the player's own. Spots that have started are grey. The grid updates l
 - **Admin** (Backend → Reservations, `/reservations-admin`): courts (add, rename, reorder, delete); **add times** once or every week on chosen
   weekdays, one block or split into 30 / 60 / 90 / 120-minute spots, on several courts at once (a time that overlaps an existing spot is skipped);
   **change many times at once** (pick courts, a period, weekdays and a start-time window, then shift them earlier or later in 30-minute
-  steps and/or move them to another court — e.g. every Thursday evening one hour later; "Preview" shows the result first, reserved spots stay unless
+  steps, set or change their length (set to 30 min–4 h, or 30 min–2 h longer/shorter) and/or move them to another court — e.g. every Thursday evening one hour later; "Preview" shows the result first, reserved spots stay unless
   asked, and a spot that would overlap another, cross midnight or land in the past is left alone); a single spot is edited on the public page;
   **remove free times** of a period; **rules**: how many reservations a player may hold at once (default 2, 0 = no limit) and how late a player
   may cancel (default 2 h before the start). On the public page the admin clicks any spot to put a player or a guest in it, cancel a reservation

@@ -392,7 +392,14 @@ router.post('/slots/bulk-edit', requireAdmin, (req, res) => {
     toCourt = Number(b.toCourtId);
     if (!db.prepare('SELECT 1 FROM reservation_courts WHERE id = ?').get(toCourt)) return res.status(400).json({ error: 'That court does not exist' });
   }
-  if (shift === 0 && toCourt === null) return res.status(400).json({ error: 'Choose a shift in time or a court to move the spots to' });
+  // the length: set to exactly lengthMinutes, or changed by lengthDelta (both multiples of 30; the start stays, the end moves)
+  const num = (v) => (v === undefined || v === null || v === '' ? null : Number(v));
+  const setLength = num(b.lengthMinutes);
+  const lengthDelta = num(b.lengthDelta) || 0;
+  if (setLength !== null && (!Number.isInteger(setLength) || setLength % 30 !== 0 || setLength < 30 || setLength > 720)) return res.status(400).json({ error: 'The length must be a multiple of 30 minutes, from 30 minutes to 12 hours' });
+  if (!Number.isInteger(lengthDelta) || lengthDelta % 30 !== 0 || Math.abs(lengthDelta) > 720) return res.status(400).json({ error: 'The change of length must be a multiple of 30 minutes, up to 12 hours' });
+  if (setLength !== null && lengthDelta !== 0) return res.status(400).json({ error: 'Set the length or change it, not both' });
+  if (shift === 0 && toCourt === null && setLength === null && lengthDelta === 0) return res.status(400).json({ error: 'Choose a change: the time, the length or a court' });
   const startFrom = b.startFrom ? String(b.startFrom) : '';
   const startUntil = b.startUntil ? String(b.startUntil) : '';
   if ((startFrom && !START_TIME.test(startFrom)) || (startUntil && !START_TIME.test(startUntil))) return res.status(400).json({ error: 'The times of the filter must be on the hour or the half hour' });
@@ -414,7 +421,9 @@ router.post('/slots/bulk-edit', requireAdmin, (req, res) => {
   matched.forEach((s) => {
     if (isTaken(s) && !b.includeReserved) { staying.add(s.id); result.skippedReserved += 1; return; }
     const start = toMinutes(s.start_time) + shift;
-    const end = toMinutes(s.end_time) + shift;
+    const length = setLength !== null ? setLength : toMinutes(s.end_time) - toMinutes(s.start_time) + lengthDelta;
+    const end = start + length;
+    if (length < 30) { staying.add(s.id); result.skippedInvalid += 1; note(s, 'would be shorter than 30 minutes'); return; }
     if (start < 0 || end > 1440) { staying.add(s.id); result.skippedInvalid += 1; note(s, 'would cross midnight'); return; }
     if (s.day === now.date && fromMinutes(end === 1440 ? 1439 : end) <= now.time) { staying.add(s.id); result.skippedInvalid += 1; note(s, 'that time is already over today'); return; }
     target.set(s.id, { court: toCourt === null ? s.court_id : toCourt, start: fromMinutes(start), end: end === 1440 ? '24:00' : fromMinutes(end) });

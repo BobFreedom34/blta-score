@@ -412,10 +412,47 @@ test('bulk: reserved spots stay unless asked; the spots can be moved to another 
   await admin('POST', `/api/reservations/slots/${reservedNow.id}/cancel`);
 });
 
+test('bulk: the length of many spots can be set or changed, with or without a shift', async () => {
+  // three 1-hour spots with gaps: 09:00, 11:00, 13:00
+  for (const t of ['09:00', '11:00', '13:00']) await admin('POST', '/api/reservations/slots', { courtIds: [S.c1], date: D(28), start: t, end: `${String(Number(t.slice(0, 2)) + 1).padStart(2, '0')}:00` });
+  const range = { courtIds: [S.c1], fromDate: D(28), toDate: D(28) };
+  // set every length to 90 minutes
+  assert.deepStrictEqual((await bulk({ ...range, lengthMinutes: 90, dryRun: true })).json.moved, 3);
+  assert.strictEqual((await bulk({ ...range, lengthMinutes: 90 })).json.moved, 3);
+  assert.deepStrictEqual(await times(D(28), S.c1), ['09:00-10:30', '11:00-12:30', '13:00-14:30']);
+  // 30 minutes shorter
+  assert.strictEqual((await bulk({ ...range, lengthDelta: -30 })).json.moved, 3);
+  assert.deepStrictEqual(await times(D(28), S.c1), ['09:00-10:00', '11:00-12:00', '13:00-14:00']);
+  // 1 hour longer: each one now touches the next (fine) and all three still fit
+  assert.strictEqual((await bulk({ ...range, lengthDelta: 60 })).json.moved, 3);
+  assert.deepStrictEqual(await times(D(28), S.c1), ['09:00-11:00', '11:00-13:00', '13:00-15:00']);
+  // longer again would make them overlap each other: the ones that cannot are left alone, nothing is half-done
+  const clash = await bulk({ ...range, lengthDelta: 30 });
+  assert.ok(clash.json.skippedConflict >= 1, JSON.stringify(clash.json));
+  const after = (await slotsOf(D(28), S.c1)).map((s) => [s.start, s.end]).sort();
+  for (let i = 1; i < after.length; i += 1) assert.ok(after[i][0] >= after[i - 1][1], `overlap: ${JSON.stringify(after)}`);
+  // too long for the day, too short, and a length together with a shift
+  await admin('POST', '/api/reservations/slots', { courtIds: [S.c3], date: D(29), start: '22:00', end: '23:00' });
+  const c3 = { courtIds: [S.c3], fromDate: D(29), toDate: D(29) };
+  const tooLong = await bulk({ ...c3, lengthMinutes: 180 });
+  assert.deepStrictEqual([tooLong.json.moved, tooLong.json.skippedInvalid], [0, 1]);
+  assert.ok(/midnight/.test(tooLong.json.examples[0]));
+  const short = await bulk({ ...c3, lengthDelta: -60 });
+  assert.deepStrictEqual([short.json.moved, short.json.skippedInvalid], [0, 1]);
+  assert.ok(/shorter than 30/.test(short.json.examples[0]));
+  assert.strictEqual((await bulk({ ...c3, lengthMinutes: 120, shiftMinutes: -60 })).json.moved, 1);
+  assert.deepStrictEqual(await times(D(29), S.c3), ['21:00-23:00']);
+});
+
 test('bulk: bad input is refused and only the admin may do it', async () => {
   const base = { courtIds: [S.c1], fromDate: D(20), toDate: D(30) };
   const bad = [
-    [{ ...base }, /shift in time or a court/],
+    [{ ...base }, /Choose a change/],
+    [{ ...base, lengthMinutes: 45 }, /length must be a multiple/],
+    [{ ...base, lengthMinutes: 0 }, /length must be a multiple/],
+    [{ ...base, lengthMinutes: 750 }, /length must be a multiple/],
+    [{ ...base, lengthDelta: 45 }, /change of length/],
+    [{ ...base, lengthMinutes: 60, lengthDelta: 30 }, /not both/],
     [{ ...base, shiftMinutes: 45 }, /multiple of 30/],
     [{ ...base, shiftMinutes: 750 }, /multiple of 30/],
     [{ ...base, shiftMinutes: 60, toDate: D(10) }, /last day/],
