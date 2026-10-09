@@ -543,6 +543,12 @@ and `/en`. The first English texts and slugs are built in (`ENGLISH` in `src/seo
 - **Changing a slug retires the old address at once: 404, no redirect, no alias** (the backend asks first). The code address of a
   page (`/rankings`, `/rankings.html`) is retired the same way, and no other page may take it as its slug. The words the app itself
   uses (`api`, `css`, `admin`, `en`, `match`…) are refused as slugs.
+- **A court can keep the address it had on the old website** (`/kurty-tennis-one`, `/en/tennis-one-courts`…): Backend → SEO → *Court addresses* sets a
+  whole address (one segment) per language for a court; empty = the pattern `/tenisove-kurty/<court>`. The code address stays `/courts/<slug>`,
+  the page is served at its own address (canonical, `hreflang` and the sitemap use it) and the pattern address of that court is retired (404,
+  no redirect, like every retired address). The addresses of the old website's ten courts (`OLD_COURT_ADDRESSES` in `src/seo.js`) go in once, on the first start, for the courts
+  that exist; the *Old website address* button fills them in for a court added later. Table `seo_custom_paths`; the matching code is in
+  `localize.js` (`overrides`).
 - A page file added to `public/` shows up here by itself (see `discoverPages` in `src/seo.js`) with the same slug in both languages.
 - Tables: `seo_pages` (Slovak texts, `slug`, `slug_en`, `noindex`) and `seo_pages_en` (English texts). An old database is upgraded on
   the first start.

@@ -245,6 +245,55 @@ test('the player and venue pages work in both languages', async () => {
   assert.strictEqual((await get('/courts/tk-slovan')).status, 200);
 });
 
+test('a court can have a whole address of its own (kept from the old website); the pattern address is retired (404, no redirect)', async () => {
+  const list = (await call('GET', '/api/seo/court-paths')).json;
+  const slovan = list.find((c) => c.slug === 'tk-slovan');
+  assert.deepStrictEqual(slovan.own, { sk: '', en: '' }, 'no address of its own at first');
+  assert.strictEqual((await call('GET', '/api/seo/court-paths', { cookie: '' })).status, 401);
+  const saved = await call('PUT', '/api/seo/court-paths/tk-slovan', { body: { sk: 'Kurty TK Slovan', en: 'tk-slovan-courts' } });
+  assert.strictEqual(saved.status, 200, JSON.stringify(saved.json));
+  assert.deepStrictEqual(saved.json.own, { sk: 'kurty-tk-slovan', en: 'tk-slovan-courts' }, 'the address is normalised');
+  const o = `http://localhost:${PORT}`;
+  for (const url of ['/kurty-tk-slovan', '/kurty-tk-slovan/']) {
+    const sk = await get(url);
+    assert.strictEqual(sk.status, 200, url);
+    assert.ok(/^TK Slovan - tenisový kurt/.test(titleOf(sk.text)), titleOf(sk.text));
+    assert.strictEqual(linkOf(sk.text, 'canonical'), `${o}/kurty-tk-slovan`);
+    assert.strictEqual(linkOf(sk.text, 'alternate', ' hreflang="en"'), `${o}/en/tk-slovan-courts`);
+  }
+  const en = await get('/en/tk-slovan-courts');
+  assert.strictEqual(en.status, 200);
+  assert.ok(/^TK Slovan - tennis court/.test(titleOf(en.text)), titleOf(en.text));
+  assert.strictEqual(linkOf(en.text, 'canonical'), `${o}/en/tk-slovan-courts`);
+  for (const from of ['/courts/tk-slovan', '/en/courts/tk-slovan']) {
+    const r = await get(from);
+    assert.strictEqual(r.status, 404, from);
+    assert.strictEqual(r.res.headers.get('location'), null, `${from} redirects`);
+  }
+  const xml = (await get('/sitemap.xml')).text;
+  assert.ok(xml.includes(`<loc>${o}/kurty-tk-slovan</loc>`) && xml.includes(`<loc>${o}/en/tk-slovan-courts</loc>`));
+  assert.ok(!xml.includes('/courts/tk-slovan<'), 'the pattern address is in the sitemap');
+  assert.ok((await get('/js/localize.js')).text.includes('kurty-tk-slovan'), 'the browser script knows the address');
+  // refused: the address of another page, a word of the app, an address another court has, a made-up court
+  fixtureDb.prepare('INSERT INTO venues (name, slug) VALUES (?, ?)').run('TK Lamač', 'tk-lamac');
+  const players = (await pageOf('players')).slugs.sk;
+  for (const bad of [players, 'api', 'rankings', 'kurty-tk-slovan']) {
+    assert.strictEqual((await call('PUT', '/api/seo/court-paths/tk-lamac', { body: { sk: bad, en: '' } })).status, 400, `refused: ${bad}`);
+  }
+  assert.strictEqual((await call('PUT', '/api/seo/court-paths/nowhere', { body: { sk: 'x', en: '' } })).status, 404);
+  assert.strictEqual((await call('PUT', '/api/seo/court-paths/tk-slovan', { body: { sk: 'kurty-tk-slovan', en: '' }, cookie: '' })).status, 401);
+  // a language without an address of its own keeps the pattern
+  const half = await call('PUT', '/api/seo/court-paths/tk-lamac', { body: { sk: 'kurty-tk-lamac', en: '' } });
+  assert.strictEqual(half.status, 200);
+  assert.strictEqual((await get('/en/courts/tk-lamac')).status, 200, 'English has no address of its own: the pattern works');
+  assert.strictEqual((await get('/courts/tk-lamac')).status, 404, 'Slovak has an address of its own: the pattern is retired');
+  // clearing gives the pattern back
+  await call('PUT', '/api/seo/court-paths/tk-slovan', { body: { sk: '', en: '' } });
+  await call('PUT', '/api/seo/court-paths/tk-lamac', { body: { sk: '', en: '' } });
+  assert.strictEqual((await get('/courts/tk-slovan')).status, 200);
+  assert.strictEqual((await get('/kurty-tk-slovan')).status, 404);
+});
+
 // ---------------------------------------------------------------- sitemap, robots, hiding
 test('sitemap lists both languages with alternates and only the current addresses', async () => {
   const r = await get('/sitemap.xml');

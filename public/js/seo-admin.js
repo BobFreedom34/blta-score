@@ -218,9 +218,71 @@
     }
   });
 
+  // ---------------------------------------------------------------- the courts' own addresses
+
+  // A court can have a whole address of its own per language (kept from the old website, so Google finds it where it always was):
+  // /kurty-tennis-one instead of /tenisove-kurty/tennis-one. The pattern address of that court is then retired (404, no redirect).
+  const courtHost = document.createElement('div');
+  host.insertAdjacentElement('afterend', courtHost);
+  let courtPaths = [];
+
+  function courtRowHtml(c) {
+    const input = (lang, value, prefix) => `<label style="${label};flex:1;min-width:230px">${lang === 'sk' ? 'Slovak' : 'English'} address
+        <span style="display:flex;align-items:center;gap:4px"><span style="font-weight:700;color:var(--gray)">${prefix}/</span><input type="text" data-lang="${lang}" value="${escapeHtml(value)}" maxlength="80" placeholder="${escapeHtml(c.pattern[lang])}" style="${field};margin-top:4px"></span>
+      </label>`;
+    return `
+      <div class="seo-court" data-slug="${escapeHtml(c.slug)}" style="padding:12px 0;border-top:1px solid #eee">
+        <div style="font-weight:800">${escapeHtml(c.name)} <span style="font-weight:600;color:var(--gray);font-size:12px">· code <code>${escapeHtml(c.code)}</code></span></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          ${input('sk', c.own.sk, '')}
+          ${input('en', c.own.en, '/en')}
+          <button type="button" class="btn btn-sm btn-primary" data-act="save-court">Save</button>
+          ${c.old ? '<button type="button" class="btn btn-sm btn-outline" data-act="old-court">Old website address</button>' : ''}
+        </div>
+        <div class="seo-court-msg" style="font-size:12px;margin-top:4px;min-height:16px"></div>
+      </div>`;
+  }
+
+  function renderCourtPaths() {
+    courtHost.innerHTML = `
+      <h3 style="margin:26px 0 4px;color:var(--white)">Court addresses <span style="font-weight:600;font-size:13px;color:var(--gray)">— a whole address of its own for a court (like on the old website: <code>/kurty-tennis-one</code>); empty = the pattern <code>/tenisove-kurty/&lt;court&gt;</code></span></h3>
+      <div class="card" style="margin-top:10px">
+        ${courtPaths.length ? courtPaths.map(courtRowHtml).join('') : '<div class="empty-state" style="padding:8px 0">No courts yet.</div>'}
+        <div style="font-size:12px;color:var(--gray);margin-top:10px">When a court has an address of its own, the pattern address of that court stops working (404, no redirect). Changing an address later makes the old one stop working too — search engines would lose it.</div>
+      </div>`;
+  }
+
+  courtHost.addEventListener('click', async (e) => {
+    const row = e.target.closest('.seo-court');
+    const btn = e.target.closest('[data-act]');
+    if (!row || !btn) return;
+    const court = courtPaths.find((c) => c.slug === row.dataset.slug);
+    const msg = row.querySelector('.seo-court-msg');
+    if (btn.dataset.act === 'old-court') {
+      row.querySelector('[data-lang="sk"]').value = court.old.sk;
+      row.querySelector('[data-lang="en"]').value = court.old.en;
+      msg.style.color = 'var(--gray)';
+      msg.textContent = 'The old website addresses are filled in — press Save.';
+      return;
+    }
+    const body = { sk: row.querySelector('[data-lang="sk"]').value, en: row.querySelector('[data-lang="en"]').value };
+    try {
+      const saved = await api(`/seo/court-paths/${encodeURIComponent(court.slug)}`, { method: 'PUT', body });
+      courtPaths = courtPaths.map((c) => (c.slug === court.slug ? saved : c));
+      renderCourtPaths();
+      const fresh = courtHost.querySelector(`.seo-court[data-slug="${CSS.escape(court.slug)}"] .seo-court-msg`);
+      if (fresh) { fresh.style.color = 'var(--success, #1b8a3a)'; fresh.textContent = 'Saved ✓'; }
+    } catch (err) {
+      msg.style.color = 'var(--danger)';
+      msg.textContent = err.message;
+    }
+  });
+
   async function load() {
     pages = await api('/seo');
     render();
+    courtPaths = await api('/seo/court-paths');
+    renderCourtPaths();
   }
 
   checkAdmin().then((isAdmin) => {

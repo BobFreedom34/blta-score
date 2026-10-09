@@ -9,6 +9,10 @@
 //
 // routes = [{ key, path: '/rankings' | '/season/:slug' | '/', template: bool, sk: 'rebricek', en: 'rankings' }] — for a template
 // page the slug is the first segment (/serie/<season>), for the home page it is empty.
+//
+// overrides = [{ code: '/courts/fit-camp', sk: 'kurty-fit-camp', en: 'fit-camp-courts' }] — a page with a name can have a whole address of
+// its own per language (one segment, kept from the old website so the search engines find it where it always was); a language with
+// no address there keeps the pattern (/tenisove-kurty/fit-camp).
 (function (root, factory) {
   const lib = factory();
   if (typeof module === 'object' && module.exports) module.exports = lib;
@@ -18,10 +22,13 @@
   const clean = (p) => (p.length > 1 ? p.replace(/\/+$/, '') : p) || '/';
   const prefix = (lang) => (lang === 'en' ? EN : '');
 
-  function make(routes) {
+  function make(routes, overrides) {
     const fixed = routes.filter((r) => !r.template);
     const templates = routes.filter((r) => r.template);
     const baseOf = (r) => r.path.split('/')[1];
+    const own = overrides || [];
+    const ownByCode = new Map(own.map((o) => [o.code, o]));
+    const ownBySlug = (lang, slug) => own.find((o) => o[lang] === slug) || null;
 
     // The address of a page in a language; `param` is the season / player / venue / bracket for a template page.
     function publicPath(route, lang, param) {
@@ -37,6 +44,8 @@
       const tail = m[2];
       const page = fixed.find((r) => r.path === path);
       if (page) return publicPath(page, lang) + tail;
+      const custom = ownByCode.get(path);
+      if (custom && custom[lang]) return `${prefix(lang)}/${custom[lang]}${tail}`;
       const tpl = templates.find((r) => path.startsWith(`/${baseOf(r)}/`) && path.length > baseOf(r).length + 2);
       if (tpl) return publicPath(tpl, lang, path.slice(baseOf(tpl).length + 2)) + tail;
       return null;
@@ -52,18 +61,32 @@
       let route = null;
       let param = null;
       if (!segs.length) route = fixed.find((r) => r.path === '/') || null;
-      else if (segs.length === 1) route = fixed.find((r) => r.path !== '/' && r[lang] === segs[0]) || null;
+      else if (segs.length === 1) {
+        route = fixed.find((r) => r.path !== '/' && r[lang] === segs[0]) || null;
+        const custom = route ? null : ownBySlug(lang, segs[0]);
+        if (custom) {
+          const tpl = templates.find((r) => custom.code.startsWith(`/${baseOf(r)}/`));
+          if (tpl) return { route: tpl, key: tpl.key, lang, param: custom.code.slice(baseOf(tpl).length + 2), canonical: custom.code, custom: true };
+        }
+      }
       else if (segs.length === 2) { route = templates.find((r) => r[lang] === segs[0]) || null; param = segs[1]; }
       if (!route) return null;
       return { route, key: route.key, lang, param, canonical: route.template ? route.path.replace(/:[^/]+$/, () => param) : route.path };
     }
 
-    return { routes, publicPath, toPublic, resolve };
+    // The address a page with a name has of its own, when it is asked for in the pattern form (which is retired then).
+    function movedTo(hit) {
+      if (!hit || !hit.route.template || hit.custom) return null;
+      const custom = ownByCode.get(hit.canonical);
+      return custom && custom[hit.lang] ? `${prefix(hit.lang)}/${custom[hit.lang]}` : null;
+    }
+
+    return { routes, overrides: own, publicPath, toPublic, resolve, movedTo };
   }
 
   // ---------- the browser ----------
-  function boot(routes) {
-    const lib = make(routes);
+  function boot(routes, overrides) {
+    const lib = make(routes, overrides);
     const page = lib.resolve(location.pathname);
     const storedLang = () => { try { const s = localStorage.getItem('blta_lang'); return s === 'en' ? 'en' : 'sk'; } catch { return 'sk'; } };
     // the language in use: i18n.js has settled it by the time a link is looked at

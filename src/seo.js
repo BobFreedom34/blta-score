@@ -294,6 +294,48 @@ function noindexOf(key) {
 
 // ---------- the addresses ----------
 
+// ---------- a whole address of its own for a court ----------
+// The old website had the courts at /kurty-tennis-one, /tk-slavia-stu… (and /en/tennis-one-courts…): the search engines know them there,
+// so a court can keep such an address (one segment per language) instead of /tenisove-kurty/tennis-one. Its code address stays
+// /courts/<slug>; the pattern address of a court that has an address of its own is retired (404, no redirect).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS seo_custom_paths (
+    code TEXT PRIMARY KEY,
+    slug_sk TEXT NOT NULL DEFAULT '',
+    slug_en TEXT NOT NULL DEFAULT ''
+  );
+`);
+// venue slug -> the address it had on the old website (Slovak, English)
+const OLD_COURT_ADDRESSES = {
+  'fit-camp': ['kurty-fit-camp', 'fit-camp-courts'],
+  'slavia-filozof': ['kurty-slavia-filozof', 'slavia-filozof-courts'],
+  'tc-stupava': ['kurty-tc-stupava', 'tc-stupava-courts'],
+  'tennis-one': ['kurty-tennis-one', 'tennis-one-courts'],
+  'tkp-dudova': ['kurty-tkp-dudova', 'tkp-dudova-courts'],
+  'eci-zlate-piesky': ['kurty-zlate-piesky-eci', 'zlate-piesky-eci-courts'],
+  'tkp-nobelovo-namestie': ['tenisove-kurty-tkp-nobelovo-namestie', 'tkp-nobelovo-namestie-courts'],
+  'leon-zlate-piesky': ['tenisove-kurty-zlate-piesky-leon', 'zlate-piesky-leon-courts'],
+  'inter-bratislava': ['tenisovy-klub-inter-bratislava', 'inter-bratislava-tennis-club'],
+  'tk-slavia-stu': ['tk-slavia-stu', 'tk-slavia-stu-bratislava'],
+};
+// put in once for the courts that exist (after that the backend owns them: clearing an address is respected)
+const seededCourtPaths = db.prepare("SELECT 1 FROM site_settings WHERE key = 'seo_court_paths_seeded'").get();
+if (!seededCourtPaths) {
+  const exists = db.prepare('SELECT 1 FROM venues WHERE slug = ?');
+  const put = db.prepare('INSERT OR IGNORE INTO seo_custom_paths (code, slug_sk, slug_en) VALUES (?, ?, ?)');
+  Object.entries(OLD_COURT_ADDRESSES).forEach(([venue, [sk, en]]) => { if (exists.get(venue)) put.run(`/courts/${venue}`, sk, en); });
+  db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES ('seo_court_paths_seeded', '1')").run();
+}
+let overrideCache = null;
+// [{ code: '/courts/fit-camp', sk: 'kurty-fit-camp', en: 'fit-camp-courts' }] — only the ones that have an address in some language
+function overrides() {
+  if (!overrideCache) {
+    overrideCache = db.prepare('SELECT code, slug_sk, slug_en FROM seo_custom_paths WHERE slug_sk != \'\' OR slug_en != \'\' ORDER BY code').all()
+      .map((r) => ({ code: r.code, sk: r.slug_sk, en: r.slug_en }));
+  }
+  return overrideCache;
+}
+
 const localize = require('../public/js/localize.js');
 const LOCALIZE_SOURCE = fs.readFileSync(path.join(PUBLIC_DIR, 'js', 'localize.js'), 'utf8');
 let routeCache = null;
@@ -316,18 +358,20 @@ function routes() {
   return routeCache;
 }
 function lib() {
-  if (!libCache) libCache = localize.make(routes());
+  if (!libCache) libCache = localize.make(routes(), overrides());
   return libCache;
 }
-function forgetRoutes() { routeCache = null; libCache = null; scriptCache = null; }
+function forgetRoutes() { routeCache = null; libCache = null; scriptCache = null; overrideCache = null; }
 
 // /js/localize.js for the browser: the code above plus the routes of the site
 function clientScript() {
-  if (!scriptCache) scriptCache = `${LOCALIZE_SOURCE}\nBLTA_LOCALIZE.boot(${JSON.stringify(routes())});\n`;
+  if (!scriptCache) scriptCache = `${LOCALIZE_SOURCE}\nBLTA_LOCALIZE.boot(${JSON.stringify(routes())}, ${JSON.stringify(overrides())});\n`;
   return scriptCache;
 }
 
 const resolve = (address) => lib().resolve(address);
+// the address of its own of a page with a name that is asked for in the pattern form (retired then); else null
+const movedTo = (hit) => lib().movedTo(hit);
 // the public address of a code address (/rankings, /player/<slug>) in a language; the code address itself when it is no page
 const pageUrl = (address, lang = 'sk') => lib().toPublic(address, lang) || address;
 
@@ -400,6 +444,56 @@ function listAll() {
       defaultNoindex: !!p.noindex,
     };
   });
+}
+
+// ---------- the courts' own addresses (backend) ----------
+
+// Every court with the address it has of its own in each language ('' = the pattern address), and what the pattern gives.
+function listCourtPaths() {
+  const own = new Map(overrides().map((o) => [o.code, o]));
+  const courtRoute = routes().find((r) => r.key === 'court');
+  return db.prepare('SELECT name, slug FROM venues WHERE slug IS NOT NULL ORDER BY name COLLATE NOCASE').all().map((v) => {
+    const code = `/courts/${v.slug}`;
+    const o = own.get(code) || { sk: '', en: '' };
+    return {
+      name: v.name, slug: v.slug, code, own: { sk: o.sk, en: o.en },
+      pattern: { sk: `/${courtRoute.sk}/${v.slug}`, en: `/en/${courtRoute.en}/${v.slug}` },
+      old: OLD_COURT_ADDRESSES[v.slug] ? { sk: OLD_COURT_ADDRESSES[v.slug][0], en: OLD_COURT_ADDRESSES[v.slug][1] } : null,
+    };
+  });
+}
+
+// null when `slug` can be the whole address of this court in `lang`, else the reason
+function checkCourtSlug(code, lang, slug) {
+  if (slug.length > 80) return 'the address is too long (max 80 characters)';
+  if (RESERVED.has(slug)) return `"${slug}" is used by the app itself — pick another address`;
+  const page = routes().find((r) => !r.template && r.path !== '/' && r[lang] === slug);
+  if (page) return `"${slug}" is already the ${LANG_NAME[lang]} address of "${BY_KEY.get(page.key).label}"`;
+  const old = PAGES.find((o) => o.path !== '/' && baseOf(o) === slug);
+  if (old) return `"${slug}" is the old address of "${old.label}" — pick another address`;
+  const column = lang === 'sk' ? 'slug_sk' : 'slug_en';
+  if (db.prepare(`SELECT 1 FROM seo_custom_paths WHERE ${column} = ? AND code != ?`).get(slug, code)) return `"${slug}" is already the address of another court`;
+  return null;
+}
+
+// body: { sk, en } (empty = the pattern address); returns { error } or the court's row
+function saveCourtPath(venueSlug, body) {
+  const venue = db.prepare('SELECT slug FROM venues WHERE slug = ?').get(venueSlug);
+  if (!venue) return { error: 'Unknown court', status: 404 };
+  const code = `/courts/${venue.slug}`;
+  const slugs = {};
+  for (const lang of LANGS) {
+    const slug = normalizeSlug((body || {})[lang]);
+    if (slug) {
+      const problem = checkCourtSlug(code, lang, slug);
+      if (problem) return { error: `${LANG_NAME[lang]}: ${problem}` };
+    }
+    slugs[lang] = slug;
+  }
+  db.prepare('INSERT INTO seo_custom_paths (code, slug_sk, slug_en) VALUES (?, ?, ?) ON CONFLICT(code) DO UPDATE SET slug_sk = excluded.slug_sk, slug_en = excluded.slug_en')
+    .run(code, slugs.sk, slugs.en);
+  forgetRoutes();
+  return { court: listCourtPaths().find((c) => c.slug === venue.slug) };
 }
 
 // Reads and checks the texts of one language; returns { error } or { values }.
@@ -516,7 +610,7 @@ function render(key, { origin, canonical, lang = 'sk', entity }) {
 
 module.exports = {
   PAGES, BY_KEY, LANGS, listAll, parseBody, save, render, getValues,
-  routes, resolve, pageUrl, isRetired, clientScript, normalizeSlug,
+  routes, resolve, movedTo, pageUrl, isRetired, clientScript, normalizeSlug, listCourtPaths, saveCourtPath,
 };
 
 // ---------- sitemap.xml and robots.txt ----------

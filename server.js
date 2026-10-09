@@ -208,6 +208,8 @@ app.use((req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
   const hit = seo.resolve(req.path);
   if (!hit) return seo.isRetired(req.path) ? pageNotFound(res) : next();
+  // a court that has an address of its own is not served at the pattern address any more: 404, no redirect (like any retired address)
+  if (seo.movedTo(hit)) return pageNotFound(res);
   const page = seo.BY_KEY.get(hit.key);
   let entity = null;
   if (page.template) {
