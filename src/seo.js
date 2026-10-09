@@ -65,6 +65,11 @@ const PAGES = [
     description: 'Hľadáš súpera na tenis v Bratislave? Pridaj sa k hráčom BLTA, ktorí hľadajú partnera na zápas, a dohodni si hru.',
   },
   {
+    key: 'reservations', label: 'Court reservations', path: '/reservations', file: 'reservations.html', blta: null, slugSk: 'rezervacie-kurtov',
+    title: `Rezervácie kurtov${SUFFIX}`,
+    description: 'Rezervácie kurtov BLTA - vyber si voľný termín na tenisovom kurte na najbližších 10 dní a rezervuj si ho jedným kliknutím.',
+  },
+  {
     key: 'new-match', label: 'New match', path: '/new-match', file: 'new-match.html', blta: null, noindex: true,
     title: `Nový zápas${SUFFIX}`,
     description: 'Vytvor nový zápas BLTA a sleduj jeho skóre naživo.',
@@ -167,6 +172,11 @@ const ENGLISH = {
     title: `Looking for an opponent${SUFFIX_EN}`,
     description: 'Looking for a tennis opponent in Bratislava? Join the BLTA players who are looking for a partner for a match and arrange a game.',
   },
+  reservations: {
+    slug: 'court-booking',
+    title: `Court booking${SUFFIX_EN}`,
+    description: 'BLTA court booking - pick a free time on the tennis court for the next 10 days and reserve it with one click.',
+  },
   'new-match': {
     slug: 'new-match',
     title: `New match${SUFFIX_EN}`,
@@ -201,6 +211,7 @@ const isTemplate = (p) => !!p.template;
 function defaultSlug(p, lang) {
   if (p.path === '/') return '';
   if (lang === 'en' && ENGLISH[p.key] && ENGLISH[p.key].slug) return ENGLISH[p.key].slug;
+  if (lang === 'sk' && p.slugSk) return p.slugSk;
   return baseOf(p);
 }
 
@@ -545,6 +556,7 @@ function robotsTxt(origin) {
     'Disallow: /seasons-admin',
     'Disallow: /tournaments-admin',
     'Disallow: /changelog-admin',
+    'Disallow: /reservations-admin',
     'Disallow: /schedule-admin',
     'Disallow: /winners-admin',
     'Disallow: /seo-admin',

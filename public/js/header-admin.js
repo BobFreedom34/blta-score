@@ -65,6 +65,7 @@ const SITE_PAGES = [
   { sk: 'Kontakt', en: 'Contact', link: '#kontakt' },
   { sk: 'Propozície', en: 'Rules', link: '/propozicie' },
   { sk: 'Hľadám súpera', en: 'Looking to play', link: '/looking-to-play' },
+  { sk: 'Rezervácie kurtov', en: 'Court booking', link: '/reservations' },
   { sk: '+ Nový zápas', en: '+ New match', link: '/new-match' },
 ];
 let seasonPages = []; // the seasons' own pages, loaded once

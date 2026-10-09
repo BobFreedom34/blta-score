@@ -32,6 +32,7 @@ const winnersRouter = require('./src/routes/winners');
 const contactRouter = require('./src/routes/contact');
 const seoRouter = require('./src/routes/seo');
 const changeLogRouter = require('./src/routes/changelog');
+const reservationsRouter = require('./src/routes/reservations');
 const carouselRouter = require('./src/routes/carousel');
 const rulesRouter = require('./src/routes/rules');
 const rules = require('./src/rules');
@@ -266,6 +267,7 @@ app.use('/api/winners', winnersRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/seo', seoRouter);
 app.use('/api/changelog', changeLogRouter);
+app.use('/api/reservations', reservationsRouter);
 app.use('/api/carousel', carouselRouter);
 app.use('/api/rules', rulesRouter);
 

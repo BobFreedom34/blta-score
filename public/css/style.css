@@ -4512,3 +4512,69 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
   .home-sec-title .l span { display: block; margin: 4px 0 0; }
   .home-sec-title a { flex: 1 1 100%; margin: 0; }
 }
+
+/* ---------- Court reservations (/rezervacie-kurtov) ---------- */
+.rv-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; margin: 16px 0 12px; }
+.rv-nav { display: flex; align-items: center; gap: 10px; }
+.rv-range { color: var(--white); font-size: 20px; font-weight: 800; min-width: 112px; text-align: center; font-variant-numeric: tabular-nums; }
+.rv-arrow { width: 40px; height: 40px; border-radius: 12px; border: 1.5px solid rgba(255, 255, 255, 0.3); background: transparent; color: var(--white); font-size: 24px; line-height: 1; cursor: pointer; font-family: inherit; }
+.rv-arrow:hover:not(:disabled) { border-color: var(--orange); color: var(--orange); }
+.rv-arrow:disabled { opacity: 0.3; cursor: default; }
+.rv-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; font-weight: 700; color: #c3c7cf; }
+.rv-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 6px; vertical-align: -2px; }
+.rv-legend .free { background: var(--green); }
+.rv-legend .taken { background: var(--orange); }
+.rv-legend .mine { background: var(--orange); outline: 2px solid var(--white); outline-offset: -2px; }
+.rv-legend .past { background: rgba(255, 255, 255, 0.14); }
+.rv-courts { margin-top: 4px; }
+
+/* the grid: the time down the left, the days (and a column per court) across the top; both stay in view while it scrolls */
+.rv-scroll { --rv-col: 78px; overflow: auto; max-height: 74vh; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; background: #0b0b0c; }
+.rv-grid { display: grid; position: relative; width: 100%; min-width: min-content; }
+.rv-corner { grid-row: 1 / span 2; grid-column: 1; position: sticky; top: 0; left: 0; z-index: 5; background: #17171a; border-bottom: 1px solid rgba(255, 255, 255, 0.14); }
+.rv-dayh { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 6px; background: #17171a; color: var(--white); font-size: 13px; border-left: 2px solid rgba(255, 255, 255, 0.18); }
+.rv-dayh b { font-weight: 800; }
+.rv-dayh.weekend { background: #1d1b1f; }
+.rv-dayh.today { box-shadow: inset 0 -3px 0 var(--orange); }
+.rv-courth { position: sticky; top: 34px; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 0 4px; background: #17171a; color: #9aa0aa; font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 1px solid rgba(255, 255, 255, 0.14); }
+.rv-courth.first { border-left: 2px solid rgba(255, 255, 255, 0.18); }
+.rv-time { position: sticky; left: 0; z-index: 4; grid-column: 1; background: #17171a; color: #c3c7cf; font-size: 12px; font-weight: 700; padding: 4px 8px 0; font-variant-numeric: tabular-nums; border-top: 1px solid rgba(255, 255, 255, 0.14); border-right: 1px solid rgba(255, 255, 255, 0.14); }
+.rv-col { background-image: linear-gradient(to bottom, transparent 59px, rgba(255, 255, 255, 0.13) 59px), repeating-linear-gradient(to bottom, transparent 0 29px, rgba(255, 255, 255, 0.05) 29px 30px); background-size: 100% 60px, 100% 30px; }
+.rv-col.first { border-left: 2px solid rgba(255, 255, 255, 0.18); }
+.rv-col.today { background-color: rgba(255, 85, 0, 0.05); }
+
+/* a spot: green = free, orange = reserved (with the name), orange with a white frame = mine, grey = over */
+.rv-slot { z-index: 1; margin: 1px 2px; padding: 2px 3px; border: 0; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-width: 0; overflow: hidden; text-align: center; font-family: inherit; font-size: 12px; line-height: 1.15; cursor: pointer; }
+.rv-n { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
+.rv-t { font-size: 10px; font-weight: 700; opacity: 0.8; white-space: nowrap; }
+.rv-slot.one .rv-t { display: none; }
+.rv-slot.free { background: var(--green); color: #0a0a0a; }
+.rv-slot.free:hover { filter: brightness(1.1); box-shadow: 0 0 0 2px rgba(178, 250, 6, 0.4); }
+.rv-slot.taken { background: var(--orange); color: var(--white); cursor: default; }
+.rv-slot.mine { background: var(--orange); color: var(--white); outline: 2px solid var(--white); outline-offset: -2px; }
+.rv-slot.past { cursor: default; }
+.rv-slot.free.past { background: rgba(255, 255, 255, 0.07); color: #6f7681; }
+.rv-slot.taken.past, .rv-slot.mine.past { opacity: 0.5; }
+.rv-slot:focus-visible { outline: 2px solid var(--white); outline-offset: 1px; }
+.rv-empty { margin-top: 12px; color: #9aa0aa; font-size: 14px; text-align: center; }
+.rv-hint { margin: 16px 0 0; color: #9aa0aa; font-size: 14px; }
+.rv-link { background: none; border: 0; padding: 0; color: var(--orange); font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer; }
+
+.rv-mine { margin-top: 36px; }
+.rv-my { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 14px; margin-top: 8px; background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; font-size: 14px; }
+.rv-locked { color: #9aa0aa; font-size: 12px; font-weight: 600; }
+
+/* the windows */
+.rv-modal h3 { margin: 0 0 14px; }
+.rv-facts { display: grid; gap: 8px; margin-bottom: 14px; }
+.rv-facts > div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-radius: 10px; background: #f3f4f6; color: #1c1c1f; font-size: 14px; }
+.rv-facts span { color: #6b7280; font-weight: 600; }
+.rv-note { font-size: 13px; color: #4b5563; margin: 0 0 12px; line-height: 1.45; }
+.rv-label { display: block; font-size: 12px; font-weight: 800; margin-bottom: 4px; }
+.rv-error { color: var(--danger); font-weight: 700; font-size: 14px; margin: 6px 0 10px; min-height: 0; }
+
+@media (max-width: 700px) {
+  .rv-scroll { --rv-col: 70px; max-height: 70vh; }
+  .rv-range { font-size: 18px; min-width: 96px; }
+  .rv-bar { margin-top: 12px; }
+}

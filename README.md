@@ -478,6 +478,26 @@ profile photo is shown). Hiding an edition removes it from the page without dele
 - Foreign keys are not enforced in this database, so the router deletes an edition's blocks, places and photo files itself.
 - Check it: `node scripts/check-winners.js` (starts its own server on a temporary data folder; nothing else is touched).
 
+### Court reservations (`/rezervacie-kurtov`, code address `/reservations`)
+
+A grid of the next 10 days (always from today; the arrows move 10 days at a time, never into the past): the days across the top, the time down
+the left in 30-minute rows, a column per court (or one court via the filter chips). A **green** block is a free spot the admin opened —
+`Thursday 10:00–12:00` is **one** block that one player takes; it turns **orange** with the player's short name ("Tomáš P."), and is outlined
+white for the player's own. Spots that have started are grey. The grid updates live for everybody (socket `reservations:changed`).
+
+- **Admin** (Backend → Reservations, `/reservations-admin`): courts (add, rename, reorder, delete); **add times** once or every week on chosen
+  weekdays, one block or split into 30 / 60 / 90 / 120-minute spots, on several courts at once (a time that overlaps an existing spot is skipped);
+  **remove free times** of a period; **rules**: how many reservations a player may hold at once (default 2, 0 = no limit) and how late a player
+  may cancel (default 2 h before the start). On the public page the admin clicks any spot to put a player or a guest in it, cancel a reservation
+  or delete the spot (full names are shown to the admin only).
+- **Players** (logged in): click a green spot → confirm → reserved. One click wins when two players are quick (a single UPDATE decides); no
+  second reservation at the same time on any court; "My reservations" lists theirs with a cancel button until the cancel limit.
+- Times are local Slovak text (`Europe/Bratislava`, no time-zone arithmetic); `RESERVATIONS_NOW="YYYY-MM-DD HH:MM"` fixes the clock for checks.
+- Files: `src/routes/reservations.js` (API `/api/reservations`, tables `reservation_courts` and `court_slots`), `public/reservations.html` +
+  `public/js/reservations.js`, `public/reservations-admin.html` + `public/js/reservations-admin.js`, `.rv-*` styles at the end of `style.css`.
+  The page is in Backend → SEO (Slovak address `rezervacie-kurtov`, English `court-booking`) and in the menu picker of Backend → Menu.
+- Check: `node scripts/check-reservations.js`.
+
 ### Points log (`/changelog-admin`)
 
 **Backend → Points log** shows, newest first, what each match changed after it was finished, corrected (restarted and finished again),

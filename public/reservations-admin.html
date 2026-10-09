@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BLTA — Manage badges</title>
+<title>BLTA — Court reservations</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
@@ -27,7 +27,7 @@
   <div class="tabs admin-tabs" style="display:none">
     <a href="/admin" class="tab">Overview</a>
     <a href="/header-admin" class="tab">Menu</a>
-    <a href="/badges-admin" class="tab active">Badges</a>
+    <a href="/badges-admin" class="tab">Badges</a>
     <a href="/players" class="tab">Players</a>
     <a href="/bracket-admin" class="tab">Brackets</a>
     <a href="/venues-admin" class="tab">Venues</a>
@@ -35,17 +35,17 @@
     <a href="/tournaments-admin" class="tab">Tournaments</a>
     <a href="/schedule-admin" class="tab">Schedule</a>
     <a href="/winners-admin" class="tab">Winners</a>
-    <a href="/reservations-admin" class="tab">Reservations</a>
+    <a href="/reservations-admin" class="tab active">Reservations</a>
     <a href="/seo-admin" class="tab">SEO</a>
     <a href="/carousel-admin" class="tab">Carousel</a>
     <a href="/rules-admin" class="tab">Rules</a>
     <a href="/changelog-admin" class="tab">Points log</a>
     <a href="/login-history" class="tab">Login History</a>
   </div>
-  <h2 style="margin:18px 0 4px">Badges</h2>
-  <p style="color:var(--gray-dim)">Badges players can earn on their profile page — shown here in the order they'll appear.</p>
+  <h2 style="margin:18px 0 4px">Court reservations</h2>
+  <p style="color:var(--gray-dim)">The courts and the times players can reserve on the public page <a href="/reservations" style="text-decoration:underline;color:var(--orange)">Rezervácie kurtov</a>. Add a time (for example Thursday 10:00–12:00 is one spot) once or every week; players take free spots and their name goes into the spot. On the public page you click a spot to put a player in it, cancel a reservation or delete it.</p>
 
-  <div id="badges-admin-root">Loading…</div>
+  <div id="rv-admin-root">Loading…</div>
 </div>
 
 <footer class="site-footer">
@@ -60,6 +60,6 @@
 <script src="/js/localize.js"></script>
 <script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
-<script src="/js/badges-admin.js"></script>
+<script src="/js/reservations-admin.js"></script>
 </body>
 </html>

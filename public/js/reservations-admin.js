@@ -1,0 +1,232 @@
+// Backend > Reservations (/reservations-admin): the courts, the times players can reserve, the rules (how many reservations a player may
+// hold, how late one can be cancelled). The spots themselves are managed on the public page: the admin clicks one to put a player in it,
+// cancel a reservation or delete the spot. API: /api/reservations (src/routes/reservations.js).
+(function reservationsAdmin() {
+  const host = document.getElementById('rv-admin-root');
+  if (!host) return;
+
+  const field = 'padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px';
+  const label = 'display:block;font-size:12px;font-weight:700';
+  const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
+  const TIMES = [];
+  for (let m = 0; m <= 24 * 60; m += 30) TIMES.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
+  const BLOCKS = [[0, 'One spot for the whole time'], [30, '30 minutes each'], [60, '1 hour each'], [90, '1½ hours each'], [120, '2 hours each']];
+  let courts = [];
+  let settings = { maxActive: 2, cancelHours: 2 };
+  let today = '';
+
+  const timeOptions = (list, selected) => list.map((t) => `<option value="${t}"${t === selected ? ' selected' : ''}>${t}</option>`).join('');
+  const say = (el, text, bad) => { el.textContent = text; el.style.color = bad ? 'var(--danger)' : 'var(--green, #2e9e4f)'; el.style.fontWeight = '600'; };
+
+  async function load() {
+    const [data, s] = await Promise.all([api('/reservations'), api('/reservations/settings')]);
+    courts = data.courts;
+    today = data.today;
+    settings = s;
+    render();
+  }
+
+  // ---------------------------------------------------------------- courts
+
+  function courtsHtml() {
+    const rows = courts.map((c, i) => `
+      <div class="rva-court" data-id="${c.id}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 0;border-top:1px solid #eee">
+        <span class="hi-move">
+          <button type="button" class="hi-arrow" data-move="up" aria-label="Move up"${i === 0 ? ' disabled' : ''}>↑</button>
+          <button type="button" class="hi-arrow" data-move="down" aria-label="Move down"${i === courts.length - 1 ? ' disabled' : ''}>↓</button>
+        </span>
+        <input type="text" data-f="name" value="${escapeHtml(c.name)}" maxlength="60" style="flex:1;min-width:140px;${field}">
+        <input type="text" data-f="note" value="${escapeHtml(c.note || '')}" maxlength="200" placeholder="Note (surface, address…)" style="flex:2;min-width:160px;${field}">
+        <button type="button" class="btn btn-sm btn-outline" data-act="save">Save</button>
+        <button type="button" class="btn btn-sm btn-danger" data-act="delete">Delete</button>
+      </div>`).join('');
+    return `
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="margin-top:0">Courts</h3>
+        ${rows || '<div class="empty-state" style="padding:8px 0">No courts yet — add the first one below.</div>'}
+        <form id="rva-add-court" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:12px">
+          <label style="${label};flex:1;min-width:140px">New court
+            <input type="text" id="rva-court-name" maxlength="60" placeholder="e.g. Court 1" required style="display:block;width:100%;margin-top:4px;${field}">
+          </label>
+          <label style="${label};flex:2;min-width:160px">Note <span style="font-weight:600;color:var(--gray)">(optional)</span>
+            <input type="text" id="rva-court-note" maxlength="200" placeholder="e.g. clay, Beethovenova 11" style="display:block;width:100%;margin-top:4px;${field}">
+          </label>
+          <button type="submit" class="btn btn-primary">Add court</button>
+        </form>
+        <div id="rva-courts-msg" style="margin-top:8px"></div>
+      </div>`;
+  }
+
+  // ---------------------------------------------------------------- add times
+
+  function addTimesHtml() {
+    const courtBoxes = courts.map((c) => `<label style="font-weight:600;font-size:14px"><input type="checkbox" class="rva-c" value="${c.id}" checked> ${escapeHtml(c.name)}</label>`).join('');
+    return `
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="margin-top:0">Add times</h3>
+        <form id="rva-add-times">
+          <div style="${label}">Courts<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px">${courtBoxes || '<span style="color:var(--gray)">Add a court first.</span>'}</div></div>
+          <div style="display:flex;gap:16px;margin:14px 0 6px;font-size:14px;font-weight:700">
+            <label><input type="radio" name="rva-mode" value="day" checked> One day</label>
+            <label><input type="radio" name="rva-mode" value="repeat"> Repeat every week</label>
+          </div>
+          <div id="rva-mode-day" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+            <label style="${label}">Date <input type="date" id="rva-date" min="${today}" value="${today}" style="display:block;margin-top:4px;${field}"></label>
+          </div>
+          <div id="rva-mode-repeat" style="display:none">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+              <label style="${label}">From <input type="date" id="rva-from" min="${today}" value="${today}" style="display:block;margin-top:4px;${field}"></label>
+              <label style="${label}">Until <input type="date" id="rva-to" min="${today}" style="display:block;margin-top:4px;${field}"></label>
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-weight:600;font-size:14px">${DAYS.map(([n, name]) => `<label><input type="checkbox" class="rva-w" value="${n}"> ${name}</label>`).join('')}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:14px">
+            <label style="${label}">From <select id="rva-start" style="display:block;margin-top:4px;${field}">${timeOptions(TIMES.slice(0, -1), '10:00')}</select></label>
+            <label style="${label}">To <select id="rva-end" style="display:block;margin-top:4px;${field}">${timeOptions(TIMES.slice(1), '12:00')}</select></label>
+            <label style="${label}">Split into <select id="rva-block" style="display:block;margin-top:4px;${field}">${BLOCKS.map(([m, name]) => `<option value="${m}">${name}</option>`).join('')}</select></label>
+            <button type="submit" class="btn btn-primary"${courts.length ? '' : ' disabled'}>Add times</button>
+          </div>
+          <div style="font-size:12px;color:var(--gray);margin-top:8px">“One spot for the whole time” makes a single block, for example Thursday 10:00–12:00 that one player reserves. A time that overlaps an existing spot on the same court is skipped.</div>
+        </form>
+        <div id="rva-times-msg" style="margin-top:8px"></div>
+      </div>`;
+  }
+
+  function clearHtml() {
+    const courtBoxes = courts.map((c) => `<label style="font-weight:600;font-size:14px"><input type="checkbox" class="rva-cc" value="${c.id}" checked> ${escapeHtml(c.name)}</label>`).join('');
+    return `
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="margin-top:0">Remove free times</h3>
+        <form id="rva-clear" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+          <div style="${label}">Courts<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px">${courtBoxes}</div></div>
+          <label style="${label}">From <input type="date" id="rva-cfrom" min="${today}" value="${today}" style="display:block;margin-top:4px;${field}"></label>
+          <label style="${label}">Until <input type="date" id="rva-cto" min="${today}" value="${today}" style="display:block;margin-top:4px;${field}"></label>
+          <button type="submit" class="btn btn-outline"${courts.length ? '' : ' disabled'}>Remove free times</button>
+        </form>
+        <div style="font-size:12px;color:var(--gray);margin-top:8px">Only spots nobody has reserved are removed; reserved ones stay.</div>
+        <div id="rva-clear-msg" style="margin-top:8px"></div>
+      </div>`;
+  }
+
+  function settingsHtml() {
+    return `
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="margin-top:0">Rules</h3>
+        <form id="rva-settings" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <label style="${label}">Reservations a player can hold at once <span style="font-weight:600;color:var(--gray)">(0 = no limit)</span>
+            <input type="number" id="rva-max" min="0" max="50" value="${settings.maxActive}" style="display:block;margin-top:4px;width:110px;${field}">
+          </label>
+          <label style="${label}">A player can cancel until … hours before the start <span style="font-weight:600;color:var(--gray)">(0 = until it starts)</span>
+            <input type="number" id="rva-cancel" min="0" max="168" value="${settings.cancelHours}" style="display:block;margin-top:4px;width:110px;${field}">
+          </label>
+          <button type="submit" class="btn btn-outline">Save rules</button>
+        </form>
+        <div id="rva-settings-msg" style="margin-top:8px"></div>
+      </div>`;
+  }
+
+  function render() {
+    host.innerHTML = `${courtsHtml()}${addTimesHtml()}${clearHtml()}${settingsHtml()}`;
+    wire();
+  }
+
+  // ---------------------------------------------------------------- events
+
+  function wire() {
+    const msg = (id) => host.querySelector(id);
+
+    host.querySelectorAll('input[name="rva-mode"]').forEach((r) => r.addEventListener('change', () => {
+      const repeat = host.querySelector('input[name="rva-mode"]:checked').value === 'repeat';
+      host.querySelector('#rva-mode-day').style.display = repeat ? 'none' : 'flex';
+      host.querySelector('#rva-mode-repeat').style.display = repeat ? 'block' : 'none';
+    }));
+
+    host.querySelector('#rva-add-court').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await api('/reservations/courts', { method: 'POST', body: { name: host.querySelector('#rva-court-name').value, note: host.querySelector('#rva-court-note').value } });
+        toast('Court added');
+        await load();
+      } catch (err) { say(msg('#rva-courts-msg'), err.message, true); }
+    });
+
+    host.querySelectorAll('.rva-court').forEach((row) => {
+      const id = Number(row.dataset.id);
+      row.querySelector('[data-act="save"]').addEventListener('click', async () => {
+        try {
+          await api(`/reservations/courts/${id}`, { method: 'PATCH', body: { name: row.querySelector('[data-f="name"]').value, note: row.querySelector('[data-f="note"]').value } });
+          toast('Court saved');
+          await load();
+        } catch (err) { say(msg('#rva-courts-msg'), err.message, true); }
+      });
+      row.querySelector('[data-act="delete"]').addEventListener('click', async () => {
+        const court = courts.find((c) => c.id === id);
+        if (!window.confirm(`Delete "${court.name}" and all its times?`)) return;
+        try {
+          await api(`/reservations/courts/${id}`, { method: 'DELETE' });
+        } catch (err) {
+          if (err.data && err.data.code === 'HAS_RESERVATIONS') {
+            if (!window.confirm(`${err.message}. Delete the court anyway?`)) return;
+            try { await api(`/reservations/courts/${id}?force=1`, { method: 'DELETE' }); } catch (err2) { say(msg('#rva-courts-msg'), err2.message, true); return; }
+          } else { say(msg('#rva-courts-msg'), err.message, true); return; }
+        }
+        toast('Court deleted');
+        await load();
+      });
+      row.querySelectorAll('[data-move]').forEach((btn) => btn.addEventListener('click', async () => {
+        const ids = courts.map((c) => c.id);
+        const at = ids.indexOf(id);
+        const to = btn.dataset.move === 'up' ? at - 1 : at + 1;
+        if (to < 0 || to >= ids.length) return;
+        [ids[at], ids[to]] = [ids[to], ids[at]];
+        try { await api('/reservations/courts/reorder', { method: 'POST', body: { ids } }); await load(); } catch (err) { say(msg('#rva-courts-msg'), err.message, true); }
+      }));
+    });
+
+    host.querySelector('#rva-add-times').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const repeat = host.querySelector('input[name="rva-mode"]:checked').value === 'repeat';
+      const body = {
+        courtIds: [...host.querySelectorAll('.rva-c:checked')].map((b) => Number(b.value)),
+        start: host.querySelector('#rva-start').value,
+        end: host.querySelector('#rva-end').value,
+        blockMinutes: Number(host.querySelector('#rva-block').value),
+      };
+      if (repeat) {
+        body.fromDate = host.querySelector('#rva-from').value;
+        body.toDate = host.querySelector('#rva-to').value;
+        body.weekdays = [...host.querySelectorAll('.rva-w:checked')].map((b) => Number(b.value));
+      } else {
+        body.date = host.querySelector('#rva-date').value;
+      }
+      try {
+        const r = await api('/reservations/slots', { method: 'POST', body });
+        say(msg('#rva-times-msg'), `${r.created} spot${r.created === 1 ? '' : 's'} added${r.skipped ? `, ${r.skipped} skipped (already a spot at that time, or the time is over)` : ''}.`);
+      } catch (err) { say(msg('#rva-times-msg'), err.message, true); }
+    });
+
+    host.querySelector('#rva-clear').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = { courtIds: [...host.querySelectorAll('.rva-cc:checked')].map((b) => Number(b.value)), fromDate: host.querySelector('#rva-cfrom').value, toDate: host.querySelector('#rva-cto').value };
+      if (!body.courtIds.length) { say(msg('#rva-clear-msg'), 'Choose at least one court', true); return; }
+      if (!window.confirm(`Remove all free times from ${body.fromDate} to ${body.toDate}?`)) return;
+      try {
+        const r = await api('/reservations/slots/clear', { method: 'POST', body });
+        say(msg('#rva-clear-msg'), `${r.removed} free spot${r.removed === 1 ? '' : 's'} removed.`);
+      } catch (err) { say(msg('#rva-clear-msg'), err.message, true); }
+    });
+
+    host.querySelector('#rva-settings').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        settings = await api('/reservations/settings', { method: 'PUT', body: { maxActive: Number(host.querySelector('#rva-max').value), cancelHours: Number(host.querySelector('#rva-cancel').value) } });
+        say(msg('#rva-settings-msg'), 'Saved ✓');
+      } catch (err) { say(msg('#rva-settings-msg'), err.message, true); }
+    });
+  }
+
+  checkAdmin().then((isAdmin) => {
+    if (isAdmin) { load().catch((err) => { host.innerHTML = `<div class="card" style="color:var(--danger)">${escapeHtml(err.message)}</div>`; }); return; }
+    host.innerHTML = '<div class="card"><p style="margin:0;color:var(--gray)">Managing reservations requires an admin login. <a href="/admin" style="text-decoration:underline;color:var(--orange)">Log in as admin</a>.</p></div>';
+  });
+})();
