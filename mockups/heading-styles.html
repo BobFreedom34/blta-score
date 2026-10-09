@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heading styles – BLTA Score</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Montserrat:wght@300;500;600;700;800&family=Oswald:wght@500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0d0d0e; --card: #0a0a0a; --grey: #37373e; --white: #fff; --orange: #ff5500; --green: #b2fa06; --muted: #c3c7cf; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 20px 60px; background: radial-gradient(circle at 20% 0%, #1c1c1f, var(--bg) 60%); color: var(--white); font-family: 'Montserrat', sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  .intro { color: var(--muted); font-size: 14px; margin: 0 0 30px; line-height: 1.5; }
+  .opt { margin-bottom: 34px; }
+  .tag { display: flex; gap: 10px; align-items: baseline; margin-bottom: 10px; }
+  .tag b { background: var(--orange); color: #fff; border-radius: 8px; padding: 3px 11px; font-size: 13px; font-weight: 800; }
+  .tag span { color: var(--muted); font-size: 13px; font-weight: 600; }
+  .stage { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 18px; padding: 26px 28px 28px; }
+  .sec-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 16px; }
+  .sec-title .l { display: flex; align-items: baseline; color: var(--white); }
+  .sec-title .l small { font-family: 'Montserrat', sans-serif; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; margin-left: 10px; }
+  .sec-title a { font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--orange); }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .tile { background: var(--grey); border-radius: 14px; padding: 14px 16px; }
+  .tile i { display: block; font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .tile b { display: block; font-size: 30px; font-weight: 800; margin-top: 2px; }
+
+  /* A: today */
+  .a .l { font-size: 21px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+  /* B: sentence case, bigger, tight */
+  .b .l { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; }
+  /* C: lime bar */
+  .c .l { font-size: 22px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; padding-left: 14px; border-left: 5px solid var(--green); line-height: 1.05; }
+  /* D: condensed sporty */
+  .d .l { font-family: 'Barlow Condensed', sans-serif; font-size: 34px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1; }
+  /* E: light + bold */
+  .e .l { font-size: 26px; font-weight: 300; letter-spacing: 0.08em; text-transform: uppercase; }
+  .e .l strong { font-weight: 800; margin-left: 0.3em; color: var(--green); }
+  /* F: underline accent */
+  .f .l { font-size: 23px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; position: relative; padding-bottom: 10px; }
+  .f .l::after { content: ''; position: absolute; left: 0; bottom: 0; width: 44px; height: 4px; border-radius: 3px; background: var(--orange); }
+  /* G: oswald */
+  .g .l { font-family: 'Oswald', sans-serif; font-size: 30px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; line-height: 1.1; }
+  @media (max-width: 640px) { .tiles { grid-template-columns: 1fr; } .stage { padding: 20px 16px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Section headings – ideas</h1>
+  <p class="intro">The same section ("Aktuálna sezóna" with its note and link, and three tiles under it) in seven styles. A and B–F use the font you already have (Montserrat, nothing new to load); D and G need a second font (Barlow Condensed / Oswald) that would be added to the site.</p>
+
+  <div class="opt a"><div class="tag"><b>A</b><span>Today · Montserrat 800 · 21px · uppercase</span></div>
+    <div class="stage"><div class="sec-title"><span class="l">Aktuálna sezóna<small>Autumn Finals Series 2026</small></span><a href="#">Všetky tabuľky →</a></div>
+      <div class="tiles"><div class="tile"><i>Odohraných zápasov</i><b>90</b></div><div class="tile"><i>Hráčov v sérii</i><b>76</b></div><div class="tile"><i>Zápasov tento týždeň</i><b>11</b></div></div></div></div>
+
+  <div class="opt b"><div class="tag"><b>B</b><span>Modern · Montserrat 800 · 28px · normal capitals, no letter-spacing</span></div>
+    <div class="stage"><div class="sec-title"><span class="l">Aktuálna sezóna<small>Autumn Finals Series 2026</small></span><a href="#">Všetky tabuľky →</a></div>
+      <div class="tiles"><div class="tile"><i>Odohraných zápasov</i><b>90</b></div><div class="tile"><i>Hráčov v sérii</i><b>76</b></div><div class="tile"><i>Zápasov tento týždeň</i><b>11</b></div></div></div></div>
+
+  <div class="opt c"><div class="tag"><b>C</b><span>Lime marker · Montserrat 800 · 22px · uppercase · green bar on the left</span></div>
+    <div class="stage"><div class="sec-title"><span class="l">Aktuálna sezóna<small>Autumn Finals Series 2026</small></span><a href="#">Všetky tabuľky →</a></div>
+      <div class="tiles"><div class="tile"><i>Odohraných zápasov</i><b>90</b></div><div class="tile"><i>Hráčov v sérii</i><b>76</b></div><div class="tile"><i>Zápasov tento týždeň</i><b>11</b></div></div></div></div>
+
+  <div class="opt d"><div class="tag"><b>D</b><span>Sporty condensed · Barlow Condensed 700 · 34px · uppercase (new font)</span></div>
+    <div class="stage"><div class="sec-title"><span class="l">Aktuálna sezóna<small>Autumn Finals Series 2026</small></span><a href="#">Všetky tabuľky →</a></div>
+      <div class="tiles"><div class="tile"><i>Odohraných zápasov</i><b>90</b></div><div class="tile"><i>Hráčov v sérii</i><b>76</b></div><div class="tile"><i>Zápasov tento týždeň</i><b>11</b></div></div></div></div>
+
+  <div class="opt e"><div class="tag"><b>E</b><span>Light + bold · Montserrat 300 and 800 · 26px · second word in lime</span></div>
+    <div class="stage"><div class="sec-title"><span class="l">Aktuálna <strong>sezóna</strong><small>Autumn Finals Series 2026</small></span><a href="#">Všetky tabuľky →</a></div>
+      <div class="tiles"><div class="tile"><i>Odohraných zápasov</i><b>90</b></div><div class="tile"><i>Hráčov v sérii</i><b>76</b></div><div class="tile"><i>Zápasov tento týždeň</i><b>11</b></div></div></div></div>
+
+  <div class="opt f"><div class="tag"><b>F</b><span>Orange underline · Montserrat 800 · 23px · uppercase</span></div>
+    <div class="stage"><div class="sec-title"><span class="l">Aktuálna sezóna<small>Autumn Finals Series 2026</small></span><a href="#">Všetky tabuľky →</a></div>
+      <div class="tiles"><div class="tile"><i>Odohraných zápasov</i><b>90</b></div><div class="tile"><i>Hráčov v sérii</i><b>76</b></div><div class="tile"><i>Zápasov tento týždeň</i><b>11</b></div></div></div></div>
+
+  <div class="opt g"><div class="tag"><b>G</b><span>Poster style · Oswald 600 · 30px · uppercase (new font)</span></div>
+    <div class="stage"><div class="sec-title"><span class="l">Aktuálna sezóna<small>Autumn Finals Series 2026</small></span><a href="#">Všetky tabuľky →</a></div>
+      <div class="tiles"><div class="tile"><i>Odohraných zápasov</i><b>90</b></div><div class="tile"><i>Hráčov v sérii</i><b>76</b></div><div class="tile"><i>Zápasov tento týždeň</i><b>11</b></div></div></div></div>
+</div>
+</body>
+</html>

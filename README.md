@@ -485,7 +485,7 @@ the left in 30-minute rows, a column per court (or one court via the filter chip
 `Thursday 10:00–12:00` is **one** block that one player takes; it turns **orange** with the player's short name ("Tomáš P."), and is outlined
 white for the player's own. Spots that have started are grey. The grid updates live for everybody (socket `reservations:changed`).
 
-- **Admin** (Backend → Reservations, `/reservations-admin`): courts (add, rename, reorder, delete); **add times** once or every week on chosen
+- **Admin** (Backend → Reservations, `/reservations-admin`): courts (add, rename, reorder, delete, and a **colour per court** for its free spots — column `reservation_courts.color`, `#rrggbb` or empty = the site's green; the text on it turns dark or white automatically); **add times** once or every week on chosen
   weekdays, one block or split into 30 / 60 / 90 / 120-minute spots, on several courts at once (a time that overlaps an existing spot is skipped);
   **change many times at once** (pick courts, a period, weekdays and a start-time window, then shift them earlier or later in 30-minute
   steps, set or change their length (set to 30 min–4 h, or 30 min–2 h longer/shorter) and/or move them to another court — e.g. every Thursday evening one hour later; "Preview" shows the result first, reserved spots stay unless

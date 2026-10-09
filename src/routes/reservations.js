@@ -35,6 +35,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_court_slots_player ON court_slots(player_id);
 `);
 
+// the colour of a court's free spots ('' = the green of the site): added after the first version, so the table is upgraded in place
+if (!db.prepare('PRAGMA table_info(reservation_courts)').all().some((c) => c.name === 'color')) {
+  db.exec("ALTER TABLE reservation_courts ADD COLUMN color TEXT NOT NULL DEFAULT ''");
+}
+
 const WINDOW_DAYS = 10;
 const MAX_AHEAD_DAYS = 365;
 const MAX_CREATE = 1000;
@@ -138,7 +143,7 @@ router.get('/', (req, res) => {
   const admin = isAdmin(req);
   const me = getPlayerId(req);
   const settings = getSettings();
-  const courts = db.prepare('SELECT id, name, note FROM reservation_courts ORDER BY sort_order, id').all();
+  const courts = db.prepare('SELECT id, name, note, color FROM reservation_courts ORDER BY sort_order, id').all();
   const rows = db.prepare(`
     SELECT s.*, p.name AS player_name, p.slug AS player_slug
     FROM court_slots s LEFT JOIN players p ON p.id = s.player_id
@@ -244,16 +249,26 @@ router.post('/slots/:id/cancel', (req, res) => {
 
 // ---------------------------------------------------------------- admin: courts
 
+// '#rrggbb' (any case) -> lowercase, '' (or nothing) -> '' (the default green); anything else -> null
+function cleanColor(value) {
+  if (value === undefined || value === null) return '';
+  const v = String(value).trim().toLowerCase();
+  if (v === '') return '';
+  return /^#[0-9a-f]{6}$/.test(v) ? v : null;
+}
+
 router.post('/courts', requireAdmin, (req, res) => {
   const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
   const note = typeof req.body.note === 'string' ? req.body.note.trim() : '';
+  const color = cleanColor(req.body.color);
   if (!name) return res.status(400).json({ error: 'The court needs a name' });
   if (name.length > 60 || note.length > 200) return res.status(400).json({ error: 'The name or the note is too long' });
+  if (color === null) return res.status(400).json({ error: 'The colour must look like #1a73e8' });
   if (db.prepare('SELECT 1 FROM reservation_courts WHERE lower(name) = lower(?)').get(name)) return res.status(409).json({ error: 'A court with this name already exists' });
   const next = (db.prepare('SELECT MAX(sort_order) AS m FROM reservation_courts').get().m ?? -1) + 1;
-  const id = Number(db.prepare('INSERT INTO reservation_courts (name, note, sort_order) VALUES (?, ?, ?)').run(name, note, next).lastInsertRowid);
+  const id = Number(db.prepare('INSERT INTO reservation_courts (name, note, sort_order, color) VALUES (?, ?, ?, ?)').run(name, note, next, color).lastInsertRowid);
   emitChanged(req);
-  res.status(201).json(db.prepare('SELECT id, name, note FROM reservation_courts WHERE id = ?').get(id));
+  res.status(201).json(db.prepare('SELECT id, name, note, color FROM reservation_courts WHERE id = ?').get(id));
 });
 
 router.patch('/courts/:id', requireAdmin, (req, res) => {
@@ -261,12 +276,14 @@ router.patch('/courts/:id', requireAdmin, (req, res) => {
   if (!court) return res.status(404).json({ error: 'Court not found' });
   const name = req.body.name === undefined ? court.name : String(req.body.name).trim();
   const note = req.body.note === undefined ? court.note : String(req.body.note).trim();
+  const color = req.body.color === undefined ? court.color : cleanColor(req.body.color);
   if (!name) return res.status(400).json({ error: 'The court needs a name' });
   if (name.length > 60 || note.length > 200) return res.status(400).json({ error: 'The name or the note is too long' });
+  if (color === null) return res.status(400).json({ error: 'The colour must look like #1a73e8' });
   if (db.prepare('SELECT 1 FROM reservation_courts WHERE lower(name) = lower(?) AND id != ?').get(name, court.id)) return res.status(409).json({ error: 'A court with this name already exists' });
-  db.prepare('UPDATE reservation_courts SET name = ?, note = ? WHERE id = ?').run(name, note, court.id);
+  db.prepare('UPDATE reservation_courts SET name = ?, note = ?, color = ? WHERE id = ?').run(name, note, color, court.id);
   emitChanged(req);
-  res.json(db.prepare('SELECT id, name, note FROM reservation_courts WHERE id = ?').get(court.id));
+  res.json(db.prepare('SELECT id, name, note, color FROM reservation_courts WHERE id = ?').get(court.id));
 });
 
 // Deleting a court deletes its spots; with reservations that have not started yet it needs ?force=1 (the players lose them).

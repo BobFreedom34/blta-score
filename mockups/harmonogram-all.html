@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harmonogram — všetky varianty</title>
+<link rel="icon" href="../public/favicon-64.png">
+<link rel="stylesheet" href="../public/css/style.css">
+<style>
+/* Mockup: the schedule page in four looks with the same sample data (today = 5 Oct 2026).
+   1 = the first version (Home look, already built), A = Matches page look, B = League tables / Rankings look,
+   C = bonus: a year-at-a-glance timeline (bars across the twelve months). */
+.hx { padding: 26px 0 80px; color: #fff; }
+.hx h1 { color: #fff; margin: 0 0 6px; }
+.hx .lead { color: #d3d6dc; font-weight: 600; margin: 0 0 14px; max-width: 760px; line-height: 1.5; }
+.hx .jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
+.hx .jump a { padding: 8px 14px; border-radius: 8px; background: var(--fill-grey); color: #fff; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; text-decoration: none; }
+.hx .jump a:hover { background: var(--orange); }
+.hx .opt { margin: 60px 0 18px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.18); scroll-margin-top: 70px; }
+.hx .opt h2 { color: #fff; margin: 0 0 4px; font-size: 22px; }
+.hx .opt p { color: #c3c7cf; margin: 0; font-weight: 600; font-size: 14px; max-width: 780px; line-height: 1.5; }
+.hx .opt p b { color: #fff; }
+.hx .bar { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0 8px; }
+.hx .sel { background: var(--fill-grey); color: #fff; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; padding: 9px 16px; font-size: 13px; font-weight: 700; text-transform: uppercase; min-width: 200px; }
+.hx .yrs { display: flex; gap: 8px; margin: 18px 0 6px; }
+.hx .yrs span { padding: 9px 18px; border-radius: 8px; background: var(--fill-grey); color: #fff; font-size: 13px; font-weight: 800; }
+.hx .yrs span.on { background: var(--orange); }
+
+/* ---- A: Matches page ---- */
+.ha-tabs { display: inline-flex; gap: 6px; background: var(--fill-grey); border-radius: 14px; padding: 6px; margin: 18px 0 0; }
+.ha-tabs span { padding: 8px 16px; border-radius: 9px; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #c3c7cf; }
+.ha-tabs span.on { background: var(--orange); color: #fff; }
+.ha-heading { display: flex; align-items: center; gap: 14px; margin: 30px 0 14px; color: #fff; font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; }
+.ha-heading::before, .ha-heading::after { content: ''; flex: 1; height: 1px; background: var(--gray-dim); }
+.ha-card { --accent: var(--green); background: #0a0a0a; border: 1px solid var(--accent); border-radius: 24px; padding: 22px 22px 20px; margin: 0 0 14px; box-shadow: 0 0 18px -4px rgba(128,132,140,.2), 0 0 18px -4px rgba(128,132,140,.2); display: flex; flex-direction: column; gap: 14px; }
+.ha-card.now { --accent: rgba(255,255,255,.55); }
+.ha-card.past { --accent: rgba(255,255,255,.22); }
+.ha-card.past .ha-name, .ha-card.past .ha-panel { opacity: .6; }
+.ha-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ha-pill { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; border: 1px solid transparent; }
+.ha-pill.type { background: #fff; color: #0a0a0a; }
+.ha-pill.tour { border-color: var(--orange); color: var(--orange); }
+.ha-pill.live { border-color: var(--danger); color: #ff6a3d; }
+.ha-pill.date { border-color: var(--green); color: var(--green); }
+.ha-top .sp { flex: 1; }
+.ha-meta { color: #8b8f98; font-size: 12px; font-weight: 600; }
+.ha-name { font-size: 24px; font-weight: 800; line-height: 1.15; margin: 0; text-transform: none; letter-spacing: 0; }
+.ha-panel { background: var(--fill-grey); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; }
+.ha-dates { font-size: 28px; font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+.ha-dates small { font-size: 13px; font-weight: 700; color: #c3c7cf; letter-spacing: 0; margin-left: 6px; }
+.ha-cats { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.ha-prog { flex: 1 1 100%; }
+.ha-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.ha-foot .note { color: #c3c7cf; font-size: 13px; font-weight: 600; }
+.ha-more { display: inline-flex; gap: 6px; align-items: center; padding: 9px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,.35); color: #fff; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; text-decoration: none; }
+
+/* ---- B: League tables / Rankings ---- */
+.hb-month { font-weight: 800; font-size: 17px; letter-spacing: .06em; color: var(--green); text-transform: uppercase; margin: 36px 0 12px; }
+.hb-card { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: 0 0 18px rgba(255,85,0,.25); border-radius: var(--radius); padding: 4px 22px; }
+.hb-row { display: grid; grid-template-columns: 170px minmax(0,1fr) auto; align-items: center; gap: 18px; padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,.12); }
+.hb-row:last-child { border-bottom: none; }
+.hb-row.past { opacity: .55; }
+.hb-date { color: var(--orange); font-weight: 800; font-size: 20px; letter-spacing: -.01em; line-height: 1.1; }
+.hb-date small { display: block; color: #8b8f98; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; margin-top: 4px; }
+.hb-name { color: #fff; font-weight: 800; font-size: 18px; line-height: 1.2; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+.hb-sub { color: #a9adb6; font-weight: 600; font-size: 13px; margin-top: 5px; }
+.hb-sub b { color: #fff; font-weight: 700; }
+.hb-tag { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--green); color: var(--green); }
+.hb-tag.tour { border-color: var(--orange); color: var(--orange); }
+.hb-tag.now { background: var(--green); border-color: var(--green); color: #0a0a0a; }
+.hb-go { color: #8b8f98; font-weight: 800; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; text-decoration: none; white-space: nowrap; }
+.hb-row .home-bar { margin-top: 10px; max-width: 360px; }
+
+/* ---- C: year timeline (bonus) ---- */
+.hc-wrap { margin-top: 22px; background: #0a0a0a; border: 1px solid rgba(255,255,255,.18); border-radius: 18px; padding: 18px 20px 14px; overflow-x: auto; }
+.hc { min-width: 860px; position: relative; }
+.hc-head, .hc-row { display: grid; grid-template-columns: 210px minmax(0,1fr); align-items: center; }
+.hc-months { display: grid; grid-template-columns: repeat(12, 1fr); }
+.hc-months span { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #8b8f98; padding: 0 0 10px 6px; border-left: 1px solid rgba(255,255,255,.1); }
+.hc-row { padding: 9px 0; border-top: 1px solid rgba(255,255,255,.08); }
+.hc-label { padding-right: 14px; min-width: 0; }
+.hc-label b { display: block; font-size: 14px; font-weight: 800; line-height: 1.2; }
+.hc-label small { color: #a9adb6; font-size: 11px; font-weight: 600; }
+.hc-track { position: relative; height: 34px; background: repeating-linear-gradient(to right, transparent 0, transparent calc(100% / 12 - 1px), rgba(255,255,255,.08) calc(100% / 12 - 1px), rgba(255,255,255,.08) calc(100% / 12)); }
+.hc-bar { position: absolute; top: 4px; height: 26px; border-radius: 8px; display: flex; align-items: center; padding: 0 10px; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; overflow: hidden; background: var(--green); color: #0a0a0a; }
+.hc-bar.tour { background: var(--orange); color: #fff; min-width: 12px; padding: 0; justify-content: center; }
+.hc-bar.past { background: #4a4a52; color: #d3d6dc; }
+.hc-bar.now { background: var(--green); box-shadow: 0 0 14px rgba(178,250,6,.4); }
+.hc-bar.now i { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(10,10,10,.38); }
+.hc-bar span { position: relative; }
+.hc-tourlabel { position: absolute; top: 9px; font-size: 11px; font-weight: 700; color: #c3c7cf; white-space: nowrap; }
+.hc-today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--orange); z-index: 2; }
+.hc-today em { position: absolute; bottom: -2px; left: 6px; font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--orange); }
+.hc-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; font-size: 11px; font-weight: 700; color: #c3c7cf; text-transform: uppercase; letter-spacing: .04em; }
+.hc-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 6px; vertical-align: -2px; }
+
+@media (max-width: 700px) {
+  .hb-row { grid-template-columns: 1fr; gap: 8px; }
+  .ha-cats { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<main class="container hx">
+  <h1>Harmonogram — všetky varianty</h1>
+  <p class="lead">Rovnaký obsah (rok 2026, ukážkové údaje, „dnes“ = 5. 10. 2026) v štyroch vzhľadoch.</p>
+  <div class="jump"><a href="#v1">1 · Prvý návrh</a><a href="#va">A · Zápasy</a><a href="#vb">B · Tabuľky</a><a href="#vc">C · Bonus: ročná os</a></div>
+
+  <section class="opt" id="v1"><h2>1 — Prvý návrh (už postavený)</h2><p>Sivé karty ako na domovskej stránke: veľké číslo dátumu vľavo, názov, štítky, tlačidlo „Viac info“. Oranžový obrys a lišta pri prebiehajúcej sérii.</p></section>
+  <div class="yrs"><span>2027</span><span class="on">2026</span><span>2025</span></div>
+  <div class="bar"><span class="sel">Všetky kategórie ▾</span><span class="sel">Všetky podujatia ▾</span></div>
+  <div id="out1"></div>
+
+  <section class="opt" id="va"><h2>A — Štýl stránky Zápasy</h2><p>Čierne karty s tenkým obrysom: <b>zelený</b> = pripravované, <b>biely</b> = práve prebieha, sivý = skončené. Mesiac ako stredový nadpis s čiarami, dátum v sivom paneli.</p></section>
+  <div class="ha-tabs"><span>2027</span><span class="on">2026</span><span>2025</span></div>
+  <div class="bar"><span class="sel">Všetky kategórie ▾</span><span class="sel">Všetky podujatia ▾</span></div>
+  <div id="outA"></div>
+
+  <section class="opt" id="vb"><h2>B — Štýl Tabuliek a Rebríčka</h2><p>Jedna čierna karta s oranžovým žiarením na mesiac, riadky s deliacimi čiarami. Zelený názov mesiaca, oranžový dátum. Najkompaktnejší.</p></section>
+  <div class="yrs"><span>2027</span><span class="on">2026</span><span>2025</span></div>
+  <div class="bar"><span class="sel">Všetky kategórie ▾</span><span class="sel">Všetky podujatia ▾</span></div>
+  <div id="outB"></div>
+
+  <section class="opt" id="vc"><h2>C — Bonus: ročná os</h2><p>Celý rok na jednom pohľade: dvanásť mesiacov a každá séria ako pruh cez mesiace, turnaje ako oranžové značky. Oranžová čiara = dnes, zelený pruh sa vypĺňa podľa postupu série. Na telefóne sa os posúva do strán.</p></section>
+  <div class="yrs"><span>2027</span><span class="on">2026</span><span>2025</span></div>
+  <div class="bar"><span class="sel">Všetky kategórie ▾</span><span class="sel">Všetky podujatia ▾</span></div>
+  <div class="hc-wrap"><div class="hc" id="outC"></div><div class="hc-legend" style="margin-top:22px"><span><i style="background:var(--green)"></i>Liga</span><span><i style="background:var(--orange)"></i>Turnaj</span><span><i style="background:#4a4a52"></i>Skončené</span><span><i style="background:var(--orange);width:2px;border-radius:0;margin-right:8px"></i>Dnes</span></div></div>
+</main>
+
+<script>
+const TODAY = '2026-10-05';
+const YEAR = 2026;
+const DATA = [
+  { type: 'LEAGUE', name: 'Winter Opening Series 2026', start: '2025-12-21', end: '2026-04-30', cats: ['ELITE', 'NEXT_GEN', 'NOVICE'] },
+  { type: 'LEAGUE', name: 'Summer Rally Series 2026', start: '2026-05-01', end: '2026-08-31', cats: ['ELITE', 'NEXT_GEN', 'NOVICE'] },
+  { type: 'LEAGUE', name: 'Autumn Finals Series 2026', start: '2026-09-01', end: '2026-12-31', cats: ['ELITE', 'NEXT_GEN', 'NOVICE'] },
+  { type: 'TOURNAMENT', name: 'Slávia Filozof Cup 2026', start: '2026-11-14', end: '2026-11-15', venue: 'Dudova, Bratislava', cats: ['ELITE', 'NEXT_GEN'] },
+  { type: 'TOURNAMENT', name: 'Tenis ONE Trophy 2026', start: '2026-12-12', end: '2026-12-13', venue: 'Nobelova 34, Bratislava', cats: ['ELITE', 'NEXT_GEN', 'NOVICE'] },
+];
+const CAT = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
+const MON = ['január', 'február', 'marec', 'apríl', 'máj', 'jún', 'júl', 'august', 'september', 'október', 'november', 'december'];
+const MON3 = ['jan', 'feb', 'mar', 'apr', 'máj', 'jún', 'júl', 'aug', 'sep', 'okt', 'nov', 'dec'];
+const d = (iso) => new Date(iso + 'T12:00:00');
+const days = (a, b) => Math.round((d(b) - d(a)) / 864e5);
+const status = (e) => (e.end < TODAY ? 'past' : e.start > TODAY ? 'future' : 'now');
+const left = (e) => days(TODAY, e.end);
+const total = (e) => Math.max(1, days(e.start, e.end));
+const pct = (e) => Math.round(days(e.start, TODAY) / total(e) * 100);
+const badges = (e) => e.cats.map((c) => `<span class="badge badge-${c}">BLTA ${CAT[c]}</span>`).join('');
+const plain = (e) => e.cats.map((c) => CAT[c]).join(' · ');
+const inYear = DATA.filter((e) => e.start <= `${YEAR}-12-31` && e.end >= `${YEAR}-01-01`);
+const byMonth = () => {
+  const m = new Map();
+  inYear.forEach((e) => { const s = e.start < `${YEAR}-01-01` ? `${YEAR}-01-01` : e.start; const k = d(s).getMonth(); if (!m.has(k)) m.set(k, []); m.get(k).push(e); });
+  return [...m.keys()].sort((a, b) => a - b).map((k) => [k, m.get(k)]);
+};
+const dRange = (e) => `${d(e.start).getDate()}.${d(e.start).getMonth() + 1}. – ${d(e.end).getDate()}.${d(e.end).getMonth() + 1}.`;
+
+// ---- 1: first version ----
+function dateBlocks(e) {
+  const a = d(e.start), b = d(e.end), two = (n) => String(n).padStart(2, '0');
+  const cross = a.getFullYear() !== b.getFullYear() || a.getFullYear() !== YEAR;
+  const yr = (x) => (cross ? `<em>${x.getFullYear()}</em>` : '');
+  if (e.start === e.end) return `<div class="d"><b>${two(a.getDate())}</b><span>${MON3[a.getMonth()]}</span>${yr(a)}</div>`;
+  if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) return `<div class="d"><b>${two(a.getDate())}–${two(b.getDate())}</b><span>${MON3[a.getMonth()]}</span>${yr(a)}</div>`;
+  return `<div class="d"><b>${two(a.getDate())}</b><span>${MON3[a.getMonth()]}</span>${yr(a)}</div><i>–</i><div class="d"><b>${two(b.getDate())}</b><span>${MON3[b.getMonth()]}</span>${yr(b)}</div>`;
+}
+document.getElementById('out1').innerHTML = byMonth().map(([k, list]) => `<section class="sch-month"><h2 class="sch-month-title">${MON[k]}</h2>${list.map((e) => {
+  const st = status(e);
+  const info = st === 'now' ? `<span class="sch-note">zostáva ${left(e)} dní</span>` : st === 'future' ? `<span class="sch-note">o ${days(TODAY, e.start)} dní</span>` : '';
+  return `<article class="sch-card ${st}"><div class="sch-date">${dateBlocks(e)}</div><div class="sch-main"><div class="sch-top"><h3 class="sch-name">${e.name}</h3><span class="sch-chip ${e.type === 'LEAGUE' ? 'league' : 'tournament'}">${e.type === 'LEAGUE' ? 'Liga' : 'Turnaj'}</span>${st === 'now' ? '<span class="sch-chip now">Prebieha</span>' : ''}${info}</div>${e.venue ? `<div class="sch-venue">${e.venue}</div>` : ''}<div class="sch-cats">${badges(e)}</div>${st === 'now' ? `<div class="home-bar mini"><i style="width:${pct(e)}%"></i></div>` : ''}</div><a class="sch-more" href="#">Viac info<span>›</span></a></article>`;
+}).join('')}</section>`).join('');
+
+// ---- A ----
+document.getElementById('outA').innerHTML = byMonth().map(([k, list]) => `<div class="ha-heading">${MON[k]}</div>${list.map((e) => {
+  const st = status(e);
+  const pills = `<span class="ha-pill ${e.type === 'LEAGUE' ? 'type' : 'tour'}">${e.type === 'LEAGUE' ? 'Liga' : 'Turnaj'}</span>${st === 'now' ? '<span class="ha-pill live">● Prebieha</span>' : st === 'future' ? `<span class="ha-pill date">o ${days(TODAY, e.start)} dní</span>` : ''}<span class="sp"></span>${e.venue ? `<span class="ha-meta">${e.venue}</span>` : ''}`;
+  const dates = e.start === e.end ? '' : `${dRange(e).replace(/\.\s/g, '.&nbsp;')}`;
+  return `<article class="ha-card ${st}"><div class="ha-top">${pills}</div><h3 class="ha-name">${e.name}</h3><div class="ha-panel"><div class="ha-dates">${dRange(e)}<small>${d(e.end).getFullYear()}</small></div><div class="ha-cats">${badges(e)}</div>${st === 'now' ? `<div class="ha-prog"><div class="home-bar mini"><i style="width:${pct(e)}%"></i></div></div>` : ''}</div><div class="ha-foot"><span class="note">${st === 'now' ? `zostáva ${left(e)} dní` : st === 'past' ? 'Skončilo' : ''}</span><a class="ha-more" href="#">Viac info ›</a></div></article>`;
+}).join('')}`).join('');
+
+// ---- B ----
+document.getElementById('outB').innerHTML = byMonth().map(([k, list]) => `<div class="hb-month">${MON[k]}</div><div class="hb-card">${list.map((e) => {
+  const st = status(e);
+  const tags = `<span class="hb-tag ${e.type === 'LEAGUE' ? '' : 'tour'}">${e.type === 'LEAGUE' ? 'Liga' : 'Turnaj'}</span>${st === 'now' ? '<span class="hb-tag now">Prebieha</span>' : ''}`;
+  const sub = `${e.venue ? e.venue + ' · ' : ''}<b>${plain(e)}</b>${st === 'now' ? ` · zostáva ${left(e)} dní` : st === 'future' ? ` · o ${days(TODAY, e.start)} dní` : ''}`;
+  return `<div class="hb-row ${st}"><div class="hb-date">${dRange(e)}<small>${d(e.end).getFullYear()}</small></div><div><div class="hb-name">${e.name} ${tags}</div><div class="hb-sub">${sub}</div>${st === 'now' ? `<div class="home-bar mini"><i style="width:${pct(e)}%"></i></div>` : ''}</div><a class="hb-go" href="#">Viac info ›</a></div>`;
+}).join('')}</div>`).join('');
+
+// ---- C ----
+(function () {
+  const y0 = `${YEAR}-01-01`;
+  const yearDays = days(y0, `${YEAR}-12-31`) + 1;
+  const pos = (iso) => Math.max(0, Math.min(1, days(y0, iso) / yearDays)) * 100;
+  const rows = inYear.map((e) => {
+    const s = pos(e.start), en = Math.min(100, (days(y0, e.end) + 1) / yearDays * 100);
+    const st = status(e);
+    let bar;
+    if (e.type === 'LEAGUE') {
+      bar = `<div class="hc-bar ${st}" style="left:${s}%;width:${en - s}%">${st === 'now' ? `<i style="width:${pct(e)}%"></i>` : ''}<span>${dRange(e)}</span></div>`;
+    } else {
+      const w = Math.max(en - s, 1.2);
+      const label = s > 75 ? `right:calc(${100 - s}% + 10px)` : `left:calc(${s + w}% + 10px)`;
+      bar = `<div class="hc-bar tour" style="left:${s}%;width:${w}%"></div><span class="hc-tourlabel" style="${label}">${dRange(e)}</span>`;
+    }
+    return `<div class="hc-row"><div class="hc-label"><b>${e.name}</b><small>${e.type === 'LEAGUE' ? 'Liga' : 'Turnaj'}${e.venue ? ' · ' + e.venue : ''} · ${plain(e)}</small></div><div class="hc-track">${bar}</div></div>`;
+  }).join('');
+  const todayPos = pos(TODAY);
+  document.getElementById('outC').innerHTML = `<div class="hc-head"><div></div><div class="hc-months">${MON3.map((m) => `<span>${m}</span>`).join('')}</div></div>${rows}<div style="position:absolute;top:0;bottom:0;left:210px;right:0;pointer-events:none"><div class="hc-today" style="left:${todayPos}%"><em>dnes</em></div></div>`;
+})();
+</script>
+</body>
+</html>

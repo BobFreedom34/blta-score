@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moje miesto — návrhy</title>
+<link rel="icon" href="../public/favicon-64.png">
+<link rel="stylesheet" href="../public/css/style.css">
+<style>
+/* Mockup: three ways to show the "Moje miesto" (my place in the group) tile of the home page's "My season" block.
+   Same tile width as the real one (one third of the grid) plus the current tile for comparison. */
+.mp-page { padding: 26px 0 60px; color: #fff; }
+.mp-page h1 { color: #fff; margin: 0 0 6px; }
+.mp-page .lead { color: #d3d6dc; font-weight: 600; margin: 0 0 28px; max-width: 760px; line-height: 1.5; }
+.mp-row { display: flex; flex-wrap: wrap; gap: 30px 28px; align-items: flex-start; margin-bottom: 40px; }
+.mp-fig { margin: 0; width: 270px; }
+.mp-fig figcaption { margin-top: 12px; font-weight: 800; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+.mp-fig figcaption span { display: block; color: #c3c7cf; font-weight: 600; text-transform: none; letter-spacing: 0; font-size: 12px; margin-top: 3px; line-height: 1.4; }
+.mp-h { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #c3c7cf; margin: 0 0 14px; }
+
+/* shared tile look (same as .home-mine-cell) */
+.mp { background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 16px 18px; color: #fff; min-height: 128px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+.mp .k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.mp .dim { color: #c3c7cf; font-weight: 600; }
+.mp .lead-c { color: var(--green); }
+
+/* ---------- Option A: big number, text stacked beside it ---------- */
+.mp-a .body { display: flex; align-items: center; gap: 14px; margin-top: 10px; flex: 1; }
+.mp-a .big { font-size: 64px; font-weight: 800; line-height: .9; letter-spacing: -.03em; }
+.mp-a .big sup { font-size: 24px; font-weight: 800; vertical-align: top; position: relative; top: 4px; margin-left: 2px; letter-spacing: 0; }
+.mp-a .side { display: flex; flex-direction: column; gap: 3px; min-width: 0; border-left: 1px solid rgba(255,255,255,.14); padding-left: 14px; }
+.mp-a .side .of { font-size: 15px; font-weight: 800; }
+.mp-a .side .grp { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-a .side .pts { font-size: 12px; }
+
+/* ---------- Option B: big number + position strip (one segment per player) ---------- */
+.mp-b .big { font-size: 46px; font-weight: 800; line-height: 1; margin-top: 8px; letter-spacing: -.02em; display: flex; align-items: baseline; gap: 8px; }
+.mp-b .big small { font-size: 14px; font-weight: 700; color: #c3c7cf; letter-spacing: 0; }
+.mp-b .strip { display: flex; gap: 4px; margin-top: 12px; }
+.mp-b .strip i { flex: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,.16); }
+.mp-b .strip i.me { background: var(--green); box-shadow: 0 0 0 2px rgba(0,0,0,.35); }
+.mp-b .strip i.me.mid { background: #fff; }
+.mp-b .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 12px; font-size: 13px; font-weight: 700; }
+.mp-b .foot .chip { background: rgba(255,255,255,.1); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+
+/* ---------- Option C: ring with the number, text to the right ---------- */
+.mp-c .body { display: flex; align-items: center; gap: 16px; margin-top: 10px; flex: 1; }
+.mp-c .ring { --p: 100; width: 78px; height: 78px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; background: conic-gradient(var(--ringc, var(--green)) calc(var(--p) * 1%), rgba(255,255,255,.14) 0); position: relative; }
+.mp-c .ring::before { content: ''; position: absolute; inset: 7px; border-radius: 50%; background: var(--fill-grey); }
+.mp-c .ring b { position: relative; font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
+.mp-c .side { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.mp-c .side .of { font-size: 13px; font-weight: 700; color: #c3c7cf; }
+.mp-c .side .grp { font-size: 17px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-c .side .chip { align-self: flex-start; background: rgba(255,255,255,.1); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 800; }
+
+/* ---------- Option D (bonus): headline text, number inside a coloured badge ---------- */
+.mp-d .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mp-d .badge { background: var(--green); color: #0a0a0a; border-radius: 999px; padding: 3px 11px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.mp-d .badge.mid { background: rgba(255,255,255,.14); color: #fff; }
+.mp-d .big { font-size: 40px; font-weight: 800; line-height: 1; margin-top: 10px; letter-spacing: -.02em; }
+.mp-d .big small { font-size: 18px; font-weight: 700; color: #c3c7cf; margin-left: 4px; letter-spacing: 0; }
+.mp-d .sub { margin-top: auto; padding-top: 12px; font-size: 13px; font-weight: 700; display: flex; gap: 8px; align-items: baseline; }
+</style>
+</head>
+<body>
+<main class="container mp-page">
+  <h1>Moje miesto — návrhy</h1>
+  <p class="lead">Tri varianty dlaždice „Moje miesto“ (veľké číslo, menej textu okolo neho). Každá je ukázaná pre vedúceho skupiny (zelená, ako vo zvyšku appky) a pre hráča v strede tabuľky. Prvá je dnešná dlaždica na porovnanie.</p>
+
+  <p class="mp-h">Dnes</p>
+  <div class="mp-row">
+    <figure class="mp-fig"><div class="home-mine-cell">
+      <div class="k">Moje miesto</div>
+      <div class="v num">1.<small>z 7</small></div>
+      <div class="s"><span>Wilson</span><span class="home-mine-dim">9 b</span></div>
+    </div></figure>
+  </div>
+
+  <p class="mp-h">A — veľké číslo, text vedľa neho</p>
+  <div class="mp-row">
+    <figure class="mp-fig"><div class="mp mp-a">
+      <div class="k">Moje miesto</div>
+      <div class="body"><div class="big lead-c">1<sup>.</sup></div>
+        <div class="side"><span class="of">z 7 hráčov</span><span class="grp">Wilson</span><span class="pts dim">9 bodov</span></div></div>
+    </div><figcaption>Vedúci</figcaption></figure>
+    <figure class="mp-fig"><div class="mp mp-a">
+      <div class="k">Moje miesto</div>
+      <div class="body"><div class="big">4<sup>.</sup></div>
+        <div class="side"><span class="of">z 6 hráčov</span><span class="grp">Head</span><span class="pts dim">4 body</span></div></div>
+    </div><figcaption>V strede <span>Číslo je väčšie ako dnes, oddelené tenkou čiarou; text sa nezalomí pod číslo.</span></figcaption></figure>
+  </div>
+
+  <p class="mp-h">B — číslo a pás pozícií (jeden dielik na hráča)</p>
+  <div class="mp-row">
+    <figure class="mp-fig"><div class="mp mp-b">
+      <div class="k">Moje miesto</div>
+      <div class="big lead-c">1.<small>z 7</small></div>
+      <div class="strip"><i class="me"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="foot"><span>Wilson</span><span class="chip">9 b</span></div>
+    </div><figcaption>Vedúci</figcaption></figure>
+    <figure class="mp-fig"><div class="mp mp-b">
+      <div class="k">Moje miesto</div>
+      <div class="big">4.<small>z 6</small></div>
+      <div class="strip"><i></i><i></i><i></i><i class="me mid"></i><i></i><i></i></div>
+      <div class="foot"><span>Head</span><span class="chip">4 b</span></div>
+    </div><figcaption>V strede <span>Pás ukáže na prvý pohľad, kde som medzi ostatnými; bodový chip vpravo dole.</span></figcaption></figure>
+  </div>
+
+  <p class="mp-h">C — kruh s číslom, text vpravo</p>
+  <div class="mp-row">
+    <figure class="mp-fig"><div class="mp mp-c">
+      <div class="k">Moje miesto</div>
+      <div class="body"><div class="ring" style="--p:100"><b class="lead-c">1</b></div>
+        <div class="side"><span class="grp">Wilson</span><span class="of">z 7 hráčov</span><span class="chip">9 bodov</span></div></div>
+    </div><figcaption>Vedúci</figcaption></figure>
+    <figure class="mp-fig"><div class="mp mp-c">
+      <div class="k">Moje miesto</div>
+      <div class="body"><div class="ring" style="--p:50;--ringc:#fff"><b>4</b></div>
+        <div class="side"><span class="grp">Head</span><span class="of">z 6 hráčov</span><span class="chip">4 body</span></div></div>
+    </div><figcaption>V strede <span>Kruh sa plní podľa postavenia (prvý = plný kruh, posledný = takmer prázdny).</span></figcaption></figure>
+  </div>
+
+  <p class="mp-h">Bonus D — štítok „Líder“ a číslo pod ním</p>
+  <div class="mp-row">
+    <figure class="mp-fig"><div class="mp mp-d">
+      <div class="head"><span class="k">Moje miesto</span><span class="badge">Líder</span></div>
+      <div class="big lead-c">1.<small>z 7</small></div>
+      <div class="sub"><span>Wilson</span><span class="dim">· 9 b</span></div>
+    </div><figcaption>Vedúci</figcaption></figure>
+    <figure class="mp-fig"><div class="mp mp-d">
+      <div class="head"><span class="k">Moje miesto</span><span class="badge mid">o 5 b za lídrom</span></div>
+      <div class="big">4.<small>z 6</small></div>
+      <div class="sub"><span>Head</span><span class="dim">· 4 b</span></div>
+    </div><figcaption>V strede <span>Pridáva vetu navyše (strata na lídra) — to by si vyžiadalo malý výpočet navyše.</span></figcaption></figure>
+  </div>
+</main>
+</body>
+</html>

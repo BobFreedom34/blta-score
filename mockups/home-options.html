@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Domov – všetky návrhy — Tennis SCORE</title>
+<link rel="icon" href="../public/favicon.png">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="stylesheet" href="../public/css/style.css">
+<link rel="stylesheet" href="home-shared.css">
+<style>
+.opt-grid { display: grid; grid-template-columns: 1fr; gap: 24px; align-items: start; }
+.opt { display: flex; flex-direction: column; gap: 14px; }
+.opt h3 { margin: 0; font-size: 20px; font-weight: 800; color: #fff; }
+.opt p { margin: 0; color: #a9adb6; font-size: 13px; line-height: 1.5; font-weight: 600; }
+.opt .tag { align-self: flex-start; }
+.opt-view { position: relative; width: 100%; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255, 255, 255, .12); background: #100e0b; }
+.opt-view iframe { position: absolute; top: 0; left: 0; width: 1280px; border: 0; transform-origin: 0 0; pointer-events: none; }
+.opt-view a.cover { position: absolute; inset: 0; z-index: 2; }
+.opt-links { display: flex; gap: 8px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="container hm">
+  <div><div class="hm-label">Návrhy domovskej stránky</div><h1>Všetky 3 možnosti</h1></div>
+  <div class="opt-grid">
+    <section class="hm-card opt">
+      <span class="hm-pill tag">Návrh A</span>
+      <h3>Môj prehľad</h3>
+      <p>Osobný pohľad pre prihláseného hráča: ďalší zápas, moja skupina, výsledky, kto hľadá súpera.</p>
+      <div class="opt-view" data-src="home-1-player-hub.html" data-h="1130"><iframe src="home-1-player-hub.html" title="Návrh A" loading="lazy"></iframe><a class="cover" href="home-1-player-hub.html" aria-label="Otvoriť návrh A"></a></div>
+      <div class="opt-links"><a class="hm-btn" href="home-1-player-hub.html">Otvoriť celé</a></div>
+    </section>
+    <section class="hm-card opt">
+      <span class="hm-pill tag">Návrh B</span>
+      <h3>Pulz ligy</h3>
+      <p>Pohľad na celú ligu: priebeh série, čísla, lídri skupín, výsledky, program a pohyby v rebríčku.</p>
+      <div class="opt-view" data-src="home-2-league-pulse.html" data-h="900"><iframe src="home-2-league-pulse.html" title="Návrh B" loading="lazy"></iframe><a class="cover" href="home-2-league-pulse.html" aria-label="Otvoriť návrh B"></a></div>
+      <div class="opt-links"><a class="hm-btn" href="home-2-league-pulse.html">Otvoriť celé</a></div>
+    </section>
+    <section class="hm-card opt">
+      <span class="hm-pill tag">Návrh C</span>
+      <h3>Bento</h3>
+      <p>Dlaždice rôznej veľkosti: všetko hlavné na jednej obrazovke.</p>
+      <div class="opt-view" data-src="home-3-bento.html" data-h="900"><iframe src="home-3-bento.html" title="Návrh C" loading="lazy"></iframe><a class="cover" href="home-3-bento.html" aria-label="Otvoriť návrh C"></a></div>
+      <div class="opt-links"><a class="hm-btn" href="home-3-bento.html">Otvoriť celé</a></div>
+    </section>
+  </div>
+  <div class="hm-mock">Náhľady sú zmenšené verzie plných stránok (kliknutím sa otvoria). Ukážkové dáta.</div>
+</div>
+<script>
+// Each preview is the real page at 1280px wide, scaled down to the card width.
+function fit() {
+  document.querySelectorAll('.opt-view').forEach((v) => {
+    const s = v.clientWidth / 1280;
+    const h = Number(v.dataset.h);
+    const f = v.querySelector('iframe');
+    f.style.height = h + 'px';
+    f.style.transform = `scale(${s})`;
+    v.style.height = Math.round(h * s) + 'px';
+  });
+}
+window.addEventListener('resize', fit);
+fit();
+</script>
+</body>
+</html>

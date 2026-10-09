@@ -11,6 +11,7 @@
   const TIMES = [];
   for (let m = 0; m <= 24 * 60; m += 30) TIMES.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
   const BLOCKS = [[0, 'One spot for the whole time'], [30, '30 minutes each'], [60, '1 hour each'], [90, '1½ hours each'], [120, '2 hours each']];
+  const DEFAULT_COLOR = '#b2fa06';
   let courts = [];
   let settings = { maxActive: 2, cancelHours: 2 };
   let today = '';
@@ -36,6 +37,10 @@
           <button type="button" class="hi-arrow" data-move="down" aria-label="Move down"${i === courts.length - 1 ? ' disabled' : ''}>↓</button>
         </span>
         <input type="text" data-f="name" value="${escapeHtml(c.name)}" maxlength="60" style="flex:1;min-width:140px;${field}">
+        <span class="rva-color" data-color="${escapeHtml(c.color || '')}" style="display:inline-flex;align-items:center;gap:6px" title="Colour of the free spots on this court">
+          <input type="color" data-f="color" value="${c.color || DEFAULT_COLOR}" aria-label="Colour of free spots" style="width:42px;height:34px;padding:2px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">
+          <button type="button" class="btn btn-sm btn-outline" data-act="color-reset"${c.color ? '' : ' disabled'}>Default</button>
+        </span>
         <input type="text" data-f="note" value="${escapeHtml(c.note || '')}" maxlength="200" placeholder="Note (surface, address…)" style="flex:2;min-width:160px;${field}">
         <button type="button" class="btn btn-sm btn-outline" data-act="save">Save</button>
         <button type="button" class="btn btn-sm btn-danger" data-act="delete">Delete</button>
@@ -51,8 +56,12 @@
           <label style="${label};flex:2;min-width:160px">Note <span style="font-weight:600;color:var(--gray)">(optional)</span>
             <input type="text" id="rva-court-note" maxlength="200" placeholder="e.g. clay, Beethovenova 11" style="display:block;width:100%;margin-top:4px;${field}">
           </label>
+          <label style="${label}">Free-spot colour
+            <input type="color" id="rva-court-color" value="${DEFAULT_COLOR}" style="display:block;margin-top:4px;width:56px;height:38px;padding:2px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">
+          </label>
           <button type="submit" class="btn btn-primary">Add court</button>
         </form>
+        <div style="font-size:12px;color:var(--gray);margin-top:8px">The colour free spots of a court have on the booking page. Avoid orange — that is the colour of reserved spots. “Default” uses the green of the site.</div>
         <div id="rva-courts-msg" style="margin-top:8px"></div>
       </div>`;
   }
@@ -202,7 +211,7 @@
     host.querySelector('#rva-add-court').addEventListener('submit', async (e) => {
       e.preventDefault();
       try {
-        await api('/reservations/courts', { method: 'POST', body: { name: host.querySelector('#rva-court-name').value, note: host.querySelector('#rva-court-note').value } });
+        await api('/reservations/courts', { method: 'POST', body: { name: host.querySelector('#rva-court-name').value, note: host.querySelector('#rva-court-note').value, color: host.querySelector('#rva-court-color').value.toLowerCase() === DEFAULT_COLOR ? '' : host.querySelector('#rva-court-color').value } });
         toast('Court added');
         await load();
       } catch (err) { say(msg('#rva-courts-msg'), err.message, true); }
@@ -210,9 +219,14 @@
 
     host.querySelectorAll('.rva-court').forEach((row) => {
       const id = Number(row.dataset.id);
+      const colorBox = row.querySelector('.rva-color');
+      const colorInput = colorBox.querySelector('input');
+      const resetBtn = colorBox.querySelector('[data-act="color-reset"]');
+      colorInput.addEventListener('input', () => { colorBox.dataset.color = colorInput.value.toLowerCase(); resetBtn.disabled = false; });
+      resetBtn.addEventListener('click', () => { colorBox.dataset.color = ''; colorInput.value = DEFAULT_COLOR; resetBtn.disabled = true; });
       row.querySelector('[data-act="save"]').addEventListener('click', async () => {
         try {
-          await api(`/reservations/courts/${id}`, { method: 'PATCH', body: { name: row.querySelector('[data-f="name"]').value, note: row.querySelector('[data-f="note"]').value } });
+          await api(`/reservations/courts/${id}`, { method: 'PATCH', body: { name: row.querySelector('[data-f="name"]').value, note: row.querySelector('[data-f="note"]').value, color: row.querySelector('.rva-color').dataset.color } });
           toast('Court saved');
           await load();
         } catch (err) { say(msg('#rva-courts-msg'), err.message, true); }

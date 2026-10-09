@@ -70,6 +70,25 @@ test('courts: the admin adds, renames and orders them; anybody sees them in that
   assert.deepStrictEqual((await view()).courts.map((c) => c.id), [S.c1, S.c2, S.c3]);
 });
 
+test('courts: each court can get a colour for its free spots', async () => {
+  const col = (id) => view().then((v) => v.courts.find((c) => c.id === id).color);
+  assert.strictEqual(await col(S.c1), '', 'no colour = the default green');
+  assert.strictEqual((await admin('PATCH', `/api/reservations/courts/${S.c1}`, { color: '#1A73E8' })).json.color, '#1a73e8', 'normalised to lower case');
+  assert.strictEqual(await col(S.c1), '#1a73e8', 'the public page gets it too');
+  await admin('PATCH', `/api/reservations/courts/${S.c1}`, { name: 'Court 1' });
+  assert.strictEqual(await col(S.c1), '#1a73e8', 'a patch without colour keeps it');
+  for (const bad of ['red', '#12', '#GGGGGG', 'rgb(1,2,3)', 5]) {
+    assert.strictEqual((await admin('PATCH', `/api/reservations/courts/${S.c1}`, { color: bad })).status, 400, 'refused: ' + bad);
+  }
+  assert.strictEqual(await col(S.c1), '#1a73e8', 'refused values change nothing');
+  assert.strictEqual((await admin('PATCH', `/api/reservations/courts/${S.c1}`, { color: '' })).json.color, '', 'empty resets to the default');
+  const made = await admin('POST', '/api/reservations/courts', { name: 'Colour test', color: '#00AAFF' });
+  assert.strictEqual(made.json.color, '#00aaff', 'a new court can be created with a colour');
+  assert.strictEqual((await admin('POST', '/api/reservations/courts', { name: 'Bad colour', color: 'blue' })).status, 400);
+  await admin('DELETE', `/api/reservations/courts/${made.json.id}`);
+  assert.deepStrictEqual((await view()).courts.map((c) => c.id), [S.c1, S.c2, S.c3], 'cleaned up');
+});
+
 // ---------------------------------------------------------------- spots
 test('spots: Thursday 10:00-12:00 is one spot; overlaps are skipped; blocks split a range', async () => {
   const one = await admin('POST', '/api/reservations/slots', { courtIds: [S.c1], date: D(6), start: '10:00', end: '12:00' });

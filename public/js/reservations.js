@@ -22,6 +22,16 @@
   const mins = (time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
   const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
   const courtName = (id) => (data.courts.find((c) => c.id === id) || { name: '' }).name;
+  // the colour of a court's free spots: the admin's choice or the green of the site; the text on it is dark or white, whichever reads better
+  const textOn = (hex) => {
+    const n = parseInt(hex.slice(1), 16);
+    const lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+    return lum > 0.6 ? '#0a0a0a' : '#ffffff';
+  };
+  const colorVars = (id) => {
+    const c = (data.courts.find((x) => x.id === id) || {}).color;
+    return c ? `--rv-c:${c};--rv-t:${textOn(c)};` : '';
+  };
 
   // ---------------------------------------------------------------- data
 
@@ -65,7 +75,7 @@
       if (day === data.today) cls.push('today');
       if ([0, 6].includes(dayDate(day).getDay())) cls.push('weekend');
       out.push(`<div class="${cls.join(' ')}" style="grid-column:${colOf(i, 0)} / span ${C};grid-row:1"><b>${escapeHtml(weekday(day, 'short'))}</b> ${escapeHtml(shortDay(day))}</div>`);
-      courts.forEach((c, j) => out.push(`<div class="rv-courth${j === 0 ? ' first' : ''}" style="grid-column:${colOf(i, j)};grid-row:2" title="${escapeHtml(c.note || c.name)}">${escapeHtml(c.name)}</div>`));
+      courts.forEach((c, j) => out.push(`<div class="rv-courth${j === 0 ? ' first' : ''}" title="${escapeHtml(c.note || c.name)}" style="grid-column:${colOf(i, j)};grid-row:2;${colorVars(c.id)}">${escapeHtml(c.name)}</div>`));
       courts.forEach((c, j) => out.push(`<div class="rv-col${j === 0 ? ' first' : ''}${day === data.today ? ' today' : ''}" style="grid-column:${colOf(i, j)};grid-row:3 / span ${rows}"></div>`));
     });
     for (let m = startMin; m < endMin; m += 60) {
@@ -85,7 +95,7 @@
       const time = `<span class="rv-t">${s.start}–${s.end}</span>`;
       const title = `${courtName(s.courtId)} · ${longDay(s.day)} · ${s.start}–${s.end}${s.status === 'RESERVED' ? ` · ${who}` : ''}`;
       const clickable = isAdmin || (!s.past && (s.status === 'FREE' || s.mine));
-      out.push(`<button type="button" class="${cls.join(' ')}" data-id="${s.id}" title="${escapeHtml(title)}" style="grid-column:${colOf(i, j)};grid-row:${r1} / span ${span}"${clickable ? '' : ' tabindex="-1"'}>${text}${time}</button>`);
+      out.push(`<button type="button" class="${cls.join(' ')}" data-id="${s.id}" title="${escapeHtml(title)}" style="grid-column:${colOf(i, j)};grid-row:${r1} / span ${span};${colorVars(s.courtId)}"${clickable ? '' : ' tabindex="-1"'}>${text}${time}</button>`);
     });
     out.push('</div>');
     const empty = slots.length ? '' : `<div class="rv-empty">${escapeHtml(t('rv.noSlots'))}</div>`;
@@ -94,7 +104,7 @@
 
   function chipsHtml() {
     if (data.courts.length < 2) return '';
-    const chip = (key, label) => `<button type="button" class="tab${String(court) === String(key) ? ' active' : ''}" data-court="${key}">${escapeHtml(label)}</button>`;
+    const chip = (key, label) => `<button type="button" class="tab${String(court) === String(key) ? ' active' : ''}" data-court="${key}" style="${key === 'ALL' ? '' : colorVars(key)}">${key === 'ALL' ? '' : '<i class="rv-dot"></i>'}${escapeHtml(label)}</button>`;
     return `<div class="tabs rv-courts" role="tablist">${chip('ALL', t('rv.allCourts'))}${data.courts.map((c) => chip(c.id, c.name)).join('')}</div>`;
   }
 
