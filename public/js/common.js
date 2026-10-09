@@ -1612,6 +1612,30 @@ document.addEventListener('click', (e) => {
   btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 })();
 
+// A sticky orange "Court booking" button under the top menu, on every page except the booking page itself and the embeds.
+(function initBookingButton() {
+  const topbar = document.querySelector('.topbar');
+  if (!topbar || document.body.classList.contains('embed')) return;
+  if (currentCodePath() === '/reservations') return;
+  const a = document.createElement('a');
+  a.className = 'booking-btn';
+  a.href = siteUrl('/reservations');
+  a.innerHTML = `${courtIcon('ball')}<span>${escapeHtml(t('rv.bookBtn'))}</span>`;
+  document.body.appendChild(a);
+  // below the menu; on a wide screen its right edge lines up with the language switcher
+  const place = () => {
+    const root = document.documentElement;
+    root.style.setProperty('--booking-top', `${topbar.offsetHeight}px`);
+    const lang = document.getElementById('lang-switcher');
+    const edge = lang ? lang.getBoundingClientRect().right : 0;
+    root.style.setProperty('--booking-right', edge > 0 ? `${Math.max(0, Math.round(root.clientWidth - edge))}px` : '0px');
+  };
+  place();
+  window.addEventListener('resize', place);
+  window.addEventListener('load', place);
+  if (window.ResizeObserver) new ResizeObserver(place).observe(topbar); // the menu can wrap or load late
+})();
+
 // Phone bottom menu: Home / Matches / My profile / Tables / Rankings (shown by CSS below ~1024px, where the top menu collapses).
 // Skipped on embeds and the admin tools.
 (function initBottomNav() {

@@ -163,6 +163,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   position: sticky;
   top: 0;
   z-index: 30;
+  box-shadow: 0 0 18px rgba(255, 85, 0, 0.25);
 }
 .topbar-inner {
   /* Wider than .container's own 1080px on purpose — the nav has grown to
@@ -4591,3 +4592,22 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
   .rv-range { font-size: 18px; min-width: 96px; }
   .rv-bar { margin-top: 12px; }
 }
+
+
+/* sticky "Court booking" button under the top menu */
+.booking-btn {
+  position: fixed; top: var(--booking-top, 56px); right: 0; z-index: 25;
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 7px 14px; border-radius: 0 0 0 12px;
+  background: var(--orange); color: #fff; font-size: 12px; font-weight: 800; letter-spacing: 0.02em; text-decoration: none;
+  box-shadow: 0 4px 14px rgba(255, 85, 0, 0.4); transition: box-shadow 0.15s, padding 0.15s;
+}
+.booking-btn:hover { box-shadow: 0 6px 18px rgba(255, 85, 0, 0.6); color: #fff; padding-bottom: 9px; }
+.booking-btn svg { width: 15px; height: 15px; flex: 0 0 15px; }
+@media (min-width: 701px) {
+  .booking-btn { right: var(--booking-right, 0px); border-radius: 0 0 12px 12px; }
+}
+@media (max-width: 700px) {
+  .booking-btn { padding: 5px 10px 6px 12px; font-size: 11px; gap: 5px; }
+  .booking-btn svg { width: 14px; height: 14px; flex-basis: 14px; }
+}
+@media print { .booking-btn { display: none; } }
