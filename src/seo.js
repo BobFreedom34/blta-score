@@ -67,7 +67,7 @@ const PAGES = [
   {
     key: 'reservations', label: 'Court reservations', path: '/reservations', file: 'reservations.html', blta: null, slugSk: 'rezervacie-kurtov',
     title: `Rezervácie kurtov${SUFFIX}`,
-    description: 'Rezervácie kurtov BLTA - vyber si voľný termín na tenisovom kurte na najbližších 10 dní a rezervuj si ho jedným kliknutím.',
+    description: 'Rezervácie kurtov BLTA - vyber si voľný termín na tenisovom kurte na najbližších 7 dní a rezervuj si ho jedným kliknutím.',
   },
   {
     key: 'new-match', label: 'New match', path: '/new-match', file: 'new-match.html', blta: null, noindex: true,
@@ -175,7 +175,7 @@ const ENGLISH = {
   reservations: {
     slug: 'court-booking',
     title: `Court booking${SUFFIX_EN}`,
-    description: 'BLTA court booking - pick a free time on the tennis court for the next 10 days and reserve it with one click.',
+    description: 'BLTA court booking - pick a free time on the tennis court for the next 7 days and reserve it with one click.',
   },
   'new-match': {
     slug: 'new-match',

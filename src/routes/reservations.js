@@ -45,7 +45,7 @@ if (!db.prepare('PRAGMA table_info(reservation_courts)').all().some((c) => c.nam
   db.exec('ALTER TABLE reservation_courts ADD COLUMN hour_rate REAL NOT NULL DEFAULT 0');
 }
 
-const WINDOW_DAYS = 10;
+const WINDOW_DAYS = 7;
 const MAX_AHEAD_DAYS = 365;
 const MAX_CREATE = 1000;
 const DEFAULTS = { maxActive: 2, cancelHours: 2 };
@@ -136,7 +136,7 @@ function overlaps(aStart, aEnd, bStart, bEnd) {
 
 // ---------------------------------------------------------------- the public page's data
 
-// GET /api/reservations?from=YYYY-MM-DD — the courts and the spots of the 10 days from `from` (never before today).
+// GET /api/reservations?from=YYYY-MM-DD — the courts and the spots of the 7 days from `from` (never before today).
 router.get('/', (req, res) => {
   const now = nowLocal();
   let from = typeof req.query.from === 'string' && isRealDay(req.query.from) ? req.query.from : now.date;

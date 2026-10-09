@@ -155,7 +155,8 @@ test('spots: a repeating pattern adds the chosen weekdays; today only what has n
   const expected = []; for (let k = 10; k <= 24; k += 1) { const w = new Date(`${D(k)}T12:00:00Z`).getUTCDay(); if (w === 1 || w === 3) expected.push(D(k)); }
   assert.deepStrictEqual(r.json, { created: expected.length, skipped: 0 });
   const got = (await view(D(10))).slots.filter((s) => s.courtId === S.c2 && s.start === '18:00').map((s) => s.day);
-  assert.ok(expected.slice(0, 4).every((d) => got.includes(d)));
+  const inWindow = expected.filter((d) => d <= D(16)); // the window is 7 days from D(10)
+  assert.ok(inWindow.length >= 2 && inWindow.every((d) => got.includes(d)), got.join());
   // today, now 10:15: the 09:00 hour is over (skipped), 12:00 and 17:00 are still to come
   const today = await admin('POST', '/api/reservations/slots', { courtIds: [S.c3], date: NOW.date, start: '09:00', end: '10:00' });
   assert.deepStrictEqual(today.json, { created: 0, skipped: 1 });
@@ -164,14 +165,14 @@ test('spots: a repeating pattern adds the chosen weekdays; today only what has n
 });
 
 // ---------------------------------------------------------------- the window
-test('the window: 10 days from today, never before it; the public sees short names, the admin full ones', async () => {
+test('the window: 7 days from today, never before it; the public sees short names, the admin full ones', async () => {
   const w = await view();
-  assert.deepStrictEqual([w.today, w.from, w.to, w.days.length, w.canShiftBack], [NOW.date, NOW.date, D(9), 10, false]);
+  assert.deepStrictEqual([w.today, w.from, w.to, w.days.length, w.canShiftBack], [NOW.date, NOW.date, D(6), 7, false]);
   assert.strictEqual((await view(D(-5))).from, NOW.date, 'an earlier start is moved to today');
-  const next = await view(D(10));
-  assert.deepStrictEqual([next.from, next.to, next.canShiftBack], [D(10), D(19), true]);
+  const next = await view(D(7));
+  assert.deepStrictEqual([next.from, next.to, next.canShiftBack], [D(7), D(13), true]);
   assert.strictEqual((await view('nonsense')).from, NOW.date);
-  assert.ok(w.slots.every((s) => s.day >= NOW.date && s.day <= D(9)));
+  assert.ok(w.slots.every((s) => s.day >= NOW.date && s.day <= D(6)));
   assert.strictEqual(w.me, null);
   assert.strictEqual(w.admin, false);
   assert.strictEqual((await view(undefined, adminCookie)).admin, true);

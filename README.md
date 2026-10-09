@@ -480,7 +480,7 @@ profile photo is shown). Hiding an edition removes it from the page without dele
 
 ### Court reservations (`/rezervacie-kurtov`, code address `/reservations`)
 
-A grid of the next 10 days (always from today; the arrows move 10 days at a time, never into the past): the days across the top, the time down
+A grid of the next 7 days (always from today; the arrows move 7 days at a time, never into the past; a "Dnes" button next to them jumps back to today): the days across the top, the time down
 the left in 30-minute rows, a column per court (or one court via the filter chips). A **green** block is a free spot the admin opened —
 `Thursday 10:00–12:00` is **one** block that one player takes; it turns **orange** with the player's short name ("Tomáš P."), and is outlined
 white for the player's own. Spots that have started are grey. The grid updates live for everybody (socket `reservations:changed`).

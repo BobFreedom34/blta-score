@@ -1,4 +1,4 @@
-// Court reservations (/rezervacie-kurtov, code address /reservations): a grid of the next 10 days — the days across the top, the time down
+// Court reservations (/rezervacie-kurtov, code address /reservations): a grid of the next 7 days — the days across the top, the time down
 // the left in 30-minute rows, a column per court (or one court when a court is picked). A green block is a free spot the admin has
 // opened (e.g. Thursday 10:00-12:00 is one block); a player takes it with one click and it turns orange with their name in it.
 // Data: GET /api/reservations?from=YYYY-MM-DD, POST /api/reservations/slots/:id/reserve | cancel (src/routes/reservations.js).
@@ -74,42 +74,42 @@
       startMin = Math.floor(Math.min(...slots.map((s) => mins(s.start))) / 60) * 60;
       endMin = Math.ceil(Math.max(...slots.map((s) => mins(s.end))) / 60) * 60;
     }
-    const rows = (endMin - startMin) / 30;
-    const C = courts.length;
-    const colOf = (dayIndex, courtIndex) => 2 + dayIndex * C + courtIndex;
-    const out = [`<div class="rv-grid" style="grid-template-columns:64px repeat(${data.days.length * C}, minmax(var(--rv-col), 1fr));grid-template-rows:34px 52px repeat(${rows}, 30px)">`];
-    out.push('<div class="rv-corner"></div>');
-    data.days.forEach((day, i) => {
+    const colsN = (endMin - startMin) / 30;
+    // every day is a card of its own (orange border, a gap to the next): a header row (the day, then the hours) and a row per court
+    const days = data.days.map((day) => {
       const cls = ['rv-dayh'];
       if (day === data.today) cls.push('today');
       if ([0, 6].includes(dayDate(day).getDay())) cls.push('weekend');
-      out.push(`<div class="${cls.join(' ')}" style="grid-column:${colOf(i, 0)} / span ${C};grid-row:1"><b>${escapeHtml(weekday(day, 'short'))}</b> ${escapeHtml(shortDay(day))}</div>`);
-      courts.forEach((c, j) => out.push(`<div class="rv-courth${j === 0 ? ' first' : ''}" title="${escapeHtml(c.note || c.name)}" style="grid-column:${colOf(i, j)};grid-row:2;${colorVars(c.id)}">${escapeHtml(c.name)}</div>`));
-      courts.forEach((c, j) => out.push(`<div class="rv-col${j === 0 ? ' first' : ''}${day === data.today ? ' today' : ''}" style="grid-column:${colOf(i, j)};grid-row:3 / span ${rows}"></div>`));
+      const out = [`<div class="rv-grid" style="--n:${colsN};grid-template-columns:var(--rv-courtw) repeat(${colsN}, minmax(var(--rv-col), 1fr));grid-template-rows:var(--rv-head) repeat(${courts.length}, var(--rv-row))">`];
+      out.push(`<div class="${cls.join(' ')}" style="grid-column:1;grid-row:1"><b>${escapeHtml(weekday(day, 'short'))}</b> ${escapeHtml(shortDay(day))}</div>`);
+      for (let m = startMin; m < endMin; m += 60) {
+        out.push(`<div class="rv-time" style="grid-column:${2 + (m - startMin) / 30} / span 2;grid-row:1">${hhmm(m)}</div>`);
+      }
+      courts.forEach((c, j) => {
+        out.push(`<div class="rv-courth${j === 0 ? ' first' : ''}" title="${escapeHtml(c.note || c.name)}" style="grid-column:1;grid-row:${2 + j};${colorVars(c.id)}">${escapeHtml(c.name)}</div>`);
+        out.push(`<div class="rv-row${j === 0 ? ' first' : ''}${day === data.today ? ' today' : ''}" style="grid-column:2 / span ${colsN};grid-row:${2 + j}"></div>`);
+      });
+      slots.filter((s) => s.day === day).forEach((s) => {
+        const j = courts.findIndex((c) => c.id === s.courtId);
+        const c1 = 2 + (mins(s.start) - startMin) / 30;
+        const span = (mins(s.end) - mins(s.start)) / 30;
+        const state = s.mine ? 'mine' : s.status === 'RESERVED' ? 'taken' : 'free';
+        const scls = ['rv-slot', state];
+        if (s.past) scls.push('past');
+        if (span === 1) scls.push('one');
+        const who = isAdmin && s.name ? s.name : s.label;
+        const text = s.status === 'RESERVED' ? `<span class="rv-n">${escapeHtml(who)}</span>` : `<span class="rv-n">${s.past ? '' : escapeHtml(t('rv.free'))}</span>`;
+        const price = s.status === 'FREE' && !s.past && priceOf(s) ? `<span class="rv-p">${escapeHtml(priceOf(s))}</span>` : '';
+        const time = `<span class="rv-t">${s.start}–${s.end}</span>${price}`;
+        const title = `${courtName(s.courtId)} · ${longDay(s.day)} · ${s.start}–${s.end}${s.status === 'FREE' && priceOf(s) ? ` · ${priceOf(s)}` : ''}${s.status === 'RESERVED' ? ` · ${who}` : ''}`;
+        const clickable = isAdmin || (!s.past && (s.status === 'FREE' || s.mine));
+        out.push(`<button type="button" class="${scls.join(' ')}" data-id="${s.id}" title="${escapeHtml(title)}" style="grid-row:${2 + j};grid-column:${c1} / span ${span};${colorVars(s.courtId)}"${clickable ? '' : ' tabindex="-1"'}>${text}${time}</button>`);
+      });
+      out.push('</div>');
+      return `<div class="rv-day">${out.join('')}</div>`;
     });
-    for (let m = startMin; m < endMin; m += 60) {
-      out.push(`<div class="rv-time" style="grid-row:${3 + (m - startMin) / 30} / span 2">${hhmm(m)}</div>`);
-    }
-    slots.forEach((s) => {
-      const i = data.days.indexOf(s.day);
-      const j = courts.findIndex((c) => c.id === s.courtId);
-      const r1 = 3 + (mins(s.start) - startMin) / 30;
-      const span = (mins(s.end) - mins(s.start)) / 30;
-      const state = s.mine ? 'mine' : s.status === 'RESERVED' ? 'taken' : 'free';
-      const cls = ['rv-slot', state];
-      if (s.past) cls.push('past');
-      if (span === 1) cls.push('one');
-      const who = isAdmin && s.name ? s.name : s.label;
-      const text = s.status === 'RESERVED' ? `<span class="rv-n">${escapeHtml(who)}</span>` : `<span class="rv-n">${s.past ? '' : escapeHtml(t('rv.free'))}</span>`;
-      const price = s.status === 'FREE' && !s.past && priceOf(s) ? `<span class="rv-p">${escapeHtml(priceOf(s))}</span>` : '';
-      const time = `<span class="rv-t">${s.start}–${s.end}</span>${price}`;
-      const title = `${courtName(s.courtId)} · ${longDay(s.day)} · ${s.start}–${s.end}${s.status === 'FREE' && priceOf(s) ? ` · ${priceOf(s)}` : ''}${s.status === 'RESERVED' ? ` · ${who}` : ''}`;
-      const clickable = isAdmin || (!s.past && (s.status === 'FREE' || s.mine));
-      out.push(`<button type="button" class="${cls.join(' ')}" data-id="${s.id}" title="${escapeHtml(title)}" style="grid-column:${colOf(i, j)};grid-row:${r1} / span ${span};${colorVars(s.courtId)}"${clickable ? '' : ' tabindex="-1"'}>${text}${time}</button>`);
-    });
-    out.push('</div>');
     const empty = slots.length ? '' : `<div class="rv-empty">${escapeHtml(t('rv.noSlots'))}</div>`;
-    return `<div class="rv-scroll" id="rv-scroll">${out.join('')}</div>${empty}`;
+    return `<div class="rv-scroll" id="rv-scroll"><div class="rv-days">${days.join('')}</div></div>${empty}`;
   }
 
   function chipsHtml() {
@@ -126,7 +126,7 @@
           <button type="button" class="rv-arrow" data-shift="-1" aria-label="${escapeHtml(t('rv.prev'))}" title="${escapeHtml(t('rv.prev'))}"${data.canShiftBack ? '' : ' disabled'}>‹</button>
           <span class="rv-range">${escapeHtml(range)}</span>
           <button type="button" class="rv-arrow" data-shift="1" aria-label="${escapeHtml(t('rv.next'))}" title="${escapeHtml(t('rv.next'))}">›</button>
-          ${data.canShiftBack ? `<button type="button" class="btn btn-sm btn-outline" data-today>${escapeHtml(t('rv.today'))}</button>` : ''}
+          <button type="button" class="btn btn-sm btn-outline" data-today>${escapeHtml(t('rv.today'))}</button>
         </div>
         <div class="rv-legend">
           <span><i class="taken"></i>${escapeHtml(t('rv.taken'))}</span>
@@ -338,7 +338,13 @@
       await reload();
       return;
     }
-    if (e.target.closest('[data-today]')) { from = ''; await reload(); return; }
+    if (e.target.closest('[data-today]')) {
+      from = '';
+      await reload();
+      const scroller = document.getElementById('rv-scroll'); // today is the first row
+      if (scroller) scroller.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     if (e.target.closest('[data-login]')) { openPlayerLoginModal(); return; }
     const cancel = e.target.closest('[data-cancel]');
     if (cancel) {
