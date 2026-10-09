@@ -13,7 +13,7 @@
   const BLOCKS = [[0, 'One spot for the whole time'], [30, '30 minutes each'], [60, '1 hour each'], [90, '1½ hours each'], [120, '2 hours each']];
   const DEFAULT_COLOR = '#b2fa06';
   let courts = [];
-  let settings = { maxActive: 2, cancelHours: 2 };
+  let settings = { maxActive: 2, cancelHours: 2, afternoonFrom: '16:00' };
   let today = '';
 
   const timeOptions = (list, selected) => list.map((t) => `<option value="${t}"${t === selected ? ' selected' : ''}>${t}</option>`).join('');
@@ -45,6 +45,10 @@
         <input type="text" data-f="note" value="${escapeHtml(c.note || '')}" maxlength="200" placeholder="Note (surface, address…)" style="flex:2;min-width:160px;${field}">
         <button type="button" class="btn btn-sm btn-outline" data-act="save">Save</button>
         <button type="button" class="btn btn-sm btn-danger" data-act="delete">Delete</button>
+        <div style="flex-basis:100%;display:flex;gap:8px 14px;flex-wrap:wrap;align-items:center;font-size:12px;font-weight:700;color:var(--gray);padding-left:4px">
+          <span>Other prices (€/h, empty = the €/h above):</span>
+          ${[['weekdayMorning', 'Weekday morning'], ['weekdayAfternoon', 'Weekday afternoon'], ['weekend', 'Weekend']].map(([key, text]) => `<label style="display:inline-flex;align-items:center;gap:5px">${text} <input type="number" data-f="rate-${key}" value="${c.rates && c.rates[key] !== null && c.rates[key] !== undefined ? c.rates[key] : ''}" min="0" max="1000" step="0.5" placeholder="${c.hourRate || ''}" style="width:72px;${field}"></label>`).join('')}
+        </div>
       </div>`).join('');
     return `
       <div class="card" style="margin-bottom:16px">
@@ -65,7 +69,7 @@
           </label>
           <button type="submit" class="btn btn-primary">Add court</button>
         </form>
-        <div style="font-size:12px;color:var(--gray);margin-top:8px">The colour free spots of a court have on the booking page. Avoid orange — that is the colour of reserved spots. “Default” uses the green of the site. The hour rate shows as a price under the time of free spots (1.5 h at 18 € = 27 €); leave it empty for no price.</div>
+        <div style="font-size:12px;color:var(--gray);margin-top:8px">The colour free spots of a court have on the booking page. Avoid orange — that is the colour of reserved spots. “Default” uses the green of the site. The hour rate shows as a price under the time of free spots (1.5 h at 18 € = 27 €); leave it empty for no price. Below each court you can set other prices for weekday mornings, weekday afternoons and the weekend (where the afternoon starts is set under Rules); a spot over the change is priced half and half.</div>
         <div id="rva-courts-msg" style="margin-top:8px"></div>
       </div>`;
   }
@@ -190,6 +194,9 @@
           <label style="${label}">A player can cancel until … hours before the start <span style="font-weight:600;color:var(--gray)">(0 = until it starts)</span>
             <input type="number" id="rva-cancel" min="0" max="168" value="${settings.cancelHours}" style="display:block;margin-top:4px;width:110px;${field}">
           </label>
+          <label style="${label}">Afternoon prices start at
+            <select id="rva-afternoon" style="display:block;margin-top:4px;${field}">${Array.from({ length: 33 }, (_, i) => { const m = 360 + i * 30; const v = `${String(Math.floor(m / 60)).padStart(2, '0')}:${m % 60 ? '30' : '00'}`; return `<option value="${v}"${v === settings.afternoonFrom ? ' selected' : ''}>${v}</option>`; }).join('')}</select>
+          </label>
           <button type="submit" class="btn btn-outline">Save rules</button>
         </form>
         <div id="rva-settings-msg" style="margin-top:8px"></div>
@@ -230,7 +237,7 @@
       resetBtn.addEventListener('click', () => { colorBox.dataset.color = ''; colorInput.value = DEFAULT_COLOR; resetBtn.disabled = true; });
       row.querySelector('[data-act="save"]').addEventListener('click', async () => {
         try {
-          await api(`/reservations/courts/${id}`, { method: 'PATCH', body: { name: row.querySelector('[data-f="name"]').value, note: row.querySelector('[data-f="note"]').value, hourRate: row.querySelector('[data-f="rate"]').value, color: row.querySelector('.rva-color').dataset.color } });
+          await api(`/reservations/courts/${id}`, { method: 'PATCH', body: { name: row.querySelector('[data-f="name"]').value, note: row.querySelector('[data-f="note"]').value, hourRate: row.querySelector('[data-f="rate"]').value, rates: Object.fromEntries(['weekdayMorning', 'weekdayAfternoon', 'weekend'].map((key) => [key, row.querySelector(`[data-f="rate-${key}"]`).value])), color: row.querySelector('.rva-color').dataset.color } });
           toast('Court saved');
           await load();
         } catch (err) { say(msg('#rva-courts-msg'), err.message, true); }
@@ -334,7 +341,7 @@
     host.querySelector('#rva-settings').addEventListener('submit', async (e) => {
       e.preventDefault();
       try {
-        settings = await api('/reservations/settings', { method: 'PUT', body: { maxActive: Number(host.querySelector('#rva-max').value), cancelHours: Number(host.querySelector('#rva-cancel').value) } });
+        settings = await api('/reservations/settings', { method: 'PUT', body: { maxActive: Number(host.querySelector('#rva-max').value), cancelHours: Number(host.querySelector('#rva-cancel').value), afternoonFrom: host.querySelector('#rva-afternoon').value } });
         say(msg('#rva-settings-msg'), 'Saved ✓');
       } catch (err) { say(msg('#rva-settings-msg'), err.message, true); }
     });

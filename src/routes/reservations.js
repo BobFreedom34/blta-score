@@ -45,10 +45,14 @@ if (!db.prepare('PRAGMA table_info(reservation_courts)').all().some((c) => c.nam
   db.exec('ALTER TABLE reservation_courts ADD COLUMN hour_rate REAL NOT NULL DEFAULT 0');
 }
 
+for (const column of ['rate_wd_am', 'rate_wd_pm', 'rate_we']) {
+  if (!db.prepare('PRAGMA table_info(reservation_courts)').all().some((c) => c.name === column)) db.exec(`ALTER TABLE reservation_courts ADD COLUMN ${column} REAL`);
+}
+
 const WINDOW_DAYS = 7;
 const MAX_AHEAD_DAYS = 365;
 const MAX_CREATE = 1000;
-const DEFAULTS = { maxActive: 2, cancelHours: 2 };
+const DEFAULTS = { maxActive: 2, cancelHours: 2, afternoonFrom: '16:00' };
 
 // ---------------------------------------------------------------- time (local Slovak text)
 
@@ -89,6 +93,8 @@ const started = (slot, now) => stamp(slot.day, slot.start_time) <= stamp(now.dat
 
 // ---------------------------------------------------------------- settings
 
+const validAfternoon = (v) => typeof v === 'string' && /^([01][0-9]|2[0-3]):[03]0$/.test(v) && v >= '06:00' && v <= '22:00';
+
 function getSettings() {
   const row = db.prepare("SELECT value FROM site_settings WHERE key = 'reservations'").get();
   let saved = {};
@@ -96,6 +102,7 @@ function getSettings() {
   return {
     maxActive: Number.isInteger(saved.maxActive) && saved.maxActive >= 0 ? saved.maxActive : DEFAULTS.maxActive,
     cancelHours: Number.isInteger(saved.cancelHours) && saved.cancelHours >= 0 ? saved.cancelHours : DEFAULTS.cancelHours,
+    afternoonFrom: validAfternoon(saved.afternoonFrom) ? saved.afternoonFrom : DEFAULTS.afternoonFrom, // the prices of the afternoon start here
   };
 }
 
@@ -148,7 +155,7 @@ router.get('/', (req, res) => {
   const admin = isAdmin(req);
   const me = getPlayerId(req);
   const settings = getSettings();
-  const courts = db.prepare('SELECT id, name, note, color, hour_rate AS hourRate FROM reservation_courts ORDER BY sort_order, id').all();
+  const courts = db.prepare(`SELECT ${COURT_COLS} FROM reservation_courts ORDER BY sort_order, id`).all().map(courtOut);
   const rows = db.prepare(`
     SELECT s.*, p.name AS player_name, p.slug AS player_slug
     FROM court_slots s LEFT JOIN players p ON p.id = s.player_id
@@ -266,6 +273,38 @@ function cleanRate(value) {
   return n >= 0 && n <= 1000 ? n : null;
 }
 
+// the prices of a court: `hourRate` is the price of an hour at any time (0 = no price shown); `rates` can set another price for the
+// weekday mornings, weekday afternoons and the weekend (all day) (null = the same as hourRate). Where "afternoon" starts is a rule.
+const RATE_KEYS = { weekdayMorning: 'rate_wd_am', weekdayAfternoon: 'rate_wd_pm', weekend: 'rate_we' };
+const COURT_COLS = 'id, name, note, color, hour_rate AS hourRate, rate_wd_am, rate_wd_pm, rate_we';
+function courtOut(row) {
+  if (!row) return row;
+  const out = { id: row.id, name: row.name, note: row.note, color: row.color, hourRate: row.hourRate, rates: {} };
+  Object.entries(RATE_KEYS).forEach(([key, column]) => { out.rates[key] = row[column] === undefined ? null : row[column]; });
+  return out;
+}
+// '' / null -> null (the same as hourRate), a number >= 0 -> the number, anything else -> undefined (refused)
+function cleanOverride(value) {
+  if (value === undefined || value === null) return null;
+  const text = String(value).trim().replace(',', '.');
+  if (text === '') return null;
+  if (!/^[0-9]+(\.[0-9]+)?$/.test(text)) return undefined;
+  const n = Math.round(Number(text) * 100) / 100;
+  return n >= 0 && n <= 1000 ? n : undefined;
+}
+// the three other prices from a request body, keeping the court's current ones for what is not sent; { error } when one is wrong
+function readRates(body, court) {
+  const out = {};
+  const sent = body.rates && typeof body.rates === 'object' ? body.rates : {};
+  for (const [key, column] of Object.entries(RATE_KEYS)) {
+    if (sent[key] === undefined) { out[column] = court ? court[column] : null; continue; }
+    const v = cleanOverride(sent[key]);
+    if (v === undefined) return { error: RATE_ERROR };
+    out[column] = v;
+  }
+  return { rates: out };
+}
+
 function cleanColor(value) {
   if (value === undefined || value === null) return '';
   const v = String(value).trim().toLowerCase();
@@ -282,11 +321,13 @@ router.post('/courts', requireAdmin, (req, res) => {
   if (name.length > 60 || note.length > 200) return res.status(400).json({ error: 'The name or the note is too long' });
   if (color === null) return res.status(400).json({ error: 'The colour must look like #1a73e8' });
   if (rate === null) return res.status(400).json({ error: RATE_ERROR });
+  const extra = readRates(req.body, null);
+  if (extra.error) return res.status(400).json({ error: extra.error });
   if (db.prepare('SELECT 1 FROM reservation_courts WHERE lower(name) = lower(?)').get(name)) return res.status(409).json({ error: 'A court with this name already exists' });
   const next = (db.prepare('SELECT MAX(sort_order) AS m FROM reservation_courts').get().m ?? -1) + 1;
-  const id = Number(db.prepare('INSERT INTO reservation_courts (name, note, sort_order, color, hour_rate) VALUES (?, ?, ?, ?, ?)').run(name, note, next, color, rate).lastInsertRowid);
+  const id = Number(db.prepare('INSERT INTO reservation_courts (name, note, sort_order, color, hour_rate, rate_wd_am, rate_wd_pm, rate_we) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(name, note, next, color, rate, extra.rates.rate_wd_am, extra.rates.rate_wd_pm, extra.rates.rate_we).lastInsertRowid);
   emitChanged(req);
-  res.status(201).json(db.prepare('SELECT id, name, note, color, hour_rate AS hourRate FROM reservation_courts WHERE id = ?').get(id));
+  res.status(201).json(courtOut(db.prepare(`SELECT ${COURT_COLS} FROM reservation_courts WHERE id = ?`).get(id)));
 });
 
 router.patch('/courts/:id', requireAdmin, (req, res) => {
@@ -300,10 +341,12 @@ router.patch('/courts/:id', requireAdmin, (req, res) => {
   if (name.length > 60 || note.length > 200) return res.status(400).json({ error: 'The name or the note is too long' });
   if (color === null) return res.status(400).json({ error: 'The colour must look like #1a73e8' });
   if (rate === null) return res.status(400).json({ error: RATE_ERROR });
+  const extra = readRates(req.body, court);
+  if (extra.error) return res.status(400).json({ error: extra.error });
   if (db.prepare('SELECT 1 FROM reservation_courts WHERE lower(name) = lower(?) AND id != ?').get(name, court.id)) return res.status(409).json({ error: 'A court with this name already exists' });
-  db.prepare('UPDATE reservation_courts SET name = ?, note = ?, color = ?, hour_rate = ? WHERE id = ?').run(name, note, color, rate, court.id);
+  db.prepare('UPDATE reservation_courts SET name = ?, note = ?, color = ?, hour_rate = ?, rate_wd_am = ?, rate_wd_pm = ?, rate_we = ? WHERE id = ?').run(name, note, color, rate, extra.rates.rate_wd_am, extra.rates.rate_wd_pm, extra.rates.rate_we, court.id);
   emitChanged(req);
-  res.json(db.prepare('SELECT id, name, note, color, hour_rate AS hourRate FROM reservation_courts WHERE id = ?').get(court.id));
+  res.json(courtOut(db.prepare(`SELECT ${COURT_COLS} FROM reservation_courts WHERE id = ?`).get(court.id)));
 });
 
 // Deleting a court deletes its spots; with reservations that have not started yet it needs ?force=1 (the players lose them).
@@ -568,7 +611,9 @@ router.put('/settings', requireAdmin, (req, res) => {
   const cancelHours = Number(req.body.cancelHours);
   if (!Number.isInteger(maxActive) || maxActive < 0 || maxActive > 50) return res.status(400).json({ error: 'The number of reservations per player must be 0 (no limit) to 50' });
   if (!Number.isInteger(cancelHours) || cancelHours < 0 || cancelHours > 168) return res.status(400).json({ error: 'Cancelling can be closed 0 to 168 hours before the start' });
-  db.prepare("INSERT INTO site_settings (key, value) VALUES ('reservations', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(JSON.stringify({ maxActive, cancelHours }));
+  const afternoonFrom = req.body.afternoonFrom === undefined ? getSettings().afternoonFrom : req.body.afternoonFrom;
+  if (!validAfternoon(afternoonFrom)) return res.status(400).json({ error: 'The afternoon prices can start at a full or half hour between 06:00 and 22:00' });
+  db.prepare("INSERT INTO site_settings (key, value) VALUES ('reservations', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(JSON.stringify({ maxActive, cancelHours, afternoonFrom }));
   emitChanged(req);
   res.json(getSettings());
 });

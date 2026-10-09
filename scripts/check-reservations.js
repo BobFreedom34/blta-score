@@ -108,6 +108,35 @@ test('courts: an hour rate per court (euro, 0 = no price)', async () => {
   await admin('DELETE', `/api/reservations/courts/${made.json.id}`);
 });
 
+test('courts: other prices for weekday mornings, weekday afternoons and the weekend; where the afternoon starts is a rule', async () => {
+  const court = (id) => view().then((v) => v.courts.find((c) => c.id === id));
+  assert.deepStrictEqual((await court(S.c1)).rates, { weekdayMorning: null, weekdayAfternoon: null, weekend: null }, 'no other prices by default');
+  const r = await admin('PATCH', `/api/reservations/courts/${S.c1}`, { hourRate: 18, rates: { weekdayMorning: '12', weekend: '30,5' } });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.json));
+  assert.deepStrictEqual(r.json.rates, { weekdayMorning: 12, weekdayAfternoon: null, weekend: 30.5 });
+  await admin('PATCH', `/api/reservations/courts/${S.c1}`, { name: 'Court 1' });
+  assert.strictEqual((await court(S.c1)).rates.weekdayMorning, 12, 'a patch without prices keeps them');
+  const cleared = await admin('PATCH', `/api/reservations/courts/${S.c1}`, { rates: { weekdayMorning: '' } });
+  assert.strictEqual(cleared.json.rates.weekdayMorning, null, 'empty = the same as the hour rate again');
+  assert.strictEqual(cleared.json.rates.weekend, 30.5, 'the others stay');
+  for (const bad of ['abc', '-1', '1001']) {
+    assert.strictEqual((await admin('PATCH', `/api/reservations/courts/${S.c1}`, { rates: { weekend: bad } })).status, 400, 'refused: ' + bad);
+  }
+  const made = await admin('POST', '/api/reservations/courts', { name: 'Rates test', hourRate: 10, rates: { weekend: 15 } });
+  assert.strictEqual(made.json.rates.weekend, 15);
+  await admin('DELETE', `/api/reservations/courts/${made.json.id}`);
+  await admin('PATCH', `/api/reservations/courts/${S.c1}`, { hourRate: 0, rates: { weekend: '' } });
+  // the rule: where the afternoon starts
+  assert.strictEqual((await view()).settings.afternoonFrom, '16:00');
+  const set = await admin('PUT', '/api/reservations/settings', { maxActive: 2, cancelHours: 2, afternoonFrom: '17:30' });
+  assert.strictEqual(set.json.afternoonFrom, '17:30');
+  for (const bad of ['5:00', '16:15', '23:00', 'noon']) {
+    assert.strictEqual((await admin('PUT', '/api/reservations/settings', { maxActive: 2, cancelHours: 2, afternoonFrom: bad })).status, 400, 'refused: ' + bad);
+  }
+  assert.strictEqual((await admin('PUT', '/api/reservations/settings', { maxActive: 2, cancelHours: 2 })).json.afternoonFrom, '17:30', 'left out = kept');
+  await admin('PUT', '/api/reservations/settings', { maxActive: 2, cancelHours: 2, afternoonFrom: '16:00' });
+});
+
 // ---------------------------------------------------------------- spots
 test('spots: Thursday 10:00-12:00 is one spot; overlaps are skipped; blocks split a range', async () => {
   const one = await admin('POST', '/api/reservations/slots', { courtIds: [S.c1], date: D(6), start: '10:00', end: '12:00' });
@@ -274,7 +303,7 @@ test('my reservations: login needed; only upcoming ones, with whether they can s
   const mine = (await as(S.a, 'GET', '/api/reservations/mine')).json;
   assert.ok(mine.reservations.length >= 2);
   assert.ok(mine.reservations.every((r) => r.day >= NOW.date && r.canCancel === true && r.started === false));
-  assert.deepStrictEqual(mine.settings, { maxActive: 0, cancelHours: 2 });
+  assert.deepStrictEqual(mine.settings, { maxActive: 0, cancelHours: 2, afternoonFrom: '16:00' });
   assert.deepStrictEqual((await as(S.b, 'GET', '/api/reservations/mine')).json.reservations, []);
 });
 
@@ -323,9 +352,9 @@ test('settings: admin only, checked, and shown on the page data', async () => {
   for (const body of [{ maxActive: -1, cancelHours: 2 }, { maxActive: 51, cancelHours: 2 }, { maxActive: 1.5, cancelHours: 2 }, { maxActive: 2, cancelHours: 169 }, { maxActive: 2 }, {}]) {
     assert.strictEqual((await admin('PUT', '/api/reservations/settings', body)).status, 400, JSON.stringify(body));
   }
-  assert.deepStrictEqual((await admin('PUT', '/api/reservations/settings', { maxActive: 3, cancelHours: 12 })).json, { maxActive: 3, cancelHours: 12 });
-  assert.deepStrictEqual((await view()).settings, { maxActive: 3, cancelHours: 12 });
-  assert.deepStrictEqual((await admin('GET', '/api/reservations/settings')).json, { maxActive: 3, cancelHours: 12 });
+  assert.deepStrictEqual((await admin('PUT', '/api/reservations/settings', { maxActive: 3, cancelHours: 12 })).json, { maxActive: 3, cancelHours: 12, afternoonFrom: '16:00' });
+  assert.deepStrictEqual((await view()).settings, { maxActive: 3, cancelHours: 12, afternoonFrom: '16:00' });
+  assert.deepStrictEqual((await admin('GET', '/api/reservations/settings')).json, { maxActive: 3, cancelHours: 12, afternoonFrom: '16:00' });
 });
 
 // ---------------------------------------------------------------- editing a spot

@@ -28,12 +28,21 @@
     const lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
     return lum > 0.6 ? '#0a0a0a' : '#ffffff';
   };
-  // the price of a spot: the court's hour rate times the length (no rate = no price); '27 €' or '13,50 €'
+  // the price of a spot: every half hour of it costs half of the hour rate of its time (weekday morning, weekday afternoon — it starts at
+  // the rule `afternoonFrom` — or the weekend, all day), so a spot over the change is priced half and half; no price = nothing shown
   const priceOf = (s) => {
-    const rate = (data.courts.find((c) => c.id === s.courtId) || {}).hourRate;
-    if (!rate) return '';
-    const hours = (mins(s.end) - mins(s.start)) / 60;
-    const eur = Math.round(rate * hours * 100) / 100;
+    const court = data.courts.find((c) => c.id === s.courtId);
+    if (!court) return '';
+    const weekend = [0, 6].includes(dayDate(s.day).getDay());
+    const from = (data.settings && data.settings.afternoonFrom) || '16:00';
+    let eur = 0;
+    for (let m = mins(s.start); m < mins(s.end); m += 30) {
+      const key = weekend ? 'weekend' : hhmm(m) >= from ? 'weekdayAfternoon' : 'weekdayMorning';
+      const own = court.rates ? court.rates[key] : null;
+      eur += (own === null || own === undefined ? court.hourRate : own) / 2;
+    }
+    eur = Math.round(eur * 100) / 100;
+    if (!eur) return '';
     const text = Number.isInteger(eur) ? String(eur) : eur.toFixed(2);
     return `${currentLang === 'en' ? text : text.replace('.', ',')} €`;
   };
