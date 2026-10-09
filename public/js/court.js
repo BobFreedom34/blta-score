@@ -1,5 +1,10 @@
 const root = document.getElementById('court-root');
-const slug = decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '');
+// the court of the address: the pattern /tenisove-kurty/<court> ends with it; a court with an address of its own (/kurty-tennis-one) says it in the page info
+const slug = (() => {
+  const known = window.BLTA_LOCALIZE && BLTA_LOCALIZE.page && BLTA_LOCALIZE.page.param;
+  const raw = known || window.location.pathname.split('/').filter(Boolean).pop() || '';
+  try { return decodeURIComponent(raw); } catch { return raw; }
+})();
 
 function infoRow(icon, label, valueHtml) {
   return `
