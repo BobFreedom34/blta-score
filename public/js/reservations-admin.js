@@ -92,6 +92,52 @@
       </div>`;
   }
 
+  // "Change many times": e.g. all Thursday evenings one hour later
+  function shiftOptions() {
+    let out = '<option value="0" selected>No change in time</option>';
+    for (let m = -240; m <= 240; m += 30) {
+      if (m === 0) continue;
+      const abs = Math.abs(m);
+      const text = `${abs >= 60 ? `${Math.floor(abs / 60)} h` : ''}${abs % 60 ? `${abs >= 60 ? ' ' : ''}${abs % 60} min` : ''}`;
+      out += `<option value="${m}">${text} ${m > 0 ? 'later' : 'earlier'}</option>`;
+    }
+    return out;
+  }
+
+  function bulkHtml() {
+    const courtBoxes = courts.map((c) => `<label style="font-weight:600;font-size:14px"><input type="checkbox" class="rva-bc" value="${c.id}" checked> ${escapeHtml(c.name)}</label>`).join('');
+    const horizon = (() => { const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 60); return d.toISOString().slice(0, 10); })();
+    return `
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="margin-top:0">Change many times at once</h3>
+        <form id="rva-bulk">
+          <div style="font-size:13px;font-weight:800;margin-bottom:6px">Which spots</div>
+          <div style="${label}">Courts<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px">${courtBoxes}</div></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:10px">
+            <label style="${label}">From <input type="date" id="rva-bfrom" min="${today}" value="${today}" style="display:block;margin-top:4px;${field}"></label>
+            <label style="${label}">Until <input type="date" id="rva-bto" min="${today}" value="${horizon}" style="display:block;margin-top:4px;${field}"></label>
+            <label style="${label}">Starting from <select id="rva-bstartfrom" style="display:block;margin-top:4px;${field}"><option value="">any time</option>${timeOptions(TIMES.slice(0, -1), '')}</select></label>
+            <label style="${label}">Starting until <select id="rva-bstartuntil" style="display:block;margin-top:4px;${field}"><option value="">any time</option>${timeOptions(TIMES.slice(0, -1), '')}</select></label>
+          </div>
+          <div style="${label};margin-top:10px">Weekdays <span style="font-weight:600;color:var(--gray)">(none ticked = every day)</span>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-weight:600;font-size:14px">${DAYS.map(([n, name]) => `<label><input type="checkbox" class="rva-bw" value="${n}"> ${name}</label>`).join('')}</div>
+          </div>
+          <div style="font-size:13px;font-weight:800;margin:16px 0 6px">What to change</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+            <label style="${label}">Time <select id="rva-bshift" style="display:block;margin-top:4px;${field}">${shiftOptions()}</select></label>
+            <label style="${label}">Move to court <select id="rva-bcourt" style="display:block;margin-top:4px;${field}"><option value="">keep the court</option>${courts.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select></label>
+          </div>
+          <label style="display:flex;gap:8px;align-items:center;font-size:14px;font-weight:600;margin-top:12px"><input type="checkbox" id="rva-binc"> Also move spots that players have already reserved <span style="font-weight:600;color:var(--gray)">(they keep their reservation at the new time)</span></label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+            <button type="button" class="btn btn-outline" id="rva-bpreview"${courts.length ? '' : ' disabled'}>Preview</button>
+            <button type="submit" class="btn btn-primary"${courts.length ? '' : ' disabled'}>Apply changes</button>
+          </div>
+          <div style="font-size:12px;color:var(--gray);margin-top:8px">A spot that would overlap another one, cross midnight or land in the past is left where it is. “Preview” shows what would happen without changing anything.</div>
+        </form>
+        <div id="rva-bulk-msg" style="margin-top:8px"></div>
+      </div>`;
+  }
+
   function clearHtml() {
     const courtBoxes = courts.map((c) => `<label style="font-weight:600;font-size:14px"><input type="checkbox" class="rva-cc" value="${c.id}" checked> ${escapeHtml(c.name)}</label>`).join('');
     return `
@@ -126,7 +172,7 @@
   }
 
   function render() {
-    host.innerHTML = `${courtsHtml()}${addTimesHtml()}${clearHtml()}${settingsHtml()}`;
+    host.innerHTML = `${courtsHtml()}${addTimesHtml()}${bulkHtml()}${clearHtml()}${settingsHtml()}`;
     wire();
   }
 
@@ -203,6 +249,40 @@
         const r = await api('/reservations/slots', { method: 'POST', body });
         say(msg('#rva-times-msg'), `${r.created} spot${r.created === 1 ? '' : 's'} added${r.skipped ? `, ${r.skipped} skipped (already a spot at that time, or the time is over)` : ''}.`);
       } catch (err) { say(msg('#rva-times-msg'), err.message, true); }
+    });
+
+    // change many: Preview shows the result without changing anything; Apply asks once more with the numbers
+    const bulkBody = (dryRun) => ({
+      courtIds: [...host.querySelectorAll('.rva-bc:checked')].map((b) => Number(b.value)),
+      fromDate: host.querySelector('#rva-bfrom').value,
+      toDate: host.querySelector('#rva-bto').value,
+      weekdays: [...host.querySelectorAll('.rva-bw:checked')].map((b) => Number(b.value)),
+      startFrom: host.querySelector('#rva-bstartfrom').value,
+      startUntil: host.querySelector('#rva-bstartuntil').value,
+      shiftMinutes: Number(host.querySelector('#rva-bshift').value),
+      toCourtId: host.querySelector('#rva-bcourt').value,
+      includeReserved: host.querySelector('#rva-binc').checked,
+      dryRun,
+    });
+    const bulkSummary = (r) => {
+      const parts = [`${r.matched} spot${r.matched === 1 ? '' : 's'} match`, `${r.moved} ${r.dryRun ? 'would be moved' : 'moved'}`];
+      if (r.skippedReserved) parts.push(`${r.skippedReserved} reserved left alone`);
+      if (r.skippedConflict) parts.push(`${r.skippedConflict} left alone (would overlap another spot)`);
+      if (r.skippedInvalid) parts.push(`${r.skippedInvalid} left alone (midnight or already over)`);
+      return `${parts.join(', ')}.${r.examples && r.examples.length ? ` e.g. ${r.examples.slice(0, 3).join('; ')}` : ''}`;
+    };
+    host.querySelector('#rva-bpreview').addEventListener('click', async () => {
+      try { say(msg('#rva-bulk-msg'), `Preview: ${bulkSummary(await api('/reservations/slots/bulk-edit', { method: 'POST', body: bulkBody(true) }))}`); } catch (err) { say(msg('#rva-bulk-msg'), err.message, true); }
+    });
+    host.querySelector('#rva-bulk').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const preview = await api('/reservations/slots/bulk-edit', { method: 'POST', body: bulkBody(true) });
+        if (!preview.moved) { say(msg('#rva-bulk-msg'), `Nothing to change. ${bulkSummary(preview)}`, true); return; }
+        if (!window.confirm(`${preview.moved} spot${preview.moved === 1 ? '' : 's'} will be moved. Continue?`)) return;
+        const done = await api('/reservations/slots/bulk-edit', { method: 'POST', body: bulkBody(false) });
+        say(msg('#rva-bulk-msg'), `Done: ${bulkSummary(done)}`);
+      } catch (err) { say(msg('#rva-bulk-msg'), err.message, true); }
     });
 
     host.querySelector('#rva-clear').addEventListener('submit', async (e) => {

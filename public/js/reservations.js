@@ -212,6 +212,13 @@
     });
   }
 
+  // 30-minute choices for the admin's edit form: option i is i * 30 minutes after midnight
+  const timeOptions = (from, to, selected) => {
+    let out = '';
+    for (let i = from; i <= to; i += 1) { const v = hhmm(i * 30); out += `<option value="${v}"${v === selected ? ' selected' : ''}>${v}</option>`; }
+    return out;
+  };
+
   // the admin's window (English like the rest of the backend): put a player in, take a reservation away, delete the spot
   async function adminModal(slot) {
     const taken = slot.status === 'RESERVED';
@@ -226,6 +233,16 @@
         <button type="button" class="btn btn-primary btn-block" id="rv-assign" style="margin-top:10px">Reserve it for them</button>`}
       <div class="rv-error" id="rv-error"></div>
       ${taken ? '<button type="button" class="btn btn-primary btn-block" id="rv-uncancel">Cancel the reservation</button>' : ''}
+      <details class="rv-edit" style="margin-top:10px">
+        <summary>Edit this spot (time, day, court)</summary>
+        <div class="rv-edit-grid">
+          <label class="rv-label">Court<select id="rv-e-court">${data.courts.map((c) => `<option value="${c.id}"${c.id === slot.courtId ? ' selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select></label>
+          <label class="rv-label">Date<input type="date" id="rv-e-day" min="${data.today}" value="${slot.day}"></label>
+          <label class="rv-label">From<select id="rv-e-start">${timeOptions(0, 47, slot.start)}</select></label>
+          <label class="rv-label">To<select id="rv-e-end">${timeOptions(1, 48, slot.end)}</select></label>
+        </div>
+        <button type="button" class="btn btn-primary btn-block" id="rv-save-edit" style="margin-top:8px">Save changes</button>
+      </details>
       <button type="button" class="btn btn-outline btn-block" id="rv-delete" style="margin-top:10px">Delete this spot</button>
       <button type="button" class="btn btn-outline btn-block" data-close style="margin-top:10px">Close</button>`);
     const fail = (err) => { wrap.querySelector('#rv-error').textContent = err.message; };
@@ -246,6 +263,19 @@
         try { await api(`/reservations/slots/${slot.id}/cancel`, { method: 'POST' }); await done('Reservation cancelled'); } catch (err) { fail(err); }
       });
     }
+    wrap.querySelector('#rv-save-edit').addEventListener('click', async () => {
+      const body = { courtId: Number(wrap.querySelector('#rv-e-court').value), day: wrap.querySelector('#rv-e-day').value, start: wrap.querySelector('#rv-e-start').value, end: wrap.querySelector('#rv-e-end').value };
+      if (body.courtId === slot.courtId && body.day === slot.day && body.start === slot.start && body.end === slot.end) { fail(new Error('Nothing is changed')); return; }
+      try {
+        await api(`/reservations/slots/${slot.id}`, { method: 'PATCH', body });
+        await done('Spot changed');
+      } catch (err) {
+        if (err.data && err.data.code === 'RESERVED') {
+          if (!window.confirm(`${err.message}. Change it anyway? They keep the reservation at the new time.`)) return;
+          try { await api(`/reservations/slots/${slot.id}`, { method: 'PATCH', body: { ...body, force: true } }); await done('Spot changed'); } catch (err2) { fail(err2); }
+        } else { fail(err); }
+      }
+    });
     wrap.querySelector('#rv-delete').addEventListener('click', async () => {
       if (taken && !window.confirm(`${slot.name || slot.label} has reserved this spot. Delete it anyway?`)) return;
       try { await api(`/reservations/slots/${slot.id}${taken ? '?force=1' : ''}`, { method: 'DELETE' }); await done('Spot deleted'); } catch (err) { fail(err); }

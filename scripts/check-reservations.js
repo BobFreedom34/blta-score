@@ -289,6 +289,149 @@ test('settings: admin only, checked, and shown on the page data', async () => {
   assert.deepStrictEqual((await admin('GET', '/api/reservations/settings')).json, { maxActive: 3, cancelHours: 12 });
 });
 
+// ---------------------------------------------------------------- editing a spot
+test('edit: the admin changes the time, the day and the court of a spot; overlaps and bad values are refused', async () => {
+  const made = await admin('POST', '/api/reservations/slots', { courtIds: [S.c1], date: D(4), start: '09:00', end: '10:00' });
+  assert.deepStrictEqual(made.json, { created: 1, skipped: 0 });
+  await admin('POST', '/api/reservations/slots', { courtIds: [S.c1], date: D(4), start: '12:00', end: '13:00' });
+  const slots = await slotsOf(D(4), S.c1);
+  const spot = slots.find((s) => s.start === '09:00');
+  const other = slots.find((s) => s.start === '12:00');
+  assert.strictEqual((await call('PATCH', `/api/reservations/slots/${spot.id}`, { body: { start: '09:30' } })).status, 401);
+  // the time
+  assert.strictEqual((await admin('PATCH', `/api/reservations/slots/${spot.id}`, { start: '09:30', end: '11:00' })).status, 200);
+  let now = (await slotsOf(D(4), S.c1)).find((s) => s.id === spot.id);
+  assert.deepStrictEqual([now.start, now.end], ['09:30', '11:00']);
+  // only the end
+  assert.strictEqual((await admin('PATCH', `/api/reservations/slots/${spot.id}`, { end: '10:30' })).status, 200);
+  now = (await slotsOf(D(4), S.c1)).find((s) => s.id === spot.id);
+  assert.deepStrictEqual([now.start, now.end], ['09:30', '10:30']);
+  // an overlap with the other spot of that court
+  const clash = await admin('PATCH', `/api/reservations/slots/${spot.id}`, { end: '12:30' });
+  assert.deepStrictEqual([clash.status, clash.json.code], [409, 'CLASH']);
+  assert.ok(/12:00 to 13:00/.test(clash.json.error), clash.json.error);
+  // touching is fine
+  assert.strictEqual((await admin('PATCH', `/api/reservations/slots/${spot.id}`, { end: '12:00' })).status, 200);
+  // another day and another court
+  assert.strictEqual((await admin('PATCH', `/api/reservations/slots/${spot.id}`, { day: D(5), courtId: S.c3 })).status, 200);
+  now = (await view(D(4), adminCookie)).slots.find((s) => s.id === spot.id);
+  assert.deepStrictEqual([now.day, now.courtId, now.start, now.end], [D(5), S.c3, '09:30', '12:00']);
+  // bad values
+  const bad = [
+    [{ start: '09:10' }, /half hour/], [{ end: '09:00' }, /after the start/], [{ day: D(-1) }, /past/], [{ day: '2026-13-01' }, /not valid/],
+    [{ courtId: 99999 }, /court does not exist/], [{ day: D(400) }, /days ahead/], [{ day: NOW.date, start: '08:00', end: '09:00' }, /already over/],
+  ];
+  for (const [body, pattern] of bad) {
+    const r = await admin('PATCH', `/api/reservations/slots/${spot.id}`, body);
+    assert.strictEqual(r.status, 400, JSON.stringify(body));
+    assert.ok(pattern.test(r.json.error), `${JSON.stringify(body)}: ${r.json.error}`);
+  }
+  assert.strictEqual((await admin('PATCH', '/api/reservations/slots/999999', { start: '10:00' })).status, 404);
+  assert.ok(other, 'the other spot is still there');
+});
+
+test('edit: a reserved spot is changed only when forced, and the player keeps it', async () => {
+  const spot = (await slotsOf(D(4), S.c1)).find((s) => s.start === '12:00');
+  const p = newPlayer('Dana Presunutá');
+  assert.strictEqual((await as(p, 'POST', `/api/reservations/slots/${spot.id}/reserve`)).status, 201);
+  const refused = await admin('PATCH', `/api/reservations/slots/${spot.id}`, { start: '12:30', end: '13:30' });
+  assert.deepStrictEqual([refused.status, refused.json.code, refused.json.name], [409, 'RESERVED', 'Dana Presunutá']);
+  assert.strictEqual((await admin('PATCH', `/api/reservations/slots/${spot.id}`, { start: '12:30', end: '13:30', force: true })).status, 200);
+  const moved = (await slotsOf(D(4), S.c1)).find((s) => s.id === spot.id);
+  assert.deepStrictEqual([moved.start, moved.end, moved.status, moved.playerId], ['12:30', '13:30', 'RESERVED', p]);
+  await admin('POST', `/api/reservations/slots/${spot.id}/cancel`);
+});
+
+// ---------------------------------------------------------------- changing many spots at once
+const weekdayOf = (day) => { const w = new Date(`${day}T12:00:00Z`).getUTCDay(); return w === 0 ? 7 : w; };
+const bulk = (body) => admin('POST', '/api/reservations/slots/bulk-edit', { fromDate: D(20), toDate: D(30), ...body });
+const times = async (day, courtId) => (await slotsOf(day, courtId)).map((s) => `${s.start}-${s.end}`);
+
+test('bulk: moving a row of spots one hour later works as a chain; a dry run changes nothing', async () => {
+  await admin('POST', '/api/reservations/slots', { courtIds: [S.c1], date: D(20), start: '17:00', end: '20:00', blockMinutes: 60 });
+  const dry = await bulk({ courtIds: [S.c1], shiftMinutes: 60, dryRun: true });
+  assert.deepStrictEqual([dry.json.matched, dry.json.moved, dry.json.dryRun], [3, 3, true]);
+  assert.deepStrictEqual(await times(D(20), S.c1), ['17:00-18:00', '18:00-19:00', '19:00-20:00'], 'unchanged');
+  const done = await bulk({ courtIds: [S.c1], shiftMinutes: 60 });
+  assert.deepStrictEqual([done.json.matched, done.json.moved, done.json.skippedConflict], [3, 3, 0]);
+  assert.deepStrictEqual(await times(D(20), S.c1), ['18:00-19:00', '19:00-20:00', '20:00-21:00']);
+  // and back, earlier
+  assert.strictEqual((await bulk({ courtIds: [S.c1], shiftMinutes: -60 })).json.moved, 3);
+  assert.deepStrictEqual(await times(D(20), S.c1), ['17:00-18:00', '18:00-19:00', '19:00-20:00']);
+});
+
+test('bulk: a spot that would overlap one that stays is left alone (nothing is half-done)', async () => {
+  await admin('POST', '/api/reservations/slots', { courtIds: [S.c3], date: D(21), start: '17:00', end: '20:00', blockMinutes: 60 });
+  // only the first two are selected (they start by 18:00); the 19:00 one stays and blocks the second, which blocks the first
+  const r = await bulk({ courtIds: [S.c3], startUntil: '18:00', shiftMinutes: 60 });
+  assert.deepStrictEqual([r.json.matched, r.json.moved, r.json.skippedConflict], [2, 0, 2]);
+  assert.ok(r.json.examples.length === 2 && /overlap/.test(r.json.examples[0]));
+  assert.deepStrictEqual(await times(D(21), S.c3), ['17:00-18:00', '18:00-19:00', '19:00-20:00']);
+  // a shift of 30 minutes for the first one only (17:00 start): fits between nothing and the 18:00 spot? no — it overlaps; 3 hours later does fit
+  const later = await bulk({ courtIds: [S.c3], startFrom: '17:00', startUntil: '17:00', shiftMinutes: 180 });
+  assert.deepStrictEqual([later.json.matched, later.json.moved], [1, 1]);
+  assert.deepStrictEqual(await times(D(21), S.c3), ['18:00-19:00', '19:00-20:00', '20:00-21:00']);
+});
+
+test('bulk: weekdays and the time window narrow the selection; a spot cannot cross midnight', async () => {
+  const days = [D(22), D(23), D(24), D(25)];
+  for (const d of days) await admin('POST', '/api/reservations/slots', { courtIds: [S.c1], date: d, start: '10:00', end: '11:00' });
+  for (const d of days) await admin('POST', '/api/reservations/slots', { courtIds: [S.c1], date: d, start: '18:00', end: '19:00' });
+  const wd = weekdayOf(D(23));
+  const r = await bulk({ courtIds: [S.c1], fromDate: D(22), toDate: D(25), weekdays: [wd], startFrom: '17:00', shiftMinutes: 30 });
+  assert.deepStrictEqual([r.json.matched, r.json.moved], [1, 1], 'one weekday, only the evening spot');
+  assert.deepStrictEqual(await times(D(23), S.c1), ['10:00-11:00', '18:30-19:30']);
+  assert.deepStrictEqual(await times(D(24), S.c1), ['10:00-11:00', '18:00-19:00']);
+  // late spots cannot go past midnight
+  await admin('POST', '/api/reservations/slots', { courtIds: [S.c3], date: D(26), start: '23:00', end: '24:00' });
+  const edge = await bulk({ courtIds: [S.c3], fromDate: D(26), toDate: D(26), shiftMinutes: 30 });
+  assert.deepStrictEqual([edge.json.moved, edge.json.skippedInvalid], [0, 1]);
+  assert.ok(/midnight/.test(edge.json.examples[0]));
+  assert.strictEqual((await bulk({ courtIds: [S.c3], fromDate: D(26), toDate: D(26), shiftMinutes: -60 })).json.moved, 1);
+  assert.deepStrictEqual(await times(D(26), S.c3), ['22:00-23:00']);
+});
+
+test('bulk: reserved spots stay unless asked; the spots can be moved to another court', async () => {
+  await admin('POST', '/api/reservations/slots', { courtIds: [S.c1], date: D(27), start: '17:00', end: '19:00', blockMinutes: 60 });
+  const [first] = await slotsOf(D(27), S.c1);
+  const p = newPlayer('Emil Hromadný');
+  assert.strictEqual((await as(p, 'POST', `/api/reservations/slots/${first.id}/reserve`)).status, 201);
+  const keep = await bulk({ courtIds: [S.c1], fromDate: D(27), toDate: D(27), shiftMinutes: 120 });
+  assert.deepStrictEqual([keep.json.matched, keep.json.moved, keep.json.skippedReserved], [2, 1, 1]);
+  assert.deepStrictEqual(await times(D(27), S.c1), ['17:00-18:00', '20:00-21:00'], 'the reserved one did not move, the free one went 2 hours later');
+  // including reserved ones, one hour later (the reserved 17:00 spot lands on the free 18:00)
+  const all = await bulk({ courtIds: [S.c1], fromDate: D(27), toDate: D(27), shiftMinutes: 60, includeReserved: true });
+  assert.strictEqual(all.json.skippedReserved, 0);
+  const reservedNow = (await slotsOf(D(27), S.c1)).find((s) => s.status === 'RESERVED');
+  assert.deepStrictEqual([reservedNow.start, reservedNow.playerId], ['18:00', p], 'the player kept the reservation');
+  // to another court
+  const toC3 = await bulk({ courtIds: [S.c1], fromDate: D(27), toDate: D(27), toCourtId: S.c3, includeReserved: true });
+  assert.deepStrictEqual([toC3.json.moved], [2]);
+  assert.strictEqual((await slotsOf(D(27), S.c1)).length, 0);
+  assert.strictEqual((await slotsOf(D(27), S.c3)).length, 2);
+  await admin('POST', `/api/reservations/slots/${reservedNow.id}/cancel`);
+});
+
+test('bulk: bad input is refused and only the admin may do it', async () => {
+  const base = { courtIds: [S.c1], fromDate: D(20), toDate: D(30) };
+  const bad = [
+    [{ ...base }, /shift in time or a court/],
+    [{ ...base, shiftMinutes: 45 }, /multiple of 30/],
+    [{ ...base, shiftMinutes: 750 }, /multiple of 30/],
+    [{ ...base, shiftMinutes: 60, toDate: D(10) }, /last day/],
+    [{ ...base, shiftMinutes: 60, fromDate: 'x' }, /first and the last day/],
+    [{ ...base, shiftMinutes: 60, toDate: D(500) }, /days ahead/],
+    [{ ...base, shiftMinutes: 60, toCourtId: 99999 }, /court does not exist/],
+    [{ ...base, shiftMinutes: 60, startFrom: '17:15' }, /half hour/],
+  ];
+  for (const [body, pattern] of bad) {
+    const r = await admin('POST', '/api/reservations/slots/bulk-edit', body);
+    assert.strictEqual(r.status, 400, JSON.stringify(body));
+    assert.ok(pattern.test(r.json.error), `${JSON.stringify(body)}: ${r.json.error}`);
+  }
+  assert.strictEqual((await call('POST', '/api/reservations/slots/bulk-edit', { body: { ...base, shiftMinutes: 60 } })).status, 401);
+});
+
 // ---------------------------------------------------------------- the page and the search engines
 test('page: /rezervacie-kurtov and /en/court-booking exist, the code address is retired, the sitemap lists both', async () => {
   const sk = await fetch(`${BASE}/rezervacie-kurtov`);

@@ -375,6 +375,112 @@ router.post('/slots/clear', requireAdmin, (req, res) => {
   res.json({ removed: rows.length });
 });
 
+// Moves many spots at once, e.g. every Thursday evening one hour later. Body: { courtIds (empty = all), fromDate, toDate, weekdays (empty =
+// every day), startFrom / startUntil (only spots starting between these times), shiftMinutes (a multiple of 30, may be negative), toCourtId
+// (optional: move them to this court), includeReserved (default false: reserved spots stay where they are), dryRun }.
+// The result is checked as a whole: a spot that would end up overlapping a spot that stays (or another moved one), cross midnight or
+// land in the past is left where it is and counted — nothing is half-done. dryRun only reports what would happen.
+router.post('/slots/bulk-edit', requireAdmin, (req, res) => {
+  const b = req.body || {};
+  const now = nowLocal();
+  if (!isRealDay(b.fromDate || '') || !isRealDay(b.toDate || '') || b.toDate < b.fromDate) return res.status(400).json({ error: 'Choose the first and the last day' });
+  if (b.toDate > addDays(now.date, MAX_AHEAD_DAYS)) return res.status(400).json({ error: `Spots can be moved up to ${MAX_AHEAD_DAYS} days ahead` });
+  const shift = b.shiftMinutes === undefined || b.shiftMinutes === null || b.shiftMinutes === '' ? 0 : Number(b.shiftMinutes);
+  if (!Number.isInteger(shift) || shift % 30 !== 0 || Math.abs(shift) > 720) return res.status(400).json({ error: 'The shift must be a multiple of 30 minutes, up to 12 hours' });
+  let toCourt = null;
+  if (b.toCourtId !== undefined && b.toCourtId !== null && b.toCourtId !== '') {
+    toCourt = Number(b.toCourtId);
+    if (!db.prepare('SELECT 1 FROM reservation_courts WHERE id = ?').get(toCourt)) return res.status(400).json({ error: 'That court does not exist' });
+  }
+  if (shift === 0 && toCourt === null) return res.status(400).json({ error: 'Choose a shift in time or a court to move the spots to' });
+  const startFrom = b.startFrom ? String(b.startFrom) : '';
+  const startUntil = b.startUntil ? String(b.startUntil) : '';
+  if ((startFrom && !START_TIME.test(startFrom)) || (startUntil && !START_TIME.test(startUntil))) return res.status(400).json({ error: 'The times of the filter must be on the hour or the half hour' });
+  const weekdays = Array.isArray(b.weekdays) ? b.weekdays.map(Number).filter((n) => n >= 1 && n <= 7) : [];
+  const courtIds = Array.isArray(b.courtIds) ? b.courtIds.map(Number).filter(Number.isInteger) : [];
+  const from = b.fromDate < now.date ? now.date : b.fromDate;
+
+  const inRange = db.prepare('SELECT * FROM court_slots WHERE day >= ? AND day <= ?').all(from, b.toDate);
+  const matched = inRange.filter((s) => (!courtIds.length || courtIds.includes(s.court_id))
+    && (!weekdays.length || weekdays.includes(isoWeekday(s.day)))
+    && (!startFrom || s.start_time >= startFrom) && (!startUntil || s.start_time <= startUntil));
+  if (matched.length > 2000) return res.status(400).json({ error: 'That matches more than 2000 spots — use a shorter period' });
+
+  const result = { matched: matched.length, moved: 0, skippedReserved: 0, skippedInvalid: 0, skippedConflict: 0, examples: [] };
+  const staying = new Set(); // ids of spots that do not move
+  const target = new Map(); // id -> { court, start, end }
+  const courtLabel = (id) => (db.prepare('SELECT name FROM reservation_courts WHERE id = ?').get(id) || {}).name || '?';
+  const note = (s, why) => { if (result.examples.length < 5) result.examples.push(`${courtLabel(s.court_id)} ${s.day} ${s.start_time}–${s.end_time}: ${why}`); };
+  matched.forEach((s) => {
+    if (isTaken(s) && !b.includeReserved) { staying.add(s.id); result.skippedReserved += 1; return; }
+    const start = toMinutes(s.start_time) + shift;
+    const end = toMinutes(s.end_time) + shift;
+    if (start < 0 || end > 1440) { staying.add(s.id); result.skippedInvalid += 1; note(s, 'would cross midnight'); return; }
+    if (s.day === now.date && fromMinutes(end === 1440 ? 1439 : end) <= now.time) { staying.add(s.id); result.skippedInvalid += 1; note(s, 'that time is already over today'); return; }
+    target.set(s.id, { court: toCourt === null ? s.court_id : toCourt, start: fromMinutes(start), end: end === 1440 ? '24:00' : fromMinutes(end) });
+  });
+  // a spot whose new place overlaps a spot that stays (or another moved spot) stays too; repeat until nothing changes
+  const placeOf = (s) => (target.has(s.id) ? target.get(s.id) : { court: s.court_id, start: s.start_time, end: s.end_time });
+  const clashOf = (s) => {
+    const t = target.get(s.id);
+    return inRange.find((o) => o.id !== s.id && o.day === s.day && placeOf(o).court === t.court && overlaps(placeOf(o).start, placeOf(o).end, t.start, t.end));
+  };
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const s of matched) {
+      if (!target.has(s.id)) continue;
+      const other = clashOf(s);
+      if (other) { target.delete(s.id); staying.add(s.id); result.skippedConflict += 1; note(s, `would overlap the spot ${placeOf(other).start}–${placeOf(other).end}`); changed = true; }
+    }
+  }
+  result.moved = target.size;
+  if (!b.dryRun && target.size) {
+    const update = db.prepare('UPDATE court_slots SET court_id = ?, start_time = ?, end_time = ? WHERE id = ?');
+    db.exec('BEGIN');
+    try {
+      target.forEach((t, id) => update.run(t.court, t.start, t.end, id));
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+    emitChanged(req);
+  }
+  res.json({ ...result, dryRun: !!b.dryRun });
+});
+
+// Changes a spot: { courtId, day, start, end } — any of them. A free spot is changed as asked; a reserved one needs { force: true }
+// (the player keeps the reservation, now at the new time or place). The new place must not overlap another spot of that court.
+router.patch('/slots/:id', requireAdmin, (req, res) => {
+  const slot = slotRow(Number(req.params.id));
+  if (!slot) return res.status(404).json({ error: 'That spot does not exist' });
+  const b = req.body || {};
+  const now = nowLocal();
+  const next = {
+    courtId: b.courtId === undefined ? slot.court_id : Number(b.courtId),
+    day: b.day === undefined ? slot.day : b.day,
+    start: b.start === undefined ? slot.start_time : b.start,
+    end: b.end === undefined ? slot.end_time : b.end,
+  };
+  if (!db.prepare('SELECT 1 FROM reservation_courts WHERE id = ?').get(next.courtId)) return res.status(400).json({ error: 'That court does not exist' });
+  if (!START_TIME.test(next.start || '') || !END_TIME.test(next.end || '')) return res.status(400).json({ error: 'Times must be on the hour or the half hour, like 10:00 or 10:30' });
+  if (toMinutes(next.end) <= toMinutes(next.start)) return res.status(400).json({ error: 'The end must be after the start' });
+  if (!isRealDay(next.day || '')) return res.status(400).json({ error: 'The date is not valid' });
+  if (next.day < now.date) return res.status(400).json({ error: 'A spot cannot be moved into the past' });
+  if (next.day > addDays(now.date, MAX_AHEAD_DAYS)) return res.status(400).json({ error: `Spots can be added up to ${MAX_AHEAD_DAYS} days ahead` });
+  if (next.day === now.date && next.end <= now.time) return res.status(400).json({ error: 'That time is already over today' });
+  const clash = db.prepare('SELECT start_time, end_time FROM court_slots WHERE court_id = ? AND day = ? AND id != ?').all(next.courtId, next.day, slot.id)
+    .find((x) => overlaps(x.start_time, x.end_time, next.start, next.end));
+  if (clash) return res.status(409).json({ code: 'CLASH', error: `There is already a spot from ${clash.start_time} to ${clash.end_time} on that court that day` });
+  if (isTaken(slot) && !(b.force === true || b.force === 1 || b.force === '1')) {
+    return res.status(409).json({ code: 'RESERVED', error: `${slot.guest_name || slot.player_name || 'Somebody'} has reserved this spot`, name: slot.guest_name || slot.player_name || '' });
+  }
+  db.prepare('UPDATE court_slots SET court_id = ?, day = ?, start_time = ?, end_time = ? WHERE id = ?').run(next.courtId, next.day, next.start, next.end, slot.id);
+  emitChanged(req);
+  res.json({ ok: true });
+});
+
 // Deleting a reserved spot needs ?force=1 (the player loses the reservation).
 router.delete('/slots/:id', requireAdmin, (req, res) => {
   const slot = slotRow(Number(req.params.id));

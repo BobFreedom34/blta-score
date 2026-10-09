@@ -4571,6 +4571,9 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .rv-facts span { color: #6b7280; font-weight: 600; }
 .rv-note { font-size: 13px; color: #4b5563; margin: 0 0 12px; line-height: 1.45; }
 .rv-label { display: block; font-size: 12px; font-weight: 800; margin-bottom: 4px; }
+.rv-edit summary { cursor: pointer; font-size: 14px; font-weight: 700; padding: 8px 0; }
+.rv-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+.rv-edit-grid select, .rv-edit-grid input { display: block; width: 100%; margin-top: 4px; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #ddd; font-family: inherit; font-size: 14px; }
 .rv-error { color: var(--danger); font-weight: 700; font-size: 14px; margin: 6px 0 10px; min-height: 0; }
 
 @media (max-width: 700px) {
