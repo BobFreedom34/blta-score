@@ -4616,3 +4616,5 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
   .booking-btn svg { width: 14px; height: 14px; flex-basis: 14px; }
 }
 @media print { .booking-btn { display: none; } }
+
+.slot-hint { margin: 2px 0 10px; font-size: 13px; line-height: 1.4; color: var(--gray-dim, #8a8f98); }

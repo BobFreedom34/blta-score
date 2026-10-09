@@ -257,6 +257,7 @@ function myPostFormHtml(existing) {
     <form id="my-post-form">
       <div class="field">
         <label><span>${t('proposeTimes.markTimes')}</span> <span id="my-post-slot-count" style="font-weight:400;color:var(--gray-dim)"></span></label>
+        <p class="slot-hint">${t('proposeTimes.startHint')}</p>
         <div class="tabs week-picker-tabs" id="my-post-week-tabs"></div>
         <div class="availability-grid-wrap" id="my-post-grid-wrap"></div>
         <button type="button" class="btn btn-sm btn-outline" id="my-post-clear-slots-btn" style="margin-top:10px">${t('common.clearAll')}</button>
