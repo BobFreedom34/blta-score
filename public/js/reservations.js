@@ -68,7 +68,7 @@
     const rows = (endMin - startMin) / 30;
     const C = courts.length;
     const colOf = (dayIndex, courtIndex) => 2 + dayIndex * C + courtIndex;
-    const out = [`<div class="rv-grid" style="grid-template-columns:64px repeat(${data.days.length * C}, minmax(var(--rv-col), 1fr));grid-template-rows:34px 26px repeat(${rows}, 30px)">`];
+    const out = [`<div class="rv-grid" style="grid-template-columns:64px repeat(${data.days.length * C}, minmax(var(--rv-col), 1fr));grid-template-rows:34px 52px repeat(${rows}, 30px)">`];
     out.push('<div class="rv-corner"></div>');
     data.days.forEach((day, i) => {
       const cls = ['rv-dayh'];
@@ -119,7 +119,6 @@
           ${data.canShiftBack ? `<button type="button" class="btn btn-sm btn-outline" data-today>${escapeHtml(t('rv.today'))}</button>` : ''}
         </div>
         <div class="rv-legend">
-          <span><i class="free"></i>${escapeHtml(t('rv.free'))}</span>
           <span><i class="taken"></i>${escapeHtml(t('rv.taken'))}</span>
           <span><i class="mine"></i>${escapeHtml(t('rv.mine'))}</span>
           <span><i class="past"></i>${escapeHtml(t('rv.past'))}</span>
