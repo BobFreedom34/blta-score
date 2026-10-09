@@ -6,3 +6,6 @@ data/*.db-shm
 data/badge-icons/
 data/player-photos/
 data/winner-photos/
+
+# local design mockups
+mockups/
