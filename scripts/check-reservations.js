@@ -18,6 +18,72 @@ const NOW = { date: '2026-10-09', time: '10:15' }; // a Friday
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
+
+// ---------------------------------------------------------------- a tiny SMTP server that keeps the e-mails the app sends
+const net = require('net');
+const mails = [];
+let smtpPort = 0;
+function startSmtpSink() {
+  return new Promise((resolve) => {
+    const server = net.createServer((sock) => {
+      let buf = '';
+      let inData = false;
+      let from = '';
+      let rcpts = [];
+      const send = (s) => sock.write(`${s}\r\n`);
+      send('220 sink ESMTP');
+      sock.on('error', () => {});
+      sock.on('data', (chunk) => {
+        buf += chunk.toString('utf8');
+        for (;;) {
+          if (inData) {
+            const i = buf.indexOf('\r\n.\r\n');
+            if (i < 0) return;
+            mails.push({ from, to: rcpts.slice(), raw: buf.slice(0, i) });
+            buf = buf.slice(i + 5);
+            inData = false;
+            rcpts = [];
+            send('250 queued');
+            continue;
+          }
+          const i = buf.indexOf('\r\n');
+          if (i < 0) return;
+          const line = buf.slice(0, i);
+          buf = buf.slice(i + 2);
+          const cmd = line.slice(0, 4).toUpperCase();
+          if (cmd === 'EHLO') sock.write('250-sink\r\n250 AUTH PLAIN LOGIN\r\n');
+          else if (cmd === 'AUTH') send('235 ok');
+          else if (cmd === 'MAIL') { from = line; send('250 ok'); }
+          else if (cmd === 'RCPT') { rcpts.push(line.replace(/^RCPT TO:\s*<?/i, '').replace(/>?\s*$/, '')); send('250 ok'); }
+          else if (cmd === 'DATA') { inData = true; send('354 go'); }
+          else if (cmd === 'QUIT') { send('221 bye'); sock.end(); }
+          else send('250 ok');
+        }
+      });
+    });
+    server.listen(0, '127.0.0.1', () => { smtpPort = server.address().port; resolve(server); });
+  });
+}
+// subject and text of a kept e-mail, decoded (quoted-printable / base64 / encoded words)
+function readMail(m) {
+  const [head, ...rest] = m.raw.split('\r\n\r\n');
+  const body = rest.join('\r\n\r\n');
+  const header = (name) => (new RegExp(String.raw`^${name}:\s*([^\r\n]*(?:\r?\n[ \t][^\r\n]*)*)`, 'im').exec(head) || [])[1] || '';
+  const words = (v) => v.replace(/\r?\n[ \t]/g, '').replace(/=\?UTF-8\?([QB])\?([^?]*)\?=/gi, (all, kind, data) => (kind.toUpperCase() === 'B'
+    ? Buffer.from(data, 'base64').toString('utf8')
+    : Buffer.from(data.replace(/_/g, ' ').replace(/=([0-9A-F]{2})/gi, (x, h) => String.fromCharCode(parseInt(h, 16))), 'latin1').toString('utf8')));
+  const cte = header('Content-Transfer-Encoding').toLowerCase();
+  let text = body;
+  if (cte === 'base64') text = Buffer.from(body.replace(/\s+/g, ''), 'base64').toString('utf8');
+  else if (cte === 'quoted-printable') text = Buffer.from(body.replace(/=\r?\n/g, '').replace(/=([0-9A-F]{2})/gi, (x, h) => String.fromCharCode(parseInt(h, 16))), 'latin1').toString('utf8');
+  return { to: m.to, subject: words(header('Subject')).trim(), replyTo: words(header('Reply-To')).trim(), text: text.replace(/\r\n/g, '\n') };
+}
+const waitForMails = async (count, timeout = 5000) => {
+  const end = Date.now() + timeout;
+  while (mails.length < count && Date.now() < end) await new Promise((r) => setTimeout(r, 50));
+  return mails.length;
+};
+
 let child = null;
 let adminCookie = '';
 let db = null;
@@ -558,9 +624,10 @@ test('page: /rezervacie-kurtov and /en/court-booking exist, the code address is 
 
 // ---------------------------------------------------------------- run
 async function startServer() {
+  await startSmtpSink();
   child = spawn(process.execPath, ['server.js'], {
     cwd: ROOT,
-    env: { ...process.env, DATA_DIR: serverDir, PORT: String(PORT), ADMIN_PASSWORD: 'test', SESSION_SECRET: 'test', RESERVATIONS_NOW: `${NOW.date} ${NOW.time}` },
+    env: { ...process.env, DATA_DIR: serverDir, PORT: String(PORT), ADMIN_PASSWORD: 'test', SESSION_SECRET: 'test', RESERVATIONS_NOW: `${NOW.date} ${NOW.time}`, SMTP_HOST: '127.0.0.1', SMTP_PORT: String(smtpPort), SMTP_SECURE: 'false', SMTP_USER: 'sender@example.com', SMTP_PASS: 'x', MAIL_FROM: 'BLTA <noreply@example.com>', NOTIFY_EMAIL: 'admin@example.com', PUBLIC_URL: 'https://blta.sk' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
@@ -576,6 +643,70 @@ async function startServer() {
   db = new DatabaseSync(path.join(serverDir, 'blta-score.db'));
   db.exec('PRAGMA busy_timeout = 5000');
 }
+
+// ---------------------------------------------------------------- e-mails
+test('e-mails: a reservation tells the admin and confirms to the player, with the price; no e-mail on file = only the admin hears', async () => {
+  const before = mails.length;
+  const court = (await admin('POST', '/api/reservations/courts', { name: 'Mail test', note: 'antuka, Nobelova 34', hourRate: 10, rates: { weekdayMorning: 12, weekdayAfternoon: 20, weekend: 30 } })).json;
+  assert.strictEqual((await admin('PUT', '/api/reservations/settings', { maxActive: 0, cancelHours: 2, afternoonFrom: '16:00' })).status, 200);
+  const mk = async (day, start, end) => {
+    const r = await admin('POST', '/api/reservations/slots', { courtIds: [court.id], date: day, start, end });
+    assert.strictEqual(r.json.created, 1, JSON.stringify(r.json));
+    return (await slotsOf(day, court.id)).find((s) => s.start === start);
+  };
+  const sat = await mk(D(1), '09:00', '10:30'); // Saturday: the weekend price all day
+  const monCross = await mk(D(3), '14:00', '17:00'); // Monday over the change at 16:00
+  const monShort = await mk(D(3), '09:00', '09:30');
+  const maria = newPlayer('Mária Mailová');
+  db.prepare('UPDATE players SET email = ?, phone = ? WHERE id = ?').run('maria@example.com', '+421900111222', maria);
+  const nikto = newPlayer('Nikto Bezmailu');
+
+  assert.strictEqual((await as(maria, 'POST', `/api/reservations/slots/${sat.id}/reserve`)).status, 201);
+  assert.strictEqual(await waitForMails(before + 2), before + 2, 'two e-mails for one reservation');
+  const got = mails.slice(before).map(readMail);
+  const toAdmin = got.find((m) => m.to.includes('admin@example.com'));
+  const toPlayer = got.find((m) => m.to.includes('maria@example.com'));
+  assert.ok(toAdmin && toPlayer, JSON.stringify(got.map((m) => m.to)));
+  assert.strictEqual(toAdmin.subject, 'Nová rezervácia kurtu: Mária Mailová – Mail test, sobota 10.10.2026 09:00–10:30');
+  assert.ok(toAdmin.replyTo.includes('maria@example.com'), 'the admin can reply to the player');
+  for (const line of ['Hráč: Mária Mailová', 'Telefón: +421900111222', 'E-mail: maria@example.com', 'Kurt: Mail test', 'Kedy: sobota 10.10.2026, 09:00–10:30', 'Cena: 45 €', 'https://blta.sk/rezervacie-kurtov']) {
+    assert.ok(toAdmin.text.includes(line), `admin mail lacks "${line}":\n${toAdmin.text}`);
+  }
+  assert.strictEqual(toPlayer.subject, 'Rezervácia kurtu potvrdená: Mail test, sobota 10.10.2026 09:00–10:30');
+  for (const line of ['Ahoj Mária,', 'tvoja rezervácia kurtu je potvrdená.', 'Kurt: Mail test (antuka, Nobelova 34)', 'Kedy: sobota 10.10.2026, 09:00–10:30', 'Cena: 45 €', 'najneskôr 2 hodiny pred začiatkom', 'https://blta.sk/rezervacie-kurtov']) {
+    assert.ok(toPlayer.text.includes(line), `player mail lacks "${line}":\n${toPlayer.text}`);
+  }
+
+  // no e-mail on file: only the admin; the price is worked out half hour by half hour (two hours at 12 + one at 20 = 44)
+  const mid = mails.length;
+  assert.strictEqual((await as(nikto, 'POST', `/api/reservations/slots/${monCross.id}/reserve`)).status, 201);
+  assert.strictEqual(await waitForMails(mid + 1), mid + 1);
+  await new Promise((r) => setTimeout(r, 300));
+  assert.strictEqual(mails.length, mid + 1, 'a player without an e-mail gets none');
+  const cross = readMail(mails[mid]);
+  assert.deepStrictEqual(mails[mid].to, ['admin@example.com']);
+  assert.ok(cross.text.includes('Cena: 44 €') && cross.text.includes('E-mail: -') && cross.text.includes('pondelok 12.10.2026'), cross.text);
+  // half an hour in the weekday morning: 6 €
+  const mid2 = mails.length;
+  assert.strictEqual((await as(nikto, 'POST', `/api/reservations/slots/${monShort.id}/reserve`)).status, 201);
+  assert.strictEqual(await waitForMails(mid2 + 1), mid2 + 1);
+  assert.ok(readMail(mails[mid2]).text.includes('Cena: 6 €'));
+  // a refused reservation sends nothing
+  const mid3 = mails.length;
+  assert.strictEqual((await as(maria, 'POST', `/api/reservations/slots/${monShort.id}/reserve`)).status, 409);
+  await new Promise((r) => setTimeout(r, 300));
+  assert.strictEqual(mails.length, mid3, 'a refused reservation sends no e-mail');
+  // a court without prices: no "Cena" line
+  const plain = (await admin('POST', '/api/reservations/courts', { name: 'No price' })).json;
+  await admin('POST', '/api/reservations/slots', { courtIds: [plain.id], date: D(2), start: '10:00', end: '11:00' });
+  const free = (await slotsOf(D(2), plain.id))[0];
+  const mid4 = mails.length;
+  assert.strictEqual((await as(maria, 'POST', `/api/reservations/slots/${free.id}/reserve`)).status, 201);
+  assert.strictEqual(await waitForMails(mid4 + 2), mid4 + 2);
+  mails.slice(mid4).forEach((m) => assert.ok(!readMail(m).text.includes('Cena:'), 'a price on a court without one'));
+  await admin('DELETE', `/api/reservations/courts/${court.id}?force=1`);
+  await admin('DELETE', `/api/reservations/courts/${plain.id}?force=1`);
+});
 
 async function main() {
   let failed = 0;

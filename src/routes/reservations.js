@@ -9,6 +9,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireAdmin, getPlayerId, isAdmin } = require('../auth');
+const mailer = require('../mailer');
 
 const router = express.Router();
 
@@ -118,6 +119,39 @@ function shortName(name) {
 
 function emitChanged(req) {
   try { req.app.get('io').emit('reservations:changed', {}); } catch { /* no socket server (checks) */ }
+}
+
+// The price of a spot in euro (0 = none), worked out half hour by half hour like the page does: weekday morning / weekday afternoon
+// (from the rule `afternoonFrom`) / weekend, each falling back to the court's hour rate.
+function spotPrice(court, slot, settings) {
+  const weekend = isoWeekday(slot.day) >= 6;
+  let eur = 0;
+  for (let m = toMinutes(slot.start_time); m < toMinutes(slot.end_time); m += 30) {
+    const hhmm = `${String(Math.floor(m / 60)).padStart(2, '0')}:${m % 60 ? '30' : '00'}`;
+    const own = weekend ? court.rate_we : hhmm >= settings.afternoonFrom ? court.rate_wd_pm : court.rate_wd_am;
+    eur += (own === null || own === undefined ? court.hour_rate : own) / 2;
+  }
+  return Math.round(eur * 100) / 100;
+}
+const euroText = (eur) => `${Number.isInteger(eur) ? eur : eur.toFixed(2).replace('.', ',')} €`;
+
+// Tells the admin and (with an e-mail on file) the player about a reservation the player has just made. Never lets a failure reach
+// the player: the reservation is already made.
+function notifyReserved(slot, playerId) {
+  try {
+    const player = db.prepare('SELECT name, email, phone FROM players WHERE id = ?').get(playerId);
+    const court = db.prepare('SELECT * FROM reservation_courts WHERE id = ?').get(slot.court_id);
+    if (!player || !court) return;
+    const settings = getSettings();
+    const eur = spotPrice(court, slot, settings);
+    mailer.sendCourtReservationEmails({
+      player: { name: player.name, email: player.email || '', phone: player.phone || '' },
+      court: court.name, note: court.note || '', day: slot.day, start: slot.start_time, end: slot.end_time,
+      price: eur > 0 ? euroText(eur) : '', cancelHours: settings.cancelHours,
+    }).catch((err) => console.error('[court reservation] e-mails failed:', err.message));
+  } catch (err) {
+    console.error('[court reservation] e-mails failed:', err.message);
+  }
 }
 
 function slotRow(id) {
@@ -236,6 +270,7 @@ router.post('/slots/:id/reserve', (req, res) => {
     .run(me, new Date().toISOString(), slot.id).changes;
   if (!changed) return res.status(409).json({ code: 'TAKEN', error: 'Somebody has just taken this spot' });
   emitChanged(req);
+  notifyReserved(slot, me);
   res.status(201).json({ ok: true, slot: { id: slot.id, court: slot.court_name, day: slot.day, start: slot.start_time, end: slot.end_time } });
 });
 

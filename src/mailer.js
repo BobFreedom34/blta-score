@@ -422,7 +422,86 @@ async function sendSeasonRegistrationEmail(season, registration, total) {
   return true;
 }
 
+// ---------------------------------------------------------------- court reservations
+
+const SK_DAYS = ['nedeľa', 'pondelok', 'utorok', 'streda', 'štvrtok', 'piatok', 'sobota'];
+// '2026-10-14' -> 'streda 14.10.2026' (the date is a plain calendar day: no time zone involved)
+function skDay(iso) {
+  const [y, m, d] = String(iso).split('-').map(Number);
+  const wd = SK_DAYS[new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay()];
+  return `${wd} ${d}.${m}.${y}`;
+}
+function skHours(n) { return `${n} ${n === 1 ? 'hodinu' : n >= 2 && n <= 4 ? 'hodiny' : 'hodín'}`; }
+function reservationsLink() {
+  return `${process.env.PUBLIC_URL || ''}${require('./seo').pageUrl('/reservations', 'sk')}`;
+}
+
+// The two texts of a court reservation made by a player: the confirmation to the player and the notice to the admin.
+// r = { player: { name, email, phone }, court, note, day, start, end, price ('27 €' or ''), cancelHours }
+function courtReservationTexts(r) {
+  const when = `${skDay(r.day)}, ${r.start}–${r.end}`;
+  const first = String(r.player.name || '').trim().split(/\s+/)[0] || '';
+  const cancel = r.cancelHours > 0
+    ? `Rezerváciu môžeš zrušiť najneskôr ${skHours(r.cancelHours)} pred začiatkom.`
+    : 'Rezerváciu môžeš zrušiť, kým sa daný čas nezačne.';
+  const playerText = [
+    first ? `Ahoj ${first},` : 'Ahoj,',
+    '',
+    'tvoja rezervácia kurtu je potvrdená.',
+    '',
+    `Kurt: ${r.court}${r.note ? ` (${r.note})` : ''}`,
+    `Kedy: ${when}`,
+    ...(r.price ? [`Cena: ${r.price}`] : []),
+    '',
+    `${cancel} Nájdeš ju v sekcii Moje rezervácie: ${reservationsLink()}`,
+    '',
+    'Tešíme sa na teba na kurte!',
+    'BLTA – Bratislavská Liga Tenisových Amatérov',
+  ].join('\n');
+  const adminText = [
+    'Hráč si práve rezervoval kurt:',
+    '',
+    `Hráč: ${r.player.name}`,
+    `Telefón: ${r.player.phone || '-'}`,
+    `E-mail: ${r.player.email || '-'}`,
+    `Kurt: ${r.court}`,
+    `Kedy: ${when}`,
+    ...(r.price ? [`Cena: ${r.price}`] : []),
+    '',
+    `Kalendár rezervácií: ${reservationsLink()}`,
+  ].join('\n');
+  return {
+    player: { subject: `Rezervácia kurtu potvrdená: ${r.court}, ${skDay(r.day)} ${r.start}–${r.end}`, text: playerText },
+    admin: { subject: `Nová rezervácia kurtu: ${r.player.name} – ${r.court}, ${skDay(r.day)} ${r.start}–${r.end}`, text: adminText },
+  };
+}
+
+// Both e-mails of a reservation; the player's one only when the player has an e-mail on file. Never throws (a reservation must not fail
+// because of an e-mail): returns { admin, player } = true when sent.
+async function sendCourtReservationEmails(r) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping court-reservation emails.');
+    return { admin: false, player: false };
+  }
+  const texts = courtReservationTexts(r);
+  const from = process.env.MAIL_FROM || process.env.SMTP_USER;
+  const sent = { admin: false, player: false };
+  try {
+    await t.sendMail({ from, to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER, replyTo: r.player.email || undefined, subject: texts.admin.subject, text: texts.admin.text });
+    sent.admin = true;
+  } catch (err) { console.error('[court reservation] admin e-mail failed:', err.message); }
+  if (r.player.email) {
+    try {
+      await t.sendMail({ from, to: r.player.email, subject: texts.player.subject, text: texts.player.text });
+      sent.player = true;
+    } catch (err) { console.error('[court reservation] player e-mail failed:', err.message); }
+  }
+  return sent;
+}
+
 module.exports = {
+  courtReservationTexts, sendCourtReservationEmails,
   sendSeasonRegistrationEmail,
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendProposalReceivedEmail,
