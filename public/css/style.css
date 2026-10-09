@@ -4549,7 +4549,8 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .rv-slot { z-index: 1; margin: 1px 2px; padding: 2px 3px; border: 0; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-width: 0; overflow: hidden; text-align: center; font-family: inherit; font-size: 12px; line-height: 1.15; cursor: pointer; }
 .rv-n { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
 .rv-t { font-size: 10px; font-weight: 700; opacity: 0.8; white-space: nowrap; }
-.rv-slot.one .rv-t { display: none; }
+.rv-p { font-size: 11px; font-weight: 800; white-space: nowrap; }
+.rv-slot.one .rv-t, .rv-slot.one .rv-p { display: none; }
 .rv-slot.free { background: var(--rv-c, var(--green)); color: var(--rv-t, #0a0a0a); }
 .rv-slot.free:hover { filter: brightness(1.1); box-shadow: 0 0 0 2px rgba(178, 250, 6, 0.4); }
 .rv-slot.taken { background: var(--orange); color: var(--white); cursor: default; }
@@ -4566,6 +4567,12 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .rv-mine { margin-top: 36px; }
 .rv-my { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 14px; margin-top: 8px; background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; font-size: 14px; }
 .rv-locked { color: #9aa0aa; font-size: 12px; font-weight: 600; }
+.rv-my { color: var(--white); }
+.rv-my b { color: var(--white); }
+.rv-my .btn-outline { color: var(--white); border-color: rgba(255, 255, 255, 0.55); background: transparent; }
+.rv-my .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+.rv-mine .sv-sec-h h2 { color: var(--white); }
+.rv-mine .sv-sec-h > span { color: #c4c9d2; font-size: 14px; }
 
 /* the windows */
 .rv-modal h3 { margin: 0 0 14px; }

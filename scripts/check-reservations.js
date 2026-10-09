@@ -89,6 +89,25 @@ test('courts: each court can get a colour for its free spots', async () => {
   assert.deepStrictEqual((await view()).courts.map((c) => c.id), [S.c1, S.c2, S.c3], 'cleaned up');
 });
 
+test('courts: an hour rate per court (euro, 0 = no price)', async () => {
+  const rate = (id) => view().then((v) => v.courts.find((c) => c.id === id).hourRate);
+  assert.strictEqual(await rate(S.c1), 0, 'no rate by default');
+  assert.strictEqual((await admin('PATCH', `/api/reservations/courts/${S.c1}`, { hourRate: '18' })).json.hourRate, 18);
+  assert.strictEqual(await rate(S.c1), 18, 'the public page gets it too');
+  assert.strictEqual((await admin('PATCH', `/api/reservations/courts/${S.c1}`, { hourRate: '12,5' })).json.hourRate, 12.5, 'a comma is fine');
+  await admin('PATCH', `/api/reservations/courts/${S.c1}`, { name: 'Court 1' });
+  assert.strictEqual(await rate(S.c1), 12.5, 'a patch without a rate keeps it');
+  for (const bad of ['abc', '-5', '1001', '1.2.3', '1e3']) {
+    assert.strictEqual((await admin('PATCH', `/api/reservations/courts/${S.c1}`, { hourRate: bad })).status, 400, 'refused: ' + bad);
+  }
+  assert.strictEqual(await rate(S.c1), 12.5, 'refused values change nothing');
+  assert.strictEqual((await admin('PATCH', `/api/reservations/courts/${S.c1}`, { hourRate: '' })).json.hourRate, 0, 'empty = no price');
+  const made = await admin('POST', '/api/reservations/courts', { name: 'Rate test', hourRate: 20 });
+  assert.strictEqual(made.json.hourRate, 20);
+  assert.strictEqual((await admin('POST', '/api/reservations/courts', { name: 'Bad rate', hourRate: 'free' })).status, 400);
+  await admin('DELETE', `/api/reservations/courts/${made.json.id}`);
+});
+
 // ---------------------------------------------------------------- spots
 test('spots: Thursday 10:00-12:00 is one spot; overlaps are skipped; blocks split a range', async () => {
   const one = await admin('POST', '/api/reservations/slots', { courtIds: [S.c1], date: D(6), start: '10:00', end: '12:00' });

@@ -28,6 +28,15 @@
     const lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
     return lum > 0.6 ? '#0a0a0a' : '#ffffff';
   };
+  // the price of a spot: the court's hour rate times the length (no rate = no price); '27 €' or '13,50 €'
+  const priceOf = (s) => {
+    const rate = (data.courts.find((c) => c.id === s.courtId) || {}).hourRate;
+    if (!rate) return '';
+    const hours = (mins(s.end) - mins(s.start)) / 60;
+    const eur = Math.round(rate * hours * 100) / 100;
+    const text = Number.isInteger(eur) ? String(eur) : eur.toFixed(2);
+    return `${currentLang === 'en' ? text : text.replace('.', ',')} €`;
+  };
   const colorVars = (id) => {
     const c = (data.courts.find((x) => x.id === id) || {}).color;
     return c ? `--rv-c:${c};--rv-t:${textOn(c)};` : '';
@@ -92,8 +101,9 @@
       if (span === 1) cls.push('one');
       const who = isAdmin && s.name ? s.name : s.label;
       const text = s.status === 'RESERVED' ? `<span class="rv-n">${escapeHtml(who)}</span>` : `<span class="rv-n">${s.past ? '' : escapeHtml(t('rv.free'))}</span>`;
-      const time = `<span class="rv-t">${s.start}–${s.end}</span>`;
-      const title = `${courtName(s.courtId)} · ${longDay(s.day)} · ${s.start}–${s.end}${s.status === 'RESERVED' ? ` · ${who}` : ''}`;
+      const price = s.status === 'FREE' && !s.past && priceOf(s) ? `<span class="rv-p">${escapeHtml(priceOf(s))}</span>` : '';
+      const time = `<span class="rv-t">${s.start}–${s.end}</span>${price}`;
+      const title = `${courtName(s.courtId)} · ${longDay(s.day)} · ${s.start}–${s.end}${s.status === 'FREE' && priceOf(s) ? ` · ${priceOf(s)}` : ''}${s.status === 'RESERVED' ? ` · ${who}` : ''}`;
       const clickable = isAdmin || (!s.past && (s.status === 'FREE' || s.mine));
       out.push(`<button type="button" class="${cls.join(' ')}" data-id="${s.id}" title="${escapeHtml(title)}" style="grid-column:${colOf(i, j)};grid-row:${r1} / span ${span};${colorVars(s.courtId)}"${clickable ? '' : ' tabindex="-1"'}>${text}${time}</button>`);
     });
@@ -165,6 +175,7 @@
       <div><span>${escapeHtml(t('rv.court'))}</span><b>${escapeHtml(courtName(s.courtId))}</b></div>
       <div><span>${escapeHtml(t('rv.date'))}</span><b>${escapeHtml(longDay(s.day))}</b></div>
       <div><span>${escapeHtml(t('rv.time'))}</span><b>${s.start}–${s.end}</b></div>
+      ${priceOf(s) ? `<div><span>${escapeHtml(t('rv.price'))}</span><b>${escapeHtml(priceOf(s))}</b></div>` : ''}
     </div>`;
 
   const errorText = (err) => {

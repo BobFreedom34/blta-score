@@ -40,6 +40,11 @@ if (!db.prepare('PRAGMA table_info(reservation_courts)').all().some((c) => c.nam
   db.exec("ALTER TABLE reservation_courts ADD COLUMN color TEXT NOT NULL DEFAULT ''");
 }
 
+// the price of one hour on a court in euro (0 = no price shown): a spot costs the rate times its length
+if (!db.prepare('PRAGMA table_info(reservation_courts)').all().some((c) => c.name === 'hour_rate')) {
+  db.exec('ALTER TABLE reservation_courts ADD COLUMN hour_rate REAL NOT NULL DEFAULT 0');
+}
+
 const WINDOW_DAYS = 10;
 const MAX_AHEAD_DAYS = 365;
 const MAX_CREATE = 1000;
@@ -143,7 +148,7 @@ router.get('/', (req, res) => {
   const admin = isAdmin(req);
   const me = getPlayerId(req);
   const settings = getSettings();
-  const courts = db.prepare('SELECT id, name, note, color FROM reservation_courts ORDER BY sort_order, id').all();
+  const courts = db.prepare('SELECT id, name, note, color, hour_rate AS hourRate FROM reservation_courts ORDER BY sort_order, id').all();
   const rows = db.prepare(`
     SELECT s.*, p.name AS player_name, p.slug AS player_slug
     FROM court_slots s LEFT JOIN players p ON p.id = s.player_id
@@ -250,6 +255,17 @@ router.post('/slots/:id/cancel', (req, res) => {
 // ---------------------------------------------------------------- admin: courts
 
 // '#rrggbb' (any case) -> lowercase, '' (or nothing) -> '' (the default green); anything else -> null
+const RATE_ERROR = 'The hour rate must be a number from 0 to 1000 (euro)';
+// '18', '18,5', 18.5 -> a number rounded to cents; ''/null -> 0 (no price); anything else (negative, text, too big) -> null
+function cleanRate(value) {
+  if (value === undefined || value === null) return 0;
+  const text = String(value).trim().replace(',', '.');
+  if (text === '') return 0;
+  if (!/^[0-9]+(\.[0-9]+)?$/.test(text)) return null;
+  const n = Math.round(Number(text) * 100) / 100;
+  return n >= 0 && n <= 1000 ? n : null;
+}
+
 function cleanColor(value) {
   if (value === undefined || value === null) return '';
   const v = String(value).trim().toLowerCase();
@@ -261,14 +277,16 @@ router.post('/courts', requireAdmin, (req, res) => {
   const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
   const note = typeof req.body.note === 'string' ? req.body.note.trim() : '';
   const color = cleanColor(req.body.color);
+  const rate = cleanRate(req.body.hourRate);
   if (!name) return res.status(400).json({ error: 'The court needs a name' });
   if (name.length > 60 || note.length > 200) return res.status(400).json({ error: 'The name or the note is too long' });
   if (color === null) return res.status(400).json({ error: 'The colour must look like #1a73e8' });
+  if (rate === null) return res.status(400).json({ error: RATE_ERROR });
   if (db.prepare('SELECT 1 FROM reservation_courts WHERE lower(name) = lower(?)').get(name)) return res.status(409).json({ error: 'A court with this name already exists' });
   const next = (db.prepare('SELECT MAX(sort_order) AS m FROM reservation_courts').get().m ?? -1) + 1;
-  const id = Number(db.prepare('INSERT INTO reservation_courts (name, note, sort_order, color) VALUES (?, ?, ?, ?)').run(name, note, next, color).lastInsertRowid);
+  const id = Number(db.prepare('INSERT INTO reservation_courts (name, note, sort_order, color, hour_rate) VALUES (?, ?, ?, ?, ?)').run(name, note, next, color, rate).lastInsertRowid);
   emitChanged(req);
-  res.status(201).json(db.prepare('SELECT id, name, note, color FROM reservation_courts WHERE id = ?').get(id));
+  res.status(201).json(db.prepare('SELECT id, name, note, color, hour_rate AS hourRate FROM reservation_courts WHERE id = ?').get(id));
 });
 
 router.patch('/courts/:id', requireAdmin, (req, res) => {
@@ -277,13 +295,15 @@ router.patch('/courts/:id', requireAdmin, (req, res) => {
   const name = req.body.name === undefined ? court.name : String(req.body.name).trim();
   const note = req.body.note === undefined ? court.note : String(req.body.note).trim();
   const color = req.body.color === undefined ? court.color : cleanColor(req.body.color);
+  const rate = req.body.hourRate === undefined ? court.hour_rate : cleanRate(req.body.hourRate);
   if (!name) return res.status(400).json({ error: 'The court needs a name' });
   if (name.length > 60 || note.length > 200) return res.status(400).json({ error: 'The name or the note is too long' });
   if (color === null) return res.status(400).json({ error: 'The colour must look like #1a73e8' });
+  if (rate === null) return res.status(400).json({ error: RATE_ERROR });
   if (db.prepare('SELECT 1 FROM reservation_courts WHERE lower(name) = lower(?) AND id != ?').get(name, court.id)) return res.status(409).json({ error: 'A court with this name already exists' });
-  db.prepare('UPDATE reservation_courts SET name = ?, note = ?, color = ? WHERE id = ?').run(name, note, color, court.id);
+  db.prepare('UPDATE reservation_courts SET name = ?, note = ?, color = ?, hour_rate = ? WHERE id = ?').run(name, note, color, rate, court.id);
   emitChanged(req);
-  res.json(db.prepare('SELECT id, name, note, color FROM reservation_courts WHERE id = ?').get(court.id));
+  res.json(db.prepare('SELECT id, name, note, color, hour_rate AS hourRate FROM reservation_courts WHERE id = ?').get(court.id));
 });
 
 // Deleting a court deletes its spots; with reservations that have not started yet it needs ?force=1 (the players lose them).

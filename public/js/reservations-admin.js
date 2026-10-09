@@ -41,6 +41,7 @@
           <input type="color" data-f="color" value="${c.color || DEFAULT_COLOR}" aria-label="Colour of free spots" style="width:42px;height:34px;padding:2px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">
           <button type="button" class="btn btn-sm btn-outline" data-act="color-reset"${c.color ? '' : ' disabled'}>Default</button>
         </span>
+        <label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700" title="Price of one hour; a spot costs this times its length (empty = no price shown)"><input type="number" data-f="rate" value="${c.hourRate || ''}" min="0" max="1000" step="0.5" placeholder="0" style="width:80px;${field}"> €/h</label>
         <input type="text" data-f="note" value="${escapeHtml(c.note || '')}" maxlength="200" placeholder="Note (surface, address…)" style="flex:2;min-width:160px;${field}">
         <button type="button" class="btn btn-sm btn-outline" data-act="save">Save</button>
         <button type="button" class="btn btn-sm btn-danger" data-act="delete">Delete</button>
@@ -56,12 +57,15 @@
           <label style="${label};flex:2;min-width:160px">Note <span style="font-weight:600;color:var(--gray)">(optional)</span>
             <input type="text" id="rva-court-note" maxlength="200" placeholder="e.g. clay, Beethovenova 11" style="display:block;width:100%;margin-top:4px;${field}">
           </label>
+          <label style="${label}">Price per hour (€)
+            <input type="number" id="rva-court-rate" min="0" max="1000" step="0.5" placeholder="e.g. 18" style="display:block;margin-top:4px;width:110px;${field}">
+          </label>
           <label style="${label}">Free-spot colour
             <input type="color" id="rva-court-color" value="${DEFAULT_COLOR}" style="display:block;margin-top:4px;width:56px;height:38px;padding:2px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">
           </label>
           <button type="submit" class="btn btn-primary">Add court</button>
         </form>
-        <div style="font-size:12px;color:var(--gray);margin-top:8px">The colour free spots of a court have on the booking page. Avoid orange — that is the colour of reserved spots. “Default” uses the green of the site.</div>
+        <div style="font-size:12px;color:var(--gray);margin-top:8px">The colour free spots of a court have on the booking page. Avoid orange — that is the colour of reserved spots. “Default” uses the green of the site. The hour rate shows as a price under the time of free spots (1.5 h at 18 € = 27 €); leave it empty for no price.</div>
         <div id="rva-courts-msg" style="margin-top:8px"></div>
       </div>`;
   }
@@ -211,7 +215,7 @@
     host.querySelector('#rva-add-court').addEventListener('submit', async (e) => {
       e.preventDefault();
       try {
-        await api('/reservations/courts', { method: 'POST', body: { name: host.querySelector('#rva-court-name').value, note: host.querySelector('#rva-court-note').value, color: host.querySelector('#rva-court-color').value.toLowerCase() === DEFAULT_COLOR ? '' : host.querySelector('#rva-court-color').value } });
+        await api('/reservations/courts', { method: 'POST', body: { name: host.querySelector('#rva-court-name').value, note: host.querySelector('#rva-court-note').value, hourRate: host.querySelector('#rva-court-rate').value, color: host.querySelector('#rva-court-color').value.toLowerCase() === DEFAULT_COLOR ? '' : host.querySelector('#rva-court-color').value } });
         toast('Court added');
         await load();
       } catch (err) { say(msg('#rva-courts-msg'), err.message, true); }
@@ -226,7 +230,7 @@
       resetBtn.addEventListener('click', () => { colorBox.dataset.color = ''; colorInput.value = DEFAULT_COLOR; resetBtn.disabled = true; });
       row.querySelector('[data-act="save"]').addEventListener('click', async () => {
         try {
-          await api(`/reservations/courts/${id}`, { method: 'PATCH', body: { name: row.querySelector('[data-f="name"]').value, note: row.querySelector('[data-f="note"]').value, color: row.querySelector('.rva-color').dataset.color } });
+          await api(`/reservations/courts/${id}`, { method: 'PATCH', body: { name: row.querySelector('[data-f="name"]').value, note: row.querySelector('[data-f="note"]').value, hourRate: row.querySelector('[data-f="rate"]').value, color: row.querySelector('.rva-color').dataset.color } });
           toast('Court saved');
           await load();
         } catch (err) { say(msg('#rva-courts-msg'), err.message, true); }
