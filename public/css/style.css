@@ -2907,6 +2907,9 @@ body:not(.embed-light) .match-card .notify-btn:disabled .venue-icon { color: #5f
   body:not(.embed-light) .match-card:not(.availability-post) .match-card-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0 10px; }
   body:not(.embed-light) .match-card:not(.availability-post) .match-card-top::after { content: ''; flex: 0 0 100%; order: 2; }
   body:not(.embed-light) .match-card:not(.availability-post) .match-card-top > .badge, body:not(.embed-light) .match-card:not(.availability-post) .match-card-top > .status-time { order: 1; }
+  /* when the pills do not fit one line (a Live video pill, the viewer count) the next line has a gap above it; the first line's own gap is taken off the card padding */
+  body:not(.embed-light) .match-card:not(.availability-post) { padding-top: 10px; }
+  body:not(.embed-light) .match-card:not(.availability-post) .match-card-top > .badge, body:not(.embed-light) .match-card:not(.availability-post) .match-card-top > .status-time { margin-top: 8px; }
   body:not(.embed-light) .match-card:not(.availability-post) .match-card-top > .match-card-notes { order: 3; flex: 1 1 0; min-width: 0; margin-top: 10px; white-space: normal; overflow: visible; text-overflow: clip; }
   body:not(.embed-light) .match-card:not(.availability-post) .match-card-top > .match-card-meta { order: 4; flex: 0 1 auto; max-width: 100%; margin-top: 10px; margin-left: auto; justify-content: flex-end; }
   body:not(.embed-light) .match-card:not(.availability-post) .match-card-top:has(> .match-card-notes) > .match-card-meta { max-width: 65%; }
@@ -4110,7 +4113,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-rl-m { margin-left: auto; margin-right: auto; }
 
 /* Home: the image carousel at the top (Backend > Carousel) */
-.home-carousel { position: relative; margin: 22px 0 0; border-radius: 18px; overflow: hidden; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); }
+.home-carousel { position: relative; margin: 10px 0 0; border-radius: 18px; overflow: hidden; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); }
 .home-carousel[hidden] { display: none; }
 .home-carousel + .home-head { margin-top: 48px; }
 .hc-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -ms-overflow-style: none; }
