@@ -3173,7 +3173,9 @@ body.match-page .match-header .badge-status.status-UNFINISHED { color: #d9a06a; 
 body.match-page .match-header .badge-viewers { color: var(--status-green); }
 body.match-page .match-header .badge-FRIENDLY { background: #fff; color: #0a0a0a; border-color: #fff; }
 
-body.match-page .match-header .status-time { color: var(--white); font-size: 12.5px; font-weight: 700; margin-left: 2px; vertical-align: middle; }
+/* the pills and the time: the spacing of the match cards (10px between, the time close to its date); a second line gets a gap above it */
+body.match-page .match-header .match-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+body.match-page .match-header .status-time { color: var(--white); font-size: 12.5px; font-weight: 700; margin-left: -4px; }
 
 body.match-page #match-root #start-btn, body.match-page #match-root #manual-result-btn { border-radius: 8px; }
 
@@ -4664,10 +4666,12 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .pom-card .green { color: var(--green); }
 
 @media (max-width: 640px) {
-  .pom-row { grid-template-columns: 46px minmax(0, 1fr); row-gap: 10px; }
-  .pom-nums { display: grid; grid-template-columns: repeat(3, 1fr); grid-column: 1 / -1; gap: 10px; }
+  /* the photo is as tall as the text beside it (the label, the name and the numbers), which all start at one left edge */
+  .pom-row { grid-template-columns: 76px minmax(0, 1fr); column-gap: 14px; row-gap: 8px; align-items: start; }
+  .pom-photo { grid-row: 1 / 3; align-self: stretch; width: 76px; height: 100%; min-height: 76px; }
+  .pom-initials { font-size: 24px; }
+  .pom-nums { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 10px; grid-column: 2; grid-row: 2; font-size: 16px; }
   .pom-who b { white-space: normal; font-size: 18px; line-height: 1.15; }
-  .pom-nums { grid-row: 2; }
 }
 
 /* blog: the list of articles and an article */
