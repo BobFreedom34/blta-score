@@ -3,6 +3,7 @@ const express = require('express');
 const db = require('../db');
 const auth = require('../auth');
 const { sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail } = require('../mailer');
+const { creditInviter } = require('./invites');
 
 const router = express.Router();
 
@@ -459,6 +460,7 @@ router.post('/register', async (req, res) => {
     const slug = uniqueSlugFor(name);
     const info = db.prepare('INSERT INTO players (name, slug, phone, email) VALUES (?, ?, ?, ?)').run(name, slug, digits, email.slice(0, 100));
     player = db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(info.lastInsertRowid);
+    creditInviter(req, res, player.id); // a new player who came through somebody's invite link
   }
 
   auth.logInPlayer(res, player.id);

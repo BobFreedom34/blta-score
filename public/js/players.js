@@ -234,4 +234,22 @@ document.getElementById('filter-q').addEventListener('input', (e) => {
   isAdminUser = await checkAdmin();
   document.getElementById('add-player-card').style.display = isAdminUser ? '' : 'none';
   loadPlayers();
+  if (isAdminUser) loadInvitesAdmin();
 })();
+
+// Admin only: who invited whom (the players who registered through somebody's invite link)
+async function loadInvitesAdmin() {
+  const box = document.getElementById('invites-admin');
+  try {
+    const data = await api('/invites/admin');
+    const day = (iso) => { const d = new Date(String(iso).replace(' ', 'T') + (String(iso).includes('Z') ? '' : 'Z')); return Number.isNaN(d.getTime()) ? '' : `${d.getDate()}.${d.getMonth() + 1}.`; };
+    const rows = data.invited.map((r) => `<tr><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.inviter)}</td><td>${day(r.createdAt)}</td><td>${r.played ? '<span class="pill pill-green">Hrá</span>' : 'Registrovaný'}</td></tr>`).join('');
+    const top = data.top.map((r) => `<b>${escapeHtml(r.name)}</b> (${r.count})`).join(', ');
+    box.innerHTML = `
+      <h3 style="margin:0 0 4px;color:var(--white)">Kto koho pozval</h3>
+      <div style="color:#c3c7cf;font-weight:600;font-size:13px">Otvorené pozvánky spolu: ${data.opened} · zaregistrovaných cez pozvánku: ${data.invited.length}</div>
+      ${rows ? `<table class="invites-table"><thead><tr><th>Nový hráč</th><th>Pozval</th><th>Dátum</th><th>Stav</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty-state" style="padding:10px 0">Zatiaľ sa cez pozvánku nikto nezaregistroval.</div>'}
+      ${top ? `<div style="margin-top:10px;color:#c3c7cf;font-weight:600;font-size:13px">Najlepší náborári: ${top}</div>` : ''}`;
+    box.style.display = '';
+  } catch { box.style.display = 'none'; }
+}

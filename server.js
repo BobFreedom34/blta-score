@@ -27,6 +27,7 @@ const courtIQRouter = require('./src/routes/courtiq');
 const bracketsRouter = require('./src/routes/brackets');
 const venuesRouter = require('./src/routes/venues');
 const seasonsRouter = require('./src/routes/seasons');
+const invitesRouter = require('./src/routes/invites');
 const scheduleRouter = require('./src/routes/schedule');
 const winnersRouter = require('./src/routes/winners');
 const contactRouter = require('./src/routes/contact');
@@ -177,6 +178,7 @@ app.get('/', (req, res, next) => {
 // the fixed pages and the ones with a name in the address (a season, a player, a venue, a bracket). The code address a page
 // used to have (/rankings, /season/<x>) is retired once its slug is another one: 404, no redirect.
 const publicOrigin = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+app.get('/pozvanka/:slug', invitesRouter.openLink); // a player's invite link: counted, remembered, then the home page
 app.get('/js/localize.js', (req, res) => res.type('application/javascript').set('Cache-Control', 'no-cache').send(seo.clientScript()));
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(seo.robotsTxt(publicOrigin(req))));
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemapXml(publicOrigin(req))));
@@ -264,6 +266,7 @@ app.use('/api/courtiq', courtIQRouter);
 app.use('/api/brackets', bracketsRouter);
 app.use('/api/venues', venuesRouter);
 app.use('/api/seasons', seasonsRouter);
+app.use('/api/invites', invitesRouter);
 app.use('/api/schedule', scheduleRouter);
 app.use('/api/winners', winnersRouter);
 app.use('/api/contact', contactRouter);

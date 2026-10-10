@@ -501,9 +501,79 @@ function renderHome() {
     ${matchesBlockHtml(d)}
     ${rankingAndLookingHtml(d)}
     ${moversHtml(d)}
-    ${liveHtml(d)}`;
+    ${liveHtml(d)}
+    ${inviteShellHtml(d)}`;
   initTimelineScroll(keepLeft);
+  loadInvite();
 }
+
+// ---------- "Invite a friend": the last section, for a logged-in player ----------
+
+let inviteData = null; // { slug, opened, registered, played } of the logged-in player
+let inviteFor = null;
+
+function inviteShellHtml(d) {
+  if (!d.playerId) return '';
+  return `<section class="home-sec" id="home-invite">${secTitle(t('invite.title'), '', '', '')}<div id="home-invite-body"></div></section>`;
+}
+
+const inviteLink = () => `${window.location.origin}/pozvanka/${encodeURIComponent(inviteData.slug)}`;
+
+function inviteCardHtml() {
+  const stat = (label, value, green) => `<div><small>${escapeHtml(label)}</small><b${green ? ' class="green"' : ''}>${value}</b></div>`;
+  return `
+    <div class="inv-card">
+      <div>
+        <h3>${escapeHtml(t('invite.heading'))}</h3>
+        <p>${escapeHtml(t('invite.text'))}</p>
+        <div class="inv-stats">${stat(t('invite.opened'), inviteData.opened)}${stat(t('invite.registered'), inviteData.registered, true)}${stat(t('invite.played'), inviteData.played)}</div>
+      </div>
+      <div>
+        <div class="inv-link"><span>${escapeHtml(inviteLink().replace(/^https?:\/\//, ''))}</span><button type="button" class="inv-btn" data-invite="copy">${escapeHtml(t('invite.copy'))}</button></div>
+        <div class="inv-row">
+          <button type="button" class="inv-btn main" data-invite="wa">${escapeHtml(t('invite.whatsapp'))}</button>
+          <button type="button" class="inv-btn" data-invite="mail">${escapeHtml(t('invite.email'))}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function paintInvite() {
+  const body = document.getElementById('home-invite-body');
+  if (!body) return;
+  if (inviteData && inviteData.slug) body.innerHTML = inviteCardHtml();
+  else document.getElementById('home-invite').remove(); // a player without an address of their own has no link
+}
+
+async function loadInvite() {
+  const id = loggedInPlayer();
+  if (!id || !document.getElementById('home-invite-body')) return;
+  if (inviteData && inviteFor === id) paintInvite();
+  try {
+    inviteData = await api('/invites/mine');
+    inviteFor = id;
+    paintInvite();
+  } catch {
+    const shell = document.getElementById('home-invite');
+    if (shell) shell.remove();
+  }
+}
+
+rootEl.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-invite]');
+  if (!b || !inviteData) return;
+  const link = inviteLink();
+  const message = t('invite.message', { link });
+  if (b.dataset.invite === 'wa') {
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
+  } else if (b.dataset.invite === 'mail') {
+    window.location.href = `mailto:?subject=${encodeURIComponent(t('invite.subject'))}&body=${encodeURIComponent(message)}`;
+  } else {
+    const label = b.textContent;
+    try { await navigator.clipboard.writeText(link); b.textContent = t('invite.copied'); } catch { window.prompt(t('invite.copy'), link); }
+    setTimeout(() => { b.textContent = label; }, 2000);
+  }
+});
 
 function loggedInPlayer() {
   return playerAuthed && currentPlayerId ? currentPlayerId : null;
