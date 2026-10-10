@@ -4113,7 +4113,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-rl-m { margin-left: auto; margin-right: auto; }
 
 /* Home: the image carousel at the top (Backend > Carousel) */
-.home-carousel { position: relative; margin: 10px 0 0; border-radius: 18px; overflow: hidden; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); }
+.home-carousel { position: relative; margin: 22px 0 0; border-radius: 18px; overflow: hidden; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); }
 .home-carousel[hidden] { display: none; }
 .home-carousel + .home-head { margin-top: 48px; }
 .hc-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -ms-overflow-style: none; }
@@ -4615,7 +4615,8 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
   box-shadow: 0 4px 14px rgba(255, 85, 0, 0.4); transition: box-shadow 0.15s, padding 0.15s;
 }
 .booking-btn:hover { box-shadow: 0 6px 18px rgba(255, 85, 0, 0.6); color: #fff; padding-bottom: 9px; }
-.booking-spacer { height: 28px; }
+/* the strip under the menu that the tab hangs in: shorter than the tab itself, so the page's own top margin (22px) leaves ~10px under it on every page */
+.booking-spacer { height: 16px; }
 .booking-btn { transition: box-shadow 0.15s, padding 0.15s, transform 0.25s; }
 .booking-btn.booking-hidden { transform: translateY(-110%); }
 .booking-btn svg { width: 15px; height: 15px; flex: 0 0 15px; }
