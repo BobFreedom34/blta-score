@@ -560,6 +560,21 @@ and `/en`. The first English texts and slugs are built in (`ENGLISH` in `src/seo
   the first start.
 - Check it: `node scripts/check-seo.js` (starts its own server on a temporary data folder; nothing else is touched).
 
+### Home page extras: invite a friend, player of the month
+
+- **Invite a friend** (last section of the home page, logged-in players): every player has a personal link `/pozvanka/<their slug>`
+  (`src/routes/invites.js`). Opening it is counted once per browser (`invite_visits`), puts the inviter in the cookie `blta_ref` for 30 days
+  and goes to the home page; when that visitor registers as a **new** player (`POST /api/player/register`, not the claim of an existing
+  profile) `players.invited_by` is set. The card shows opened / registered / played (an invited player with a finished match) and sends the
+  link by WhatsApp or e-mail. Backend → Players ends with *Kto koho pozval* (who invited whom, best recruiters). `pozvanka` is a reserved
+  address word. Check: `node scripts/check-invites.js`.
+- **Player of the month** (a slim card under the stats tiles, `GET /api/highlights/month`, `src/routes/highlights.js`): the player of the last
+  *full* calendar month — most BLTA points won in that month (the points ledger joined to the month's finished BLTA matches), then wins; at
+  least two matches and a win; hidden players never. It also shows the longest run of wins and the player with the biggest courtIQ progress
+  (band at the end of the month against the band before it; somebody other than the player of the month). Nothing is entered by hand; with
+  no match in that month the card is not shown. `HIGHLIGHTS_NOW=YYYY-MM-DD` fixes the date for the checks. Check:
+  `node scripts/check-highlights.js`.
+
 ---
 
 ## 7. Embedding on the blta.sk WordPress site

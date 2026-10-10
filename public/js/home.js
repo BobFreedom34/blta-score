@@ -497,6 +497,7 @@ function renderHome() {
       ${progressHtml(d)}
       ${d.season ? statsHtml(d) : ''}
     </section>
+    ${pomShellHtml()}
     ${leadersHtml(d)}
     ${matchesBlockHtml(d)}
     ${rankingAndLookingHtml(d)}
@@ -504,7 +505,42 @@ function renderHome() {
     ${liveHtml(d)}
     ${inviteShellHtml(d)}`;
   initTimelineScroll(keepLeft);
+  loadPom();
   loadInvite();
+}
+
+// ---------- "Player of the month": a slim card under the stats tiles ----------
+
+let pomData; // undefined = not asked yet, null = nobody (or the request failed), else the answer of /api/highlights/month
+
+function pomShellHtml() {
+  return '<section class="home-sec" id="home-pom" hidden></section>';
+}
+
+function pomCardHtml(d) {
+  const p = d.player;
+  const monthName = new Date(`${d.month}-15T12:00:00`).toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'sk-SK', { month: 'long' });
+  const num = (label, value, green) => `<div><small>${escapeHtml(label)}</small><span${green ? ' class="green"' : ''}>${escapeHtml(value)}</span></div>`;
+  const improved = d.improved
+    ? `<div class="pom-imp">${escapeHtml(t('pom.improved'))}: <a href="/player/${encodeURIComponent(d.improved.slug || d.improved.id)}"><b>${escapeHtml(d.improved.name)}</b></a> · courtIQ ${d.improved.from.toFixed(1)} → <span class="green">${d.improved.to.toFixed(1)} ▲</span></div>`
+    : '';
+  return `
+    <div class="pom-card">
+      <div class="pom-trophy" aria-hidden="true">🏆</div>
+      <div class="pom-who"><div class="pom-k">${escapeHtml(t('pom.title'))} · ${escapeHtml(monthName)}</div><b>${escapeHtml(p.name)}</b></div>
+      <div class="pom-nums">${num(t('pom.wins'), t('pom.winsOf', { w: p.wins, n: p.played }))}${p.points ? num(t('pom.points'), `+${p.points}`, true) : ''}${p.streak >= 2 ? num(t('pom.streak'), String(p.streak)) : ''}</div>
+      <a class="pom-more" href="/player/${encodeURIComponent(p.slug || p.id)}">${escapeHtml(t('pom.profile'))} →</a>
+      ${improved}
+    </div>`;
+}
+
+async function loadPom() {
+  const el = document.getElementById('home-pom');
+  if (!el) return;
+  if (pomData === undefined) {
+    try { pomData = await api('/highlights/month'); } catch { pomData = null; }
+  }
+  if (pomData && pomData.player) { el.innerHTML = pomCardHtml(pomData); el.hidden = false; } else el.remove();
 }
 
 // ---------- "Invite a friend": the last section, for a logged-in player ----------
