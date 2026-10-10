@@ -4712,7 +4712,8 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .badge-video, body:not(.embed-light) .match-card .badge-video, body.match-page .match-header .badge-video { display: inline-flex; align-items: center; gap: 5px; background: transparent; color: #ee3340; border: 1px solid #ee3340; }
 .badge-video .venue-icon { width: 13px; height: 13px; flex-basis: 13px; }
 .compact-date-category .badge-video { padding: 2px 7px; font-size: 10px; }
-.match-video { margin: 0 0 16px; }
+.match-video { margin: 16px 0; }
+#video-display { overflow-wrap: anywhere; font-size: 15px; }
 .match-video-frame { position: relative; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: #000; border: 1px solid rgba(255, 255, 255, 0.12); }
 .match-video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .video-form { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
