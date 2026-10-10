@@ -73,7 +73,9 @@ test('the player of the month: most BLTA points of the month, then wins; the lon
   [m.hid1, m.hid2].forEach((id) => award(S.h, id, 400));
   const r = await get();
   assert.strictEqual(r.month, '2026-09');
-  assert.deepStrictEqual(r.player, { id: S.a, name: 'Anna Víťazná', slug: 'anna-vitazna', category: null, wins: 4, played: 5, points: 200, streak: 3 });
+  assert.deepStrictEqual(r.player, { id: S.a, name: 'Anna Víťazná', slug: 'anna-vitazna', category: null, photoUrl: '', wins: 4, played: 5, points: 200, streak: 3 });
+  db.prepare('UPDATE players SET photo_url = ? WHERE id = ?').run('/player-photos/anna.jpg', S.a);
+  assert.strictEqual((await get()).player.photoUrl, '/player-photos/anna.jpg', 'the card shows the profile photo');
 });
 
 test('without Annas points the next one wins: the best of the rest by points, then wins', async () => {

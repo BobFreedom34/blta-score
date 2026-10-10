@@ -58,7 +58,7 @@ router.get('/month', (req, res) => {
     `).all(...ids).forEach((r) => { if (stats.has(r.pid)) stats.get(r.pid).points = r.pts || 0; });
   }
 
-  const info = db.prepare('SELECT id, name, slug, category FROM players WHERE id = ? AND hidden = 0');
+  const info = db.prepare('SELECT id, name, slug, category, photo_url FROM players WHERE id = ? AND hidden = 0');
   const ready = [...stats.values()].filter((s) => s.played >= MIN_MATCHES && s.wins >= 1 && info.get(s.id));
   ready.sort((a, b) => b.points - a.points || b.wins - a.wins || (b.wins / b.played) - (a.wins / a.played) || b.played - a.played || a.id - b.id);
   const best = ready[0] || null;
@@ -88,7 +88,7 @@ router.get('/month', (req, res) => {
 
   res.json({
     month: range.month,
-    player: { id: bestInfo.id, name: bestInfo.name, slug: bestInfo.slug, category: bestInfo.category, wins: best.wins, played: best.played, points: best.points, streak: best.streak },
+    player: { id: bestInfo.id, name: bestInfo.name, slug: bestInfo.slug, category: bestInfo.category, photoUrl: bestInfo.photo_url || '', wins: best.wins, played: best.played, points: best.points, streak: best.streak },
     improved: pick ? { id: improvedInfo.id, name: improvedInfo.name, slug: improvedInfo.slug, from: pick.from, to: pick.to, delta: pick.delta, played: pick.played } : null,
   });
 });

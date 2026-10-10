@@ -517,6 +517,13 @@ function pomShellHtml() {
   return '<section class="home-sec" id="home-pom" hidden></section>';
 }
 
+// the player's profile photo, or their initials in the same round frame when there is none
+function pomPhotoHtml(p) {
+  if (p.photoUrl) return `<img class="pom-photo" src="${escapeHtml(p.photoUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">`;
+  const initials = String(p.name || '').trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join('').toUpperCase();
+  return `<div class="pom-photo pom-initials" aria-hidden="true">${escapeHtml(initials)}</div>`;
+}
+
 function pomCardHtml(d) {
   const p = d.player;
   const monthName = new Date(`${d.month}-15T12:00:00`).toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'sk-SK', { month: 'long' });
@@ -526,7 +533,7 @@ function pomCardHtml(d) {
     : '';
   return `
     <div class="pom-card">
-      <div class="pom-trophy" aria-hidden="true">🏆</div>
+      ${pomPhotoHtml(p)}
       <div class="pom-who"><div class="pom-k">${escapeHtml(t('pom.title'))} · ${escapeHtml(monthName)}</div><b>${escapeHtml(p.name)}</b></div>
       <div class="pom-nums">${num(t('pom.wins'), t('pom.winsOf', { w: p.wins, n: p.played }))}${p.points ? num(t('pom.points'), `+${p.points}`, true) : ''}${p.streak >= 2 ? num(t('pom.streak'), String(p.streak)) : ''}</div>
       <a class="pom-more" href="/player/${encodeURIComponent(p.slug || p.id)}">${escapeHtml(t('pom.profile'))} →</a>
