@@ -26,10 +26,15 @@ db.exec(`
 
 // The public link: counted once per browser and inviter (a reload does not count again), then the visitor lands on the home page,
 // where Register is.
+// Not a visit by a person: the preview fetchers of WhatsApp, Facebook, Telegram, iMessage and the like (they open a link the moment it is sent,
+// before the friend sees it), search engines and scripts. They are sent on to the home page and nothing is counted or remembered.
+const NOT_A_PERSON = /bot|crawl|spider|slurp|facebookexternalhit|whatsapp|telegram|skype|preview|embedly|discord|linkedin|pinterest|vkshare|headless|curl\/|wget|python-requests|okhttp|go-http-client/i;
+
 function openLink(req, res) {
   const slug = String(req.params.slug || '').toLowerCase();
   const inviter = slug ? db.prepare('SELECT id FROM players WHERE slug = ? AND hidden = 0').get(slug) : null;
-  if (inviter && req.cookies[COOKIE] !== slug) {
+  const person = req.method === 'GET' && !NOT_A_PERSON.test(req.get('user-agent') || '') && getPlayerId(req) !== (inviter && inviter.id); // the inviter testing their own link is no visit either
+  if (inviter && person && req.cookies[COOKIE] !== slug) {
     db.prepare('INSERT INTO invite_visits (inviter_id) VALUES (?)').run(inviter.id);
     res.cookie(COOKIE, slug, { maxAge: COOKIE_DAYS * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'lax', secure: req.secure });
   }
@@ -86,6 +91,16 @@ router.get('/admin', requireAdmin, (req, res) => {
   });
 });
 
+// Admin: puts a player's "opened" counter back to zero (what the invitations were opened is not kept per visit, only counted) — for the visits
+// that were no people (before the preview fetchers were left out). The players invited and registered are not touched.
+router.delete('/visits/:slug', requireAdmin, (req, res) => {
+  const player = db.prepare('SELECT id, name FROM players WHERE slug = ?').get(String(req.params.slug || '').toLowerCase());
+  if (!player) return res.status(404).json({ error: 'Unknown player' });
+  const removed = db.prepare('DELETE FROM invite_visits WHERE inviter_id = ?').run(player.id).changes;
+  res.json({ ok: true, player: player.name, removed });
+});
+
 module.exports = router;
 module.exports.openLink = openLink;
 module.exports.creditInviter = creditInviter;
+module.exports.NOT_A_PERSON = NOT_A_PERSON;

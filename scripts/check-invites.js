@@ -53,6 +53,22 @@ test('the link: a visit is counted once per browser, goes to the home page and r
   // another browser counts
   await call('GET', '/pozvanka/anna-pozyvatelka');
   assert.strictEqual((await mine(anna)).opened, 2);
+  // the preview fetchers of the messengers open the link when it is sent: they are not visits (this was the second "opened" of one invitation)
+  for (const agent of ['WhatsApp/2.23.20 A', 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)', 'TelegramBot (like TwitterBot)', 'Mozilla/5.0 (compatible; Googlebot/2.1)', 'Twitterbot/1.0']) {
+    const bot = await fetch(`${BASE}/pozvanka/anna-pozyvatelka`, { redirect: 'manual', headers: { 'User-Agent': agent } });
+    assert.strictEqual(bot.status, 302, agent);
+    assert.ok(!bot.headers.getSetCookie().join(';').includes('blta_ref'), `${agent} got the cookie`);
+  }
+  assert.strictEqual((await mine(anna)).opened, 2, 'the preview fetchers are not counted');
+  // a phone browser is
+  const phone = await fetch(`${BASE}/pozvanka/anna-pozyvatelka`, { redirect: 'manual', headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36' } });
+  assert.ok(phone.headers.getSetCookie().join(';').includes('blta_ref'));
+  assert.strictEqual((await mine(anna)).opened, 3);
+  // the inviter opening their own link (logged in) is not a visit
+  const own = await fetch(`${BASE}/pozvanka/anna-pozyvatelka`, { redirect: 'manual', headers: { Cookie: playerCookie(anna) } });
+  assert.strictEqual(own.status, 302);
+  assert.ok(!own.headers.getSetCookie().join(';').includes('blta_ref'));
+  assert.strictEqual((await mine(anna)).opened, 3, 'your own opens do not count');
   // an unknown link: just the home page, nothing counted, no cookie
   const unknown = await call('GET', '/pozvanka/nobody-here');
   assert.strictEqual(unknown.status, 302);
@@ -61,6 +77,19 @@ test('the link: a visit is counted once per browser, goes to the home page and r
   const hidden = newPlayer('Skrytý', 'skryty');
   db.prepare('UPDATE players SET hidden = 1 WHERE id = ?').run(hidden);
   assert.ok(!(await call('GET', '/pozvanka/skryty')).res.headers.getSetCookie().join(';').includes('blta_ref'));
+});
+
+test('the admin can put a player\'s opened counter back to zero (registered players stay)', async () => {
+  const bob = newPlayer('Reset Hráč', 'reset-hrac');
+  await call('GET', '/pozvanka/reset-hrac');
+  await call('GET', '/pozvanka/reset-hrac');
+  assert.strictEqual((await mine(bob)).opened, 2);
+  assert.strictEqual((await call('DELETE', '/api/invites/visits/reset-hrac', { cookie: playerCookie(bob) })).status, 401, 'admin only');
+  assert.strictEqual((await call('DELETE', '/api/invites/visits/nobody-here', { cookie: adminCookie })).status, 404);
+  const done = await call('DELETE', '/api/invites/visits/reset-hrac', { cookie: adminCookie });
+  assert.deepStrictEqual([done.status, done.json.removed], [200, 2]);
+  assert.strictEqual((await mine(bob)).opened, 0);
+  assert.strictEqual((await mine(anna)).opened, 3, 'nobody else is touched');
 });
 
 test('registering through the link credits the inviter; only a new player counts', async () => {
