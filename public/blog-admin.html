@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BLTA — Manage header</title>
+<title>BLTA — Blog</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
@@ -26,7 +26,7 @@
   <h1 style="margin-top:22px">Backend</h1>
   <div class="tabs admin-tabs" style="display:none">
     <a href="/admin" class="tab">Overview</a>
-    <a href="/header-admin" class="tab active">Menu</a>
+    <a href="/header-admin" class="tab">Menu</a>
     <a href="/badges-admin" class="tab">Badges</a>
     <a href="/players" class="tab">Players</a>
     <a href="/bracket-admin" class="tab">Brackets</a>
@@ -36,17 +36,17 @@
     <a href="/schedule-admin" class="tab">Schedule</a>
     <a href="/winners-admin" class="tab">Winners</a>
     <a href="/reservations-admin" class="tab">Reservations</a>
-    <a href="/blog-admin" class="tab">Blog</a>
+    <a href="/blog-admin" class="tab active">Blog</a>
     <a href="/seo-admin" class="tab">SEO</a>
     <a href="/carousel-admin" class="tab">Carousel</a>
     <a href="/rules-admin" class="tab">Rules</a>
     <a href="/changelog-admin" class="tab">Points log</a>
     <a href="/login-history" class="tab">Login History</a>
   </div>
-  <h2 style="margin:18px 0 4px">Menu</h2>
-  <p style="color:var(--gray-dim)">The links shown in the site's top nav — shown here in the order they'll appear. Give an item its own sub-items to turn it into a dropdown.</p>
+  <h2 style="margin:18px 0 4px">Blog</h2>
+  <p style="color:var(--gray-dim)">The articles of the public <a href="/blog" style="text-decoration:underline;color:var(--orange)">Blog</a>. Each article has a Slovak and an English version and an address of its own in each language (the four from the old website keep theirs). The text is cleaned when you save it: headings, paragraphs, lists, quotes, links and pictures stay, scripts and styles do not.</p>
 
-  <div id="header-admin-root">Loading…</div>
+  <div id="blog-admin-root">Loading…</div>
 </div>
 
 <footer class="site-footer">
@@ -61,6 +61,6 @@
 <script src="/js/localize.js"></script>
 <script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
-<script src="/js/header-admin.js"></script>
+<script src="/js/blog-admin.js"></script>
 </body>
 </html>

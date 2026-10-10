@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const db = require('./db');
+const blog = require('./blog');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const SUFFIX = ' - BLTA - Bratislavská Liga Tenisových Amatérov';
@@ -68,6 +69,16 @@ const PAGES = [
     key: 'reservations', label: 'Court reservations', path: '/reservations', file: 'reservations.html', blta: null, slugSk: 'rezervacie-kurtov',
     title: `Rezervácie kurtov${SUFFIX}`,
     description: 'Rezervácie kurtov BLTA - vyber si voľný termín na tenisovom kurte na najbližších 7 dní a rezervuj si ho jedným kliknutím.',
+  },
+  {
+    key: 'blog', label: 'Blog (list of articles)', path: '/blog', file: 'blog.html', blta: 'https://old.blta.sk/blog/', slugSk: 'blog',
+    title: `Blog${SUFFIX}`,
+    description: 'Novinky z tenisovej amatérskej ligy BLTA, ktorá sa hrá v Bratislave a v okolí. Ak chces byť informovaný o novinkách z amatérskeho tenisu tak si tu správne.',
+  },
+  {
+    key: 'article', label: 'Blog article (template)', path: '/article/:slug', file: 'article.html', template: true, blta: null, slugSk: 'clanok',
+    title: `{name}${SUFFIX}`,
+    description: '{name} - článok z blogu BLTA, tenisovej amatérskej ligy v Bratislave.',
   },
   {
     key: 'new-match', label: 'New match', path: '/new-match', file: 'new-match.html', blta: null, noindex: true,
@@ -177,6 +188,16 @@ const ENGLISH = {
     title: `Court booking${SUFFIX_EN}`,
     description: 'BLTA court booking - pick a free time on the tennis court for the next 7 days and reserve it with one click.',
   },
+  blog: {
+    slug: 'blog',
+    title: `Blog${SUFFIX_EN}`,
+    description: "News from the BLTA amateur tennis league, played in Bratislava and the surrounding area. If you want to stay informed about amateur tennis news, you're in the right place.",
+  },
+  article: {
+    slug: 'article',
+    title: `{name}${SUFFIX_EN}`,
+    description: '{name} - an article of the BLTA blog, the amateur tennis league in Bratislava.',
+  },
   'new-match': {
     slug: 'new-match',
     title: `New match${SUFFIX_EN}`,
@@ -270,6 +291,9 @@ function seedDefaults() {
   });
 }
 seedDefaults();
+// the link-preview picture of the blog list, as the old blog page had it (put in once, while nothing is set)
+db.prepare("UPDATE seo_pages SET og_image = '/img/blog/lopta-2bllta.png' WHERE page_key = 'blog' AND og_image = ''").run();
+db.prepare("UPDATE seo_pages_en SET og_image = '/img/blog/lopta-2bllta.png' WHERE page_key = 'blog' AND og_image = ''").run();
 // the home page used to start with "BLTA Score - …": a title still at that first value becomes the "BLTA - …" one (an edited title is left alone)
 db.prepare("UPDATE seo_pages SET title = ? WHERE page_key = 'home' AND title = ?").run('BLTA - Živé skóre a tabuľky amatérskej tenisovej ligy', 'BLTA Score - Živé skóre a tabuľky amatérskej tenisovej ligy');
 db.prepare("UPDATE seo_pages_en SET title = ? WHERE page_key = 'home' AND title = ?").run('BLTA - Live scores and tables of the amateur tennis league', 'BLTA Score - Live scores and tables of the amateur tennis league');
@@ -331,7 +355,8 @@ let overrideCache = null;
 function overrides() {
   if (!overrideCache) {
     overrideCache = db.prepare('SELECT code, slug_sk, slug_en FROM seo_custom_paths WHERE slug_sk != \'\' OR slug_en != \'\' ORDER BY code').all()
-      .map((r) => ({ code: r.code, sk: r.slug_sk, en: r.slug_en }));
+      .map((r) => ({ code: r.code, sk: r.slug_sk, en: r.slug_en }))
+      .concat(blog.publishedAddresses()); // the published articles have a whole address of their own too (the ones of the old website)
   }
   return overrideCache;
 }
@@ -393,7 +418,7 @@ function isRetired(address) {
 
 // Words an address must not be: the folders and files of the app (a slug is the first part of the address, so /css or /api would
 // be taken by the app first).
-const RESERVED = new Set(['api', 'en', 'pozvanka', 'match', 'embed', 'compact', 'compactblta', 'socket', 'socket.io', 'robots', 'robots.txt', 'sitemap', 'sitemap.xml',
+const RESERVED = new Set(['api', 'en', 'pozvanka', 'blog-images', 'match', 'embed', 'compact', 'compactblta', 'socket', 'socket.io', 'robots', 'robots.txt', 'sitemap', 'sitemap.xml',
   'badge-icons', 'player-photos', 'carousel-images', 'winner-photos']);
 const PAGE_FILES = new Set(PAGES.map((p) => p.file));
 fs.readdirSync(PUBLIC_DIR).forEach((name) => { if (!PAGE_FILES.has(name)) RESERVED.add(name.replace(/\.[^.]+$/, '')); });
@@ -465,6 +490,13 @@ function listCourtPaths() {
 
 // null when `slug` can be the whole address of this court in `lang`, else the reason
 function checkCourtSlug(code, lang, slug) {
+  return checkWholeAddress(lang, slug, { exceptCode: code });
+}
+
+// null when `slug` can be a whole address (one segment) of a court or an article in `lang`, else the reason. The address of the thing being edited
+// is allowed (exceptCode for a court, exceptArticleId for an article).
+function checkWholeAddress(lang, slug, { exceptCode = '', exceptArticleId = 0, article = false } = {}) {
+  if (!slug) return 'the address is required (letters, digits and hyphens)';
   if (slug.length > 80) return 'the address is too long (max 80 characters)';
   if (RESERVED.has(slug)) return `"${slug}" is used by the app itself — pick another address`;
   const page = routes().find((r) => !r.template && r.path !== '/' && r[lang] === slug);
@@ -472,7 +504,8 @@ function checkCourtSlug(code, lang, slug) {
   const old = PAGES.find((o) => o.path !== '/' && baseOf(o) === slug);
   if (old) return `"${slug}" is the old address of "${old.label}" — pick another address`;
   const column = lang === 'sk' ? 'slug_sk' : 'slug_en';
-  if (db.prepare(`SELECT 1 FROM seo_custom_paths WHERE ${column} = ? AND code != ?`).get(slug, code)) return `"${slug}" is already the address of another court`;
+  if (db.prepare(`SELECT 1 FROM seo_custom_paths WHERE ${column} = ? AND code != ?`).get(slug, exceptCode)) return `"${slug}" is already the address of a court`;
+  if (blog.addressTaken(lang, slug, article ? exceptArticleId : 0)) return `"${slug}" is already the address of an article`;
   return null;
 }
 
@@ -571,18 +604,21 @@ function render(key, { origin, canonical, lang = 'sk', entity }) {
   if (!page || !html || !v) return html || '';
   const name = entity && entity.name ? entity.name : '';
   const fill = (text) => String(text || '').split('{name}').join(name).replace(/\s+/g, ' ').trim();
-  const title = fill(v.title);
-  const description = fill(v.description);
-  const ogTitle = fill(v.ogTitle) || title;
-  const ogDescription = fill(v.ogDescription) || description;
-  const image = v.ogImage || (entity && entity.image) || '/img/blta-logo.png';
+  // an article brings its own meta texts (the ones it had on the old website); the other pages use the texts of Backend > SEO
+  const own = entity && entity.seo ? entity.seo : null;
+  const title = own ? String(own.title || '').trim() : fill(v.title);
+  const description = own ? String(own.description || '').trim() : fill(v.description);
+  const keywords = (own && own.keywords) || v.keywords;
+  const ogTitle = own ? title : (fill(v.ogTitle) || title);
+  const ogDescription = own ? description : (fill(v.ogDescription) || description);
+  const image = (entity && entity.image) || v.ogImage || '/img/blta-logo.png';
   const imageUrl = /^https?:\/\//.test(image) ? image : `${origin}${image.startsWith('/') ? '' : '/'}${image}`;
   const urlOf = (lg) => `${origin}${pageUrl(canonical, lg)}`;
   const other = lang === 'sk' ? 'en' : 'sk';
   const lines = [
     title ? `<title>${esc(title)}</title>` : '',
     description ? `<meta name="description" content="${esc(description)}">` : '',
-    v.keywords ? `<meta name="keywords" content="${esc(v.keywords)}">` : '',
+    keywords ? `<meta name="keywords" content="${esc(keywords)}">` : '',
     `<meta name="robots" content="${v.noindex ? 'noindex, nofollow' : ROBOTS_INDEX}">`,
     `<link rel="canonical" href="${esc(urlOf(lang))}">`,
     `<link rel="alternate" hreflang="sk" href="${esc(urlOf('sk'))}">`,
@@ -590,7 +626,9 @@ function render(key, { origin, canonical, lang = 'sk', entity }) {
     `<link rel="alternate" hreflang="x-default" href="${esc(urlOf('sk'))}">`,
     `<meta property="og:locale" content="${OG_LOCALE[lang]}">`,
     `<meta property="og:locale:alternate" content="${OG_LOCALE[other]}">`,
-    '<meta property="og:type" content="website">',
+    `<meta property="og:type" content="${entity && entity.ogType ? entity.ogType : 'website'}">`,
+    entity && entity.published ? `<meta property="article:published_time" content="${esc(entity.published)}">` : '',
+    entity && entity.modified ? `<meta property="article:modified_time" content="${esc(entity.modified)}">` : '',
     '<meta property="og:site_name" content="BLTA">',
     ogTitle ? `<meta property="og:title" content="${esc(ogTitle)}">` : '',
     ogDescription ? `<meta property="og:description" content="${esc(ogDescription)}">` : '',
@@ -600,17 +638,30 @@ function render(key, { origin, canonical, lang = 'sk', entity }) {
     ogTitle ? `<meta name="twitter:title" content="${esc(ogTitle)}">` : '',
     ogDescription ? `<meta name="twitter:description" content="${esc(ogDescription)}">` : '',
     `<meta name="twitter:image" content="${esc(imageUrl)}">`,
+    entity && entity.ogType === 'article' ? articleJsonLd({ title, description, imageUrl, url: urlOf(lang), entity }) : '',
   ].filter(Boolean).join('\n');
   const stripped = html.replace(OLD_TAGS, '').replace(HTML_LANG, `<html lang="${lang}"`);
   // without a saved title the page keeps its own (translated) one
-  return title
+  const out = title
     ? stripped.replace(TITLE_TAG, () => lines)
     : stripped.replace(TITLE_TAG, (t) => `${t}\n${lines}`);
+  // the page's own content (the list of the blog, an article) goes where its file says so
+  return entity && entity.html ? out.replace('<!--PAGE_CONTENT-->', () => entity.html) : out;
+}
+
+// the structured data of an article (what Google reads next to the meta tags)
+function articleJsonLd({ title, description, imageUrl, url, entity }) {
+  const data = {
+    '@context': 'https://schema.org', '@type': 'Article', headline: entity.name || title, description, image: imageUrl, mainEntityOfPage: url,
+    datePublished: entity.published, dateModified: entity.modified || entity.published,
+    author: { '@type': 'Organization', name: 'BLTA' }, publisher: { '@type': 'Organization', name: 'BLTA' },
+  };
+  return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
 }
 
 module.exports = {
   PAGES, BY_KEY, LANGS, listAll, parseBody, save, render, getValues,
-  routes, resolve, movedTo, pageUrl, isRetired, clientScript, normalizeSlug, listCourtPaths, saveCourtPath,
+  routes, resolve, movedTo, pageUrl, isRetired, clientScript, normalizeSlug, listCourtPaths, saveCourtPath, checkWholeAddress, forgetRoutes,
 };
 
 // ---------- sitemap.xml and robots.txt ----------
@@ -625,6 +676,7 @@ function sitemapXml(origin) {
   PAGES.filter((p) => !p.template && !hidden(p.key)).forEach((p) => add(p.path));
   const day = (iso) => (iso ? String(iso).slice(0, 10) : undefined);
   if (!hidden('season')) db.prepare('SELECT slug FROM seasons WHERE slug IS NOT NULL').all().forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`));
+  if (!hidden('article')) blog.publishedRows().forEach((r) => add(`/article/${encodeURIComponent(r.slug_sk)}`, day(r.modified_at)));
   if (!hidden('court')) db.prepare('SELECT slug FROM venues WHERE slug IS NOT NULL').all().forEach((r) => add(`/courts/${encodeURIComponent(r.slug)}`));
   if (!hidden('player')) db.prepare('SELECT slug FROM players WHERE slug IS NOT NULL').all().forEach((r) => add(`/player/${encodeURIComponent(r.slug)}`));
   if (!hidden('bracket')) db.prepare('SELECT id, updated_at FROM brackets').all().forEach((r) => add(`/bracket/${r.id}`, day(r.updated_at)));
@@ -651,6 +703,7 @@ function robotsTxt(origin) {
     'Disallow: /tournaments-admin',
     'Disallow: /changelog-admin',
     'Disallow: /reservations-admin',
+    'Disallow: /blog-admin',
     'Disallow: /schedule-admin',
     'Disallow: /winners-admin',
     'Disallow: /seo-admin',

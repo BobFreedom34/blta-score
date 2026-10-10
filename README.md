@@ -575,6 +575,26 @@ and `/en`. The first English texts and slugs are built in (`ENGLISH` in `src/seo
   no match in that month the card is not shown. `HIGHLIGHTS_NOW=YYYY-MM-DD` fixes the date for the checks. Check:
   `node scripts/check-highlights.js`.
 
+### Blog (`/blog`, Backend → Blog `/blog-admin`)
+
+- **Articles** live in the table `articles` (`src/blog.js`): a Slovak and an English version of the title, the short text for the list, the text (HTML), the
+  title tag / description / keywords for search engines, one featured picture, the date and a status (published / draft). An English text left
+  empty falls back to the Slovak one (like on the old website).
+- **Every article has a whole address of its own per language** (one segment: `/nove-tricka-pre-blta`, `/en/nove-tricka-pre-blta`) — the same mechanism as
+  the courts' own addresses (`src/seo.js`, `overrides()`, `localize.js`). The code address is `/article/<slovak address>`; the pattern address
+  (`/clanok/<x>`) and the code address are 404. A draft or deleted article is a real 404. The address is checked against the pages, the courts, the
+  other articles and the words the app uses (`checkWholeAddress`).
+- **The four articles of the old website** (Čo je BLTA a prečo vznikla?, Nové tričká pre BLTA, Tenisové turnaje pre amatérov, Rozhovor s Tomášom Podhorným)
+  are put in once, at the first start (`src/blogSeed.json`, pictures in `public/img/blog/`), with the addresses, title tags, descriptions, link-preview
+  texts and dates they had on old.blta.sk, in both languages — also the English ones as the old site served them (three of them have the Slovak
+  title tag there; they can be edited in Backend → Blog). Links to the old season pages / the schedule inside the texts point to the new pages.
+- **Rendered on the server**: the list and the article text are in the HTML a crawler gets (`<!--PAGE_CONTENT-->` in `public/blog.html` / `article.html`), with
+  `og:type=article`, `article:published_time`, hreflang alternates and Article structured data. The sitemap lists the blog and the published articles.
+  The blog list (`blog`) and the article template (`article`) are in Backend → SEO like every page.
+- **The text is cleaned** on save (`src/htmlSanitize.js`, an allow-list: headings, paragraphs, lists, quotes, links, pictures, tables — no scripts, styles,
+  frames, event handlers or `javascript:` addresses). Pictures an admin uploads are kept on the persistent disk (`blog-images/`, shown at `/blog-images/…`).
+- The menu item is added in Backend → Menu (the picker offers *Blog*). Check: `node scripts/check-blog.js`.
+
 ---
 
 ## 7. Embedding on the blta.sk WordPress site

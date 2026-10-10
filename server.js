@@ -33,6 +33,8 @@ const scheduleRouter = require('./src/routes/schedule');
 const winnersRouter = require('./src/routes/winners');
 const contactRouter = require('./src/routes/contact');
 const seoRouter = require('./src/routes/seo');
+const blog = require('./src/blog');
+const blogRouter = require('./src/routes/blog');
 const changeLogRouter = require('./src/routes/changelog');
 const reservationsRouter = require('./src/routes/reservations');
 const carouselRouter = require('./src/routes/carousel');
@@ -51,6 +53,8 @@ app.set('io', io);
 // why this has to run before any real traffic hits the badge notification
 // endpoints (routes/player.js) or the matches routes that create new ones.
 require('./src/venueSeed').run();
+// the four articles of the old website (once); the published articles have their own whole addresses, so the routes are read again
+if (blog.seedOldArticles()) seo.forgetRoutes();
 try {
   const seeded = require('./src/seasonSeed').run(db);
   if (!seeded.skipped) console.log('Seasons seeded: tagged ' + seeded.tagged + ' of ' + seeded.total + ' BLTA matches');
@@ -185,6 +189,7 @@ app.get('/robots.txt', (req, res) => res.type('text/plain').send(seo.robotsTxt(p
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemapXml(publicOrigin(req))));
 // the entity behind a template page: { name, image } or null
 const TEMPLATE_ENTITY = {
+  article: (slug, lang) => blog.articleEntity(slug, lang),
   player: (id) => {
     const p = db.prepare('SELECT name, photo_url FROM players WHERE slug = ? OR id = ?').get(id, /^\d+$/.test(id) ? Number(id) : -1);
     return p ? { name: p.name, image: p.photo_url || '' } : null;
@@ -219,9 +224,12 @@ app.use((req, res, next) => {
     try {
       let param = hit.param;
       try { param = decodeURIComponent(param); } catch { /* keep it as it is */ }
-      entity = TEMPLATE_ENTITY[hit.key](param);
+      entity = TEMPLATE_ENTITY[hit.key](param, hit.lang);
     } catch (err) { console.error('SEO lookup failed', hit.key, err); }
-    if (!entity) return res.sendFile(path.join(PUBLIC_DIR, page.file));
+    // an article that does not exist (or is a draft) is a real 404; the other pages show their own "not found"
+    if (!entity) return hit.key === 'article' ? pageNotFound(res) : res.sendFile(path.join(PUBLIC_DIR, page.file));
+  } else if (hit.key === 'blog') {
+    entity = { html: blog.listHtml(hit.lang) };
   }
   try {
     const html = seo.render(hit.key, { origin: publicOrigin(req), canonical: hit.canonical, lang: hit.lang, entity });
@@ -252,6 +260,7 @@ app.use('/badge-icons', express.static(path.join(db.dataDir, 'badge-icons')));
 app.use('/player-photos', express.static(path.join(db.dataDir, 'player-photos')));
 app.use('/carousel-images', express.static(path.join(db.dataDir, 'carousel'), { maxAge: '30d' }));
 app.use('/winner-photos', express.static(path.join(db.dataDir, 'winner-photos'), { maxAge: '30d' }));
+app.use('/blog-images', express.static(blog.UPLOAD_DIR, { maxAge: '30d' }));
 
 app.use('/api/players', playersRouter);
 app.use('/api/matches', matchesRouter);
@@ -273,6 +282,7 @@ app.use('/api/schedule', scheduleRouter);
 app.use('/api/winners', winnersRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/seo', seoRouter);
+app.use('/api/articles', blogRouter);
 app.use('/api/changelog', changeLogRouter);
 app.use('/api/reservations', reservationsRouter);
 app.use('/api/carousel', carouselRouter);
