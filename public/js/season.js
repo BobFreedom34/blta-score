@@ -422,7 +422,8 @@ async function openRegisterModal() {
     </div>`;
   document.body.appendChild(wrap);
   const $ = (id) => wrap.querySelector(`#sv-reg-${id}`);
-  const close = () => wrap.remove();
+  let askForCode = false; // the registration made an account: closing this window leads to the page that asks for the 5-digit code
+  const close = () => { wrap.remove(); if (askForCode) refreshPlayerAuth(); };
   wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('[data-close]')) close(); });
   setupAutocomplete('sv-reg-name', 'sv-reg-name-list');
   if (playerAuthed && currentPlayerName) $('name').value = currentPlayerName;
@@ -457,8 +458,9 @@ async function openRegisterModal() {
       wrap.querySelector('.modal').innerHTML = `
         <button type="button" class="close" data-close aria-label="${escapeHtml(t('season.regClose'))}">&times;</button>
         <h3>${escapeHtml(t('season.regThanks', { name: (res && res.name) || typed }))}</h3>
-        <p>${escapeHtml(t('season.regDone'))}</p>${pay}
+        <p>${escapeHtml(t('season.regDone'))}</p>${res && res.pinSetupRequired ? `<p><b>${escapeHtml(t('season.regAccount'))}</b></p>` : ''}${pay}
         <button type="button" class="btn btn-outline btn-block" data-close style="margin-top:10px">${escapeHtml(t('season.regClose'))}</button>`;
+      if (res && res.pinSetupRequired) askForCode = true;
       refresh(); // the new name appears in the players tab
     } catch (err) {
       button.disabled = false;

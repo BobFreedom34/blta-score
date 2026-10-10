@@ -8,6 +8,9 @@ const engine = require('../matchEngine');
 const nameMatch = require('../nameMatch');
 const roundRobin = require('../roundRobin');
 const { sendSeasonRegistrationEmail } = require('../mailer');
+const auth = require('../auth');
+const playerRoutes = require('./player');
+const { creditInviter } = require('./invites');
 
 const router = express.Router();
 
@@ -219,14 +222,52 @@ router.post('/:id/registrations', async (req, res) => {
     .some((r) => (player && r.player_id === player.id) || nameMatch.key(r.name) === nameMatch.key(name));
   if (already) return res.status(409).json({ code: 'ALREADY_REGISTERED', error: 'This player is already registered for the season' });
 
+  // A visitor who is not in the app yet becomes a player now: the account is made (and logged in; the page then asks for the 5-digit code),
+  // like after the app's own registration. An existing roster name that has no phone yet is claimed the same way. An existing player who
+  // already has a phone is never touched or logged in (anybody can type a name). A phone that already belongs to another player stops the
+  // account (the entry is still saved, and the e-mail to the admin says so).
+  const account = openAccount(req, res, player, { name, phone, email });
+  if (account.player) player = account.player;
+
   db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, note) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .run(season.id, player ? player.id : null, name, phone, email, entryCategory, note);
   const total = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?').get(season.id).n;
   // the e-mail to the admin must never make the registration fail
-  sendSeasonRegistrationEmail(season, { name, phone, email, category: entryCategory, note, isNew: !player }, total)
+  sendSeasonRegistrationEmail(season, { name, phone, email, category: entryCategory, note, isNew: !player, account: account.status, phoneHolder: account.holder }, total)
     .catch((err) => console.error('[season registration] admin e-mail failed:', err.message));
-  res.status(201).json({ ok: true, name, category: entryCategory, paymentUrl: season.payment_url || '' });
+  res.status(201).json({ ok: true, name, category: entryCategory, paymentUrl: season.payment_url || '', account: account.status, pinSetupRequired: account.status === 'created' || account.status === 'claimed' });
 });
+
+// -> { status, player?, holder? }
+//   created   a new player was made from the typed name, phone and e-mail, and is logged in
+//   claimed   an existing roster player without a phone got this phone and e-mail, and is logged in
+//   exists    the player already has an account: nothing changes, nobody is logged in
+//   phoneTaken a new name, but the phone belongs to another player: no account (holder = that player's name)
+//   none      the phone is not one an account can be made with
+function openAccount(req, res, player, { name, phone, email }) {
+  let digits = String(phone || '').replace(/[^\d+]/g, '');
+  if (/^[1-9]\d{8}$/.test(digits)) digits = `0${digits}`; // 903111222 -> 0903111222
+  const validPhone = /^0\d{9}$/.test(digits) || /^\+\d{8,15}$/.test(digits);
+  if (player) {
+    const row = db.prepare('SELECT id, name, slug, phone FROM players WHERE id = ?').get(player.id);
+    if (!row || row.phone) return { status: 'exists' };
+    if (!validPhone) return { status: 'none' };
+    const holder = playerRoutes.findPlayerByPhone(digits);
+    if (holder) return { status: 'phoneTaken', holder: holder.name };
+    db.prepare('UPDATE players SET phone = ?, email = ? WHERE id = ?').run(digits, email.slice(0, 100), row.id);
+    auth.logInPlayer(res, row.id);
+    return { status: 'claimed', player: { id: row.id, name: row.name } };
+  }
+  if (!validPhone) return { status: 'none' };
+  const holder = playerRoutes.findPlayerByPhone(digits);
+  if (holder) return { status: 'phoneTaken', holder: holder.name };
+  const slug = playerRoutes.uniqueSlugFor(name);
+  const info = db.prepare('INSERT INTO players (name, slug, phone, email) VALUES (?, ?, ?, ?)').run(name, slug, digits, email.slice(0, 100));
+  const created = { id: Number(info.lastInsertRowid), name };
+  creditInviter(req, res, created.id); // a new player who came through somebody's invite link
+  auth.logInPlayer(res, created.id);
+  return { status: 'created', player: created };
+}
 
 function serializeRegistration(r) {
   return { id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', createdAt: r.created_at, playerId: r.player_id };

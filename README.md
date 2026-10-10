@@ -531,6 +531,17 @@ League-only places (home overview, season timeline, tables page) leave tournamen
   edition with the same title. `schedule_events` / Backend → Schedule stay for plain events that need no page.
 - Check: `node scripts/check-tournaments.js`.
 
+### Registration to a series / tournament = registration to the app
+
+`POST /api/seasons/:id/registrations` (`openAccount()` in `src/routes/seasons.js`) also makes the visitor an app player: a name nobody has
+becomes a `players` row (phone `0…`/`+…`, e-mail, slug from the surname, **no category** — the admin assigns it, until then no court
+reservations), the visitor is logged in and the page's thank-you says an account was made and then opens the "create your 5-digit code"
+step (`pinSetupRequired` in the answer). Invite links (`blta_ref`) are credited as with the normal registration.
+A roster player **without** a phone is claimed (phone + e-mail filled in). An existing player **with** a phone is never touched or
+logged in (anybody can type a name). A phone that already belongs to another player: the entry is saved, no account is made, and the
+e-mail to the admin says so. `account` in the answer: `created | claimed | exists | phoneTaken | none`.
+- Check: `node scripts/check-season-account.js`.
+
 ### Addresses and SEO in two languages (`/seo-admin`)
 
 **Backend → SEO** edits, per public page and **per language** (Slovenčina / English tab): the address (slug), the title,

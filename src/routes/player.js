@@ -575,3 +575,6 @@ router.post('/logout', (req, res) => {
 });
 
 module.exports = router;
+// used by the registration to a season (routes/seasons.js): a new visitor who registers there gets an app account too
+module.exports.findPlayerByPhone = findPlayerByPhone;
+module.exports.uniqueSlugFor = uniqueSlugFor;

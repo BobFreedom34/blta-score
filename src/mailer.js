@@ -394,6 +394,15 @@ async function sendBackupFailedEmail(err) {
 
 // A player entered a season through the season page's registration form: tells the admin who, in which category and how to
 // reach them (the reply goes to the player).
+// what the e-mail says about the person's account in the app
+function accountNote(r) {
+  if (r.account === 'created') return ' (nový hráč — v appke sme mu vytvorili účet)';
+  if (r.account === 'claimed') return ' (hráč z databázy bez účtu — účet sme mu aktivovali)';
+  if (r.account === 'phoneTaken') return ` (nové meno, ale telefón už patrí hráčovi ${r.phoneHolder} — účet sa nevytvoril)`;
+  if (r.account === 'none') return ' (účet sa nevytvoril — telefón nie je v správnom tvare)';
+  return r.isNew ? ' (nové meno — zatiaľ nie je medzi hráčmi)' : '';
+}
+
 async function sendSeasonRegistrationEmail(season, registration, total) {
   const t = getTransporter();
   if (!t) {
@@ -403,7 +412,7 @@ async function sendSeasonRegistrationEmail(season, registration, total) {
   const text = [
     `Nová registrácia ${season.kind === 'TOURNAMENT' ? 'na turnaj' : 'do série'} ${season.name}:`,
     '',
-    `Meno: ${registration.name}${registration.isNew ? ' (nové meno — zatiaľ nie je medzi hráčmi)' : ''}`,
+    `Meno: ${registration.name}${accountNote(registration)}`,
     ...(registration.category ? [`Kategória: ${categoryLabel(registration.category)}`] : ['Kategória: zaradí admin']),
     `Telefón: ${registration.phone}`,
     `E-mail: ${registration.email}`,
