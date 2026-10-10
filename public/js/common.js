@@ -555,6 +555,7 @@ const COURT_ICON_PATHS = {
   logIn: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>',
   logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
   userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
+  video: '<path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
 };
 
 function courtIcon(name) {
@@ -1854,7 +1855,7 @@ function compactMatchCardHtml(m) {
   return `
     <a class="compact-card status-${m.status}${m.status === 'PLANNED' && m.scheduledAt ? ' has-date' : ''}" href="${window.location.origin}/match/${m.token}"${window.top !== window.self ? ' target="_blank" rel="noopener"' : ''}>
       <span class="compact-date-category">
-        ${categoryBadge(m.category)}
+        ${categoryBadge(m.category)}${videoBadge(m)}
         <span class="compact-date">${compactDateHtml(m)}</span>
       </span>
       <span class="compact-players">
@@ -1886,6 +1887,11 @@ function statusBadge(m, opts) {
   const hasTranslation = TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key];
   const label = hasTranslation ? t(key) : (STATUS_LABELS[status] || status);
   return `<span class="badge badge-status status-${status}">${label}</span>`;
+}
+
+// The "Live video" pill of a match that has a YouTube video (set by the admin on the match page): shown next to the status on every match card.
+function videoBadge(m) {
+  return m && m.videoId ? `<span class="badge badge-video">${courtIcon('video')}${t('match.liveVideo')}</span>` : '';
 }
 
 function escapeHtml(str) {

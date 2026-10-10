@@ -595,6 +595,15 @@ and `/en`. The first English texts and slugs are built in (`ENGLISH` in `src/seo
   frames, event handlers or `javascript:` addresses). Pictures an admin uploads are kept on the persistent disk (`blog-images/`, shown at `/blog-images/…`).
 - The menu item is added in Backend → Menu (the picker offers *Blog*). Check: `node scripts/check-blog.js`.
 
+### YouTube video of a match
+
+- The admin can put a **YouTube link** on a match (the match page → the *Live video* tile next to Miesto / Dátum / Kategória → *Pridať* / *Upraviť*; admin only,
+  `PATCH /api/matches/:token/video`, column `matches.video_url`). Any usual form is accepted (`watch?v=`, `youtu.be/`, `/live/`, `/embed/`, `/shorts/`; `src/youtube.js`) and
+  kept as the watch address; an empty value takes the video away. Anything that is not a YouTube video address is refused.
+- With a link the match page shows the video **embedded** (`youtube-nocookie.com`, 16:9) between the buttons and the info tiles — for everybody, also live for people
+  who already have the page open — and every match card (lists, player pages, the compact lists) gets a red outline pill **Live video**. Without a link nothing is
+  shown, and a visitor never sees the tile. Check: `node scripts/check-match-video.js`.
+
 ---
 
 ## 7. Embedding on the blta.sk WordPress site

@@ -44,7 +44,7 @@ function matchCardHtml(m) {
     <a class="match-card status-${m.status}${m.status === 'PLANNED' && m.scheduledAt ? ' has-date' : ''}${resultClass}" href="/match/${m.token}">
       <div class="match-card-top">
         ${categoryBadge(m.category)}
-        ${statusBadge(m, { splitTime: true })}
+        ${statusBadge(m, { splitTime: true })}${videoBadge(m)}
         <div class="match-card-meta" style="margin-left:auto">
           ${m.location ? `<span>${courtIcon('pin')}${escapeHtml(m.location)}</span>` : ''}
           ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>${courtIcon('calendar')}${fmtDateShort(m.scheduledAt)}</span>`}

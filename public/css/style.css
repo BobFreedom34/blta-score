@@ -4706,3 +4706,18 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .blog-body table { border-collapse: collapse; width: 100%; margin: 16px 0; }
 .blog-body th, .blog-body td { border: 1px solid rgba(255, 255, 255, 0.14); padding: 8px 10px; text-align: left; }
 @media (max-width: 700px) { .blog-article h1 { font-size: 27px; } .blog-body { font-size: 16px; } }
+
+/* YouTube video of a match: the pill on the match cards, the embedded player and the admin's tile */
+/* an outline pill like the others (see "Pills are outlines" above), in the red of LIVE */
+.badge-video, body:not(.embed-light) .match-card .badge-video, body.match-page .match-header .badge-video { display: inline-flex; align-items: center; gap: 5px; background: transparent; color: #ee3340; border: 1px solid #ee3340; }
+.badge-video .venue-icon { width: 13px; height: 13px; flex-basis: 13px; }
+.compact-date-category .badge-video { padding: 2px 7px; font-size: 10px; }
+.match-video { margin: 0 0 16px; }
+.match-video-frame { position: relative; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: #000; border: 1px solid rgba(255, 255, 255, 0.12); }
+.match-video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video-form { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.video-form input { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #ddd; font-family: inherit; font-size: 13px; }
+.video-form-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.video-error { color: var(--danger); font-weight: 700; font-size: 13px; min-height: 0; }
+.video-form[hidden] { display: none; }
+.info-item:has(.video-form:not([hidden])) { grid-column: 1 / -1; }

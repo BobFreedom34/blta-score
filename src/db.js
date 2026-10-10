@@ -286,6 +286,12 @@ if (!matchColumns.includes('league')) {
   db.exec('ALTER TABLE matches ADD COLUMN league TEXT');
 }
 
+// The YouTube video of the match (a live stream or a recording), set by the admin only (PATCH /api/matches/:token/video): kept as the normal
+// watch address; the match page shows it embedded and the match cards get a "Live video" pill. NULL = no video.
+if (!matchColumns.includes('video_url')) {
+  db.exec('ALTER TABLE matches ADD COLUMN video_url TEXT');
+}
+
 // Left over from the time the ranking points were sent to blta.sk: a snapshot (JSON) of what was awarded for this match there,
 // or NULL. Nothing writes it any more — the app keeps its own ledger (ranking_awards, see src/rankingPoints.js). It is read
 // once, by src/rankingsSeed.js, to tell which matches already had their points when the app took over the ranking tables.

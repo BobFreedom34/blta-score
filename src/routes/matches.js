@@ -14,6 +14,7 @@ const badgeEngine = require('../badgeEngine');
 const courtIQ = require('../courtIQEngine');
 const bracketEngine = require('../bracketEngine');
 const rankingPoints = require('../rankingPoints');
+const youtube = require('../youtube');
 const changeLog = require('../changeLog');
 
 const router = express.Router();
@@ -178,6 +179,8 @@ function serialize(row) {
     token: row.share_token,
     category: row.category,
     league: row.league || null,
+    videoUrl: row.video_url || null,
+    videoId: row.video_url ? youtube.parseVideoId(row.video_url) : null,
     ...seasonAndGroup(row),
     stage: row.stage === 'PLAYOFF' ? 'PLAYOFF' : 'GROUP',
     round: row.round || null,
@@ -542,6 +545,22 @@ router.patch('/:token/league', requireAdmin, (req, res) => {
   db.prepare('UPDATE matches SET league = ?, updated_at = ? WHERE id = ?').run(league, nowIso(), row.id);
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   res.json(serialize(updated));
+});
+
+// Admin-only: the YouTube video of the match (a live stream or a recording). Any usual YouTube address is accepted and kept as the watch address;
+// an empty value takes the video away. The match page shows it embedded and the match cards get a "Live video" pill.
+router.patch('/:token/video', requireAdmin, (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  const raw = typeof req.body.url === 'string' ? req.body.url.trim() : '';
+  let stored = null;
+  if (raw) {
+    const id = youtube.parseVideoId(raw);
+    if (!id) return res.status(400).json({ error: 'That is not a YouTube video address (for example https://www.youtube.com/watch?v=… or https://youtu.be/…)' });
+    stored = youtube.watchUrl(id);
+  }
+  db.prepare('UPDATE matches SET video_url = ?, updated_at = ? WHERE id = ?').run(stored, nowIso(), row.id);
+  res.json(broadcast(req, db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id)));
 });
 
 // Admin-only: which season and group a BLTA-league match belongs to. A group needs its season and has to be of

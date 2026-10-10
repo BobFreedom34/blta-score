@@ -730,7 +730,7 @@ function render(m) {
   root.innerHTML = `
     <div class="match-header">
       <div>
-        ${categoryBadge(m.category)} ${statusBadge(m, { splitTime: true })}${m.status === 'LIVE' ? ` <span class="badge badge-viewers" id="viewer-count-badge">${viewersHtml(viewerCount !== null ? viewerCount : '…')}</span>` : ''}
+        ${categoryBadge(m.category)} ${statusBadge(m, { splitTime: true })}${m.videoId ? ` ${videoBadge(m)}` : ''}${m.status === 'LIVE' ? ` <span class="badge badge-viewers" id="viewer-count-badge">${viewersHtml(viewerCount !== null ? viewerCount : '…')}</span>` : ''}
         <h1 style="margin-top:8px"><a class="player-name-link" href="/player/${m.player1.slug || m.player1.id}">${escapeHtml(m.player1.name)}</a><a class="player-info-link" href="/player/${m.player1.slug || m.player1.id}" title="${escapeHtml(t('common.viewProfileTitle', { name: m.player1.name }))}">i</a> <span style="color:var(--gray-dim);font-weight:500">${t('match.vsLabel')}</span> <a class="player-name-link" href="/player/${m.player2.slug || m.player2.id}">${escapeHtml(m.player2.name)}</a><a class="player-info-link" href="/player/${m.player2.slug || m.player2.id}" title="${escapeHtml(t('common.viewProfileTitle', { name: m.player2.name }))}">i</a></h1>
         <div style="color:var(--gray-dim);font-size:13px">${m.formatLabel}${ballsPlayerName ? ` &nbsp;·&nbsp; ${ballsIconHtml(m, m.ballsPlayer)} ${escapeHtml(ballsPlayerName)}` : ''}</div>
       </div>
@@ -738,6 +738,7 @@ function render(m) {
 
     ${scoreboardHtml(m, durationHtml)}
     ${controlsHtml(m, canControlLiveScoreOrReferee)}
+    ${videoEmbedHtml(m)}
 
     <div class="info-grid">
       <div class="info-item">
@@ -755,6 +756,7 @@ function render(m) {
         <div class="value" id="category-display">${categoryLabel(m.category)}</div>
         ${locationEditable ? `<button type="button" class="edit-link info-item-edit-link" data-action="open-edit-match">${t('common.edit')}</button>` : ''}
       </div>
+      ${isAdminUser ? videoItemHtml(m) : ''}
       ${['ELITE', 'NEXT_GEN', 'NOVICE'].includes(m.category) ? `
       <div class="info-item">
         <div class="label">${t('match.seasonLabel')}</div>
@@ -846,7 +848,56 @@ async function openSeasonModal(m) {
   modal.style.display = 'flex';
 }
 
+// The YouTube video of the match, embedded under the score and the buttons — only when the admin has put a link in.
+function videoEmbedHtml(m) {
+  if (!m.videoId) return '';
+  const title = `${t('match.liveVideo')} — ${m.player1.name} vs ${m.player2.name}`;
+  return `
+    <div class="match-video">
+      <div class="match-video-frame"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(m.videoId)}?rel=0" title="${escapeHtml(title)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+    </div>`;
+}
+
+// Admin only: the tile where the YouTube link is added, changed or taken away (an info tile like Miesto / Dátum / Kategória).
+function videoItemHtml(m) {
+  return `
+      <div class="info-item" id="video-item">
+        <div class="label">${t('match.liveVideo')}</div>
+        <div class="value" id="video-display">${m.videoId ? `<a href="${escapeHtml(m.videoUrl)}" target="_blank" rel="noopener" style="color:inherit">youtube.com/watch?v=${escapeHtml(m.videoId)}</a>` : `<span style="color:var(--gray)">${t('match.videoNone')}</span>`}</div>
+        <button type="button" class="edit-link" data-action="edit-video">${m.videoId ? t('common.edit') : t('match.videoAdd')}</button>
+        <form class="video-form" id="video-form" hidden>
+          <input type="text" id="video-input" value="${escapeHtml(m.videoUrl || '')}" placeholder="${escapeHtml(t('match.videoPlaceholder'))}" autocomplete="off">
+          <div class="video-form-row">
+            <button type="submit" class="btn btn-sm btn-primary">${t('match.videoSave')}</button>
+            ${m.videoId ? `<button type="button" class="btn btn-sm btn-outline" data-action="remove-video">${t('match.videoRemove')}</button>` : ''}
+            <button type="button" class="btn btn-sm btn-outline" data-action="cancel-video">${t('common.cancel')}</button>
+          </div>
+          <div class="video-error" id="video-error"></div>
+        </form>
+      </div>`;
+}
+
 function attachHandlers(m) {
+  const videoForm = document.getElementById('video-form');
+  if (videoForm) {
+    const send = async (url) => {
+      const errorEl = document.getElementById('video-error');
+      errorEl.textContent = '';
+      try {
+        const updated = await api(`/matches/${m.token}/video`, { method: 'PATCH', body: { url } });
+        toast(t(url ? 'match.videoSaved' : 'match.videoRemoved'));
+        render(updated);
+      } catch (err) { errorEl.textContent = err.message; }
+    };
+    document.querySelector('[data-action="edit-video"]').addEventListener('click', () => {
+      videoForm.hidden = !videoForm.hidden;
+      if (!videoForm.hidden) document.getElementById('video-input').focus();
+    });
+    videoForm.addEventListener('submit', (e) => { e.preventDefault(); send(document.getElementById('video-input').value.trim()); });
+    const remove = videoForm.querySelector('[data-action="remove-video"]');
+    if (remove) remove.addEventListener('click', () => send(''));
+    videoForm.querySelector('[data-action="cancel-video"]').addEventListener('click', () => { videoForm.hidden = true; });
+  }
   document.querySelectorAll('[data-action="edit-season"]').forEach((btn) => {
     btn.addEventListener('click', () => openSeasonModal(m));
   });
