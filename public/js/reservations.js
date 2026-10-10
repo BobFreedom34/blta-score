@@ -148,6 +148,7 @@
 
   function mineHtml() {
     if (!data.me) return `<p class="rv-hint">${escapeHtml(t('rv.loginHint'))} <button type="button" class="rv-link" data-login>${escapeHtml(t('login.submit'))}</button></p>`;
+    if (!data.me.canReserve && !data.admin) return `<p class="rv-hint">${escapeHtml(t('rv.notBltaHint'))}</p>`;
     const list = (mine && mine.reservations) || [];
     const limit = data.settings.maxActive > 0 ? `<span>${escapeHtml(t('rv.limitInfo', { n: data.settings.maxActive }))}</span>` : '';
     const rows = list.length ? list.map((r) => `
@@ -190,7 +191,7 @@
 
   const errorText = (err) => {
     const code = err && err.data && err.data.code;
-    const known = { LIMIT: 'rv.err.limit', OVERLAP: 'rv.err.overlap', TAKEN: 'rv.err.taken', PAST: 'rv.err.past', TOO_LATE: 'rv.err.tooLate', LOGIN: 'rv.err.login' }[code];
+    const known = { LIMIT: 'rv.err.limit', OVERLAP: 'rv.err.overlap', TAKEN: 'rv.err.taken', PAST: 'rv.err.past', TOO_LATE: 'rv.err.tooLate', LOGIN: 'rv.err.login', NOT_BLTA: 'rv.err.notBlta' }[code];
     if (known === 'rv.err.limit') return t(known, { n: err.data.maxActive });
     if (known === 'rv.err.tooLate') return t(known, { h: err.data.cancelHours });
     return known ? t(known) : (err && err.message) || t('rv.err.generic');
@@ -319,11 +320,16 @@
     if (slot.past) return;
     if (slot.status === 'FREE') {
       // the server says who is logged in (the page's own login state can still be loading)
-      if (data.me) { confirmReserve(slot); return; }
+      if (data.me) {
+        if (!data.me.canReserve) { toast(t('rv.err.notBlta')); return; }
+        confirmReserve(slot);
+        return;
+      }
       requirePlayerAuth(async () => {
         await reload(); // the login changed who "me" is
         const fresh = data.slots.find((s) => s.id === id);
-        if (fresh && fresh.status === 'FREE' && !fresh.past) confirmReserve(fresh);
+        if (data.me && !data.me.canReserve) toast(t('rv.err.notBlta'));
+        else if (fresh && fresh.status === 'FREE' && !fresh.past) confirmReserve(fresh);
         else if (fresh && fresh.mine) toast(t('rv.alreadyYours'));
         else toast(t('rv.err.taken'));
       });

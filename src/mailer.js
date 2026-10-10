@@ -500,8 +500,71 @@ async function sendCourtReservationEmails(r) {
   return sent;
 }
 
+// The two texts of a cancelled reservation: the notice to the admin (when the player cancelled) and the message to the player (when the
+// player cancelled: a confirmation; when the admin did: what happened). Same fields as courtReservationTexts, plus byAdmin.
+function courtCancellationTexts(r) {
+  const when = `${skDay(r.day)}, ${r.start}–${r.end}`;
+  const first = String(r.player.name || '').trim().split(/\s+/)[0] || '';
+  const short = `${r.court}, ${skDay(r.day)} ${r.start}–${r.end}`;
+  const adminText = [
+    'Hráč zrušil svoju rezerváciu kurtu:',
+    '',
+    `Hráč: ${r.player.name}`,
+    `Telefón: ${r.player.phone || '-'}`,
+    `E-mail: ${r.player.email || '-'}`,
+    `Kurt: ${r.court}`,
+    `Kedy: ${when}`,
+    ...(r.price ? [`Cena: ${r.price}`] : []),
+    '',
+    'Termín je opäť voľný a dá sa znova rezervovať.',
+    `Kalendár rezervácií: ${reservationsLink()}`,
+  ].join('\n');
+  const playerText = [
+    first ? `Ahoj ${first},` : 'Ahoj,',
+    '',
+    r.byAdmin ? 'tvoju rezerváciu kurtu zrušil administrátor BLTA.' : 'tvoja rezervácia kurtu je zrušená.',
+    '',
+    `Kurt: ${r.court}`,
+    `Kedy: ${when}`,
+    '',
+    `${r.byAdmin ? 'Ak ide o omyl alebo sa chceš dohodnúť na inom termíne, napíš nám. ' : ''}Nový termín si môžeš rezervovať tu: ${reservationsLink()}`,
+    '',
+    'BLTA – Bratislavská Liga Tenisových Amatérov',
+  ].join('\n');
+  return {
+    admin: { subject: `Zrušená rezervácia kurtu: ${r.player.name} – ${short}`, text: adminText },
+    player: { subject: `Rezervácia kurtu zrušená: ${short}`, text: playerText },
+  };
+}
+
+// The e-mails of a cancelled reservation: the admin hears when the player cancelled; the player (with an e-mail on file) always hears.
+// Never throws; returns { admin, player } = true when sent.
+async function sendCourtCancellationEmails(r) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping court-cancellation emails.');
+    return { admin: false, player: false };
+  }
+  const texts = courtCancellationTexts(r);
+  const from = process.env.MAIL_FROM || process.env.SMTP_USER;
+  const sent = { admin: false, player: false };
+  if (!r.byAdmin) {
+    try {
+      await t.sendMail({ from, to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER, replyTo: r.player.email || undefined, subject: texts.admin.subject, text: texts.admin.text });
+      sent.admin = true;
+    } catch (err) { console.error('[court cancellation] admin e-mail failed:', err.message); }
+  }
+  if (r.player.email) {
+    try {
+      await t.sendMail({ from, to: r.player.email, subject: texts.player.subject, text: texts.player.text });
+      sent.player = true;
+    } catch (err) { console.error('[court cancellation] player e-mail failed:', err.message); }
+  }
+  return sent;
+}
+
 module.exports = {
-  courtReservationTexts, sendCourtReservationEmails,
+  courtReservationTexts, sendCourtReservationEmails, courtCancellationTexts, sendCourtCancellationEmails,
   sendSeasonRegistrationEmail,
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendProposalReceivedEmail,

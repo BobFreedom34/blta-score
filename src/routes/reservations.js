@@ -154,6 +154,31 @@ function notifyReserved(slot, playerId) {
   }
 }
 
+// Tells about a cancelled reservation (the data of the spot as it was): the admin when the player cancelled, the player (with an e-mail
+// on file) either way. Never lets a failure reach whoever cancelled.
+function notifyCancelled(slot, playerId, byAdmin) {
+  try {
+    const player = db.prepare('SELECT name, email, phone FROM players WHERE id = ?').get(playerId);
+    const court = db.prepare('SELECT * FROM reservation_courts WHERE id = ?').get(slot.court_id);
+    if (!player || !court) return;
+    const eur = spotPrice(court, slot, getSettings());
+    mailer.sendCourtCancellationEmails({
+      byAdmin,
+      player: { name: player.name, email: player.email || '', phone: player.phone || '' },
+      court: court.name, day: slot.day, start: slot.start_time, end: slot.end_time, price: eur > 0 ? euroText(eur) : '',
+    }).catch((err) => console.error('[court cancellation] e-mail failed:', err.message));
+  } catch (err) {
+    console.error('[court cancellation] e-mail failed:', err.message);
+  }
+}
+
+// Only BLTA players can reserve a court: a player with a category (Elite, Next Gen or Novice) assigned in the backend.
+const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+function canReserve(playerId) {
+  const row = db.prepare('SELECT category FROM players WHERE id = ?').get(playerId);
+  return !!row && BLTA_CATEGORIES.includes(row.category);
+}
+
 function slotRow(id) {
   return db.prepare(`
     SELECT s.*, c.name AS court_name, p.name AS player_name
@@ -219,7 +244,7 @@ router.get('/', (req, res) => {
   const active = me !== null ? activeOf(me, now).length : 0;
   res.json({
     today: now.date, nowTime: now.time, from, to, days, courts, slots, settings,
-    me: me !== null ? { playerId: me, active } : null,
+    me: me !== null ? { playerId: me, active, canReserve: canReserve(me) } : null,
     admin,
     canShiftBack: from > now.date,
   });
@@ -253,6 +278,7 @@ router.get('/mine', (req, res) => {
 router.post('/slots/:id/reserve', (req, res) => {
   const me = getPlayerId(req);
   if (me === null) return res.status(401).json({ code: 'LOGIN', error: 'Please log in as a player to reserve a court' });
+  if (!canReserve(me)) return res.status(403).json({ code: 'NOT_BLTA', error: 'Only BLTA players with an assigned category can reserve a court — ask the admin' });
   const slot = slotRow(Number(req.params.id));
   if (!slot) return res.status(404).json({ error: 'That spot does not exist any more' });
   const now = nowLocal();
@@ -291,6 +317,7 @@ router.post('/slots/:id/cancel', (req, res) => {
   }
   db.prepare("UPDATE court_slots SET player_id = NULL, guest_name = '', reserved_at = NULL WHERE id = ?").run(slot.id);
   emitChanged(req);
+  if (slot.player_id) notifyCancelled(slot, slot.player_id, admin); // a guest's spot has no player to write to
   res.json({ ok: true });
 });
 

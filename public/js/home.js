@@ -118,8 +118,10 @@ function mineHtml(d) {
   }
 
   // Every number tile has the same build: the big number on the left, at most two lines beside it behind a thin divider.
-    const tile = ({ href, label, num, sup, lines, below }) => `
-      <${href ? `a class="home-mine-cell" href="${href}"` : 'div class="home-mine-cell"'}>
+    // `cover` makes the whole tile a link without being an <a> itself (it holds links of its own, the form squares)
+    const tile = ({ href, cover, label, num, sup, lines, below }) => `
+      <${href ? `a class="home-mine-cell" href="${href}"` : `div class="home-mine-cell${cover ? ' linked' : ''}"`}>
+        ${cover ? `<a class="home-mine-cover" href="${cover}" aria-label="${escapeHtml(label)}"></a>` : ''}
         <div class="k">${escapeHtml(label)}</div>
         <div class="home-mine-body">
           <div class="big">${num}${sup ? `<sup>${sup}</sup>` : ''}</div>
@@ -138,6 +140,7 @@ function mineHtml(d) {
     const left = Math.max(0, opponents - row.played);
     const pct = opponents ? Math.min(100, Math.round((row.played / opponents) * 100)) : 0;
     groupCells = tile({
+      href: d.season && d.season.id ? `/tables?season=${d.season.id}` : '/tables', // the tables of this season
       label: t('home.minePos'),
       num: `${row.position}.`,
       lines: of(t('home.minePlayers', { n: group.rows.length })) + together(grp(group.name), pts(t('home.minePts', { n: row.points }))),
@@ -156,16 +159,17 @@ function mineHtml(d) {
   }).join('');
   const formCell = form.length
     ? tile({
+      cover: `/player/${encodeURIComponent(currentPlayerSlug || pid)}`, // my profile
       label: t('home.mineForm'),
       num: wins,
       lines: of(t('home.mineFormSub', { w: wins, l: form.length - wins })) + pts(t('home.mineLastN', { n: form.length })),
       below: `<div class="home-mine-form">${squares}</div>`,
     })
     : `
-      <div class="home-mine-cell">
+      <a class="home-mine-cell" href="/player/${encodeURIComponent(currentPlayerSlug || pid)}">
         <div class="k">${escapeHtml(t('home.mineForm'))}</div>
         <div class="v dim">${escapeHtml(t('home.mineNoForm'))}</div>
-      </div>`;
+      </a>`;
 
   let rankCell = '';
   if (rankRows) {

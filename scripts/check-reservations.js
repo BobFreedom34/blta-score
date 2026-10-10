@@ -109,7 +109,7 @@ async function call(method, url, { body, cookie } = {}) {
 }
 const admin = (method, url, body) => call(method, url, { body, cookie: adminCookie });
 const as = (playerId, method, url, body) => call(method, url, { body, cookie: playerCookie(playerId) });
-const newPlayer = (name) => Number(db.prepare('INSERT INTO players (name, slug) VALUES (?, ?)').run(name, `rv-${n += 1}`).lastInsertRowid);
+const newPlayer = (name, category = 'NOVICE') => Number(db.prepare('INSERT INTO players (name, slug, category) VALUES (?, ?, ?)').run(name, `rv-${n += 1}`, category).lastInsertRowid);
 const view = async (from, cookie) => (await call('GET', `/api/reservations${from ? `?from=${from}` : ''}`, { cookie })).json;
 const slotsOf = async (day, courtId) => (await view(day, adminCookie)).slots.filter((s) => s.day === day && (!courtId || s.courtId === courtId));
 
@@ -291,7 +291,7 @@ test('reserving: only a logged-in player; the name goes into the spot; a second 
   assert.deepStrictEqual([asB.status, asB.label, asB.mine, asB.name], ['RESERVED', 'Anna T.', false, undefined], 'others see a short name only');
   const asA = (await call('GET', `/api/reservations?from=${D(6)}`, { cookie: playerCookie(S.a) })).json;
   assert.strictEqual(asA.slots.find((s) => s.id === spot.id).mine, true);
-  assert.deepStrictEqual(asA.me, { playerId: S.a, active: 1 });
+  assert.deepStrictEqual(asA.me, { playerId: S.a, active: 1, canReserve: true });
   const full = (await slotsOf(D(6), S.c1)).find((s) => s.id === spot.id);
   assert.deepStrictEqual([full.name, full.playerId], ['Anna Testová', S.a], 'the admin sees the full name');
   const second = await as(S.b, 'POST', `/api/reservations/slots/${spot.id}/reserve`);
@@ -704,8 +704,85 @@ test('e-mails: a reservation tells the admin and confirms to the player, with th
   assert.strictEqual((await as(maria, 'POST', `/api/reservations/slots/${free.id}/reserve`)).status, 201);
   assert.strictEqual(await waitForMails(mid4 + 2), mid4 + 2);
   mails.slice(mid4).forEach((m) => assert.ok(!readMail(m).text.includes('Cena:'), 'a price on a court without one'));
+  // a player cancelling: the admin gets a notice and the player a confirmation
+  const mid5 = mails.length;
+  assert.strictEqual((await as(maria, 'POST', `/api/reservations/slots/${sat.id}/cancel`)).status, 200);
+  assert.strictEqual(await waitForMails(mid5 + 2), mid5 + 2);
+  await new Promise((r) => setTimeout(r, 300));
+  assert.strictEqual(mails.length, mid5 + 2, 'two e-mails for a cancellation by the player');
+  const sent = mails.slice(mid5).map(readMail);
+  const cAdmin = sent.find((m) => m.to.includes('admin@example.com'));
+  const cPlayer = sent.find((m) => m.to.includes('maria@example.com'));
+  assert.ok(cAdmin && cPlayer);
+  assert.strictEqual(cAdmin.subject, 'Zrušená rezervácia kurtu: Mária Mailová – Mail test, sobota 10.10.2026 09:00–10:30');
+  for (const line of ['Hráč zrušil svoju rezerváciu kurtu:', 'Hráč: Mária Mailová', 'E-mail: maria@example.com', 'Kurt: Mail test', 'Kedy: sobota 10.10.2026, 09:00–10:30', 'Cena: 45 €', 'znova rezervovať']) {
+    assert.ok(cAdmin.text.includes(line), `cancel mail to the admin lacks "${line}":\n${cAdmin.text}`);
+  }
+  assert.ok(cAdmin.replyTo.includes('maria@example.com'));
+  assert.strictEqual(cPlayer.subject, 'Rezervácia kurtu zrušená: Mail test, sobota 10.10.2026 09:00–10:30');
+  for (const line of ['Ahoj Mária,', 'tvoja rezervácia kurtu je zrušená.', 'Kurt: Mail test', 'Kedy: sobota 10.10.2026, 09:00–10:30', 'https://blta.sk/rezervacie-kurtov']) {
+    assert.ok(cPlayer.text.includes(line), `cancel mail to the player lacks "${line}":\n${cPlayer.text}`);
+  }
+  assert.ok(!cPlayer.text.includes('administrátor'));
+  // the admin cancelling a player's reservation: only the player hears (what happened); a player without an e-mail hears nothing
+  const mid6 = mails.length;
+  assert.strictEqual((await as(maria, 'POST', `/api/reservations/slots/${free.id}/cancel`)).status, 200);
+  assert.strictEqual(await waitForMails(mid6 + 2), mid6 + 2, 'Mária cancelling her second reservation: two e-mails');
+  const again = await mk(D(4), '09:00', '10:00');
+  const mid7 = mails.length;
+  assert.strictEqual((await as(maria, 'POST', `/api/reservations/slots/${again.id}/reserve`)).status, 201, 'Mária reserves again');
+  assert.strictEqual(await waitForMails(mid7 + 2), mid7 + 2);
+  const mid8 = mails.length;
+  assert.strictEqual((await admin('POST', `/api/reservations/slots/${again.id}/cancel`)).status, 200);
+  assert.strictEqual(await waitForMails(mid8 + 1), mid8 + 1);
+  await new Promise((r) => setTimeout(r, 300));
+  assert.strictEqual(mails.length, mid8 + 1, 'the admin cancelling: one e-mail, to the player');
+  const byAdmin = readMail(mails[mid8]);
+  assert.deepStrictEqual(mails[mid8].to, ['maria@example.com']);
+  assert.ok(byAdmin.text.includes('tvoju rezerváciu kurtu zrušil administrátor BLTA.'), byAdmin.text);
+  const mid9 = mails.length;
+  assert.strictEqual((await admin('POST', `/api/reservations/slots/${monCross.id}/cancel`)).status, 200);
+  await new Promise((r) => setTimeout(r, 400));
+  assert.strictEqual(mails.length, mid9, 'the admin cancelling a spot of a player without an e-mail: nothing is sent');
+  assert.strictEqual((await as(maria, 'POST', `/api/reservations/slots/${free.id}/cancel`)).status, 409, 'a spot that is free cannot be cancelled');
+  await new Promise((r) => setTimeout(r, 300));
+  assert.strictEqual(mails.length, mid9, 'a refused cancellation sends nothing');
   await admin('DELETE', `/api/reservations/courts/${court.id}?force=1`);
   await admin('DELETE', `/api/reservations/courts/${plain.id}?force=1`);
+});
+
+// ---------------------------------------------------------------- only BLTA players
+test('only BLTA players (a category assigned) can reserve; the admin can still put anybody into a spot', async () => {
+  const before = mails.length;
+  await admin('PUT', '/api/reservations/settings', { maxActive: 0, cancelHours: 2 });
+  const court = (await admin('POST', '/api/reservations/courts', { name: 'BLTA only' })).json;
+  const spots = [];
+  for (const start of ['09:00', '10:00', '11:00', '12:00']) {
+    await admin('POST', '/api/reservations/slots', { courtIds: [court.id], date: D(5), start, end: `${String(Number(start.slice(0, 2)) + 1).padStart(2, '0')}:00` });
+  }
+  (await slotsOf(D(5), court.id)).forEach((s) => spots.push(s));
+  const none = newPlayer('Bez Kategórie', null);
+  const elite = newPlayer('Elitný Hráč', 'ELITE');
+  const nextGen = newPlayer('Nový Generačný', 'NEXT_GEN');
+  const asNone = await call('GET', `/api/reservations?from=${D(5)}`, { cookie: playerCookie(none) });
+  assert.deepStrictEqual(asNone.json.me, { playerId: none, active: 0, canReserve: false }, 'the page knows');
+  const refused = await as(none, 'POST', `/api/reservations/slots/${spots[0].id}/reserve`);
+  assert.deepStrictEqual([refused.status, refused.json.code], [403, 'NOT_BLTA']);
+  assert.strictEqual((await slotsOf(D(5), court.id)).find((s) => s.id === spots[0].id).status, 'FREE', 'the spot stays free');
+  await new Promise((r) => setTimeout(r, 300));
+  assert.strictEqual(mails.length, before, 'a refused reservation sends no e-mail');
+  assert.strictEqual((await as(elite, 'POST', `/api/reservations/slots/${spots[0].id}/reserve`)).status, 201);
+  assert.strictEqual((await as(nextGen, 'POST', `/api/reservations/slots/${spots[1].id}/reserve`)).status, 201);
+  const novice = newPlayer('Začiatočník', 'NOVICE');
+  assert.strictEqual((await as(novice, 'POST', `/api/reservations/slots/${spots[2].id}/reserve`)).status, 201);
+  // a category that is not a BLTA one (the column only takes the three, but a stray value must not open the door)
+  const odd = newPlayer('Divný', 'OTHER');
+  assert.strictEqual((await as(odd, 'POST', `/api/reservations/slots/${spots[3].id}/reserve`)).status, 403);
+  // the admin can put a player without a category into a spot
+  assert.strictEqual((await admin('POST', `/api/reservations/slots/${spots[3].id}/assign`, { playerId: none })).status, 200);
+  // not logged in is still a login question
+  assert.strictEqual((await call('POST', `/api/reservations/slots/${spots[3].id}/reserve`, { cookie: '' })).status, 401);
+  await admin('DELETE', `/api/reservations/courts/${court.id}?force=1`);
 });
 
 async function main() {

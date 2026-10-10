@@ -3529,7 +3529,13 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
 .home-mine-grid > :last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
 .home-mine-cell { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 16px 18px; color: var(--white); display: flex; flex-direction: column; min-width: 0; }
 .home-mine-cell.next { background: #0a0a0a; border-color: rgba(255, 255, 255, 0.55); }
-a.home-mine-cell:hover { border-color: var(--orange); }
+a.home-mine-cell:hover, .home-mine-cell.linked:hover { border-color: var(--orange); }
+a.home-mine-cell, .home-mine-cell.linked { position: relative; }
+/* a small grey arrow in the corner of every tile that is a link */
+a.home-mine-cell::after, .home-mine-cell.linked::after { content: '\2197\FE0E'; position: absolute; top: 13px; right: 15px; font-size: 15px; font-weight: 700; line-height: 1; color: #8d929c; pointer-events: none; z-index: 2; transition: color 0.15s; }
+a.home-mine-cell:hover::after, .home-mine-cell.linked:hover::after { color: var(--orange); }
+.home-mine-cover { position: absolute; inset: 0; border-radius: 14px; z-index: 1; }
+.home-mine-cell.linked .home-mine-form { position: relative; z-index: 2; }
 .home-mine-cell .k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .home-mine-cell .v { font-size: 22px; font-weight: 800; line-height: 1.15; margin-top: 8px; }
 /* numbers are as big as in the league-number tiles below (28px) */
