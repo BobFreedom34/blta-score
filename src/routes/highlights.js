@@ -1,9 +1,13 @@
 // "Hráč mesiaca" on the home page: GET /api/highlights/month — the player of the LAST FULL month and the player with the biggest courtIQ
-// progress in it. Worked out from what the app already has (finished BLTA matches, the BLTA points ledger, the courtIQ history); nothing is
-// entered by hand. HIGHLIGHTS_NOW ('YYYY-MM-DD') fixes the date for the checks.
+// progress in it. Worked out from what the app already has (finished BLTA matches, the league's points rules, the courtIQ history); nothing is
+// entered by hand. The points are worked out from the RULES for every match of the month (2:0 in Elite = 30 …), not read from the points ledger:
+// the ledger is the ranking tables' own bookkeeping and may lack a match (one that already counted when the tables took over), and a manual
+// correction of a table total does not belong to any match. GET /api/rankings/audit shows where the ledger and the rules differ.
+// HIGHLIGHTS_NOW ('YYYY-MM-DD') fixes the date for the checks.
 const express = require('express');
 const db = require('../db');
 const { ratingToBand } = require('../courtIQEngine');
+const { computeAwards } = require('../rankingPoints');
 
 const router = express.Router();
 
@@ -31,7 +35,7 @@ function lastMonth(day) {
 router.get('/month', (req, res) => {
   const range = lastMonth(today());
   const matches = db.prepare(`
-    SELECT id, player1_id, player2_id, winner_id, COALESCE(scheduled_at, start_time, created_at) AS d
+    SELECT *, COALESCE(scheduled_at, start_time, created_at) AS d
     FROM matches
     WHERE status = 'FINISHED' AND winner_id IS NOT NULL AND category IN (${BLTA_CATEGORIES.map(() => '?').join(',')})
       AND COALESCE(scheduled_at, start_time, created_at) >= ? AND COALESCE(scheduled_at, start_time, created_at) < ?
@@ -42,21 +46,15 @@ router.get('/month', (req, res) => {
   const stats = new Map();
   const of = (id) => { if (!stats.has(id)) stats.set(id, { id, played: 0, wins: 0, run: 0, streak: 0, points: 0 }); return stats.get(id); };
   matches.forEach((m) => {
+    // what the match was worth by the league's rules (nothing for a best-of-1 or best-of-5, say)
+    const worth = computeAwards(m);
+    if (worth) worth.awards.forEach((a) => { of(a.playerId).points += a.points; });
     [m.player1_id, m.player2_id].forEach((id) => {
       const s = of(id);
       s.played += 1;
       if (m.winner_id === id) { s.wins += 1; s.run += 1; s.streak = Math.max(s.streak, s.run); } else s.run = 0;
     });
   });
-  if (matches.length) {
-    const ids = matches.map((m) => m.id);
-    db.prepare(`
-      SELECT e.player_id AS pid, SUM(a.points) AS pts
-      FROM ranking_awards a JOIN ranking_entries e ON e.id = a.entry_id
-      WHERE e.table_key = 'blta' AND e.player_id IS NOT NULL AND a.match_id IN (${ids.map(() => '?').join(',')})
-      GROUP BY e.player_id
-    `).all(...ids).forEach((r) => { if (stats.has(r.pid)) stats.get(r.pid).points = r.pts || 0; });
-  }
 
   const info = db.prepare('SELECT id, name, slug, category, photo_url FROM players WHERE id = ? AND hidden = 0');
   const ready = [...stats.values()].filter((s) => s.played >= MIN_MATCHES && s.wins >= 1 && info.get(s.id));
@@ -89,7 +87,7 @@ router.get('/month', (req, res) => {
   res.json({
     month: range.month,
     player: { id: bestInfo.id, name: bestInfo.name, slug: bestInfo.slug, category: bestInfo.category, photoUrl: bestInfo.photo_url || '', wins: best.wins, played: best.played, points: best.points, streak: best.streak },
-    improved: pick ? { id: improvedInfo.id, name: improvedInfo.name, slug: improvedInfo.slug, from: pick.from, to: pick.to, delta: pick.delta, played: pick.played } : null,
+    improved: pick ? { id: improvedInfo.id, name: improvedInfo.name, slug: improvedInfo.slug, photoUrl: improvedInfo.photo_url || '', from: pick.from, to: pick.to, delta: pick.delta, played: pick.played } : null,
   });
 });
 

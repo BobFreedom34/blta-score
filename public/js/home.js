@@ -528,17 +528,22 @@ function pomCardHtml(d) {
   const p = d.player;
   const monthName = new Date(`${d.month}-15T12:00:00`).toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'sk-SK', { month: 'long' });
   const num = (label, value, green) => `<div><small>${escapeHtml(label)}</small><span${green ? ' class="green"' : ''}>${escapeHtml(value)}</span></div>`;
-  const improved = d.improved
-    ? `<div class="pom-imp">${escapeHtml(t('pom.improved'))}: <a href="/player/${encodeURIComponent(d.improved.slug || d.improved.id)}"><b>${escapeHtml(d.improved.name)}</b></a> · courtIQ ${d.improved.from.toFixed(1)} → <span class="green">${d.improved.to.toFixed(1)} ▲</span></div>`
+  // one row per award, built the same way: photo, what it is for · the month, the name, the numbers.
+  // The numbers are always three cells (an empty one when there is nothing to show) so both rows line up in the same columns.
+  const three = (cells) => cells.concat(['<div></div>', '<div></div>', '<div></div>']).slice(0, 3).join('');
+  const row = (who, title, nums) => `
+      <div class="pom-row">
+        ${pomPhotoHtml(who)}
+        <div class="pom-who"><div class="pom-k">${escapeHtml(title)} · ${escapeHtml(monthName)}</div><b>${escapeHtml(who.name)}</b></div>
+        <div class="pom-nums">${three(nums)}</div>
+      </div>`;
+  const best = row(p, t('pom.title'), [num(t('pom.wins'), t('pom.winsOf', { w: p.wins, n: p.played }))]
+    .concat(p.points ? [num(t('pom.points'), `+${p.points}`, true)] : [], p.streak >= 2 ? [num(t('pom.streak'), String(p.streak))] : []));
+  const i = d.improved;
+  const improved = i
+    ? row(i, t('pom.improved'), [num('courtIQ', `${i.from.toFixed(1)} → ${i.to.toFixed(1)}`), num(t('pom.progress'), `+${i.delta.toFixed(1)}`, true), num(t('pom.games'), String(i.played))])
     : '';
-  return `
-    <div class="pom-card">
-      ${pomPhotoHtml(p)}
-      <div class="pom-who"><div class="pom-k">${escapeHtml(t('pom.title'))} · ${escapeHtml(monthName)}</div><b>${escapeHtml(p.name)}</b></div>
-      <div class="pom-nums">${num(t('pom.wins'), t('pom.winsOf', { w: p.wins, n: p.played }))}${p.points ? num(t('pom.points'), `+${p.points}`, true) : ''}${p.streak >= 2 ? num(t('pom.streak'), String(p.streak)) : ''}</div>
-      <a class="pom-more" href="/player/${encodeURIComponent(p.slug || p.id)}">${escapeHtml(t('pom.profile'))} →</a>
-      ${improved}
-    </div>`;
+  return `<div class="pom-card">${best}${improved}</div>`;
 }
 
 async function loadPom() {

@@ -149,6 +149,47 @@ router.get('/history/:tableKey/:name', (req, res) => {
   res.json({ history: history.map((h) => ({ week: h.snapshot_week, rank: h.rank })) });
 });
 
+// Admin-only check of the points record: for the finished BLTA matches of a month (?month=2026-09, default: the last full month; ?player=<id> to
+// look at one player) it compares what the league rules say a match is worth with what the points record (ranking_awards, BLTA table) holds.
+// `status`: OK = the record has exactly the rules' points for both players, MISSING = nothing recorded for the match, DIFFERENT = something else.
+// `?problems=1` lists only the matches that are not OK. Read-only: nothing is changed.
+router.get('/audit', requireAdmin, (req, res) => {
+  const now = new Date();
+  const monthArg = /^\d{4}-\d{2}$/.test(String(req.query.month || '')) ? String(req.query.month) : null;
+  const last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  const month = monthArg || `${last.getUTCFullYear()}-${String(last.getUTCMonth() + 1).padStart(2, '0')}`;
+  const [y, m] = month.split('-').map(Number);
+  const from = `${month}-01T00:00:00.000Z`;
+  const to = `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, '0')}-01T00:00:00.000Z`;
+  const playerId = Number(req.query.player) || null;
+  const categories = Object.keys(rankingPoints.CATEGORY_RULES);
+  const matches = db.prepare(`
+    SELECT m.*, COALESCE(m.scheduled_at, m.start_time, m.created_at) AS d, p1.name AS name1, p2.name AS name2
+    FROM matches m JOIN players p1 ON p1.id = m.player1_id JOIN players p2 ON p2.id = m.player2_id
+    WHERE m.status = 'FINISHED' AND m.category IN (${categories.map(() => '?').join(',')})
+      AND COALESCE(m.scheduled_at, m.start_time, m.created_at) >= ? AND COALESCE(m.scheduled_at, m.start_time, m.created_at) < ?
+      ${playerId ? 'AND (m.player1_id = ? OR m.player2_id = ?)' : ''}
+    ORDER BY d, m.id
+  `).all(...categories, from, to, ...(playerId ? [playerId, playerId] : []));
+  const ledger = db.prepare(`
+    SELECT e.player_id AS playerId, e.name, a.points FROM ranking_awards a JOIN ranking_entries e ON e.id = a.entry_id
+    WHERE a.match_id = ? AND e.table_key = 'blta'
+  `);
+  const names = new Map(db.prepare('SELECT id, name FROM players').all().map((p) => [p.id, p.name]));
+  const rows = matches.map((match) => {
+    const worth = rankingPoints.computeAwards(match);
+    const expected = worth ? worth.awards.map((a) => ({ playerId: a.playerId, name: names.get(a.playerId), points: a.points })) : [];
+    const recorded = ledger.all(match.id).map((r) => ({ playerId: r.playerId, name: r.name, points: r.points }));
+    const sum = (list) => list.reduce((t, r) => t + r.points, 0);
+    let status = 'OK';
+    if (expected.length && !recorded.length) status = 'MISSING';
+    else if (sum(expected) !== sum(recorded) || expected.some((e) => (recorded.find((r) => r.playerId === e.playerId) || { points: -1 }).points !== e.points)) status = 'DIFFERENT';
+    return { matchId: match.id, token: match.share_token, date: match.d, category: match.category, players: `${match.name1} vs ${match.name2}`, expected, recorded, status, endTime: match.end_time };
+  });
+  const problems = rows.filter((r) => r.status !== 'OK');
+  res.json({ month, matches: rows.length, problems: problems.length, rows: req.query.problems ? problems : rows });
+});
+
 // Admin-only: set one player's points in one table (the row is created when the player is not in that table yet — this is how
 // bonus points and tournament points are entered). An empty value puts the player back to "no points yet".
 router.put('/points/:tableKey/:name', requireAdmin, (req, res) => {

@@ -1,5 +1,6 @@
-// Checks of "Hráč mesiaca" (GET /api/highlights/month): the player of the last full month (BLTA points in that month, then wins) and the player
-// with the biggest courtIQ progress. The date is fixed (HIGHLIGHTS_NOW) so the result is the same on any day.
+// Checks of "Hráč mesiaca" (GET /api/highlights/month): the player of the last full month (BLTA points of that month by the league's rules, then
+// wins) and the player with the biggest courtIQ progress; plus the admin's points audit (GET /api/rankings/audit). The date is fixed
+// (HIGHLIGHTS_NOW) so the result is the same on any day.
 // Run: node scripts/check-highlights.js   (starts its own server on a temporary data directory; touches nothing else)
 const fs = require('fs');
 const os = require('os');
@@ -21,10 +22,15 @@ let child = null;
 let db = null;
 
 const get = async () => (await fetch(`${BASE}/api/highlights/month`)).json();
-const player = (name, slug, extra = 0) => Number(db.prepare('INSERT INTO players (name, slug, hidden) VALUES (?, ?, ?)').run(name, slug, extra).lastInsertRowid);
-const match = (p1, p2, winner, when, category = 'NOVICE', status = 'FINISHED') => Number(db.prepare(
-  "INSERT INTO matches (category, player1_id, player2_id, format, state, status, winner_id, scheduled_at) VALUES (?, ?, ?, 'BEST_OF_3', '{}', ?, ?, ?)",
-).run(category, p1, p2, status, status === 'FINISHED' ? winner : null, when).lastInsertRowid);
+const player = (name, slug, hidden = 0) => Number(db.prepare('INSERT INTO players (name, slug, hidden) VALUES (?, ?, ?)').run(name, slug, hidden).lastInsertRowid);
+// a match won 2:0 (or 2:1 with `three`) by `winner`; the points ledger is left EMPTY on purpose: the card goes by the rules, not the ledger
+const match = (p1, p2, winner, when, category = 'NOVICE', status = 'FINISHED', three = false) => {
+  const sets = winner === p1 ? { 1: 2, 2: three ? 1 : 0 } : { 1: three ? 1 : 0, 2: 2 };
+  return Number(db.prepare(
+    "INSERT INTO matches (category, player1_id, player2_id, format, state, status, winner_id, scheduled_at) VALUES (?, ?, ?, 'BO3', ?, ?, ?, ?)",
+  ).run(category, p1, p2, JSON.stringify({ setsWon: sets }), status, status === 'FINISHED' ? winner : null, when).lastInsertRowid);
+};
+const rating = (playerId, matchId, value) => db.prepare('INSERT INTO courtiq_rating_history (player_id, match_id, rating, deviation, volatility) VALUES (?, ?, ?, 100, 0.06)').run(playerId, matchId, value);
 const entries = new Map();
 const award = (playerId, matchId, points) => {
   if (!entries.has(playerId)) {
@@ -33,7 +39,6 @@ const award = (playerId, matchId, points) => {
   }
   db.prepare('INSERT INTO ranking_awards (match_id, entry_id, points) VALUES (?, ?, ?)').run(matchId, entries.get(playerId), points);
 };
-const rating = (playerId, matchId, value) => db.prepare('INSERT INTO courtiq_rating_history (player_id, match_id, rating, deviation, volatility) VALUES (?, ?, ?, 100, 0.06)').run(playerId, matchId, value);
 
 const S = {};
 
@@ -42,7 +47,7 @@ test('nobody yet: no matches in the last full month', async () => {
   assert.deepStrictEqual(r, { month: '2026-09', player: null, improved: null });
 });
 
-test('the player of the month: most BLTA points of the month, then wins; the longest run of wins; only the month counts', async () => {
+test('the player of the month: most points by the league rules, then wins; the longest run of wins; only the month counts', async () => {
   S.a = player('Anna Víťazná', 'anna-vitazna');
   S.b = player('Boris Druhý', 'boris-druhy');
   S.c = player('Cyril Pokrok', 'cyril-pokrok');
@@ -62,33 +67,54 @@ test('the player of the month: most BLTA points of the month, then wins; the lon
   m.one = match(S.e, S.f, S.e, '2026-09-10T10:00:00.000Z'); // one match only: not enough
   m.hid1 = match(S.h, S.d, S.h, '2026-09-11T10:00:00.000Z');
   m.hid2 = match(S.h, S.d, S.h, '2026-09-13T10:00:00.000Z');
-  m.cat = match(S.b, S.d, S.b, '2026-09-14T10:00:00.000Z', 'OTHER'); // not a BLTA category
+  m.cat = match(S.b, S.d, S.b, '2026-09-14T10:00:00.000Z', 'FRIENDLY'); // not a BLTA category
   m.planned = match(S.b, S.d, null, '2026-09-16T10:00:00.000Z', 'NOVICE', 'PLANNED');
   Object.assign(S, { m });
-  [m.s1, m.s2, m.s3, m.s6].forEach((id) => award(S.a, id, 50)); // 200 in the month
-  award(S.a, m.aug, 100); // not this month
-  award(S.a, m.oct, 100);
-  [m.s4, m.s5].forEach((id) => award(S.b, id, 30)); // 60
-  award(S.e, m.one, 500);
-  [m.hid1, m.hid2].forEach((id) => award(S.h, id, 400));
+  // Novice 2:0 is worth 12: Anna won four of them in the month (the August and October ones do not count)
   const r = await get();
   assert.strictEqual(r.month, '2026-09');
-  assert.deepStrictEqual(r.player, { id: S.a, name: 'Anna Víťazná', slug: 'anna-vitazna', category: null, photoUrl: '', wins: 4, played: 5, points: 200, streak: 3 });
+  assert.deepStrictEqual(r.player, { id: S.a, name: 'Anna Víťazná', slug: 'anna-vitazna', category: null, photoUrl: '', wins: 4, played: 5, points: 48, streak: 3 });
   db.prepare('UPDATE players SET photo_url = ? WHERE id = ?').run('/player-photos/anna.jpg', S.a);
   assert.strictEqual((await get()).player.photoUrl, '/player-photos/anna.jpg', 'the card shows the profile photo');
 });
 
-test('without Annas points the next one wins: the best of the rest by points, then wins', async () => {
-  // Boris and Cyril: put them level in points with Anna out of the way by giving her no awards
-  db.prepare('DELETE FROM ranking_awards WHERE entry_id = ?').run(Number(db.prepare('SELECT id FROM ranking_entries WHERE player_id = ?').get(S.a).id));
-  const r = await get();
-  // Boris: 60 points, 2 wins from 3 matches (beats Anna, beats Cyril, loses to Anna); Anna: 0 points, 4 wins
-  assert.strictEqual(r.player.id, S.b);
-  assert.deepStrictEqual([r.player.wins, r.player.played, r.player.points], [2, 3, 60]);
-  assert.strictEqual(r.player.streak, 2);
+test('the points follow the rules: Elite 2:0 = 30, a win in three sets = 2 x the level; best-of-1 / best-of-5 earn nothing', async () => {
+  // five Elite 2:0 wins are 150 (the live case where the ledger had missed one and the card said 120)
+  const z = player('Zdenko Elitný', 'zdenko-elitny');
+  const opp = player('Olaf Súper', 'olaf-super');
+  for (let i = 1; i <= 5; i += 1) match(z, opp, z, `2026-09-${String(20 + i).padStart(2, '0')}T08:00:00.000Z`, 'ELITE');
+  let r = await get();
+  assert.deepStrictEqual([r.player.id, r.player.points, r.player.wins, r.player.played, r.player.streak], [z, 150, 5, 5, 5], 'five Elite 2:0 wins are 150, not 120');
+  // a win in three sets is worth 2 x 10 = 20
+  const three = match(z, opp, z, '2026-09-27T08:00:00.000Z', 'ELITE', 'FINISHED', true);
+  assert.strictEqual((await get()).player.points, 170);
+  db.prepare('DELETE FROM matches WHERE id = ?').run(three);
+  // a match with three sets won (best of 5) earns nothing
+  db.prepare("UPDATE matches SET state = ? WHERE player1_id = ? AND scheduled_at = '2026-09-21T08:00:00.000Z'").run(JSON.stringify({ setsWon: { 1: 3, 2: 0 } }), z);
+  assert.strictEqual((await get()).player.points, 120, 'a 3:0 match earns nothing');
+  db.prepare('DELETE FROM matches WHERE player1_id = ? AND category = ?').run(z, 'ELITE');
 });
 
-test('the biggest courtIQ progress of the month: a different player than the player of the month', async () => {
+test('the points do not depend on the points ledger or on manual corrections of a table total', async () => {
+  const q = player('Quido Ledger', 'quido-ledger');
+  const w = player('Wanda Ledger', 'wanda-ledger');
+  const ids = [1, 2, 3].map((i) => match(q, w, q, `2026-09-${String(10 + i).padStart(2, '0')}T08:00:00.000Z`, 'ELITE'));
+  award(q, ids[0], 30); // the ledger knows only one of the three matches, and a manual +30 has no match at all
+  db.prepare("UPDATE ranking_entries SET points = 1500 WHERE player_id = ?").run(q);
+  const r = await get();
+  assert.deepStrictEqual([r.player.id, r.player.points], [q, 90], 'three Elite 2:0 wins are 90 whatever the ledger says');
+  db.prepare('DELETE FROM matches WHERE player1_id = ?').run(q);
+});
+
+test('the best of the rest wins when somebody else is stronger: by points, then wins', async () => {
+  // Boris wins two Elite matches (2 x 30 = 60) against Anna's 48
+  db.prepare("UPDATE matches SET category = 'ELITE' WHERE id IN (?, ?)").run(S.m.s4, S.m.s5);
+  const r = await get();
+  assert.strictEqual(r.player.id, S.b);
+  assert.deepStrictEqual([r.player.wins, r.player.played, r.player.points, r.player.streak], [2, 3, 60, 2]);
+});
+
+test('the biggest courtIQ progress of the month: a different player than the player of the month, with the photo', async () => {
   const { m } = S;
   // before the month (August) everybody has 1500; at the end of September: Anna 1900, Cyril 1750, Boris 1650
   [S.a, S.b, S.c].forEach((id) => rating(id, m.aug, 1500));
@@ -99,7 +125,8 @@ test('the biggest courtIQ progress of the month: a different player than the pla
   const r = await get();
   assert.strictEqual(r.player.id, S.b);
   const from = Number(ratingToBand(1500).toFixed(1));
-  assert.deepStrictEqual(r.improved, { id: S.a, name: 'Anna Víťazná', slug: 'anna-vitazna', from, to: Number(ratingToBand(1900).toFixed(1)), delta: Number((Number(ratingToBand(1900).toFixed(1)) - from).toFixed(1)), played: 5 });
+  const to = Number(ratingToBand(1900).toFixed(1));
+  assert.deepStrictEqual(r.improved, { id: S.a, name: 'Anna Víťazná', slug: 'anna-vitazna', photoUrl: '/player-photos/anna.jpg', from, to, delta: Number((to - from).toFixed(1)), played: 5 });
   assert.ok(r.improved.delta > 0);
   // a player without a rating from before the month has no baseline
   db.prepare('DELETE FROM courtiq_rating_history WHERE player_id = ? AND match_id = ?').run(S.a, S.m.aug);
@@ -114,6 +141,34 @@ test('the month is the last FULL month, also over the new year', async () => {
   assert.deepStrictEqual(hl.lastMonth('2026-10-10'), { month: '2026-09', from: '2026-09-01T00:00:00.000Z', to: '2026-10-01T00:00:00.000Z' });
   assert.deepStrictEqual(hl.lastMonth('2026-01-05'), { month: '2025-12', from: '2025-12-01T00:00:00.000Z', to: '2026-01-01T00:00:00.000Z' });
   assert.deepStrictEqual(hl.lastMonth('2026-03-31'), { month: '2026-02', from: '2026-02-01T00:00:00.000Z', to: '2026-03-01T00:00:00.000Z' });
+});
+
+test('the audit (admin only, read-only): which matches have the points the rules give, which have none, which differ', async () => {
+  const login = await fetch(`${BASE}/api/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: 'test' }) });
+  const cookie = login.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
+  const audit = async (query = '') => (await fetch(`${BASE}/api/rankings/audit?month=2026-09${query}`, { headers: { Cookie: cookie } })).json();
+  assert.strictEqual((await fetch(`${BASE}/api/rankings/audit`)).status, 401, 'admin only');
+  const z = player('Zita Audit', 'zita-audit');
+  const o = player('Oto Audit', 'oto-audit');
+  const withSets = (when, sets) => Number(db.prepare("INSERT INTO matches (category, player1_id, player2_id, format, state, status, winner_id, scheduled_at) VALUES ('ELITE', ?, ?, 'BO3', ?, 'FINISHED', ?, ?)")
+    .run(z, o, JSON.stringify({ setsWon: sets }), z, when).lastInsertRowid);
+  const ok = withSets('2026-09-02T08:00:00.000Z', { 1: 2, 2: 0 });
+  const gap = withSets('2026-09-03T08:00:00.000Z', { 1: 2, 2: 0 });
+  const odd = withSets('2026-09-04T08:00:00.000Z', { 1: 2, 2: 1 });
+  award(z, ok, 30);
+  award(o, ok, 0);
+  award(z, odd, 30); // the rules say 20 for a win in three sets
+  award(o, odd, 10);
+  const all = await audit(`&player=${z}`);
+  assert.strictEqual(all.matches, 3);
+  const by = Object.fromEntries(all.rows.map((r) => [r.matchId, r.status]));
+  assert.deepStrictEqual(by, { [ok]: 'OK', [gap]: 'MISSING', [odd]: 'DIFFERENT' });
+  const problems = await audit(`&player=${z}&problems=1`);
+  assert.deepStrictEqual(problems.rows.map((r) => r.matchId), [gap, odd]);
+  assert.strictEqual(problems.problems, 2);
+  const row = problems.rows.find((r) => r.matchId === gap);
+  assert.deepStrictEqual(row.expected.map((e) => e.points), [30, 0]);
+  assert.deepStrictEqual(row.recorded, []);
 });
 
 test('the home page carries the card', async () => {
