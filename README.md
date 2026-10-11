@@ -437,6 +437,15 @@ console.log(e.describeMatch(s)); // → 6-0
 **Backups.** The entire database is one file: `blta-score.db` (plus `-wal`/`-shm` companions
 while the server is running), living wherever `DATA_DIR` points.
 
+- **Google Drive (automatic):** `src/backup.js` makes **one backup a day** — `blta-score-backup-<date>.db` plus
+  `blta-score-files-<date>.zip` (the photos and images on the disk). The server checks hourly and a few minutes after a start;
+  from `BACKUP_HOUR_UTC` (default 1, i.e. 02:00/03:00 in Bratislava) the first check of the day makes the backup, every later check
+  finds today's files in the Drive folder and does nothing — so **a restart or a deploy never uploads again** (it used to upload
+  a full ~38 MB backup after every deploy). A half-made day (only the .db is there) gets just the missing file; a day the app was
+  down at night is made up for at the next check. If Drive cannot be asked, nothing is uploaded blindly and the failure e-mail goes
+  out once a day. The admin's "Back up now" button always uploads (`runBackup({ force: true })`).
+  Check: `node scripts/check-backup.js` (fake Drive, no network).
+
 - **On Render:** open the service's **Shell** tab (in the dashboard) and download the file, or
   connect via `render disks` in the Render CLI. Render also snapshots persistent disks
   automatically, but for extra safety you can copy `/var/data/blta-score.db` out periodically.

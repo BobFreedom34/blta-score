@@ -161,52 +161,101 @@ function zipDataFiles() {
   });
 }
 
-async function runBackup() {
+// Which of today's two files are already in the Drive folder? Used by the scheduled run so a restart, a deploy or a second check
+// never uploads the same day twice (the app restarts on every deploy, and it used to upload a full backup each time).
+async function existingNamesFor(token, names) {
+  const folderId = process.env.GOOGLE_DRIVE_BACKUP_FOLDER_ID;
+  const nameQuery = names.map((n) => `name = '${n}'`).join(' or ');
+  const q = encodeURIComponent(`'${folderId}' in parents and trashed = false and (${nameQuery})`);
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=20`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Drive lookup failed: ${res.status} ${await res.text()}`);
+  const { files } = await res.json();
+  return new Set((files || []).map((f) => f.name));
+}
+
+let running = false;
+let alertedFor = ''; // the day a failure e-mail was last sent for: a failing scheduled check must not mail every hour
+
+// opts.force (the admin's "Back up now" button): upload both files whatever is already there.
+// Without it (the schedule): upload only what today's backup is still missing; nothing at all when it is complete.
+async function runBackup(opts = {}) {
   if (!isConfigured()) {
     console.warn('[backup] Google OAuth env vars not fully set — skipping backup. See .env.example.');
     return { skipped: true };
   }
+  if (running) return { ok: false, error: 'A backup is already running' };
+  running = true;
   const stamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   const dbName = `blta-score-backup-${stamp}.db`;
+  const filesName = `blta-score-files-${stamp}.zip`;
   try {
     const token = await getAccessToken();
+    let have = new Set();
+    if (!opts.force) {
+      have = await existingNamesFor(token, [dbName, filesName]);
+      const filesExpected = listNonDbFiles(db.dataDir, db.dataDir).length > 0;
+      if (have.has(dbName) && (have.has(filesName) || !filesExpected)) {
+        return { ok: true, alreadyDone: true, name: dbName };
+      }
+    }
 
-    const dbBuffer = snapshotDbFile();
-    const dbFile = await uploadFile(token, dbName, dbBuffer, 'application/x-sqlite3');
-    console.log(`[backup] Uploaded ${dbName} (${dbBuffer.length} bytes) to Google Drive as file ${dbFile.id}.`);
+    let dbResult = null;
+    if (!have.has(dbName)) {
+      const dbBuffer = snapshotDbFile();
+      const dbFile = await uploadFile(token, dbName, dbBuffer, 'application/x-sqlite3');
+      console.log(`[backup] Uploaded ${dbName} (${dbBuffer.length} bytes) to Google Drive as file ${dbFile.id}.`);
+      dbResult = { id: dbFile.id, bytes: dbBuffer.length };
+    }
 
     let filesResult = null;
-    const filesBuffer = await zipDataFiles();
-    if (filesBuffer) {
-      const filesName = `blta-score-files-${stamp}.zip`;
-      const filesFile = await uploadFile(token, filesName, filesBuffer, 'application/zip');
-      console.log(`[backup] Uploaded ${filesName} (${filesBuffer.length} bytes) to Google Drive as file ${filesFile.id}.`);
-      filesResult = { name: filesName, id: filesFile.id, bytes: filesBuffer.length };
+    if (!have.has(filesName)) {
+      const filesBuffer = await zipDataFiles();
+      if (filesBuffer) {
+        const filesFile = await uploadFile(token, filesName, filesBuffer, 'application/zip');
+        console.log(`[backup] Uploaded ${filesName} (${filesBuffer.length} bytes) to Google Drive as file ${filesFile.id}.`);
+        filesResult = { name: filesName, id: filesFile.id, bytes: filesBuffer.length };
+      }
     }
 
     await pruneOldBackups(token);
-    return { ok: true, name: dbName, id: dbFile.id, bytes: dbBuffer.length, files: filesResult };
+    return { ok: true, name: dbName, id: dbResult && dbResult.id, bytes: dbResult && dbResult.bytes, files: filesResult };
   } catch (err) {
     console.error('[backup] Backup failed:', err);
-    try {
-      await mailer.sendBackupFailedEmail(err);
-    } catch (mailErr) {
-      console.error('[backup] Also failed to send the failure-alert email:', mailErr);
+    if (opts.force || alertedFor !== stamp) {
+      alertedFor = stamp;
+      try {
+        await mailer.sendBackupFailedEmail(err);
+      } catch (mailErr) {
+        console.error('[backup] Also failed to send the failure-alert email:', mailErr);
+      }
     }
     return { ok: false, error: err.message };
+  } finally {
+    running = false;
   }
 }
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+// One backup a day, in the night: from this UTC hour on (1 = 02:00 / 03:00 in Bratislava), the first check of a day makes the backup
+// and every later check that day finds it in the folder and does nothing. The checks are hourly and also run a few minutes after a
+// start, so a restart or deploy never causes a second upload, and a day that was missed (the app was down at night) is made up for.
+const CHECK_EVERY_MS = 60 * 60 * 1000;
+const BACKUP_FROM_HOUR_UTC = Number(process.env.BACKUP_HOUR_UTC || 1);
+
+async function runScheduledBackup(now = new Date()) {
+  if (now.getUTCHours() < BACKUP_FROM_HOUR_UTC) return { skipped: true, tooEarly: true };
+  return runBackup();
+}
+
 function startScheduledBackups() {
   if (!isConfigured()) {
     console.log('[backup] Google Drive backup is not configured — see .env.example (GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET / GOOGLE_OAUTH_REFRESH_TOKEN / GOOGLE_DRIVE_BACKUP_FOLDER_ID). Backups are OFF.');
     return;
   }
-  // A few minutes after boot (not instantly — let the rest of startup
-  // settle first), then every 24h for as long as the process stays up.
-  setTimeout(() => { runBackup(); }, 3 * 60 * 1000);
-  setInterval(() => { runBackup(); }, ONE_DAY_MS);
+  // a few minutes after boot (let the rest of startup settle first), then hourly for as long as the process stays up
+  setTimeout(() => { runScheduledBackup(); }, 3 * 60 * 1000);
+  setInterval(() => { runScheduledBackup(); }, CHECK_EVERY_MS);
 }
 
-module.exports = { isConfigured, runBackup, startScheduledBackups };
+module.exports = { isConfigured, runBackup, runScheduledBackup, startScheduledBackups };

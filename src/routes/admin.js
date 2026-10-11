@@ -52,11 +52,10 @@ router.get('/login-events', auth.requireAdmin, (req, res) => {
 });
 
 // Manual trigger for the daily Google Drive backup (see src/backup.js) —
-// mainly so setup can be verified right away instead of waiting up to 24h
-// for the scheduled run to prove the service account/folder are wired up
-// correctly.
+// mainly so setup can be verified right away instead of waiting for the
+// nightly run to prove the account/folder are wired up correctly.
 router.post('/backup-now', auth.requireAdmin, async (req, res) => {
-  const result = await backup.runBackup();
+  const result = await backup.runBackup({ force: true }); // the button always uploads, even when today has a backup already
   if (result.skipped) return res.status(400).json({ error: 'Backup is not configured — set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REFRESH_TOKEN and GOOGLE_DRIVE_BACKUP_FOLDER_ID.' });
   if (!result.ok) return res.status(500).json({ error: result.error });
   res.json(result);
