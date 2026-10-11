@@ -3571,10 +3571,19 @@ a.home-mine-cell:hover::after, .home-mine-cell.linked:hover::after { color: var(
 .home-mine-body .side .row .grp { min-width: 0; }
 .home-mine-body .side .row > * { flex-shrink: 0; }
 .home-mine-body .side .row .grp { flex-shrink: 1; }
-/* a narrow tile (two to a row on a phone) has no room beside the number: the lines go under it */
+/* a narrow tile (two to a row on a phone): the lines stay beside the number behind the thin divider, a little smaller, and may wrap */
 @media (max-width: 600px) {
-  .home-mine-body { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .home-mine-body .side { border-left: 0; padding-left: 0; align-self: stretch; }
+  .home-mine-cell { padding: 14px 14px 14px 14px; }
+  .home-mine-body { gap: 10px; }
+  .home-mine-body .big { font-size: 36px; }
+  .home-mine-body .big sup { font-size: 14px; top: 2px; }
+  .home-mine-body .side { padding-left: 10px; gap: 2px; }
+  .home-mine-body .side .of { font-size: 13px; line-height: 1.2; }
+  .home-mine-body .side .grp, .home-mine-body .side .pts { font-size: 12px; line-height: 1.25; white-space: normal; }
+  .home-mine-body .side .row { flex-wrap: wrap; gap: 0 6px; }
+  /* the five squares of the form stay on one line in the narrow tile */
+  .home-mine-form { gap: 4px; }
+  .home-mine-form .form-square { width: 22px; height: 22px; font-size: 11px; border-radius: 5px; }
 }
 .home-bar.mini { height: 6px; margin-top: 12px; }
 .home-chip.live { background: var(--orange); color: var(--white); }
@@ -3584,6 +3593,8 @@ a.home-mine-cell:hover::after, .home-mine-cell.linked:hover::after { color: var(
   .home-mine-cell.next { grid-column: 1 / -1; }
   .home-mine-grid > :last-child:nth-child(3n + 1) { grid-column: auto; }
   .home-mine-grid.rest-odd > :last-child { grid-column: 1 / -1; }
+  .home-mine-grid > .home-mine-cell.iq-tile { grid-column: 1 / -1; }
+  .home-mine-grid.mid-odd > :nth-last-child(2) { grid-column: 1 / -1; }
 }
 
 /* season timeline: finished seasons greyed out, the running one highlighted, upcoming ones outlined */

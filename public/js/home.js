@@ -119,8 +119,8 @@ function mineHtml(d) {
 
   // Every number tile has the same build: the big number on the left, at most two lines beside it behind a thin divider.
     // `cover` makes the whole tile a link without being an <a> itself (it holds links of its own, the form squares)
-    const tile = ({ href, cover, label, num, sup, lines, below }) => `
-      <${href ? `a class="home-mine-cell" href="${href}"` : `div class="home-mine-cell${cover ? ' linked' : ''}"`}>
+    const tile = ({ href, cover, label, num, sup, lines, below, cls }) => `
+      <${href ? `a class="home-mine-cell${cls ? ` ${cls}` : ''}" href="${href}"` : `div class="home-mine-cell${cover ? ' linked' : ''}"`}>
         ${cover ? `<a class="home-mine-cover" href="${cover}" aria-label="${escapeHtml(label)}"></a>` : ''}
         <div class="k">${escapeHtml(label)}</div>
         <div class="home-mine-body">
@@ -194,25 +194,27 @@ function mineHtml(d) {
     iqCell = iq
       ? tile({
         href: profile,
+        cls: 'iq-tile',
         label: t('home.mineIq'),
         num: iq.band.toFixed(1),
         sup: iq.provisional ? `<span title="${escapeHtml(t('courtiq.provisional'))}">?</span>` : '',
         lines: of(`${t('courtiq.ratingCol')} ${iq.rating}`) + pts(t('courtiq.gamesPlayed', { count: iq.gamesPlayed })),
       })
       : `
-      <a class="home-mine-cell" href="${profile}">
+      <a class="home-mine-cell iq-tile" href="${profile}">
         <div class="k">${escapeHtml(t('home.mineIq'))}</div>
         <div class="v dim">${escapeHtml(t('home.mineNotRated'))}</div>
       </a>`;
   }
 
-  // how many tiles there are: on a tablet the next-match tile has a row to itself and the rest sit in pairs
+  // how many tiles there are: on a tablet / phone the next-match tile and the courtIQ tile have a row to themselves and the rest sit in pairs
+  // (an odd one out among the pairs gets a row too: the last tile, or the one before courtIQ)
   const tileCount = 2 + (row && group ? 2 : 0) + (rankCell ? 1 : 0) + (iqCell ? 1 : 0);
   const note = [d.season && d.season.name, group && group.name].filter(Boolean).join(' · ');
   return `
   <section class="home-mine">
     ${secTitle(t('home.mine'), note, '', '')}
-    <div class="home-mine-grid${tileCount % 2 === 0 ? ' rest-odd' : ''}">${nextCell}${groupCells}${formCell}${rankCell}${iqCell}</div>
+    <div class="home-mine-grid${iqCell ? (tileCount % 2 === 1 ? ' mid-odd' : '') : (tileCount % 2 === 0 ? ' rest-odd' : '')}">${nextCell}${groupCells}${formCell}${rankCell}${iqCell}</div>
   </section>`;
 }
 
