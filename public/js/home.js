@@ -470,7 +470,8 @@ function liveHtml(d) {
 function sub(d) {
   if (!d.season) return '';
   const end = d.season.endDate ? ` · ${t('home.endsOn', { date: dayMonth(d.season.endDate) })}` : '';
-  return `<p class="home-sub"><b>${escapeHtml(d.season.name)}</b>${escapeHtml(end)}</p>`;
+  const name = d.season.slug ? `<a href="/season/${encodeURIComponent(d.season.slug)}">${escapeHtml(d.season.name)}</a>` : escapeHtml(d.season.name);
+  return `<p class="home-sub"><b>${name}</b>${escapeHtml(end)}</p>`;
 }
 
 function renderHome() {
@@ -488,7 +489,12 @@ function renderHome() {
     stateEl.hidden = true;
   }
   const headLogo = document.getElementById('home-head-logo');
-  if (d.season && d.season.logoUrl) { headLogo.src = d.season.logoUrl; headLogo.hidden = false; } else { headLogo.hidden = true; }
+  const headLogoLink = document.getElementById('home-head-logo-link');
+  if (d.season && d.season.logoUrl) {
+    headLogo.src = d.season.logoUrl;
+    if (d.season.slug) headLogoLink.href = `/season/${encodeURIComponent(d.season.slug)}`; else headLogoLink.removeAttribute('href');
+    headLogoLink.hidden = false;
+  } else { headLogoLink.hidden = true; }
   rootEl.innerHTML = `
     ${mineHtml(d)}
     <section class="home-current">
@@ -518,10 +524,18 @@ function pomShellHtml() {
 }
 
 // the player's profile photo, or their initials in the same round frame when there is none
+// (the link around the photo has display: contents, so the photo stays a cell of the row's grid)
+const pomProfileHref = (p) => (p.slug || p.id ? `/player/${encodeURIComponent(p.slug || p.id)}` : '');
+
 function pomPhotoHtml(p) {
-  if (p.photoUrl) return `<img class="pom-photo" src="${escapeHtml(p.photoUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">`;
-  const initials = String(p.name || '').trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join('').toUpperCase();
-  return `<div class="pom-photo pom-initials" aria-hidden="true">${escapeHtml(initials)}</div>`;
+  let photo;
+  if (p.photoUrl) photo = `<img class="pom-photo" src="${escapeHtml(p.photoUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">`;
+  else {
+    const initials = String(p.name || '').trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join('').toUpperCase();
+    photo = `<div class="pom-photo pom-initials" aria-hidden="true">${escapeHtml(initials)}</div>`;
+  }
+  const href = pomProfileHref(p);
+  return href ? `<a class="pom-link" href="${href}" tabindex="-1" aria-hidden="true">${photo}</a>` : photo;
 }
 
 function pomCardHtml(d) {
@@ -534,7 +548,7 @@ function pomCardHtml(d) {
   const row = (who, title, nums) => `
       <div class="pom-row">
         ${pomPhotoHtml(who)}
-        <div class="pom-who"><div class="pom-k">${escapeHtml(title)} · ${escapeHtml(monthName)}</div><b>${escapeHtml(who.name)}</b></div>
+        <div class="pom-who"><div class="pom-k">${escapeHtml(title)} · ${escapeHtml(monthName)}</div><b>${pomProfileHref(who) ? `<a class="pom-name" href="${pomProfileHref(who)}">${escapeHtml(who.name)}</a>` : escapeHtml(who.name)}</b></div>
         <div class="pom-nums">${three(nums)}</div>
       </div>`;
   const best = row(p, t('pom.title'), [num(t('pom.wins'), t('pom.winsOf', { w: p.wins, n: p.played }))]
