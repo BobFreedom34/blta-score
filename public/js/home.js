@@ -543,7 +543,8 @@ function pomCardHtml(d) {
   const improved = i
     ? row(i, t('pom.improved'), [num('courtIQ', `${i.from.toFixed(1)} → ${i.to.toFixed(1)}`), num(t('pom.progress'), `+${i.delta.toFixed(1)}`, true), num(t('pom.games'), String(i.played))])
     : '';
-  return `<div class="pom-card">${best}${improved}</div>`;
+  // the heading is plural when there are two awards on the card
+  return `${secTitle(t(i ? 'pom.heading' : 'pom.title'), '', '', '')}<div class="pom-card">${best}${improved}</div>`;
 }
 
 async function loadPom() {
