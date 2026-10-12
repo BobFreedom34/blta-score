@@ -403,10 +403,17 @@ function moveHtml(move) {
   return `<span class="mv ${move.direction === 'up' ? 'up' : 'down'}">${move.direction === 'up' ? '▲' : '▼'} ${move.amount}</span>`;
 }
 
+// The heading of a column of the ranking row: the title and its link, and the small note under the title. The note line is always there
+// (empty when there is no note), so the cards of the neighbouring columns start on the same line.
+function colTitle(label, note, href, linkText) {
+  const title = secTitle(label, '', href, linkText).replace('class="home-sec-title"', 'class="home-sec-title home-col-title"');
+  return `${title}<div class="home-col-sub">${note ? escapeHtml(note) : ''}</div>`;
+}
+
 function rankingHtml(rows) {
   return `
   <div class="home-col">
-    ${secTitle(t('home.ranking'), t('home.top5'), '/rankings', t('home.whole'))}
+    ${colTitle(t('home.ranking'), t('home.top5'), '/rankings', t('home.whole'))}
     <div class="home-card">
       <div class="home-t-head rank"><span>#</span><span>${escapeHtml(t('tables.player'))}</span><span>${escapeHtml(t('home.change'))}</span><span>${escapeHtml(t('tables.points'))}</span></div>
       ${rows.slice(0, 5).map((r) => `
@@ -426,13 +433,12 @@ function nextSlot(post) {
   return iso ? chipDate(iso) : '';
 }
 
-// half: the block shares its column with the free courts (it shows fewer rows then)
-function lookingHtml(posts, half) {
+function lookingHtml(posts) {
   return `
-  <div class="${half ? 'home-half' : 'home-col'}">
-    ${secTitle(t('home.looking'), posts.length ? String(posts.length) : '', '/looking-to-play', t('home.everyone'))}
+  <div class="home-col">
+    ${colTitle(t('home.looking'), '', '/looking-to-play', t('home.everyone'))}
     <div class="home-card">
-      ${posts.length ? posts.slice(0, half ? 2 : 4).map((p) => {
+      ${posts.length ? posts.slice(0, 4).map((p) => {
         const cats = (p.categories || []).map((c) => categoryLabel(c)).join(' · ');
         const sub = [cats, nextSlot(p), p.location || t('home.anywhere')].filter(Boolean).join(' · ');
         return `
@@ -462,10 +468,10 @@ function freeCourtsHtml(free) {
       </a>`;
   };
   return `
-  <div class="home-half">
-    ${secTitle(t('home.freeCourts'), t('home.freeCourtsNote'), '/reservations', t('home.bookAll'))}
+  <div class="home-col">
+    ${colTitle(t('home.freeCourts'), t('home.freeCourtsNote'), '/reservations', t('home.bookAll'))}
     <div class="home-card">
-      ${days.length ? days.slice(0, 3).map(row).join('') : `<div class="home-empty">${escapeHtml(t('home.noFreeCourts'))}</div>`}
+      ${days.length ? days.slice(0, 4).map(row).join('') : `<div class="home-empty">${escapeHtml(t('home.noFreeCourts'))}</div>`}
     </div>
   </div>`;
 }
@@ -474,9 +480,9 @@ function rankingAndLookingHtml(d) {
   const rows = blta(d);
   const courts = !!(d.free && d.free.courts > 0); // no courts set up = no block
   if (!rows && !d.looking.length && !courts) return '';
-  // with the free courts the right column is two halves: who is looking for a match, and where a court is free
-  const right = courts ? `<div class="home-col home-col-split">${lookingHtml(d.looking, true)}${freeCourtsHtml(d.free)}</div>` : lookingHtml(d.looking);
-  return `<section class="home-sec"><div class="home-cols">${rows ? rankingHtml(rows) : ''}${right}</div></section>`;
+  // side by side: the ranking, who is looking for a match, the free courts of the next 10 days (a block without data is left out)
+  const blocks = [rows ? rankingHtml(rows) : '', lookingHtml(d.looking), courts ? freeCourtsHtml(d.free) : ''].filter(Boolean);
+  return `<section class="home-sec"><div class="${blocks.length === 3 ? 'home-cols-3' : 'home-cols'}">${blocks.join('')}</div></section>`;
 }
 
 function moversHtml(d) {
