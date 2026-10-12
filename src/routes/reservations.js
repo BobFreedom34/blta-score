@@ -250,6 +250,29 @@ router.get('/', (req, res) => {
   });
 });
 
+// GET /api/reservations/free-soon?days=10 — the free spots that have not started yet in the next `days` days (today included, default 10, 1–31),
+// grouped by day, for the home page's "Voľné kurty" block. `courts` is how many courts exist (0 = reservations are not set up: the home page
+// shows no block); nothing here is private (the same spots are on the public reservations page).
+router.get('/free-soon', (req, res) => {
+  const now = nowLocal();
+  const wanted = Math.floor(Number(req.query.days));
+  const count = Number.isFinite(wanted) && wanted >= 1 ? Math.min(wanted, 31) : 10;
+  const to = addDays(now.date, count - 1);
+  const courts = db.prepare(`SELECT ${COURT_COLS} FROM reservation_courts ORDER BY sort_order, id`).all().map(courtOut);
+  const byId = new Map(courts.map((c) => [c.id, c]));
+  const rows = db.prepare(`
+    SELECT * FROM court_slots WHERE day >= ? AND day <= ? AND player_id IS NULL AND guest_name = '' ORDER BY day, start_time, court_id
+  `).all(now.date, to).filter((s) => !started(s, now) && byId.has(s.court_id));
+  const days = [];
+  for (const s of rows) {
+    let entry = days[days.length - 1];
+    if (!entry || entry.day !== s.day) { entry = { day: s.day, slots: [] }; days.push(entry); }
+    const court = byId.get(s.court_id);
+    entry.slots.push({ id: s.id, courtId: court.id, court: court.name, color: court.color || '', start: s.start_time, end: s.end_time });
+  }
+  res.json({ today: now.date, to, courts: courts.length, total: rows.length, days });
+});
+
 // true when the spot starts at least `hours` hours after now
 function stampBefore(slot, now, hours) {
   const start = new Date(`${slot.day}T${slot.start_time}:00Z`).getTime();

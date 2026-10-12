@@ -7,7 +7,8 @@
   if (!root) return;
 
   let data = null;
-  let from = '';
+  // ?from=YYYY-MM-DD (the links of the home page's free courts) opens the 7 days from that day; the server moves a day in the past to today
+  let from = (/^\d{4}-\d{2}-\d{2}$/.exec(new URLSearchParams(window.location.search).get('from') || '') || [''])[0];
   let court = 'ALL';
   let isAdmin = false;
   let mine = null;

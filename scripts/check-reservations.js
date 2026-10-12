@@ -785,6 +785,62 @@ test('only BLTA players (a category assigned) can reserve; the admin can still p
   await admin('DELETE', `/api/reservations/courts/${court.id}?force=1`);
 });
 
+// ---------------------------------------------------------------- the free spots of the next 10 days (the home page)
+test('free-soon: the free spots of the next 10 days, grouped by day, without taken, started or later ones', async () => {
+  await admin('PUT', '/api/reservations/settings', { maxActive: 0, cancelHours: 2 });
+  const fresh = (await admin('POST', '/api/reservations/courts', { name: 'Voľný kurt', color: '#3366cc' })).json;
+  const other = (await admin('POST', '/api/reservations/courts', { name: 'Druhý kurt' })).json;
+  const add = (courtId, day, start, end) => admin('POST', '/api/reservations/slots', { courtIds: [courtId], date: day, start, end });
+  await add(fresh.id, NOW.date, '09:00', '10:00');   // today, started (it is 10:15)
+  await add(fresh.id, NOW.date, '18:00', '19:00');   // today, still to come
+  await add(fresh.id, D(3), '17:00', '18:30');
+  await add(other.id, D(3), '17:00', '18:00');
+  await add(fresh.id, D(9), '08:00', '09:00');       // the 10th day (today + 9)
+  await add(fresh.id, D(10), '08:00', '09:00');      // the 11th day: out
+  await add(fresh.id, D(5), '10:00', '11:00');       // taken below
+  const taken = (await slotsOf(D(5), fresh.id))[0];
+  assert.strictEqual((await admin('POST', `/api/reservations/slots/${taken.id}/assign`, { guestName: 'Hosť' })).status, 200);
+
+  const r = await call('GET', '/api/reservations/free-soon');
+  assert.strictEqual(r.status, 200, 'public, no login needed');
+  const j = r.json;
+  assert.deepStrictEqual([j.today, j.to], [NOW.date, D(9)]);
+  const mine = j.days.map((d) => ({ day: d.day, slots: d.slots.filter((x) => [fresh.id, other.id].includes(x.courtId)).map((x) => [x.court, x.start, x.end]) })).filter((d) => d.slots.length);
+  assert.deepStrictEqual(mine, [
+    { day: NOW.date, slots: [['Voľný kurt', '18:00', '19:00']] },
+    { day: D(3), slots: [['Voľný kurt', '17:00', '18:30'], ['Druhý kurt', '17:00', '18:00']] },
+    { day: D(9), slots: [['Voľný kurt', '08:00', '09:00']] },
+  ]);
+  assert.ok(!j.days.some((d) => d.day === D(5) && d.slots.some((x) => x.courtId === fresh.id)), 'the spot taken by a guest is not free');
+  assert.ok(j.days.every((d, i) => i === 0 || d.day > j.days[i - 1].day), 'days in order, one entry per day');
+  assert.strictEqual(j.total, j.days.reduce((sum, d) => sum + d.slots.length, 0));
+  assert.strictEqual(j.days.find((d) => d.day === D(3)).slots[0].color, '#3366cc', 'the court colour comes along');
+  assert.ok(j.courts >= 2);
+});
+
+test('free-soon: the number of days is a parameter (1 to 31); a nonsense value means 10; reserving a spot takes it off the list', async () => {
+  const one = (await call('GET', '/api/reservations/free-soon?days=1')).json;
+  assert.strictEqual(one.to, NOW.date);
+  assert.ok(one.days.every((d) => d.day === NOW.date));
+  assert.strictEqual((await call('GET', '/api/reservations/free-soon?days=abc')).json.to, D(9));
+  assert.strictEqual((await call('GET', '/api/reservations/free-soon?days=0')).json.to, D(9));
+  assert.strictEqual((await call('GET', '/api/reservations/free-soon?days=500')).json.to, D(30));
+  const player = newPlayer('Rezervujúci Hráč');
+  const before = (await call('GET', '/api/reservations/free-soon')).json;
+  const spot = before.days.find((d) => d.day === D(3)).slots[0];
+  assert.strictEqual((await as(player, 'POST', `/api/reservations/slots/${spot.id}/reserve`)).status, 201);
+  const after = (await call('GET', '/api/reservations/free-soon')).json;
+  assert.strictEqual(after.total, before.total - 1);
+  assert.ok(!after.days.some((d) => d.slots.some((x) => x.id === spot.id)));
+});
+
+test('free-soon: with no courts nothing is offered (courts: 0), so the home page shows no block', async () => {
+  const all = (await call('GET', '/api/reservations')).json.courts;
+  for (const c of all) await admin('DELETE', `/api/reservations/courts/${c.id}?force=1`);
+  const empty = (await call('GET', '/api/reservations/free-soon')).json;
+  assert.deepStrictEqual([empty.courts, empty.total, empty.days.length], [0, 0, 0]);
+});
+
 async function main() {
   let failed = 0;
   try {

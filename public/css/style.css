@@ -3691,6 +3691,10 @@ a.home-tl.future:hover .home-tl-body { border-color: var(--orange); }
 .home-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 16px; }
 .home-col { display: flex; flex-direction: column; min-width: 0; }
 .home-col > .home-card { flex: 1; }
+/* the right column of the ranking row in two halves: who is looking for a match, and the free courts */
+.home-col-split { gap: 28px; }
+.home-half { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.home-half > .home-card { flex: 1; }
 .home-grp-t { font-weight: 800; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); margin: 0 0 14px; }
 
 /* black cards, thin orange border (no glow) */

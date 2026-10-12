@@ -38,7 +38,7 @@ async function loadHome() {
   const week = weekRange();
   const playerId = loggedInPlayer();
   mineFor = playerId;
-  const [seasons, live, finished, upcoming, weekMatches, looking, rankings, mine, iq] = await Promise.all([
+  const [seasons, live, finished, upcoming, weekMatches, looking, rankings, free, mine, iq] = await Promise.all([
     soft(api('/seasons'), null),
     soft(api('/matches?status=LIVE'), []),
     soft(api('/matches?status=FINISHED&limit=4'), []),
@@ -46,13 +46,14 @@ async function loadHome() {
     soft(api(`/matches?from=${encodeURIComponent(week.from)}&to=${encodeURIComponent(week.to)}`), []),
     soft(api('/availability'), []),
     soft(api('/rankings'), null),
+    soft(api('/reservations/free-soon?days=10'), null),
     playerId ? soft(api(`/matches?playerId=${playerId}`), []) : Promise.resolve(null),
     playerId ? soft(api(`/courtiq/player/${playerId}`), null) : Promise.resolve(null),
   ]);
   if (seasons === null) throw new Error('seasons');
   const season = pickSeason(seasons.filter((s) => s.kind !== 'TOURNAMENT'));
   const standings = season ? await soft(api(`/seasons/${season.id}/standings`), null) : null;
-  return { seasons, season, standings, live, finished, upcoming, weekMatches, looking, rankings, mine, iq, playerId };
+  return { seasons, season, standings, live, finished, upcoming, weekMatches, looking, rankings, free, mine, iq, playerId };
 }
 
 // ---------- "My season": only for a logged-in player ----------
@@ -425,12 +426,13 @@ function nextSlot(post) {
   return iso ? chipDate(iso) : '';
 }
 
-function lookingHtml(posts) {
+// half: the block shares its column with the free courts (it shows fewer rows then)
+function lookingHtml(posts, half) {
   return `
-  <div class="home-col">
+  <div class="${half ? 'home-half' : 'home-col'}">
     ${secTitle(t('home.looking'), posts.length ? String(posts.length) : '', '/looking-to-play', t('home.everyone'))}
     <div class="home-card">
-      ${posts.length ? posts.slice(0, 4).map((p) => {
+      ${posts.length ? posts.slice(0, half ? 2 : 4).map((p) => {
         const cats = (p.categories || []).map((c) => categoryLabel(c)).join(' · ');
         const sub = [cats, nextSlot(p), p.location || t('home.anywhere')].filter(Boolean).join(' · ');
         return `
@@ -443,10 +445,38 @@ function lookingHtml(posts) {
   </div>`;
 }
 
+// "Voľné kurty": the free spots of the courts for the next 10 days, a row per day (the first two spots of it, "+n" for the rest)
+function freeCourtsHtml(free) {
+  const days = free.days || [];
+  const when = (iso) => {
+    const dt = new Date(`${iso}T12:00:00`);
+    return `${weekdayShort(dt)} ${dt.getDate()}.${dt.getMonth() + 1}.`;
+  };
+  const row = (d) => {
+    const more = d.slots.length - 2;
+    const sub = d.slots.slice(0, 2).map((s) => `${s.court} ${s.start}–${s.end}`).join(' · ') + (more > 0 ? ` · +${more}` : '');
+    return `
+      <a class="home-m-row" href="/reservations?from=${encodeURIComponent(d.day)}">
+        <div><div class="n"><b>${escapeHtml(when(d.day))}</b></div><div class="s">${escapeHtml(sub)}</div></div>
+        <span class="home-chip btn">${escapeHtml(t('home.book'))}</span>
+      </a>`;
+  };
+  return `
+  <div class="home-half">
+    ${secTitle(t('home.freeCourts'), t('home.freeCourtsNote'), '/reservations', t('home.bookAll'))}
+    <div class="home-card">
+      ${days.length ? days.slice(0, 3).map(row).join('') : `<div class="home-empty">${escapeHtml(t('home.noFreeCourts'))}</div>`}
+    </div>
+  </div>`;
+}
+
 function rankingAndLookingHtml(d) {
   const rows = blta(d);
-  if (!rows && !d.looking.length) return '';
-  return `<section class="home-sec"><div class="home-cols">${rows ? rankingHtml(rows) : ''}${lookingHtml(d.looking)}</div></section>`;
+  const courts = !!(d.free && d.free.courts > 0); // no courts set up = no block
+  if (!rows && !d.looking.length && !courts) return '';
+  // with the free courts the right column is two halves: who is looking for a match, and where a court is free
+  const right = courts ? `<div class="home-col home-col-split">${lookingHtml(d.looking, true)}${freeCourtsHtml(d.free)}</div>` : lookingHtml(d.looking);
+  return `<section class="home-sec"><div class="home-cols">${rows ? rankingHtml(rows) : ''}${right}</div></section>`;
 }
 
 function moversHtml(d) {
@@ -699,5 +729,6 @@ rootEl.addEventListener('click', (e) => {
     const socket = io();
     let timer = null;
     socket.on('matches:changed', () => { clearTimeout(timer); timer = setTimeout(refreshHome, 800); });
+    socket.on('reservations:changed', () => { clearTimeout(timer); timer = setTimeout(refreshHome, 800); });
   }
 })();
