@@ -1096,24 +1096,6 @@ function cardDurationHtml(m) {
   return '';
 }
 
-// Small "i" next to a player's name that opens their profile page — a plain
-// <a> would be invalid (and misbehave) nested inside a match card's own
-// <a>, so this is a button that stops the click from also navigating the
-// card, then opens the profile in a new tab itself (also matters for the
-// embed widget, whose cards live inside an iframe on someone else's site —
-// same-tab navigation there would replace the whole widget).
-function playerInfoBtn(player) {
-  // Same-window navigation everywhere, except when this card is rendered
-  // inside the embed widget's iframe on an external site — there, navigating
-  // the iframe itself would replace the whole embedded widget with the
-  // profile page, so that context still opens a new tab.
-  const playerPath = player.slug || player.id;
-  const nav = window.top === window.self
-    ? `window.location.href='${siteUrl('/player/' + playerPath)}'`
-    : `window.open('${siteUrl('/player/' + playerPath)}','_blank')`;
-  return `<button type="button" class="player-info-btn" title="${escapeHtml(t('common.viewProfileTitle', { name: player.name }))}" onclick="event.preventDefault();event.stopPropagation();${nav}">i</button>`;
-}
-
 // Name -> current overall BLTA rank (the "blta" rankings table only, not
 // the per-category Race tables), so a match card can show "#N" next to a
 // ranked player. Fetched once per page load; a page that renders cards
@@ -1133,15 +1115,16 @@ function rankBadgeHtml(name) {
   return rank ? `<span class="player-rank">#${rank}</span> ` : '';
 }
 
-// A player's name inside a match card — clickable to their profile page,
-// same not-a-real-<a> nav trick as playerInfoBtn above (and for the same
-// reason: it sits inside the card's own <a>).
-function playerNameLink(player) {
+// A player's name inside a match card — clickable to their profile page;
+// rank:false drops the "#N" badge (finished matches don't show it),
+// a span with a click handler rather than a real <a>, because it sits
+// inside the card's own <a>.
+function playerNameLink(player, { rank = true } = {}) {
   const playerPath = player.slug || player.id;
   const nav = window.top === window.self
     ? `window.location.href='${siteUrl('/player/' + playerPath)}'`
     : `window.open('${siteUrl('/player/' + playerPath)}','_blank')`;
-  return `<span class="player-name-link" onclick="event.preventDefault();event.stopPropagation();${nav}">${rankBadgeHtml(player.name)}${escapeHtml(player.name)}</span>`;
+  return `<span class="player-name-link" onclick="event.preventDefault();event.stopPropagation();${nav}">${rank ? rankBadgeHtml(player.name) : ''}${escapeHtml(player.name)}</span>`;
 }
 
 // A small tennis-ball marker next to whichever player is bringing the
@@ -1217,8 +1200,8 @@ function cardScoreboardHtml(m, { compact = false } = {}) {
         ${compact ? '' : `
           <table>
             <tbody>
-              <tr class="${winnerP1 ? 'winner-row' : ''}"><td class="name-cell">${playerNameLink(m.player1)}${playerInfoBtn(m.player1)}</td></tr>
-              <tr class="${winnerP2 ? 'winner-row' : ''}"><td class="name-cell">${playerNameLink(m.player2)}${playerInfoBtn(m.player2)}</td></tr>
+              <tr class="${winnerP1 ? 'winner-row' : ''}"><td class="name-cell">${playerNameLink(m.player1, { rank: m.status !== 'FINISHED' })}</td></tr>
+              <tr class="${winnerP2 ? 'winner-row' : ''}"><td class="name-cell">${playerNameLink(m.player2, { rank: m.status !== 'FINISHED' })}</td></tr>
             </tbody>
           </table>
         `}
@@ -1229,7 +1212,7 @@ function cardScoreboardHtml(m, { compact = false } = {}) {
   const headerCells = sets.map((s, i) => `<th>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</th>`).join('');
   const row = (playerNum, player, isWinner) => {
     const cells = sets.map((s) => `<td class="set-score">${setCell(s, playerNum, { highlightWinner: compact, highlightHigher: true })}</td>`).join('');
-    const nameCell = compact ? '' : `<td class="name-cell">${playerNameLink(player)}${playerInfoBtn(player)}</td>`;
+    const nameCell = compact ? '' : `<td class="name-cell">${playerNameLink(player, { rank: m.status !== 'FINISHED' })}</td>`;
     return `<tr class="${isWinner ? 'winner-row' : ''}">${nameCell}${cells}</tr>`;
   };
   return `
