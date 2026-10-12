@@ -1810,7 +1810,8 @@ function levelDotsHtml(category) {
 }
 
 function categoryBadge(category) {
-  return `<span class="badge badge-${category}">${levelDotsHtml(category)}${categoryLabel(category)}</span>`;
+  // Badges drop the "BLTA " prefix — the level dots / colour already say it's a league division.
+  return `<span class="badge badge-${category}">${levelDotsHtml(category)}${categoryLabel(category).replace(/^BLTA /, '')}</span>`;
 }
 
 // One-line card shared by the /compact page and the /embed/compact widget:
