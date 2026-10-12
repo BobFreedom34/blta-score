@@ -1499,14 +1499,19 @@ body:not(.embed-light) .match-card .scoreboard .set-win { color: var(--status-gr
   border: 1px solid var(--orange);
   box-shadow: 0 0 18px rgba(255, 85, 0, 0.25);
 }
+/* Profile sections: heading outside the box, same white 20px style as the
+   homepage's section titles (.home-sec-title .l) */
+.player-sec { margin-top: 56px; }
+.player-sec > .statistics-card { margin-top: 0; }
+.player-sec > .section-label, .player-sec > .section-header { margin: 0 0 14px; }
+.player-sec .section-label, #h2h-section .section-label { color: var(--white); font-size: 20px; line-height: 1.2; }
 /* The CourtIQ card sits right after the bio header/edit-profile button,
    not another big card — 56px there would stick out next to the equal,
    tighter 24px gaps everywhere else in this avatar/bio/CourtIQ run. Every
-   other .statistics-card (Statistics, Badges) keeps the bigger 56px break,
+   other profile section (Statistics, Badges) keeps the bigger 56px break,
    unaffected since this only targets the one with this specific id. */
-#courtiq-card { margin-top: 24px; }
-.statistics-card .section-label { margin: 0 0 12px; }
-.statistics-card .section-header { margin: 0 0 12px; }
+#courtiq-card.player-sec { margin-top: 24px; }
+.player-sec .badges-ratio { font-size: 12px; font-weight: 600; color: #c3c7cf; white-space: nowrap; }
 
 /* ---------- CourtIQ card (player profile) ---------- */
 .courtiq-summary { display: flex; align-items: center; gap: 16px; }

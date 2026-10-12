@@ -543,6 +543,7 @@ async function renderCourtIQ() {
   }
   el.innerHTML = `
     <div class="section-label">${escapeHtml(t('courtiq.cardLabel'))}<button type="button" class="courtiq-info-btn" aria-label="What is CourtIQ?">i</button></div>
+    <div class="statistics-card">
     <div class="courtiq-summary">
       <div class="courtiq-band-big">${data.band.toFixed(1)}${provisionalTag}</div>
       <div class="courtiq-meta">
@@ -551,6 +552,7 @@ async function renderCourtIQ() {
       </div>
     </div>
     <div id="courtiq-trend-inner"></div>
+    </div>
   `;
   const trendEl = document.getElementById('courtiq-trend-inner');
   const recentHistory = data.history.slice(-courtiqTrendPointLimit());

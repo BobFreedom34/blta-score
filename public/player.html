@@ -95,10 +95,11 @@ src="https://www.facebook.com/tr?id=1431392191315936&ev=PageView&noscript=1"
     <button type="button" class="btn btn-sm player-bio-edit-btn" id="edit-bio-btn" data-i18n="player.editProfile">Upraviť profil</button>
   </div>
 
-  <div class="statistics-card" id="courtiq-card"></div>
+  <div class="player-sec" id="courtiq-card"></div>
 
-  <div class="statistics-card">
+  <div class="player-sec">
     <div class="section-label" data-i18n="player.statisticsLabel">Štatistiky</div>
+    <div class="statistics-card">
     <div class="tabs" id="stats-tabs">
       <button type="button" class="tab active" data-stats-tab="blta" data-i18n="player.bltaTab">Zápasy BLTA</button>
       <button type="button" class="tab" data-stats-tab="overall" data-i18n="player.allMatchesTab">Všetky zápasy</button>
@@ -183,13 +184,16 @@ src="https://www.facebook.com/tr?id=1431392191315936&ev=PageView&noscript=1"
       <div id="months-overall" style="margin-top:14px"></div>
     </div>
   </div>
+  </div>
 
-  <div class="statistics-card">
+  <div class="player-sec">
     <div class="section-header">
       <div class="section-label"><span data-i18n="player.badgesLabel">Odznaky</span> <span class="badges-ratio" id="badges-ratio"></span></div>
       <button type="button" class="section-link" id="badges-toggle" data-i18n="player.showAllBadges">Zobraziť všetky odznaky</button>
     </div>
-    <div class="badges-grid" id="badges-grid"></div>
+    <div class="statistics-card">
+      <div class="badges-grid" id="badges-grid"></div>
+    </div>
   </div>
 
   <div id="h2h-section"></div>
