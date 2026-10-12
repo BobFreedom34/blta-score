@@ -64,7 +64,7 @@ function matchCardHtml(m) {
           ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>${courtIcon('calendar')}${fmtDateShort(m.scheduledAt)}</span>`}
         </div>
       </div>
-      ${m.notes ? `<div class="match-card-notes">${escapeHtml(m.notes)}</div>` : ''}
+      ${matchRoundHtml(m)}
       ${scoreboard || `
         <div class="match-players-box">
           <div class="match-players">

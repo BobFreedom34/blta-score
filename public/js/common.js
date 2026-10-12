@@ -1890,6 +1890,20 @@ function statusBadge(m, opts) {
 }
 
 // The "Live video" pill of a match that has a YouTube video (set by the admin on the match page): shown next to the status on every match card.
+// The line under the pills of a match card: the round and the group of a league match ("2. kolo - Wilson", "Play-off - Wilson"), built from the
+// match's own round / stage / group — not the free-text notes (those stay on the match page). Empty for a match without any of them.
+function matchRoundLabel(m) {
+  const parts = [];
+  if (m.stage === 'PLAYOFF') parts.push(t('season.playoff'));
+  else if (m.round) parts.push(t('season.roundN', { n: m.round }));
+  if (m.group && m.group.name) parts.push(m.group.name);
+  return parts.join(' - ');
+}
+function matchRoundHtml(m) {
+  const label = matchRoundLabel(m);
+  return label ? `<div class="match-card-notes">${escapeHtml(label)}</div>` : '';
+}
+
 function videoBadge(m) {
   return m && m.videoId ? `<span class="badge badge-video">${courtIcon('video')}${t('match.liveVideo')}</span>` : '';
 }
