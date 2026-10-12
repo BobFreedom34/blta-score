@@ -1056,9 +1056,14 @@ function matchScoreHtml(m) {
 // match-page scoreboard and the regular (non-compact) match-card
 // scoreboard keep their existing plain-white look; only the compact
 // match-list grid (see cardScoreboardHtml's compact mode) turns it on.
-function setCell(set, playerNum, { highlightWinner = false } = {}) {
+// highlightHigher colors the higher number of every set green (the match cards): the winner of a decided set, or the one ahead in a set
+// that is still going — nothing in a tied set.
+function setCell(set, playerNum, { highlightWinner = false, highlightHigher = false } = {}) {
   const gKey = playerNum === 1 ? 'p1' : 'p2';
-  const won = highlightWinner && set.winner === playerNum;
+  const otherKey = playerNum === 1 ? 'p2' : 'p1';
+  const own = set.isSuperTiebreak ? set.tiebreak[gKey] : set[gKey];
+  const other = set.isSuperTiebreak ? set.tiebreak[otherKey] : set[otherKey];
+  const won = (highlightWinner && set.winner === playerNum) || (highlightHigher && own > other);
   if (set.isSuperTiebreak) {
     const val = set.tiebreak[gKey];
     return won ? `<span class="set-win">${val}</span>` : `${val}`;
@@ -1223,7 +1228,7 @@ function cardScoreboardHtml(m, { compact = false } = {}) {
   }
   const headerCells = sets.map((s, i) => `<th>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</th>`).join('');
   const row = (playerNum, player, isWinner) => {
-    const cells = sets.map((s) => `<td class="set-score">${setCell(s, playerNum, { highlightWinner: compact })}</td>`).join('');
+    const cells = sets.map((s) => `<td class="set-score">${setCell(s, playerNum, { highlightWinner: compact, highlightHigher: true })}</td>`).join('');
     const nameCell = compact ? '' : `<td class="name-cell">${playerNameLink(player)}${playerInfoBtn(player)}</td>`;
     return `<tr class="${isWinner ? 'winner-row' : ''}">${nameCell}${cells}</tr>`;
   };

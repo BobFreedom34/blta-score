@@ -1034,6 +1034,10 @@ datalist {}
 .scoreboard .sub-tb { font-size: 11px; color: #9a9a9a; margin-left: 2px; }
 .scoreboard tr.winner-row td.name-cell::after { content: " \2713"; color: var(--yellow); }
 body:not(.embed-light) .scoreboard tr.winner-row td.name-cell::after { color: var(--orange); }
+/* match cards: the winner's name, the tick and the higher number of each set are green */
+body:not(.embed-light) .match-card .scoreboard tr.winner-row td.name-cell, body:not(.embed-light) .match-card .scoreboard tr.winner-row td.name-cell a { color: var(--status-green); }
+body:not(.embed-light) .match-card .scoreboard tr.winner-row td.name-cell::after { color: var(--status-green); }
+body:not(.embed-light) .match-card .scoreboard .set-win { color: var(--status-green); }
 .player-info-btn, .player-info-link {
   display: inline-flex;
   align-items: center;
