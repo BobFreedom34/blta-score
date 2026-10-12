@@ -301,6 +301,129 @@ const SEED = {
   },
 };
 
+// Venues added to the list from here, once each (the app_flags row, not the venue, stops a re-add: an admin who deletes one keeps it
+// deleted). A venue the admin already made under a spelling of the same name ("Pro Set", "Proset"…) gets the details instead of a twin,
+// unless its details were filled in before. Sourced from each club's own site (2026-10-12): contact, price list and booking pages; what a site
+// does not say (a surface, a court count) is left out. Coordinates: the map point on the club's own page (Top Tenis, Love4Tennis), the courts
+// of the club in OpenStreetMap (Dúbravka), the street address geocoded from OpenStreetMap (Pro Set).
+const NEW_VENUES = [
+  {
+    flag: 'venue_added_tk_pro_set',
+    name: 'TK Pro Set',
+    sameAs: ['proset', 'tkproset'],
+    details: {
+      area: 'Petržalka',
+      address: 'Vlastenecké námestie 1, 851 01 Bratislava',
+      phone: '+421 905 601 385',
+      email: 'madajova.proset@gmail.com',
+      website: 'https://www.pro-set.sk/',
+      bookingUrl: 'https://www.pro-set.sk/reservations',
+      courtType: 'BOTH',
+      courtsCount: 4,
+      surfaces: ['CLAY'],
+      openingHours: 'Po–Ne 8:00–22:00',
+      price: 'leto od 10 € / hod, zimná hala od 20 € / hod (špička 15–21 h drahšia)',
+      facilities: ['LIGHTING', 'RACKET_RENTAL', 'COACHING', 'MULTISPORT'],
+      description: 'Štyri antukové kurty tenisového klubu TK Pro Set (od roku 1996): v lete vonku, od októbra do apríla v nafukovacej hale. Online rezervácia; osvetlenie 3 € / hod, požičanie rakety 2 €. Karta MultiSport sa akceptuje iba v lete. Od sezóny 2026 aj tenisová akadémia pre deti.',
+      lat: 48.1252846,
+      lng: 17.1118133,
+    },
+  },
+  {
+    flag: 'venue_added_tk_dubravka',
+    name: 'TK Dúbravka - Lysákova',
+    sameAs: ['tkdubravka', 'dubravka', 'dubravskesportovecentrum', 'tkdubravkalysakova', 'tenisovyklubdubravka'],
+    details: {
+      area: 'Dúbravka',
+      address: 'Lysákova 1, 841 01 Bratislava',
+      phone: '+421 905 109 378',
+      email: 'dsc@atlas.sk',
+      website: 'https://www.dubravskesportovecentrum.sk/',
+      bookingUrl: 'https://dubravskesportovecentrum.isportsystem.sk/',
+      facebook: 'https://www.facebook.com/sktcd/',
+      instagram: 'tk_dubravka',
+      courtType: 'BOTH',
+      courtsCount: 13,
+      openingHours: 'Po–Pi 8:00–22:00, So–Ne 8:00–20:00',
+      price: 'leto 8–13 € / hod (člen / nečlen), hala v zime 17–25 € / hod; osvetlenie +3,50 €',
+      facilities: ['LIGHTING', 'SHOWERS', 'BAR_CAFE', 'COACHING'],
+      description: 'Dúbravské športové centrum: areál s 13 tenisovými dvorcami a dvoma nafukovacími halami (v zime 2 × 4 dvorce), domov Tenisového klubu Dúbravka od roku 1999. Šatne so sprchami, bufet, tenisová škola, beach volejbal, workoutové a detské ihrisko. Hodinové rezervácie online, celosezónne cez klub.',
+      lat: 48.1899,
+      lng: 17.0418,
+    },
+  },
+  {
+    flag: 'venue_added_top_tenis',
+    name: 'Top Tenis - Budatínska',
+    sameAs: ['toptenis', 'toptenisbudatinska', 'toptenissk', 'tktoptenis'],
+    details: {
+      area: 'Petržalka',
+      address: 'Budatínska 61, Bratislava',
+      phone: '+421 905 380 001',
+      email: 'toptenis@toptenis.sk',
+      website: 'https://www.toptenis.sk/',
+      bookingUrl: 'https://www.toptenis.sk/online-booking/',
+      facebook: 'https://www.facebook.com/Toptenisik',
+      instagram: 'toptenissk',
+      courtType: 'BOTH',
+      openingHours: 'Po–Ne 8:00–22:00',
+      price: 'leto 8–12 € / hod, zimná hala 16–21 € / hod; osvetlenie +4 € / hod',
+      facilities: ['LIGHTING', 'COACHING'],
+      description: 'Kurty TOP Tenis, n.o. v areáli ZŠ Budatínska 61 v Petržalke: v lete vonku, v zime v hale. Tréningy pre deti aj dospelých, tenisové tábory a turnaje. Večer je osvetlenie na dvoch kurtoch. Online rezervácia.',
+      lat: 48.103412,
+      lng: 17.099693,
+    },
+  },
+  {
+    flag: 'venue_added_love4tennis',
+    name: 'Love4Tennis',
+    sameAs: ['love4tennis', 'love4tennisacademy', 'l4t', 'love4tennisturbinova'],
+    details: {
+      area: 'Nové Mesto',
+      address: 'Turbínova 1, 831 04 Bratislava',
+      phone: '+421 911 508 720',
+      email: 'academy@love4tennis.com',
+      website: 'https://love4tennis.com/sk/',
+      facebook: 'https://www.facebook.com/TKLOVE4TENNIS/',
+      instagram: 'love4tennis_cibulkova_academy',
+      courtType: 'BOTH',
+      courtsCount: 8,
+      surfaces: ['CLAY', 'HARD'],
+      openingHours: 'Po–Pi 8:00–22:00, víkend po dohode',
+      price: 'leto 10–15 € / hod, zima 25 € / hod',
+      facilities: ['COACHING'],
+      description: 'Tenisová akadémia Love4Tennis (Dominika Cibulková): šesť antukových a dva hardové kurty (povrch ako na US Open); v zime sú všetky kurty zakryté a vyhrievané. Kurt sa objednáva telefonicky alebo e-mailom v pracovné dni 12:00–20:00.',
+      lat: 48.1735685,
+      lng: 17.151149,
+    },
+  },
+];
+
+function addNewVenues() {
+  NEW_VENUES.forEach(({ flag, name, sameAs, details }) => {
+    if (db.prepare('SELECT 1 FROM app_flags WHERE key = ?').get(flag)) return;
+    const parsed = venues.parseDetails(details);
+    if (parsed.error) {
+      console.warn(`[venue seed] skipped "${name}": ${parsed.error}`);
+      return;
+    }
+    const compact = (text) => String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const existing = db.prepare('SELECT id, name, seeded_at FROM venues').all().find((v) => sameAs.includes(compact(v.name)));
+    const stamp = new Date().toISOString();
+    if (existing) {
+      if (!existing.seeded_at) {
+        const columns = { ...parsed.columns, seeded_at: stamp };
+        db.prepare(`UPDATE venues SET ${Object.keys(columns).map((n) => `${n} = @${n}`).join(', ')} WHERE id = @id`).run({ ...columns, id: existing.id });
+      }
+    } else {
+      const columns = { name, slug: venues.uniqueSlug(name), ...parsed.columns, seeded_at: stamp };
+      const names = Object.keys(columns);
+      db.prepare(`INSERT INTO venues (${names.join(', ')}) VALUES (${names.map((n) => `@${n}`).join(', ')})`).run(columns);
+    }
+    db.prepare('INSERT INTO app_flags (key) VALUES (?)').run(flag);
+  });
+}
+
 function seedVenueDetails() {
   const find = db.prepare('SELECT id FROM venues WHERE name = ? AND seeded_at IS NULL');
   Object.entries(SEED).forEach(([name, details]) => {
@@ -335,6 +458,7 @@ function seedCourtsMenuItem() {
 function run() {
   venues.ensureSlugs();
   seedVenueDetails();
+  addNewVenues();
   seedCourtsMenuItem();
 }
 

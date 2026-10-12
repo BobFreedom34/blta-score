@@ -487,6 +487,11 @@ profile photo is shown). Hiding an edition removes it from the page without dele
 - Foreign keys are not enforced in this database, so the router deletes an edition's blocks, places and photo files itself.
 - Check it: `node scripts/check-winners.js` (starts its own server on a temporary data folder; nothing else is touched).
 
+### Tennis courts list (`/courts`, Backend → Courts `/venues-admin`)
+
+The venues are edited in Backend → Courts. `src/venueSeed.js` fills in details once (per venue / per database, `venues.seeded_at`) and **adds venues from the code once each** (`NEW_VENUES`, flags `venue_added_*` in `app_flags`, so a venue an admin deletes stays deleted): TK Pro Set, TK Dúbravka - Lysákova, Top Tenis - Budatínska, Love4Tennis — details from the clubs' own sites (contact, prices, booking link, hours; a surface or court count a site does not state is left empty). A venue the admin already made as "Proset", "Dúbravka"… gets the details instead of a twin. A match's free-text location finds a venue by its name or a part of it; a name of several words is also known written together ("Pro Set" = "Proset"). To add another venue, add an entry to `NEW_VENUES`.
+- Check: `node scripts/check-venue-seed.js`.
+
 ### Court reservations (`/rezervacie-kurtov`, code address `/reservations`)
 
 A grid of the next 7 days (always from today; the arrows move 7 days at a time, never into the past; a "Dnes" button next to them jumps back to today): the days across the top, the time down

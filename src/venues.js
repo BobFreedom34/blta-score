@@ -202,6 +202,8 @@ function venueAliases(name) {
   };
   add(words(name));
   add(stripGeneric(words(name)));
+  // "Pro Set" and "Proset" are the same club: a name of several words is also known written together
+  [words(name), stripGeneric(words(name))].forEach((phrase) => { if (phrase.includes(' ') && phrase.replace(/ /g, '').length >= 5) add(phrase.replace(/ /g, '')); });
   if (/\s[-–—]\s/.test(name)) name.split(/\s[-–—]\s/).forEach((part) => add(stripGeneric(words(part))));
   return aliases;
 }
