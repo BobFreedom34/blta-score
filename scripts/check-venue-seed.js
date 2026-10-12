@@ -116,7 +116,7 @@ test('"Pro Set" and "Proset" in the location of a match both find the venue, and
   await stop();
 });
 
-test('the other three venues are there too, with what their sites say (and nothing they do not say)', async () => {
+test('the other venues are there too, with what their sites say (and nothing they do not say)', async () => {
   const dir = freshDir();
   await boot(dir);
   const all = await venuesNow();
@@ -131,7 +131,15 @@ test('the other three venues are there too, with what their sites say (and nothi
   assert.deepStrictEqual([l.slug, l.area, l.courtsCount, l.address], ['love4tennis', 'Nové Mesto', 8, 'Turbínova 1, 831 04 Bratislava']);
   assert.deepStrictEqual(l.surfaces, ['CLAY', 'HARD']);
   assert.strictEqual(l.bookingUrl, null, 'booked by phone / e-mail');
-  for (const v of [d, t, l, by('TK Pro Set')]) assert.ok(v.lat > 48 && v.lat < 48.3 && v.lng > 17 && v.lng < 17.3, v.name + ' is in Bratislava');
+  const p = by('TK Júliusa Pántika - Senec');
+  assert.deepStrictEqual([p.slug, p.area, p.address, p.phone, p.email], ['tk-juliusa-pantika-senec', 'Senec', 'Pezinská 1, 903 01 Senec', '+421 905 315 554', 'kurty.pantik@gmail.com']);
+  assert.deepStrictEqual([p.courtsCount, p.surfaces, p.courtType, p.website], [null, [], null, null], 'the Facebook page says nothing about courts: nothing guessed');
+  const mb = by('Matchball');
+  assert.deepStrictEqual([mb.slug, mb.area, mb.address, mb.phone, mb.courtsCount, mb.courtType], ['matchball', 'Petržalka', 'Smolenická 20, 851 05 Bratislava', '+421 2 638 375 27', null, null]);
+  assert.deepStrictEqual(mb.facilities, ['BAR_CAFE', 'RESTAURANT']);
+  const c = by('Tenis Club 26');
+  assert.deepStrictEqual([c.slug, c.area, c.phone, c.address, c.lat, c.lng, c.courtType], ['tenis-club-26', 'Vrakuňa', '+421 910 292 291', 'Stavbárska ulica, Bratislava', null, null, 'BOTH'], 'the street is known, the house number is not: no number, no pin');
+  for (const v of [d, t, l, p, mb, by('TK Pro Set')]) assert.ok(v.lat > 48 && v.lat < 48.3 && v.lng > 17 && v.lng < 17.5, v.name + ' is in the Bratislava region');
   await stop();
   await boot(dir);
   assert.strictEqual((await venuesNow()).length, all.length, 'a restart adds nothing');
@@ -151,6 +159,9 @@ test('the way people write the places in a match finds each venue', async () => 
     'tk-dubravka-lysakova': [await make('Dúbravka'), await make('Dubravka kurt 3'), await make('Lysákova')],
     'top-tenis-budatinska': [await make('Toptenis'), await make('Top tenis, hala'), await make('Budatínska 61')],
     love4tennis: [await make('Love 4 Tennis'), await make('Love4tennis kurt 2')],
+    'tk-juliusa-pantika-senec': [await make('Senec'), await make('TK Pántika Senec')],
+    'tenis-club-26': [await make('Tenis Club 26'), await make('TENISCLUB26 hala')],
+    matchball: [await make('Matchball'), await make('Matchball kurt 1')],
   };
   for (const [slug, list] of Object.entries(tokens)) {
     const here = (await api('/api/venues/' + slug)).json.matches.upcoming.map((m) => m.token).sort();

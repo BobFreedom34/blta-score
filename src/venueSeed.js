@@ -303,7 +303,7 @@ const SEED = {
 
 // Venues added to the list from here, once each (the app_flags row, not the venue, stops a re-add: an admin who deletes one keeps it
 // deleted). A venue the admin already made under a spelling of the same name ("Pro Set", "Proset"…) gets the details instead of a twin,
-// unless its details were filled in before. Sourced from each club's own site (2026-10-12): contact, price list and booking pages; what a site
+// unless its details were filled in before. Sourced from each club's own site or page (2026-10-12; TK Júliusa Pántika and Tenis Club 26: their Facebook pages only): contact, price list and booking pages; what a site
 // does not say (a surface, a court count) is left out. Coordinates: the map point on the club's own page (Top Tenis, Love4Tennis), the courts
 // of the club in OpenStreetMap (Dúbravka), the street address geocoded from OpenStreetMap (Pro Set).
 const NEW_VENUES = [
@@ -395,6 +395,53 @@ const NEW_VENUES = [
       description: 'Tenisová akadémia Love4Tennis (Dominika Cibulková): šesť antukových a dva hardové kurty (povrch ako na US Open); v zime sú všetky kurty zakryté a vyhrievané. Kurt sa objednáva telefonicky alebo e-mailom v pracovné dni 12:00–20:00.',
       lat: 48.1735685,
       lng: 17.151149,
+    },
+  },
+  {
+    flag: 'venue_added_tk_pantik_senec',
+    name: 'TK Júliusa Pántika - Senec',
+    sameAs: ['tkjuliusapantika', 'tenisovyklubjuliusapantika', 'tkjuliusapantikasenec', 'tkpantik', 'pantik', 'senec'],
+    details: {
+      area: 'Senec',
+      address: 'Pezinská 1, 903 01 Senec',
+      phone: '+421 905 315 554',
+      email: 'kurty.pantik@gmail.com',
+      facebook: 'https://www.facebook.com/people/Tenisov%C3%BD-klub-J%C3%BAliusa-P%C3%A1ntika/100078854433824/',
+      description: 'Tenisový klub v Senci, ktorý vznikol na počesť pamiatky hereckej osobnosti Júliusa Pántika. Informácie o kurtoch a rezervácii vám poskytne klub na uvedenom telefóne alebo e-maile.',
+      lat: 48.2182904,
+      lng: 17.3921304,
+    },
+  },
+  {
+    flag: 'venue_added_tenis_club_26',
+    name: 'Tenis Club 26',
+    sameAs: ['tenisclub26', 'tc26', 'tenisclub26vrakuna'],
+    // the street is Stavbárska (given by the BLTA admin; the club's Facebook page has no street at all); the house number is not confirmed anywhere,
+    // so there is no number and no map point rather than a guess (add them in /venues-admin)
+    details: {
+      area: 'Vrakuňa',
+      address: 'Stavbárska ulica, Bratislava',
+      phone: '+421 910 292 291',
+      email: 'hornik26@gmail.com',
+      facebook: 'https://www.facebook.com/people/TENIS-CLUB-26/100069321905468/',
+      courtType: 'BOTH',
+      description: 'Tenisové kurty a hala vo Vrakuni.',
+    },
+  },
+  {
+    flag: 'venue_added_matchball',
+    name: 'Matchball',
+    sameAs: ['matchball', 'matchballkurty'],
+    details: {
+      area: 'Petržalka',
+      address: 'Smolenická 20, 851 05 Bratislava',
+      phone: '+421 2 638 375 27',
+      email: '5eterko@gmail.com',
+      facebook: 'https://www.facebook.com/people/Matchball-Kurty/100063567554407/',
+      facilities: ['BAR_CAFE', 'RESTAURANT'],
+      description: 'Matchball - Kurty: športovo-oddychový areál s barom a reštauráciou. K dispozícii sú tenisové kurty, streetball, ping-pong, šípky, detské ihrisko, oddychová zóna a záhrada na súkromné eventy; domáca a streetfood kuchyňa.',
+      lat: 48.1087596,
+      lng: 17.099546,
     },
   },
 ];
