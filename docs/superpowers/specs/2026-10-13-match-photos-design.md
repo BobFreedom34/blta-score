@@ -22,6 +22,7 @@ Everything below is on the **match page** (`public/match.html` + `public/js/matc
 - **Who can remove:** the player who added that photo, and admins. (Owner confirmed removal by the uploader; admin removal is the builder-confirmed default.)
 - **When:** any time — planned, live or finished. No status restriction.
 - **Limit:** 5 photos per match in total (shared by both players, not 5 each). Enforced on the server, not just by hiding the button.
+- **Notification:** when a photo is added, the **other** player of the match gets a notification in the bell (the same notification list that already carries chat messages, badges and play requests: see `chat_notifications` in `src/db.js`, the insert in `POST /:token/messages` in `src/routes/matches.js`, and the merged list in `GET /player/notifications` in `src/routes/player.js`). The uploader is not notified about their own photo. If an admin who is not one of the two players adds the photo, both players are notified. Tapping the notification opens the match page, like the chat one. Text along the lines of "<name> added a photo to your match" in SK/EN. Removing a photo does not notify anyone.
 - **Who can see:** everyone, no login.
 
 ## How it is built (decisions made with the owner)
@@ -40,7 +41,7 @@ Everything below is on the **match page** (`public/match.html` + `public/js/matc
 ## Non-goals
 
 - Photos on match cards, the home page, player profiles or the embed widget (match page only).
-- Notifications (bell/push) when a photo is added.
+- Push notifications to the phone for new photos (the bell is in scope, see Rules).
 - Captions, likes, comments, reordering, or per-photo reporting.
 - Letting non-players or anonymous visitors upload.
 - Video.
@@ -83,5 +84,5 @@ Added after the builder check:
 
 - 5 photos is a total per match, not per player.
 - Admins can also add and remove photos.
-- Match page only; no notifications.
+- Match page only; new photos notify the other player in the bell only (no phone push), the same way chat messages do.
 - Feature stays off until the photos folder id env var is set.
