@@ -29,12 +29,13 @@ function sessionInfo({ isPlayerFlag, player }) {
   };
 }
 
-// Six independent sources feed the one notification bell (see
+// Seven independent sources feed the one notification bell (see
 // GET /notifications below) — badges (player_badges), chat messages
 // (chat_notifications), looking-to-play requests (play_request_notifications),
 // match proposals (proposal_notifications), ranking moves
-// (ranking_notifications), and an upcoming CALENDAR_DATE badge
-// (badge_reminder_notifications). Summed here so both the session payload
+// (ranking_notifications), an upcoming CALENDAR_DATE badge
+// (badge_reminder_notifications), and a photo added to a match
+// (photo_notifications). Summed here so both the session payload
 // and every mark-read response can report one combined count without
 // duplicating these queries at each call site.
 function countUnreadNotifications(playerId) {
@@ -71,7 +72,16 @@ function countUnreadNotifications(playerId) {
     JOIN badge_definitions bd ON bd.id = brn.badge_id
     WHERE brn.player_id = ? AND brn.seen = 0
   `).get(playerId).c;
-  return badges + chats + playRequests + proposals + rankings + badgeReminders;
+  // photo_notifications points at a match and a photo that can both go away
+  // (the match or the photo gets deleted), so it filters with the same two
+  // JOINs as its list in GET /notifications below, like chats above.
+  const photos = db.prepare(`
+    SELECT COUNT(*) AS c FROM photo_notifications pn
+    JOIN matches m ON m.id = pn.match_id
+    JOIN match_photos mp ON mp.id = pn.photo_id
+    WHERE pn.player_id = ? AND pn.seen = 0
+  `).get(playerId).c;
+  return badges + chats + playRequests + proposals + rankings + badgeReminders + photos;
 }
 
 router.get('/session', (req, res) => {
@@ -111,7 +121,7 @@ router.get('/session', (req, res) => {
 });
 
 // A player's own notifications, newest first — the list behind the nav
-// bell's dropdown (see common.js). Merges six unrelated sources into one
+// bell's dropdown (see common.js). Merges seven unrelated sources into one
 // feed: a badge newly earned (player_badges), someone posting in a match's
 // chat that this player is in (chat_notifications), someone picking a time
 // on this player's looking-to-play post (play_request_notifications),
@@ -225,6 +235,26 @@ router.get('/notifications', (req, res) => {
     },
   }));
 
+  // "Someone added a photo to your match" — written by routes/matchPhotos.js.
+  // The uploader's name is NULL for an admin's photo (no player of their own),
+  // which the client shows as "Admin". Both JOINs make a deleted match or
+  // photo drop out of the list (and out of the count above).
+  const photoRows = db.prepare(`
+    SELECT pn.id, pn.seen, pn.created_at,
+           m.share_token AS match_token, up.name AS uploader_name
+    FROM photo_notifications pn
+    JOIN matches m ON m.id = pn.match_id
+    JOIN match_photos mp ON mp.id = pn.photo_id
+    LEFT JOIN players up ON up.id = mp.uploaded_by_player_id
+    WHERE pn.player_id = ?
+  `).all(playerId).map((r) => ({
+    type: 'PHOTO',
+    id: r.id,
+    seen: !!r.seen,
+    createdAt: r.created_at,
+    photo: { matchToken: r.match_token, uploaderName: r.uploader_name },
+  }));
+
   // "A CALENDAR_DATE badge's day is coming up and you don't have it yet" —
   // see sendCalendarDateReminders in badgeEngine.js for what actually
   // writes these (a daily check, not triggered by a player/match action
@@ -245,7 +275,7 @@ router.get('/notifications', (req, res) => {
     badge: { id: r.badge_id, name: r.name, description: r.description, icon: r.icon },
   }));
 
-  const merged = [...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows, ...rankingRows, ...badgeReminderRows]
+  const merged = [...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows, ...rankingRows, ...badgeReminderRows, ...photoRows]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json(merged);
 });
@@ -267,6 +297,7 @@ router.post('/notifications/:type/:id/read', (req, res) => {
     : type === 'proposal' ? 'proposal_notifications'
     : type === 'ranking' ? 'ranking_notifications'
     : type === 'badge_reminder' ? 'badge_reminder_notifications'
+    : type === 'photo' ? 'photo_notifications'
     : null;
   if (!table) return res.status(400).json({ error: 'Invalid notification type' });
   const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);

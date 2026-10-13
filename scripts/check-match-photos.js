@@ -346,6 +346,86 @@ test('deleting the match removes its photo rows and notifications and deletes th
   assert.strictEqual((await call(on, 'GET', `/api/matches/${t1}/photos`)).status, 404);
 });
 
+// The bell. Own players and matches, so the counts do not depend on what the tests above left behind.
+const bell = async (srv, cookie) => ({
+  items: (await call(srv, 'GET', '/api/player/notifications', { cookie })).json.filter((n) => n.type === 'PHOTO'),
+  count: (await call(srv, 'GET', '/api/player/session', { cookie })).json.unreadNotificationCount,
+});
+const newPlayer = async (name) => (await call(on, 'POST', '/api/players', { cookie: adm, body: { name } })).json;
+
+test('the other player sees a PHOTO item in the bell with the match token and the uploader\'s name; the count includes it; reading it lowers the count', async () => {
+  const a = await newPlayer('Bell Uploader');
+  const b = await newPlayer('Bell Receiver');
+  const [ca, cb] = [playerCookie(a.id), playerCookie(b.id)];
+  const t = await newMatch(on, a, b);
+  assert.deepStrictEqual(await bell(on, cb), { items: [], count: 0 });
+  assert.strictEqual((await upload(on, t, ca)).status, 201);
+  const seen = await bell(on, cb);
+  assert.strictEqual(seen.items.length, 1, JSON.stringify(seen));
+  const item = seen.items[0];
+  assert.deepStrictEqual([item.seen, item.photo], [false, { matchToken: t, uploaderName: 'Bell Uploader' }]);
+  assert.ok(Number.isInteger(item.id) && item.createdAt, 'has id and createdAt');
+  assert.strictEqual(seen.count, 1, 'the session count includes it');
+  assert.deepStrictEqual(await bell(on, ca), { items: [], count: 0 }, 'the uploader is not told');
+
+  assert.strictEqual((await call(on, 'POST', `/api/player/notifications/photo/${item.id}/read`, { cookie: ca })).status, 404, 'not the uploader\'s notification');
+  const read = await call(on, 'POST', `/api/player/notifications/photo/${item.id}/read`, { cookie: cb });
+  assert.strictEqual(read.status, 200, read.text);
+  assert.strictEqual(read.json.unreadNotificationCount, 0);
+  const after = await bell(on, cb);
+  assert.deepStrictEqual([after.items.length, after.items[0].seen, after.count], [1, true, 0]);
+});
+
+test('a PHOTO item from an admin upload has uploaderName null and goes to both players', async () => {
+  const a = await newPlayer('Bell Admin A');
+  const b = await newPlayer('Bell Admin B');
+  const t = await newMatch(on, a, b);
+  assert.strictEqual((await upload(on, t, adm)).status, 201);
+  for (const p of [a, b]) {
+    const got = await bell(on, playerCookie(p.id));
+    assert.deepStrictEqual([got.items.length, got.items[0].photo, got.count], [1, { matchToken: t, uploaderName: null }, 1]);
+  }
+});
+
+test('when the photo is removed the item disappears from the bell and the count falls back to 0', async () => {
+  const a = await newPlayer('Bell Remove A');
+  const b = await newPlayer('Bell Remove B');
+  const [ca, cb] = [playerCookie(a.id), playerCookie(b.id)];
+  const t = await newMatch(on, a, b);
+  const photo = (await upload(on, t, ca)).json;
+  assert.strictEqual((await bell(on, cb)).count, 1);
+  assert.strictEqual((await call(on, 'DELETE', `/api/matches/${t}/photos/${photo.id}`, { cookie: ca })).status, 204);
+  assert.deepStrictEqual(await bell(on, cb), { items: [], count: 0 });
+});
+
+test('when the match is deleted the item disappears from the bell and the count falls back to 0', async () => {
+  const a = await newPlayer('Bell Match A');
+  const b = await newPlayer('Bell Match B');
+  const [ca, cb] = [playerCookie(a.id), playerCookie(b.id)];
+  const t = await newMatch(on, a, b);
+  assert.strictEqual((await upload(on, t, ca)).status, 201);
+  assert.strictEqual((await bell(on, cb)).count, 1);
+  assert.strictEqual((await call(on, 'DELETE', `/api/matches/${t}`, { cookie: adm })).status, 204);
+  assert.deepStrictEqual(await bell(on, cb), { items: [], count: 0 });
+});
+
+test('the bell joins the match and the photo itself: a notification row left behind by a deleted photo or match neither shows nor counts', async () => {
+  const a = await newPlayer('Bell Orphan A');
+  const b = await newPlayer('Bell Orphan B');
+  const [ca, cb] = [playerCookie(a.id), playerCookie(b.id)];
+  const t = await newMatch(on, a, b);
+  const photo = (await upload(on, t, ca)).json;
+  assert.strictEqual((await bell(on, cb)).count, 1);
+  execSql(on, `DELETE FROM match_photos WHERE id = ${photo.id}`);
+  assert.deepStrictEqual(await bell(on, cb), { items: [], count: 0 }, 'photo row gone, notification row left');
+  const t2 = await newMatch(on, a, b);
+  assert.strictEqual((await upload(on, t2, ca)).status, 201);
+  assert.strictEqual((await bell(on, cb)).count, 1);
+  execSql(on, `DELETE FROM matches WHERE id = ${matchId(on, t2)}`);
+  assert.deepStrictEqual(await bell(on, cb), { items: [], count: 0 }, 'match row gone, notification row left');
+  assert.strictEqual(sql(on, 'SELECT COUNT(*) AS n FROM photo_notifications WHERE player_id = ?', b.id)[0].n, 2, 'both notification rows are still in the table');
+});
+
 async function main() {
   let failed = 0;
   try {

@@ -2712,7 +2712,7 @@ document.querySelectorAll('.player-login-link').forEach((el) => {
 // (kept current on every page load via refreshPlayerAuth above, exactly
 // like the rest of the player session) and, once opened, the merged list
 // from GET /player/notifications, each item carrying a `type` ('BADGE',
-// 'CHAT_MESSAGE', 'PLAY_REQUEST', or 'PROPOSAL') this branches on to
+// 'CHAT_MESSAGE', 'PLAY_REQUEST', 'PROPOSAL', 'PHOTO', ...) this branches on to
 // render and handle it. Still named badge-* throughout below (bell/panel/
 // item CSS classes included) since the badge was what this started as —
 // not worth a sitewide rename now that it's grown a second use. All of it
@@ -2892,6 +2892,11 @@ function renderBadgeNotifList() {
         amount: n.ranking.amount, rank: n.ranking.newRank,
       });
       subtitle = fmtDateShort(n.createdAt);
+    } else if (n.type === 'PHOTO') {
+      // A null uploaderName is an admin's photo (no player behind it).
+      icon = '📷';
+      title = t('notif.photoTitle', { name: escapeHtml(n.photo.uploaderName || t('common.admin')) });
+      subtitle = fmtDateShort(n.createdAt);
     } else { // BADGE_REMINDER
       icon = badgeIconMarkup(n.badge.icon);
       title = t('notif.reminderListTitle', { badge: escapeHtml(n.badge.name) });
@@ -3012,6 +3017,7 @@ document.addEventListener('click', async (e) => {
         : notif.type === 'PLAY_REQUEST' ? 'play_request'
         : notif.type === 'RANKING' ? 'ranking'
         : notif.type === 'BADGE_REMINDER' ? 'badge_reminder'
+        : notif.type === 'PHOTO' ? 'photo'
         : 'proposal';
       const res = await api(`/player/notifications/${urlType}/${id}/read`, { method: 'POST' });
       updateBadgeBellUI(res.unreadNotificationCount);
@@ -3019,6 +3025,7 @@ document.addEventListener('click', async (e) => {
   }
   if (notif.type === 'CHAT_MESSAGE') window.location.href = `/match/${notif.chat.matchToken}`;
   if (notif.type === 'PROPOSAL') window.location.href = `/match/${notif.proposal.matchToken}`;
+  if (notif.type === 'PHOTO') window.location.href = `/match/${notif.photo.matchToken}`;
   if (notif.type === 'PLAY_REQUEST') window.location.href = siteUrl('/looking-to-play');
   if (notif.type === 'RANKING') window.location.href = siteUrl('/rankings');
 });
