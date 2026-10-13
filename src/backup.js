@@ -258,4 +258,5 @@ function startScheduledBackups() {
   setInterval(() => { runScheduledBackup(); }, CHECK_EVERY_MS);
 }
 
-module.exports = { isConfigured, runBackup, runScheduledBackup, startScheduledBackups };
+// getAccessToken is shared with drivePhotos.js (match photos) — same Google login, no second OAuth client.
+module.exports = { isConfigured, runBackup, runScheduledBackup, startScheduledBackups, getAccessToken };

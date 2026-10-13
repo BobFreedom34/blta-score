@@ -671,6 +671,31 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_chat_notifications_player ON chat_notifications(player_id);
 `);
 
+// Photos of a match, stored in Google Drive (see drivePhotos.js) — only the Drive file id lives here, never the picture itself.
+// uploaded_by_player_id is NULL when an admin added it (an admin is not a player, same as the bare player ids elsewhere in this file).
+// photo_notifications: one row per "a photo was added to your match" for the other player, shown in the same bell as the other
+// notification types; same shape as chat_notifications above, with photo_id in place of message_id.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS match_photos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id INTEGER NOT NULL,
+    drive_file_id TEXT NOT NULL,
+    uploaded_by_player_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_match_photos_match ON match_photos(match_id);
+
+  CREATE TABLE IF NOT EXISTS photo_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    match_id INTEGER NOT NULL,
+    photo_id INTEGER NOT NULL,
+    seen INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_photo_notifications_player ON photo_notifications(player_id);
+`);
+
 // One row per "someone picked a time on your looking-to-play post" (see
 // POST /availability/:id/join in routes/availability.js), shown alongside
 // player_badges/chat_notifications in the same notification bell (GET
