@@ -4777,6 +4777,8 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .match-photo-box { position: relative; aspect-ratio: 16 / 9; border-radius: var(--radius); overflow: hidden; background: var(--fill-grey); border: 1px solid var(--border-grey); cursor: pointer; }
 .match-photo-box img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .match-photo-box:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.match-photo-box.is-broken { display: flex; align-items: center; justify-content: center; }
+.match-photo-broken, .photo-viewer-broken { color: var(--gray-dim); font-size: 13px; font-weight: 600; text-align: center; padding: 0 16px; }
 .match-photo-more { position: absolute; right: 10px; bottom: 10px; background: rgba(0, 0, 0, 0.65); border: 1px solid rgba(255, 255, 255, 0.35); color: var(--white); border-radius: 999px; font-size: 12px; font-weight: 800; padding: 6px 12px; pointer-events: none; }
 .match-photos .match-photo-add { margin-top: 10px; }
 .match-photos .match-photo-add:only-child { margin-top: 0; }

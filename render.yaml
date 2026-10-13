@@ -51,3 +51,5 @@ services:
         sync: false
       - key: GOOGLE_DRIVE_BACKUP_FOLDER_ID
         sync: false
+      - key: GOOGLE_DRIVE_PHOTOS_FOLDER_ID
+        sync: false

@@ -635,7 +635,7 @@ and `/en`. The first English texts and slugs are built in (`ENGLISH` in `src/seo
 - **What it does:** the match page has a photo box. The two players of the match (or an admin) can add pictures; everybody, logged in or not,
   can look at them and open them bigger. Code: `src/drivePhotos.js` (Drive client), `src/routes/matchPhotos.js` (`GET` / `POST` / `DELETE /api/matches/:token/photos`).
 - **Rules:** only the two players of the match or an admin add; only the person who added a photo or an admin removes it. At most **5 photos per
-  match**, JPEG / PNG / WebP, up to 10 MB each (the file's first bytes are checked too, not only its name). Photos can be added at any time,
+  match**, JPEG / PNG / WebP, up to 10 MB each (the type the browser declares and the file's first bytes both have to be one of these; the file name is not used). Photos can be added at any time,
   also after the match is finished. Deleting a match deletes its photos from Drive as well.
 - **Where they live:** in a **Google Drive folder of their own**, not on the server disk and **not in the backup zip**. The database only stores the
   Drive file id (`match_photos.drive_file_id`). The app makes each file itself and makes it readable by anyone with the link, so the page
@@ -645,7 +645,7 @@ and `/en`. The first English texts and slugs are built in (`ENGLISH` in `src/seo
   is not notified; if an admin who is not one of the two players adds a photo, both players are. Bell only: no phone push, no e-mail. Removing a
   photo notifies nobody.
 - **Switching it on:** set `GOOGLE_DRIVE_PHOTOS_FOLDER_ID` (the id of a Drive folder for the photos; same Google account and credentials as the backup,
-  see `.env.example`). Without it the feature is off and nothing else is affected. Optional `PHOTO_IMAGE_URL_TEMPLATE` changes the form of the
+  see `.env.example`). Without it the feature is off and nothing else is affected; while it is off the whole photo box is hidden, including photos that were added earlier. Optional `PHOTO_IMAGE_URL_TEMPLATE` changes the form of the
   picture link (`{id}`, `{width}`) without a code change. The scope is still `drive.file` (files the app made itself), so no new authorization
   should be needed, but *if* Google refuses to make the files link-readable, the refresh token may have to be made again with
   `node scripts/get-drive-refresh-token.js <CLIENT_ID> <CLIENT_SECRET>` (and the new one set on Render).

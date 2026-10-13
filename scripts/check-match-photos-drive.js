@@ -30,6 +30,7 @@ const photos = require('../src/drivePhotos');
 let calls = [];
 let failPermissions = false;
 let failDeletes = false;
+let failRevokeOnly = false;
 let throwOnFetch = false;
 let nextId = 1;
 global.fetch = async (url, init = {}) => {
@@ -49,11 +50,12 @@ global.fetch = async (url, init = {}) => {
     call.permission = JSON.parse(init.body);
     return failPermissions ? json({ error: 'nope' }, 403) : json({ id: 'anyoneWithLink' });
   }
+  if (method === 'DELETE' && failRevokeOnly && u.includes('/permissions/')) return json({ error: 'nope' }, 500);
   if (method === 'DELETE') return failDeletes ? json({ error: 'nope' }, 500) : json({});
   throw new Error(`unexpected request: ${method} ${u}`);
 };
 
-const reset = () => { calls = []; failPermissions = false; failDeletes = false; throwOnFetch = false; };
+const reset = () => { calls = []; failPermissions = false; failDeletes = false; failRevokeOnly = false; throwOnFetch = false; };
 const summary = () => calls.map((c) => `${c.method} ${c.url.replace('https://www.googleapis.com', '').split('?')[0]}`);
 
 const tests = [];
@@ -114,6 +116,15 @@ test('deletePhoto never throws: a failing Drive call (or no network) gives false
   reset();
   throwOnFetch = true;
   assert.strictEqual(await photos.deletePhoto('abc'), false);
+});
+
+test('deletePhoto still tries to delete the file when revoking the public link fails, and then returns false', async () => {
+  reset();
+  failRevokeOnly = true;
+  assert.strictEqual(await photos.deletePhoto('abc'), false);
+  assert.strictEqual(calls.length, 2, summary().join(' | '));
+  assert.ok(calls[0].url.includes('/permissions/anyoneWithLink'), calls[0].url);
+  assert.ok(calls[1].url.endsWith('/drive/v3/files/abc'), calls[1].url);
 });
 
 test('imageUrl and thumbUrl come from one template that PHOTO_IMAGE_URL_TEMPLATE can replace', () => {

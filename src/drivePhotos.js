@@ -93,23 +93,38 @@ async function uploadPhoto(buffer, mimeType, name) {
 }
 
 // Revokes the public link first (so even if the file delete fails the picture is no longer reachable by its link), then deletes the
-// file. Never throws — a photo's row is removed from the database regardless, and a Drive hiccup must not break that — it logs and
-// returns false instead, so a leftover can be found in the log (and in the Drive folder) later.
+// file. A failed revoke is logged but the file delete is still tried (a deleted file is gone for good, which is the better outcome than
+// leaving a linked file behind). Never throws — a photo's row is removed from the database regardless, and a Drive hiccup must not
+// break that — it logs and returns false instead (when either step failed), so a leftover can be found in the log (and in the Drive
+// folder) later.
 async function deletePhoto(fileId) {
+  let ok = true;
+  let headers;
+  let id;
   try {
     const token = await backup.getAccessToken();
-    const headers = { Authorization: `Bearer ${token}` };
-    const id = encodeURIComponent(fileId);
-    const perm = await fetch(`${DRIVE_API}/${id}/permissions/anyoneWithLink`, { method: 'DELETE', headers });
-    // 404 = there was no such permission (already revoked): nothing to undo, carry on with the file
-    if (!perm.ok && perm.status !== 404) throw new Error(`permission revoke failed: ${perm.status} ${await perm.text()}`);
-    const res = await fetch(`${DRIVE_API}/${id}`, { method: 'DELETE', headers });
-    if (!res.ok && res.status !== 404) throw new Error(`file delete failed: ${res.status} ${await res.text()}`);
-    return true;
+    headers = { Authorization: `Bearer ${token}` };
+    id = encodeURIComponent(fileId);
   } catch (err) {
     console.error(`[photos] Could not delete Drive file ${fileId}:`, err);
     return false;
   }
+  try {
+    const perm = await fetch(`${DRIVE_API}/${id}/permissions/anyoneWithLink`, { method: 'DELETE', headers });
+    // 404 = there was no such permission (already revoked): nothing to undo, carry on with the file
+    if (!perm.ok && perm.status !== 404) throw new Error(`permission revoke failed: ${perm.status} ${await perm.text()}`);
+  } catch (err) {
+    ok = false;
+    console.error(`[photos] Could not revoke the public link of Drive file ${fileId} (still trying to delete the file):`, err);
+  }
+  try {
+    const res = await fetch(`${DRIVE_API}/${id}`, { method: 'DELETE', headers });
+    if (!res.ok && res.status !== 404) throw new Error(`file delete failed: ${res.status} ${await res.text()}`);
+  } catch (err) {
+    ok = false;
+    console.error(`[photos] Could not delete Drive file ${fileId}:`, err);
+  }
+  return ok;
 }
 
 module.exports = { isConfigured, uploadPhoto, deletePhoto, imageUrl, thumbUrl };

@@ -9,6 +9,55 @@ let photoLoadSeq = 0; // a slow answer must not overwrite a newer one
 let photoViewerId = null; // id of the photo the viewer shows; null while it is closed
 let photoViewerIndex = 0;
 let photoFileInput = null;
+// Pictures that fail to load: one retry after a few seconds (with a cache-busting parameter), then the picture is given up on and never
+// rendered again. Kept here (by picture URL) because render() rebuilds the page's markup all the time, so a loop of "render, fail,
+// render, fail" must not be possible. Entry: { issued: retry started, failed: gave up, useUrl: the URL that is rendered from now on }.
+const PHOTO_RETRY_MS = 3000;
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']; // what the server accepts
+const photoImgState = {};
+
+function photoImgSrc(key) {
+  const st = photoImgState[key];
+  return st && st.useUrl ? st.useUrl : key;
+}
+
+function photoImgFailed(key) {
+  return !!(photoImgState[key] && photoImgState[key].failed);
+}
+
+function onPhotoImageError(key) {
+  let st = photoImgState[key];
+  if (!st) {
+    st = { issued: false, failed: false, useUrl: null };
+    photoImgState[key] = st;
+    setTimeout(() => {
+      st.issued = true;
+      st.useUrl = `${key}${key.includes('?') ? '&' : '?'}r=${Date.now()}`;
+      // the page may have been re-rendered meanwhile, so look the pictures up now instead of keeping the old elements
+      document.querySelectorAll('img[data-photo-key]').forEach((img) => { if (img.dataset.photoKey === key) img.src = st.useUrl; });
+    }, PHOTO_RETRY_MS);
+    return;
+  }
+  // an error while the retry is still waiting (e.g. a freshly re-rendered copy of the picture) changes nothing
+  if (!st.issued || st.failed) return;
+  st.failed = true;
+  photoOnChange();
+  if (photoViewerEl()) renderPhotoViewer();
+}
+
+// Watches the <img data-photo-key> pictures inside `container`. A picture may already have failed before the listener could be
+// attached (the markup was only just built), so that case is handled here as well.
+function watchPhotoImages(container) {
+  container.querySelectorAll('img[data-photo-key]').forEach((img) => {
+    const key = img.dataset.photoKey;
+    img.addEventListener('error', () => onPhotoImageError(key));
+    if (img.complete && !img.naturalWidth) onPhotoImageError(key);
+  });
+}
+
+function photoImgTag(key, alt) {
+  return `<img src="${escapeHtml(photoImgSrc(key))}" data-photo-key="${escapeHtml(key)}" alt="${escapeHtml(alt || '')}">`;
+}
 
 // "+N photos" needs the real Slovak plural forms (1 / 2-4 / 5+), like attemptsWord in common.js.
 function photosWord(n) {
@@ -38,17 +87,20 @@ function matchPhotosHtml() {
   const { enabled, max, canAdd, photos } = photoState;
   if (!enabled) return '';
   if (!photos.length && !canAdd && !photoUploading) return '';
-  const first = photos[0];
-  const box = first ? `
-    <div class="match-photo-box" id="match-photo-box" role="button" tabindex="0" aria-label="${escapeHtml(t('match.photoOpen'))}">
-      <img src="${escapeHtml(first.url)}" alt="" decoding="async">
+  // the first photo that loads is the cover; when none does, the box is hidden — unless somebody can still add or remove a photo there,
+  // then an empty (broken) box stays so that the viewer can be opened and the dead photo removed
+  const coverIndex = photos.findIndex((p) => !photoImgFailed(p.url));
+  const keepBroken = coverIndex < 0 && (canAdd || photoUploading || photos.some((p) => p.canRemove));
+  const box = photos.length && (coverIndex >= 0 || keepBroken) ? `
+    <div class="match-photo-box${coverIndex < 0 ? ' is-broken' : ''}" id="match-photo-box" data-index="${Math.max(coverIndex, 0)}" role="button" tabindex="0" aria-label="${escapeHtml(t('match.photoOpen'))}">
+      ${coverIndex >= 0 ? photoImgTag(photos[coverIndex].url) : `<span class="match-photo-broken">${escapeHtml(t('match.photoBroken'))}</span>`}
       ${photos.length > 1 ? `<span class="match-photo-more">${escapeHtml(t('match.photoMore', { n: photos.length - 1, word: photosWord(photos.length - 1) }))}</span>` : ''}
     </div>` : '';
   const addLabel = photoUploading ? t('match.photoUploading') : t('match.photoAdd', { n: photos.length, max });
   const add = (canAdd || photoUploading)
     ? `<button type="button" class="btn btn-dark match-photo-add" id="match-photo-add"${photoUploading ? ' disabled' : ''}>${escapeHtml(addLabel)}</button>`
     : '';
-  return `<div class="match-photos">${box}${add}</div>`;
+  return box || add ? `<div class="match-photos">${box}${add}</div>` : '';
 }
 
 // Called after every render() once the markup is in the page. onChange re-renders the match page.
@@ -57,9 +109,11 @@ function bindMatchPhotos(token, onChange) {
   photoOnChange = onChange;
   const box = document.getElementById('match-photo-box');
   if (box) {
-    box.addEventListener('click', () => openPhotoViewer(0));
+    const open = () => openPhotoViewer(Number(box.dataset.index) || 0);
+    box.addEventListener('click', open);
+    watchPhotoImages(box);
     box.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPhotoViewer(0); }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
     });
   }
   const addBtn = document.getElementById('match-photo-add');
@@ -72,7 +126,7 @@ function ensurePhotoFileInput() {
   if (photoFileInput) return photoFileInput;
   photoFileInput = document.createElement('input');
   photoFileInput.type = 'file';
-  photoFileInput.accept = 'image/*';
+  photoFileInput.accept = PHOTO_TYPES.join(','); // so a phone that keeps its photos as HEIC hands over a JPEG
   photoFileInput.hidden = true;
   photoFileInput.addEventListener('change', () => {
     const file = photoFileInput.files && photoFileInput.files[0];
@@ -98,7 +152,8 @@ function decodePhotoFile(file) {
 }
 
 // Shrinks a photo in the browser before it is sent (a phone photo is several MB; 1800 px on the long side is plenty for the page):
-// canvas -> JPEG. If the picture cannot be decoded here (an odd format), the original file is returned and the server decides.
+// canvas -> JPEG. A picture that can be decoded is always re-encoded (shrunk or not), which also drops its EXIF data, GPS position
+// included. If it cannot be decoded here the original file is returned; uploadMatchPhoto only sends that when it is a type the server takes.
 async function resizeImageForUpload(file, maxSide = 1800, quality = 0.85) {
   let decoded = null;
   try {
@@ -115,8 +170,6 @@ async function resizeImageForUpload(file, maxSide = 1800, quality = 0.85) {
     ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise((resolve) => { canvas.toBlob(resolve, 'image/jpeg', quality); });
     if (!blob) return file;
-    // a small JPEG that did not need shrinking can come out bigger after re-encoding: keep the original then
-    if (scale === 1 && file.type === 'image/jpeg' && blob.size >= file.size) return file;
     return blob;
   } catch {
     return file;
@@ -132,6 +185,8 @@ async function uploadMatchPhoto(file) {
   photoOnChange();
   try {
     const blob = await resizeImageForUpload(file);
+    // could not be decoded here and is not a type the server takes (HEIC, GIF…): say so instead of sending it to be refused
+    if (blob === file && !PHOTO_TYPES.includes(file.type)) throw new Error(t('match.photoUnsupported'));
     const form = new FormData();
     form.append('photo', blob, 'photo.jpg');
     const res = await fetch(`/api/matches/${token}/photos`, { method: 'POST', body: form });
@@ -237,17 +292,18 @@ function renderPhotoViewer() {
       <button type="button" class="photo-viewer-close" aria-label="${escapeHtml(t('match.photoClose'))}">&#10005;</button>
     </div>
     <div class="photo-viewer-stage">
-      <img src="${escapeHtml(photo.url)}" alt="${escapeHtml(caption)}">
+      ${photoImgFailed(photo.url) ? `<div class="photo-viewer-broken">${escapeHtml(t('match.photoBroken'))}</div>` : photoImgTag(photo.url, caption)}
       ${photos.length > 1 ? `
         <button type="button" class="photo-viewer-arrow prev" aria-label="&lsaquo;">&lsaquo;</button>
         <button type="button" class="photo-viewer-arrow next" aria-label="&rsaquo;">&rsaquo;</button>` : ''}
     </div>
     ${photos.length > 1 ? `<div class="photo-viewer-strip">${photos.map((p, i) => `
-      <button type="button" class="photo-viewer-thumb${i === photoViewerIndex ? ' on' : ''}" data-index="${i}"><img src="${escapeHtml(p.thumbUrl)}" alt=""></button>`).join('')}</div>` : ''}
+      <button type="button" class="photo-viewer-thumb${i === photoViewerIndex ? ' on' : ''}" data-index="${i}">${photoImgFailed(p.thumbUrl) ? '' : photoImgTag(p.thumbUrl)}</button>`).join('')}</div>` : ''}
     <div class="photo-viewer-caption">
       <span>${escapeHtml(caption)}</span>
       ${photo.canRemove ? `<button type="button" class="photo-viewer-remove">${escapeHtml(t('match.photoRemove'))}</button>` : ''}
     </div>`;
+  watchPhotoImages(el);
   el.querySelector('.photo-viewer-close').addEventListener('click', closePhotoViewer);
   // a tap on the empty dark area (not on the picture, arrows or buttons) closes the viewer
   el.onclick = (e) => { if (e.target === el || e.target.classList.contains('photo-viewer-stage')) closePhotoViewer(); };
