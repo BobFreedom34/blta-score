@@ -16,6 +16,7 @@ const bracketEngine = require('../bracketEngine');
 const rankingPoints = require('../rankingPoints');
 const youtube = require('../youtube');
 const changeLog = require('../changeLog');
+const matchPhotos = require('./matchPhotos');
 
 const router = express.Router();
 
@@ -1011,6 +1012,8 @@ router.delete('/:token', requireLoggedIn, (req, res) => {
   }
   db.prepare('DELETE FROM messages WHERE match_id = ?').run(row.id);
   db.prepare('DELETE FROM match_notifications WHERE match_id = ?').run(row.id);
+  // the match's photos: rows now, the files in Google Drive in the background
+  matchPhotos.removeAllForMatch(row.id);
   db.prepare('DELETE FROM matches WHERE id = ?').run(row.id);
   req.app.get('io').emit('matches:changed', { token: row.share_token, status: 'DELETED' });
   res.status(204).end();

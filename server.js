@@ -15,6 +15,7 @@ const badgeEngine = require('./src/badgeEngine');
 const backup = require('./src/backup');
 const playersRouter = require('./src/routes/players');
 const matchesRouter = require('./src/routes/matches');
+const matchPhotosRouter = require('./src/routes/matchPhotos');
 const adminRouter = require('./src/routes/admin');
 const playerAuthRouter = require('./src/routes/player');
 const pushRouter = require('./src/routes/push');
@@ -264,6 +265,7 @@ app.use('/blog-images', express.static(blog.UPLOAD_DIR, { maxAge: '30d' }));
 
 app.use('/api/players', playersRouter);
 app.use('/api/matches', matchesRouter);
+app.use('/api/matches', matchPhotosRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/player', playerAuthRouter);
 app.use('/api/push', pushRouter);
