@@ -736,6 +736,8 @@ function render(m) {
       </div>
     </div>
 
+    ${matchPhotosHtml()}
+
     ${scoreboardHtml(m, durationHtml)}
     ${controlsHtml(m, canControlLiveScoreOrReferee)}
     ${videoEmbedHtml(m)}
@@ -807,6 +809,7 @@ function render(m) {
   else clearInterval(timerInterval);
 
   attachHandlers(m);
+  bindMatchPhotos(matchToken, () => { if (current) render(current); });
   ensureH2H(m);
 }
 
@@ -1753,7 +1756,9 @@ async function init() {
   await refreshPlayerAuth();
   try {
     const m = await api(`/matches/${matchToken}`);
+    const photosLoaded = loadMatchPhotos(matchToken); // best-effort, never throws
     try { messages = await api(`/matches/${matchToken}/messages`); } catch { /* chat is best-effort */ }
+    await photosLoaded;
     render(m);
   } catch (err) {
     root.innerHTML = `<div class="empty-state">${escapeHtml(err.message)}</div>`;
@@ -1763,7 +1768,11 @@ async function init() {
   // blta:auth-changed dispatch in common.js) — registered only after the
   // refreshPlayerAuth() call above so its own initial dispatch doesn't
   // trigger a redundant extra render right after this one.
-  window.addEventListener('blta:auth-changed', () => { if (current) render(current); });
+  // (who may add or remove photos depends on who is logged in, so the photo list is fetched again too)
+  window.addEventListener('blta:auth-changed', async () => {
+    await loadMatchPhotos(matchToken);
+    if (current) render(current);
+  });
   const socket = io();
   socket.emit('join', `match:${matchToken}`);
   socket.on('match:update', (m) => {
@@ -1772,6 +1781,11 @@ async function init() {
   socket.on('message:new', ({ token, message }) => {
     if (token !== matchToken) return;
     appendChatMessage(message);
+  });
+  socket.on('photos:changed', async ({ token }) => {
+    if (token !== matchToken) return;
+    await loadMatchPhotos(matchToken);
+    if (current) render(current);
   });
   socket.on('viewers:count', ({ room, count }) => {
     if (room !== `match:${matchToken}`) return;
