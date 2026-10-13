@@ -1895,12 +1895,15 @@ function matchRoundHtml(m) {
 }
 
 // The "Photo" pill: the match has at least one photo (see public/js/match-photos.js for the photos themselves).
-function photoBadge(m) {
-  return m && m.photoCount > 0 ? `<span class="badge badge-photo">${courtIcon('camera')}${t('match.photoBadge')}</span>` : '';
+// iconOnly: just the camera (for the small rows on the home page), with the word as its tooltip.
+function photoBadge(m, { iconOnly = false } = {}) {
+  if (!m || !(m.photoCount > 0)) return '';
+  return `<span class="badge badge-photo"${iconOnly ? ` title="${escapeHtml(t('match.photoBadge'))}"` : ''}>${courtIcon('camera')}${iconOnly ? '' : t('match.photoBadge')}</span>`;
 }
 
-function videoBadge(m, { short = false } = {}) {
-  return m && m.videoId ? `<span class="badge badge-video">${courtIcon('video')}${t(short ? 'home.live' : 'match.liveVideo')}</span>` : '';
+function videoBadge(m, { iconOnly = false } = {}) {
+  if (!m || !m.videoId) return '';
+  return `<span class="badge badge-video"${iconOnly ? ` title="${escapeHtml(t('match.liveVideo'))}"` : ''}>${courtIcon('video')}${iconOnly ? '' : t('match.liveVideo')}</span>`;
 }
 
 function escapeHtml(str) {
