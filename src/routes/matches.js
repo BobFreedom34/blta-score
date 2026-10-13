@@ -15,6 +15,7 @@ const courtIQ = require('../courtIQEngine');
 const bracketEngine = require('../bracketEngine');
 const rankingPoints = require('../rankingPoints');
 const youtube = require('../youtube');
+const drivePhotos = require('../drivePhotos');
 const changeLog = require('../changeLog');
 const matchPhotos = require('./matchPhotos');
 
@@ -182,6 +183,8 @@ function serialize(row) {
     league: row.league || null,
     videoUrl: row.video_url || null,
     videoId: row.video_url ? youtube.parseVideoId(row.video_url) : null,
+    // How many photos the match has (for the "Photo" pill on its card); 0 while the photo feature is off, since the page hides them then.
+    photoCount: drivePhotos.isConfigured() ? db.prepare('SELECT COUNT(*) AS c FROM match_photos WHERE match_id = ?').get(row.id).c : 0,
     ...seasonAndGroup(row),
     stage: row.stage === 'PLAYOFF' ? 'PLAYOFF' : 'GROUP',
     round: row.round || null,

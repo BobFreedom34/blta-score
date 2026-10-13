@@ -59,7 +59,10 @@ function serializePhoto(photo, req) {
 }
 
 function notifyChanged(req, row) {
-  req.app.get('io').to(`match:${row.share_token}`).emit('photos:changed', { token: row.share_token });
+  const io = req.app.get('io');
+  io.to(`match:${row.share_token}`).emit('photos:changed', { token: row.share_token });
+  // the match lists show a "Photo" pill, so they reload too
+  io.emit('matches:changed', { token: row.share_token, status: row.status });
 }
 
 router.get('/:token/photos', (req, res) => {

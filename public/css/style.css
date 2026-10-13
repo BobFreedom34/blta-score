@@ -4761,6 +4761,10 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .badge-video, body:not(.embed-light) .match-card .badge-video, body.match-page .match-header .badge-video { display: inline-flex; align-items: center; gap: 5px; background: transparent; color: #ee3340; border: 1px solid #ee3340; }
 .badge-video .venue-icon { width: 13px; height: 13px; flex-basis: 13px; }
 .compact-date-category .badge-video { padding: 2px 7px; font-size: 10px; }
+/* the match has photos: a neutral grey outline pill next to the video one */
+.badge-photo, body:not(.embed-light) .match-card .badge-photo { display: inline-flex; align-items: center; gap: 5px; background: transparent; color: #c3c7cf; border: 1px solid #c3c7cf; }
+.badge-photo .venue-icon { width: 13px; height: 13px; flex-basis: 13px; }
+.compact-date-category .badge-photo { padding: 2px 7px; font-size: 10px; }
 .match-video { margin: 16px 0; }
 #video-display { overflow-wrap: anywhere; font-size: 15px; }
 .match-video-frame { position: relative; aspect-ratio: 16 / 9; border-radius: var(--radius); overflow: hidden; background: #000; border: 1px solid rgba(255, 255, 255, 0.12); }

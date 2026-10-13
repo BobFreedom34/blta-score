@@ -426,6 +426,22 @@ test('the bell joins the match and the photo itself: a notification row left beh
   assert.strictEqual(sql(on, 'SELECT COUNT(*) AS n FROM photo_notifications WHERE player_id = ?', b.id)[0].n, 2, 'both notification rows are still in the table');
 });
 
+test('the match data carries photoCount (for the "Photo" pill on the cards): 0, then 1 after an upload, 0 again after the removal; 0 on a server without Drive', async () => {
+  const a = await newPlayer('Pill A');
+  const b = await newPlayer('Pill B');
+  const ca = playerCookie(a.id);
+  const t = await newMatch(on, a, b);
+  const count = async () => (await call(on, 'GET', `/api/matches/${t}`)).json.photoCount;
+  const inList = async () => (await call(on, 'GET', '/api/matches')).json.find((m) => m.token === t).photoCount;
+  assert.deepStrictEqual([await count(), await inList()], [0, 0]);
+  const photo = (await upload(on, t, ca)).json;
+  assert.deepStrictEqual([await count(), await inList()], [1, 1]);
+  assert.strictEqual((await call(on, 'DELETE', `/api/matches/${t}/photos/${photo.id}`, { cookie: ca })).status, 204);
+  assert.deepStrictEqual([await count(), await inList()], [0, 0]);
+  const offMatch = (await call(off, 'GET', '/api/matches')).json[0];
+  assert.strictEqual(offMatch.photoCount, 0);
+});
+
 async function main() {
   let failed = 0;
   try {
