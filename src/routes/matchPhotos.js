@@ -91,6 +91,8 @@ router.post('/:token/photos', (req, res) => {
       const message = err.code === 'LIMIT_FILE_SIZE' ? 'Photo must be under 10 MB' : 'Could not process the uploaded file';
       return res.status(400).json({ error: message });
     }
+    let uploaded = null; // set once the file is in Drive
+    let saved = false; // set once its row is committed
     try {
       if (!req.file || !req.file.size) return res.status(400).json({ error: 'Choose a photo to upload' });
       const type = SIGNATURES[req.file.mimetype];
@@ -100,7 +102,6 @@ router.post('/:token/photos', (req, res) => {
       // fast fail before anything is sent to Drive; checked again right before the insert, since another upload can land meanwhile
       if (countPhotos(row.id) >= MAX_PHOTOS) return res.status(409).json({ error: `A match can have at most ${MAX_PHOTOS} photos` });
 
-      let uploaded;
       try {
         uploaded = await drivePhotos.uploadPhoto(req.file.buffer, req.file.mimetype, `match-${row.id}-${Date.now()}.${type.ext}`);
       } catch (driveErr) {
@@ -118,43 +119,80 @@ router.post('/:token/photos', (req, res) => {
           : res.status(404).json({ error: 'Match not found' });
       }
 
-      // An admin is not a player, so an admin's photo has no uploader id and both players are told about it.
-      const uploaderId = isAdmin(req) ? null : getPlayerId(req);
-      const info = db.prepare('INSERT INTO match_photos (match_id, drive_file_id, uploaded_by_player_id) VALUES (?, ?, ?)')
-        .run(row.id, uploaded.id, uploaderId);
-      const photoId = Number(info.lastInsertRowid);
-      const notify = db.prepare('INSERT INTO photo_notifications (player_id, match_id, photo_id, seen) VALUES (?, ?, ?, 0)');
-      [row.player1_id, row.player2_id]
-        .filter((playerId) => playerId !== uploaderId)
-        .forEach((playerId) => notify.run(playerId, row.id, photoId));
+      // Who is recorded as the uploader: the player of this match who is logged in, even when that person is an admin as well. An admin
+      // who is not one of the two players has no uploader id (an admin is not a player), so both players are told about the photo.
+      const playerId = getPlayerId(req);
+      const uploaderId = playerId && (playerId === row.player1_id || playerId === row.player2_id) ? playerId : null;
+      // The photo row and its notifications are written together or not at all, so a failure cannot leave a half-saved photo.
+      let photoId;
+      try {
+        db.exec('BEGIN');
+        try {
+          const info = db.prepare('INSERT INTO match_photos (match_id, drive_file_id, uploaded_by_player_id) VALUES (?, ?, ?)')
+            .run(row.id, uploaded.id, uploaderId);
+          photoId = Number(info.lastInsertRowid);
+          const notify = db.prepare('INSERT INTO photo_notifications (player_id, match_id, photo_id, seen) VALUES (?, ?, ?, 0)');
+          [row.player1_id, row.player2_id]
+            .filter((pid) => pid !== uploaderId)
+            .forEach((pid) => notify.run(pid, row.id, photoId));
+          db.exec('COMMIT');
+        } catch (dbErr) {
+          db.exec('ROLLBACK');
+          throw dbErr;
+        }
+      } catch (dbErr) {
+        // nothing was saved, so the publicly linked file must not stay in Drive
+        console.error('[photos] saving the photo failed:', dbErr);
+        await drivePhotos.deletePhoto(uploaded.id);
+        uploaded = null;
+        return res.status(500).json({ error: 'Could not add the photo' });
+      }
+      saved = true;
 
-      notifyChanged(req, row);
-      res.status(201).json(serializePhoto(db.prepare('SELECT * FROM match_photos WHERE id = ?').get(photoId), req));
+      // From here the photo is saved: nothing below may turn into a 500 (a retry would use up a second slot).
+      try { notifyChanged(req, row); } catch (e) { console.error('[photos] could not announce the new photo:', e); }
+      let body;
+      try {
+        body = serializePhoto(db.prepare('SELECT * FROM match_photos WHERE id = ?').get(photoId), req);
+      } catch (e) {
+        console.error('[photos] could not build the answer for the saved photo:', e);
+        body = {
+          id: photoId, url: drivePhotos.imageUrl(uploaded.id), thumbUrl: drivePhotos.thumbUrl(uploaded.id), addedBy: null, createdAt: new Date().toISOString(), canRemove: true,
+        };
+      }
+      res.status(201).json(body);
     } catch (e) {
       console.error('[photos] add failed:', e);
+      // an error after the upload but before the row was committed must not leave the publicly linked file behind
+      if (uploaded && !saved) await drivePhotos.deletePhoto(uploaded.id);
       if (!res.headersSent) res.status(500).json({ error: 'Could not add the photo' });
     }
   });
 });
 
 router.delete('/:token/photos/:id', async (req, res) => {
-  const row = getRowOr404(req, res);
-  if (!row) return;
-  const photo = /^\d+$/.test(req.params.id)
-    ? db.prepare('SELECT * FROM match_photos WHERE id = ? AND match_id = ?').get(Number(req.params.id), row.id)
-    : null;
-  if (!photo) return res.status(404).json({ error: 'Photo not found' });
-  const playerId = getPlayerId(req);
-  if (!isAdmin(req) && !(playerId && photo.uploaded_by_player_id === playerId)) {
-    return res.status(403).json({ error: 'Only the person who added this photo (or an admin) can remove it' });
+  try {
+    const row = getRowOr404(req, res);
+    if (!row) return;
+    const photo = /^\d+$/.test(req.params.id)
+      ? db.prepare('SELECT * FROM match_photos WHERE id = ? AND match_id = ?').get(Number(req.params.id), row.id)
+      : null;
+    if (!photo) return res.status(404).json({ error: 'Photo not found' });
+    const playerId = getPlayerId(req);
+    if (!isAdmin(req) && !(playerId && photo.uploaded_by_player_id === playerId)) {
+      return res.status(403).json({ error: 'Only the person who added this photo (or an admin) can remove it' });
+    }
+    // Drive first (the public link is revoked, then the file deleted); deletePhoto never throws, and a Drive hiccup must not keep the
+    // photo on the page, so the row goes either way.
+    await drivePhotos.deletePhoto(photo.drive_file_id);
+    db.prepare('DELETE FROM photo_notifications WHERE photo_id = ?').run(photo.id);
+    db.prepare('DELETE FROM match_photos WHERE id = ?').run(photo.id);
+    notifyChanged(req, row);
+    res.status(204).end();
+  } catch (e) {
+    console.error('[photos] remove failed:', e);
+    if (!res.headersSent) res.status(500).json({ error: 'Could not remove the photo' });
   }
-  // Drive first (the public link is revoked, then the file deleted); deletePhoto never throws, and a Drive hiccup must not keep the
-  // photo on the page, so the row goes either way.
-  await drivePhotos.deletePhoto(photo.drive_file_id);
-  db.prepare('DELETE FROM photo_notifications WHERE photo_id = ?').run(photo.id);
-  db.prepare('DELETE FROM match_photos WHERE id = ?').run(photo.id);
-  notifyChanged(req, row);
-  res.status(204).end();
 });
 
 // Called when a match is deleted: the rows go at once, the Drive files in the background (deletePhoto logs its own failures).

@@ -86,6 +86,10 @@ function sql(srv, query, ...params) {
   const d = new DatabaseSync(path.join(srv.dir, 'blta-score.db'), { readOnly: true });
   try { return d.prepare(query).all(...params); } finally { d.close(); }
 }
+function execSql(srv, statement) {
+  const d = new DatabaseSync(path.join(srv.dir, 'blta-score.db'));
+  try { d.exec(statement); } finally { d.close(); }
+}
 const matchId = (srv, token) => sql(srv, 'SELECT id FROM matches WHERE share_token = ?', token)[0].id;
 async function waitFor(fn, ms = 4000) {
   const end = Date.now() + ms;
@@ -250,6 +254,41 @@ test('a failing Drive: 502, no row, no notification', async () => {
   assert.strictEqual(sql(on, 'SELECT COUNT(*) AS n FROM match_photos WHERE match_id = ?', id)[0].n, 0);
   assert.strictEqual(sql(on, 'SELECT COUNT(*) AS n FROM photo_notifications WHERE match_id = ?', id)[0].n, 0);
   assert.strictEqual((await upload(on, t, c1)).status, 201, 'and it works again once Drive does');
+});
+
+// A database that refuses a write is made with a trigger (in the test's own connection), so nothing is added to the server for the check.
+for (const [what, table] of [['the photo row', 'match_photos'], ['a notification row', 'photo_notifications']]) {
+  test(`when saving ${what} fails after the Drive upload: 500, nothing is kept in the database, and the file is deleted from Drive again`, async () => {
+    const t = await newMatch(on, p1, p2);
+    const id = matchId(on, t);
+    const filesBefore = liveDriveFiles(on).length;
+    execSql(on, `CREATE TRIGGER fail_${table} BEFORE INSERT ON ${table} BEGIN SELECT RAISE(ABORT, 'forced failure'); END`);
+    let r;
+    try { r = await upload(on, t, c1); } finally { execSql(on, `DROP TRIGGER fail_${table}`); }
+    assert.strictEqual(r.status, 500, r.text);
+    assert.ok(r.json && r.json.error);
+    assert.strictEqual(sql(on, 'SELECT COUNT(*) AS n FROM match_photos WHERE match_id = ?', id)[0].n, 0, 'no photo row');
+    assert.strictEqual(sql(on, 'SELECT COUNT(*) AS n FROM photo_notifications WHERE match_id = ?', id)[0].n, 0, 'no notification row');
+    assert.strictEqual(liveDriveFiles(on).length, filesBefore, 'the uploaded file was deleted again');
+    const ops = driveLog(on).slice(-4).map((e) => e.op);
+    assert.deepStrictEqual(ops, ['upload', 'permCreate', 'permDelete', 'fileDelete'], 'link revoked, then file deleted');
+    assert.strictEqual((await upload(on, t, c1)).status, 201, 'a retry still has all its slots');
+    assert.strictEqual(sql(on, 'SELECT COUNT(*) AS n FROM match_photos WHERE match_id = ?', id)[0].n, 1);
+  });
+}
+
+test('an admin who is also logged in as a player of the match is recorded as that player; an admin who is not one of them has no uploader', async () => {
+  const t = await newMatch(on, p1, p2);
+  const id = matchId(on, t);
+  const both = await upload(on, t, `${adm}; ${c1}`);
+  assert.strictEqual(both.status, 201, both.text);
+  assert.strictEqual(both.json.addedBy, 'Tomáš Paulen');
+  assert.deepStrictEqual(sql(on, 'SELECT player_id FROM photo_notifications WHERE photo_id = ?', both.json.id).map((x) => x.player_id), [p2.id], 'only the other player is told');
+  const stranger = await upload(on, t, `${adm}; ${c3}`);
+  assert.strictEqual(stranger.status, 201, stranger.text);
+  assert.strictEqual(stranger.json.addedBy, null);
+  assert.deepStrictEqual(sql(on, 'SELECT player_id FROM photo_notifications WHERE photo_id = ?', stranger.json.id).map((x) => x.player_id).sort(), [p1.id, p2.id].sort());
+  assert.strictEqual(sql(on, 'SELECT COUNT(*) AS n FROM match_photos WHERE match_id = ?', id)[0].n, 2);
 });
 
 test('removing: the other player and a visitor get 403, a photo of another match 404; the uploader\'s delete is 204, the link is revoked before the file is deleted', async () => {
