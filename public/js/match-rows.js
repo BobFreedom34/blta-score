@@ -38,7 +38,7 @@ function resultRow(m) {
   const when = dayMonth(m.scheduledAt || m.endTime);
   return `
   <a class="home-m-row" href="/match/${m.token}">
-    <div><div class="n"><span class="w">${escapeHtml(w.name)}</span> · ${escapeHtml(l.name)}${photoBadge(m)}</div><div class="s">${escapeHtml([where, when].filter(Boolean).join(' · '))}</div></div>
+    <div><div class="n"><span class="nm"><span class="w">${escapeHtml(w.name)}</span> · ${escapeHtml(l.name)}</span>${photoBadge(m)}</div><div class="s">${escapeHtml([where, when].filter(Boolean).join(' · '))}</div></div>
     <div class="r">${walkover ? 'w/o' : `${ws} : ${ls}`}<small>${escapeHtml(walkover ? t('home.walkover') : winnerScore(m, winnerIsP1))}</small></div>
   </a>`;
 }
@@ -47,7 +47,7 @@ function upcomingRow(m) {
   const where = m.group ? m.group.name : categoryLabel(m.category);
   return `
   <a class="home-m-row" href="/match/${m.token}">
-    <div><div class="n"><b>${escapeHtml(m.player1.name)}</b> · ${escapeHtml(m.player2.name)}${videoBadge(m)}</div><div class="s">${escapeHtml([where, m.location].filter(Boolean).join(' · '))}</div></div>
+    <div><div class="n"><span class="nm"><b>${escapeHtml(m.player1.name)}</b> · ${escapeHtml(m.player2.name)}</span>${videoBadge(m, { short: true })}</div><div class="s">${escapeHtml([where, m.location].filter(Boolean).join(' · '))}</div></div>
     ${m.scheduledAt ? `<span class="home-chip date">${escapeHtml(chipDate(m.scheduledAt))}</span>` : `<span class="home-mine-dim">${escapeHtml(t('home.mineNoDate'))}</span>`}
   </a>`;
 }

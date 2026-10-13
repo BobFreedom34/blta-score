@@ -1899,8 +1899,8 @@ function photoBadge(m) {
   return m && m.photoCount > 0 ? `<span class="badge badge-photo">${courtIcon('camera')}${t('match.photoBadge')}</span>` : '';
 }
 
-function videoBadge(m) {
-  return m && m.videoId ? `<span class="badge badge-video">${courtIcon('video')}${t('match.liveVideo')}</span>` : '';
+function videoBadge(m, { short = false } = {}) {
+  return m && m.videoId ? `<span class="badge badge-video">${courtIcon('video')}${t(short ? 'home.live' : 'match.liveVideo')}</span>` : '';
 }
 
 function escapeHtml(str) {
