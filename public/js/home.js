@@ -231,15 +231,6 @@ function monthRange(startIso, endIso) {
   return `${left} – ${cap(monthShort(b))} ${b.getFullYear()}`;
 }
 
-function seasonState(s, today) {
-  if (s.startDate && s.endDate) {
-    if (s.endDate < today) return 'past';
-    if (s.startDate > today) return 'future';
-    return 'now';
-  }
-  return 'future';
-}
-
 // All seasons in date order: finished ones greyed out, the running one highlighted, the coming ones outlined.
 function timelineHtml(d) {
   const seasons = [...(d.seasons || [])].filter((s) => s.kind !== 'TOURNAMENT').sort((a, b) => String(a.startDate || '9999').localeCompare(String(b.startDate || '9999')));

@@ -1343,6 +1343,20 @@ async function openContactModal() {
   }
 }
 
+// 'past' (finished), 'now' (running) or 'future' (coming) — by the season's dates, on the day `today` (YYYY-MM-DD). A season without
+// dates counts as coming. Used by the home page's timeline and by the pills in the menu.
+function seasonState(s, today) {
+  if (s.startDate && s.endDate) {
+    if (s.endDate < today) return 'past';
+    if (s.startDate > today) return 'future';
+    return 'now';
+  }
+  return 'future';
+}
+
+// A menu item that links to a season page (/season/<slug>) is /season/<slug> in the code addresses the menu is stored with.
+const NAV_SEASON_LINK = /^\/season\/([^/?#]+)/;
+
 async function renderHeaderNav() {
   const container = document.getElementById('header-dynamic-items');
   if (!container) return;
@@ -1352,6 +1366,16 @@ async function renderHeaderNav() {
   } catch {
     return; // leave the placeholder empty rather than break the whole topbar
   }
+  // The seasons are only asked for when the menu has an item that links to one: those items get a small pill with the season's state.
+  const seasonBySlug = {};
+  const hasSeasonLink = (list) => list.some((i) => NAV_SEASON_LINK.test(i.link || '') || (i.children && hasSeasonLink(i.children)));
+  if (hasSeasonLink(items)) {
+    try {
+      (await api('/seasons')).forEach((s) => { if (s.slug) seasonBySlug[s.slug] = s; });
+    } catch { /* no pills, the menu itself still works */ }
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  const seasonPillLabel = { past: t('home.tlPast'), now: t('home.tlNow'), future: t('home.tlFuture') };
   const labelFor = (item) => (currentLang === 'en' && item.labelEn) ? item.labelEn : item.labelSk;
   const isActive = (link) => link === currentCodePath();
   const myProfileEl = document.getElementById('nav-my-profile-link');
@@ -1373,6 +1397,19 @@ async function renderHeaderNav() {
     // item currently points here, however an admin has it labeled or
     // nested — see /header-admin.
     if (item.link === '/looking-to-play') a.dataset.navBadgeTarget = 'looking-to-play';
+    const seasonLink = NAV_SEASON_LINK.exec(item.link || '');
+    const season = seasonLink ? seasonBySlug[decodeURIComponent(seasonLink[1])] : null;
+    if (season) {
+      const state = seasonState(season, today);
+      a.classList.add('nav-season-link');
+      const label = document.createElement('span');
+      label.textContent = a.textContent;
+      const pill = document.createElement('span');
+      pill.className = `nav-season-pill ${state}`;
+      pill.textContent = seasonPillLabel[state];
+      a.textContent = '';
+      a.append(label, pill);
+    }
     return a;
   };
   // An item with sub-items becomes a dropdown; a sub-item that has sub-items of its own becomes a dropdown inside it (a

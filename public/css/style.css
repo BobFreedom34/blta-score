@@ -4810,3 +4810,11 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
   .photo-viewer-arrow { width: 34px; height: 34px; font-size: 22px; }
   .photo-viewer-thumb { width: 52px; }
 }
+
+/* A menu item that links to a season page shows the season's state at its right: running (green), coming (orange), finished (grey) */
+.nav-submenu a.nav-season-link { display: flex; align-items: center; gap: 14px; width: 100%; box-sizing: border-box; }
+.nav-season-pill { flex: 0 0 auto; margin-left: auto; padding: 2px 7px; border-radius: 5px; border: 1px solid currentColor; font-size: 9px; font-weight: 800; letter-spacing: 0.04em; line-height: 1.3; text-transform: uppercase; }
+.nav-season-pill.now { color: var(--status-green); }
+.nav-season-pill.future { color: var(--orange); }
+.nav-season-pill.past { color: #8b8f98; }
+@media (max-width: 900px) { .nav-submenu a.nav-season-link { text-align: left; } }
