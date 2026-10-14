@@ -4817,4 +4817,9 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .nav-season-pill.now { color: var(--status-green); }
 .nav-season-pill.future { color: var(--orange); }
 .nav-season-pill.past { color: #8b8f98; }
-@media (max-width: 900px) { .nav-submenu a.nav-season-link { text-align: left; } }
+/* on a phone the season name may take two lines so the pill always stays in view at the right */
+.nav-season-link > span:first-child { flex: 1 1 auto; min-width: 0; white-space: normal; }
+@media (max-width: 900px) {
+  .nav-submenu a.nav-season-link { text-align: left; gap: 10px; line-height: 1.3; }
+  .nav-season-pill { font-size: 9px; padding: 3px 7px; }
+}
