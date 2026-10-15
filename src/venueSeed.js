@@ -509,6 +509,7 @@ const VENUE_IMAGES = {
   'Inter Bratislava': '/img/courts/inter-bratislava.jpg',
   'Éči - Zlaté Piesky': '/img/courts/eci-zlate-piesky.jpg',
   'Kurty Patrónka': '/img/courts/kurty-patronka.jpg',
+  'TK Trnávka': '/img/courts/tk-trnavka.jpg',
 };
 
 function seedVenueImages() {
