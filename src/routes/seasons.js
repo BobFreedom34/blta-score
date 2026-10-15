@@ -11,6 +11,7 @@ const { sendSeasonRegistrationEmail } = require('../mailer');
 const auth = require('../auth');
 const playerRoutes = require('./player');
 const { creditInviter } = require('./invites');
+const tournamentDraw = require('../tournamentDraw');
 
 const router = express.Router();
 
@@ -137,6 +138,7 @@ function serializeSeason(s) {
     paymentUrl: s.payment_url || '',
     logoUrl: s.logo_url || '',
     registrationOpen: !!s.registration_open,
+    courtCount: s.court_count || 0,
     matchCount: db.prepare('SELECT COUNT(*) AS n FROM matches WHERE season_id = ?').get(s.id).n,
     groups: groups.map(serializeGroup),
   };
@@ -270,7 +272,7 @@ function openAccount(req, res, player, { name, phone, email }) {
 }
 
 function serializeRegistration(r) {
-  return { id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', createdAt: r.created_at, playerId: r.player_id };
+  return { id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', seed: r.seed || null, createdAt: r.created_at, playerId: r.player_id };
 }
 
 // The category written in a player's profile ("Next Gen", "ELITE"…) as one of ours, or null.
@@ -298,10 +300,10 @@ router.post('/:id/registrations/categories', requireAdmin, (req, res) => {
     const ok = BLTA_CATEGORIES.includes(item.category) || (item.category === '' && season.kind === 'TOURNAMENT');
     if (!ok) return res.status(400).json({ error: 'Choose a category' });
   }
-  const update = db.prepare('UPDATE season_registrations SET category = ? WHERE id = ?');
+  const update = db.prepare('UPDATE season_registrations SET category = ?, seed = CASE WHEN category = ? THEN seed ELSE NULL END WHERE id = ?');
   db.exec('BEGIN');
   try {
-    list.forEach((item) => update.run(item.category, Number(item.id)));
+    list.forEach((item) => update.run(item.category, item.category, Number(item.id)));
     db.exec('COMMIT');
   } catch (err) {
     db.exec('ROLLBACK');
@@ -309,6 +311,53 @@ router.post('/:id/registrations/categories', requireAdmin, (req, res) => {
   }
   const rows = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(season.id);
   res.json(rows.map(serializeRegistration));
+});
+
+// ---------------- tournament draw: seeds, main bracket + consolation bracket (admin) ----------------
+
+function tournamentOr404(req, res) {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) { res.status(404).json({ error: 'Season not found' }); return null; }
+  if (season.kind !== 'TOURNAMENT') { res.status(400).json({ error: 'Only a tournament has a draw' }); return null; }
+  return season;
+}
+
+// Per category: players, seeds, draw size and byes, and the brackets already made.
+router.get('/:id/draw', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  res.json({ courtCount: season.court_count || 0, categories: tournamentDraw.overview(season.id) });
+});
+
+// { category, seeds: [{ id: registrationId, seed }] } — replaces the seeds of that category; players left out are not seeded.
+router.post('/:id/seeds', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const done = tournamentDraw.setSeeds(season.id, req.body && req.body.category, req.body && req.body.seeds);
+  if (done.error) return res.status(400).json({ error: done.error });
+  const rows = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(season.id);
+  res.json(rows.map(serializeRegistration));
+});
+
+// { category, mode: 'AUTO' | 'MANUAL', mainFormat, consolationFormat } — makes the main bracket of that category (and, in AUTO mode,
+// its consolation bracket).
+router.post('/:id/draw', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const body = req.body || {};
+  const made = tournamentDraw.createDraw(season, body.category, {
+    mode: body.mode, mainFormat: body.mainFormat, consolationFormat: body.consolationFormat,
+  });
+  if (made.error) return res.status(made.status || 400).json({ error: made.error });
+  res.status(201).json({ ...made, categories: tournamentDraw.overview(season.id) });
+});
+
+router.delete('/:id/draw/:category', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const done = tournamentDraw.deleteDraw(season, req.params.category);
+  if (done.error) return res.status(done.status || 400).json({ error: done.error });
+  res.json({ ok: true, categories: tournamentDraw.overview(season.id) });
 });
 
 // The admin registers a player who is already in the app, without the registration form: the phone number and the e-mail
@@ -386,7 +435,7 @@ router.delete('/registrations/:rid', requireAdmin, (req, res) => {
 router.get('/:id/brackets', (req, res) => {
   const season = db.prepare('SELECT id FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
-  res.json(db.prepare('SELECT id, name, category FROM brackets WHERE season_id = ? ORDER BY id').all(season.id));
+  res.json(db.prepare("SELECT id, name, category, COALESCE(kind, 'MAIN') AS kind, parent_bracket_id AS parentBracketId FROM brackets WHERE season_id = ? ORDER BY id").all(season.id));
 });
 
 // Public: the group tables of one season, calculated from the matches tagged with each group (see standings.js).
@@ -504,8 +553,13 @@ router.patch('/:id', requireAdmin, (req, res) => {
   if (payment.value && !/^https?:\/\//i.test(payment.value)) return res.status(400).json({ error: 'The payment link must start with http:// or https://' });
   if (logo.value && !/^(https?:\/\/|\/)/i.test(logo.value)) return res.status(400).json({ error: 'The logo must be a link starting with http://, https:// or /' });
   const open = req.body.registrationOpen === undefined ? season.registration_open : (req.body.registrationOpen ? 1 : 0);
-  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ? WHERE id = ?')
-    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, kind, venue.value, categories, season.id);
+  let courts = season.court_count || 0;
+  if (req.body.courtCount !== undefined) {
+    courts = Number(req.body.courtCount);
+    if (!Number.isInteger(courts) || courts < 0 || courts > 50) return res.status(400).json({ error: 'The number of courts must be a whole number from 0 to 50' });
+  }
+  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ?, court_count = ? WHERE id = ?')
+    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, kind, venue.value, categories, courts, season.id);
   res.json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
 });
 

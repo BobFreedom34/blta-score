@@ -183,13 +183,13 @@ function applySeeding(bracketId, entries, size) {
 // past/historical draw where the games already happened outside this app,
 // so nothing here should try to create a live, scoreable match for them.
 function createBracket({
-  name, format, entries, size, autoCreateMatches, category, seasonId,
+  name, format, entries, size, autoCreateMatches, category, seasonId, kind, parentBracketId,
 }) {
   const drawSize = entries && entries.length > 0
     ? nextPowerOfTwo(entries.length)
     : nextPowerOfTwo(Math.max(size || 2, 2));
-  const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category, season_id) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(name, format, drawSize, autoCreateMatches === false ? 0 : 1, category || null, seasonId || null);
+  const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category, season_id, kind, parent_bracket_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(name, format, drawSize, autoCreateMatches === false ? 0 : 1, category || null, seasonId || null, kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN', parentBracketId || null);
   const bracketId = info.lastInsertRowid;
   buildEmptyTree(bracketId, drawSize);
   if (entries && entries.length > 0) applySeeding(bracketId, entries, drawSize);
@@ -234,6 +234,7 @@ function recordManualResult(nodeId, winnerId, score) {
   `).run(winnerId, score || null, nodeId);
   const node = db.prepare('SELECT * FROM bracket_matches WHERE id = ?').get(nodeId);
   advanceWinner(node, winnerId);
+  dropLoser(node, winnerId);
   return node;
 }
 
@@ -245,6 +246,87 @@ function syncBracketIfFinished(matchRow) {
   const node = db.prepare('SELECT * FROM bracket_matches WHERE match_id = ?').get(matchRow.id);
   if (!node) return;
   advanceWinner(node, matchRow.winner_id);
+  dropLoser(node, matchRow.winner_id);
+}
+
+// ---------- consolation draw ("útecha") ----------
+// Every main draw has a consolation draw: whoever loses a round-1 match of the main draw drops into it (a player who lost in round 2
+// or later is out, a player who had a bye in round 1 has nothing to drop from). The consolation draw holds one entrant per real
+// round-1 match of the main draw, so its size is known as soon as round 1 of the main draw is seated: the loser of the k-th real
+// round-1 match takes seed k+1 (stored on that node as consolation_seed) and the standard seed order places the seeds, so the
+// consolation draw has byes exactly where it cannot be filled.
+
+// The two players of a node and, once decided, who won; null while still open.
+function nodeWinner(node) {
+  if (node.match_id) {
+    const match = db.prepare('SELECT winner_id, status FROM matches WHERE id = ?').get(node.match_id);
+    return match && match.status === 'FINISHED' && match.winner_id ? match.winner_id : null;
+  }
+  return node.manual_winner_id || null;
+}
+
+// What round 1 of a main bracket looks like for the purpose of a consolation draw: { open: real pairings not yet seated, real: n }.
+function consolationReadiness(mainBracketId) {
+  const round1 = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1 ORDER BY position').all(mainBracketId);
+  const real = round1.filter((n) => n.player1_id && n.player2_id);
+  const empty = round1.filter((n) => !n.is_bye && !(n.player1_id && n.player2_id));
+  return { real: real.length, empty: empty.length, nodes: real };
+}
+
+function consolationOf(mainBracketId) {
+  return db.prepare("SELECT * FROM brackets WHERE parent_bracket_id = ? AND kind = 'CONSOLATION' ORDER BY id LIMIT 1").get(mainBracketId) || null;
+}
+
+// Creates the consolation draw of a main bracket whose round 1 is fully seated. Returns { bracketId } or { error } (a draw with fewer
+// than two real round-1 matches has nobody to play a consolation match against). Losers of round-1 matches that are already decided
+// are dropped in straight away.
+function buildConsolation(mainBracketId, { name, format }) {
+  const main = db.prepare('SELECT * FROM brackets WHERE id = ?').get(mainBracketId);
+  if (!main) return { error: 'Bracket not found' };
+  if (main.kind === 'CONSOLATION') return { error: 'A consolation draw has no consolation draw of its own' };
+  if (consolationOf(mainBracketId)) return { error: 'This bracket already has a consolation draw' };
+  const ready = consolationReadiness(mainBracketId);
+  if (ready.empty > 0) return { error: 'Seat every round-1 match of the main draw first' };
+  if (ready.real < 2) return { error: 'The main draw has fewer than two round-1 matches, so there is nobody to play a consolation draw' };
+  const size = nextPowerOfTwo(ready.real);
+  const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category, season_id, kind, parent_bracket_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(name, format, size, main.auto_create_matches, main.category, main.season_id, 'CONSOLATION', main.id);
+  const bracketId = info.lastInsertRowid;
+  buildEmptyTree(bracketId, size);
+  // seeds and byes only; the players arrive one by one with dropLoser
+  const order = standardSeedOrder(size);
+  const layout = db.prepare('UPDATE bracket_matches SET seed1 = ?, seed2 = ?, is_bye = ? WHERE bracket_id = ? AND round = 1 AND position = ?');
+  for (let position = 0; position < size / 2; position += 1) {
+    const seed1 = order[position * 2];
+    const seed2 = order[position * 2 + 1];
+    layout.run(seed1, seed2, (seed1 <= ready.real) !== (seed2 <= ready.real) ? 1 : 0, bracketId, position);
+  }
+  const mark = db.prepare('UPDATE bracket_matches SET consolation_seed = ? WHERE id = ?');
+  ready.nodes.forEach((node, i) => mark.run(i + 1, node.id));
+  ready.nodes.forEach((node) => {
+    const fresh = db.prepare('SELECT * FROM bracket_matches WHERE id = ?').get(node.id);
+    const winnerId = nodeWinner(fresh);
+    if (winnerId) dropLoser(fresh, winnerId);
+  });
+  return { bracketId };
+}
+
+// A round-1 node of a main bracket was just decided: its loser goes to the consolation draw (if there is one).
+function dropLoser(node, winnerId) {
+  if (node.round !== 1 || !node.consolation_seed) return;
+  const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(node.bracket_id);
+  if (!bracket || bracket.kind === 'CONSOLATION') return;
+  const consolation = consolationOf(bracket.id);
+  if (!consolation) return;
+  const loserId = node.player1_id === winnerId ? node.player2_id : node.player1_id;
+  if (!loserId) return;
+  let target = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1 AND (seed1 = ? OR seed2 = ?)').get(consolation.id, node.consolation_seed, node.consolation_seed);
+  if (!target) return;
+  const column = target.seed1 === node.consolation_seed ? 'player1_id' : 'player2_id';
+  db.prepare(`UPDATE bracket_matches SET ${column} = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`).run(loserId, target.id);
+  target = db.prepare('SELECT * FROM bracket_matches WHERE id = ?').get(target.id);
+  if (target.is_bye) advanceWinner(target, loserId);
+  else if (target.player1_id && target.player2_id) maybeCreateMatch(target);
 }
 
 function getBracketTree(bracketId) {
@@ -280,6 +362,10 @@ module.exports = {
   recordManualResult,
   advanceWinner,
   syncBracketIfFinished,
+  buildConsolation,
+  consolationOf,
+  consolationReadiness,
+  dropLoser,
   getBracketTree,
   syncBracketMatches,
 };

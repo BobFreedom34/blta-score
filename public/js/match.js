@@ -19,6 +19,8 @@ const FORMAT_META = {
   BO3_STB: { setsToWin: 2, finalSetSuperTiebreak: true },
   BO5: { setsToWin: 3, finalSetSuperTiebreak: false },
   BO5_STB: { setsToWin: 3, finalSetSuperTiebreak: true },
+  // the consolation draw of a tournament: sets to 4 games, a tie-break at 3-3
+  BO3_G4_STB: { setsToWin: 2, finalSetSuperTiebreak: true, setGames: 4, tiebreakAt: 3 },
   // Free Play is open-ended in real play — 6 is just a generous cap on how
   // many set rows the manual-result-entry form offers.
   FREE_PLAY: { setsToWin: 6, finalSetSuperTiebreak: false },
@@ -1535,7 +1537,7 @@ function manualResultRowsHtml(m) {
   for (let i = 0; i < maxSets; i += 1) {
     const isDeciderTB = i === deciderIndex && meta.finalSetSuperTiebreak;
     rows += `
-      <div class="manual-set-row">
+      <div class="manual-set-row" data-tb-at="${meta.tiebreakAt || 6}">
         <div class="manual-set-label">${isDeciderTB ? t('match.matchTiebreakLabel') : t('match.setLabel', { n: i + 1 })}</div>
         <div class="manual-set-fields">
           <div class="manual-set-field">
@@ -1583,7 +1585,8 @@ function wireManualTiebreakToggle(row) {
   const update = () => {
     const p1 = Number(p1Input.value);
     const p2 = Number(p2Input.value);
-    const isTiebreakSet = (p1 === 7 && p2 === 6) || (p1 === 6 && p2 === 7);
+    const tbAt = Number(row.dataset.tbAt) || 6;
+    const isTiebreakSet = (p1 === tbAt + 1 && p2 === tbAt) || (p1 === tbAt && p2 === tbAt + 1);
     tbRow.style.display = isTiebreakSet ? 'flex' : 'none';
     if (!isTiebreakSet) {
       tbRow.querySelectorAll('.manual-tiebreak-input').forEach((inp) => { inp.value = ''; });

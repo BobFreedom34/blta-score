@@ -1255,6 +1255,14 @@ if (!bracketMatchColumns.includes('manual_score')) {
   db.exec('ALTER TABLE bracket_matches ADD COLUMN manual_score TEXT');
 }
 
+// A tournament draw has two brackets per category: the main one (kind MAIN) and its consolation draw ("útecha", kind CONSOLATION,
+// parent_bracket_id = the main bracket) which takes the players who lose their first main-draw match. consolation_seed is set on a
+// round-1 node of the MAIN bracket: the seed its loser takes in the consolation draw.
+const bracketKindColumns = db.prepare('PRAGMA table_info(brackets)').all().map((c) => c.name);
+if (!bracketKindColumns.includes('kind')) db.exec("ALTER TABLE brackets ADD COLUMN kind TEXT NOT NULL DEFAULT 'MAIN'");
+if (!bracketKindColumns.includes('parent_bracket_id')) db.exec('ALTER TABLE brackets ADD COLUMN parent_bracket_id INTEGER');
+if (!bracketMatchColumns.includes('consolation_seed')) db.exec('ALTER TABLE bracket_matches ADD COLUMN consolation_seed INTEGER');
+
 // League seasons ("Autumn Finals Series 2026") and their groups ("Babolat", "Technifibre"…). Every group belongs
 // to one BLTA category, and a match (BLTA categories only) can be tagged with a season and a group — set by an
 // admin, or once by seasonSeed.js for the matches that already existed. The group tables are calculated from these.
@@ -1330,6 +1338,8 @@ const seasonInfoColumns = db.prepare('PRAGMA table_info(seasons)').all().map((c)
 // A season is a league season ('LEAGUE') or a tournament ('TOURNAMENT'): the same page, registration, groups, brackets, matches and
 // winners; a tournament also has a venue and the categories it is played in (comma list of ELITE, NEXT_GEN, NOVICE; empty = all).
 if (!seasonInfoColumns.includes('kind')) db.exec("ALTER TABLE seasons ADD COLUMN kind TEXT NOT NULL DEFAULT 'LEAGUE'");
+// the number of courts of a tournament ("Kurt 1" … "Kurt n"), 0 = not set; used by the schedule
+if (!seasonInfoColumns.includes('court_count')) db.exec('ALTER TABLE seasons ADD COLUMN court_count INTEGER NOT NULL DEFAULT 0');
 if (!db.prepare('PRAGMA table_info(season_group_members)').all().some((c) => c.name === 'paid')) {
   db.exec('ALTER TABLE season_group_members ADD COLUMN paid INTEGER NOT NULL DEFAULT 0');
 }
@@ -1358,6 +1368,10 @@ db.exec(`
 // an optional note from the player (a wish, a question), seen by the admin only
 if (!db.prepare('PRAGMA table_info(season_registrations)').all().some((c) => c.name === 'note')) {
   db.exec("ALTER TABLE season_registrations ADD COLUMN note TEXT NOT NULL DEFAULT ''");
+}
+// the seed of a player in a tournament draw (1 = best), NULL = not seeded; set per category by the organiser
+if (!db.prepare('PRAGMA table_info(season_registrations)').all().some((c) => c.name === 'seed')) {
+  db.exec('ALTER TABLE season_registrations ADD COLUMN seed INTEGER');
 }
 
 // Tournaments and other events of the schedule page (/harmonogram). League seasons are not stored here — the page reads

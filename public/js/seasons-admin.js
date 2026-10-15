@@ -275,8 +275,9 @@ function seasonHtml(s) {
       </form>
       <div class="season-regs" style="margin:10px 0 0">
         <button type="button" class="btn btn-sm btn-outline" data-action="show-regs">Registrations</button>
-        ${IS_TOURNAMENT ? '<button type="button" class="btn btn-sm btn-outline" data-action="show-assign">Zaradenie do kategórií</button>' : ''}
+        ${IS_TOURNAMENT ? '<button type="button" class="btn btn-sm btn-outline" data-action="show-assign">Zaradenie do kategórií</button> <button type="button" class="btn btn-sm btn-outline" data-action="show-draw">Pavúk turnaja</button>' : ''}
         <div class="season-assign" hidden style="margin-top:10px"></div>
+        <div class="season-draw" hidden style="margin-top:10px"></div>
         <div class="season-regs-list" hidden style="margin-top:10px"></div>
       </div>
       <div style="font-size:12px;color:var(--gray);margin:8px 0 12px">
@@ -504,6 +505,17 @@ function wireSeason(card) {
       assignHost.hidden = !assignHost.hidden;
       if (!assignHost.hidden) {
         try { await openAssignPanel(assignHost, id, () => { if (!regsList.hidden) loadRegs(); }); } catch (err) { fail(err); }
+      }
+    });
+  }
+  // a tournament: seeds, courts, the main bracket and the consolation bracket (public/js/season-draw.js)
+  const drawBtn = card.querySelector('[data-action="show-draw"]');
+  if (drawBtn) {
+    const drawHost = card.querySelector('.season-draw');
+    drawBtn.addEventListener('click', async () => {
+      drawHost.hidden = !drawHost.hidden;
+      if (!drawHost.hidden) {
+        try { await openDrawPanel(drawHost, id); } catch (err) { fail(err); }
       }
     });
   }

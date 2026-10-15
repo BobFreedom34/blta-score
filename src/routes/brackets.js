@@ -98,12 +98,15 @@ function serializeBracket(bracketId) {
     format: tree.bracket.format,
     formatLabel: engine.FORMATS[tree.bracket.format] ? engine.FORMATS[tree.bracket.format].label : tree.bracket.format,
     category: tree.bracket.category || null,
+    kind: tree.bracket.kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN',
+    parentBracketId: tree.bracket.parent_bracket_id || null,
     season: seasonOf(tree.bracket.season_id),
     size: tree.bracket.size,
     autoCreateMatches: !!tree.bracket.auto_create_matches,
     rounds: bracketEngine.roundCount(tree.bracket.size),
     createdAt: tree.bracket.created_at,
-    nodes: tree.nodes.map(serializeNode),
+    // a consolation draw's seeds only say where a loser is placed, not how good the player is: nothing to show
+    nodes: tree.nodes.map((n) => (tree.bracket.kind === 'CONSOLATION' ? serializeNode({ ...n, seed1: null, seed2: null }) : serializeNode(n))),
   };
 }
 
@@ -117,6 +120,8 @@ router.get('/', auth.requireAdmin, (req, res) => {
     name: r.name,
     format: r.format,
     category: r.category || null,
+    kind: r.kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN',
+    parentBracketId: r.parent_bracket_id || null,
     seasonId: r.season_id || null,
     seasonName: (seasonOf(r.season_id) || {}).name || null,
     size: r.size,
@@ -245,9 +250,27 @@ router.delete('/:id', auth.requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(id);
   if (!bracket) return res.status(404).json({ error: 'Bracket not found' });
-  db.prepare('DELETE FROM bracket_matches WHERE bracket_id = ?').run(id);
-  db.prepare('DELETE FROM brackets WHERE id = ?').run(id);
+  // a main bracket takes its consolation bracket with it
+  const ids = [id, ...db.prepare('SELECT id FROM brackets WHERE parent_bracket_id = ?').all(id).map((r) => r.id)];
+  ids.forEach((bid) => {
+    db.prepare('DELETE FROM bracket_matches WHERE bracket_id = ?').run(bid);
+    db.prepare('DELETE FROM brackets WHERE id = ?').run(bid);
+  });
   res.json({ ok: true });
+});
+
+// Makes the consolation draw of a main bracket once every round-1 match is seated (a draw made automatically has it already).
+// { format } — the match format of the consolation draw (default: best of 3 to 4 games with a super tie-break).
+router.post('/:id/consolation', auth.requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(id);
+  if (!bracket) return res.status(404).json({ error: 'Bracket not found' });
+  const format = (req.body && req.body.format) || 'BO3_G4_STB';
+  if (!engine.FORMATS[format] || format === 'FREE_PLAY') return res.status(400).json({ error: 'Invalid match format' });
+  const base = bracket.name.replace(/\s*—\s*Hlavný pavúk\s*$/, '');
+  const made = bracketEngine.buildConsolation(id, { name: `${base} — Útecha`, format });
+  if (made.error) return res.status(400).json({ error: made.error });
+  res.status(201).json(serializeBracket(made.bracketId));
 });
 
 // Manual-mode slot assignment — only for a node that doesn't have a real

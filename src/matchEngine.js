@@ -17,6 +17,16 @@ const FORMATS = {
     setsToWin: 3,
     finalSetSuperTiebreak: true,
   },
+  // The consolation draw of a tournament: two winning sets, each set to 4 games (a tie-break at 3-3, so a set ends 4-0, 4-1, 4-2 or
+  // 4-3), the deciding set a 10-point match tie-break.
+  BO3_G4_STB: {
+    key: 'BO3_G4_STB',
+    label: 'Best of 3 sets to 4 games (Super Tie-break)',
+    setsToWin: 2,
+    finalSetSuperTiebreak: true,
+    setGames: 4,
+    tiebreakAt: 3,
+  },
   // Open-ended practice/training match: sets keep getting added for as long
   // as play continues (setsToWin: Infinity means advanceOrFinish's own win
   // check never fires) and nothing ever auto-finishes it — only an explicit
@@ -39,8 +49,16 @@ function decidingSetIndex(format) {
   return format.setsToWin * 2 - 2;
 }
 
-function emptySet() {
-  return { p1: 0, p2: 0, tiebreak: null, isSuperTiebreak: false, tiebreakTarget: null, winner: null };
+// A set's own rules: how many games win it and at which score (both players') a tie-break is played. Standard 6 and 6; a format with
+// setGames/tiebreakAt (BO3_G4_STB) stamps them on its sets (gameTarget/tiebreakAt), so every function that only gets a set still knows them.
+function setRules(set) {
+  return { games: set.gameTarget || 6, tbAt: set.tiebreakAt || 6 };
+}
+
+function emptySet(format) {
+  const set = { p1: 0, p2: 0, tiebreak: null, isSuperTiebreak: false, tiebreakTarget: null, winner: null };
+  if (format && format.setGames) { set.gameTarget = format.setGames; set.tiebreakAt = format.tiebreakAt; }
+  return set;
 }
 
 // style ('REGULAR' | 'TB7' | 'TB10'), when given, overrides the normal
@@ -53,7 +71,7 @@ function createSetForIndex(index, format, style) {
   if (index === decidingSetIndex(format) && format.finalSetSuperTiebreak) {
     return { p1: 0, p2: 0, tiebreak: { p1: 0, p2: 0 }, isSuperTiebreak: true, tiebreakTarget: null, winner: null };
   }
-  return emptySet();
+  return emptySet(format);
 }
 
 function initState(formatKey) {
@@ -73,13 +91,9 @@ function initState(formatKey) {
 function finalizeSet(state, set, winner) {
   set.winner = winner;
   if (set.tiebreak && !set.isSuperTiebreak) {
-    if (winner === 1) {
-      set.p1 = 7;
-      set.p2 = 6;
-    } else {
-      set.p1 = 6;
-      set.p2 = 7;
-    }
+    const { tbAt } = setRules(set);
+    set.p1 = winner === 1 ? tbAt + 1 : tbAt;
+    set.p2 = winner === 1 ? tbAt : tbAt + 1;
   }
   state.setsWon[winner] += 1;
   return state.setsWon[winner];
@@ -114,11 +128,12 @@ function applyDelta(state, formatKey, player, delta) {
     if (delta > 0) {
       const a = set.p1;
       const b = set.p2;
-      if ((a >= 6 || b >= 6) && Math.abs(a - b) >= 2) {
+      const { games, tbAt } = setRules(set);
+      if ((a >= games || b >= games) && Math.abs(a - b) >= 2) {
         const winner = a > b ? 1 : 2;
         const setsWon = finalizeSet(next, set, winner);
         advanceOrFinish(next, format, winner, setsWon);
-      } else if (a === 6 && b === 6) {
+      } else if (a === tbAt && b === tbAt) {
         set.tiebreak = { p1: 0, p2: 0 };
         set.isSuperTiebreak = false;
       }
@@ -150,7 +165,8 @@ function computeSetOutcome(set) {
   }
   const a = set.p1;
   const b = set.p2;
-  if ((a >= 6 || b >= 6) && Math.abs(a - b) >= 2) return a > b ? 1 : 2;
+  const { games } = setRules(set);
+  if ((a >= games || b >= games) && Math.abs(a - b) >= 2) return a > b ? 1 : 2;
   return null;
 }
 
@@ -177,8 +193,9 @@ function recomputeFromSets(state, format) {
     }
     set.winner = outcome;
     if (set.tiebreak && !set.isSuperTiebreak) {
-      set.p1 = outcome === 1 ? 7 : 6;
-      set.p2 = outcome === 1 ? 6 : 7;
+      const { tbAt } = setRules(set);
+      set.p1 = outcome === 1 ? tbAt + 1 : tbAt;
+      set.p2 = outcome === 1 ? tbAt : tbAt + 1;
     }
     setsWon[outcome] += 1;
     if (setsWon[outcome] >= format.setsToWin) {
@@ -237,11 +254,12 @@ function editSetScore(state, formatKey, setIndex, player, delta) {
     }
     // Backstop: a non-tiebreak set can never reach 8 games (6-6 always
     // converts to a tiebreak) — 7 (from a 7-5 finish) is the hard ceiling.
-    if (delta > 0 && set[key] + 1 > 7) {
-      throw new Error('A set cannot go beyond 7 games');
+    const { tbAt } = setRules(set);
+    if (delta > 0 && set[key] + 1 > tbAt + 1) {
+      throw new Error(`A set cannot go beyond ${tbAt + 1} games`);
     }
     set[key] = Math.max(0, set[key] + delta);
-    if (set.p1 === 6 && set.p2 === 6) {
+    if (set.p1 === tbAt && set.p2 === tbAt) {
       set.tiebreak = { p1: 0, p2: 0 };
       set.isSuperTiebreak = false;
     }
@@ -311,13 +329,26 @@ function decideByCompletedSets(state) {
   return a > b ? 1 : 2;
 }
 
-function isTiebreakSetScore(p1, p2) {
-  return (p1 === 7 && p2 === 6) || (p1 === 6 && p2 === 7);
+// rules: { games, tbAt } of the format (6 and 6 unless the format says otherwise, see setRules)
+function isTiebreakSetScore(p1, p2, rules = { games: 6, tbAt: 6 }) {
+  return (p1 === rules.tbAt + 1 && p2 === rules.tbAt) || (p1 === rules.tbAt && p2 === rules.tbAt + 1);
 }
 
-function isValidSetScore(p1, p2) {
-  if (isTiebreakSetScore(p1, p2)) return true;
-  return (p1 >= 6 || p2 >= 6) && Math.abs(p1 - p2) >= 2;
+function isValidSetScore(p1, p2, rules = { games: 6, tbAt: 6 }) {
+  if (isTiebreakSetScore(p1, p2, rules)) return true;
+  // a set to 4 with a tie-break at 3-3 never goes past 4 games (4-0, 4-1, 4-2 or 4-3 by the tie-break)
+  if (rules.games === rules.tbAt + 1 && Math.max(p1, p2) > rules.games) return false;
+  return (p1 >= rules.games || p2 >= rules.games) && Math.abs(p1 - p2) >= 2;
+}
+
+function formatSetRules(format) {
+  return { games: format.setGames || 6, tbAt: format.tiebreakAt || 6 };
+}
+
+// The own rules stamped on a set that is entered by hand, like emptySet does for a live one
+function stampRules(set, format) {
+  if (format.setGames) { set.gameTarget = format.setGames; set.tiebreakAt = format.tiebreakAt; }
+  return set;
 }
 
 // The real tiebreak point score for a manually-entered 7-6/6-7 set (e.g.
@@ -327,8 +358,8 @@ function isValidSetScore(p1, p2) {
 // tiebreak set AND real point values were given. Throws the same
 // user-facing way an invalid game score does if what's given isn't a
 // legal, decisive tiebreak, or doesn't agree with who actually won the set.
-function tiebreakFromRaw(raw, p1, p2, setWinner) {
-  if (!setWinner || !isTiebreakSetScore(p1, p2)) return null;
+function tiebreakFromRaw(raw, p1, p2, setWinner, rules) {
+  if (!setWinner || !isTiebreakSetScore(p1, p2, rules)) return null;
   const { tbP1, tbP2 } = raw;
   if (tbP1 === undefined || tbP1 === null || tbP1 === '' || tbP2 === undefined || tbP2 === null || tbP2 === '') return null;
   const a = Number(tbP1);
@@ -389,7 +420,7 @@ function buildResultFromSets(formatKey, rawSets, explicitWinner) {
       }
       set = { p1, p2, tiebreak: { p1, p2 }, isSuperTiebreak: true, winner: decided ? (p1 > p2 ? 1 : 2) : null };
     } else {
-      const decided = isValidSetScore(p1, p2);
+      const decided = isValidSetScore(p1, p2, formatSetRules(format));
       if (!decided && !canBePartial) {
         throw new Error(`Set ${i + 1} doesn't have a valid winner`);
       }
@@ -397,9 +428,9 @@ function buildResultFromSets(formatKey, rawSets, explicitWinner) {
       // The real tiebreak point score, if a 7-6/6-7 set and one was given
       // (see tiebreakFromRaw) — null otherwise, deliberately never a fake
       // placeholder like "(0)" for a tiebreak set that just wasn't recorded.
-      set = {
-        p1, p2, tiebreak: tiebreakFromRaw(raw, p1, p2, setWinner), isSuperTiebreak: false, winner: setWinner,
-      };
+      set = stampRules({
+        p1, p2, tiebreak: tiebreakFromRaw(raw, p1, p2, setWinner, formatSetRules(format)), isSuperTiebreak: false, winner: setWinner,
+      }, format);
     }
 
     sets.push(set);
@@ -463,16 +494,16 @@ function buildStateFromSets(formatKey, rawSets) {
       }
       set = { p1, p2, tiebreak: { p1, p2 }, isSuperTiebreak: true, winner: decided ? (p1 > p2 ? 1 : 2) : null };
     } else {
-      const decided = isValidSetScore(p1, p2);
+      const decided = isValidSetScore(p1, p2, formatSetRules(format));
       if (!decided && !canBePartial) {
         throw new Error(`Set ${i + 1} doesn't have a valid winner`);
       }
       const setWinner = decided ? (p1 > p2 ? 1 : 2) : null;
       // See tiebreakFromRaw's own comment (buildResultFromSets above) —
       // same optional real tiebreak score, same reasoning.
-      set = {
-        p1, p2, tiebreak: tiebreakFromRaw(raw, p1, p2, setWinner), isSuperTiebreak: false, winner: setWinner,
-      };
+      set = stampRules({
+        p1, p2, tiebreak: tiebreakFromRaw(raw, p1, p2, setWinner, formatSetRules(format)), isSuperTiebreak: false, winner: setWinner,
+      }, format);
     }
 
     sets.push(set);
