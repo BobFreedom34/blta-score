@@ -230,6 +230,9 @@ function seasonHtml(s) {
         <label class="tournament-only" style="flex:1;min-width:220px;font-size:12px;font-weight:700"${IS_TOURNAMENT ? '' : ' hidden'}>Venue
           <input type="text" data-field="venue" value="${escapeHtml(s.venue || '')}" maxlength="200" placeholder="Address or club" style="display:block;width:100%;margin-top:4px;${inputStyle}">
         </label>
+        <label class="tournament-only" style="font-size:12px;font-weight:700"${IS_TOURNAMENT ? '' : ' hidden'}>Courts (Kurt 1 … Kurt n)
+          <input type="number" data-field="courtCount" value="${s.courtCount || ''}" min="0" max="50" inputmode="numeric" placeholder="e.g. 4" style="display:block;width:110px;margin-top:4px;${inputStyle}">
+        </label>
         <div class="tournament-only" style="font-size:12px;font-weight:700"${IS_TOURNAMENT ? '' : ' hidden'}>Categories
           <div style="display:flex;gap:12px;margin-top:8px;font-weight:600;font-size:14px">
             ${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}> ${label}</label>`).join('')}
@@ -344,7 +347,7 @@ function wireSeason(card) {
     errorEl.textContent = '';
     const f = (name) => e.target.querySelector(`[data-field="${name}"]`).value;
     try {
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(IS_TOURNAMENT ? { venue: f('venue'), categories: [...e.target.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat) } : {}) } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(IS_TOURNAMENT ? { venue: f('venue'), courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), categories: [...e.target.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat) } : {}) } });
       toast('Saved');
       await load();
     } catch (err) { fail(err); }
