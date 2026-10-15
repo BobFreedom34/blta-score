@@ -159,7 +159,6 @@ const SEED = {
     lat: 48.1841915,
     lng: 17.1392782,
   },
-  'TK Alžbetin Dvor': { ...MILOSLAV, area: 'Miloslavov – Alžbetin Dvor' },
   'TK Miloslavov': { ...MILOSLAV, area: 'Miloslavov' },
   'TK Dúbravka': {
     area: 'Dúbravka',
@@ -526,6 +525,19 @@ function seedVenueImages() {
   });
 }
 
+// Venues that were created twice by mistake: the duplicate is removed once (flag venue_removed:<name>), so one an admin adds again later is
+// left alone. The places of matches are free text and stay as they are (see EXTRA_ALIASES in venues.js for the matches of the removed one).
+const DUPLICATE_VENUES = ['TK Alžbetin Dvor'];
+
+function removeDuplicateVenues() {
+  DUPLICATE_VENUES.forEach((name) => {
+    const flag = `venue_removed:${name}`;
+    if (db.prepare('SELECT 1 FROM app_flags WHERE key = ?').get(flag)) return;
+    db.prepare('DELETE FROM venues WHERE name = ? COLLATE NOCASE').run(name);
+    db.prepare('INSERT INTO app_flags (key) VALUES (?)').run(flag);
+  });
+}
+
 function seedCourtsMenuItem() {
   if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'menu_courts_added'").get()) return;
   const exists = db.prepare("SELECT 1 FROM header_items WHERE link = '/courts'").get();
@@ -544,6 +556,7 @@ function run() {
   seedVenueDetails();
   addNewVenues();
   seedVenueImages();
+  removeDuplicateVenues();
   seedCourtsMenuItem();
 }
 

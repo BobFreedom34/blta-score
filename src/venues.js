@@ -194,6 +194,8 @@ function stripGeneric(phrase) {
   return tokens.join(' ');
 }
 
+const EXTRA_ALIASES = { 'tk miloslavov': ['alzbetin dvor', 'tk alzbetin dvor'] };
+
 function venueAliases(name) {
   const aliases = new Set();
   // "Tennis" is routinely typed the Slovak way ("Tenis one"), so both spellings count.
@@ -207,6 +209,8 @@ function venueAliases(name) {
   // "Pro Set" and "Proset" are the same club: a name of several words is also known written together
   [words(name), stripGeneric(words(name))].forEach((phrase) => { if (phrase.includes(' ') && phrase.replace(/ /g, '').length >= 5) add(phrase.replace(/ /g, '')); });
   if (/\s[-–—]\s/.test(name)) name.split(/\s[-–—]\s/).forEach((part) => add(stripGeneric(words(part))));
+  // Other names a venue is known by in a match's free-text place: Alžbetin Dvor is the part of Miloslavov where the TK Miloslavov courts are.
+  (EXTRA_ALIASES[words(name)] || []).forEach(add);
   return aliases;
 }
 
