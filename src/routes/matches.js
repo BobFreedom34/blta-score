@@ -1991,12 +1991,15 @@ router.get('/:token/messages', (req, res) => {
   res.json(messages.map(serializeMessage));
 });
 
-router.post('/:token/messages', (req, res) => {
+// Anyone can read a match's chat, but only a logged-in player or an admin can write in it. The author's name is never taken from the
+// request: it is the logged-in player's own name ("Admin" for an admin who is not also logged in as a player).
+router.post('/:token/messages', requireLoggedIn, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  const author = String(req.body.author || '').trim().slice(0, 60);
+  const posterId = getPlayerId(req);
+  const poster = posterId ? getPlayer(posterId) : null;
+  const author = poster ? poster.name : 'Admin';
   const body = String(req.body.body || '').trim().slice(0, 500);
-  if (!author) return res.status(400).json({ error: 'Please enter your name' });
   if (!body) return res.status(400).json({ error: 'Message cannot be empty' });
 
   const ts = nowIso();
@@ -2004,12 +2007,7 @@ router.post('/:token/messages', (req, res) => {
     .run(row.id, author, body, ts);
   const message = serializeMessage({ id: result.lastInsertRowid, author, body, created_at: ts });
 
-  // Chat is open/anonymous (no login required to post — author is just
-  // whatever name was typed), so the only reliable way to know the poster is
-  // one of the two players is their login cookie. When it matches one of
-  // them, that player is skipped (they just wrote it); anyone not logged in
-  // can't be identified, so both players are notified in that case.
-  const posterId = getPlayerId(req);
+  // The writer is skipped when they are one of the two players (they just wrote it); an admin who is not one of them notifies both.
   const notifyChat = db.prepare(
     'INSERT INTO chat_notifications (player_id, match_id, message_id, seen) VALUES (?, ?, ?, 0)'
   );

@@ -322,8 +322,8 @@ An admin session automatically counts as being logged in as a player too, everyw
 
 ## 4b. Player login (phone number + 5-digit code)
 
-Anyone can still browse matches, view a live score, and chat — no login needed for that. But
-**creating a new match, starting a live match, entering a result manually, and setting a match's
+Anyone can still browse matches, view a live score, and read a match's chat — no login needed for that. But
+**writing in a match's chat (the name on a message is the login's own, "Admin" for an admin who is not also a player), creating a new match, starting a live match, entering a result manually, and setting a match's
 date/location** all require being logged in as a **player** first, via the "LOG IN AS PLAYER" link
 in the top nav. There's no anonymous/no-account login tier anymore — a phone number on file (or
 admin) is the only way in.

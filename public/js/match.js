@@ -251,7 +251,8 @@ function appendChatMessage(message) {
 }
 
 function chatHtml() {
-  const savedName = localStorage.getItem('blta_chat_name') || '';
+  // Reading is open to everyone; writing needs a login as a player (or admin) — the name on a message is the login's own.
+  const canWrite = isAdminUser || playerAuthed;
   return `
     <div class="card chat-card" style="margin-bottom:16px">
       <div class="label card-label">${t('match.chatLabel')}</div>
@@ -260,13 +261,17 @@ function chatHtml() {
           ? `<div class="chat-empty">${escapeHtml(t('match.noMessagesYet').replace(/\s*[\p{Extended_Pictographic}\u200d\ufe0f]+$/u, ''))}</div>`
           : messages.map(chatMessageHtml).join('')}
       </div>
+      ${canWrite ? `
       <form id="chat-form">
-        <input type="text" id="chat-name" placeholder="${escapeHtml(t('match.yourNamePlaceholder'))}" value="${escapeHtml(savedName)}" maxlength="60" required>
-        <div style="display:flex;gap:6px;margin-top:6px">
+        <div style="display:flex;gap:6px">
           <input type="text" id="chat-body" placeholder="${escapeHtml(t('match.typeMessagePlaceholder'))}" value="${escapeHtml(chatDraftBody)}" maxlength="500" required style="flex:1">
           <button type="submit" class="btn btn-primary btn-sm">${t('match.sendBtn')}</button>
         </div>
-      </form>
+      </form>` : `
+      <div class="chat-login-note">
+        <span>${escapeHtml(t('match.chatLoginNote'))}</span>
+        <button type="button" class="btn btn-primary btn-sm" id="chat-login-btn">${escapeHtml(t('match.chatLoginBtn'))}</button>
+      </div>`}
     </div>
   `;
 }
@@ -1123,15 +1128,12 @@ function attachHandlers(m) {
     bodyInput.addEventListener('input', () => { chatDraftBody = bodyInput.value; });
     chatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const nameInput = document.getElementById('chat-name');
-      const name = nameInput.value.trim();
       const body = bodyInput.value.trim();
-      if (!name || !body) return;
-      localStorage.setItem('blta_chat_name', name);
+      if (!body) return;
       const submitBtn = chatForm.querySelector('button[type="submit"]');
       submitBtn.disabled = true;
       try {
-        const created = await api(`/matches/${matchToken}/messages`, { method: 'POST', body: { author: name, body } });
+        const created = await api(`/matches/${matchToken}/messages`, { method: 'POST', body: { body } });
         appendChatMessage(created);
         chatDraftBody = '';
         bodyInput.value = '';
@@ -1139,6 +1141,9 @@ function attachHandlers(m) {
       submitBtn.disabled = false;
     });
   }
+
+  const chatLoginBtn = document.getElementById('chat-login-btn');
+  if (chatLoginBtn) chatLoginBtn.addEventListener('click', () => requirePlayerAuth(() => { if (current) render(current); }));
 
   // While this match is still awaiting a scheduling response (someone's
   // proposed times, nothing confirmed yet), the plain Share button should
