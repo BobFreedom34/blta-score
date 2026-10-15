@@ -4908,12 +4908,18 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-m-pl .cs-win { color: var(--green); }
 .cs-m-meta { font-size: 11px; color: #8b8f98; }
 .cs-m-score { font-size: 11px; font-weight: 700; color: #c3c7cf; }
-.cs-st-finished { opacity: 0.65; }
-.cs-st-live { background: #1f3d2a; }
+.cs-m.cs-st-live { background: #3a2a1d; }
+.cs-m.cs-st-finished { background: #202227; }
 .cs-live { color: var(--green); font-size: 10px; letter-spacing: 0.06em; }
-.cs-cat-elite { border-left-color: var(--orange); }
-.cs-cat-nextgen { border-left-color: #4da3ff; }
-.cs-cat-novice { border-left-color: var(--green); }
+.cs-m, .cs-chip, .cs-row, .cs-livecard { border-left-color: var(--status-green); }
+.cs-m.cs-st-live, .cs-row.cs-st-live, .cs-livecard { border-left-color: var(--orange); }
+.cs-m.cs-st-finished, .cs-row.cs-st-finished { border-left-color: #8b8f98; }
+.cs-done { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #c3c7cf; background: rgba(255, 255, 255, 0.1); border-radius: 4px; padding: 1px 6px; margin-left: 4px; }
+.cs-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: -6px 0 16px; font-size: 12px; font-weight: 700; color: #c3c7cf; }
+.cs-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cs-legend span::before { content: ''; width: 4px; height: 14px; border-radius: 2px; background: var(--status-green); }
+.cs-legend .cs-st-live::before { background: var(--orange); }
+.cs-legend .cs-st-finished::before { background: #8b8f98; }
 .cs-lock { display: inline-block; width: 8px; height: 6px; background: var(--yellow); border-radius: 1px; vertical-align: 0; margin-left: 4px; position: relative; }
 .cs-lock::before { content: ''; position: absolute; left: 1px; top: -4px; width: 4px; height: 4px; border: 1.5px solid var(--yellow); border-bottom: none; border-radius: 3px 3px 0 0; }
 .cs-drag { cursor: grab; touch-action: none; user-select: none; -webkit-user-drag: none; }
@@ -4939,9 +4945,6 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-row-meta { color: #8b8f98; font-size: 12px; }
 .cs-row-st { text-align: right; font-size: 12px; font-weight: 700; color: #c3c7cf; }
 .cs-row-empty { color: #6e727c; font-size: 13px; padding: 10px 0; }
-.cs-row.cs-cat-elite { border-left-color: var(--orange); }
-.cs-row.cs-cat-nextgen { border-left-color: #4da3ff; }
-.cs-row.cs-cat-novice { border-left-color: var(--green); }
 .cs-admin { margin-top: 22px; padding: 14px 16px; border-radius: var(--radius-md); background: var(--fill-grey); display: grid; gap: 12px; }
 .cs-admin-row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
 .cs-admin label { display: grid; gap: 4px; font-size: 11px; font-weight: 700; color: #c3c7cf; }
@@ -4956,9 +4959,10 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-admin .btn.btn-outline:hover { background: #5b5e66; border-color: var(--white); color: var(--white); }
 .cs-livestrip { margin-bottom: 16px; padding: 12px 14px; border: 1px solid rgba(178, 250, 6, 0.4); border-radius: var(--radius-md); background: rgba(178, 250, 6, 0.05); }
 .cs-livecard { display: flex; flex-direction: column; gap: 2px; min-width: 190px; padding: 8px 12px; border-radius: var(--radius-sm); background: #1f3d2a; border-left: 4px solid var(--gray-dim); color: var(--white); text-decoration: none; }
-.cs-livecard.cs-cat-elite { border-left-color: var(--orange); }
-.cs-livecard.cs-cat-nextgen { border-left-color: #4da3ff; }
-.cs-livecard.cs-cat-novice { border-left-color: var(--green); }
 .cs-live-h { font-size: 11px; font-weight: 800; color: #c3c7cf; }
 .cs-live-score { font-size: 18px; font-weight: 800; color: var(--green); }
 .cs-m.cs-st-live .cs-m-score { color: var(--green); font-weight: 800; }
+/* the status colour of a timetable block (after the base rules above): green = not started, orange = in play, grey = finished */
+.cs-m, .cs-chip, .cs-row, .cs-livecard { border-left-color: var(--status-green); }
+.cs-m.cs-st-live, .cs-row.cs-st-live, .cs-livecard { border-left-color: var(--orange); }
+.cs-m.cs-st-finished, .cs-row.cs-st-finished { border-left-color: #8b8f98; }
