@@ -9,6 +9,7 @@
 // Zlaté Piesky, which uses the coordinates published on blta.sk. Anything
 // that couldn't be verified is left out rather than guessed — fill gaps in
 // /venues-admin.
+const path = require('path');
 const db = require('./db');
 const venues = require('./venues');
 
@@ -489,6 +490,38 @@ function seedVenueDetails() {
 
 // Adds "Kurty / Courts" next to Rankings once. The flag (not the row) is what
 // prevents a re-add, so an admin who deletes or moves it later keeps that.
+// The photo shown above a venue's name on the /courts cards (venues.image_url): files under public/img/courts/, each taken from the
+// venue's own website. Set once per venue (flag venue_image:<name>), so a photo an admin changes or clears later is never put back.
+const VENUE_IMAGES = {
+  'Fit Camp': '/img/courts/fit-camp.jpg',
+  'NTC Bratislava': '/img/courts/ntc-bratislava.jpg',
+  'Tennis ONE': '/img/courts/tennis-one.jpg',
+  'TK Slovan Bratislava': '/img/courts/tk-slovan-bratislava.jpg',
+  'TKP Dudova': '/img/courts/tkp-dudova.jpg',
+  'TKP Dunajská Lužná': '/img/courts/tkp-dunajska-luzna.jpg',
+  'TKP Nobelovo Námestie': '/img/courts/tkp-nobelovo-namestie.jpg',
+  'Slávia Filozof': '/img/courts/slavia-filozof.jpg',
+  'TK Slávia STU': '/img/courts/tk-slavia-stu.jpg',
+  'Matchball': '/img/courts/matchball.jpg',
+  'Love4Tennis': '/img/courts/love4tennis.jpg',
+  'Tenis Club 26': '/img/courts/tenis-club-26.jpg',
+  'TK Dúbravka - Lysákova': '/img/courts/tk-dubravka-lysakova.jpg',
+};
+
+function seedVenueImages() {
+  Object.entries(VENUE_IMAGES).forEach(([name, imageUrl]) => {
+    const flag = `venue_image:${name}`;
+    if (db.prepare('SELECT 1 FROM app_flags WHERE key = ?').get(flag)) return;
+    // The venue is found by its name or by the slug the file is named after (the venue may have been renamed a little). A venue that
+    // is not there yet is tried again at the next start; one that has a photo already is left alone.
+    const slug = path.basename(imageUrl, path.extname(imageUrl));
+    const found = db.prepare('SELECT id, image_url FROM venues WHERE name = ? COLLATE NOCASE OR slug = ?').get(name, slug);
+    if (!found) return;
+    if (!found.image_url) db.prepare('UPDATE venues SET image_url = ? WHERE id = ?').run(imageUrl, found.id);
+    db.prepare('INSERT INTO app_flags (key) VALUES (?)').run(flag);
+  });
+}
+
 function seedCourtsMenuItem() {
   if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'menu_courts_added'").get()) return;
   const exists = db.prepare("SELECT 1 FROM header_items WHERE link = '/courts'").get();
@@ -506,6 +539,7 @@ function run() {
   venues.ensureSlugs();
   seedVenueDetails();
   addNewVenues();
+  seedVenueImages();
   seedCourtsMenuItem();
 }
 

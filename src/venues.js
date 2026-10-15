@@ -66,6 +66,7 @@ function serialize(row) {
     description: row.description || null,
     lat: row.lat == null ? null : row.lat,
     lng: row.lng == null ? null : row.lng,
+    imageUrl: row.image_url || null,
   };
 }
 
@@ -132,6 +133,7 @@ const coordinate = (min, max) => (value) => {
 const FIELDS = {
   area: ['area', 'Area', text(80)],
   address: ['address', 'Address', text(200)],
+  imageUrl: ['image_url', 'Image', text(300)],
   phone: ['phone', 'Phone', text(60)],
   email: ['email', 'E-mail', email],
   website: ['website', 'Website', url],

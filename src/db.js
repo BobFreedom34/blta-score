@@ -1048,6 +1048,7 @@ Object.entries({
   lat: 'REAL',
   lng: 'REAL',
   seeded_at: 'TEXT',
+  image_url: 'TEXT',
 }).forEach(([column, type]) => {
   if (!venueColumns.includes(column)) db.exec(`ALTER TABLE venues ADD COLUMN ${column} ${type}`);
 });

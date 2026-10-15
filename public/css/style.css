@@ -2723,6 +2723,13 @@ a.rank-name:hover { text-decoration: underline; }
 }
 /* no glow at rest; it only shows on hover */
 .court-card:hover { box-shadow: 0 0 24px rgba(255, 85, 0, 0.4); }
+/* a venue with a photo: it fills the top of the card (16:9, the card's own corners) and the name comes under it; the arrow moves below the photo */
+.court-card.has-image { padding-top: 0; overflow: hidden; }
+.court-card-img { display: block; margin: 0 -26px; aspect-ratio: 16 / 9; background: #1a1a1a; overflow: hidden; }
+.court-card-img img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 0.25s ease; }
+.court-card:hover .court-card-img img { transform: scale(1.03); }
+.court-card.has-image .court-card-head { padding-top: 2px; }
+.court-card.has-image .court-card-arrow { top: auto; }
 .court-card-head { display: block; padding-right: 30px; }
 .court-card-arrow { position: absolute; top: 24px; right: 24px; color: #8b8f98; display: flex; }
 .court-card-arrow .venue-icon { width: 17px; height: 17px; }
