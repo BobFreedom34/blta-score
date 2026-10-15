@@ -4941,12 +4941,12 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-admin { margin-top: 22px; padding: 14px 16px; border-radius: var(--radius-md); background: var(--fill-grey); display: grid; gap: 12px; }
 .cs-admin-row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
 .cs-admin label { display: grid; gap: 4px; font-size: 11px; font-weight: 700; color: #c3c7cf; }
-.cs-admin input[type=number], .cs-admin input[type=time] { width: 110px; padding: 7px 9px; border-radius: var(--radius-sm); border: 1.5px solid var(--border-grey); background: #0a0a0a; color: var(--white); font-family: inherit; font-size: 14px; }
+.cs-admin input[type=number], .cs-admin input[type=time] { width: 132px; padding: 7px 9px; border-radius: var(--radius-sm); border: 1.5px solid var(--border-grey); background: #0a0a0a; color: var(--white); font-family: inherit; font-size: 14px; }
 .cs-admin .cs-check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .cs-hint { font-size: 12px; color: #c3c7cf; max-width: 520px; }
 @media (max-width: 700px) {
   .cs-row { grid-template-columns: 88px minmax(0, 1fr); }
   .cs-row-meta, .cs-row-st { grid-column: 2; text-align: left; }
 }
-.cs-admin .btn-outline { color: var(--white); border-color: var(--border-grey); background: transparent; }
-.cs-admin .btn-outline:hover { border-color: var(--white); }
+.cs-admin .btn.btn-outline { color: var(--white); background: #4a4d57; border: 2px solid #8b8f98; box-shadow: none; font-weight: 800; }
+.cs-admin .btn.btn-outline:hover { background: #5b5e66; border-color: var(--white); color: var(--white); }
