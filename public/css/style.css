@@ -4934,17 +4934,20 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-tray-body { display: flex; flex-wrap: wrap; gap: 8px; }
 .cs-tray-empty { color: #8b8f98; font-size: 13px; font-weight: 600; }
 .cs-chip { display: flex; flex-direction: column; gap: 1px; min-width: 150px; padding: 6px 10px; border-radius: var(--radius-sm); background: #26282e; border-left: 4px solid var(--gray-dim); color: var(--white); text-decoration: none; }
-.cs-list { display: grid; gap: 22px; }
-.cs-list-h { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--orange); padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.18); }
-.cs-list-h em { font-style: normal; color: #c3c7cf; margin-left: 8px; letter-spacing: 0; }
-.cs-row { display: grid; grid-template-columns: 110px minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.8fr); gap: 12px; align-items: center; padding: 9px 0 9px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid var(--gray-dim); color: var(--white); text-decoration: none; font-size: 14px; }
+/* the list view: a card per court, side by side on a wide screen */
+.cs-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 18px; align-items: start; }
+.cs-list-court { background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius-md); overflow: hidden; }
+.cs-list-h { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--fill-grey); font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
+.cs-list-h em { font-style: normal; font-size: 12px; letter-spacing: 0; color: #c3c7cf; background: rgba(255, 255, 255, 0.12); border-radius: 999px; padding: 1px 9px; }
+.cs-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; grid-template-areas: "time pl st" "time meta st"; column-gap: 12px; row-gap: 2px; align-items: center; padding: 10px 14px 10px 12px; margin: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid var(--gray-dim); color: var(--white); text-decoration: none; font-size: 14px; }
+.cs-row:last-child { border-bottom: none; }
 .cs-row:hover { background: rgba(255, 255, 255, 0.04); }
-.cs-row-time { font-weight: 800; color: #c3c7cf; }
-.cs-row-pl { display: flex; flex-direction: column; font-weight: 700; }
+.cs-row-time { grid-area: time; font-weight: 800; color: #c3c7cf; font-size: 13px; }
+.cs-row-pl { grid-area: pl; display: flex; flex-direction: column; font-weight: 700; }
 .cs-row-pl .cs-win { color: var(--green); }
-.cs-row-meta { color: #8b8f98; font-size: 12px; }
-.cs-row-st { text-align: right; font-size: 12px; font-weight: 700; color: #c3c7cf; }
-.cs-row-empty { color: #6e727c; font-size: 13px; padding: 10px 0; }
+.cs-row-meta { grid-area: meta; color: #8b8f98; font-size: 12px; }
+.cs-row-st { grid-area: st; text-align: right; font-size: 12px; font-weight: 700; color: #c3c7cf; }
+.cs-row-empty { color: #6e727c; font-size: 13px; padding: 14px 16px; }
 .cs-admin { margin-top: 22px; padding: 14px 16px; border-radius: var(--radius-md); background: var(--fill-grey); display: grid; gap: 12px; }
 .cs-admin-row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
 .cs-admin label { display: grid; gap: 4px; font-size: 11px; font-weight: 700; color: #c3c7cf; }
@@ -4952,8 +4955,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-admin .cs-check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .cs-hint { font-size: 12px; color: #c3c7cf; max-width: 520px; }
 @media (max-width: 700px) {
-  .cs-row { grid-template-columns: 88px minmax(0, 1fr); }
-  .cs-row-meta, .cs-row-st { grid-column: 2; text-align: left; }
+  .cs-row { grid-template-columns: 78px minmax(0, 1fr) auto; }
 }
 .cs-admin .btn.btn-outline { color: var(--white); background: #4a4d57; border: 2px solid #8b8f98; box-shadow: none; font-weight: 800; }
 .cs-admin .btn.btn-outline:hover { background: #5b5e66; border-color: var(--white); color: var(--white); }
