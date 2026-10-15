@@ -188,7 +188,7 @@ function csRender() {
   csChoice.day = day;
   const pills = settings.days.length > 1
     ? `<div class="tabs cs-days">${settings.days.map((d) => `<button type="button" class="tab${d === day ? ' active' : ''}" data-cs-day="${d}">${escapeHtml(csDayLabel(d))}</button>`).join('')}</div>` : '';
-  const views = `<div class="tabs cs-views"><button type="button" class="tab${csChoice.view === 'timeline' ? ' active' : ''}" data-cs-view="timeline">${escapeHtml(t('courts.timeline'))}</button><button type="button" class="tab${csChoice.view === 'list' ? ' active' : ''}" data-cs-view="list">${escapeHtml(t('courts.list'))}</button></div>`;
+  const views = `<div class="cs-seg" role="group"><button type="button" class="${csChoice.view === 'timeline' ? 'active' : ''}" data-cs-view="timeline">${escapeHtml(t('courts.timeline'))}</button><button type="button" class="${csChoice.view === 'list' ? 'active' : ''}" data-cs-view="list">${escapeHtml(t('courts.list'))}</button></div>`;
   csState.host.innerHTML = `
     <section class="sv-sec cs-sec">
       ${csLiveHtml()}

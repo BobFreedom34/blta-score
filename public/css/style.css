@@ -4887,8 +4887,12 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sv-pay-note { margin: 8px 0 0; font-size: 13px; font-weight: 700; color: var(--ink); }
 
 /* Rozvrh kurtov: the court schedule tab of a tournament (court-schedule.js) */
-.cs-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 16px; }
+.cs-bar { display: grid; gap: 14px; justify-items: start; margin-bottom: 18px; }
 .cs-bar .tabs { margin: 0; }
+.cs-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-sm); background: var(--fill-grey); }
+.cs-seg button { border: 0; background: transparent; color: #c3c7cf; font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+.cs-seg button:hover { color: var(--white); }
+.cs-seg button.active { background: var(--orange); color: var(--white); }
 .cs-scroll { overflow-x: auto; padding-bottom: 6px; }
 .cs-grid { display: grid; grid-template-columns: 46px repeat(var(--cs-cols), minmax(150px, 1fr)); gap: 8px; min-width: min-content; }
 .cs-court-h { height: 30px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
