@@ -588,6 +588,13 @@ and `/en`. The first English texts and slugs are built in (`ENGLISH` in `src/seo
   the first start.
 - Check it: `node scripts/check-seo.js` (starts its own server on a temporary data folder; nothing else is touched).
 
+### Tournament registration, payment window and sorting into categories (Backend → Tournaments, `/tournaments-admin`)
+
+A tournament is a season of type TOURNAMENT. Players register on its page as before, **without choosing a category** (`season_registrations.category` stays empty).
+- **Window after registering:** "Ďakujeme…", then the Stripe button "Úhrada štartovného online" (the link is typed in the tournament's **Payment link (Stripe)** field; no link = no button) and a **bank transfer** block: the IBAN and recipient from Backend → Contact (with a Copy button), the entry fee of the tournament and the reminder "Do poznámky platby uveď názov turnaja: <name>". Only tournaments get the transfer block; no IBAN in the contact = no block.
+- **Sorting players into categories:** in a tournament's card, **Zaradenie do kategórií** (`public/js/season-assign.js`) lists the registered players not sorted yet and the three categories with each player's BLTA rank, CourtIQ and the category written in their profile; E / N / V moves a player, × puts one back to "not sorted". **Navrhnúť automaticky** fills in the players not sorted yet (the profile's category, else by strength — the CourtIQ and BLTA-rank places averaged: strongest third Elite, middle third Next Gen, the rest Novice, nobody known = Novice); nothing is saved until **Uložiť zaradenie** (`POST /api/seasons/:id/registrations/categories`, all or nothing). The per-player Edit in Registrations still works.
+- Check: `node scripts/check-tournament-categories.js`.
+
 ### Head-to-head, "Rivali" and "Zápas týždňa"
 
 - **Match page:** a compact "Vzájomné" card above the chat when the two players have met before: the record from player 1's side ("3 — 2"), the number of meetings, the last result, the last five meetings as V/P dots (tooltips give the score and date) and a green/red bar. Only finished matches with a winner count (no walkovers or unfinished ones), in every category. Built in the browser from `GET /api/matches?playerId=…&status=FINISHED` by `public/js/h2h.js` (also used by the profile).

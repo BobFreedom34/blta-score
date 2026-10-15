@@ -173,6 +173,20 @@ function seriesWinnersHtml() {
 // a tournament is a season of its own kind: same page, with a "Turnaj" chip, a venue and its own categories
 const isTournament = () => season.kind === 'TOURNAMENT';
 
+// "Payment by transfer" in the window after a tournament registration. contact = GET /api/contact (the IBAN is edited in Backend > Contact).
+function bankTransferHtml(contact, alongsideOnline) {
+  if (!contact || !contact.iban) return '';
+  const row = (label, value, copy) => `<div class="sv-pay-row"><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b>${copy ? `<button type="button" class="sv-pay-copy" data-copy="${escapeHtml(copy)}">${escapeHtml(t('season.copy'))}</button>` : ''}</div>`;
+  return `
+    <div class="sv-pay-bank">
+      <h4>${escapeHtml(t(alongsideOnline ? 'season.payTransferOr' : 'season.payTransferTitle'))}</h4>
+      ${row('IBAN', contact.iban, contact.iban.replace(/\s+/g, ''))}
+      ${contact.orgName ? row(t('season.payTransferRecipient'), contact.orgName) : ''}
+      ${season.entryFee ? row(t('season.payTransferAmount'), season.entryFee) : ''}
+      <p class="sv-pay-note">${escapeHtml(t('season.payTransferNote', { name: season.name }))}</p>
+    </div>`;
+}
+
 function headerHtml() {
   const status = statusOf();
   const today = todayIso();
@@ -452,14 +466,21 @@ async function openRegisterModal() {
         method: 'POST',
         body: { name: typed, phone, email, category, note: $('notetext').value.trim(), website: $('website').value, ...(known ? { playerId: known.id } : {}), ...(confirmNew ? { confirmNew: true } : {}) },
       });
-      const pay = res && res.paymentUrl
+      const stripe = res && res.paymentUrl
         ? `<p>${escapeHtml(t('season.regPayHint'))}</p><a class="btn btn-primary btn-block" href="${escapeHtml(res.paymentUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.payOnline'))}</a>`
         : '';
+      // a tournament also offers a bank transfer: the IBAN of the contact page, the entry fee and a reminder to put the tournament's name in the note
+      const contact = isTournament() ? await api('/contact').catch(() => null) : null;
+      const pay = stripe + bankTransferHtml(contact, !!stripe);
       wrap.querySelector('.modal').innerHTML = `
         <button type="button" class="close" data-close aria-label="${escapeHtml(t('season.regClose'))}">&times;</button>
         <h3>${escapeHtml(t('season.regThanks', { name: (res && res.name) || typed }))}</h3>
         <p>${escapeHtml(t('season.regDone'))}</p>${res && res.pinSetupRequired ? `<p><b>${escapeHtml(t('season.regAccount'))}</b></p>` : ''}${pay}
         <button type="button" class="btn btn-outline btn-block" data-close style="margin-top:10px">${escapeHtml(t('season.regClose'))}</button>`;
+      wrap.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => {
+        const done = () => { b.textContent = t('season.copied'); };
+        if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(done, done); else done();
+      }));
       if (res && res.pinSetupRequired) askForCode = true;
       refresh(); // the new name appears in the players tab
     } catch (err) {

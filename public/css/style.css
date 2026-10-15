@@ -4876,3 +4876,12 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 /* the match of the week: a highlighted row in "Najbližšie zápasy" */
 .home-m-row.feat { background: rgba(255, 85, 0, 0.08); border: 1px solid rgba(255, 85, 0, 0.55); border-radius: 12px; padding: 12px; margin: 4px 0; }
 .home-feat-label { color: var(--orange); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; }
+
+/* the bank transfer block in the window after a tournament registration */
+.sv-pay-bank { margin: 14px 0 4px; padding: 12px 14px; border-radius: 12px; background: var(--gray-light); }
+.sv-pay-bank h4 { margin: 0 0 8px; font-size: 14px; }
+.sv-pay-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; padding: 3px 0; }
+.sv-pay-row span { color: var(--gray); min-width: 70px; font-size: 12px; font-weight: 700; }
+.sv-pay-row b { word-break: break-all; }
+.sv-pay-copy { border: 1px solid var(--gray-dim); background: var(--white); border-radius: 8px; padding: 3px 10px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.sv-pay-note { margin: 8px 0 0; font-size: 13px; font-weight: 700; color: var(--ink); }

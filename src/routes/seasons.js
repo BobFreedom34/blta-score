@@ -285,6 +285,32 @@ router.get('/:id/registrations', requireAdmin, (req, res) => {
   res.json(rows.map(serializeRegistration));
 });
 
+// The admin sorts many players into categories at once (the "Zaradenie do kategórií" screen): { assignments: [{ id, category }] }, category
+// ELITE / NEXT_GEN / NOVICE or '' for "not sorted yet" (tournaments only). All or nothing: one bad entry changes nothing.
+router.post('/:id/registrations/categories', requireAdmin, (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  const list = req.body && req.body.assignments;
+  if (!Array.isArray(list) || !list.length) return res.status(400).json({ error: 'Nothing to save' });
+  const own = new Set(db.prepare('SELECT id FROM season_registrations WHERE season_id = ?').all(season.id).map((r) => r.id));
+  for (const item of list) {
+    if (!item || !own.has(Number(item.id))) return res.status(400).json({ error: 'A registration does not belong to this season' });
+    const ok = BLTA_CATEGORIES.includes(item.category) || (item.category === '' && season.kind === 'TOURNAMENT');
+    if (!ok) return res.status(400).json({ error: 'Choose a category' });
+  }
+  const update = db.prepare('UPDATE season_registrations SET category = ? WHERE id = ?');
+  db.exec('BEGIN');
+  try {
+    list.forEach((item) => update.run(item.category, Number(item.id)));
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  const rows = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(season.id);
+  res.json(rows.map(serializeRegistration));
+});
+
 // The admin registers a player who is already in the app, without the registration form: the phone number and the e-mail
 // come from the player's profile unless the admin types others, the category from the profile unless the admin picks one.
 // It works whether or not the season's registration is open, and sends no e-mail.

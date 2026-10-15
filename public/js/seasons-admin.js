@@ -275,6 +275,8 @@ function seasonHtml(s) {
       </form>
       <div class="season-regs" style="margin:10px 0 0">
         <button type="button" class="btn btn-sm btn-outline" data-action="show-regs">Registrations</button>
+        ${IS_TOURNAMENT ? '<button type="button" class="btn btn-sm btn-outline" data-action="show-assign">Zaradenie do kategórií</button>' : ''}
+        <div class="season-assign" hidden style="margin-top:10px"></div>
         <div class="season-regs-list" hidden style="margin-top:10px"></div>
       </div>
       <div style="font-size:12px;color:var(--gray);margin:8px 0 12px">
@@ -493,6 +495,17 @@ function wireSeason(card) {
         </div>`)).join('') : '<div class="sg-empty">No registrations yet.</div>');
       wireAddPlayerForm(players);
     } catch (err) { fail(err); }
+  }
+  // a tournament: sort the registered players into Elite / Next Gen / Novice on one screen (public/js/season-assign.js)
+  const assignBtn = card.querySelector('[data-action="show-assign"]');
+  if (assignBtn) {
+    const assignHost = card.querySelector('.season-assign');
+    assignBtn.addEventListener('click', async () => {
+      assignHost.hidden = !assignHost.hidden;
+      if (!assignHost.hidden) {
+        try { await openAssignPanel(assignHost, id, () => { if (!regsList.hidden) loadRegs(); }); } catch (err) { fail(err); }
+      }
+    });
   }
   regsBtn.addEventListener('click', async () => {
     regsList.hidden = !regsList.hidden;
