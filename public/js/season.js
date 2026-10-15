@@ -533,12 +533,13 @@ function availableTabs() {
     { key: 'playoff', label: t(isTournament() ? 'season.navBrackets' : 'season.navPlayoff'), has: brackets.length > 0 || (hasGroups && statusOf() !== 'past') },
     { key: 'gallery', label: t('season.navGallery'), has: !!season.galleryUrl },
   ];
-  // a tournament has only the tabs Základné info, Harmonogram (court timetable with live scores), Rozpis, Pavúky and Galéria; its players are shown all the time, below the tab content (see fixedPlayersHtml)
+  // a tournament has only the tabs Základné info, Harmonogram (court timetable with live scores), Rozpis, Pavúky and Galéria; its players are shown below the Základné info tab (see fixedPlayersHtml)
   return isTournament() ? tabs.filter((x) => ['info', 'courts', 'schedule', 'playoff', 'gallery'].includes(x.key)) : tabs.filter((x) => x.key !== 'courts');
 }
 
+// the players of a tournament are shown on the Základné info tab only
 function fixedPlayersHtml() {
-  if (!isTournament()) return '';
+  if (!isTournament() || tab !== 'info') return '';
   const list = playersHtml() || `<div class="sv-empty">${escapeHtml(t('season.empty.playersTournament'))}</div>`;
   return `<div class="sv-fixed-players"><div class="sv-sec-h"><h2>${escapeHtml(t('season.navPlayers'))}</h2></div>${list}</div>`;
 }
@@ -580,6 +581,7 @@ function renderTabs() {
 
 async function renderPanel() {
   renderTabs();
+  renderFixedPlayers();
   const panel = document.getElementById('sv-panel');
   const key = tab;
   if (!loaded.has(key)) {
