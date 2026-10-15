@@ -2884,10 +2884,10 @@ body:not(.embed-light) .match-score-format { color: #8b8f98; font-weight: 700; }
 
 body:not(.embed-light) .match-card .btn-outline { background: var(--fill-grey); color: var(--white); border: none; border-radius: var(--radius-sm); }
 body:not(.embed-light) .match-card .btn-outline:hover { background: #2c2c31; box-shadow: none; }
-/* the "Book a court" button on a planned card: a green outline instead of the grey fill of its neighbours */
-.btn-reserve-court, body:not(.embed-light) .match-card .btn-reserve-court { display: inline-flex; align-items: center; gap: 6px; background: transparent; color: var(--status-green); border: 1px solid var(--status-green); border-radius: var(--radius-sm); box-shadow: none; }
-.btn-reserve-court:hover, body:not(.embed-light) .match-card .btn-reserve-court:hover { background: rgba(178, 250, 6, 0.12); color: var(--status-green); box-shadow: none; }
-.btn-reserve-court .venue-icon, body:not(.embed-light) .match-card .btn.btn-reserve-court .venue-icon { width: 14px; height: 14px; flex: 0 0 14px; color: var(--status-green); }
+/* the small green ball on a planned card without a date: opens the court booking page (the 5px corners of the other small pills) */
+.reserve-court-pill, body:not(.embed-light) .match-card .reserve-court-pill { display: inline-flex; align-items: center; justify-content: center; padding: 2px 7px; background: transparent; color: var(--status-green); border: 1px solid var(--status-green); border-radius: 5px; box-shadow: none; cursor: pointer; line-height: 1; font-family: inherit; }
+.reserve-court-pill:hover, body:not(.embed-light) .match-card .reserve-court-pill:hover { background: rgba(178, 250, 6, 0.14); }
+.reserve-court-pill .venue-icon, body:not(.embed-light) .match-card .match-card-meta .reserve-court-pill .venue-icon { width: 14px; height: 14px; flex: 0 0 14px; color: var(--status-green); }
 body:not(.embed-light) .match-card .availability-day-pill { background: var(--fill-grey); color: #d6d8dd; }
 /* The overdue note is styled like a category pill: orange outline, no fill, same size and type. */
 body:not(.embed-light) .match-card .overdue-warning {

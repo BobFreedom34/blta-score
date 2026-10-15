@@ -1931,12 +1931,15 @@ function matchRoundHtml(m) {
   return label ? `<div class="match-card-notes">${escapeHtml(label)}</div>` : '';
 }
 
-// The green outlined "Book a court" button on a planned match card that has no date yet: opens the court booking page. A card is one big
-// <a>, so this is a button that stops the click from opening the match and goes to the booking page itself (same trick as playerNameLink).
-function reserveCourtBtnHtml() {
+// The small green "Book a court" pill (a ball) in the info line of a planned match card that has no date yet: opens the court booking page.
+// A card is one big <a>, so this is a button that stops the click from opening the match and goes to the booking page itself (same
+// trick as playerNameLink). Empty for every other card.
+function reserveCourtBtnHtml(m) {
+  if (!m || m.status !== 'PLANNED' || m.scheduledAt) return '';
   const target = siteUrl('/reservations');
   const nav = window.top === window.self ? `window.location.href='${target}'` : `window.open('${target}','_blank')`;
-  return `<button type="button" class="btn btn-sm btn-reserve-court" onclick="event.preventDefault();event.stopPropagation();${nav}">${courtIcon('ball')}${t('matches.reserveCourt')}</button>`;
+  const label = escapeHtml(t('matches.reserveCourt'));
+  return `<button type="button" class="reserve-court-pill" title="${label}" aria-label="${label}" onclick="event.preventDefault();event.stopPropagation();${nav}">${courtIcon('ball')}</button>`;
 }
 
 // The "Photo" pill: the match has at least one photo (see public/js/match-photos.js for the photos themselves).

@@ -48,6 +48,7 @@ function matchCardHtml(m) {
         <div class="match-card-meta" style="margin-left:auto">
           ${m.location ? `<span>${courtIcon('pin')}${escapeHtml(m.location)}</span>` : ''}
           ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>${courtIcon('calendar')}${fmtDateShort(m.scheduledAt)}</span>`}
+          ${reserveCourtBtnHtml(m)}
           ${(m.status !== 'FINISHED' || isAdminUser) && canManageMatch(m, isAdminUser) ? `<button type="button" class="match-quick-edit-btn" data-token="${m.token}" title="${escapeHtml(t('match.editMatchBtn'))}">${courtIcon('pencil')}</button>` : ''}
         </div>
         ${matchRoundHtml(m)}
@@ -69,7 +70,6 @@ function matchCardHtml(m) {
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
           <button type="button" class="btn btn-sm btn-outline quick-schedule-btn" data-token="${m.token}">${courtIcon('calendar')}<span class="btn-text-full">${t('matches.setDateLocation')}</span><span class="btn-text-compact">${t('matches.setDateLocationShort')}</span></button>
           <button type="button" class="btn btn-sm btn-outline propose-times-btn" data-token="${m.token}" data-p1-id="${m.player1.id}" data-p2-id="${m.player2.id}" data-p1-name="${escapeHtml(m.player1.name)}" data-p2-name="${escapeHtml(m.player2.name)}">${courtIcon('clock')}${t('matches.proposeTimes')}</button>
-          ${reserveCourtBtnHtml()}
         </div>
       ` : ''}
     </a>
