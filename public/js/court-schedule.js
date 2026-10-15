@@ -79,7 +79,7 @@ function csBlockHtml(m, day, startMin) {
     <span class="cs-m-time">${csTime(m.scheduledAt)}${m.locked && csState.admin ? ' <i class="cs-lock" title="Zamknuté — plánovač ho nepresúva"></i>' : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
     <span class="cs-m-pl">${csPlayersHtml(m)}</span>
     <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
-    ${m.status === 'FINISHED' && m.scoreSummary ? `<span class="cs-m-score">${escapeHtml(m.scoreSummary)}</span>` : ''}
+    ${(m.status === 'FINISHED' || m.status === 'LIVE') && m.scoreSummary ? `<span class="cs-m-score">${escapeHtml(m.scoreSummary)}</span>` : ''}
   </a>`;
 }
 
@@ -104,6 +104,20 @@ function csTimelineHtml(day) {
   return `<div class="cs-scroll"><div class="cs-grid" style="--cs-cols:${settings.courtCount}"><div class="cs-gutter"><div class="cs-court-h">&nbsp;</div><div class="cs-hours" style="height:${height}px">${hours.join('')}</div></div>${cols}</div></div>`;
 }
 
+// the matches being played right now, with the score so far — at the top of the tab, whether or not they are on a court
+function csLiveHtml() {
+  const live = csState.data.matches.filter((m) => m.status === 'LIVE');
+  if (!live.length) return '';
+  const cards = live.map((m) => `
+    <a class="cs-livecard ${csCatClass(m)}" href="/match/${m.token}">
+      <span class="cs-live-h"><b class="cs-live">${escapeHtml(t('home.live'))}</b>${m.courtNo ? ` ${escapeHtml(t('courts.court', { n: m.courtNo }))}` : ''}</span>
+      <span class="cs-m-pl">${csPlayersHtml(m)}</span>
+      <span class="cs-live-score">${escapeHtml(m.scoreSummary || '0-0')}</span>
+      <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
+    </a>`).join('');
+  return `<div class="cs-livestrip"><div class="cs-tray-h">${escapeHtml(t('courts.liveNow'))}<em>${live.length}</em></div><div class="cs-tray-body">${cards}</div></div>`;
+}
+
 function csTrayHtml() {
   const waiting = csState.data.matches.filter((m) => m.status === 'PLANNED' && !m.scheduledAt);
   if (!waiting.length && !csState.admin) return '';
@@ -126,7 +140,7 @@ function csListHtml(day) {
         <span class="cs-row-time">${csTime(m.scheduledAt)}–${csTime(m.endsAt)}</span>
         <span class="cs-row-pl">${csPlayersHtml(m)}</span>
         <span class="cs-row-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
-        <span class="cs-row-st">${m.status === 'LIVE' ? `<b class="cs-live">${escapeHtml(t('home.live'))}</b>` : m.status === 'FINISHED' ? escapeHtml(m.scoreSummary || '') : ''}</span>
+        <span class="cs-row-st">${m.status === 'LIVE' ? `<b class="cs-live">${escapeHtml(t('home.live'))}</b> ${escapeHtml(m.scoreSummary || '')}` : m.status === 'FINISHED' ? escapeHtml(m.scoreSummary || '') : ''}</span>
       </a>`).join('');
     return `<div class="cs-list-court"><div class="cs-list-h">${escapeHtml(t('courts.court', { n: court }))}<em>${rows.length}</em></div>${body || `<div class="cs-row-empty">${escapeHtml(t('courts.courtFree'))}</div>`}</div>`;
   }).join('');
@@ -177,6 +191,7 @@ function csRender() {
   const views = `<div class="tabs cs-views"><button type="button" class="tab${csChoice.view === 'timeline' ? ' active' : ''}" data-cs-view="timeline">${escapeHtml(t('courts.timeline'))}</button><button type="button" class="tab${csChoice.view === 'list' ? ' active' : ''}" data-cs-view="list">${escapeHtml(t('courts.list'))}</button></div>`;
   csState.host.innerHTML = `
     <section class="sv-sec cs-sec">
+      ${csLiveHtml()}
       <div class="cs-bar">${pills}${views}</div>
       ${settings.courtCount ? '' : `<div class="sv-empty">${escapeHtml(t('courts.noCourts'))}</div>`}
       ${settings.courtCount ? (csChoice.view === 'timeline' ? csTimelineHtml(day) : csListHtml(day)) : ''}
@@ -283,6 +298,13 @@ function csOnPointerUp() {
 }
 
 // ---------- entry ----------
+
+// a live score changed somewhere: only this tab's data is fetched again (not while the admin is dragging)
+async function reloadCourtSchedule() {
+  if (!csState || csDrag) return;
+  try { csState.data = await api(`/seasons/${csState.season.id}/schedule`); } catch { return; }
+  csRender();
+}
 
 async function initCourtSchedule(host, season) {
   host.innerHTML = `<div class="sv-empty">${escapeHtml(t('common.loading'))}</div>`;

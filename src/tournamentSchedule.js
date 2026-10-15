@@ -133,7 +133,7 @@ function intervalOf(row, settings, now) {
 function serializeMatch(row, settings, now) {
   const interval = intervalOf(row, settings, now);
   let scoreSummary = null;
-  if (row.status === 'FINISHED') {
+  if (row.status === 'FINISHED' || row.status === 'LIVE') {
     try { scoreSummary = engine.describeMatch(JSON.parse(row.state)); } catch { scoreSummary = null; }
   }
   return {

@@ -4950,3 +4950,11 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 }
 .cs-admin .btn.btn-outline { color: var(--white); background: #4a4d57; border: 2px solid #8b8f98; box-shadow: none; font-weight: 800; }
 .cs-admin .btn.btn-outline:hover { background: #5b5e66; border-color: var(--white); color: var(--white); }
+.cs-livestrip { margin-bottom: 16px; padding: 12px 14px; border: 1px solid rgba(178, 250, 6, 0.4); border-radius: var(--radius-md); background: rgba(178, 250, 6, 0.05); }
+.cs-livecard { display: flex; flex-direction: column; gap: 2px; min-width: 190px; padding: 8px 12px; border-radius: var(--radius-sm); background: #1f3d2a; border-left: 4px solid var(--gray-dim); color: var(--white); text-decoration: none; }
+.cs-livecard.cs-cat-elite { border-left-color: var(--orange); }
+.cs-livecard.cs-cat-nextgen { border-left-color: #4da3ff; }
+.cs-livecard.cs-cat-novice { border-left-color: var(--green); }
+.cs-live-h { font-size: 11px; font-weight: 800; color: #c3c7cf; }
+.cs-live-score { font-size: 18px; font-weight: 800; color: var(--green); }
+.cs-m.cs-st-live .cs-m-score { color: var(--green); font-weight: 800; }

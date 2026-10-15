@@ -523,16 +523,16 @@ function availableTabs() {
   const players = playersModel().total;
   const tabs = [
     { key: 'info', label: t('season.navInfo'), has: !!season.info },
+    { key: 'courts', label: t('season.navCourts'), has: (season.courtCount || 0) > 0 },
     { key: 'tables', label: t('season.navTables'), has: hasGroups },
     { key: 'results', label: t('season.navResults'), has: season.matchCount > 0 },
     { key: 'schedule', label: t('season.navSchedule'), has: (season.rounds || []).length > 0 },
     { key: 'players', label: t('season.navPlayers'), has: players > 0, count: players },
     { key: 'playoff', label: t(isTournament() ? 'season.navBrackets' : 'season.navPlayoff'), has: brackets.length > 0 || (hasGroups && statusOf() !== 'past') },
-    { key: 'courts', label: t('season.navCourts'), has: (season.courtCount || 0) > 0 },
     { key: 'gallery', label: t('season.navGallery'), has: !!season.galleryUrl },
   ];
-  // a tournament has only the tabs Základné info, Výsledky, Rozpis, Pavúky, Rozvrh kurtov and Galéria; its players are shown all the time, below the tab content (see fixedPlayersHtml)
-  return isTournament() ? tabs.filter((x) => ['info', 'results', 'schedule', 'playoff', 'courts', 'gallery'].includes(x.key)) : tabs.filter((x) => x.key !== 'courts');
+  // a tournament has only the tabs Základné info, Harmonogram (court timetable with live scores), Rozpis, Pavúky and Galéria; its players are shown all the time, below the tab content (see fixedPlayersHtml)
+  return isTournament() ? tabs.filter((x) => ['info', 'courts', 'schedule', 'playoff', 'gallery'].includes(x.key)) : tabs.filter((x) => x.key !== 'courts');
 }
 
 function fixedPlayersHtml() {
@@ -650,7 +650,10 @@ async function refresh() {
   if (typeof io === 'function') {
     io().on('matches:changed', () => {
       clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(refresh, 1500);
+      // the timetable tab only reloads its own data (a live score changes often); the other tabs load again when opened
+      refreshTimer = setTimeout(() => {
+        if (tab === 'courts' && typeof reloadCourtSchedule === 'function') { loaded.clear(); reloadCourtSchedule(); } else refresh();
+      }, tab === 'courts' ? 600 : 1500);
     });
   }
 })();
