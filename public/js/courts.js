@@ -27,7 +27,7 @@ function cardHtml(v) {
   if (v.bookingUrl) actions.push(`<a class="court-btn court-btn-primary" href="${escapeHtml(v.bookingUrl)}" target="_blank" rel="noopener noreferrer">${courtIcon('arrow')}${escapeHtml(t('courts.book'))}</a>`);
   return `
     <article class="court-card${v.imageUrl ? ' has-image' : ''}">
-      ${v.imageUrl ? `<a class="court-card-img" href="${detailUrl}" tabindex="-1" aria-hidden="true"><img src="${escapeHtml(v.imageUrl)}" alt="" loading="lazy"></a>` : ''}
+      ${v.imageUrl ? `<a class="court-card-img" href="${detailUrl}" tabindex="-1"><img src="${escapeHtml(v.imageUrl)}" alt="Kurty - ${escapeHtml(v.name)}" width="768" height="432" loading="lazy"></a>` : ''}
       <a class="court-card-head" href="${detailUrl}" aria-label="${escapeHtml(t('courts.details'))}: ${escapeHtml(v.name)}">
         <span class="court-card-arrow">${courtIcon('arrow')}</span>
         <h3 class="court-card-name">${escapeHtml(v.name)}</h3>
