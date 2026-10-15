@@ -109,6 +109,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
             <input type="number" min="0" max="50" inputmode="numeric" class="sd-courts" value="${overview.courtCount || ''}" placeholder="0" style="width:64px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px;margin:0 6px">
           </label>
           <button type="button" class="btn btn-sm btn-outline" data-act="courts">Uložiť kurty</button>
+          <a href="/season/${encodeURIComponent(overview.slug)}#courts" target="_blank" rel="noopener" style="font-size:13px;font-weight:700">Rozvrh kurtov ›</a>
           <span class="sd-courts-note" style="font-size:12px;color:var(--gray)">${overview.courtCount ? Array.from({ length: Math.min(overview.courtCount, 6) }, (_, i) => `Kurt ${i + 1}`).join(', ') + (overview.courtCount > 6 ? ` … Kurt ${overview.courtCount}` : '') : 'Kurty zatiaľ nie sú nastavené'}</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px">${overview.categories.map(blockHtml).join('')}</div>

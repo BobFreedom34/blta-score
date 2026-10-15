@@ -4885,3 +4885,68 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sv-pay-row b { word-break: break-all; }
 .sv-pay-copy { border: 1px solid var(--gray-dim); background: var(--white); border-radius: 8px; padding: 3px 10px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
 .sv-pay-note { margin: 8px 0 0; font-size: 13px; font-weight: 700; color: var(--ink); }
+
+/* Rozvrh kurtov: the court schedule tab of a tournament (court-schedule.js) */
+.cs-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 16px; }
+.cs-bar .tabs { margin: 0; }
+.cs-scroll { overflow-x: auto; padding-bottom: 6px; }
+.cs-grid { display: grid; grid-template-columns: 46px repeat(var(--cs-cols), minmax(150px, 1fr)); gap: 8px; min-width: min-content; }
+.cs-court-h { height: 30px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
+.cs-hours { position: relative; }
+.cs-hour { position: absolute; right: 4px; transform: translateY(-7px); font-size: 11px; font-weight: 700; color: #8b8f98; }
+.cs-col { position: relative; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius-md); overflow: hidden; }
+.cs-line { position: absolute; left: 0; right: 0; height: 1px; background: rgba(255, 255, 255, 0.08); }
+.cs-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--orange); z-index: 3; }
+.cs-m { position: absolute; left: 4px; right: 4px; z-index: 2; overflow: hidden; display: flex; flex-direction: column; gap: 1px; padding: 5px 8px 4px; border-radius: var(--radius-sm); background: #26282e; border-left: 4px solid var(--gray-dim); color: var(--white); text-decoration: none; font-size: 12px; line-height: 1.25; }
+.cs-m:hover { background: #30333b; }
+.cs-m-time { font-size: 11px; font-weight: 800; color: #c3c7cf; }
+.cs-m-pl { display: flex; flex-direction: column; font-weight: 700; font-size: 13px; }
+.cs-m-pl .cs-win { color: var(--green); }
+.cs-m-meta { font-size: 11px; color: #8b8f98; }
+.cs-m-score { font-size: 11px; font-weight: 700; color: #c3c7cf; }
+.cs-st-finished { opacity: 0.65; }
+.cs-st-live { background: #1f3d2a; }
+.cs-live { color: var(--green); font-size: 10px; letter-spacing: 0.06em; }
+.cs-cat-elite { border-left-color: var(--orange); }
+.cs-cat-nextgen { border-left-color: #4da3ff; }
+.cs-cat-novice { border-left-color: var(--green); }
+.cs-lock { display: inline-block; width: 8px; height: 6px; background: var(--yellow); border-radius: 1px; vertical-align: 0; margin-left: 4px; position: relative; }
+.cs-lock::before { content: ''; position: absolute; left: 1px; top: -4px; width: 4px; height: 4px; border: 1.5px solid var(--yellow); border-bottom: none; border-radius: 3px 3px 0 0; }
+.cs-drag { cursor: grab; touch-action: none; user-select: none; -webkit-user-drag: none; }
+.cs-dragging { opacity: 0.35; }
+.cs-ghost { position: fixed; left: 0; z-index: 1000; pointer-events: none; opacity: 0.92; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+.cs-ghost.cs-chip, .cs-ghost.cs-m { background: #30333b; }
+.cs-drop { position: absolute; left: 4px; right: 4px; z-index: 1; border: 2px dashed var(--orange); border-radius: var(--radius-sm); background: rgba(255, 85, 0, 0.12); color: var(--orange); font-size: 12px; font-weight: 800; padding: 3px 8px; pointer-events: none; }
+.cs-tray { margin-top: 18px; padding: 12px 14px; border: 1px dashed rgba(255, 255, 255, 0.28); border-radius: var(--radius-md); }
+.cs-tray-over { border-color: var(--orange); background: rgba(255, 85, 0, 0.08); }
+.cs-tray-h { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); margin-bottom: 10px; }
+.cs-tray-h em { font-style: normal; color: #c3c7cf; margin-left: 8px; letter-spacing: 0; }
+.cs-tray-body { display: flex; flex-wrap: wrap; gap: 8px; }
+.cs-tray-empty { color: #8b8f98; font-size: 13px; font-weight: 600; }
+.cs-chip { display: flex; flex-direction: column; gap: 1px; min-width: 150px; padding: 6px 10px; border-radius: var(--radius-sm); background: #26282e; border-left: 4px solid var(--gray-dim); color: var(--white); text-decoration: none; }
+.cs-list { display: grid; gap: 22px; }
+.cs-list-h { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--orange); padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.18); }
+.cs-list-h em { font-style: normal; color: #c3c7cf; margin-left: 8px; letter-spacing: 0; }
+.cs-row { display: grid; grid-template-columns: 110px minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.8fr); gap: 12px; align-items: center; padding: 9px 0 9px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid var(--gray-dim); color: var(--white); text-decoration: none; font-size: 14px; }
+.cs-row:hover { background: rgba(255, 255, 255, 0.04); }
+.cs-row-time { font-weight: 800; color: #c3c7cf; }
+.cs-row-pl { display: flex; flex-direction: column; font-weight: 700; }
+.cs-row-pl .cs-win { color: var(--green); }
+.cs-row-meta { color: #8b8f98; font-size: 12px; }
+.cs-row-st { text-align: right; font-size: 12px; font-weight: 700; color: #c3c7cf; }
+.cs-row-empty { color: #6e727c; font-size: 13px; padding: 10px 0; }
+.cs-row.cs-cat-elite { border-left-color: var(--orange); }
+.cs-row.cs-cat-nextgen { border-left-color: #4da3ff; }
+.cs-row.cs-cat-novice { border-left-color: var(--green); }
+.cs-admin { margin-top: 22px; padding: 14px 16px; border-radius: var(--radius-md); background: var(--fill-grey); display: grid; gap: 12px; }
+.cs-admin-row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
+.cs-admin label { display: grid; gap: 4px; font-size: 11px; font-weight: 700; color: #c3c7cf; }
+.cs-admin input[type=number], .cs-admin input[type=time] { width: 110px; padding: 7px 9px; border-radius: var(--radius-sm); border: 1.5px solid var(--border-grey); background: #0a0a0a; color: var(--white); font-family: inherit; font-size: 14px; }
+.cs-admin .cs-check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.cs-hint { font-size: 12px; color: #c3c7cf; max-width: 520px; }
+@media (max-width: 700px) {
+  .cs-row { grid-template-columns: 88px minmax(0, 1fr); }
+  .cs-row-meta, .cs-row-st { grid-column: 2; text-align: left; }
+}
+.cs-admin .btn-outline { color: var(--white); border-color: var(--border-grey); background: transparent; }
+.cs-admin .btn-outline:hover { border-color: var(--white); }

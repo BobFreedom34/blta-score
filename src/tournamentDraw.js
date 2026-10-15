@@ -160,6 +160,7 @@ function createDraw(season, category, opts = {}) {
     db.exec('ROLLBACK');
     throw err;
   }
+  bracketEngine.planCourts(mainId);
   return { main: mainId, consolation: consolationId, consolationNote, warnings };
 }
 

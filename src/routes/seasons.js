@@ -326,7 +326,7 @@ function tournamentOr404(req, res) {
 router.get('/:id/draw', requireAdmin, (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
-  res.json({ courtCount: season.court_count || 0, categories: tournamentDraw.overview(season.id) });
+  res.json({ slug: season.slug, courtCount: season.court_count || 0, categories: tournamentDraw.overview(season.id) });
 });
 
 // { category, seeds: [{ id: registrationId, seed }] } — replaces the seeds of that category; players left out are not seeded.
@@ -358,6 +358,55 @@ router.delete('/:id/draw/:category', requireAdmin, (req, res) => {
   const done = tournamentDraw.deleteDraw(season, req.params.category);
   if (done.error) return res.status(done.status || 400).json({ error: done.error });
   res.json({ ok: true, categories: tournamentDraw.overview(season.id) });
+});
+
+// ---------------- tournament court schedule (see tournamentSchedule.js) ----------------
+
+const tournamentSchedule = require('../tournamentSchedule');
+
+function scheduleChanged(req, season) {
+  const io = req.app.get('io');
+  if (io) io.emit('matches:changed', { seasonId: season.id, status: 'SCHEDULE' });
+}
+
+// Public: the schedule tab of the tournament page — settings, every match with two players, who is on which court when.
+router.get('/:id/schedule', (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  res.json(tournamentSchedule.getSchedule(season));
+});
+
+// { matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule }
+router.patch('/:id/schedule/settings', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const saved = tournamentSchedule.saveSettings(season, req.body || {});
+  if (saved.error) return res.status(400).json({ error: saved.error });
+  res.json(tournamentSchedule.getSchedule(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
+});
+
+// { mode: 'fill' | 'rebuild' | 'clear' } — the planner puts the matches without a time on the courts (see tournamentSchedule.autoPlan)
+router.post('/:id/schedule/auto', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const mode = ['fill', 'rebuild', 'clear'].includes(req.body && req.body.mode) ? req.body.mode : 'fill';
+  const done = tournamentSchedule.autoPlan(season.id, { mode });
+  if (done.error) return res.status(400).json({ error: done.error });
+  scheduleChanged(req, season);
+  res.json({ ...done, schedule: tournamentSchedule.getSchedule(season) });
+});
+
+// { courtNo, scheduledAt } puts a match that has not started on a court at a time (the planner never moves it afterwards);
+// { courtNo: null } takes it off the schedule.
+router.put('/:id/schedule/matches/:token', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const body = req.body || {};
+  const courtNo = body.courtNo === null || body.courtNo === undefined ? null : Number(body.courtNo);
+  const done = tournamentSchedule.placeMatch(season, req.params.token, courtNo, body.scheduledAt);
+  if (done.error) return res.status(done.status || 400).json({ error: done.error });
+  scheduleChanged(req, season);
+  res.json({ warnings: done.warnings, schedule: tournamentSchedule.getSchedule(season) });
 });
 
 // The admin registers a player who is already in the app, without the registration form: the phone number and the e-mail

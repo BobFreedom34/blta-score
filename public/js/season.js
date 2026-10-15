@@ -529,9 +529,10 @@ function availableTabs() {
     { key: 'players', label: t('season.navPlayers'), has: players > 0, count: players },
     { key: 'playoff', label: t('season.navPlayoff'), has: brackets.length > 0 || (hasGroups && statusOf() !== 'past') },
     { key: 'gallery', label: t('season.navGallery'), has: !!season.galleryUrl },
+    { key: 'courts', label: t('season.navCourts'), has: (season.courtCount || 0) > 0 },
   ];
-  // a tournament has only the tabs Základné info, Výsledky, Rozpis and Galéria; its players are shown all the time, below the tab content (see fixedPlayersHtml)
-  return isTournament() ? tabs.filter((x) => ['info', 'results', 'schedule', 'gallery'].includes(x.key)) : tabs;
+  // a tournament has only the tabs Základné info, Výsledky, Rozpis, Rozvrh kurtov and Galéria; its players are shown all the time, below the tab content (see fixedPlayersHtml)
+  return isTournament() ? tabs.filter((x) => ['info', 'results', 'schedule', 'courts', 'gallery'].includes(x.key)) : tabs.filter((x) => x.key !== 'courts');
 }
 
 function fixedPlayersHtml() {
@@ -552,7 +553,8 @@ function panelHtml() {
         : tab === 'players' ? playersHtml()
           : tab === 'playoff' ? playoffHtml()
             : tab === 'gallery' ? galleryHtml()
-              : infoHtml();
+              : tab === 'courts' ? '<div id="sv-courts"></div>'
+                : infoHtml();
   return html || `<div class="sv-empty">${escapeHtml(t(`season.empty.${tab}`))}</div>`;
 }
 
@@ -584,6 +586,7 @@ async function renderPanel() {
   }
   panel.innerHTML = panelHtml();
   if (key === 'playoff') fillBrackets();
+  if (key === 'courts') initCourtSchedule(document.getElementById('sv-courts'), season).catch(() => { document.getElementById('sv-courts').innerHTML = `<div class="sv-empty">${escapeHtml(t('season.empty.courts'))}</div>`; });
 }
 
 function render() {

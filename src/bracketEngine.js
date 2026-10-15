@@ -8,6 +8,7 @@
 const crypto = require('crypto');
 const db = require('./db');
 const engine = require('./matchEngine');
+const tournamentSchedule = require('./tournamentSchedule');
 
 // Smallest power of two >= n, minimum 2 — a draw always has a tree shape
 // (2, 4, 8, 16, 32...) even when the entrant count is odd; the gap between
@@ -235,6 +236,7 @@ function recordManualResult(nodeId, winnerId, score) {
   const node = db.prepare('SELECT * FROM bracket_matches WHERE id = ?').get(nodeId);
   advanceWinner(node, winnerId);
   dropLoser(node, winnerId);
+  planCourts(node.bracket_id);
   return node;
 }
 
@@ -247,6 +249,13 @@ function syncBracketIfFinished(matchRow) {
   if (!node) return;
   advanceWinner(node, matchRow.winner_id);
   dropLoser(node, matchRow.winner_id);
+  planCourts(node.bracket_id);
+}
+
+// New matches of a tournament bracket are put on the courts by the planner (when the tournament has courts and automatic scheduling on).
+function planCourts(bracketId) {
+  const bracket = db.prepare('SELECT season_id FROM brackets WHERE id = ?').get(bracketId);
+  if (bracket && bracket.season_id) tournamentSchedule.autoPlanIfEnabled(bracket.season_id);
 }
 
 // ---------- consolation draw ("útecha") ----------
@@ -308,6 +317,7 @@ function buildConsolation(mainBracketId, { name, format }) {
     const winnerId = nodeWinner(fresh);
     if (winnerId) dropLoser(fresh, winnerId);
   });
+  planCourts(bracketId);
   return { bracketId };
 }
 
@@ -363,6 +373,7 @@ module.exports = {
   advanceWinner,
   syncBracketIfFinished,
   buildConsolation,
+  planCourts,
   consolationOf,
   consolationReadiness,
   dropLoser,

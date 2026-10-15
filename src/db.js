@@ -1340,6 +1340,21 @@ const seasonInfoColumns = db.prepare('PRAGMA table_info(seasons)').all().map((c)
 if (!seasonInfoColumns.includes('kind')) db.exec("ALTER TABLE seasons ADD COLUMN kind TEXT NOT NULL DEFAULT 'LEAGUE'");
 // the number of courts of a tournament ("Kurt 1" … "Kurt n"), 0 = not set; used by the schedule
 if (!seasonInfoColumns.includes('court_count')) db.exec('ALTER TABLE seasons ADD COLUMN court_count INTEGER NOT NULL DEFAULT 0');
+// the tournament's court schedule (see tournamentSchedule.js): length of a match, the playing day, the minimum rest of a player between two
+// matches and whether the app places new matches on the courts by itself; matches.court_no is the court (1..court_count) of a scheduled
+// match, slot_locked = 1 when the organiser put it there by hand (the automatic planner never moves it)
+[
+  ['match_minutes', 'INTEGER NOT NULL DEFAULT 90'],
+  ['day_start', "TEXT NOT NULL DEFAULT '09:00'"],
+  ['day_end', "TEXT NOT NULL DEFAULT '20:00'"],
+  ['rest_minutes', 'INTEGER NOT NULL DEFAULT 30'],
+  ['auto_schedule', 'INTEGER NOT NULL DEFAULT 1'],
+].forEach(([col, type]) => {
+  if (!seasonInfoColumns.includes(col)) db.exec(`ALTER TABLE seasons ADD COLUMN ${col} ${type}`);
+});
+const matchScheduleColumns = db.prepare('PRAGMA table_info(matches)').all().map((c) => c.name);
+if (!matchScheduleColumns.includes('court_no')) db.exec('ALTER TABLE matches ADD COLUMN court_no INTEGER');
+if (!matchScheduleColumns.includes('slot_locked')) db.exec('ALTER TABLE matches ADD COLUMN slot_locked INTEGER NOT NULL DEFAULT 0');
 if (!db.prepare('PRAGMA table_info(season_group_members)').all().some((c) => c.name === 'paid')) {
   db.exec('ALTER TABLE season_group_members ADD COLUMN paid INTEGER NOT NULL DEFAULT 0');
 }
