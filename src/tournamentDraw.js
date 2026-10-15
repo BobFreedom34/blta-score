@@ -149,11 +149,11 @@ function createDraw(season, category, opts = {}) {
   db.exec('BEGIN');
   try {
     if (mode === 'AUTO') {
-      mainId = bracketEngine.createBracket({ ...common, name: `${label} — Hlavný pavúk`, format: mainFormat, entries: entriesFor(regs, random) });
-      const made = bracketEngine.buildConsolation(mainId, { name: `${label} — Útecha`, format: consolationFormat });
+      mainId = bracketEngine.createBracket({ ...common, name: `${season.name} — ${label} — Hlavný pavúk`, format: mainFormat, entries: entriesFor(regs, random) });
+      const made = bracketEngine.buildConsolation(mainId, { name: `${season.name} — ${label} — Útecha`, format: consolationFormat });
       if (made.bracketId) consolationId = made.bracketId; else consolationNote = made.error;
     } else {
-      mainId = bracketEngine.createBracket({ ...common, name: `${label} — Hlavný pavúk`, format: mainFormat, entries: null, size });
+      mainId = bracketEngine.createBracket({ ...common, name: `${season.name} — ${label} — Hlavný pavúk`, format: mainFormat, entries: null, size });
     }
     db.exec('COMMIT');
   } catch (err) {

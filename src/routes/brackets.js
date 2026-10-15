@@ -124,6 +124,7 @@ router.get('/', auth.requireAdmin, (req, res) => {
     parentBracketId: r.parent_bracket_id || null,
     seasonId: r.season_id || null,
     seasonName: (seasonOf(r.season_id) || {}).name || null,
+    seasonKind: r.season_id ? ((db.prepare('SELECT kind FROM seasons WHERE id = ?').get(r.season_id) || {}).kind || 'LEAGUE') : null,
     size: r.size,
     autoCreateMatches: !!r.auto_create_matches,
     createdAt: r.created_at,

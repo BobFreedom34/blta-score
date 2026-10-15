@@ -212,14 +212,18 @@ async function loadBrackets() {
   renderList();
 }
 
-function renderList() {
-  const listEl = document.getElementById('bracket-list');
-  listEl.innerHTML = brackets.length
-    ? brackets.map((b) => `
+// a bracket of a tournament shows the name of the tournament in front of its own name when that is not in it already
+function displayName(b) {
+  if (b.seasonKind === 'TOURNAMENT' && b.seasonName && !b.name.toLowerCase().includes(b.seasonName.toLowerCase())) return `${b.seasonName} — ${b.name}`;
+  return b.name;
+}
+
+function bracketRowHtml(b) {
+  return `
       <div class="bracket-admin-row" data-id="${b.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div class="bracket-name-cell" style="flex:1;min-width:160px">
-            <div class="bracket-name-display" style="font-weight:700">${escapeHtml(b.name)}${b.category ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.category)}</span>` : ''}${b.seasonName ? ` <span style="font-size:11px;font-weight:700;color:var(--charcoal);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.seasonName)}</span>` : ''}${b.autoCreateMatches === false ? ' <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">Historical</span>' : ''}</div>
+            <div class="bracket-name-display" style="font-weight:700">${escapeHtml(displayName(b))}${b.category ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.category)}</span>` : ''}${b.seasonName && b.seasonKind !== 'TOURNAMENT' ? ` <span style="font-size:11px;font-weight:700;color:var(--charcoal);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.seasonName)}</span>` : ''}${b.autoCreateMatches === false ? ' <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">Historical</span>' : ''}</div>
             <div style="font-size:12px;color:var(--gray)">${b.size}-draw · ${escapeHtml(formatLabel(b.format))}</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
@@ -231,8 +235,33 @@ function renderList() {
         </div>
         <div class="bracket-manage-slot" data-manage-id="${b.id}"></div>
       </div>
-    `).join('')
-    : '<div class="empty-state">No brackets yet.</div>';
+  `;
+}
+
+// the list is divided into leagues, tournaments (a heading per tournament) and brackets without a season
+function groupedHtml() {
+  const groups = [
+    ['Leagues', brackets.filter((b) => b.seasonId && b.seasonKind !== 'TOURNAMENT'), (b) => b.seasonName],
+    ['Tournaments', brackets.filter((b) => b.seasonId && b.seasonKind === 'TOURNAMENT').sort((x, y) => String(x.seasonName).localeCompare(String(y.seasonName)) || x.id - y.id), (b) => b.seasonName],
+    ['Without a season', brackets.filter((b) => !b.seasonId), () => ''],
+  ].filter(([, list]) => list.length);
+  const head = (text) => `<div style="font-size:12px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--orange);margin:18px 4px 4px">${escapeHtml(text)}</div>`;
+  const sub = (text) => `<div style="font-size:13px;font-weight:800;margin:10px 4px 0">${escapeHtml(text)}</div>`;
+  return groups.map(([title, list, subOf]) => {
+    let last = null;
+    const rows = list.map((b) => {
+      const s = subOf(b);
+      const heading = s && s !== last ? sub(s) : '';
+      last = s;
+      return heading + bracketRowHtml(b);
+    }).join('');
+    return head(title) + rows;
+  }).join('');
+}
+
+function renderList() {
+  const listEl = document.getElementById('bracket-list');
+  listEl.innerHTML = brackets.length ? groupedHtml() : '<div class="empty-state">No brackets yet.</div>';
 
   document.querySelectorAll('.bracket-admin-row').forEach((rowEl) => {
     const id = Number(rowEl.dataset.id);

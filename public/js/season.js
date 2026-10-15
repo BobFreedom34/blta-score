@@ -378,7 +378,9 @@ function playoffHtml() {
   const filter = `<div class="tabs sv-line" id="sv-pcats">${btn('ALL', t('season.schedAll'), brackets.length)}${cats.map((c) => btn(c, CATEGORY_NAMES[c], brackets.filter((b) => b.category === c).length)).join('')}</div>`;
   const title = (b) => {
     const cat = CATEGORY_NAMES[b.category] || '';
-    return cat && !b.name.toLowerCase().includes(cat.toLowerCase()) ? `${cat} · ${b.name}` : b.name;
+    const named = cat && !b.name.toLowerCase().includes(cat.toLowerCase()) ? `${cat} · ${b.name}` : b.name;
+    // a tournament's bracket carries the name of the tournament
+    return isTournament() && !named.toLowerCase().includes(season.name.toLowerCase()) ? `${season.name} — ${named}` : named;
   };
   const body = brackets.filter((b) => playoffCat === 'ALL' || b.category === playoffCat)
     .map((b) => `<div class="sv-bracket" data-bracket="${b.id}"><h3 class="grp-title">${escapeHtml(title(b))}</h3><div class="sv-bracket-body">${escapeHtml(t('common.loading'))}</div></div>`).join('');
