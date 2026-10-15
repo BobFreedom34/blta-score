@@ -527,12 +527,12 @@ function availableTabs() {
     { key: 'results', label: t('season.navResults'), has: season.matchCount > 0 },
     { key: 'schedule', label: t('season.navSchedule'), has: (season.rounds || []).length > 0 },
     { key: 'players', label: t('season.navPlayers'), has: players > 0, count: players },
-    { key: 'playoff', label: t('season.navPlayoff'), has: brackets.length > 0 || (hasGroups && statusOf() !== 'past') },
-    { key: 'gallery', label: t('season.navGallery'), has: !!season.galleryUrl },
+    { key: 'playoff', label: t(isTournament() ? 'season.navBrackets' : 'season.navPlayoff'), has: brackets.length > 0 || (hasGroups && statusOf() !== 'past') },
     { key: 'courts', label: t('season.navCourts'), has: (season.courtCount || 0) > 0 },
+    { key: 'gallery', label: t('season.navGallery'), has: !!season.galleryUrl },
   ];
-  // a tournament has only the tabs Základné info, Výsledky, Rozpis, Rozvrh kurtov and Galéria; its players are shown all the time, below the tab content (see fixedPlayersHtml)
-  return isTournament() ? tabs.filter((x) => ['info', 'results', 'schedule', 'courts', 'gallery'].includes(x.key)) : tabs.filter((x) => x.key !== 'courts');
+  // a tournament has only the tabs Základné info, Výsledky, Rozpis, Pavúky, Rozvrh kurtov and Galéria; its players are shown all the time, below the tab content (see fixedPlayersHtml)
+  return isTournament() ? tabs.filter((x) => ['info', 'results', 'schedule', 'playoff', 'courts', 'gallery'].includes(x.key)) : tabs.filter((x) => x.key !== 'courts');
 }
 
 function fixedPlayersHtml() {
@@ -555,7 +555,8 @@ function panelHtml() {
             : tab === 'gallery' ? galleryHtml()
               : tab === 'courts' ? '<div id="sv-courts"></div>'
                 : infoHtml();
-  return html || `<div class="sv-empty">${escapeHtml(t(`season.empty.${tab}`))}</div>`;
+  const emptyKey = tab === 'playoff' && isTournament() ? 'season.empty.brackets' : `season.empty.${tab}`;
+  return html || `<div class="sv-empty">${escapeHtml(t(emptyKey))}</div>`;
 }
 
 // Loads what the open tab needs the first time it is opened (the header and the tables are loaded with the page).
