@@ -1931,15 +1931,23 @@ function matchRoundHtml(m) {
   return label ? `<div class="match-card-notes">${escapeHtml(label)}</div>` : '';
 }
 
-// The small green "Book a court" pill (a ball) in the info line of a planned match card that has no date yet: opens the court booking page.
-// A card is one big <a>, so this is a button that stops the click from opening the match and goes to the booking page itself (same
-// trick as playerNameLink). Empty for every other card.
-function reserveCourtBtnHtml(m) {
-  if (!m || m.status !== 'PLANNED' || m.scheduledAt) return '';
+// "Book a court" on a planned match card that has no date yet: opens the court booking page. A card is one big <a>, so these are buttons that
+// stop the click from opening the match and go to the booking page themselves (same trick as playerNameLink). Two shapes of the same
+// thing, one of them shown by CSS depending on the width: the green outlined button with its words in the row of buttons under the
+// players (wide screens), and a small green ball pill in the card's info line (phones, where a third button would not fit the row).
+// Both are empty for every other card.
+function reserveCourtOnclick() {
   const target = siteUrl('/reservations');
   const nav = window.top === window.self ? `window.location.href='${target}'` : `window.open('${target}','_blank')`;
+  return `event.preventDefault();event.stopPropagation();${nav}`;
+}
+function reserveCourtBtnHtml() {
+  return `<button type="button" class="btn btn-sm btn-reserve-court" onclick="${reserveCourtOnclick()}">${courtIcon('ball')}${t('matches.reserveCourt')}</button>`;
+}
+function reserveCourtPillHtml(m) {
+  if (!m || m.status !== 'PLANNED' || m.scheduledAt) return '';
   const label = escapeHtml(t('matches.reserveCourt'));
-  return `<button type="button" class="reserve-court-pill" title="${label}" aria-label="${label}" onclick="event.preventDefault();event.stopPropagation();${nav}">${courtIcon('ball')}</button>`;
+  return `<button type="button" class="reserve-court-pill" title="${label}" aria-label="${label}" onclick="${reserveCourtOnclick()}">${courtIcon('ball')}</button>`;
 }
 
 // The "Photo" pill: the match has at least one photo (see public/js/match-photos.js for the photos themselves).
