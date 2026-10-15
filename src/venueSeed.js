@@ -510,6 +510,7 @@ const VENUE_IMAGES = {
   'Éči - Zlaté Piesky': '/img/courts/eci-zlate-piesky.jpg',
   'Kurty Patrónka': '/img/courts/kurty-patronka.jpg',
   'TK Trnávka': '/img/courts/tk-trnavka.jpg',
+  'Top Tenis - Budatínska': '/img/courts/top-tenis-budatinska.jpg',
 };
 
 function seedVenueImages() {
