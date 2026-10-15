@@ -508,6 +508,8 @@ const VENUE_IMAGES = {
   'TK Dúbravka - Lysákova': '/img/courts/tk-dubravka-lysakova.jpg',
   'Leon - Zlaté Piesky': '/img/courts/leon-zlate-piesky.jpg',
   'Inter Bratislava': '/img/courts/inter-bratislava.jpg',
+  'Éči - Zlaté Piesky': '/img/courts/eci-zlate-piesky.jpg',
+  'Kurty Patrónka': '/img/courts/kurty-patronka.jpg',
 };
 
 function seedVenueImages() {
