@@ -506,6 +506,8 @@ const VENUE_IMAGES = {
   'Love4Tennis': '/img/courts/love4tennis.jpg',
   'Tenis Club 26': '/img/courts/tenis-club-26.jpg',
   'TK Dúbravka - Lysákova': '/img/courts/tk-dubravka-lysakova.jpg',
+  'Leon - Zlaté Piesky': '/img/courts/leon-zlate-piesky.jpg',
+  'Inter Bratislava': '/img/courts/inter-bratislava.jpg',
 };
 
 function seedVenueImages() {
