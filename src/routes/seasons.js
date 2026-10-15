@@ -12,6 +12,9 @@ const auth = require('../auth');
 const playerRoutes = require('./player');
 const { creditInviter } = require('./invites');
 const tournamentDraw = require('../tournamentDraw');
+const matchPhotos = require('./matchPhotos');
+const rankingPoints = require('../rankingPoints');
+const changeLog = require('../changeLog');
 
 const router = express.Router();
 
@@ -620,9 +623,52 @@ router.patch('/:id', requireAdmin, (req, res) => {
 
 // Deleting a season deletes its groups and clears the season/group on the matches that had them
 // (the matches themselves are untouched).
+// ?withMatches=1 (tournaments only): the tournament goes together with ALL its matches, its brackets, registrations and groups. A deleted
+// match takes the ranking points it added back with it, like deleting one match does (the CourtIQ rating of the players is not recalculated).
+function deleteTournamentWithMatches(req, res, season) {
+  if (season.kind !== 'TOURNAMENT') return res.status(400).json({ error: 'Only a tournament can be deleted together with its matches' });
+  const matches = db.prepare('SELECT * FROM matches WHERE season_id = ?').all(season.id);
+  const brackets = db.prepare('SELECT id FROM brackets WHERE season_id = ?').all(season.id).map((b) => b.id);
+  db.exec('BEGIN');
+  try {
+    matches.forEach((m) => {
+      db.prepare('DELETE FROM messages WHERE match_id = ?').run(m.id);
+      db.prepare('DELETE FROM match_notifications WHERE match_id = ?').run(m.id);
+      db.prepare('DELETE FROM push_subscriptions WHERE match_id = ?').run(m.id);
+      matchPhotos.removeAllForMatch(m.id);
+      db.prepare('UPDATE bracket_matches SET match_id = NULL WHERE match_id = ?').run(m.id);
+      db.prepare('DELETE FROM matches WHERE id = ?').run(m.id);
+    });
+    brackets.forEach((id) => {
+      db.prepare('DELETE FROM bracket_matches WHERE bracket_id = ?').run(id);
+      db.prepare('DELETE FROM brackets WHERE id = ?').run(id);
+    });
+    db.prepare('DELETE FROM season_group_members WHERE group_id IN (SELECT id FROM season_groups WHERE season_id = ?)').run(season.id);
+    db.prepare('DELETE FROM season_groups WHERE season_id = ?').run(season.id);
+    db.prepare('DELETE FROM season_registrations WHERE season_id = ?').run(season.id);
+    db.prepare('DELETE FROM seasons WHERE id = ?').run(season.id);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  matches.forEach((m) => {
+    try {
+      const ranking = rankingPoints.reverseForMatchWithChanges(m.id);
+      try { changeLog.logMatchDeleted(m, ranking); } catch (err) { console.error('[change log]', err.message); }
+    } catch (err) {
+      console.error('[seasons] failed to reverse ranking points on delete:', err.message);
+    }
+  });
+  const io = req.app.get('io');
+  if (io) io.emit('matches:changed', { seasonId: season.id, status: 'DELETED' });
+  return res.json({ ok: true, deletedMatches: matches.length });
+}
+
 router.delete('/:id', requireAdmin, (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
+  if (req.query.withMatches === '1') return deleteTournamentWithMatches(req, res, season);
   db.prepare('UPDATE matches SET group_id = NULL WHERE season_id = ?').run(season.id);
   db.prepare('DELETE FROM season_group_members WHERE group_id IN (SELECT id FROM season_groups WHERE season_id = ?)').run(season.id);
   db.prepare('DELETE FROM season_registrations WHERE season_id = ?').run(season.id);

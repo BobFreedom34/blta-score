@@ -286,6 +286,28 @@ test('moving a player to another category drops their seed', async () => {
   assert.strictEqual(moved.json.find((r) => r.id === seeded.id).seed, null);
 });
 
+test('deleting a tournament with its matches: the matches (played and planned), brackets and registrations all go; a league season cannot be deleted this way', async () => {
+  const league = (await call('POST', '/api/seasons', { name: 'League Keep', kind: 'LEAGUE' })).json;
+  assert.strictEqual((await call('DELETE', `/api/seasons/${league.id}?withMatches=1`)).status, 400);
+  assert.strictEqual((await call('GET', `/api/seasons/${league.id}/brackets`)).status, 200, 'the league season is still there');
+  const brackets = (await call('GET', `/api/seasons/${tournament.id}/brackets`)).json;
+  assert.ok(brackets.length >= 3);
+  const tokens = [];
+  for (const b of brackets) {
+    const full = await bracketOf(b.id);
+    full.nodes.filter((n) => n.match).forEach((n) => tokens.push(n.match.token));
+  }
+  assert.ok(tokens.length >= 5, 'planned and finished matches exist');
+  assert.strictEqual((await call('DELETE', `/api/seasons/${tournament.id}?withMatches=1`, undefined, { admin: false })).status, 401);
+  const gone = await call('DELETE', `/api/seasons/${tournament.id}?withMatches=1`);
+  assert.strictEqual(gone.status, 200, gone.text);
+  assert.ok(gone.json.deletedMatches >= tokens.length);
+  for (const token of tokens) assert.strictEqual((await call('GET', `/api/matches/${token}`)).status, 404, 'the match is gone');
+  for (const b of brackets) assert.strictEqual((await call('GET', `/api/brackets/${b.id}`)).status, 404, 'the bracket is gone');
+  assert.strictEqual((await call('GET', `/api/seasons/${tournament.id}/registrations`)).json.length, 0);
+  assert.strictEqual((await call('GET', `/api/seasons/${tournament.id}/draw`)).status, 404);
+});
+
 async function main() {
   let failed = 0;
   try {

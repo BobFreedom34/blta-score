@@ -560,10 +560,14 @@ function wireSeason(card) {
 
   card.querySelector('[data-action="delete-season"]').addEventListener('click', async () => {
     const extra = season.matchCount ? ` ${season.matchCount} matches will lose their season and group (the matches stay).` : '';
-    if (!confirm(IS_TOURNAMENT ? `Delete "${season.name}"?${extra}` : `Delete "${season.name}" and its ${season.groups.length} groups?${extra}`)) return;
+    // a tournament goes with everything that belongs to it: its matches, brackets, registrations
+    if (IS_TOURNAMENT) {
+      const matches = season.matchCount ? `ALL ${season.matchCount} of its matches (with their results and the ranking points they gave)` : 'its brackets';
+      if (!confirm(`Delete the tournament "${season.name}" together with ${matches}, its registrations and brackets?\n\nThis cannot be undone.`)) return;
+    } else if (!confirm(`Delete "${season.name}" and its ${season.groups.length} groups?${extra}`)) return;
     try {
-      await api(`/seasons/${id}`, { method: 'DELETE' });
-      toast('Season deleted');
+      const res = await api(`/seasons/${id}${IS_TOURNAMENT ? '?withMatches=1' : ''}`, { method: 'DELETE' });
+      toast(IS_TOURNAMENT ? `Tournament deleted (${res.deletedMatches || 0} matches)` : 'Season deleted');
       await load();
     } catch (err) { fail(err); }
   });
