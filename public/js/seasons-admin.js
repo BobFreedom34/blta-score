@@ -173,8 +173,9 @@ function groupRowHtml(g) {
   `;
 }
 
-// The schedule of the whole season: preview first, then create the matches.
+// The schedule of the whole season: preview first, then create the matches. A league season only: a tournament is played in brackets.
 function scheduleSectionHtml() {
+  if (IS_TOURNAMENT) return '';
   return `
     <div class="sg-schedule">
       <div class="sg-sched-title">Schedule</div>
@@ -697,6 +698,7 @@ function wireGroupPanel(wrap, group, fail) {
 // ---------- schedule of a season ----------
 
 function wireSchedule(card, seasonId, fail) {
+  if (IS_TOURNAMENT) return;
   const previewEl = card.querySelector('.sg-preview');
   const loadPreview = async () => {
     const data = await api(`/seasons/${seasonId}/schedule-preview`);
