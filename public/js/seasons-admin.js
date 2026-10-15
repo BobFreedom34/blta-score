@@ -215,7 +215,7 @@ function seasonHtml(s) {
         <span class="sa-name">${escapeHtml(s.name)}</span>
         <span class="sa-dates">${escapeHtml(s.startDate && s.endDate ? `${fmtDate(s.startDate)} – ${fmtDate(s.endDate)}` : '')}</span>
         <span class="sa-chip ${seasonStatus(s)}">${STATUS_LABEL[seasonStatus(s)]}</span>
-        <span class="sa-count">${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'} · ${s.matchCount} ${s.matchCount === 1 ? 'match' : 'matches'}</span>
+        <span class="sa-count">${IS_TOURNAMENT ? '' : `${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'} · `}${s.matchCount} ${s.matchCount === 1 ? 'match' : 'matches'}</span>
       </summary>
       <div class="sa-body">
       <form class="season-edit-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
@@ -288,13 +288,13 @@ function seasonHtml(s) {
         <div class="season-regs-list" hidden style="margin-top:10px"></div>
       </div>
       <div style="font-size:12px;color:var(--gray);margin:8px 0 12px">
-        ${s.matchCount} tagged ${s.matchCount === 1 ? 'match' : 'matches'} ·
+        ${s.matchCount} tagged ${s.matchCount === 1 ? 'match' : 'matches'}${IS_TOURNAMENT ? '' : ` ·
         ${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'}
-        (${byCategory[0]} Elite, ${byCategory[1]} Next Gen, ${byCategory[2]} Novice) — each group is one standings table
+        (${byCategory[0]} Elite, ${byCategory[1]} Next Gen, ${byCategory[2]} Novice) — each group is one standings table`}
       </div>
       <div class="season-error" style="color:var(--danger);font-weight:600"></div>
-      <div class="season-groups">${s.groups.length ? s.groups.map(groupRowHtml).join('') : '<div class="empty-state" style="padding:12px 0">No groups yet.</div>'}</div>
-      <form class="add-group-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      <div class="season-groups"${IS_TOURNAMENT ? ' hidden' : ''}>${s.groups.length ? s.groups.map(groupRowHtml).join('') : '<div class="empty-state" style="padding:12px 0">No groups yet.</div>'}</div>
+      <form class="add-group-form" style="display:${IS_TOURNAMENT ? 'none' : 'flex'};gap:8px;flex-wrap:wrap;margin-top:14px">
         <input type="text" data-field="name" maxlength="80" placeholder="New group, e.g. Babolat" required style="flex:1;min-width:160px;${inputStyle}">
         <select data-field="category" required style="${inputStyle}">
           <option value="">Category…</option>
@@ -560,7 +560,7 @@ function wireSeason(card) {
 
   card.querySelector('[data-action="delete-season"]').addEventListener('click', async () => {
     const extra = season.matchCount ? ` ${season.matchCount} matches will lose their season and group (the matches stay).` : '';
-    if (!confirm(`Delete "${season.name}" and its ${season.groups.length} groups?${extra}`)) return;
+    if (!confirm(IS_TOURNAMENT ? `Delete "${season.name}"?${extra}` : `Delete "${season.name}" and its ${season.groups.length} groups?${extra}`)) return;
     try {
       await api(`/seasons/${id}`, { method: 'DELETE' });
       toast('Season deleted');
