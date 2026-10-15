@@ -187,6 +187,40 @@ test('with "automatic schedule" off, a new match stays unscheduled until the pla
   assertNoClashes(sch, 30);
 });
 
+test('most matches per player per day: with a limit of 1 the next match of a player goes to the next day; 0 = no limit; the tournament form and the schedule settings both set it', async () => {
+  const t = (await call('POST', '/api/seasons', { name: 'Limit Open 2099', kind: 'TOURNAMENT', startDate: '2099-06-01', endDate: '2099-06-02' })).json;
+  assert.strictEqual(t.maxMatchesPerDay, 0);
+  assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}`, { maxMatchesPerDay: 11 })).status, 400);
+  assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}`, { courtCount: 2, maxMatchesPerDay: 1 })).json.maxMatchesPerDay, 1);
+  assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}/schedule/settings`, { maxPerDay: 11 })).status, 400);
+  assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}/schedule/settings`, { restMinutes: 0 })).json.settings.maxPerDay, 1);
+  for (let i = 0; i < 4; i += 1) {
+    const p = (await call('POST', '/api/players', { name: `Limit Player ${i + 1}` })).json;
+    const reg = await call('POST', `/api/seasons/${t.id}/registrations/admin`, { playerId: p.id, category: 'ELITE', phone: `0907${String(100000 + i)}`, email: `l${i}@example.com` });
+    assert.strictEqual(reg.status, 201, reg.text);
+  }
+  const drawn = await call('POST', `/api/seasons/${t.id}/draw`, { category: 'ELITE', mode: 'AUTO' });
+  assert.strictEqual(drawn.status, 201, drawn.text);
+  let sch = (await call('GET', `/api/seasons/${t.id}/schedule`)).json;
+  assert.ok(sch.matches.every((m) => localDay(m.scheduledAt) === '2099-06-01'), 'round 1 is on day 1');
+  const main = await bracketOf(drawn.json.main);
+  for (const n of main.nodes.filter((x) => x.round === 1)) await finish(n, n.player1.id, n.match.scheduledAt);
+  sch = (await call('GET', `/api/seasons/${t.id}/schedule`)).json;
+  const planned = sch.matches.filter((m) => m.status === 'PLANNED');
+  assert.ok(planned.length >= 2, 'the final and the consolation match exist');
+  assert.ok(planned.every((m) => m.scheduledAt && localDay(m.scheduledAt) === '2099-06-02'), 'everybody has played once on day 1, so the next matches are on day 2');
+  // without a limit the same matches would go to day 1 (as long as the rest allows)
+  await call('PATCH', `/api/seasons/${t.id}/schedule/settings`, { maxPerDay: 0 });
+  const again = await call('POST', `/api/seasons/${t.id}/schedule/auto`, { mode: 'rebuild' });
+  assert.ok(again.json.schedule.matches.filter((m) => m.status === 'PLANNED').every((m) => localDay(m.scheduledAt) === '2099-06-01'), 'no limit: the next matches follow on day 1');
+  // by hand, over the limit: allowed with a warning
+  await call('PATCH', `/api/seasons/${t.id}/schedule/settings`, { maxPerDay: 1 });
+  const one = again.json.schedule.matches.find((m) => m.status === 'PLANNED');
+  const warned = await call('PUT', `/api/seasons/${t.id}/schedule/matches/${one.token}`, { courtNo: 1, scheduledAt: '2099-06-01T17:00:00.000Z' });
+  assert.strictEqual(warned.status, 200, warned.text);
+  assert.ok(warned.json.warnings.some((w) => /more than 1 match/.test(w)));
+});
+
 test('a league season has no court schedule', async () => {
   const league = (await call('POST', '/api/seasons', { name: 'League X', kind: 'LEAGUE' })).json;
   assert.strictEqual((await call('GET', `/api/seasons/${league.id}/schedule`)).status, 400);

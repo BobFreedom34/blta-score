@@ -158,6 +158,7 @@ function csAdminHtml() {
         ${field('start', 'Začiatok dňa', s.dayStart, 'type="time"')}
         ${field('end', 'Koniec dňa', s.dayEnd, 'type="time"')}
         ${field('rest', 'Oddych hráča (min)', s.restMinutes, 'type="number" min="0" max="240" step="5"')}
+        ${field('maxday', 'Max. zápasov hráča za deň (0 = bez limitu)', s.maxPerDay, 'type="number" min="0" max="10"')}
         <label class="cs-check"><input type="checkbox" id="cs-auto" ${s.autoSchedule ? 'checked' : ''}> Rozvrh skladá systém sám</label>
         <button type="button" class="btn btn-sm btn-outline" data-cs="settings">Uložiť nastavenia</button>
       </div>
@@ -331,6 +332,7 @@ async function initCourtSchedule(host, season) {
         dayStart: document.getElementById('cs-start').value,
         dayEnd: document.getElementById('cs-end').value,
         restMinutes: Number(document.getElementById('cs-rest').value),
+        maxPerDay: Number(document.getElementById('cs-maxday').value) || 0,
         autoSchedule: document.getElementById('cs-auto').checked,
       };
       csApply(api(`${base}/settings`, { method: 'PATCH', body }), 'Nastavenia uložené');

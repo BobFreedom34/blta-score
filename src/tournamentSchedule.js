@@ -46,6 +46,11 @@ function daysOf(season) {
   return out;
 }
 
+// the day (Bratislava) an instant falls on, "2026-05-01"
+function dayOf(utcMs) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(utcMs));
+}
+
 const validTime = (v) => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 
 function settingsOf(season) {
@@ -56,12 +61,13 @@ function settingsOf(season) {
     dayEnd: validTime(season.day_end) ? season.day_end : '20:00',
     restMinutes: season.rest_minutes === null || season.rest_minutes === undefined ? 30 : season.rest_minutes,
     autoSchedule: season.auto_schedule === 0 ? false : true,
+    maxPerDay: season.max_matches_per_day || 0,
     days: daysOf(season),
     timezone: TZ,
   };
 }
 
-// validates and stores { matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule }; returns { error } or { ok }
+// validates and stores { matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule, maxPerDay }; returns { error } or { ok }
 function saveSettings(season, body) {
   const s = settingsOf(season);
   const next = { ...s };
@@ -83,9 +89,13 @@ function saveSettings(season, body) {
     if (!Number.isInteger(next.restMinutes) || next.restMinutes < 0 || next.restMinutes > 240) return { error: 'The rest between matches must be 0 to 240 minutes' };
   }
   if (body.autoSchedule !== undefined) next.autoSchedule = !!body.autoSchedule;
+  if (body.maxPerDay !== undefined) {
+    next.maxPerDay = Number(body.maxPerDay);
+    if (!Number.isInteger(next.maxPerDay) || next.maxPerDay < 0 || next.maxPerDay > 10) return { error: 'The most matches a player may play in a day must be 0 (no limit) to 10' };
+  }
   if ((toMinutes(next.dayEnd) - toMinutes(next.dayStart)) < next.matchMinutes) return { error: 'The playing day is shorter than one match' };
-  db.prepare('UPDATE seasons SET match_minutes = ?, day_start = ?, day_end = ?, rest_minutes = ?, auto_schedule = ? WHERE id = ?')
-    .run(next.matchMinutes, next.dayStart, next.dayEnd, next.restMinutes, next.autoSchedule ? 1 : 0, season.id);
+  db.prepare('UPDATE seasons SET match_minutes = ?, day_start = ?, day_end = ?, rest_minutes = ?, auto_schedule = ?, max_matches_per_day = ? WHERE id = ?')
+    .run(next.matchMinutes, next.dayStart, next.dayEnd, next.restMinutes, next.autoSchedule ? 1 : 0, next.maxPerDay, season.id);
   return { ok: true };
 }
 
@@ -198,6 +208,14 @@ function placeMatch(season, token, courtNo, scheduledAt, now = Date.now()) {
     if (overlaps(i, slot)) warnings.push(`A player of this match is already on court at that time (${r.p1_name} – ${r.p2_name})`);
     else if (i[0] - rest < slot[1] && slot[0] < i[1] + rest) warnings.push(`A player has less than ${settings.restMinutes} minutes of rest around that time (${r.p1_name} – ${r.p2_name})`);
   });
+  if (settings.maxPerDay) {
+    const day = dayOf(start);
+    [match.player1_id, match.player2_id].forEach((id) => {
+      const same = others.filter((r) => [r.player1_id, r.player2_id].includes(id) && r.status !== 'FINISHED' && r.scheduled_at && dayOf(ms(r.scheduled_at)) === day).length
+        + others.filter((r) => [r.player1_id, r.player2_id].includes(id) && r.status === 'FINISHED' && (r.start_time || r.scheduled_at) && dayOf(ms(r.start_time || r.scheduled_at)) === day).length;
+      if (same >= settings.maxPerDay) warnings.push(`A player would play more than ${settings.maxPerDay} ${settings.maxPerDay === 1 ? 'match' : 'matches'} that day`);
+    });
+  }
   db.prepare("UPDATE matches SET scheduled_at = ?, court_no = ?, slot_locked = 1, location = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?")
     .run(new Date(start).toISOString(), courtNo, `Kurt ${courtNo}`, match.id);
   return { warnings };
@@ -227,6 +245,9 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
   const rest = settings.restMinutes * MIN;
   const courts = Array.from({ length: settings.courtCount }, () => []);
   const busy = new Map(); // player id -> [[start, end]]
+  const perDay = new Map(); // player id -> Map(day -> matches already that day)
+  const countDay = (id, day) => { if (!perDay.has(id)) perDay.set(id, new Map()); perDay.get(id).set(day, (perDay.get(id).get(day) || 0) + 1); };
+  const dayCount = (id, day) => (perDay.has(id) ? perDay.get(id).get(day) || 0 : 0);
   const addBusy = (id, interval) => { if (!busy.has(id)) busy.set(id, []); busy.get(id).push(interval); };
   rows.forEach((r) => {
     const i = intervalOf(r, settings, now);
@@ -234,6 +255,8 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
     if (r.court_no && r.court_no <= settings.courtCount) courts[r.court_no - 1].push(i);
     addBusy(r.player1_id, i);
     addBusy(r.player2_id, i);
+    countDay(r.player1_id, dayOf(i[0]));
+    countDay(r.player2_id, dayOf(i[0]));
   });
 
   const windows = settings.days.map((day) => [localToUtcMs(day, settings.dayStart), localToUtcMs(day, settings.dayEnd)]);
@@ -249,9 +272,12 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
   let skipped = 0;
   todo.forEach((r) => {
     let found = null;
-    for (const [ws, we] of windows) {
+    for (let w = 0; w < windows.length; w += 1) {
+      const [ws, we] = windows[w];
       if (found) break;
       if (we <= notBefore) continue;
+      // a player who has already played the most matches of the day does not get another one that day
+      if (settings.maxPerDay && [r.player1_id, r.player2_id].some((id) => dayCount(id, settings.days[w]) >= settings.maxPerDay)) continue;
       const first = Math.max(ws, notBefore);
       let t = ws + Math.ceil((first - ws) / (GRID_MIN * MIN)) * GRID_MIN * MIN;
       for (; t + duration <= we && !found; t += GRID_MIN * MIN) {
@@ -265,6 +291,8 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
     courts[found.court].push(found.slot);
     addBusy(r.player1_id, found.slot);
     addBusy(r.player2_id, found.slot);
+    countDay(r.player1_id, dayOf(found.slot[0]));
+    countDay(r.player2_id, dayOf(found.slot[0]));
     update.run(new Date(found.slot[0]).toISOString(), found.court + 1, `Kurt ${found.court + 1}`, r.id);
     placed += 1;
   });

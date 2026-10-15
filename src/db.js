@@ -1349,6 +1349,8 @@ if (!seasonInfoColumns.includes('court_count')) db.exec('ALTER TABLE seasons ADD
   ['day_end', "TEXT NOT NULL DEFAULT '20:00'"],
   ['rest_minutes', 'INTEGER NOT NULL DEFAULT 30'],
   ['auto_schedule', 'INTEGER NOT NULL DEFAULT 1'],
+  // the most matches one player may play in one day of the tournament, 0 = no limit
+  ['max_matches_per_day', 'INTEGER NOT NULL DEFAULT 0'],
 ].forEach(([col, type]) => {
   if (!seasonInfoColumns.includes(col)) db.exec(`ALTER TABLE seasons ADD COLUMN ${col} ${type}`);
 });

@@ -139,6 +139,7 @@ function serializeSeason(s) {
     logoUrl: s.logo_url || '',
     registrationOpen: !!s.registration_open,
     courtCount: s.court_count || 0,
+    maxMatchesPerDay: s.max_matches_per_day || 0,
     matchCount: db.prepare('SELECT COUNT(*) AS n FROM matches WHERE season_id = ?').get(s.id).n,
     groups: groups.map(serializeGroup),
   };
@@ -607,8 +608,13 @@ router.patch('/:id', requireAdmin, (req, res) => {
     courts = Number(req.body.courtCount);
     if (!Number.isInteger(courts) || courts < 0 || courts > 50) return res.status(400).json({ error: 'The number of courts must be a whole number from 0 to 50' });
   }
-  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ?, court_count = ? WHERE id = ?')
-    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, kind, venue.value, categories, courts, season.id);
+  let maxPerDay = season.max_matches_per_day || 0;
+  if (req.body.maxMatchesPerDay !== undefined) {
+    maxPerDay = Number(req.body.maxMatchesPerDay);
+    if (!Number.isInteger(maxPerDay) || maxPerDay < 0 || maxPerDay > 10) return res.status(400).json({ error: 'The most matches a player may play in a day must be 0 (no limit) to 10' });
+  }
+  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ?, court_count = ?, max_matches_per_day = ? WHERE id = ?')
+    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, season.id);
   res.json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
 });
 
