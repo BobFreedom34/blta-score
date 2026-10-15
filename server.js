@@ -260,6 +260,7 @@ app.use((req, res, next) => {
 app.use('/badge-icons', express.static(path.join(db.dataDir, 'badge-icons')));
 app.use('/player-photos', express.static(path.join(db.dataDir, 'player-photos')));
 app.use('/carousel-images', express.static(path.join(db.dataDir, 'carousel'), { maxAge: '30d' }));
+app.use('/venue-photos', express.static(path.join(db.dataDir, 'venue-photos'), { maxAge: '30d' }));
 app.use('/winner-photos', express.static(path.join(db.dataDir, 'winner-photos'), { maxAge: '30d' }));
 app.use('/blog-images', express.static(blog.UPLOAD_DIR, { maxAge: '30d' }));
 

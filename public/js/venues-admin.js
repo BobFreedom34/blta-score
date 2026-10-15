@@ -91,6 +91,7 @@ function summaryText(v) {
 function rowHtml(v) {
   return `
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="venue-row-thumb" style="width:64px;aspect-ratio:16/9;border-radius:6px;overflow:hidden;background:#e6e6e6;flex-shrink:0">${v.imageUrl ? `<img src="${escapeHtml(v.imageUrl)}" alt="" style="display:block;width:100%;height:100%;object-fit:cover">` : ''}</div>
       <div style="flex:1;min-width:180px">
         <div style="font-weight:700">${escapeHtml(v.name)}</div>
         <div style="font-size:12px;color:var(--gray)">${escapeHtml(summaryText(v))}</div>
@@ -163,9 +164,107 @@ function sectionTitle(text) {
   return `<div style="font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--orange);margin:18px 0 8px">${text}</div>`;
 }
 
+// The photo on the venue's card on /courts: always shown in a 16:9 frame, so one size fits all.
+const PHOTO_W = 768;
+const PHOTO_H = 432;
+
+function photoSectionHtml(v) {
+  return `
+    ${sectionTitle('Photo')}
+    <div class="venue-photo-box" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+      <div class="venue-photo-preview" style="width:240px;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#d9d9d9;flex-shrink:0">
+        ${v.imageUrl ? `<img src="${escapeHtml(v.imageUrl)}" alt="Kurty - ${escapeHtml(v.name)}" style="display:block;width:100%;height:100%;object-fit:cover">` : '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--gray);font-size:13px">No photo yet</div>'}
+      </div>
+      <div style="flex:1;min-width:220px">
+        <div style="font-size:13px;line-height:1.5;color:var(--gray)">
+          <strong style="color:var(--ink)">Size: ${PHOTO_W} × ${PHOTO_H} px (16:9 landscape)</strong> — JPG, PNG or WebP, up to 6 MB.
+          A bigger or differently shaped picture is cut to 16:9 from its centre and shrunk to ${PHOTO_W} × ${PHOTO_H} (saved as JPG) automatically, so choose one where the courts are in the middle. Use a picture of the courts without people, and one you are allowed to use.
+          It is shown above the venue name on the Courts page, with the alt text "Kurty - ${escapeHtml(v.name)}".
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center">
+          <label class="btn btn-sm btn-outline" style="margin:0;cursor:pointer">${v.imageUrl ? 'Replace photo' : 'Upload photo'}<input type="file" class="venue-photo-input" accept="image/jpeg,image/png,image/webp" style="display:none"></label>
+          ${v.imageUrl ? '<button type="button" class="btn btn-sm btn-danger" data-action="remove-photo">Remove photo</button>' : ''}
+          <span class="venue-photo-msg" style="font-size:13px;color:var(--gray)"></span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Cuts the picture to 16:9 from its centre and shrinks it to 768 x 432 (JPG). Falls back to the file itself when the browser cannot read it.
+async function cropToVenuePhoto(file) {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const ratio = PHOTO_W / PHOTO_H;
+    let sw = bitmap.width;
+    let sh = Math.round(sw / ratio);
+    if (sh > bitmap.height) { sh = bitmap.height; sw = Math.round(sh * ratio); }
+    const sx = Math.round((bitmap.width - sw) / 2);
+    const sy = Math.round((bitmap.height - sh) / 2);
+    const canvas = document.createElement('canvas');
+    canvas.width = PHOTO_W;
+    canvas.height = PHOTO_H;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, PHOTO_W, PHOTO_H);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    return blob || file;
+  } catch {
+    return file;
+  }
+}
+
+function wirePhoto(form, id, slot) {
+  const msg = form.querySelector('.venue-photo-msg');
+  const say = (text, bad) => { msg.textContent = text; msg.style.color = bad ? 'var(--danger)' : 'var(--gray)'; };
+  const refresh = (updated) => {
+    const i = venues.findIndex((x) => x.id === id);
+    if (i >= 0) venues[i] = updated;
+    // the editor is redrawn (its unsaved text fields would be lost, so only the photo block changes) and the list row updates its thumbnail
+    const box = form.querySelector('.venue-photo-box');
+    const holder = document.createElement('div');
+    holder.innerHTML = photoSectionHtml(updated);
+    box.replaceWith(holder.querySelector('.venue-photo-box'));
+    wirePhoto(form, id, slot);
+    const rowThumb = document.querySelector(`.venue-admin-row[data-id="${id}"] .venue-row-thumb`);
+    if (rowThumb) rowThumb.innerHTML = updated.imageUrl ? `<img src="${escapeHtml(updated.imageUrl)}" alt="" style="display:block;width:100%;height:100%;object-fit:cover">` : '';
+  };
+  const input = form.querySelector('.venue-photo-input');
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    if (!file) return;
+    say('Uploading…');
+    try {
+      const blob = await cropToVenuePhoto(file);
+      const data = new FormData();
+      data.append('photo', blob, 'photo.jpg');
+      const res = await fetch(`/api/venues/${id}/photo`, { method: 'POST', body: data, credentials: 'same-origin' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Upload failed');
+      refresh(body);
+      form.querySelector('.venue-photo-msg').textContent = 'Photo saved ✓';
+    } catch (err) {
+      say(err.message, true);
+    }
+    input.value = '';
+  });
+  const removeBtn = form.querySelector('[data-action="remove-photo"]');
+  if (removeBtn) {
+    removeBtn.addEventListener('click', async () => {
+      if (!confirm('Remove the photo of this venue?')) return;
+      try {
+        refresh(await api(`/venues/${id}/photo`, { method: 'DELETE' }));
+      } catch (err) {
+        say(err.message, true);
+      }
+    });
+  }
+}
+
 function editorHtml(v) {
   return `
     <form class="venue-editor" style="margin-top:14px;padding:16px;border-radius:12px;background:var(--gray-light)">
+      ${photoSectionHtml(v)}
       ${sectionTitle('Basics')}
       <div class="grid-2">
         ${textField('name', 'Name', v.name, { attrs: 'maxlength="120" required' })}
@@ -236,6 +335,7 @@ function openEditor(id) {
   const form = slot.querySelector('.venue-editor');
   const val = (name) => form.querySelector(`#vf-${name}`).value.trim();
 
+  wirePhoto(form, id, slot);
   form.querySelector('[data-action="cancel"]').addEventListener('click', () => { slot.innerHTML = ''; });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
