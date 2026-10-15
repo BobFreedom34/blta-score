@@ -287,32 +287,8 @@ async function ensureH2H(m) {
   h2hHtml = '';
   try {
     const finished = await api(`/matches?playerId=${m.player1.id}&status=FINISHED`);
-    const prior = finished.filter((x) => x.token !== matchToken && x.winnerId
-      && x.endReason !== 'WALKOVER' && x.endReason !== 'UNFINISHED'
-      && (x.player1.id === m.player2.id || x.player2.id === m.player2.id));
-    if (prior.length) {
-      let wins = 0;
-      let losses = 0;
-      prior.forEach((x) => { if (x.winnerId === m.player1.id) wins += 1; else losses += 1; });
-      const total = wins + losses;
-      const pct = Math.round((wins / total) * 100);
-      const scoreColor = wins > losses ? 'var(--status-green)' : wins < losses ? '#e5483a' : '#8b8f98';
-      h2hHtml = `
-        <div class="section-label">${t('player.h2h')}</div>
-        <div class="h2h-card">
-          <div class="h2h-row" style="flex-direction:column;align-items:stretch;gap:8px">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-              <a class="h2h-name" href="/player/${m.player1.slug || m.player1.id}">${escapeHtml(m.player1.name)}</a>
-              <span class="h2h-score" style="color:${scoreColor}">${wins} — ${losses}</span>
-              <a class="h2h-name" href="/player/${m.player2.slug || m.player2.id}" style="text-align:right">${escapeHtml(m.player2.name)}</a>
-            </div>
-            <div class="h2h-bar" style="width:100%">
-              <div style="width:${pct}%;background:var(--status-green)"></div><div style="width:${100 - pct}%;background:var(--danger)"></div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
+    const sum = h2hSummary(finished, m.player1, m.player2, matchToken);
+    if (sum.total) h2hHtml = h2hCompactHtml(m.player1, m.player2, sum);
   } catch (err) { /* non-critical — leave the section empty */ }
   if (current) render(current);
 }

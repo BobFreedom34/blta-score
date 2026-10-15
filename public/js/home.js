@@ -38,7 +38,7 @@ async function loadHome() {
   const week = weekRange();
   const playerId = loggedInPlayer();
   mineFor = playerId;
-  const [seasons, live, finished, upcoming, weekMatches, looking, rankings, free, mine, iq] = await Promise.all([
+  const [seasons, live, finished, upcoming, weekMatches, looking, rankings, free, mine, iq, motwPick] = await Promise.all([
     soft(api('/seasons'), null),
     soft(api('/matches?status=LIVE'), []),
     soft(api('/matches?status=FINISHED&limit=4'), []),
@@ -49,11 +49,15 @@ async function loadHome() {
     soft(api('/reservations/free-soon?days=10'), null),
     playerId ? soft(api(`/matches?playerId=${playerId}`), []) : Promise.resolve(null),
     playerId ? soft(api(`/courtiq/player/${playerId}`), null) : Promise.resolve(null),
+    soft(api('/match-of-the-week'), null),
   ]);
+  // "Zápas týždňa": the server names the match, the match itself comes from the usual match payload
+  const motwMatch = motwPick && motwPick.token ? await soft(api(`/matches/${motwPick.token}`), null) : null;
+  const motw = motwMatch ? { match: motwMatch, h2h: motwPick.h2h } : null;
   if (seasons === null) throw new Error('seasons');
   const season = pickSeason(seasons.filter((s) => s.kind !== 'TOURNAMENT'));
   const standings = season ? await soft(api(`/seasons/${season.id}/standings`), null) : null;
-  return { seasons, season, standings, live, finished, upcoming, weekMatches, looking, rankings, free, mine, iq, playerId };
+  return { seasons, season, standings, live, finished, upcoming, weekMatches, looking, rankings, free, mine, iq, motw, playerId };
 }
 
 // ---------- "My season": only for a logged-in player ----------
@@ -368,6 +372,14 @@ function leadersHtml(d) {
   </section>`;
 }
 
+// The "Najbližšie zápasy" rows: the match of the week first (highlighted), then the next matches without it — four rows at most.
+function upcomingRows(d) {
+  const rows = [];
+  if (d.motw) rows.push(upcomingRow(d.motw.match, { featured: true, h2h: d.motw.h2h }));
+  d.upcoming.filter((m) => !d.motw || m.token !== d.motw.match.token).forEach((m) => rows.push(upcomingRow(m)));
+  return rows.length ? rows.slice(0, 4).join('') : `<div class="home-empty">${escapeHtml(t('home.noUpcoming'))}</div>`;
+}
+
 function matchesBlockHtml(d) {
   return `
   <section class="home-sec">
@@ -378,7 +390,7 @@ function matchesBlockHtml(d) {
       </div>
       <div class="home-col">
         ${secTitle(t('home.upcoming'), '', '/matches', t('home.all'))}
-        <div class="home-card">${d.upcoming.length ? d.upcoming.map(upcomingRow).join('') : `<div class="home-empty">${escapeHtml(t('home.noUpcoming'))}</div>`}</div>
+        <div class="home-card">${upcomingRows(d)}</div>
       </div>
     </div>
   </section>`;

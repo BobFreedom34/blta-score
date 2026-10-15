@@ -822,6 +822,13 @@ function h2hRowHtml(rec) {
   `;
 }
 
+// The "Rivali" tiles above the head-to-head list: biggest rival, favourite opponent, closest rivalry, most played (see h2h.js).
+function renderRivals() {
+  const el = document.getElementById('rivals-section');
+  if (!el) return;
+  el.innerHTML = h2hRivalsCardHtml(h2hRivalTiles(rawGroups[3] || [], Number(playerId)));
+}
+
 function renderH2H() {
   const el = document.getElementById('h2h-section');
   const records = opponentRecords();
@@ -926,6 +933,7 @@ async function load() {
     await renderBadges();
     renderRankTrend();
     renderCourtIQ();
+    renderRivals();
     renderH2H();
     render();
   } catch (err) {

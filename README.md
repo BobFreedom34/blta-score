@@ -588,6 +588,13 @@ and `/en`. The first English texts and slugs are built in (`ENGLISH` in `src/seo
   the first start.
 - Check it: `node scripts/check-seo.js` (starts its own server on a temporary data folder; nothing else is touched).
 
+### Head-to-head, "Rivali" and "Zápas týždňa"
+
+- **Match page:** a compact "Vzájomné" card above the chat when the two players have met before: the record from player 1's side ("3 — 2"), the number of meetings, the last result, the last five meetings as V/P dots (tooltips give the score and date) and a green/red bar. Only finished matches with a winner count (no walkovers or unfinished ones), in every category. Built in the browser from `GET /api/matches?playerId=…&status=FINISHED` by `public/js/h2h.js` (also used by the profile).
+- **Player profile:** a "Rivali" card above the head-to-head list with up to four tiles, each a different opponent: *Najväčší súper* (loses to most, at least 2 losses), *Obľúbený súper* (beats most, at least 2 wins), *Najtesnejšia rivalita* (at least 3 meetings, the most even record) and *Najviac odohraných* (at least 3 meetings). A tile nobody qualifies for is left out; the card is hidden when there are none.
+- **Home page, "Zápas týždňa":** `GET /api/match-of-the-week` (`src/routes/matchOfTheWeek.js`) names the most interesting **league** match (Elite / Next Gen / Novice) that is live or planned within the next 7 days; it is shown as the first, highlighted row of "Najbližšie zápasy" with the head-to-head record. Score: live +50; category Elite +30 / Next Gen +20 / Novice +10; CourtIQ rating gap up to +30 (closer is more); having met before +10 and up to +20 more the more even the record. A tie goes to the earlier match. Friendlies are never chosen. Nothing is pinned by hand.
+- Checks: `node scripts/check-match-of-the-week.js`.
+
 ### Home page extras: invite a friend, player of the month
 
 - **Invite a friend** (last section of the home page, logged-in players): every player has a personal link `/pozvanka/<their slug>`

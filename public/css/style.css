@@ -4845,3 +4845,34 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 
 /* the chat of a match for someone who is not logged in: read-only, with a way to log in */
 .chat-login-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--gray-dim); font-size: 13px; }
+
+/* ---------- Head-to-head, rivals, match of the week ---------- */
+/* the compact "Vzájomné" card on the match page: record, meetings, last result, last five as dots, green/red bar */
+.h2hc { background: #0a0a0a; border: 1px solid var(--border-grey); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; color: var(--white); }
+.h2hc-row { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; flex-wrap: wrap; }
+.h2hc-label { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8f98; }
+.h2hc-score { font-weight: 800; margin-left: 6px; }
+.h2hc-meta { color: #c3c7cf; font-size: 12px; font-weight: 600; }
+.h2hc-dots { display: flex; gap: 5px; align-items: center; }
+.h2hc-dot { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #0a0a0a; }
+.h2hc-dot.w { background: var(--status-green); }
+.h2hc-dot.l { background: #e5483a; color: var(--white); }
+.h2hc-bar { display: flex; height: 8px; border-radius: 999px; overflow: hidden; margin-top: 10px; }
+.h2hc-bar i { display: block; background: var(--status-green); }
+.h2hc-bar i.l { background: #e5483a; }
+/* the "Rivali" tiles on the player profile */
+#rivals-section .section-label { color: var(--white); font-size: 20px; line-height: 1.2; margin: 56px 0 14px; }
+.rivals-card { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; background: #0a0a0a; border: 1px solid var(--border-grey); border-radius: var(--radius); padding: 14px; }
+.rival-tile { display: block; background: var(--fill-grey); border-radius: 14px; padding: 14px; color: var(--white); text-decoration: none; }
+.rival-tile:hover { background: #2c2c31; }
+.rival-label { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8f98; }
+.rival-who { font-weight: 800; font-size: 15px; margin: 6px 0 2px; }
+.rival-rec { font-weight: 800; font-size: 22px; }
+.rival-tile.nemesis .rival-rec { color: #e5483a; }
+.rival-tile.favourite .rival-rec { color: var(--status-green); }
+.rival-tile.closest .rival-rec { color: var(--orange); }
+.rival-tile small { display: block; color: #c3c7cf; font-size: 11px; font-weight: 600; margin-top: 4px; }
+@media (max-width: 480px) { .rivals-card { grid-template-columns: 1fr; } }
+/* the match of the week: a highlighted row in "Najbližšie zápasy" */
+.home-m-row.feat { background: rgba(255, 85, 0, 0.08); border: 1px solid rgba(255, 85, 0, 0.55); border-radius: 12px; padding: 12px; margin: 4px 0; }
+.home-feat-label { color: var(--orange); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; }

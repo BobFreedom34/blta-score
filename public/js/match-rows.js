@@ -43,11 +43,16 @@ function resultRow(m) {
   </a>`;
 }
 
-function upcomingRow(m) {
+// opts.featured: the match of the week — a highlighted row with a label and the head-to-head record (opts.h2h = { p1Wins, p2Wins, total }).
+function upcomingRow(m, opts = {}) {
   const where = m.group ? m.group.name : categoryLabel(m.category);
+  const h2h = opts.featured && opts.h2h && opts.h2h.total ? t('motw.h2h', { a: opts.h2h.p1Wins, b: opts.h2h.p2Wins }) : '';
+  const chip = m.status === 'LIVE'
+    ? `<span class="home-chip live">${escapeHtml(t('home.live'))}</span>`
+    : m.scheduledAt ? `<span class="home-chip date">${escapeHtml(chipDate(m.scheduledAt))}</span>` : `<span class="home-mine-dim">${escapeHtml(t('home.mineNoDate'))}</span>`;
   return `
-  <a class="home-m-row" href="/match/${m.token}">
-    <div><div class="n"><b>${escapeHtml(m.player1.name)}</b> · ${escapeHtml(m.player2.name)}</div><div class="s">${escapeHtml([where, m.location].filter(Boolean).join(' · '))}${videoBadge(m, { iconOnly: true })}</div></div>
-    ${m.scheduledAt ? `<span class="home-chip date">${escapeHtml(chipDate(m.scheduledAt))}</span>` : `<span class="home-mine-dim">${escapeHtml(t('home.mineNoDate'))}</span>`}
+  <a class="home-m-row${opts.featured ? ' feat' : ''}" href="/match/${m.token}">
+    <div><div class="n">${opts.featured ? `<span class="home-feat-label">${escapeHtml(t('motw.label'))}</span><br>` : ''}<b>${escapeHtml(m.player1.name)}</b> · ${escapeHtml(m.player2.name)}</div><div class="s">${escapeHtml([where, m.location, h2h].filter(Boolean).join(' · '))}${videoBadge(m, { iconOnly: true })}</div></div>
+    ${chip}
   </a>`;
 }
