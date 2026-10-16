@@ -5038,3 +5038,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .home-tl-body.has-cover { overflow: hidden; }
 .home-tl-cover { display: block; width: calc(100% + 32px); height: 96px; margin: -14px -16px 12px; object-fit: cover; background: #1b1b1f; }
 .home-tl-body.has-cover .home-tl-logo { top: 108px; }
+
+/* registration open: a green person with a plus in the bottom right corner of the season card in the timeline */
+.home-tl-reg { position: absolute; right: 12px; bottom: 12px; width: 34px; height: 34px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; color: var(--green); background: rgba(178, 250, 6, 0.14); border: 1px solid var(--green); }
+.home-tl.past .home-tl-reg { display: none; }

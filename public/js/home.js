@@ -260,6 +260,7 @@ function timelineHtml(d) {
         <span class="home-tl-chip">${state === 'now' ? '<i></i>' : ''}${escapeHtml(label[state])}</span>
         <div class="home-tl-name">${escapeHtml(s.name)}</div>
         <div class="home-tl-range">${escapeHtml(range)}</div>
+        ${s.registrationOpen && state !== 'past' ? `<span class="home-tl-reg" role="img" title="${escapeHtml(t('home.tlRegOpen'))}" aria-label="${escapeHtml(t('home.tlRegOpen'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M19 5v6M16 8h6"/></svg></span>` : ''}
       </div>`;
     return href
       ? `<a class="home-tl ${state}" style="--p:${elapsed.toFixed(1)}%" href="${href}"${state === 'now' ? ' data-current="1"' : ''}>${inner}</a>`
