@@ -605,6 +605,10 @@ A tournament is a season of type TOURNAMENT. Players register on its page as bef
 - **Formats:** the main and the consolation bracket each have their own match format (`brackets.format`). The new `BO3_G4_STB` (consolation default): two winning sets, each set to **4 games** (a tie-break at 3-3, so a set ends 4-0, 4-1, 4-2 or 4-3), the deciding set a 10-point match tie-break. The rules are stamped on every set (`gameTarget`, `tiebreakAt`) so the scoring functions that only get a set know them; live scoring, manual results and the result form (`FORMAT_META` in `public/js/match.js`) all handle it.
 - Checks: `node scripts/check-tournament-draw.js`, `node scripts/check-match-format-g4.js`.
 
+### Trying a tournament out without touching the live site
+
+`node scripts/demo-tournament.js` starts a local copy of the app (http://localhost:3055, admin password `test`) on a temporary data directory with a "Demo Open" tournament: 4 courts, 12 Elite (4 seeded), 8 Next Gen and 5 Novice players, the Elite and Next Gen draws made and the matches placed on the courts (Novice is left without a draw to try making one). Nothing is connected to score.blta.sk; Ctrl+C stops it and throws the data away.
+
 ### Tournament timetable ("Harmonogram" tab of the tournament page, court schedule)
 
 `src/tournamentSchedule.js` (planner, placing by hand, settings), `public/js/court-schedule.js` (the tab), routes in `src/routes/seasons.js`.
