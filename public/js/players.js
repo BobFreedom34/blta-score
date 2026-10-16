@@ -31,7 +31,7 @@ function playerRowHtml(p) {
   const level = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[p.category] || '';
   // and the CourtIQ of the player next to it (the same number as on the CourtIQ ranking), when the player has one
   const iq = courtiqByPlayer.get(p.id);
-  const category = [level, iq ? `${t('courtiq.cardLabel')} ${iq.band.toFixed(1)}` : ''].filter(Boolean).join(' · ');
+  const category = [escapeHtml(level), iq ? `${escapeHtml(t('courtiq.cardLabel'))} <b class="player-iq">${iq.band.toFixed(1)}</b>` : ''].filter(Boolean).join(' · ');
   const avatar = p.photo_url
     ? `<img class="player-row-avatar" src="${escapeHtml(p.photo_url)}" alt="">`
     : `<div class="player-row-avatar player-row-avatar-fallback">${escapeHtml(initials(p.name))}</div>`;
@@ -41,7 +41,7 @@ function playerRowHtml(p) {
         ${avatar}
         <div class="player-name-stack">
           <a class="player-name" href="/player/${p.slug || p.id}">${escapeHtml(p.name)}</a>
-          ${category ? `<span class="player-cat">${escapeHtml(category)}</span>` : ''}
+          ${category ? `<span class="player-cat">${category}</span>` : ''}
         </div>
       </div>
       ${hiddenBadge}

@@ -2134,6 +2134,7 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 /* the name and under it the category in a lighter grey, the pair centred next to the avatar */
 .player-name-stack { display: flex; flex-direction: column; justify-content: center; min-width: 0; line-height: 1.25; }
 .player-cat { font-size: 12px; font-weight: 500; color: #b8bcc4; white-space: nowrap; }
+.player-cat .player-iq { font-weight: 700; color: var(--white); }
 .player-row-avatar {
   width: 36px;
   height: 36px;
