@@ -201,12 +201,12 @@ const TEMPLATE_ENTITY = {
     return b ? { name: b.name } : null;
   },
   season: (slug) => {
-    const s = db.prepare('SELECT name, logo_url FROM seasons WHERE slug = ?').get(slug);
-    return s ? { name: s.name, image: s.logo_url || '' } : null;
+    const s = db.prepare('SELECT name, logo_url, hero_url FROM seasons WHERE slug = ?').get(slug);
+    return s ? { name: s.name, image: s.hero_url || s.logo_url || '' } : null;
   },
   tournament: (slug) => {
-    const s = db.prepare("SELECT name, logo_url FROM seasons WHERE slug = ? AND kind = 'TOURNAMENT'").get(slug);
-    return s ? { name: s.name, image: s.logo_url || '' } : null;
+    const s = db.prepare("SELECT name, logo_url, hero_url FROM seasons WHERE slug = ? AND kind = 'TOURNAMENT'").get(slug);
+    return s ? { name: s.name, image: s.hero_url || s.logo_url || '' } : null;
   },
   court: (slug) => {
     const v = db.prepare('SELECT name FROM venues WHERE slug = ?').get(slug);
@@ -276,6 +276,7 @@ app.use('/badge-icons', express.static(path.join(db.dataDir, 'badge-icons')));
 app.use('/player-photos', express.static(path.join(db.dataDir, 'player-photos')));
 app.use('/carousel-images', express.static(path.join(db.dataDir, 'carousel'), { maxAge: '30d' }));
 app.use('/venue-photos', express.static(path.join(db.dataDir, 'venue-photos'), { maxAge: '30d' }));
+app.use('/season-heroes', express.static(path.join(db.dataDir, 'season-heroes'), { maxAge: '30d' }));
 app.use('/winner-photos', express.static(path.join(db.dataDir, 'winner-photos'), { maxAge: '30d' }));
 app.use('/blog-images', express.static(blog.UPLOAD_DIR, { maxAge: '30d' }));
 

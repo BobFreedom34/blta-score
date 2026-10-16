@@ -206,6 +206,51 @@ function schedulePreviewHtml(data) {
   return `<div class="sg-total">${total ? `${total} matches would be created (shown in orange)` : 'Nothing to create — every pair already has a match'}</div>${groups}`;
 }
 
+// The hero photo of the page: one for wide screens (3:1) and one for phones (4:3). The pictures are cut to these sizes from their centre
+// and shrunk here before they are sent, so any picture can be used; what matters is that the main thing is in the middle.
+const HERO_KINDS = {
+  desktop: { w: 2400, h: 800, label: 'Počítač a tablet', shape: '3:1', note: 'Na šírku. Dôležité veci daj do stredu, názov je cez dolnú ľavú časť (tam nech je pokojné miesto).' },
+  mobile: { w: 1200, h: 900, label: 'Mobil', shape: '4:3', note: 'Takmer štvorec. Ak ho nenahráš, mobil ukáže obrázok pre počítač (orezaný zo stredu).' },
+};
+
+function heroBlockHtml(s, kind) {
+  const k = HERO_KINDS[kind];
+  const url = kind === 'desktop' ? s.heroUrl : s.heroMobileUrl;
+  return `
+    <div class="sa-hero" data-hero="${kind}">
+      <div class="sa-hero-pic" style="aspect-ratio:${k.w} / ${k.h}">${url ? `<img src="${escapeHtml(url)}" alt="">` : '<span>Zatiaľ bez fotky</span>'}</div>
+      <div class="sa-hero-info">
+        <strong>${k.label} — ${k.w} × ${k.h} px (${k.shape})</strong>
+        <span>${k.note}</span>
+        <div class="sa-hero-actions">
+          <label class="btn btn-sm btn-outline">${url ? 'Nahradiť fotku' : 'Nahrať fotku'}<input type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+          ${url ? '<button type="button" class="btn btn-sm btn-danger" data-hero-remove>Odstrániť</button>' : ''}
+          <span class="sa-hero-msg"></span>
+        </div>
+      </div>
+    </div>`;
+}
+
+// Cuts the picture to the ratio from its centre and shrinks it to the size (JPG); the file itself when the browser cannot read it.
+async function cropHero(file, w, h) {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const ratio = w / h;
+    let sw = bitmap.width;
+    let sh = Math.round(sw / ratio);
+    if (sh > bitmap.height) { sh = bitmap.height; sw = Math.round(sh * ratio); }
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.min(w, sw);
+    canvas.height = Math.round(canvas.width / ratio);
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bitmap, Math.round((bitmap.width - sw) / 2), Math.round((bitmap.height - sh) / 2), sw, sh, 0, 0, canvas.width, canvas.height);
+    return (await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85))) || file;
+  } catch {
+    return file;
+  }
+}
+
 // The card of a tournament or a season: under the name the tabs — a tournament: Základné info · Registrácie · Zaradenie do kategórií ·
 // Pavúk turnaja; a season: Základné info · Registrácie · Skupiny · Rozpis — and only the chosen one is shown (what is in a tab is loaded
 // when it is opened). The form of the basic info is in sections.
@@ -274,6 +319,9 @@ function seasonCardHtml(s) {
               <div class="sa-grid">
                 ${field('Odkaz na galériu', input('galleryUrl', s.galleryUrl || '', 'maxlength="500" placeholder="https://…"'), 'sa-wide')}
                 ${field('Logo (odkaz na obrázok, napr. /img/seasons/autumn.png)', input('logoUrl', s.logoUrl || '', 'maxlength="300"'), 'sa-wide')}
+              </div>
+              <div class="sa-field sa-full" style="margin-top:12px">Hero fotka stránky <span class="sa-hint">— veľká fotka hore na stránke, názov ${IS_TOURNAMENT ? 'turnaja' : 'sezóny'} je cez jej dolnú časť. Nahrá sa hneď, netreba Uložiť. JPG, PNG alebo WebP do 8 MB.</span>
+                <div class="sa-hero-grid">${heroBlockHtml(s, 'desktop')}${heroBlockHtml(s, 'mobile')}</div>
               </div>
               <div class="sa-field sa-full" style="margin-top:12px">Popis <span class="sa-hint">— riadok „Názov: hodnota“ sa na stránke zobrazí ako dlaždica</span>
                 <div class="rte-toolbar">
@@ -373,6 +421,44 @@ function wireSeason(card) {
   });
 
   // the description editor: toolbar buttons act on the selection; pasting keeps only the text
+  // the hero photos: cut, shrunk and sent at once
+  card.querySelectorAll('[data-hero]').forEach((block) => {
+    const kind = block.dataset.hero;
+    const spec = HERO_KINDS[kind];
+    const done = (updated) => {
+      const i = seasons.findIndex((x) => x.id === id);
+      if (i >= 0) seasons[i] = { ...seasons[i], heroUrl: updated.heroUrl, heroMobileUrl: updated.heroMobileUrl };
+      Object.assign(season, { heroUrl: updated.heroUrl, heroMobileUrl: updated.heroMobileUrl });
+      block.outerHTML = heroBlockHtml(updated, kind);
+      const fresh = card.querySelector(`[data-hero="${kind}"]`);
+      wireHeroBlock(fresh);
+    };
+    const wireHeroBlock = (el) => {
+      const input = el.querySelector('input[type=file]');
+      input.addEventListener('change', async () => {
+        const file = input.files[0];
+        if (!file) return;
+        const m = el.querySelector('.sa-hero-msg');
+        m.textContent = 'Nahrávam…';
+        try {
+          const blob = await cropHero(file, spec.w, spec.h);
+          const body = new FormData();
+          body.append('photo', blob, 'hero.jpg');
+          const res = await fetch(`/api/seasons/${id}/hero?kind=${kind}`, { method: 'POST', body });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+          toast('Fotka nahraná');
+          done(data);
+        } catch (err) { m.textContent = err.message; m.style.color = 'var(--danger)'; }
+      });
+      const remove = el.querySelector('[data-hero-remove]');
+      if (remove) remove.addEventListener('click', async () => {
+        try { done(await api(`/seasons/${id}/hero?kind=${kind}`, { method: 'DELETE' })); toast('Fotka odstránená'); } catch (err) { el.querySelector('.sa-hero-msg').textContent = err.message; }
+      });
+    };
+    wireHeroBlock(block);
+  });
+
   const rte = card.querySelector('[data-rte]');
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch { /* not supported: the server turns divs into paragraphs */ }
   card.querySelectorAll('.rte-toolbar [data-cmd]').forEach((btn) => {

@@ -4,6 +4,9 @@ const { requireAdmin } = require('../auth');
 const { computeGroupStandings } = require('../standings');
 const { FROZEN } = require('../frozenStandings');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
 const engine = require('../matchEngine');
 const nameMatch = require('../nameMatch');
 const roundRobin = require('../roundRobin');
@@ -140,6 +143,8 @@ function serializeSeason(s) {
     galleryUrl: s.gallery_url || '',
     paymentUrl: s.payment_url || '',
     logoUrl: s.logo_url || '',
+    heroUrl: s.hero_url || '',
+    heroMobileUrl: s.hero_mobile_url || '',
     registrationOpen: !!s.registration_open,
     courtCount: s.court_count || 0,
     maxMatchesPerDay: s.max_matches_per_day || 0,
@@ -147,6 +152,50 @@ function serializeSeason(s) {
     groups: groups.map(serializeGroup),
   };
 }
+
+// ---------------- the hero photo of a season or a tournament page ----------------
+// Two pictures, both optional: one for wide screens and one for phones (a phone shows the wide one when there is no other). The admin
+// page cuts them to 2400 x 800 (3:1) and 1200 x 900 (4:3) before they are sent; they live on the persistent disk like the other uploads.
+const HERO_DIR = path.join(db.dataDir, 'season-heroes');
+if (!fs.existsSync(HERO_DIR)) fs.mkdirSync(HERO_DIR, { recursive: true });
+const HERO_EXT = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp' };
+const heroUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(null, Object.prototype.hasOwnProperty.call(HERO_EXT, file.mimetype)),
+});
+const heroColumn = (kind) => (kind === 'mobile' ? 'hero_mobile_url' : kind === 'desktop' ? 'hero_url' : null);
+// only files written here (their address starts with /season-heroes/) are ever removed
+function deleteHeroFile(url) {
+  if (typeof url !== 'string' || !url.startsWith('/season-heroes/')) return;
+  fs.unlink(path.join(HERO_DIR, path.basename(url)), () => { /* fine if it is already gone */ });
+}
+
+router.post('/:id/hero', requireAdmin, (req, res) => {
+  heroUpload.single('photo')(req, res, (err) => {
+    const column = heroColumn(req.query.kind);
+    if (!column) return res.status(400).json({ error: 'kind must be desktop or mobile' });
+    if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'The picture must be under 8 MB' : 'Could not process the uploaded file' });
+    if (!req.file) return res.status(400).json({ error: 'Upload a JPG, PNG or WebP picture' });
+    const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+    if (!season) return res.status(404).json({ error: 'Season not found' });
+    const filename = `${season.slug || 'season'}-${req.query.kind}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}${HERO_EXT[req.file.mimetype]}`;
+    fs.writeFileSync(path.join(HERO_DIR, filename), req.file.buffer);
+    db.prepare(`UPDATE seasons SET ${column} = ? WHERE id = ?`).run(`/season-heroes/${filename}`, season.id);
+    deleteHeroFile(season[column]);
+    res.json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
+  });
+});
+
+router.delete('/:id/hero', requireAdmin, (req, res) => {
+  const column = heroColumn(req.query.kind);
+  if (!column) return res.status(400).json({ error: 'kind must be desktop or mobile' });
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  db.prepare(`UPDATE seasons SET ${column} = NULL WHERE id = ?`).run(season.id);
+  deleteHeroFile(season[column]);
+  res.json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
+});
 
 // Public: the match page and its admin editor read this (newest season first).
 router.get('/', (req, res) => {

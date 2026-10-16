@@ -202,8 +202,13 @@ function headerHtml() {
     : status === 'past' ? `<span class="sv-chip w">${escapeHtml(t('season.over'))}</span>`
       : `<span class="sv-chip w">${escapeHtml(t('season.upcomingChip'))}</span>`;
   const logo = season.logoUrl ? `<img class="sv-logo" src="${escapeHtml(season.logoUrl)}" alt="">` : '';
+  // the hero photo: one for wide screens and one for phones, each standing in for the other when it is missing
+  const heroWide = season.heroUrl || season.heroMobileUrl;
+  const heroPhone = season.heroMobileUrl || season.heroUrl;
+  const hero = heroWide ? `<picture class="sv-hero-pic"><source media="(max-width: 700px)" srcset="${escapeHtml(heroPhone)}"><img src="${escapeHtml(heroWide)}" alt="${escapeHtml(season.name)}"></picture><span class="sv-hero-shade"></span>` : '';
   return `
-    <div class="sv-head${logo ? ' with-logo' : ''}">
+    <div class="sv-head${logo ? ' with-logo' : ''}${hero ? ' has-hero' : ''}">
+      ${hero}
       ${logo}
       <div class="sv-head-main">
         <div class="sv-crumb"><a href="/harmonogram">${escapeHtml(t('schedule.heading'))}</a> › ${escapeHtml(termText())}</div>

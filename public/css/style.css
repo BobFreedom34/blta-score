@@ -5008,3 +5008,25 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sa-hint { font-weight: 600; color: var(--gray); }
 .sa-actions { display: flex; align-items: center; gap: 8px; padding-top: 4px; }
 @media (max-width: 600px) { .sa-wide { grid-column: 1 / -1; } .sa-tabs { padding: 10px; } .sa-tab { padding: 8px 11px; } }
+
+/* the hero photo of a season / tournament page: 3:1 on wide screens (2400 x 800), 4:3 on phones (1200 x 900), the title over its lower left */
+.sv-head.has-hero { position: relative; display: flex; align-items: flex-end; gap: 22px; aspect-ratio: 3 / 1; min-height: 240px; margin-top: 18px; padding: 26px 30px; border-radius: var(--radius); overflow: hidden; background: #1b1b1f; }
+.sv-hero-pic, .sv-hero-pic img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sv-hero-pic img { object-fit: cover; }
+.sv-hero-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(10, 10, 10, 0.88) 0%, rgba(10, 10, 10, 0.5) 38%, rgba(10, 10, 10, 0) 70%); }
+.sv-head.has-hero > .sv-logo, .sv-head.has-hero > .sv-head-main { position: relative; z-index: 1; }
+.sv-head.has-hero .sv-crumb { margin-top: 0; color: #d3d6dc; }
+.sv-head.has-hero .sv-crumb a { color: #d3d6dc; }
+.sv-head.has-hero .sv-title { text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5); }
+@media (max-width: 700px) { .sv-head.has-hero { aspect-ratio: 4 / 3; min-height: 0; padding: 18px; } .sv-head.has-hero .sv-title { font-size: 24px; } }
+
+/* the hero photo blocks in the card of a season / tournament */
+.sa-hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 10px; }
+.sa-hero { background: var(--white); border-radius: var(--radius-md); padding: 12px; display: grid; gap: 10px; align-content: start; }
+.sa-hero-pic { width: 100%; border-radius: 8px; overflow: hidden; background: #d9d9d9; display: flex; align-items: center; justify-content: center; color: var(--gray); font-size: 13px; font-weight: 600; }
+.sa-hero-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sa-hero-info { display: grid; gap: 4px; font-size: 12px; color: var(--gray); font-weight: 500; line-height: 1.45; }
+.sa-hero-info strong { color: var(--ink); font-size: 13px; }
+.sa-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+.sa-hero-actions label { margin: 0; cursor: pointer; }
+.sa-hero-msg { font-size: 12px; color: var(--gray); }

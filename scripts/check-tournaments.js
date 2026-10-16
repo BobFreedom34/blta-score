@@ -20,6 +20,7 @@ function test(name, fn) { tests.push({ name, fn }); }
 let child = null;
 let adminCookie = '';
 let fixtureDb = null;
+let tournamentId = 0;
 
 async function call(method, url, { body, cookie = adminCookie } = {}) {
   const headers = {};
@@ -244,6 +245,41 @@ async function startServer() {
   fixtureDb = new DatabaseSync(path.join(serverDir, 'blta-score.db'));
   fixtureDb.exec('PRAGMA busy_timeout = 5000');
 }
+
+test('the hero photo of a tournament page: wide and phone pictures uploaded by an admin, shown on the page and in the link preview, removable', async () => {
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==', 'base64');
+  const upload = (kind, cookie = adminCookie) => {
+    const body = new FormData();
+    body.append('photo', new Blob([png], { type: 'image/png' }), 'hero.png');
+    return fetch(`${BASE}/api/seasons/${tournamentId}/hero?kind=${kind}`, { method: 'POST', headers: cookie ? { Cookie: cookie } : {}, body });
+  };
+  const made = await call('POST', '/api/seasons', { body: { name: 'Hero Cup 2099', kind: 'TOURNAMENT' } });
+  assert.strictEqual(made.status, 201);
+  tournamentId = made.json.id;
+  assert.strictEqual(made.json.heroUrl, '');
+  assert.strictEqual((await upload('desktop', '')).status, 401);
+  assert.strictEqual((await upload('tablet')).status, 400);
+  const wide = await upload('desktop');
+  assert.strictEqual(wide.status, 200);
+  const url = (await wide.json()).heroUrl;
+  assert.ok(url.startsWith('/season-heroes/hero-cup-2099-desktop-') && url.endsWith('.png'), url);
+  assert.strictEqual((await fetch(BASE + url)).status, 200);
+  const phone = await (await upload('mobile')).json();
+  assert.ok(/-mobile-/.test(phone.heroMobileUrl) && phone.heroUrl === url);
+  // the page and its link preview use the wide picture
+  const html = await (await fetch(`${BASE}/tournament/${made.json.slug}`)).text();
+  assert.ok(html.includes(url), 'the hero photo is the og:image of the page');
+  assert.strictEqual((await call('GET', `/api/seasons/by-slug/${made.json.slug}`, { cookie: '' })).json.heroMobileUrl, phone.heroMobileUrl);
+  // replacing deletes the old file; removing clears the address
+  const second = (await (await upload('desktop')).json()).heroUrl;
+  assert.notStrictEqual(second, url);
+  assert.strictEqual((await fetch(BASE + url)).status, 404, 'the replaced picture is gone');
+  assert.strictEqual((await call('DELETE', `/api/seasons/${tournamentId}/hero?kind=desktop`, { cookie: '' })).status, 401);
+  const removed = await call('DELETE', `/api/seasons/${tournamentId}/hero?kind=desktop`);
+  assert.strictEqual(removed.json.heroUrl, '');
+  assert.strictEqual(removed.json.heroMobileUrl, phone.heroMobileUrl);
+  assert.strictEqual((await fetch(BASE + second)).status, 404);
+});
 
 async function main() {
   let failed = 0;
