@@ -1052,6 +1052,8 @@ Object.entries({
 }).forEach(([column, type]) => {
   if (!venueColumns.includes(column)) db.exec(`ALTER TABLE venues ADD COLUMN ${column} ${type}`);
 });
+// the position of a venue in the list (Backend > Venues: drag to reorder); venues without one come after the others, alphabetically
+if (!db.prepare('PRAGMA table_info(venues)').all().some((c) => c.name === 'sort_order')) db.exec('ALTER TABLE venues ADD COLUMN sort_order INTEGER');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_venues_slug ON venues(slug)');
 
 // One-shot markers for data migrations that must never re-run (e.g. adding a

@@ -88,9 +88,10 @@ function summaryText(v) {
   return bits.length ? bits.join(' · ') : 'No details yet';
 }
 
-function rowHtml(v) {
+function rowHtml(v, index) {
   return `
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span class="hi-move"><span class="hi-handle" title="Potiahni na zmenu poradia">⋮⋮</span><button type="button" class="hi-arrow" data-move="up" title="Vyššie" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="hi-arrow" data-move="down" title="Nižšie" ${index === venues.length - 1 ? 'disabled' : ''}>↓</button></span>
       <div class="venue-row-thumb" style="width:64px;aspect-ratio:16/9;border-radius:6px;overflow:hidden;background:#e6e6e6;flex-shrink:0">${v.imageUrl ? `<img src="${escapeHtml(v.imageUrl)}" alt="" style="display:block;width:100%;height:100%;object-fit:cover">` : ''}</div>
       <div style="flex:1;min-width:180px">
         <div style="font-weight:700">${escapeHtml(v.name)}</div>
@@ -113,13 +114,89 @@ function renderList() {
     listEl.innerHTML = '<div class="empty-state">No venues yet.</div>';
     return;
   }
-  listEl.innerHTML = venues.map((v) => `<div class="venue-admin-row" data-id="${v.id}" style="border-bottom:1px solid var(--gray-light);padding:12px 4px">${rowHtml(v)}</div>`).join('');
+  listEl.innerHTML = venues.map((v, i) => `<div class="venue-admin-row" data-id="${v.id}" style="border-bottom:1px solid var(--gray-light);padding:12px 4px">${rowHtml(v, i)}</div>`).join('');
   listEl.querySelectorAll('.venue-admin-row').forEach(wireRow);
+  if (!listEl.dataset.dragWired) { listEl.dataset.dragWired = '1'; wireVenueDrag(listEl); }
+}
+
+// Saves the order of the whole list (the public Courts page follows it) and shows it.
+async function reorderVenues(ids) {
+  try {
+    venues = await api('/venues/reorder', { method: 'POST', body: { ids } });
+  } catch (err) {
+    toast(err.message);
+    venues = await api('/venues');
+  }
+  renderList();
+}
+
+// Dragging: grab the ⋮⋮ handle of a venue and drop it before or after another one (the arrows do the same one step at a time).
+function wireVenueDrag(listEl) {
+  let dragged = null;
+  let mark = null;
+  const clear = () => {
+    listEl.querySelectorAll('.vn-drop-before, .vn-drop-after').forEach((el) => el.classList.remove('vn-drop-before', 'vn-drop-after'));
+    mark = null;
+  };
+  listEl.addEventListener('mousedown', (e) => {
+    const handle = e.target.closest('.hi-handle');
+    if (handle) handle.closest('.venue-admin-row').draggable = true;
+  });
+  listEl.addEventListener('mouseup', () => listEl.querySelectorAll('.venue-admin-row[draggable="true"]').forEach((el) => { el.draggable = false; }));
+  listEl.addEventListener('dragstart', (e) => {
+    const row = e.target.closest && e.target.closest('.venue-admin-row');
+    if (!row || !row.draggable) return;
+    dragged = row;
+    row.classList.add('hi-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', row.dataset.id);
+  });
+  listEl.addEventListener('dragover', (e) => {
+    if (!dragged) return;
+    const over = e.target.closest('.venue-admin-row');
+    if (!over || over === dragged) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    clear();
+    const box = over.getBoundingClientRect();
+    mark = { row: over, before: e.clientY < box.top + box.height / 2 };
+    over.classList.add(mark.before ? 'vn-drop-before' : 'vn-drop-after');
+  });
+  listEl.addEventListener('drop', (e) => {
+    if (!dragged || !mark) return;
+    e.preventDefault();
+    const id = Number(dragged.dataset.id);
+    const target = Number(mark.row.dataset.id);
+    const ids = venues.map((v) => v.id).filter((x) => x !== id);
+    const at = ids.indexOf(target);
+    ids.splice(mark.before ? at : at + 1, 0, id);
+    const before = venues.map((v) => v.id);
+    clear();
+    dragged.classList.remove('hi-dragging');
+    dragged.draggable = false;
+    dragged = null;
+    if (ids.every((x, i) => x === before[i])) return; // dropped where it was
+    reorderVenues(ids);
+  });
+  listEl.addEventListener('dragend', () => {
+    clear();
+    if (dragged) { dragged.classList.remove('hi-dragging'); dragged.draggable = false; }
+    dragged = null;
+  });
 }
 
 function wireRow(rowEl) {
   const id = Number(rowEl.dataset.id);
   const venue = venues.find((x) => x.id === id);
+
+  rowEl.querySelectorAll('[data-move]').forEach((btn) => btn.addEventListener('click', () => {
+    const ids = venues.map((v) => v.id);
+    const at = ids.indexOf(id);
+    const to = btn.dataset.move === 'up' ? at - 1 : at + 1;
+    if (to < 0 || to >= ids.length) return;
+    [ids[at], ids[to]] = [ids[to], ids[at]];
+    reorderVenues(ids);
+  }));
 
   rowEl.querySelector('[data-action="edit"]').addEventListener('click', () => {
     const slot = rowEl.querySelector('.venue-editor-slot');

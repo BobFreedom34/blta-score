@@ -76,8 +76,27 @@ function matchesAtVenue(venueId) {
 // Public — the location autocomplete on every match form and the /courts
 // pages all read this, logged in or not.
 router.get('/', (req, res) => {
-  const rows = db.prepare('SELECT * FROM venues ORDER BY name COLLATE NOCASE').all();
+  // the order set in the backend (dragging), then the venues that have none, alphabetically
+  const rows = db.prepare('SELECT * FROM venues ORDER BY sort_order IS NULL, sort_order, name COLLATE NOCASE').all();
   res.json(rows.map(venues.serialize));
+});
+
+// Saves the order of the list: { ids: [venue ids in the new order] }. A venue left out of the list goes after the listed ones, in the order it had.
+router.post('/reorder', requireAdmin, (req, res) => {
+  const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids.map(Number) : [];
+  const current = db.prepare('SELECT id FROM venues ORDER BY sort_order IS NULL, sort_order, name COLLATE NOCASE').all().map((r) => r.id);
+  if (!ids.length || ids.some((id) => !current.includes(id)) || new Set(ids).size !== ids.length) return res.status(400).json({ error: 'List venues that exist, each once' });
+  const order = [...ids, ...current.filter((id) => !ids.includes(id))];
+  const set = db.prepare('UPDATE venues SET sort_order = ? WHERE id = ?');
+  db.exec('BEGIN');
+  try {
+    order.forEach((id, i) => set.run(i, id));
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  res.json(db.prepare('SELECT * FROM venues ORDER BY sort_order IS NULL, sort_order, name COLLATE NOCASE').all().map(venues.serialize));
 });
 
 router.get('/:slug', (req, res) => {
@@ -94,7 +113,9 @@ router.post('/', requireAdmin, (req, res) => {
   if (db.prepare('SELECT 1 FROM venues WHERE name = ?').get(parsed.name)) {
     return res.status(400).json({ error: 'That venue already exists' });
   }
-  const columns = { name: parsed.name, slug: venues.uniqueSlug(parsed.name), ...details.columns };
+  // a new venue goes to the end once the list has an order of its own
+  const last = db.prepare('SELECT MAX(sort_order) AS m FROM venues').get().m;
+  const columns = { name: parsed.name, slug: venues.uniqueSlug(parsed.name), ...(last === null || last === undefined ? {} : { sort_order: last + 1 }), ...details.columns };
   const names = Object.keys(columns);
   const info = db.prepare(`INSERT INTO venues (${names.join(', ')}) VALUES (${names.map((n) => `@${n}`).join(', ')})`).run(columns);
   res.status(201).json(venues.serialize(db.prepare('SELECT * FROM venues WHERE id = ?').get(info.lastInsertRowid)));
