@@ -91,6 +91,12 @@ const PAGES = [
     description: '{name} - séria amatérskej tenisovej ligy BLTA: tabuľky skupín, rozpis kôl, výsledky, hráči a play-off. Dlhodobá tenisová liga pre amatérov a rekreačných hráčov v Bratislave.',
   },
   {
+    // the same page file as a season: a tournament has an address of its own, /tournament/<slug> (a tournament asked for as /season/<slug> is sent there)
+    key: 'tournament', label: 'Tournament page (template)', path: '/tournament/:slug', file: 'season.html', template: true, blta: null,
+    title: `{name}${SUFFIX}`,
+    description: '{name} - turnaj amatérskej tenisovej ligy BLTA: skupiny, pavúky, harmonogram kurtov so živými výsledkami, hráči a registrácia.',
+  },
+  {
     key: 'player', label: 'Player profile (template)', path: '/player/:id', file: 'player.html', template: true, blta: null,
     title: `{name} - hráč${SUFFIX}`,
     description: '{name} - profil hráča BLTA: štatistiky, výsledky zápasov, rebríčkové body a odznaky.',
@@ -207,6 +213,11 @@ const ENGLISH = {
     slug: 'season',
     title: `{name}${SUFFIX_EN}`,
     description: '{name} - a series of the BLTA amateur tennis league: group tables, round schedule, results, players and play-offs. A long-running tennis league for amateur and recreational players in Bratislava.',
+  },
+  tournament: {
+    slug: 'tournament',
+    title: `{name}${SUFFIX_EN}`,
+    description: '{name} - a tournament of the BLTA amateur tennis league: groups, brackets, the court timetable with live scores, players and registration.',
   },
   player: {
     slug: 'player',
@@ -675,7 +686,8 @@ function sitemapXml(origin) {
   const hidden = (key) => noindexOf(key);
   PAGES.filter((p) => !p.template && !hidden(p.key)).forEach((p) => add(p.path));
   const day = (iso) => (iso ? String(iso).slice(0, 10) : undefined);
-  if (!hidden('season')) db.prepare('SELECT slug FROM seasons WHERE slug IS NOT NULL').all().forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`));
+  if (!hidden('season')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND COALESCE(kind, 'LEAGUE') != 'TOURNAMENT'").all().forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`));
+  if (!hidden('tournament')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND kind = 'TOURNAMENT'").all().forEach((r) => add(`/tournament/${encodeURIComponent(r.slug)}`));
   if (!hidden('article')) blog.publishedRows().forEach((r) => add(`/article/${encodeURIComponent(r.slug_sk)}`, day(r.modified_at)));
   if (!hidden('court')) db.prepare('SELECT slug FROM venues WHERE slug IS NOT NULL').all().forEach((r) => add(`/courts/${encodeURIComponent(r.slug)}`));
   if (!hidden('player')) db.prepare('SELECT slug FROM players WHERE slug IS NOT NULL').all().forEach((r) => add(`/player/${encodeURIComponent(r.slug)}`));

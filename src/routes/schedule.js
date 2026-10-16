@@ -38,7 +38,7 @@ router.get('/', (req, res) => {
       startDate: s.start_date,
       endDate: s.end_date || s.start_date,
       venue: tournament ? (s.venue || '') : '',
-      link: `/season/${s.slug}`,
+      link: `/${tournament ? 'tournament' : 'season'}/${s.slug}`,
       logoUrl: s.logo_url || '',
       categories: tournament && own.length ? own : CATEGORIES,
     };

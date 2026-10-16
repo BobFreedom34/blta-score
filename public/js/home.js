@@ -249,7 +249,7 @@ function timelineHtml(d) {
       elapsed = Math.max(0, Math.min(100, ((dayNum(today) - dayNum(s.startDate) + 1) / span) * 100));
     }
     // every season has its own page (/season/<name>); an upcoming one without groups yet shows its empty tabs
-    const href = `/season/${encodeURIComponent(s.slug)}`;
+    const href = `/${s.kind === 'TOURNAMENT' ? 'tournament' : 'season'}/${encodeURIComponent(s.slug)}`;
     const range = s.startDate && s.endDate ? monthRange(s.startDate, s.endDate) : '';
     const inner = `
       <div class="home-tl-body">

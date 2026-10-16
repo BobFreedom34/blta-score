@@ -204,6 +204,10 @@ const TEMPLATE_ENTITY = {
     const s = db.prepare('SELECT name, logo_url FROM seasons WHERE slug = ?').get(slug);
     return s ? { name: s.name, image: s.logo_url || '' } : null;
   },
+  tournament: (slug) => {
+    const s = db.prepare("SELECT name, logo_url FROM seasons WHERE slug = ? AND kind = 'TOURNAMENT'").get(slug);
+    return s ? { name: s.name, image: s.logo_url || '' } : null;
+  },
   court: (slug) => {
     const v = db.prepare('SELECT name FROM venues WHERE slug = ?').get(slug);
     return v ? { name: v.name } : null;
@@ -222,6 +226,16 @@ app.use((req, res, next) => {
   if (seo.movedTo(hit)) return pageNotFound(res);
   const page = seo.BY_KEY.get(hit.key);
   let entity = null;
+  // a tournament has its own address (/tournament/<name>), a league season keeps /season/<name>: asked for at the other one, it is sent to its own
+  if (hit.key === 'season' || hit.key === 'tournament') {
+    let param = hit.param;
+    try { param = decodeURIComponent(param); } catch { /* keep it as it is */ }
+    const row = db.prepare('SELECT slug, kind FROM seasons WHERE slug = ?').get(param);
+    if (row && (row.kind === 'TOURNAMENT') !== (hit.key === 'tournament')) {
+      const own = `/${row.kind === 'TOURNAMENT' ? 'tournament' : 'season'}/${encodeURIComponent(row.slug)}`;
+      return res.redirect(301, seo.pageUrl(own, hit.lang));
+    }
+  }
   if (page.template) {
     try {
       let param = hit.param;

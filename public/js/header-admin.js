@@ -532,7 +532,7 @@ async function loadContactCard() {
 async function loadSeasonPages() {
   try {
     const seasons = await api('/seasons');
-    seasonPages = seasons.filter((x) => x.slug).map((x) => ({ sk: x.name, en: x.name, link: `/season/${x.slug}` }));
+    seasonPages = seasons.filter((x) => x.slug).map((x) => ({ sk: x.name, en: x.name, link: `/${x.kind === 'TOURNAMENT' ? 'tournament' : 'season'}/${x.slug}` }));
   } catch { seasonPages = []; }
 }
 

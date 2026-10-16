@@ -1355,7 +1355,7 @@ function seasonState(s, today) {
 }
 
 // A menu item that links to a season page (/season/<slug>) is /season/<slug> in the code addresses the menu is stored with.
-const NAV_SEASON_LINK = /^\/season\/([^/?#]+)/;
+const NAV_SEASON_LINK = /^\/(?:season|tournament)\/([^/?#]+)/;
 
 async function renderHeaderNav() {
   const container = document.getElementById('header-dynamic-items');

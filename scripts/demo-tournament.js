@@ -51,7 +51,7 @@ child.stdout.on('data', async (d) => {
     await call('POST', `/api/seasons/${t.id}/seeds`, { category: 'ELITE', seeds: regs.ELITE.slice(0, 4).map((r, n) => ({ id: r.id, seed: n + 1 })) });
     await call('POST', `/api/seasons/${t.id}/draw`, { category: 'ELITE', format: 'PRINCE', mode: 'AUTO' });
     await call('POST', `/api/seasons/${t.id}/draw`, { category: 'NEXT_GEN', format: 'GROUPS_BRACKET', mode: 'AUTO', groupSize: 4, qualifiers: 2, bracketType: 'PRINCE' });
-    console.log(`\nDemo tournament ready.\n  Tournament page : ${base}/season/${t.slug}\n  Admin (password test): ${base}/tournaments-admin\n  Brackets admin  : ${base}/bracket-admin\nCtrl+C stops the demo and throws the data away.\n`);
+    console.log(`\nDemo tournament ready.\n  Tournament page : ${base}/tournament/${t.slug}\n  Admin (password test): ${base}/tournaments-admin\n  Brackets admin  : ${base}/bracket-admin\nCtrl+C stops the demo and throws the data away.\n`);
   } catch (err) {
     console.error('Seeding failed:', err.message);
   }

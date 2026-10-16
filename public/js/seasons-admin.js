@@ -230,7 +230,7 @@ function seasonCardHtml(s) {
       </summary>
       <div class="sa-tabs" role="tablist">
         ${CARD_TABS.map(([key, label]) => `<button type="button" class="sa-tab${key === active ? ' active' : ''}" data-tab="${key}" role="tab">${label}</button>`).join('')}
-        <a class="sa-tab-link" href="/season/${escapeHtml(s.slug)}" target="_blank" rel="noopener">${IS_TOURNAMENT ? 'Stránka turnaja' : 'Stránka sezóny'} ↗</a>
+        <a class="sa-tab-link" href="/${IS_TOURNAMENT ? 'tournament' : 'season'}/${escapeHtml(s.slug)}" target="_blank" rel="noopener">${IS_TOURNAMENT ? 'Stránka turnaja' : 'Stránka sezóny'} ↗</a>
       </div>
       <div class="sa-body">
         <div class="season-error" style="color:var(--danger);font-weight:600"></div>

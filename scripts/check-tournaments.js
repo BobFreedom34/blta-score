@@ -56,7 +56,7 @@ test('the old events table is emptied and the schedule shows each tournament onc
   const tournaments = schedule.filter((e) => e.type === 'TOURNAMENT');
   assert.deepStrictEqual(tournaments.map((e) => e.name).sort(), ['Slávia Filozof Cup 2025', 'Tenis ONE Trophy 2025']);
   const slavia = tournaments.find((e) => e.name.startsWith('Slávia'));
-  assert.strictEqual(slavia.link, '/season/slavia-filozof-cup-2025');
+  assert.strictEqual(slavia.link, '/tournament/slavia-filozof-cup-2025');
   assert.ok(slavia.seasonId);
   assert.ok(/Nevädzová/.test(slavia.venue));
   assert.deepStrictEqual(tournaments.find((e) => e.name.startsWith('Tenis')).categories, ['ELITE', 'NEXT_GEN']);
@@ -79,9 +79,20 @@ test('winners can be set for a tournament and show with it', async () => {
   assert.ok(shown, 'the edition is not in the public list with the tournament slug');
 });
 
-test('the tournament has a page', async () => {
-  const res = await fetch(`${BASE}/season/slavia-filozof-cup-2025`);
+test('the tournament has a page at /tournament/<name>; asked for as /season/<name> it is sent there, and a league season asked for as /tournament/<name> is sent to /season/<name>', async () => {
+  const res = await fetch(`${BASE}/tournament/slavia-filozof-cup-2025`);
   assert.strictEqual(res.status, 200);
+  const moved = await fetch(`${BASE}/season/slavia-filozof-cup-2025`, { redirect: 'manual' });
+  assert.strictEqual(moved.status, 301);
+  assert.strictEqual(moved.headers.get('location'), '/tournament/slavia-filozof-cup-2025');
+  const league = (await call('GET', '/api/seasons', { cookie: '' })).json.find((x) => x.kind === 'LEAGUE' && x.slug);
+  const back = await fetch(`${BASE}/tournament/${league.slug}`, { redirect: 'manual' });
+  assert.strictEqual(back.status, 301);
+  assert.strictEqual(back.headers.get('location'), `/season/${league.slug}`);
+  assert.strictEqual((await fetch(`${BASE}/season/${league.slug}`)).status, 200);
+  const sitemap = await (await fetch(`${BASE}/sitemap.xml`)).text();
+  assert.ok(sitemap.includes('/tournament/slavia-filozof-cup-2025') && !sitemap.includes('/season/slavia-filozof-cup-2025'));
+  assert.ok(sitemap.includes(`/season/${league.slug}`));
   assert.ok(/Slávia Filozof Cup 2025 - BLTA/.test(await res.text()));
   assert.strictEqual((await call('GET', '/api/seasons/by-slug/slavia-filozof-cup-2025', { cookie: '' })).json.kind, 'TOURNAMENT');
 });
@@ -108,7 +119,7 @@ test('an admin creates a tournament with a venue and categories, then edits it',
   // the schedule picks it up
   const item = (await call('GET', '/api/schedule', { cookie: '' })).json.find((e) => e.name === 'Winter Cup 2027');
   assert.strictEqual(item.type, 'TOURNAMENT');
-  assert.strictEqual(item.link, '/season/winter-cup-2027');
+  assert.strictEqual(item.link, '/tournament/winter-cup-2027');
   assert.strictEqual(item.venue, 'Slovan');
   // turning it into a league season takes the venue out of the schedule
   const league = await call('PATCH', `/api/seasons/${id}`, { body: { kind: 'LEAGUE' } });
