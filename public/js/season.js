@@ -528,13 +528,14 @@ async function openRegisterModal() {
 function availableTabs() {
   const hasGroups = !!(standings && standings.groups.length);
   const players = playersModel().total;
+  // the order of a season's tabs: Základné info · Hráči · Tabuľky · Rozpis · Výsledky · Play-off · Galéria (a tournament: Základné info · Harmonogram · Skupiny · Pavúky · Galéria)
   const tabs = [
     { key: 'info', label: t('season.navInfo'), has: !!season.info },
+    { key: 'players', label: t('season.navPlayers'), has: players > 0, count: players },
     { key: 'courts', label: t('season.navCourts'), has: (season.courtCount || 0) > 0 },
     { key: 'tables', label: t(isTournament() ? 'season.navGroups' : 'season.navTables'), has: hasGroups },
-    { key: 'results', label: t('season.navResults'), has: season.matchCount > 0 },
     { key: 'schedule', label: t('season.navSchedule'), has: (season.rounds || []).length > 0 },
-    { key: 'players', label: t('season.navPlayers'), has: players > 0, count: players },
+    { key: 'results', label: t('season.navResults'), has: season.matchCount > 0 },
     { key: 'playoff', label: t(isTournament() ? 'season.navBrackets' : 'season.navPlayoff'), has: brackets.length > 0 || (hasGroups && statusOf() !== 'past') },
     { key: 'gallery', label: t('season.navGallery'), has: !!season.galleryUrl },
   ];
