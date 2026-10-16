@@ -206,7 +206,104 @@ function schedulePreviewHtml(data) {
   return `<div class="sg-total">${total ? `${total} matches would be created (shown in orange)` : 'Nothing to create — every pair already has a match'}</div>${groups}`;
 }
 
+// The card of a tournament: under the name the tabs Základné info · Registrácie · Zaradenie do kategórií · Pavúk turnaja, and only the
+// chosen one is shown (what is in a tab is loaded when it is opened). The form of the basic info is in sections.
+const TOURNAMENT_TABS = [['info', 'Základné info'], ['regs', 'Registrácie'], ['assign', 'Zaradenie do kategórií'], ['draw', 'Pavúk turnaja']];
+const tournamentTab = new Map(); // season id -> the tab last opened (kept when the list is drawn again)
+
+function tournamentCardHtml(s) {
+  const field = (label, control, cls = '') => `<label class="sa-field ${cls}">${label}${control}</label>`;
+  const input = (name, value, attrs = '') => '<input ' + (/type=/.test(attrs) ? '' : 'type="text" ') + 'data-field="' + name + '" value="' + escapeHtml(value == null ? '' : String(value)) + '" ' + attrs + '>';
+  const active = tournamentTab.get(s.id) || 'info';
+  return `
+    <details class="card season-admin-card sa-tournament" data-season="${s.id}"${openIds.has(s.id) ? ' open' : ''} style="margin-bottom:12px">
+      <summary class="sa-sum">
+        <svg class="sa-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        <span class="sa-name">${escapeHtml(s.name)}</span>
+        <span class="sa-dates">${escapeHtml(s.startDate && s.endDate ? `${fmtDate(s.startDate)} – ${fmtDate(s.endDate)}` : '')}</span>
+        <span class="sa-chip ${seasonStatus(s)}">${STATUS_LABEL[seasonStatus(s)]}</span>
+        <span class="sa-count">${s.matchCount} ${s.matchCount === 1 ? 'match' : 'matches'}</span>
+      </summary>
+      <div class="sa-tabs" role="tablist">
+        ${TOURNAMENT_TABS.map(([key, label]) => `<button type="button" class="sa-tab${key === active ? ' active' : ''}" data-tab="${key}" role="tab">${label}</button>`).join('')}
+        <a class="sa-tab-link" href="/season/${escapeHtml(s.slug)}" target="_blank" rel="noopener">Stránka turnaja ↗</a>
+      </div>
+      <div class="sa-body">
+        <div class="season-error" style="color:var(--danger);font-weight:600"></div>
+
+        <div class="sa-panel" data-panel="info"${active === 'info' ? '' : ' hidden'}>
+          <form class="season-edit-form">
+            <section class="sa-section">
+              <h4>Základné údaje</h4>
+              <div class="sa-grid">
+                ${field('Názov', input('name', s.name, 'maxlength="120" required'), 'sa-wide')}
+                ${field('Začiatok', input('startDate', s.startDate || '', 'type="date"'))}
+                ${field('Koniec', input('endDate', s.endDate || '', 'type="date"'))}
+                ${field('Miesto', input('venue', s.venue || '', 'maxlength="200" placeholder="Adresa alebo klub"'), 'sa-wide')}
+                <div class="sa-field sa-wide">Kategórie
+                  <div class="sa-checks">${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}> ${label}</label>`).join('')}</div>
+                </div>
+              </div>
+            </section>
+
+            <section class="sa-section">
+              <h4>Kurty a pravidlá hrania</h4>
+              <div class="sa-grid">
+                ${field('Počet kurtov (Kurt 1 … Kurt n)', input('courtCount', s.courtCount || '', 'type="number" min="0" max="50" inputmode="numeric" placeholder="napr. 4"'))}
+                ${field('Max. zápasov hráča za deň', input('maxMatchesPerDay', s.maxMatchesPerDay || '', 'type="number" min="0" max="10" inputmode="numeric" placeholder="bez limitu"'))}
+              </div>
+            </section>
+
+            <section class="sa-section">
+              <h4>Štartovné a registrácia</h4>
+              <div class="sa-grid">
+                ${field('Štartovné', input('entryFee', s.entryFee || '', 'maxlength="40" placeholder="napr. 20 €"'))}
+                ${field('Ceny pre víťazov', input('prizeMoney', s.prizeMoney || '', 'maxlength="120"'))}
+                ${field('Dátum žrebovania', input('drawDate', s.drawDate || '', 'type="date"'))}
+                <label class="sa-field sa-check"><input type="checkbox" data-field="registrationOpen"${s.registrationOpen ? ' checked' : ''}> Registrácia je otvorená</label>
+                ${field('Odkaz na platbu (Stripe) — tlačidlo „Úhrada štartovného online“', input('paymentUrl', s.paymentUrl || '', 'maxlength="500" placeholder="https://buy.stripe.com/…"'), 'sa-full')}
+              </div>
+            </section>
+
+            <section class="sa-section">
+              <h4>Vzhľad stránky</h4>
+              <div class="sa-grid">
+                ${field('Odkaz na galériu', input('galleryUrl', s.galleryUrl || '', 'maxlength="500" placeholder="https://…"'), 'sa-wide')}
+                ${field('Logo (odkaz na obrázok, napr. /img/seasons/autumn.png)', input('logoUrl', s.logoUrl || '', 'maxlength="300"'), 'sa-wide')}
+              </div>
+              <div class="sa-field sa-full" style="margin-top:12px">Popis <span class="sa-hint">— riadok „Názov: hodnota“ sa na stránke zobrazí ako dlaždica</span>
+                <div class="rte-toolbar">
+                  <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+                  <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+                  <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+                  <button type="button" data-cmd="heading" title="Heading">H</button>
+                  <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">• List</button>
+                  <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+                  <button type="button" data-cmd="link" title="Link">Link</button>
+                  <button type="button" data-cmd="removeFormat" title="Remove formatting">Clear</button>
+                </div>
+                <div class="rte" contenteditable="true" data-rte>${richText(s.info)}</div>
+              </div>
+            </section>
+
+            <div class="sa-actions">
+              <button type="submit" class="btn btn-sm btn-primary">Uložiť</button>
+              <span style="flex:1"></span>
+              <button type="button" class="btn btn-sm btn-danger" data-action="delete-season">Zmazať turnaj</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="sa-panel" data-panel="regs"${active === 'regs' ? '' : ' hidden'}><div class="season-regs-list"></div></div>
+        <div class="sa-panel" data-panel="assign"${active === 'assign' ? '' : ' hidden'}><div class="season-assign"></div></div>
+        <div class="sa-panel" data-panel="draw"${active === 'draw' ? '' : ' hidden'}><div class="season-draw"></div></div>
+      </div>
+    </details>
+  `;
+}
+
 function seasonHtml(s) {
+  if (IS_TOURNAMENT) return tournamentCardHtml(s);
   const byCategory = CATEGORIES.map(([key]) => s.groups.filter((g) => g.category === key).length);
   return `
     <details class="card season-admin-card" data-season="${s.id}"${openIds.has(s.id) ? ' open' : ''} style="margin-bottom:12px">
@@ -396,7 +493,7 @@ function wireSeason(card) {
   });
 
   // registrations from the season page's form: contact details, the paid tick, delete
-  const regsBtn = card.querySelector('[data-action="show-regs"]');
+  const regsBtn = card.querySelector('[data-action="show-regs"]') || card.querySelector('[data-tab="regs"]');
   const regsList = card.querySelector('.season-regs-list');
   const catLabel = (key) => (CATEGORIES.find(([k]) => k === key) || [key, key])[1];
   // "Add a player": an existing player is registered by the admin, no registration form. Their phone, e-mail and category fill
@@ -488,7 +585,7 @@ function wireSeason(card) {
   async function loadRegs() {
     try {
       const rows = await api(`/seasons/${id}/registrations`);
-      regsBtn.textContent = `Registrations (${rows.length})`;
+      regsBtn.textContent = IS_TOURNAMENT ? `Registrácie (${rows.length})` : `Registrations (${rows.length})`;
       const players = await loadAdminPlayers();
       regsList.innerHTML = addPlayerFormHtml(players, rows) + (rows.length ? rows.map((r) => (r.id === editingReg ? regEditHtml(r) : `
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #eee" data-reg="${r.id}">
@@ -504,32 +601,33 @@ function wireSeason(card) {
       wireAddPlayerForm(players);
     } catch (err) { fail(err); }
   }
-  // a tournament: sort the registered players into Elite / Next Gen / Novice on one screen (public/js/season-assign.js)
-  const assignBtn = card.querySelector('[data-action="show-assign"]');
-  if (assignBtn) {
+  // a tournament: the tabs under the name (what is in a tab is loaded each time it is opened)
+  if (IS_TOURNAMENT) {
     const assignHost = card.querySelector('.season-assign');
-    assignBtn.addEventListener('click', async () => {
-      assignHost.hidden = !assignHost.hidden;
-      if (!assignHost.hidden) {
-        try { await openAssignPanel(assignHost, id, () => { if (!regsList.hidden) loadRegs(); }); } catch (err) { fail(err); }
-      }
-    });
-  }
-  // a tournament: seeds, courts, the main bracket and the consolation bracket (public/js/season-draw.js)
-  const drawBtn = card.querySelector('[data-action="show-draw"]');
-  if (drawBtn) {
     const drawHost = card.querySelector('.season-draw');
-    drawBtn.addEventListener('click', async () => {
-      drawHost.hidden = !drawHost.hidden;
-      if (!drawHost.hidden) {
-        try { await openDrawPanel(drawHost, id); } catch (err) { fail(err); }
-      }
+    const openers = {
+      regs: () => loadRegs(),
+      assign: () => openAssignPanel(assignHost, id, () => {}),
+      draw: () => openDrawPanel(drawHost, id),
+    };
+    async function showTab(name) {
+      tournamentTab.set(id, name);
+      card.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+      card.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== name; });
+      errorEl.textContent = '';
+      if (openers[name]) { try { await openers[name](); } catch (err) { fail(err); } }
+    }
+    card.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+    // the registrations count is in the tab's name from the start; the tab that was open is filled in
+    const first = tournamentTab.get(id) || 'info';
+    if (first !== 'info') showTab(first);
+    api(`/seasons/${id}/registrations`).then((rows) => { regsBtn.textContent = `Registrácie (${rows.length})`; }).catch(() => {});
+  } else {
+    regsBtn.addEventListener('click', async () => {
+      regsList.hidden = !regsList.hidden;
+      if (!regsList.hidden) await loadRegs();
     });
   }
-  regsBtn.addEventListener('click', async () => {
-    regsList.hidden = !regsList.hidden;
-    if (!regsList.hidden) await loadRegs();
-  });
   regsList.addEventListener('click', async (e) => {
     const row = e.target.closest('[data-reg]');
     if (!row) return;
@@ -572,7 +670,8 @@ function wireSeason(card) {
     } catch (err) { fail(err); }
   });
 
-  card.querySelector('.add-group-form').addEventListener('submit', async (e) => {
+  const addGroupForm = card.querySelector('.add-group-form');
+  if (addGroupForm) addGroupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorEl.textContent = '';
     const f = (name) => e.target.querySelector(`[data-field="${name}"]`).value;

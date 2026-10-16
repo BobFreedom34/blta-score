@@ -4985,3 +4985,26 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-m.cs-short .cs-resize::after { display: none; }
 .venue-admin-row.vn-drop-before { box-shadow: inset 0 3px 0 var(--orange); }
 .venue-admin-row.vn-drop-after { box-shadow: inset 0 -3px 0 var(--orange); }
+
+/* the card of a tournament (Backend > Tournaments): tabs under the name, the form in sections */
+.sa-tabs { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px 6px; padding: 0 18px; border-bottom: 1px solid var(--gray-light); }
+.sa-tab { background: none; border: none; border-bottom: 3px solid transparent; padding: 12px 14px 10px; margin-bottom: -1px; font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; color: var(--gray); cursor: pointer; }
+.sa-tab:hover { color: var(--charcoal); }
+.sa-tab.active { color: var(--ink); border-bottom-color: var(--orange); }
+.sa-tab-link { margin-left: auto; padding: 12px 0 10px; font-size: 12px; font-weight: 800; color: var(--orange); text-decoration: none; }
+.sa-tab-link:hover { text-decoration: underline; }
+.sa-tournament .sa-body { padding-top: 18px; }
+.sa-section { background: var(--gray-light); border-radius: var(--radius-md); padding: 14px 16px 16px; margin-bottom: 14px; }
+.sa-section h4 { margin: 0 0 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--orange); }
+.sa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px 14px; align-items: end; }
+.sa-field { display: grid; gap: 5px; font-size: 12px; font-weight: 700; color: var(--charcoal); min-width: 0; }
+.sa-field input[type=text], .sa-field input[type=number], .sa-field input[type=date] { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1.5px solid #ddd; background: var(--white); font-family: inherit; font-size: 14px; }
+.sa-field input:focus { outline: none; border-color: var(--orange); }
+.sa-wide { grid-column: span 2; }
+.sa-full { grid-column: 1 / -1; }
+.sa-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; padding-bottom: 10px; }
+.sa-checks { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; font-weight: 600; padding: 8px 0; }
+.sa-checks label { display: flex; align-items: center; gap: 6px; }
+.sa-hint { font-weight: 600; color: var(--gray); }
+.sa-actions { display: flex; align-items: center; gap: 8px; padding-top: 4px; }
+@media (max-width: 600px) { .sa-wide { grid-column: 1 / -1; } .sa-tabs { padding: 0 10px; } .sa-tab { padding: 10px 10px 8px; } }
