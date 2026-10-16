@@ -3945,9 +3945,9 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-tile .v small { display: block; font-size: 12px; font-weight: 700; color: #c3c7cf; margin-top: 4px; }
 .sv-sec { margin: 0; }
 #sv-tabs { margin: 48px 0 48px; }
-/* the tabs of the season / tournament page: black with white letters, the open one orange */
-#sv-tabs .tab { background: var(--ink); color: var(--white); border-color: var(--ink); box-shadow: none; }
-#sv-tabs .tab:hover { background: #1c1c20; border-color: #1c1c20; }
+/* the tabs of the season / tournament page: black with white letters and an orange border, the open one filled orange */
+#sv-tabs .tab { background: var(--ink); color: var(--white); border-color: var(--orange); box-shadow: none; }
+#sv-tabs .tab:hover { background: #1c1c20; }
 #sv-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 #sv-tabs .tab small { color: rgba(255, 255, 255, 0.65); font-weight: 700; margin-left: 6px; }
 .sv-sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 14px; }
