@@ -251,8 +251,11 @@ function timelineHtml(d) {
     // every season has its own page (/season/<name>); an upcoming one without groups yet shows its empty tabs
     const href = `/${s.kind === 'TOURNAMENT' ? 'tournament' : 'season'}/${encodeURIComponent(s.slug)}`;
     const range = s.startDate && s.endDate ? monthRange(s.startDate, s.endDate) : '';
+    // the cover photo of the season (its wide hero picture), when it has one
+    const cover = s.heroUrl || s.heroMobileUrl;
     const inner = `
-      <div class="home-tl-body">
+      <div class="home-tl-body${cover ? ' has-cover' : ''}">
+        ${cover ? `<img class="home-tl-cover" src="${escapeHtml(cover)}" alt="" loading="lazy">` : ''}
         ${s.logoUrl ? `<img class="home-tl-logo" src="${escapeHtml(s.logoUrl)}" alt="" loading="lazy">` : ''}
         <span class="home-tl-chip">${state === 'now' ? '<i></i>' : ''}${escapeHtml(label[state])}</span>
         <div class="home-tl-name">${escapeHtml(s.name)}</div>

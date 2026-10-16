@@ -5033,3 +5033,8 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sa-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
 .sa-hero-actions label { margin: 0; cursor: pointer; }
 .sa-hero-msg { font-size: 12px; color: var(--gray); }
+
+/* the cover photo at the top of a season card in the timeline on the home page */
+.home-tl-body.has-cover { overflow: hidden; }
+.home-tl-cover { display: block; width: calc(100% + 32px); height: 96px; margin: -14px -16px 12px; object-fit: cover; background: #1b1b1f; }
+.home-tl-body.has-cover .home-tl-logo { top: 108px; }
