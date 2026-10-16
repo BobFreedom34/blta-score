@@ -206,27 +206,31 @@ function schedulePreviewHtml(data) {
   return `<div class="sg-total">${total ? `${total} matches would be created (shown in orange)` : 'Nothing to create — every pair already has a match'}</div>${groups}`;
 }
 
-// The card of a tournament: under the name the tabs Základné info · Registrácie · Zaradenie do kategórií · Pavúk turnaja, and only the
-// chosen one is shown (what is in a tab is loaded when it is opened). The form of the basic info is in sections.
-const TOURNAMENT_TABS = [['info', 'Základné info'], ['regs', 'Registrácie'], ['assign', 'Zaradenie do kategórií'], ['draw', 'Pavúk turnaja']];
-const tournamentTab = new Map(); // season id -> the tab last opened (kept when the list is drawn again)
+// The card of a tournament or a season: under the name the tabs — a tournament: Základné info · Registrácie · Zaradenie do kategórií ·
+// Pavúk turnaja; a season: Základné info · Registrácie · Skupiny · Rozpis — and only the chosen one is shown (what is in a tab is loaded
+// when it is opened). The form of the basic info is in sections.
+const CARD_TABS = IS_TOURNAMENT
+  ? [['info', 'Základné info'], ['regs', 'Registrácie'], ['assign', 'Zaradenie do kategórií'], ['draw', 'Pavúk turnaja']]
+  : [['info', 'Základné info'], ['regs', 'Registrácie'], ['groups', 'Skupiny'], ['schedule', 'Rozpis']];
+const cardTab = new Map(); // season id -> the tab last opened (kept when the list is drawn again)
 
-function tournamentCardHtml(s) {
+function seasonCardHtml(s) {
+  const byCategory = CATEGORIES.map(([key]) => s.groups.filter((g) => g.category === key).length);
   const field = (label, control, cls = '') => `<label class="sa-field ${cls}">${label}${control}</label>`;
   const input = (name, value, attrs = '') => '<input ' + (/type=/.test(attrs) ? '' : 'type="text" ') + 'data-field="' + name + '" value="' + escapeHtml(value == null ? '' : String(value)) + '" ' + attrs + '>';
-  const active = tournamentTab.get(s.id) || 'info';
+  const active = cardTab.get(s.id) || 'info';
   return `
-    <details class="card season-admin-card sa-tournament" data-season="${s.id}"${openIds.has(s.id) ? ' open' : ''} style="margin-bottom:12px">
+    <details class="card season-admin-card sa-card" data-season="${s.id}"${openIds.has(s.id) ? ' open' : ''} style="margin-bottom:12px">
       <summary class="sa-sum">
         <svg class="sa-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         <span class="sa-name">${escapeHtml(s.name)}</span>
         <span class="sa-dates">${escapeHtml(s.startDate && s.endDate ? `${fmtDate(s.startDate)} – ${fmtDate(s.endDate)}` : '')}</span>
         <span class="sa-chip ${seasonStatus(s)}">${STATUS_LABEL[seasonStatus(s)]}</span>
-        <span class="sa-count">${s.matchCount} ${s.matchCount === 1 ? 'match' : 'matches'}</span>
+        <span class="sa-count">${IS_TOURNAMENT ? '' : `${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'} · `}${s.matchCount} ${s.matchCount === 1 ? 'match' : 'matches'}</span>
       </summary>
       <div class="sa-tabs" role="tablist">
-        ${TOURNAMENT_TABS.map(([key, label]) => `<button type="button" class="sa-tab${key === active ? ' active' : ''}" data-tab="${key}" role="tab">${label}</button>`).join('')}
-        <a class="sa-tab-link" href="/season/${escapeHtml(s.slug)}" target="_blank" rel="noopener">Stránka turnaja ↗</a>
+        ${CARD_TABS.map(([key, label]) => `<button type="button" class="sa-tab${key === active ? ' active' : ''}" data-tab="${key}" role="tab">${label}</button>`).join('')}
+        <a class="sa-tab-link" href="/season/${escapeHtml(s.slug)}" target="_blank" rel="noopener">${IS_TOURNAMENT ? 'Stránka turnaja' : 'Stránka sezóny'} ↗</a>
       </div>
       <div class="sa-body">
         <div class="season-error" style="color:var(--danger);font-weight:600"></div>
@@ -239,20 +243,20 @@ function tournamentCardHtml(s) {
                 ${field('Názov', input('name', s.name, 'maxlength="120" required'), 'sa-wide')}
                 ${field('Začiatok', input('startDate', s.startDate || '', 'type="date"'))}
                 ${field('Koniec', input('endDate', s.endDate || '', 'type="date"'))}
-                ${field('Miesto', input('venue', s.venue || '', 'maxlength="200" placeholder="Adresa alebo klub"'), 'sa-wide')}
-                <div class="sa-field sa-wide">Kategórie
+                ${IS_TOURNAMENT ? field('Miesto', input('venue', s.venue || '', 'maxlength="200" placeholder="Adresa alebo klub"'), 'sa-wide') : ''}
+                ${IS_TOURNAMENT ? `<div class="sa-field sa-wide">Kategórie
                   <div class="sa-checks">${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}> ${label}</label>`).join('')}</div>
-                </div>
+                </div>` : ''}
               </div>
             </section>
 
-            <section class="sa-section">
+            ${IS_TOURNAMENT ? `<section class="sa-section">
               <h4>Kurty a pravidlá hrania</h4>
               <div class="sa-grid">
                 ${field('Počet kurtov (Kurt 1 … Kurt n)', input('courtCount', s.courtCount || '', 'type="number" min="0" max="50" inputmode="numeric" placeholder="napr. 4"'))}
                 ${field('Max. zápasov hráča za deň', input('maxMatchesPerDay', s.maxMatchesPerDay || '', 'type="number" min="0" max="10" inputmode="numeric" placeholder="bez limitu"'))}
               </div>
-            </section>
+            </section>` : ''}
 
             <section class="sa-section">
               <h4>Štartovné a registrácia</h4>
@@ -289,120 +293,34 @@ function tournamentCardHtml(s) {
             <div class="sa-actions">
               <button type="submit" class="btn btn-sm btn-primary">Uložiť</button>
               <span style="flex:1"></span>
-              <button type="button" class="btn btn-sm btn-danger" data-action="delete-season">Zmazať turnaj</button>
+              <button type="button" class="btn btn-sm btn-danger" data-action="delete-season">${IS_TOURNAMENT ? 'Zmazať turnaj' : 'Zmazať sezónu'}</button>
             </div>
           </form>
         </div>
 
         <div class="sa-panel" data-panel="regs"${active === 'regs' ? '' : ' hidden'}><div class="season-regs-list"></div></div>
-        <div class="sa-panel" data-panel="assign"${active === 'assign' ? '' : ' hidden'}><div class="season-assign"></div></div>
-        <div class="sa-panel" data-panel="draw"${active === 'draw' ? '' : ' hidden'}><div class="season-draw"></div></div>
+        ${IS_TOURNAMENT ? `<div class="sa-panel" data-panel="assign"${active === 'assign' ? '' : ' hidden'}><div class="season-assign"></div></div>
+        <div class="sa-panel" data-panel="draw"${active === 'draw' ? '' : ' hidden'}><div class="season-draw"></div></div>` : `<div class="sa-panel" data-panel="groups"${active === 'groups' ? '' : ' hidden'}>
+          <div style="font-size:12px;color:var(--gray);margin:0 0 12px">${s.matchCount} tagged ${s.matchCount === 1 ? 'match' : 'matches'} · ${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'}
+            (${byCategory[0]} Elite, ${byCategory[1]} Next Gen, ${byCategory[2]} Novice) — each group is one standings table</div>
+          <div class="season-groups">${s.groups.length ? s.groups.map(groupRowHtml).join('') : '<div class="empty-state" style="padding:12px 0">No groups yet.</div>'}</div>
+          <form class="add-group-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+            <input type="text" data-field="name" maxlength="80" placeholder="New group, e.g. Babolat" required style="flex:1;min-width:160px;${inputStyle}">
+            <select data-field="category" required style="${inputStyle}">
+              <option value="">Category…</option>
+              ${categoryOptions('')}
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary">Add group</button>
+          </form>
+        </div>
+        <div class="sa-panel" data-panel="schedule"${active === 'schedule' ? '' : ' hidden'}>${scheduleSectionHtml()}</div>`}
       </div>
     </details>
   `;
 }
 
 function seasonHtml(s) {
-  if (IS_TOURNAMENT) return tournamentCardHtml(s);
-  const byCategory = CATEGORIES.map(([key]) => s.groups.filter((g) => g.category === key).length);
-  return `
-    <details class="card season-admin-card" data-season="${s.id}"${openIds.has(s.id) ? ' open' : ''} style="margin-bottom:12px">
-      <summary class="sa-sum">
-        <svg class="sa-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-        <span class="sa-name">${escapeHtml(s.name)}</span>
-        <span class="sa-dates">${escapeHtml(s.startDate && s.endDate ? `${fmtDate(s.startDate)} – ${fmtDate(s.endDate)}` : '')}</span>
-        <span class="sa-chip ${seasonStatus(s)}">${STATUS_LABEL[seasonStatus(s)]}</span>
-        <span class="sa-count">${IS_TOURNAMENT ? '' : `${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'} · `}${s.matchCount} ${s.matchCount === 1 ? 'match' : 'matches'}</span>
-      </summary>
-      <div class="sa-body">
-      <form class="season-edit-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <label style="flex:1;min-width:220px;font-size:12px;font-weight:700">Name
-          <input type="text" data-field="name" value="${escapeHtml(s.name)}" maxlength="120" required style="display:block;width:100%;margin-top:4px;${inputStyle}">
-        </label>
-        <label style="font-size:12px;font-weight:700">Starts
-          <input type="date" data-field="startDate" value="${escapeHtml(s.startDate || '')}" style="display:block;margin-top:4px;${inputStyle}">
-        </label>
-        <label style="font-size:12px;font-weight:700">Ends
-          <input type="date" data-field="endDate" value="${escapeHtml(s.endDate || '')}" style="display:block;margin-top:4px;${inputStyle}">
-        </label>
-        <label class="tournament-only" style="flex:1;min-width:220px;font-size:12px;font-weight:700"${IS_TOURNAMENT ? '' : ' hidden'}>Venue
-          <input type="text" data-field="venue" value="${escapeHtml(s.venue || '')}" maxlength="200" placeholder="Address or club" style="display:block;width:100%;margin-top:4px;${inputStyle}">
-        </label>
-        <label class="tournament-only" style="font-size:12px;font-weight:700"${IS_TOURNAMENT ? '' : ' hidden'}>Courts (Kurt 1 … Kurt n)
-          <input type="number" data-field="courtCount" value="${s.courtCount || ''}" min="0" max="50" inputmode="numeric" placeholder="e.g. 4" style="display:block;width:110px;margin-top:4px;${inputStyle}">
-        </label>
-        <label class="tournament-only" style="font-size:12px;font-weight:700"${IS_TOURNAMENT ? '' : ' hidden'}>Max. matches per player per day
-          <input type="number" data-field="maxMatchesPerDay" value="${s.maxMatchesPerDay || ''}" min="0" max="10" inputmode="numeric" placeholder="no limit" style="display:block;width:130px;margin-top:4px;${inputStyle}">
-        </label>
-        <div class="tournament-only" style="font-size:12px;font-weight:700"${IS_TOURNAMENT ? '' : ' hidden'}>Categories
-          <div style="display:flex;gap:12px;margin-top:8px;font-weight:600;font-size:14px">
-            ${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}> ${label}</label>`).join('')}
-          </div>
-        </div>
-        <div style="flex-basis:100%;margin-top:6px;font-size:12px;font-weight:800;color:var(--gray)">${IS_TOURNAMENT ? 'Tournament' : 'Season'} page <a href="/season/${escapeHtml(s.slug)}" target="_blank" style="color:var(--orange);text-decoration:underline">/season/${escapeHtml(s.slug)}</a> — all optional</div>
-        <label style="font-size:12px;font-weight:700">Entry fee
-          <input type="text" data-field="entryFee" value="${escapeHtml(s.entryFee || '')}" maxlength="40" placeholder="e.g. 20 €" style="display:block;margin-top:4px;width:110px;${inputStyle}">
-        </label>
-        <label style="font-size:12px;font-weight:700">Draw date
-          <input type="date" data-field="drawDate" value="${escapeHtml(s.drawDate || '')}" style="display:block;margin-top:4px;${inputStyle}">
-        </label>
-        <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Prize money
-          <input type="text" data-field="prizeMoney" value="${escapeHtml(s.prizeMoney || '')}" maxlength="120" style="display:block;width:100%;margin-top:4px;${inputStyle}">
-        </label>
-        <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Gallery link
-          <input type="text" data-field="galleryUrl" value="${escapeHtml(s.galleryUrl || '')}" maxlength="500" placeholder="https://…" style="display:block;width:100%;margin-top:4px;${inputStyle}">
-        </label>
-        <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Logo (image link, e.g. /img/seasons/autumn.png)
-          <input type="text" data-field="logoUrl" value="${escapeHtml(s.logoUrl || '')}" maxlength="300" style="display:block;width:100%;margin-top:4px;${inputStyle}">
-        </label>
-        <label style="flex:1;min-width:200px;font-size:12px;font-weight:700">Payment link (Stripe) — the "Úhrada štartovného online" button
-          <input type="text" data-field="paymentUrl" value="${escapeHtml(s.paymentUrl || '')}" maxlength="500" placeholder="https://buy.stripe.com/…" style="display:block;width:100%;margin-top:4px;${inputStyle}">
-        </label>
-        <label style="font-size:12px;font-weight:700;display:flex;gap:6px;align-items:center;padding-bottom:9px">
-          <input type="checkbox" data-field="registrationOpen"${s.registrationOpen ? ' checked' : ''}> Registration open
-        </label>
-        <div style="flex-basis:100%;font-size:12px;font-weight:700">Description <span style="font-weight:600;color:var(--gray)">— a "Label: value" line becomes a fact tile on the page</span>
-          <div class="rte-toolbar">
-            <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
-            <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
-            <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
-            <button type="button" data-cmd="heading" title="Heading">H</button>
-            <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">• List</button>
-            <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
-            <button type="button" data-cmd="link" title="Link">Link</button>
-            <button type="button" data-cmd="removeFormat" title="Remove formatting">Clear</button>
-          </div>
-          <div class="rte" contenteditable="true" data-rte>${richText(s.info)}</div>
-        </div>
-        <button type="submit" class="btn btn-sm btn-outline">Save</button>
-        <button type="button" class="btn btn-sm btn-danger" data-action="delete-season">Delete</button>
-      </form>
-      <div class="season-regs" style="margin:10px 0 0">
-        <button type="button" class="btn btn-sm btn-outline" data-action="show-regs">Registrations</button>
-        ${IS_TOURNAMENT ? '<button type="button" class="btn btn-sm btn-outline" data-action="show-assign">Zaradenie do kategórií</button> <button type="button" class="btn btn-sm btn-outline" data-action="show-draw">Pavúk turnaja</button>' : ''}
-        <div class="season-assign" hidden style="margin-top:10px"></div>
-        <div class="season-draw" hidden style="margin-top:10px"></div>
-        <div class="season-regs-list" hidden style="margin-top:10px"></div>
-      </div>
-      <div style="font-size:12px;color:var(--gray);margin:8px 0 12px">
-        ${s.matchCount} tagged ${s.matchCount === 1 ? 'match' : 'matches'}${IS_TOURNAMENT ? '' : ` ·
-        ${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'}
-        (${byCategory[0]} Elite, ${byCategory[1]} Next Gen, ${byCategory[2]} Novice) — each group is one standings table`}
-      </div>
-      <div class="season-error" style="color:var(--danger);font-weight:600"></div>
-      <div class="season-groups"${IS_TOURNAMENT ? ' hidden' : ''}>${s.groups.length ? s.groups.map(groupRowHtml).join('') : '<div class="empty-state" style="padding:12px 0">No groups yet.</div>'}</div>
-      <form class="add-group-form" style="display:${IS_TOURNAMENT ? 'none' : 'flex'};gap:8px;flex-wrap:wrap;margin-top:14px">
-        <input type="text" data-field="name" maxlength="80" placeholder="New group, e.g. Babolat" required style="flex:1;min-width:160px;${inputStyle}">
-        <select data-field="category" required style="${inputStyle}">
-          <option value="">Category…</option>
-          ${categoryOptions('')}
-        </select>
-        <button type="submit" class="btn btn-sm btn-primary">Add group</button>
-      </form>
-      ${scheduleSectionHtml()}
-      </div>
-    </details>
-  `;
+  return seasonCardHtml(s);
 }
 
 function renderList() {
@@ -493,7 +411,7 @@ function wireSeason(card) {
   });
 
   // registrations from the season page's form: contact details, the paid tick, delete
-  const regsBtn = card.querySelector('[data-action="show-regs"]') || card.querySelector('[data-tab="regs"]');
+  const regsBtn = card.querySelector('[data-tab="regs"]');
   const regsList = card.querySelector('.season-regs-list');
   const catLabel = (key) => (CATEGORIES.find(([k]) => k === key) || [key, key])[1];
   // "Add a player": an existing player is registered by the admin, no registration form. Their phone, e-mail and category fill
@@ -585,7 +503,7 @@ function wireSeason(card) {
   async function loadRegs() {
     try {
       const rows = await api(`/seasons/${id}/registrations`);
-      regsBtn.textContent = IS_TOURNAMENT ? `Registrácie (${rows.length})` : `Registrations (${rows.length})`;
+      regsBtn.textContent = `Registrácie (${rows.length})`;
       const players = await loadAdminPlayers();
       regsList.innerHTML = addPlayerFormHtml(players, rows) + (rows.length ? rows.map((r) => (r.id === editingReg ? regEditHtml(r) : `
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #eee" data-reg="${r.id}">
@@ -601,17 +519,17 @@ function wireSeason(card) {
       wireAddPlayerForm(players);
     } catch (err) { fail(err); }
   }
-  // a tournament: the tabs under the name (what is in a tab is loaded each time it is opened)
-  if (IS_TOURNAMENT) {
+  // the tabs under the name (what is in a tab is loaded each time it is opened)
+  {
     const assignHost = card.querySelector('.season-assign');
     const drawHost = card.querySelector('.season-draw');
-    const openers = {
+    const openers = IS_TOURNAMENT ? {
       regs: () => loadRegs(),
       assign: () => openAssignPanel(assignHost, id, () => {}),
       draw: () => openDrawPanel(drawHost, id),
-    };
+    } : { regs: () => loadRegs() };
     async function showTab(name) {
-      tournamentTab.set(id, name);
+      cardTab.set(id, name);
       card.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
       card.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== name; });
       errorEl.textContent = '';
@@ -619,14 +537,9 @@ function wireSeason(card) {
     }
     card.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
     // the registrations count is in the tab's name from the start; the tab that was open is filled in
-    const first = tournamentTab.get(id) || 'info';
+    const first = cardTab.get(id) || 'info';
     if (first !== 'info') showTab(first);
     api(`/seasons/${id}/registrations`).then((rows) => { regsBtn.textContent = `Registrácie (${rows.length})`; }).catch(() => {});
-  } else {
-    regsBtn.addEventListener('click', async () => {
-      regsList.hidden = !regsList.hidden;
-      if (!regsList.hidden) await loadRegs();
-    });
   }
   regsList.addEventListener('click', async (e) => {
     const row = e.target.closest('[data-reg]');
