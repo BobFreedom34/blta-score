@@ -1357,6 +1357,8 @@ if (!seasonInfoColumns.includes('court_count')) db.exec('ALTER TABLE seasons ADD
 const matchScheduleColumns = db.prepare('PRAGMA table_info(matches)').all().map((c) => c.name);
 if (!matchScheduleColumns.includes('court_no')) db.exec('ALTER TABLE matches ADD COLUMN court_no INTEGER');
 if (!matchScheduleColumns.includes('slot_locked')) db.exec('ALTER TABLE matches ADD COLUMN slot_locked INTEGER NOT NULL DEFAULT 0');
+// the length of this match in minutes when the organiser set one (shorter or longer than the tournament's matches), else NULL
+if (!matchScheduleColumns.includes('duration_minutes')) db.exec('ALTER TABLE matches ADD COLUMN duration_minutes INTEGER');
 if (!db.prepare('PRAGMA table_info(season_group_members)').all().some((c) => c.name === 'paid')) {
   db.exec('ALTER TABLE season_group_members ADD COLUMN paid INTEGER NOT NULL DEFAULT 0');
 }

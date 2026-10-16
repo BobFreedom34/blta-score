@@ -125,17 +125,26 @@ const ms = (iso) => {
   return Number.isNaN(n) ? null : n;
 };
 
-// [start, end] in ms a match takes on its court (and its players): planned = start + the match length, live = until it ends
-// (at least now + a quarter of an hour), finished = its real end; null when it has no time at all
+// the length of a match in ms: the organiser's own length for this match, else the tournament's
+function durationOf(row, settings) {
+  return (row.duration_minutes || settings.matchMinutes) * MIN;
+}
+
+// [start, end] in ms a match takes on its court (and its players): planned = start + its length, live = until it ends (at least now +
+// a quarter of an hour), finished = from its real start to its real end — a match that ended early frees the court from then on (when
+// the real end is not known, e.g. a result entered by hand, start + its length); null when it has no time at all
 function intervalOf(row, settings, now) {
-  const duration = settings.matchMinutes * MIN;
-  const start = ms(row.scheduled_at) ?? ms(row.start_time);
-  if (start === null) return null;
+  const duration = durationOf(row, settings);
+  const scheduled = ms(row.scheduled_at);
+  const realStart = ms(row.start_time);
   if (row.status === 'FINISHED') {
-    const realStart = ms(row.start_time) ?? start;
+    const start = realStart ?? scheduled;
+    if (start === null) return null;
     const end = ms(row.end_time);
-    return [Math.min(start, realStart), end !== null && end > Math.min(start, realStart) ? end : start + duration];
+    return [start, end !== null && end > start ? end : start + duration];
   }
+  const start = scheduled ?? realStart;
+  if (start === null) return null;
   if (row.status === 'LIVE') return [start, Math.max(start + duration, now + 15 * MIN)];
   return [start, start + duration];
 }
@@ -158,7 +167,12 @@ function serializeMatch(row, settings, now) {
     winnerId: row.winner_id || null,
     scoreSummary,
     scheduledAt: row.scheduled_at || null,
+    // where the block of the match is drawn: a finished match from its real start to its real end
+    blockStart: interval ? new Date(interval[0]).toISOString() : null,
     endsAt: interval ? new Date(interval[1]).toISOString() : null,
+    durationMinutes: row.duration_minutes || null,
+    // a finished match whose real end is known cannot be given another length
+    endKnown: row.status === 'FINISHED' && ms(row.end_time) !== null && ms(row.end_time) > (ms(row.start_time) ?? ms(row.scheduled_at) ?? Infinity),
     courtNo: row.court_no || null,
     locked: !!row.slot_locked,
   };
@@ -195,7 +209,7 @@ function placeMatch(season, token, courtNo, scheduledAt, now = Date.now()) {
   if (!Number.isInteger(courtNo) || courtNo < 1 || courtNo > settings.courtCount) return { status: 400, error: `Choose a court from 1 to ${settings.courtCount || 0}` };
   const start = ms(scheduledAt);
   if (start === null) return { status: 400, error: 'Invalid time' };
-  const slot = [start, start + settings.matchMinutes * MIN];
+  const slot = [start, start + durationOf(match, settings)];
   const others = loadMatches(season.id).filter((r) => r.id !== match.id);
   const clash = others.find((r) => r.court_no === courtNo && r.status !== 'FINISHED' && (() => { const i = intervalOf(r, settings, now); return i && overlaps(i, slot); })());
   if (clash) return { status: 409, error: `Kurt ${courtNo} is taken at that time (${clash.p1_name} – ${clash.p2_name})` };
@@ -234,9 +248,56 @@ function setLocked(season, token, locked) {
 
 // ---------- planning ----------
 
+// the courts and the players as they are now: one entry per match that has a time — { id, players, court (1-based or null), interval }
+function planningEntries(rows, settings, now) {
+  const entries = [];
+  rows.forEach((r) => {
+    const interval = intervalOf(r, settings, now);
+    if (!interval) return;
+    entries.push({ id: r.id, players: [r.player1_id, r.player2_id], court: r.court_no && r.court_no <= settings.courtCount ? r.court_no : null, interval });
+  });
+  return entries;
+}
+
+// does a match of these players on this court in this slot clash with anything (ignoring the entry `ignoreId`)? Returns the reason or ''.
+function slotProblem(entries, settings, players, court, slot, ignoreId) {
+  const rest = settings.restMinutes * MIN;
+  const others = entries.filter((e) => e.id !== ignoreId);
+  if (court && others.some((e) => e.court === court && overlaps(e.interval, slot))) return 'court';
+  const mine = others.filter((e) => e.players.some((p) => players.includes(p)));
+  if (mine.some((e) => e.interval[0] - rest < slot[1] && slot[0] < e.interval[1] + rest)) return 'player';
+  if (settings.maxPerDay) {
+    const day = dayOf(slot[0]);
+    const tooMany = players.some((p) => mine.filter((e) => e.players.includes(p) && dayOf(e.interval[0]) === day).length >= settings.maxPerDay);
+    if (tooMany) return 'day';
+  }
+  return '';
+}
+
+// the earliest slot (on the 15-minute grid, inside a playing day, not before `notBefore`, and — when `before` is given — starting
+// before it) where some court is free and both players are free with their rest; { court, slot } or null
+function findSlot(entries, settings, windows, players, duration, notBefore, ignoreId, before) {
+  for (let w = 0; w < windows.length; w += 1) {
+    const [ws, we] = windows[w];
+    if (we <= notBefore) continue;
+    const first = Math.max(ws, notBefore);
+    for (let t = ws + Math.ceil((first - ws) / (GRID_MIN * MIN)) * GRID_MIN * MIN; t + duration <= we; t += GRID_MIN * MIN) {
+      if (before !== undefined && t >= before) return null;
+      const slot = [t, t + duration];
+      if (slotProblem(entries, settings, players, null, slot, ignoreId)) continue;
+      for (let court = 1; court <= settings.courtCount; court += 1) {
+        if (!slotProblem(entries, settings, players, court, slot, ignoreId)) return { court, slot };
+      }
+    }
+  }
+  return null;
+}
+
 // mode 'fill': place the planned matches that have no time yet; 'rebuild': first take every planned match the planner placed (not the
-// locked ones) off the schedule, then fill; 'clear': take every planned match off, locked ones too.
-// -> { placed, skipped (matches that found no free time before the end of the tournament), error }
+// locked ones) off the schedule, then fill; 'compact': move the planned matches that are not locked EARLIER where time was freed (a
+// match that ended early, a shortened match) and later where a running match overran their court; 'clear': take every planned
+// match off, locked ones too; 'unlock': unlock every planned match.
+// -> { placed, skipped (matches that found no free time before the end of the tournament), moved, error }
 function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(seasonId);
   if (!season || season.kind !== 'TOURNAMENT') return { error: 'Only a tournament has a court schedule' };
@@ -256,75 +317,76 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
   }
 
   const rows = loadMatches(seasonId).filter((r) => r.player1_id && r.player2_id);
-  const duration = settings.matchMinutes * MIN;
-  const rest = settings.restMinutes * MIN;
-  const courts = Array.from({ length: settings.courtCount }, () => []);
-  const busy = new Map(); // player id -> [[start, end]]
-  const perDay = new Map(); // player id -> Map(day -> matches already that day)
-  const countDay = (id, day) => { if (!perDay.has(id)) perDay.set(id, new Map()); perDay.get(id).set(day, (perDay.get(id).get(day) || 0) + 1); };
-  const dayCount = (id, day) => (perDay.has(id) ? perDay.get(id).get(day) || 0 : 0);
-  const addBusy = (id, interval) => { if (!busy.has(id)) busy.set(id, []); busy.get(id).push(interval); };
-  rows.forEach((r) => {
-    const i = intervalOf(r, settings, now);
-    if (!i) return;
-    if (r.court_no && r.court_no <= settings.courtCount) courts[r.court_no - 1].push(i);
-    addBusy(r.player1_id, i);
-    addBusy(r.player2_id, i);
-    countDay(r.player1_id, dayOf(i[0]));
-    countDay(r.player2_id, dayOf(i[0]));
-  });
-
+  const entries = planningEntries(rows, settings, now);
   const windows = settings.days.map((day) => [localToUtcMs(day, settings.dayStart), localToUtcMs(day, settings.dayEnd)]);
   const notBefore = Math.ceil(now / (GRID_MIN * MIN)) * GRID_MIN * MIN;
-  const availableAt = (r) => Math.max(0, ...[r.player1_id, r.player2_id].flatMap((id) => (busy.get(id) || []).map((i) => i[1])));
-  const todo = rows.filter((r) => r.status === 'PLANNED' && !r.scheduled_at);
-  // the earlier round first; within a round the pair whose players have been resting longest goes first
-  todo.sort((a, b) => ((a.b_round || 0) - (b.b_round || 0)) || (availableAt(a) - availableAt(b)) || (a.id - b.id));
-
-  const playersFree = (r, slot) => [r.player1_id, r.player2_id].every((id) => (busy.get(id) || []).every((i) => !(i[0] - rest < slot[1] && slot[0] < i[1] + rest)));
-  const update = db.prepare("UPDATE matches SET scheduled_at = ?, court_no = ?, slot_locked = 0, location = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?");
+  const lengthOf = (r) => durationOf(r, settings);
+  const update = db.prepare("UPDATE matches SET scheduled_at = ?, court_no = ?, slot_locked = ?, location = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?");
   let placed = 0;
   let skipped = 0;
+  let moved = 0;
+
+  if (mode === 'compact') {
+    const candidates = rows.filter((r) => r.status === 'PLANNED' && r.court_no && r.scheduled_at && !r.slot_locked)
+      .sort((a, b) => Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at) || a.id - b.id);
+    candidates.forEach((r) => {
+      const entry = entries.find((e) => e.id === r.id);
+      if (!entry) return;
+      const players = [r.player1_id, r.player2_id];
+      const current = entry.interval;
+      const clash = slotProblem(entries, settings, players, entry.court, current, r.id);
+      const found = findSlot(entries, settings, windows, players, lengthOf(r), notBefore, r.id);
+      if (!found) return;
+      if (!(found.slot[0] < current[0] || (clash && found.slot[0] !== current[0]))) return;
+      entry.court = found.court;
+      entry.interval = found.slot;
+      update.run(new Date(found.slot[0]).toISOString(), found.court, 0, `Kurt ${found.court}`, r.id);
+      moved += 1;
+    });
+    return { placed: 0, skipped: 0, moved };
+  }
+
+  const availableAt = (r) => Math.max(0, ...entries.filter((e) => e.players.some((p) => [r.player1_id, r.player2_id].includes(p))).map((e) => e.interval[1]));
+  const todo = rows.filter((r) => r.status === 'PLANNED' && !r.scheduled_at);
+  // the earlier round first; within a round the pair whose players have been resting longest first
+  todo.sort((a, b) => ((a.b_round || 0) - (b.b_round || 0)) || (availableAt(a) - availableAt(b)) || (a.id - b.id));
   todo.forEach((r) => {
-    let found = null;
-    for (let w = 0; w < windows.length; w += 1) {
-      const [ws, we] = windows[w];
-      if (found) break;
-      if (we <= notBefore) continue;
-      // a player who has already played the most matches of the day does not get another one that day
-      if (settings.maxPerDay && [r.player1_id, r.player2_id].some((id) => dayCount(id, settings.days[w]) >= settings.maxPerDay)) continue;
-      const first = Math.max(ws, notBefore);
-      let t = ws + Math.ceil((first - ws) / (GRID_MIN * MIN)) * GRID_MIN * MIN;
-      for (; t + duration <= we && !found; t += GRID_MIN * MIN) {
-        const slot = [t, t + duration];
-        if (!playersFree(r, slot)) continue;
-        const court = courts.findIndex((list) => list.every((i) => !overlaps(i, slot)));
-        if (court >= 0) found = { court, slot };
-      }
-    }
+    const players = [r.player1_id, r.player2_id];
+    const found = findSlot(entries, settings, windows, players, lengthOf(r), notBefore, r.id);
     if (!found) { skipped += 1; return; }
-    courts[found.court].push(found.slot);
-    addBusy(r.player1_id, found.slot);
-    addBusy(r.player2_id, found.slot);
-    countDay(r.player1_id, dayOf(found.slot[0]));
-    countDay(r.player2_id, dayOf(found.slot[0]));
-    update.run(new Date(found.slot[0]).toISOString(), found.court + 1, `Kurt ${found.court + 1}`, r.id);
+    entries.push({ id: r.id, players, court: found.court, interval: found.slot });
+    update.run(new Date(found.slot[0]).toISOString(), found.court, 0, `Kurt ${found.court}`, r.id);
     placed += 1;
   });
-  return { placed, skipped };
+  return { placed, skipped, moved };
 }
 
-// called after a bracket changed (a match finished, a draw was made …): places the new matches by itself when the tournament has
-// courts and "automatic schedule" is on. Never throws — a failing planner must not break a result being saved.
+// called after a bracket changed (a match finished, a draw was made …): places the new matches by itself and moves the others forward
+// where time was freed, when the tournament has courts and "automatic schedule" is on. Never throws — a failing planner must not
+// break a result being saved.
 function autoPlanIfEnabled(seasonId) {
   try {
     if (!seasonId) return;
     const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(seasonId);
     if (!season || season.kind !== 'TOURNAMENT' || !season.court_count || season.auto_schedule === 0) return;
     autoPlan(seasonId, { mode: 'fill' });
+    autoPlan(seasonId, { mode: 'compact' });
   } catch (err) {
     console.error('[tournament schedule]', err.message);
   }
+}
+
+// The length of one match in minutes, set by the organiser (15–300, a multiple of 5); null = the length of the tournament's matches again.
+// A match whose real end is not known (a result entered by hand) occupies its court for this long. After a change the planner moves the
+// following matches forward (or back) when "automatic schedule" is on. -> { error, status } or { ok }
+function setDuration(season, token, minutes) {
+  const match = db.prepare('SELECT * FROM matches WHERE share_token = ? AND season_id = ?').get(token, season.id);
+  if (!match) return { status: 404, error: 'Match not found in this tournament' };
+  if (match.status === 'LIVE') return { status: 409, error: 'A match that is being played cannot be given another length' };
+  if (minutes !== null && (!Number.isInteger(minutes) || minutes < 15 || minutes > 300 || minutes % 5 !== 0)) return { status: 400, error: 'The length of a match must be 15 to 300 minutes, a multiple of 5' };
+  db.prepare("UPDATE matches SET duration_minutes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(minutes, match.id);
+  autoPlanIfEnabled(season.id);
+  return { ok: true };
 }
 
 module.exports = {
@@ -333,6 +395,7 @@ module.exports = {
   getSchedule,
   placeMatch,
   setLocked,
+  setDuration,
   autoPlan,
   autoPlanIfEnabled,
   localToUtcMs,

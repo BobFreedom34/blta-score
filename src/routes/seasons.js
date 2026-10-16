@@ -389,11 +389,12 @@ router.patch('/:id/schedule/settings', requireAdmin, (req, res) => {
   res.json(tournamentSchedule.getSchedule(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
 });
 
-// { mode: 'fill' | 'rebuild' | 'clear' | 'unlock' } (unlock: every planned match is unlocked, none is moved) — the planner puts the matches without a time on the courts (see tournamentSchedule.autoPlan)
+// { mode: 'fill' | 'rebuild' | 'compact' | 'clear' | 'unlock' } (compact: unlocked planned matches move forward where time was freed;
+// unlock: every planned match is unlocked, none is moved) — the planner puts the matches without a time on the courts (see tournamentSchedule.autoPlan)
 router.post('/:id/schedule/auto', requireAdmin, (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
-  const mode = ['fill', 'rebuild', 'clear', 'unlock'].includes(req.body && req.body.mode) ? req.body.mode : 'fill';
+  const mode = ['fill', 'rebuild', 'compact', 'clear', 'unlock'].includes(req.body && req.body.mode) ? req.body.mode : 'fill';
   const done = tournamentSchedule.autoPlan(season.id, { mode });
   if (done.error) return res.status(400).json({ error: done.error });
   scheduleChanged(req, season);
@@ -406,6 +407,14 @@ router.put('/:id/schedule/matches/:token', requireAdmin, (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const body = req.body || {};
+  // { durationMinutes: 45 | null } alone: the length of this one match (null = the tournament's length)
+  if (body.durationMinutes !== undefined && body.courtNo === undefined) {
+    const minutes = body.durationMinutes === null ? null : Number(body.durationMinutes);
+    const set = tournamentSchedule.setDuration(season, req.params.token, minutes);
+    if (set.error) return res.status(set.status || 400).json({ error: set.error });
+    scheduleChanged(req, season);
+    return res.json({ warnings: [], schedule: tournamentSchedule.getSchedule(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)) });
+  }
   // { locked: true | false } alone: lock or unlock a match where it is
   if (typeof body.locked === 'boolean' && body.courtNo === undefined) {
     const set = tournamentSchedule.setLocked(season, req.params.token, body.locked);

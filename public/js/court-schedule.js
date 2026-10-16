@@ -40,6 +40,8 @@ function csLocalToIso(day, minutes) {
   return new Date(guess - csOffsetMinutes(first) * CS_MS).toISOString();
 }
 
+// where a block starts: the planned time, or — for a finished match — when it really started
+const csStartOf = (m) => m.blockStart || m.scheduledAt;
 const csMinutesOf = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
 const csClock = (minutes) => `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
 const csTime = (iso) => csClock(csParts(iso).minutes);
@@ -70,18 +72,22 @@ function csPlayersHtml(m) {
 }
 
 function csBlockHtml(m, day, startMin) {
-  const parts = csParts(m.scheduledAt);
-  // a block is at least as long as the planned slot, so a finished match (whose real length can be short) stays readable
-  const minutes = Math.max(15, csState.data.settings.matchMinutes, Math.round((Date.parse(m.endsAt) - Date.parse(m.scheduledAt)) / CS_MS));
+  const parts = csParts(csStartOf(m));
+  // the real length: a match that ended early is drawn only up to its end (a short block shows one line only)
+  const real = Math.round((Date.parse(m.endsAt) - Date.parse(csStartOf(m))) / CS_MS);
+  const minutes = Math.max(20, real);
+  const short = real < 40;
   const top = (parts.minutes - startMin) * CS_PX;
+  const resizable = csState.admin && (m.status === 'PLANNED' || (m.status === 'FINISHED' && !m.endKnown));
   const movable = csState.admin && m.status === 'PLANNED';
-  const classes = ['cs-m', csStatusClass(m), `cs-st-${m.status.toLowerCase()}`, movable ? 'cs-drag' : '', m.locked ? 'cs-locked' : ''].filter(Boolean).join(' ');
+  const classes = ['cs-m', csStatusClass(m), `cs-st-${m.status.toLowerCase()}`, movable ? 'cs-drag' : '', m.locked ? 'cs-locked' : '', short ? 'cs-short' : ''].filter(Boolean).join(' ');
   return `<a class="${classes}" href="/match/${m.token}" draggable="false" data-token="${m.token}" ${movable ? 'data-drag="1"' : ''}
-      style="top:${top}px;height:${minutes * CS_PX - 3}px" title="${escapeHtml(`${csTime(m.scheduledAt)}–${csTime(m.endsAt)} · ${m.player1.name} – ${m.player2.name}`)}">
-    <span class="cs-m-time">${csTime(m.scheduledAt)}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš."></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
+      style="top:${top}px;height:${minutes * CS_PX - 3}px" data-minutes="${real}" title="${escapeHtml(`${csTime(csStartOf(m))}–${csTime(m.endsAt)} · ${m.player1.name} – ${m.player2.name}`)}">
+    <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? `–${csTime(m.endsAt)}` : ''}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš."></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
     <span class="cs-m-pl">${csPlayersHtml(m)}</span>
     <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
     ${(m.status === 'FINISHED' || m.status === 'LIVE') && m.scoreSummary ? `<span class="cs-m-score">${escapeHtml(m.scoreSummary)}</span>` : ''}
+    ${resizable ? `<span class="cs-resize" data-resize="1" title="Potiahni na zmenu dĺžky zápasu${m.durationMinutes ? ` (nastavených ${m.durationMinutes} min) — dvojklik vráti pôvodnú dĺžku` : ''}"></span>` : ''}
   </a>`;
 }
 
@@ -100,7 +106,7 @@ function csTimelineHtml(day) {
   const nowLine = today.day === day && today.minutes >= startMin && today.minutes <= endMin ? `<div class="cs-now" style="top:${(today.minutes - startMin) * CS_PX}px"></div>` : '';
   const cols = Array.from({ length: settings.courtCount }, (_, i) => {
     const court = i + 1;
-    const blocks = matches.filter((m) => m.courtNo === court && m.scheduledAt && csParts(m.scheduledAt).day === day).map((m) => csBlockHtml(m, day, startMin)).join('');
+    const blocks = matches.filter((m) => m.courtNo === court && m.scheduledAt && csParts(csStartOf(m)).day === day).map((m) => csBlockHtml(m, day, startMin)).join('');
     return `<div class="cs-colwrap"><div class="cs-court-h">${escapeHtml(t('courts.court', { n: court }))}</div><div class="cs-col" data-court="${court}" style="height:${height}px">${lines.join('')}${nowLine}${blocks}</div></div>`;
   }).join('');
   return `<div class="cs-scroll"><div class="cs-grid" style="--cs-cols:${settings.courtCount}"><div class="cs-gutter"><div class="cs-court-h">&nbsp;</div><div class="cs-hours" style="height:${height}px">${hours.join('')}</div></div>${cols}</div></div>`;
@@ -135,11 +141,11 @@ function csListHtml(day) {
   const { settings, matches } = csState.data;
   const sections = Array.from({ length: settings.courtCount }, (_, i) => {
     const court = i + 1;
-    const rows = matches.filter((m) => m.courtNo === court && m.scheduledAt && csParts(m.scheduledAt).day === day)
-      .sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt));
+    const rows = matches.filter((m) => m.courtNo === court && m.scheduledAt && csParts(csStartOf(m)).day === day)
+      .sort((a, b) => Date.parse(csStartOf(a)) - Date.parse(csStartOf(b)));
     const body = rows.map((m) => `
       <a class="cs-row ${csStatusClass(m)}" href="/match/${m.token}">
-        <span class="cs-row-time">${csTime(m.scheduledAt)}–${csTime(m.endsAt)}</span>
+        <span class="cs-row-time">${csTime(csStartOf(m))}–${csTime(m.endsAt)}</span>
         <span class="cs-row-pl">${csPlayersHtml(m)}</span>
         <span class="cs-row-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
         <span class="cs-row-st">${m.status === 'LIVE' ? `<b class="cs-live">${escapeHtml(t('home.live'))}</b> ${escapeHtml(m.scoreSummary || '')}` : m.status === 'FINISHED' ? `<b class="cs-done">${escapeHtml(t('courts.finished'))}</b> ${escapeHtml(m.scoreSummary || '')}` : ''}</span>
@@ -166,10 +172,11 @@ function csAdminHtml() {
       </div>
       <div class="cs-admin-row">
         <button type="button" class="btn btn-sm btn-primary" data-cs="fill">Poskladať rozvrh</button>
+        <button type="button" class="btn btn-sm btn-outline" data-cs="compact" title="Posunie nezamknuté zápasy dopredu tam, kde sa uvoľnil čas (zápas skončil skôr, bol skrátený)">Zhustiť rozvrh</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="rebuild">Prepočítať odznova</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="unlock">Odomknúť všetky zápasy</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="clear">Vyčistiť rozvrh</button>
-        <span class="cs-hint">Potiahni zápas na kurt a čas (zámok = ručne umiestnený, plánovač ho nepresúva; kliknutím na zámok ho odomkneš). Späť do „Nerozvrhnuté“ ho zrušíš. Počet kurtov: Pavúk turnaja.</span>
+        <span class="cs-hint">Potiahni zápas na kurt a čas, spodnú hranu bloku na zmenu dĺžky zápasu (zámok = ručne umiestnený, plánovač ho nepresúva; kliknutím na zámok ho odomkneš). Späť do „Nerozvrhnuté“ ho zrušíš. Počet kurtov: Pavúk turnaja.</span>
       </div>
     </div>`;
 }
@@ -181,7 +188,7 @@ function csChooseDay() {
   const days = csState.data.settings.days;
   if (csChoice.day && days.includes(csChoice.day)) return csChoice.day;
   const today = csParts(new Date().toISOString()).day;
-  const hasMatches = (d) => csState.data.matches.some((m) => m.scheduledAt && csParts(m.scheduledAt).day === d);
+  const hasMatches = (d) => csState.data.matches.some((m) => m.scheduledAt && csParts(csStartOf(m)).day === d);
   if (days.includes(today) && hasMatches(today)) return today;
   return days.find(hasMatches) || (days.includes(today) ? today : days[0]);
 }
@@ -221,6 +228,17 @@ async function csApply(promise, okMessage) {
 
 function csOnPointerDown(e) {
   if (!csState.admin || e.button !== 0) return;
+  const handle = e.target.closest('[data-resize]');
+  if (handle && csState.host.contains(handle)) {
+    // the bottom edge of a block: drag to change the length of this one match
+    const block = handle.closest('.cs-m');
+    const minutes = Number(block.dataset.minutes) || 30;
+    csDrag = { resize: true, el: block, token: block.dataset.token, startY: e.clientY, startMinutes: minutes, minutes, moved: false };
+    window.addEventListener('pointermove', csOnPointerMove);
+    window.addEventListener('pointerup', csOnPointerUp);
+    window.addEventListener('pointercancel', csOnPointerUp);
+    return;
+  }
   const el = e.target.closest('[data-drag]');
   if (!el || !csState.host.contains(el)) return;
   const rect = el.getBoundingClientRect();
@@ -250,6 +268,15 @@ function csDropTarget(e) {
 
 function csOnPointerMove(e) {
   if (!csDrag) return;
+  if (csDrag.resize) {
+    const dy = e.clientY - csDrag.startY;
+    if (!csDrag.moved && Math.abs(dy) < 4) return;
+    csDrag.moved = true;
+    csDrag.minutes = Math.max(15, Math.min(300, Math.round((csDrag.startMinutes + dy / CS_PX) / 5) * 5));
+    csDrag.el.style.height = `${csDrag.minutes * CS_PX - 3}px`;
+    csDrag.el.title = `${csDrag.minutes} min`;
+    return;
+  }
   if (!csDrag.ghost) {
     if (Math.hypot(e.clientX - csDrag.startX, e.clientY - csDrag.startY) < 6) return;
     const ghost = csDrag.el.cloneNode(true);
@@ -284,6 +311,15 @@ function csOnPointerUp() {
   window.removeEventListener('pointercancel', csOnPointerUp);
   const drag = csDrag;
   csDrag = null;
+  if (drag && drag.resize) {
+    if (!drag.moved) return;
+    const stop = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
+    window.addEventListener('click', stop, { capture: true, once: true }); // the drag must not also open the match
+    setTimeout(() => window.removeEventListener('click', stop, { capture: true }), 0);
+    if (drag.minutes === drag.startMinutes) { csRender(); return; }
+    csApply(api(`/seasons/${csState.season.id}/schedule/matches/${drag.token}`, { method: 'PUT', body: { durationMinutes: drag.minutes } }), `Dĺžka zápasu: ${drag.minutes} min`);
+    return;
+  }
   if (!drag || !drag.ghost) return; // a plain click: the link opens the match
   drag.ghost.remove();
   if (drag.preview) drag.preview.remove();
@@ -321,7 +357,15 @@ async function initCourtSchedule(host, season) {
   csState = { host, season, admin, data };
   host.removeEventListener('pointerdown', csOnPointerDown);
   host.addEventListener('pointerdown', csOnPointerDown);
+  host.ondblclick = (e) => {
+    const handle = e.target.closest('[data-resize]');
+    if (!handle || !csState.admin) return;
+    e.preventDefault();
+    csApply(api(`/seasons/${season.id}/schedule/matches/${handle.closest('.cs-m').dataset.token}`, { method: 'PUT', body: { durationMinutes: null } }), 'Dĺžka zápasu vrátená na pôvodnú');
+  };
   host.onclick = async (e) => {
+    const handle = e.target.closest('[data-resize]');
+    if (handle) { e.preventDefault(); return; }
     const lock = e.target.closest('[data-unlock]');
     if (lock) {
       e.preventDefault();
@@ -348,6 +392,8 @@ async function initCourtSchedule(host, season) {
       csApply(api(`${base}/settings`, { method: 'PATCH', body }), 'Nastavenia uložené');
     } else if (kind === 'fill') {
       csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'fill' } }), 'Rozvrh poskladaný');
+    } else if (kind === 'compact') {
+      csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'compact' } }), 'Zápasy posunuté dopredu');
     } else if (kind === 'rebuild') {
       if (confirm('Prepočítať rozvrh odznova? Ručne umiestnené (zamknuté) zápasy ostanú, ostatné naplánované zápasy sa rozložia nanovo.')) csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'rebuild' } }), 'Rozvrh prepočítaný');
     } else if (kind === 'unlock') {

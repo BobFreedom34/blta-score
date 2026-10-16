@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 const { spawn } = require('child_process');
+const { DatabaseSync } = require('node:sqlite');
 
 const ROOT = path.join(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tsched-'));
@@ -37,14 +38,14 @@ const localDay = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/B
 
 // no two matches on one court at once, nobody on two courts at once, and at least `rest` minutes between two matches of one player
 function assertNoClashes(sch, restMinutes) {
-  const len = sch.settings.matchMinutes * MIN;
   const placed = sch.matches.filter((m) => m.scheduledAt && m.courtNo && m.status === 'PLANNED');
+  const lenOf = (m) => Date.parse(m.endsAt) - Date.parse(m.scheduledAt); // the length of this match (it can differ from the tournament's)
   placed.forEach((a) => {
     placed.filter((b) => b.token !== a.token).forEach((b) => {
       const as = Date.parse(a.scheduledAt); const bs = Date.parse(b.scheduledAt);
-      if (a.courtNo === b.courtNo) assert.ok(as + len <= bs || bs + len <= as, `court ${a.courtNo}: two matches overlap`);
+      if (a.courtNo === b.courtNo) assert.ok(as + lenOf(a) <= bs || bs + lenOf(b) <= as, `court ${a.courtNo}: two matches overlap`);
       const shared = [a.player1.id, a.player2.id].filter((id) => [b.player1.id, b.player2.id].includes(id));
-      if (shared.length) assert.ok(as + len + restMinutes * MIN <= bs || bs + len + restMinutes * MIN <= as, 'a player has no rest between two matches');
+      if (shared.length) assert.ok(as + lenOf(a) + restMinutes * MIN <= bs || bs + lenOf(b) + restMinutes * MIN <= as, 'a player has no rest between two matches');
     });
   });
 }
@@ -188,6 +189,49 @@ test('locking and unlocking: one match by itself (it stays where it is), all at 
   const free = cleared.json.schedule.matches.find((m) => m.status === 'PLANNED');
   assert.strictEqual((await put(free.token, { locked: true })).status, 400, 'not on a court yet');
   await call('POST', `/api/seasons/${tournament.id}/schedule/auto`, { mode: 'fill' });
+});
+
+test('the length of one match: set by the organiser (15–300, steps of 5), the following match moves forward, reset with null; a match that ended early frees its court', async () => {
+  const put = (token, body) => call('PUT', `/api/seasons/${tournament.id}/schedule/matches/${token}`, body);
+  const sch = await schedule();
+  const planned = sch.matches.filter((m) => m.status === 'PLANNED' && m.courtNo && m.scheduledAt).sort((x, y) => Date.parse(x.scheduledAt) - Date.parse(y.scheduledAt));
+  // two matches one after the other on one court
+  let first; let second;
+  for (const m of planned) {
+    const next = planned.find((o) => o.courtNo === m.courtNo && Date.parse(o.scheduledAt) >= Date.parse(m.endsAt) - 1);
+    if (next) { first = m; second = next; break; }
+  }
+  assert.ok(first && second, 'two matches follow each other on a court');
+  assert.strictEqual((await put(first.token, { durationMinutes: 10 })).status, 400);
+  assert.strictEqual((await put(first.token, { durationMinutes: 47 })).status, 400);
+  assert.strictEqual((await put(first.token, { durationMinutes: 400 })).status, 400);
+  assert.strictEqual((await call('PUT', `/api/seasons/${tournament.id}/schedule/matches/${first.token}`, { durationMinutes: 30 }, { admin: false })).status, 401);
+  const short = await put(first.token, { durationMinutes: 30 });
+  assert.strictEqual(short.status, 200, short.text);
+  const a2 = short.json.schedule.matches.find((m) => m.token === first.token);
+  assert.strictEqual(Date.parse(a2.endsAt) - Date.parse(a2.scheduledAt), 30 * MIN);
+  assert.strictEqual(a2.durationMinutes, 30);
+  const b2 = short.json.schedule.matches.find((m) => m.token === second.token);
+  assert.ok(Date.parse(b2.scheduledAt) < Date.parse(second.scheduledAt), 'the following match moved forward into the freed time');
+  assertNoClashes(short.json.schedule, 30);
+  const reset = await put(first.token, { durationMinutes: null });
+  assert.strictEqual(reset.json.schedule.matches.find((m) => m.token === first.token).durationMinutes, null);
+  assertNoClashes(reset.json.schedule, 30);
+  // a finished match with a real start and end: the court is free from its real end
+  const finished = (await schedule()).matches.find((m) => m.status === 'FINISHED' && m.courtNo);
+  assert.ok(finished);
+  const db = new DatabaseSync(path.join(dir, 'blta-score.db'));
+  const realStart = Date.parse(finished.scheduledAt);
+  db.prepare('UPDATE matches SET start_time = ?, end_time = ? WHERE share_token = ?').run(new Date(realStart).toISOString(), new Date(realStart + 40 * MIN).toISOString(), finished.token);
+  db.close();
+  const after = (await schedule()).matches.find((m) => m.token === finished.token);
+  assert.strictEqual(Date.parse(after.endsAt) - Date.parse(after.blockStart), 40 * MIN, 'the block is the real 40 minutes');
+  assert.strictEqual(after.endKnown, true);
+  assert.strictEqual((await put(finished.token, { durationMinutes: 60 })).status, 200, 'a length can be set, but the real end wins');
+  assert.strictEqual(Date.parse((await schedule()).matches.find((m) => m.token === finished.token).endsAt), realStart + 40 * MIN);
+  const compacted = await call('POST', `/api/seasons/${tournament.id}/schedule/auto`, { mode: 'compact' });
+  assert.strictEqual(compacted.status, 200, compacted.text);
+  assertNoClashes(compacted.json.schedule, 30);
 });
 
 test('with "automatic schedule" off, a new match stays unscheduled until the planner is run', async () => {

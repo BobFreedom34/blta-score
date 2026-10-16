@@ -4970,3 +4970,12 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-m.cs-st-finished, .cs-row.cs-st-finished { border-left-color: #8b8f98; }
 .cs-lock { cursor: pointer; }
 .cs-lock::after { content: ''; position: absolute; inset: -7px -8px; }
+.cs-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 9px; cursor: ns-resize; touch-action: none; }
+.cs-resize::after { content: ''; position: absolute; left: 50%; bottom: 3px; width: 26px; height: 3px; margin-left: -13px; border-radius: 2px; background: rgba(255, 255, 255, 0.28); }
+.cs-resize:hover::after { background: var(--orange); }
+/* a short block (a match that ended early, or a very short one): one line */
+.cs-m.cs-short { flex-direction: row; align-items: center; gap: 6px; padding-top: 0; padding-bottom: 0; white-space: nowrap; }
+.cs-m.cs-short .cs-m-pl { flex-direction: row; gap: 4px; font-size: 12px; }
+.cs-m.cs-short .cs-m-pl span + span::before { content: '–'; margin-right: 4px; font-weight: 400; color: #8b8f98; }
+.cs-m.cs-short .cs-m-meta { display: none; }
+.cs-m.cs-short .cs-resize::after { display: none; }
