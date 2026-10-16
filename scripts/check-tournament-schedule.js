@@ -229,6 +229,23 @@ test('the length of one match: set by the organiser (15–300, steps of 5), the 
   assert.strictEqual(after.endKnown, true);
   assert.strictEqual((await put(finished.token, { durationMinutes: 60 })).status, 200, 'a length can be set, but the real end wins');
   assert.strictEqual(Date.parse((await schedule()).matches.find((m) => m.token === finished.token).endsAt), realStart + 40 * MIN);
+  // a result entered by hand: the match ended when the result was entered (but not later than its length allows)
+  const byHand = (await schedule()).matches.filter((m) => m.status === 'FINISHED' && m.courtNo && m.token !== finished.token);
+  assert.ok(byHand.length >= 2);
+  const sql = new DatabaseSync(path.join(dir, 'blta-score.db'));
+  const enter = (m, afterMin) => sql.prepare('UPDATE matches SET end_time = NULL, result_at = ? WHERE share_token = ?').run(new Date(Date.parse(m.blockStart) + afterMin * MIN).toISOString(), m.token);
+  enter(byHand[0], 25);
+  enter(byHand[1], 600);
+  sql.close();
+  const [h0, h1] = [byHand[0], byHand[1]].map((m) => ({ ...m, now: null }));
+  const after2 = (await schedule()).matches;
+  const e0 = after2.find((m) => m.token === h0.token);
+  const e1 = after2.find((m) => m.token === h1.token);
+  assert.strictEqual(Date.parse(e0.endsAt) - Date.parse(e0.blockStart), 25 * MIN, 'ended when the result was entered');
+  assert.strictEqual(Date.parse(e1.endsAt) - Date.parse(e1.blockStart), 60 * MIN, 'a result entered much later: ended at the latest when its length was up');
+  assert.strictEqual((await put(byHand[0].token, { durationMinutes: 45 })).status, 200);
+  const e0b = (await schedule()).matches.find((m) => m.token === h0.token);
+  assert.strictEqual(Date.parse(e0b.endsAt) - Date.parse(e0b.blockStart), 45 * MIN, 'a length set by the organiser wins');
   const compacted = await call('POST', `/api/seasons/${tournament.id}/schedule/auto`, { mode: 'compact' });
   assert.strictEqual(compacted.status, 200, compacted.text);
   assertNoClashes(compacted.json.schedule, 30);

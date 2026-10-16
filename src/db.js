@@ -1359,6 +1359,8 @@ if (!matchScheduleColumns.includes('court_no')) db.exec('ALTER TABLE matches ADD
 if (!matchScheduleColumns.includes('slot_locked')) db.exec('ALTER TABLE matches ADD COLUMN slot_locked INTEGER NOT NULL DEFAULT 0');
 // the length of this match in minutes when the organiser set one (shorter or longer than the tournament's matches), else NULL
 if (!matchScheduleColumns.includes('duration_minutes')) db.exec('ALTER TABLE matches ADD COLUMN duration_minutes INTEGER');
+// when the result of a match was entered by hand (the moment the match counts as finished on the court schedule; end_time stays empty for those)
+if (!matchScheduleColumns.includes('result_at')) db.exec('ALTER TABLE matches ADD COLUMN result_at TEXT');
 if (!db.prepare('PRAGMA table_info(season_group_members)').all().some((c) => c.name === 'paid')) {
   db.exec('ALTER TABLE season_group_members ADD COLUMN paid INTEGER NOT NULL DEFAULT 0');
 }

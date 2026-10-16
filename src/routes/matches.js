@@ -1902,9 +1902,9 @@ router.post('/:token/manual-result', requireLoggedIn, async (req, res) => {
   db.prepare(`
     UPDATE matches
     SET status = 'FINISHED', state = ?, history = '[]', winner_id = ?, start_time = ?, end_time = NULL, end_reason = ?,
-        location = ?, scheduled_at = ?, updated_at = ?
+        location = ?, scheduled_at = ?, result_at = ?, updated_at = ?
     WHERE id = ?
-  `).run(JSON.stringify(state), winnerId, scheduledAt, endReason, location, scheduledAt, ts, row.id);
+  `).run(JSON.stringify(state), winnerId, scheduledAt, endReason, location, scheduledAt, ts, ts, row.id);
 
   let updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
   syncBadgesIfFinished(updated);

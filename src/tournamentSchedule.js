@@ -141,7 +141,12 @@ function intervalOf(row, settings, now) {
     const start = realStart ?? scheduled;
     if (start === null) return null;
     const end = ms(row.end_time);
-    return [start, end !== null && end > start ? end : start + duration];
+    if (end !== null && end > start) return [start, end];
+    // a result entered by hand: the match ended at the moment the result was entered (at the latest when its length is up); a length
+    // set by the organiser for this match wins
+    const entered = ms(row.result_at);
+    if (!row.duration_minutes && entered !== null && entered > start) return [start, Math.min(entered, start + duration)];
+    return [start, start + duration];
   }
   const start = scheduled ?? realStart;
   if (start === null) return null;
