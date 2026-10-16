@@ -2,6 +2,7 @@ const listEl = document.getElementById('player-list');
 let query = '';
 let players = [];
 let isAdminUser = false;
+const courtiqByPlayer = new Map(); // player id -> the row of GET /api/courtiq
 
 // Phone and email are admin-only here (phone doubles as a player's login
 // credential — see auth.js; email is where a login-code reset link and
@@ -27,7 +28,10 @@ function playerRowHtml(p) {
       </div>
   ` : '';
   // the level of the player under the name (Elite, Next Gen, Novice), when the profile has one
-  const category = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[p.category] || '';
+  const level = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[p.category] || '';
+  // and the CourtIQ of the player next to it (the same number as on the CourtIQ ranking), when the player has one
+  const iq = courtiqByPlayer.get(p.id);
+  const category = [level, iq ? `${t('courtiq.cardLabel')} ${iq.band.toFixed(1)}` : ''].filter(Boolean).join(' · ');
   const avatar = p.photo_url
     ? `<img class="player-row-avatar" src="${escapeHtml(p.photo_url)}" alt="">`
     : `<div class="player-row-avatar player-row-avatar-fallback">${escapeHtml(initials(p.name))}</div>`;
@@ -85,6 +89,9 @@ function render() {
 
 async function loadPlayers() {
   const params = query ? `?q=${encodeURIComponent(query)}` : '';
+  if (!courtiqByPlayer.size) {
+    try { ((await api('/courtiq')).rows || []).forEach((r) => courtiqByPlayer.set(r.playerId, r)); } catch { /* the list works without it */ }
+  }
   try {
     players = await api(`/players${params}`);
     render();
