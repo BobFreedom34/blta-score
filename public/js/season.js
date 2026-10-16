@@ -433,7 +433,7 @@ async function openRegisterModal() {
         ${isTournament() ? '' : `<div class="field"><label for="sv-reg-cat">${escapeHtml(t('season.regCategory'))}</label>
           <select id="sv-reg-cat"><option value="">${escapeHtml(t('season.regChoose'))}</option>${CATEGORY_ORDER.filter((c) => !isTournament() || (season.categories || []).includes(c)).map((c) => `<option value="${c}">${escapeHtml(CATEGORY_NAMES[c])}</option>`).join('')}</select>
         </div>`}
-        <div class="field"><label for="sv-reg-notetext">${escapeHtml(t('season.regNoteLabel'))}</label><textarea id="sv-reg-notetext" rows="3" maxlength="500" placeholder="${escapeHtml(t('season.regNotePlaceholder'))}"></textarea></div>
+        <div class="field"><label for="sv-reg-notetext">${escapeHtml(t('season.regNoteLabel'))}</label><textarea id="sv-reg-notetext" rows="3" maxlength="500"></textarea></div>
         <input type="text" id="sv-reg-website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
         <div class="sv-reg-similar" id="sv-reg-similar"></div>
         <div class="sv-reg-error" id="sv-reg-error"></div>
