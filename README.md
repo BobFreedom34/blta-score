@@ -615,6 +615,10 @@ A tournament is a season of type TOURNAMENT. Players register on its page as bef
 
 `node scripts/demo-tournament.js` starts a local copy of the app (http://localhost:3055, admin password `test`) on a temporary data directory with a "Demo Open" tournament: 4 courts, 12 Elite (4 seeded), 8 Next Gen and 5 Novice players, the Elite and Next Gen draws made and the matches placed on the courts (Novice is left without a draw to try making one). Nothing is connected to score.blta.sk; Ctrl+C stops it and throws the data away.
 
+### Resetting a result entered by hand (Backend → Brackets → Manage slots)
+
+A result entered by hand (a past/historical bracket) has **Reset** next to **Edit**: `DELETE /api/brackets/:id/nodes/:nodeId/result` takes the result back — the winner leaves the next round, and the loser leaves the consolation/losers bracket he dropped into. If the winner already played on, later results depend on it: without `?cascade=1` nothing changes and the answer is 409 `HAS_DEPENDENTS` with how many (the admin page asks and then repeats it with `cascade=1`, clearing them all). A later pairing that already has a real match stops it (409): deal with that match first. A real match is reset on the match itself. Check: `node scripts/check-tournament-draw.js`.
+
 ### Tournament formats per category (Backend → Tournaments → Pavúk turnaja)
 
 Every category (Elite, Next Gen, Novice) of a tournament has its own **format** (`tournament_categories`, `src/tournamentDraw.js`), made automatically or by hand:

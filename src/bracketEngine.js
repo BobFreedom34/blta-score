@@ -240,6 +240,55 @@ function recordManualResult(nodeId, winnerId, score) {
   return node;
 }
 
+// Takes back a result that was entered by hand (recordManualResult): the winner leaves the next round, the loser leaves the losers
+// bracket he dropped into, the result is empty again. Later results that depend on it (the winner already played on) are cleared too — but
+// only with `cascade`; without it nothing is changed and { dependents } says how many there would be. A real match in the way (a later
+// pairing that already has a match) stops it: that match has to be dealt with first. -> { ok, cleared } | { error, status, dependents? }
+function resetManualResult(nodeId, cascade = false) {
+  const get = (id) => db.prepare('SELECT * FROM bracket_matches WHERE id = ?').get(id);
+  const first = get(nodeId);
+  if (!first) return { status: 404, error: 'Slot not found' };
+  if (first.match_id) return { status: 400, error: 'This slot has a real match — reset it on the match itself' };
+  if (!first.manual_winner_id) return { status: 400, error: 'This slot has no result entered by hand' };
+  let cleared = 0;
+  const blocked = (message) => Object.assign(new Error(message), { blocked: true });
+  const column = (slot) => (slot === 1 ? 'player1_id' : 'player2_id');
+  // a player leaves a slot: a later result that depends on him goes first, and a lone player who had advanced through a bye goes on
+  const unseat = (id, col) => {
+    const node = get(id);
+    if (node.match_id) throw blocked('A later pairing already has a real match — deal with that match first');
+    if (node.manual_winner_id) reset(node);
+    db.prepare(`UPDATE bracket_matches SET ${col} = NULL, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`).run(id);
+    if (node.is_bye && node.next_bracket_match_id) unseat(node.next_bracket_match_id, column(node.next_slot));
+  };
+  const reset = (node) => {
+    if (node.next_bracket_match_id) unseat(node.next_bracket_match_id, column(node.next_slot));
+    // the loser of a round-1 (or, in a Monrad, any) node sits in a losers bracket
+    if (node.consolation_seed) {
+      const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(node.bracket_id);
+      const childId = node.loser_bracket_id || (node.round === 1 && bracket && bracket.kind !== 'CONSOLATION' ? (consolationOf(bracket.id) || {}).id : null);
+      const target = childId ? db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1 AND (seed1 = ? OR seed2 = ?)').get(childId, node.consolation_seed, node.consolation_seed) : null;
+      if (target) unseat(target.id, target.seed1 === node.consolation_seed ? 'player1_id' : 'player2_id');
+    }
+    db.prepare("UPDATE bracket_matches SET manual_winner_id = NULL, manual_score = NULL, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(node.id);
+    cleared += 1;
+  };
+  db.exec('BEGIN');
+  try {
+    reset(first);
+    if (!cascade && cleared > 1) {
+      db.exec('ROLLBACK');
+      return { status: 409, code: 'HAS_DEPENDENTS', dependents: cleared - 1, error: `Resetting this result also clears ${cleared - 1} later result${cleared === 2 ? '' : 's'} that depend on it` };
+    }
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    if (err.blocked) return { status: 409, error: err.message };
+    throw err;
+  }
+  return { ok: true, cleared };
+}
+
 // The live hook's entry point (called from routes/matches.js once a match
 // is confirmed FINISHED with a winner) — no-op if this match isn't part of
 // any bracket at all, which is the common case for every ordinary match.
@@ -417,6 +466,7 @@ module.exports = {
   applySeeding,
   setSlotPlayers,
   recordManualResult,
+  resetManualResult,
   advanceWinner,
   syncBracketIfFinished,
   buildConsolation,

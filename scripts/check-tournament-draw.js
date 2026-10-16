@@ -308,6 +308,44 @@ test('deleting a tournament with its matches: the matches (played and planned), 
   assert.strictEqual((await call('GET', `/api/seasons/${tournament.id}/draw`)).status, 404);
 });
 
+test('a result entered by hand can be reset: the winner leaves the next round; results that depend on it need a cascade; the loser leaves the consolation bracket', async () => {
+  const ps = [];
+  for (let i = 0; i < 4; i += 1) ps.push((await call('POST', '/api/players', { name: `Reset Player ${i + 1}` })).json);
+  const made = await call('POST', '/api/brackets', { name: 'Old Cup', format: 'BO3', autoCreateMatches: false, entries: ps.map((p, i) => ({ playerId: p.id, seed: i + 1 })) });
+  assert.strictEqual(made.status, 201, made.text);
+  const id = made.json.id;
+  const node = async (round, position) => (await bracketOf(id)).nodes.find((n) => n.round === round && n.position === position);
+  const record = async (n, winnerId) => assert.strictEqual((await call('PATCH', `/api/brackets/${id}/nodes/${n.id}/result`, { winnerId, score: '6-0, 6-0' })).status, 200);
+  await record(await node(1, 0), ps[0].id); // seed 1 beats seed 4
+  await record(await node(1, 1), ps[1].id); // seed 2 beats seed 3
+  await record(await node(2, 0), ps[0].id); // the final
+  const reset = (n, cascade) => call('DELETE', `/api/brackets/${id}/nodes/${n.id}/result${cascade ? '?cascade=1' : ''}`);
+  assert.strictEqual((await reset(await node(1, 0))).status, 409, 'the winner already played on');
+  assert.strictEqual((await reset(await node(1, 0))).json.dependents, 1);
+  assert.strictEqual((await node(2, 0)).winnerId, ps[0].id, 'a refused reset changes nothing');
+  // the final: just its own result
+  const finalReset = await reset(await node(2, 0));
+  assert.strictEqual(finalReset.status, 200, finalReset.text);
+  assert.ok(!(await node(2, 0)).winnerId);
+  assert.ok((await node(2, 0)).player1 && (await node(2, 0)).player2, 'both finalists are still there');
+  // a semifinal: its winner leaves the final
+  const semi = await reset(await node(1, 0));
+  assert.strictEqual(semi.status, 200, semi.text);
+  assert.ok(!(await node(1, 0)).winnerId);
+  assert.ok(!(await node(2, 0)).player1, 'the winner is out of the final again');
+  assert.ok((await node(2, 0)).player2, 'the other finalist stays');
+  // the result can be entered again, and a result that does not exist cannot be reset
+  await record(await node(1, 0), ps[3].id);
+  assert.strictEqual((await node(2, 0)).player1.id, ps[3].id);
+  assert.strictEqual((await reset(await node(2, 0))).status, 400, 'no result there');
+  assert.strictEqual((await call('DELETE', `/api/brackets/${id}/nodes/${(await node(1, 0)).id}/result`, undefined, { admin: false })).status, 401);
+  // cascade: the semifinal and the final both go
+  await record(await node(2, 0), ps[3].id);
+  const all = await reset(await node(1, 0), true);
+  assert.strictEqual(all.status, 200, all.text);
+  assert.ok(!(await node(1, 0)).winnerId && !(await node(2, 0)).winnerId && !(await node(2, 0)).player1);
+});
+
 async function main() {
   let failed = 0;
   try {

@@ -353,7 +353,7 @@ function nodeStatusText(node) {
   if (node.isManualResult) {
     const winnerName = node.winnerId === (node.player1 && node.player1.id) ? p1 : p2;
     const scoreText = node.scoreSummary ? ` — ${escapeHtml(node.scoreSummary)}` : '';
-    return `${p1} vs ${p2} <span style="color:var(--green-light)">(winner: ${winnerName}${scoreText})</span> <button type="button" class="bracket-edit-result-btn" data-node-id="${node.id}" style="background:none;border:none;color:var(--orange);text-decoration:underline;cursor:pointer;font-size:12px;padding:0;margin-left:4px">Edit</button>`;
+    return `${p1} vs ${p2} <span style="color:var(--green-light)">(winner: ${winnerName}${scoreText})</span> <button type="button" class="bracket-reset-result-btn" data-node-id="${node.id}" style="background:none;border:none;color:var(--danger);text-decoration:underline;cursor:pointer;font-size:12px;padding:0;margin-left:4px">Reset</button> <button type="button" class="bracket-edit-result-btn" data-node-id="${node.id}" style="background:none;border:none;color:var(--orange);text-decoration:underline;cursor:pointer;font-size:12px;padding:0;margin-left:4px">Edit</button>`;
   }
   return `${p1} vs ${p2}`;
 }
@@ -503,6 +503,27 @@ async function renderManagePanel(bracketId, slotEl) {
 
     const resultForm = slotEl.querySelector(`.bracket-result-form[data-node-id="${n.id}"]`);
     if (resultForm) wireResultForm(resultForm, bracketId, n.id, slotEl);
+
+    // Reset: takes the result back (the winner leaves the next round); later results that depend on it only after a confirmation
+    const resetBtn = slotEl.querySelector(`.bracket-reset-result-btn[data-node-id="${n.id}"]`);
+    if (resetBtn) {
+      resetBtn.addEventListener('click', async () => {
+        const url = `/brackets/${bracketId}/nodes/${n.id}/result`;
+        try {
+          try {
+            await api(url, { method: 'DELETE' });
+          } catch (err) {
+            if (!err.data || err.data.code !== 'HAS_DEPENDENTS') throw err;
+            if (!confirm(`${err.data.error}. Reset them all?`)) return;
+            await api(`${url}?cascade=1`, { method: 'DELETE' });
+          }
+          toast('Result reset');
+          await loadBrackets();
+        } catch (err) {
+          toast(err.message);
+        }
+      });
+    }
 
     const editBtn = slotEl.querySelector(`.bracket-edit-result-btn[data-node-id="${n.id}"]`);
     if (editBtn) {

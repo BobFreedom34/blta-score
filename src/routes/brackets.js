@@ -276,6 +276,18 @@ router.post('/:id/consolation', auth.requireAdmin, (req, res) => {
   res.status(201).json(serializeBracket(made.bracketId));
 });
 
+// Takes back a result entered by hand: the winner leaves the next round. With ?cascade=1 later results that depend on it are cleared too;
+// without it a result that others depend on is refused (409, code HAS_DEPENDENTS, how many).
+router.delete('/:id/nodes/:nodeId/result', auth.requireAdmin, (req, res) => {
+  const bracketId = Number(req.params.id);
+  const nodeId = Number(req.params.nodeId);
+  const node = db.prepare('SELECT * FROM bracket_matches WHERE id = ? AND bracket_id = ?').get(nodeId, bracketId);
+  if (!node) return res.status(404).json({ error: 'Slot not found' });
+  const done = bracketEngine.resetManualResult(nodeId, req.query.cascade === '1');
+  if (done.error) return res.status(done.status || 400).json({ error: done.error, code: done.code, dependents: done.dependents });
+  res.json(serializeBracket(bracketId));
+});
+
 // Manual-mode slot assignment — only for a node that doesn't have a real
 // match yet (once two players are seated and a match exists, editing the
 // pairing belongs on the match itself, not here).
