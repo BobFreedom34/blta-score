@@ -2129,15 +2129,15 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
    Edit/Delete buttons don't fit next to a name on one line (see the
    3/2-column #player-list grid above), and a name sharing a line with
    only part of that group read worse than the two stacking cleanly. */
-.player-name-cell { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; min-width: 0; }
+.player-name-cell { display: flex; align-items: center; gap: 14px; flex: 1 1 100%; min-width: 0; padding: 4px 0; }
 .player-name { font-weight: 700; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* the name and under it the category in a lighter grey, the pair centred next to the avatar */
-.player-name-stack { display: flex; flex-direction: column; justify-content: center; min-width: 0; line-height: 1.25; }
-.player-cat { font-size: 12px; font-weight: 500; color: #b8bcc4; white-space: nowrap; }
+.player-name-stack { display: flex; flex-direction: column; justify-content: center; gap: 5px; min-width: 0; line-height: 1.25; }
+.player-cat { font-size: 12.5px; font-weight: 500; color: #b8bcc4; white-space: nowrap; }
 .player-cat .player-iq { font-weight: 700; color: var(--white); }
 .player-row-avatar {
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-sm);
   object-fit: cover;
   flex-shrink: 0;
@@ -2149,7 +2149,7 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 11px;
+  font-size: 14px;
 }
 .player-row-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .player-row .edit-name-input {
