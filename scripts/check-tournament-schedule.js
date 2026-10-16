@@ -168,6 +168,28 @@ test('the planner never moves a locked match; "rebuild" re-places the others; "c
   assertNoClashes(filled.json.schedule, 30);
 });
 
+test('locking and unlocking: one match by itself (it stays where it is), all at once; a match that is not on a court cannot be locked', async () => {
+  const sch = await schedule();
+  const [one, two] = sch.matches.filter((m) => m.status === 'PLANNED' && m.courtNo);
+  const put = (token, body, admin = true) => call('PUT', `/api/seasons/${tournament.id}/schedule/matches/${token}`, body, { admin });
+  assert.strictEqual((await put(one.token, { locked: true }, false)).status, 401);
+  const locked = await put(one.token, { locked: true });
+  assert.strictEqual(locked.status, 200, locked.text);
+  assert.strictEqual(locked.json.schedule.matches.find((m) => m.token === one.token).locked, true);
+  await put(two.token, { locked: true });
+  const unlocked = await put(one.token, { locked: false });
+  const after = unlocked.json.schedule.matches.find((m) => m.token === one.token);
+  assert.deepStrictEqual([after.locked, after.courtNo, after.scheduledAt], [false, one.courtNo, one.scheduledAt], 'unlocking leaves the match where it is');
+  assert.strictEqual(unlocked.json.schedule.matches.find((m) => m.token === two.token).locked, true);
+  const all = await call('POST', `/api/seasons/${tournament.id}/schedule/auto`, { mode: 'unlock' });
+  assert.strictEqual(all.json.unlocked, 1);
+  assert.ok(all.json.schedule.matches.every((m) => !m.locked));
+  const cleared = await call('POST', `/api/seasons/${tournament.id}/schedule/auto`, { mode: 'clear' });
+  const free = cleared.json.schedule.matches.find((m) => m.status === 'PLANNED');
+  assert.strictEqual((await put(free.token, { locked: true })).status, 400, 'not on a court yet');
+  await call('POST', `/api/seasons/${tournament.id}/schedule/auto`, { mode: 'fill' });
+});
+
 test('with "automatic schedule" off, a new match stays unscheduled until the planner is run', async () => {
   const off = await call('PATCH', `/api/seasons/${tournament.id}/schedule/settings`, { autoSchedule: false });
   assert.strictEqual(off.json.settings.autoSchedule, false);

@@ -389,11 +389,11 @@ router.patch('/:id/schedule/settings', requireAdmin, (req, res) => {
   res.json(tournamentSchedule.getSchedule(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
 });
 
-// { mode: 'fill' | 'rebuild' | 'clear' } — the planner puts the matches without a time on the courts (see tournamentSchedule.autoPlan)
+// { mode: 'fill' | 'rebuild' | 'clear' | 'unlock' } (unlock: every planned match is unlocked, none is moved) — the planner puts the matches without a time on the courts (see tournamentSchedule.autoPlan)
 router.post('/:id/schedule/auto', requireAdmin, (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
-  const mode = ['fill', 'rebuild', 'clear'].includes(req.body && req.body.mode) ? req.body.mode : 'fill';
+  const mode = ['fill', 'rebuild', 'clear', 'unlock'].includes(req.body && req.body.mode) ? req.body.mode : 'fill';
   const done = tournamentSchedule.autoPlan(season.id, { mode });
   if (done.error) return res.status(400).json({ error: done.error });
   scheduleChanged(req, season);
@@ -406,6 +406,13 @@ router.put('/:id/schedule/matches/:token', requireAdmin, (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const body = req.body || {};
+  // { locked: true | false } alone: lock or unlock a match where it is
+  if (typeof body.locked === 'boolean' && body.courtNo === undefined) {
+    const set = tournamentSchedule.setLocked(season, req.params.token, body.locked);
+    if (set.error) return res.status(set.status || 400).json({ error: set.error });
+    scheduleChanged(req, season);
+    return res.json({ warnings: [], schedule: tournamentSchedule.getSchedule(season) });
+  }
   const courtNo = body.courtNo === null || body.courtNo === undefined ? null : Number(body.courtNo);
   const done = tournamentSchedule.placeMatch(season, req.params.token, courtNo, body.scheduledAt);
   if (done.error) return res.status(done.status || 400).json({ error: done.error });

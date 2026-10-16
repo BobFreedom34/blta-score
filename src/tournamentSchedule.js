@@ -221,6 +221,17 @@ function placeMatch(season, token, courtNo, scheduledAt, now = Date.now()) {
   return { warnings };
 }
 
+// Locks or unlocks a planned match that is on the schedule: a locked one is never moved by the planner, an unlocked one stays where it is
+// until the planner ("rebuild") moves it. -> { error, status } or { ok }
+function setLocked(season, token, locked) {
+  const match = db.prepare('SELECT * FROM matches WHERE share_token = ? AND season_id = ?').get(token, season.id);
+  if (!match) return { status: 404, error: 'Match not found in this tournament' };
+  if (match.status !== 'PLANNED') return { status: 409, error: 'Only a match that has not started can be locked or unlocked' };
+  if (locked && !match.court_no) return { status: 400, error: 'Put the match on a court first' };
+  db.prepare("UPDATE matches SET slot_locked = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(locked ? 1 : 0, match.id);
+  return { ok: true };
+}
+
 // ---------- planning ----------
 
 // mode 'fill': place the planned matches that have no time yet; 'rebuild': first take every planned match the planner placed (not the
@@ -230,6 +241,10 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(seasonId);
   if (!season || season.kind !== 'TOURNAMENT') return { error: 'Only a tournament has a court schedule' };
   const settings = settingsOf(season);
+  if (mode === 'unlock') {
+    const unlocked = db.prepare("UPDATE matches SET slot_locked = 0 WHERE season_id = ? AND status = 'PLANNED' AND slot_locked = 1").run(seasonId);
+    return { placed: 0, skipped: 0, unlocked: Number(unlocked.changes) };
+  }
   if (mode === 'clear') {
     const cleared = db.prepare("UPDATE matches SET scheduled_at = NULL, court_no = NULL, slot_locked = 0, location = CASE WHEN location LIKE 'Kurt %' THEN '' ELSE location END, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE season_id = ? AND status = 'PLANNED' AND court_no IS NOT NULL").run(seasonId);
     return { placed: 0, skipped: 0, cleared: Number(cleared.changes) };
@@ -317,6 +332,7 @@ module.exports = {
   saveSettings,
   getSchedule,
   placeMatch,
+  setLocked,
   autoPlan,
   autoPlanIfEnabled,
   localToUtcMs,

@@ -4968,3 +4968,5 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-m, .cs-chip, .cs-row, .cs-livecard { border-left-color: var(--status-green); }
 .cs-m.cs-st-live, .cs-row.cs-st-live, .cs-livecard { border-left-color: var(--orange); }
 .cs-m.cs-st-finished, .cs-row.cs-st-finished { border-left-color: #8b8f98; }
+.cs-lock { cursor: pointer; }
+.cs-lock::after { content: ''; position: absolute; inset: -7px -8px; }

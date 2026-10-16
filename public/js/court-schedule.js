@@ -78,7 +78,7 @@ function csBlockHtml(m, day, startMin) {
   const classes = ['cs-m', csStatusClass(m), `cs-st-${m.status.toLowerCase()}`, movable ? 'cs-drag' : '', m.locked ? 'cs-locked' : ''].filter(Boolean).join(' ');
   return `<a class="${classes}" href="/match/${m.token}" draggable="false" data-token="${m.token}" ${movable ? 'data-drag="1"' : ''}
       style="top:${top}px;height:${minutes * CS_PX - 3}px" title="${escapeHtml(`${csTime(m.scheduledAt)}–${csTime(m.endsAt)} · ${m.player1.name} – ${m.player2.name}`)}">
-    <span class="cs-m-time">${csTime(m.scheduledAt)}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${m.locked && csState.admin ? ' <i class="cs-lock" title="Zamknuté — plánovač ho nepresúva"></i>' : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
+    <span class="cs-m-time">${csTime(m.scheduledAt)}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš."></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
     <span class="cs-m-pl">${csPlayersHtml(m)}</span>
     <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
     ${(m.status === 'FINISHED' || m.status === 'LIVE') && m.scoreSummary ? `<span class="cs-m-score">${escapeHtml(m.scoreSummary)}</span>` : ''}
@@ -167,8 +167,9 @@ function csAdminHtml() {
       <div class="cs-admin-row">
         <button type="button" class="btn btn-sm btn-primary" data-cs="fill">Poskladať rozvrh</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="rebuild">Prepočítať odznova</button>
+        <button type="button" class="btn btn-sm btn-outline" data-cs="unlock">Odomknúť všetky zápasy</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="clear">Vyčistiť rozvrh</button>
-        <span class="cs-hint">Potiahni zápas na kurt a čas (zámok = ručne umiestnený, plánovač ho nepresúva). Späť do „Nerozvrhnuté“ ho zrušíš. Počet kurtov: Pavúk turnaja.</span>
+        <span class="cs-hint">Potiahni zápas na kurt a čas (zámok = ručne umiestnený, plánovač ho nepresúva; kliknutím na zámok ho odomkneš). Späť do „Nerozvrhnuté“ ho zrušíš. Počet kurtov: Pavúk turnaja.</span>
       </div>
     </div>`;
 }
@@ -321,6 +322,12 @@ async function initCourtSchedule(host, season) {
   host.removeEventListener('pointerdown', csOnPointerDown);
   host.addEventListener('pointerdown', csOnPointerDown);
   host.onclick = async (e) => {
+    const lock = e.target.closest('[data-unlock]');
+    if (lock) {
+      e.preventDefault();
+      csApply(api(`/seasons/${season.id}/schedule/matches/${lock.dataset.unlock}`, { method: 'PUT', body: { locked: false } }), 'Zápas odomknutý — plánovač ho môže pri prepočte presunúť');
+      return;
+    }
     const day = e.target.closest('[data-cs-day]');
     if (day) { csChoice.day = day.dataset.csDay; csRender(); return; }
     const view = e.target.closest('[data-cs-view]');
@@ -343,6 +350,8 @@ async function initCourtSchedule(host, season) {
       csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'fill' } }), 'Rozvrh poskladaný');
     } else if (kind === 'rebuild') {
       if (confirm('Prepočítať rozvrh odznova? Ručne umiestnené (zamknuté) zápasy ostanú, ostatné naplánované zápasy sa rozložia nanovo.')) csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'rebuild' } }), 'Rozvrh prepočítaný');
+    } else if (kind === 'unlock') {
+      csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'unlock' } }), 'Všetky zápasy odomknuté');
     } else if (kind === 'clear') {
       if (confirm('Vyčistiť rozvrh? Všetky nezačaté zápasy sa vrátia do „Nerozvrhnuté“, aj ručne umiestnené.')) csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'clear' } }), 'Rozvrh vyčistený');
     }
