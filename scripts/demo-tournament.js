@@ -2,8 +2,9 @@
 // touching the live site (nothing here is connected to score.blta.sk or its database).
 // Run: node scripts/demo-tournament.js        -> http://localhost:3055   (admin password: test; Ctrl+C stops it, the data is thrown away)
 // The demo: "Demo Open" for the next 3 days, 4 courts, 12 Elite players (4 seeded), 8 Next Gen and 5 Novice, registered and sorted into
-// categories, with the Elite and Next Gen draws made (main + consolation bracket) and the matches placed on the courts. Novice is left
-// without a draw so you can make it yourself (Backend > Tournaments > Pavúk turnaja).
+// categories: Elite is drawn as PRINCE (bracket + consolation bracket), Next Gen as groups + bracket (two groups of 4, the best 2 of each go
+// on), and the matches are placed on the courts. Novice is left without a draw so you can make it yourself with any format
+// (Backend > Tournaments > Pavúk turnaja).
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -48,8 +49,8 @@ child.stdout.on('data', async (d) => {
       }
     }
     await call('POST', `/api/seasons/${t.id}/seeds`, { category: 'ELITE', seeds: regs.ELITE.slice(0, 4).map((r, n) => ({ id: r.id, seed: n + 1 })) });
-    await call('POST', `/api/seasons/${t.id}/draw`, { category: 'ELITE', mode: 'AUTO' });
-    await call('POST', `/api/seasons/${t.id}/draw`, { category: 'NEXT_GEN', mode: 'AUTO' });
+    await call('POST', `/api/seasons/${t.id}/draw`, { category: 'ELITE', format: 'PRINCE', mode: 'AUTO' });
+    await call('POST', `/api/seasons/${t.id}/draw`, { category: 'NEXT_GEN', format: 'GROUPS_BRACKET', mode: 'AUTO', groupSize: 4, qualifiers: 2, bracketType: 'PRINCE' });
     console.log(`\nDemo tournament ready.\n  Tournament page : ${base}/season/${t.slug}\n  Admin (password test): ${base}/tournaments-admin\n  Brackets admin  : ${base}/bracket-admin\nCtrl+C stops the demo and throws the data away.\n`);
   } catch (err) {
     console.error('Seeding failed:', err.message);

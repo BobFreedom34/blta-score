@@ -54,6 +54,7 @@ const csDayLabel = (day) => {
 // ---------- pieces ----------
 
 function csRoundLabel(m) {
+  if (m.group) return [groupShortName(m.group.name), m.groupRound ? t('courts.round', { n: m.groupRound }) : ''].filter(Boolean).join(' · ');
   if (!m.round) return '';
   const rounds = m.rounds || 0;
   let name = t('courts.round', { n: m.round });

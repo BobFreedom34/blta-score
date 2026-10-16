@@ -251,8 +251,8 @@ router.delete('/:id', auth.requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(id);
   if (!bracket) return res.status(404).json({ error: 'Bracket not found' });
-  // a main bracket takes its consolation bracket with it
-  const ids = [id, ...db.prepare('SELECT id FROM brackets WHERE parent_bracket_id = ?').all(id).map((r) => r.id)];
+  // a main bracket takes all its losers brackets with it
+  const ids = [id, ...bracketEngine.descendants(id)];
   ids.forEach((bid) => {
     db.prepare('DELETE FROM bracket_matches WHERE bracket_id = ?').run(bid);
     db.prepare('DELETE FROM brackets WHERE id = ?').run(bid);
@@ -269,7 +269,9 @@ router.post('/:id/consolation', auth.requireAdmin, (req, res) => {
   const format = (req.body && req.body.format) || 'BO3_G4_STB';
   if (!engine.FORMATS[format] || format === 'FREE_PLAY') return res.status(400).json({ error: 'Invalid match format' });
   const base = bracket.name.replace(/\s*—\s*Hlavný pavúk\s*$/, '');
-  const made = bracketEngine.buildConsolation(id, { name: `${base} — Útecha`, format });
+  // PRINCE (one consolation bracket) or Monrad (a losers bracket for every round) — what the format of the category says
+  const type = bracket.season_id && bracket.category ? require('../tournamentDraw').losersTypeFor(bracket.season_id, bracket.category) : 'PRINCE';
+  const made = bracketEngine.buildConsolation(id, { name: `${base} — Útecha`, format, type });
   if (made.error) return res.status(400).json({ error: made.error });
   res.status(201).json(serializeBracket(made.bracketId));
 });

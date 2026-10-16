@@ -109,8 +109,9 @@ function toMinutes(hhmm) {
 function loadMatches(seasonId) {
   return db.prepare(`
     SELECT m.*, bm.round AS b_round, bm.position AS b_position, b.id AS bracket_id, b.name AS bracket_name, b.kind AS bracket_kind, b.size AS bracket_size,
-           p1.name AS p1_name, p1.slug AS p1_slug, p2.name AS p2_name, p2.slug AS p2_slug
+           p1.name AS p1_name, p1.slug AS p1_slug, p2.name AS p2_name, p2.slug AS p2_slug, g.name AS group_name
     FROM matches m
+    LEFT JOIN season_groups g ON g.id = m.group_id
     LEFT JOIN bracket_matches bm ON bm.match_id = m.id
     LEFT JOIN brackets b ON b.id = bm.bracket_id
     LEFT JOIN players p1 ON p1.id = m.player1_id
@@ -166,6 +167,8 @@ function serializeMatch(row, settings, now) {
     category: row.category,
     bracket: row.bracket_id ? { id: row.bracket_id, name: row.bracket_name, kind: row.bracket_kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN' } : null,
     round: row.b_round || null,
+    group: row.group_id ? { id: row.group_id, name: row.group_name } : null,
+    groupRound: row.round || null,
     rounds: row.bracket_size ? Math.log2(row.bracket_size) : null,
     player1: { id: row.player1_id, name: row.p1_name, slug: row.p1_slug },
     player2: { id: row.player2_id, name: row.p2_name, slug: row.p2_slug },
@@ -354,7 +357,7 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
   const availableAt = (r) => Math.max(0, ...entries.filter((e) => e.players.some((p) => [r.player1_id, r.player2_id].includes(p))).map((e) => e.interval[1]));
   const todo = rows.filter((r) => r.status === 'PLANNED' && !r.scheduled_at);
   // the earlier round first; within a round the pair whose players have been resting longest first
-  todo.sort((a, b) => ((a.b_round || 0) - (b.b_round || 0)) || (availableAt(a) - availableAt(b)) || (a.id - b.id));
+  todo.sort((a, b) => ((a.b_round || a.round || 0) - (b.b_round || b.round || 0)) || (availableAt(a) - availableAt(b)) || (a.id - b.id));
   todo.forEach((r) => {
     const players = [r.player1_id, r.player2_id];
     const found = findSlot(entries, settings, windows, players, lengthOf(r), notBefore, r.id);

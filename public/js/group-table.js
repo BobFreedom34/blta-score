@@ -4,7 +4,7 @@
 function groupTableHtml(group) {
   return `
     <section class="grp-section">
-      <h2 class="grp-title">${escapeHtml(group.name)}${group.matchesCounted === null ? '' : ` <span>${escapeHtml(t('tables.counted', { done: group.matchesCounted, total: group.matchesTotal }))}</span>`}</h2>
+      <h2 class="grp-title">${escapeHtml(groupShortName(group.name))}${group.matchesCounted === null ? '' : ` <span>${escapeHtml(t('tables.counted', { done: group.matchesCounted, total: group.matchesTotal }))}</span>`}</h2>
       <div class="card card-dark grp-card">
         <div class="grp-head">
           <span>#</span><span>${escapeHtml(t('tables.player'))}</span><span>${escapeHtml(t('tables.points'))}</span><span>${escapeHtml(t('tables.matches'))}</span><span>${escapeHtml(t('tables.wins'))}</span><span>${escapeHtml(t('tables.losses'))}</span><span>+/−</span>

@@ -748,14 +748,14 @@ function render(m) {
         <div class="value" id="season-display">${m.season ? escapeHtml(m.season.name) : `<span style="color:var(--gray)">${t('player.bio.notSet')}</span>`}</div>
         ${isAdminUser ? `<button type="button" class="edit-link" data-action="edit-season">${t('common.edit')}</button>` : ''}
       </div>
-      ${m.season && m.season.kind === 'TOURNAMENT' ? '' : `<div class="info-item">
+      ${m.season && m.season.kind === 'TOURNAMENT' && !m.group ? '' : `<div class="info-item">
         <div class="label">${t('match.groupLabel')}</div>
         <div class="value" id="group-display">${m.group ? escapeHtml(m.group.name) : `<span style="color:var(--gray)">${t('player.bio.notSet')}</span>`}</div>
         ${isAdminUser ? `<button type="button" class="edit-link" data-action="edit-season">${t('common.edit')}</button>` : ''}
       </div>`}
       <div class="info-item">
         <div class="label">${t('match.stageLabel')}</div>
-        <div class="value" id="stage-display">${m.season && m.season.kind === 'TOURNAMENT' ? escapeHtml(bracketPhaseLabel(m.bracket) || t('match.stagePlayoff')) : t(m.stage === 'PLAYOFF' ? 'match.stagePlayoff' : 'match.stageGroup')}</div>
+        <div class="value" id="stage-display">${m.season && m.season.kind === 'TOURNAMENT' ? escapeHtml(bracketPhaseLabel(m.bracket) || (m.group ? t('match.stageGroup') : t('match.stagePlayoff'))) : t(m.stage === 'PLAYOFF' ? 'match.stagePlayoff' : 'match.stageGroup')}</div>
         ${isAdminUser ? `<button type="button" class="edit-link" data-action="edit-season">${t('common.edit')}</button>` : ''}
       </div>
       ${m.round && m.stage !== 'PLAYOFF' ? `

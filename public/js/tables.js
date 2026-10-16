@@ -55,7 +55,7 @@ function renderTabs() {
   if (groupId !== null && !inCat.some((g) => g.id === groupId)) groupId = null;
   groupsEl.innerHTML = phase === 'GROUP' && inCat.length > 1
     ? `<button type="button" class="tab${groupId === null ? ' active' : ''}" data-group="all">${escapeHtml(t('tables.allGroups'))}</button>`
-      + inCat.map((g) => `<button type="button" class="tab${g.id === groupId ? ' active' : ''}" data-group="${g.id}">${escapeHtml(g.name)}</button>`).join('')
+      + inCat.map((g) => `<button type="button" class="tab${g.id === groupId ? ' active' : ''}" data-group="${g.id}">${escapeHtml(groupShortName(g.name))}</button>`).join('')
     : '';
 }
 

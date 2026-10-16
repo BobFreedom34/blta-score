@@ -244,6 +244,8 @@ function recordManualResult(nodeId, winnerId, score) {
 // is confirmed FINISHED with a winner) — no-op if this match isn't part of
 // any bracket at all, which is the common case for every ordinary match.
 function syncBracketIfFinished(matchRow) {
+  // the last match of the groups of a tournament category can make the bracket after the groups
+  if (matchRow.group_id && (matchRow.status === 'FINISHED' || matchRow.status === 'UNFINISHED')) require('./tournamentDraw').onMatchFinished(matchRow);
   if (matchRow.status !== 'FINISHED' || !matchRow.winner_id) return;
   const node = db.prepare('SELECT * FROM bracket_matches WHERE match_id = ?').get(matchRow.id);
   if (!node) return;
@@ -253,6 +255,10 @@ function syncBracketIfFinished(matchRow) {
 }
 
 // New matches of a tournament bracket are put on the courts by the planner (when the tournament has courts and automatic scheduling on).
+function planCourtsForSeason(seasonId) {
+  tournamentSchedule.autoPlanIfEnabled(seasonId);
+}
+
 function planCourts(bracketId) {
   const bracket = db.prepare('SELECT season_id FROM brackets WHERE id = ?').get(bracketId);
   if (bracket && bracket.season_id) tournamentSchedule.autoPlanIfEnabled(bracket.season_id);
@@ -286,51 +292,92 @@ function consolationOf(mainBracketId) {
   return db.prepare("SELECT * FROM brackets WHERE parent_bracket_id = ? AND kind = 'CONSOLATION' ORDER BY id LIMIT 1").get(mainBracketId) || null;
 }
 
-// Creates the consolation draw of a main bracket whose round 1 is fully seated. Returns { bracketId } or { error } (a draw with fewer
-// than two real round-1 matches has nobody to play a consolation match against). Losers of round-1 matches that are already decided
-// are dropped in straight away.
-function buildConsolation(mainBracketId, { name, format }) {
+// every bracket below this one (its losers brackets, theirs again …), nearest first
+function descendants(bracketId) {
+  const out = [];
+  let level = [bracketId];
+  while (level.length) {
+    const marks = level.map(() => '?').join(',');
+    const next = db.prepare(`SELECT id FROM brackets WHERE parent_bracket_id IN (${marks}) ORDER BY id`).all(...level).map((r) => r.id);
+    out.push(...next);
+    level = next;
+  }
+  return out;
+}
+
+// Makes the losers brackets of a main bracket whose round 1 is fully seated, by type:
+//  - PRINCE: one losers bracket, for the players who lose in round 1 (who lose later are out, a bye has nothing to drop from);
+//  - MONRAD: a losers bracket for the losers of EVERY round (except the final), each of them again a Monrad — so every player keeps
+//    playing until all places are decided.
+// A losers bracket holds one entrant per real match of the round it is fed from, so its size is known at once: the loser of the k-th real
+// match takes seed k+1 (stored on that node as consolation_seed, the bracket on loser_bracket_id) and the standard seed order places the
+// seeds, so it has byes exactly where it cannot be filled. A round with fewer than two matches has no losers bracket.
+// Returns { bracketId (the first one), brackets (how many) } or { error }. Losers of matches that are already decided are dropped in.
+function buildLosers(mainBracketId, { name, format, type = 'PRINCE' }) {
   const main = db.prepare('SELECT * FROM brackets WHERE id = ?').get(mainBracketId);
   if (!main) return { error: 'Bracket not found' };
-  if (main.kind === 'CONSOLATION') return { error: 'A consolation draw has no consolation draw of its own' };
+  if (main.kind === 'CONSOLATION') return { error: 'Only a main bracket gets losers brackets' };
+  if (!['PRINCE', 'MONRAD'].includes(type)) return { error: 'Unknown type of the losers brackets' };
   if (consolationOf(mainBracketId)) return { error: 'This bracket already has a consolation draw' };
   const ready = consolationReadiness(mainBracketId);
   if (ready.empty > 0) return { error: 'Seat every round-1 match of the main draw first' };
-  if (ready.real < 2) return { error: 'The main draw has fewer than two round-1 matches, so there is nobody to play a consolation draw' };
-  const size = nextPowerOfTwo(ready.real);
-  const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category, season_id, kind, parent_bracket_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-    .run(name, format, size, main.auto_create_matches, main.category, main.season_id, 'CONSOLATION', main.id);
-  const bracketId = info.lastInsertRowid;
-  buildEmptyTree(bracketId, size);
-  // seeds and byes only; the players arrive one by one with dropLoser
-  const order = standardSeedOrder(size);
-  const layout = db.prepare('UPDATE bracket_matches SET seed1 = ?, seed2 = ?, is_bye = ? WHERE bracket_id = ? AND round = 1 AND position = ?');
-  for (let position = 0; position < size / 2; position += 1) {
-    const seed1 = order[position * 2];
-    const seed2 = order[position * 2 + 1];
-    layout.run(seed1, seed2, (seed1 <= ready.real) !== (seed2 <= ready.real) ? 1 : 0, bracketId, position);
-  }
-  const mark = db.prepare('UPDATE bracket_matches SET consolation_seed = ? WHERE id = ?');
-  ready.nodes.forEach((node, i) => mark.run(i + 1, node.id));
-  ready.nodes.forEach((node) => {
-    const fresh = db.prepare('SELECT * FROM bracket_matches WHERE id = ?').get(node.id);
-    const winnerId = nodeWinner(fresh);
-    if (winnerId) dropLoser(fresh, winnerId);
+  const created = [];
+  const mark = db.prepare('UPDATE bracket_matches SET consolation_seed = ?, loser_bracket_id = ? WHERE id = ?');
+  const makeChildren = (parent, isMain) => {
+    const nodes = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? ORDER BY round, position').all(parent.id);
+    const rounds = roundCount(parent.size);
+    const lastRound = type === 'MONRAD' ? rounds - 1 : (isMain ? 1 : 0);
+    for (let round = 1; round <= lastRound; round += 1) {
+      const inRound = nodes.filter((n) => n.round === round);
+      // the matches that will really be played: round 1 without the byes, later rounds all of them
+      const real = round === 1 ? (isMain ? ready.nodes : inRound.filter((n) => !n.is_bye)) : inRound;
+      if (real.length < 2) continue;
+      const size = nextPowerOfTwo(real.length);
+      let childName = name;
+      if (type === 'MONRAD') childName = isMain ? (/Útecha$/.test(name) ? name.replace(/Útecha$/, `Útecha po ${round}. kole`) : `${name} po ${round}. kole`) : `${parent.name} › po ${round}. kole`;
+      const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category, season_id, kind, parent_bracket_id, feeds_round) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(childName, format, size, main.auto_create_matches, main.category, main.season_id, 'CONSOLATION', parent.id, round);
+      const childId = Number(info.lastInsertRowid);
+      buildEmptyTree(childId, size);
+      // seeds and byes only; the players arrive one by one with dropLoser
+      const order = standardSeedOrder(size);
+      const layout = db.prepare('UPDATE bracket_matches SET seed1 = ?, seed2 = ?, is_bye = ? WHERE bracket_id = ? AND round = 1 AND position = ?');
+      for (let position = 0; position < size / 2; position += 1) {
+        const seed1 = order[position * 2];
+        const seed2 = order[position * 2 + 1];
+        layout.run(seed1, seed2, (seed1 <= real.length) !== (seed2 <= real.length) ? 1 : 0, childId, position);
+      }
+      real.forEach((node, i) => mark.run(i + 1, childId, node.id));
+      created.push(childId);
+      if (type === 'MONRAD') makeChildren(db.prepare('SELECT * FROM brackets WHERE id = ?').get(childId), false);
+    }
+  };
+  makeChildren(main, true);
+  if (!created.length) return { error: 'The main draw has fewer than two matches in its first round, so there is nobody to play a consolation draw' };
+  db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND consolation_seed IS NOT NULL').all(mainBracketId).forEach((node) => {
+    const winnerId = nodeWinner(node);
+    if (winnerId) dropLoser(node, winnerId);
   });
-  planCourts(bracketId);
-  return { bracketId };
+  planCourts(created[0]);
+  return { bracketId: created[0], brackets: created.length };
 }
 
-// A round-1 node of a main bracket was just decided: its loser goes to the consolation draw (if there is one).
+// kept for the callers that only know the old name: the PRINCE consolation draw
+function buildConsolation(mainBracketId, { name, format, type }) {
+  return buildLosers(mainBracketId, { name, format, type: type || 'PRINCE' });
+}
+
+// A node was just decided: its loser goes to the losers bracket that node feeds (if it has one).
 function dropLoser(node, winnerId) {
-  if (node.round !== 1 || !node.consolation_seed) return;
+  if (!node.consolation_seed) return;
   const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(node.bracket_id);
-  if (!bracket || bracket.kind === 'CONSOLATION') return;
-  const consolation = consolationOf(bracket.id);
-  if (!consolation) return;
+  if (!bracket) return;
+  // a node made before losers brackets had their own column: only round 1 of a main bracket fed the consolation draw
+  const childId = node.loser_bracket_id || (node.round === 1 && bracket.kind !== 'CONSOLATION' ? (consolationOf(bracket.id) || {}).id : null);
+  if (!childId) return;
   const loserId = node.player1_id === winnerId ? node.player2_id : node.player1_id;
   if (!loserId) return;
-  let target = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1 AND (seed1 = ? OR seed2 = ?)').get(consolation.id, node.consolation_seed, node.consolation_seed);
+  let target = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1 AND (seed1 = ? OR seed2 = ?)').get(childId, node.consolation_seed, node.consolation_seed);
   if (!target) return;
   const column = target.seed1 === node.consolation_seed ? 'player1_id' : 'player2_id';
   db.prepare(`UPDATE bracket_matches SET ${column} = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`).run(loserId, target.id);
@@ -373,7 +420,10 @@ module.exports = {
   advanceWinner,
   syncBracketIfFinished,
   buildConsolation,
+  buildLosers,
+  descendants,
   planCourts,
+  planCourtsForSeason,
   consolationOf,
   consolationReadiness,
   dropLoser,

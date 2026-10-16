@@ -343,16 +343,49 @@ router.post('/:id/seeds', requireAdmin, (req, res) => {
   res.json(rows.map(serializeRegistration));
 });
 
-// { category, mode: 'AUTO' | 'MANUAL', mainFormat, consolationFormat } — makes the main bracket of that category (and, in AUTO mode,
-// its consolation bracket).
+// Makes the draw of one category: { category, format: 'PRINCE' | 'MONRAD' | 'ELIMINATION' | 'GROUPS' | 'GROUPS_BRACKET', mode: 'AUTO' | 'MANUAL',
+// mainFormat, consolationFormat, groupFormat (match formats), groupSize, groupCount, qualifiers, bracketType, autoBracket,
+// groups: [{ name, registrationIds }] (the groups as the organiser put them together; left out = suggested) } — see tournamentDraw.createDraw.
 router.post('/:id/draw', requireAdmin, (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const body = req.body || {};
   const made = tournamentDraw.createDraw(season, body.category, {
-    mode: body.mode, mainFormat: body.mainFormat, consolationFormat: body.consolationFormat,
+    format: body.format, mode: body.mode, mainFormat: body.mainFormat, consolationFormat: body.consolationFormat, groupFormat: body.groupFormat,
+    groupSize: body.groupSize, groupCount: body.groupCount, qualifiers: body.qualifiers, bracketType: body.bracketType, autoBracket: body.autoBracket,
+    groups: body.groups,
   });
   if (made.error) return res.status(made.status || 400).json({ error: made.error });
+  const io = req.app.get('io');
+  if (io) io.emit('matches:changed', { seasonId: season.id, status: 'CREATED' });
+  res.status(201).json({ ...made, categories: tournamentDraw.overview(season.id) });
+});
+
+// The suggested split of a category into groups (what an automatic draw would do), for the organiser to look at and change before making
+// the groups: ?category=ELITE&groupSize=4&groupCount=0
+router.get('/:id/draw/groups-suggestion', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const category = req.query.category;
+  if (!tournamentDraw.CATEGORIES.includes(category)) return res.status(400).json({ error: 'Choose a category' });
+  const regs = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? AND category = ? ORDER BY created_at, id').all(season.id, category);
+  const suggested = require('../tournamentGroups').suggestGroups(regs.map((r) => ({ playerId: r.id, seed: r.seed })), {
+    groupSize: Number(req.query.groupSize) || 4, groupCount: Number(req.query.groupCount) || 0,
+  });
+  // playerId above is the registration id (what the draw request takes back)
+  res.json({ groups: suggested.map((g) => ({ name: g.name, registrationIds: g.playerIds })) });
+});
+
+// The bracket after the groups of a GROUPS_BRACKET category: { category, mode: 'AUTO' | 'MANUAL', force } — the best of every group go in
+// (needs every group match played unless force).
+router.post('/:id/draw/bracket', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const body = req.body || {};
+  const made = tournamentDraw.createBracketFromGroups(season, body.category, { mode: body.mode, force: !!body.force });
+  if (made.error) return res.status(made.status || 400).json({ code: made.code, error: made.error });
+  const io = req.app.get('io');
+  if (io) io.emit('matches:changed', { seasonId: season.id, status: 'CREATED' });
   res.status(201).json({ ...made, categories: tournamentDraw.overview(season.id) });
 });
 

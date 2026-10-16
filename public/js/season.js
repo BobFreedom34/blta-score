@@ -526,15 +526,15 @@ function availableTabs() {
   const tabs = [
     { key: 'info', label: t('season.navInfo'), has: !!season.info },
     { key: 'courts', label: t('season.navCourts'), has: (season.courtCount || 0) > 0 },
-    { key: 'tables', label: t('season.navTables'), has: hasGroups },
+    { key: 'tables', label: t(isTournament() ? 'season.navGroups' : 'season.navTables'), has: hasGroups },
     { key: 'results', label: t('season.navResults'), has: season.matchCount > 0 },
     { key: 'schedule', label: t('season.navSchedule'), has: (season.rounds || []).length > 0 },
     { key: 'players', label: t('season.navPlayers'), has: players > 0, count: players },
     { key: 'playoff', label: t(isTournament() ? 'season.navBrackets' : 'season.navPlayoff'), has: brackets.length > 0 || (hasGroups && statusOf() !== 'past') },
     { key: 'gallery', label: t('season.navGallery'), has: !!season.galleryUrl },
   ];
-  // a tournament has only the tabs Základné info, Harmonogram (court timetable with live scores), Pavúky and Galéria (Rozpis is for league seasons); its players are shown below the Základné info tab (see fixedPlayersHtml)
-  return isTournament() ? tabs.filter((x) => ['info', 'courts', 'playoff', 'gallery'].includes(x.key)) : tabs.filter((x) => x.key !== 'courts');
+  // a tournament has only the tabs Základné info, Harmonogram (court timetable with live scores), Skupiny (the group tables), Pavúky and Galéria (Rozpis is for league seasons); its players are shown below the Základné info tab (see fixedPlayersHtml)
+  return isTournament() ? tabs.filter((x) => ['info', 'courts', 'tables', 'playoff', 'gallery'].includes(x.key)) : tabs.filter((x) => x.key !== 'courts');
 }
 
 // the players of a tournament are shown on the Základné info tab only

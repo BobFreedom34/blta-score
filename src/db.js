@@ -1262,6 +1262,32 @@ const bracketKindColumns = db.prepare('PRAGMA table_info(brackets)').all().map((
 if (!bracketKindColumns.includes('kind')) db.exec("ALTER TABLE brackets ADD COLUMN kind TEXT NOT NULL DEFAULT 'MAIN'");
 if (!bracketKindColumns.includes('parent_bracket_id')) db.exec('ALTER TABLE brackets ADD COLUMN parent_bracket_id INTEGER');
 if (!bracketMatchColumns.includes('consolation_seed')) db.exec('ALTER TABLE bracket_matches ADD COLUMN consolation_seed INTEGER');
+// A bracket can have several "losers" brackets (PRINCE: one for the round-1 losers; Monrad: one for the losers of every round, each with its
+// own ones again): feeds_round = the round of the parent bracket whose losers play in this one; on a node of the parent, loser_bracket_id
+// is the bracket its loser drops into and consolation_seed the seed it takes there.
+if (!bracketKindColumns.includes('feeds_round')) db.exec('ALTER TABLE brackets ADD COLUMN feeds_round INTEGER');
+if (!bracketMatchColumns.includes('loser_bracket_id')) db.exec('ALTER TABLE bracket_matches ADD COLUMN loser_bracket_id INTEGER');
+
+// The format of each category of a tournament and how its draw was made: format PRINCE / MONRAD / ELIMINATION / GROUPS / GROUPS_BRACKET,
+// the match formats of the main bracket, the losers brackets and the group matches, the groups (size or count) and how many of each group
+// go on to the bracket, and the type of that bracket.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS tournament_categories (
+    season_id INTEGER NOT NULL,
+    category TEXT NOT NULL,
+    format TEXT NOT NULL DEFAULT 'PRINCE',
+    mode TEXT NOT NULL DEFAULT 'AUTO',
+    main_format TEXT NOT NULL DEFAULT 'BO3_STB',
+    consolation_format TEXT NOT NULL DEFAULT 'BO3_G4_STB',
+    group_format TEXT NOT NULL DEFAULT 'BO3_STB',
+    group_size INTEGER NOT NULL DEFAULT 4,
+    group_count INTEGER NOT NULL DEFAULT 0,
+    qualifiers INTEGER NOT NULL DEFAULT 2,
+    bracket_type TEXT NOT NULL DEFAULT 'PRINCE',
+    auto_bracket INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (season_id, category)
+  );
+`);
 
 // League seasons ("Autumn Finals Series 2026") and their groups ("Babolat", "Technifibre"…). Every group belongs
 // to one BLTA category, and a match (BLTA categories only) can be tagged with a season and a group — set by an
