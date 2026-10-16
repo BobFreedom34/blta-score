@@ -162,11 +162,19 @@ const MATCH_STAGES = ['GROUP', 'PLAYOFF'];
 
 // A BLTA-league match's season ("Autumn Finals Series 2026") and group ("Babolat") — see seasons/season_groups in
 // db.js. Null for non-league categories and for league matches nobody has tagged yet.
+// Where a bracket match sits in its draw (for "Semifinále" on the card): its round, how many rounds the draw has, main or consolation draw; null for a match outside any bracket.
+function bracketInfo(row) {
+  if (row.stage !== 'PLAYOFF') return null;
+  const b = db.prepare('SELECT bm.round AS round, br.size AS size, br.kind AS kind FROM bracket_matches bm JOIN brackets br ON br.id = bm.bracket_id WHERE bm.match_id = ?').get(row.id);
+  return b ? { round: b.round, rounds: Math.log2(b.size), kind: b.kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN' } : null;
+}
+
 function seasonAndGroup(row) {
-  const season = row.season_id ? db.prepare('SELECT id, name, slug FROM seasons WHERE id = ?').get(row.season_id) : null;
+  const season = row.season_id ? db.prepare('SELECT id, name, slug, kind FROM seasons WHERE id = ?').get(row.season_id) : null;
   const group = row.group_id ? db.prepare('SELECT id, name, category FROM season_groups WHERE id = ?').get(row.group_id) : null;
   return {
-    season: season ? { id: season.id, name: season.name, slug: season.slug } : null,
+    season: season ? { id: season.id, name: season.name, slug: season.slug, kind: season.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE' } : null,
+    bracket: bracketInfo(row),
     group: group ? { id: group.id, name: group.name, category: group.category } : null,
   };
 }

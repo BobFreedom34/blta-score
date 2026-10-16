@@ -1919,7 +1919,22 @@ function statusBadge(m, opts) {
 // The "Live video" pill of a match that has a YouTube video (set by the admin on the match page): shown next to the status on every match card.
 // The line under the pills of a match card: the round and the group of a league match ("2. kolo - Wilson", "Play-off - Wilson"), built from the
 // match's own round / stage / group — not the free-text notes (those stay on the match page). Empty for a match without any of them.
+// The phase of a bracket match: "Finále", "Semifinále", "Štvrťfinále", "1. kolo", with "Útecha · " in front for the consolation draw.
+function bracketPhaseLabel(b) {
+  if (!b || !b.round) return '';
+  let name = t('season.roundN', { n: b.round });
+  if (b.rounds && b.round === b.rounds) name = t('courts.final');
+  else if (b.rounds && b.round === b.rounds - 1) name = t('courts.semi');
+  else if (b.rounds && b.round === b.rounds - 2) name = t('courts.quarter');
+  return b.kind === 'CONSOLATION' ? `${t('courts.consolation')} · ${name}` : name;
+}
+
 function matchRoundLabel(m) {
+  // a tournament match: the name of the tournament, the category and the phase ("Demo Open · Elite · Semifinále")
+  if (m.season && m.season.kind === 'TOURNAMENT') {
+    const category = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[m.category] || categoryLabel(m.category);
+    return [m.season.name, category, bracketPhaseLabel(m.bracket)].filter(Boolean).join(' · ');
+  }
   const parts = [];
   if (m.stage === 'PLAYOFF') parts.push(t('season.playoff'));
   else if (m.round) parts.push(t('season.roundN', { n: m.round }));
