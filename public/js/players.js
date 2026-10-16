@@ -26,6 +26,8 @@ function playerRowHtml(p) {
         <button type="button" class="btn btn-sm btn-danger" data-action="delete">${t('common.delete')}</button>
       </div>
   ` : '';
+  // the level of the player under the name (Elite, Next Gen, Novice), when the profile has one
+  const category = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[p.category] || '';
   const avatar = p.photo_url
     ? `<img class="player-row-avatar" src="${escapeHtml(p.photo_url)}" alt="">`
     : `<div class="player-row-avatar player-row-avatar-fallback">${escapeHtml(initials(p.name))}</div>`;
@@ -33,7 +35,10 @@ function playerRowHtml(p) {
     <div class="player-row${p.hidden ? ' player-row-hidden' : ''}" data-id="${p.id}">
       <div class="player-name-cell">
         ${avatar}
-        <a class="player-name" href="/player/${p.slug || p.id}">${escapeHtml(p.name)}</a>
+        <div class="player-name-stack">
+          <a class="player-name" href="/player/${p.slug || p.id}">${escapeHtml(p.name)}</a>
+          ${category ? `<span class="player-cat">${escapeHtml(category)}</span>` : ''}
+        </div>
       </div>
       ${hiddenBadge}
       ${phone}

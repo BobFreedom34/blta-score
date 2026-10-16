@@ -2131,9 +2131,12 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
    only part of that group read worse than the two stacking cleanly. */
 .player-name-cell { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; min-width: 0; }
 .player-name { font-weight: 700; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the name and under it the category in a thin grey font, the pair centred next to the avatar */
+.player-name-stack { display: flex; flex-direction: column; justify-content: center; min-width: 0; line-height: 1.25; }
+.player-cat { font-size: 12px; font-weight: 300; color: var(--gray-dim); white-space: nowrap; }
 .player-row-avatar {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-sm);
   object-fit: cover;
   flex-shrink: 0;
