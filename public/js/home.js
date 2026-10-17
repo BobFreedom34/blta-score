@@ -260,6 +260,7 @@ function timelineHtml(d) {
         <span class="home-tl-chip">${state === 'now' ? '<i></i>' : ''}${escapeHtml(label[state])}</span>
         <div class="home-tl-name">${escapeHtml(s.name)}</div>
         <div class="home-tl-range">${escapeHtml(range)}</div>
+        ${state === 'now' && !s.registrationOpen ? `<span class="home-tl-reg" role="img" title="${escapeHtml(t('home.seasonInfo'))}" aria-label="${escapeHtml(t('home.seasonInfo'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span>` : ''}
         ${s.registrationOpen && state !== 'past' ? `<span class="home-tl-reg" role="img" title="${escapeHtml(t('home.tlRegOpen'))}" aria-label="${escapeHtml(t('home.tlRegOpen'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M19 5v6M16 8h6"/></svg></span>` : ''}
       </div>`;
     return href
@@ -540,6 +541,15 @@ function renderHome() {
     if (d.season.slug) headLogoLink.href = `/season/${encodeURIComponent(d.season.slug)}`; else headLogoLink.removeAttribute('href');
     headLogoLink.hidden = false;
   } else { headLogoLink.hidden = true; }
+  // the cover photo of the season fills the space beside the logo (the phone picture on phones)
+  const coverLink = document.getElementById('home-head-cover-link');
+  const coverWide = d.season && (d.season.heroUrl || d.season.heroMobileUrl);
+  if (coverWide) {
+    document.getElementById('home-head-cover').src = coverWide;
+    document.getElementById('home-head-cover-phone').srcset = d.season.heroMobileUrl || coverWide;
+    if (d.season.slug) coverLink.href = `/season/${encodeURIComponent(d.season.slug)}`; else coverLink.removeAttribute('href');
+    coverLink.hidden = false;
+  } else { coverLink.hidden = true; }
   rootEl.innerHTML = `
     ${mineHtml(d)}
     <section class="home-current">
