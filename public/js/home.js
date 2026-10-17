@@ -534,22 +534,6 @@ function renderHome() {
   } else {
     stateEl.hidden = true;
   }
-  const headLogo = document.getElementById('home-head-logo');
-  const headLogoLink = document.getElementById('home-head-logo-link');
-  if (d.season && d.season.logoUrl) {
-    headLogo.src = d.season.logoUrl;
-    if (d.season.slug) headLogoLink.href = `/season/${encodeURIComponent(d.season.slug)}`; else headLogoLink.removeAttribute('href');
-    headLogoLink.hidden = false;
-  } else { headLogoLink.hidden = true; }
-  // the cover photo of the season fills the space beside the logo (the phone picture on phones)
-  const coverLink = document.getElementById('home-head-cover-link');
-  const coverWide = d.season && (d.season.heroUrl || d.season.heroMobileUrl);
-  if (coverWide) {
-    document.getElementById('home-head-cover').src = coverWide;
-    document.getElementById('home-head-cover-phone').srcset = d.season.heroMobileUrl || coverWide;
-    if (d.season.slug) coverLink.href = `/season/${encodeURIComponent(d.season.slug)}`; else coverLink.removeAttribute('href');
-    coverLink.hidden = false;
-  } else { coverLink.hidden = true; }
   rootEl.innerHTML = `
     ${mineHtml(d)}
     <section class="home-current">

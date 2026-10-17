@@ -5055,10 +5055,3 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
   .sv-head.has-hero .sv-chips { grid-area: 2 / 2; margin: 0; }
   .sv-head.has-hero:not(.with-logo) .sv-chips { grid-area: 2 / 1; }
 }
-
-/* the cover photo of the season in the home page header: fills the space right of the logo; on phones a row of its own under the heading */
-.home-head-cover { flex: 1 1 0; min-width: 0; align-self: stretch; display: block; border-radius: var(--radius); overflow: hidden; background: #1b1b1f; min-height: 110px; }
-.home-head-cover[hidden] { display: none; }
-.home-head-cover picture, .home-head-cover img { display: block; width: 100%; height: 100%; }
-.home-head-cover img { object-fit: cover; }
-@media (max-width: 700px) { .home-head-cover { order: 2; flex: 1 0 100%; align-self: auto; min-height: 0; aspect-ratio: 16 / 9; } }
