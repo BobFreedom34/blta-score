@@ -534,6 +534,13 @@ function renderHome() {
   } else {
     stateEl.hidden = true;
   }
+  const headLogo = document.getElementById('home-head-logo');
+  const headLogoLink = document.getElementById('home-head-logo-link');
+  if (d.season && d.season.logoUrl) {
+    headLogo.src = d.season.logoUrl;
+    if (d.season.slug) headLogoLink.href = `/season/${encodeURIComponent(d.season.slug)}`; else headLogoLink.removeAttribute('href');
+    headLogoLink.hidden = false;
+  } else { headLogoLink.hidden = true; }
   rootEl.innerHTML = `
     ${mineHtml(d)}
     <section class="home-current">

@@ -5055,3 +5055,63 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
   .sv-head.has-hero .sv-chips { grid-area: 2 / 2; margin: 0; }
   .sv-head.has-hero:not(.with-logo) .sv-chips { grid-area: 2 / 1; }
 }
+
+/* the "O nás – info o lige" button in the home page header and the window it opens */
+.home-about-btn { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 13px; border-radius: var(--radius-sm); background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--white); font: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease; }
+.home-about-btn svg { width: 16px; height: 16px; color: var(--orange); flex: none; }
+.home-about-btn:hover { border-color: var(--orange); }
+
+body.about-open { overflow: hidden; }
+.about-backdrop { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0, 0, 0, 0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: about-fade 0.18s ease; }
+.about-modal { width: 100%; max-width: 780px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; background: #0f0f10; color: #e6e8ec; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7); overflow: hidden; animation: about-rise 0.22s ease; }
+.about-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 24px 6px; }
+.about-head h2 { margin: 0; font-size: 26px; font-weight: 800; color: var(--white); text-transform: none; letter-spacing: -0.01em; }
+.about-x { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: transparent; border: 1px solid rgba(255, 255, 255, 0.25); color: var(--white); font-size: 22px; line-height: 1; cursor: pointer; }
+.about-x:hover { border-color: var(--orange); color: var(--orange); }
+.about-tabs { display: flex; gap: 8px; padding: 14px 24px 16px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.about-tabs::-webkit-scrollbar { display: none; }
+.about-tab { flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: var(--radius-sm); background: #000; border: 1px solid var(--orange); color: var(--white); font: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; }
+.about-tab svg { color: var(--orange); flex: none; }
+.about-tab:hover { background: #1b1b1f; }
+.about-tab.on { background: var(--orange); }
+.about-tab.on svg { color: var(--white); }
+.about-body { padding: 22px 24px 26px; overflow-y: auto; font-size: 15px; line-height: 1.65; }
+.about-body p { margin: 0 0 14px; color: #c9ccd3; }
+.about-h { margin: 0 0 12px; font-size: 22px; font-weight: 800; color: var(--white); text-transform: uppercase; letter-spacing: 0.01em; }
+.about-lead { font-size: 17px; font-weight: 700; line-height: 1.5; color: var(--white) !important; }
+.about-body a { color: var(--orange); font-weight: 700; }
+.about-sub { margin: 18px 0 10px; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8f98; }
+.about-sign { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; font-weight: 800; color: var(--orange); }
+.about-list { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 10px; }
+.about-list li { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); }
+.about-n { flex: none; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--orange); color: var(--white); font-weight: 800; font-size: 14px; }
+.about-list strong { display: block; color: var(--white); font-size: 15px; margin-bottom: 2px; }
+.about-list span:not(.about-n) { color: #aeb2ba; font-size: 14px; line-height: 1.5; }
+.about-cards { display: grid; gap: 12px; margin: 4px 0 18px; }
+.about-cards.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.about-card { --c: var(--orange); position: relative; padding: 16px 16px 18px; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-top: 3px solid var(--c); }
+.about-card.novice { --c: #5ec2ff; }
+.about-card.nextgen { --c: var(--green); }
+.about-card.elite { --c: var(--orange); }
+.about-card.winter { --c: #5ec2ff; }
+.about-card.summer { --c: #f5b301; }
+.about-card.autumn { --c: var(--orange); }
+.about-card-step { position: absolute; top: 12px; right: 14px; font-size: 26px; font-weight: 800; color: var(--c); opacity: 0.35; line-height: 1; }
+.about-card-name { font-size: 17px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: var(--c); line-height: 1.2; padding-right: 26px; }
+.about-card-text { margin-top: 6px; font-size: 14px; color: #c9ccd3; line-height: 1.5; }
+.about-callout { margin: 4px 0 18px; padding: 16px 18px; border-radius: var(--radius-md); background: rgba(255, 85, 0, 0.1); border: 1px solid rgba(255, 85, 0, 0.45); color: #e6e8ec; }
+.about-callout strong { color: var(--white); }
+.about-cta { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: var(--radius-sm); background: var(--orange); color: var(--white) !important; font-size: 13px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; text-decoration: none; }
+.about-cta:hover { filter: brightness(1.1); }
+@keyframes about-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes about-rise { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: none; } }
+@media (max-width: 700px) {
+  .about-backdrop { padding: 0; align-items: flex-end; }
+  .about-modal { max-height: 92vh; border-radius: var(--radius) var(--radius) 0 0; }
+  .about-head { padding: 16px 16px 4px; }
+  .about-head h2 { font-size: 22px; }
+  .about-tabs { padding: 12px 16px 14px; }
+  .about-body { padding: 18px 16px 24px; }
+  .about-cards.three { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .about-backdrop, .about-modal { animation: none; } }
