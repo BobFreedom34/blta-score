@@ -5042,3 +5042,16 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 /* registration open: a green person with a plus in the bottom right corner of the season card in the timeline */
 .home-tl-reg { position: absolute; right: 12px; bottom: 12px; width: 34px; height: 34px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; color: var(--green); background: rgba(178, 250, 6, 0.14); border: 1px solid var(--green); }
 .home-tl.past .home-tl-reg { display: none; }
+
+/* phones, page with a hero photo: the photo carries only the path and the title; the logo, the chips and the register button sit under it */
+@media (max-width: 700px) {
+  .sv-head.has-hero { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; row-gap: 14px; align-items: center; aspect-ratio: auto; padding: 0; overflow: visible; background: none; }
+  .sv-head.has-hero:not(.with-logo) { grid-template-columns: minmax(0, 1fr); }
+  .sv-head.has-hero .sv-head-main { display: contents; }
+  .sv-head.has-hero .sv-hero-pic { position: relative; grid-area: 1 / 1 / 2 / -1; aspect-ratio: 4 / 3; border-radius: var(--radius); overflow: hidden; background: #1b1b1f; }
+  .sv-head.has-hero .sv-hero-shade { position: static; grid-area: 1 / 1 / 2 / -1; align-self: stretch; border-radius: var(--radius); }
+  .sv-head.has-hero .sv-head-text { grid-area: 1 / 1 / 2 / -1; align-self: end; position: relative; z-index: 1; padding: 18px; }
+  .sv-head.has-hero > .sv-logo { grid-area: 2 / 1; position: static; }
+  .sv-head.has-hero .sv-chips { grid-area: 2 / 2; margin: 0; }
+  .sv-head.has-hero:not(.with-logo) .sv-chips { grid-area: 2 / 1; }
+}

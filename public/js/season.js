@@ -211,8 +211,10 @@ function headerHtml() {
       ${hero}
       ${logo}
       <div class="sv-head-main">
-        <div class="sv-crumb"><a href="/harmonogram">${escapeHtml(t('schedule.heading'))}</a> › ${escapeHtml(termText())}</div>
-        <h1 class="sv-title">${escapeHtml(season.name)}</h1>
+        <div class="sv-head-text">
+          <div class="sv-crumb"><a href="/harmonogram">${escapeHtml(t('schedule.heading'))}</a> › ${escapeHtml(termText())}</div>
+          <h1 class="sv-title">${escapeHtml(season.name)}</h1>
+        </div>
         <div class="sv-chips"><span class="sv-chip ${isTournament() ? 't' : 'l'}">${escapeHtml(t(isTournament() ? 'schedule.tournament' : 'schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
       </div>
     </div>
