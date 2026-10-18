@@ -28,6 +28,9 @@ const headerItemsRouter = require('./src/routes/headerItems');
 const courtIQRouter = require('./src/routes/courtiq');
 const bracketsRouter = require('./src/routes/brackets');
 const venuesRouter = require('./src/routes/venues');
+const leaguesRouter = require('./src/routes/leagues');
+const leagues = require('./src/leagues');
+const national = require('./src/national');
 const seasonsRouter = require('./src/routes/seasons');
 const invitesRouter = require('./src/routes/invites');
 const highlightsRouter = require('./src/routes/highlights');
@@ -159,6 +162,8 @@ app.use(compression());
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser(process.env.SESSION_SECRET || 'dev-only-insecure-secret'));
+// the city of the request on req.league (an own domain such as blta.sk; otherwise Bratislava)
+app.use(leagues.attach);
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 // The old addresses of the site (REDIRECT_HOSTS: a comma list such as score.blta.sk,blta-score.onrender.com) send every page request
@@ -196,11 +201,11 @@ app.get('/', (req, res, next) => {
 // edited there too (a slug per language: /rebricek and /en/rankings), so they are not fixed routes but looked up on every request:
 // the fixed pages and the ones with a name in the address (a season, a player, a venue, a bracket). The code address a page
 // used to have (/rankings, /season/<x>) is retired once its slug is another one: 404, no redirect.
-const publicOrigin = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+const publicOrigin = (req) => (national.isNationalHost(req) ? national.origin(req) : (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, ''));
 app.get('/pozvanka/:slug', invitesRouter.openLink); // a player's invite link: counted, remembered, then the home page
 app.get('/js/localize.js', (req, res) => res.type('application/javascript').set('Cache-Control', 'no-cache').send(seo.clientScript()));
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(seo.robotsTxt(publicOrigin(req))));
-app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemapXml(publicOrigin(req))));
+app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemapXml(publicOrigin(req), { national: national.isNationalHost(req) })));
 // the entity behind a template page: { name, image } or null
 const TEMPLATE_ENTITY = {
   article: (slug, lang) => blog.articleEntity(slug, lang),
@@ -230,6 +235,29 @@ function pageNotFound(res) {
     + '<meta name="robots" content="noindex"><title>404 - BLTA</title></head><body style="font-family:sans-serif;background:#191919;color:#fff;text-align:center;padding:80px 20px">'
     + '<h1>404</h1><p>Stránka sa nenašla / Page not found</p><p><a href="/" style="color:#ff8a00">BLTA</a></p></body></html>');
 }
+// The national site (slta.sk, see src/national.js) serves its own page, the files the page needs and the public list of the cities; any other
+// page address goes on to the first city (blta.sk), anything else is not found there. The other hosts never serve the national page.
+app.use((req, res, next) => {
+  const read = req.method === 'GET' || req.method === 'HEAD';
+  if (!national.isNationalHost(req)) {
+    if (/^\/(en\/)?slta(\.html)?$/.test(req.path)) return pageNotFound(res);
+    return next();
+  }
+  const lang = national.pageLang(req.path);
+  if (read && lang) {
+    try {
+      return res.type('html').send(seo.render('slta', { origin: national.origin(req), canonical: '/', lang, siteName: 'SLTA' }));
+    } catch (err) {
+      console.error('National page failed', err);
+      return next();
+    }
+  }
+  if (read && (national.isAsset(req.path) || req.path === '/api/leagues' || req.path.startsWith('/api/leagues/'))) return next();
+  if (req.path === '/healthz') return next();
+  const city = national.cityOrigin();
+  if (read && city && !req.path.startsWith('/api/')) return res.redirect(302, city + req.originalUrl);
+  return res.status(404).json({ error: 'Not found' });
+});
 app.use((req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
   const hit = seo.resolve(req.path);
@@ -307,6 +335,7 @@ app.use('/api/header-items', headerItemsRouter);
 app.use('/api/courtiq', courtIQRouter);
 app.use('/api/brackets', bracketsRouter);
 app.use('/api/venues', venuesRouter);
+app.use('/api/leagues', leaguesRouter);
 app.use('/api/seasons', seasonsRouter);
 app.use('/api/invites', invitesRouter);
 app.use('/api/highlights', highlightsRouter);

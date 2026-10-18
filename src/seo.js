@@ -139,6 +139,12 @@ const LANG_NAME = { sk: 'Slovak', en: 'English' };
 // go in once per page; after that Backend > SEO owns them. A page that is not listed (a new page file) starts with its Slovak text.
 const SUFFIX_EN = ' - BLTA - Bratislava Amateur Tennis League';
 const ENGLISH = {
+  // the national page (slta.sk): the picker of the cities
+  slta: {
+    slug: 'slta',
+    title: 'SLTA - Slovak Amateur Tennis League',
+    description: 'SLTA - the Slovak Amateur Tennis League. Pick your city, sign up for the Novice, Next Gen or Elite category and play an amateur tennis league at your level.',
+  },
   home: {
     slug: '',
     title: 'BLTA - Live scores and tables of the amateur tennis league',
@@ -608,7 +614,7 @@ const OG_LOCALE = { sk: 'sk_SK', en: 'en_GB' };
 
 // `canonical` is the code address of the page (/rankings, /season/<slug>); `lang` the language of the address asked for;
 // `entity` is { name } for a template page; `origin` the public address of the site.
-function render(key, { origin, canonical, lang = 'sk', entity }) {
+function render(key, { origin, canonical, lang = 'sk', entity, siteName = 'BLTA' }) {
   const page = BY_KEY.get(key);
   const html = TEMPLATES.get(key);
   const v = getValues(key, lang);
@@ -640,7 +646,7 @@ function render(key, { origin, canonical, lang = 'sk', entity }) {
     `<meta property="og:type" content="${entity && entity.ogType ? entity.ogType : 'website'}">`,
     entity && entity.published ? `<meta property="article:published_time" content="${esc(entity.published)}">` : '',
     entity && entity.modified ? `<meta property="article:modified_time" content="${esc(entity.modified)}">` : '',
-    '<meta property="og:site_name" content="BLTA">',
+    `<meta property="og:site_name" content="${esc(siteName)}">`,
     ogTitle ? `<meta property="og:title" content="${esc(ogTitle)}">` : '',
     ogDescription ? `<meta property="og:description" content="${esc(ogDescription)}">` : '',
     `<meta property="og:url" content="${esc(urlOf(lang))}">`,
@@ -680,11 +686,13 @@ module.exports = {
 // The pages a search engine may list, in both languages (each entry points at the other language): the fixed pages and, unless
 // their template is hidden, every season, player, venue and bracket. The paths of the backend, the API, the embeds and the helper
 // pages are kept out by robots.txt.
-function sitemapXml(origin) {
+function sitemapXml(origin, { national = false } = {}) {
   const entries = [];
   const add = (canonical, lastmod) => entries.push({ canonical, lastmod });
-  const hidden = (key) => noindexOf(key);
-  PAGES.filter((p) => !p.template && !hidden(p.key)).forEach((p) => add(p.path));
+  // the national site (slta.sk) lists only its own page; the sitemaps of the cities never list it
+  const hidden = (key) => national || noindexOf(key);
+  if (national && !noindexOf('slta')) add('/');
+  PAGES.filter((p) => !p.template && !hidden(p.key) && p.key !== 'slta').forEach((p) => add(p.path));
   const day = (iso) => (iso ? String(iso).slice(0, 10) : undefined);
   if (!hidden('season')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND COALESCE(kind, 'LEAGUE') != 'TOURNAMENT'").all().forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`));
   if (!hidden('tournament')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND kind = 'TOURNAMENT'").all().forEach((r) => add(`/tournament/${encodeURIComponent(r.slug)}`));

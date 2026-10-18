@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SLTA - Slovenská liga tenisových amatérov</title>
+<meta name="description" content="SLTA - Slovenská liga tenisových amatérov. Vyber si svoje mesto, zaregistruj sa do kategórie Novice, Next Gen alebo Elite a hraj amatérsku tenisovú ligu na svojej úrovni.">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  body { background: #0a0a0a; color: #fff; }
+  .sl-stat b, .sl-how b { color: #fff; }
+  .sl-top { position: sticky; top: 0; z-index: 10; background: #000; border-bottom: 1px solid rgba(255,85,0,.35); }
+  .sl-top-in { max-width: 1160px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+  .sl-logo { font-size: 26px; font-weight: 800; letter-spacing: .08em; color: #fff; text-decoration: none; }
+  .sl-logo b { color: var(--orange); font-weight: 800; }
+  .sl-nav { display: flex; gap: 24px; flex-wrap: wrap; }
+  .sl-nav a { color: #fff; font-size: 13px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; text-decoration: none; }
+  .sl-nav a:hover { color: var(--orange); }
+  .sl-lang { margin-left: auto; display: flex; gap: 8px; }
+  .sl-lang a { border: 1px solid rgba(255,255,255,.25); border-radius: var(--radius-sm); padding: 6px 12px; font-size: 12px; font-weight: 800; color: #fff; text-decoration: none; }
+  .sl-lang a.on { background: var(--orange); border-color: var(--orange); }
+  .sl-wrap { max-width: 1160px; margin: 0 auto; padding: 0 20px 60px; }
+  .sl-hero { padding: 54px 0 26px; }
+  .sl-eyebrow { color: var(--orange); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 10px; }
+  .sl-hero h1 { margin: 0 0 12px; font-size: 52px; line-height: 1.04; font-weight: 800; color: #fff; text-transform: none; letter-spacing: -.01em; max-width: 780px; }
+  .sl-hero h1 em { font-style: normal; color: var(--green); }
+  .sl-hero p { margin: 0 0 22px; color: #c3c7cf; font-size: 17px; max-width: 560px; line-height: 1.5; }
+  .sl-search { display: flex; align-items: center; gap: 10px; max-width: 440px; background: var(--fill-grey); border: 1px solid rgba(255,255,255,.14); border-radius: var(--radius-md); padding: 0 16px; }
+  .sl-search:focus-within { border-color: var(--orange); }
+  .sl-search svg { color: var(--orange); flex: none; }
+  .sl-search input { flex: 1; min-width: 0; height: 50px; background: none; border: 0; outline: 0; color: #fff; font: inherit; font-size: 15px; font-weight: 600; box-shadow: none; padding: 0; }
+  .sl-search input::placeholder { color: #8b8f98; }
+  .sl-picker { display: grid; grid-template-columns: 1.2fr 1fr; gap: 22px; margin-top: 8px; }
+  .sl-map { background: linear-gradient(160deg, #17171b, #101013); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 18px 14px 10px; }
+  .sl-map svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .sl-list { display: flex; flex-direction: column; gap: 10px; align-content: start; }
+  .sl-city { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; font: inherit; color: #fff; background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-md); padding: 14px 16px; cursor: pointer; transition: border-color .15s; }
+  .sl-city:hover { border-color: var(--orange); }
+  .sl-city.on { border-color: var(--green); background: #2f2f36; }
+  .sl-city b { display: block; font-size: 17px; font-weight: 800; }
+  .sl-city small { color: #aeb2ba; font-size: 12px; font-weight: 600; }
+  .sl-city .sl-tag { margin-left: auto; }
+  .sl-tag { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-sm); padding: 4px 9px; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+  .sl-tag.now { background: var(--orange); color: #fff; }
+  .sl-tag.reg { background: var(--green); color: #0a0a0a; }
+  .sl-tag.soon { border: 1px solid #5a5e68; color: #d3d6dc; }
+  .sl-empty { color: #aeb2ba; padding: 14px; font-weight: 600; }
+  .sl-det { margin-top: 22px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; background: #0f0f12; border: 1px solid var(--green); border-radius: var(--radius); padding: 22px 26px; box-shadow: 0 0 30px -12px rgba(178,250,6,.4); }
+  .sl-det[hidden] { display: none; }
+  .sl-det h2 { margin: 0 0 8px; font-size: 26px; font-weight: 800; color: #fff; text-transform: none; }
+  .sl-det .url { color: #8b8f98; font-size: 13px; font-weight: 600; margin-left: 8px; }
+  .sl-meta { display: flex; gap: 34px; flex-wrap: wrap; margin-top: 14px; }
+  .sl-meta div { color: #aeb2ba; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .sl-meta b { display: block; color: #fff; font-size: 24px; font-weight: 800; letter-spacing: 0; text-transform: none; }
+  .sl-meta b.t { font-size: 15px; max-width: 240px; }
+  .sl-btns { display: flex; flex-direction: column; gap: 10px; min-width: 210px; }
+  .sl-btn { display: block; text-align: center; border-radius: var(--radius-sm); padding: 13px 20px; font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; text-decoration: none; border: 1px solid transparent; cursor: pointer; font-family: inherit; }
+  .sl-btn.g { background: var(--green); color: #0a0a0a; }
+  .sl-btn.g:hover { background: #c6ff3a; }
+  .sl-btn.d { background: var(--fill-grey); color: #fff; border-color: rgba(255,255,255,.2); }
+  .sl-btn.d:hover { border-color: var(--orange); }
+  .sl-btn.off { background: var(--fill-grey); color: #8b8f98; border-color: rgba(255,255,255,.1); cursor: default; }
+  .sl-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 44px 0; }
+  .sl-stat { background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 18px 20px; }
+  .sl-stat b { display: block; font-size: 34px; font-weight: 800; line-height: 1.1; }
+  .sl-stat small { color: #aeb2ba; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .sl-sec { margin: 0 0 16px; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; color: #fff; }
+  .sl-how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 44px; }
+  .sl-how div { background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 22px; }
+  .sl-how span { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--radius-sm); background: var(--orange); font-weight: 800; margin-bottom: 14px; }
+  .sl-how b { display: block; font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+  .sl-how small { color: #c3c7cf; font-size: 14px; font-weight: 500; line-height: 1.5; }
+  .sl-foot { border-top: 1px solid rgba(255,255,255,.1); padding: 26px 20px; text-align: center; color: #8b8f98; font-size: 13px; font-weight: 600; }
+  .sl-foot a { color: var(--orange); text-decoration: none; }
+  @media (max-width: 860px) {
+    .sl-hero { padding-top: 34px; }
+    .sl-hero h1 { font-size: 36px; }
+    .sl-picker { grid-template-columns: 1fr; }
+    .sl-stats { grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .sl-stat b { font-size: 26px; }
+    .sl-how { grid-template-columns: 1fr; }
+    .sl-det { grid-template-columns: 1fr; }
+    .sl-list { order: -1; }
+  }
+</style>
+</head>
+<body>
+<header class="sl-top"><div class="sl-top-in">
+  <a class="sl-logo" href="/">S<b>L</b>TA</a>
+  <nav class="sl-nav"><a href="#mesta" data-i="navCities">Mestá</a><a href="#ako" data-i="navHow">Ako to funguje</a></nav>
+  <div class="sl-lang"><a id="lang-sk" href="/">SK</a><a id="lang-en" href="/en">EN</a></div>
+</div></header>
+
+<main class="sl-wrap">
+  <section class="sl-hero">
+    <div class="sl-eyebrow" data-i="eyebrow">Slovenská liga tenisových amatérov</div>
+    <h1 data-i-html="h1">Hraj ligu vo svojom meste. <em>Na svojej úrovni.</em></h1>
+    <p data-i="lead">Vyber si mesto, zaregistruj sa do kategórie a stúpaj v rebríčku. Každé mesto má vlastnú ligu, organizátora a zápasy.</p>
+    <label class="sl-search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="text" data-i-placeholder="search" placeholder="Nájdi svoje mesto…" autocomplete="off"></label>
+  </section>
+
+  <section class="sl-picker" id="mesta">
+    <div class="sl-map"><svg id="map" viewBox="0 0 400 170" role="img" aria-label="Mapa Slovenska s mestami"><path id="outline" fill="#1d1d22" stroke="#3a3a42" stroke-width="1.2" stroke-linejoin="round"/><g id="pins"></g></svg></div>
+    <div class="sl-list" id="list"><noscript><a class="sl-city" href="https://blta.sk">Bratislava · BLTA</a></noscript></div>
+  </section>
+
+  <section class="sl-det" id="det" hidden></section>
+
+  <section class="sl-stats" id="stats" hidden></section>
+
+  <h2 class="sl-sec" id="ako" data-i="howTitle">Ako to funguje</h2>
+  <section class="sl-how">
+    <div><span>1</span><b data-i="how1t">Vyber mesto</b><small data-i="how1d">Každé mesto má vlastnú ligu, sezóny a organizátora, ktorý to tam pozná.</small></div>
+    <div><span>2</span><b data-i="how2t">Zaregistruj sa</b><small data-i="how2d">Vyber si kategóriu Novice, Next Gen alebo Elite a zaplať štartovné online.</small></div>
+    <div><span>3</span><b data-i="how3t">Hraj a stúpaj</b><small data-i="how3d">Body idú do rebríčka tvojho mesta a tvoj CourtIQ platí na celom Slovensku.</small></div>
+  </section>
+</main>
+<footer class="sl-foot"><span data-i="footer">SLTA - Slovenská liga tenisových amatérov</span> · <a href="https://blta.sk">BLTA Bratislava</a></footer>
+
+<script>
+const TEXT = {
+  sk: {
+    navCities: 'Mestá', navHow: 'Ako to funguje', eyebrow: 'Slovenská liga tenisových amatérov',
+    h1: 'Hraj ligu vo svojom meste. <em>Na svojej úrovni.</em>',
+    lead: 'Vyber si mesto, zaregistruj sa do kategórie a stúpaj v rebríčku. Každé mesto má vlastnú ligu, organizátora a zápasy.',
+    search: 'Nájdi svoje mesto…', howTitle: 'Ako to funguje',
+    how1t: 'Vyber mesto', how1d: 'Každé mesto má vlastnú ligu, sezóny a organizátora, ktorý to tam pozná.',
+    how2t: 'Zaregistruj sa', how2d: 'Vyber si kategóriu Novice, Next Gen alebo Elite a zaplať štartovné online.',
+    how3t: 'Hraj a stúpaj', how3d: 'Body idú do rebríčka tvojho mesta a tvoj CourtIQ platí na celom Slovensku.',
+    footer: 'SLTA - Slovenská liga tenisových amatérov',
+    running: 'Prebieha', regOpen: 'Registrácia otvorená', preparing: 'V príprave', soon: 'Čoskoro',
+    players: 'hráčov', venues: 'tenisových areálov', cities: 'miest', next: 'sezóna',
+    enter: 'Vstúpiť do ligy', register: 'Registrácia', notYet: 'Stránka mesta sa pripravuje',
+    none: 'Žiadne mesto nenájdené.', loadError: 'Zoznam miest sa nepodarilo načítať.',
+    ariaMap: 'Mapa Slovenska s mestami',
+  },
+  en: {
+    navCities: 'Cities', navHow: 'How it works', eyebrow: 'Slovak Amateur Tennis League',
+    h1: 'Play a league in your city. <em>At your level.</em>',
+    lead: 'Pick your city, sign up for a category and climb the ranking. Every city has its own league, organiser and matches.',
+    search: 'Find your city…', howTitle: 'How it works',
+    how1t: 'Pick your city', how1d: 'Every city has its own league, seasons and an organiser who knows the place.',
+    how2t: 'Sign up', how2d: 'Choose the Novice, Next Gen or Elite category and pay the entry fee online.',
+    how3t: 'Play and climb', how3d: 'Points go to the ranking of your city and your CourtIQ counts across Slovakia.',
+    footer: 'SLTA - Slovak Amateur Tennis League',
+    running: 'Running', regOpen: 'Registration open', preparing: 'In preparation', soon: 'Coming soon',
+    players: 'players', venues: 'tennis venues', cities: 'cities', next: 'season',
+    enter: 'Enter the league', register: 'Register', notYet: 'The city page is coming',
+    none: 'No city found.', loadError: 'The list of cities could not be loaded.',
+    ariaMap: 'Map of Slovakia with the cities',
+  },
+};
+const LANG = document.documentElement.lang === 'en' ? 'en' : 'sk';
+const T = TEXT[LANG];
+document.querySelectorAll('[data-i]').forEach((el) => { if (T[el.dataset.i]) el.textContent = T[el.dataset.i]; });
+document.querySelectorAll('[data-i-html]').forEach((el) => { if (T[el.dataset.iHtml]) el.innerHTML = T[el.dataset.iHtml]; });
+document.querySelectorAll('[data-i-placeholder]').forEach((el) => { if (T[el.dataset.iPlaceholder]) el.placeholder = T[el.dataset.iPlaceholder]; });
+document.getElementById('map').setAttribute('aria-label', T.ariaMap);
+document.getElementById(`lang-${LANG}`).classList.add('on');
+
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fold = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+
+// the schematic outline of Slovakia (longitude/latitude -> the drawing)
+const B = { w: 16.8, e: 22.6, n: 49.65, s: 47.65 };
+const P = (lon, lat) => [10 + (lon - B.w) / (B.e - B.w) * 380, 8 + (B.n - lat) / (B.n - B.s) * 150];
+const OUT = [[17.1,48.0],[17.8,47.75],[18.8,47.8],[19.5,47.85],[20.3,48.2],[21.4,48.4],[22.0,48.4],[22.55,49.05],[21.8,49.4],[20.9,49.3],[20.3,49.4],[19.8,49.2],[19.4,49.6],[18.9,49.5],[18.4,49.4],[17.7,49.0],[17.2,48.9],[16.9,48.6]];
+document.getElementById('outline').setAttribute('d', 'M' + OUT.map((p) => P(p[0], p[1]).map((v) => v.toFixed(1)).join(',')).join('L') + 'Z');
+
+let cities = [];
+let sel = 0;
+let q = '';
+const kind = (c) => (c.registrationOpen ? 'reg' : c.status === 'ACTIVE' ? 'now' : 'soon');
+const label = (c) => (c.registrationOpen ? T.regOpen : c.status === 'ACTIVE' ? T.running : c.status === 'PREPARING' ? T.preparing : T.soon);
+const colour = { now: '#ff5500', reg: '#b2fa06', soon: '#8b8f98' };
+const pinsEl = document.getElementById('pins'); const listEl = document.getElementById('list'); const detEl = document.getElementById('det');
+
+function draw() {
+  pinsEl.innerHTML = cities.map((c, i) => {
+    if (c.lat == null || c.lng == null) return '';
+    const [x, y] = P(c.lng, c.lat); const on = i === sel; const col = colour[kind(c)];
+    return `<g data-i="${i}" style="cursor:pointer">${on ? `<circle cx="${x}" cy="${y}" r="12" fill="${col}" opacity=".22"/>` : ''}<circle cx="${x}" cy="${y}" r="${on ? 6 : 4.2}" fill="${col}" stroke="#0a0a0a" stroke-width="1.6"/><text x="${x}" y="${y - 10}" text-anchor="middle" font-size="9.5" font-weight="800" fill="${on ? '#fff' : '#aeb2ba'}">${esc(c.name)}</text></g>`;
+  }).join('');
+  const shown = cities.map((c, i) => ({ c, i })).filter((o) => fold(o.c.name).includes(q));
+  listEl.innerHTML = shown.length
+    ? shown.map((o) => `<button type="button" class="sl-city${o.i === sel ? ' on' : ''}" data-i="${o.i}"><div><b>${esc(o.c.name)}</b><small>${esc(o.c.brandName)}${o.c.players ? ` · ${o.c.players} ${T.players}` : ''}</small></div><span class="sl-tag ${kind(o.c)}">${esc(label(o.c))}</span></button>`).join('')
+    : `<div class="sl-empty">${T.none}</div>`;
+  const c = cities[sel];
+  if (!c) { detEl.hidden = true; return; }
+  detEl.hidden = false;
+  const season = c.currentSeason;
+  const registerUrl = c.url && season && season.slug && c.registrationOpen ? `${c.url}/season/${encodeURIComponent(season.slug)}` : '';
+  detEl.innerHTML = `<div><h2>${esc(c.brandName)}${c.url ? `<span class="url">${esc(c.url.replace(/^https?:\/\//, ''))}</span>` : ''}</h2><span class="sl-tag ${kind(c)}">${esc(label(c))}</span>
+    <div class="sl-meta"><div><b>${c.players || '–'}</b>${T.players}</div><div><b>${c.venues || '–'}</b>${T.venues}</div>${season ? `<div><b class="t">${esc(season.name)}</b>${T.next}</div>` : ''}</div></div>
+    <div class="sl-btns">${c.url ? `<a class="sl-btn g" href="${esc(c.url)}">${T.enter}</a>` : `<span class="sl-btn off">${T.notYet}</span>`}${registerUrl ? `<a class="sl-btn d" href="${esc(registerUrl)}">${T.register}</a>` : ''}</div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('#map [data-i], #list [data-i]');
+  if (t) { sel = Number(t.dataset.i); draw(); }
+});
+document.getElementById('q').addEventListener('input', (e) => { q = fold(e.target.value); draw(); });
+
+(async () => {
+  try {
+    cities = await (await fetch('/api/leagues')).json();
+    if (!Array.isArray(cities)) throw new Error('bad');
+  } catch {
+    listEl.innerHTML = `<div class="sl-empty">${T.loadError}</div>`;
+    return;
+  }
+  // the first running city is chosen at the start
+  const first = cities.findIndex((c) => c.status === 'ACTIVE');
+  sel = first >= 0 ? first : 0;
+  const statsEl = document.getElementById('stats');
+  if (cities.length) {
+    const sum = (k) => cities.reduce((s, c) => s + (c[k] || 0), 0);
+    statsEl.innerHTML = [[cities.length, T.cities], [sum('players'), T.players], [sum('venues'), T.venues]].map(([n, l]) => `<div class="sl-stat"><b>${n}</b><small>${l}</small></div>`).join('');
+    statsEl.hidden = false;
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

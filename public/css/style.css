@@ -4548,7 +4548,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 
 /* ---------- Season page: the winners of a finished series (between the numbers and the tabs) ---------- */
 .sw-sec { margin-top: 48px; }
-.sw-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 380px)); justify-content: start; gap: 12px; }
+.sw-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 330px)); justify-content: start; gap: 12px; }
 .sw-card { display: flex; flex-direction: column; background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius); padding: 14px 16px; }
 .sw-cat { margin: 0 0 12px; color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .sv-fixed-players { margin: 40px 0 8px; }

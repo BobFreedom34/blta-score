@@ -1503,6 +1503,35 @@ if (!carouselColumns.includes('mobile_image_url')) {
   db.exec('ALTER TABLE carousel_slides ADD COLUMN mobile_image_url TEXT');
 }
 
+// ---------- the cities (leagues) ----------
+// One app serves every city: SLTA (Slovenská liga tenisových amatérov) has a league per city, each with its own seasons, players, venues and
+// rankings, and Bratislava is BLTA, the first one (id 1). The design and the code are shared by all of them; what belongs to a city carries its
+// league_id. Everything that already existed belongs to Bratislava (the DEFAULT 1 below), so nothing changes for the visitors of blta.sk.
+// slug: the address slta.sk/<slug>; domain: an own domain of the city ('' = only slta.sk/<slug>), e.g. blta.sk for Bratislava;
+// status: ACTIVE (running), PREPARING (in preparation), COMING_SOON (pre-registration only), HIDDEN (not shown on the picker).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS leagues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    brand_name TEXT NOT NULL DEFAULT '',
+    domain TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'HIDDEN',
+    lat REAL,
+    lng REAL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+if (!db.prepare('SELECT 1 FROM leagues WHERE id = 1').get()) {
+  db.prepare("INSERT INTO leagues (id, slug, name, brand_name, domain, status, lat, lng, sort_order) VALUES (1, 'bratislava', 'Bratislava', 'BLTA', 'blta.sk', 'ACTIVE', 48.1486, 17.1077, 0)").run();
+}
+for (const table of ['seasons', 'venues', 'players', 'matches', 'header_items', 'winner_editions', 'carousel_slides']) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!columns.includes('league_id')) db.exec(`ALTER TABLE ${table} ADD COLUMN league_id INTEGER NOT NULL DEFAULT 1`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_${table}_league ON ${table}(league_id)`);
+}
+
 // Lookups the lists and the group tables make on every request: a player's matches (either side), a group's or a
 // season's matches, and the date order. Without these each one reads the whole matches table.
 db.exec(`
