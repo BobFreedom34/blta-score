@@ -100,6 +100,7 @@ function openAbout(startTab) {
       const on = b.dataset.tab === tab;
       b.classList.toggle('on', on);
       b.setAttribute('aria-selected', on ? 'true' : 'false');
+      if (on) b.parentElement.scrollTo({ left: b.offsetLeft - (b.parentElement.clientWidth - b.offsetWidth) / 2, behavior: 'smooth' });
     });
     body.innerHTML = aboutPanel(tab);
     body.scrollTop = 0;
