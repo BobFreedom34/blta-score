@@ -94,7 +94,9 @@ function render(v) {
 
   const info = infoRowsHtml(v);
   root.innerHTML = `
-    <h1 class="court-title">${escapeHtml(v.name)}</h1>
+    ${v.imageUrl
+      ? `<div class="court-photo"><img src="${escapeHtml(v.imageUrl)}" alt="" fetchpriority="high"><span class="court-photo-shade"></span><h1 class="court-title">${escapeHtml(v.name)}</h1></div>`
+      : `<h1 class="court-title">${escapeHtml(v.name)}</h1>`}
     <div class="court-meta">${meta.join('')}</div>
     ${actions.length ? `<div class="court-actions court-actions-hero">${actions.join('')}</div>` : ''}
     ${v.description ? `<p class="court-desc">${escapeHtml(v.description)}</p>` : ''}

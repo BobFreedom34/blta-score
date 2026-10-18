@@ -5112,3 +5112,11 @@ body.about-open { overflow: hidden; }
   .about-cards.three { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .about-modal { animation: none; } }
+
+/* the photo of a court at the top of its profile, between the "all courts" link and the details: never wider than the pictures are
+   (768 x 432, 16:9), with a black gradient from the bottom and the name of the court over it */
+.court-photo { position: relative; width: 100%; max-width: 768px; margin: 8px 0 18px; aspect-ratio: 16 / 9; border-radius: var(--radius); overflow: hidden; background: #1a1a1a; }
+.court-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.court-photo-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(10, 10, 10, 0.9) 0%, rgba(10, 10, 10, 0.55) 35%, rgba(10, 10, 10, 0) 68%); }
+.court-photo .court-title { position: absolute; left: 24px; right: 24px; bottom: 20px; margin: 0; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5); }
+@media (max-width: 700px) { .court-photo .court-title { left: 16px; right: 16px; bottom: 14px; font-size: 24px; } }
