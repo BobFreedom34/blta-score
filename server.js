@@ -132,6 +132,12 @@ try {
   console.error('Winners seed failed (will retry on next start):', err);
 }
 try {
+  const seeded = require('./src/winter2026PlayoffSeed').seedWinter2026Playoffs(db);
+  if (seeded.created) console.log('Winter 2026 play-off brackets added: ' + (seeded.created.join(', ') || 'none (already there)'));
+} catch (err) {
+  console.error('Winter 2026 play-off seed failed (will retry on next start):', err);
+}
+try {
   require('./src/rankingsSeed').seedRankings(db);
 } catch (err) {
   console.error('Rankings seed failed (will retry on next start):', err);
