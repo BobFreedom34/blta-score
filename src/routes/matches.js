@@ -633,9 +633,6 @@ router.post('/', requireLoggedIn, (req, res) => {
   if (!engine.FORMATS[format]) {
     return res.status(400).json({ error: 'Invalid match format' });
   }
-  if (typeof notes === 'string' && notes.length > 1000) {
-    return res.status(400).json({ error: 'Additional info is too long (max 1000 characters)' });
-  }
   let ballsPlayer = null;
   if (req.body.ballsPlayer !== undefined && req.body.ballsPlayer !== null) {
     ballsPlayer = Number(req.body.ballsPlayer);
@@ -876,9 +873,6 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
     }
   }
   if (typeof req.body.notes === 'string') {
-    if (req.body.notes.length > 1000) {
-      return res.status(400).json({ error: 'Additional info is too long (max 1000 characters)' });
-    }
     fields.notes = req.body.notes.trim();
   }
   // Reassigning who's actually in the match — admin-only regardless of the

@@ -5162,3 +5162,6 @@ body.about-open { overflow: hidden; }
 .home-tl.now::before { background: rgba(255, 255, 255, 0.2); }
 .home-tl-beam { position: absolute; top: 6px; left: 0; right: -12px; height: 2px; z-index: 1; pointer-events: none; }
 .home-tl-beam i { display: block; width: var(--p); height: 100%; }
+
+/* the "additional info" of a match has no length limit: the box grows with the text (and can be dragged larger) */
+#edit-match-notes, #notes { min-height: 130px; max-height: 60vh; resize: vertical; field-sizing: content; font-weight: 300; line-height: 1.5; }
