@@ -4548,7 +4548,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 
 /* ---------- Season page: the winners of a finished series (between the numbers and the tabs) ---------- */
 .sw-sec { margin-top: 48px; }
-.sw-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.sw-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 380px)); justify-content: start; gap: 12px; }
 .sw-card { display: flex; flex-direction: column; background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius); padding: 14px 16px; }
 .sw-cat { margin: 0 0 12px; color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .sv-fixed-players { margin: 40px 0 8px; }
@@ -5165,3 +5165,9 @@ body.about-open { overflow: hidden; }
 
 /* the "additional info" of a match has no length limit: the box grows with the text (and can be dragged larger) */
 #edit-match-notes, #notes { min-height: 130px; max-height: 60vh; resize: vertical; field-sizing: content; font-weight: 300; line-height: 1.5; }
+
+/* a finished series: the whole bar full and solid red in both parts, the drop only at the very end */
+.home-season.done .home-bar i, .home-season.done .home-phase.po .home-bar i { --c: #ff3b3b; background: var(--c); }
+.home-season.done .home-phase.po .home-bar { background: rgba(255, 255, 255, 0.16); box-shadow: none; }
+.home-season.done .home-phase.po .lbl b { color: var(--white); }
+.home-season.done .home-phase.basic .home-bar i::after { display: none; }

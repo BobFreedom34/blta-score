@@ -32,15 +32,16 @@ function seasonProgressHtml(season, standings) {
   const right = over ? t('home.seasonOver') : (inPlayoff ? t('home.playoffOn') : (total ? t('home.playedOf', { done: counted, total }) : ''));
   const showPct = !over && !inPlayoff && total;
 
+  // a finished series shows the same bar, full, in the colour of a finished series (see .home-season.done)
   let bar = '';
-  if (!over && phased) {
+  if (phased) {
     const basicDays = dayNum(playoffStart) - dayNum(season.startDate);
     const poDays = dayNum(season.endDate) - dayNum(playoffStart) + 1;
     const basicW = (basicDays / (basicDays + poDays)) * 100;
-    const basicFill = inPlayoff ? 100 : pct;
-    const poFill = inPlayoff ? Math.max(0, Math.min(100, ((dayNum(today) - dayNum(playoffStart) + 1) / poDays) * 100)) : 0;
+    const basicFill = over || inPlayoff ? 100 : pct;
+    const poFill = over ? 100 : inPlayoff ? Math.max(0, Math.min(100, ((dayNum(today) - dayNum(playoffStart) + 1) / poDays) * 100)) : 0;
     bar = `
-      <div class="home-phases" style="grid-template-columns:${basicW.toFixed(2)}fr ${(100 - basicW).toFixed(2)}fr" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+      <div class="home-phases" style="grid-template-columns:${basicW.toFixed(2)}fr ${(100 - basicW).toFixed(2)}fr" role="progressbar" aria-valuenow="${over ? 100 : pct}" aria-valuemin="0" aria-valuemax="100">
         <div class="home-phase basic">
           <div class="home-bar"><i style="width:${basicFill}%"></i></div>
           <div class="lbl"><b>${escapeHtml(t('home.phaseBasic'))}</b><span>${escapeHtml(shortRange(season.startDate, isoFromDayNum(dayNum(playoffStart) - 1)))}</span></div>
@@ -50,12 +51,13 @@ function seasonProgressHtml(season, standings) {
           <div class="lbl"><b>${courtIcon('trophy')}${escapeHtml(t('home.phasePlayoff'))}</b><span>${escapeHtml(shortRange(playoffStart, season.endDate))}</span></div>
         </div>
       </div>`;
-  } else if (!over) {
-    bar = `<div class="home-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>`;
+  } else {
+    const shown = over ? 100 : pct;
+    bar = `<div class="home-bar" role="progressbar" aria-valuenow="${shown}" aria-valuemin="0" aria-valuemax="100"><i style="width:${shown}%"></i></div>`;
   }
 
   return `
-    <div class="home-season">
+    <div class="home-season${over ? ' done' : ''}">
       <div class="home-season-top"><b>${escapeHtml(t('home.seasonProgress'))}${showPct ? `<em class="pct">${pct} %</em>` : ''}</b><span>${escapeHtml(right)}</span></div>
       ${bar}
     </div>`;
