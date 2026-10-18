@@ -5138,3 +5138,29 @@ body.about-open { overflow: hidden; }
 .sv-reg-cover-text h3 { margin: 0 0 2px; color: var(--white); font-size: 22px; font-weight: 800; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5); }
 .sv-reg-cover-text .sv-reg-season { margin: 0; color: var(--white); font-size: 14px; font-weight: 700; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5); }
 @media (max-width: 480px) { .sv-reg-cover { margin: -16px -16px 14px; } .sv-reg-cover-text { padding: 0 16px 14px; } .sv-reg-cover-text h3 { font-size: 20px; } }
+
+/* progress bars as a light beam: the line fades in from the left, glows, and ends in a bright spark with a halo (orange for the play-off part) */
+.home-bar { overflow: visible; }
+.home-bar i { --c: var(--green); position: relative; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 35%, transparent) 0%, color-mix(in srgb, var(--c) 85%, transparent) 70%, var(--c) 100%); box-shadow: 0 0 10px color-mix(in srgb, var(--c) 70%, transparent), 0 0 3px var(--c); }
+.home-bar i::before { content: ''; position: absolute; right: -9px; top: 50%; width: 26px; height: 26px; transform: translateY(-50%); border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--c) 65%, transparent) 0%, transparent 70%); }
+.home-bar i::after { content: ''; position: absolute; right: -6px; top: 50%; width: 20px; height: 10px; transform: translateY(-50%); transform-origin: 70% 50%; background: radial-gradient(circle at 72% 50%, #fff 0%, color-mix(in srgb, var(--c) 20%, #fff) 12%, var(--c) 58%); clip-path: path('M0 5 C 4 5, 7 0, 14 0 A 5 5 0 0 1 14 10 C 7 10, 4 5, 0 5 Z'); }
+.home-bar i[style*="width:0%"], .home-bar i[style*="width:0;"] { box-shadow: none; }
+.home-bar i[style*="width:0%"]::before, .home-bar i[style*="width:0%"]::after, .home-bar i[style*="width:0;"]::before, .home-bar i[style*="width:0;"]::after { display: none; }
+.home-phase.po .home-bar i { --c: var(--orange); }
+@keyframes beam-spark { 0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); } 50% { opacity: 0.8; transform: translateY(-50%) scale(1.18); } }
+@media (prefers-reduced-motion: no-preference) { .home-bar i::after { animation: beam-drop 2.2s ease-in-out infinite; } }
+
+/* the line of the running season in the timeline on the home page: the elapsed part is a light beam that ends in a glowing spark */
+.home-timeline { padding-top: 14px; margin-top: -12px; }
+.home-tl.now::before { background: rgba(255, 255, 255, 0.2); }
+.home-tl-beam { position: absolute; top: 6px; left: 0; right: -12px; height: 2px; z-index: 1; pointer-events: none; }
+.home-tl-beam i { --c: var(--green); display: block; position: relative; width: var(--p); height: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 35%, transparent) 0%, color-mix(in srgb, var(--c) 85%, transparent) 70%, var(--c) 100%); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 70%, transparent), 0 0 2px var(--c); }
+/* the end of the beam is a drop: a soft glow behind it (::before) and the drop itself with a pointed tail along the line (::after) */
+.home-tl-beam i::before { content: ''; position: absolute; right: -9px; top: 50%; width: 26px; height: 26px; transform: translateY(-50%); border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--c) 65%, transparent) 0%, transparent 70%); }
+.home-tl-beam i::after { content: ''; position: absolute; right: -6px; top: 50%; width: 20px; height: 10px; transform: translateY(-50%); transform-origin: 70% 50%; background: radial-gradient(circle at 72% 50%, #fff 0%, color-mix(in srgb, var(--c) 20%, #fff) 12%, var(--c) 58%); clip-path: path('M0 5 C 4 5, 7 0, 14 0 A 5 5 0 0 1 14 10 C 7 10, 4 5, 0 5 Z'); }
+@keyframes beam-drop { 0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); } 50% { opacity: 0.85; transform: translateY(-50%) scale(1.12); } }
+@media (prefers-reduced-motion: no-preference) { .home-tl-beam i::after { animation: beam-drop 2.2s ease-in-out infinite; } }
+
+/* on the big "Priebeh série" bar (season page, home page) the drop is larger than on the thin bars */
+.home-phases .home-bar i::before { right: -14px; width: 44px; height: 44px; }
+.home-phases .home-bar i::after { right: -10px; width: 32px; height: 16px; clip-path: path('M0 8 C 6.4 8, 11.2 0, 22.4 0 A 8 8 0 0 1 22.4 16 C 11.2 16, 6.4 8, 0 8 Z'); }

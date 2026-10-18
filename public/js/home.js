@@ -263,9 +263,11 @@ function timelineHtml(d) {
         ${state === 'now' && !s.registrationOpen ? `<span class="home-tl-reg" role="img" title="${escapeHtml(t('home.seasonInfo'))}" aria-label="${escapeHtml(t('home.seasonInfo'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span>` : ''}
         ${s.registrationOpen && state !== 'past' ? `<span class="home-tl-reg" role="img" title="${escapeHtml(t('home.tlRegOpen'))}" aria-label="${escapeHtml(t('home.tlRegOpen'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M19 5v6M16 8h6"/></svg></span>` : ''}
       </div>`;
+    // the running season: the elapsed part of the line is a light beam (see .home-tl-beam)
+    const beam = state === 'now' && elapsed > 0 ? '<span class="home-tl-beam"><i></i></span>' : '';
     return href
-      ? `<a class="home-tl ${state}" style="--p:${elapsed.toFixed(1)}%" href="${href}"${state === 'now' ? ' data-current="1"' : ''}>${inner}</a>`
-      : `<div class="home-tl ${state}" style="--p:${elapsed.toFixed(1)}%">${inner}</div>`;
+      ? `<a class="home-tl ${state}" style="--p:${elapsed.toFixed(1)}%" href="${href}"${state === 'now' ? ' data-current="1"' : ''}>${beam}${inner}</a>`
+      : `<div class="home-tl ${state}" style="--p:${elapsed.toFixed(1)}%">${beam}${inner}</div>`;
   }).join('');
   return `<div class="home-tl-wrap" id="home-tl-wrap">
     <button type="button" class="home-tl-nav prev" aria-label="←">‹</button>
