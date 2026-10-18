@@ -5120,3 +5120,7 @@ body.about-open { overflow: hidden; }
 .court-photo-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(10, 10, 10, 0.9) 0%, rgba(10, 10, 10, 0.55) 35%, rgba(10, 10, 10, 0) 68%); }
 .court-photo .court-title { position: absolute; left: 24px; right: 24px; bottom: 20px; margin: 0; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5); }
 @media (max-width: 700px) { .court-photo .court-title { left: 16px; right: 16px; bottom: 14px; font-size: 24px; } }
+
+/* the REGISTRÁCIA button on a season / tournament page: an orange ring spreads from it and fades, over and over (not for visitors who asked for less motion) */
+@keyframes sv-register-glow { 0% { box-shadow: 0 0 0 0 rgba(255, 85, 0, 0.7); } 70% { box-shadow: 0 0 0 16px rgba(255, 85, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 85, 0, 0); } }
+@media (prefers-reduced-motion: no-preference) { #sv-register { animation: sv-register-glow 1.8s ease-out infinite; } }
