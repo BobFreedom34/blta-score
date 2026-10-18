@@ -419,11 +419,23 @@ async function openRegisterModal() {
   await loadPlayers();
   const wrap = document.createElement('div');
   wrap.className = 'modal-backdrop';
+  // with a hero photo the title and the name of the series stand over it (black gradient from the bottom), the cross in its corner
+  const heroWide = season.heroUrl || season.heroMobileUrl;
+  const heroPhone = season.heroMobileUrl || season.heroUrl;
+  const regTitle = escapeHtml(t(isTournament() ? 'season.regTitleTournament' : 'season.regTitle'));
+  const closeLabel = escapeHtml(t('season.regClose'));
+  const head = heroWide
+    ? `<div class="sv-reg-cover">
+        <picture><source media="(max-width: 480px)" srcset="${escapeHtml(heroPhone)}"><img src="${escapeHtml(heroWide)}" alt=""></picture><span class="sv-reg-shade"></span>
+        <button type="button" class="close" data-close aria-label="${closeLabel}">&times;</button>
+        <div class="sv-reg-cover-text"><h3>${regTitle}</h3><div class="sv-reg-season">${escapeHtml(season.name)}</div></div>
+      </div>`
+    : `<button type="button" class="close" data-close aria-label="${closeLabel}">&times;</button>
+      <h3>${regTitle}</h3>
+      <div class="sv-reg-season">${escapeHtml(season.name)}</div>`;
   wrap.innerHTML = `
     <div class="modal sv-reg" role="dialog" aria-modal="true">
-      <button type="button" class="close" data-close aria-label="${escapeHtml(t('season.regClose'))}">&times;</button>
-      <h3>${escapeHtml(t(isTournament() ? 'season.regTitleTournament' : 'season.regTitle'))}</h3>
-      <div class="sv-reg-season">${escapeHtml(season.name)}</div>
+      ${head}
       <form id="sv-reg-form" novalidate>
         <div class="field">
           <label for="sv-reg-name">${escapeHtml(t('season.regName'))}</label>

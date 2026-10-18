@@ -5121,6 +5121,20 @@ body.about-open { overflow: hidden; }
 .court-photo .court-title { position: absolute; left: 24px; right: 24px; bottom: 20px; margin: 0; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5); }
 @media (max-width: 700px) { .court-photo .court-title { left: 16px; right: 16px; bottom: 14px; font-size: 24px; } }
 
-/* the REGISTRÁCIA button on a season / tournament page: an orange ring spreads from it and fades, over and over (not for visitors who asked for less motion) */
-@keyframes sv-register-glow { 0% { box-shadow: 0 0 0 0 rgba(255, 85, 0, 0.7); } 70% { box-shadow: 0 0 0 16px rgba(255, 85, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 85, 0, 0); } }
+/* the REGISTRÁCIA button on a season / tournament page: green, with a green ring that spreads from it and fades, over and over (the ring not for visitors who asked for less motion) */
+#sv-register.sv-btn.primary { background: var(--green); border-color: var(--green); color: #0a0a0a; }
+#sv-register.sv-btn.primary:hover { background: #c6ff3a; border-color: #c6ff3a; }
+@keyframes sv-register-glow { 0% { box-shadow: 0 0 0 0 rgba(178, 250, 6, 0.75); } 70% { box-shadow: 0 0 0 16px rgba(178, 250, 6, 0); } 100% { box-shadow: 0 0 0 0 rgba(178, 250, 6, 0); } }
 @media (prefers-reduced-motion: no-preference) { #sv-register { animation: sv-register-glow 1.8s ease-out infinite; } }
+
+/* the registration window of a season / tournament with a hero photo: the photo across the top, black gradient from the bottom, the title and the name of the series in white over it */
+.sv-reg-cover { position: relative; margin: -22px -22px 18px; aspect-ratio: 16 / 7; min-height: 130px; display: flex; align-items: flex-end; background: #1b1b1f; overflow: hidden; }
+.sv-reg-cover picture, .sv-reg-cover img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.sv-reg-cover img { object-fit: cover; }
+.sv-reg-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(10, 10, 10, 0.92) 0%, rgba(10, 10, 10, 0.55) 40%, rgba(10, 10, 10, 0) 75%); }
+.sv-reg-cover .close { position: absolute; top: 12px; right: 12px; z-index: 2; float: none; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(10, 10, 10, 0.55); color: var(--white); font-size: 20px; padding: 0 0 2px; }
+.sv-reg-cover .close:hover { border-color: var(--orange); color: var(--orange); }
+.sv-reg-cover-text { position: relative; z-index: 1; padding: 0 22px 16px; }
+.sv-reg-cover-text h3 { margin: 0 0 2px; color: var(--white); font-size: 22px; font-weight: 800; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5); }
+.sv-reg-cover-text .sv-reg-season { margin: 0; color: var(--white); font-size: 14px; font-weight: 700; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5); }
+@media (max-width: 480px) { .sv-reg-cover { margin: -16px -16px 14px; } .sv-reg-cover-text { padding: 0 16px 14px; } .sv-reg-cover-text h3 { font-size: 20px; } }
