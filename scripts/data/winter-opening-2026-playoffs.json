@@ -1,0 +1,302 @@
+{
+ "source": "Rankedin tournament 67083 (BLTA Winter 2026 play-off draws, as embedded on old.blta.sk), scores written winner-first",
+ "season": "Winter Opening Series 2026",
+ "brackets": {
+  "ELITE": [
+   {
+    "round": 1,
+    "order": 1,
+    "p1": "Braňo Ivan",
+    "seed1": 1,
+    "p2": "Augusta Tobiášová",
+    "seed2": 16,
+    "winner": "Braňo Ivan",
+    "score": "6-1, 6-7, 6-4"
+   },
+   {
+    "round": 1,
+    "order": 2,
+    "p1": "Peter Pálenek",
+    "seed1": 9,
+    "p2": "Tomáš Podhorný",
+    "seed2": 8,
+    "winner": "Tomáš Podhorný",
+    "score": "6-4, 6-4"
+   },
+   {
+    "round": 1,
+    "order": 3,
+    "p1": "Tomáš Elexhauser",
+    "seed1": 5,
+    "p2": "Peťo Hladký",
+    "seed2": 12,
+    "winner": "Peťo Hladký",
+    "score": "6-4, 6-3"
+   },
+   {
+    "round": 1,
+    "order": 4,
+    "p1": "Dávid Hudák",
+    "seed1": 13,
+    "p2": "Paľo Piroha",
+    "seed2": 4,
+    "winner": "Paľo Piroha",
+    "score": "6-2, 1-6, 6-0"
+   },
+   {
+    "round": 1,
+    "order": 5,
+    "p1": "Paľo Blahút",
+    "seed1": 3,
+    "p2": "Matej Varga",
+    "seed2": 14,
+    "winner": "Paľo Blahút",
+    "score": "Ret."
+   },
+   {
+    "round": 1,
+    "order": 6,
+    "p1": "Tomáš Paulen",
+    "seed1": 11,
+    "p2": "Braňo Bložon",
+    "seed2": 6,
+    "winner": "Braňo Bložon",
+    "score": "6-0, 6-2"
+   },
+   {
+    "round": 1,
+    "order": 7,
+    "p1": "Michal Bori",
+    "seed1": 7,
+    "p2": "Kubo Paločný",
+    "seed2": 10,
+    "winner": "Kubo Paločný",
+    "score": "7-6, 6-1"
+   },
+   {
+    "round": 1,
+    "order": 8,
+    "p1": "Jano Szalay",
+    "seed1": 15,
+    "p2": "Robo Sloboda",
+    "seed2": 2,
+    "winner": "Robo Sloboda",
+    "score": "6-0, 6-1"
+   },
+   {
+    "round": 2,
+    "order": 1,
+    "p1": "Braňo Ivan",
+    "seed1": 1,
+    "p2": "Tomáš Podhorný",
+    "seed2": 8,
+    "winner": "Braňo Ivan",
+    "score": "5-7, 6-2, 6-2"
+   },
+   {
+    "round": 2,
+    "order": 2,
+    "p1": "Peťo Hladký",
+    "seed1": 12,
+    "p2": "Paľo Piroha",
+    "seed2": 4,
+    "winner": "Paľo Piroha",
+    "score": "7-6, 7-6"
+   },
+   {
+    "round": 2,
+    "order": 3,
+    "p1": "Paľo Blahút",
+    "seed1": 3,
+    "p2": "Braňo Bložon",
+    "seed2": 6,
+    "winner": "Paľo Blahút",
+    "score": "6-3, 6-4"
+   },
+   {
+    "round": 2,
+    "order": 4,
+    "p1": "Kubo Paločný",
+    "seed1": 10,
+    "p2": "Robo Sloboda",
+    "seed2": 2,
+    "winner": "Robo Sloboda",
+    "score": "6-2, 6-1"
+   },
+   {
+    "round": 3,
+    "order": 1,
+    "p1": "Braňo Ivan",
+    "seed1": 1,
+    "p2": "Paľo Piroha",
+    "seed2": 4,
+    "winner": "Braňo Ivan",
+    "score": "6-4, 6-3"
+   },
+   {
+    "round": 3,
+    "order": 2,
+    "p1": "Paľo Blahút",
+    "seed1": 3,
+    "p2": "Robo Sloboda",
+    "seed2": 2,
+    "winner": "Robo Sloboda",
+    "score": "6-1, 6-0"
+   },
+   {
+    "round": 4,
+    "order": 1,
+    "p1": "Braňo Ivan",
+    "seed1": 1,
+    "p2": "Robo Sloboda",
+    "seed2": 2,
+    "winner": "Robo Sloboda",
+    "score": "6-0, 7-5"
+   }
+  ],
+  "NEXT_GEN": [
+   {
+    "round": 1,
+    "order": 1,
+    "p1": "Yurii Yumashev",
+    "seed1": 1,
+    "p2": "Marek Patúc",
+    "seed2": 8,
+    "winner": "Yurii Yumashev",
+    "score": "4-6, 6-2, 10-5"
+   },
+   {
+    "round": 1,
+    "order": 2,
+    "p1": "Tomasz Szopinski",
+    "seed1": 5,
+    "p2": "Artur Hlukhota",
+    "seed2": 4,
+    "winner": "Artur Hlukhota",
+    "score": "6-1, 7-5"
+   },
+   {
+    "round": 1,
+    "order": 3,
+    "p1": "Peter Bicko",
+    "seed1": 3,
+    "p2": "Filip Ujfalusi",
+    "seed2": 6,
+    "winner": "Peter Bicko",
+    "score": "6-1, 6-2"
+   },
+   {
+    "round": 1,
+    "order": 4,
+    "p1": "Stefan Dobrev",
+    "seed1": 7,
+    "p2": "Volodymyr Sadykov",
+    "seed2": 2,
+    "winner": "Volodymyr Sadykov",
+    "score": "7-5, 6-0"
+   },
+   {
+    "round": 2,
+    "order": 1,
+    "p1": "Yurii Yumashev",
+    "seed1": 1,
+    "p2": "Artur Hlukhota",
+    "seed2": 4,
+    "winner": "Artur Hlukhota",
+    "score": "2-6, 6-1, 7-5"
+   },
+   {
+    "round": 2,
+    "order": 2,
+    "p1": "Peter Bicko",
+    "seed1": 3,
+    "p2": "Volodymyr Sadykov",
+    "seed2": 2,
+    "winner": "Peter Bicko",
+    "score": "7-5, 6-2"
+   },
+   {
+    "round": 3,
+    "order": 1,
+    "p1": "Artur Hlukhota",
+    "seed1": 4,
+    "p2": "Peter Bicko",
+    "seed2": 3,
+    "winner": "Peter Bicko",
+    "score": "1-6, 6-1, 6-4"
+   }
+  ],
+  "NOVICE": [
+   {
+    "round": 1,
+    "order": 1,
+    "p1": "Radko Cíger",
+    "seed1": 1,
+    "p2": "Lukáš Hnilica",
+    "seed2": 8,
+    "winner": "Radko Cíger",
+    "score": "6-2, 6-4"
+   },
+   {
+    "round": 1,
+    "order": 2,
+    "p1": "Ladislav Nagy",
+    "seed1": 5,
+    "p2": "Peter Schmidt",
+    "seed2": 4,
+    "winner": "Ladislav Nagy",
+    "score": "0-6, 6-1, 6-1"
+   },
+   {
+    "round": 1,
+    "order": 3,
+    "p1": "Juraj Urblík",
+    "seed1": 3,
+    "p2": "Alan Almaksus",
+    "seed2": 6,
+    "winner": "Juraj Urblík",
+    "score": "6-4, 6-3"
+   },
+   {
+    "round": 1,
+    "order": 4,
+    "p1": "Dmytro Novitskyi",
+    "seed1": 7,
+    "p2": "Ján Beňo",
+    "seed2": 2,
+    "winner": "Ján Beňo",
+    "score": "6-3, 6-2"
+   },
+   {
+    "round": 2,
+    "order": 1,
+    "p1": "Radko Cíger",
+    "seed1": 1,
+    "p2": "Ladislav Nagy",
+    "seed2": 5,
+    "winner": "Radko Cíger",
+    "score": "6-0, 6-4"
+   },
+   {
+    "round": 2,
+    "order": 2,
+    "p1": "Juraj Urblík",
+    "seed1": 3,
+    "p2": "Ján Beňo",
+    "seed2": 2,
+    "winner": "Ján Beňo",
+    "score": "7-6, 6-3"
+   },
+   {
+    "round": 3,
+    "order": 1,
+    "p1": "Radko Cíger",
+    "seed1": 1,
+    "p2": "Ján Beňo",
+    "seed2": 2,
+    "winner": "Ján Beňo",
+    "score": "6-3, 2-6, 7-5"
+   }
+  ]
+ }
+}
