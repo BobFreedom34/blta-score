@@ -138,6 +138,12 @@ try {
   console.error('Winter 2026 play-off seed failed (will retry on next start):', err);
 }
 try {
+  const seeded = require('./src/nulty2025PlayoffSeed').seedNulty2025Playoffs(db);
+  if (seeded.created) console.log('Nultý ročník play-off bracket added: ' + (seeded.created.join(', ') || 'none (already there)'));
+} catch (err) {
+  console.error('Nultý ročník play-off seed failed (will retry on next start):', err);
+}
+try {
   require('./src/rankingsSeed').seedRankings(db);
 } catch (err) {
   console.error('Rankings seed failed (will retry on next start):', err);

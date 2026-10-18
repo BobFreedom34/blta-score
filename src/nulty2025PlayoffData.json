@@ -1,0 +1,128 @@
+{
+ "source": "Rankedin tournament 59437 (BLTA Nultý ročník play-off draw, as embedded on old.blta.sk), scores written winner-first, no seeds (drawn by lot)",
+ "season": "BLTA Nultý Ročník",
+ "brackets": {
+  "ELITE": [
+   {
+    "round": 1,
+    "order": 1,
+    "p1": "Robo Sloboda",
+    "p2": "Michal Marhevka",
+    "winner": "Robo Sloboda",
+    "score": "6-2, 6-0"
+   },
+   {
+    "round": 1,
+    "order": 2,
+    "p1": "Jakub Paločný",
+    "p2": "Braňo Ivan",
+    "winner": "Braňo Ivan",
+    "score": "6-3, 6-1"
+   },
+   {
+    "round": 1,
+    "order": 3,
+    "p1": "Braňo Bložon",
+    "p2": "Michael Dojčan",
+    "winner": "Michael Dojčan",
+    "score": "6-7, 6-4, 6-2"
+   },
+   {
+    "round": 1,
+    "order": 4,
+    "p1": "Tomáš Paulen",
+    "p2": "Tomáš Podhorný",
+    "winner": "Tomáš Podhorný",
+    "score": "6-1, 6-2"
+   },
+   {
+    "round": 1,
+    "order": 5,
+    "p1": "Pavol Piroha",
+    "p2": "Dávid Hudák",
+    "winner": "Pavol Piroha",
+    "score": "6-2, 7-6"
+   },
+   {
+    "round": 1,
+    "order": 6,
+    "p1": "Matej Varga",
+    "p2": "Tomáš Elexhauser",
+    "winner": "Tomáš Elexhauser",
+    "score": "6-4, 6-3"
+   },
+   {
+    "round": 1,
+    "order": 7,
+    "p1": "Peter Laučík",
+    "p2": "Tomasz Szopinski",
+    "winner": "Tomasz Szopinski",
+    "score": "1-6, 6-4, 7-6"
+   },
+   {
+    "round": 1,
+    "order": 8,
+    "p1": "Ľubomír Šimkovič",
+    "p2": "Michal Bori",
+    "winner": "Michal Bori",
+    "score": "6-1, 6-1"
+   },
+   {
+    "round": 2,
+    "order": 1,
+    "p1": "Robo Sloboda",
+    "p2": "Braňo Ivan",
+    "winner": "Robo Sloboda",
+    "score": "6-1, 3-6, 6-4"
+   },
+   {
+    "round": 2,
+    "order": 2,
+    "p1": "Michael Dojčan",
+    "p2": "Tomáš Podhorný",
+    "winner": "Tomáš Podhorný",
+    "score": "6-4, 6-1"
+   },
+   {
+    "round": 2,
+    "order": 3,
+    "p1": "Pavol Piroha",
+    "p2": "Tomáš Elexhauser",
+    "winner": "Pavol Piroha",
+    "score": "7-5, 6-4"
+   },
+   {
+    "round": 2,
+    "order": 4,
+    "p1": "Tomasz Szopinski",
+    "p2": "Michal Bori",
+    "winner": "Michal Bori",
+    "score": "6-2, 6-1"
+   },
+   {
+    "round": 3,
+    "order": 1,
+    "p1": "Robo Sloboda",
+    "p2": "Tomáš Podhorný",
+    "winner": "Robo Sloboda",
+    "score": "6-2, 6-3"
+   },
+   {
+    "round": 3,
+    "order": 2,
+    "p1": "Pavol Piroha",
+    "p2": "Michal Bori",
+    "winner": "Pavol Piroha",
+    "score": "Ret."
+   },
+   {
+    "round": 4,
+    "order": 1,
+    "p1": "Robo Sloboda",
+    "p2": "Pavol Piroha",
+    "winner": "Robo Sloboda",
+    "score": "6-4, 6-4"
+   }
+  ]
+ }
+}
