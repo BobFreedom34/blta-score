@@ -98,7 +98,7 @@
       }
       courts.forEach((c, j) => {
         out.push(`<div class="rv-courth${j === 0 ? ' first' : ''}" title="${escapeHtml(c.note || c.name)}" style="grid-column:1;grid-row:${2 + j};${colorVars(c.id)}">${escapeHtml(c.name)}</div>`);
-        out.push(`<div class="rv-row${j === 0 ? ' first' : ''}${day === data.today ? ' today' : ''}" style="grid-column:2 / span ${colsN};grid-row:${2 + j}"></div>`);
+        out.push(`<div class="rv-row${j === 0 ? ' first' : ''}${day === data.today ? ' today' : ''}" data-day="${day}" data-court="${c.id}" data-start="${startMin}" data-cols="${colsN}" style="grid-column:2 / span ${colsN};grid-row:${2 + j}"></div>`);
       });
       slots.filter((s) => s.day === day).forEach((s) => {
         const j = courts.findIndex((c) => c.id === s.courtId);
@@ -164,7 +164,8 @@
   function render() {
     const keepLeft = (document.getElementById('rv-scroll') || {}).scrollLeft || 0;
     const keepTop = (document.getElementById('rv-scroll') || {}).scrollTop || 0;
-    root.innerHTML = `${chipsHtml()}${barHtml()}${gridHtml()}${isAdmin ? `<p class="rv-hint">${escapeHtml(t('rv.adminHint'))} <a href="/reservations-admin" class="rv-link">${escapeHtml(t('rv.adminLink'))}</a></p>` : ''}${mineHtml()}`;
+    root.innerHTML = `${chipsHtml()}${barHtml()}${gridHtml()}${isAdmin ? `<p class="rv-hint"><b>Admin:</b> click an empty time to add a spot (one day or repeating), drag a spot to move it, click a spot to change or delete it. ${escapeHtml(t('rv.adminHint'))} <a href="/reservations-admin" class="rv-link">${escapeHtml(t('rv.adminLink'))}</a></p>` : ''}${mineHtml()}`;
+    root.classList.toggle('rv-admin', isAdmin);
     const scroller = document.getElementById('rv-scroll');
     if (scroller) { scroller.scrollLeft = keepLeft; scroller.scrollTop = keepTop; }
   }
@@ -299,18 +300,21 @@
       const body = { courtId: Number(wrap.querySelector('#rv-e-court').value), day: wrap.querySelector('#rv-e-day').value, start: wrap.querySelector('#rv-e-start').value, end: wrap.querySelector('#rv-e-end').value };
       if (body.courtId === slot.courtId && body.day === slot.day && body.start === slot.start && body.end === slot.end) { fail(new Error('Nothing is changed')); return; }
       try {
-        await api(`/reservations/slots/${slot.id}`, { method: 'PATCH', body });
-        await done('Spot changed');
-      } catch (err) {
-        if (err.data && err.data.code === 'RESERVED') {
-          if (!window.confirm(`${err.message}. Change it anyway? They keep the reservation at the new time.`)) return;
-          try { await api(`/reservations/slots/${slot.id}`, { method: 'PATCH', body: { ...body, force: true } }); await done('Spot changed'); } catch (err2) { fail(err2); }
-        } else { fail(err); }
-      }
+        const scope = await askScope('Change', slot);
+        if (!scope) return;
+        const r = await moveSpot(slot, body, scope);
+        if (r) await done(outcomeText('Changed', r));
+      } catch (err) { fail(err); }
     });
     wrap.querySelector('#rv-delete').addEventListener('click', async () => {
       if (taken && !window.confirm(`${slot.name || slot.label} has reserved this spot. Delete it anyway?`)) return;
-      try { await api(`/reservations/slots/${slot.id}${taken ? '?force=1' : ''}`, { method: 'DELETE' }); await done('Spot deleted'); } catch (err) { fail(err); }
+      try {
+        const scope = await askScope('Delete', slot);
+        if (!scope) return;
+        const query = [taken ? 'force=1' : '', scope !== 'one' ? `scope=${scope}` : ''].filter(Boolean).join('&');
+        const r = await api(`/reservations/slots/${slot.id}${query ? `?${query}` : ''}`, { method: 'DELETE' });
+        await done(outcomeText('Deleted', r));
+      } catch (err) { fail(err); }
     });
   }
 
@@ -339,11 +343,289 @@
     }
   }
 
+  // ---------------------------------------------------------------- the admin edits the calendar itself
+  // Click an empty time: add a spot (one day or a weekly pattern). Drag a spot: move it to another time, court or day. A spot that belongs to
+  // a recurring series asks whether the change is for this spot only, this one and the following, or the whole series.
+
+  const WEEKDAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
+  const isoWeekday = (iso) => { const w = dayDate(iso).getDay(); return w === 0 ? 7 : w; };
+  const addDaysTo = (iso, n) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+
+  // "Moved 4 spots (1 stayed where it was: reserved)"
+  function outcomeText(verb, r) {
+    const n = r.moved !== undefined ? r.moved : r.deleted;
+    const kept = [];
+    if (r.skippedReserved) kept.push(`${r.skippedReserved} reserved`);
+    if (r.skippedConflict) kept.push(`${r.skippedConflict} would overlap another spot`);
+    if (r.skippedInvalid) kept.push(`${r.skippedInvalid} could not go there`);
+    return `${verb} ${n} spot${n === 1 ? '' : 's'}${kept.length ? ` (not changed: ${kept.join(', ')})` : ''}`;
+  }
+
+  // For a spot of a series: what should the change be made to? -> 'one' | 'following' | 'all' | null (cancelled). Any other spot: 'one'.
+  function askScope(verb, slot) {
+    if (!slot.series || slot.seriesAhead < 2) return Promise.resolve('one');
+    return new Promise((resolve) => {
+      const wrap = openModal(`
+        <h3>${escapeHtml(verb)} a recurring spot</h3>
+        <p class="rv-note">This spot is part of a series (${slot.seriesAhead} spots from today on).</p>
+        <div class="rv-scope">
+          <label><input type="radio" name="rv-scope" value="one" checked> <span><b>Only this spot</b></span></label>
+          <label><input type="radio" name="rv-scope" value="following"> <span><b>This and all following</b></span></label>
+          <label><input type="radio" name="rv-scope" value="all"> <span><b>The whole series</b> — all ${slot.seriesAhead} spots that are still ahead</span></label>
+        </div>
+        <button type="button" class="btn btn-primary btn-block" id="rv-scope-go" style="margin-top:12px">${escapeHtml(verb)}</button>
+        <button type="button" class="btn btn-outline btn-block" data-close style="margin-top:10px">Cancel</button>`);
+      let answered = false;
+      const answer = (v) => { if (answered) return; answered = true; resolve(v); };
+      wrap.querySelector('#rv-scope-go').addEventListener('click', () => { answer(wrap.querySelector('input[name="rv-scope"]:checked').value); wrap.close(); });
+      wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('[data-close]')) answer(null); });
+    });
+  }
+
+  // moves a spot (the drag, or the Save of the edit form) and tells what happened
+  async function moveSpot(slot, to, scope) {
+    const body = { courtId: to.courtId, day: to.day, start: to.start, end: to.end, scope };
+    const send = (extra) => api(`/reservations/slots/${slot.id}`, { method: 'PATCH', body: { ...body, ...extra } });
+    try {
+      return await send({});
+    } catch (err) {
+      if (err.data && err.data.code === 'RESERVED') {
+        if (!window.confirm(`${err.message}. Move it anyway? They keep the reservation at the new time.`)) return null;
+        return send({ force: true });
+      }
+      throw err;
+    }
+  }
+
+  function addSpotModal({ day, courtId, start }) {
+    const defaultEnd = Math.min(start + 60, 24 * 60);
+    const maxDay = addDaysTo(data.today, 365);
+    const until0 = addDaysTo(day, 56) > maxDay ? maxDay : addDaysTo(day, 56);
+    const wrap = openModal(`
+      <h3>Add free spots</h3>
+      <div class="rv-edit-grid">
+        <label class="rv-label">Date<input type="date" id="rv-n-day" min="${data.today}" max="${maxDay}" value="${day}"></label>
+        <label class="rv-label">From<select id="rv-n-start">${timeOptions(0, 47, hhmm(start))}</select></label>
+        <label class="rv-label">To<select id="rv-n-end">${timeOptions(1, 48, hhmm(defaultEnd))}</select></label>
+        <label class="rv-label">Spots<select id="rv-n-block">
+          <option value="0">One spot for the whole time</option>
+          <option value="30">Spots of 30 minutes</option><option value="60">Spots of 1 hour</option><option value="90">Spots of 1.5 hours</option><option value="120">Spots of 2 hours</option>
+        </select></label>
+      </div>
+      <div class="rv-label" style="margin-top:10px">Court${data.courts.length > 1 ? 's' : ''}</div>
+      <div class="rv-checks">${data.courts.map((c) => `<label><input type="checkbox" name="rv-n-court" value="${c.id}"${c.id === courtId ? ' checked' : ''}> ${escapeHtml(c.name)}</label>`).join('')}</div>
+      <div class="rv-label" style="margin-top:10px">How often</div>
+      <div class="rv-scope">
+        <label><input type="radio" name="rv-n-rep" value="once" checked> <span><b>Just this day</b></span></label>
+        <label><input type="radio" name="rv-n-rep" value="weekly"> <span><b>Repeat every week</b> on the chosen days</span></label>
+      </div>
+      <div id="rv-n-repeat" style="display:none">
+        <div class="rv-checks rv-days">${WEEKDAYS.map(([n, name]) => `<label><input type="checkbox" name="rv-n-wd" value="${n}"${n === isoWeekday(day) ? ' checked' : ''}> ${name}</label>`).join('')}</div>
+        <label class="rv-label">Until (the last day)<input type="date" id="rv-n-until" min="${day}" max="${maxDay}" value="${until0}"></label>
+      </div>
+      <p class="rv-note" id="rv-n-sum"></p>
+      <div class="rv-error" id="rv-error"></div>
+      <button type="button" class="btn btn-primary btn-block" id="rv-n-go">Add</button>
+      <button type="button" class="btn btn-outline btn-block" data-close style="margin-top:10px">Cancel</button>`);
+    const q = (sel) => wrap.querySelector(sel);
+    const courtIds = () => [...wrap.querySelectorAll('input[name="rv-n-court"]:checked')].map((x) => Number(x.value));
+    const weekly = () => q('input[name="rv-n-rep"]:checked').value === 'weekly';
+    const plan = () => {
+      const from = q('#rv-n-day').value;
+      const days = [];
+      if (!weekly()) { if (from) days.push(from); } else {
+        const until = q('#rv-n-until').value;
+        const wd = [...wrap.querySelectorAll('input[name="rv-n-wd"]:checked')].map((x) => Number(x.value));
+        for (let d = from; d && until && d <= until; d = addDaysTo(d, 1)) if (wd.includes(isoWeekday(d))) days.push(d);
+      }
+      const s = mins(q('#rv-n-start').value);
+      const e = mins(q('#rv-n-end').value);
+      const block = Number(q('#rv-n-block').value);
+      const pieces = block ? (e > s && (e - s) % block === 0 ? (e - s) / block : 0) : (e > s ? 1 : 0);
+      return { days, pieces, total: days.length * pieces * courtIds().length };
+    };
+    const refresh = () => {
+      q('#rv-n-repeat').style.display = weekly() ? '' : 'none';
+      const p = plan();
+      const sum = q('#rv-n-sum');
+      if (!courtIds().length) sum.textContent = 'Choose at least one court.';
+      else if (!p.pieces) sum.textContent = 'The time does not divide into spots of that length.';
+      else if (!p.days.length) sum.textContent = 'No day matches — choose a weekday and the last day.';
+      else sum.textContent = `This adds ${p.total} spot${p.total === 1 ? '' : 's'}${p.days.length > 1 ? ` on ${p.days.length} days` : ''}.`;
+    };
+    wrap.addEventListener('input', refresh);
+    wrap.addEventListener('change', refresh);
+    q('#rv-n-day').addEventListener('change', () => {
+      const d = q('#rv-n-day').value;
+      q('#rv-n-until').min = d;
+      if (q('#rv-n-until').value < d) q('#rv-n-until').value = d;
+      wrap.querySelectorAll('input[name="rv-n-wd"]').forEach((x) => { x.checked = Number(x.value) === isoWeekday(d) && !weekly() ? true : x.checked; });
+    });
+    refresh();
+    q('#rv-n-go').addEventListener('click', async (e) => {
+      const p = plan();
+      if (!courtIds().length || !p.total) { q('#rv-error').textContent = q('#rv-n-sum').textContent; return; }
+      const body = { courtIds: courtIds(), start: q('#rv-n-start').value, end: q('#rv-n-end').value, blockMinutes: Number(q('#rv-n-block').value) };
+      if (weekly()) Object.assign(body, { fromDate: q('#rv-n-day').value, toDate: q('#rv-n-until').value, weekdays: [...wrap.querySelectorAll('input[name="rv-n-wd"]:checked')].map((x) => Number(x.value)) });
+      else body.date = q('#rv-n-day').value;
+      e.target.disabled = true;
+      try {
+        const r = await api('/reservations/slots', { method: 'POST', body });
+        wrap.close();
+        toast(`Added ${r.created} spot${r.created === 1 ? '' : 's'}${r.skipped ? ` (${r.skipped} skipped: overlap or already over)` : ''}`);
+        await reload();
+      } catch (err) {
+        q('#rv-error').textContent = err.message;
+        e.target.disabled = false;
+      }
+    });
+  }
+
+  // ---- drag and drop
+  let drag = null;
+  let suppressClick = false;
+  const ROW_SEL = '.rv-row[data-day]';
+
+  // where a pointer at (x, y) would put the spot being dragged: the row (day and court) under it, the start from the left edge of the spot
+  function dropTarget(x, y) {
+    const row = document.elementsFromPoint(x, y).find((el) => el.matches && el.matches(ROW_SEL));
+    if (!row) return null;
+    const rect = row.getBoundingClientRect();
+    const cols = Number(row.dataset.cols);
+    const colW = rect.width / cols;
+    const len = (mins(drag.slot.end) - mins(drag.slot.start)) / 30;
+    if (len > cols) return null;
+    const col = Math.max(0, Math.min(cols - len, Math.round((x - drag.grabX - rect.left) / colW)));
+    const start = Number(row.dataset.start) + col * 30;
+    return { row, rect, col, colW, len, to: { courtId: Number(row.dataset.court), day: row.dataset.day, start: hhmm(start), end: hhmm(start + len * 30) } };
+  }
+
+  function showDrop(t) {
+    let el = document.getElementById('rv-drop');
+    if (!t) { if (el) el.style.display = 'none'; return; }
+    if (!el) { el = document.createElement('div'); el.id = 'rv-drop'; el.className = 'rv-drop'; document.body.appendChild(el); }
+    const same = t.to.courtId === drag.slot.courtId && t.to.day === drag.slot.day && t.to.start === drag.slot.start;
+    el.style.display = '';
+    el.classList.toggle('same', same);
+    el.style.left = `${t.rect.left + t.col * t.colW}px`;
+    el.style.top = `${t.rect.top}px`;
+    el.style.width = `${t.len * t.colW}px`;
+    el.style.height = `${t.rect.height}px`;
+    el.textContent = `${t.to.start}–${t.to.end}`;
+  }
+
+  function startDrag() {
+    drag.active = true;
+    const rect = drag.btn.getBoundingClientRect();
+    drag.grabX = drag.x0 - rect.left;
+    drag.grabY = drag.y0 - rect.top;
+    const ghost = drag.btn.cloneNode(true);
+    ghost.classList.add('rv-ghost');
+    ghost.style.cssText = `${drag.btn.getAttribute('style') || ''};position:fixed;left:0;top:0;width:${rect.width}px;height:${rect.height}px;margin:0;pointer-events:none;z-index:9999;grid-row:auto;grid-column:auto`;
+    document.body.appendChild(ghost);
+    drag.ghost = ghost;
+    drag.btn.classList.add('dragging');
+    document.body.classList.add('rv-dragging');
+    drag.edge = setInterval(() => autoScroll(), 30);
+  }
+
+  // a spot dragged near the edge of the calendar scrolls it
+  function autoScroll() {
+    const sc = document.getElementById('rv-scroll');
+    if (!drag || !drag.active || !sc) return;
+    const r = sc.getBoundingClientRect();
+    const dy = drag.y < r.top + 50 ? -14 : drag.y > r.bottom - 50 ? 14 : 0;
+    const dx = drag.x < r.left + 50 ? -14 : drag.x > r.right - 50 ? 14 : 0;
+    if (dx || dy) { sc.scrollBy(dx, dy); if (drag.last) { const t = dropTarget(drag.x, drag.y); drag.last = t; showDrop(t); } }
+    const wy = drag.y < 60 ? -14 : drag.y > window.innerHeight - 60 ? 14 : 0;
+    if (wy) window.scrollBy(0, wy);
+  }
+
+  function endDrag(e, cancelled) {
+    if (!drag) return;
+    clearInterval(drag.edge);
+    const d = drag;
+    drag = null;
+    if (!d.active) return;
+    suppressClick = true;
+    setTimeout(() => { suppressClick = false; }, 0);
+    if (d.ghost) d.ghost.remove();
+    d.btn.classList.remove('dragging');
+    document.body.classList.remove('rv-dragging');
+    const drop = document.getElementById('rv-drop');
+    if (drop) drop.remove();
+    const t = cancelled ? null : d.last;
+    if (!t) return;
+    const same = t.to.courtId === d.slot.courtId && t.to.day === d.slot.day && t.to.start === d.slot.start;
+    if (same) return;
+    (async () => {
+      try {
+        const scope = await askScope('Move', d.slot);
+        if (!scope) return;
+        const r = await moveSpot(d.slot, t.to, scope);
+        if (r) toast(outcomeText('Moved', r));
+      } catch (err) { toast(err.message); }
+      await reload();
+    })();
+  }
+
+  root.addEventListener('pointerdown', (e) => {
+    if (!isAdmin || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const btn = e.target.closest('.rv-slot');
+    if (!btn) return;
+    const slot = data.slots.find((s) => s.id === Number(btn.dataset.id));
+    if (!slot || slot.past) return;
+    drag = { slot, btn, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, pointerId: e.pointerId, active: false, last: null };
+  });
+  document.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+    if (!drag.active) {
+      if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
+      startDrag();
+    }
+    e.preventDefault();
+    drag.ghost.style.transform = `translate(${e.clientX - drag.grabX}px, ${e.clientY - drag.grabY}px)`;
+    drag.last = dropTarget(e.clientX, e.clientY);
+    showDrop(drag.last);
+  });
+  document.addEventListener('pointerup', (e) => { if (drag && e.pointerId === drag.pointerId) endDrag(e, false); });
+  document.addEventListener('pointercancel', (e) => { if (drag && e.pointerId === drag.pointerId) endDrag(e, true); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && drag && drag.active) endDrag(e, true); });
+
+  // ---- a mark under the mouse on the empty time of the calendar: here a click adds a spot
+  root.addEventListener('mousemove', (e) => {
+    if (!isAdmin || drag) return;
+    const row = e.target.closest && e.target.closest(ROW_SEL);
+    let mark = root.querySelector('.rv-hover');
+    if (!row) { if (mark) mark.style.display = 'none'; return; }
+    const rect = row.getBoundingClientRect();
+    const cols = Number(row.dataset.cols);
+    const col = Math.max(0, Math.min(cols - 1, Math.floor((e.clientX - rect.left) / (rect.width / cols))));
+    if (!mark) { mark = document.createElement('div'); mark.className = 'rv-hover'; mark.innerHTML = '+'; }
+    if (mark.parentElement !== row) row.appendChild(mark);
+    mark.style.display = '';
+    mark.style.left = `${(col / cols) * 100}%`;
+    mark.style.width = `${100 / cols}%`;
+    mark.title = `Add a spot at ${hhmm(Number(row.dataset.start) + col * 30)}`;
+  });
+  root.addEventListener('mouseleave', () => { const m = root.querySelector('.rv-hover'); if (m) m.style.display = 'none'; });
+
   // ---------------------------------------------------------------- events
 
   root.addEventListener('click', async (e) => {
+    if (suppressClick) return; // the end of a drag is no click
     const slotBtn = e.target.closest('.rv-slot');
     if (slotBtn) { onSlot(Number(slotBtn.dataset.id)); return; }
+    const cell = isAdmin && e.target.closest(ROW_SEL);
+    if (cell) {
+      const rect = cell.getBoundingClientRect();
+      const cols = Number(cell.dataset.cols);
+      const col = Math.max(0, Math.min(cols - 1, Math.floor((e.clientX - rect.left) / (rect.width / cols))));
+      addSpotModal({ day: cell.dataset.day, courtId: Number(cell.dataset.court), start: Number(cell.dataset.start) + col * 30 });
+      return;
+    }
     const chip = e.target.closest('[data-court]');
     if (chip) { court = chip.dataset.court; render(); return; }
     const shift = e.target.closest('[data-shift]');

@@ -604,6 +604,71 @@ test('bulk: bad input is refused and only the admin may do it', async () => {
 });
 
 // ---------------------------------------------------------------- the page and the search engines
+// ---------------------------------------------------------------- series (a recurring pattern added from the calendar)
+test('series: a recurring pattern is a series; one change, "this and the following" or "all" are made as asked', async () => {
+  const court = S.c1;
+  const other = (await admin('POST', '/api/reservations/courts', { name: 'Series court' })).json.id;
+  let monday = D(60);
+  while (new Date(`${monday}T12:00:00Z`).getUTCDay() !== 1) monday = addDays(monday, 1);
+  const made = await admin('POST', '/api/reservations/slots', { courtIds: [court], fromDate: monday, toDate: addDays(monday, 28), weekdays: [1], start: '18:00', end: '19:00' });
+  assert.deepStrictEqual(made.json, { created: 5, skipped: 0 });
+  const rows = () => db.prepare("SELECT id, day, start_time, end_time, series_id, guest_name FROM court_slots WHERE series_id IS NOT NULL AND court_id IN (?, ?) AND day >= ? AND day <= ? ORDER BY day").all(court, other, monday, addDays(monday, 40));
+  let spots = rows();
+  assert.strictEqual(spots.length, 5);
+  assert.ok(spots[0].series_id && spots.every((s) => s.series_id === spots[0].series_id), 'one series');
+  // a single day is no series
+  await admin('POST', '/api/reservations/slots', { courtIds: [court], date: addDays(monday, 2), start: '08:00', end: '09:00' });
+  assert.strictEqual(db.prepare('SELECT series_id FROM court_slots WHERE court_id = ? AND day = ? AND start_time = ?').get(court, addDays(monday, 2), '08:00').series_id, null);
+  // the admin's list tells which spots belong to a series and how many are ahead
+  const listed = (await view(monday, adminCookie)).slots.find((s) => s.id === spots[0].id);
+  assert.deepStrictEqual([listed.series, listed.seriesAhead], [spots[0].series_id, 5]);
+  assert.strictEqual((await view(monday)).slots.find((s) => s.id === spots[0].id).series, undefined, 'the public does not see series');
+
+  // only this one (the default)
+  const one = await admin('PATCH', `/api/reservations/slots/${spots[1].id}`, { start: '19:00', end: '20:00' });
+  assert.deepStrictEqual([one.status, one.json.moved], [200, 1]);
+  spots = rows();
+  assert.deepStrictEqual(spots.map((s) => s.start_time), ['18:00', '19:00', '18:00', '18:00', '18:00']);
+  // this one and the following: the third and the later ones move one hour later
+  const following = await admin('PATCH', `/api/reservations/slots/${spots[2].id}`, { start: '19:00', end: '20:00', scope: 'following' });
+  assert.deepStrictEqual([following.status, following.json.moved], [200, 3]);
+  assert.deepStrictEqual(rows().map((s) => s.start_time), ['18:00', '19:00', '19:00', '19:00', '19:00']);
+  // all: every one is a day later (the first one is the one dragged)
+  spots = rows();
+  const all = await admin('PATCH', `/api/reservations/slots/${spots[0].id}`, { day: addDays(spots[0].day, 1), scope: 'all' });
+  assert.deepStrictEqual([all.status, all.json.moved], [200, 5]);
+  assert.deepStrictEqual(rows().map((s) => s.day), spots.map((s) => addDays(s.day, 1)));
+  // a reserved one stays where it is (without force), the rest move
+  spots = rows();
+  await admin('POST', `/api/reservations/slots/${spots[3].id}/assign`, { guestName: 'Guest Gee' });
+  const skip = await admin('PATCH', `/api/reservations/slots/${spots[0].id}`, { courtId: other, scope: 'all' });
+  assert.deepStrictEqual([skip.status, skip.json.moved, skip.json.skippedReserved], [200, 4, 1], JSON.stringify(skip.json));
+  assert.strictEqual(db.prepare('SELECT court_id FROM court_slots WHERE id = ?').get(spots[3].id).court_id, court, 'the reserved one did not move');
+  // a spot of the series that would clash is left alone and counted, the dragged one itself must fit
+  const target = rows().find((s) => s.id === spots[0].id);
+  await admin('POST', '/api/reservations/slots', { courtIds: [other], date: spots[1].day, start: '20:00', end: '21:00' });
+  const clash = await admin('PATCH', `/api/reservations/slots/${spots[0].id}`, { start: '19:30', end: '20:30', scope: 'all' });
+  assert.deepStrictEqual([clash.status, clash.json.skippedConflict, clash.json.skippedReserved], [200, 1, 1], JSON.stringify(clash.json));
+  assert.ok(target);
+
+  // delete: this one only, then this and the following (a reserved one is kept), then all
+  const live = () => db.prepare('SELECT id, day, guest_name FROM court_slots WHERE series_id = ? ORDER BY day').all(spots[0].series_id || db.prepare('SELECT series_id FROM court_slots WHERE id = ?').get(spots[0].id).series_id);
+  const before = live();
+  const del1 = await admin('DELETE', `/api/reservations/slots/${before[0].id}`);
+  assert.deepStrictEqual([del1.status, del1.json.deleted], [200, 1]);
+  assert.strictEqual(live().length, before.length - 1);
+  const rest = live();
+  const delF = await admin('DELETE', `/api/reservations/slots/${rest[1].id}?scope=following`);
+  assert.deepStrictEqual([delF.status, delF.json.deleted], [200, rest.length - 1 - (rest.filter((s, i) => i > 1 && s.guest_name).length)]);
+  assert.strictEqual(delF.json.skippedReserved, rest.filter((s, i) => i > 1 && s.guest_name).length, 'a reserved one is kept');
+  const kept = live();
+  assert.ok(kept.some((s) => s.guest_name === 'Guest Gee'));
+  const delAll = await admin('DELETE', `/api/reservations/slots/${kept.find((s) => !s.guest_name).id}?scope=all&force=1`);
+  assert.strictEqual(delAll.status, 200);
+  assert.strictEqual(live().length, 0, 'with force the reserved one goes too');
+  assert.strictEqual((await call('DELETE', `/api/reservations/slots/${kept[0].id}?scope=all`)).status, 401);
+});
+
 test('page: /rezervacie-kurtov and /en/court-booking exist, the code address is retired, the sitemap lists both', async () => {
   const sk = await fetch(`${BASE}/rezervacie-kurtov`);
   const html = await sk.text();

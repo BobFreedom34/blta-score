@@ -5186,3 +5186,20 @@ body.about-open { overflow: hidden; }
 .about-html ul, .about-html ol { margin: 0 0 14px 22px; padding: 0; color: #c9ccd3; line-height: 1.65; }
 .about-html h3 { margin: 18px 0 6px; font-size: 16px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--white); }
 .about-html strong { color: var(--white); }
+
+/* court reservations: the admin edits the calendar itself (click an empty time to add a spot, drag a spot to move it) */
+.rv-admin .rv-row { cursor: cell; position: relative; }
+.rv-admin .rv-slot { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.rv-admin .rv-slot.past { cursor: pointer; touch-action: auto; }
+body.rv-dragging, body.rv-dragging * { cursor: grabbing !important; user-select: none; }
+.rv-slot.dragging { opacity: 0.3; }
+.rv-ghost { opacity: 0.9; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55); outline: 2px solid var(--orange); }
+.rv-drop { position: fixed; z-index: 9998; pointer-events: none; display: flex; align-items: center; justify-content: center; box-sizing: border-box; border: 2px dashed var(--orange); border-radius: 6px; background: rgba(255, 85, 0, 0.18); color: var(--white); font-size: 12px; font-weight: 800; }
+.rv-drop.same { border-color: rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.06); color: transparent; }
+.rv-hover { position: absolute; top: 0; bottom: 0; z-index: 1; pointer-events: none; display: flex; align-items: center; justify-content: center; background: rgba(178, 250, 6, 0.14); border: 1px dashed rgba(178, 250, 6, 0.6); border-radius: 4px; color: var(--green, #b2fa06); font-size: 16px; font-weight: 800; }
+.rv-scope { display: grid; gap: 8px; margin: 6px 0 0; }
+.rv-scope label { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius-sm); cursor: pointer; }
+.rv-scope label:has(input:checked) { border-color: var(--orange); background: rgba(255, 85, 0, 0.1); }
+.rv-checks { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.rv-checks label { display: inline-flex; gap: 6px; align-items: center; padding: 7px 11px; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; }
+.rv-checks label:has(input:checked) { border-color: var(--orange); background: rgba(255, 85, 0, 0.1); }

@@ -51,6 +51,13 @@ for (const column of ['rate_wd_am', 'rate_wd_pm', 'rate_we']) {
   if (!db.prepare('PRAGMA table_info(reservation_courts)').all().some((c) => c.name === column)) db.exec(`ALTER TABLE reservation_courts ADD COLUMN ${column} REAL`);
 }
 
+// Spots added as a recurring pattern (Backend > Reservations, or a click in the calendar) belong to one series (same court, same times):
+// the admin can then change, move or delete just one of them, this one and the following, or the whole series.
+if (!db.prepare('PRAGMA table_info(court_slots)').all().some((c) => c.name === 'series_id')) {
+  db.exec('ALTER TABLE court_slots ADD COLUMN series_id INTEGER');
+}
+db.exec('CREATE INDEX IF NOT EXISTS idx_court_slots_series ON court_slots(series_id)');
+
 const WINDOW_DAYS = 7;
 const MAX_AHEAD_DAYS = 365;
 const MAX_CREATE = 1000;
@@ -223,6 +230,8 @@ router.get('/', (req, res) => {
     FROM court_slots s LEFT JOIN players p ON p.id = s.player_id
     WHERE s.day >= ? AND s.day <= ? ORDER BY s.day, s.start_time, s.court_id
   `).all(from, to);
+  // how many spots of each series are still ahead (the admin is asked what to change when a spot belongs to a series)
+  const seriesAhead = new Map(admin ? db.prepare('SELECT series_id, COUNT(*) AS n FROM court_slots WHERE series_id IS NOT NULL AND day >= ? GROUP BY series_id').all(now.date).map((r) => [r.series_id, r.n]) : []);
   const slots = rows.map((s) => {
     const taken = isTaken(s);
     const isStarted = started(s, now);
@@ -239,7 +248,7 @@ router.get('/', (req, res) => {
       mine,
       label: taken ? shortName(full) : '',
       // the admin sees the full name and who it is; everyone else only the short name
-      ...(admin ? { name: taken ? full : '', playerId: s.player_id, guest: !!s.guest_name } : {}),
+      ...(admin ? { name: taken ? full : '', playerId: s.player_id, guest: !!s.guest_name, series: s.series_id || null, seriesAhead: s.series_id ? (seriesAhead.get(s.series_id) || 0) : 0 } : {}),
       // a player can cancel their own spot until `cancelHours` before it starts
       canCancel: mine && stampBefore(s, now, settings.cancelHours),
     };
@@ -505,7 +514,11 @@ router.post('/slots', requireSuperAdmin, (req, res) => {
 
   let created = 0;
   let skipped = 0;
-  const insert = db.prepare('INSERT INTO court_slots (court_id, day, start_time, end_time) VALUES (?, ?, ?, ?)');
+  // a recurring pattern (several days) is a series per court and time; a single day is no series
+  const recurring = b.date === undefined || b.date === null || b.date === '';
+  let nextSeries = (db.prepare('SELECT COALESCE(MAX(series_id), 0) AS m FROM court_slots').get().m || 0) + 1;
+  const seriesOf = new Map();
+  const insert = db.prepare('INSERT INTO court_slots (court_id, day, start_time, end_time, series_id) VALUES (?, ?, ?, ?, ?)');
   db.exec('BEGIN');
   try {
     for (const courtId of courtIds) {
@@ -514,7 +527,9 @@ router.post('/slots', requireSuperAdmin, (req, res) => {
         for (const [s, e] of pieces) {
           if (day === now.date && e <= now.time) { skipped += 1; continue; } // already over today
           if (existing.some((x) => overlaps(x.start_time, x.end_time, s, e))) { skipped += 1; continue; }
-          insert.run(courtId, day, s, e);
+          const key = `${courtId}|${s}|${e}`;
+          if (recurring && days.length > 1 && !seriesOf.has(key)) { seriesOf.set(key, nextSeries); nextSeries += 1; }
+          insert.run(courtId, day, s, e, seriesOf.get(key) || null);
           existing.push({ start_time: s, end_time: e });
           created += 1;
         }
@@ -629,11 +644,15 @@ router.post('/slots/bulk-edit', requireSuperAdmin, (req, res) => {
 
 // Changes a spot: { courtId, day, start, end } — any of them. A free spot is changed as asked; a reserved one needs { force: true }
 // (the player keeps the reservation, now at the new time or place). The new place must not overlap another spot of that court.
+// scope (for a spot of a series): 'one' (default) | 'following' (this one and the later ones) | 'all' (every spot of the series that is still
+// ahead). The same change is made to the others: the same number of days and minutes later or earlier, the same court. Others that are
+// reserved (without force), would clash with another spot or would end up in the past stay where they are and are counted.
 router.patch('/slots/:id', requireSuperAdmin, (req, res) => {
   const slot = slotRow(Number(req.params.id));
   if (!slot) return res.status(404).json({ error: 'That spot does not exist' });
   const b = req.body || {};
   const now = nowLocal();
+  const force = b.force === true || b.force === 1 || b.force === '1';
   const next = {
     courtId: b.courtId === undefined ? slot.court_id : Number(b.courtId),
     day: b.day === undefined ? slot.day : b.day,
@@ -644,30 +663,91 @@ router.patch('/slots/:id', requireSuperAdmin, (req, res) => {
   if (!START_TIME.test(next.start || '') || !END_TIME.test(next.end || '')) return res.status(400).json({ error: 'Times must be on the hour or the half hour, like 10:00 or 10:30' });
   if (toMinutes(next.end) <= toMinutes(next.start)) return res.status(400).json({ error: 'The end must be after the start' });
   if (!isRealDay(next.day || '')) return res.status(400).json({ error: 'The date is not valid' });
-  if (next.day < now.date) return res.status(400).json({ error: 'A spot cannot be moved into the past' });
-  if (next.day > addDays(now.date, MAX_AHEAD_DAYS)) return res.status(400).json({ error: `Spots can be added up to ${MAX_AHEAD_DAYS} days ahead` });
-  if (next.day === now.date && next.end <= now.time) return res.status(400).json({ error: 'That time is already over today' });
-  const clash = db.prepare('SELECT start_time, end_time FROM court_slots WHERE court_id = ? AND day = ? AND id != ?').all(next.courtId, next.day, slot.id)
-    .find((x) => overlaps(x.start_time, x.end_time, next.start, next.end));
-  if (clash) return res.status(409).json({ code: 'CLASH', error: `There is already a spot from ${clash.start_time} to ${clash.end_time} on that court that day` });
-  if (isTaken(slot) && !(b.force === true || b.force === 1 || b.force === '1')) {
-    return res.status(409).json({ code: 'RESERVED', error: `${slot.guest_name || slot.player_name || 'Somebody'} has reserved this spot`, name: slot.guest_name || slot.player_name || '' });
+  const scope = ['following', 'all'].includes(b.scope) && slot.series_id ? b.scope : 'one';
+
+  // checks one spot against its new place; -> { error, status, code, extra } or null when it can go there. `moving` is the set of spots that
+  // move in this request (they leave their old place, so they do not count as being in the way)
+  const problemFor = (s, to) => {
+    if (to.day < now.date) return { status: 400, error: 'A spot cannot be moved into the past' };
+    if (to.day > addDays(now.date, MAX_AHEAD_DAYS)) return { status: 400, error: `Spots can be added up to ${MAX_AHEAD_DAYS} days ahead` };
+    if (to.day === now.date && to.end <= now.time) return { status: 400, error: 'That time is already over today' };
+    const clash = db.prepare('SELECT start_time, end_time FROM court_slots WHERE court_id = ? AND day = ? AND id != ?').all(to.courtId, to.day, s.id)
+      .find((x) => overlaps(x.start_time, x.end_time, to.start, to.end));
+    if (clash) return { status: 409, code: 'CLASH', error: `There is already a spot from ${clash.start_time} to ${clash.end_time} on that court that day` };
+    if (isTaken(s) && !force) return { status: 409, code: 'RESERVED', error: `${s.guest_name || s.player_name || 'Somebody'} has reserved this spot`, name: s.guest_name || s.player_name || '' };
+    return null;
+  };
+  const put = db.prepare('UPDATE court_slots SET court_id = ?, day = ?, start_time = ?, end_time = ? WHERE id = ?');
+
+  if (scope === 'one') {
+    const problem = problemFor(slot, next);
+    if (problem) return res.status(problem.status).json({ code: problem.code, error: problem.error, name: problem.name });
+    put.run(next.courtId, next.day, next.start, next.end, slot.id);
+    emitChanged(req);
+    return res.json({ ok: true, moved: 1 });
   }
-  db.prepare('UPDATE court_slots SET court_id = ?, day = ?, start_time = ?, end_time = ? WHERE id = ?').run(next.courtId, next.day, next.start, next.end, slot.id);
+
+  // a series: everybody moves by what this spot moves by
+  const dayDelta = Math.round((Date.parse(`${next.day}T12:00:00Z`) - Date.parse(`${slot.day}T12:00:00Z`)) / 86400000);
+  const startDelta = toMinutes(next.start) - toMinutes(slot.start_time);
+  const endDelta = toMinutes(next.end) - toMinutes(slot.end_time);
+  const others = db.prepare('SELECT s.*, p.name AS player_name FROM court_slots s LEFT JOIN players p ON p.id = s.player_id WHERE s.series_id = ? AND s.id != ? AND s.day >= ?')
+    .all(slot.series_id, slot.id, scope === 'following' ? slot.day : now.date).filter((s) => !started(s, now));
+  const list = [slot, ...others];
+  // the order in which they can move without standing in each other's way: the ones furthest in the direction of the move go first
+  const later = dayDelta * 1440 + startDelta > 0;
+  list.sort((x, y) => (later ? -1 : 1) * (`${x.day} ${x.start_time}` < `${y.day} ${y.start_time}` ? -1 : 1));
+  const result = { moved: 0, skippedReserved: 0, skippedConflict: 0, skippedInvalid: 0 };
+  db.exec('BEGIN');
+  try {
+    for (const s of list) {
+      const startM = toMinutes(s.start_time) + startDelta;
+      const endM = toMinutes(s.end_time) + endDelta;
+      const to = { courtId: next.courtId, day: addDays(s.day, dayDelta), start: fromMinutes(Math.max(0, startM)), end: endM === 1440 ? '24:00' : fromMinutes(Math.max(0, endM)) };
+      const valid = startM >= 0 && endM <= 1440 && endM > startM && START_TIME.test(to.start) && END_TIME.test(to.end);
+      const problem = !valid ? { status: 400, error: 'That would move a spot outside the day' } : problemFor(s, to);
+      if (problem) {
+        if (s.id === slot.id) { db.exec('ROLLBACK'); return res.status(problem.status).json({ code: problem.code, error: problem.error, name: problem.name }); }
+        if (problem.code === 'RESERVED') result.skippedReserved += 1; else if (problem.code === 'CLASH') result.skippedConflict += 1; else result.skippedInvalid += 1;
+        continue;
+      }
+      put.run(to.courtId, to.day, to.start, to.end, s.id);
+      result.moved += 1;
+    }
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
   emitChanged(req);
-  res.json({ ok: true });
+  return res.json({ ok: true, ...result });
 });
 
-// Deleting a reserved spot needs ?force=1 (the player loses the reservation).
+// Deleting a reserved spot needs ?force=1 (the player loses the reservation). ?scope=following|all for a spot of a series: the other spots
+// of the series are deleted too (this one and the later ones, or every one that is still ahead); reserved ones are kept unless force=1.
 router.delete('/slots/:id', requireSuperAdmin, (req, res) => {
   const slot = slotRow(Number(req.params.id));
   if (!slot) return res.status(404).json({ error: 'That spot does not exist' });
-  if (isTaken(slot) && req.query.force !== '1') {
+  const force = req.query.force === '1';
+  if (isTaken(slot) && !force) {
     return res.status(409).json({ code: 'RESERVED', error: `${slot.guest_name || slot.player_name || 'Somebody'} has reserved this spot`, name: slot.guest_name || slot.player_name || '' });
   }
+  const scope = ['following', 'all'].includes(req.query.scope) && slot.series_id ? req.query.scope : 'one';
+  let deleted = 1;
+  let skippedReserved = 0;
   db.prepare('DELETE FROM court_slots WHERE id = ?').run(slot.id);
+  if (scope !== 'one') {
+    const now = nowLocal();
+    const others = db.prepare('SELECT * FROM court_slots WHERE series_id = ? AND id != ? AND day >= ?').all(slot.series_id, slot.id, scope === 'following' ? slot.day : now.date)
+      .filter((s) => !started(s, now));
+    others.forEach((s) => {
+      if (isTaken(s) && !force) { skippedReserved += 1; return; }
+      db.prepare('DELETE FROM court_slots WHERE id = ?').run(s.id);
+      deleted += 1;
+    });
+  }
   emitChanged(req);
-  res.json({ ok: true });
+  res.json({ ok: true, deleted, skippedReserved });
 });
 
 // The admin puts a player (playerId) or a guest (guestName) into a free spot — the player limit does not apply.

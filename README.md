@@ -550,6 +550,13 @@ The venues are edited in Backend → Courts. `src/venueSeed.js` fills in details
 
 ### Court reservations (`/rezervacie-kurtov`, code address `/reservations`)
 
+**Editing the calendar itself (admin, on the page):** click an empty time to add free spots (one day, or repeated every week on chosen
+weekdays until a last day; one spot for the whole time or split into 30 min – 2 h spots; one or several courts). Drag a spot to move it to another
+time, court or day (snaps to 30 minutes; the green outline shows where it lands). Spots added as a weekly pattern form a **series** (per court and
+time, `court_slots.series_id`): changing, moving or deleting such a spot asks "only this spot / this and all following / the whole series"
+(`scope=one|following|all` on PATCH/DELETE `/api/reservations/slots/:id`). In a series the others move by the same days/minutes; reserved ones
+stay (unless forced) and ones that would overlap another spot stay too; the answer says how many were not changed. Spots from before this had no series.
+
 A grid of the next 7 days (always from today; the arrows move 7 days at a time, never into the past; a "Dnes" button next to them jumps back to today): the days across the top, the time down
 the left in 30-minute rows, a column per court (or one court via the filter chips). A **green** block is a free spot the admin opened —
 `Thursday 10:00–12:00` is **one** block that one player takes; it turns **orange** with the player's short name ("Tomáš P."), and is outlined
