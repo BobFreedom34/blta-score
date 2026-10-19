@@ -248,6 +248,32 @@ test('contact: bad links, bad email and too long texts are refused', async () =>
   assert.strictEqual((await call('PUT', '/api/contact', { orgName: 'x'.repeat(121) })).status, 400);
 });
 
+// ---------------------------------------------------------------- the menu of another city
+test('the menu of a city can be copied into another one: the same tree, My profile included, the old items of the target replaced', async () => {
+  const sourceBefore = JSON.stringify(await tree());
+  assert.ok(sourceBefore.length > 10, 'the first city has a menu');
+  const city = await call('POST', '/api/leagues', { name: 'Kosice' });
+  assert.strictEqual(city.status, 201);
+  const pick = await fetch(BASE + '/api/admin/acting-city', { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify({ leagueId: city.json.id }) });
+  const mine = { Cookie: `${cookie}; ${pick.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ')}`, 'X-Backend': '1', 'Content-Type': 'application/json' };
+  const asCity = async (m, u, b) => { const r = await fetch(BASE + u, { method: m, headers: mine, body: b === undefined ? undefined : JSON.stringify(b) }); let j = null; try { j = await r.json(); } catch { /* none */ } return { status: r.status, json: j }; };
+  assert.deepStrictEqual((await asCity('GET', '/api/header-items')).json, [], 'a new city starts with no menu');
+  assert.strictEqual((await asCity('POST', '/api/header-items', { labelSk: 'Stary', link: '/old' })).status, 201);
+  assert.strictEqual((await asCity('POST', '/api/header-items/copy', { fromLeagueId: city.json.id })).status, 400, 'not from itself');
+  assert.strictEqual((await asCity('POST', '/api/header-items/copy', { fromLeagueId: 999 })).status, 404);
+  assert.strictEqual((await call('POST', '/api/header-items/copy', { fromLeagueId: 1 }, false)).status, 401, 'admin only');
+  const copied = await asCity('POST', '/api/header-items/copy', { fromLeagueId: 1 });
+  assert.strictEqual(copied.status, 200, JSON.stringify(copied.json));
+  const shape = (items) => items.map((i) => ({ sk: i.labelSk, en: i.labelEn, link: i.link, mine: i.isMyProfile, hl: i.highlight, kids: shape(i.children) }));
+  assert.deepStrictEqual(shape(copied.json), shape(JSON.parse(sourceBefore)), 'the same tree');
+  assert.ok(!JSON.stringify(copied.json).includes('Stary'), 'the old item is replaced');
+  assert.deepStrictEqual(JSON.stringify(await tree()), sourceBefore, 'the menu of the first city is untouched');
+  // the copy is the city's own: changing it does not change the first menu
+  const first = copied.json[0];
+  assert.strictEqual((await asCity('PATCH', `/api/header-items/${first.id}`, { labelSk: 'Zmenene', link: first.link })).status, 200);
+  assert.deepStrictEqual(JSON.stringify(await tree()), sourceBefore);
+});
+
 async function main() {
   let failed = 0;
   try {

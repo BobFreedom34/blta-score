@@ -536,8 +536,44 @@ async function loadSeasonPages() {
   } catch { seasonPages = []; }
 }
 
+// Copies the menu of another city into the city that is worked on (replacing the items there): the quick start of a new city
+async function setupCopyMenu() {
+  const host = document.getElementById('copy-menu-card');
+  if (!host) return;
+  let me = null;
+  let cities = [];
+  try { [me, cities] = await Promise.all([api('/admin/session'), api('/leagues')]); } catch { host.remove(); return; }
+  const here = me.acting && me.acting.id;
+  const others = cities.filter((c) => c.id !== here);
+  if (!here || !others.length) { host.remove(); return; }
+  host.innerHTML = `
+    <h3 style="margin-top:0">Copy the menu of another city</h3>
+    <p style="font-size:13px;color:var(--gray-dim);margin:0 0 10px">Fills the menu of <strong>${escapeHtml(me.acting.name)}</strong> with a copy of the menu of the city you choose (the items there now are replaced). Afterwards you can edit it freely; the links lead to the pages of ${escapeHtml(me.acting.name)}.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select id="copy-menu-from" style="padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">${others.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select>
+      <button type="button" class="btn btn-primary" id="copy-menu-go">Copy the menu</button>
+      <span id="copy-menu-msg" style="font-weight:600"></span>
+    </div>`;
+  document.getElementById('copy-menu-go').addEventListener('click', async (e) => {
+    const msg = document.getElementById('copy-menu-msg');
+    msg.textContent = '';
+    if (items.length && !window.confirm(`The menu of ${me.acting.name} has ${items.length} main item${items.length === 1 ? '' : 's'} now. Replace it with the copy?`)) return;
+    e.target.disabled = true;
+    try {
+      await api('/header-items/copy', { method: 'POST', body: { fromLeagueId: Number(document.getElementById('copy-menu-from').value) } });
+      toast('Menu copied');
+      await loadItems();
+    } catch (err) {
+      msg.textContent = err.message;
+      msg.style.color = 'var(--danger)';
+    }
+    e.target.disabled = false;
+  });
+}
+
 function renderAdmin() {
   root.innerHTML = `
+    <div class="card" style="margin-bottom:20px" id="copy-menu-card"></div>
     <div class="card" style="margin-bottom:20px">
       <h3 style="margin-top:0">Add a header item</h3>
       <form id="add-header-item-form">
@@ -552,6 +588,7 @@ function renderAdmin() {
     <div class="card" id="contact-card" style="margin-top:20px">Loading…</div>
   `;
   loadContactCard();
+  setupCopyMenu();
   document.getElementById('add-header-item-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errorEl = document.getElementById('add-header-item-error');

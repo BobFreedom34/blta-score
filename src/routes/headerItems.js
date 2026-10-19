@@ -99,6 +99,38 @@ router.post('/', requireAdmin, (req, res) => {
   res.status(201).json(serialize(db.prepare('SELECT * FROM header_items WHERE id = ?').get(info.lastInsertRowid)));
 });
 
+// Copies the whole menu of another city into the one the admin works on (a new city starts from the menu of an existing one): the items
+// that are there now are replaced. { fromLeagueId }. The links are code addresses (/matches, /season/<name>), so on a city's pages they
+// lead to that city's own pages.
+router.post('/copy', requireAdmin, (req, res) => {
+  const targetId = leagues.actingIdOf(req);
+  const from = leagues.byId(Number(req.body && req.body.fromLeagueId));
+  if (!from) return res.status(404).json({ error: 'City not found' });
+  if (from.id === targetId) return res.status(400).json({ error: 'That is the menu of this city already' });
+  const rows = db.prepare('SELECT * FROM header_items WHERE league_id = ? ORDER BY sort_order, id').all(from.id);
+  if (!rows.length) return res.status(400).json({ error: `${from.name} has no menu to copy` });
+  const insert = db.prepare('INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, is_my_profile, highlight, league_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+  db.exec('BEGIN');
+  try {
+    db.prepare('DELETE FROM header_items WHERE league_id = ?').run(targetId);
+    const idMap = new Map(); // old id -> new id
+    // parents before their children: walk the tree from the top
+    const copy = (parentOld, parentNew) => rows.filter((r) => (parentOld === null ? !r.parent_id : r.parent_id === parentOld)).forEach((r) => {
+      const info = insert.run(parentNew, r.label_sk, r.label_en, r.link, r.sort_order, r.is_my_profile, r.highlight || 0, targetId);
+      idMap.set(r.id, Number(info.lastInsertRowid));
+      copy(r.id, Number(info.lastInsertRowid));
+    });
+    copy(null, null);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  const out = db.prepare('SELECT * FROM header_items WHERE league_id = ? ORDER BY sort_order, id').all(targetId);
+  const tree = (parentId) => out.filter((r) => (parentId === null ? !r.parent_id : r.parent_id === parentId)).map((r) => ({ ...serialize(r), children: tree(r.id) }));
+  res.json(tree(null));
+});
+
 // Puts the items of one list (the main items: parentId null; or the sub-items of a parent) in the order given: { parentId, ids }.
 // ids must be exactly the items of that list, each once. The positions are written 0, 1, 2… so no gaps or ties are left.
 router.post('/reorder', requireAdmin, (req, res) => {
