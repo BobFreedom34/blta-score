@@ -1,11 +1,15 @@
 // Checks of the national site slta.sk (src/national.js): on its host the app serves the national page (the picker of the cities, in Slovak and
 // English, with slta.sk as its address and its own sitemap), the files the page needs and the public list of the cities; any other page address
 // goes on to blta.sk and anything else is not found. The other hosts (blta.sk) never serve the national page and do not list it.
+// The site can be locked with a password (Backend > Cities) and is hidden from search engines: the page and the list of the cities ask for the
+// password, a wrong one is refused (and counted), the right one gives a cookie, a new password cancels the old cookies, and every answer, the
+// robots.txt and the sitemap tell search engines to stay away until the page is switched on in Backend > SEO.
 // Run: node scripts/check-national.js   (starts its own server on a temporary data directory; touches nothing else)
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const http = require('http');
+const { DatabaseSync } = require('node:sqlite');
 const assert = require('assert');
 const { spawn } = require('child_process');
 
@@ -15,19 +19,25 @@ const port = 3100 + Math.floor(Math.random() * 800);
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
 let child = null;
+let adminCookie = '';
+const setNoindex = (on) => { const db = new DatabaseSync(path.join(dir, 'blta-score.db')); db.prepare("UPDATE seo_pages SET noindex = ? WHERE page_key = 'slta'").run(on ? 1 : 0); db.close(); };
 
 // a request with the Host header of the site it is meant for (fetch will not send one)
-function as(host, url, { method = 'GET' } = {}) {
+function as(host, url, { method = 'GET', body, headers = {} } = {}) {
   return new Promise((resolve, reject) => {
-    const req = http.request({ host: 'localhost', port, path: url, method, headers: { Host: host } }, (res) => {
+    const data = body === undefined ? null : (typeof body === 'string' ? body : JSON.stringify(body));
+    const req = http.request({ host: 'localhost', port, path: url, method, headers: { Host: host, ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}), ...headers } }, (res) => {
       let body = '';
       res.on('data', (d) => { body += d; });
       res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body }));
     });
     req.on('error', reject);
-    req.end();
+    req.end(data || undefined);
   });
 }
+const admin = (method, url, body) => as('localhost', url, { method, body, headers: { 'Content-Type': 'application/json', Cookie: adminCookie } });
+const unlock = (host, password, lang = 'sk') => as(host, '/unlock', { method: 'POST', body: `password=${encodeURIComponent(password)}&lang=${lang}`, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+const cookieOf = (r) => ((r.headers['set-cookie'] || [])[0] || '').split(';')[0];
 
 test('slta.sk: the main page is the national page, with slta.sk as its address', async () => {
   const r = await as('slta.sk', '/');
@@ -73,13 +83,29 @@ test('slta.sk: any other page goes on to blta.sk, anything else is not found', a
   assert.strictEqual((await as('slta.sk', '/api/leagues/all')).status, 401, 'the admin list stays for the admin');
 });
 
-test('slta.sk: its own sitemap and robots.txt', async () => {
+test('slta.sk starts hidden from search engines: tag, header, robots.txt and an empty sitemap', async () => {
+  const page = await as('slta.sk', '/');
+  assert.ok(/<meta name="robots" content="noindex, nofollow">/.test(page.body), 'the page says noindex');
+  assert.strictEqual(page.headers['x-robots-tag'], 'noindex, nofollow');
+  const robots = await as('slta.sk', '/robots.txt');
+  assert.ok(/Disallow: \/\s*$/m.test(robots.body) && !robots.body.includes('Sitemap'), 'robots.txt closes everything');
+  const sm = await as('slta.sk', '/sitemap.xml');
+  assert.ok(!sm.body.includes('<loc>'), 'nothing in the sitemap');
+  assert.ok(!(await as('blta.sk', '/')).headers['x-robots-tag'], 'blta.sk is not hidden');
+});
+
+test('slta.sk switched on in Backend > SEO: its own sitemap and robots.txt', async () => {
+  setNoindex(false);
+  const page = await as('slta.sk', '/');
+  assert.ok(/<meta name="robots" content="index, follow/.test(page.body), 'the page may be indexed');
+  assert.ok(!page.headers['x-robots-tag'], 'no header any more');
   const sm = await as('slta.sk', '/sitemap.xml');
   assert.strictEqual(sm.status, 200);
   assert.ok(sm.body.includes('<loc>https://slta.sk/</loc>') && sm.body.includes('<loc>https://slta.sk/en</loc>'), 'both languages of the main page');
   assert.ok(!sm.body.includes('/season/') && !sm.body.includes('/players'), 'nothing of blta.sk');
   const robots = await as('slta.sk', '/robots.txt');
   assert.ok(robots.body.includes('Sitemap: https://slta.sk/sitemap.xml'));
+  setNoindex(true);
 });
 
 test('blta.sk: its home page is unchanged, the national page is not served and not listed', async () => {
@@ -91,6 +117,81 @@ test('blta.sk: its home page is unchanged, the national page is not served and n
   assert.ok(!sm.includes('/slta'), 'the national page is not in the sitemap of blta.sk');
   assert.ok(sm.includes('/players') || sm.includes('/rankings') || sm.includes('/rebricek'), 'the sitemap of blta.sk is the usual one');
   assert.strictEqual((await as('localhost', '/slta')).status, 404);
+});
+
+test('the lock belongs to the admin: a password of 6 characters or more, never given back', async () => {
+  assert.strictEqual((await as('localhost', '/api/leagues/national-lock')).status, 401, 'not for the public');
+  assert.strictEqual((await admin('PUT', '/api/leagues/national-lock', { enabled: true })).status, 400, 'a password is needed');
+  assert.strictEqual((await admin('PUT', '/api/leagues/national-lock', { enabled: true, password: '12345' })).status, 400, 'too short');
+  const on = await admin('PUT', '/api/leagues/national-lock', { enabled: true, password: 'sesame1' });
+  assert.strictEqual(on.status, 200);
+  assert.deepStrictEqual(JSON.parse(on.body), { locked: true, hasPassword: true });
+  assert.ok(!on.body.includes('sesame1'), 'the password is not given back');
+});
+
+test('locked: the page and the list of the cities ask for the password, the files of the page and blta.sk do not', async () => {
+  const page = await as('slta.sk', '/');
+  assert.strictEqual(page.status, 401);
+  assert.ok(page.body.includes('name="password"') && page.body.includes('noindex'), 'the password page, never indexed');
+  assert.ok(!page.body.includes('id="mesta"'), 'the real page is not in the answer');
+  const en = await as('slta.sk', '/en');
+  assert.strictEqual(en.status, 401);
+  assert.ok(en.body.includes('Enter the password') || en.body.includes('Enter'), 'English');
+  assert.strictEqual((await as('slta.sk', '/api/leagues')).status, 401);
+  assert.strictEqual((await as('slta.sk', '/css/style.css')).status, 200);
+  assert.strictEqual((await as('slta.sk', '/matches')).status, 302, 'other pages still go on to blta.sk');
+  assert.strictEqual(page.headers['x-robots-tag'], 'noindex, nofollow');
+  assert.strictEqual((await as('blta.sk', '/')).status, 200, 'blta.sk is open');
+  assert.strictEqual((await as('blta.sk', '/api/leagues')).status, 200);
+  assert.ok(/Disallow: \//.test((await as('slta.sk', '/robots.txt')).body));
+});
+
+test('a wrong password is refused, the right one gives a cookie for the page and the list', async () => {
+  const wrong = await unlock('slta.sk', 'nope');
+  assert.strictEqual(wrong.status, 401);
+  assert.ok(wrong.body.includes('Nesprávne heslo'));
+  assert.ok(!cookieOf(wrong), 'no cookie');
+  const right = await unlock('slta.sk', 'sesame1');
+  assert.strictEqual(right.status, 302);
+  assert.strictEqual(right.headers.location, '/');
+  const cookie = cookieOf(right);
+  assert.ok(cookie.startsWith('slta_access='), 'the cookie');
+  assert.ok(/HttpOnly/i.test(right.headers['set-cookie'][0]), 'not readable by scripts');
+  const page = await as('slta.sk', '/', { headers: { Cookie: cookie } });
+  assert.strictEqual(page.status, 200);
+  assert.ok(page.body.includes('id="mesta"'), 'the real page');
+  assert.strictEqual((await as('slta.sk', '/api/leagues', { headers: { Cookie: cookie } })).status, 200);
+  assert.strictEqual((await as('slta.sk', '/', { headers: { Cookie: 'slta_access=1.abc' } })).status, 401, 'a made-up cookie is no good');
+  assert.strictEqual((await unlock('slta.sk', 'sesame1', 'en')).headers.location, '/en');
+});
+
+test('a new password cancels the cookies of the old one', async () => {
+  const old = cookieOf(await unlock('slta.sk', 'sesame1'));
+  assert.strictEqual((await as('slta.sk', '/', { headers: { Cookie: old } })).status, 200);
+  assert.strictEqual((await admin('PUT', '/api/leagues/national-lock', { enabled: true, password: 'another-one' })).status, 200);
+  assert.strictEqual((await as('slta.sk', '/', { headers: { Cookie: old } })).status, 401, 'the old cookie stopped working');
+  assert.strictEqual((await unlock('slta.sk', 'sesame1')).status, 401, 'the old password too');
+  assert.strictEqual((await as('slta.sk', '/', { headers: { Cookie: cookieOf(await unlock('slta.sk', 'another-one')) } })).status, 200);
+});
+
+test('unlocked: the page is open again, still hidden from search engines until it is switched on', async () => {
+  const off = await admin('PUT', '/api/leagues/national-lock', { enabled: false });
+  assert.deepStrictEqual(JSON.parse(off.body), { locked: false, hasPassword: true });
+  const page = await as('slta.sk', '/');
+  assert.strictEqual(page.status, 200);
+  assert.ok(page.body.includes('id="mesta"'));
+  assert.strictEqual(page.headers['x-robots-tag'], 'noindex, nofollow', 'the SEO switch is still off');
+  assert.strictEqual((await as('slta.sk', '/api/leagues')).status, 200);
+  // the old password is kept: locking again without a new one uses it
+  assert.strictEqual((await admin('PUT', '/api/leagues/national-lock', { enabled: true })).status, 200);
+  assert.strictEqual((await as('slta.sk', '/')).status, 401);
+});
+
+test('too many wrong passwords from one address are stopped', async () => {
+  let last = 0;
+  for (let i = 0; i < 9; i += 1) last = (await unlock('slta.sk', 'wrong-' + i)).status;
+  assert.strictEqual(last, 429);
+  assert.strictEqual((await unlock('slta.sk', 'another-one')).status, 429, 'even the right one has to wait');
 });
 
 async function main() {
@@ -106,6 +207,9 @@ async function main() {
       child.stdout.on('data', (d) => { output += d; if (String(d).includes('listening')) { clearTimeout(timer); resolve(); } });
       child.on('exit', (code) => { clearTimeout(timer); reject(new Error(`server exited (${code}):\n${output}`)); });
     });
+    const login = await fetch(`http://localhost:${port}/api/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: 'test' }) });
+    adminCookie = login.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
+    assert.ok(adminCookie, 'admin login gave no cookie');
     for (const { name, fn } of tests) {
       try { await fn(); console.log(`PASS  ${name}`); } catch (err) { failed += 1; console.log(`FAIL  ${name}\n      ${String(err && err.stack).split('\n').slice(0, 6).join('\n      ')}`); }
     }

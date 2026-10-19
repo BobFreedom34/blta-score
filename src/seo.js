@@ -308,6 +308,11 @@ function seedDefaults() {
   });
 }
 seedDefaults();
+// the national page (slta.sk) is hidden from search engines while the site is being prepared; Backend > SEO switches it on (put in once only)
+if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'slta_noindex'").get()) {
+  db.prepare("UPDATE seo_pages SET noindex = 1 WHERE page_key = 'slta'").run();
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('slta_noindex')").run();
+}
 // the link-preview picture of the blog list, as the old blog page had it (put in once, while nothing is set)
 db.prepare("UPDATE seo_pages SET og_image = '/img/blog/lopta-2bllta.png' WHERE page_key = 'blog' AND og_image = ''").run();
 db.prepare("UPDATE seo_pages_en SET og_image = '/img/blog/lopta-2bllta.png' WHERE page_key = 'blog' AND og_image = ''").run();
@@ -678,7 +683,7 @@ function articleJsonLd({ title, description, imageUrl, url, entity }) {
 
 module.exports = {
   PAGES, BY_KEY, LANGS, listAll, parseBody, save, render, getValues,
-  routes, resolve, movedTo, pageUrl, isRetired, clientScript, normalizeSlug, listCourtPaths, saveCourtPath, checkWholeAddress, forgetRoutes,
+  routes, resolve, movedTo, pageUrl, isRetired, clientScript, normalizeSlug, listCourtPaths, saveCourtPath, checkWholeAddress, forgetRoutes, noindexOf,
 };
 
 // ---------- sitemap.xml and robots.txt ----------

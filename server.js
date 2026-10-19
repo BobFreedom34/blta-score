@@ -204,7 +204,11 @@ app.get('/', (req, res, next) => {
 const publicOrigin = (req) => (national.isNationalHost(req) ? national.origin(req) : (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, ''));
 app.get('/pozvanka/:slug', invitesRouter.openLink); // a player's invite link: counted, remembered, then the home page
 app.get('/js/localize.js', (req, res) => res.type('application/javascript').set('Cache-Control', 'no-cache').send(seo.clientScript()));
-app.get('/robots.txt', (req, res) => res.type('text/plain').send(seo.robotsTxt(publicOrigin(req))));
+app.get('/robots.txt', (req, res) => {
+  // the national site that is locked or hidden from search engines is closed to every crawler
+  if (national.isNationalHost(req) && (national.isLocked() || seo.noindexOf('slta'))) return res.type('text/plain').send('User-agent: *\nDisallow: /\n');
+  return res.type('text/plain').send(seo.robotsTxt(publicOrigin(req)));
+});
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemapXml(publicOrigin(req), { national: national.isNationalHost(req) })));
 // the entity behind a template page: { name, image } or null
 const TEMPLATE_ENTITY = {
@@ -244,6 +248,14 @@ app.use((req, res, next) => {
     return next();
   }
   const lang = national.pageLang(req.path);
+  const locked = national.isLocked();
+  // while the site is locked or hidden every answer says so, whatever a crawler may have been told before
+  if (locked || seo.noindexOf('slta')) res.set('X-Robots-Tag', 'noindex, nofollow');
+  if (req.method === 'POST' && req.path === '/unlock') return express.urlencoded({ extended: false, limit: '2kb' })(req, res, () => national.unlock(req, res));
+  if (locked && !national.hasAccess(req)) {
+    if (read && lang) return res.status(401).type('html').send(national.loginPage(lang));
+    if (read && (req.path === '/api/leagues' || req.path.startsWith('/api/leagues/'))) return res.status(401).json({ error: 'The site is locked' });
+  }
   if (read && lang) {
     try {
       return res.type('html').send(seo.render('slta', { origin: national.origin(req), canonical: '/', lang, siteName: 'SLTA' }));

@@ -4,6 +4,7 @@ const express = require('express');
 const db = require('../db');
 const auth = require('../auth');
 const leagues = require('../leagues');
+const national = require('../national');
 
 const router = express.Router();
 
@@ -57,6 +58,16 @@ function parse(body, existing) {
   }
   return { fields };
 }
+
+// The password lock of the national site (slta.sk): admin only. The password is kept as a hash and never given back.
+router.get('/national-lock', auth.requireAdmin, (req, res) => {
+  res.json({ locked: national.isLocked(), hasPassword: national.hasPassword() });
+});
+router.put('/national-lock', auth.requireAdmin, (req, res) => {
+  const done = national.setLock({ enabled: !!(req.body && req.body.enabled), password: req.body && req.body.password });
+  if (done.error) return res.status(400).json({ error: done.error });
+  res.json({ locked: national.isLocked(), hasPassword: national.hasPassword() });
+});
 
 // Public: the cities of the picker (without the hidden ones), in the order of the admin
 router.get('/', (req, res) => {

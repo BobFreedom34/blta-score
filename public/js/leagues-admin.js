@@ -27,6 +27,16 @@ function renderLoggedOut() {
 
 function renderAdmin() {
   root.innerHTML = `
+    <div class="card" style="margin-bottom:20px" id="lock-card">
+      <h3 style="margin-top:0">National site slta.sk <span id="lock-state" style="font-weight:700;font-size:13px"></span></h3>
+      <p style="font-size:13px;color:var(--gray-dim);margin:0 0 10px">While the site is being prepared you can lock its main page with a password. Visitors then see only a password page, and search engines are told to stay away (the page is also set not to be indexed in Backend &gt; SEO — switch that on there when the site opens).</p>
+      <form id="lock-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input type="password" id="lock-password" autocomplete="new-password" placeholder="New password (6+ characters)" style="flex:1;min-width:220px;${inputStyle};width:auto">
+        <button type="submit" class="btn btn-primary" id="lock-on">Lock with this password</button>
+        <button type="button" class="btn btn-outline" id="lock-off">Unlock</button>
+      </form>
+      <div id="lock-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
+    </div>
     <div class="card" style="margin-bottom:20px">
       <h3 style="margin-top:0">Add a city</h3>
       <form id="add-city-form" style="display:flex;gap:8px;flex-wrap:wrap">
@@ -42,7 +52,33 @@ function renderAdmin() {
     </div>
   `;
   document.getElementById('add-city-form').addEventListener('submit', addCity);
+  setupLock();
   loadCities();
+}
+
+async function setupLock() {
+  const stateEl = document.getElementById('lock-state');
+  const errorEl = document.getElementById('lock-error');
+  const input = document.getElementById('lock-password');
+  const show = (s) => {
+    stateEl.textContent = s.locked ? '· locked with a password' : '· open';
+    stateEl.style.color = s.locked ? 'var(--danger)' : 'var(--gray)';
+    document.getElementById('lock-off').disabled = !s.locked;
+    input.placeholder = s.locked ? 'New password (leave empty to keep the current one)' : 'New password (6+ characters)';
+  };
+  const send = async (body) => {
+    errorEl.textContent = '';
+    try {
+      show(await api('/leagues/national-lock', { method: 'PUT', body }));
+      input.value = '';
+      toast(body.enabled ? 'slta.sk is locked' : 'slta.sk is unlocked');
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
+  };
+  try { show(await api('/leagues/national-lock')); } catch (err) { errorEl.textContent = err.message; }
+  document.getElementById('lock-form').addEventListener('submit', (e) => { e.preventDefault(); send({ enabled: true, password: input.value }); });
+  document.getElementById('lock-off').addEventListener('click', () => send({ enabled: false }));
 }
 
 async function addCity(e) {
