@@ -1644,6 +1644,7 @@ document.addEventListener('click', (e) => {
   const topbar = document.querySelector('.topbar');
   if (!topbar || document.body.classList.contains('embed')) return;
   if (currentCodePath() === '/reservations') return;
+  if (window.CITY) return; // the courts of the booking are Bratislava's; a city has none yet
   const a = document.createElement('a');
   a.className = 'booking-btn';
   a.href = siteUrl('/reservations');
@@ -3109,9 +3110,9 @@ document.addEventListener('click', async (e) => {
       updateBadgeBellUI(res.unreadNotificationCount);
     } catch { /* worst case the bubble count is stale until the next page load */ }
   }
-  if (notif.type === 'CHAT_MESSAGE') window.location.href = `/match/${notif.chat.matchToken}`;
-  if (notif.type === 'PROPOSAL') window.location.href = `/match/${notif.proposal.matchToken}`;
-  if (notif.type === 'PHOTO') window.location.href = `/match/${notif.photo.matchToken}`;
+  if (notif.type === 'CHAT_MESSAGE') window.location.href = siteUrl(`/match/${notif.chat.matchToken}`);
+  if (notif.type === 'PROPOSAL') window.location.href = siteUrl(`/match/${notif.proposal.matchToken}`);
+  if (notif.type === 'PHOTO') window.location.href = siteUrl(`/match/${notif.photo.matchToken}`);
   if (notif.type === 'PLAY_REQUEST') window.location.href = siteUrl('/looking-to-play');
   if (notif.type === 'RANKING') window.location.href = siteUrl('/rankings');
 });
@@ -3202,7 +3203,7 @@ async function setUpAdminTabs() {
       const cities = bar.querySelector('a[href="/leagues-admin"]');
       const link = document.createElement('a');
       link.href = '/admins-admin';
-      link.className = `tab${location.pathname === '/admins-admin' ? ' active' : ''}`;
+      link.className = `tab${location.pathname.endsWith('/admins-admin') ? ' active' : ''}`;
       link.textContent = 'Admins';
       if (cities) cities.after(link); else bar.appendChild(link);
     }
@@ -3458,4 +3459,17 @@ function highlightMyName() {
     }).observe(document.body, { childList: true, subtree: true, characterData: true });
   }
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
+
+// On the page of a city under the national address (slta.sk/kosice, see public/js/localize.js) the brand is the city's: SLTA Košice, not BLTA.
+(function cityBrand() {
+  const city = window.CITY;
+  if (!city || document.body.classList.contains('embed')) return;
+  const apply = () => {
+    document.querySelectorAll('.brand-text small').forEach((el) => { el.textContent = city.brand; });
+    // the ball logo says BLTA: a city shows its name only (until it has a logo of its own)
+    document.querySelectorAll('.brand-logo').forEach((el) => { el.style.display = 'none'; });
+    document.querySelectorAll('.site-footer-inner > span').forEach((el) => { el.textContent = city.brand; });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
 })();

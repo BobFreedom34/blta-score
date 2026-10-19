@@ -16,7 +16,8 @@ const RESERVED_SLUGS = new Set([
   'harmonogram', 'vitazi', 'propozicie', 'blog', 'article', 'articles', 'new-match', 'looking-to-play', 'reservations', 'reservation',
   'venues', 'compact', 'compactblta', 'embed', 'tables', 'bracket', 'brackets', 'login-history', 'seo', 'img', 'css', 'js', 'fonts', 'healthz',
   'robots.txt', 'sitemap.xml', 'manifest.json', 'cities', 'city', 'mesta', 'mesto', 'en', 'sk', 'login', 'logout', 'register', 'contact',
-  'kontakt', 'kurty', 'tenisove-kurty-v-bratislave', 'www', 'static', 'uploads', 'socket.io',
+  'kontakt', 'kurty', 'tenisove-kurty-v-bratislave', 'www', 'static', 'uploads', 'socket.io', 'unlock', 'pozvanka', 'blog-images', 'player-photos',
+  'carousel-images', 'venue-photos', 'season-heroes', 'badge-icons', 'winner-photos', 'slta', 'rezervacie-kurtov', 'rebricek', 'zapasy', 'hraci',
 ]);
 
 function slugify(text) {
@@ -92,7 +93,8 @@ function serialize(row, { admin = false } = {}) {
     name: row.name,
     brandName: row.brand_name || row.name,
     status: row.status,
-    url: row.domain ? `https://${row.domain}` : null,
+    // where the city lives: its own domain, else its address under the national site (slta.sk/<slug>)
+    url: row.domain ? `https://${row.domain}` : `/${row.slug}`,
     lat: row.lat,
     lng: row.lng,
     players: counts.players,

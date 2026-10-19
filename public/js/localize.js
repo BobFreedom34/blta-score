@@ -87,11 +87,22 @@
   // ---------- the browser ----------
   function boot(routes, overrides) {
     const lib = make(routes, overrides);
-    const page = lib.resolve(location.pathname);
+    // On the page of a city under the national address (slta.sk/kosice/...) the server tells the prefix (window.CITY_BASE = '/kosice'):
+    // the page is looked up without it, and every link, the language switch and every /api call of the page get it.
+    const BASE = (typeof window !== 'undefined' && window.CITY_BASE) || '';
+    const unbase = (p) => (BASE && (p === BASE || p.indexOf(BASE + '/') === 0) ? (p.slice(BASE.length) || '/') : p);
+    const withBase = (p) => (BASE && typeof p === 'string' && p.charAt(0) === '/' && p.charAt(1) !== '/' && p !== BASE && p.indexOf(BASE + '/') !== 0 && p.indexOf('/socket.io') !== 0 ? BASE + p : p);
+    if (BASE) {
+      const realFetch = window.fetch;
+      window.fetch = function (input, init) { return realFetch.call(this, typeof input === 'string' ? withBase(input) : input, init); };
+      const realOpen = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function (method, url, ...rest) { return realOpen.call(this, method, typeof url === 'string' ? withBase(url) : url, ...rest); };
+    }
+    const page = lib.resolve(unbase(location.pathname));
     const storedLang = () => { try { const s = localStorage.getItem('blta_lang'); return s === 'en' ? 'en' : 'sk'; } catch { return 'sk'; } };
     // the language in use: i18n.js has settled it by the time a link is looked at
     const curLang = () => (typeof currentLang !== 'undefined' ? currentLang : (page ? page.lang : storedLang()));
-    const localUrl = (address) => lib.toPublic(address, curLang()) || address;
+    const localUrl = (address) => withBase(lib.toPublic(address, curLang()) || address);
 
     const done = new WeakMap(); // anchor -> the href it carries after the rewrite (so it is not rewritten twice)
     function fix(a) {
@@ -100,18 +111,30 @@
       let url;
       try { url = new URL(raw, location.href); } catch { return; }
       if (url.origin !== location.origin) return;
-      const pub = lib.toPublic(url.pathname + url.search + url.hash, curLang());
-      const next = pub ? (/^https?:/i.test(raw) ? url.origin + pub : pub) : raw;
+      const own = unbase(url.pathname);
+      const pub = lib.toPublic(own + url.search + url.hash, curLang());
+      const next = pub ? (/^https?:/i.test(raw) ? url.origin + withBase(pub) : withBase(pub)) : (BASE && raw.charAt(0) === '/' ? withBase(raw) : raw);
       // the code address stays on the link, so a style can find "the Players link" whatever its address is (the menu icons do)
-      if (pub) a.setAttribute('data-code', url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') : url.pathname);
+      if (pub) a.setAttribute('data-code', own.length > 1 ? own.replace(/\/+$/, '') : own);
       else a.removeAttribute('data-code');
       if (next !== raw) a.setAttribute('href', next);
       done.set(a, next);
+    }
+    // an element that goes to a page by itself (onclick="window.location.href='/match/…'") gets the prefix too
+    function fixClick(el) {
+      const code = el.getAttribute('onclick');
+      if (!BASE || !code || code.indexOf(BASE + '/') !== -1) return;
+      const next = code.replace(/(location\.href\s*=\s*['"])\/(?!\/)/g, '$1' + BASE + '/');
+      if (next !== code) el.setAttribute('onclick', next);
     }
     function scan(node) {
       if (node.nodeType !== 1) return;
       if (node.matches('a[href]')) fix(node);
       node.querySelectorAll('a[href]').forEach(fix);
+      if (BASE) {
+        if (node.hasAttribute('onclick')) fixClick(node);
+        node.querySelectorAll('[onclick]').forEach(fixClick);
+      }
     }
     new MutationObserver((records) => {
       records.forEach((r) => {
@@ -119,12 +142,12 @@
         else r.addedNodes.forEach(scan);
       });
     }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['href'] });
-    document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('a[href]').forEach(fix));
+    document.addEventListener('DOMContentLoaded', () => { document.querySelectorAll('a[href]').forEach(fix); if (BASE) document.querySelectorAll('[onclick]').forEach(fixClick); });
 
     // The same page in the other language (query and #hash kept); null on a page that has no address of its own per language.
-    const switchUrl = (lang) => (page ? lib.toPublic(page.canonical + location.search + location.hash, lang) : null);
+    const switchUrl = (lang) => (page ? withBase(lib.toPublic(page.canonical + location.search + location.hash, lang)) : null);
 
-    window.BLTA_LOCALIZE = Object.assign({}, lib, { page, localUrl, switchUrl });
+    window.BLTA_LOCALIZE = Object.assign({}, lib, { page, localUrl, switchUrl, withBase });
   }
 
   return { make, boot };

@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db');
+const leagues = require('../leagues');
 const { requireSuperAdmin } = require('../auth');
 const rankingPoints = require('../rankingPoints');
 const { getMoves, getHistory } = require('../rankingSnapshots');
@@ -26,12 +27,14 @@ function computeAge(birthday) {
 // Everything /api/rankings returns (and the once-a-week snapshot / bell-notification roll it does on the way). The tables are
 // the app's own (src/rankingPoints.js): a finished BLTA match adds its points, an admin can correct any number. The slim
 // /ranks route below goes through the same function, so asking for the small answer still keeps the weekly roll running.
-function buildRankings() {
+// leagueId: the city the tables are shown for. The points rules and the tables are shared, but a city shows only its own players (a row that
+// belongs to nobody is a Bratislava one: those are the names from before the cities); ranks are counted again within the city.
+function buildRankings(leagueId = leagues.DEFAULT_LEAGUE_ID) {
   const data = rankingPoints.getTables();
 
   // Slug, nationality and age live on the player's bio here; a row that is not tied to a player (a name that matched nobody)
   // simply has none of them.
-  const players = db.prepare('SELECT id, name, slug, nationality, birthday FROM players').all();
+  const players = db.prepare('SELECT id, name, slug, nationality, birthday, league_id FROM players').all();
   const byId = new Map(players.map((p) => [p.id, p]));
   const byName = new Map(players.map((p) => [normalize(p.name), p]));
   const playerOf = (row) => (row.playerId && byId.get(row.playerId)) || byName.get(normalize(row.name)) || null;
@@ -79,17 +82,26 @@ function buildRankings() {
           nationality: player ? player.nationality || null : null,
           age: player ? computeAge(player.birthday) : null,
           move: moves[normalize(r.name)] || null,
+          cityId: player ? player.league_id : leagues.DEFAULT_LEAGUE_ID,
         };
       }),
     };
   });
 
-  return { fetchedAt: data.updatedAt || new Date().toISOString(), tables };
+  const ofCity = tables.map((t) => {
+    const rows = t.rows.filter((r) => r.cityId === leagueId);
+    const whole = rows.length === t.rows.length;
+    return {
+      ...t,
+      rows: rows.map(({ cityId, ...row }) => (whole ? row : { ...row, rank: 1 + rows.filter((o) => (o.points == null ? -1 : o.points) > (row.points == null ? -1 : row.points)).length })),
+    };
+  });
+  return { fetchedAt: data.updatedAt || new Date().toISOString(), tables: ofCity };
 }
 
 router.get('/', (req, res) => {
   try {
-    res.json(buildRankings());
+    res.json(buildRankings(leagues.actingIdOf(req)));
   } catch (err) {
     console.error('[rankings] could not build the tables:', err);
     res.status(500).json({ error: `Could not load the rankings: ${err.message}` });
@@ -100,7 +112,7 @@ router.get('/', (req, res) => {
 // needs this. Cached by the browser for five minutes.
 router.get('/ranks', (req, res) => {
   try {
-    const data = buildRankings();
+    const data = buildRankings(leagues.actingIdOf(req));
     const blta = data.tables.find((t) => t.key === 'blta');
     const ranks = {};
     if (blta) blta.rows.forEach((r) => { ranks[r.name] = r.rank; });

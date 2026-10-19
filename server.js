@@ -32,6 +32,7 @@ const leaguesRouter = require('./src/routes/leagues');
 const cityAdminsRouter = require('./src/routes/cityAdmins');
 const cityScope = require('./src/cityScope');
 const leagues = require('./src/leagues');
+const auth = require('./src/auth');
 const national = require('./src/national');
 const seasonsRouter = require('./src/routes/seasons');
 const invitesRouter = require('./src/routes/invites');
@@ -166,6 +167,63 @@ app.use(express.json());
 app.use(cookieParser(process.env.SESSION_SECRET || 'dev-only-insecure-secret'));
 // the city of the request on req.league (an own domain such as blta.sk; otherwise Bratislava)
 app.use(leagues.attach);
+// The whole site of a city under the national address: slta.sk/<slug>/... is the same site as blta.sk with that city's own seasons, players,
+// venues, pictures and menu. The prefix is taken off the address here (everything after it works exactly as on a city's own domain), the page
+// learns its prefix (window.CITY_BASE, see public/js/localize.js: links and /api calls get it), and redirects keep it.
+const cityHtml = (html, req) => {
+  const league = req.league;
+  const brand = league.brand_name || league.name;
+  const json = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
+  let out = html.replace(/<head[^>]*>/i, (m) => `${m}<script>window.CITY_BASE=${json(req.cityBase)};window.CITY=${json({ slug: league.slug, name: league.name, brand })};</script>`);
+  // the title ends with the name of the Bratislava league: a city has its own brand there
+  const own = (t) => t.replace(/ - BLTA - (Bratislavská Liga Tenisových Amatérov|Bratislava Amateur Tennis League)/g, ` - ${brand}`).replace(/BLTA/g, brand);
+  out = out.replace(/<title>([\s\S]*?)<\/title>/i, (m, t) => `<title>${own(t)}</title>`);
+  out = out.replace(/(<meta property="og:(?:title|site_name)" content=")([^"]*)/gi, (m, a, b) => a + own(b));
+  return out;
+};
+app.use((req, res, next) => {
+  if (!national.isNationalHost(req)) return next();
+  const hit = national.cityOf(req.path);
+  const league = hit && leagues.bySlug(hit.slug);
+  if (!league) return next();
+  const read = req.method === 'GET' || req.method === 'HEAD';
+  const isApi = hit.rest === '/api' || hit.rest.startsWith('/api/');
+  const isFile = national.isAsset(hit.rest);
+  const me = auth.adminSession(req);
+  const mayAdmin = !!me && (me.role === 'SUPER' || me.leagueId === league.id);
+  if (national.isLocked() || seo.noindexOf('slta')) res.set('X-Robots-Tag', 'noindex, nofollow');
+  // the password lock of the national site covers the cities too
+  if (national.isLocked() && !national.hasAccess(req) && !isFile) {
+    if (isApi) return res.status(401).json({ error: 'The site is locked' });
+    if (read) return res.status(401).type('html').send(national.loginPage(hit.rest === '/en' || hit.rest.startsWith('/en/') ? 'en' : 'sk', '', req.originalUrl));
+  }
+  // a hidden city is shown only to its own admins (to get it ready)
+  if (league.status === 'HIDDEN' && !mayAdmin && !isFile) return isApi ? res.status(404).json({ error: 'City not found' }) : pageNotFound(res);
+  // a city with a domain of its own (Bratislava: blta.sk) lives there
+  if (league.domain && read && !isApi) return res.redirect(302, `https://${league.domain}${hit.rest || '/'}${req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : ''}`);
+  const base = `/${league.slug}`;
+  req.cityBase = base;
+  req.league = league;
+  const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  req.url = (hit.rest || '/') + query;
+  const redirect = res.redirect.bind(res);
+  res.redirect = (a, b) => {
+    const status = typeof a === 'number' ? a : 302;
+    const url = typeof a === 'number' ? b : a;
+    return redirect(status, typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && url !== base && !url.startsWith(`${base}/`) ? base + url : url);
+  };
+  const send = res.send.bind(res);
+  res.send = (body) => (typeof body === 'string' && /html/.test(String(res.get('Content-Type') || '')) ? send(cityHtml(body, req)) : send(body));
+  const sendFile = res.sendFile.bind(res);
+  res.sendFile = (file, ...rest) => {
+    if (typeof file === 'string' && file.endsWith('.html')) {
+      try { return res.type('html').send(fs.readFileSync(file, 'utf8')); } catch { /* the normal way below */ }
+    }
+    return sendFile(file, ...rest);
+  };
+  return next();
+});
+
 // a city admin may touch only the city he runs (see src/cityScope.js)
 app.use('/api', cityScope.guard);
 
@@ -205,7 +263,7 @@ app.get('/', (req, res, next) => {
 // edited there too (a slug per language: /rebricek and /en/rankings), so they are not fixed routes but looked up on every request:
 // the fixed pages and the ones with a name in the address (a season, a player, a venue, a bracket). The code address a page
 // used to have (/rankings, /season/<x>) is retired once its slug is another one: 404, no redirect.
-const publicOrigin = (req) => (national.isNationalHost(req) ? national.origin(req) : (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, ''));
+const publicOrigin = (req) => (req.cityBase ? `${national.origin(req)}${req.cityBase}` : national.isNationalHost(req) ? national.origin(req) : (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, ''));
 app.get('/pozvanka/:slug', invitesRouter.openLink); // a player's invite link: counted, remembered, then the home page
 app.get('/js/localize.js', (req, res) => res.type('application/javascript').set('Cache-Control', 'no-cache').send(seo.clientScript()));
 app.get('/robots.txt', (req, res) => {
@@ -246,6 +304,7 @@ function pageNotFound(res) {
 // The national site (slta.sk, see src/national.js) serves its own page, the files the page needs and the public list of the cities; any other
 // page address goes on to the first city (blta.sk), anything else is not found there. The other hosts never serve the national page.
 app.use((req, res, next) => {
+  if (req.cityBase) return next();
   const read = req.method === 'GET' || req.method === 'HEAD';
   if (!national.isNationalHost(req)) {
     if (/^\/(en\/)?slta(\.html)?$/.test(req.path)) return pageNotFound(res);
@@ -304,7 +363,7 @@ app.use((req, res, next) => {
     entity = { html: blog.listHtml(hit.lang) };
   }
   try {
-    const html = seo.render(hit.key, { origin: publicOrigin(req), canonical: hit.canonical, lang: hit.lang, entity });
+    const html = seo.render(hit.key, { origin: publicOrigin(req), canonical: hit.canonical, lang: hit.lang, entity, siteName: req.cityBase ? (req.league.brand_name || req.league.name) : undefined });
     // the propozície text comes from Backend > Rules
     return res.type('html').send(hit.key === 'propozicie' ? rules.injectInto(html) : html);
   } catch (err) {
@@ -323,6 +382,10 @@ const staticFiles = express.static(PUBLIC_DIR, {
   },
 });
 app.use((req, res, next) => {
+  if (req.cityBase && (req.method === 'GET' || req.method === 'HEAD') && /^\/[a-z0-9-]+(\.html)?$/i.test(req.path)) {
+    const file = path.join(PUBLIC_DIR, `${req.path.replace(/^\//, '').replace(/\.html$/i, '')}.html`);
+    if (fs.existsSync(file)) return res.type('html').send(fs.readFileSync(file, 'utf8'));
+  }
   if (req.query.v && /\.(js|css)$/.test(req.path)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
   staticFiles(req, res, next);
 });

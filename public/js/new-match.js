@@ -106,7 +106,7 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
     submitBtn.disabled = true;
     try {
       const match = await api('/matches', { method: 'POST', body: body(extra) });
-      window.location.href = `/match/${match.token}`;
+      window.location.href = siteUrl(`/match/${match.token}`);
     } catch (err) {
       if (err.data && err.data.code === 'SIMILAR_PLAYERS') {
         askWhoIsMeant(err.data.conflicts, extra, send);

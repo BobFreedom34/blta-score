@@ -8,6 +8,7 @@
 // before it starts. The admin can assign a spot to a player or a guest name, cancel any reservation and delete spots.
 const express = require('express');
 const db = require('../db');
+const leagues = require('../leagues');
 const { requireSuperAdmin, getPlayerId, isSuperAdmin } = require('../auth');
 const mailer = require('../mailer');
 
@@ -214,8 +215,10 @@ router.get('/', (req, res) => {
   const admin = isSuperAdmin(req);
   const me = getPlayerId(req);
   const settings = getSettings();
-  const courts = db.prepare(`SELECT ${COURT_COLS} FROM reservation_courts ORDER BY sort_order, id`).all().map(courtOut);
-  const rows = db.prepare(`
+  // the courts of the reservations are Bratislava's: another city has none (yet)
+  const noCourts = leagues.actingIdOf(req) !== leagues.DEFAULT_LEAGUE_ID;
+  const courts = noCourts ? [] : db.prepare(`SELECT ${COURT_COLS} FROM reservation_courts ORDER BY sort_order, id`).all().map(courtOut);
+  const rows = noCourts ? [] : db.prepare(`
     SELECT s.*, p.name AS player_name, p.slug AS player_slug
     FROM court_slots s LEFT JOIN players p ON p.id = s.player_id
     WHERE s.day >= ? AND s.day <= ? ORDER BY s.day, s.start_time, s.court_id
@@ -258,7 +261,7 @@ router.get('/free-soon', (req, res) => {
   const wanted = Math.floor(Number(req.query.days));
   const count = Number.isFinite(wanted) && wanted >= 1 ? Math.min(wanted, 31) : 10;
   const to = addDays(now.date, count - 1);
-  const courts = db.prepare(`SELECT ${COURT_COLS} FROM reservation_courts ORDER BY sort_order, id`).all().map(courtOut);
+  const courts = leagues.actingIdOf(req) !== leagues.DEFAULT_LEAGUE_ID ? [] : db.prepare(`SELECT ${COURT_COLS} FROM reservation_courts ORDER BY sort_order, id`).all().map(courtOut);
   const byId = new Map(courts.map((c) => [c.id, c]));
   const rows = db.prepare(`
     SELECT * FROM court_slots WHERE day >= ? AND day <= ? AND player_id IS NULL AND guest_name = '' ORDER BY day, start_time, court_id

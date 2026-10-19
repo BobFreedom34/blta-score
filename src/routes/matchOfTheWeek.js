@@ -7,6 +7,7 @@
 // Friendlies and other non-league categories are never chosen. A tie goes to the earlier match.
 const express = require('express');
 const db = require('../db');
+const leagues = require('../leagues');
 
 const router = express.Router();
 
@@ -41,14 +42,15 @@ function scoreOf(row, h2h) {
 }
 
 // { token, h2h: { p1Wins, p2Wins, total } } for the best match, or null when there is none.
-function pick(now = Date.now()) {
+function pick(now = Date.now(), leagueId = leagues.DEFAULT_LEAGUE_ID) {
   const from = new Date(now - ALREADY_STARTED_MS).toISOString();
   const to = new Date(now + WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const rows = db.prepare(`
     SELECT id, share_token, category, player1_id, player2_id, status, scheduled_at FROM matches
     WHERE category IN ('ELITE', 'NEXT_GEN', 'NOVICE')
       AND (status = 'LIVE' OR (status = 'PLANNED' AND scheduled_at IS NOT NULL AND scheduled_at >= ? AND scheduled_at <= ?))
-  `).all(from, to);
+      AND league_id = ?
+  `).all(from, to, leagueId);
   let best = null;
   rows.forEach((row) => {
     const h2h = h2hOf(row.player1_id, row.player2_id);
@@ -60,7 +62,7 @@ function pick(now = Date.now()) {
 }
 
 router.get('/', (req, res) => {
-  res.json(pick() || { token: null });
+  res.json(pick(Date.now(), leagues.actingIdOf(req)) || { token: null });
 });
 
 module.exports = { router, pick };

@@ -39,6 +39,13 @@ function pageLang(path) {
   return null;
 }
 
+// slta.sk/<slug>/<the rest>: the whole site of a city lives under its slug. -> { slug, rest } or null (the national page itself, /en, a file…)
+// 'rest' is the address inside the city ('' for the city's home page); the caller checks that the slug is a city.
+function cityOf(path) {
+  const m = /^\/([a-z0-9][a-z0-9-]*)(\/.*)?$/.exec(path);
+  return m ? { slug: m[1], rest: m[2] || '' } : null;
+}
+
 // ---------- the password ----------
 
 const COOKIE = 'slta_access';
@@ -108,8 +115,11 @@ const WORDS = {
   sk: { title: 'SLTA - Slovenská liga tenisových amatérov', h: 'Stránka sa pripravuje', p: 'Prístup majú zatiaľ len pozvaní. Zadaj heslo.', label: 'Heslo', go: 'Vstúpiť', wrong: 'Nesprávne heslo.', many: 'Príliš veľa pokusov. Skús to o niekoľko minút.' },
   en: { title: 'SLTA - Slovak Amateur Tennis League', h: 'This site is being prepared', p: 'For the moment only invited people have access. Enter the password.', label: 'Password', go: 'Enter', wrong: 'Wrong password.', many: 'Too many attempts. Try again in a few minutes.' },
 };
+// where to go after the password: an address of this site only
+const safeNext = (next) => (typeof next === 'string' && /^\/[^/\\]/.test(next) && next.length < 300 ? next : '');
+
 // the page that asks for the password: self-contained, never indexed
-function loginPage(lang, message = '') {
+function loginPage(lang, message = '', next = '') {
   const w = WORDS[lang] || WORDS.sk;
   return `<!DOCTYPE html>
 <html lang="${lang}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex, nofollow"><title>${esc(w.title)}</title>
@@ -120,23 +130,25 @@ input{width:100%;box-sizing:border-box;height:48px;padding:0 14px;border-radius:
 input:focus{outline:0;border-color:#ff5500}button{width:100%;height:48px;border:0;border-radius:8px;background:#b2fa06;color:#0a0a0a;font-size:14px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .e{color:#ff6b6b;font-weight:700;margin-bottom:12px;font-size:14px}</style></head>
 <body><form class="c" method="post" action="/unlock"><div class="l">S<b>L</b>TA</div><h1>${esc(w.h)}</h1><p>${esc(w.p)}</p>
-${message ? `<div class="e">${esc(message)}</div>` : ''}<input type="hidden" name="lang" value="${lang}"><input type="password" name="password" placeholder="${esc(w.label)}" autocomplete="current-password" autofocus required><button type="submit">${esc(w.go)}</button></form></body></html>`;
+${message ? `<div class="e">${esc(message)}</div>` : ''}<input type="hidden" name="lang" value="${lang}"><input type="hidden" name="next" value="${esc(safeNext(next))}"><input type="password" name="password" placeholder="${esc(w.label)}" autocomplete="current-password" autofocus required><button type="submit">${esc(w.go)}</button></form></body></html>`;
 }
 
 // POST /unlock: the right password gives the cookie and the page, a wrong one the page again
 function unlock(req, res) {
   const lang = req.body && req.body.lang === 'en' ? 'en' : 'sk';
   const w = WORDS[lang];
+  const next = safeNext(req.body && req.body.next);
+  const home = next || (lang === 'en' ? '/en' : '/');
   const ip = req.ip || '';
-  if (!isLocked()) return res.redirect(302, lang === 'en' ? '/en' : '/');
-  if (tooMany(ip)) return res.status(429).type('html').send(loginPage(lang, w.many));
+  if (!isLocked()) return res.redirect(302, home);
+  if (tooMany(ip)) return res.status(429).type('html').send(loginPage(lang, w.many, next));
   if (!checkPassword(req.body && req.body.password)) {
     failed(ip);
-    return res.status(401).type('html').send(loginPage(lang, w.wrong));
+    return res.status(401).type('html').send(loginPage(lang, w.wrong, next));
   }
   const exp = Date.now() + DAYS * 24 * 60 * 60 * 1000;
   res.cookie(COOKIE, `${exp}.${sign(exp)}`, { httpOnly: true, sameSite: 'lax', secure: req.secure || req.get('x-forwarded-proto') === 'https', maxAge: DAYS * 24 * 60 * 60 * 1000, path: '/' });
-  return res.redirect(302, lang === 'en' ? '/en' : '/');
+  return res.redirect(302, home);
 }
 
-module.exports = { isNationalHost, origin, cityOrigin, isAsset, pageLang, isLocked, hasPassword, setLock, hasAccess, loginPage, unlock };
+module.exports = { cityOf, isNationalHost, origin, cityOrigin, isAsset, pageLang, isLocked, hasPassword, setLock, hasAccess, loginPage, unlock };

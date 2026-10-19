@@ -346,8 +346,24 @@ Code: `src/auth.js` (adminSession, requireSuperAdmin), `src/cityScope.js` (what 
 `src/leagues.js` (actingIdOf: the city a request works on), `src/routes/cityAdmins.js`, table
 `city_admins`. Rows of seasons, players, venues, matches, brackets, winners, carousel, menu and
 schedule events carry a `league_id` (a trigger gives a match the city of its season). `node
-scripts/check-admins.js` tests all of it. Not yet per city: the rankings tables, the badges, the
-reservations, the blog and the rules (still one set for the whole site).
+scripts/check-admins.js` tests all of it.
+
+### 4b. The public pages of a city (slta.sk/<slug>)
+
+Every city without a domain of its own lives at `slta.sk/<slug>` (Košice: `slta.sk/kosice`): the same site as
+blta.sk (same pages, same design, same code), with the city's own seasons, players, venues, matches, rankings,
+carousel pictures, menu and winners. A city with a domain (Bratislava: blta.sk) is sent there. A **Hidden** city is
+shown only to its own admins (to get it ready); Coming soon / In preparation / Active are public, and the
+picker on slta.sk links to them. The password lock of slta.sk covers the cities and, after the password, goes back
+to the page that was asked for.
+
+How it works: `server.js` ("The whole site of a city") takes the slug off the address, sets `req.league` and
+adds `window.CITY_BASE` / `window.CITY` to the page; `public/js/localize.js` gives every link, the language
+switch and every `/api` call the prefix; `common.js` (cityBrand) shows the brand of the city (SLTA Košice) and hides
+the BLTA logo and the court booking button (the courts of the booking are Bratislava's). Every list reads the
+city of the request with `leagues.actingIdOf(req)`. `node scripts/check-city-pages.js` tests it.
+The rankings tables use the shared points rules but show only the city's own players (ranks are counted again).
+Not per city yet: badges, the blog, the rules, the court reservations, a logo of its own for a city.
 
 ---
 

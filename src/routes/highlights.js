@@ -6,6 +6,7 @@
 // HIGHLIGHTS_NOW ('YYYY-MM-DD') fixes the date for the checks.
 const express = require('express');
 const db = require('../db');
+const leagues = require('../leagues');
 const { ratingToBand } = require('../courtIQEngine');
 const { computeAwards } = require('../rankingPoints');
 
@@ -39,8 +40,9 @@ router.get('/month', (req, res) => {
     FROM matches
     WHERE status = 'FINISHED' AND winner_id IS NOT NULL AND category IN (${BLTA_CATEGORIES.map(() => '?').join(',')})
       AND COALESCE(scheduled_at, start_time, created_at) >= ? AND COALESCE(scheduled_at, start_time, created_at) < ?
+      AND league_id = ?
     ORDER BY d, id
-  `).all(...BLTA_CATEGORIES, range.from, range.to);
+  `).all(...BLTA_CATEGORIES, range.from, range.to, leagues.actingIdOf(req));
 
   // wins, matches and the longest run of wins of every player in the month
   const stats = new Map();

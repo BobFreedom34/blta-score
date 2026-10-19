@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const express = require('express');
 const db = require('../db');
+const leagues = require('../leagues');
 const engine = require('../matchEngine');
 const {
   isAdmin, getPlayerId, stripPrivateFields, requireLoggedIn,
@@ -190,7 +191,7 @@ function pruneExpiredPosts() {
 // and joining require being logged in as a specific player.
 router.get('/', (req, res) => {
   pruneExpiredPosts();
-  const rows = db.prepare('SELECT * FROM availability_posts ORDER BY created_at DESC').all();
+  const rows = db.prepare('SELECT a.* FROM availability_posts a JOIN players p ON p.id = a.player_id WHERE p.league_id = ? ORDER BY a.created_at DESC').all(leagues.actingIdOf(req));
   res.json(rows.map((row) => serializePost(row, req)));
 });
 
@@ -198,7 +199,7 @@ router.get('/', (req, res) => {
 // every post. Prunes expired posts first, like the list does, so the two always agree.
 router.get('/count', (req, res) => {
   pruneExpiredPosts();
-  res.json({ count: db.prepare('SELECT COUNT(*) AS n FROM availability_posts').get().n });
+  res.json({ count: db.prepare('SELECT COUNT(*) AS n FROM availability_posts a JOIN players p ON p.id = a.player_id WHERE p.league_id = ?').get(leagues.actingIdOf(req)).n });
 });
 
 // Upsert: a player only ever has one active post (idx_availability_posts_player
