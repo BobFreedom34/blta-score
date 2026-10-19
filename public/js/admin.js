@@ -47,6 +47,7 @@ function renderCityAdmin(info) {
       <li><a href="/players" style="color:var(--orange)">Players</a> and the registrations</li>
       <li><a href="/venues-admin" style="color:var(--orange)">Venues</a> (courts)</li>
       <li><a href="/bracket-admin" style="color:var(--orange)">Brackets</a> and results, <a href="/winners-admin" style="color:var(--orange)">winners</a></li>
+      <li>The <a href="/blog-admin" style="color:var(--orange)">blog</a> and the <a href="/rules-admin" style="color:var(--orange)">rules</a> (Propozície) of the city</li>
       <li>The look of the home page: <a href="/carousel-admin" style="color:var(--orange)">pictures</a> and the <a href="/header-admin" style="color:var(--orange)">menu</a></li>
     </ul>
     <p style="font-size:13px;color:var(--gray-dim);margin:0 0 16px">Everything you create belongs to ${escapeHtml(info.acting.name)} only, and you cannot see or change another city. The cities themselves, the admins and the settings of the whole site are kept by the super admin.</p>
@@ -78,7 +79,7 @@ async function renderLoggedIn() {
         <li><a href="/leagues-admin" style="color:var(--orange)">Cities</a>: add a city, set its address, status (hidden, coming soon, in preparation, active) and its pin on the map.</li>
         <li><a href="/admins-admin" style="color:var(--orange)">Admins</a>: give a person an email and a password; they run only the city you choose.</li>
         <li>The bar above the tabs <em>Working on</em>: pick the city whose seasons, players, venues and pictures you want to see or fill in yourself.</li>
-        <li>SEO, rules, reservations, badges, blog and backups stay with you for the whole site.</li>
+        <li>SEO, reservations, badges and backups stay with you for the whole site. The blog and the rules are per city: pick the city above the tabs.</li>
       </ol>
     </div>
     <p style="color:var(--gray);font-size:13px">

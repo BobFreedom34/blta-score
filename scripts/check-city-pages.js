@@ -114,6 +114,36 @@ test('the lists of a city show its own data and the first city shows its own', a
   assert.ok(first.json.some((s) => s.name === 'Bratislava Jar 2027') && !first.json.some((s) => s.name === 'Kosice Jar 2027'), 'Bratislava is separate');
 });
 
+test('the blog and the rules are the city\'s own', async () => {
+  const kosice = await local('POST', '/api/admin/acting-city', { leagueId: cityId }, superCookie);
+  const withCity = `${superCookie}; ${cookieOf(kosice)}`;
+  // a first article and a first rule of the city
+  const article = await local('POST', '/api/articles/admin', { slugSk: 'novy-turnaj-kosice', slugEn: 'new-tournament-kosice', titleSk: 'Novy turnaj v Kosiciach', titleEn: 'New tournament in Kosice', bodySk: '<p>Text o BLTA</p>', status: 'PUBLISHED' }, withCity);
+  assert.strictEqual(article.status, 201, JSON.stringify(article.json));
+  const rule = await local('POST', '/api/rules', { title: 'Pravidla Kosice', navLabel: 'Kosice', html: '<p>Kosicke pravidlo</p>' }, withCity);
+  assert.strictEqual(rule.status, 201, JSON.stringify(rule.json));
+  // the blog of Kosice shows it, the blog of Bratislava does not
+  assert.deepStrictEqual((await nat('/kosice/api/articles')).json.map((a) => a.slug), ['novy-turnaj-kosice']);
+  assert.ok(!(await local('GET', '/api/articles')).json.some((a) => a.slug === 'novy-turnaj-kosice'), 'not on the first city');
+  const page = await nat('/kosice/novy-turnaj-kosice');
+  assert.strictEqual(page.status, 200, 'the article is at its own address under the city');
+  assert.ok(page.body.includes('Novy turnaj v Kosiciach') && page.body.includes('Text o SLTA Kosice'), 'and speaks of the city');
+  assert.strictEqual((await local('GET', '/novy-turnaj-kosice')).status, 404, 'but not on blta.sk');
+  const list = await nat('/kosice/blog');
+  assert.ok(list.body.includes('Novy turnaj v Kosiciach'));
+  assert.ok(!(await local('GET', '/blog')).body.includes('Novy turnaj v Kosiciach'), 'the list of Bratislava is its own');
+  // the rules page
+  const rules = await nat('/kosice/propozicie');
+  assert.strictEqual(rules.status, 200);
+  assert.ok(rules.body.includes('Kosicke pravidlo'), 'the rules of the city');
+  assert.ok(!(await local('GET', '/propozicie')).body.includes('Kosicke pravidlo'), 'not the ones of the first city');
+  // the backend lists follow the city that is worked on
+  assert.deepStrictEqual((await local('GET', '/api/rules', undefined, withCity)).json.map((r) => r.title), ['Pravidla Kosice']);
+  assert.ok((await local('GET', '/api/rules', undefined, superCookie)).json.every((r) => r.title !== 'Pravidla Kosice'), 'the first city has its own');
+  assert.strictEqual((await local('GET', `/api/articles/admin/${article.json.id}`, undefined, superCookie)).status, 404, 'an article of another city is not found');
+  assert.strictEqual((await local('PUT', `/api/rules/${rule.json.id}`, { title: 'x', html: '<p>x</p>' }, superCookie)).status, 404, 'nor a rule');
+});
+
 test('the admin of the city works on the national address too', async () => {
   const made = await local('POST', '/api/city-admins', { name: 'Martin K', email: 'martin@example.com', leagueId: cityId, password: 'long-enough-1' }, superCookie);
   assert.strictEqual(made.status, 201);
@@ -126,6 +156,10 @@ test('the admin of the city works on the national address too', async () => {
   const season = await nat('/kosice/api/seasons', cookie, 'POST', { name: 'Kosice Leto 2027', startDate: '2027-07-01', endDate: '2027-09-30' });
   assert.strictEqual(season.status, 201);
   assert.ok((await nat('/kosice/api/seasons')).json.some((s) => s.name === 'Kosice Leto 2027'));
+  // and writes the blog and the rules of the city, but not of the other one
+  assert.strictEqual((await nat('/kosice/api/articles/admin', cookie)).status, 200);
+  assert.strictEqual((await nat('/kosice/api/rules', cookie, 'POST', { title: 'Druhe pravidlo', html: '<p>2</p>' })).status, 201);
+  assert.strictEqual((await local('GET', '/api/seo', undefined, cookie)).status, 403);
   assert.ok(!(await local('GET', '/api/seasons')).json.some((s) => s.name === 'Kosice Leto 2027'));
 });
 

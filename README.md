@@ -363,7 +363,8 @@ switch and every `/api` call the prefix; `common.js` (cityBrand) shows the brand
 the BLTA logo and the court booking button (the courts of the booking are Bratislava's). Every list reads the
 city of the request with `leagues.actingIdOf(req)`. `node scripts/check-city-pages.js` tests it.
 The rankings tables use the shared points rules but show only the city's own players (ranks are counted again).
-Not per city yet: badges, the blog, the rules, the court reservations, a logo of its own for a city.
+The blog (Backend > Blog) and the rules page (Backend > Rules) are per city too: a city starts with none and writes its own;
+a city admin manages them. Not per city yet: badges, the court reservations, a logo of its own for a city.
 
 ---
 

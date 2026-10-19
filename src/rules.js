@@ -17,6 +17,10 @@ db.exec(`
   );
 `);
 
+// every section belongs to one city (the rules of Bratislava are the first; see src/leagues.js)
+if (!db.prepare('PRAGMA table_info(rules_sections)').all().some((c) => c.name === 'league_id')) db.exec('ALTER TABLE rules_sections ADD COLUMN league_id INTEGER NOT NULL DEFAULT 1');
+db.exec('CREATE INDEX IF NOT EXISTS idx_rules_sections_league ON rules_sections(league_id)');
+
 // Once: the first sections (after that the backend owns them, even when all are deleted).
 if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'rules_seeded'").get()) {
   const insert = db.prepare('INSERT OR IGNORE INTO rules_sections (slug, nav_label, title, body_html, sort_order) VALUES (?, ?, ?, ?, ?)');
@@ -85,9 +89,10 @@ function serialize(r) {
   return { id: r.id, slug: r.slug, navLabel: r.nav_label, title: r.title, html: r.body_html, original: seed.some((s) => s.slug === r.slug) };
 }
 
-function list() {
-  return db.prepare('SELECT * FROM rules_sections ORDER BY sort_order, id').all().map(serialize);
+function list(leagueId = 1) {
+  return db.prepare('SELECT * FROM rules_sections WHERE league_id = ? ORDER BY sort_order, id').all(leagueId).map(serialize);
 }
+const leagueOf = (id) => { const r = db.prepare('SELECT league_id FROM rules_sections WHERE id = ?').get(Number(id)); return r ? r.league_id : null; };
 
 function slugify(text) {
   return String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sekcia';
@@ -101,8 +106,8 @@ function uniqueSlug(base) {
 }
 
 // The pills at the top and a card per section, ready to go into the page.
-function renderHtml() {
-  const rows = db.prepare('SELECT * FROM rules_sections ORDER BY sort_order, id').all();
+function renderHtml(leagueId = 1) {
+  const rows = db.prepare('SELECT * FROM rules_sections WHERE league_id = ? ORDER BY sort_order, id').all(leagueId);
   if (!rows.length) return '';
   const pills = rows.filter((r) => r.nav_label).map((r) => `<a class="tab" href="#${esc(r.slug)}">${esc(r.nav_label)}</a>`).join('\n    ');
   const nav = pills ? `<div class="tabs pr-nav" role="navigation" aria-label="Sekcie">\n    ${pills}\n  </div>\n` : '';
@@ -114,8 +119,8 @@ function renderHtml() {
   return nav + sections;
 }
 
-function injectInto(html) {
-  return html.replace('<!--RULES-->', () => renderHtml());
+function injectInto(html, leagueId = 1) {
+  return html.replace('<!--RULES-->', () => renderHtml(leagueId));
 }
 
-module.exports = { list, sanitize, serialize, slugify, uniqueSlug, injectInto, seed };
+module.exports = { list, leagueOf, sanitize, serialize, slugify, uniqueSlug, injectInto, seed };

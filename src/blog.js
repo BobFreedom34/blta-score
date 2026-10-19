@@ -32,6 +32,9 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(status, published_at);
 `);
+// every article belongs to one city (the blog of Bratislava is the first one; see src/leagues.js)
+if (!db.prepare('PRAGMA table_info(articles)').all().some((c) => c.name === 'league_id')) db.exec('ALTER TABLE articles ADD COLUMN league_id INTEGER NOT NULL DEFAULT 1');
+db.exec('CREATE INDEX IF NOT EXISTS idx_articles_league ON articles(league_id)');
 
 const UPLOAD_DIR = path.join(db.dataDir, 'blog-images');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -63,7 +66,7 @@ function pick(row, lang) {
   };
 }
 
-const publishedRows = () => db.prepare("SELECT * FROM articles WHERE status = 'PUBLISHED' ORDER BY published_at DESC, id DESC").all();
+const publishedRows = (leagueId = 1) => db.prepare("SELECT * FROM articles WHERE status = 'PUBLISHED' AND league_id = ? ORDER BY published_at DESC, id DESC").all(leagueId);
 
 // [{ code: '/article/<slug>', sk, en }] — the whole addresses of the published articles (src/seo.js adds them to its routes)
 function publishedAddresses() {
@@ -87,9 +90,9 @@ const dateText = (iso, lang) => {
 const urlOf = (code, lang) => seo().pageUrl(code, lang);
 
 // the list of the blog: a card per published article
-function listHtml(lang) {
+function listHtml(lang, leagueId = 1) {
   const t = TEXT[lang];
-  const cards = publishedRows().map((row) => {
+  const cards = publishedRows(leagueId).map((row) => {
     const a = pick(row, lang);
     const href = urlOf(`/article/${row.slug_sk}`, lang);
     const image = a.image ? `<a class="blog-card-img" href="${esc(href)}"><img src="${esc(a.image)}" alt="${esc(a.title)}" loading="lazy"></a>` : '';
@@ -105,8 +108,8 @@ function localizeLinks(html, lang) {
 }
 
 // one article: what render() needs — the title, the picture, the meta texts and the HTML of the page
-function articleEntity(slugSk, lang) {
-  const row = db.prepare("SELECT * FROM articles WHERE slug_sk = ? AND status = 'PUBLISHED'").get(String(slugSk));
+function articleEntity(slugSk, lang, leagueId = 1) {
+  const row = db.prepare("SELECT * FROM articles WHERE slug_sk = ? AND status = 'PUBLISHED' AND league_id = ?").get(String(slugSk), leagueId);
   if (!row) return null;
   const a = pick(row, lang);
   a.body = localizeLinks(a.body, lang);
@@ -172,15 +175,16 @@ function serialize(r) {
   };
 }
 
-const adminList = () => db.prepare('SELECT * FROM articles ORDER BY published_at DESC, id DESC').all().map(serialize);
+const adminList = (leagueId = 1) => db.prepare('SELECT * FROM articles WHERE league_id = ? ORDER BY published_at DESC, id DESC').all(leagueId).map(serialize);
+const leagueOf = (id) => { const r = db.prepare('SELECT league_id FROM articles WHERE id = ?').get(Number(id)); return r ? r.league_id : null; };
 const getById = (id) => { const r = db.prepare('SELECT * FROM articles WHERE id = ?').get(Number(id)); return r ? serialize(r) : null; };
 
-function create(body) {
+function create(body, leagueId = 1) {
   const r = check(body);
   if (r.error) return r;
   const v = r.values;
   const now = new Date().toISOString();
-  const info = db.prepare(`INSERT INTO articles (${COLUMNS.join(', ')}, modified_at) VALUES (${COLUMNS.map(() => '?').join(', ')}, ?)`).run(...COLUMNS.map((c) => v[c]), now);
+  const info = db.prepare(`INSERT INTO articles (${COLUMNS.join(', ')}, modified_at, league_id) VALUES (${COLUMNS.map(() => '?').join(', ')}, ?, ?)`).run(...COLUMNS.map((c) => v[c]), now, leagueId);
   seo().forgetRoutes();
   return { article: getById(info.lastInsertRowid) };
 }
@@ -220,5 +224,5 @@ function seedOldArticles() {
 }
 
 module.exports = {
-  UPLOAD_DIR, TEXT, publishedAddresses, addressTaken, listHtml, articleEntity, adminList, getById, create, update, remove, seedOldArticles, publishedRows, pick,
+  UPLOAD_DIR, TEXT, publishedAddresses, addressTaken, listHtml, articleEntity, adminList, leagueOf, getById, create, update, remove, seedOldArticles, publishedRows, pick,
 };

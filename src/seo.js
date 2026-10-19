@@ -701,7 +701,7 @@ function sitemapXml(origin, { national = false } = {}) {
   const day = (iso) => (iso ? String(iso).slice(0, 10) : undefined);
   if (!hidden('season')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND COALESCE(kind, 'LEAGUE') != 'TOURNAMENT'").all().forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`));
   if (!hidden('tournament')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND kind = 'TOURNAMENT'").all().forEach((r) => add(`/tournament/${encodeURIComponent(r.slug)}`));
-  if (!hidden('article')) blog.publishedRows().forEach((r) => add(`/article/${encodeURIComponent(r.slug_sk)}`, day(r.modified_at)));
+  if (!hidden('article')) blog.publishedRows(1).forEach((r) => add(`/article/${encodeURIComponent(r.slug_sk)}`, day(r.modified_at)));
   if (!hidden('court')) db.prepare('SELECT slug FROM venues WHERE slug IS NOT NULL').all().forEach((r) => add(`/courts/${encodeURIComponent(r.slug)}`));
   if (!hidden('player')) db.prepare('SELECT slug FROM players WHERE slug IS NOT NULL').all().forEach((r) => add(`/player/${encodeURIComponent(r.slug)}`));
   if (!hidden('bracket')) db.prepare('SELECT id, updated_at FROM brackets').all().forEach((r) => add(`/bracket/${r.id}`, day(r.updated_at)));

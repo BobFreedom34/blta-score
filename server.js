@@ -274,7 +274,7 @@ app.get('/robots.txt', (req, res) => {
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemapXml(publicOrigin(req), { national: national.isNationalHost(req) })));
 // the entity behind a template page: { name, image } or null
 const TEMPLATE_ENTITY = {
-  article: (slug, lang) => blog.articleEntity(slug, lang),
+  article: (slug, lang, leagueId) => blog.articleEntity(slug, lang, leagueId),
   player: (id) => {
     const p = db.prepare('SELECT name, photo_url FROM players WHERE slug = ? OR id = ?').get(id, /^\d+$/.test(id) ? Number(id) : -1);
     return p ? { name: p.name, image: p.photo_url || '' } : null;
@@ -355,17 +355,20 @@ app.use((req, res, next) => {
     try {
       let param = hit.param;
       try { param = decodeURIComponent(param); } catch { /* keep it as it is */ }
-      entity = TEMPLATE_ENTITY[hit.key](param, hit.lang);
+      entity = TEMPLATE_ENTITY[hit.key](param, hit.lang, req.league.id);
+      // the texts of a city's blog speak of the city, not of BLTA
+      if (entity && entity.html && req.cityBase) entity.html = entity.html.replace(/BLTA/g, req.league.brand_name || req.league.name);
     } catch (err) { console.error('SEO lookup failed', hit.key, err); }
     // an article that does not exist (or is a draft) is a real 404; the other pages show their own "not found"
     if (!entity) return hit.key === 'article' ? pageNotFound(res) : res.sendFile(path.join(PUBLIC_DIR, page.file));
   } else if (hit.key === 'blog') {
-    entity = { html: blog.listHtml(hit.lang) };
+    entity = { html: blog.listHtml(hit.lang, req.league.id) };
+    if (req.cityBase) entity.html = entity.html.replace(/BLTA/g, req.league.brand_name || req.league.name);
   }
   try {
     const html = seo.render(hit.key, { origin: publicOrigin(req), canonical: hit.canonical, lang: hit.lang, entity, siteName: req.cityBase ? (req.league.brand_name || req.league.name) : undefined });
     // the propozície text comes from Backend > Rules
-    return res.type('html').send(hit.key === 'propozicie' ? rules.injectInto(html) : html);
+    return res.type('html').send(hit.key === 'propozicie' ? rules.injectInto(html, req.league.id) : html);
   } catch (err) {
     console.error('SEO page failed', hit.key, err);
     return next();

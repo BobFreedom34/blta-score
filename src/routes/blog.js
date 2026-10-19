@@ -6,8 +6,9 @@ const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
-const { requireSuperAdmin } = require('../auth');
+const { requireAdmin } = require('../auth');
 const blog = require('../blog');
+const leagues = require('../leagues');
 
 const router = express.Router();
 
@@ -21,39 +22,43 @@ const upload = multer({
 // public: the published articles of one language, newest first
 router.get('/', (req, res) => {
   const lang = req.query.lang === 'en' ? 'en' : 'sk';
-  res.json(blog.publishedRows().map((row) => {
+  res.json(blog.publishedRows(leagues.actingIdOf(req)).map((row) => {
     const a = blog.pick(row, lang);
     return { slug: a.slug, title: a.title, excerpt: a.excerpt, image: a.image, publishedAt: a.published };
   }));
 });
 
-router.get('/admin', requireSuperAdmin, (req, res) => res.json(blog.adminList()));
+// the articles of the city the admin works on; an article of another city is not found
+const mine = (req, id) => blog.leagueOf(id) === leagues.actingIdOf(req);
 
-router.get('/admin/:id', requireSuperAdmin, (req, res) => {
-  const article = blog.getById(req.params.id);
+router.get('/admin', requireAdmin, (req, res) => res.json(blog.adminList(leagues.actingIdOf(req))));
+
+router.get('/admin/:id', requireAdmin, (req, res) => {
+  const article = mine(req, req.params.id) ? blog.getById(req.params.id) : null;
   if (!article) return res.status(404).json({ error: 'Article not found' });
   res.json(article);
 });
 
-router.post('/admin', requireSuperAdmin, (req, res) => {
-  const r = blog.create(req.body);
+router.post('/admin', requireAdmin, (req, res) => {
+  const r = blog.create(req.body, leagues.actingIdOf(req));
   if (r.error) return res.status(400).json({ error: r.error });
   res.status(201).json(r.article);
 });
 
-router.put('/admin/:id', requireSuperAdmin, (req, res) => {
+router.put('/admin/:id', requireAdmin, (req, res) => {
+  if (!mine(req, req.params.id)) return res.status(404).json({ error: 'Article not found' });
   const r = blog.update(req.params.id, req.body);
   if (r.error) return res.status(r.status || 400).json({ error: r.error });
   res.json(r.article);
 });
 
-router.delete('/admin/:id', requireSuperAdmin, (req, res) => {
-  if (!blog.remove(req.params.id)) return res.status(404).json({ error: 'Article not found' });
+router.delete('/admin/:id', requireAdmin, (req, res) => {
+  if (!mine(req, req.params.id) || !blog.remove(req.params.id)) return res.status(404).json({ error: 'Article not found' });
   res.json({ ok: true });
 });
 
 // a picture for an article (the featured picture, or one inside the text): kept on the persistent disk, shown at /blog-images/<file>
-router.post('/upload', requireSuperAdmin, (req, res) => {
+router.post('/upload', requireAdmin, (req, res) => {
   upload.single('image')(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'The picture must be under 6 MB' : 'Could not process the uploaded file' });
     if (!req.file) return res.status(400).json({ error: 'Upload a PNG, JPG, WebP or GIF picture' });
