@@ -58,6 +58,10 @@ function guard(req, res, next) {
   if (OPEN_AREAS.has(area)) return next();
   if (!CITY_AREAS.has(area)) return res.status(403).json({ error: 'Only the super admin can change this' });
 
+  // from a public page the admin changes the city of that page: his own only
+  if (req.get('X-Backend') !== '1' && req.league && req.league.id !== me.leagueId) {
+    return res.status(403).json({ error: 'This page belongs to another city. Work on your own city (its address slta.sk/<city> or the backend).' });
+  }
   const owner = leagueOfAddress(seg);
   if (owner !== undefined && owner !== null && owner !== me.leagueId) {
     return res.status(403).json({ error: 'This belongs to another city' });

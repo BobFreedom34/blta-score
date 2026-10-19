@@ -53,18 +53,23 @@ function attach(req, res, next) {
   next();
 }
 
-// The city a request works on: for an admin the city he runs (a city admin: his own; the super admin: the one picked in the backend, else
-// Bratislava), for everybody else the city of the domain.
+// The city a request works on. A public page always shows the city of its address (blta.sk: Bratislava, slta.sk/kosice: Košice), whoever
+// looks at it, an admin included. Only the pages of the backend send the header X-Backend: 1 (see public/js/common.js), and then the admin
+// works on his city: a city admin on his own, the super admin on the one picked in the backend (else Bratislava). A city admin who changes
+// something on a public page of another city is refused (src/cityScope.js).
 const ACTING_COOKIE = 'blta_city';
 function actingIdOf(req) {
+  const domainCity = (req.league && req.league.id) || DEFAULT_LEAGUE_ID;
   const me = auth.adminSession(req);
-  if (me && me.role === 'CITY') return me.leagueId;
-  if (me && me.role === 'SUPER') {
+  if (!me) return domainCity;
+  const backend = req.get && req.get('X-Backend') === '1';
+  if (me.role === 'CITY') return backend ? me.leagueId : domainCity;
+  if (backend) {
     const picked = Number(req.cookies && req.cookies[ACTING_COOKIE]);
     if (Number.isInteger(picked) && picked > 0 && byId(picked)) return picked;
     return DEFAULT_LEAGUE_ID;
   }
-  return (req.league && req.league.id) || DEFAULT_LEAGUE_ID;
+  return domainCity;
 }
 
 // the running season of a city, else the nearest coming one

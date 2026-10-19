@@ -33,7 +33,7 @@ function as(host, url, { method = 'GET', body, headers = {} } = {}) {
   });
 }
 const JSONH = { 'Content-Type': 'application/json' };
-const local = (m, u, b, cookie) => as('localhost', u, { method: m, body: b, headers: { ...JSONH, ...(cookie ? { Cookie: cookie } : {}) } });
+const local = (m, u, b, cookie) => as('localhost', u, { method: m, body: b, headers: { ...JSONH, ...(cookie ? { Cookie: cookie, 'X-Backend': '1' } : {}) } });
 const nat = (u, cookie, method = 'GET', body) => as('slta.localhost', u, { method, body, headers: { ...JSONH, ...(cookie ? { Cookie: cookie } : {}) } });
 const cookieOf = (r) => (r.headers['set-cookie'] || []).map((c) => c.split(';')[0]).join('; ');
 

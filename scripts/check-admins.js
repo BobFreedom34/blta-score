@@ -21,14 +21,18 @@ let cityCookie = '';
 let kosiceId = 0;
 let bratislavaSeason = 0;
 
-async function call(cookie, method, url, body) {
-  const res = await fetch(base + url, { method, headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
+async function call(cookie, method, url, body, extra = {}) {
+  const res = await fetch(base + url, { method, headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}), ...extra }, body: body === undefined ? undefined : JSON.stringify(body) });
   let data = null;
   try { data = await res.json(); } catch { /* no body */ }
   return { status: res.status, data, headers: res.headers };
 }
 const asSuper = (m, u, b) => call(superCookie, m, u, b);
-const asCity = (m, u, b) => call(cityCookie, m, u, b);
+// the pages of the backend say so (X-Backend: 1): only then does an admin work on his city
+const BACKEND = { 'X-Backend': '1' };
+const asCity = (m, u, b) => call(cityCookie, m, u, b, BACKEND);
+const asCityPublic = (m, u, b) => call(cityCookie, m, u, b);
+const asSuperBackend = (m, u, b, cookie) => call(cookie || superCookie, m, u, b, BACKEND);
 const cookieOf = (res) => res.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
 
 test('the super admin makes a city and its admin; the password is never given back', async () => {
@@ -135,13 +139,14 @@ test('the super admin picks the city he works on, and sees and edits any of them
   assert.strictEqual(pick.status, 200);
   assert.strictEqual(pick.data.acting.id, kosiceId);
   const withCity = `${superCookie}; ${cookieOf({ headers: pick.headers })}`;
-  const list = await call(withCity, 'GET', '/api/seasons');
+  assert.ok((await call(withCity, 'GET', '/api/seasons')).data.some((s) => s.name === 'Bratislava Jar 2027'), 'on a public page he sees the city of the address, not the one he picked');
+  const list = await asSuperBackend('GET', '/api/seasons', undefined, withCity);
   assert.deepStrictEqual(list.data.map((s) => s.name), ['Kosice Jar 2027'], 'his lists follow the city he picked');
-  const made = await call(withCity, 'POST', '/api/venues', { name: 'Second Kosice Court' });
+  const made = await asSuperBackend('POST', '/api/venues', { name: 'Second Kosice Court' }, withCity);
   assert.strictEqual(made.status, 201);
   assert.ok((await asCity('GET', '/api/venues')).data.some((v) => v.name === 'Second Kosice Court'), 'a thing made there goes to that city');
   assert.ok(!(await asSuper('GET', '/api/venues')).data.some((v) => v.name === 'Second Kosice Court'), 'and not to the first');
-  assert.strictEqual((await call(withCity, 'PATCH', `/api/seasons/${list.data[0].id}`, { name: 'Kosice Jar 2027 (edited)' })).status, 200, 'he may edit a city he picked');
+  assert.strictEqual((await asSuperBackend('PATCH', `/api/seasons/${list.data[0].id}`, { name: 'Kosice Jar 2027 (edited)' }, withCity)).status, 200, 'he may edit a city he picked');
   assert.strictEqual((await asSuper('POST', '/api/admin/acting-city', { leagueId: 99999 })).status, 404);
 });
 

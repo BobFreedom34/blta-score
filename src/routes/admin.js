@@ -8,10 +8,10 @@ const leagues = require('../leagues');
 const router = express.Router();
 
 // Who is logged in as an admin: the super admin (all the cities; picks the one worked on) or the admin of one city
-function sessionInfo(req) {
+function sessionInfo(req, actingId) {
   const me = auth.adminSession(req);
   if (!me) return { isAdmin: false };
-  const acting = leagues.byId(leagues.actingIdOf(req));
+  const acting = leagues.byId(actingId || leagues.actingIdOf(req));
   const out = {
     isAdmin: true,
     role: me.role,
@@ -31,8 +31,7 @@ router.post('/acting-city', auth.requireSuperAdmin, (req, res) => {
   const city = leagues.byId(Number(req.body && req.body.leagueId));
   if (!city) return res.status(404).json({ error: 'City not found' });
   res.cookie(leagues.ACTING_COOKIE, String(city.id), { httpOnly: true, sameSite: 'lax', secure: (process.env.PUBLIC_URL || '').startsWith('https://'), maxAge: 365 * 24 * 60 * 60 * 1000, path: '/' });
-  req.cookies = { ...(req.cookies || {}), [leagues.ACTING_COOKIE]: String(city.id) };
-  res.json(sessionInfo(req));
+  res.json(sessionInfo(req, city.id));
 });
 
 // at most 8 wrong passwords in 10 minutes from one address

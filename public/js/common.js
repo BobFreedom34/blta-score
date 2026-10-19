@@ -3187,6 +3187,19 @@ if (!document.body.classList.contains('embed')) {
   });
 }
 
+// The pages of the backend tell the server they are the backend (X-Backend: 1): only then does an admin work on "his" city (the one picked in
+// the "Working on" bar, or his own); on a public page every list shows the city of the address, an admin included.
+if (/(^|\/)(admin|[a-z-]+-admin|login-history)\/?$/.test(location.pathname)) {
+  const plainFetch = window.fetch;
+  window.fetch = function (input, init) {
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    if (!/\/api\//.test(url)) return plainFetch.call(this, input, init);
+    const headers = new Headers((init && init.headers) || (input && input.headers) || {});
+    headers.set('X-Backend', '1');
+    return plainFetch.call(this, input, { ...(init || {}), headers });
+  };
+}
+
 // The backend is for two kinds of admin. The super admin sees every tab, gets the Admins tab and a picker of the city he works on; the admin of
 // a city sees only the tabs of his city (the settings of the whole site are closed to him on the server too, see src/cityScope.js).
 const SUPER_ONLY_TABS = ['/badges-admin', '/leagues-admin', '/admins-admin', '/reservations-admin', '/blog-admin', '/seo-admin', '/rules-admin', '/changelog-admin', '/login-history'];
