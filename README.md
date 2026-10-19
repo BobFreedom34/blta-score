@@ -364,7 +364,9 @@ the BLTA logo and the court booking button (the courts of the booking are Bratis
 city of the request with `leagues.actingIdOf(req)`. `node scripts/check-city-pages.js` tests it.
 The rankings tables use the shared points rules but show only the city's own players (ranks are counted again).
 The blog (Backend > Blog) and the rules page (Backend > Rules) are per city too: a city starts with none and writes its own;
-a city admin manages them. The SEO (Backend > SEO: titles, descriptions, link previews, noindex) and the sitemap are per city too
+a city admin manages them. The Info window of the home page (the "O nás – info o lige" button; Backend > Info) is per city: every
+city writes its own tabs in Slovak and English; Bratislava keeps the texts that came with the site until it edits a tab, another city
+shows only the tabs it has written (no button at all while it has written none). The SEO (Backend > SEO: titles, descriptions, link previews, noindex) and the sitemap are per city too
 (`slta.sk/<slug>/sitemap.xml`, announced in robots.txt; a city is hidden from search engines until it is Active); the addresses
 (slugs) stay the same for every city and belong to the super admin. Not per city yet: badges, the court reservations, a logo of its own for a city.
 

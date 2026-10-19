@@ -192,6 +192,31 @@ test('the SEO is the city\'s own: texts, noindex, sitemap; the addresses are sha
   assert.strictEqual((await local('GET', '/rankings')).status, 200, 'the address of the first city is as before');
 });
 
+test('the Info window of the home page is the city\'s own', async () => {
+  const pick = await local('POST', '/api/admin/acting-city', { leagueId: cityId }, superCookie);
+  const withCity = `${superCookie}; ${cookieOf(pick)}`;
+  // nothing written: a city has no window, the first city keeps the texts that came with the site
+  assert.deepStrictEqual((await nat('/kosice/api/about')).json, { useDefaults: false, tabs: {} });
+  assert.strictEqual((await local('GET', '/api/about')).json.useDefaults, true);
+  // the city writes its first tab (the text is cleaned: no script, no event handler)
+  const body = { sk: { title: 'Co je SLTA Kosice', html: '<p>Liga v Kosiciach</p><script>alert(1)</script><p onclick="x()">Druhy</p>' }, en: { title: 'What is SLTA Kosice', html: '<p>A league in Kosice</p>' } };
+  const saved = await local('PUT', '/api/about/us', body, withCity);
+  assert.strictEqual(saved.status, 200, JSON.stringify(saved.json));
+  const city = (await nat('/kosice/api/about')).json;
+  assert.deepStrictEqual(Object.keys(city.tabs), ['us']);
+  assert.strictEqual(city.tabs.us.sk.title, 'Co je SLTA Kosice');
+  assert.ok(city.tabs.us.sk.html.includes('Liga v Kosiciach') && !/<script|onclick/.test(city.tabs.us.sk.html), 'cleaned: ' + city.tabs.us.sk.html);
+  assert.strictEqual(city.tabs.us.en.html, '<p>A league in Kosice</p>');
+  // the first city is untouched
+  assert.deepStrictEqual((await local('GET', '/api/about')).json.tabs, {});
+  assert.strictEqual((await local('PUT', '/api/about/nonsense', body, withCity)).status, 400);
+  assert.strictEqual((await local('PUT', '/api/about/us', body)).status, 401, 'a visitor cannot write');
+  // removing it brings the city back to no window
+  assert.strictEqual((await local('DELETE', '/api/about/us', undefined, withCity)).status, 200);
+  assert.deepStrictEqual((await nat('/kosice/api/about')).json.tabs, {});
+  assert.strictEqual((await local('PUT', '/api/about/us', body, withCity)).status, 200);
+});
+
 test('the admin of the city works on the national address too', async () => {
   const made = await local('POST', '/api/city-admins', { name: 'Martin K', email: 'martin@example.com', leagueId: cityId, password: 'long-enough-1' }, superCookie);
   assert.strictEqual(made.status, 201);
@@ -206,6 +231,9 @@ test('the admin of the city works on the national address too', async () => {
   assert.ok((await nat('/kosice/api/seasons')).json.some((s) => s.name === 'Kosice Leto 2027'));
   // and writes the blog and the rules of the city, but not of the other one
   assert.strictEqual((await nat('/kosice/api/articles/admin', cookie)).status, 200);
+  assert.strictEqual((await nat('/kosice/api/about/tour', cookie, 'PUT', { sk: { title: 'Turnaje', html: '<p>x</p>' }, en: { title: '', html: '' } })).status, 200, 'and the Info window');
+  assert.deepStrictEqual(Object.keys((await nat('/kosice/api/about')).json.tabs).sort(), ['tour', 'us']);
+  assert.deepStrictEqual(Object.keys((await local('GET', '/api/about')).json.tabs), [], 'not the first city\'s');
   assert.strictEqual((await nat('/kosice/api/rules', cookie, 'POST', { title: 'Druhe pravidlo', html: '<p>2</p>' })).status, 201);
   assert.strictEqual((await local('GET', '/api/city-admins', undefined, cookie)).status, 403);
   assert.ok(!(await local('GET', '/api/seasons')).json.some((s) => s.name === 'Kosice Leto 2027'));

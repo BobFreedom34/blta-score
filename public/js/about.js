@@ -76,19 +76,40 @@ function aboutPanel(tab) {
     ${aboutCta('/harmonogram', 'about.tour.cta')}`;
 }
 
-function openAbout(startTab) {
+// What the city of the page has written for the window (Backend > Info), asked for once. The first city shows the texts that came with the
+// site for a tab it has not written; another city shows only the tabs it has written.
+let aboutData = null;
+async function aboutTexts() {
+  if (!aboutData) {
+    try { aboutData = await api('/about'); } catch { aboutData = { useDefaults: !window.CITY, tabs: {} }; }
+  }
+  return aboutData;
+}
+const brandOf = (text) => (window.CITY ? String(text).replace(/BLTA/g, window.CITY.brand) : text);
+
+// the window shows the saved text of a tab in the language in use (the other language when this one is empty)
+function savedPanel(tab, saved) {
+  const own = saved && (saved[currentLang] && saved[currentLang].html ? saved[currentLang] : (saved[currentLang === 'en' ? 'sk' : 'en'] || null));
+  if (!own || !own.html) return null;
+  return `${own.title ? `<h3 class="about-h">${escapeHtml(own.title)}</h3>` : ''}<div class="about-html">${own.html}</div>`;
+}
+
+async function openAbout(startTab) {
   if (document.getElementById('about-modal')) return;
+  const data = await aboutTexts();
+  const tabs = ABOUT_TABS.filter((k) => data.useDefaults || (data.tabs[k] && ['sk', 'en'].some((l) => data.tabs[k][l] && data.tabs[k][l].html)));
+  if (!tabs.length || document.getElementById('about-modal')) return;
   const wrap = document.createElement('div');
   wrap.className = 'about-backdrop';
   wrap.id = 'about-modal';
   wrap.innerHTML = `
     <div class="about-modal" role="dialog" aria-modal="true" aria-labelledby="about-title">
       <div class="about-head">
-        <h2 id="about-title">${escapeHtml(t('about.title'))}</h2>
+        <h2 id="about-title">${escapeHtml(brandOf(t('about.title')))}</h2>
         <button type="button" class="about-x" data-close aria-label="${escapeHtml(t('about.close'))}">&times;</button>
       </div>
       <div class="about-tabs" role="tablist">
-        ${ABOUT_TABS.map((k) => `<button type="button" role="tab" class="about-tab" data-tab="${k}">${aboutIcon(k)}<span>${escapeHtml(t(`about.tab.${k}`))}</span></button>`).join('')}
+        ${tabs.map((k) => `<button type="button" role="tab" class="about-tab" data-tab="${k}">${aboutIcon(k)}<span>${escapeHtml(t(`about.tab.${k}`))}</span></button>`).join('')}
       </div>
       <div class="about-body" id="about-body" role="tabpanel"></div>
     </div>`;
@@ -102,7 +123,7 @@ function openAbout(startTab) {
       b.setAttribute('aria-selected', on ? 'true' : 'false');
       if (on) b.parentElement.scrollTo({ left: b.offsetLeft - (b.parentElement.clientWidth - b.offsetWidth) / 2, behavior: 'smooth' });
     });
-    body.innerHTML = aboutPanel(tab);
+    body.innerHTML = savedPanel(tab, data.tabs[tab]) || aboutPanel(tab);
     body.scrollTop = 0;
   };
   const close = () => {
@@ -117,10 +138,20 @@ function openAbout(startTab) {
     const tab = e.target.closest('.about-tab');
     if (tab) show(tab.dataset.tab);
   });
-  show(ABOUT_TABS.includes(startTab) ? startTab : 'us');
+  show(tabs.includes(startTab) ? startTab : tabs[0]);
   wrap.querySelector('.about-tab.on').focus();
 }
 
 document.addEventListener('click', (e) => {
   if (e.target.closest('#home-about-btn')) openAbout('us');
 });
+
+// a city that has written nothing has no window: its button is not shown
+if (window.CITY) {
+  const hideWhenEmpty = async () => {
+    const data = await aboutTexts();
+    const any = Object.keys(data.tabs).some((k) => ['sk', 'en'].some((l) => data.tabs[k][l] && data.tabs[k][l].html));
+    if (!any) document.querySelectorAll('#home-about-btn').forEach((b) => { b.style.display = 'none'; });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hideWhenEmpty); else hideWhenEmpty();
+}

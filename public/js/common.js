@@ -3212,7 +3212,17 @@ async function setUpAdminTabs() {
   bars.forEach((bar) => {
     if (info.role === 'CITY') {
       bar.querySelectorAll('a.tab').forEach((a) => { if (SUPER_ONLY_TABS.includes(a.getAttribute('href'))) a.style.display = 'none'; });
-    } else if (!bar.querySelector('a[href="/admins-admin"]')) {
+    }
+    // the window of the home page is written by every admin, for the city he works on
+    if (!bar.querySelector('a[href="/about-admin"]')) {
+      const rules = bar.querySelector('a[href="/rules-admin"]') || bar.querySelector('a[href="/seo-admin"]');
+      const link = document.createElement('a');
+      link.href = '/about-admin';
+      link.className = `tab${location.pathname.endsWith('/about-admin') ? ' active' : ''}`;
+      link.textContent = 'Info';
+      if (rules) rules.after(link); else bar.appendChild(link);
+    }
+    if (info.role === 'SUPER' && !bar.querySelector('a[href="/admins-admin"]')) {
       const cities = bar.querySelector('a[href="/leagues-admin"]');
       const link = document.createElement('a');
       link.href = '/admins-admin';

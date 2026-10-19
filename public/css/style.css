@@ -5179,3 +5179,10 @@ body.about-open { overflow: hidden; }
 .admin-city-bar strong { color: var(--orange); font-size: 15px; }
 .admin-city-bar small { color: var(--gray-dim); }
 .admin-city-bar option { color: #fff; background: #1b1b1f; }
+
+/* the window of the home page: a text the city wrote itself */
+.about-html { color: #c9ccd3; }
+.about-html > * + * { margin-top: 12px; }
+.about-html ul, .about-html ol { margin: 0 0 14px 22px; padding: 0; color: #c9ccd3; line-height: 1.65; }
+.about-html h3 { margin: 18px 0 6px; font-size: 16px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--white); }
+.about-html strong { color: var(--white); }
