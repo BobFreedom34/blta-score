@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { requireAdmin } = require('../auth');
+const { requireSuperAdmin } = require('../auth');
 const rankingPoints = require('../rankingPoints');
 const { getMoves, getHistory } = require('../rankingSnapshots');
 
@@ -153,7 +153,7 @@ router.get('/history/:tableKey/:name', (req, res) => {
 // look at one player) it compares what the league rules say a match is worth with what the points record (ranking_awards, BLTA table) holds.
 // `status`: OK = the record has exactly the rules' points for both players, MISSING = nothing recorded for the match, DIFFERENT = something else.
 // `?problems=1` lists only the matches that are not OK. Read-only: nothing is changed.
-router.get('/audit', requireAdmin, (req, res) => {
+router.get('/audit', requireSuperAdmin, (req, res) => {
   const now = new Date();
   const monthArg = /^\d{4}-\d{2}$/.test(String(req.query.month || '')) ? String(req.query.month) : null;
   const last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
@@ -192,7 +192,7 @@ router.get('/audit', requireAdmin, (req, res) => {
 
 // Admin-only: set one player's points in one table (the row is created when the player is not in that table yet — this is how
 // bonus points and tournament points are entered). An empty value puts the player back to "no points yet".
-router.put('/points/:tableKey/:name', requireAdmin, (req, res) => {
+router.put('/points/:tableKey/:name', requireSuperAdmin, (req, res) => {
   const { tableKey } = req.params;
   const name = decodeURIComponent(req.params.name);
 

@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
 const db = require('../db');
+const leagues = require('../leagues');
 const { requireAdmin, isAdmin, isPlayer, getPlayerId, stripPrivateFields } = require('../auth');
 
 const nameMatch = require('../nameMatch');
@@ -93,7 +94,7 @@ function findPlayerByIdOrSlug(idOrSlug) {
 
 router.get('/', (req, res) => {
   const q = (req.query.q || '').trim();
-  let rows = db.prepare('SELECT * FROM players ORDER BY name COLLATE NOCASE').all();
+  let rows = db.prepare('SELECT * FROM players WHERE league_id = ? ORDER BY name COLLATE NOCASE').all(leagues.actingIdOf(req));
   // Filtered in JS rather than via SQL LIKE — SQLite's LIKE only case-folds
   // plain ASCII letters, so a query like "šar" (lowercase) would silently
   // fail to match "Šarudy" (capital Š) even though it's clearly the same
@@ -124,13 +125,14 @@ router.post('/', requireAdmin, (req, res) => {
   if (!name) return res.status(400).json({ error: 'Name is required' });
   if (name.length > 60) return res.status(400).json({ error: 'Name is too long' });
 
-  const existing = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE').get(name);
+  const leagueId = leagues.actingIdOf(req);
+  const existing = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE AND league_id = ?').get(name, leagueId);
   if (existing) return res.status(200).json(stripPrivateFields(existing, req));
-  const twin = nameMatch.findSimilar(name, db.prepare('SELECT id, name FROM players').all()).exact;
+  const twin = nameMatch.findSimilar(name, db.prepare('SELECT id, name FROM players WHERE league_id = ?').all(leagueId)).exact;
   if (twin) return res.status(200).json(stripPrivateFields(db.prepare('SELECT * FROM players WHERE id = ?').get(twin.id), req));
 
   const slug = uniqueSlugFor(name, null);
-  const info = db.prepare('INSERT INTO players (name, slug) VALUES (?, ?)').run(name, slug);
+  const info = db.prepare('INSERT INTO players (name, slug, league_id) VALUES (?, ?, ?)').run(name, slug, leagueId);
   const player = db.prepare('SELECT * FROM players WHERE id = ?').get(info.lastInsertRowid);
   res.status(201).json(stripPrivateFields(player, req));
 });

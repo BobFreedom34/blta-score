@@ -29,6 +29,8 @@ const courtIQRouter = require('./src/routes/courtiq');
 const bracketsRouter = require('./src/routes/brackets');
 const venuesRouter = require('./src/routes/venues');
 const leaguesRouter = require('./src/routes/leagues');
+const cityAdminsRouter = require('./src/routes/cityAdmins');
+const cityScope = require('./src/cityScope');
 const leagues = require('./src/leagues');
 const national = require('./src/national');
 const seasonsRouter = require('./src/routes/seasons');
@@ -164,6 +166,8 @@ app.use(express.json());
 app.use(cookieParser(process.env.SESSION_SECRET || 'dev-only-insecure-secret'));
 // the city of the request on req.league (an own domain such as blta.sk; otherwise Bratislava)
 app.use(leagues.attach);
+// a city admin may touch only the city he runs (see src/cityScope.js)
+app.use('/api', cityScope.guard);
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 // The old addresses of the site (REDIRECT_HOSTS: a comma list such as score.blta.sk,blta-score.onrender.com) send every page request
@@ -348,6 +352,7 @@ app.use('/api/courtiq', courtIQRouter);
 app.use('/api/brackets', bracketsRouter);
 app.use('/api/venues', venuesRouter);
 app.use('/api/leagues', leaguesRouter);
+app.use('/api/city-admins', cityAdminsRouter);
 app.use('/api/seasons', seasonsRouter);
 app.use('/api/invites', invitesRouter);
 app.use('/api/highlights', highlightsRouter);

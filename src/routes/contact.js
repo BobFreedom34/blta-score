@@ -2,7 +2,7 @@
 // Menu (the "Contact window" card), stored as JSON in site_settings. The first values are the ones of blta.sk.
 const express = require('express');
 const db = require('../db');
-const { requireAdmin } = require('../auth');
+const { requireSuperAdmin } = require('../auth');
 
 const router = express.Router();
 
@@ -47,7 +47,7 @@ router.get('/', (req, res) => {
   res.json(read());
 });
 
-router.put('/', requireAdmin, (req, res) => {
+router.put('/', requireSuperAdmin, (req, res) => {
   const body = req.body || {};
   const next = {};
   for (const [key, [max, kind]] of Object.entries(FIELDS)) {

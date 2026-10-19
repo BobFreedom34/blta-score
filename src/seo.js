@@ -724,6 +724,7 @@ function robotsTxt(origin) {
     'Disallow: /badges-admin',
     'Disallow: /bracket-admin',
     'Disallow: /venues-admin',
+    'Disallow: /admins-admin',
     'Disallow: /seasons-admin',
     'Disallow: /tournaments-admin',
     'Disallow: /changelog-admin',

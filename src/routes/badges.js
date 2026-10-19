@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
 const db = require('../db');
-const { requireAdmin } = require('../auth');
+const { requireSuperAdmin } = require('../auth');
 
 const router = express.Router();
 
@@ -95,7 +95,7 @@ router.get('/', (req, res) => {
   res.json(rows.map(serialize));
 });
 
-router.post('/', requireAdmin, (req, res) => {
+router.post('/', requireSuperAdmin, (req, res) => {
   const parsed = validateBody(req.body);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const info = db.prepare(
@@ -104,7 +104,7 @@ router.post('/', requireAdmin, (req, res) => {
   res.status(201).json(serialize(db.prepare('SELECT * FROM badge_definitions WHERE id = ?').get(info.lastInsertRowid)));
 });
 
-router.patch('/:id', requireAdmin, (req, res) => {
+router.patch('/:id', requireSuperAdmin, (req, res) => {
   const badge = db.prepare('SELECT * FROM badge_definitions WHERE id = ?').get(req.params.id);
   if (!badge) return res.status(404).json({ error: 'Badge not found' });
   const parsed = validateBody(req.body, badge.icon);
@@ -131,7 +131,7 @@ function deleteIconFile(icon) {
 // middleware manually (rather than listing it declaratively) lets a bad
 // upload (oversized, wrong type) come back as a normal JSON error instead
 // of falling through to Express's default HTML error page.
-router.post('/:id/icon', requireAdmin, (req, res) => {
+router.post('/:id/icon', requireSuperAdmin, (req, res) => {
   upload.single('icon')(req, res, (err) => {
     if (err) {
       const message = err.code === 'LIMIT_FILE_SIZE' ? 'Image must be under 2MB' : 'Could not process the uploaded file';
@@ -150,7 +150,7 @@ router.post('/:id/icon', requireAdmin, (req, res) => {
   });
 });
 
-router.delete('/:id', requireAdmin, (req, res) => {
+router.delete('/:id', requireSuperAdmin, (req, res) => {
   const badge = db.prepare('SELECT * FROM badge_definitions WHERE id = ?').get(req.params.id);
   if (!badge) return res.status(404).json({ error: 'Badge not found' });
   deleteIconFile(badge.icon);

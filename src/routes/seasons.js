@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db');
+const leagues = require('../leagues');
 const { requireAdmin } = require('../auth');
 const { computeGroupStandings } = require('../standings');
 const { FROZEN } = require('../frozenStandings');
@@ -199,7 +200,7 @@ router.delete('/:id/hero', requireAdmin, (req, res) => {
 
 // Public: the match page and its admin editor read this (newest season first).
 router.get('/', (req, res) => {
-  const rows = db.prepare('SELECT * FROM seasons ORDER BY COALESCE(start_date, \'\') DESC, id DESC').all();
+  const rows = db.prepare('SELECT * FROM seasons WHERE league_id = ? ORDER BY COALESCE(start_date, \'\') DESC, id DESC').all(leagues.actingIdOf(req));
   res.json(rows.map(serializeSeason));
 });
 
@@ -281,7 +282,7 @@ router.post('/:id/registrations', async (req, res) => {
   // like after the app's own registration. An existing roster name that has no phone yet is claimed the same way. An existing player who
   // already has a phone is never touched or logged in (anybody can type a name). A phone that already belongs to another player stops the
   // account (the entry is still saved, and the e-mail to the admin says so).
-  const account = openAccount(req, res, player, { name, phone, email });
+  const account = openAccount(req, res, player, { name, phone, email, leagueId: season.league_id });
   if (account.player) player = account.player;
 
   db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, note) VALUES (?, ?, ?, ?, ?, ?, ?)')
@@ -299,7 +300,7 @@ router.post('/:id/registrations', async (req, res) => {
 //   exists    the player already has an account: nothing changes, nobody is logged in
 //   phoneTaken a new name, but the phone belongs to another player: no account (holder = that player's name)
 //   none      the phone is not one an account can be made with
-function openAccount(req, res, player, { name, phone, email }) {
+function openAccount(req, res, player, { name, phone, email, leagueId = leagues.DEFAULT_LEAGUE_ID }) {
   let digits = String(phone || '').replace(/[^\d+]/g, '');
   if (/^[1-9]\d{8}$/.test(digits)) digits = `0${digits}`; // 903111222 -> 0903111222
   const validPhone = /^0\d{9}$/.test(digits) || /^\+\d{8,15}$/.test(digits);
@@ -317,7 +318,7 @@ function openAccount(req, res, player, { name, phone, email }) {
   const holder = playerRoutes.findPlayerByPhone(digits);
   if (holder) return { status: 'phoneTaken', holder: holder.name };
   const slug = playerRoutes.uniqueSlugFor(name);
-  const info = db.prepare('INSERT INTO players (name, slug, phone, email) VALUES (?, ?, ?, ?)').run(name, slug, digits, email.slice(0, 100));
+  const info = db.prepare('INSERT INTO players (name, slug, phone, email, league_id) VALUES (?, ?, ?, ?, ?)').run(name, slug, digits, email.slice(0, 100), leagueId);
   const created = { id: Number(info.lastInsertRowid), name };
   creditInviter(req, res, created.id); // a new player who came through somebody's invite link
   auth.logInPlayer(res, created.id);
@@ -658,9 +659,10 @@ router.post('/', requireAdmin, (req, res) => {
   const venue = typeof req.body.venue === 'string' ? req.body.venue.trim() : '';
   if (venue.length > 200) return res.status(400).json({ error: 'Venue is too long (max 200 characters)' });
   const slug = uniqueSlug(slugify(name));
-  const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM seasons').get().m;
-  const info = db.prepare('INSERT INTO seasons (name, slug, start_date, end_date, sort_order, kind, venue, categories) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-    .run(name, slug, start.value, end.value, maxOrder + 1, kind, venue || null, categoriesToStore(req.body.categories));
+  const leagueId = leagues.actingIdOf(req);
+  const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM seasons WHERE league_id = ?').get(leagueId).m;
+  const info = db.prepare('INSERT INTO seasons (name, slug, start_date, end_date, sort_order, kind, venue, categories, league_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(name, slug, start.value, end.value, maxOrder + 1, kind, venue || null, categoriesToStore(req.body.categories), leagueId);
   res.status(201).json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(info.lastInsertRowid))));
 });
 
@@ -824,21 +826,21 @@ const MATCH_FORMAT_DEFAULT = 'BO3_STB';
 // The player a request means, for adding to a group: by id, or by typed name with the same protection as when a match
 // is created (the same name written differently is the same player; a similar name asks which one is meant; a name
 // nobody has needs confirmNew: true to create a new player). Returns { player } or { conflict } (HTTP 409 body).
-function resolveMemberPlayer(body) {
+function resolveMemberPlayer(body, leagueId = leagues.DEFAULT_LEAGUE_ID) {
   if (body.playerId !== undefined && body.playerId !== null) {
     const player = db.prepare('SELECT * FROM players WHERE id = ?').get(Number(body.playerId));
     return player ? { player } : { error: 'That player does not exist' };
   }
   const typed = typeof body.name === 'string' ? body.name.trim() : '';
   if (!typed) return { error: 'Choose a player or type a name' };
-  const same = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE').get(typed);
+  const same = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE AND league_id = ?').get(typed, leagueId);
   if (same) return { player: same };
-  const { exact, similar } = nameMatch.findSimilar(typed, db.prepare('SELECT id, name FROM players').all());
+  const { exact, similar } = nameMatch.findSimilar(typed, db.prepare('SELECT id, name FROM players WHERE league_id = ?').all(leagueId));
   if (exact) return { player: db.prepare('SELECT * FROM players WHERE id = ?').get(exact.id) };
   if (!body.confirmNew) {
     return { conflict: { code: similar.length ? 'SIMILAR_PLAYERS' : 'UNKNOWN_PLAYER', typed, suggestions: similar.map((p) => ({ id: p.id, name: p.name })) } };
   }
-  const info = db.prepare('INSERT INTO players (name, created_by_anonymous) VALUES (?, 0)').run(typed);
+  const info = db.prepare('INSERT INTO players (name, created_by_anonymous, league_id) VALUES (?, 0, ?)').run(typed, leagueId);
   return { player: db.prepare('SELECT * FROM players WHERE id = ?').get(Number(info.lastInsertRowid)) };
 }
 
@@ -859,7 +861,8 @@ function otherGroupOf(seasonId, playerId, exceptGroupId) {
 router.post('/groups/:groupId/members', requireAdmin, (req, res) => {
   const group = groupOr404(req, res);
   if (!group) return;
-  const found = resolveMemberPlayer(req.body || {});
+  const groupSeason = db.prepare('SELECT league_id FROM seasons WHERE id = ?').get(group.season_id);
+  const found = resolveMemberPlayer(req.body || {}, groupSeason ? groupSeason.league_id : undefined);
   if (found.error) return res.status(400).json({ error: found.error });
   if (found.conflict) {
     return res.status(409).json({ error: found.conflict.code === 'SIMILAR_PLAYERS' ? 'Similar players exist — choose who you mean' : 'No such player yet — confirm to create a new one', ...found.conflict });

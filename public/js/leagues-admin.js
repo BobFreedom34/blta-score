@@ -185,5 +185,7 @@ function openEdit(row, c) {
 (async () => {
   const isAdminUser = await checkAdmin();
   if (!isAdminUser) return renderLoggedOut();
+  const session = await loadSession().catch(() => ({}));
+  if (session.adminRole !== 'SUPER') { root.innerHTML = '<div class="card"><p style="margin:0;color:var(--gray)">Only the super admin can manage the cities.</p></div>'; return; }
   renderAdmin();
 })();

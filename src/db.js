@@ -1526,11 +1526,35 @@ db.exec(`
 if (!db.prepare('SELECT 1 FROM leagues WHERE id = 1').get()) {
   db.prepare("INSERT INTO leagues (id, slug, name, brand_name, domain, status, lat, lng, sort_order) VALUES (1, 'bratislava', 'Bratislava', 'BLTA', 'blta.sk', 'ACTIVE', 48.1486, 17.1077, 0)").run();
 }
-for (const table of ['seasons', 'venues', 'players', 'matches', 'header_items', 'winner_editions', 'carousel_slides']) {
+for (const table of ['seasons', 'venues', 'players', 'matches', 'header_items', 'winner_editions', 'carousel_slides', 'brackets', 'schedule_events']) {
   const columns = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
   if (!columns.includes('league_id')) db.exec(`ALTER TABLE ${table} ADD COLUMN league_id INTEGER NOT NULL DEFAULT 1`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_${table}_league ON ${table}(league_id)`);
 }
+
+// A match belongs to the city of its season (else of its first player), whoever creates it and from wherever in the app.
+db.exec(`
+  CREATE TRIGGER IF NOT EXISTS trg_matches_league AFTER INSERT ON matches
+  BEGIN
+    UPDATE matches SET league_id = COALESCE((SELECT league_id FROM seasons WHERE id = NEW.season_id), (SELECT league_id FROM players WHERE id = NEW.player1_id), 1)
+    WHERE id = NEW.id AND NEW.league_id = 1;
+  END;
+`);
+
+// The admins of a single city (Backend > Admins). The super admin is not in this table: it logs in with the ADMIN_PASSWORD of the server.
+// A city admin runs only the seasons, players, venues, brackets, winners, pictures and menu of the city of league_id.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS city_admins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    league_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    last_login_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_city_admins_league ON city_admins(league_id);
+`);
 
 // Lookups the lists and the group tables make on every request: a player's matches (either side), a group's or a
 // season's matches, and the date order. Without these each one reads the whole matches table.

@@ -8,7 +8,7 @@
 // before it starts. The admin can assign a spot to a player or a guest name, cancel any reservation and delete spots.
 const express = require('express');
 const db = require('../db');
-const { requireAdmin, getPlayerId, isAdmin } = require('../auth');
+const { requireSuperAdmin, getPlayerId, isSuperAdmin } = require('../auth');
 const mailer = require('../mailer');
 
 const router = express.Router();
@@ -211,7 +211,7 @@ router.get('/', (req, res) => {
   const to = addDays(from, WINDOW_DAYS - 1);
   const days = Array.from({ length: WINDOW_DAYS }, (_, i) => addDays(from, i));
 
-  const admin = isAdmin(req);
+  const admin = isSuperAdmin(req);
   const me = getPlayerId(req);
   const settings = getSettings();
   const courts = db.prepare(`SELECT ${COURT_COLS} FROM reservation_courts ORDER BY sort_order, id`).all().map(courtOut);
@@ -328,7 +328,7 @@ router.post('/slots/:id/cancel', (req, res) => {
   if (!slot) return res.status(404).json({ error: 'That spot does not exist any more' });
   if (!isTaken(slot)) return res.status(409).json({ code: 'FREE', error: 'This spot is not reserved' });
   const now = nowLocal();
-  const admin = isAdmin(req);
+  const admin = isSuperAdmin(req);
   if (!admin) {
     const me = getPlayerId(req);
     if (me === null) return res.status(401).json({ code: 'LOGIN', error: 'Please log in as a player' });
@@ -397,7 +397,7 @@ function cleanColor(value) {
   return /^#[0-9a-f]{6}$/.test(v) ? v : null;
 }
 
-router.post('/courts', requireAdmin, (req, res) => {
+router.post('/courts', requireSuperAdmin, (req, res) => {
   const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
   const note = typeof req.body.note === 'string' ? req.body.note.trim() : '';
   const color = cleanColor(req.body.color);
@@ -415,7 +415,7 @@ router.post('/courts', requireAdmin, (req, res) => {
   res.status(201).json(courtOut(db.prepare(`SELECT ${COURT_COLS} FROM reservation_courts WHERE id = ?`).get(id)));
 });
 
-router.patch('/courts/:id', requireAdmin, (req, res) => {
+router.patch('/courts/:id', requireSuperAdmin, (req, res) => {
   const court = db.prepare('SELECT * FROM reservation_courts WHERE id = ?').get(Number(req.params.id));
   if (!court) return res.status(404).json({ error: 'Court not found' });
   const name = req.body.name === undefined ? court.name : String(req.body.name).trim();
@@ -435,7 +435,7 @@ router.patch('/courts/:id', requireAdmin, (req, res) => {
 });
 
 // Deleting a court deletes its spots; with reservations that have not started yet it needs ?force=1 (the players lose them).
-router.delete('/courts/:id', requireAdmin, (req, res) => {
+router.delete('/courts/:id', requireSuperAdmin, (req, res) => {
   const court = db.prepare('SELECT * FROM reservation_courts WHERE id = ?').get(Number(req.params.id));
   if (!court) return res.status(404).json({ error: 'Court not found' });
   const now = nowLocal();
@@ -450,7 +450,7 @@ router.delete('/courts/:id', requireAdmin, (req, res) => {
 });
 
 // The courts in the given order: { ids } — exactly all of them, each once.
-router.post('/courts/reorder', requireAdmin, (req, res) => {
+router.post('/courts/reorder', requireSuperAdmin, (req, res) => {
   const ids = Array.isArray(req.body.ids) ? req.body.ids.map(Number) : [];
   const current = db.prepare('SELECT id FROM reservation_courts').all().map((r) => r.id);
   if (!ids.every(Number.isInteger) || new Set(ids).size !== ids.length || ids.length !== current.length || !ids.every((id) => current.includes(id))) {
@@ -466,7 +466,7 @@ router.post('/courts/reorder', requireAdmin, (req, res) => {
 // Adds spots. Body: { courtIds, start, end, blockMinutes (0 = one spot for the whole range, else 30/60/90/… minutes each),
 // and either date (one day) or fromDate + toDate + weekdays (1 = Monday … 7 = Sunday) }. A spot that would overlap an existing one
 // on the same court is skipped (and counted). Days before today are refused.
-router.post('/slots', requireAdmin, (req, res) => {
+router.post('/slots', requireSuperAdmin, (req, res) => {
   const b = req.body || {};
   const now = nowLocal();
   const courtIds = Array.isArray(b.courtIds) ? [...new Set(b.courtIds.map(Number))] : [];
@@ -527,7 +527,7 @@ router.post('/slots', requireAdmin, (req, res) => {
 });
 
 // Removes spots that nobody has taken: { courtIds (empty = all), fromDate, toDate }. Reserved spots are never touched here.
-router.post('/slots/clear', requireAdmin, (req, res) => {
+router.post('/slots/clear', requireSuperAdmin, (req, res) => {
   const b = req.body || {};
   if (!isRealDay(b.fromDate || '') || !isRealDay(b.toDate || '') || b.toDate < b.fromDate) return res.status(400).json({ error: 'Choose the first and the last day' });
   const now = nowLocal();
@@ -545,7 +545,7 @@ router.post('/slots/clear', requireAdmin, (req, res) => {
 // (optional: move them to this court), includeReserved (default false: reserved spots stay where they are), dryRun }.
 // The result is checked as a whole: a spot that would end up overlapping a spot that stays (or another moved one), cross midnight or
 // land in the past is left where it is and counted — nothing is half-done. dryRun only reports what would happen.
-router.post('/slots/bulk-edit', requireAdmin, (req, res) => {
+router.post('/slots/bulk-edit', requireSuperAdmin, (req, res) => {
   const b = req.body || {};
   const now = nowLocal();
   if (!isRealDay(b.fromDate || '') || !isRealDay(b.toDate || '') || b.toDate < b.fromDate) return res.status(400).json({ error: 'Choose the first and the last day' });
@@ -626,7 +626,7 @@ router.post('/slots/bulk-edit', requireAdmin, (req, res) => {
 
 // Changes a spot: { courtId, day, start, end } — any of them. A free spot is changed as asked; a reserved one needs { force: true }
 // (the player keeps the reservation, now at the new time or place). The new place must not overlap another spot of that court.
-router.patch('/slots/:id', requireAdmin, (req, res) => {
+router.patch('/slots/:id', requireSuperAdmin, (req, res) => {
   const slot = slotRow(Number(req.params.id));
   if (!slot) return res.status(404).json({ error: 'That spot does not exist' });
   const b = req.body || {};
@@ -656,7 +656,7 @@ router.patch('/slots/:id', requireAdmin, (req, res) => {
 });
 
 // Deleting a reserved spot needs ?force=1 (the player loses the reservation).
-router.delete('/slots/:id', requireAdmin, (req, res) => {
+router.delete('/slots/:id', requireSuperAdmin, (req, res) => {
   const slot = slotRow(Number(req.params.id));
   if (!slot) return res.status(404).json({ error: 'That spot does not exist' });
   if (isTaken(slot) && req.query.force !== '1') {
@@ -668,7 +668,7 @@ router.delete('/slots/:id', requireAdmin, (req, res) => {
 });
 
 // The admin puts a player (playerId) or a guest (guestName) into a free spot — the player limit does not apply.
-router.post('/slots/:id/assign', requireAdmin, (req, res) => {
+router.post('/slots/:id/assign', requireSuperAdmin, (req, res) => {
   const slot = slotRow(Number(req.params.id));
   if (!slot) return res.status(404).json({ error: 'That spot does not exist' });
   if (isTaken(slot)) return res.status(409).json({ code: 'TAKEN', error: 'This spot is already reserved' });
@@ -689,9 +689,9 @@ router.post('/slots/:id/assign', requireAdmin, (req, res) => {
 
 // ---------------------------------------------------------------- admin: settings
 
-router.get('/settings', requireAdmin, (req, res) => res.json(getSettings()));
+router.get('/settings', requireSuperAdmin, (req, res) => res.json(getSettings()));
 
-router.put('/settings', requireAdmin, (req, res) => {
+router.put('/settings', requireSuperAdmin, (req, res) => {
   const maxActive = Number(req.body.maxActive);
   const cancelHours = Number(req.body.cancelHours);
   if (!Number.isInteger(maxActive) || maxActive < 0 || maxActive > 50) return res.status(400).json({ error: 'The number of reservations per player must be 0 (no limit) to 50' });

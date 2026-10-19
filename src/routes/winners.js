@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
 const db = require('../db');
+const leagues = require('../leagues');
 const { requireAdmin } = require('../auth');
 
 const router = express.Router();
@@ -83,12 +84,12 @@ function loadEdition(id) {
 
 // Public: the visible editions that have something to show, newest first (the order set in the backend).
 router.get('/', (req, res) => {
-  const rows = db.prepare(`${EDITION_SQL} WHERE e.visible = 1 ORDER BY e.sort_order, e.id`).all();
+  const rows = db.prepare(`${EDITION_SQL} WHERE e.visible = 1 AND e.league_id = ? ORDER BY e.sort_order, e.id`).all(leagues.actingIdOf(req));
   res.json(rows.map((r) => serializeEdition(r, false)).filter((e) => e.blocks.length));
 });
 
 router.get('/all', requireAdmin, (req, res) => {
-  res.json(db.prepare(`${EDITION_SQL} ORDER BY e.sort_order, e.id`).all().map((r) => serializeEdition(r, true)));
+  res.json(db.prepare(`${EDITION_SQL} WHERE e.league_id = ? ORDER BY e.sort_order, e.id`).all(leagues.actingIdOf(req)).map((r) => serializeEdition(r, true)));
 });
 
 // ---------------------------------------------------------------- helpers
@@ -146,8 +147,9 @@ router.post('/editions', requireAdmin, (req, res) => {
   if (title.error) return res.status(400).json({ error: title.error });
   const season = checkSeason(body.seasonId);
   if (season.error) return res.status(400).json({ error: season.error });
-  const first = (db.prepare('SELECT MIN(sort_order) AS m FROM winner_editions').get().m ?? 1) - 1;
-  const info = db.prepare('INSERT INTO winner_editions (title, season_id, sort_order) VALUES (?, ?, ?)').run(title.v, season.v, first);
+  const leagueId = leagues.actingIdOf(req);
+  const first = (db.prepare('SELECT MIN(sort_order) AS m FROM winner_editions WHERE league_id = ?').get(leagueId).m ?? 1) - 1;
+  const info = db.prepare('INSERT INTO winner_editions (title, season_id, sort_order, league_id) VALUES (?, ?, ?, ?)').run(title.v, season.v, first, leagueId);
   res.status(201).json(loadEdition(info.lastInsertRowid));
 });
 

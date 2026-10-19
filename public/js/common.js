@@ -3179,10 +3179,50 @@ async function subscribeToPush(matchToken, type) {
 // flight. A plain visitor just sees that page's own content (or, on admin.html,
 // the login form) with no section nav at all.
 if (!document.body.classList.contains('embed')) {
-  checkAdmin().then((isAdminUser) => {
+  checkAdmin().then(async (isAdminUser) => {
     if (!isAdminUser) return;
+    await setUpAdminTabs();
     document.querySelectorAll('.admin-tabs').forEach((el) => { el.style.display = ''; });
   });
+}
+
+// The backend is for two kinds of admin. The super admin sees every tab, gets the Admins tab and a picker of the city he works on; the admin of
+// a city sees only the tabs of his city (the settings of the whole site are closed to him on the server too, see src/cityScope.js).
+const SUPER_ONLY_TABS = ['/badges-admin', '/leagues-admin', '/admins-admin', '/reservations-admin', '/blog-admin', '/seo-admin', '/rules-admin', '/changelog-admin', '/login-history'];
+let adminSessionInfo = null;
+async function setUpAdminTabs() {
+  const bars = document.querySelectorAll('.admin-tabs');
+  if (!bars.length) return;
+  try { adminSessionInfo = await api('/admin/session'); } catch { return; }
+  const info = adminSessionInfo;
+  bars.forEach((bar) => {
+    if (info.role === 'CITY') {
+      bar.querySelectorAll('a.tab').forEach((a) => { if (SUPER_ONLY_TABS.includes(a.getAttribute('href'))) a.style.display = 'none'; });
+    } else if (!bar.querySelector('a[href="/admins-admin"]')) {
+      const cities = bar.querySelector('a[href="/leagues-admin"]');
+      const link = document.createElement('a');
+      link.href = '/admins-admin';
+      link.className = `tab${location.pathname === '/admins-admin' ? ' active' : ''}`;
+      link.textContent = 'Admins';
+      if (cities) cities.after(link); else bar.appendChild(link);
+    }
+  });
+  const first = bars[0];
+  if (document.querySelector('.admin-city-bar') || !info.acting) return;
+  const strip = document.createElement('div');
+  strip.className = 'admin-city-bar';
+  if (info.role === 'SUPER') {
+    strip.innerHTML = `<span>Super admin · working on</span><select aria-label="City you work on">${info.cities.map((c) => `<option value="${c.id}"${c.id === info.acting.id ? ' selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select><small>Lists and new things in the backend belong to this city.</small>`;
+    strip.querySelector('select').addEventListener('change', async (e) => {
+      try {
+        await api('/admin/acting-city', { method: 'POST', body: { leagueId: Number(e.target.value) } });
+        location.reload();
+      } catch (err) { toast(err.message); }
+    });
+  } else {
+    strip.innerHTML = `<span>City admin</span><strong>${escapeHtml(info.acting.name)}</strong><small>${escapeHtml(info.name || '')}</small>`;
+  }
+  first.before(strip);
 }
 
 // "Install app" — a nav-menu button plus an auto-popping bottom banner on

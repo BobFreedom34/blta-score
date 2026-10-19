@@ -6,6 +6,7 @@
 // shareable/embeddable draw anyone can look at.
 const express = require('express');
 const db = require('../db');
+const leagues = require('../leagues');
 const auth = require('../auth');
 const engine = require('../matchEngine');
 const bracketEngine = require('../bracketEngine');
@@ -114,7 +115,7 @@ function serializeBracket(bracketId) {
 // bracket to manage" screen. (The public read below is per-bracket, not a
 // public list — there's no public "browse all draws" page in v1.)
 router.get('/', auth.requireAdmin, (req, res) => {
-  const rows = db.prepare('SELECT * FROM brackets ORDER BY id DESC').all();
+  const rows = db.prepare('SELECT * FROM brackets WHERE league_id = ? ORDER BY id DESC').all(leagues.actingIdOf(req));
   res.json(rows.map((r) => ({
     id: r.id,
     name: r.name,
@@ -147,6 +148,12 @@ router.get('/:id', (req, res) => {
 // slots still fill in exactly the same way, but no `matches` row gets
 // created for any of them, and results are entered directly via PATCH
 // .../nodes/:nodeId/result instead of by playing/scoring a real match.
+// a bracket belongs to the city of its season, else to the city the admin works on
+function stampBracket(bracketId, seasonId, req) {
+  const season = seasonId ? db.prepare('SELECT league_id FROM seasons WHERE id = ?').get(seasonId) : null;
+  db.prepare('UPDATE brackets SET league_id = ? WHERE id = ?').run(season ? season.league_id : leagues.actingIdOf(req), bracketId);
+}
+
 router.post('/', auth.requireAdmin, (req, res) => {
   const name = (req.body.name || '').trim();
   const format = req.body.format;
@@ -188,6 +195,7 @@ router.post('/', auth.requireAdmin, (req, res) => {
     const bracketId = bracketEngine.createBracket({
       name, format, entries, autoCreateMatches, category, seasonId,
     });
+    stampBracket(bracketId, seasonId, req);
     return res.status(201).json(serializeBracket(bracketId));
   }
 
@@ -198,6 +206,7 @@ router.post('/', auth.requireAdmin, (req, res) => {
   const bracketId = bracketEngine.createBracket({
     name, format, entries: null, size, autoCreateMatches, category, seasonId,
   });
+  stampBracket(bracketId, seasonId, req);
   res.status(201).json(serializeBracket(bracketId));
 });
 

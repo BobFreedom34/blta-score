@@ -4,6 +4,7 @@ const path = require('path');
 const express = require('express');
 const multer = require('multer');
 const db = require('../db');
+const leagues = require('../leagues');
 const { requireAdmin } = require('../auth');
 const engine = require('../matchEngine');
 const venues = require('../venues');
@@ -77,7 +78,7 @@ function matchesAtVenue(venueId) {
 // pages all read this, logged in or not.
 router.get('/', (req, res) => {
   // the order set in the backend (dragging), then the venues that have none, alphabetically
-  const rows = db.prepare('SELECT * FROM venues ORDER BY sort_order IS NULL, sort_order, name COLLATE NOCASE').all();
+  const rows = db.prepare('SELECT * FROM venues WHERE league_id = ? ORDER BY sort_order IS NULL, sort_order, name COLLATE NOCASE').all(leagues.actingIdOf(req));
   res.json(rows.map(venues.serialize));
 });
 
@@ -114,8 +115,9 @@ router.post('/', requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'That venue already exists' });
   }
   // a new venue goes to the end once the list has an order of its own
-  const last = db.prepare('SELECT MAX(sort_order) AS m FROM venues').get().m;
-  const columns = { name: parsed.name, slug: venues.uniqueSlug(parsed.name), ...(last === null || last === undefined ? {} : { sort_order: last + 1 }), ...details.columns };
+  const leagueId = leagues.actingIdOf(req);
+  const last = db.prepare('SELECT MAX(sort_order) AS m FROM venues WHERE league_id = ?').get(leagueId).m;
+  const columns = { league_id: leagueId, name: parsed.name, slug: venues.uniqueSlug(parsed.name), ...(last === null || last === undefined ? {} : { sort_order: last + 1 }), ...details.columns };
   const names = Object.keys(columns);
   const info = db.prepare(`INSERT INTO venues (${names.join(', ')}) VALUES (${names.map((n) => `@${n}`).join(', ')})`).run(columns);
   res.status(201).json(venues.serialize(db.prepare('SELECT * FROM venues WHERE id = ?').get(info.lastInsertRowid)));

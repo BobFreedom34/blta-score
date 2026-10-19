@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db');
+const leagues = require('../leagues');
 const { requireAdmin } = require('../auth');
 
 const router = express.Router();
@@ -28,7 +29,8 @@ function serializeEvent(e) {
 // backend changes the schedule) and the tournaments / other events added in the backend, soonest first. A league
 // season has every BLTA category; its "more info" is its season page.
 router.get('/', (req, res) => {
-  const seasons = db.prepare("SELECT * FROM seasons WHERE start_date IS NOT NULL AND start_date != ''").all().map((s) => {
+  const leagueId = leagues.actingIdOf(req);
+  const seasons = db.prepare("SELECT * FROM seasons WHERE start_date IS NOT NULL AND start_date != '' AND league_id = ?").all(leagueId).map((s) => {
     const tournament = s.kind === 'TOURNAMENT';
     const own = parseCategories(s.categories);
     return {
@@ -43,7 +45,7 @@ router.get('/', (req, res) => {
       categories: tournament && own.length ? own : CATEGORIES,
     };
   });
-  const events = db.prepare('SELECT * FROM schedule_events').all().map(serializeEvent);
+  const events = db.prepare('SELECT * FROM schedule_events WHERE league_id = ?').all(leagueId).map(serializeEvent);
   const all = [...seasons, ...events].sort((a, b) => (a.startDate + a.name).localeCompare(b.startDate + b.name));
   res.json(all);
 });
@@ -91,8 +93,8 @@ router.post('/events', requireAdmin, (req, res) => {
   const { error, values } = parseEvent(req.body || {}, false);
   if (error) return res.status(400).json({ error });
   if (!checkRange(values.start_date, values.end_date)) return res.status(400).json({ error: 'The end date is before the start date' });
-  const info = db.prepare('INSERT INTO schedule_events (name, start_date, end_date, venue, link, categories) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(values.name, values.start_date, values.end_date, values.venue, values.link, values.categories);
+  const info = db.prepare('INSERT INTO schedule_events (name, start_date, end_date, venue, link, categories, league_id) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(values.name, values.start_date, values.end_date, values.venue, values.link, values.categories, leagues.actingIdOf(req));
   res.status(201).json(serializeEvent(db.prepare('SELECT * FROM schedule_events WHERE id = ?').get(info.lastInsertRowid)));
 });
 

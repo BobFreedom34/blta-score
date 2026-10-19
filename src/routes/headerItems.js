@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db');
+const leagues = require('../leagues');
 const { requireAdmin } = require('../auth');
 
 const router = express.Router();
@@ -83,7 +84,7 @@ function nextOrder(parentId) {
 // Public — the header has to render for every visitor, logged in or not,
 // same as GET /badges.
 router.get('/', (req, res) => {
-  const rows = db.prepare('SELECT * FROM header_items ORDER BY sort_order, id').all();
+  const rows = db.prepare('SELECT * FROM header_items WHERE league_id = ? ORDER BY sort_order, id').all(leagues.actingIdOf(req));
   // every item carries its own `children` (nested, up to three levels deep)
   const tree = (parentId) => rows.filter((r) => (parentId === null ? !r.parent_id : r.parent_id === parentId)).map((r) => ({ ...serialize(r), children: tree(r.id) }));
   res.json(tree(null));
@@ -93,8 +94,8 @@ router.post('/', requireAdmin, (req, res) => {
   const parsed = validateBody(req.body);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const info = db.prepare(
-    'INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, highlight) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, parsed.sortOrder === null ? nextOrder(parsed.parentId) : parsed.sortOrder, parsed.highlight);
+    'INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, highlight, league_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, parsed.sortOrder === null ? nextOrder(parsed.parentId) : parsed.sortOrder, parsed.highlight, leagues.actingIdOf(req));
   res.status(201).json(serialize(db.prepare('SELECT * FROM header_items WHERE id = ?').get(info.lastInsertRowid)));
 });
 

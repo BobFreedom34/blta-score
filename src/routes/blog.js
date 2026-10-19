@@ -6,7 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
-const { requireAdmin } = require('../auth');
+const { requireSuperAdmin } = require('../auth');
 const blog = require('../blog');
 
 const router = express.Router();
@@ -27,33 +27,33 @@ router.get('/', (req, res) => {
   }));
 });
 
-router.get('/admin', requireAdmin, (req, res) => res.json(blog.adminList()));
+router.get('/admin', requireSuperAdmin, (req, res) => res.json(blog.adminList()));
 
-router.get('/admin/:id', requireAdmin, (req, res) => {
+router.get('/admin/:id', requireSuperAdmin, (req, res) => {
   const article = blog.getById(req.params.id);
   if (!article) return res.status(404).json({ error: 'Article not found' });
   res.json(article);
 });
 
-router.post('/admin', requireAdmin, (req, res) => {
+router.post('/admin', requireSuperAdmin, (req, res) => {
   const r = blog.create(req.body);
   if (r.error) return res.status(400).json({ error: r.error });
   res.status(201).json(r.article);
 });
 
-router.put('/admin/:id', requireAdmin, (req, res) => {
+router.put('/admin/:id', requireSuperAdmin, (req, res) => {
   const r = blog.update(req.params.id, req.body);
   if (r.error) return res.status(r.status || 400).json({ error: r.error });
   res.json(r.article);
 });
 
-router.delete('/admin/:id', requireAdmin, (req, res) => {
+router.delete('/admin/:id', requireSuperAdmin, (req, res) => {
   if (!blog.remove(req.params.id)) return res.status(404).json({ error: 'Article not found' });
   res.json({ ok: true });
 });
 
 // a picture for an article (the featured picture, or one inside the text): kept on the persistent disk, shown at /blog-images/<file>
-router.post('/upload', requireAdmin, (req, res) => {
+router.post('/upload', requireSuperAdmin, (req, res) => {
   upload.single('image')(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'The picture must be under 6 MB' : 'Could not process the uploaded file' });
     if (!req.file) return res.status(400).json({ error: 'Upload a PNG, JPG, WebP or GIF picture' });

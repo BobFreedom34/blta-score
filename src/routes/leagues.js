@@ -60,10 +60,10 @@ function parse(body, existing) {
 }
 
 // The password lock of the national site (slta.sk): admin only. The password is kept as a hash and never given back.
-router.get('/national-lock', auth.requireAdmin, (req, res) => {
+router.get('/national-lock', auth.requireSuperAdmin, (req, res) => {
   res.json({ locked: national.isLocked(), hasPassword: national.hasPassword() });
 });
-router.put('/national-lock', auth.requireAdmin, (req, res) => {
+router.put('/national-lock', auth.requireSuperAdmin, (req, res) => {
   const done = national.setLock({ enabled: !!(req.body && req.body.enabled), password: req.body && req.body.password });
   if (done.error) return res.status(400).json({ error: done.error });
   res.json({ locked: national.isLocked(), hasPassword: national.hasPassword() });
@@ -76,7 +76,7 @@ router.get('/', (req, res) => {
 });
 
 // Admin: all of them, with the domains
-router.get('/all', auth.requireAdmin, (req, res) => {
+router.get('/all', auth.requireSuperAdmin, (req, res) => {
   res.json(db.prepare('SELECT * FROM leagues ORDER BY sort_order, name').all().map((r) => leagues.serialize(r, { admin: true })));
 });
 
@@ -91,7 +91,7 @@ router.get('/:slug', (req, res) => {
   res.json(leagues.serialize(row, { admin: auth.isAdmin(req) }));
 });
 
-router.post('/', auth.requireAdmin, (req, res) => {
+router.post('/', auth.requireSuperAdmin, (req, res) => {
   const parsed = parse(req.body || {}, null);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const f = { status: 'HIDDEN', domain: '', lat: null, lng: null, ...parsed.fields };
@@ -102,7 +102,7 @@ router.post('/', auth.requireAdmin, (req, res) => {
   res.status(201).json(leagues.serialize(leagues.byId(Number(info.lastInsertRowid)), { admin: true }));
 });
 
-router.patch('/:id', auth.requireAdmin, (req, res) => {
+router.patch('/:id', auth.requireSuperAdmin, (req, res) => {
   const row = leagues.byId(Number(req.params.id));
   if (!row) return res.status(404).json({ error: 'City not found' });
   const parsed = parse(req.body || {}, row);
@@ -117,7 +117,7 @@ router.patch('/:id', auth.requireAdmin, (req, res) => {
 });
 
 // A city that owns nothing yet (a mistake, or a plan that was dropped); never the first one
-router.delete('/:id', auth.requireAdmin, (req, res) => {
+router.delete('/:id', auth.requireSuperAdmin, (req, res) => {
   const row = leagues.byId(Number(req.params.id));
   if (!row) return res.status(404).json({ error: 'City not found' });
   if (row.id === leagues.DEFAULT_LEAGUE_ID) return res.status(400).json({ error: 'The first city cannot be deleted' });

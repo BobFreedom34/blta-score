@@ -5,6 +5,7 @@
 // This file: reading the cities, the checks for a new or a changed one, the domain → city lookup and the middleware that puts the city of
 // the request on `req.league` (an own domain such as blta.sk; otherwise Bratislava until the slta.sk/<city> addresses are served).
 const db = require('./db');
+const auth = require('./auth');
 
 const DEFAULT_LEAGUE_ID = 1;
 const STATUSES = ['ACTIVE', 'PREPARING', 'COMING_SOON', 'HIDDEN'];
@@ -51,6 +52,20 @@ function attach(req, res, next) {
   next();
 }
 
+// The city a request works on: for an admin the city he runs (a city admin: his own; the super admin: the one picked in the backend, else
+// Bratislava), for everybody else the city of the domain.
+const ACTING_COOKIE = 'blta_city';
+function actingIdOf(req) {
+  const me = auth.adminSession(req);
+  if (me && me.role === 'CITY') return me.leagueId;
+  if (me && me.role === 'SUPER') {
+    const picked = Number(req.cookies && req.cookies[ACTING_COOKIE]);
+    if (Number.isInteger(picked) && picked > 0 && byId(picked)) return picked;
+    return DEFAULT_LEAGUE_ID;
+  }
+  return (req.league && req.league.id) || DEFAULT_LEAGUE_ID;
+}
+
 // the running season of a city, else the nearest coming one
 function currentSeasonOf(leagueId, today) {
   const running = db.prepare("SELECT name, slug FROM seasons WHERE league_id = ? AND kind = 'LEAGUE' AND start_date <= ? AND (end_date IS NULL OR end_date >= ?) ORDER BY start_date DESC LIMIT 1").get(leagueId, today, today);
@@ -95,9 +110,9 @@ function serialize(row, { admin = false } = {}) {
 }
 
 // the whole table of the data a city owns: a city with rows in any of these cannot be deleted
-const OWNED_TABLES = ['seasons', 'venues', 'players', 'matches', 'header_items', 'winner_editions', 'carousel_slides'];
+const OWNED_TABLES = ['seasons', 'venues', 'players', 'matches', 'header_items', 'winner_editions', 'carousel_slides', 'brackets', 'schedule_events'];
 function hasData(leagueId) {
   return OWNED_TABLES.some((t) => db.prepare(`SELECT 1 FROM ${t} WHERE league_id = ? LIMIT 1`).get(leagueId));
 }
 
-module.exports = { DEFAULT_LEAGUE_ID, STATUSES, RESERVED_SLUGS, slugify, normalizeDomain, byId, bySlug, forHost, invalidate, attach, serialize, hasData };
+module.exports = { ACTING_COOKIE, actingIdOf, DEFAULT_LEAGUE_ID, STATUSES, RESERVED_SLUGS, slugify, normalizeDomain, byId, bySlug, forHost, invalidate, attach, serialize, hasData };

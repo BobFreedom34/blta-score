@@ -7,6 +7,10 @@ function renderLoggedOut() {
     </p>
     <form id="login-form">
       <div class="field">
+        <label for="email">Email <span style="font-weight:400;color:var(--gray-dim)">(admins of a city; leave empty if you are the super admin)</span></label>
+        <input type="email" id="email" autocomplete="username" placeholder="name@example.com">
+      </div>
+      <div class="field">
         <label for="password">Password</label>
         <input type="password" id="password" required autofocus>
       </div>
@@ -19,17 +23,45 @@ function renderLoggedOut() {
     const errorEl = document.getElementById('login-error');
     errorEl.textContent = '';
     const password = document.getElementById('password').value;
+    const email = document.getElementById('email').value.trim();
     try {
-      await api('/admin/login', { method: 'POST', body: { password } });
+      await api('/admin/login', { method: 'POST', body: { password, email } });
       toast('Logged in as admin');
-      renderLoggedIn();
+      location.reload();
     } catch (err) {
       errorEl.textContent = err.message;
     }
   });
 }
 
-function renderLoggedIn() {
+// The admin of a city: what he runs, in a few lines (the tabs above are his whole backend)
+function renderCityAdmin(info) {
+  document.querySelectorAll('.admin-tabs').forEach((el) => { el.style.display = ''; });
+  root.style.maxWidth = '640px';
+  root.innerHTML = `
+    <h2 style="margin:0 0 4px">${escapeHtml(info.acting.name)}</h2>
+    <p style="margin:0 0 14px;color:var(--gray)">You are logged in as <strong>${escapeHtml(info.name || '')}</strong> (${escapeHtml(info.email || '')}), the admin of this city.</p>
+    <p style="font-size:14px;margin:0 0 6px"><strong>You can manage, for ${escapeHtml(info.acting.name)}:</strong></p>
+    <ul style="font-size:14px;color:var(--gray);line-height:1.7;margin:0 0 14px;padding-left:20px">
+      <li><a href="/seasons-admin" style="color:var(--orange)">Seasons</a> and <a href="/tournaments-admin" style="color:var(--orange)">tournaments</a>, the groups, the draw and the schedule</li>
+      <li><a href="/players" style="color:var(--orange)">Players</a> and the registrations</li>
+      <li><a href="/venues-admin" style="color:var(--orange)">Venues</a> (courts)</li>
+      <li><a href="/bracket-admin" style="color:var(--orange)">Brackets</a> and results, <a href="/winners-admin" style="color:var(--orange)">winners</a></li>
+      <li>The look of the home page: <a href="/carousel-admin" style="color:var(--orange)">pictures</a> and the <a href="/header-admin" style="color:var(--orange)">menu</a></li>
+    </ul>
+    <p style="font-size:13px;color:var(--gray-dim);margin:0 0 16px">Everything you create belongs to ${escapeHtml(info.acting.name)} only, and you cannot see or change another city. The cities themselves, the admins and the settings of the whole site are kept by the super admin.</p>
+    <button type="button" class="btn btn-outline" id="logout-btn">Log out</button>
+  `;
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await api('/admin/logout', { method: 'POST' });
+    location.reload();
+  });
+}
+
+async function renderLoggedIn() {
+  let info = null;
+  try { info = await api('/admin/session'); } catch { /* the page below still works */ }
+  if (info && info.role === 'CITY') return renderCityAdmin(info);
   // common.js's own admin-tabs reveal (see near the bottom of that file)
   // only runs once, at page load — which already happened before this
   // login (there's no page reload in between, just this AJAX call), so it
@@ -39,7 +71,16 @@ function renderLoggedIn() {
   // already authenticated.
   document.querySelectorAll('.admin-tabs').forEach((el) => { el.style.display = ''; });
   root.innerHTML = `
-    <p style="margin-top:0">✅ You're logged in as admin on this device.</p>
+    <p style="margin-top:0">✅ You're logged in as the <strong>super admin</strong> on this device.</p>
+    <div style="border:1px solid var(--gray-light, #ddd);border-radius:10px;padding:12px 14px;margin:0 0 16px;font-size:13px;line-height:1.6">
+      <strong>Managing the cities</strong>
+      <ol style="margin:6px 0 0;padding-left:20px;color:var(--gray)">
+        <li><a href="/leagues-admin" style="color:var(--orange)">Cities</a>: add a city, set its address, status (hidden, coming soon, in preparation, active) and its pin on the map.</li>
+        <li><a href="/admins-admin" style="color:var(--orange)">Admins</a>: give a person an email and a password; they run only the city you choose.</li>
+        <li>The bar above the tabs <em>Working on</em>: pick the city whose seasons, players, venues and pictures you want to see or fill in yourself.</li>
+        <li>SEO, rules, reservations, badges, blog and backups stay with you for the whole site.</li>
+      </ol>
+    </div>
     <p style="color:var(--gray);font-size:13px">
       You'll now see Add / Edit / Delete on the Players page, and can correct the score or location of a
       finished match — the rest of the backend (Menu, Badges, Login History) is in the tabs above.
@@ -67,7 +108,7 @@ function renderLoggedIn() {
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await api('/admin/logout', { method: 'POST' });
     toast('Logged out');
-    renderLoggedOut();
+    location.reload();
   });
   // Manual trigger for the daily Google Drive backup (see src/backup.js) —
   // mainly for right after setting it up, or whenever you just want to be

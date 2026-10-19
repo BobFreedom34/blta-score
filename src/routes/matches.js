@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const express = require('express');
 const db = require('../db');
+const leagues = require('../leagues');
 const engine = require('../matchEngine');
 const nameMatch = require('../nameMatch');
 const {
@@ -403,6 +404,11 @@ function matchFilters(query) {
   const round = parseInt(query.round, 10);
   const clauses = [];
   const params = {};
+  // the matches of one city (set by the route, never by the visitor)
+  if (query._league) {
+    clauses.push('m.league_id = @_league');
+    params._league = Number(query._league);
+  }
   if (status) {
     clauses.push('m.status = @status');
     params.status = status;
@@ -501,7 +507,7 @@ function countMatchRows(query) {
 
 router.get('/', (req, res) => {
   const limit = Math.max(0, Math.min(500, parseInt(req.query.limit, 10) || 0));
-  let rows = selectMatchRows(req.query);
+  let rows = selectMatchRows({ ...req.query, _league: leagues.actingIdOf(req) });
   // Optional cap (the home page and the embeds only need the latest few); no limit = everything, as before.
   if (limit) rows = rows.slice(0, limit);
   res.json(rows.map(serialize));
@@ -513,7 +519,7 @@ router.get('/', (req, res) => {
 router.get('/counts', (req, res) => {
   const { category, q, from, to, tbd, playerId } = req.query;
   const range = from && to ? { from, to } : null;
-  const base = { ...(category ? { category } : {}), ...(q ? { q } : {}), ...(req.query.seasonId ? { seasonId: req.query.seasonId } : {}) };
+  const base = { _league: leagues.actingIdOf(req), ...(category ? { category } : {}), ...(q ? { q } : {}), ...(req.query.seasonId ? { seasonId: req.query.seasonId } : {}) };
   // The time filter narrows Planned / Finished / Unfinished (a range, or "no date"); the Scheduled tab only takes a range,
   // "Not yet scheduled" has no date to narrow and Live ignores it.
   const timed = range || (tbd === '1' ? { noDate: '1' } : {});
@@ -717,9 +723,10 @@ router.post('/', requireLoggedIn, (req, res) => {
     if (id) return { player: getPlayer(id) };
     const trimmed = (name || '').trim();
     if (!trimmed) return { player: null };
-    const existing = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE').get(trimmed);
+    const leagueId = leagues.actingIdOf(req);
+    const existing = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE AND league_id = ?').get(trimmed, leagueId);
     if (existing) return { player: existing };
-    if (!everyone) everyone = db.prepare('SELECT id, name FROM players').all();
+    if (!everyone) everyone = db.prepare('SELECT id, name FROM players WHERE league_id = ?').all(leagueId);
     const { exact, similar } = nameMatch.findSimilar(trimmed, everyone);
     if (exact) return { player: getPlayer(exact.id) };
     if (similar.length && !confirmNew[field]) {
@@ -735,7 +742,7 @@ router.post('/', requireLoggedIn, (req, res) => {
   }
   const make = (d) => {
     if (d.create) {
-      const info = db.prepare('INSERT INTO players (name, created_by_anonymous) VALUES (?, ?)').run(d.create, 0);
+      const info = db.prepare('INSERT INTO players (name, created_by_anonymous, league_id) VALUES (?, ?, ?)').run(d.create, 0, leagues.actingIdOf(req));
       return getPlayer(info.lastInsertRowid);
     }
     return d.player;

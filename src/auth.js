@@ -31,6 +31,14 @@ function verifyPin(pin, stored) {
   return crypto.timingSafeEqual(candidate, expected);
 }
 
+// The password of a city admin: a longer secret than a PIN, stored the same way (scrypt + a salt of its own)
+function hashPassword(password) {
+  return hashPin(password);
+}
+function verifyPassword(password, stored) {
+  return verifyPin(String(password || ''), stored);
+}
+
 // Clearing a cookie takes the same options except maxAge (Express 4 warns about it and Express 5 ignores it).
 function clearOptions() {
   const { maxAge, ...rest } = cookieOptions();
@@ -47,16 +55,49 @@ function cookieOptions() {
   };
 }
 
+// Two kinds of admin share the one cookie: the super admin ('ok', logged in with the ADMIN_PASSWORD of the server: all the cities and the
+// settings of the whole site) and a city admin ('city:<id>', an account of Backend > Admins that runs one city only; see src/cityScope.js).
+// -> { role: 'SUPER' } | { role: 'CITY', id, leagueId, name, email } | null
+function adminSession(req) {
+  if (req._adminSession !== undefined) return req._adminSession;
+  const value = req.signedCookies && req.signedCookies[COOKIE_NAME];
+  let session = null;
+  if (value === 'ok') session = { role: 'SUPER' };
+  else {
+    const m = /^city:(\d+)$/.exec(value || '');
+    const row = m && db.prepare('SELECT id, league_id, name, email FROM city_admins WHERE id = ?').get(Number(m[1]));
+    if (row) session = { role: 'CITY', id: row.id, leagueId: row.league_id, name: row.name, email: row.email };
+  }
+  req._adminSession = session;
+  return session;
+}
+
 function isAdmin(req) {
-  return req.signedCookies && req.signedCookies[COOKIE_NAME] === 'ok';
+  return !!adminSession(req);
+}
+
+function isSuperAdmin(req) {
+  const me = adminSession(req);
+  return !!me && me.role === 'SUPER';
 }
 
 function logIn(res) {
   res.cookie(COOKIE_NAME, 'ok', cookieOptions());
 }
 
+function logInCityAdmin(res, id) {
+  res.cookie(COOKIE_NAME, `city:${id}`, cookieOptions());
+}
+
 function logOut(res) {
   res.clearCookie(COOKIE_NAME, clearOptions());
+}
+
+function requireSuperAdmin(req, res, next) {
+  if (!isSuperAdmin(req)) {
+    return res.status(isAdmin(req) ? 403 : 401).json({ error: isAdmin(req) ? 'Only the super admin can do this' : 'Admin login required for this action' });
+  }
+  next();
 }
 
 function requireAdmin(req, res, next) {
@@ -190,7 +231,8 @@ function stripPrivateFields(player, req) {
 }
 
 module.exports = {
-  COOKIE_NAME, PLAYER_COOKIE_NAME, REFEREE_COOKIE_NAME, isAdmin, logIn, logOut, requireAdmin,
+  COOKIE_NAME, PLAYER_COOKIE_NAME, REFEREE_COOKIE_NAME, isAdmin, adminSession, isSuperAdmin, logIn, logInCityAdmin, logOut, requireAdmin, requireSuperAdmin,
+  hashPassword, verifyPassword,
   isPlayer, getPlayerId, logInPlayer, logOutPlayer, requirePlayer,
   requireLoggedIn, hashPin, verifyPin, canSeePrivateFields, stripPrivateFields,
   isReferee, logInReferee, logOutReferee, requireLoggedInOrReferee,

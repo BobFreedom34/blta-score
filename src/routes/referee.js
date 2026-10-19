@@ -47,11 +47,11 @@ router.post('/logout', (req, res) => {
 // or clear it outright to turn the whole feature off. Never readable in
 // plain text once set (same as a player's own login_pin) — rotating it
 // means setting a new one, not looking up the old one.
-router.get('/admin/status', auth.requireAdmin, (req, res) => {
+router.get('/admin/status', auth.requireSuperAdmin, (req, res) => {
   res.json({ isSet: !!getStoredHash() });
 });
 
-router.put('/admin/code', auth.requireAdmin, (req, res) => {
+router.put('/admin/code', auth.requireSuperAdmin, (req, res) => {
   const code = String(req.body.code || '').trim();
   if (!CODE_RE.test(code)) {
     return res.status(400).json({ error: 'Code must be exactly 5 digits' });
@@ -67,7 +67,7 @@ router.put('/admin/code', auth.requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete('/admin/code', auth.requireAdmin, (req, res) => {
+router.delete('/admin/code', auth.requireSuperAdmin, (req, res) => {
   db.prepare('DELETE FROM referee_code WHERE id = 1').run();
   res.json({ ok: true });
 });

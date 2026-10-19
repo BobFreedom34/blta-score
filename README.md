@@ -315,8 +315,39 @@ Set the password via the `ADMIN_PASSWORD` environment variable:
   ```
 
 The login is a single long-lived cookie (30 days) scoped to whichever browser/device you log in
-on — there's no separate account system, so treat the password like you would a shared door key.
-An admin session automatically counts as being logged in as a player too, everywhere.
+on, so treat the password like you would a shared door key. An admin session automatically counts as
+being logged in as a player too, everywhere.
+
+### 4a. Two kinds of admin, and managing the cities (SLTA)
+
+The app serves many cities (SLTA, slta.sk). Two kinds of admin:
+
+- **Super admin** — logs in at `/admin` with the `ADMIN_PASSWORD` above (leave the email empty). Works on
+  every city and owns the settings of the whole site: Cities, Admins, SEO, Rules, Reservations, Badges,
+  Blog, Points log, Login History, backups, the referee code and the password lock of slta.sk.
+  The bar above the tabs (**Working on**) picks the city whose lists he sees and where new things go
+  (default Bratislava).
+- **Admin of a city** — an account made by the super admin in **Backend → Admins** (`/admins-admin`): name,
+  email, city and a password the super admin chooses (8+ characters; stored as a hash, never shown
+  again, can be replaced at any time; removing the account logs the person out at once). He logs in at
+  `/admin` with email + password and runs ONE city: its seasons, tournaments, groups, draw and
+  schedule, players and registrations, venues, brackets, winners, carousel pictures and menu. What he
+  creates belongs to his city; he cannot see or change another city, and the site-wide tabs are
+  hidden and refused by the server (src/cityScope.js).
+
+Managing the cities as the super admin:
+1. **Backend → Cities** (`/leagues-admin`): add a city, set its address (slta.sk/<slug>), brand name, own
+   domain, status (Hidden → Coming soon → In preparation → Active) and its pin on the map. The status
+   decides how it appears on the picker of slta.sk.
+2. **Backend → Admins**: give the city's organiser an account.
+3. Fill in a city yourself at any time by picking it in the **Working on** bar.
+
+Code: `src/auth.js` (adminSession, requireSuperAdmin), `src/cityScope.js` (what a city admin may touch),
+`src/leagues.js` (actingIdOf: the city a request works on), `src/routes/cityAdmins.js`, table
+`city_admins`. Rows of seasons, players, venues, matches, brackets, winners, carousel, menu and
+schedule events carry a `league_id` (a trigger gives a match the city of its season). `node
+scripts/check-admins.js` tests all of it. Not yet per city: the rankings tables, the badges, the
+reservations, the blog and the rules (still one set for the whole site).
 
 ---
 

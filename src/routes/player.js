@@ -117,6 +117,8 @@ router.get('/session', (req, res) => {
     isReferee: auth.isReferee(req),
     // Also whether this is an admin session, so a page needs one session request, not this one plus /admin/session.
     isAdmin: auth.isAdmin(req),
+    // the kind of admin (SUPER / CITY), so the backend can show the right menu
+    adminRole: (auth.adminSession(req) || {}).role || null,
   });
 });
 
@@ -489,7 +491,7 @@ router.post('/register', async (req, res) => {
     player = db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(existingByName.id);
   } else {
     const slug = uniqueSlugFor(name);
-    const info = db.prepare('INSERT INTO players (name, slug, phone, email) VALUES (?, ?, ?, ?)').run(name, slug, digits, email.slice(0, 100));
+    const info = db.prepare('INSERT INTO players (name, slug, phone, email, league_id) VALUES (?, ?, ?, ?, ?)').run(name, slug, digits, email.slice(0, 100), (req.league && req.league.id) || 1);
     player = db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(info.lastInsertRowid);
     creditInviter(req, res, player.id); // a new player who came through somebody's invite link
   }
