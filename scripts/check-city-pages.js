@@ -144,6 +144,54 @@ test('the blog and the rules are the city\'s own', async () => {
   assert.strictEqual((await local('PUT', `/api/rules/${rule.json.id}`, { title: 'x', html: '<p>x</p>' }, superCookie)).status, 404, 'nor a rule');
 });
 
+test('the SEO is the city\'s own: texts, noindex, sitemap; the addresses are shared', async () => {
+  const pick = await local('POST', '/api/admin/acting-city', { leagueId: cityId }, superCookie);
+  const withCity = `${superCookie}; ${cookieOf(pick)}`;
+  // before anything is saved: the first texts with the name of the city, and the pages are hidden while the city is not Active
+  const first = await local('GET', '/api/seo', undefined, withCity);
+  assert.strictEqual(first.status, 200);
+  assert.ok(!first.json.some((p) => p.key === 'slta'), 'the national page is not a page of a city');
+  const rankings = first.json.find((p) => p.key === 'rankings');
+  assert.ok(rankings.city && !rankings.slugsEditable, 'the addresses are not the city\'s to change');
+  assert.ok(!/BLTA/.test(rankings.values.sk.title) && rankings.values.sk.title.includes('SLTA Kosice'), 'the first texts speak of the city: ' + rankings.values.sk.title);
+  // the city is Active (an earlier test), so its pages are indexed by default
+  assert.strictEqual(rankings.noindex, false);
+  // saving: the texts of Kosice, not of Bratislava
+  const body = { noindex: false, sk: { ...rankings.values.sk, title: 'Rebricek hracov v Kosiciach', description: 'Kosicky rebricek.' }, en: rankings.values.en };
+  const saved = await local('PUT', '/api/seo/rankings', body, withCity);
+  assert.strictEqual(saved.status, 200, JSON.stringify(saved.json));
+  const page = await nat('/kosice/rankings');
+  assert.ok(page.body.includes('<title>Rebricek hracov v Kosiciach</title>'), 'the page of the city has its own title');
+  assert.ok(page.body.includes('content="Kosicky rebricek."'), 'and its own description');
+  assert.ok(/<meta name="robots" content="index, follow/.test(page.body), 'and may be indexed');
+  const first1 = await local('GET', '/rankings');
+  const bratislavaSeo = (await local('GET', '/api/seo', undefined, superCookie)).json.find((p) => p.key === 'rankings');
+  assert.ok(!bratislavaSeo.values.sk.title.includes('Kosiciach'), 'the first city has its own texts');
+  assert.ok(bratislavaSeo.slugsEditable && !bratislavaSeo.city, 'and the super admin changes the addresses there');
+  // noindex of one page of the city
+  const hide = await local('PUT', '/api/seo/rankings', { ...body, noindex: true }, withCity);
+  assert.strictEqual(hide.status, 200);
+  assert.ok(/<meta name="robots" content="noindex, nofollow">/.test((await nat('/kosice/rankings')).body), 'hidden from search engines');
+  const sitemap = await nat('/kosice/sitemap.xml');
+  assert.ok(sitemap.body.includes('/kosice/') && !sitemap.body.includes('/kosice/rankings<') && !sitemap.body.includes('/kosice/rankings"'), 'a hidden page is not in the sitemap');
+  assert.ok(sitemap.body.includes('kosice-jar-2027'), 'the seasons of the city are');
+  assert.ok(!sitemap.body.includes('bratislava-jar-2027'), 'but not those of another city');
+  const blta = await local('GET', '/sitemap.xml');
+  assert.ok(!blta.body.includes('kosice-jar-2027') && blta.body.includes('bratislava-jar-2027'), 'blta.sk lists its own');
+  // a city admin saves texts for his city only, and cannot touch the national page or the addresses
+  await local('POST', '/api/city-admins', { name: 'Seo Admin', email: 'seo@example.com', leagueId: cityId, password: 'long-enough-2' }, superCookie);
+  const login = await nat('/kosice/api/admin/login', '', 'POST', { email: 'seo@example.com', password: 'long-enough-2' });
+  const cityCookie = cookieOf(login);
+  const mine = await nat('/kosice/api/seo', cityCookie);
+  assert.strictEqual(mine.status, 200);
+  assert.ok(mine.json.every((p) => p.city && !p.slugsEditable));
+  assert.strictEqual((await nat('/kosice/api/seo/rankings', cityCookie, 'PUT', { ...body, noindex: false, slugs: { sk: 'hacked', en: 'hacked' } })).status, 200);
+  assert.strictEqual((await nat('/kosice/api/seo/court-paths', cityCookie)).status, 403, 'the addresses of the courts are the super admin\'s');
+  assert.strictEqual((await nat('/kosice/api/seo/slta', cityCookie, 'PUT', body)).status, 404);
+  assert.ok((await nat('/kosice/rankings')).status === 200 && (await nat('/kosice/hacked')).status === 404, 'a city admin cannot change an address');
+  assert.strictEqual((await local('GET', '/rankings')).status, 200, 'the address of the first city is as before');
+});
+
 test('the admin of the city works on the national address too', async () => {
   const made = await local('POST', '/api/city-admins', { name: 'Martin K', email: 'martin@example.com', leagueId: cityId, password: 'long-enough-1' }, superCookie);
   assert.strictEqual(made.status, 201);
@@ -159,7 +207,7 @@ test('the admin of the city works on the national address too', async () => {
   // and writes the blog and the rules of the city, but not of the other one
   assert.strictEqual((await nat('/kosice/api/articles/admin', cookie)).status, 200);
   assert.strictEqual((await nat('/kosice/api/rules', cookie, 'POST', { title: 'Druhe pravidlo', html: '<p>2</p>' })).status, 201);
-  assert.strictEqual((await local('GET', '/api/seo', undefined, cookie)).status, 403);
+  assert.strictEqual((await local('GET', '/api/city-admins', undefined, cookie)).status, 403);
   assert.ok(!(await local('GET', '/api/seasons')).json.some((s) => s.name === 'Kosice Leto 2027'));
 });
 

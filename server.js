@@ -269,9 +269,12 @@ app.get('/js/localize.js', (req, res) => res.type('application/javascript').set(
 app.get('/robots.txt', (req, res) => {
   // the national site that is locked or hidden from search engines is closed to every crawler
   if (national.isNationalHost(req) && (national.isLocked() || seo.noindexOf('slta'))) return res.type('text/plain').send('User-agent: *\nDisallow: /\n');
-  return res.type('text/plain').send(seo.robotsTxt(publicOrigin(req)));
+  // the cities that live under the national address announce their own sitemaps there
+  const cities = national.isNationalHost(req) ? db.prepare("SELECT slug FROM leagues WHERE domain = '' AND status != 'HIDDEN' ORDER BY sort_order").all().map((r) => r.slug) : [];
+  return res.type('text/plain').send(seo.robotsTxt(publicOrigin(req), { cities }));
 });
-app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemapXml(publicOrigin(req), { national: national.isNationalHost(req) })));
+// a city's own sitemap (slta.sk/<slug>/sitemap.xml, or blta.sk for the first one); the national host lists only the national page
+app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemapXml(publicOrigin(req), { national: national.isNationalHost(req) && !req.cityBase, leagueId: req.league.id })));
 // the entity behind a template page: { name, image } or null
 const TEMPLATE_ENTITY = {
   article: (slug, lang, leagueId) => blog.articleEntity(slug, lang, leagueId),
@@ -366,7 +369,7 @@ app.use((req, res, next) => {
     if (req.cityBase) entity.html = entity.html.replace(/BLTA/g, req.league.brand_name || req.league.name);
   }
   try {
-    const html = seo.render(hit.key, { origin: publicOrigin(req), canonical: hit.canonical, lang: hit.lang, entity, siteName: req.cityBase ? (req.league.brand_name || req.league.name) : undefined });
+    const html = seo.render(hit.key, { origin: publicOrigin(req), canonical: hit.canonical, lang: hit.lang, entity, siteName: req.cityBase ? (req.league.brand_name || req.league.name) : undefined, leagueId: req.league.id });
     // the propozície text comes from Backend > Rules
     return res.type('html').send(hit.key === 'propozicie' ? rules.injectInto(html, req.league.id) : html);
   } catch (err) {

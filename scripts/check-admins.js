@@ -123,7 +123,9 @@ test('the settings of the whole site are closed to a city admin', async () => {
   assert.strictEqual((await asCity('PUT', '/api/leagues/national-lock', { enabled: true, password: 'sesame1' })).status, 403);
   assert.strictEqual((await asCity('GET', '/api/city-admins')).status, 403);
   assert.strictEqual((await asCity('POST', '/api/city-admins', { name: 'Me', email: 'me@example.com', leagueId: kosiceId, password: 'long-enough-3' })).status, 403, 'cannot make another admin');
-  assert.strictEqual((await asCity('GET', '/api/seo')).status, 403);
+  // the SEO texts are the city's own; the addresses (and the national page) are the super admin's
+  assert.ok((await asCity('GET', '/api/seo')).data.every((p) => p.city && !p.slugsEditable && p.key !== 'slta'));
+  assert.strictEqual((await asCity('GET', '/api/seo/court-paths')).status, 403);
   // the rules and the blog are the city's own: his list is empty, the first city's rules are not his to change
   assert.deepStrictEqual((await asCity('GET', '/api/rules')).data, []);
   const firstRules = (await asSuper('GET', '/api/rules')).data;

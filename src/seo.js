@@ -322,7 +322,60 @@ db.prepare("UPDATE seo_pages_en SET title = ? WHERE page_key = 'home' AND title 
 
 const TABLE = { sk: 'seo_pages', en: 'seo_pages_en' };
 
-function getValues(key, lang = 'sk') {
+// The SEO of a city of its own (Backend > SEO while working on that city): the texts of every page in both languages and the noindex switch.
+// Bratislava (league 1) keeps the tables above, so nothing changes for blta.sk. A city that has saved nothing for a page gets the first texts
+// of the page with its own name in them (BLTA -> SLTA Košice), and its pages stay hidden from search engines until the city is Active.
+// The addresses (slugs) are the same for every city: they belong to the code of the site, not to a city.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS seo_city_pages (
+    league_id INTEGER NOT NULL,
+    page_key TEXT NOT NULL,
+    lang TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    keywords TEXT NOT NULL DEFAULT '',
+    og_title TEXT NOT NULL DEFAULT '',
+    og_description TEXT NOT NULL DEFAULT '',
+    og_image TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (league_id, page_key, lang)
+  );
+  CREATE TABLE IF NOT EXISTS seo_city_flags (
+    league_id INTEGER NOT NULL,
+    page_key TEXT NOT NULL,
+    noindex INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (league_id, page_key)
+  );
+`);
+
+const cityOf = (leagueId) => db.prepare('SELECT * FROM leagues WHERE id = ?').get(leagueId);
+
+// the first texts of a page, spoken for a city: its brand instead of BLTA, its name instead of Bratislava
+function cityDefaults(page, lang, leagueId) {
+  const league = cityOf(leagueId);
+  const brand = (league && (league.brand_name || league.name)) || 'BLTA';
+  const name = (league && league.name) || 'Bratislava';
+  const speak = (t) => String(t || '')
+    .replace(/ - BLTA - (Bratislavská Liga Tenisových Amatérov|Bratislava Amateur Tennis League)/g, ` - ${brand}`)
+    .replace(/BLTA/g, brand)
+    .replace(/Bratislav\w*/g, name);
+  const d = defaultValues(page, lang);
+  return { ...d, title: speak(d.title), description: speak(d.description) };
+}
+
+// is a city's page hidden from search engines when nothing was saved: until the city is Active
+function cityDefaultNoindex(leagueId) {
+  const league = cityOf(leagueId);
+  return !league || league.status !== 'ACTIVE';
+}
+
+function getValues(key, lang = 'sk', leagueId = 1) {
+  if (leagueId !== 1) {
+    const page = BY_KEY.get(key);
+    if (!page) return null;
+    const r = db.prepare('SELECT * FROM seo_city_pages WHERE league_id = ? AND page_key = ? AND lang = ?').get(leagueId, key, lang);
+    const d = r ? { title: r.title, description: r.description, keywords: r.keywords, ogTitle: r.og_title, ogDescription: r.og_description, ogImage: r.og_image } : cityDefaults(page, lang, leagueId);
+    return { ...d, noindex: noindexOf(key, leagueId) };
+  }
   const r = db.prepare(`SELECT * FROM ${TABLE[lang]} WHERE page_key = ?`).get(key);
   if (!r) return null;
   return {
@@ -333,7 +386,11 @@ function getValues(key, lang = 'sk') {
 }
 
 // hiding a page from search engines is one switch for both languages
-function noindexOf(key) {
+function noindexOf(key, leagueId = 1) {
+  if (leagueId !== 1) {
+    const f = db.prepare('SELECT noindex FROM seo_city_flags WHERE league_id = ? AND page_key = ?').get(leagueId, key);
+    return f ? !!f.noindex : cityDefaultNoindex(leagueId);
+  }
   const r = db.prepare('SELECT noindex FROM seo_pages WHERE page_key = ?').get(key);
   return !r || !!r.noindex;
 }
@@ -473,12 +530,13 @@ function checkSlug(page, lang, slug) {
 }
 
 // Everything the backend lists: every page with its addresses and saved values in both languages, and the first ones (to reset to).
-function listAll() {
+// leagueId: the city whose texts are listed; slugsEditable: may the addresses be changed (the super admin, on the first city: they are shared by all)
+function listAll(leagueId = 1, { slugsEditable = true } = {}) {
   const table = new Map(routes().map((r) => [r.key, r]));
-  return PAGES.map((p) => {
+  return PAGES.filter((p) => leagueId === 1 || p.key !== 'slta').map((p) => {
     const route = table.get(p.key);
-    const sk = getValues(p.key, 'sk');
-    const en = getValues(p.key, 'en');
+    const sk = getValues(p.key, 'sk', leagueId);
+    const en = getValues(p.key, 'en', leagueId);
     const { noindex, ...skValues } = sk;
     const { noindex: unused, ...enValues } = en;
     return {
@@ -487,8 +545,10 @@ function listAll() {
       defaultSlugs: { sk: defaultSlug(p, 'sk'), en: defaultSlug(p, 'en') },
       noindex,
       values: { sk: skValues, en: enValues },
-      defaults: { sk: defaultValues(p, 'sk'), en: defaultValues(p, 'en') },
-      defaultNoindex: !!p.noindex,
+      defaults: leagueId === 1 ? { sk: defaultValues(p, 'sk'), en: defaultValues(p, 'en') } : { sk: cityDefaults(p, 'sk', leagueId), en: cityDefaults(p, 'en', leagueId) },
+      defaultNoindex: leagueId === 1 ? !!p.noindex : cityDefaultNoindex(leagueId),
+      slugsEditable: leagueId === 1 && slugsEditable,
+      city: leagueId !== 1,
     };
   });
 }
@@ -565,14 +625,14 @@ function parseValues(body) {
 }
 
 // The body of a save: { noindex, slugs: { sk, en }, sk: { title… }, en: { title… } } -> { error } or { slugs, values, noindex }.
-function parseBody(page, body) {
+function parseBody(page, body, { slugs = true } = {}) {
   const b = body || {};
   const out = { slugs: {}, values: {}, noindex: !!b.noindex };
   for (const lang of LANGS) {
     const parsed = parseValues(b[lang]);
     if (parsed.error) return { error: `${LANG_NAME[lang]}: ${parsed.error}` };
     out.values[lang] = parsed.values;
-    if (page.path === '/') continue;
+    if (page.path === '/' || !slugs) continue;
     const slug = normalizeSlug((b.slugs || {})[lang]);
     const problem = checkSlug(page, lang, slug);
     if (problem) return { error: `${LANG_NAME[lang]}: ${problem}` };
@@ -581,8 +641,24 @@ function parseBody(page, body) {
   return out;
 }
 
-function save(page, parsed) {
+function save(page, parsed, leagueId = 1) {
   const v = parsed.values;
+  if (leagueId !== 1) {
+    const put = db.prepare(`
+      INSERT INTO seo_city_pages (league_id, page_key, lang, title, description, keywords, og_title, og_description, og_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(league_id, page_key, lang) DO UPDATE SET title = excluded.title, description = excluded.description, keywords = excluded.keywords,
+        og_title = excluded.og_title, og_description = excluded.og_description, og_image = excluded.og_image`);
+    db.exec('BEGIN');
+    try {
+      LANGS.forEach((lang) => put.run(leagueId, page.key, lang, v[lang].title, v[lang].description, v[lang].keywords, v[lang].ogTitle, v[lang].ogDescription, v[lang].ogImage));
+      db.prepare('INSERT INTO seo_city_flags (league_id, page_key, noindex) VALUES (?, ?, ?) ON CONFLICT(league_id, page_key) DO UPDATE SET noindex = excluded.noindex').run(leagueId, page.key, parsed.noindex ? 1 : 0);
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+    return;
+  }
   db.exec('BEGIN');
   try {
     db.prepare(`
@@ -595,7 +671,7 @@ function save(page, parsed) {
       ON CONFLICT(page_key) DO UPDATE SET title = excluded.title, description = excluded.description, keywords = excluded.keywords,
         og_title = excluded.og_title, og_description = excluded.og_description, og_image = excluded.og_image
     `).run(page.key, v.en.title, v.en.description, v.en.keywords, v.en.ogTitle, v.en.ogDescription, v.en.ogImage);
-    if (page.path !== '/') db.prepare('UPDATE seo_pages SET slug = ?, slug_en = ? WHERE page_key = ?').run(parsed.slugs.sk, parsed.slugs.en, page.key);
+    if (page.path !== '/' && parsed.slugs.sk !== undefined && parsed.slugs.en !== undefined) db.prepare('UPDATE seo_pages SET slug = ?, slug_en = ? WHERE page_key = ?').run(parsed.slugs.sk, parsed.slugs.en, page.key);
     db.exec('COMMIT');
   } catch (err) {
     db.exec('ROLLBACK');
@@ -619,10 +695,10 @@ const OG_LOCALE = { sk: 'sk_SK', en: 'en_GB' };
 
 // `canonical` is the code address of the page (/rankings, /season/<slug>); `lang` the language of the address asked for;
 // `entity` is { name } for a template page; `origin` the public address of the site.
-function render(key, { origin, canonical, lang = 'sk', entity, siteName = 'BLTA' }) {
+function render(key, { origin, canonical, lang = 'sk', entity, siteName = 'BLTA', leagueId = 1 }) {
   const page = BY_KEY.get(key);
   const html = TEMPLATES.get(key);
-  const v = getValues(key, lang);
+  const v = getValues(key, lang, leagueId);
   if (!page || !html || !v) return html || '';
   const name = entity && entity.name ? entity.name : '';
   const fill = (text) => String(text || '').split('{name}').join(name).replace(/\s+/g, ' ').trim();
@@ -691,20 +767,21 @@ module.exports = {
 // The pages a search engine may list, in both languages (each entry points at the other language): the fixed pages and, unless
 // their template is hidden, every season, player, venue and bracket. The paths of the backend, the API, the embeds and the helper
 // pages are kept out by robots.txt.
-function sitemapXml(origin, { national = false } = {}) {
+// leagueId: the city the sitemap is of (its own pages, seasons, players, courts, brackets and articles; its own noindex settings)
+function sitemapXml(origin, { national = false, leagueId = 1 } = {}) {
   const entries = [];
   const add = (canonical, lastmod) => entries.push({ canonical, lastmod });
   // the national site (slta.sk) lists only its own page; the sitemaps of the cities never list it
-  const hidden = (key) => national || noindexOf(key);
+  const hidden = (key) => national || noindexOf(key, leagueId);
   if (national && !noindexOf('slta')) add('/');
   PAGES.filter((p) => !p.template && !hidden(p.key) && p.key !== 'slta').forEach((p) => add(p.path));
   const day = (iso) => (iso ? String(iso).slice(0, 10) : undefined);
-  if (!hidden('season')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND COALESCE(kind, 'LEAGUE') != 'TOURNAMENT'").all().forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`));
-  if (!hidden('tournament')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND kind = 'TOURNAMENT'").all().forEach((r) => add(`/tournament/${encodeURIComponent(r.slug)}`));
-  if (!hidden('article')) blog.publishedRows(1).forEach((r) => add(`/article/${encodeURIComponent(r.slug_sk)}`, day(r.modified_at)));
-  if (!hidden('court')) db.prepare('SELECT slug FROM venues WHERE slug IS NOT NULL').all().forEach((r) => add(`/courts/${encodeURIComponent(r.slug)}`));
-  if (!hidden('player')) db.prepare('SELECT slug FROM players WHERE slug IS NOT NULL').all().forEach((r) => add(`/player/${encodeURIComponent(r.slug)}`));
-  if (!hidden('bracket')) db.prepare('SELECT id, updated_at FROM brackets').all().forEach((r) => add(`/bracket/${r.id}`, day(r.updated_at)));
+  if (!hidden('season')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND COALESCE(kind, 'LEAGUE') != 'TOURNAMENT' AND league_id = ?").all(leagueId).forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`));
+  if (!hidden('tournament')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND kind = 'TOURNAMENT' AND league_id = ?").all(leagueId).forEach((r) => add(`/tournament/${encodeURIComponent(r.slug)}`));
+  if (!hidden('article')) blog.publishedRows(leagueId).forEach((r) => add(`/article/${encodeURIComponent(r.slug_sk)}`, day(r.modified_at)));
+  if (!hidden('court')) db.prepare('SELECT slug FROM venues WHERE slug IS NOT NULL AND league_id = ?').all(leagueId).forEach((r) => add(`/courts/${encodeURIComponent(r.slug)}`));
+  if (!hidden('player')) db.prepare('SELECT slug FROM players WHERE slug IS NOT NULL AND league_id = ?').all(leagueId).forEach((r) => add(`/player/${encodeURIComponent(r.slug)}`));
+  if (!hidden('bracket')) db.prepare('SELECT id, updated_at FROM brackets WHERE league_id = ?').all(leagueId).forEach((r) => add(`/bracket/${r.id}`, day(r.updated_at)));
   const body = entries.map((e) => {
     const sk = `${origin}${pageUrl(e.canonical, 'sk')}`;
     const en = `${origin}${pageUrl(e.canonical, 'en')}`;
@@ -715,10 +792,12 @@ function sitemapXml(origin, { national = false } = {}) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${body}\n</urlset>\n`;
 }
 
-function robotsTxt(origin) {
+// cities: the slugs of the cities that live under this host (slta.sk/<slug>): their sitemaps are announced and their backend kept out
+function robotsTxt(origin, { cities = [] } = {}) {
   return [
     'User-agent: *',
     'Allow: /',
+    ...cities.flatMap((c) => [`Disallow: /${c}/admin`, `Disallow: /${c}/api/`, `Disallow: /${c}/embed/`]),
     'Disallow: /admin',
     'Disallow: /header-admin',
     'Disallow: /badges-admin',
@@ -742,6 +821,7 @@ function robotsTxt(origin) {
     'Disallow: /compact',
     '',
     `Sitemap: ${origin}/sitemap.xml`,
+    ...cities.map((c) => `Sitemap: ${origin}/${c}/sitemap.xml`),
     '',
   ].join('\n');
 }

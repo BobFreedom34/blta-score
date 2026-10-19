@@ -11,7 +11,7 @@ const auth = require('./auth');
 
 // (the blog and the rules of the page are the city's own too)
 // the areas in which a city admin may write at all (the rest is for the super admin); everything in them is checked row by row
-const CITY_AREAS = new Set(['seasons', 'venues', 'players', 'matches', 'brackets', 'winners', 'carousel', 'header-items', 'schedule', 'articles', 'rules']);
+const CITY_AREAS = new Set(['seasons', 'venues', 'players', 'matches', 'brackets', 'winners', 'carousel', 'header-items', 'schedule', 'articles', 'rules', 'seo']);
 // areas that anybody may write to (a player, a visitor) whatever the admin is
 const OPEN_AREAS = new Set(['player', 'push', 'availability', 'invites']);
 

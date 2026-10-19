@@ -3202,7 +3202,7 @@ if (/(^|\/)(admin|[a-z-]+-admin|login-history)\/?$/.test(location.pathname)) {
 
 // The backend is for two kinds of admin. The super admin sees every tab, gets the Admins tab and a picker of the city he works on; the admin of
 // a city sees only the tabs of his city (the settings of the whole site are closed to him on the server too, see src/cityScope.js).
-const SUPER_ONLY_TABS = ['/badges-admin', '/leagues-admin', '/admins-admin', '/reservations-admin', '/seo-admin', '/changelog-admin', '/login-history'];
+const SUPER_ONLY_TABS = ['/badges-admin', '/leagues-admin', '/admins-admin', '/reservations-admin', '/changelog-admin', '/login-history'];
 let adminSessionInfo = null;
 async function setUpAdminTabs() {
   const bars = document.querySelectorAll('.admin-tabs');

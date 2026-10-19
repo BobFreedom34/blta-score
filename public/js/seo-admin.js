@@ -45,7 +45,9 @@
     const slug = p.slugs[lang];
     const slugField = p.home
       ? `<div style="font-size:13px;color:var(--gray);margin-top:12px">Address: <code>${escapeHtml(addressOf(p, lang, ''))}</code> (the home page has no slug)</div>`
-      : `<label style="${label}">Address (slug) <span style="font-weight:600;color:var(--gray)">— letters, digits and hyphens; accents and spaces are turned into plain letters and hyphens</span>
+      : !p.slugsEditable
+        ? `<div style="font-size:13px;color:var(--gray);margin-top:12px">Address: <code>${escapeHtml(addressOf(p, lang, slug))}</code> (the addresses are the same for every city and are kept by the super admin)</div>`
+        : `<label style="${label}">Address (slug) <span style="font-weight:600;color:var(--gray)">— letters, digits and hyphens; accents and spaces are turned into plain letters and hyphens</span>
           <span style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">
             <code style="font-size:14px">${lang === 'en' ? '/en/' : '/'}</code>
             <input type="text" name="${lang}.slug" maxlength="60" value="${escapeHtml(slug)}" style="${field};margin-top:0;flex:1;min-width:160px">
@@ -110,7 +112,9 @@
     const open = new Set([...host.querySelectorAll('details[open]')].map((d) => d.dataset.key));
     const fixed = pages.filter((p) => !p.template);
     const templates = pages.filter((p) => p.template);
-    host.innerHTML = `
+    const city = pages.length && pages[0].city;
+    const note = city ? `<div class="card" style="margin:18px 0 0"><strong>The SEO of the city you work on.</strong> <span style="color:var(--gray)">The titles, descriptions, link previews and the noindex switch below belong to this city only (the picker above the tabs changes the city). A page you have not edited speaks with the first texts and the name of the city; the pages of a city stay hidden from search engines until the city is Active (or you switch a page on here). The addresses are the same for every city.</span></div>` : '';
+    host.innerHTML = `${note}
       <h3 style="margin:22px 0 10px;color:var(--white)">Pages</h3>
       ${fixed.map(cardHtml).join('')}
       <h3 style="margin:26px 0 4px;color:var(--white)">Pages with a name <span style="font-weight:600;font-size:13px;color:var(--gray)">— one text for all seasons / players / courts / brackets, <code>{name}</code> becomes the name; the slug is the first part of the address (<code>/season/summer-2026</code>)</span></h3>
@@ -202,7 +206,7 @@
     const reset = e.target.closest('[data-reset]');
     if (!reset) return;
     const p = pages.find((x) => x.key === reset.dataset.reset);
-    const body = { noindex: p.defaultNoindex, slugs: p.defaultSlugs, sk: p.defaults.sk, en: p.defaults.en };
+    const body = { noindex: p.defaultNoindex, slugs: p.slugsEditable ? p.defaultSlugs : {}, sk: p.defaults.sk, en: p.defaults.en };
     const changed = changedAddresses(p, body);
     const warning = changed.length ? `\n\nThe addresses go back too:\n${changed.join('\n')}\n(the current ones stop working, no redirect)` : '';
     if (!window.confirm(`Put the first values back for "${p.label}" (both languages)?${warning}`)) return;
@@ -281,8 +285,11 @@
   async function load() {
     pages = await api('/seo');
     render();
-    courtPaths = await api('/seo/court-paths');
-    renderCourtPaths();
+    // the addresses of the courts are shared by every city: the super admin's, on the first city
+    if (pages.length && pages[0].slugsEditable) {
+      courtPaths = await api('/seo/court-paths');
+      renderCourtPaths();
+    }
   }
 
   checkAdmin().then((isAdmin) => {
