@@ -31,6 +31,7 @@ const venuesRouter = require('./src/routes/venues');
 const leaguesRouter = require('./src/routes/leagues');
 const cityAdminsRouter = require('./src/routes/cityAdmins');
 const aboutRouter = require('./src/routes/about');
+const mediaRouter = require('./src/routes/media');
 const cityScope = require('./src/cityScope');
 const leagues = require('./src/leagues');
 const auth = require('./src/auth');
@@ -404,6 +405,8 @@ app.use('/carousel-images', express.static(path.join(db.dataDir, 'carousel'), { 
 app.use('/venue-photos', express.static(path.join(db.dataDir, 'venue-photos'), { maxAge: '30d' }));
 app.use('/season-heroes', express.static(path.join(db.dataDir, 'season-heroes'), { maxAge: '30d' }));
 app.use('/winner-photos', express.static(path.join(db.dataDir, 'winner-photos'), { maxAge: '30d' }));
+// the media library (Backend > Media)
+app.use('/media', express.static(mediaRouter.DIR, { maxAge: '30d' }));
 app.use('/blog-images', express.static(blog.UPLOAD_DIR, { maxAge: '30d' }));
 
 app.use('/api/players', playersRouter);
@@ -424,6 +427,7 @@ app.use('/api/venues', venuesRouter);
 app.use('/api/leagues', leaguesRouter);
 app.use('/api/city-admins', cityAdminsRouter);
 app.use('/api/about', aboutRouter);
+app.use('/api/media', mediaRouter);
 app.use('/api/seasons', seasonsRouter);
 app.use('/api/invites', invitesRouter);
 app.use('/api/highlights', highlightsRouter);

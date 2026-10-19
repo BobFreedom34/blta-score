@@ -497,7 +497,7 @@ function isRetired(address) {
 
 // Words an address must not be: the folders and files of the app (a slug is the first part of the address, so /css or /api would
 // be taken by the app first).
-const RESERVED = new Set(['api', 'en', 'pozvanka', 'blog-images', 'match', 'embed', 'compact', 'compactblta', 'socket', 'socket.io', 'robots', 'robots.txt', 'sitemap', 'sitemap.xml',
+const RESERVED = new Set(['api', 'en', 'pozvanka', 'media', 'blog-images', 'match', 'embed', 'compact', 'compactblta', 'socket', 'socket.io', 'robots', 'robots.txt', 'sitemap', 'sitemap.xml',
   'badge-icons', 'player-photos', 'carousel-images', 'winner-photos']);
 const PAGE_FILES = new Set(PAGES.map((p) => p.file));
 fs.readdirSync(PUBLIC_DIR).forEach((name) => { if (!PAGE_FILES.has(name)) RESERVED.add(name.replace(/\.[^.]+$/, '')); });
@@ -804,6 +804,8 @@ function robotsTxt(origin, { cities = [] } = {}) {
     'Disallow: /bracket-admin',
     'Disallow: /venues-admin',
     'Disallow: /admins-admin',
+    'Disallow: /media-admin',
+    'Disallow: /about-admin',
     'Disallow: /seasons-admin',
     'Disallow: /tournaments-admin',
     'Disallow: /changelog-admin',

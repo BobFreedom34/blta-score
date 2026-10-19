@@ -3222,6 +3222,14 @@ async function setUpAdminTabs() {
       link.textContent = 'Info';
       if (rules) rules.after(link); else bar.appendChild(link);
     }
+    if (!bar.querySelector('a[href="/media-admin"]')) {
+      const after = bar.querySelector('a[href="/about-admin"]') || bar.querySelector('a[href="/rules-admin"]');
+      const link = document.createElement('a');
+      link.href = '/media-admin';
+      link.className = `tab${location.pathname.endsWith('/media-admin') ? ' active' : ''}`;
+      link.textContent = 'Media';
+      if (after) after.after(link); else bar.appendChild(link);
+    }
     if (info.role === 'SUPER' && !bar.querySelector('a[href="/admins-admin"]')) {
       const cities = bar.querySelector('a[href="/leagues-admin"]');
       const link = document.createElement('a');
@@ -3495,4 +3503,112 @@ function highlightMyName() {
     document.querySelectorAll('.site-footer-inner > span').forEach((el) => { el.textContent = city.brand; });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
+})();
+
+// ---------------------------------------------------------------- pictures from the media library (admin)
+// Wherever an admin is about to pick a picture from the computer (a hero image, a carousel slide, a venue photo, a blog picture, a photo of a
+// player …), a window asks where from: the computer (as before) or the library (Backend > Media: the pictures uploaded there and the ones
+// that are on the server already). A picture of the library is handed to the very same upload code as a file from the computer, so nothing
+// else on any page had to change: the input gets the file and a "change" event.
+(function mediaChooser() {
+  if (document.body.classList.contains('embed')) return;
+  let enabled = false;
+  let bypass = false;
+  checkAdmin().then((ok) => { enabled = !!ok; });
+
+  const realClick = HTMLInputElement.prototype.click;
+  const isPicture = (input) => !!input && input.type === 'file' && /image/i.test(input.accept || '');
+  const openNative = (input) => { bypass = true; try { realClick.call(input); } finally { bypass = false; } };
+
+  // a picture of the library that the input accepts (accept="image/png,image/jpeg" excludes a WebP one)
+  const accepts = (input, mime) => {
+    const list = String(input.accept || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+    return !list.length || list.some((a) => a === mime || a === 'image/*' || (a.startsWith('.') && mime.endsWith(a.slice(1).replace('jpg', 'jpeg'))));
+  };
+
+  async function toFile(item) {
+    const res = await fetch(item.url);
+    if (!res.ok) throw new Error('The picture could not be read');
+    const blob = await res.blob();
+    return new File([blob], item.name && /\.\w+$/.test(item.name) ? item.name : (item.url.split('/').pop() || 'picture'), { type: blob.type || item.mime });
+  }
+
+  async function open(input) {
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop mc-backdrop';
+    wrap.innerHTML = `
+      <div class="modal mc-modal" role="dialog" aria-modal="true">
+        <button type="button" class="close" data-close aria-label="Close">&times;</button>
+        <h3 style="margin-top:0">Choose a picture</h3>
+        <div class="mc-top">
+          <button type="button" class="btn btn-primary" data-computer>Upload from the computer</button>
+          <span class="mc-or">or choose one that is on the server</span>
+          <input type="search" class="mc-search" placeholder="Search by name">
+        </div>
+        <div class="mc-tabs"><button type="button" class="tab active" data-tab="library">Library</button><button type="button" class="tab" data-tab="server">On the server</button><a href="/media-admin" class="mc-manage" target="_blank" rel="noopener">Manage the library ↗</a></div>
+        <div class="mc-grid"><div class="mc-empty">Loading…</div></div>
+        <div class="mc-foot" style="display:${input.multiple ? 'flex' : 'none'}"><span class="mc-count">Nothing chosen</span><button type="button" class="btn btn-primary" data-use disabled>Use the chosen</button></div>
+      </div>`;
+    document.body.appendChild(wrap);
+    const close = () => wrap.remove();
+    const grid = wrap.querySelector('.mc-grid');
+    let tab = 'library';
+    let data = { library: [], server: [] };
+    const chosen = new Set();
+    const items = () => (data[tab] || []).filter((m) => accepts(input, m.mime) && (!wrap.querySelector('.mc-search').value || String(m.name).toLowerCase().includes(wrap.querySelector('.mc-search').value.toLowerCase())));
+    const draw = () => {
+      const list = items();
+      grid.innerHTML = list.length ? list.map((m) => `<button type="button" class="mc-item${chosen.has(m.url) ? ' on' : ''}" data-url="${escapeHtml(m.url)}" title="${escapeHtml(m.name)}"><img src="${escapeHtml(m.url)}" alt="" loading="lazy"><span>${escapeHtml(m.name)}</span></button>`).join('')
+        : `<div class="mc-empty">${tab === 'library' ? 'The library has no picture of a fitting type yet. Upload some in Backend → Media, or choose one that is on the server.' : 'No picture of a fitting type on the server.'}</div>`;
+      const n = chosen.size;
+      wrap.querySelector('.mc-count').textContent = n ? `${n} chosen` : 'Nothing chosen';
+      wrap.querySelector('[data-use]').disabled = !n;
+    };
+    const give = async (urls) => {
+      try {
+        const all = [...data.library, ...data.server];
+        const files = await Promise.all(urls.map((u) => toFile(all.find((m) => m.url === u))));
+        const dt = new DataTransfer();
+        files.forEach((f) => dt.items.add(f));
+        input.files = dt.files;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        close();
+      } catch (err) { toast(err.message); }
+    };
+    wrap.addEventListener('click', (e) => {
+      if (e.target === wrap || e.target.closest('[data-close]')) { close(); return; }
+      if (e.target.closest('[data-computer]')) { close(); openNative(input); return; }
+      const t = e.target.closest('[data-tab]');
+      if (t) { tab = t.dataset.tab; wrap.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('active', b === t)); draw(); return; }
+      if (e.target.closest('[data-use]')) { give([...chosen]); return; }
+      const it = e.target.closest('.mc-item');
+      if (!it) return;
+      if (!input.multiple) { give([it.dataset.url]); return; }
+      if (chosen.has(it.dataset.url)) chosen.delete(it.dataset.url); else chosen.add(it.dataset.url);
+      draw();
+    });
+    wrap.querySelector('.mc-search').addEventListener('input', draw);
+    document.addEventListener('keydown', function onKey(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); } });
+    try { data = await api('/media?server=1'); } catch (err) { grid.innerHTML = `<div class="mc-empty">${escapeHtml(err.message)}</div>`; return; }
+    // the library first; when it is empty the pictures on the server are the useful ones
+    if (!data.library.length && data.server && data.server.length) { tab = 'server'; wrap.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === 'server')); }
+    draw();
+  }
+
+  // a click that would open the file window of the computer (a visible input, a label around a hidden one) opens this window first
+  document.addEventListener('click', (e) => {
+    if (!enabled || bypass) return;
+    const label = e.target.closest && e.target.closest('label');
+    const input = (e.target.closest && e.target.closest('input[type="file"]')) || (label && label.control && label.control.type === 'file' ? label.control : null);
+    if (!isPicture(input) || input.closest('#md-drop, .mc-modal')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    open(input);
+  }, true);
+  // the same for a file window that the page opens by code (input.click())
+  HTMLInputElement.prototype.click = function click() {
+    if (enabled && !bypass && isPicture(this) && !this.closest('#md-drop')) { open(this); return; }
+    return realClick.apply(this, arguments);
+  };
 })();

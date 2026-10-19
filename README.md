@@ -348,6 +348,15 @@ Code: `src/auth.js` (adminSession, requireSuperAdmin), `src/cityScope.js` (what 
 schedule events carry a `league_id` (a trigger gives a match the city of its season). `node
 scripts/check-admins.js` tests all of it.
 
+### 4c. The media library (Backend > Media)
+
+Every city has a picture library (`media_files`, files in `<data dir>/media`, shown at `/media/<file>`): upload several pictures at once or drop
+them on the page, rename, delete, copy the address. Also listed, read only: the pictures that are on the server already (carousel, season pictures,
+venue photos, winners, blog). Wherever an admin is about to pick a picture from the computer (a hero image, a carousel slide, a venue photo, a blog
+picture, a photo of a player …) a window asks "Upload from the computer" or "choose a picture of the library / of the server" (`mediaChooser` at
+the end of `public/js/common.js`): the chosen picture is handed to the very same upload code as a file from the computer (the input gets the
+file and a change event), so no page needed changes and the picture is copied to where it is used. `node scripts/check-media.js` tests the library.
+
 ### 4b. The public pages of a city (slta.sk/<slug>)
 
 Every city without a domain of its own lives at `slta.sk/<slug>` (Košice: `slta.sk/kosice`): the same site as
