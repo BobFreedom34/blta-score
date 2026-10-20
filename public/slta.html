@@ -52,8 +52,8 @@
   #map .m-lab text { fill: #cfd2d8; font-size: 20px; font-weight: 800; letter-spacing: .02em; }
   #map .m-pin.on .m-lab text { fill: #fff; }
   @keyframes m-pulse { 0% { transform: scale(.7); opacity: .85; } 100% { transform: scale(2.6); opacity: 0; } }
-  .sl-credit { margin-top: 6px; text-align: right; font-size: 9.5px; color: #5d616b; }
-  .sl-credit a { color: #7a7e88; text-decoration: none; }
+  .sl-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; font-size: 11px; font-weight: 800; color: #aeb2ba; text-transform: uppercase; letter-spacing: .06em; }
+  .sl-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: -1px; }
   @media (max-width: 860px) {
     #map .m-lab text { font-size: 25px; }
     #map .m-rl { font-size: 15px; }
@@ -127,7 +127,7 @@
   </section>
 
   <section class="sl-picker" id="mesta">
-    <div class="sl-map"><svg id="map" viewBox="0 0 1000 570" role="img" aria-label="Mapa Slovenska s mestami"></svg><div class="sl-credit">Map: <a href="https://www.geoboundaries.org" target="_blank" rel="noopener">geoBoundaries</a> (CC BY 4.0)</div></div>
+    <div class="sl-map"><svg id="map" viewBox="0 0 1000 570" role="img" aria-label="Mapa Slovenska s mestami"></svg><div class="sl-legend" id="legend"></div></div>
     <div class="sl-list" id="list"><noscript><a class="sl-city" href="https://blta.sk">Bratislava · BLTA</a></noscript></div>
   </section>
 
@@ -253,6 +253,7 @@ function draw() {
       '<circle class="m-core" cx="' + x + '" cy="' + y + '" r="' + (on ? 10 : 7.5) + '" fill="' + col + '"/>' +
       '<g class="m-lab" data-left="' + (left ? 1 : 0) + '" data-px="' + x + '"><rect x="' + lx + '" y="' + (y - 17) + '" width="' + width + '" height="34" rx="9" stroke="' + (on ? col : 'rgba(255,255,255,.22)') + '"/><text x="' + (lx + 11) + '" y="' + (y + 7) + '">' + esc(c.name) + '</text></g></g>';
   }).join('');
+  document.getElementById('legend').innerHTML = [['now', T.running], ['reg', T.regOpen], ['soon', T.soon]].map(([k, l]) => '<span><i style="background:' + colour[k] + '"></i>' + esc(l) + '</span>').join('');
   // the name plate is as wide as its text (the text gets bigger on a phone)
   pinsEl.querySelectorAll('.m-lab').forEach((g) => {
     const text = g.querySelector('text'); const rect = g.querySelector('rect');
