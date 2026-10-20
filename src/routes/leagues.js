@@ -5,6 +5,7 @@ const db = require('../db');
 const auth = require('../auth');
 const leagues = require('../leagues');
 const national = require('../national');
+const carousel = require('./carousel');
 
 const router = express.Router();
 
@@ -69,33 +70,9 @@ router.put('/national-lock', auth.requireSuperAdmin, (req, res) => {
   res.json({ locked: national.isLocked(), hasPassword: national.hasPassword() });
 });
 
-// Public: the banners of the slider on the national page — the seasons and tournaments that are running or coming, in the cities that are shown,
-// that have a hero picture (the one of the season page): running first, then the nearest coming ones. At most 10.
-router.get('/featured', (req, res) => {
-  const today = new Date().toISOString().slice(0, 10);
-  const days = (a, b) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86400000);
-  const rows = db.prepare(`
-    SELECT s.name, s.slug, s.kind, s.start_date, s.end_date, s.hero_url, s.hero_mobile_url, s.logo_url, s.registration_open, s.league_id
-    FROM seasons s JOIN leagues l ON l.id = s.league_id
-    WHERE l.status != 'HIDDEN' AND (s.hero_url != '' AND s.hero_url IS NOT NULL OR s.hero_mobile_url != '' AND s.hero_mobile_url IS NOT NULL)
-      AND s.start_date IS NOT NULL AND s.start_date != '' AND (s.end_date IS NULL OR s.end_date = '' OR s.end_date >= ?)
-  `).all(today);
-  const out = rows.map((s) => {
-    const league = leagues.byId(s.league_id);
-    const running = s.start_date <= today;
-    const city = leagues.serialize(league);
-    return {
-      city: { slug: league.slug, name: league.name, brandName: league.brand_name || league.name, url: city.url },
-      season: { name: s.name, slug: s.slug, kind: s.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE', startDate: s.start_date, endDate: s.end_date || '', heroUrl: s.hero_url || '', heroMobileUrl: s.hero_mobile_url || '', logoUrl: s.logo_url || '' },
-      state: running ? 'running' : 'upcoming',
-      daysLeft: running ? (s.end_date ? Math.max(0, days(today, s.end_date)) : null) : null,
-      startsIn: running ? null : Math.max(0, days(today, s.start_date)),
-      registrationOpen: !!s.registration_open,
-      _sort: running ? 0 : 1,
-    };
-  }).sort((a, b) => a._sort - b._sort || (a._sort === 0 ? (a.season.startDate < b.season.startDate ? 1 : -1) : (a.season.startDate > b.season.startDate ? 1 : -1))).slice(0, 10);
-  out.forEach((o) => { delete o._sort; });
-  res.json(out);
+// Public: the slides of the carousel at the top of the national page (Backend > Carousel, "National page"), in order
+router.get('/carousel', (req, res) => {
+  res.json(db.prepare('SELECT * FROM carousel_slides WHERE active = 1 AND league_id = ? ORDER BY sort_order, id').all(carousel.NATIONAL).map(carousel.serialize));
 });
 
 // Public: the cities of the picker (without the hidden ones), in the order of the admin

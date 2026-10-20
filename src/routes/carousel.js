@@ -5,7 +5,7 @@ const express = require('express');
 const multer = require('multer');
 const db = require('../db');
 const leagues = require('../leagues');
-const { requireAdmin } = require('../auth');
+const { requireAdmin, isSuperAdmin } = require('../auth');
 
 const router = express.Router();
 
@@ -44,6 +44,10 @@ function cleanText(raw, max, name) {
   return { v };
 }
 
+// The carousel of the national page (slta.sk) is its own set of slides (league_id 0): the super admin works on it with ?scope=national.
+const NATIONAL = 0;
+const slideLeague = (req) => (req.query.scope === 'national' && isSuperAdmin(req) ? NATIONAL : leagues.actingIdOf(req));
+
 // Public — the home page shows the visible slides, in order.
 router.get('/', (req, res) => {
   res.json(db.prepare('SELECT * FROM carousel_slides WHERE active = 1 AND league_id = ? ORDER BY sort_order, id').all(leagues.actingIdOf(req)).map(serialize));
@@ -51,7 +55,7 @@ router.get('/', (req, res) => {
 
 // Backend: every slide, hidden ones too.
 router.get('/all', requireAdmin, (req, res) => {
-  res.json(db.prepare('SELECT * FROM carousel_slides WHERE league_id = ? ORDER BY sort_order, id').all(leagues.actingIdOf(req)).map(serialize));
+  res.json(db.prepare('SELECT * FROM carousel_slides WHERE league_id = ? ORDER BY sort_order, id').all(slideLeague(req)).map(serialize));
 });
 
 // One picture per request (the backend sends several one after the other); it goes to the end of the carousel.
@@ -64,7 +68,7 @@ router.post('/', requireAdmin, (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Upload a PNG, JPG or WebP picture' });
     const filename = `slide-${Date.now()}-${crypto.randomBytes(5).toString('hex')}${MIME_EXT[req.file.mimetype]}`;
     fs.writeFileSync(path.join(DIR, filename), req.file.buffer);
-    const leagueId = leagues.actingIdOf(req);
+    const leagueId = slideLeague(req);
     const next = (db.prepare('SELECT MAX(sort_order) AS m FROM carousel_slides WHERE league_id = ?').get(leagueId).m ?? -1) + 1;
     const info = db.prepare('INSERT INTO carousel_slides (image_url, sort_order, league_id) VALUES (?, ?, ?)').run(`/carousel-images/${filename}`, next, leagueId);
     res.status(201).json(serialize(db.prepare('SELECT * FROM carousel_slides WHERE id = ?').get(info.lastInsertRowid)));
@@ -124,3 +128,5 @@ router.delete('/:id', requireAdmin, (req, res) => {
 });
 
 module.exports = router;
+module.exports.serialize = serialize;
+module.exports.NATIONAL = NATIONAL;

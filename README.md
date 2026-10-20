@@ -348,6 +348,10 @@ Code: `src/auth.js` (adminSession, requireSuperAdmin), `src/cityScope.js` (what 
 schedule events carry a `league_id` (a trigger gives a match the city of its season). `node
 scripts/check-admins.js` tests all of it.
 
+**The carousel of the national page.** The big picture carousel at the top of slta.sk is the same carousel as the one of blta.sk (heading, subtext, link,
+mobile picture), with its own slides (`carousel_slides.league_id = 0`). The super admin edits it in Backend > Carousel with the switch
+"The national page (slta.sk)" (`?scope=national`); the page reads `GET /api/leagues/carousel`. A city admin cannot touch it.
+
 ### 4c. The media library (Backend > Media)
 
 Every city has a picture library (`media_files`, files in `<data dir>/media`, shown at `/media/<file>`): upload several pictures at once or drop

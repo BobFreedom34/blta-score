@@ -61,8 +61,13 @@
 
   function render() {
     host.innerHTML = `
+      ${isSuper ? `<div class="card" style="margin-bottom:16px"><strong>Which carousel?</strong>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button type="button" class="btn ${national ? 'btn-outline' : 'btn-primary'}" data-scope="city">The home page of the city I work on</button>
+          <button type="button" class="btn ${national ? 'btn-primary' : 'btn-outline'}" data-scope="national">The national page (slta.sk)</button>
+        </div></div>` : ''}
       <div class="card" style="margin-bottom:16px">
-        <h3 style="margin-top:0">Add pictures</h3>
+        <h3 style="margin-top:0">Add pictures${national ? ' — national page' : ''}</h3>
         <p style="color:var(--gray);margin:0 0 10px;font-size:14px">PNG, JPG or WebP, up to 6 MB each. These are the <b>desktop</b> pictures: a wide picture (about <b>16:6</b>, e.g. 1600 × 600) fills the banner best. Pick several files to add them at once. Every picture can then get its own <b>mobile</b> picture at <b>16:9</b> (e.g. 1280 × 720) with the button under it; without one, phones get the desktop picture cut to 16:9 from the middle.</p>
         <input type="file" id="ca-files" accept="image/png,image/jpeg,image/webp" multiple>
         <button type="button" class="btn btn-primary" id="ca-upload" style="margin-left:8px">Upload</button>
@@ -74,8 +79,14 @@
       </div>`;
   }
 
+  // The super admin has two carousels: the one of the city he works on and the one at the top of the national page (slta.sk).
+  let national = false;
+  let isSuper = false;
+  try { national = sessionStorage.getItem('carousel_scope') === 'national'; } catch { /* the city one */ }
+  const scopeQuery = () => (national ? '?scope=national' : '');
+
   async function load() {
-    slides = await api('/carousel/all');
+    slides = await api(`/carousel/all${scopeQuery()}`);
     render();
   }
 
@@ -96,7 +107,7 @@
       msg.textContent = `Uploading ${done + 1} of ${files.length}…`;
       const form = new FormData();
       form.append('image', file);
-      const res = await fetch('/api/carousel', { method: 'POST', body: form, credentials: 'same-origin' });
+      const res = await fetch(`/api/carousel${scopeQuery()}`, { method: 'POST', body: form, credentials: 'same-origin' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         msg.textContent = `${file.name}: ${err.error || 'upload failed'}`;
@@ -135,6 +146,13 @@
 
   host.addEventListener('click', async (e) => {
     if (e.target.id === 'ca-upload') { upload(); return; }
+    const sw = e.target.closest('[data-scope]');
+    if (sw) {
+      national = sw.dataset.scope === 'national';
+      try { sessionStorage.setItem('carousel_scope', national ? 'national' : 'city'); } catch { /* not remembered */ }
+      load().catch((err) => toast(err.message));
+      return;
+    }
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
     const row = btn.closest('.ca-row');
@@ -182,8 +200,13 @@
     }
   });
 
-  checkAdmin().then((isAdmin) => {
-    if (isAdmin) { load().catch((err) => { host.innerHTML = `<div class="card" style="color:var(--danger)">${escapeHtml(err.message)}</div>`; }); return; }
+  checkAdmin().then(async (isAdmin) => {
+    if (isAdmin) {
+      try { isSuper = (await loadSession()).adminRole === 'SUPER'; } catch { isSuper = false; }
+      if (!isSuper) national = false;
+      load().catch((err) => { host.innerHTML = `<div class="card" style="color:var(--danger)">${escapeHtml(err.message)}</div>`; });
+      return;
+    }
     host.innerHTML = '<div class="card"><p style="margin:0;color:var(--gray)">Managing the carousel requires an admin login. <a href="/admin" style="text-decoration:underline;color:var(--orange)">Log in as admin</a>.</p></div>';
   });
 })();

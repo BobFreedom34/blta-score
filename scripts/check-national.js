@@ -119,37 +119,24 @@ test('blta.sk: its home page is unchanged, the national page is not served and n
   assert.strictEqual((await as('localhost', '/slta')).status, 404);
 });
 
-test('the slider of the national page: running and coming seasons with a hero picture, running first, none without a picture or of a hidden city', async () => {
-  const iso = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
-  const make = async (name, start, end) => JSON.parse((await admin('POST', '/api/seasons', { name, startDate: start, endDate: end })).body);
-  const running = await make('Running Series', iso(-30), iso(60));
-  const coming = await make('Coming Series', iso(20), iso(100));
-  const ended = await make('Old Series', iso(-200), iso(-100));
-  const noPicture = await make('Plain Series', iso(-5), iso(50));
-  const hidden = JSON.parse((await admin('POST', '/api/leagues', { name: 'Hidden City' })).body);
-  const hiddenSeason = await make('Hidden Series', iso(-5), iso(50));
-  const db = new DatabaseSync(path.join(dir, 'blta-score.db'));
-  const hero = db.prepare('UPDATE seasons SET hero_url = ?, hero_mobile_url = ? WHERE id = ?');
-  hero.run('/season-heroes/running.jpg', '/season-heroes/running-m.jpg', running.id);
-  hero.run('/season-heroes/coming.jpg', '', coming.id);
-  hero.run('/season-heroes/old.jpg', '', ended.id);
-  hero.run('/season-heroes/hidden.jpg', '', hiddenSeason.id);
-  db.prepare('UPDATE seasons SET league_id = ? WHERE id = ?').run(hidden.id, hiddenSeason.id);
-  db.close();
-  const r = await as('slta.sk', '/api/leagues/featured');
-  assert.strictEqual(r.status, 200);
-  const list = JSON.parse(r.body);
-  assert.deepStrictEqual(list.map((x) => x.season.name), ['Running Series', 'Coming Series'], 'running first; no ended, no picture-less, no hidden city');
-  assert.strictEqual(list[0].state, 'running');
-  assert.strictEqual(list[0].daysLeft, 60);
-  assert.strictEqual(list[0].season.heroMobileUrl, '/season-heroes/running-m.jpg');
-  assert.strictEqual(list[0].city.slug, 'bratislava');
-  assert.strictEqual(list[0].city.url, 'https://blta.sk');
-  assert.strictEqual(list[1].state, 'upcoming');
-  assert.strictEqual(list[1].startsIn, 20);
+test('the carousel of the national page: its own slides, edited by the super admin only, shown in the page', async () => {
+  assert.deepStrictEqual(JSON.parse((await as('slta.sk', '/api/leagues/carousel')).body), [], 'no slides at first');
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  const send = async (url) => { const f = new FormData(); f.append('image', new Blob([png], { type: 'image/png' }), 's.png'); const r = await fetch(`http://localhost:${port}${url}`, { method: 'POST', body: f, headers: { Cookie: adminCookie } }); return { status: r.status, json: await r.json().catch(() => null) }; };
+  const nationalSlide = await send('/api/carousel?scope=national');
+  assert.strictEqual(nationalSlide.status, 201);
+  const citySlide = await send('/api/carousel');
+  assert.strictEqual(citySlide.status, 201);
+  assert.strictEqual((await admin('PATCH', `/api/carousel/${nationalSlide.json.id}`, { captionSk: 'Vitaj v SLTA', captionEn: 'Welcome to SLTA', subtextSk: 'Liga vo vasom meste', link: '/en' })).status, 200);
+  const list = JSON.parse((await as('slta.sk', '/api/leagues/carousel')).body);
+  assert.deepStrictEqual(list.map((s) => s.id), [nationalSlide.json.id], 'only the national slide, not the one of Bratislava');
+  assert.strictEqual(list[0].captionSk, 'Vitaj v SLTA');
+  assert.deepStrictEqual(JSON.parse((await as('blta.sk', '/api/carousel')).body).map((s) => s.id), [citySlide.json.id], 'blta.sk keeps its own carousel');
+  assert.deepStrictEqual(JSON.parse((await admin('GET', '/api/carousel/all?scope=national')).body).map((s) => s.id), [nationalSlide.json.id]);
+  assert.deepStrictEqual(JSON.parse((await admin('GET', '/api/carousel/all')).body).map((s) => s.id), [citySlide.json.id]);
   const page = await as('slta.sk', '/');
-  assert.ok(page.body.includes('id="slider"') && page.body.includes('/api/leagues/featured'), 'the page has the slider');
-  assert.ok(noPicture.id);
+  assert.ok(page.body.includes('id="home-carousel"') && page.body.includes('/api/leagues/carousel'), 'the page shows it');
+  assert.ok(!page.body.includes('/api/leagues/featured'), 'not the slider of the seasons');
 });
 
 test('the lock belongs to the admin: a password of 6 characters or more, never given back', async () => {
