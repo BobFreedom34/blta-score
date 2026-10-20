@@ -26,6 +26,24 @@ function slugify(text) {
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
 }
 
+// The coordinates (latitude, longitude) of the towns of Slovakia, for the pin of a city on the national map: a new city gets its own from
+// here by its name, and a city that has none yet is given them once (the admin can change them in Backend > Cities afterwards).
+const KNOWN_TOWNS = {
+  bratislava: [48.1486, 17.1077], kosice: [48.7164, 21.2611], presov: [48.9984, 21.2339], zilina: [49.2231, 18.7394], 'banska bystrica': [48.7363, 19.1462],
+  nitra: [48.3069, 18.0864], trnava: [48.3774, 17.5883], trencin: [48.8945, 18.0444], martin: [49.0665, 18.9217], poprad: [49.0612, 20.2977],
+  prievidza: [48.7746, 18.6245], zvolen: [48.5763, 19.1531], 'povazska bystrica': [49.1214, 18.4247], michalovce: [48.7547, 21.9187], 'nove zamky': [47.9856, 18.1614],
+  komarno: [47.7634, 18.1286], levice: [48.2155, 18.6068], humenne: [48.9371, 21.9171], bardejov: [49.2923, 21.2751], 'liptovsky mikulas': [49.0833, 19.6167],
+  ruzomberok: [49.0746, 19.3066], piestany: [48.5922, 17.8338], lucenec: [48.3573, 19.6694], topolcany: [48.5578, 18.1749], 'dunajska streda': [47.9921, 17.6196],
+  senica: [48.6794, 17.3679], 'dolny kubin': [49.2092, 19.2976], 'spisska nova ves': [48.9438, 20.5675], roznava: [48.6603, 20.5313], malacky: [48.4356, 17.0227],
+  galanta: [48.1903, 17.7273], skalica: [48.8451, 17.2263], cadca: [49.4375, 18.7895], snina: [48.9886, 22.1517], 'vranov nad toplou': [48.8883, 21.6847],
+};
+const foldName = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim();
+// [lat, lng] of a town by its name, or null when it is not one of the known towns
+function coordsFor(name) {
+  const c = KNOWN_TOWNS[foldName(name)];
+  return c ? [c[0], c[1]] : null;
+}
+
 // 'https://www.Blta.sk/' → 'blta.sk'; '' stays ''; anything that is not a host name → null
 function normalizeDomain(input) {
   const raw = String(input || '').trim().toLowerCase();
@@ -122,4 +140,12 @@ function hasData(leagueId) {
   return OWNED_TABLES.some((t) => db.prepare(`SELECT 1 FROM ${t} WHERE league_id = ? LIMIT 1`).get(leagueId));
 }
 
-module.exports = { ACTING_COOKIE, actingIdOf, DEFAULT_LEAGUE_ID, STATUSES, RESERVED_SLUGS, slugify, normalizeDomain, byId, bySlug, forHost, invalidate, attach, serialize, hasData };
+// Once per city: a city that has no coordinates yet (made before the towns were known) gets those of its name, if it is a known town
+db.prepare('SELECT id, name FROM leagues WHERE lat IS NULL AND lng IS NULL').all().forEach((l) => {
+  if (db.prepare('SELECT 1 FROM app_flags WHERE key = ?').get(`city_coords_${l.id}`)) return;
+  const c = coordsFor(l.name);
+  if (c) db.prepare('UPDATE leagues SET lat = ?, lng = ? WHERE id = ? AND lat IS NULL AND lng IS NULL').run(c[0], c[1], l.id);
+  db.prepare('INSERT OR IGNORE INTO app_flags (key) VALUES (?)').run(`city_coords_${l.id}`);
+});
+
+module.exports = { coordsFor, ACTING_COOKIE, actingIdOf, DEFAULT_LEAGUE_ID, STATUSES, RESERVED_SLUGS, slugify, normalizeDomain, byId, bySlug, forHost, invalidate, attach, serialize, hasData };

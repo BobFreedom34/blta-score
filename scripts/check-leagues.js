@@ -87,6 +87,19 @@ test('a new city: the address and the brand come from the name, it starts hidden
   assert.strictEqual((await call('GET', '/api/leagues/all', undefined, { admin: false })).status, 401);
 });
 
+test('a town of Slovakia gets its pin by its name; coordinates that are given are kept; an unknown name gets none', async () => {
+  const zilina = await call('POST', '/api/leagues', { name: 'Žilina' });
+  assert.strictEqual(zilina.status, 201);
+  const all = (await call('GET', '/api/leagues/all')).json;
+  const row = all.find((l) => l.slug === 'zilina');
+  assert.ok(Math.abs(row.lat - 49.2231) < 0.001 && Math.abs(row.lng - 18.7394) < 0.001, 'Zilina is on the map: ' + row.lat + ',' + row.lng);
+  const own = await call('POST', '/api/leagues', { name: 'Banská Bystrica', lat: 1.5, lng: 2.5 });
+  assert.deepStrictEqual([own.json.lat, own.json.lng], [1.5, 2.5], 'the given ones win');
+  const none = await call('POST', '/api/leagues', { name: 'Atlantis' });
+  assert.deepStrictEqual([none.json.lat, none.json.lng], [null, null]);
+  for (const l of [zilina.json, own.json, none.json]) await call('DELETE', `/api/leagues/${l.id}`);
+});
+
 test('changing a city: it appears on the picker, after Bratislava; the address stays unique', async () => {
   const r = await call('PATCH', `/api/leagues/${kosice.id}`, { status: 'COMING_SOON', brandName: 'SLTA Košice' });
   assert.strictEqual(r.status, 200, JSON.stringify(r.json));

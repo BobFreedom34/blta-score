@@ -101,6 +101,8 @@ router.post('/', auth.requireSuperAdmin, (req, res) => {
   const parsed = parse(req.body || {}, null);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const f = { status: 'HIDDEN', domain: '', lat: null, lng: null, ...parsed.fields };
+  // a town of Slovakia gets its pin on the map by its name (unless coordinates were given)
+  if (f.lat === null && f.lng === null) { const c = leagues.coordsFor(f.name); if (c) [f.lat, f.lng] = c; }
   const next = (db.prepare('SELECT MAX(sort_order) AS m FROM leagues').get().m ?? -1) + 1;
   const info = db.prepare('INSERT INTO leagues (slug, name, brand_name, domain, status, lat, lng, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
     .run(f.slug, f.name, f.brand_name, f.domain, f.status, f.lat, f.lng, f.sort_order ?? next);
