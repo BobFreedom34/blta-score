@@ -24,7 +24,8 @@
   .sl-lang a { border: 1px solid rgba(255,255,255,.25); border-radius: var(--radius-sm); padding: 6px 12px; font-size: 12px; font-weight: 800; color: #fff; text-decoration: none; }
   .sl-lang a.on { background: var(--orange); border-color: var(--orange); }
   .sl-wrap { max-width: 1160px; margin: 0 auto; padding: 0 20px 60px; }
-  .sl-hero { padding: 54px 0 26px; }
+  .sl-hero { margin-top: 22px; }
+  .home-carousel:not([hidden]) + .sl-hero { margin-top: 48px; }
   .sl-eyebrow { color: var(--orange); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 10px; }
   .sl-hero h1 { margin: 0 0 12px; font-size: 52px; line-height: 1.04; font-weight: 800; color: #fff; text-transform: none; letter-spacing: -.01em; max-width: 780px; }
   .sl-hero h1 em { font-style: normal; color: var(--green); }
@@ -34,7 +35,7 @@
   .sl-search svg { color: var(--orange); flex: none; }
   .sl-search input { flex: 1; min-width: 0; height: 50px; background: none; border: 0; outline: 0; color: #fff; font: inherit; font-size: 15px; font-weight: 600; box-shadow: none; padding: 0; }
   .sl-search input::placeholder { color: #8b8f98; }
-  .sl-picker { display: grid; grid-template-columns: 1.2fr 1fr; gap: 22px; margin-top: 8px; align-items: start; }
+  .sl-picker { display: grid; grid-template-columns: 1.2fr 1fr; gap: 22px; align-items: start; }
   /* the map: the 8 regions of Slovakia, the rivers, the mountains and the cities */
   .sl-map { position: relative; padding: 0; background: none; border: 0; }
   .sl-map svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -71,7 +72,7 @@
   .sl-tag.reg { background: var(--green); color: #0a0a0a; }
   .sl-tag.soon { border: 1px solid #5a5e68; color: #d3d6dc; }
   .sl-empty { color: #aeb2ba; padding: 14px; font-weight: 600; }
-  .sl-det { margin-top: 22px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; background: #0f0f12; border: 1px solid var(--green); border-radius: var(--radius); padding: 22px 26px; box-shadow: 0 0 30px -12px rgba(178,250,6,.4); }
+  .sl-det { margin-top: 16px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; background: #0f0f12; border: 1px solid var(--green); border-radius: var(--radius); padding: 22px 26px; box-shadow: 0 0 30px -12px rgba(178,250,6,.4); }
   .sl-det[hidden] { display: none; }
   .sl-det h2 { margin: 0 0 8px; font-size: 26px; font-weight: 800; color: #fff; text-transform: none; }
   .sl-det .url { color: #8b8f98; font-size: 13px; font-weight: 600; margin-left: 8px; }
@@ -86,21 +87,26 @@
   .sl-btn.d { background: var(--fill-grey); color: #fff; border-color: rgba(255,255,255,.2); }
   .sl-btn.d:hover { border-color: var(--orange); }
   .sl-btn.off { background: var(--fill-grey); color: #8b8f98; border-color: rgba(255,255,255,.1); cursor: default; }
-  .sl-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 44px 0; }
+  .sl-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .sl-stats[hidden] { display: none; }
   .sl-stat { background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 18px 20px; }
   .sl-stat b { display: block; font-size: 34px; font-weight: 800; line-height: 1.1; }
   .sl-stat small { color: #aeb2ba; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
-  .sl-sec { margin: 0 0 16px; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; color: #fff; }
-  .sl-how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 44px; }
+  .sl-sec { margin: 0 0 14px; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; color: #fff; }
+  .sl-how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
   .sl-how div { background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 22px; }
   .sl-how span { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--radius-sm); background: var(--orange); font-weight: 800; margin-bottom: 14px; }
   .sl-how b { display: block; font-size: 18px; font-weight: 800; margin-bottom: 6px; }
   .sl-how small { color: #c3c7cf; font-size: 14px; font-weight: 500; line-height: 1.5; }
-  .sl-wrap .home-carousel { margin-top: 26px; }
+  .sl-wrap .home-carousel { margin-top: 22px; }
+  /* the sections: 88px apart (68px on a tablet and a phone) with a thin grey line in the middle of the gap, like the home page of blta.sk */
+  .sl-block { position: relative; margin-top: 88px; }
+  .sl-block::before { content: ''; position: absolute; left: 0; right: 0; top: -44px; height: 1px; background: rgba(255, 255, 255, 0.14); pointer-events: none; }
+  .sl-block[hidden] { display: none; }
+  @media (max-width: 900px) { .sl-block { margin-top: 68px; } .sl-block::before { top: -34px; } .home-carousel:not([hidden]) + .sl-hero { margin-top: 40px; } }
   .sl-foot { border-top: 1px solid rgba(255,255,255,.1); padding: 26px 20px; text-align: center; color: #8b8f98; font-size: 13px; font-weight: 600; }
   .sl-foot a { color: var(--orange); text-decoration: none; }
   @media (max-width: 860px) {
-    .sl-hero { padding-top: 34px; }
     .sl-hero h1 { font-size: 36px; }
     .sl-picker { grid-template-columns: 1fr; }
     .sl-stats { grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
@@ -127,21 +133,21 @@
     <label class="sl-search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="text" data-i-placeholder="search" placeholder="Nájdi svoje mesto…" autocomplete="off"></label>
   </section>
 
-  <section class="sl-picker" id="mesta">
+  <section class="sl-picker sl-block" id="mesta">
     <div class="sl-map"><svg id="map" viewBox="0 0 1000 570" role="img" aria-label="Mapa Slovenska s mestami"></svg><div class="sl-legend" id="legend"></div></div>
     <div class="sl-list" id="list"><noscript><a class="sl-city" href="https://blta.sk">Bratislava · BLTA</a></noscript></div>
   </section>
 
   <section class="sl-det" id="det" hidden></section>
 
-  <section class="sl-stats" id="stats" hidden></section>
+  <section class="sl-stats sl-block" id="stats" hidden></section>
 
-  <h2 class="sl-sec" id="ako" data-i="howTitle">Ako to funguje</h2>
+  <div class="sl-block" id="ako-block"><h2 class="sl-sec" id="ako" data-i="howTitle">Ako to funguje</h2>
   <section class="sl-how">
     <div><span>1</span><b data-i="how1t">Vyber mesto</b><small data-i="how1d">Každé mesto má vlastnú ligu, sezóny a organizátora, ktorý to tam pozná.</small></div>
     <div><span>2</span><b data-i="how2t">Zaregistruj sa</b><small data-i="how2d">Vyber si kategóriu Novice, Next Gen alebo Elite a zaplať štartovné online.</small></div>
     <div><span>3</span><b data-i="how3t">Hraj a stúpaj</b><small data-i="how3d">Body idú do rebríčka tvojho mesta a tvoj CourtIQ platí na celom Slovensku.</small></div>
-  </section>
+  </section></div>
 </main>
 <footer class="sl-foot"><span data-i="footer">SLTA - Slovenská liga tenisových amatérov</span> · <a href="https://blta.sk">BLTA Bratislava</a></footer>
 
