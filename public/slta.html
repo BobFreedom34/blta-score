@@ -35,20 +35,12 @@
   .sl-search input::placeholder { color: #8b8f98; }
   .sl-picker { display: grid; grid-template-columns: 1.2fr 1fr; gap: 22px; margin-top: 8px; align-items: start; }
   /* the map: the 8 regions of Slovakia, the rivers, the mountains and the cities */
-  .sl-map { position: relative; padding: 0; overflow: hidden; background: #0b0b0e; }
-  .sl-map svg { display: block; width: 100%; height: auto; overflow: hidden; }
-  #map .m-dots { fill: rgba(255,255,255,.07); }
-  #map .m-grat { stroke: rgba(255,255,255,.045); stroke-width: 1; fill: none; }
-  #map .m-nb { fill: rgba(255,255,255,.2); font-size: 17px; font-weight: 800; letter-spacing: .32em; text-anchor: middle; }
-  #map .m-under { fill: #14141a; stroke: var(--orange); stroke-width: 4; stroke-linejoin: round; opacity: .75; }
+  .sl-map { position: relative; padding: 0; background: none; border: 0; }
+  .sl-map svg { display: block; width: 100%; height: auto; overflow: visible; }
+  #map .m-under { fill: #14141a; stroke: var(--orange); stroke-width: 3.4; stroke-linejoin: round; opacity: .8; }
   #map .m-reg { stroke: #08080a; stroke-width: 1.3; stroke-linejoin: round; transition: fill .25s, filter .25s; }
   #map .m-reg:hover { fill: url(#m-hover); }
   #map .m-reg.on { fill: url(#m-on); }
-  #map .m-river { fill: none; stroke: #4aa8ff; stroke-opacity: .42; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-  #map .m-river.thin { stroke-width: 1.7; stroke-opacity: .28; }
-  #map .m-rname { fill: #4aa8ff; fill-opacity: .55; font-size: 13px; font-style: italic; font-weight: 700; letter-spacing: .08em; }
-  #map .m-mtn { fill: rgba(255,255,255,.2); }
-  #map .m-mname { fill: rgba(255,255,255,.34); font-size: 12.5px; font-weight: 700; letter-spacing: .06em; text-anchor: middle; }
   #map .m-rl { fill: rgba(255,255,255,.2); font-size: 12.5px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; text-anchor: middle; pointer-events: none; transition: fill .25s; }
   #map .m-rl.on { fill: rgba(255,255,255,.5); }
   #map .m-pin { cursor: pointer; }
@@ -60,18 +52,12 @@
   #map .m-lab text { fill: #cfd2d8; font-size: 20px; font-weight: 800; letter-spacing: .02em; }
   #map .m-pin.on .m-lab text { fill: #fff; }
   @keyframes m-pulse { 0% { transform: scale(.7); opacity: .85; } 100% { transform: scale(2.6); opacity: 0; } }
-  .sl-legend { position: absolute; left: 14px; bottom: 12px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; font-weight: 700; color: #aeb2ba; text-transform: uppercase; letter-spacing: .05em; }
-  .sl-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
-  .sl-credit { position: absolute; right: 12px; bottom: 10px; font-size: 9.5px; color: #5d616b; }
+  .sl-credit { margin-top: 6px; text-align: right; font-size: 9.5px; color: #5d616b; }
   .sl-credit a { color: #7a7e88; text-decoration: none; }
   @media (max-width: 860px) {
     #map .m-lab text { font-size: 25px; }
     #map .m-rl { font-size: 15px; }
-    #map .m-nb { font-size: 21px; }
-    #map .m-mname, #map .m-rname { font-size: 16px; }
-    .sl-legend { position: static; padding: 4px 14px 12px; }
-    .sl-credit { position: static; padding: 0 14px 10px; display: block; text-align: right; }
-  }
+      }
   .sl-list { display: flex; flex-direction: column; gap: 10px; align-content: start; }
   .sl-city { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; font: inherit; color: #fff; background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-md); padding: 14px 16px; cursor: pointer; transition: border-color .15s; }
   .sl-city:hover { border-color: var(--orange); }
@@ -141,7 +127,7 @@
   </section>
 
   <section class="sl-picker" id="mesta">
-    <div class="sl-map"><svg id="map" viewBox="0 0 1000 570" role="img" aria-label="Mapa Slovenska s mestami"></svg><div class="sl-legend" id="legend"></div><div class="sl-credit">Map: <a href="https://www.geoboundaries.org" target="_blank" rel="noopener">geoBoundaries</a> (CC BY 4.0)</div></div>
+    <div class="sl-map"><svg id="map" viewBox="0 0 1000 570" role="img" aria-label="Mapa Slovenska s mestami"></svg><div class="sl-credit">Map: <a href="https://www.geoboundaries.org" target="_blank" rel="noopener">geoBoundaries</a> (CC BY 4.0)</div></div>
     <div class="sl-list" id="list"><noscript><a class="sl-city" href="https://blta.sk">Bratislava · BLTA</a></noscript></div>
   </section>
 
@@ -209,48 +195,29 @@ const P = (lon, lat) => MAP.project(lon, lat);
 const NS = 'http://www.w3.org/2000/svg';
 const f1 = (n) => n.toFixed(1);
 const pathOf = (pts) => 'M' + pts.map(([lon, lat]) => P(lon, lat).map(f1).join(',')).join('L');
-const RIVERS = {
-  danube: [[16.96, 48.18], [17.11, 48.14], [17.2, 48.03], [17.4, 47.93], [17.6, 47.87], [17.85, 47.78], [18.12, 47.76], [18.45, 47.77], [18.75, 47.81], [18.86, 47.8]],
-};
-const MOUNTAINS = [[20.15, 49.17, 'Tatry', 4], [19.55, 48.93, 'Nízke Tatry', 3], [18.98, 49.21, 'Malá Fatra', 3]];
-const NEIGHBOURS = [[17.1, 49.55, 'ČESKO'], [20.9, 49.8, 'POĽSKO'], [22.85, 48.95, 'UKRAJINA'], [19.9, 47.6, 'MAĎARSKO'], [16.75, 47.9, 'RAKÚSKO']];
 const regionEls = [];
 const regionLabels = [];
+let VB = { x: 0, y: 0, w: MAP.w, h: MAP.h };
 (function buildMap() {
   const svg = document.getElementById('map');
   svg.setAttribute('viewBox', '0 0 ' + MAP.w + ' ' + MAP.h);
-  const grat = [];
-  for (let lon = 16; lon <= 23; lon += 1) grat.push(pathOf([[lon, 47.4], [lon, 49.95]]));
-  for (let lat = 47.5; lat <= 49.95; lat += 0.5) grat.push(pathOf([[16.3, lat], [23.1, lat]]));
-  const mtn = (lon, lat, name, n) => {
-    const [x, y] = P(lon, lat);
-    let tri = '';
-    for (let i = 0; i < n; i += 1) { const dx = (i - (n - 1) / 2) * 15; const s = i % 2 ? 9 : 12; tri += '<path class="m-mtn" d="M' + f1(x + dx - s) + ',' + f1(y + 9) + 'L' + f1(x + dx) + ',' + f1(y + 9 - s * 1.5) + 'L' + f1(x + dx + s) + ',' + f1(y + 9) + 'Z"/>'; }
-    return tri + '<text class="m-mname" x="' + f1(x) + '" y="' + f1(y + 28) + '">' + name + '</text>';
-  };
-  const dn = P(17.62, 47.83);
   svg.innerHTML =
     '<defs>' +
-      '<radialGradient id="m-bg" cx="52%" cy="48%" r="70%"><stop offset="0" stop-color="#1c1c24"/><stop offset="1" stop-color="#0a0a0d"/></radialGradient>' +
       '<linearGradient id="m-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#26262e"/><stop offset="1" stop-color="#1a1a20"/></linearGradient>' +
       '<linearGradient id="m-fill2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2b34"/><stop offset="1" stop-color="#1e1e25"/></linearGradient>' +
       '<linearGradient id="m-hover" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#383844"/><stop offset="1" stop-color="#2a2a33"/></linearGradient>' +
       '<linearGradient id="m-on" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5a2a10"/><stop offset="1" stop-color="#2f2018"/></linearGradient>' +
-      '<pattern id="m-dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" class="m-dots"/></pattern>' +
-      '<filter id="m-glow" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#ff5500" flood-opacity=".32"/></filter>' +
-      '<filter id="m-soft"><feGaussianBlur stdDeviation="1.6"/></filter>' +
     '</defs>' +
-    '<rect width="' + MAP.w + '" height="' + MAP.h + '" fill="url(#m-bg)"/><rect width="' + MAP.w + '" height="' + MAP.h + '" fill="url(#m-dots)"/>' +
-    '<g>' + grat.map((d) => '<path class="m-grat" d="' + d + '"/>').join('') + '</g>' +
-    '<g>' + NEIGHBOURS.map(([lon, lat, n]) => { const [x, y] = P(lon, lat); return '<text class="m-nb" x="' + f1(x) + '" y="' + f1(y) + '">' + n + '</text>'; }).join('') + '</g>' +
-    '<g filter="url(#m-glow)">' + MAP.regions.map((r) => '<path class="m-under" d="' + r.d + '"/>').join('') + '</g>' +
+    '<g>' + MAP.regions.map((r) => '<path class="m-under" d="' + r.d + '"/>').join('') + '</g>' +
     '<g id="m-regions">' + MAP.regions.map((r, i) => '<path class="m-reg" data-r="' + i + '" fill="url(#' + (i % 2 ? 'm-fill2' : 'm-fill') + ')" d="' + r.d + '"><title>' + (LANG === 'en' ? r.en : r.sk) + '</title></path>').join('') + '</g>' +
-    '<g>' + Object.keys(RIVERS).map((k) => '<path class="m-river" d="' + pathOf(RIVERS[k]) + '"/>').join('') + '<text class="m-rname" x="' + f1(dn[0] - 8) + '" y="' + f1(dn[1] + 30) + '">Dunaj</text></g>' +
-    '<g>' + MOUNTAINS.map((m) => mtn(m[0], m[1], m[2], m[3])).join('') + '</g>' +
     '<g>' + MAP.regions.map((r, i) => '<text class="m-rl" data-rl="' + i + '" x="' + r.cx + '" y="' + r.cy + '">' + (LANG === 'en' ? r.en : r.sk).replace(/ (kraj|Region)$/, '') + '</text>').join('') + '</g>' +
     '<g id="pins"></g>';
   svg.querySelectorAll('.m-reg').forEach((p) => regionEls.push(p));
   svg.querySelectorAll('.m-rl').forEach((t) => regionLabels.push(t));
+  // the frame is Slovakia itself (with a little room for the outline and the name plates of the cities at the edge)
+  const bb = svg.querySelector('#m-regions').getBBox();
+  VB = { x: bb.x - 18, y: bb.y - 18, w: bb.width + 36, h: bb.height + 36 };
+  svg.setAttribute('viewBox', VB.x.toFixed(1) + ' ' + VB.y.toFixed(1) + ' ' + VB.w.toFixed(1) + ' ' + VB.h.toFixed(1));
 })();
 const pinsEl = document.getElementById('pins');
 // the region a point lies in (the browser tests it against the drawn region)
@@ -278,7 +245,7 @@ function draw() {
     if (c.lat == null || c.lng == null) return '';
     const [x, y] = P(c.lng, c.lat); const on = i === sel; const col = colour[kind(c)];
     const width = Math.round(c.name.length * 12.5 + 22);
-    const left = x > MAP.w * 0.78 || x + width > MAP.w - 6;
+    const left = x > VB.x + VB.w * 0.72 || x + width > VB.x + VB.w - 6;
     const lx = left ? x - 14 - width : x + 14;
     return '<g class="m-pin' + (on ? ' on' : '') + '" data-i="' + i + '">' +
       '<circle cx="' + x + '" cy="' + y + '" r="30" fill="transparent"/>' +
@@ -293,7 +260,6 @@ function draw() {
     rect.setAttribute('width', w);
     if (g.dataset.left === '1') { const x = Number(g.dataset.px) - 14 - w; rect.setAttribute('x', x); text.setAttribute('x', x + 11); }
   });
-  document.getElementById('legend').innerHTML = [['now', T.running], ['reg', T.regOpen], ['soon', T.soon]].map(([k, l]) => '<span><i style="background:' + colour[k] + '"></i>' + esc(l) + '</span>').join('');
   const shown = cities.map((c, i) => ({ c, i })).filter((o) => fold(o.c.name).includes(q));
   listEl.innerHTML = shown.length
     ? shown.map((o) => `<button type="button" class="sl-city${o.i === sel ? ' on' : ''}" data-i="${o.i}"><div><b>${esc(o.c.name)}</b><small>${esc(o.c.brandName)}${o.c.players ? ` · ${o.c.players} ${T.players}` : ''}</small></div><span class="sl-tag ${kind(o.c)}">${esc(label(o.c))}</span></button>`).join('')
