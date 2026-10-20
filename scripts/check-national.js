@@ -119,6 +119,39 @@ test('blta.sk: its home page is unchanged, the national page is not served and n
   assert.strictEqual((await as('localhost', '/slta')).status, 404);
 });
 
+test('the slider of the national page: running and coming seasons with a hero picture, running first, none without a picture or of a hidden city', async () => {
+  const iso = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  const make = async (name, start, end) => JSON.parse((await admin('POST', '/api/seasons', { name, startDate: start, endDate: end })).body);
+  const running = await make('Running Series', iso(-30), iso(60));
+  const coming = await make('Coming Series', iso(20), iso(100));
+  const ended = await make('Old Series', iso(-200), iso(-100));
+  const noPicture = await make('Plain Series', iso(-5), iso(50));
+  const hidden = JSON.parse((await admin('POST', '/api/leagues', { name: 'Hidden City' })).body);
+  const hiddenSeason = await make('Hidden Series', iso(-5), iso(50));
+  const db = new DatabaseSync(path.join(dir, 'blta-score.db'));
+  const hero = db.prepare('UPDATE seasons SET hero_url = ?, hero_mobile_url = ? WHERE id = ?');
+  hero.run('/season-heroes/running.jpg', '/season-heroes/running-m.jpg', running.id);
+  hero.run('/season-heroes/coming.jpg', '', coming.id);
+  hero.run('/season-heroes/old.jpg', '', ended.id);
+  hero.run('/season-heroes/hidden.jpg', '', hiddenSeason.id);
+  db.prepare('UPDATE seasons SET league_id = ? WHERE id = ?').run(hidden.id, hiddenSeason.id);
+  db.close();
+  const r = await as('slta.sk', '/api/leagues/featured');
+  assert.strictEqual(r.status, 200);
+  const list = JSON.parse(r.body);
+  assert.deepStrictEqual(list.map((x) => x.season.name), ['Running Series', 'Coming Series'], 'running first; no ended, no picture-less, no hidden city');
+  assert.strictEqual(list[0].state, 'running');
+  assert.strictEqual(list[0].daysLeft, 60);
+  assert.strictEqual(list[0].season.heroMobileUrl, '/season-heroes/running-m.jpg');
+  assert.strictEqual(list[0].city.slug, 'bratislava');
+  assert.strictEqual(list[0].city.url, 'https://blta.sk');
+  assert.strictEqual(list[1].state, 'upcoming');
+  assert.strictEqual(list[1].startsIn, 20);
+  const page = await as('slta.sk', '/');
+  assert.ok(page.body.includes('id="slider"') && page.body.includes('/api/leagues/featured'), 'the page has the slider');
+  assert.ok(noPicture.id);
+});
+
 test('the lock belongs to the admin: a password of 6 characters or more, never given back', async () => {
   assert.strictEqual((await as('localhost', '/api/leagues/national-lock')).status, 401, 'not for the public');
   assert.strictEqual((await admin('PUT', '/api/leagues/national-lock', { enabled: true })).status, 400, 'a password is needed');

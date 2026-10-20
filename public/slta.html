@@ -73,6 +73,38 @@
   .sl-how span { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--radius-sm); background: var(--orange); font-weight: 800; margin-bottom: 14px; }
   .sl-how b { display: block; font-size: 18px; font-weight: 800; margin-bottom: 6px; }
   .sl-how small { color: #c3c7cf; font-size: 14px; font-weight: 500; line-height: 1.5; }
+  /* the banner slider: the hero pictures of the running and coming seasons */
+  .sl-slider { position: relative; margin: 26px 0 0; border-radius: var(--radius); overflow: hidden; background: #131316; aspect-ratio: 3 / 1; border: 1px solid rgba(255,255,255,.08); }
+  .sl-slider[hidden] { display: none; }
+  .sl-slide { position: absolute; inset: 0; display: block; color: #fff; text-decoration: none; opacity: 0; visibility: hidden; transition: opacity .6s ease, visibility .6s; }
+  .sl-slide.on { opacity: 1; visibility: visible; }
+  .sl-slide picture, .sl-slide picture img { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .sl-slide picture img { object-fit: cover; }
+  .sl-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(10,10,10,.88) 0%, rgba(10,10,10,.5) 38%, rgba(10,10,10,0) 70%); }
+  .sl-slide-in { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 28px 24px; display: flex; align-items: flex-end; gap: 18px; }
+  .sl-slide-logo { flex: none; width: 92px; height: 92px; border-radius: 50%; object-fit: cover; background: #0a0a0a; border: 2px solid rgba(255,255,255,.25); }
+  .sl-slide-txt { min-width: 0; flex: 1; }
+  .sl-crumb { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #e6e8ec; }
+  .sl-slide h2 { margin: 4px 0 10px; font-size: 34px; line-height: 1.1; font-weight: 800; color: #fff; text-transform: none; text-shadow: 0 2px 14px rgba(0,0,0,.6); }
+  .sl-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sl-tag.kind { border: 1px solid var(--green); color: var(--green); }
+  .sl-tag.out { border: 1px solid rgba(255,255,255,.55); color: #fff; }
+  .sl-slide-btn { flex: none; align-self: flex-end; border-radius: var(--radius-sm); padding: 13px 22px; font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; background: var(--green); color: #0a0a0a; white-space: nowrap; }
+  .sl-slide-btn.off { background: rgba(60,60,66,.9); color: #aeb2ba; }
+  .sl-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 42px; height: 42px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); background: rgba(10,10,10,.55); color: #fff; font-size: 24px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0 0 3px; }
+  .sl-arrow:hover { border-color: var(--orange); color: var(--orange); }
+  .sl-arrow.prev { left: 14px; } .sl-arrow.next { right: 14px; }
+  .sl-dots { position: absolute; z-index: 3; top: 14px; right: 16px; display: flex; gap: 7px; }
+  .sl-dots button { width: 9px; height: 9px; border-radius: 50%; border: 0; padding: 0; background: rgba(255,255,255,.4); cursor: pointer; }
+  .sl-dots button.on { background: var(--orange); }
+  @media (max-width: 860px) {
+    .sl-slider { aspect-ratio: 4 / 3; }
+    .sl-slide-in { flex-wrap: wrap; padding: 16px 16px 18px; gap: 12px; }
+    .sl-slide-logo { width: 56px; height: 56px; }
+    .sl-slide h2 { font-size: 22px; }
+    .sl-slide-btn { padding: 10px 16px; font-size: 12px; }
+    .sl-arrow { display: none; }
+  }
   .sl-foot { border-top: 1px solid rgba(255,255,255,.1); padding: 26px 20px; text-align: center; color: #8b8f98; font-size: 13px; font-weight: 600; }
   .sl-foot a { color: var(--orange); text-decoration: none; }
   @media (max-width: 860px) {
@@ -95,6 +127,7 @@
 </div></header>
 
 <main class="sl-wrap">
+  <section class="sl-slider" id="slider" hidden><div id="slides"></div><button type="button" class="sl-arrow prev" id="sl-prev" aria-label="‹">&lsaquo;</button><button type="button" class="sl-arrow next" id="sl-next" aria-label="›">&rsaquo;</button><div class="sl-dots" id="sl-dots"></div></section>
   <section class="sl-hero">
     <div class="sl-eyebrow" data-i="eyebrow">Slovenská liga tenisových amatérov</div>
     <h1 data-i-html="h1">Hraj ligu vo svojom meste. <em>Na svojej úrovni.</em></h1>
@@ -136,6 +169,8 @@ const TEXT = {
     enter: 'Vstúpiť do ligy', register: 'Registrácia', notYet: 'Stránka mesta sa pripravuje',
     none: 'Žiadne mesto nenájdené.', loadError: 'Zoznam miest sa nepodarilo načítať.',
     ariaMap: 'Mapa Slovenska s mestami',
+    kindLeague: 'Liga', kindTour: 'Turnaj', soonTag: 'Čoskoro', daysOne: 'Zostáva 1 deň', daysMany: 'Zostáva {n} dní', startsOne: 'Začína zajtra', startsToday: 'Začína dnes', startsMany: 'Začína o {n} dní',
+    regBtn: 'Registrácia', regClosed: 'Registrácia uzavretá', detailBtn: 'Detail',
   },
   en: {
     navCities: 'Cities', navHow: 'How it works', eyebrow: 'Slovak Amateur Tennis League',
@@ -151,6 +186,8 @@ const TEXT = {
     enter: 'Enter the league', register: 'Register', notYet: 'The city page is coming',
     none: 'No city found.', loadError: 'The list of cities could not be loaded.',
     ariaMap: 'Map of Slovakia with the cities',
+    kindLeague: 'League', kindTour: 'Tournament', soonTag: 'Coming soon', daysOne: '1 day left', daysMany: '{n} days left', startsOne: 'Starts tomorrow', startsToday: 'Starts today', startsMany: 'Starts in {n} days',
+    regBtn: 'Register', regClosed: 'Registration closed', detailBtn: 'Details',
   },
 };
 const LANG = document.documentElement.lang === 'en' ? 'en' : 'sk';
@@ -197,6 +234,61 @@ function draw() {
     <div class="sl-meta"><div><b>${c.players || '–'}</b>${T.players}</div><div><b>${c.venues || '–'}</b>${T.venues}</div>${season ? `<div><b class="t">${esc(season.name)}</b>${T.next}</div>` : ''}</div></div>
     <div class="sl-btns">${c.url ? `<a class="sl-btn g" href="${esc(c.url)}">${T.enter}</a>` : `<span class="sl-btn off">${T.notYet}</span>`}${registerUrl ? `<a class="sl-btn d" href="${esc(registerUrl)}">${T.register}</a>` : ''}</div>`;
 }
+
+// ---------- the banner slider (the hero pictures of the running and coming seasons of every city)
+(async function slider() {
+  let slides = [];
+  try { slides = await (await fetch('/api/leagues/featured')).json(); } catch { return; }
+  if (!Array.isArray(slides) || !slides.length) return;
+  const box = document.getElementById('slider');
+  const month = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString(LANG === 'en' ? 'en-GB' : 'sk-SK', { month: 'short' }).replace('.', '');
+  const dates = (s) => {
+    const a = s.startDate; const b = s.endDate;
+    if (!b || b === a) return month(a) + ' ' + a.slice(0, 4);
+    return (a.slice(0, 4) === b.slice(0, 4) ? month(a) : month(a) + ' ' + a.slice(0, 4)) + ' – ' + month(b) + ' ' + b.slice(0, 4);
+  };
+  const fill = (txt, n) => txt.replace('{n}', n);
+  const timing = (x) => (x.state === 'running'
+    ? (x.daysLeft == null ? '' : x.daysLeft === 1 ? T.daysOne : fill(T.daysMany, x.daysLeft))
+    : (x.startsIn === 0 ? T.startsToday : x.startsIn === 1 ? T.startsOne : fill(T.startsMany, x.startsIn)));
+  document.getElementById('slides').innerHTML = slides.map((x, i) => {
+    const s = x.season;
+    const wide = s.heroUrl || s.heroMobileUrl; const phone = s.heroMobileUrl || s.heroUrl;
+    const base = x.city.url || '';
+    const href = (base.charAt(0) === '/' || /^https?:/.test(base) ? base : '') + '/' + (s.kind === 'TOURNAMENT' ? 'tournament' : 'season') + '/' + encodeURIComponent(s.slug);
+    const open = x.registrationOpen && x.state !== 'ended';
+    return `<a class="sl-slide${i === 0 ? ' on' : ''}" href="${esc(href)}" aria-label="${esc(s.name)}">
+      <picture><source media="(max-width: 700px)" srcset="${esc(phone)}"><img src="${esc(wide)}" alt="" ${i === 0 ? '' : 'loading="lazy"'}></picture><span class="sl-shade"></span>
+      <span class="sl-slide-in">${s.logoUrl ? `<img class="sl-slide-logo" src="${esc(s.logoUrl)}" alt="">` : ''}
+        <span class="sl-slide-txt"><span class="sl-crumb">${esc(x.city.name)} › ${esc(dates(s))}</span><h2>${esc(s.name)}</h2>
+          <span class="sl-tags"><span class="sl-tag kind">${s.kind === 'TOURNAMENT' ? T.kindTour : T.kindLeague}</span><span class="sl-tag ${x.state === 'running' ? 'now' : 'soon'}">${x.state === 'running' ? T.running : T.soonTag}</span>${timing(x) ? `<span class="sl-tag out">${esc(timing(x))}</span>` : ''}</span></span>
+        <span class="sl-slide-btn${open ? '' : ' off'}">${open ? T.regBtn : T.regClosed}</span></span></a>`;
+  }).join('');
+  box.hidden = false;
+  const els = [...box.querySelectorAll('.sl-slide')];
+  const dotsEl = document.getElementById('sl-dots');
+  let cur = 0; let timer = null;
+  const show = (n) => {
+    cur = (n + els.length) % els.length;
+    els.forEach((e, i) => e.classList.toggle('on', i === cur));
+    dotsEl.querySelectorAll('button').forEach((d, i) => d.classList.toggle('on', i === cur));
+  };
+  if (els.length < 2) { document.getElementById('sl-prev').hidden = true; document.getElementById('sl-next').hidden = true; return; }
+  dotsEl.innerHTML = els.map((_, i) => `<button type="button" aria-label="${i + 1}"${i === 0 ? ' class="on"' : ''}></button>`).join('');
+  const play = () => { clearInterval(timer); if (!matchMedia('(prefers-reduced-motion: reduce)').matches) timer = setInterval(() => show(cur + 1), 6500); };
+  const stop = () => clearInterval(timer);
+  document.getElementById('sl-prev').addEventListener('click', () => { show(cur - 1); play(); });
+  document.getElementById('sl-next').addEventListener('click', () => { show(cur + 1); play(); });
+  dotsEl.addEventListener('click', (e) => { const d = e.target.closest('button'); if (d) { show([...dotsEl.children].indexOf(d)); play(); } });
+  box.addEventListener('mouseenter', stop); box.addEventListener('mouseleave', play);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); else play(); });
+  // a swipe moves the slider (a tap still opens the season)
+  let x0 = null; let moved = false;
+  box.addEventListener('pointerdown', (e) => { x0 = e.clientX; moved = false; });
+  box.addEventListener('pointerup', (e) => { if (x0 === null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 45) { moved = true; show(dx < 0 ? cur + 1 : cur - 1); play(); } });
+  box.addEventListener('click', (e) => { if (moved) { e.preventDefault(); moved = false; } }, true);
+  play();
+})();
 
 document.addEventListener('click', (e) => {
   const t = e.target.closest('#map [data-i], #list [data-i]');
