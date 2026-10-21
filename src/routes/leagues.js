@@ -7,6 +7,7 @@ const leagues = require('../leagues');
 const national = require('../national');
 const carousel = require('./carousel');
 const schedule = require('./schedule');
+const contact = require('./contact');
 const seo = require('../seo');
 
 const router = express.Router();
@@ -70,6 +71,12 @@ router.put('/national-lock', auth.requireSuperAdmin, (req, res) => {
   const done = national.setLock({ enabled: !!(req.body && req.body.enabled), password: req.body && req.body.password });
   if (done.error) return res.status(400).json({ error: done.error });
   res.json({ locked: national.isLocked(), hasPassword: national.hasPassword() });
+});
+
+// Public: how to reach the organisers (Backend > Menu > Contact window), for the "become an organiser" block of the national page
+router.get('/contact', (req, res) => {
+  const c = contact.read();
+  res.json({ email: c.email, phone: c.phone, whatsappUrl: c.whatsappUrl });
 });
 
 // Public: the slides of the carousel at the top of the national page (Backend > Carousel, "National page"), in order

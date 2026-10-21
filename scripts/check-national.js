@@ -176,6 +176,18 @@ test('the Registration button leads to the season that takes registrations, not 
   db.close();
 });
 
+test('the block for new organisers: how to reach us comes from the contact of the site, only the public part of it', async () => {
+  const page = await as('slta.sk', '/');
+  assert.ok(page.body.includes('id="organizator"') && page.body.includes('Chceš sa stať organizátorom ligy vo svojom meste?'), 'the block is on the page');
+  assert.ok(page.body.includes('href="#organizator"'), 'and in the menu');
+  assert.ok(/Want to become the organiser of a league in your city?/.test((await as('slta.sk', '/en')).body === '' ? '' : page.body), 'English text is in the page too');
+  const r = await as('slta.sk', '/api/leagues/contact');
+  assert.strictEqual(r.status, 200);
+  const c = JSON.parse(r.body);
+  assert.deepStrictEqual(Object.keys(c).sort(), ['email', 'phone', 'whatsappUrl'], 'no address, IBAN or other details');
+  assert.ok(/@/.test(c.email));
+});
+
 test('the card of a city: players, categories, seasons played and tournaments played', async () => {
   const get = async () => JSON.parse((await as('slta.sk', '/api/leagues')).body)[0];
   const before = await get();

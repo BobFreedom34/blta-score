@@ -63,3 +63,4 @@ router.put('/', requireSuperAdmin, (req, res) => {
 });
 
 module.exports = router;
+module.exports.read = read;

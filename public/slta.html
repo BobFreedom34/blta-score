@@ -132,6 +132,13 @@
   /* on a phone the logo is smaller (inside the height of the row) so the row does not look broken */
   @media (max-width: 860px) { .sl-sched .sch-row > .sl-row-logo { top: auto; bottom: 8px; right: -6px; height: 96px; width: 58%; } .sl-sched .sch-row > .sl-row-logo::before { top: 0; bottom: 0; left: 0; right: 0; background-size: contain; background-position: right center; opacity: .34; transform: rotate(-8deg); transform-origin: center; } }
   .sl-sched-head p { margin: 8px 0 0; text-align: left; color: #8b8f98; font-size: 14px; font-weight: 600; }
+  /* the block for people who want to run a league in their own city */
+  .sl-org { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px 48px; align-items: center; background: var(--fill-grey); border: 1px solid rgba(255, 85, 0, 0.6); border-radius: var(--radius); padding: 36px 40px; box-shadow: 0 0 30px -14px rgba(255, 85, 0, 0.55); }
+  .sl-org-eyebrow { color: var(--orange); font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 12px; }
+  .sl-org h2 { margin: 0 0 10px; font-size: 30px; line-height: 1.15; font-weight: 800; color: #fff; text-transform: none; }
+  .sl-org p { margin: 0; color: #c3c7cf; font-size: 16px; line-height: 1.5; max-width: 560px; }
+  .sl-org .sl-btns { min-width: 250px; }
+  @media (max-width: 860px) { .sl-org { grid-template-columns: 1fr; padding: 26px 22px; } .sl-org h2 { font-size: 24px; } .sl-org .sl-btns { min-width: 0; } }
   .sl-foot { border-top: 1px solid rgba(255,255,255,.1); padding: 26px 20px; text-align: center; color: #8b8f98; font-size: 13px; font-weight: 600; }
   .sl-foot a { color: var(--orange); text-decoration: none; }
   @media (max-width: 860px) {
@@ -154,7 +161,7 @@
 <body>
 <header class="sl-top"><div class="sl-top-in">
   <a class="sl-logo" href="/">S<b>L</b>TA</a>
-  <nav class="sl-nav"><a href="#mesta" data-i="navCities">Mestá</a><a href="#ako" data-i="navHow">Ako to funguje</a></nav>
+  <nav class="sl-nav"><a href="#mesta" data-i="navCities">Mestá</a><a href="#ako" data-i="navHow">Ako to funguje</a><a href="#organizator" data-i="navOrg">Organizátori</a></nav>
   <div class="sl-lang"><a id="lang-sk" href="/">SK</a><a id="lang-en" href="/en">EN</a></div>
 </div></header>
 
@@ -184,6 +191,16 @@
     <div><span>2</span><b data-i="how2t">Zaregistruj sa</b><small data-i="how2d">Vyber si kategóriu Novice, Next Gen alebo Elite a zaplať štartovné online.</small></div>
     <div><span>3</span><b data-i="how3t">Hraj a stúpaj</b><small data-i="how3d">Body idú do rebríčka tvojho mesta a tvoj CourtIQ platí na celom Slovensku.</small></div>
   </section></div>
+  <section class="sl-block" id="organizator">
+    <div class="sl-org">
+      <div>
+        <div class="sl-org-eyebrow" data-i="orgEyebrow">Pre organizátorov</div>
+        <h2 data-i="orgTitle">Chceš sa stať organizátorom ligy vo svojom meste?</h2>
+        <p data-i="orgText">Ozvi sa nám a dohodneme sa na ďalších krokoch.</p>
+      </div>
+      <div class="sl-btns" id="org-btns"></div>
+    </div>
+  </section>
 </main>
 <footer class="sl-foot"><span data-i="footer">SLTA - Slovenská liga tenisových amatérov</span> · <a href="https://blta.sk">BLTA Bratislava</a></footer>
 
@@ -204,7 +221,7 @@ const TEXT = {
     enter: 'Vstúpiť do ligy', register: 'Registrácia', notYet: 'Stránka mesta sa pripravuje',
     none: 'Žiadne mesto nenájdené.', loadError: 'Zoznam miest sa nepodarilo načítať.',
     ariaMap: 'Mapa Slovenska s mestami',
-    cityLabel: 'Vybrané mesto', kCats: 'Kategórie', kSeasons: 'Sezóny', kTours: 'Turnaje', ofCats: 'kategórie', ofSeasons: 'sezón', ofTours: 'turnajov', inLeague: 'v lige {name}', lastOne: 'naposledy {name}', noneYet: 'zatiaľ žiadna', kCities: 'Mestá', kPlayers: 'Hráči', kVenues: 'Tenisové areály', ofCities: 'miest v lige', ofPlayers: 'hráčov', ofVenues: 'tenisových areálov', withLeague: '{n} s bežiacou ligou', inCities1: 'v {n} meste', inCitiesN: 'v {n} mestách', cats: 'kategórií', seasonsPlayed: 'odohraných sezón', toursPlayed: 'odohraných turnajov', schSub: 'Čo práve prebieha a všetko, čo nás čaká v nasledujúcom roku', schTitle: 'Harmonogram', schLeague: 'Liga', schTour: 'Turnaj', schMore: 'Viac info', schDaysLeft: 'zostáva {n} {d}', schStartsIn: 'o {n} {d}',
+    cityLabel: 'Vybrané mesto', navOrg: 'Organizátori', orgEyebrow: 'Pre organizátorov', orgTitle: 'Chceš sa stať organizátorom ligy vo svojom meste?', orgText: 'Ozvi sa nám a dohodneme sa na ďalších krokoch.', orgMail: 'Napíš nám', orgSubject: 'Chcem organizovať ligu vo svojom meste', kCats: 'Kategórie', kSeasons: 'Sezóny', kTours: 'Turnaje', ofCats: 'kategórie', ofSeasons: 'sezón', ofTours: 'turnajov', inLeague: 'v lige {name}', lastOne: 'naposledy {name}', noneYet: 'zatiaľ žiadna', kCities: 'Mestá', kPlayers: 'Hráči', kVenues: 'Tenisové areály', ofCities: 'miest v lige', ofPlayers: 'hráčov', ofVenues: 'tenisových areálov', withLeague: '{n} s bežiacou ligou', inCities1: 'v {n} meste', inCitiesN: 'v {n} mestách', cats: 'kategórií', seasonsPlayed: 'odohraných sezón', toursPlayed: 'odohraných turnajov', schSub: 'Čo práve prebieha a všetko, čo nás čaká v nasledujúcom roku', schTitle: 'Harmonogram', schLeague: 'Liga', schTour: 'Turnaj', schMore: 'Viac info', schDaysLeft: 'zostáva {n} {d}', schStartsIn: 'o {n} {d}',
     dayOne: 'deň', dayFew: 'dni', dayMany: 'dní', schEmpty: 'Zatiaľ nie sú naplánované žiadne podujatia.', schError: 'Harmonogram sa nepodarilo načítať.',
   },
   en: {
@@ -221,7 +238,7 @@ const TEXT = {
     enter: 'Enter the league', register: 'Register', notYet: 'The city page is coming',
     none: 'No city found.', loadError: 'The list of cities could not be loaded.',
     ariaMap: 'Map of Slovakia with the cities',
-    cityLabel: 'Selected city', kCats: 'Categories', kSeasons: 'Seasons', kTours: 'Tournaments', ofCats: 'categories', ofSeasons: 'seasons', ofTours: 'tournaments', inLeague: 'in the {name} league', lastOne: 'last: {name}', noneYet: 'none yet', kCities: 'Cities', kPlayers: 'Players', kVenues: 'Tennis venues', ofCities: 'cities in the league', ofPlayers: 'players', ofVenues: 'tennis venues', withLeague: '{n} with a running league', inCities1: 'in {n} city', inCitiesN: 'in {n} cities', cats: 'categories', seasonsPlayed: 'seasons played', toursPlayed: 'tournaments played', schSub: 'What is running now and everything coming up in the next year', schTitle: 'Schedule', schLeague: 'League', schTour: 'Tournament', schMore: 'More info', schDaysLeft: '{n} {d} left', schStartsIn: 'in {n} {d}',
+    cityLabel: 'Selected city', navOrg: 'Organisers', orgEyebrow: 'For organisers', orgTitle: 'Want to become the organiser of a league in your city?', orgText: 'Get in touch and we will agree on the next steps.', orgMail: 'Write to us', orgSubject: 'I want to organise a league in my city', kCats: 'Categories', kSeasons: 'Seasons', kTours: 'Tournaments', ofCats: 'categories', ofSeasons: 'seasons', ofTours: 'tournaments', inLeague: 'in the {name} league', lastOne: 'last: {name}', noneYet: 'none yet', kCities: 'Cities', kPlayers: 'Players', kVenues: 'Tennis venues', ofCities: 'cities in the league', ofPlayers: 'players', ofVenues: 'tennis venues', withLeague: '{n} with a running league', inCities1: 'in {n} city', inCitiesN: 'in {n} cities', cats: 'categories', seasonsPlayed: 'seasons played', toursPlayed: 'tournaments played', schSub: 'What is running now and everything coming up in the next year', schTitle: 'Schedule', schLeague: 'League', schTour: 'Tournament', schMore: 'More info', schDaysLeft: '{n} {d} left', schStartsIn: 'in {n} {d}',
     dayOne: 'day', dayFew: 'days', dayMany: 'days', schEmpty: 'No events are planned yet.', schError: 'The schedule could not be loaded.',
   },
 };
@@ -453,6 +470,19 @@ async function showSchedule(c) {
   }
   if (schSlug === c.slug) schEl.innerHTML = schHead(c) + schHtml(schCache[key]);
 }
+
+// ---------- the organisers' block: the way to reach us is the contact of the site (Backend > Menu > Contact window)
+(async function organisers() {
+  const box = document.getElementById('org-btns');
+  try {
+    const c = await (await fetch('/api/leagues/contact')).json();
+    const out = [];
+    if (c.email) out.push('<a class="sl-btn g" href="mailto:' + esc(c.email) + '?subject=' + encodeURIComponent(T.orgSubject) + '">' + T.orgMail + '</a>');
+    if (c.phone) out.push('<a class="sl-btn d" href="tel:' + esc(String(c.phone).replace(/[^\d+]/g, '')) + '">' + esc(c.phone) + '</a>');
+    box.innerHTML = out.join('');
+    if (!out.length) box.closest('.sl-org').style.gridTemplateColumns = '1fr';
+  } catch { box.remove(); }
+})();
 
 document.addEventListener('click', (e) => {
   const t = e.target.closest('#map [data-i], #list [data-i]');
