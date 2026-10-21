@@ -122,7 +122,7 @@
   .sl-sched .sch-row > * { position: relative; z-index: 1; }
   .sl-sched .sch-row > .sl-row-logo { position: absolute; z-index: 0; top: 0; bottom: 0; right: -22px; width: min(600px, 76%); overflow: hidden; pointer-events: none; -webkit-mask-image: linear-gradient(to left, #000 0%, #000 10%, rgba(0,0,0,.5) 34%, rgba(0,0,0,.12) 62%, transparent 86%); mask-image: linear-gradient(to left, #000 0%, #000 10%, rgba(0,0,0,.5) 34%, rgba(0,0,0,.12) 62%, transparent 86%); }
   /* the logo is bigger than the row, tilted a little (top to bottom) and cut by the edge of the card */
-  .sl-sched .sch-row > .sl-row-logo::before { content: ''; position: absolute; top: -115%; bottom: -115%; left: 0; right: -13%; background: var(--logo) no-repeat right center / auto 100%; opacity: .5; transform: rotate(-11deg); transform-origin: 70% 50%; }
+  .sl-sched .sch-row > .sl-row-logo::before { content: ''; position: absolute; top: -115%; bottom: -115%; left: 0; right: -13%; background: var(--logo) no-repeat right center / auto 100%; opacity: .34; transform: rotate(-11deg); transform-origin: 70% 50%; }
   .sl-sched .sch-go { background: #000; }
   /* on a phone the logo is smaller (inside the height of the row) so the row does not look broken */
   @media (max-width: 860px) { .sl-sched .sch-row > .sl-row-logo { top: auto; bottom: 8px; right: -6px; height: 96px; width: 58%; } .sl-sched .sch-row > .sl-row-logo::before { top: 0; bottom: 0; left: 0; right: 0; background-size: contain; background-position: right center; opacity: .34; transform: rotate(-8deg); transform-origin: center; } }
