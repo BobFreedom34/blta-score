@@ -6,11 +6,12 @@ let cities = [];
 
 const CITY_STATUS_OPTIONS = [
   ['HIDDEN', 'Hidden (not on the picker)'],
+  ['SEEKING_ORGANIZER', 'Looking for an organizer'],
   ['COMING_SOON', 'Coming soon (pre-registration)'],
   ['PREPARING', 'In preparation'],
   ['ACTIVE', 'Active (running)'],
 ];
-const CITY_STATUS_SHORT = { HIDDEN: 'Hidden', COMING_SOON: 'Coming soon', PREPARING: 'In preparation', ACTIVE: 'Active' };
+const CITY_STATUS_SHORT = { HIDDEN: 'Hidden', SEEKING_ORGANIZER: 'Looking for an organizer', COMING_SOON: 'Coming soon', PREPARING: 'In preparation', ACTIVE: 'Active' };
 
 const inputStyle = 'padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px;width:100%';
 

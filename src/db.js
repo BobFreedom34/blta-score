@@ -1508,7 +1508,8 @@ if (!carouselColumns.includes('mobile_image_url')) {
 // rankings, and Bratislava is BLTA, the first one (id 1). The design and the code are shared by all of them; what belongs to a city carries its
 // league_id. Everything that already existed belongs to Bratislava (the DEFAULT 1 below), so nothing changes for the visitors of blta.sk.
 // slug: the address slta.sk/<slug>; domain: an own domain of the city ('' = only slta.sk/<slug>), e.g. blta.sk for Bratislava;
-// status: ACTIVE (running), PREPARING (in preparation), COMING_SOON (pre-registration only), HIDDEN (not shown on the picker).
+// status: ACTIVE (running), PREPARING (in preparation), COMING_SOON (pre-registration only), SEEKING_ORGANIZER (a league is wanted, nobody runs it yet),
+// HIDDEN (not shown on the picker).
 db.exec(`
   CREATE TABLE IF NOT EXISTS leagues (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -8,7 +8,7 @@ const db = require('./db');
 const auth = require('./auth');
 
 const DEFAULT_LEAGUE_ID = 1;
-const STATUSES = ['ACTIVE', 'PREPARING', 'COMING_SOON', 'HIDDEN'];
+const STATUSES = ['ACTIVE', 'PREPARING', 'COMING_SOON', 'SEEKING_ORGANIZER', 'HIDDEN'];
 
 // slta.sk/<slug> must never collide with an address the app already serves
 const RESERVED_SLUGS = new Set([
