@@ -91,10 +91,20 @@ function actingIdOf(req) {
 }
 
 // the address of the season's page in each language (the code address /season/<slug> is retired, the page lives at its own slug)
-function withPaths(season) {
+function withPaths(season, tournament = false) {
   const seo = require('./seo');
-  const code = `/season/${encodeURIComponent(season.slug)}`;
+  const code = `/${tournament ? 'tournament' : 'season'}/${encodeURIComponent(season.slug)}`;
   return { ...season, path: { sk: seo.pageUrl(code, 'sk'), en: seo.pageUrl(code, 'en') } };
+}
+
+// The season a visitor can register to now: the one of the city whose registration is open (not ended) that starts soonest from today on,
+// else the one that is running. null when no registration is open anywhere in the city.
+function registrationSeasonOf(leagueId, today) {
+  const open = db.prepare("SELECT name, slug, kind, start_date FROM seasons WHERE league_id = ? AND registration_open = 1 AND slug IS NOT NULL AND (end_date IS NULL OR end_date = '' OR end_date >= ?)").all(leagueId, today);
+  if (!open.length) return null;
+  const coming = open.filter((s) => s.start_date && s.start_date > today).sort((a, b) => (a.start_date < b.start_date ? -1 : 1));
+  const pick = coming[0] || open.sort((a, b) => ((a.start_date || '') < (b.start_date || '') ? 1 : -1))[0];
+  return withPaths({ name: pick.name, slug: pick.slug }, pick.kind === 'TOURNAMENT');
 }
 
 // the running season of a city, else the nearest coming one
@@ -131,6 +141,8 @@ function serialize(row, { admin = false } = {}) {
     seasons: counts.seasons,
     venues: counts.venues,
     registrationOpen: !!db.prepare('SELECT 1 FROM seasons WHERE league_id = ? AND registration_open = 1 AND (end_date IS NULL OR end_date >= ?) LIMIT 1').get(row.id, today),
+    // where the Registration button of the national page leads: the season that really takes registrations
+    registrationSeason: registrationSeasonOf(row.id, today),
     currentSeason: currentSeasonOf(row.id, today),
   };
   if (admin) {

@@ -294,7 +294,9 @@ function draw() {
   if (!c) { detEl.hidden = true; return; }
   detEl.hidden = false;
   const season = c.currentSeason;
-  const registerUrl = c.url && season && season.slug && c.registrationOpen ? `${c.url}${season.path ? season.path[LANG] : '/season/' + encodeURIComponent(season.slug)}` : '';
+  // the Registration button leads to the season that takes registrations (not the running one, whose registration may be closed)
+  const reg = c.registrationSeason;
+  const registerUrl = c.url && reg && reg.slug && c.registrationOpen ? `${c.url}${reg.path[LANG]}` : '';
   showSchedule(c);
   detEl.innerHTML = `<div><div class="sl-det-eyebrow">${T.cityLabel}</div><h2>${esc(c.brandName)}${c.url ? `<span class="url">${esc(c.url.charAt(0) === '/' ? location.host.replace(/^www\./, '') + c.url : c.url.replace(/^https?:\/\//, ''))}</span>` : ''}</h2><span class="sl-tag ${kind(c)}">${esc(label(c))}</span>
     <div class="sl-meta"><div><b>${c.players || '–'}</b>${T.players}</div></div></div>

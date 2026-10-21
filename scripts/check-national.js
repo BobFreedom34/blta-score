@@ -151,6 +151,31 @@ test('the Registration button of a city leads to a page that exists: the season 
   if (p.sk !== code) assert.strictEqual((await as('blta.sk', code)).status, 404, 'the code address is retired: that was the broken link');
 });
 
+test('the Registration button leads to the season that takes registrations, not to a running one whose registration is closed', async () => {
+  const db = new DatabaseSync(path.join(dir, 'blta-score.db'));
+  const today = new Date().toISOString().slice(0, 10);
+  const running = db.prepare("SELECT slug FROM seasons WHERE league_id = 1 AND kind = 'LEAGUE' AND start_date <= ? AND (end_date IS NULL OR end_date >= ?) LIMIT 1").get(today, today);
+  const coming = db.prepare("SELECT slug FROM seasons WHERE league_id = 1 AND kind = 'LEAGUE' AND start_date > ? ORDER BY start_date LIMIT 1").get(today);
+  assert.ok(running && coming, 'a running and a coming season');
+  db.prepare("UPDATE seasons SET registration_open = 0 WHERE slug = ?").run(running.slug);
+  db.prepare("UPDATE seasons SET registration_open = 1 WHERE slug = ?").run(coming.slug);
+  const city = JSON.parse((await as('slta.sk', '/api/leagues')).body)[0];
+  assert.strictEqual(city.registrationOpen, true);
+  assert.strictEqual(city.registrationSeason.slug, coming.slug, 'the coming season takes registrations');
+  assert.ok(city.registrationSeason.path.sk.endsWith(coming.slug) && city.registrationSeason.path.en.startsWith('/en/'));
+  assert.strictEqual((await as('blta.sk', city.registrationSeason.path.sk)).status, 200);
+  // nothing open anywhere: no season to register to
+  db.prepare("UPDATE seasons SET registration_open = 0 WHERE league_id = 1").run();
+  const closed = JSON.parse((await as('slta.sk', '/api/leagues')).body)[0];
+  assert.strictEqual(closed.registrationOpen, false);
+  assert.strictEqual(closed.registrationSeason, null);
+  // and the running season is the one when it is the only one that is open
+  db.prepare("UPDATE seasons SET registration_open = 1 WHERE slug = ?").run(running.slug);
+  assert.strictEqual(JSON.parse((await as('slta.sk', '/api/leagues')).body)[0].registrationSeason.slug, running.slug);
+  db.prepare("UPDATE seasons SET registration_open = 1 WHERE league_id = 1").run();
+  db.close();
+});
+
 test('the schedule of a city on the national page: what runs now first (the league), then the next year, with real links', async () => {
   const iso = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
   const make = async (name, start, end, kind) => JSON.parse((await admin('POST', '/api/seasons', { name, startDate: start, endDate: end, kind })).body);
