@@ -156,6 +156,14 @@
   /* the logo is bigger than the row, tilted a little (top to bottom) and cut by the edge of the card */
   .sl-sched .sch-row > .sl-row-logo::before { content: ''; position: absolute; top: -115%; bottom: -115%; left: 0; right: -13%; background: var(--logo) no-repeat right center / auto 100%; opacity: .34; transform: rotate(-11deg); transform-origin: 70% 50%; }
   .sl-sched .sch-go { background: #000; }
+  /* a season with an open registration: a second, green button that blinks like the one on the season page */
+  .sch-acts { display: inline-flex; align-items: center; gap: 10px; }
+  /* both buttons of a row have the same size */
+  .sl-sched .sch-go, .sch-reg { box-sizing: border-box; min-width: 132px; height: 34px; justify-content: center; text-align: center; }
+  .sch-reg { display: inline-flex; align-items: center; padding: 9px 16px; border-radius: var(--radius-sm); border: 1px solid var(--green); background: var(--green); color: #0a0a0a; font-weight: 800; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; cursor: pointer; }
+  .sch-reg:hover { background: #c6ff3a; border-color: #c6ff3a; }
+  @media (prefers-reduced-motion: no-preference) { .sch-reg { animation: sv-register-glow 1.8s ease-out infinite; } }
+  @media (max-width: 700px) { .sch-row .sch-acts { justify-self: end; } }
   /* on a phone the logo is smaller (inside the height of the row) so the row does not look broken */
   @media (max-width: 860px) { .sl-sched .sch-row > .sl-row-logo { top: auto; bottom: 8px; right: -6px; height: 96px; width: 58%; } .sl-sched .sch-row > .sl-row-logo::before { top: 0; bottom: 0; left: 0; right: 0; background-size: contain; background-position: right center; opacity: .34; transform: rotate(-8deg); transform-origin: center; } }
   .sl-sched-head p { margin: 8px 0 0; text-align: left; color: #8b8f98; font-size: 14px; font-weight: 600; }
@@ -397,13 +405,10 @@ function draw() {
   if (!c) { detEl.hidden = true; return; }
   detEl.hidden = false;
   const season = c.currentSeason;
-  // the Registration button leads to the season that takes registrations (not the running one, whose registration may be closed)
-  const reg = c.registrationSeason;
-  const registerUrl = c.url && reg && reg.slug && c.registrationOpen ? `${c.url}${reg.path[LANG]}` : '';
   showSchedule(c);
   detEl.innerHTML = `<div><div class="sl-det-eyebrow">${T.cityLabel}</div><h2>${esc(c.brandName)}${c.url ? `<span class="url">${esc(c.url.charAt(0) === '/' ? location.host.replace(/^www\./, '') + c.url : c.url.replace(/^https?:\/\//, ''))}</span>` : ''}</h2><span class="sl-tag ${kind(c)}">${esc(label(c))}</span>
     </div>
-    <div class="sl-btns">${c.status === 'SEEKING_ORGANIZER' ? `<a class="sl-btn g" href="#organizator">${T.becomeOrg}</a>` : c.url ? `<a class="sl-btn g" href="${esc(c.url)}">${T.enter}</a>` : `<span class="sl-btn off">${T.notYet}</span>`}${registerUrl ? `<a class="sl-btn d" href="${esc(registerUrl)}">${T.register}</a>` : ''}</div>
+    <div class="sl-btns">${c.status === 'SEEKING_ORGANIZER' ? `<a class="sl-btn g" href="#organizator">${T.becomeOrg}</a>` : c.url ? `<a class="sl-btn g" href="${esc(c.url)}">${T.enter}</a>` : `<span class="sl-btn off">${T.notYet}</span>`}</div>
     <div class="sl-det-tiles">${[
       tileHtml(T.kPlayers, c.players || 0, T.ofPlayers, T.inLeague.replace('{name}', c.brandName || c.name), 'dark'),
       tileHtml(T.kCats, c.categories || 0, T.ofCats, (c.categoryList || []).map((k) => ({ ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[k] || k)).join(' · '), 'dark'),
@@ -485,7 +490,9 @@ function schRow(e, today) {
   }
   const tags = '<span class="sch-tag' + (lg ? '' : ' tour') + '">' + (lg ? T.schLeague : T.schTour) + '</span>' + (now ? '<span class="sch-tag now">' + T.running + '</span>' : '');
   const sub = (e.venue ? esc(e.venue) + ' · ' : '') + '<b>' + esc((e.categories || []).map((c) => catName[c] || c).join(' · ')) + '</b>' + esc(extra);
-  const more = e.link ? '<span class="sch-go">' + T.schMore + ' ›</span>' : '<span></span>';
+  const reg = e.registerLink ? '<span class="sch-reg" role="link" tabindex="0" data-href="' + esc(e.registerLink) + '">' + T.register + '</span>' : '';
+  const go = e.link ? '<span class="sch-go">' + T.schMore + ' ›</span>' : '';
+  const more = reg ? '<span class="sch-acts">' + reg + go + '</span>' : (go || '<span></span>');
   const open = e.link ? '<a class="sch-row link ' + (now ? 'now' : 'future') + '" href="' + esc(e.link) + '"' + (/^https?:/i.test(e.link) && !e.link.startsWith(location.origin) ? ' target="_blank" rel="noopener"' : '') + '>' : '<div class="sch-row ' + (now ? 'now' : 'future') + '">';
   return open +
     '<div class="sch-date">' + esc(dateRange(e)) + '<small>' + esc(yearText(e)) + '</small></div>' +
@@ -578,6 +585,17 @@ document.addEventListener('click', (e) => {
   const target = go && document.getElementById(go.dataset.goto);
   if (!target || target.hidden) return;
   window.scrollTo({ top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - document.querySelector('.sl-top').offsetHeight - 16), behavior: 'smooth' });
+});
+
+// the green "Registrácia" of a schedule row sits inside the link of the row, so it leads to the registration of the season by itself
+document.addEventListener('click', (e) => {
+  const r = e.target.closest('.sch-reg');
+  if (!r) return;
+  e.preventDefault(); e.stopPropagation();
+  location.href = r.dataset.href;
+});
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('sch-reg')) { e.preventDefault(); location.href = e.target.dataset.href; }
 });
 
 document.addEventListener('click', (e) => {

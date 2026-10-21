@@ -41,6 +41,7 @@ function scheduleOf(leagueId) {
       venue: tournament ? (s.venue || '') : '',
       link: `/${tournament ? 'tournament' : 'season'}/${s.slug}`,
       logoUrl: s.logo_url || '',
+      registrationOpen: !!s.registration_open,
       categories: tournament && own.length ? own : CATEGORIES,
     };
   });

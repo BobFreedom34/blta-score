@@ -118,7 +118,7 @@ router.get('/:slug/schedule', (req, res) => {
   };
   const items = schedule.scheduleOf(row.id)
     .filter((e) => e.endDate >= today && e.startDate <= horizon)
-    .map((e) => ({ ...e, link: link(e.link), state: e.startDate <= today ? 'now' : 'future' }));
+    .map((e) => ({ ...e, link: link(e.link), registerLink: e.registrationOpen && e.link ? `${link(e.link)}#register` : '', state: e.startDate <= today ? 'now' : 'future' }));
   const rank = (e) => (e.state === 'now' ? (e.type === 'LEAGUE' ? 0 : 1) : 2);
   items.sort((a, b) => rank(a) - rank(b) || (a.startDate + a.name).localeCompare(b.startDate + b.name));
   res.json({ city: { slug: row.slug, name: row.name, brandName: row.brand_name || row.name, url: city.url }, today, items });

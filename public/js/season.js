@@ -669,8 +669,10 @@ async function refresh() {
   }
   if (!document.title.includes(season.name)) document.title = `${season.name} — BLTA`; // the server already put the title from Backend > SEO
   await loadStandings();
-  tab = window.location.hash.slice(1) || null; // renderTabs picks the first tab with content when there is none
+  const wantsRegister = window.location.hash === '#register'; // the green "Registrácia" button of a schedule row (slta.sk) leads here
+  tab = (wantsRegister ? '' : window.location.hash.slice(1)) || null; // renderTabs picks the first tab with content when there is none
   await render();
+  if (wantsRegister && season.registrationOpen && document.getElementById('sv-register')) openRegisterModal();
   if (typeof io === 'function') {
     io().on('matches:changed', () => {
       clearTimeout(refreshTimer);
