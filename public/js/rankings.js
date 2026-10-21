@@ -366,6 +366,8 @@ async function load() {
   // after the Race/Tournament tabs.
   if (courtIQTableResult) rankingsData.tables.splice(1, 0, courtIQTableResult);
   if (badgesTableResult) rankingsData.tables.push(badgesTableResult);
+  // a link such as /rankings?tab=courtiq (the "How CourtIQ works" page) opens that tab first
+  if (!activeTab) activeTab = new URLSearchParams(location.search).get('tab');
   if (!activeTab || !rankingsData.tables.some((t) => t.key === activeTab)) {
     activeTab = rankingsData.tables[0] && rankingsData.tables[0].key;
   }

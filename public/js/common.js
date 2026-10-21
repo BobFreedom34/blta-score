@@ -3056,7 +3056,8 @@ function ensureCourtIQInfoModal() {
       <h3 style="margin-top:0">${escapeHtml(t('courtiq.infoTitle'))}</h3>
       <p style="color:var(--gray);font-size:14px;line-height:1.5">${escapeHtml(t('courtiq.infoBody1'))}</p>
       <p style="color:var(--gray);font-size:14px;line-height:1.5">${escapeHtml(t('courtiq.infoBody2'))}</p>
-      <p style="color:var(--gray);font-size:14px;line-height:1.5;margin-bottom:0">${escapeHtml(t('courtiq.infoBody3'))}</p>
+      <p style="color:var(--gray);font-size:14px;line-height:1.5">${escapeHtml(t('courtiq.infoBody3'))}</p>
+      <a class="btn btn-primary btn-block" href="/courtiq" style="margin-top:18px">${escapeHtml(t('courtiq.readMore'))}</a>
     </div>
   `;
   document.body.appendChild(modal);

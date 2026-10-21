@@ -17,7 +17,7 @@ const RESERVED_SLUGS = new Set([
   'venues', 'compact', 'compactblta', 'embed', 'tables', 'bracket', 'brackets', 'login-history', 'seo', 'img', 'css', 'js', 'fonts', 'healthz',
   'robots.txt', 'sitemap.xml', 'manifest.json', 'cities', 'city', 'mesta', 'mesto', 'en', 'sk', 'login', 'logout', 'register', 'contact',
   'kontakt', 'kurty', 'tenisove-kurty-v-bratislave', 'www', 'static', 'uploads', 'socket.io', 'unlock', 'pozvanka', 'blog-images', 'player-photos', 'media', 'carousel',
-  'carousel-images', 'venue-photos', 'season-heroes', 'badge-icons', 'winner-photos', 'slta', 'rezervacie-kurtov', 'rebricek', 'zapasy', 'hraci',
+  'carousel-images', 'venue-photos', 'season-heroes', 'badge-icons', 'winner-photos', 'slta', 'rezervacie-kurtov', 'courtiq', 'rebricek', 'zapasy', 'hraci',
 ]);
 
 function slugify(text) {

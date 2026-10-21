@@ -64,6 +64,7 @@ const SITE_PAGES = [
   { sk: 'Víťazi', en: 'Winners', link: '/vitazi' },
   { sk: 'Kontakt', en: 'Contact', link: '#kontakt' },
   { sk: 'Propozície', en: 'Rules', link: '/propozicie' },
+  { sk: 'Ako funguje CourtIQ', en: 'How CourtIQ works', link: '/courtiq' },
   { sk: 'Hľadám súpera', en: 'Looking to play', link: '/looking-to-play' },
   { sk: 'Rezervácie kurtov', en: 'Court booking', link: '/reservations' },
   { sk: 'Blog', en: 'Blog', link: '/blog' },

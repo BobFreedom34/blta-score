@@ -5229,3 +5229,32 @@ body.rv-dragging, body.rv-dragging * { cursor: grabbing !important; user-select:
 .mc-item span { display: block; padding: 4px 6px; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mc-empty { grid-column: 1 / -1; color: var(--gray-dim); padding: 24px 8px; text-align: center; font-size: 14px; }
 .mc-foot { align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+
+/* ---------- How CourtIQ works (/courtiq): reuses the Propozície cards (.pr-*) ---------- */
+.ciq-lead p { font-size: 16px; }
+.ciq-key { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.ciq-key-card { background: var(--fill-grey); border-radius: var(--radius); padding: 22px 24px; }
+.ciq-key-n { font-size: 40px; font-weight: 800; line-height: 1.1; color: var(--green); }
+.ciq-key-card.q .ciq-key-n { color: var(--orange); }
+.ciq-key-card h3 { margin: 10px 0 8px; font-size: 14px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
+.ciq-key-card p { margin: 0; font-size: 15px; line-height: 1.6; color: #d3d6dc; }
+.ciq-levels { margin-top: 6px; }
+.ciq-level { display: grid; grid-template-columns: 110px 190px minmax(0, 1fr); gap: 16px; align-items: baseline; padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-size: 15px; line-height: 1.55; color: #d3d6dc; }
+.ciq-level:last-child { border-bottom: none; }
+.ciq-level.head { padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.18); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8f98; }
+.ciq-level-n { font-weight: 800; color: var(--green); white-space: nowrap; }
+.ciq-level-name { font-weight: 700; color: var(--white); }
+.ciq-cta { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.ciq-cta p { margin: 0; }
+.ciq-cta .btn, .pr-card a.btn { flex-shrink: 0; color: var(--white); text-decoration: none; }
+.ciq-updated { margin: 28px 0 0; font-size: 13px; color: #8b8f98; }
+@media (max-width: 900px) {
+  .ciq-key { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .ciq-level { grid-template-columns: 90px minmax(0, 1fr); gap: 2px 12px; }
+  .ciq-level-desc { grid-column: 1 / -1; }
+  .ciq-level.head { display: none; }
+  .ciq-cta { flex-direction: column; align-items: stretch; text-align: left; }
+  .ciq-key-card { padding: 18px 16px; }
+}

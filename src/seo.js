@@ -61,6 +61,11 @@ const PAGES = [
     description: 'Propozície BLTA - kompletné a aktuálne pravidlá ligy a turnajov: kategórie, herný systém, bodovanie, termíny, dohadovanie zápasov a štartovné.',
   },
   {
+    key: 'courtiq', label: 'How CourtIQ works', path: '/courtiq', file: 'courtiq.html', blta: null,
+    title: `Ako funguje CourtIQ${SUFFIX}`,
+    description: 'Ako funguje CourtIQ - automatický rating sily hráča v škále 1.0 až 7.0, ktorý sa počíta zo skutočne odohraných zápasov: čo ho mení a čo znamená otáznik.',
+  },
+  {
     key: 'looking-to-play', label: 'Looking for an opponent', path: '/looking-to-play', file: 'looking-to-play.html', blta: null,
     title: `Hľadám súpera${SUFFIX}`,
     description: 'Hľadáš súpera na tenis v Bratislave? Pridaj sa k hráčom BLTA, ktorí hľadajú partnera na zápas, a dohodni si hru.',
@@ -189,6 +194,11 @@ const ENGLISH = {
     slug: 'rules',
     title: `Rules${SUFFIX_EN}`,
     description: 'BLTA rules - the complete and current rules of the league and the tournaments: categories, game format, scoring, dates, arranging matches and entry fees.',
+  },
+  courtiq: {
+    slug: 'courtiq',
+    title: `How CourtIQ works${SUFFIX_EN}`,
+    description: 'How CourtIQ works - the automatic player-skill rating on a 1.0 to 7.0 scale, computed from matches actually played: what moves it and what the question mark means.',
   },
   'looking-to-play': {
     slug: 'looking-to-play',
