@@ -180,6 +180,8 @@ test('the card of a city: players, categories, seasons played and tournaments pl
   const get = async () => JSON.parse((await as('slta.sk', '/api/leagues')).body)[0];
   const before = await get();
   assert.strictEqual(before.categories, 3, 'a league season has all three categories');
+  assert.deepStrictEqual(before.categoryList, ['ELITE', 'NEXT_GEN', 'NOVICE']);
+  assert.ok(before.lastSeason, 'the season that ended last is named');
   assert.ok(Number.isInteger(before.seasonsPlayed) && Number.isInteger(before.tournamentsPlayed), 'numbers');
   assert.ok(before.seasonsPlayed >= 1, 'the seasons that are over are counted');
   const iso = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
@@ -189,6 +191,7 @@ test('the card of a city: players, categories, seasons played and tournaments pl
   const after = await get();
   assert.strictEqual(after.tournamentsPlayed, before.tournamentsPlayed + 1, 'only the tournament that is over is counted');
   assert.strictEqual(after.seasonsPlayed, before.seasonsPlayed, 'a tournament is not a season');
+  assert.strictEqual(after.lastTournament, 'Finished Cup', 'the tournament that ended last is named');
 });
 
 test('the schedule of a city on the national page: what runs now first (the league), then the next year, with real links', async () => {

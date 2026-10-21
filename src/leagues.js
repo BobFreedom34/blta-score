@@ -119,8 +119,8 @@ function currentSeasonOf(leagueId, today) {
 // tournaments that are over.
 const ALL_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 function playedOf(leagueId, today) {
-  const seasons = db.prepare("SELECT kind, categories, end_date FROM seasons WHERE league_id = ? AND COALESCE(slug, '') != ''").all(leagueId);
-  const events = db.prepare('SELECT categories, end_date, start_date FROM schedule_events WHERE league_id = ?').all(leagueId);
+  const seasons = db.prepare("SELECT name, kind, categories, end_date FROM seasons WHERE league_id = ? AND COALESCE(slug, '') != ''").all(leagueId);
+  const events = db.prepare('SELECT name, categories, end_date, start_date FROM schedule_events WHERE league_id = ?').all(leagueId);
   const cats = new Set();
   seasons.forEach((s) => {
     if (s.kind === 'TOURNAMENT') String(s.categories || '').split(',').filter((c) => ALL_CATEGORIES.includes(c)).forEach((c) => cats.add(c));
@@ -128,10 +128,21 @@ function playedOf(leagueId, today) {
   });
   events.forEach((e) => String(e.categories || '').split(',').filter((c) => ALL_CATEGORIES.includes(c)).forEach((c) => cats.add(c)));
   const over = (end) => !!end && end < today;
+  const playedSeasons = seasons.filter((s) => s.kind !== 'TOURNAMENT' && over(s.end_date));
+  const playedTournaments = [
+    ...seasons.filter((s) => s.kind === 'TOURNAMENT' && over(s.end_date)).map((s) => ({ name: s.name, end: s.end_date })),
+    ...events.filter((e) => over(e.end_date || e.start_date)).map((e) => ({ name: e.name, end: e.end_date || e.start_date })),
+  ];
+  const latest = (list, end) => list.slice().sort((a, b) => (end(a) < end(b) ? 1 : -1))[0];
+  const lastSeason = latest(playedSeasons, (s) => s.end_date);
+  const lastTournament = latest(playedTournaments, (t) => t.end);
   return {
     categories: cats.size,
-    seasonsPlayed: seasons.filter((s) => s.kind !== 'TOURNAMENT' && over(s.end_date)).length,
-    tournamentsPlayed: seasons.filter((s) => s.kind === 'TOURNAMENT' && over(s.end_date)).length + events.filter((e) => over(e.end_date || e.start_date)).length,
+    categoryList: ALL_CATEGORIES.filter((c) => cats.has(c)),
+    seasonsPlayed: playedSeasons.length,
+    tournamentsPlayed: playedTournaments.length,
+    lastSeason: lastSeason ? lastSeason.name : '',
+    lastTournament: lastTournament ? lastTournament.name : '',
   };
 }
 

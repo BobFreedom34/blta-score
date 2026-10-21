@@ -114,6 +114,9 @@
   /* the titles of the card and of its schedule: a label above the name of the city, and a heading with a short line under the card */
   .sl-det h2 { font-size: 46px; line-height: 1.05; margin: 0 0 12px; }
   .sl-det .url { font-size: 15px; }
+  .sl-det-tiles { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 6px; }
+  .sl-det .home-mine-cell.dark { background: #0f0f12; border-color: rgba(255, 255, 255, 0.1); }
+  @media (max-width: 860px) { .sl-det-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .sl-det-eyebrow { color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 10px; }
   .sl-sched-head { display: block; padding-bottom: 16px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.16); }
   .sl-sched-city { margin-top: 10px; color: var(--orange); font-size: 15px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
@@ -197,7 +200,7 @@ const TEXT = {
     enter: 'Vstúpiť do ligy', register: 'Registrácia', notYet: 'Stránka mesta sa pripravuje',
     none: 'Žiadne mesto nenájdené.', loadError: 'Zoznam miest sa nepodarilo načítať.',
     ariaMap: 'Mapa Slovenska s mestami',
-    cityLabel: 'Vybrané mesto', kCities: 'Mestá', kPlayers: 'Hráči', kVenues: 'Tenisové areály', ofCities: 'miest v lige', ofPlayers: 'registrovaných hráčov', ofVenues: 'tenisových areálov', withLeague: '{n} s bežiacou ligou', inCities1: 'v {n} meste', inCitiesN: 'v {n} mestách', cats: 'kategórií', seasonsPlayed: 'odohraných sezón', toursPlayed: 'odohraných turnajov', schSub: 'Čo práve prebieha a všetko, čo nás čaká v nasledujúcom roku', schTitle: 'Harmonogram', schLeague: 'Liga', schTour: 'Turnaj', schMore: 'Viac info', schDaysLeft: 'zostáva {n} {d}', schStartsIn: 'o {n} {d}',
+    cityLabel: 'Vybrané mesto', kCats: 'Kategórie', kSeasons: 'Sezóny', kTours: 'Turnaje', ofCats: 'výkonnostné kategórie', ofSeasons: 'odohraných sezón', ofTours: 'odohraných turnajov', inLeague: 'v lige {name}', lastOne: 'naposledy {name}', noneYet: 'zatiaľ žiadna', kCities: 'Mestá', kPlayers: 'Hráči', kVenues: 'Tenisové areály', ofCities: 'miest v lige', ofPlayers: 'registrovaných hráčov', ofVenues: 'tenisových areálov', withLeague: '{n} s bežiacou ligou', inCities1: 'v {n} meste', inCitiesN: 'v {n} mestách', cats: 'kategórií', seasonsPlayed: 'odohraných sezón', toursPlayed: 'odohraných turnajov', schSub: 'Čo práve prebieha a všetko, čo nás čaká v nasledujúcom roku', schTitle: 'Harmonogram', schLeague: 'Liga', schTour: 'Turnaj', schMore: 'Viac info', schDaysLeft: 'zostáva {n} {d}', schStartsIn: 'o {n} {d}',
     dayOne: 'deň', dayFew: 'dni', dayMany: 'dní', schEmpty: 'Zatiaľ nie sú naplánované žiadne podujatia.', schError: 'Harmonogram sa nepodarilo načítať.',
   },
   en: {
@@ -214,7 +217,7 @@ const TEXT = {
     enter: 'Enter the league', register: 'Register', notYet: 'The city page is coming',
     none: 'No city found.', loadError: 'The list of cities could not be loaded.',
     ariaMap: 'Map of Slovakia with the cities',
-    cityLabel: 'Selected city', kCities: 'Cities', kPlayers: 'Players', kVenues: 'Tennis venues', ofCities: 'cities in the league', ofPlayers: 'registered players', ofVenues: 'tennis venues', withLeague: '{n} with a running league', inCities1: 'in {n} city', inCitiesN: 'in {n} cities', cats: 'categories', seasonsPlayed: 'seasons played', toursPlayed: 'tournaments played', schSub: 'What is running now and everything coming up in the next year', schTitle: 'Schedule', schLeague: 'League', schTour: 'Tournament', schMore: 'More info', schDaysLeft: '{n} {d} left', schStartsIn: 'in {n} {d}',
+    cityLabel: 'Selected city', kCats: 'Categories', kSeasons: 'Seasons', kTours: 'Tournaments', ofCats: 'skill categories', ofSeasons: 'seasons played', ofTours: 'tournaments played', inLeague: 'in the {name} league', lastOne: 'last: {name}', noneYet: 'none yet', kCities: 'Cities', kPlayers: 'Players', kVenues: 'Tennis venues', ofCities: 'cities in the league', ofPlayers: 'registered players', ofVenues: 'tennis venues', withLeague: '{n} with a running league', inCities1: 'in {n} city', inCitiesN: 'in {n} cities', cats: 'categories', seasonsPlayed: 'seasons played', toursPlayed: 'tournaments played', schSub: 'What is running now and everything coming up in the next year', schTitle: 'Schedule', schLeague: 'League', schTour: 'Tournament', schMore: 'More info', schDaysLeft: '{n} {d} left', schStartsIn: 'in {n} {d}',
     dayOne: 'day', dayFew: 'days', dayMany: 'days', schEmpty: 'No events are planned yet.', schError: 'The schedule could not be loaded.',
   },
 };
@@ -226,6 +229,8 @@ document.querySelectorAll('[data-i-placeholder]').forEach((el) => { if (T[el.dat
 document.getElementById('map').setAttribute('aria-label', T.ariaMap);
 document.getElementById(`lang-${LANG}`).classList.add('on');
 
+// a number tile in the design of the tiles of the home page of blta.sk: a label, the big number, a thin divider and two lines (the second is optional)
+const tileHtml = (k, num, of, row, cls) => '<div class="home-mine-cell' + (cls ? ' ' + cls : '') + '"><div class="k">' + esc(k) + '</div><div class="home-mine-body"><div class="big">' + num + '</div><div class="side"><span class="of">' + esc(of) + '</span>' + (row ? '<span class="row"><span class="grp">' + esc(row) + '</span></span>' : '') + '</div></div></div>';
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fold = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 
@@ -314,8 +319,14 @@ function draw() {
   const registerUrl = c.url && reg && reg.slug && c.registrationOpen ? `${c.url}${reg.path[LANG]}` : '';
   showSchedule(c);
   detEl.innerHTML = `<div><div class="sl-det-eyebrow">${T.cityLabel}</div><h2>${esc(c.brandName)}${c.url ? `<span class="url">${esc(c.url.charAt(0) === '/' ? location.host.replace(/^www\./, '') + c.url : c.url.replace(/^https?:\/\//, ''))}</span>` : ''}</h2><span class="sl-tag ${kind(c)}">${esc(label(c))}</span>
-    <div class="sl-meta"><div><b>${c.players || 0}</b>${T.players}</div><div><b>${c.categories || 0}</b>${T.cats}</div><div><b>${c.seasonsPlayed || 0}</b>${T.seasonsPlayed}</div><div><b>${c.tournamentsPlayed || 0}</b>${T.toursPlayed}</div></div></div>
-    <div class="sl-btns">${c.url ? `<a class="sl-btn g" href="${esc(c.url)}">${T.enter}</a>` : `<span class="sl-btn off">${T.notYet}</span>`}${registerUrl ? `<a class="sl-btn d" href="${esc(registerUrl)}">${T.register}</a>` : ''}</div>`;
+    </div>
+    <div class="sl-btns">${c.url ? `<a class="sl-btn g" href="${esc(c.url)}">${T.enter}</a>` : `<span class="sl-btn off">${T.notYet}</span>`}${registerUrl ? `<a class="sl-btn d" href="${esc(registerUrl)}">${T.register}</a>` : ''}</div>
+    <div class="sl-det-tiles">${[
+      tileHtml(T.kPlayers, c.players || 0, T.ofPlayers, T.inLeague.replace('{name}', c.brandName || c.name), 'dark'),
+      tileHtml(T.kCats, c.categories || 0, T.ofCats, (c.categoryList || []).map((k) => ({ ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[k] || k)).join(' · '), 'dark'),
+      tileHtml(T.kSeasons, c.seasonsPlayed || 0, T.ofSeasons, c.lastSeason ? T.lastOne.replace('{name}', c.lastSeason) : T.noneYet, 'dark'),
+      tileHtml(T.kTours, c.tournamentsPlayed || 0, T.ofTours, c.lastTournament ? T.lastOne.replace('{name}', c.lastTournament) : T.noneYet, 'dark'),
+    ].join('')}</div>`;
 }
 
 // ---------- the carousel at the top: the slides of Backend > Carousel > "The national page" (the same look as the carousel of blta.sk)
@@ -459,7 +470,7 @@ document.getElementById('q').addEventListener('input', (e) => { q = fold(e.targe
   const statsEl = document.getElementById('stats');
   if (cities.length) {
     const sum = (k) => cities.reduce((s, c) => s + (c[k] || 0), 0);
-    const tile = (k, num, of, row) => '<div class="home-mine-cell"><div class="k">' + esc(k) + '</div><div class="home-mine-body"><div class="big">' + num + '</div><div class="side"><span class="of">' + esc(of) + '</span>' + (row ? '<span class="row"><span class="grp">' + esc(row) + '</span></span>' : '') + '</div></div></div>';
+    const tile = (k, num, of, row) => tileHtml(k, num, of, row);
     const inCities = (n) => (n === 1 ? T.inCities1 : T.inCitiesN).replace('{n}', n);
     const running = cities.filter((c) => c.status === 'ACTIVE').length;
     statsEl.className = 'home-mine-grid sl-block';
