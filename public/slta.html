@@ -17,9 +17,15 @@
   .sl-top-in { max-width: 1160px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
   .sl-logo { font-size: 26px; font-weight: 800; letter-spacing: .08em; color: #fff; text-decoration: none; }
   .sl-logo b { color: var(--orange); font-weight: 800; }
-  .sl-nav { display: flex; gap: 24px; flex-wrap: wrap; }
-  .sl-nav a { color: #fff; font-size: 13px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; text-decoration: none; }
-  .sl-nav a:hover { color: var(--orange); }
+  /* the menu: on a computer the links stand beside the logo; on a tablet and a phone it is the hamburger menu of blta.sk (the .nav-toggle / .nav-links of style.css) */
+  .sl-top .nav-links a { display: inline-flex; align-items: center; gap: 8px; }
+  .sl-em { font-size: 1.15em; line-height: 1; }
+  @media (max-width: 1024px) { .sl-top .nav-links a::before { display: none; } .sl-em { font-size: 18px; width: 20px; text-align: center; } }
+  @media (min-width: 1025px) {
+    .sl-top .nav-links { flex: 0 1 auto; justify-content: flex-start; gap: 24px; }
+    .sl-top .nav-links a { padding: 0; font-size: 13px; font-weight: 800; letter-spacing: .05em; color: #fff; text-decoration: none; }
+    .sl-top .nav-links a:hover { background: none; color: var(--orange); }
+  }
   .sl-lang { margin-left: auto; display: flex; gap: 8px; }
   .sl-lang a { border: 1px solid rgba(255,255,255,.25); border-radius: var(--radius-sm); padding: 6px 12px; font-size: 12px; font-weight: 800; color: #fff; text-decoration: none; }
   .sl-lang a.on { background: var(--orange); border-color: var(--orange); }
@@ -161,8 +167,9 @@
 <body>
 <header class="sl-top"><div class="sl-top-in">
   <a class="sl-logo" href="/">S<b>L</b>TA</a>
-  <nav class="sl-nav"><a href="#mesta" data-i="navCities">Mestá</a><a href="#ako" data-i="navHow">Ako to funguje</a><a href="#organizator" data-i="navOrg">Organizátori</a></nav>
+  <nav class="nav-links" id="nav-links"><a href="#mesta"><span class="sl-em">📍</span><span data-i="navCities">Mestá</span></a><a href="#ako"><span class="sl-em">🎾</span><span data-i="navHow">Ako to funguje</span></a><a href="#organizator"><span class="sl-em">🤝</span><span data-i="navOrg">Organizátori</span></a></nav>
   <div class="sl-lang"><a id="lang-sk" href="/">SK</a><a id="lang-en" href="/en">EN</a></div>
+  <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu">&#9776;</button>
 </div></header>
 
 <main class="sl-wrap">
@@ -470,6 +477,16 @@ async function showSchedule(c) {
   }
   if (schSlug === c.slug) schEl.innerHTML = schHead(c) + schHtml(schCache[key]);
 }
+
+// ---------- the hamburger menu (a tablet and a phone), the same way as on blta.sk
+(function mobileNav() {
+  const toggle = document.getElementById('nav-toggle');
+  const links = document.getElementById('nav-links');
+  if (!toggle || !links) return;
+  toggle.addEventListener('click', (e) => { e.stopPropagation(); links.classList.toggle('open'); });
+  links.addEventListener('click', (e) => { if (e.target.closest('a')) links.classList.remove('open'); });
+  document.addEventListener('click', (e) => { if (links.classList.contains('open') && !links.contains(e.target) && e.target !== toggle) links.classList.remove('open'); });
+})();
 
 // ---------- the organisers' block: the way to reach us is the contact of the site (Backend > Menu > Contact window)
 (async function organisers() {
