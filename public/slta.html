@@ -146,17 +146,19 @@
   .sl-org p { margin: 0; color: #c3c7cf; font-size: 16px; line-height: 1.5; max-width: 560px; }
   .sl-org .sl-btns { min-width: 250px; }
   @media (max-width: 860px) { .sl-org { grid-template-columns: 1fr; padding: 26px 22px; } .sl-org h2 { font-size: 24px; } .sl-org .sl-btns { min-width: 0; } }
-  /* questions and answers: foldable rows in the grey of the other blocks */
-  .sl-faq { display: grid; gap: 10px; }
-  .sl-faq details { background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); }
-  .sl-faq details[open] { border-color: rgba(255, 85, 0, 0.5); }
-  .sl-faq summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 24px; font-size: 17px; font-weight: 800; color: #fff; }
+  /* questions and answers: two columns of compact foldable rows in the grey of the other blocks */
+  .sl-faq { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; align-items: start; counter-reset: faq; }
+  .sl-faq details { counter-increment: faq; background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); transition: border-color .2s, box-shadow .2s; }
+  .sl-faq details:hover { border-color: rgba(255,255,255,.18); }
+  .sl-faq details[open] { border-color: rgba(255, 85, 0, 0.55); box-shadow: 0 0 24px -12px rgba(255, 85, 0, 0.6); }
+  .sl-faq summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 14px 16px; font-size: 15px; font-weight: 800; line-height: 1.25; color: #fff; }
   .sl-faq summary::-webkit-details-marker { display: none; }
-  .sl-faq summary::after { content: '+'; flex: 0 0 auto; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: rgba(255,255,255,.08); color: var(--orange); font-size: 20px; font-weight: 800; line-height: 1; }
+  .sl-faq summary::before { content: counter(faq, decimal-leading-zero); flex: 0 0 auto; color: var(--orange); font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+  .sl-faq summary::after { content: '+'; flex: 0 0 auto; margin-left: auto; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: rgba(255,255,255,.08); color: var(--orange); font-size: 17px; font-weight: 800; line-height: 1; }
   .sl-faq details[open] summary::after { content: '–'; background: var(--orange); color: #fff; }
-  .sl-faq summary:hover { color: var(--orange); }
-  .sl-faq p { margin: 0; padding: 0 24px 22px; max-width: 760px; color: #c3c7cf; font-size: 15px; line-height: 1.6; }
-  @media (max-width: 860px) { .sl-faq summary { padding: 16px 18px; font-size: 15px; } .sl-faq p { padding: 0 18px 18px; font-size: 14px; } }
+  .sl-faq details[open] summary { color: var(--orange); }
+  .sl-faq p { margin: 0; padding: 0 16px 16px 40px; color: #c3c7cf; font-size: 14px; line-height: 1.55; }
+  @media (max-width: 860px) { .sl-faq { grid-template-columns: 1fr; } }
   .sl-foot { border-top: 1px solid rgba(255,255,255,.1); padding: 26px 20px; text-align: center; color: #8b8f98; font-size: 13px; font-weight: 600; }
   .sl-foot a { color: var(--orange); text-decoration: none; }
   @media (max-width: 860px) {
