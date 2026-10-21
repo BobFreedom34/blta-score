@@ -18,9 +18,9 @@
   .sl-logo { font-size: 26px; font-weight: 800; letter-spacing: .08em; color: #fff; text-decoration: none; }
   .sl-logo b { color: var(--orange); font-weight: 800; }
   /* the menu: on a computer the links stand beside the logo; on a tablet and a phone it is the hamburger menu of blta.sk (the .nav-toggle / .nav-links of style.css) */
-  .sl-top .nav-links a { display: inline-flex; align-items: center; gap: 8px; }
-  .sl-em { font-size: 1.15em; line-height: 1; }
-  @media (max-width: 1024px) { .sl-top .nav-links a::before { display: none; } .sl-em { font-size: 18px; width: 20px; text-align: center; } }
+  .nav-links a[href="#mesta"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0z'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E"); }
+  .nav-links a[href="#ako"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E"); }
+  .nav-links a[href="#organizator"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E"); }
   @media (min-width: 1025px) {
     .sl-top .nav-links { flex: 0 1 auto; justify-content: flex-start; gap: 24px; }
     .sl-top .nav-links a { padding: 0; font-size: 13px; font-weight: 800; letter-spacing: .05em; color: #fff; text-decoration: none; }
@@ -167,7 +167,7 @@
 <body>
 <header class="sl-top"><div class="sl-top-in">
   <a class="sl-logo" href="/">S<b>L</b>TA</a>
-  <nav class="nav-links" id="nav-links"><a href="#mesta"><span class="sl-em">📍</span><span data-i="navCities">Mestá</span></a><a href="#ako"><span class="sl-em">🎾</span><span data-i="navHow">Ako to funguje</span></a><a href="#organizator"><span class="sl-em">🤝</span><span data-i="navOrg">Organizátori</span></a></nav>
+  <nav class="nav-links" id="nav-links"><a href="#mesta" data-i="navCities">Mestá</a><a href="#ako" data-i="navHow">Ako to funguje</a><a href="#organizator" data-i="navOrg">Organizátori</a></nav>
   <div class="sl-lang"><a id="lang-sk" href="/">SK</a><a id="lang-en" href="/en">EN</a></div>
   <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu">&#9776;</button>
 </div></header>
