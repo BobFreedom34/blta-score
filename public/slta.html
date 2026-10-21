@@ -90,7 +90,7 @@
   .sl-btn.d:hover { border-color: var(--orange); }
   .sl-btn.off { background: var(--fill-grey); color: #8b8f98; border-color: rgba(255,255,255,.1); cursor: default; }
   .sl-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  .sl-stats[hidden] { display: none; }
+  .sl-stats[hidden], .home-mine-grid[hidden] { display: none; }
   .sl-stat { background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 18px 20px; }
   .sl-stat b { display: block; font-size: 34px; font-weight: 800; line-height: 1.1; }
   .sl-stat small { color: #aeb2ba; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
@@ -197,7 +197,7 @@ const TEXT = {
     enter: 'Vstúpiť do ligy', register: 'Registrácia', notYet: 'Stránka mesta sa pripravuje',
     none: 'Žiadne mesto nenájdené.', loadError: 'Zoznam miest sa nepodarilo načítať.',
     ariaMap: 'Mapa Slovenska s mestami',
-    cityLabel: 'Vybrané mesto', cats: 'kategórií', seasonsPlayed: 'odohraných sezón', toursPlayed: 'odohraných turnajov', schSub: 'Čo práve prebieha a všetko, čo nás čaká v nasledujúcom roku', schTitle: 'Harmonogram', schLeague: 'Liga', schTour: 'Turnaj', schMore: 'Viac info', schDaysLeft: 'zostáva {n} {d}', schStartsIn: 'o {n} {d}',
+    cityLabel: 'Vybrané mesto', kCities: 'Mestá', kPlayers: 'Hráči', kVenues: 'Tenisové areály', ofCities: 'miest v lige', ofPlayers: 'registrovaných hráčov', ofVenues: 'tenisových areálov', withLeague: '{n} s bežiacou ligou', inCities1: 'v {n} meste', inCitiesN: 'v {n} mestách', cats: 'kategórií', seasonsPlayed: 'odohraných sezón', toursPlayed: 'odohraných turnajov', schSub: 'Čo práve prebieha a všetko, čo nás čaká v nasledujúcom roku', schTitle: 'Harmonogram', schLeague: 'Liga', schTour: 'Turnaj', schMore: 'Viac info', schDaysLeft: 'zostáva {n} {d}', schStartsIn: 'o {n} {d}',
     dayOne: 'deň', dayFew: 'dni', dayMany: 'dní', schEmpty: 'Zatiaľ nie sú naplánované žiadne podujatia.', schError: 'Harmonogram sa nepodarilo načítať.',
   },
   en: {
@@ -214,7 +214,7 @@ const TEXT = {
     enter: 'Enter the league', register: 'Register', notYet: 'The city page is coming',
     none: 'No city found.', loadError: 'The list of cities could not be loaded.',
     ariaMap: 'Map of Slovakia with the cities',
-    cityLabel: 'Selected city', cats: 'categories', seasonsPlayed: 'seasons played', toursPlayed: 'tournaments played', schSub: 'What is running now and everything coming up in the next year', schTitle: 'Schedule', schLeague: 'League', schTour: 'Tournament', schMore: 'More info', schDaysLeft: '{n} {d} left', schStartsIn: 'in {n} {d}',
+    cityLabel: 'Selected city', kCities: 'Cities', kPlayers: 'Players', kVenues: 'Tennis venues', ofCities: 'cities in the league', ofPlayers: 'registered players', ofVenues: 'tennis venues', withLeague: '{n} with a running league', inCities1: 'in {n} city', inCitiesN: 'in {n} cities', cats: 'categories', seasonsPlayed: 'seasons played', toursPlayed: 'tournaments played', schSub: 'What is running now and everything coming up in the next year', schTitle: 'Schedule', schLeague: 'League', schTour: 'Tournament', schMore: 'More info', schDaysLeft: '{n} {d} left', schStartsIn: 'in {n} {d}',
     dayOne: 'day', dayFew: 'days', dayMany: 'days', schEmpty: 'No events are planned yet.', schError: 'The schedule could not be loaded.',
   },
 };
@@ -459,7 +459,13 @@ document.getElementById('q').addEventListener('input', (e) => { q = fold(e.targe
   const statsEl = document.getElementById('stats');
   if (cities.length) {
     const sum = (k) => cities.reduce((s, c) => s + (c[k] || 0), 0);
-    statsEl.innerHTML = [[cities.length, T.cities], [sum('players'), T.players], [sum('venues'), T.venues]].map(([n, l]) => `<div class="sl-stat"><b>${n}</b><small>${l}</small></div>`).join('');
+    const tile = (k, num, of, row) => '<div class="home-mine-cell"><div class="k">' + esc(k) + '</div><div class="home-mine-body"><div class="big">' + num + '</div><div class="side"><span class="of">' + esc(of) + '</span>' + (row ? '<span class="row"><span class="grp">' + esc(row) + '</span></span>' : '') + '</div></div></div>';
+    const inCities = (n) => (n === 1 ? T.inCities1 : T.inCitiesN).replace('{n}', n);
+    const running = cities.filter((c) => c.status === 'ACTIVE').length;
+    statsEl.className = 'home-mine-grid sl-block';
+    statsEl.innerHTML = tile(T.kCities, cities.length, T.ofCities, T.withLeague.replace('{n}', running)) +
+      tile(T.kPlayers, sum('players'), T.ofPlayers, inCities(cities.filter((c) => c.players > 0).length)) +
+      tile(T.kVenues, sum('venues'), T.ofVenues, inCities(cities.filter((c) => c.venues > 0).length));
     statsEl.hidden = false;
   }
   draw();
