@@ -74,6 +74,9 @@
   .sl-empty { color: #aeb2ba; padding: 14px; font-weight: 600; }
   .sl-det { margin-top: 16px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; background: #0f0f12; border: 1px solid var(--green); border-radius: var(--radius); padding: 22px 26px; box-shadow: 0 0 30px -12px rgba(178,250,6,.4); }
   .sl-det[hidden] { display: none; }
+  .sl-sched { margin-top: 16px; }
+  .sl-sched[hidden] { display: none; }
+  .sl-sched .sch-month-title:first-child { margin-top: 0; }
   .sl-det h2 { margin: 0 0 8px; font-size: 26px; font-weight: 800; color: #fff; text-transform: none; }
   .sl-det .url { color: #8b8f98; font-size: 13px; font-weight: 600; margin-left: 8px; }
   .sl-meta { display: flex; gap: 34px; flex-wrap: wrap; margin-top: 14px; }
@@ -140,6 +143,8 @@
 
   <section class="sl-det" id="det" hidden></section>
 
+  <section class="sl-sched" id="sch" hidden></section>
+
   <section class="sl-stats sl-block" id="stats" hidden></section>
 
   <div class="sl-block" id="ako-block"><h2 class="sl-sec" id="ako" data-i="howTitle">Ako to funguje</h2>
@@ -168,6 +173,8 @@ const TEXT = {
     enter: 'Vstúpiť do ligy', register: 'Registrácia', notYet: 'Stránka mesta sa pripravuje',
     none: 'Žiadne mesto nenájdené.', loadError: 'Zoznam miest sa nepodarilo načítať.',
     ariaMap: 'Mapa Slovenska s mestami',
+    schTitle: 'Harmonogram', schLeague: 'Liga', schTour: 'Turnaj', schMore: 'Viac info', schDaysLeft: 'zostáva {n} {d}', schStartsIn: 'o {n} {d}',
+    dayOne: 'deň', dayFew: 'dni', dayMany: 'dní', schEmpty: 'Zatiaľ nie sú naplánované žiadne podujatia.', schError: 'Harmonogram sa nepodarilo načítať.',
   },
   en: {
     navCities: 'Cities', navHow: 'How it works', eyebrow: 'Slovak Amateur Tennis League',
@@ -183,6 +190,8 @@ const TEXT = {
     enter: 'Enter the league', register: 'Register', notYet: 'The city page is coming',
     none: 'No city found.', loadError: 'The list of cities could not be loaded.',
     ariaMap: 'Map of Slovakia with the cities',
+    schTitle: 'Schedule', schLeague: 'League', schTour: 'Tournament', schMore: 'More info', schDaysLeft: '{n} {d} left', schStartsIn: 'in {n} {d}',
+    dayOne: 'day', dayFew: 'days', dayMany: 'days', schEmpty: 'No events are planned yet.', schError: 'The schedule could not be loaded.',
   },
 };
 const LANG = document.documentElement.lang === 'en' ? 'en' : 'sk';
@@ -277,8 +286,9 @@ function draw() {
   detEl.hidden = false;
   const season = c.currentSeason;
   const registerUrl = c.url && season && season.slug && c.registrationOpen ? `${c.url}${season.path ? season.path[LANG] : '/season/' + encodeURIComponent(season.slug)}` : '';
+  showSchedule(c);
   detEl.innerHTML = `<div><h2>${esc(c.brandName)}${c.url ? `<span class="url">${esc(c.url.charAt(0) === '/' ? location.host.replace(/^www\./, '') + c.url : c.url.replace(/^https?:\/\//, ''))}</span>` : ''}</h2><span class="sl-tag ${kind(c)}">${esc(label(c))}</span>
-    <div class="sl-meta"><div><b>${c.players || '–'}</b>${T.players}</div><div><b>${c.venues || '–'}</b>${T.venues}</div>${season ? `<div><b class="t">${esc(season.name)}</b>${T.next}</div>` : ''}</div></div>
+    <div class="sl-meta"><div><b>${c.players || '–'}</b>${T.players}</div></div></div>
     <div class="sl-btns">${c.url ? `<a class="sl-btn g" href="${esc(c.url)}">${T.enter}</a>` : `<span class="sl-btn off">${T.notYet}</span>`}${registerUrl ? `<a class="sl-btn d" href="${esc(registerUrl)}">${T.register}</a>` : ''}</div>`;
 }
 
@@ -321,6 +331,85 @@ function draw() {
   host.addEventListener('touchend', () => { setTimeout(() => { paused = false; }, 5500); }, { passive: true });
   setInterval(() => { if (!paused && !document.hidden) go(current + 1); }, 5500);
 })();
+
+// ---------- the schedule of the chosen city: what is running now, then everything of the next year (the rows of the schedule page of blta.sk)
+const schEl = document.getElementById('sch');
+const schCache = {};
+let schSlug = '';
+const dayD = (iso) => new Date(iso + 'T12:00:00');
+const daysBetween = (a, b) => Math.round((dayD(b) - dayD(a)) / 864e5);
+const dayWord = (n) => (n === 1 ? T.dayOne : (LANG === 'en' ? T.dayMany : (n >= 2 && n <= 4 ? T.dayFew : T.dayMany)));
+const two = (n) => String(n).padStart(2, '0');
+const dateRange = (e) => {
+  const a = dayD(e.startDate); const b = dayD(e.endDate);
+  const dm = (d) => two(d.getDate()) + '.' + two(d.getMonth() + 1) + '.';
+  if (e.startDate === e.endDate) return dm(a);
+  if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) return two(a.getDate()) + '. – ' + dm(b);
+  return dm(a) + ' – ' + dm(b);
+};
+const yearText = (e) => { const a = dayD(e.startDate).getFullYear(); const b = dayD(e.endDate).getFullYear(); return a === b ? String(a) : a + ' – ' + b; };
+const catName = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
+
+function schRow(e, today) {
+  const now = e.state === 'now';
+  const lg = e.type === 'LEAGUE';
+  let extra = ''; let bar = '';
+  if (now) {
+    const left = Math.max(0, daysBetween(today, e.endDate));
+    extra = ' · ' + T.schDaysLeft.replace('{n}', left).replace('{d}', dayWord(left));
+    const total = Math.max(1, daysBetween(e.startDate, e.endDate));
+    bar = '<div class="home-bar mini"><i style="width:' + Math.min(100, Math.max(0, Math.round(daysBetween(e.startDate, today) / total * 100))) + '%"></i></div>';
+  } else {
+    const n = daysBetween(today, e.startDate);
+    extra = ' · ' + T.schStartsIn.replace('{n}', n).replace('{d}', dayWord(n));
+  }
+  const tags = '<span class="sch-tag' + (lg ? '' : ' tour') + '">' + (lg ? T.schLeague : T.schTour) + '</span>' + (now ? '<span class="sch-tag now">' + T.running + '</span>' : '');
+  const sub = (e.venue ? esc(e.venue) + ' · ' : '') + '<b>' + esc((e.categories || []).map((c) => catName[c] || c).join(' · ')) + '</b>' + esc(extra);
+  const more = e.link ? '<span class="sch-go">' + T.schMore + ' ›</span>' : '<span></span>';
+  const open = e.link ? '<a class="sch-row link ' + (now ? 'now' : 'future') + '" href="' + esc(e.link) + '"' + (/^https?:/i.test(e.link) && !e.link.startsWith(location.origin) ? ' target="_blank" rel="noopener"' : '') + '>' : '<div class="sch-row ' + (now ? 'now' : 'future') + '">';
+  return open +
+    '<div class="sch-date">' + esc(dateRange(e)) + '<small>' + esc(yearText(e)) + '</small></div>' +
+    '<div class="sch-info' + (e.logoUrl ? ' with-logo' : '') + '">' + (e.logoUrl ? '<img class="sch-logo" src="' + esc(e.logoUrl) + '" alt="" loading="lazy">' : '') + '<div class="sch-text"><div class="sch-name">' + esc(e.name) + ' ' + tags + '</div><div class="sch-sub">' + sub + '</div>' + bar + '</div></div>' +
+    more + (e.link ? '</a>' : '</div>');
+}
+
+function schHtml(data) {
+  const items = data.items || [];
+  if (!items.length) return '<div class="sl-empty">' + T.schEmpty + '</div>';
+  const today = data.today;
+  const running = items.filter((e) => e.state === 'now');
+  const future = items.filter((e) => e.state !== 'now');
+  const out = [];
+  if (running.length) out.push('<div class="sch-month-title">' + esc(T.running) + '</div><div class="sch-card now">' + running.map((e) => schRow(e, today)).join('') + '</div>');
+  // the coming events, grouped by the month they start in (the year is named when it is not this one)
+  const byMonth = new Map();
+  future.forEach((e) => { const k = e.startDate.slice(0, 7); if (!byMonth.has(k)) byMonth.set(k, []); byMonth.get(k).push(e); });
+  [...byMonth.keys()].sort().forEach((k) => {
+    const d = new Date(k + '-01T12:00:00');
+    const name = d.toLocaleDateString(LANG === 'en' ? 'en-GB' : 'sk-SK', { month: 'long' }) + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : '');
+    out.push('<div class="sch-month-title">' + esc(name) + '</div><div class="sch-card">' + byMonth.get(k).map((e) => schRow(e, today)).join('') + '</div>');
+  });
+  return out.join('');
+}
+
+async function showSchedule(c) {
+  if (!c || !c.slug) { schEl.hidden = true; return; }
+  if (schSlug === c.slug && !schEl.hidden) return;
+  schSlug = c.slug;
+  schEl.hidden = false;
+  const key = c.slug + ':' + LANG;
+  if (schCache[key]) { schEl.innerHTML = schHtml(schCache[key]); return; }
+  schEl.innerHTML = '<div class="sl-empty">…</div>';
+  try {
+    const res = await fetch('/api/leagues/' + encodeURIComponent(c.slug) + '/schedule?lang=' + LANG);
+    if (!res.ok) throw new Error('bad');
+    schCache[key] = await res.json();
+  } catch {
+    if (schSlug === c.slug) schEl.innerHTML = '<div class="sl-empty">' + T.schError + '</div>';
+    return;
+  }
+  if (schSlug === c.slug) schEl.innerHTML = schHtml(schCache[key]);
+}
 
 document.addEventListener('click', (e) => {
   const t = e.target.closest('#map [data-i], #list [data-i]');

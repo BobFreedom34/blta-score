@@ -151,6 +151,36 @@ test('the Registration button of a city leads to a page that exists: the season 
   if (p.sk !== code) assert.strictEqual((await as('blta.sk', code)).status, 404, 'the code address is retired: that was the broken link');
 });
 
+test('the schedule of a city on the national page: what runs now first (the league), then the next year, with real links', async () => {
+  const iso = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  const make = async (name, start, end, kind) => JSON.parse((await admin('POST', '/api/seasons', { name, startDate: start, endDate: end, kind })).body);
+  await make('Running Tournament', iso(-2), iso(3), 'TOURNAMENT');
+  await make('Far Future Cup', iso(500), iso(502), 'TOURNAMENT');
+  await make('Spring Cup', iso(40), iso(41), 'TOURNAMENT');
+  const r = await as('slta.sk', '/api/leagues/bratislava/schedule?lang=sk');
+  assert.strictEqual(r.status, 200);
+  const d = JSON.parse(r.body);
+  const items = d.items;
+  assert.ok(items.length >= 3, 'items');
+  assert.strictEqual(items[0].state, 'now');
+  assert.strictEqual(items[0].type, 'LEAGUE', 'the running league is the first object');
+  const running = items.filter((e) => e.state === 'now');
+  assert.ok(running.some((e) => e.name === 'Running Tournament'), 'a running tournament follows the league');
+  assert.ok(running.findIndex((e) => e.type === 'LEAGUE') < running.findIndex((e) => e.name === 'Running Tournament'));
+  const future = items.filter((e) => e.state === 'future');
+  assert.ok(future.some((e) => e.name === 'Spring Cup'), 'upcoming within a year');
+  assert.ok(!items.some((e) => e.name === 'Far Future Cup'), 'nothing further than a year');
+  assert.ok(items.every((e) => e.endDate >= d.today), 'nothing that is over');
+  assert.deepStrictEqual(future.map((e) => e.startDate), [...future.map((e) => e.startDate)].sort(), 'the coming ones soonest first');
+  assert.ok(items.every((e) => !e.link || e.link.startsWith('https://blta.sk/')), 'the links lead to the real page on the own domain of the city: ' + items[0].link);
+    const en = JSON.parse((await as('slta.sk', '/api/leagues/bratislava/schedule?lang=en')).body);
+  assert.ok(en.items[0].link.startsWith('https://blta.sk/en/'), en.items[0].link);
+  assert.strictEqual((await as('blta.sk', new URL(items[0].link).pathname)).status, 200, 'and the link works');
+  assert.strictEqual((await as('slta.sk', '/api/leagues/nowhere/schedule')).status, 404);
+  const page = await as('slta.sk', '/');
+  assert.ok(page.body.includes('id="sch"') && page.body.includes('/schedule?lang='), 'the page shows it');
+});
+
 test('the lock belongs to the admin: a password of 6 characters or more, never given back', async () => {
   assert.strictEqual((await as('localhost', '/api/leagues/national-lock')).status, 401, 'not for the public');
   assert.strictEqual((await admin('PUT', '/api/leagues/national-lock', { enabled: true })).status, 400, 'a password is needed');

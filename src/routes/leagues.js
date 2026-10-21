@@ -6,6 +6,8 @@ const auth = require('../auth');
 const leagues = require('../leagues');
 const national = require('../national');
 const carousel = require('./carousel');
+const schedule = require('./schedule');
+const seo = require('../seo');
 
 const router = express.Router();
 
@@ -89,6 +91,30 @@ router.get('/all', auth.requireSuperAdmin, (req, res) => {
 // The city of this request (the own domain, otherwise Bratislava)
 router.get('/current', (req, res) => {
   res.json(leagues.serialize(req.league));
+});
+
+// Public: the schedule of one city for its card on the national page: what is running now (the league first, then the tournaments), then
+// everything that starts within a year, soonest first. The links are real addresses (on the city's own domain or under slta.sk/<slug>), in the
+// language asked for (?lang=en).
+router.get('/:slug/schedule', (req, res) => {
+  const row = leagues.bySlug(req.params.slug);
+  if (!row || (row.status === 'HIDDEN' && !auth.isAdmin(req))) return res.status(404).json({ error: 'City not found' });
+  const lang = req.query.lang === 'en' ? 'en' : 'sk';
+  const today = new Date().toISOString().slice(0, 10);
+  const horizon = new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10);
+  const city = leagues.serialize(row);
+  const base = city.url || '';
+  const link = (raw) => {
+    if (!raw) return '';
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return raw.startsWith('/') ? base + seo.pageUrl(raw.replace(/\/+$/, '') || '/', lang) : raw;
+  };
+  const items = schedule.scheduleOf(row.id)
+    .filter((e) => e.endDate >= today && e.startDate <= horizon)
+    .map((e) => ({ ...e, link: link(e.link), state: e.startDate <= today ? 'now' : 'future' }));
+  const rank = (e) => (e.state === 'now' ? (e.type === 'LEAGUE' ? 0 : 1) : 2);
+  items.sort((a, b) => rank(a) - rank(b) || (a.startDate + a.name).localeCompare(b.startDate + b.name));
+  res.json({ city: { slug: row.slug, name: row.name, brandName: row.brand_name || row.name, url: city.url }, today, items });
 });
 
 router.get('/:slug', (req, res) => {

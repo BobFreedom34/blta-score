@@ -28,8 +28,7 @@ function serializeEvent(e) {
 // The schedule page: the league seasons (always from the seasons themselves, so changing a season's dates in the
 // backend changes the schedule) and the tournaments / other events added in the backend, soonest first. A league
 // season has every BLTA category; its "more info" is its season page.
-router.get('/', (req, res) => {
-  const leagueId = leagues.actingIdOf(req);
+function scheduleOf(leagueId) {
   const seasons = db.prepare("SELECT * FROM seasons WHERE start_date IS NOT NULL AND start_date != '' AND league_id = ?").all(leagueId).map((s) => {
     const tournament = s.kind === 'TOURNAMENT';
     const own = parseCategories(s.categories);
@@ -46,8 +45,11 @@ router.get('/', (req, res) => {
     };
   });
   const events = db.prepare('SELECT * FROM schedule_events WHERE league_id = ?').all(leagueId).map(serializeEvent);
-  const all = [...seasons, ...events].sort((a, b) => (a.startDate + a.name).localeCompare(b.startDate + b.name));
-  res.json(all);
+  return [...seasons, ...events].sort((a, b) => (a.startDate + a.name).localeCompare(b.startDate + b.name));
+}
+
+router.get('/', (req, res) => {
+  res.json(scheduleOf(leagues.actingIdOf(req)));
 });
 
 // Reads and checks the fields of an event from a request body; returns { error } or { values }.
@@ -117,3 +119,4 @@ router.delete('/events/:id', requireAdmin, (req, res) => {
 });
 
 module.exports = router;
+module.exports.scheduleOf = scheduleOf;
