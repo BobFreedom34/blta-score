@@ -20,6 +20,7 @@
   /* the menu: on a computer the links stand beside the logo; on a tablet and a phone it is the hamburger menu of blta.sk (the .nav-toggle / .nav-links of style.css) */
   .nav-links a[href="#mesta"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0z'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E"); }
   .nav-links a[href="#ako"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E"); }
+  .nav-links a[href="#otazky"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E"); }
   .nav-links a[href="#organizator"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E"); }
   @media (min-width: 1025px) {
     .sl-top .nav-links { flex: 0 1 auto; justify-content: flex-start; gap: 24px; }
@@ -145,6 +146,17 @@
   .sl-org p { margin: 0; color: #c3c7cf; font-size: 16px; line-height: 1.5; max-width: 560px; }
   .sl-org .sl-btns { min-width: 250px; }
   @media (max-width: 860px) { .sl-org { grid-template-columns: 1fr; padding: 26px 22px; } .sl-org h2 { font-size: 24px; } .sl-org .sl-btns { min-width: 0; } }
+  /* questions and answers: foldable rows in the grey of the other blocks */
+  .sl-faq { display: grid; gap: 10px; }
+  .sl-faq details { background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); }
+  .sl-faq details[open] { border-color: rgba(255, 85, 0, 0.5); }
+  .sl-faq summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 24px; font-size: 17px; font-weight: 800; color: #fff; }
+  .sl-faq summary::-webkit-details-marker { display: none; }
+  .sl-faq summary::after { content: '+'; flex: 0 0 auto; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: rgba(255,255,255,.08); color: var(--orange); font-size: 20px; font-weight: 800; line-height: 1; }
+  .sl-faq details[open] summary::after { content: '–'; background: var(--orange); color: #fff; }
+  .sl-faq summary:hover { color: var(--orange); }
+  .sl-faq p { margin: 0; padding: 0 24px 22px; max-width: 760px; color: #c3c7cf; font-size: 15px; line-height: 1.6; }
+  @media (max-width: 860px) { .sl-faq summary { padding: 16px 18px; font-size: 15px; } .sl-faq p { padding: 0 18px 18px; font-size: 14px; } }
   .sl-foot { border-top: 1px solid rgba(255,255,255,.1); padding: 26px 20px; text-align: center; color: #8b8f98; font-size: 13px; font-weight: 600; }
   .sl-foot a { color: var(--orange); text-decoration: none; }
   @media (max-width: 860px) {
@@ -167,7 +179,7 @@
 <body>
 <header class="sl-top"><div class="sl-top-in">
   <a class="sl-logo" href="/">S<b>L</b>TA</a>
-  <nav class="nav-links" id="nav-links"><a href="#mesta" data-i="navCities">Mestá</a><a href="#ako" data-i="navHow">Ako to funguje</a><a href="#organizator" data-i="navOrg">Organizátori</a></nav>
+  <nav class="nav-links" id="nav-links"><a href="#mesta" data-i="navCities">Mestá</a><a href="#ako" data-i="navHow">Ako to funguje</a><a href="#otazky" data-i="navFaq">Otázky</a><a href="#organizator" data-i="navOrg">Organizátori</a></nav>
   <div class="sl-lang"><a id="lang-sk" href="/">SK</a><a id="lang-en" href="/en">EN</a></div>
   <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu">&#9776;</button>
 </div></header>
@@ -197,6 +209,18 @@
     <div><span>1</span><b data-i="how1t">Vyber mesto</b><small data-i="how1d">Každé mesto má vlastnú ligu, sezóny a organizátora, ktorý to tam pozná.</small></div>
     <div><span>2</span><b data-i="how2t">Zaregistruj sa</b><small data-i="how2d">Vyber si kategóriu Novice, Next Gen alebo Elite a zaplať štartovné online.</small></div>
     <div><span>3</span><b data-i="how3t">Hraj a stúpaj</b><small data-i="how3d">Body idú do rebríčka tvojho mesta a tvoj CourtIQ platí na celom Slovensku.</small></div>
+  </section></div>
+  <div class="sl-block" id="otazky-block"><h2 class="sl-sec" id="otazky" data-i="faqTitle">Otázky a odpovede</h2>
+  <section class="sl-faq" id="faq">
+    <details><summary data-i="fq1">Čo je SLTA?</summary><p data-i="fa1">SLTA je Slovenská liga tenisových amatérov. Spája ligy amatérskych hráčov z rôznych miest na jednom mieste. Každé mesto má vlastnú ligu, sezóny, rebríček a organizátora, no všetko funguje rovnako a tvoj CourtIQ platí na celom Slovensku.</p></details>
+    <details><summary data-i="fq2">Kto môže hrať?</summary><p data-i="fa2">Hrať môže každý amatér, ktorý chce odohrať zápasy so súpermi svojej úrovne. Žiadna licencia ani klubová príslušnosť nie je potrebná.</p></details>
+    <details><summary data-i="fq3">Ako sa zaregistrujem?</summary><p data-i="fa3">Vyber si svoje mesto a na jeho karte klikni na Registrácia. Tlačidlo je dostupné vtedy, keď organizátor mesta otvorí registráciu do sezóny. Vyberieš si kategóriu a zaplatíš štartovné online.</p></details>
+    <details><summary data-i="fq4">Aké sú kategórie?</summary><p data-i="fa4">Hrá sa v troch kategóriách: Novice, Next Gen a Elite. Ktoré kategórie sa hrajú v tvojom meste, uvidíš na karte mesta.</p></details>
+    <details><summary data-i="fq5">Koľko stojí štartovné?</summary><p data-i="fa5">Výšku štartovného určuje organizátor v danom meste. Uvidíš ju pri registrácii do sezóny.</p></details>
+    <details><summary data-i="fq6">Čo je CourtIQ?</summary><p data-i="fa6">CourtIQ je hodnotenie tvojej výkonnosti, ktoré sa mení podľa odohraných zápasov. Platí na celom Slovensku, takže si ho zoberieš so sebou aj do inej ligy.</p></details>
+    <details><summary data-i="fq7">Kde nájdem rozpis, výsledky a rebríček?</summary><p data-i="fa7">Na stránke ligy svojho mesta. Klikni na Vstúpiť na karte mesta. Harmonogram najbližších turnajov a sezón nájdeš aj tu na úvodnej stránke.</p></details>
+    <details><summary data-i="fq8">Moje mesto tu nie je. Čo mám robiť?</summary><p data-i="fa8">Môžeš sa stať organizátorom ligy vo svojom meste. Ozvi sa nám cez blok Organizátori nižšie a dohodneme sa na ďalších krokoch.</p></details>
+    <details><summary data-i="fq9">Ako sa stať organizátorom ligy?</summary><p data-i="fa9">Napíš nám. Pripravíme pre tvoje mesto vlastnú stránku s ligou, sezónami, rebríčkom a registráciou, ktorú budeš spravovať ty.</p></details>
   </section></div>
   <section class="sl-block" id="organizator">
     <div class="sl-org">
@@ -228,7 +252,7 @@ const TEXT = {
     enter: 'Vstúpiť do ligy', register: 'Registrácia', notYet: 'Stránka mesta sa pripravuje',
     none: 'Žiadne mesto nenájdené.', loadError: 'Zoznam miest sa nepodarilo načítať.',
     ariaMap: 'Mapa Slovenska s mestami',
-    cityLabel: 'Vybrané mesto', navOrg: 'Organizátori', orgEyebrow: 'Pre organizátorov', orgTitle: 'Chceš sa stať organizátorom ligy vo svojom meste?', orgText: 'Ozvi sa nám a dohodneme sa na ďalších krokoch.', orgMail: 'Napíš nám', orgSubject: 'Chcem organizovať ligu vo svojom meste', kCats: 'Kategórie', kSeasons: 'Sezóny', kTours: 'Turnaje', ofCats: 'kategórie', ofSeasons: 'sezón', ofTours: 'turnajov', inLeague: 'v lige {name}', lastOne: 'naposledy {name}', noneYet: 'zatiaľ žiadna', kCities: 'Mestá', kPlayers: 'Hráči', kVenues: 'Tenisové areály', ofCities: 'miest v lige', ofPlayers: 'hráčov', ofVenues: 'tenisových areálov', withLeague: '{n} s bežiacou ligou', inCities1: 'v {n} meste', inCitiesN: 'v {n} mestách', cats: 'kategórií', seasonsPlayed: 'odohraných sezón', toursPlayed: 'odohraných turnajov', schSub: 'Čo práve prebieha a všetko, čo nás čaká v nasledujúcom roku', schTitle: 'Harmonogram', schLeague: 'Liga', schTour: 'Turnaj', schMore: 'Viac info', schDaysLeft: 'zostáva {n} {d}', schStartsIn: 'o {n} {d}',
+    cityLabel: 'Vybrané mesto', navFaq: 'Otázky', faqTitle: "Otázky a odpovede", fq1: "Čo je SLTA?", fa1: "SLTA je Slovenská liga tenisových amatérov. Spája ligy amatérskych hráčov z rôznych miest na jednom mieste. Každé mesto má vlastnú ligu, sezóny, rebríček a organizátora, no všetko funguje rovnako a tvoj CourtIQ platí na celom Slovensku.", fq2: "Kto môže hrať?", fa2: "Hrať môže každý amatér, ktorý chce odohrať zápasy so súpermi svojej úrovne. Žiadna licencia ani klubová príslušnosť nie je potrebná.", fq3: "Ako sa zaregistrujem?", fa3: "Vyber si svoje mesto a na jeho karte klikni na Registrácia. Tlačidlo je dostupné vtedy, keď organizátor mesta otvorí registráciu do sezóny. Vyberieš si kategóriu a zaplatíš štartovné online.", fq4: "Aké sú kategórie?", fa4: "Hrá sa v troch kategóriách: Novice, Next Gen a Elite. Ktoré kategórie sa hrajú v tvojom meste, uvidíš na karte mesta.", fq5: "Koľko stojí štartovné?", fa5: "Výšku štartovného určuje organizátor v danom meste. Uvidíš ju pri registrácii do sezóny.", fq6: "Čo je CourtIQ?", fa6: "CourtIQ je hodnotenie tvojej výkonnosti, ktoré sa mení podľa odohraných zápasov. Platí na celom Slovensku, takže si ho zoberieš so sebou aj do inej ligy.", fq7: "Kde nájdem rozpis, výsledky a rebríček?", fa7: "Na stránke ligy svojho mesta. Klikni na Vstúpiť na karte mesta. Harmonogram najbližších turnajov a sezón nájdeš aj tu na úvodnej stránke.", fq8: "Moje mesto tu nie je. Čo mám robiť?", fa8: "Môžeš sa stať organizátorom ligy vo svojom meste. Ozvi sa nám cez blok Organizátori nižšie a dohodneme sa na ďalších krokoch.", fq9: "Ako sa stať organizátorom ligy?", fa9: "Napíš nám. Pripravíme pre tvoje mesto vlastnú stránku s ligou, sezónami, rebríčkom a registráciou, ktorú budeš spravovať ty.", navOrg: 'Organizátori', orgEyebrow: 'Pre organizátorov', orgTitle: 'Chceš sa stať organizátorom ligy vo svojom meste?', orgText: 'Ozvi sa nám a dohodneme sa na ďalších krokoch.', orgMail: 'Napíš nám', orgSubject: 'Chcem organizovať ligu vo svojom meste', kCats: 'Kategórie', kSeasons: 'Sezóny', kTours: 'Turnaje', ofCats: 'kategórie', ofSeasons: 'sezón', ofTours: 'turnajov', inLeague: 'v lige {name}', lastOne: 'naposledy {name}', noneYet: 'zatiaľ žiadna', kCities: 'Mestá', kPlayers: 'Hráči', kVenues: 'Tenisové areály', ofCities: 'miest v lige', ofPlayers: 'hráčov', ofVenues: 'tenisových areálov', withLeague: '{n} s bežiacou ligou', inCities1: 'v {n} meste', inCitiesN: 'v {n} mestách', cats: 'kategórií', seasonsPlayed: 'odohraných sezón', toursPlayed: 'odohraných turnajov', schSub: 'Čo práve prebieha a všetko, čo nás čaká v nasledujúcom roku', schTitle: 'Harmonogram', schLeague: 'Liga', schTour: 'Turnaj', schMore: 'Viac info', schDaysLeft: 'zostáva {n} {d}', schStartsIn: 'o {n} {d}',
     dayOne: 'deň', dayFew: 'dni', dayMany: 'dní', schEmpty: 'Zatiaľ nie sú naplánované žiadne podujatia.', schError: 'Harmonogram sa nepodarilo načítať.',
   },
   en: {
@@ -245,13 +269,22 @@ const TEXT = {
     enter: 'Enter the league', register: 'Register', notYet: 'The city page is coming',
     none: 'No city found.', loadError: 'The list of cities could not be loaded.',
     ariaMap: 'Map of Slovakia with the cities',
-    cityLabel: 'Selected city', navOrg: 'Organisers', orgEyebrow: 'For organisers', orgTitle: 'Want to become the organiser of a league in your city?', orgText: 'Get in touch and we will agree on the next steps.', orgMail: 'Write to us', orgSubject: 'I want to organise a league in my city', kCats: 'Categories', kSeasons: 'Seasons', kTours: 'Tournaments', ofCats: 'categories', ofSeasons: 'seasons', ofTours: 'tournaments', inLeague: 'in the {name} league', lastOne: 'last: {name}', noneYet: 'none yet', kCities: 'Cities', kPlayers: 'Players', kVenues: 'Tennis venues', ofCities: 'cities in the league', ofPlayers: 'players', ofVenues: 'tennis venues', withLeague: '{n} with a running league', inCities1: 'in {n} city', inCitiesN: 'in {n} cities', cats: 'categories', seasonsPlayed: 'seasons played', toursPlayed: 'tournaments played', schSub: 'What is running now and everything coming up in the next year', schTitle: 'Schedule', schLeague: 'League', schTour: 'Tournament', schMore: 'More info', schDaysLeft: '{n} {d} left', schStartsIn: 'in {n} {d}',
+    cityLabel: 'Selected city', navFaq: 'Questions', faqTitle: "Questions and answers", fq1: "What is SLTA?", fa1: "SLTA is the Slovak Amateur Tennis League. It brings the leagues of amateur players from different cities together in one place. Every city has its own league, seasons, ranking and organiser, but everything works the same way and your CourtIQ counts across Slovakia.", fq2: "Who can play?", fa2: "Any amateur who wants to play matches against opponents of their own level. No licence or club membership is needed.", fq3: "How do I register?", fa3: "Pick your city and press Register on its card. The button is available when the organiser of the city opens registration for a season. You choose a category and pay the entry fee online.", fq4: "What are the categories?", fa4: "There are three categories: Novice, Next Gen and Elite. The card of a city shows which ones are played there.", fq5: "How much is the entry fee?", fa5: "The organiser of each city sets the entry fee. You will see it when you register for a season.", fq6: "What is CourtIQ?", fa6: "CourtIQ is a rating of your performance that changes with the matches you play. It counts across Slovakia, so you take it with you to another league.", fq7: "Where do I find the schedule, results and ranking?", fa7: "On the page of the league of your city. Press Enter on the card of the city. The schedule of the coming tournaments and seasons is also on this home page.", fq8: "My city is not here. What can I do?", fa8: "You can become the organiser of a league in your city. Get in touch with us through the Organisers block below and we will agree on the next steps.", fq9: "How do I become an organiser of a league?", fa9: "Write to us. We will prepare a page of your own for your city with the league, seasons, ranking and registration, which you will manage yourself.", navOrg: 'Organisers', orgEyebrow: 'For organisers', orgTitle: 'Want to become the organiser of a league in your city?', orgText: 'Get in touch and we will agree on the next steps.', orgMail: 'Write to us', orgSubject: 'I want to organise a league in my city', kCats: 'Categories', kSeasons: 'Seasons', kTours: 'Tournaments', ofCats: 'categories', ofSeasons: 'seasons', ofTours: 'tournaments', inLeague: 'in the {name} league', lastOne: 'last: {name}', noneYet: 'none yet', kCities: 'Cities', kPlayers: 'Players', kVenues: 'Tennis venues', ofCities: 'cities in the league', ofPlayers: 'players', ofVenues: 'tennis venues', withLeague: '{n} with a running league', inCities1: 'in {n} city', inCitiesN: 'in {n} cities', cats: 'categories', seasonsPlayed: 'seasons played', toursPlayed: 'tournaments played', schSub: 'What is running now and everything coming up in the next year', schTitle: 'Schedule', schLeague: 'League', schTour: 'Tournament', schMore: 'More info', schDaysLeft: '{n} {d} left', schStartsIn: 'in {n} {d}',
     dayOne: 'day', dayFew: 'days', dayMany: 'days', schEmpty: 'No events are planned yet.', schError: 'The schedule could not be loaded.',
   },
 };
 const LANG = document.documentElement.lang === 'en' ? 'en' : 'sk';
 const T = TEXT[LANG];
 document.querySelectorAll('[data-i]').forEach((el) => { if (T[el.dataset.i]) el.textContent = T[el.dataset.i]; });
+// the questions for search engines (FAQPage), built from the texts of the language of the page
+(function faqSchema() {
+  const items = [];
+  for (let i = 1; T['fq' + i]; i++) items.push({ '@type': 'Question', name: T['fq' + i], acceptedAnswer: { '@type': 'Answer', text: T['fa' + i] } });
+  const s = document.createElement('script');
+  s.type = 'application/ld+json';
+  s.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: items });
+  document.head.appendChild(s);
+})();
 document.querySelectorAll('[data-i-html]').forEach((el) => { if (T[el.dataset.iHtml]) el.innerHTML = T[el.dataset.iHtml]; });
 document.querySelectorAll('[data-i-placeholder]').forEach((el) => { if (T[el.dataset.iPlaceholder]) el.placeholder = T[el.dataset.iPlaceholder]; });
 document.getElementById('map').setAttribute('aria-label', T.ariaMap);
