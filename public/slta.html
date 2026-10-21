@@ -120,9 +120,11 @@
   .sl-sched .sch-card { overflow: hidden; }
   .sl-sched .sch-row { position: relative; }
   .sl-sched .sch-row > * { position: relative; z-index: 1; }
-  .sl-sched .sch-row > .sl-row-logo { position: absolute; z-index: 0; top: 0; bottom: 0; right: -22px; width: min(460px, 58%); background-repeat: no-repeat; background-position: right -10px center; background-size: auto 190%; opacity: .42; pointer-events: none; -webkit-mask-image: linear-gradient(to left, #000 0%, rgba(0,0,0,.65) 35%, transparent 100%); mask-image: linear-gradient(to left, #000 0%, rgba(0,0,0,.65) 35%, transparent 100%); }
+  .sl-sched .sch-row > .sl-row-logo { position: absolute; z-index: 0; top: 0; bottom: 0; right: -22px; width: min(600px, 76%); overflow: hidden; pointer-events: none; -webkit-mask-image: linear-gradient(to left, #000 0%, #000 10%, rgba(0,0,0,.5) 34%, rgba(0,0,0,.12) 62%, transparent 86%); mask-image: linear-gradient(to left, #000 0%, #000 10%, rgba(0,0,0,.5) 34%, rgba(0,0,0,.12) 62%, transparent 86%); }
+  /* the logo is bigger than the row, tilted a little (top to bottom) and cut by the edge of the card */
+  .sl-sched .sch-row > .sl-row-logo::before { content: ''; position: absolute; top: -115%; bottom: -115%; left: 0; right: 6%; background: var(--logo) no-repeat right center / auto 100%; opacity: .75; transform: rotate(-11deg); transform-origin: 70% 50%; }
   .sl-sched .sch-go { background: rgba(10, 10, 10, .7); }
-  @media (max-width: 860px) { .sl-sched .sch-row > .sl-row-logo { width: 70%; opacity: .32; background-size: auto 150%; } }
+  @media (max-width: 860px) { .sl-sched .sch-row > .sl-row-logo { width: 86%; } .sl-sched .sch-row > .sl-row-logo::before { opacity: .38; } }
   .sl-sched-head p { margin: 0 0 2px; color: #8b8f98; font-size: 14px; font-weight: 600; }
   .sl-foot { border-top: 1px solid rgba(255,255,255,.1); padding: 26px 20px; text-align: center; color: #8b8f98; font-size: 13px; font-weight: 600; }
   .sl-foot a { color: var(--orange); text-decoration: none; }
@@ -389,7 +391,7 @@ function schRow(e, today) {
   return open +
     '<div class="sch-date">' + esc(dateRange(e)) + '<small>' + esc(yearText(e)) + '</small></div>' +
     '<div class="sch-info"><div class="sch-text"><div class="sch-name">' + esc(e.name) + ' ' + tags + '</div><div class="sch-sub">' + sub + '</div>' + bar + '</div></div>' +
-    more + (e.logoUrl ? '<span class="sl-row-logo" style="background-image:url(\'' + esc(e.logoUrl) + '\')"></span>' : '') + (e.link ? '</a>' : '</div>');
+    more + (e.logoUrl ? '<span class="sl-row-logo" style="--logo:url(\'' + esc(e.logoUrl) + '\')"></span>' : '') + (e.link ? '</a>' : '</div>');
 }
 
 const schHead = (c) => '<div class="sl-sched-head"><div><h3>' + T.schTitle + '</h3><div class="sl-sched-city">' + esc(c.brandName || c.name) + '</div></div><p>' + T.schSub + '</p></div>';
