@@ -90,12 +90,19 @@ function actingIdOf(req) {
   return domainCity;
 }
 
+// the address of the season's page in each language (the code address /season/<slug> is retired, the page lives at its own slug)
+function withPaths(season) {
+  const seo = require('./seo');
+  const code = `/season/${encodeURIComponent(season.slug)}`;
+  return { ...season, path: { sk: seo.pageUrl(code, 'sk'), en: seo.pageUrl(code, 'en') } };
+}
+
 // the running season of a city, else the nearest coming one
 function currentSeasonOf(leagueId, today) {
   const running = db.prepare("SELECT name, slug FROM seasons WHERE league_id = ? AND kind = 'LEAGUE' AND start_date <= ? AND (end_date IS NULL OR end_date >= ?) ORDER BY start_date DESC LIMIT 1").get(leagueId, today, today);
-  if (running) return { name: running.name, slug: running.slug, state: 'now' };
+  if (running) return withPaths({ name: running.name, slug: running.slug, state: 'now' });
   const next = db.prepare("SELECT name, slug FROM seasons WHERE league_id = ? AND kind = 'LEAGUE' AND start_date > ? ORDER BY start_date LIMIT 1").get(leagueId, today);
-  return next ? { name: next.name, slug: next.slug, state: 'future' } : null;
+  return next ? withPaths({ name: next.name, slug: next.slug, state: 'future' }) : null;
 }
 
 function countsOf(leagueId) {

@@ -139,6 +139,18 @@ test('the carousel of the national page: its own slides, edited by the super adm
   assert.ok(!page.body.includes('/api/leagues/featured'), 'not the slider of the seasons');
 });
 
+test('the Registration button of a city leads to a page that exists: the season page at its own address, in both languages', async () => {
+  const city = JSON.parse((await as('slta.sk', '/api/leagues')).body)[0];
+  assert.ok(city.currentSeason, 'the first city has a running or coming season');
+  const { path: p } = city.currentSeason;
+  assert.ok(p && p.sk && p.en && p.en.startsWith('/en/'), JSON.stringify(p));
+  assert.strictEqual((await as('blta.sk', p.sk)).status, 200, p.sk);
+  assert.strictEqual((await as('blta.sk', p.en)).status, 200, p.en);
+  // a season page whose address was changed in Backend > SEO (blta.sk: /sezona/...) is NOT at the code address any more: the button must use the real one
+  const code = `/season/${city.currentSeason.slug}`;
+  if (p.sk !== code) assert.strictEqual((await as('blta.sk', code)).status, 404, 'the code address is retired: that was the broken link');
+});
+
 test('the lock belongs to the admin: a password of 6 characters or more, never given back', async () => {
   assert.strictEqual((await as('localhost', '/api/leagues/national-lock')).status, 401, 'not for the public');
   assert.strictEqual((await admin('PUT', '/api/leagues/national-lock', { enabled: true })).status, 400, 'a password is needed');

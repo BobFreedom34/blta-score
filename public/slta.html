@@ -276,7 +276,7 @@ function draw() {
   if (!c) { detEl.hidden = true; return; }
   detEl.hidden = false;
   const season = c.currentSeason;
-  const registerUrl = c.url && season && season.slug && c.registrationOpen ? `${c.url}/season/${encodeURIComponent(season.slug)}` : '';
+  const registerUrl = c.url && season && season.slug && c.registrationOpen ? `${c.url}${season.path ? season.path[LANG] : '/season/' + encodeURIComponent(season.slug)}` : '';
   detEl.innerHTML = `<div><h2>${esc(c.brandName)}${c.url ? `<span class="url">${esc(c.url.charAt(0) === '/' ? location.host.replace(/^www\./, '') + c.url : c.url.replace(/^https?:\/\//, ''))}</span>` : ''}</h2><span class="sl-tag ${kind(c)}">${esc(label(c))}</span>
     <div class="sl-meta"><div><b>${c.players || '–'}</b>${T.players}</div><div><b>${c.venues || '–'}</b>${T.venues}</div>${season ? `<div><b class="t">${esc(season.name)}</b>${T.next}</div>` : ''}</div></div>
     <div class="sl-btns">${c.url ? `<a class="sl-btn g" href="${esc(c.url)}">${T.enter}</a>` : `<span class="sl-btn off">${T.notYet}</span>`}${registerUrl ? `<a class="sl-btn d" href="${esc(registerUrl)}">${T.register}</a>` : ''}</div>`;
