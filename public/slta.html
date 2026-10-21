@@ -107,38 +107,11 @@
   .sl-block::before { content: ''; position: absolute; left: 0; right: 0; top: -44px; height: 1px; background: rgba(255, 255, 255, 0.14); pointer-events: none; }
   .sl-block[hidden] { display: none; }
   @media (max-width: 900px) { .sl-block { margin-top: 68px; } .sl-block::before { top: -34px; } .home-carousel:not([hidden]) + .sl-hero { margin-top: 40px; } }
-  /* the card of the chosen city (the main information) and, well apart from it under a labelled divider, its schedule */
-  .sl-det { position: relative; margin-top: 44px; padding: 48px 56px 48px 62px; gap: 56px; background: linear-gradient(135deg, #1b1c22 0%, #111216 58%, #0c0c0f 100%); border: 1px solid rgba(255,255,255,.12); border-radius: 24px; box-shadow: 0 34px 80px -34px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.05); }
-  .sl-det::before { content: ''; position: absolute; left: 0; top: 30px; bottom: 30px; width: 5px; border-radius: 0 5px 5px 0; background: var(--green); box-shadow: 0 0 22px rgba(178,250,6,.55); }
-  .sl-det-eyebrow { color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 16px; }
-  .sl-det h2 { margin: 0 0 18px; font-size: 46px; line-height: 1.04; letter-spacing: -.01em; }
-  .sl-det .url { font-size: 15px; margin-left: 14px; }
-  .sl-meta { margin-top: 34px; gap: 56px; }
-  .sl-meta b { font-size: 42px; line-height: 1.05; margin-bottom: 4px; }
-  .sl-btns { min-width: 270px; gap: 14px; }
-  .sl-btn { padding: 18px 26px; font-size: 14px; border-radius: 12px; }
-  .sl-sched { margin-top: 96px; }
-  .sl-sched-head { display: flex; align-items: flex-end; gap: 10px 32px; flex-wrap: wrap; padding-bottom: 22px; border-bottom: 1px solid rgba(255,255,255,.16); }
-  .sl-sched-head h3 { margin: 0; font-size: 30px; line-height: 1; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #fff; }
-  .sl-sched-head p { margin: 0 0 3px; color: #8b8f98; font-size: 14px; font-weight: 600; }
-  .sl-sched .sch-month-title { margin: 60px 0 22px; font-size: 15px; color: #c3c7cf; letter-spacing: .12em; }
-  .sl-sched .sl-sched-head + .sch-month-title { margin-top: 44px; }
-  .sl-sched .sch-card { padding: 6px 34px; border-radius: 20px; }
-  .sl-sched .sch-row { grid-template-columns: 190px minmax(0, 1fr) auto; gap: 30px; padding: 30px 0; }
-  .sl-sched .sch-row .home-bar.mini { margin-top: 14px; }
-  @media (max-width: 860px) {
-    .sl-det { padding: 32px 24px 32px 30px; gap: 28px; border-radius: 20px; margin-top: 32px; }
-    .sl-det::before { top: 22px; bottom: 22px; }
-    .sl-det h2 { font-size: 34px; }
-    .sl-meta { gap: 36px; margin-top: 24px; } .sl-meta b { font-size: 34px; }
-    .sl-btns { min-width: 0; }
-    .sl-sched { margin-top: 64px; }
-    .sl-sched-head h3 { font-size: 24px; }
-    .sl-sched .sch-month-title { margin: 44px 0 16px; }
-    .sl-sched .sl-sched-head + .sch-month-title { margin-top: 32px; }
-    .sl-sched .sch-card { padding: 4px 20px; border-radius: 16px; }
-    .sl-sched .sch-row { grid-template-columns: 1fr; gap: 14px; padding: 24px 0; }
-  }
+  /* the titles of the card and of its schedule: a label above the name of the city, and a heading with a short line under the card */
+  .sl-det-eyebrow { color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 10px; }
+  .sl-sched-head { display: flex; align-items: flex-end; gap: 10px 32px; flex-wrap: wrap; padding-bottom: 14px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.16); }
+  .sl-sched-head h3 { margin: 0; font-size: 24px; line-height: 1; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #fff; }
+  .sl-sched-head p { margin: 0 0 2px; color: #8b8f98; font-size: 14px; font-weight: 600; }
   .sl-foot { border-top: 1px solid rgba(255,255,255,.1); padding: 26px 20px; text-align: center; color: #8b8f98; font-size: 13px; font-weight: 600; }
   .sl-foot a { color: var(--orange); text-decoration: none; }
   @media (max-width: 860px) {
