@@ -115,6 +115,26 @@ function currentSeasonOf(leagueId, today) {
   return next ? withPaths({ name: next.name, slug: next.slug, state: 'future' }) : null;
 }
 
+// The numbers on the card of a city: the categories it plays (a league season has all three, a tournament its own), the seasons and the
+// tournaments that are over.
+const ALL_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+function playedOf(leagueId, today) {
+  const seasons = db.prepare("SELECT kind, categories, end_date FROM seasons WHERE league_id = ? AND COALESCE(slug, '') != ''").all(leagueId);
+  const events = db.prepare('SELECT categories, end_date, start_date FROM schedule_events WHERE league_id = ?').all(leagueId);
+  const cats = new Set();
+  seasons.forEach((s) => {
+    if (s.kind === 'TOURNAMENT') String(s.categories || '').split(',').filter((c) => ALL_CATEGORIES.includes(c)).forEach((c) => cats.add(c));
+    else ALL_CATEGORIES.forEach((c) => cats.add(c));
+  });
+  events.forEach((e) => String(e.categories || '').split(',').filter((c) => ALL_CATEGORIES.includes(c)).forEach((c) => cats.add(c)));
+  const over = (end) => !!end && end < today;
+  return {
+    categories: cats.size,
+    seasonsPlayed: seasons.filter((s) => s.kind !== 'TOURNAMENT' && over(s.end_date)).length,
+    tournamentsPlayed: seasons.filter((s) => s.kind === 'TOURNAMENT' && over(s.end_date)).length + events.filter((e) => over(e.end_date || e.start_date)).length,
+  };
+}
+
 function countsOf(leagueId) {
   const n = (sql) => db.prepare(sql).get(leagueId).n;
   return {
@@ -138,6 +158,7 @@ function serialize(row, { admin = false } = {}) {
     lat: row.lat,
     lng: row.lng,
     players: counts.players,
+    ...playedOf(row.id, today),
     seasons: counts.seasons,
     venues: counts.venues,
     registrationOpen: !!db.prepare('SELECT 1 FROM seasons WHERE league_id = ? AND registration_open = 1 AND (end_date IS NULL OR end_date >= ?) LIMIT 1').get(row.id, today),

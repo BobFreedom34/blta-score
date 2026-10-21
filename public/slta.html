@@ -72,7 +72,7 @@
   .sl-tag.reg { background: var(--green); color: #0a0a0a; }
   .sl-tag.soon { border: 1px solid #5a5e68; color: #d3d6dc; }
   .sl-empty { color: #aeb2ba; padding: 14px; font-weight: 600; }
-  .sl-det { margin-top: 88px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; background: #0f0f12; border: 1px solid var(--green); border-radius: var(--radius); padding: 22px 26px; box-shadow: 0 0 30px -12px rgba(178,250,6,.4); }
+  .sl-det { margin-top: 88px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; background: var(--fill-grey); border: 1px solid var(--green); border-radius: var(--radius); padding: 22px 26px; box-shadow: 0 0 30px -12px rgba(178,250,6,.4); }
   .sl-det[hidden] { display: none; }
   .sl-sched[hidden] { display: none; }
   .sl-sched .sch-month-title:first-child { margin-top: 0; }
@@ -112,8 +112,10 @@
   .sl-det::before { content: ''; position: absolute; left: 0; right: 0; top: -44px; height: 1px; background: rgba(255, 255, 255, 0.14); pointer-events: none; }
   @media (max-width: 900px) { .sl-det, .sl-sched { margin-top: 68px; } .sl-det::before { top: -34px; } }
   /* the titles of the card and of its schedule: a label above the name of the city, and a heading with a short line under the card */
+  .sl-det h2 { font-size: 46px; line-height: 1.05; margin: 0 0 12px; }
+  .sl-det .url { font-size: 15px; }
   .sl-det-eyebrow { color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 10px; }
-  .sl-sched-head { display: flex; align-items: flex-end; gap: 10px 32px; flex-wrap: wrap; padding-bottom: 14px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.16); }
+  .sl-sched-head { display: block; padding-bottom: 16px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.16); }
   .sl-sched-city { margin-top: 10px; color: var(--orange); font-size: 15px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
   .sl-sched-head h3 { margin: 0; font-size: 24px; line-height: 1; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #fff; }
   /* the logo of a season: big, on the right side behind the "More info" button, fading out to the left */
@@ -126,7 +128,7 @@
   .sl-sched .sch-go { background: #000; }
   /* on a phone the logo is smaller (inside the height of the row) so the row does not look broken */
   @media (max-width: 860px) { .sl-sched .sch-row > .sl-row-logo { top: auto; bottom: 8px; right: -6px; height: 96px; width: 58%; } .sl-sched .sch-row > .sl-row-logo::before { top: 0; bottom: 0; left: 0; right: 0; background-size: contain; background-position: right center; opacity: .34; transform: rotate(-8deg); transform-origin: center; } }
-  .sl-sched-head p { margin: 0 0 2px; color: #8b8f98; font-size: 14px; font-weight: 600; }
+  .sl-sched-head p { margin: 8px 0 0; text-align: left; color: #8b8f98; font-size: 14px; font-weight: 600; }
   .sl-foot { border-top: 1px solid rgba(255,255,255,.1); padding: 26px 20px; text-align: center; color: #8b8f98; font-size: 13px; font-weight: 600; }
   .sl-foot a { color: var(--orange); text-decoration: none; }
   @media (max-width: 860px) {
@@ -136,6 +138,8 @@
     .sl-stat b { font-size: 26px; }
     .sl-how { grid-template-columns: 1fr; }
     .sl-det { grid-template-columns: 1fr; }
+    .sl-det h2 { font-size: 34px; }
+    .sl-meta { gap: 22px 28px; }
     .sl-list { order: -1; }
   }
 </style>
@@ -193,7 +197,7 @@ const TEXT = {
     enter: 'Vstúpiť do ligy', register: 'Registrácia', notYet: 'Stránka mesta sa pripravuje',
     none: 'Žiadne mesto nenájdené.', loadError: 'Zoznam miest sa nepodarilo načítať.',
     ariaMap: 'Mapa Slovenska s mestami',
-    cityLabel: 'Vybrané mesto', schSub: 'Čo práve prebieha a všetko, čo nás čaká v nasledujúcom roku', schTitle: 'Harmonogram', schLeague: 'Liga', schTour: 'Turnaj', schMore: 'Viac info', schDaysLeft: 'zostáva {n} {d}', schStartsIn: 'o {n} {d}',
+    cityLabel: 'Vybrané mesto', cats: 'kategórií', seasonsPlayed: 'odohraných sezón', toursPlayed: 'odohraných turnajov', schSub: 'Čo práve prebieha a všetko, čo nás čaká v nasledujúcom roku', schTitle: 'Harmonogram', schLeague: 'Liga', schTour: 'Turnaj', schMore: 'Viac info', schDaysLeft: 'zostáva {n} {d}', schStartsIn: 'o {n} {d}',
     dayOne: 'deň', dayFew: 'dni', dayMany: 'dní', schEmpty: 'Zatiaľ nie sú naplánované žiadne podujatia.', schError: 'Harmonogram sa nepodarilo načítať.',
   },
   en: {
@@ -210,7 +214,7 @@ const TEXT = {
     enter: 'Enter the league', register: 'Register', notYet: 'The city page is coming',
     none: 'No city found.', loadError: 'The list of cities could not be loaded.',
     ariaMap: 'Map of Slovakia with the cities',
-    cityLabel: 'Selected city', schSub: 'What is running now and everything coming up in the next year', schTitle: 'Schedule', schLeague: 'League', schTour: 'Tournament', schMore: 'More info', schDaysLeft: '{n} {d} left', schStartsIn: 'in {n} {d}',
+    cityLabel: 'Selected city', cats: 'categories', seasonsPlayed: 'seasons played', toursPlayed: 'tournaments played', schSub: 'What is running now and everything coming up in the next year', schTitle: 'Schedule', schLeague: 'League', schTour: 'Tournament', schMore: 'More info', schDaysLeft: '{n} {d} left', schStartsIn: 'in {n} {d}',
     dayOne: 'day', dayFew: 'days', dayMany: 'days', schEmpty: 'No events are planned yet.', schError: 'The schedule could not be loaded.',
   },
 };
@@ -310,7 +314,7 @@ function draw() {
   const registerUrl = c.url && reg && reg.slug && c.registrationOpen ? `${c.url}${reg.path[LANG]}` : '';
   showSchedule(c);
   detEl.innerHTML = `<div><div class="sl-det-eyebrow">${T.cityLabel}</div><h2>${esc(c.brandName)}${c.url ? `<span class="url">${esc(c.url.charAt(0) === '/' ? location.host.replace(/^www\./, '') + c.url : c.url.replace(/^https?:\/\//, ''))}</span>` : ''}</h2><span class="sl-tag ${kind(c)}">${esc(label(c))}</span>
-    <div class="sl-meta"><div><b>${c.players || '–'}</b>${T.players}</div></div></div>
+    <div class="sl-meta"><div><b>${c.players || 0}</b>${T.players}</div><div><b>${c.categories || 0}</b>${T.cats}</div><div><b>${c.seasonsPlayed || 0}</b>${T.seasonsPlayed}</div><div><b>${c.tournamentsPlayed || 0}</b>${T.toursPlayed}</div></div></div>
     <div class="sl-btns">${c.url ? `<a class="sl-btn g" href="${esc(c.url)}">${T.enter}</a>` : `<span class="sl-btn off">${T.notYet}</span>`}${registerUrl ? `<a class="sl-btn d" href="${esc(registerUrl)}">${T.register}</a>` : ''}</div>`;
 }
 
@@ -395,7 +399,7 @@ function schRow(e, today) {
     more + (e.logoUrl ? '<span class="sl-row-logo" style="--logo:url(\'' + esc(e.logoUrl) + '\')"></span>' : '') + (e.link ? '</a>' : '</div>');
 }
 
-const schHead = (c) => '<div class="sl-sched-head"><div><h3>' + T.schTitle + '</h3><div class="sl-sched-city">' + esc(c.brandName || c.name) + '</div></div><p>' + T.schSub + '</p></div>';
+const schHead = (c) => '<div class="sl-sched-head"><h3>' + T.schTitle + '</h3><div class="sl-sched-city">' + esc(c.brandName || c.name) + '</div><p>' + T.schSub + '</p></div>';
 
 function schHtml(data) {
   const items = data.items || [];

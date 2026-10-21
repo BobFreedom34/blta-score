@@ -176,6 +176,21 @@ test('the Registration button leads to the season that takes registrations, not 
   db.close();
 });
 
+test('the card of a city: players, categories, seasons played and tournaments played', async () => {
+  const get = async () => JSON.parse((await as('slta.sk', '/api/leagues')).body)[0];
+  const before = await get();
+  assert.strictEqual(before.categories, 3, 'a league season has all three categories');
+  assert.ok(Number.isInteger(before.seasonsPlayed) && Number.isInteger(before.tournamentsPlayed), 'numbers');
+  assert.ok(before.seasonsPlayed >= 1, 'the seasons that are over are counted');
+  const iso = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  const made = (await admin('POST', '/api/seasons', { name: 'Finished Cup', startDate: iso(-30), endDate: iso(-28), kind: 'TOURNAMENT', categories: ['ELITE'] }));
+  assert.strictEqual(made.status, 201, made.body);
+  await admin('POST', '/api/seasons', { name: 'Coming Cup', startDate: iso(20), endDate: iso(21), kind: 'TOURNAMENT', categories: ['ELITE'] });
+  const after = await get();
+  assert.strictEqual(after.tournamentsPlayed, before.tournamentsPlayed + 1, 'only the tournament that is over is counted');
+  assert.strictEqual(after.seasonsPlayed, before.seasonsPlayed, 'a tournament is not a season');
+});
+
 test('the schedule of a city on the national page: what runs now first (the league), then the next year, with real links', async () => {
   const iso = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
   const make = async (name, start, end, kind) => JSON.parse((await admin('POST', '/api/seasons', { name, startDate: start, endDate: end, kind })).body);
