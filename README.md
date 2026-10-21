@@ -365,6 +365,15 @@ picture, a photo of a player …) a window asks "Upload from the computer" or "c
 the end of `public/js/common.js`): the chosen picture is handed to the very same upload code as a file from the computer (the input gets the
 file and a change event), so no page needed changes and the picture is copied to where it is used. `node scripts/check-media.js` tests the library.
 
+### 4d. Questions and answers of slta.sk (Backend > Q&A)
+
+The block "Otázky a odpovede" at the bottom of the national page. The questions are kept in `faq_items` (a question and an answer in Slovak and in English,
+`position` = the order); `src/faq.js` puts the first nine in once (flag `faq_seeded`, so a deleted question stays deleted). `public/faq-admin.html` +
+`public/js/faq-admin.js` (the Q&A tab, super admin only, hidden for a city admin) add, change, re-order (arrows) and remove them through `/api/faq`
+(reading is public, writing is `requireSuperAdmin`; `faq` is not in the CITY_AREAS of `src/cityScope.js`, so a city admin is refused). The national
+page (`public/slta.html`) loads `/api/faq`, draws the foldable rows and builds the FAQPage data for search engines from the same list; with no
+question the block and the menu link are not shown. An empty English text shows the Slovak one. `node scripts/check-faq.js` tests it.
+
 ### 4b. The public pages of a city (slta.sk/<slug>)
 
 Every city without a domain of its own lives at `slta.sk/<slug>` (Košice: `slta.sk/kosice`): the same site as

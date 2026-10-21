@@ -31,6 +31,7 @@ const venuesRouter = require('./src/routes/venues');
 const leaguesRouter = require('./src/routes/leagues');
 const cityAdminsRouter = require('./src/routes/cityAdmins');
 const aboutRouter = require('./src/routes/about');
+const faqRouter = require('./src/routes/faq');
 const mediaRouter = require('./src/routes/media');
 const cityScope = require('./src/cityScope');
 const leagues = require('./src/leagues');
@@ -322,7 +323,7 @@ app.use((req, res, next) => {
   if (req.method === 'POST' && req.path === '/unlock') return express.urlencoded({ extended: false, limit: '2kb' })(req, res, () => national.unlock(req, res));
   if (locked && !national.hasAccess(req)) {
     if (read && lang) return res.status(401).type('html').send(national.loginPage(lang));
-    if (read && (req.path === '/api/leagues' || req.path.startsWith('/api/leagues/'))) return res.status(401).json({ error: 'The site is locked' });
+    if (read && (req.path === '/api/faq' || req.path === '/api/leagues' || req.path.startsWith('/api/leagues/'))) return res.status(401).json({ error: 'The site is locked' });
   }
   if (read && lang) {
     try {
@@ -332,7 +333,7 @@ app.use((req, res, next) => {
       return next();
     }
   }
-  if (read && (national.isAsset(req.path) || req.path === '/api/leagues' || req.path.startsWith('/api/leagues/'))) return next();
+  if (read && (national.isAsset(req.path) || req.path === '/api/faq' || req.path === '/api/leagues' || req.path.startsWith('/api/leagues/'))) return next();
   if (req.path === '/healthz') return next();
   const city = national.cityOrigin();
   if (read && city && !req.path.startsWith('/api/')) return res.redirect(302, city + req.originalUrl);
@@ -427,6 +428,7 @@ app.use('/api/venues', venuesRouter);
 app.use('/api/leagues', leaguesRouter);
 app.use('/api/city-admins', cityAdminsRouter);
 app.use('/api/about', aboutRouter);
+app.use('/api/faq', faqRouter);
 app.use('/api/media', mediaRouter);
 app.use('/api/seasons', seasonsRouter);
 app.use('/api/invites', invitesRouter);
