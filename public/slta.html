@@ -95,6 +95,9 @@
   .sl-btn.g:hover { background: #c6ff3a; }
   .sl-btn.d { background: var(--fill-grey); color: #fff; border-color: rgba(255,255,255,.2); }
   .sl-btn.d:hover { border-color: var(--orange); }
+  /* the "Schedule ↓" under the numbers of the city card: just text */
+  .sl-det-go { grid-column: 1 / -1; justify-self: center; background: none; border: 0; padding: 4px 8px; font: inherit; font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--green); cursor: pointer; }
+  .sl-det-go:hover { color: #fff; }
   .sl-btn.off { background: var(--fill-grey); color: #8b8f98; border-color: rgba(255,255,255,.1); cursor: default; }
   .sl-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .sl-stats[hidden], .home-mine-grid[hidden] { display: none; }
@@ -104,6 +107,10 @@
   .sl-sec { margin: 0 0 14px; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; color: #fff; }
   .sl-how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
   .sl-how div { background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 22px; }
+  .sl-how > div { position: relative; overflow: hidden; }
+  .sl-how > div > b, .sl-how > div > small, .sl-how > div > span { position: relative; }
+  /* a picture of the step in the top right corner: a lighter grey than the card, behind the text */
+  .sl-how .sl-how-ico { position: absolute; right: 14px; top: 14px; width: 60px; height: 60px; color: #43434b; pointer-events: none; }
   .sl-how span { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--radius-sm); background: var(--orange); font-weight: 800; margin-bottom: 14px; }
   .sl-how b { display: block; font-size: 18px; font-weight: 800; margin-bottom: 6px; }
   .sl-how small { color: #c3c7cf; font-size: 14px; font-weight: 500; line-height: 1.5; }
@@ -208,9 +215,12 @@
 
   <div class="sl-block" id="ako-block"><h2 class="sl-sec" id="ako" data-i="howTitle">Ako to funguje</h2>
   <section class="sl-how">
-    <div><span>1</span><b data-i="how1t">Vyber mesto</b><small data-i="how1d">Každé mesto má vlastnú ligu, sezóny a organizátora, ktorý to tam pozná.</small></div>
-    <div><span>2</span><b data-i="how2t">Zaregistruj sa</b><small data-i="how2d">Vyber si kategóriu Novice, Next Gen alebo Elite a zaplať štartovné online.</small></div>
-    <div><span>3</span><b data-i="how3t">Hraj a stúpaj</b><small data-i="how3d">Body idú do rebríčka tvojho mesta a tvoj CourtIQ platí na celom Slovensku.</small></div>
+    <div><svg class="sl-how-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span>1</span><b data-i="how1t">Vyber mesto</b><small data-i="how1d">Každé mesto má vlastnú ligu, turnaje, sezóny a organizátora, ktorý to tam pozná.</small></div>
+    <div><svg class="sl-how-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2.2 2.2L15.5 11"/></svg><span>2</span><b data-i="how2t">Zaregistruj sa</b><small data-i="how2d">Vyber si kategóriu Novice, Next Gen alebo Elite a zaplať štartovné online.</small></div>
+    <div><svg class="sl-how-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/><path d="M8 15h3"/></svg><span>3</span><b data-i="how5t">Dohodni si zápasy</b><small data-i="how5d">Zápasy si dohaduješ so súperom vo svojej skupine a musíš ich odohrať do stanoveného termínu.</small></div>
+    <div><svg class="sl-how-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6a9 9 0 0 1 0 12.8M18.4 5.6a9 9 0 0 0 0 12.8"/></svg><span>4</span><b data-i="how3t">Hraj a stúpaj</b><small data-i="how3d">Body idú do rebríčka tvojho mesta a tvoj CourtIQ platí na celom Slovensku.</small></div>
+    <div><svg class="sl-how-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h6v4H3zM3 15h6v4H3zM15 9h6v6h-6z"/><path d="M9 7h3v10H9M12 12h3"/></svg><span>5</span><b data-i="how4t">Základná časť a play-off</b><small data-i="how4d">V základnej časti hráš zápasy vo svojej skupine a zbieraš body. Najlepší postupujú do play-off.</small></div>
+    <div><svg class="sl-how-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg><span>6</span><b data-i="how6t">Staň sa majstrom</b><small data-i="how6d">Staň sa majstrom, postúp do vyššej kategórie a vyhraj majstrovské poháre.</small></div>
   </section></div>
   <div class="sl-block" id="otazky-block" hidden><h2 class="sl-sec" id="otazky" data-i="faqTitle">Otázky a odpovede</h2>
   <section class="sl-faq" id="faq">
@@ -236,9 +246,9 @@ const TEXT = {
     h1: 'Hraj ligu vo svojom meste. <em>Na svojej úrovni.</em>',
     lead: 'Vyber si mesto, zaregistruj sa do kategórie a stúpaj v rebríčku. Každé mesto má vlastnú ligu, organizátora a zápasy.',
     search: 'Nájdi svoje mesto…', howTitle: 'Ako to funguje',
-    how1t: 'Vyber mesto', how1d: 'Každé mesto má vlastnú ligu, sezóny a organizátora, ktorý to tam pozná.',
+    how1t: 'Vyber mesto', how1d: 'Každé mesto má vlastnú ligu, turnaje, sezóny a organizátora, ktorý to tam pozná.',
     how2t: 'Zaregistruj sa', how2d: 'Vyber si kategóriu Novice, Next Gen alebo Elite a zaplať štartovné online.',
-    how3t: 'Hraj a stúpaj', how3d: 'Body idú do rebríčka tvojho mesta a tvoj CourtIQ platí na celom Slovensku.',
+    how3t: 'Hraj a stúpaj', how3d: 'Body idú do rebríčka tvojho mesta a tvoj CourtIQ platí na celom Slovensku.', how4t: 'Základná časť a play-off', how4d: 'V základnej časti hráš zápasy vo svojej skupine a zbieraš body. Najlepší postupujú do play-off.', how5t: 'Dohodni si zápasy', how5d: 'Zápasy si dohaduješ so súperom vo svojej skupine a musíš ich odohrať do stanoveného termínu.', how6t: 'Staň sa majstrom', how6d: 'Staň sa majstrom, postúp do vyššej kategórie a vyhraj majstrovské poháre.',
     footer: 'SLTA - Slovenská liga tenisových amatérov',
     running: 'Prebieha', regOpen: 'Registrácia otvorená', preparing: 'V príprave', soon: 'Čoskoro',
     players: 'hráčov', venues: 'tenisových areálov', cities: 'miest', next: 'sezóna',
@@ -253,9 +263,9 @@ const TEXT = {
     h1: 'Play a league in your city. <em>At your level.</em>',
     lead: 'Pick your city, sign up for a category and climb the ranking. Every city has its own league, organiser and matches.',
     search: 'Find your city…', howTitle: 'How it works',
-    how1t: 'Pick your city', how1d: 'Every city has its own league, seasons and an organiser who knows the place.',
+    how1t: 'Pick your city', how1d: 'Every city has its own league, tournaments, seasons and an organiser who knows the place.',
     how2t: 'Sign up', how2d: 'Choose the Novice, Next Gen or Elite category and pay the entry fee online.',
-    how3t: 'Play and climb', how3d: 'Points go to the ranking of your city and your CourtIQ counts across Slovakia.',
+    how3t: 'Play and climb', how3d: 'Points go to the ranking of your city and your CourtIQ counts across Slovakia.', how4t: 'Group stage and play-off', how4d: 'In the group stage you play your group and collect points. The best players advance to the play-off.', how5t: 'Arrange your matches', how5d: 'You arrange the matches with your opponents in your group, and you have to play them by the set deadline.', how6t: 'Become a champion', how6d: 'Become a champion, move up to a higher category and win the championship cups.',
     footer: 'SLTA - Slovak Amateur Tennis League',
     running: 'Running', regOpen: 'Registration open', preparing: 'In preparation', soon: 'Coming soon',
     players: 'players', venues: 'tennis venues', cities: 'cities', next: 'season',
@@ -371,7 +381,7 @@ function draw() {
       tileHtml(T.kCats, c.categories || 0, T.ofCats, (c.categoryList || []).map((k) => ({ ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[k] || k)).join(' · '), 'dark'),
       tileHtml(T.kSeasons, c.seasonsPlayed || 0, T.ofSeasons, '', 'dark'),
       tileHtml(T.kTours, c.tournamentsPlayed || 0, T.ofTours, '', 'dark'),
-    ].join('')}</div>`;
+    ].join('')}</div>${c.slug ? `<button type="button" class="sl-det-go" data-goto="sch">${esc(T.schTitle)} <span aria-hidden="true">↓</span></button>` : ''}`;
 }
 
 // ---------- the carousel at the top: the slides of Backend > Carousel > "The national page" (the same look as the carousel of blta.sk)
@@ -534,9 +544,22 @@ async function showSchedule(c) {
   } catch { box.remove(); }
 })();
 
+// the "Schedule ↓" button of the city card: scrolls down to the schedule of the city (under the sticky header)
+document.addEventListener('click', (e) => {
+  const go = e.target.closest('[data-goto]');
+  const target = go && document.getElementById(go.dataset.goto);
+  if (!target || target.hidden) return;
+  window.scrollTo({ top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - document.querySelector('.sl-top').offsetHeight - 16), behavior: 'smooth' });
+});
+
 document.addEventListener('click', (e) => {
   const t = e.target.closest('#map [data-i], #list [data-i]');
-  if (t) { sel = Number(t.dataset.i); draw(); }
+  if (!t) return;
+  sel = Number(t.dataset.i);
+  draw();
+  // on every device: bring the map to the top (under the sticky header) so the card of the city shows under it
+  const top = document.querySelector('.sl-map').getBoundingClientRect().top + window.scrollY - document.querySelector('.sl-top').offsetHeight - 12;
+  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
 });
 document.getElementById('q').addEventListener('input', (e) => { q = fold(e.target.value); draw(); });
 
