@@ -328,8 +328,8 @@ function draw() {
     <div class="sl-det-tiles">${[
       tileHtml(T.kPlayers, c.players || 0, T.ofPlayers, T.inLeague.replace('{name}', c.brandName || c.name), 'dark'),
       tileHtml(T.kCats, c.categories || 0, T.ofCats, (c.categoryList || []).map((k) => ({ ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[k] || k)).join(' · '), 'dark'),
-      tileHtml(T.kSeasons, c.seasonsPlayed || 0, T.ofSeasons, c.lastSeason ? T.lastOne.replace('{name}', c.lastSeason) : T.noneYet, 'dark'),
-      tileHtml(T.kTours, c.tournamentsPlayed || 0, T.ofTours, c.lastTournament ? T.lastOne.replace('{name}', c.lastTournament) : T.noneYet, 'dark'),
+      tileHtml(T.kSeasons, c.seasonsPlayed || 0, T.ofSeasons, '', 'dark'),
+      tileHtml(T.kTours, c.tournamentsPlayed || 0, T.ofTours, '', 'dark'),
     ].join('')}</div>`;
 }
 
