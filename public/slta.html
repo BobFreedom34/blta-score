@@ -150,13 +150,13 @@
   .sl-faq { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; align-items: start; counter-reset: faq; }
   .sl-faq details { counter-increment: faq; background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); transition: border-color .2s, box-shadow .2s; }
   .sl-faq details:hover { border-color: rgba(255,255,255,.18); }
-  .sl-faq details[open] { border-color: rgba(255, 85, 0, 0.55); box-shadow: 0 0 24px -12px rgba(255, 85, 0, 0.6); }
+  .sl-faq details[open] { border-color: rgba(178, 250, 6, 0.55); box-shadow: 0 0 24px -12px rgba(178, 250, 6, 0.5); }
   .sl-faq summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 14px 16px; font-size: 15px; font-weight: 800; line-height: 1.25; color: #fff; }
   .sl-faq summary::-webkit-details-marker { display: none; }
-  .sl-faq summary::before { content: counter(faq, decimal-leading-zero); flex: 0 0 auto; color: var(--orange); font-size: 11px; font-weight: 800; letter-spacing: .08em; }
-  .sl-faq summary::after { content: '+'; flex: 0 0 auto; margin-left: auto; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: rgba(255,255,255,.08); color: var(--orange); font-size: 17px; font-weight: 800; line-height: 1; }
-  .sl-faq details[open] summary::after { content: '–'; background: var(--orange); color: #fff; }
-  .sl-faq details[open] summary { color: var(--orange); }
+  .sl-faq summary::before { content: counter(faq, decimal-leading-zero); flex: 0 0 auto; color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+  .sl-faq summary::after { content: '+'; flex: 0 0 auto; margin-left: auto; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: rgba(255,255,255,.08); color: var(--green); font-size: 17px; font-weight: 800; line-height: 1; }
+  .sl-faq details[open] summary::after { content: '–'; background: var(--green); color: #0a0a0a; }
+  .sl-faq details[open] summary { color: var(--green); }
   .sl-faq p { margin: 0; padding: 0 16px 16px 40px; color: #c3c7cf; font-size: 14px; line-height: 1.55; }
   @media (max-width: 860px) { .sl-faq { grid-template-columns: 1fr; } }
   .sl-foot { border-top: 1px solid rgba(255,255,255,.1); padding: 26px 20px; text-align: center; color: #8b8f98; font-size: 13px; font-weight: 600; }
