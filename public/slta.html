@@ -405,10 +405,15 @@ function draw() {
   if (!c) { detEl.hidden = true; return; }
   detEl.hidden = false;
   const season = c.currentSeason;
+  // the buttons of the card: "Become the organiser" while the city has none; "Enter the league" only when the city has an open registration
+  // (a city in preparation has no such button)
+  const buttons = [];
+  if (c.status === 'SEEKING_ORGANIZER') buttons.push(`<a class="sl-btn g" href="#organizator">${T.becomeOrg}</a>`);
+  if (c.url && c.registrationOpen) buttons.push(`<a class="sl-btn g" href="${esc(c.url)}">${T.enter}</a>`);
   showSchedule(c);
   detEl.innerHTML = `<div><div class="sl-det-eyebrow">${T.cityLabel}</div><h2>${esc(c.brandName)}${c.url ? `<span class="url">${esc(c.url.charAt(0) === '/' ? location.host.replace(/^www\./, '') + c.url : c.url.replace(/^https?:\/\//, ''))}</span>` : ''}</h2><span class="sl-tag ${kind(c)}">${esc(label(c))}</span>
     </div>
-    <div class="sl-btns">${c.status === 'SEEKING_ORGANIZER' ? `<a class="sl-btn g" href="#organizator">${T.becomeOrg}</a>` : c.url ? `<a class="sl-btn g" href="${esc(c.url)}">${T.enter}</a>` : `<span class="sl-btn off">${T.notYet}</span>`}</div>
+    ${buttons.length ? `<div class="sl-btns">${buttons.join('')}</div>` : ''}
     <div class="sl-det-tiles">${[
       tileHtml(T.kPlayers, c.players || 0, T.ofPlayers, T.inLeague.replace('{name}', c.brandName || c.name), 'dark'),
       tileHtml(T.kCats, c.categories || 0, T.ofCats, (c.categoryList || []).map((k) => ({ ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[k] || k)).join(' · '), 'dark'),
