@@ -151,13 +151,9 @@
   .sl-sched-head { display: block; padding-bottom: 16px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.16); }
   .sl-sched-city { margin-top: 10px; color: var(--orange); font-size: 15px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
   .sl-sched-head h3 { margin: 0; font-size: 24px; line-height: 1; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #fff; }
-  /* the logo of a season: big, on the right side behind the "More info" button, fading out to the left */
   .sl-sched .sch-card { overflow: hidden; }
   .sl-sched .sch-row { position: relative; }
   .sl-sched .sch-row > * { position: relative; z-index: 1; }
-  .sl-sched .sch-row > .sl-row-logo { position: absolute; z-index: 0; top: 0; bottom: 0; right: -22px; width: min(600px, 76%); overflow: hidden; pointer-events: none; -webkit-mask-image: linear-gradient(to left, #000 0%, #000 10%, rgba(0,0,0,.5) 34%, rgba(0,0,0,.12) 62%, transparent 86%); mask-image: linear-gradient(to left, #000 0%, #000 10%, rgba(0,0,0,.5) 34%, rgba(0,0,0,.12) 62%, transparent 86%); }
-  /* the logo is bigger than the row, tilted a little (top to bottom) and cut by the edge of the card */
-  .sl-sched .sch-row > .sl-row-logo::before { content: ''; position: absolute; top: -115%; bottom: -115%; left: 0; right: -13%; background: var(--logo) no-repeat right center / auto 100%; opacity: .34; transform: rotate(-11deg); transform-origin: 70% 50%; }
   .sl-sched .sch-go { background: #000; }
   /* the contact window ("Write to us") */
   .sl-modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.72); overflow-y: auto; }
@@ -187,9 +183,34 @@
   .sch-reg { display: inline-flex; align-items: center; padding: 9px 16px; border-radius: var(--radius-sm); border: 1px solid var(--green); background: var(--green); color: #0a0a0a; font-weight: 800; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; cursor: pointer; }
   .sch-reg:hover { background: #c6ff3a; border-color: #c6ff3a; }
   @media (prefers-reduced-motion: no-preference) { .sch-reg { animation: sv-register-glow 1.8s ease-out infinite; } }
-  @media (max-width: 700px) { .sch-row .sch-acts { justify-self: end; } }
-  /* on a phone the logo is smaller (inside the height of the row) so the row does not look broken */
-  @media (max-width: 860px) { .sl-sched .sch-row > .sl-row-logo { top: auto; bottom: 8px; right: -6px; height: 96px; width: 58%; } .sl-sched .sch-row > .sl-row-logo::before { top: 0; bottom: 0; left: 0; right: 0; background-size: contain; background-position: right center; opacity: .34; transform: rotate(-8deg); transform-origin: center; } }
+  /* the pieces of a schedule row: on a computer they read as before (the countdown after the categories); on a phone the row is a card
+     of its own: date and countdown on top, the name, the tags and the categories as chips, then the buttons across the width */
+  /* on a tablet the two buttons stand under each other */
+  @media (min-width: 701px) and (max-width: 1024px) { .sch-acts { flex-direction: column; align-items: stretch; gap: 8px; } }
+  .sch-tags { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+  .sch-eta { display: none; }
+  .sch-cats { font-weight: 700; }
+  .sch-chip + .sch-chip::before { content: ' · '; }
+  @media (max-width: 700px) {
+    .sl-sched .sch-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "date date eta" "name name name" "tags sub sub" "bar bar bar" "acts acts acts"; gap: 10px 10px; padding: 18px 0; align-items: center; }
+    .sl-sched .sch-info, .sl-sched .sch-text, .sl-sched .sch-name { display: contents; }
+    .sl-sched .sch-date { grid-area: date; display: flex; align-items: baseline; gap: 8px; font-size: 18px; }
+    .sl-sched .sch-date small { margin-top: 0; }
+    .sl-sched .sch-eta { display: block; grid-area: eta; align-self: baseline; color: var(--orange); font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .sl-sched .sch-title { grid-area: name; font-size: 19px; font-weight: 800; line-height: 1.2; color: var(--white); }
+    .sl-sched .sch-tags { grid-area: tags; }
+    .sl-sched .sch-sub { grid-area: sub; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .sl-sched .sch-extra { display: none; }
+    .sl-sched .sch-cats { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+    .sl-sched .sch-chip { background: #2a2a30; color: #e6e8ec; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
+    .sl-sched .sch-chip + .sch-chip::before { content: none; }
+    .sl-sched .home-bar.mini { grid-area: bar; margin-top: 2px; max-width: none; }
+    .sl-sched .sch-acts, .sl-sched .sch-row > .sch-go { grid-area: acts; margin-top: 4px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12); }
+    .sl-sched .sch-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; justify-self: stretch; }
+    .sl-sched .sch-row > .sch-go { width: 100%; justify-self: stretch; }
+    .sl-sched .sch-acts .sch-reg, .sl-sched .sch-acts .sch-go { min-width: 0; height: 44px; width: 100%; }
+    .sl-sched .sch-row > .sch-go { height: 44px; box-sizing: border-box; }
+  }
   .sl-sched-head p { margin: 8px 0 0; text-align: left; color: #8b8f98; font-size: 14px; font-weight: 600; }
   /* the block for people who want to run a league in their own city */
   .sl-org { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px 48px; align-items: center; background: var(--fill-grey); border: 1px solid rgba(255, 85, 0, 0.6); border-radius: var(--radius); padding: 36px 40px; box-shadow: 0 0 30px -14px rgba(255, 85, 0, 0.55); }
@@ -348,6 +369,16 @@ document.getElementById(`lang-${LANG}`).classList.add('on');
 
 // a number tile in the design of the tiles of the home page of blta.sk: a label, the big number, a thin divider and two lines (the second is optional)
 const tileHtml = (k, num, of, row, cls) => '<div class="home-mine-cell' + (cls ? ' ' + cls : '') + '"><div class="k">' + esc(k) + '</div><div class="home-mine-body"><div class="big">' + num + '</div><div class="side"><span class="of">' + esc(of) + '</span>' + (row ? '<span class="row"><span class="grp">' + esc(row) + '</span></span>' : '') + '</div></div></div>';
+// The word that goes with a number. Slovak has three forms (1 hráč, 2-4 hráči, 0 and 5 or more hráčov), English two.
+const FORMS = {
+  sk: { cities: ['mesto v lige', 'mestá v lige', 'miest v lige'], players: ['hráč', 'hráči', 'hráčov'], tours: ['turnaj', 'turnaje', 'turnajov'], cats: ['kategória', 'kategórie', 'kategórií'], seasons: ['sezóna', 'sezóny', 'sezón'] },
+  en: { cities: ['city in the league', 'cities in the league'], players: ['player', 'players'], tours: ['tournament', 'tournaments'], cats: ['category', 'categories'], seasons: ['season', 'seasons'] },
+};
+const word = (kind, n) => {
+  const f = FORMS[LANG][kind];
+  if (LANG === 'en') return n === 1 ? f[0] : f[1];
+  return n === 1 ? f[0] : (n >= 2 && n <= 4 ? f[1] : f[2]);
+};
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fold = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 
@@ -425,7 +456,7 @@ function draw() {
   });
   const shown = cities.map((c, i) => ({ c, i })).filter((o) => fold(o.c.name).includes(q));
   listEl.innerHTML = shown.length
-    ? shown.map((o) => `<button type="button" class="sl-city${o.i === sel ? ' on' : ''}" data-i="${o.i}"><div><b>${esc(o.c.name)}</b><small>${esc(o.c.brandName)}${o.c.activePlayers ? ` · ${o.c.activePlayers} ${T.players}` : ''}</small></div><span class="sl-tag ${kind(o.c)}">${esc(label(o.c))}</span></button>`).join('')
+    ? shown.map((o) => `<button type="button" class="sl-city${o.i === sel ? ' on' : ''}" data-i="${o.i}"><div><b>${esc(o.c.name)}</b><small>${esc(o.c.brandName)}${o.c.activePlayers ? ` · ${o.c.activePlayers} ${word('players', o.c.activePlayers)}` : ''}</small></div><span class="sl-tag ${kind(o.c)}">${esc(label(o.c))}</span></button>`).join('')
     : `<div class="sl-empty">${T.none}</div>`;
   const c = cities[sel];
   if (!c) { detEl.hidden = true; return; }
@@ -441,10 +472,10 @@ function draw() {
     </div>
     ${buttons.length ? `<div class="sl-btns">${buttons.join('')}</div>` : ''}
     <div class="sl-det-tiles">${[
-      tileHtml(T.kPlayers, c.activePlayers || 0, T.ofPlayers, T.inLeague.replace('{name}', c.brandName || c.name), 'dark'),
-      tileHtml(T.kCats, c.categories || 0, T.ofCats, (c.categoryList || []).map((k) => ({ ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[k] || k)).join(' · '), 'dark'),
-      tileHtml(T.kSeasons, c.seasonsPlayed || 0, T.ofSeasons, '', 'dark'),
-      tileHtml(T.kTours, c.tournamentsPlayed || 0, T.ofTours, '', 'dark'),
+      tileHtml(T.kPlayers, c.activePlayers || 0, word('players', c.activePlayers || 0), T.inLeague.replace('{name}', c.brandName || c.name), 'dark'),
+      tileHtml(T.kCats, c.categories || 0, word('cats', c.categories || 0), (c.categoryList || []).map((k) => ({ ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[k] || k)).join(' · '), 'dark'),
+      tileHtml(T.kSeasons, c.seasonsPlayed || 0, word('seasons', c.seasonsPlayed || 0), '', 'dark'),
+      tileHtml(T.kTours, c.tournamentsPlayed || 0, word('tours', c.tournamentsPlayed || 0), '', 'dark'),
     ].join('')}</div>${c.slug ? `<button type="button" class="sl-det-go" data-goto="sch">${esc(T.schTitle)} <span aria-hidden="true">↓</span></button>` : ''}`;
 }
 
@@ -509,26 +540,30 @@ const catName = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
 function schRow(e, today) {
   const now = e.state === 'now';
   const lg = e.type === 'LEAGUE';
-  let extra = ''; let bar = '';
+  let extra = ''; let eta = ''; let bar = '';
   if (now) {
     const left = Math.max(0, daysBetween(today, e.endDate));
-    extra = ' · ' + T.schDaysLeft.replace('{n}', left).replace('{d}', dayWord(left));
+    eta = T.schDaysLeft.replace('{n}', left).replace('{d}', dayWord(left));
+    extra = ' · ' + eta;
     const total = Math.max(1, daysBetween(e.startDate, e.endDate));
     bar = '<div class="home-bar mini"><i style="width:' + Math.min(100, Math.max(0, Math.round(daysBetween(e.startDate, today) / total * 100))) + '%"></i></div>';
   } else {
     const n = daysBetween(today, e.startDate);
-    extra = ' · ' + T.schStartsIn.replace('{n}', n).replace('{d}', dayWord(n));
+    eta = T.schStartsIn.replace('{n}', n).replace('{d}', dayWord(n));
+    extra = ' · ' + eta;
   }
-  const tags = '<span class="sch-tag' + (lg ? '' : ' tour') + '">' + (lg ? T.schLeague : T.schTour) + '</span>' + (now ? '<span class="sch-tag now">' + T.running + '</span>' : '');
-  const sub = (e.venue ? esc(e.venue) + ' · ' : '') + '<b>' + esc((e.categories || []).map((c) => catName[c] || c).join(' · ')) + '</b>' + esc(extra);
+  const tags = '<span class="sch-tags"><span class="sch-tag' + (lg ? '' : ' tour') + '">' + (lg ? T.schLeague : T.schTour) + '</span>' + (now ? '<span class="sch-tag now">' + T.running + '</span>' : '') + '</span>';
+  const chips = (e.categories || []).map((c) => '<span class="sch-chip">' + esc(catName[c] || c) + '</span>').join('');
+  const sub = (e.venue ? '<span class="sch-venue">' + esc(e.venue) + ' · </span>' : '') + '<b class="sch-cats">' + chips + '</b><span class="sch-extra">' + esc(extra) + '</span>';
   const reg = e.registerLink ? '<span class="sch-reg" role="link" tabindex="0" data-href="' + esc(e.registerLink) + '">' + T.register + '</span>' : '';
   const go = e.link ? '<span class="sch-go">' + T.schMore + ' ›</span>' : '';
   const more = reg ? '<span class="sch-acts">' + reg + go + '</span>' : (go || '<span></span>');
   const open = e.link ? '<a class="sch-row link ' + (now ? 'now' : 'future') + '" href="' + esc(e.link) + '"' + (/^https?:/i.test(e.link) && !e.link.startsWith(location.origin) ? ' target="_blank" rel="noopener"' : '') + '>' : '<div class="sch-row ' + (now ? 'now' : 'future') + '">';
   return open +
     '<div class="sch-date">' + esc(dateRange(e)) + '<small>' + esc(yearText(e)) + '</small></div>' +
-    '<div class="sch-info"><div class="sch-text"><div class="sch-name">' + esc(e.name) + ' ' + tags + '</div><div class="sch-sub">' + sub + '</div>' + bar + '</div></div>' +
-    more + (e.logoUrl ? '<span class="sl-row-logo" style="--logo:url(\'' + esc(e.logoUrl) + '\')"></span>' : '') + (e.link ? '</a>' : '</div>');
+    '<span class="sch-eta">' + esc(eta) + '</span>' +
+    '<div class="sch-info"><div class="sch-text"><div class="sch-name"><span class="sch-title">' + esc(e.name) + '</span>' + tags + '</div><div class="sch-sub">' + sub + '</div>' + bar + '</div></div>' +
+    more + (e.link ? '</a>' : '</div>');
 }
 
 const schHead = (c) => '<div class="sl-sched-head"><h3>' + T.schTitle + '</h3><div class="sl-sched-city">' + esc(c.brandName || c.name) + '</div><p>' + T.schSub + '</p></div>';
@@ -717,9 +752,9 @@ document.getElementById('q').addEventListener('input', (e) => { q = fold(e.targe
     const inCities = (n) => (n === 1 ? T.inCities1 : T.inCitiesN).replace('{n}', n);
     const running = cities.filter((c) => c.status === 'ACTIVE').length;
     statsEl.className = 'home-mine-grid sl-block';
-    statsEl.innerHTML = tile(T.kCities, cities.length, T.ofCities, T.withLeague.replace('{n}', running)) +
-      tile(T.kPlayers, sum('activePlayers'), T.ofPlayers, inCities(cities.filter((c) => c.activePlayers > 0).length)) +
-      tile(T.kTours, sum('tournamentsPlayed'), T.ofTours, inCities(cities.filter((c) => c.tournamentsPlayed > 0).length));
+    statsEl.innerHTML = tile(T.kCities, cities.length, word('cities', cities.length), T.withLeague.replace('{n}', running)) +
+      tile(T.kPlayers, sum('activePlayers'), word('players', sum('activePlayers')), inCities(cities.filter((c) => c.activePlayers > 0).length)) +
+      tile(T.kTours, sum('tournamentsPlayed'), word('tours', sum('tournamentsPlayed')), inCities(cities.filter((c) => c.tournamentsPlayed > 0).length));
     statsEl.hidden = false;
   }
   draw();
