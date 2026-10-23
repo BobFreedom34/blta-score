@@ -530,8 +530,10 @@ function renderHome() {
   const stateEl = document.getElementById('home-state');
   if (d.season) {
     const state = seasonState(d.season, new Date().toISOString().slice(0, 10));
-    stateEl.className = `home-head-state ${state}`;
-    stateEl.innerHTML = `${state === 'now' ? '<i></i>' : ''}${escapeHtml(t({ past: 'home.tlPast', now: 'home.tlNow', future: 'home.tlFuture' }[state]))}`;
+    // a season that has not started yet but takes registrations says so (the same as the national page), not just "in preparation"
+    const regOpen = state === 'future' && d.season.registrationOpen;
+    stateEl.className = `home-head-state ${regOpen ? 'reg' : state}`;
+    stateEl.innerHTML = `${state === 'now' ? '<i></i>' : ''}${escapeHtml(t(regOpen ? 'home.tlRegOpen' : { past: 'home.tlPast', now: 'home.tlNow', future: 'home.tlFuture' }[state]))}`;
     stateEl.hidden = false;
   } else {
     stateEl.hidden = true;

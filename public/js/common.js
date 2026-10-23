@@ -3507,9 +3507,16 @@ function highlightMyName() {
   const city = window.CITY;
   if (!city || document.body.classList.contains('embed')) return;
   const apply = () => {
-    document.querySelectorAll('.brand-text small').forEach((el) => { el.textContent = city.brand; });
-    // the ball logo says BLTA: a city shows its name only (until it has a logo of its own)
-    document.querySelectorAll('.brand-logo').forEach((el) => { el.style.display = 'none'; });
+    if (city.first) {
+      // the first city (Bratislava, BLTA) keeps its own brand
+      document.querySelectorAll('.brand-text small').forEach((el) => { el.textContent = city.brand; });
+      document.querySelectorAll('.brand-logo').forEach((el) => { el.style.display = 'none'; });
+    } else {
+      // every other city: the SLTA logo of the national page, and the name of the city after it
+      document.querySelectorAll('.brand').forEach((el) => {
+        el.innerHTML = `<img class="brand-logo" src="/img/slta-logo.png" alt="SLTA" width="500" height="141"><span class="brand-city">${escapeHtml(city.name)}</span>`;
+      });
+    }
     document.querySelectorAll('.site-footer-inner > span').forEach((el) => { el.textContent = city.brand; });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();

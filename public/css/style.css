@@ -219,6 +219,15 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   flex-direction: column;
   line-height: 1;
 }
+/* the name of a city after the SLTA logo (a city of the national site: slta.sk/<city>) */
+.brand-city {
+  font-weight: 900;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--white);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
 .brand-tennis {
   font-weight: 400;
   font-size: 10px;
@@ -4146,6 +4155,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .home-head-state.now { background: var(--orange); color: var(--white); }
 .home-head-state.past { background: rgba(255, 255, 255, 0.12); color: #c3c7cf; }
 .home-head-state.future { border: 1px solid var(--border-grey); color: var(--white); }
+.home-head-state.reg { background: var(--green); color: #0a0a0a; }
 .home-head-state i { width: 8px; height: 8px; border-radius: 50%; background: var(--white); animation: pulse 1.6s infinite; }
 
 /* "Aktuálna sezóna": the heading over the timeline, the progress and the league numbers (its gap below is the timeline's own) */

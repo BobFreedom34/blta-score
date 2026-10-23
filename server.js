@@ -177,7 +177,7 @@ const cityHtml = (html, req) => {
   const league = req.league;
   const brand = league.brand_name || league.name;
   const json = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
-  let out = html.replace(/<head[^>]*>/i, (m) => `${m}<script>window.CITY_BASE=${json(req.cityBase)};window.CITY=${json({ slug: league.slug, name: league.name, brand })};</script>`);
+  let out = html.replace(/<head[^>]*>/i, (m) => `${m}<script>window.CITY_BASE=${json(req.cityBase)};window.CITY=${json({ slug: league.slug, name: league.name, brand, first: league.id === leagues.DEFAULT_LEAGUE_ID })};</script>`);
   // the title ends with the name of the Bratislava league: a city has its own brand there
   const own = (t) => t.replace(/ - BLTA - (Bratislavská Liga Tenisových Amatérov|Bratislava Amateur Tennis League)/g, ` - ${brand}`).replace(/BLTA/g, brand);
   out = out.replace(/<title>([\s\S]*?)<\/title>/i, (m, t) => `<title>${own(t)}</title>`);
