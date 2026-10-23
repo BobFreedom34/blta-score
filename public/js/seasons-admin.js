@@ -320,6 +320,16 @@ function seasonCardHtml(s) {
                 ${field('Odkaz na galériu', input('galleryUrl', s.galleryUrl || '', 'maxlength="500" placeholder="https://…"'), 'sa-wide')}
                 ${field('Logo (odkaz na obrázok, napr. /img/seasons/autumn.png)', input('logoUrl', s.logoUrl || '', 'maxlength="300"'), 'sa-wide')}
               </div>
+              <div class="sa-field sa-full" style="margin-top:12px" data-logo-block>Logo — nahranie <span class="sa-hint">— vyber logo z počítača alebo z knižnice (Backend → Média). Nahrá sa hneď, netreba Uložiť. PNG, JPG alebo WebP do 8 MB.</span>
+                <div class="sa-logo-row">
+                  <div class="sa-logo-pic" data-logo-pic>${s.logoUrl ? `<img src="${escapeHtml(s.logoUrl)}" alt="">` : '<span>Zatiaľ bez loga</span>'}</div>
+                  <div class="sa-hero-actions">
+                    <label class="btn btn-sm btn-outline"><span data-logo-label>${s.logoUrl ? 'Nahradiť logo' : 'Nahrať logo'}</span><input type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+                    <button type="button" class="btn btn-sm btn-danger" data-logo-remove${s.logoUrl ? '' : ' hidden'}>Odstrániť</button>
+                    <span class="sa-hero-msg" data-logo-msg></span>
+                  </div>
+                </div>
+              </div>
               <div class="sa-field sa-full" style="margin-top:12px">Hero fotka stránky <span class="sa-hint">— veľká fotka hore na stránke, názov ${IS_TOURNAMENT ? 'turnaja' : 'sezóny'} je cez jej dolnú časť. Nahrá sa hneď, netreba Uložiť. JPG, PNG alebo WebP do 8 MB.</span>
                 <div class="sa-hero-grid">${heroBlockHtml(s, 'desktop')}${heroBlockHtml(s, 'mobile')}</div>
               </div>
@@ -458,6 +468,45 @@ function wireSeason(card) {
     };
     wireHeroBlock(block);
   });
+
+  // the logo: a picture from the computer or the library, sent at once; the address goes into the field above
+  const logoBlock = card.querySelector('[data-logo-block]');
+  if (logoBlock) {
+    const urlField = card.querySelector('[data-field="logoUrl"]');
+    const pic = logoBlock.querySelector('[data-logo-pic]');
+    const msg = logoBlock.querySelector('[data-logo-msg]');
+    const removeBtn = logoBlock.querySelector('[data-logo-remove]');
+    const fileInput = logoBlock.querySelector('input[type=file]');
+    const show = (url) => {
+      pic.innerHTML = url ? `<img src="${escapeHtml(url)}" alt="">` : '<span>Zatiaľ bez loga</span>';
+      urlField.value = url || '';
+      removeBtn.hidden = !url;
+      logoBlock.querySelector('[data-logo-label]').textContent = url ? 'Nahradiť logo' : 'Nahrať logo';
+      const i = seasons.findIndex((x) => x.id === id);
+      if (i >= 0) seasons[i] = { ...seasons[i], logoUrl: url || '' };
+      season.logoUrl = url || '';
+    };
+    urlField.addEventListener('input', () => { pic.innerHTML = urlField.value.trim() ? `<img src="${escapeHtml(urlField.value.trim())}" alt="">` : '<span>Zatiaľ bez loga</span>'; });
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      msg.style.color = ''; msg.textContent = 'Nahrávam…';
+      try {
+        const body = new FormData();
+        body.append('photo', file, file.name || 'logo.png');
+        const res = await fetch(`/api/seasons/${id}/logo`, { method: 'POST', body });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+        show(data.logoUrl);
+        msg.textContent = '';
+        toast('Logo nahrané');
+      } catch (err) { msg.textContent = err.message; msg.style.color = 'var(--danger)'; }
+      fileInput.value = '';
+    });
+    removeBtn.addEventListener('click', async () => {
+      try { await api(`/seasons/${id}/logo`, { method: 'DELETE' }); show(''); toast('Logo odstránené'); } catch (err) { msg.textContent = err.message; msg.style.color = 'var(--danger)'; }
+    });
+  }
 
   const rte = card.querySelector('[data-rte]');
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch { /* not supported: the server turns divs into paragraphs */ }

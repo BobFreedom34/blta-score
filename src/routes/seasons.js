@@ -198,6 +198,30 @@ router.delete('/:id/hero', requireAdmin, (req, res) => {
   res.json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
 });
 
+// The logo of a season or a tournament (the picture on its schedule row and its page): a picture from the computer or from the library
+// (Backend > Media); the file is a copy of its own, like a hero photo. It is sent as it is (a logo keeps its transparent background).
+router.post('/:id/logo', requireAdmin, (req, res) => {
+  heroUpload.single('photo')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'The picture must be under 8 MB' : 'Could not process the uploaded file' });
+    if (!req.file) return res.status(400).json({ error: 'Upload a JPG, PNG or WebP picture' });
+    const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+    if (!season) return res.status(404).json({ error: 'Season not found' });
+    const filename = `${season.slug || 'season'}-logo-${Date.now()}-${crypto.randomBytes(4).toString('hex')}${HERO_EXT[req.file.mimetype]}`;
+    fs.writeFileSync(path.join(HERO_DIR, filename), req.file.buffer);
+    db.prepare('UPDATE seasons SET logo_url = ? WHERE id = ?').run(`/season-heroes/${filename}`, season.id);
+    deleteHeroFile(season.logo_url);
+    res.json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
+  });
+});
+
+router.delete('/:id/logo', requireAdmin, (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  db.prepare('UPDATE seasons SET logo_url = NULL WHERE id = ?').run(season.id);
+  deleteHeroFile(season.logo_url);
+  res.json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
+});
+
 // Public: the match page and its admin editor read this (newest season first).
 router.get('/', (req, res) => {
   const rows = db.prepare('SELECT * FROM seasons WHERE league_id = ? ORDER BY COALESCE(start_date, \'\') DESC, id DESC').all(leagues.actingIdOf(req));
