@@ -115,14 +115,51 @@ async function loadCities() {
         </div>
         <span style="font-size:12px;font-weight:700;color:${c.status === 'ACTIVE' ? 'var(--green-dark, #2d7a1f)' : 'var(--gray)'}">${escapeHtml(CITY_STATUS_SHORT[c.status] || c.status)}</span>
         <span style="font-size:12px;color:var(--gray-dim)">${c.players} players · ${c.seasons} seasons · ${c.venues} venues</span>
+        ${c.checklist ? `<button type="button" class="btn btn-sm btn-outline" data-action="check" style="${c.checklist.done === c.checklist.total ? 'border-color:#2d7a1f;color:#2d7a1f' : ''}" title="What the city still needs before it is opened">Launch checklist ${c.checklist.done}/${c.checklist.total}</button>` : ''}
         <button type="button" class="btn btn-sm btn-outline" data-action="edit">Edit</button>
       </div>
+      <div class="city-check-slot"></div>
       <div class="city-edit-slot"></div>
     </div>
   `).join('');
   listEl.querySelectorAll('.city-row').forEach((row) => {
     row.querySelector('[data-action="edit"]').addEventListener('click', () => openEdit(row, cities.find((c) => c.id === Number(row.dataset.id))));
+    const checkBtn = row.querySelector('[data-action="check"]');
+    if (checkBtn) checkBtn.addEventListener('click', () => toggleChecklist(row, cities.find((c) => c.id === Number(row.dataset.id))));
   });
+}
+
+// The launch checklist of a city: what it still needs before it is opened. A step that is not done leads to the Backend page where it is done,
+// after switching to that city (everything in the Backend works on the city chosen at the top).
+const openChecklists = new Set();
+function checklistHtml(c) {
+  const k = c.checklist;
+  const pct = Math.round((k.done / k.total) * 100);
+  return `
+    <div style="margin-top:12px;background:#f7f7f9;border-radius:12px;padding:14px 16px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <strong>${escapeHtml(c.name)} · ${k.done} of ${k.total} ready</strong>
+        <div style="flex:1;min-width:120px;height:8px;border-radius:99px;background:#e1e1e6;overflow:hidden"><div style="width:${pct}%;height:100%;background:${k.done === k.total ? '#2d7a1f' : 'var(--orange)'}"></div></div>
+      </div>
+      ${k.items.map((i) => `
+        <div style="display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid #e9e9ee">
+          <span style="flex:0 0 20px;font-weight:800;color:${i.ok ? '#2d7a1f' : '#c0392b'}">${i.ok ? '✓' : '✗'}</span>
+          <div style="flex:1;min-width:0"><div style="font-weight:700${i.ok ? ';color:var(--gray)' : ''}">${escapeHtml(i.label)}</div>${i.ok ? '' : `<div style="font-size:12px;color:var(--gray-dim)">${escapeHtml(i.hint)}</div>`}</div>
+          ${i.ok ? '' : `<button type="button" class="btn btn-sm btn-outline" data-check-go="${escapeHtml(i.page)}">Open →</button>`}
+        </div>`).join('')}
+    </div>`;
+}
+function toggleChecklist(row, c) {
+  const slot = row.querySelector('.city-check-slot');
+  if (slot.innerHTML) { slot.innerHTML = ''; openChecklists.delete(c.id); return; }
+  openChecklists.add(c.id);
+  slot.innerHTML = checklistHtml(c);
+  slot.querySelectorAll('[data-check-go]').forEach((b) => b.addEventListener('click', async () => {
+    try {
+      await api('/admin/acting-city', { method: 'POST', body: { leagueId: c.id } });
+      window.location.href = b.dataset.checkGo;
+    } catch (err) { toast(err.message); }
+  }));
 }
 
 function cityField(label, name, value, hint = '') {

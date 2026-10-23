@@ -514,6 +514,30 @@ async function sendContactRequestEmail({ to, name, phone, email, message, lang }
   return true;
 }
 
+// A reminder to a registered player who has not paid the entry fee yet (Backend > Seasons > Registrácie > "Remind unpaid").
+async function sendPaymentReminderEmail({ to, name, seasonName, fee, paymentUrl, organiser }) {
+  const t = getTransporter();
+  if (!t) return false;
+  const lines = [
+    `Dobrý deň ${name},`,
+    '',
+    `evidujeme vašu registráciu do "${seasonName}", ale štartovné ${fee ? `(${fee}) ` : ''}zatiaľ nemáme zaplatené.`,
+    '',
+    paymentUrl ? `Zaplatiť môžete online tu: ${paymentUrl}` : 'Platbu prosím dohodnite s organizátorom.',
+    '',
+    'Ak ste už zaplatili, tento e-mail prosím ignorujte (platbu ešte nemusíme mať zaznamenanú).',
+    organiser ? `\nOtázky? ${organiser}` : '',
+  ];
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to,
+    replyTo: process.env.NOTIFY_EMAIL || undefined,
+    subject: `Pripomienka platby štartovného: ${seasonName}`,
+    text: lines.join('\n'),
+  });
+  return true;
+}
+
 async function sendCourtReservationEmails(r) {
   const t = getTransporter();
   if (!t) {
@@ -600,7 +624,7 @@ async function sendCourtCancellationEmails(r) {
 }
 
 module.exports = {
-  sendContactRequestEmail, courtReservationTexts, sendCourtReservationEmails, courtCancellationTexts, sendCourtCancellationEmails,
+  sendContactRequestEmail, sendPaymentReminderEmail, courtReservationTexts, sendCourtReservationEmails, courtCancellationTexts, sendCourtCancellationEmails,
   sendSeasonRegistrationEmail,
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendProposalReceivedEmail,

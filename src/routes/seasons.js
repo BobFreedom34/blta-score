@@ -12,6 +12,7 @@ const engine = require('../matchEngine');
 const nameMatch = require('../nameMatch');
 const roundRobin = require('../roundRobin');
 const { sendSeasonRegistrationEmail } = require('../mailer');
+const mailer = require('../mailer');
 const auth = require('../auth');
 const playerRoutes = require('./player');
 const { creditInviter } = require('./invites');
@@ -350,9 +351,57 @@ function openAccount(req, res, player, { name, phone, email, leagueId = leagues.
   return { status: 'created', player: created };
 }
 
-function serializeRegistration(r) {
-  return { id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', seed: r.seed || null, createdAt: r.created_at, playerId: r.player_id };
+// when the last payment reminder was sent to a registration (Backend > Registrácie > "Remind unpaid")
+if (!db.prepare('PRAGMA table_info(season_registrations)').all().some((c) => c.name === 'reminded_at')) {
+  db.exec('ALTER TABLE season_registrations ADD COLUMN reminded_at TEXT');
 }
+
+function serializeRegistration(r) {
+  return { id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', seed: r.seed || null, createdAt: r.created_at, playerId: r.player_id, remindedAt: r.reminded_at || null };
+}
+
+// The registrations as a spreadsheet (CSV with a byte-order mark so Excel reads the letters right).
+router.get('/:id/registrations.csv', requireAdmin, (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  const rows = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(season.id);
+  const cell = (v) => {
+    const text = String(v == null ? '' : v);
+    return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  const lines = [['Meno', 'Kategória', 'Telefón', 'Email', 'Zaplatené', 'Poznámka', 'Registrovaný'].join(',')];
+  rows.forEach((r) => lines.push([r.name, r.category || '', r.phone || '', r.email || '', r.paid ? 'áno' : 'nie', r.note || '', String(r.created_at || '').slice(0, 10)].map(cell).join(',')));
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="registracie-${(season.slug || 'sezona').replace(/[^a-z0-9-]/gi, '')}.csv"`);
+  res.send('\uFEFF' + lines.join('\r\n'));
+});
+
+// A reminder e-mail to the players who have not paid: { ids: [..] } (all the unpaid ones with an e-mail when left out). A registration
+// that was reminded in the last 24 hours is skipped (so a double click does not write twice). -> { sent, noEmail, recent, failed }
+router.post('/:id/registrations/remind', requireAdmin, async (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  const wanted = Array.isArray(req.body && req.body.ids) ? new Set(req.body.ids.map(Number)) : null;
+  const rows = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? AND paid = 0 ORDER BY created_at, id').all(season.id)
+    .filter((r) => !wanted || wanted.has(r.id));
+  const out = { sent: 0, noEmail: 0, recent: 0, failed: 0 };
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  const contact = require('./contact').read();
+  const organiser = [contact.email, contact.phone].filter(Boolean).join(' · ');
+  const stamp = db.prepare('UPDATE season_registrations SET reminded_at = ? WHERE id = ?');
+  for (const r of rows) {
+    if (!r.email) { out.noEmail += 1; continue; }
+    if (r.reminded_at && new Date(r.reminded_at).getTime() > dayAgo) { out.recent += 1; continue; }
+    try {
+      const ok = await mailer.sendPaymentReminderEmail({ to: r.email, name: r.name, seasonName: season.name, fee: season.entry_fee || '', paymentUrl: season.payment_url || '', organiser });
+      if (ok) { stamp.run(new Date().toISOString(), r.id); out.sent += 1; } else out.failed += 1;
+    } catch (err) {
+      console.error('[payment reminder] failed:', err.message);
+      out.failed += 1;
+    }
+  }
+  res.json(out);
+});
 
 // The category written in a player's profile ("Next Gen", "ELITE"…) as one of ours, or null.
 function profileCategory(raw) {

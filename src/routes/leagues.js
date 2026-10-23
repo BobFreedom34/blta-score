@@ -12,6 +12,7 @@ const seo = require('../seo');
 const courtIQ = require('../courtIQEngine');
 const rankings = require('./rankings');
 const mailer = require('../mailer');
+const { checklistOf } = require('../cityChecklist');
 
 const router = express.Router();
 
@@ -95,7 +96,7 @@ router.get('/', (req, res) => {
 
 // Admin: all of them, with the domains
 router.get('/all', auth.requireSuperAdmin, (req, res) => {
-  res.json(db.prepare('SELECT * FROM leagues ORDER BY sort_order, name').all().map((r) => leagues.serialize(r, { admin: true })));
+  res.json(db.prepare('SELECT * FROM leagues ORDER BY sort_order, name').all().map((r) => ({ ...leagues.serialize(r, { admin: true }), checklist: checklistOf(r.id) })));
 });
 
 // The city of this request (the own domain, otherwise Bratislava)

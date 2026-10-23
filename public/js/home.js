@@ -559,10 +559,12 @@ function renderHome() {
     ${rankingAndLookingHtml(d)}
     ${moversHtml(d)}
     ${liveHtml(d)}
-    ${inviteShellHtml(d)}`;
+    ${inviteShellHtml(d)}
+    <section class="home-sec home-partners" id="home-partners" hidden></section>`;
   initTimelineScroll(keepLeft);
   loadPom();
   loadInvite();
+  loadSponsorStrip(document.getElementById('home-partners'));
 }
 
 // ---------- "Player of the month": a slim card under the stats tiles ----------

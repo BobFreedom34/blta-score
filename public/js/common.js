@@ -3236,6 +3236,15 @@ async function setUpAdminTabs() {
       link.textContent = 'Info';
       if (rules) rules.after(link); else bar.appendChild(link);
     }
+    // the sponsors and partners of a city (shown as a "Partners" strip on its pages)
+    if (!bar.querySelector('a[href="/sponsors-admin"]')) {
+      const after = bar.querySelector('a[href="/media-admin"]') || bar.querySelector('a[href="/carousel-admin"]');
+      const link = document.createElement('a');
+      link.href = '/sponsors-admin';
+      link.className = `tab${location.pathname.endsWith('/sponsors-admin') ? ' active' : ''}`;
+      link.textContent = 'Sponsors';
+      if (after) after.after(link); else bar.appendChild(link);
+    }
     if (!bar.querySelector('a[href="/media-admin"]')) {
       const after = bar.querySelector('a[href="/about-admin"]') || bar.querySelector('a[href="/rules-admin"]');
       const link = document.createElement('a');
@@ -3534,6 +3543,29 @@ function highlightMyName() {
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
 })();
+
+// ---------------------------------------------------------------- sponsors
+// The "Partners" strip: the logos of the sponsors to show now (/api/sponsors: the whole city; ?seasonId=… one season), each a link to the
+// sponsor's site. A click is counted (a beacon, so the page is not slowed down). The element stays hidden when there is nobody to show.
+async function loadSponsorStrip(el, query = '') {
+  if (!el) return;
+  let list;
+  try { list = await api(`/sponsors${query}`); } catch { return; }
+  if (!Array.isArray(list) || !list.length) return;
+  const item = (s) => {
+    const inner = s.logoUrl ? `<img src="${escapeHtml(s.logoUrl)}" alt="${escapeHtml(s.name)}" loading="lazy">` : `<span>${escapeHtml(s.name)}</span>`;
+    return s.link
+      ? `<a class="sp-item" href="${escapeHtml(s.link)}" target="_blank" rel="sponsored noopener noreferrer" data-sponsor="${s.id}" title="${escapeHtml(s.name)}">${inner}</a>`
+      : `<span class="sp-item" title="${escapeHtml(s.name)}">${inner}</span>`;
+  };
+  el.innerHTML = `<div class="sp-box"><h2 class="sp-title">${escapeHtml(t('sponsors.title'))}</h2><div class="sp-strip">${list.map(item).join('')}</div></div>`;
+  el.hidden = false;
+  el.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-sponsor]');
+    if (!a) return;
+    try { navigator.sendBeacon(`/api/sponsors/${a.dataset.sponsor}/click`); } catch { /* not counted */ }
+  });
+}
 
 // ---------------------------------------------------------------- pictures from the media library (admin)
 // Wherever an admin is about to pick a picture from the computer (a hero image, a carousel slide, a venue photo, a blog picture, a photo of a

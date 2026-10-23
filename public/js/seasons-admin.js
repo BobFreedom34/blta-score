@@ -609,6 +609,32 @@ function wireSeason(card) {
   }
 
   let editingReg = null; // the registration being edited (its row shows a small form)
+  let regFilter = 'all'; // all | unpaid | paid
+
+  // the money of the registrations: how many paid, what is collected and what is still due (when the entry fee is a number)
+  const feeAmount = (() => { const m = String(season.entryFee || '').replace(',', '.').match(/\d+(?:\.\d+)?/); return m ? Number(m[0]) : null; })();
+  const money = (n) => `${Math.round(n * 100) / 100} €`;
+  function payBarHtml(rows) {
+    const paid = rows.filter((r) => r.paid).length;
+    const unpaid = rows.length - paid;
+    const tile = (label, value, tone) => `<div style="flex:1;min-width:110px;background:#f4f4f6;border-radius:10px;padding:10px 12px"><div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.04em">${label}</div><div style="font-size:20px;font-weight:800;${tone ? `color:${tone}` : ''}">${value}</div></div>`;
+    const chip = (key, label, n) => `<button type="button" class="sg-link" data-reg-filter="${key}" style="${regFilter === key ? 'font-weight:800;text-decoration:underline' : ''}">${label} (${n})</button>`;
+    const withMail = rows.filter((r) => !r.paid && r.email).length;
+    return `
+      <div style="margin:0 0 14px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${tile('Registrovaní', rows.length)}${tile('Zaplatili', paid, '#2d7a1f')}${tile('Nezaplatili', unpaid, unpaid ? '#c0392b' : '')}
+          ${feeAmount !== null ? tile('Vybrané', money(feeAmount * paid), '#2d7a1f') + tile('Chýba', money(feeAmount * unpaid), unpaid ? '#c0392b' : '') : ''}
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:10px">
+          ${chip('all', 'Všetci', rows.length)}${chip('unpaid', 'Nezaplatili', unpaid)}${chip('paid', 'Zaplatili', paid)}
+          <span style="flex:1"></span>
+          <button type="button" class="btn btn-sm btn-primary" data-remind-all${withMail ? '' : ' disabled'} title="Pošle e-mail s pripomienkou platby všetkým, ktorí nezaplatili a majú e-mail">Pripomenúť nezaplateným (${withMail})</button>
+          <a class="btn btn-sm btn-outline" href="/api/seasons/${id}/registrations.csv">Stiahnuť CSV</a>
+        </div>
+      </div>`;
+  }
+  const remindText = (r) => `Odoslané: ${r.sent}${r.noEmail ? `, bez e-mailu: ${r.noEmail}` : ''}${r.recent ? `, nedávno pripomenuté: ${r.recent}` : ''}${r.failed ? `, zlyhalo: ${r.failed}` : ''}`;
   function regEditHtml(r) {
     const box = `display:block;margin-top:4px;${inputStyle}`;
     return `
@@ -638,19 +664,23 @@ function wireSeason(card) {
   async function loadRegs() {
     try {
       const rows = await api(`/seasons/${id}/registrations`);
-      regsBtn.textContent = `Registrácie (${rows.length})`;
+      const unpaidCount = rows.filter((r) => !r.paid).length;
+      regsBtn.textContent = `Registrácie (${rows.length}${unpaidCount ? ` · ${unpaidCount} nezapl.` : ''})`;
       const players = await loadAdminPlayers();
-      regsList.innerHTML = addPlayerFormHtml(players, rows) + (rows.length ? rows.map((r) => (r.id === editingReg ? regEditHtml(r) : `
+      const shown = rows.filter((r) => regFilter === 'all' || (regFilter === 'paid' ? r.paid : !r.paid));
+      regsList.innerHTML = payBarHtml(rows) + addPlayerFormHtml(players, rows) + (shown.length ? shown.map((r) => (r.id === editingReg ? regEditHtml(r) : `
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #eee" data-reg="${r.id}">
           <div style="flex:1;min-width:220px">
             <strong>${escapeHtml(r.name)}</strong> <span class="sa-chip future">${escapeHtml(r.category ? catLabel(r.category) : 'No category')}</span>${r.playerId ? '' : ' <span style="font-size:11px;color:var(--gray)">new name</span>'}
             <div style="font-size:12px;color:var(--gray)">${r.phone || r.email ? `${escapeHtml(r.phone)} · <a href="mailto:${escapeHtml(r.email)}" style="color:var(--orange)">${escapeHtml(r.email)}</a>` : 'no contact details'} · ${escapeHtml(fmtDate(r.createdAt.slice(0, 10)))}</div>
             ${r.note ? `<div style="font-size:13px;margin-top:4px;white-space:pre-wrap"><strong>Note:</strong> ${escapeHtml(r.note)}</div>` : ''}
           </div>
+          ${r.remindedAt ? `<span style="font-size:11px;color:var(--gray)">pripomenuté ${escapeHtml(fmtDate(r.remindedAt))}</span>` : ''}
+          ${!r.paid && r.email ? '<button type="button" class="sg-link" data-reg-remind title="Pošle e-mail s pripomienkou platby">✉ Pripomenúť</button>' : ''}
           <button type="button" class="sg-link" data-reg-edit title="Change the category, phone, e-mail or note">Edit</button>
           <button type="button" class="sg-link" data-reg-paid="${r.paid ? 0 : 1}">${r.paid ? 'Paid ✓' : 'Not paid'}</button>
           <button type="button" class="sg-x" data-reg-del title="Delete this registration">&times;</button>
-        </div>`)).join('') : '<div class="sg-empty">No registrations yet.</div>');
+        </div>`)).join('') : `<div class="sg-empty">${rows.length ? 'Nikto v tomto filtri.' : 'No registrations yet.'}</div>`);
       wireAddPlayerForm(players);
     } catch (err) { fail(err); }
   }
@@ -677,6 +707,17 @@ function wireSeason(card) {
     api(`/seasons/${id}/registrations`).then((rows) => { regsBtn.textContent = `Registrácie (${rows.length})`; }).catch(() => {});
   }
   regsList.addEventListener('click', async (e) => {
+    try {
+      const filterBtn = e.target.closest('[data-reg-filter]');
+      if (filterBtn) { regFilter = filterBtn.dataset.regFilter; await loadRegs(); return; }
+      if (e.target.closest('[data-remind-all]')) {
+        if (!confirm('Poslať e-mail s pripomienkou platby všetkým, ktorí nezaplatili a majú e-mail?')) return;
+        const res = await api(`/seasons/${id}/registrations/remind`, { method: 'POST', body: {} });
+        toast(remindText(res));
+        await loadRegs();
+        return;
+      }
+    } catch (err) { fail(err); return; }
     const row = e.target.closest('[data-reg]');
     if (!row) return;
     const rid = row.dataset.reg;
@@ -695,6 +736,10 @@ function wireSeason(card) {
         await loadRegs();
       } else if (e.target.closest('[data-reg-paid]')) {
         await api(`/seasons/registrations/${rid}`, { method: 'PATCH', body: { paid: e.target.closest('[data-reg-paid]').dataset.regPaid === '1' } });
+        await loadRegs();
+      } else if (e.target.closest('[data-reg-remind]')) {
+        const res = await api(`/seasons/${id}/registrations/remind`, { method: 'POST', body: { ids: [Number(rid)] } });
+        toast(res.sent ? 'Pripomienka odoslaná' : (res.recent ? 'Dnes už bola pripomenutá' : (res.failed ? 'E-mail sa nepodarilo odoslať' : 'Bez e-mailu')));
         await loadRegs();
       } else if (e.target.closest('[data-reg-del]')) {
         if (!confirm('Delete this registration?')) return;

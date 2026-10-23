@@ -308,6 +308,7 @@
   <div class="sl-block" id="otazky-block" hidden><h2 class="sl-sec" id="otazky" data-i="faqTitle">Otázky a odpovede</h2>
   <section class="sl-faq" id="faq">
   </section></div>
+  <div class="sl-block" id="partneri-block" hidden><div class="sp-box"><h2 class="sp-title" id="partneri" data-i="partnersTitle">Partneri</h2><div class="sp-strip" id="partneri-strip"></div></div></div>
   <section class="sl-block" id="organizator">
     <div class="sl-org">
       <div>
@@ -325,7 +326,7 @@
 <script>
 const TEXT = {
   sk: {
-    contactTitle: 'Napíš nám', contactIntro: 'Zanechaj nám kontakt a ozveme sa ti.', fName: 'Meno', fPhone: 'Telefón', fEmail: 'Email', fInfo: 'Doplňujúce informácie', fInfoHint: 'Napr. z akého si mesta a čo by si chcel organizovať', fSend: 'Odoslať', fSending: 'Odosielam…', fOptional: 'nepovinné', fOkTitle: 'Ďakujeme!', fOkText: 'Správu sme dostali a ozveme sa ti čo najskôr.', fClose: 'Zavrieť', errName: 'Napíš svoje meno.', errEmail: 'Zadaj platný email.', errPhone: 'Telefónne číslo nie je platné.', errMany: 'Odoslali ste príliš veľa správ. Skúste to neskôr.', errFail: 'Správu sa nepodarilo odoslať. Skús to znova.', navCities: 'Mestá', navRank: 'Rebríčky', navFeat: 'Funkcie', navHow: 'Ako to funguje', eyebrow: 'Slovenská liga tenisových amatérov',
+    contactTitle: 'Napíš nám', contactIntro: 'Zanechaj nám kontakt a ozveme sa ti.', fName: 'Meno', fPhone: 'Telefón', fEmail: 'Email', fInfo: 'Doplňujúce informácie', fInfoHint: 'Napr. z akého si mesta a čo by si chcel organizovať', fSend: 'Odoslať', fSending: 'Odosielam…', fOptional: 'nepovinné', fOkTitle: 'Ďakujeme!', fOkText: 'Správu sme dostali a ozveme sa ti čo najskôr.', fClose: 'Zavrieť', errName: 'Napíš svoje meno.', errEmail: 'Zadaj platný email.', errPhone: 'Telefónne číslo nie je platné.', errMany: 'Odoslali ste príliš veľa správ. Skúste to neskôr.', errFail: 'Správu sa nepodarilo odoslať. Skús to znova.', partnersTitle: 'Partneri', navCities: 'Mestá', navRank: 'Rebríčky', navFeat: 'Funkcie', navHow: 'Ako to funguje', eyebrow: 'Slovenská liga tenisových amatérov',
     h1: 'Hraj ligu vo svojom meste. <em>Na svojej úrovni.</em>',
     lead: 'Vyber si mesto, zaregistruj sa do kategórie a stúpaj v rebríčku. Každé mesto má vlastnú ligu, organizátora a zápasy.',
     search: 'Nájdi svoje mesto…', howTitle: 'Ako to funguje',
@@ -342,7 +343,7 @@ const TEXT = {
     dayOne: 'deň', dayFew: 'dni', dayMany: 'dní', schEmpty: 'Zatiaľ nie sú naplánované žiadne podujatia.', schError: 'Harmonogram sa nepodarilo načítať.',
   },
   en: {
-    contactTitle: 'Write to us', contactIntro: 'Leave us your contact and we will get back to you.', fName: 'Name', fPhone: 'Phone', fEmail: 'Email', fInfo: 'Additional information', fInfoHint: 'E.g. which city you are from and what you would like to organise', fSend: 'Send', fSending: 'Sending…', fOptional: 'optional', fOkTitle: 'Thank you!', fOkText: 'We have received your message and will get back to you as soon as possible.', fClose: 'Close', errName: 'Please write your name.', errEmail: 'Please enter a valid email.', errPhone: 'The phone number is not valid.', errMany: 'Too many messages were sent. Please try again later.', errFail: 'The message could not be sent. Please try again.', navCities: 'Cities', navRank: 'Rankings', navFeat: 'Features', navHow: 'How it works', eyebrow: 'Slovak Amateur Tennis League',
+    contactTitle: 'Write to us', contactIntro: 'Leave us your contact and we will get back to you.', fName: 'Name', fPhone: 'Phone', fEmail: 'Email', fInfo: 'Additional information', fInfoHint: 'E.g. which city you are from and what you would like to organise', fSend: 'Send', fSending: 'Sending…', fOptional: 'optional', fOkTitle: 'Thank you!', fOkText: 'We have received your message and will get back to you as soon as possible.', fClose: 'Close', errName: 'Please write your name.', errEmail: 'Please enter a valid email.', errPhone: 'The phone number is not valid.', errMany: 'Too many messages were sent. Please try again later.', errFail: 'The message could not be sent. Please try again.', partnersTitle: 'Partners', navCities: 'Cities', navRank: 'Rankings', navFeat: 'Features', navHow: 'How it works', eyebrow: 'Slovak Amateur Tennis League',
     h1: 'Play a league in your city. <em>At your level.</em>',
     lead: 'Pick your city, sign up for a category and climb the ranking. Every city has its own league, organiser and matches.',
     search: 'Find your city…', howTitle: 'How it works',
@@ -631,6 +632,26 @@ async function showSchedule(c) {
     s.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: pairs.map((p) => ({ '@type': 'Question', name: p.q, acceptedAnswer: { '@type': 'Answer', text: p.a } })) });
     document.head.appendChild(s);
   } catch { document.querySelectorAll('a[href="#otazky"]').forEach((l) => l.remove()); }
+})();
+
+// The partners of the national page: the logos of Backend > Sponsors (the national set); the block stays hidden when there are none
+(async function partners() {
+  const block = document.getElementById('partneri-block');
+  try {
+    const list = await (await fetch('/api/sponsors?scope=national')).json();
+    if (!Array.isArray(list) || !list.length) return;
+    document.getElementById('partneri-strip').innerHTML = list.map((p) => {
+      const inner = p.logoUrl ? '<img src="' + esc(p.logoUrl) + '" alt="' + esc(p.name) + '" loading="lazy">' : '<span>' + esc(p.name) + '</span>';
+      return p.link
+        ? '<a class="sp-item" href="' + esc(p.link) + '" target="_blank" rel="sponsored noopener noreferrer" data-sponsor="' + p.id + '" title="' + esc(p.name) + '">' + inner + '</a>'
+        : '<span class="sp-item" title="' + esc(p.name) + '">' + inner + '</span>';
+    }).join('');
+    block.hidden = false;
+    block.addEventListener('click', (e) => {
+      const a = e.target.closest('[data-sponsor]');
+      if (a) { try { navigator.sendBeacon('/api/sponsors/' + a.dataset.sponsor + '/click'); } catch { /* not counted */ } }
+    });
+  } catch { /* no partners */ }
 })();
 
 (async function organisers() {

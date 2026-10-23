@@ -615,8 +615,9 @@ async function renderPanel() {
 }
 
 function render() {
-  rootEl.innerHTML = `${headerHtml()}${tilesHtml()}${seriesWinnersHtml()}<div class="tabs" id="sv-tabs" role="tablist"></div><div id="sv-panel" class="sv-panel"></div><div id="sv-players-fixed"></div>`;
+  rootEl.innerHTML = `${headerHtml()}${tilesHtml()}${seriesWinnersHtml()}<div class="tabs" id="sv-tabs" role="tablist"></div><div id="sv-panel" class="sv-panel"></div><div id="sv-players-fixed"></div><section class="sv-partners" id="sv-partners" hidden></section>`;
   renderFixedPlayers();
+  loadSponsorStrip(document.getElementById('sv-partners'), `?seasonId=${season.id}`);
   return renderPanel();
 }
 

@@ -11,7 +11,7 @@ const auth = require('./auth');
 
 // (the blog and the rules of the page are the city's own too)
 // the areas in which a city admin may write at all (the rest is for the super admin); everything in them is checked row by row
-const CITY_AREAS = new Set(['seasons', 'venues', 'players', 'matches', 'brackets', 'winners', 'carousel', 'header-items', 'schedule', 'articles', 'rules', 'seo', 'about', 'media']);
+const CITY_AREAS = new Set(['seasons', 'venues', 'players', 'matches', 'brackets', 'winners', 'carousel', 'sponsors', 'header-items', 'schedule', 'articles', 'rules', 'seo', 'about', 'media']);
 // areas that anybody may write to (a player, a visitor) whatever the admin is
 const OPEN_AREAS = new Set(['player', 'push', 'availability', 'invites']);
 
@@ -39,6 +39,7 @@ function leagueOfAddress(seg) {
     case 'articles': return a === 'admin' && id(b) ? one('SELECT league_id FROM articles WHERE id = ?', id(b)) : undefined;
     case 'rules': return id(a) ? one('SELECT league_id FROM rules_sections WHERE id = ?', id(a)) : undefined;
     case 'carousel': return id(a) ? one('SELECT league_id FROM carousel_slides WHERE id = ?', id(a)) : undefined;
+    case 'sponsors': return id(a) ? one('SELECT league_id FROM sponsors WHERE id = ?', id(a)) : undefined;
     case 'header-items': return id(a) ? one('SELECT league_id FROM header_items WHERE id = ?', id(a)) : undefined;
     case 'schedule': return a === 'events' && id(b) ? one('SELECT league_id FROM schedule_events WHERE id = ?', id(b)) : undefined;
     case 'winners':

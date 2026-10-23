@@ -49,6 +49,7 @@ const blogRouter = require('./src/routes/blog');
 const changeLogRouter = require('./src/routes/changelog');
 const reservationsRouter = require('./src/routes/reservations');
 const carouselRouter = require('./src/routes/carousel');
+const sponsorsRouter = require('./src/routes/sponsors');
 const rulesRouter = require('./src/routes/rules');
 const rules = require('./src/rules');
 const seo = require('./src/seo');
@@ -346,7 +347,8 @@ app.use((req, res, next) => {
       return next();
     }
   }
-  if (read && (national.isAsset(req.path) || req.path === '/api/faq' || req.path === '/api/leagues' || req.path.startsWith('/api/leagues/'))) return next();
+  if (read && (national.isAsset(req.path) || req.path === '/api/faq' || req.path === '/api/sponsors' || req.path === '/sponsor-logos' || req.path.startsWith('/sponsor-logos/') || req.path === '/api/leagues' || req.path.startsWith('/api/leagues/'))) return next();
+  if (req.method === 'POST' && /^\/api\/sponsors\/\d+\/click$/.test(req.path) && (!locked || national.hasAccess(req))) return next();
   if (req.path === '/healthz') return next();
   // the contact form of the national page
   if (req.method === 'POST' && req.path === '/api/leagues/contact-request' && (!locked || national.hasAccess(req))) return next();
@@ -420,6 +422,7 @@ app.use((req, res, next) => {
 app.use('/badge-icons', express.static(path.join(db.dataDir, 'badge-icons')));
 app.use('/player-photos', express.static(path.join(db.dataDir, 'player-photos')));
 app.use('/carousel-images', express.static(path.join(db.dataDir, 'carousel'), { maxAge: '30d' }));
+app.use('/sponsor-logos', express.static(path.join(db.dataDir, 'sponsor-logos'), { maxAge: '30d' }));
 app.use('/venue-photos', express.static(path.join(db.dataDir, 'venue-photos'), { maxAge: '30d' }));
 app.use('/season-heroes', express.static(path.join(db.dataDir, 'season-heroes'), { maxAge: '30d' }));
 app.use('/winner-photos', express.static(path.join(db.dataDir, 'winner-photos'), { maxAge: '30d' }));
@@ -458,6 +461,7 @@ app.use('/api/articles', blogRouter);
 app.use('/api/changelog', changeLogRouter);
 app.use('/api/reservations', reservationsRouter);
 app.use('/api/carousel', carouselRouter);
+app.use('/api/sponsors', sponsorsRouter);
 app.use('/api/rules', rulesRouter);
 
 // Pretty routes -> static HTML pages (the page JS reads the share token from the URL).
