@@ -37,8 +37,10 @@ db.exec(`
 
 const serialize = (r) => ({ id: r.id, url: `/media/${r.filename}`, name: r.original_name, mime: r.mime, size: r.size, createdAt: r.created_at });
 
-// where the app already keeps pictures: [folder on the disk, address, label]
+// where the app already keeps pictures: [folder on the disk, address, label, (the folder the path starts from: the data directory unless given)]
+const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
 const PLACES = [
+  ['img/seasons', '/img/seasons', 'Season logos', PUBLIC_DIR],
   ['carousel', '/carousel-images', 'Carousel'],
   ['season-heroes', '/season-heroes', 'Season pictures'],
   ['venue-photos', '/venue-photos', 'Venue photos'],
@@ -50,8 +52,8 @@ const MIME_OF = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpe
 
 function onTheServer() {
   const out = [];
-  PLACES.forEach(([folder, base, label]) => {
-    const dir = path.join(db.dataDir, folder);
+  PLACES.forEach(([folder, base, label, root]) => {
+    const dir = path.join(root || db.dataDir, folder);
     let names = [];
     try { names = fs.readdirSync(dir); } catch { return; }
     names.filter((n) => IMAGE.test(n)).forEach((n) => {
