@@ -3661,7 +3661,7 @@ a.home-mine-cell:hover::after, .home-mine-cell.linked:hover::after { color: var(
   /* no scrollbar: the arrow buttons, dragging with the mouse and the touch swipe move the row */
   .home-timeline { cursor: grab; }
 }
-.home-tl { position: relative; flex: 1 0 190px; min-width: 190px; padding-top: 22px; color: var(--white); scroll-snap-align: center; }
+.home-tl { position: relative; flex: 0 0 190px; width: 190px; min-width: 190px; padding-top: 22px; color: var(--white); scroll-snap-align: center; }
 .home-tl::before { content: ''; position: absolute; top: 6px; left: 0; right: -12px; height: 2px; background: rgba(255, 255, 255, 0.2); }
 .home-tl:last-child::before { right: 0; }
 .home-tl::after { content: ''; position: absolute; top: 0; left: 0; width: 14px; height: 14px; border-radius: 50%; background: #6b6f78; box-shadow: 0 0 0 3px #100e0b; }
