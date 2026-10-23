@@ -233,7 +233,8 @@ router.get('/', (req, res) => {
 // of their matches are finished).
 router.get('/by-slug/:slug', (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE slug = ?').get(req.params.slug);
-  if (!season) return res.status(404).json({ error: 'Season not found' });
+  // a season belongs to one city: under the address of another city it does not exist
+  if (!season || season.league_id !== leagues.actingIdOf(req)) return res.status(404).json({ error: 'Season not found' });
   const rounds = db.prepare(`
     SELECT round, COUNT(*) AS total, SUM(CASE WHEN status = 'FINISHED' THEN 1 ELSE 0 END) AS finished
     FROM matches WHERE season_id = ? AND round IS NOT NULL AND COALESCE(stage, 'GROUP') = 'GROUP'

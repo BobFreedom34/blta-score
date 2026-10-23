@@ -289,12 +289,12 @@ const TEMPLATE_ENTITY = {
     const b = /^\d+$/.test(id) ? db.prepare('SELECT name FROM brackets WHERE id = ?').get(Number(id)) : null;
     return b ? { name: b.name } : null;
   },
-  season: (slug) => {
-    const s = db.prepare('SELECT name, logo_url, hero_url FROM seasons WHERE slug = ?').get(slug);
+  season: (slug, lang, leagueId) => {
+    const s = db.prepare('SELECT name, logo_url, hero_url FROM seasons WHERE slug = ? AND league_id = ?').get(slug, leagueId);
     return s ? { name: s.name, image: s.hero_url || s.logo_url || '' } : null;
   },
-  tournament: (slug) => {
-    const s = db.prepare("SELECT name, logo_url, hero_url FROM seasons WHERE slug = ? AND kind = 'TOURNAMENT'").get(slug);
+  tournament: (slug, lang, leagueId) => {
+    const s = db.prepare("SELECT name, logo_url, hero_url FROM seasons WHERE slug = ? AND kind = 'TOURNAMENT' AND league_id = ?").get(slug, leagueId);
     return s ? { name: s.name, image: s.hero_url || s.logo_url || '' } : null;
   },
   court: (slug) => {

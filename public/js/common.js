@@ -1369,10 +1369,23 @@ async function renderHeaderNav() {
   // The seasons are only asked for when the menu has an item that links to one: those items get a small pill with the season's state.
   const seasonBySlug = {};
   const hasSeasonLink = (list) => list.some((i) => NAV_SEASON_LINK.test(i.link || '') || (i.children && hasSeasonLink(i.children)));
+  let seasonsLoaded = false;
   if (hasSeasonLink(items)) {
     try {
       (await api('/seasons')).forEach((s) => { if (s.slug) seasonBySlug[s.slug] = s; });
+      seasonsLoaded = true;
     } catch { /* no pills, the menu itself still works */ }
+  }
+  // A season or a tournament of another city is not shown (a menu copied from another city can still link to them), and a group (a
+  // heading with sub-items) that only held such links goes with them. /seasons lists the seasons of this city only.
+  if (seasonsLoaded) {
+    const prune = (list) => list.map((i) => ({ ...i, children: i.children ? prune(i.children) : i.children })).filter((i, n) => {
+      const link = NAV_SEASON_LINK.exec(i.link || '');
+      if (link && !seasonBySlug[decodeURIComponent(link[1])]) return false;
+      const had = list[n].children && list[n].children.length;
+      return !(had && !i.children.length && isHeadingLink(i.link));
+    });
+    items = prune(items);
   }
   const today = new Date().toISOString().slice(0, 10);
   const seasonPillLabel = { past: t('home.tlPast'), now: t('home.tlNow'), future: t('home.tlFuture') };
