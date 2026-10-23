@@ -4306,7 +4306,8 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
   .nav-submenu .nav-item-dropdown-toggle a::after { color: #8b8f98; transform: none; }
   .nav-submenu .nav-item-dropdown:hover > .nav-item-dropdown-toggle a { background: var(--fill-grey); color: var(--orange); }
   .nav-submenu .nav-item-dropdown:hover > .nav-item-dropdown-toggle a::after { color: var(--orange); }
-  .nav-submenu .nav-submenu { top: -9px; left: calc(100% + 4px); transform: none; }
+  /* the fly-out of a group (the seasons, the tournaments) is wide enough for the name of a season on one line */
+  .nav-submenu .nav-submenu { top: -9px; left: calc(100% + 4px); transform: none; min-width: 340px; width: max-content; max-width: 460px; }
   .nav-submenu .nav-submenu::after { display: none; }
   .nav-submenu .nav-submenu::before { top: 0; bottom: 0; left: -8px; right: auto; width: 8px; height: auto; }
   .nav-submenu a + .nav-item-dropdown, .nav-submenu .nav-item-dropdown + a, .nav-submenu .nav-item-dropdown + .nav-item-dropdown { margin-top: 2px; }

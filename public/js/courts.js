@@ -103,9 +103,14 @@ searchEl.addEventListener('input', () => {
     grid.innerHTML = `<div class="courts-empty">${escapeHtml(t('courts.empty'))}</div>`;
     return;
   }
+  // another city than Bratislava: "N tennis venues" without "in and around Bratislava" (Slovak: 1 areál, 2-4 areály, 5 and more areálov)
+  const cityOnly = !!(window.CITY && !window.CITY.first);
+  const venueCount = (n) => (currentLang === 'en'
+    ? `${n} tennis ${n === 1 ? 'venue' : 'venues'}.`
+    : `${n} ${n === 1 ? 'tenisový areál' : (n >= 2 && n <= 4 ? 'tenisové areály' : 'tenisových areálov')}.`);
   const indoor = venues.filter(venueHasIndoor).length;
   summaryEl.textContent = [
-    t('courts.summary', { count: venues.length }),
+    cityOnly ? venueCount(venues.length) : t('courts.summary', { count: venues.length }),
     indoor ? t('courts.summaryIndoor', { count: indoor }) : '',
   ].filter(Boolean).join(' ');
   render();

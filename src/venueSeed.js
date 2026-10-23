@@ -471,6 +471,132 @@ function addNewVenues() {
   });
 }
 
+// The tennis venues of Košice (the city slta.sk/kosice), added once each when that city exists (the app_flags row stops a re-add: an admin who
+// deletes one keeps it deleted; a venue of that name that is already there is left alone). Sourced from each venue's own site (2026-10-24):
+// NTC Košice (ntckosice.sk), Tenis Komplex (teniskomplex.sk), Tenisové kurty Medická (tenniskosice.sk), Tenisové kurty Anička
+// (tenisovekurtyanicka.sk, read through a web search: the site's certificate has expired), TK DRANaM (dranam.sk). What a site does not say
+// (a price, a court count, a surface) is left out. Coordinates: the street address geocoded from OpenStreetMap (NTC Košice: its own entry
+// there), the courts of Anička in OpenStreetMap; Medická has no map point because its site gives a street, not a number.
+const CITY_VENUES = {
+  kosice: [
+    {
+      flag: 'venue_added_kosice_ntc',
+      name: 'NTC Košice',
+      details: {
+        area: 'Košice-Západ',
+        address: 'Popradská 84E, 040 11 Košice',
+        phone: '+421 55 321 43 80',
+        email: 'ntckosice@ntckosice.sk',
+        website: 'https://www.ntckosice.sk/',
+        facebook: 'https://www.facebook.com/ntckosice',
+        instagram: 'ntckosice',
+        courtType: 'BOTH',
+        courtsCount: 11,
+        surfaces: ['CLAY'],
+        openingHours: '7:00–21:00',
+        facilities: ['PARKING', 'RESTAURANT', 'RACKET_RENTAL', 'PRO_SHOP', 'MULTISPORT'],
+        description: 'Národné tréningové centrum Košice: 3 kurty v tenisovej hale a 8 vonkajších antukových kurtov v lete. Rezervácia na recepcii telefonicky alebo online cez web centra. Požičanie rakiet 2 € / ks.',
+        lat: 48.7095421,
+        lng: 21.2272488,
+      },
+    },
+    {
+      flag: 'venue_added_kosice_tenis_komplex',
+      name: 'Tenis Komplex Košice',
+      details: {
+        area: 'KVP',
+        address: 'Wuppertálska 4, 040 23 Košice',
+        phone: '+421 911 282 919',
+        email: 'info@teniskomplex.sk',
+        website: 'https://www.teniskomplex.sk/',
+        bookingUrl: 'https://teniskomplex.isportsystem.sk/',
+        facebook: 'https://www.facebook.com/teniskomplex',
+        instagram: 'tenis.komplex',
+        courtType: 'BOTH',
+        courtsCount: 4,
+        surfaces: ['CLAY'],
+        openingHours: 'Po–Ne 7:00–22:00',
+        facilities: ['BAR_CAFE'],
+        description: 'Športový komplex z roku 1999: 4 antukové kurty, bedminton, squash, bowling a fitness. Bar a pizzéria. Rezervácia online alebo telefonicky (aj 055 645 26 11).',
+        lat: 48.7136734,
+        lng: 21.2200939,
+      },
+    },
+    {
+      flag: 'venue_added_kosice_medicka',
+      name: 'Tenisové kurty Medická',
+      details: {
+        area: 'Košice-Západ',
+        address: 'Medická ulica, 040 01 Košice',
+        website: 'https://www.tenniskosice.sk/',
+        bookingUrl: 'https://medicka.courtbee.com',
+        instagram: 'teniskosice',
+        courtType: 'BOTH',
+        openingHours: 'Apríl–september 7:00–20:00 (vonkajšie), október–apríl 7:00–22:00 (kryté)',
+        facilities: ['PARKING', 'SHOWERS', 'CHANGING_ROOMS', 'RACKET_RENTAL'],
+        description: 'Tréningové centrum v centre Košíc, kde sa hrá po celý rok: v lete vonkajšie kurty, v zime 2 kryté kurty v nafukovacej hale. Bezplatné parkovanie, šatne so sprchou, požičanie rakiet.',
+      },
+    },
+    {
+      flag: 'venue_added_kosice_anicka',
+      name: 'Tenisové kurty Anička',
+      details: {
+        area: 'Košice-Sever',
+        address: 'Kostolianska cesta 12, 040 01 Košice',
+        phone: '+421 907 422 032',
+        website: 'http://www.tenisovekurtyanicka.sk/',
+        courtType: 'OUTDOOR',
+        courtsCount: 8,
+        surfaces: ['CLAY'],
+        facilities: ['LIGHTING'],
+        description: 'Tenisový areál pri parku Anička: 8 antukových kurtov v rade (2 z nich osvetlené) a centrálny kurt s tribúnou.',
+        lat: 48.74417,
+        lng: 21.25191,
+      },
+    },
+    {
+      flag: 'venue_added_kosice_dranam',
+      name: 'TK DRANaM',
+      details: {
+        area: 'Košice-Sever',
+        address: 'Vysokoškolská 4, 040 01 Košice',
+        phone: '+421 905 515 893',
+        email: 'dranam@dranam.sk',
+        website: 'http://www.dranam.sk/',
+        facebook: 'https://www.facebook.com/TKDRANaM',
+        instagram: 'tkdranam',
+        facilities: ['COACHING'],
+        description: 'Tenisový klub DRANaM Košice: skupinové, súkromné aj individuálne tréningy pre deti a dospelých. Areál na Vysokoškolskej 4.',
+        lat: 48.7342664,
+        lng: 21.2449475,
+      },
+    },
+  ],
+};
+
+function addCityVenues() {
+  Object.entries(CITY_VENUES).forEach(([citySlug, list]) => {
+    const city = db.prepare('SELECT id FROM leagues WHERE slug = ?').get(citySlug);
+    if (!city) return; // the city is not there (yet): tried again at the next start
+    const compact = (text) => String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    list.forEach(({ flag, name, details }) => {
+      if (db.prepare('SELECT 1 FROM app_flags WHERE key = ?').get(flag)) return;
+      const parsed = venues.parseDetails(details);
+      if (parsed.error) {
+        console.warn(`[venue seed] skipped "${name}": ${parsed.error}`);
+        return;
+      }
+      const there = db.prepare('SELECT name FROM venues WHERE league_id = ?').all(city.id).some((v) => compact(v.name) === compact(name));
+      if (!there) {
+        const columns = { name, slug: venues.uniqueSlug(name), league_id: city.id, ...parsed.columns, seeded_at: new Date().toISOString() };
+        const names = Object.keys(columns);
+        db.prepare(`INSERT INTO venues (${names.join(', ')}) VALUES (${names.map((n) => `@${n}`).join(', ')})`).run(columns);
+      }
+      db.prepare('INSERT INTO app_flags (key) VALUES (?)').run(flag);
+    });
+  });
+}
+
 function seedVenueDetails() {
   const find = db.prepare('SELECT id FROM venues WHERE name = ? AND seeded_at IS NULL');
   Object.entries(SEED).forEach(([name, details]) => {
@@ -557,6 +683,7 @@ function run() {
   venues.ensureSlugs();
   seedVenueDetails();
   addNewVenues();
+  addCityVenues();
   seedVenueImages();
   removeDuplicateVenues();
   seedCourtsMenuItem();
