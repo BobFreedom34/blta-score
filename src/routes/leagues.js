@@ -9,6 +9,8 @@ const carousel = require('./carousel');
 const schedule = require('./schedule');
 const contact = require('./contact');
 const seo = require('../seo');
+const courtIQ = require('../courtIQEngine');
+const rankings = require('./rankings');
 
 const router = express.Router();
 
@@ -98,6 +100,72 @@ router.get('/all', auth.requireSuperAdmin, (req, res) => {
 // The city of this request (the own domain, otherwise Bratislava)
 router.get('/current', (req, res) => {
   res.json(leagues.serialize(req.league));
+});
+
+// Public: the rankings of the cities side by side for the national page (slta.sk/rebricky-miest): for every visible city the best rows of
+// the three rankings - the main BLTA ranking, CourtIQ and the tournaments ranking - with a link to the player (on the city's own site) and a
+// link to the whole ranking of the city. A city with nobody in any of them is left out. Built from the same tables as the rankings of the
+// city itself; kept for a minute because it goes through every city.
+const RANK_TOP = 10;
+const rankCache = new Map();
+function cityRankings(lang) {
+  const hit = rankCache.get(lang);
+  if (hit && Date.now() - hit.at < 60 * 1000) return hit.data;
+  const rows = db.prepare("SELECT * FROM leagues WHERE status != 'HIDDEN' ORDER BY sort_order, name").all();
+  const ratedOf = db.prepare(`
+    SELECT cr.*, p.name, p.slug, p.nationality
+    FROM courtiq_ratings cr JOIN players p ON p.id = cr.player_id
+    WHERE p.league_id = ? AND EXISTS (
+      SELECT 1 FROM matches m WHERE (m.player1_id = cr.player_id OR m.player2_id = cr.player_id)
+        AND m.category IN ('ELITE', 'NEXT_GEN', 'NOVICE') AND m.status = 'FINISHED')
+    ORDER BY cr.rating DESC
+  `);
+  const cities = rows.map((row) => {
+    const city = leagues.serialize(row);
+    const base = city.url || '';
+    const at = (code) => `${base}${seo.pageUrl(code, lang)}`;
+    const built = rankings.buildRankings(row.id);
+    const pointsRows = (key) => ((built.tables.find((t) => t.key === key) || {}).rows || []).filter((r) => r.points != null);
+    const fromPoints = (key) => {
+      const all = pointsRows(key);
+      return {
+        total: all.length,
+        rows: all.slice(0, RANK_TOP).map((r) => ({
+          rank: r.rank, name: r.name, value: r.points, nationality: r.nationality, link: r.slug ? at(`/player/${encodeURIComponent(r.slug)}`) : '',
+        })),
+      };
+    };
+    const rated = ratedOf.all(row.id);
+    let rank = 0;
+    let last;
+    const courtiqRows = rated.map((r, i) => {
+      const rounded = Math.round(r.rating);
+      if (rounded !== last) { rank = i + 1; last = rounded; }
+      return {
+        rank, name: r.name, value: Number(courtIQ.ratingToBand(r.rating).toFixed(1)), provisional: courtIQ.isProvisional(r.deviation, r.games_played),
+        nationality: r.nationality || null, link: r.slug ? at(`/player/${encodeURIComponent(r.slug)}`) : '',
+      };
+    });
+    return {
+      slug: row.slug, name: row.name, brandName: row.brand_name || row.name, url: city.url,
+      rankings: {
+        blta: { ...fromPoints('blta'), more: at('/rankings') },
+        courtiq: { total: courtiqRows.length, rows: courtiqRows.slice(0, RANK_TOP), more: `${at('/rankings')}?tab=courtiq` },
+        tournaments: { ...fromPoints('tournaments'), more: `${at('/rankings')}?tab=tournaments` },
+      },
+    };
+  }).filter((c) => Object.values(c.rankings).some((r) => r.total > 0));
+  const data = { cities };
+  rankCache.set(lang, { at: Date.now(), data });
+  return data;
+}
+router.get('/rankings', (req, res) => {
+  try {
+    res.json(cityRankings(req.query.lang === 'en' ? 'en' : 'sk'));
+  } catch (err) {
+    console.error('[leagues] could not build the rankings of the cities:', err);
+    res.status(500).json({ error: 'Could not load the rankings' });
+  }
 });
 
 // Public: the schedule of one city for its card on the national page: what is running now (the league first, then the tournaments), then

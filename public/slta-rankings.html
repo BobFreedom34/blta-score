@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rebríčky miest - SLTA - Slovenská liga tenisových amatérov</title>
+<meta name="description" content="Rebríčky miest SLTA - hlavný rebríček, CourtIQ a rebríček turnajov amatérskych tenistov v jednotlivých mestách Slovenska vedľa seba.">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  body { color: #fff; }
+  .sl-top { position: sticky; top: 0; z-index: 10; background: #000; border-bottom: 1px solid rgba(255,85,0,.35); }
+  .sl-top-in { max-width: 1160px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+  .sl-logo { font-size: 26px; font-weight: 800; letter-spacing: .08em; color: #fff; text-decoration: none; }
+  .sl-logo { display: block; line-height: 0; }
+  .sl-logo img { display: block; height: 34px; width: auto; }
+  .nav-links a[href$="#mesta"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0z'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E"); }
+  .nav-links a[data-nav="rank"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 21h18'/%3E%3Cpath d='M5 21v-6h4v6M10 21V8h4v13M15 21v-9h4v9'/%3E%3C/svg%3E"); }
+  .nav-links a[href$="#funkcie"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='7' height='7' rx='1'/%3E%3Crect x='14' y='3' width='7' height='7' rx='1'/%3E%3Crect x='3' y='14' width='7' height='7' rx='1'/%3E%3Crect x='14' y='14' width='7' height='7' rx='1'/%3E%3C/svg%3E"); }
+  .nav-links a[href$="#ako"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E"); }
+  .nav-links a[href$="#otazky"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E"); }
+  .nav-links a[href$="#organizator"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E"); }
+  @media (min-width: 1025px) {
+    .sl-top .nav-links { flex: 0 1 auto; justify-content: flex-start; gap: 24px; }
+    .sl-top .nav-links a { padding: 0; font-size: 13px; font-weight: 800; letter-spacing: .05em; color: #fff; text-decoration: none; }
+    .sl-top .nav-links a:hover { background: none; color: var(--orange); }
+  }
+  .sl-lang { margin-left: auto; display: flex; gap: 8px; }
+  .sl-lang a { border: 1px solid rgba(255,255,255,.25); border-radius: var(--radius-sm); padding: 6px 12px; font-size: 12px; font-weight: 800; color: #fff; text-decoration: none; }
+  .sl-lang a.on { background: var(--orange); border-color: var(--orange); }
+  .sl-wrap { max-width: 1160px; margin: 0 auto; padding: 0 20px 60px; }
+  .sl-hero { margin-top: 22px; }
+  .home-carousel:not([hidden]) + .sl-hero { margin-top: 48px; }
+  .sl-eyebrow { color: var(--orange); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 10px; }
+  .sl-hero h1 { margin: 0 0 12px; font-size: 52px; line-height: 1.04; font-weight: 800; color: #fff; text-transform: none; letter-spacing: -.01em; max-width: 780px; }
+  .sl-hero h1 em { font-style: normal; color: var(--green); }
+  .sl-hero p { margin: 0 0 22px; color: #c3c7cf; font-size: 17px; max-width: 560px; line-height: 1.5; }
+  .sl-tag { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-sm); padding: 4px 9px; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+  .sl-tag.now { background: var(--orange); color: #fff; }
+  .sl-tag.reg { background: var(--green); color: #0a0a0a; }
+  .sl-tag.soon { border: 1px solid #5a5e68; color: #d3d6dc; }
+  .sl-tag.org { border: 1px solid #fff; color: #fff; }
+  .sl-sec { margin: 0 0 14px; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; color: #fff; }
+  .sl-wrap .home-carousel { margin-top: 22px; }
+  .sl-foot { border-top: 1px solid rgba(255,255,255,.1); padding: 26px 20px; text-align: center; color: #8b8f98; font-size: 13px; font-weight: 600; }
+  .sl-foot a { color: var(--orange); text-decoration: none; }
+    .sl-hero h1 { font-size: 36px; }
+
+  .nav-links a[data-nav="rank"] { --nav-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 21h18'/%3E%3Cpath d='M5 21v-6h4v6M10 21V8h4v13M15 21v-9h4v9'/%3E%3C/svg%3E"); }
+  .sl-top .nav-links a.on { color: var(--orange); }
+  .sl-lang a.on { background: var(--orange); border-color: var(--orange); }
+  @media (max-width: 860px) { .sl-hero h1 { font-size: 36px; } }
+  /* the controls: the kind of ranking and the cities */
+  .rk-bar { margin-top: 26px; display: flex; flex-direction: column; gap: 14px; }
+  .rk-tabs { display: inline-flex; align-self: flex-start; gap: 6px; background: var(--fill-grey); border: 1px solid rgba(255,255,255,.1); border-radius: var(--radius-md); padding: 5px; max-width: 100%; overflow-x: auto; }
+  .rk-tab { font: inherit; font-size: 13px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; color: #c3c7cf; background: none; border: 0; border-radius: var(--radius-sm); padding: 10px 16px; cursor: pointer; }
+  .rk-tab:hover { color: #fff; }
+  .rk-tab.on { background: var(--orange); color: #fff; }
+  .rk-filter-label { color: #8b8f98; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 8px; }
+  .rk-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .rk-chip { font: inherit; font-size: 13px; font-weight: 700; color: #fff; background: var(--fill-grey); border: 1px solid rgba(255,255,255,.14); border-radius: var(--radius-sm); padding: 8px 14px; cursor: pointer; }
+  .rk-chip:hover { border-color: var(--orange); }
+  .rk-chip.on { background: var(--green); border-color: var(--green); color: #0a0a0a; }
+  .rk-desc { margin: 22px 0 0; color: #8b8f98; font-size: 14px; font-weight: 600; max-width: 760px; line-height: 1.5; }
+  /* three cities in a row */
+  .rk-grid { margin-top: 18px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .rk-card { background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 20px 20px 14px; min-width: 0; }
+  .rk-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.14); }
+  .rk-city { margin: 0; font-size: 20px; font-weight: 800; color: #fff; text-transform: none; }
+  .rk-count { color: #8b8f98; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .rk-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.07); font-size: 14px; }
+  .rk-row:last-of-type { border-bottom: 0; }
+  .rk-rank { font-weight: 800; color: #8b8f98; text-align: left; }
+  .rk-row.top1 .rk-rank, .rk-row.top2 .rk-rank, .rk-row.top3 .rk-rank { color: #0a0a0a; background: var(--green); border-radius: 6px; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+  .rk-row.top2 .rk-rank { background: #c3c7cf; }
+  .rk-row.top3 .rk-rank { background: #d98c4a; }
+  .rk-name { font-weight: 700; color: #fff; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  a.rk-name:hover { color: var(--orange); }
+  .rk-val { font-weight: 800; color: #fff; white-space: nowrap; }
+  .rk-q { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; margin-left: 4px; border-radius: 999px; background: rgba(255,255,255,.18); color: #fff; font-family: Georgia, serif; font-size: 10px; font-style: italic; font-weight: 700; vertical-align: 1px; }
+  .rk-empty { color: #8b8f98; font-size: 14px; font-weight: 600; padding: 16px 0 10px; }
+  .rk-more { display: block; margin-top: 8px; padding: 12px 0 4px; border-top: 1px solid rgba(255,255,255,.14); text-align: center; color: var(--green); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; }
+  .rk-more:hover { color: #fff; }
+  .rk-none { margin-top: 26px; color: #8b8f98; font-weight: 600; }
+  @media (max-width: 1000px) { .rk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 640px) { .rk-grid { grid-template-columns: 1fr; } .rk-card { padding: 16px 16px 12px; } }
+  html { scroll-padding-top: 80px; }
+</style>
+</head>
+<body>
+<header class="sl-top"><div class="sl-top-in">
+  <a class="sl-logo" href="{{HOME}}" aria-label="SLTA"><img src="/img/slta-logo.png" alt="SLTA" width="500" height="141"></a>
+  <nav class="nav-links" id="nav-links"><a href="{{HOME}}#mesta" data-i="navCities">Mestá</a><a href="{{RANKINGS}}" data-nav="rank" class="on" data-i="navRank">Rebríčky</a><a href="{{HOME}}#funkcie" data-i="navFeat">Funkcie</a><a href="{{HOME}}#ako" data-i="navHow">Ako to funguje</a><a href="{{HOME}}#otazky" data-i="navFaq">Otázky</a><a href="{{HOME}}#organizator" data-i="navOrg">Organizátori</a></nav>
+  <div class="sl-lang"><a id="lang-sk" href="{{RANKINGS_SK}}">SK</a><a id="lang-en" href="{{RANKINGS_EN}}">EN</a></div>
+  <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu">&#9776;</button>
+</div></header>
+
+<main class="sl-wrap">
+  <section class="sl-hero">
+    <div class="sl-eyebrow" data-i="eyebrow">Slovenská liga tenisových amatérov</div>
+    <h1 data-i-html="h1">Rebríčky <em>miest</em></h1>
+    <p data-i="lead">Rebríčky jednotlivých miest.</p>
+  </section>
+
+  <div class="rk-bar">
+    <div class="rk-tabs" id="rk-tabs" role="tablist"></div>
+    <div>
+      <div class="rk-filter-label" data-i="filter">Mestá</div>
+      <div class="rk-chips" id="rk-chips"></div>
+    </div>
+  </div>
+  <p class="rk-desc" id="rk-desc"></p>
+  <div class="rk-grid" id="rk-grid"></div>
+</main>
+<footer class="sl-foot"><span data-i="footer">SLTA - Slovenská liga tenisových amatérov</span> · <a href="https://blta.sk">BLTA Bratislava</a></footer>
+
+<script src="/js/slta-rankings.js"></script>
+</body>
+</html>

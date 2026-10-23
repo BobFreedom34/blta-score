@@ -223,3 +223,4 @@ router.put('/points/:tableKey/:name', requireSuperAdmin, (req, res) => {
 });
 
 module.exports = router;
+module.exports.buildRankings = buildRankings;

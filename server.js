@@ -314,9 +314,15 @@ app.use((req, res, next) => {
   const read = req.method === 'GET' || req.method === 'HEAD';
   if (!national.isNationalHost(req)) {
     if (/^\/(en\/)?slta(\.html)?$/.test(req.path)) return pageNotFound(res);
+    // the rankings of the cities belong to the national site only
+    const nat = req.method === 'GET' || req.method === 'HEAD' ? seo.resolve(req.path) : null;
+    if (nat && nat.key === 'slta-rankings') return pageNotFound(res);
     return next();
   }
-  const lang = national.pageLang(req.path);
+  // the national pages: the picker of the cities (/, /en) and the rankings of the cities (its own addresses, see Backend > SEO)
+  const rankHit = read ? seo.resolve(req.path) : null;
+  const rankPage = rankHit && rankHit.key === 'slta-rankings' ? rankHit : null;
+  const lang = rankPage ? rankPage.lang : national.pageLang(req.path);
   const locked = national.isLocked();
   // while the site is locked or hidden every answer says so, whatever a crawler may have been told before
   if (locked || seo.noindexOf('slta')) res.set('X-Robots-Tag', 'noindex, nofollow');
@@ -327,7 +333,14 @@ app.use((req, res, next) => {
   }
   if (read && lang) {
     try {
-      return res.type('html').send(seo.render('slta', { origin: national.origin(req), canonical: '/', lang, siteName: 'SLTA' }));
+      const key = rankPage ? 'slta-rankings' : 'slta';
+      const html = seo.render(key, { origin: national.origin(req), canonical: rankPage ? '/slta-rankings' : '/', lang, siteName: 'SLTA' });
+      // the addresses the page links to, in its own language
+      return res.type('html').send(html
+        .replace(/\{\{HOME\}\}/g, seo.pageUrl('/', lang))
+        .replace(/\{\{RANKINGS\}\}/g, seo.pageUrl('/slta-rankings', lang))
+        .replace(/\{\{RANKINGS_SK\}\}/g, seo.pageUrl('/slta-rankings', 'sk'))
+        .replace(/\{\{RANKINGS_EN\}\}/g, seo.pageUrl('/slta-rankings', 'en')));
     } catch (err) {
       console.error('National page failed', err);
       return next();
@@ -343,6 +356,8 @@ app.use((req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
   const hit = seo.resolve(req.path);
   if (!hit) return seo.isRetired(req.path) ? pageNotFound(res) : next();
+  // the rankings of the cities live on the national site only
+  if (hit.key === 'slta-rankings') return pageNotFound(res);
   // a court that has an address of its own is not served at the pattern address any more: 404, no redirect (like any retired address)
   if (seo.movedTo(hit)) return pageNotFound(res);
   const page = seo.BY_KEY.get(hit.key);

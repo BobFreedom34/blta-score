@@ -22,9 +22,9 @@ router.put('/court-paths/:slug', requireSuperAdmin, (req, res) => {
 router.put('/:key', requireAdmin, (req, res) => {
   const page = seo.BY_KEY.get(req.params.key);
   const leagueId = leagues.actingIdOf(req);
-  if (!page || (page.key === 'slta' && leagueId !== 1)) return res.status(404).json({ error: 'Unknown page' });
+  if (!page || (seo.NATIONAL_KEYS.has(page.key) && leagueId !== 1)) return res.status(404).json({ error: 'Unknown page' });
   // the national page (slta) and the addresses are the super admin's
-  if (page.key === 'slta' && !auth.isSuperAdmin(req)) return res.status(403).json({ error: 'Only the super admin can change this' });
+  if (seo.NATIONAL_KEYS.has(page.key) && !auth.isSuperAdmin(req)) return res.status(403).json({ error: 'Only the super admin can change this' });
   const slugsEditable = leagueId === 1 && auth.isSuperAdmin(req);
   const parsed = seo.parseBody(page, req.body, { slugs: slugsEditable });
   if (parsed.error) return res.status(400).json({ error: parsed.error });

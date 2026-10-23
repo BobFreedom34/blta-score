@@ -66,6 +66,12 @@ const PAGES = [
     description: 'Ako funguje CourtIQ - automatický rating sily hráča v škále 1.0 až 7.0, ktorý sa počíta zo skutočne odohraných zápasov: čo ho mení a čo znamená otáznik.',
   },
   {
+    // the national site (slta.sk) only: the rankings of the cities side by side (never served on a city's own site)
+    key: 'slta-rankings', label: 'National: rankings of the cities', path: '/slta-rankings', file: 'slta-rankings.html', blta: null, slugSk: 'rebricky-miest',
+    title: 'Rebríčky miest - SLTA - Slovenská liga tenisových amatérov',
+    description: 'Rebríčky miest SLTA - hlavný rebríček, CourtIQ a rebríček turnajov amatérskych tenistov v jednotlivých mestách Slovenska vedľa seba.',
+  },
+  {
     key: 'looking-to-play', label: 'Looking for an opponent', path: '/looking-to-play', file: 'looking-to-play.html', blta: null,
     title: `Hľadám súpera${SUFFIX}`,
     description: 'Hľadáš súpera na tenis v Bratislave? Pridaj sa k hráčom BLTA, ktorí hľadajú partnera na zápas, a dohodni si hru.',
@@ -137,6 +143,8 @@ function discoverPages() {
 discoverPages();
 const BY_KEY = new Map(PAGES.map((p) => [p.key, p]));
 const LANGS = ['sk', 'en'];
+// the pages that only the national site (slta.sk) has: the picker of the cities and the rankings of the cities
+const NATIONAL_KEYS = new Set(['slta', 'slta-rankings']);
 const LANG_NAME = { sk: 'Slovak', en: 'English' };
 
 // ---------- English ----------
@@ -194,6 +202,11 @@ const ENGLISH = {
     slug: 'rules',
     title: `Rules${SUFFIX_EN}`,
     description: 'BLTA rules - the complete and current rules of the league and the tournaments: categories, game format, scoring, dates, arranging matches and entry fees.',
+  },
+  'slta-rankings': {
+    slug: 'city-rankings',
+    title: 'City rankings - SLTA - Slovak Amateur Tennis League',
+    description: 'SLTA city rankings - the main ranking, CourtIQ and the tournaments ranking of the amateur tennis players of each city in Slovakia, side by side.',
   },
   courtiq: {
     slug: 'courtiq',
@@ -543,7 +556,7 @@ function checkSlug(page, lang, slug) {
 // leagueId: the city whose texts are listed; slugsEditable: may the addresses be changed (the super admin, on the first city: they are shared by all)
 function listAll(leagueId = 1, { slugsEditable = true } = {}) {
   const table = new Map(routes().map((r) => [r.key, r]));
-  return PAGES.filter((p) => leagueId === 1 || p.key !== 'slta').map((p) => {
+  return PAGES.filter((p) => leagueId === 1 || !NATIONAL_KEYS.has(p.key)).map((p) => {
     const route = table.get(p.key);
     const sk = getValues(p.key, 'sk', leagueId);
     const en = getValues(p.key, 'en', leagueId);
@@ -768,7 +781,7 @@ function articleJsonLd({ title, description, imageUrl, url, entity }) {
 }
 
 module.exports = {
-  PAGES, BY_KEY, LANGS, listAll, parseBody, save, render, getValues,
+  PAGES, BY_KEY, LANGS, NATIONAL_KEYS, listAll, parseBody, save, render, getValues,
   routes, resolve, movedTo, pageUrl, isRetired, clientScript, normalizeSlug, listCourtPaths, saveCourtPath, checkWholeAddress, forgetRoutes, noindexOf,
 };
 
@@ -784,7 +797,8 @@ function sitemapXml(origin, { national = false, leagueId = 1 } = {}) {
   // the national site (slta.sk) lists only its own page; the sitemaps of the cities never list it
   const hidden = (key) => national || noindexOf(key, leagueId);
   if (national && !noindexOf('slta')) add('/');
-  PAGES.filter((p) => !p.template && !hidden(p.key) && p.key !== 'slta').forEach((p) => add(p.path));
+  if (national && !noindexOf('slta') && !noindexOf('slta-rankings')) add('/slta-rankings');
+  PAGES.filter((p) => !p.template && !hidden(p.key) && !NATIONAL_KEYS.has(p.key)).forEach((p) => add(p.path));
   const day = (iso) => (iso ? String(iso).slice(0, 10) : undefined);
   if (!hidden('season')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND COALESCE(kind, 'LEAGUE') != 'TOURNAMENT' AND league_id = ?").all(leagueId).forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`));
   if (!hidden('tournament')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND kind = 'TOURNAMENT' AND league_id = ?").all(leagueId).forEach((r) => add(`/tournament/${encodeURIComponent(r.slug)}`));
