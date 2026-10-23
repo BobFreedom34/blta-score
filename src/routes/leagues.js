@@ -11,6 +11,7 @@ const contact = require('./contact');
 const seo = require('../seo');
 const courtIQ = require('../courtIQEngine');
 const rankings = require('./rankings');
+const mailer = require('../mailer');
 
 const router = express.Router();
 
@@ -100,6 +101,56 @@ router.get('/all', auth.requireSuperAdmin, (req, res) => {
 // The city of this request (the own domain, otherwise Bratislava)
 router.get('/current', (req, res) => {
   res.json(leagues.serialize(req.league));
+});
+
+// Public: the contact form of the national page ("Napíš nám"): a name, an email, a phone and a few words. Every message is kept in the
+// database (contact_requests) and mailed to the contact address of the league (Backend > Menu > Contact window). A hidden field catches
+// robots and one address may write only a few times an hour.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS contact_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL DEFAULT '',
+    message TEXT NOT NULL DEFAULT '',
+    lang TEXT NOT NULL DEFAULT 'sk',
+    mailed INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+const contactLog = new Map();
+function tooMany(ip) {
+  const now = Date.now();
+  const recent = (contactLog.get(ip) || []).filter((t) => now - t < 60 * 60 * 1000);
+  if (recent.length >= 5) { contactLog.set(ip, recent); return true; }
+  recent.push(now);
+  contactLog.set(ip, recent);
+  return false;
+}
+router.post('/contact-request', async (req, res) => {
+  const body = req.body || {};
+  const text = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+  // robots fill every field: a filled hidden field is answered like a success and dropped
+  if (text(body.website, 200)) return res.json({ ok: true });
+  const name = text(body.name, 100);
+  const email = text(body.email, 120);
+  const phone = text(body.phone, 40);
+  const message = text(body.message, 2000);
+  const lang = body.lang === 'en' ? 'en' : 'sk';
+  if (!name) return res.status(400).json({ error: 'name' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'email' });
+  if (phone && !/^[0-9+()\-./\s]{5,40}$/.test(phone)) return res.status(400).json({ error: 'phone' });
+  const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'unknown';
+  if (tooMany(ip)) return res.status(429).json({ error: 'too many' });
+  const id = db.prepare('INSERT INTO contact_requests (name, email, phone, message, lang) VALUES (?, ?, ?, ?, ?)').run(name, email, phone, message, lang).lastInsertRowid;
+  let mailed = false;
+  try {
+    mailed = await mailer.sendContactRequestEmail({ to: contact.read().email, name, phone, email, message, lang });
+  } catch (err) {
+    console.error('[contact request] the email failed:', err.message);
+  }
+  if (mailed) db.prepare('UPDATE contact_requests SET mailed = 1 WHERE id = ?').run(id);
+  res.json({ ok: true });
 });
 
 // Public: the rankings of the cities side by side for the national page (slta.sk/rebricky-miest): for every visible city the best rows of

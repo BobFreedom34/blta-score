@@ -487,6 +487,33 @@ function courtReservationTexts(r) {
 
 // Both e-mails of a reservation; the player's one only when the player has an e-mail on file. Never throws (a reservation must not fail
 // because of an e-mail): returns { admin, player } = true when sent.
+// A message from the contact window of the national page (slta.sk, "Napíš nám"): goes to the contact address of the league, the reply goes
+// to the person who wrote.
+async function sendContactRequestEmail({ to, name, phone, email, message, lang }) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping the contact-request email (the request is kept in the database).');
+    return false;
+  }
+  const text = [
+    `Meno: ${name}`,
+    `Email: ${email}`,
+    `Telefón: ${phone || '-'}`,
+    `Jazyk stránky: ${lang === 'en' ? 'EN' : 'SK'}`,
+    '',
+    'Doplňujúce informácie:',
+    message || '-',
+  ].join('\n');
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: to || process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
+    replyTo: email,
+    subject: `SLTA: správa z webu od ${name}`,
+    text,
+  });
+  return true;
+}
+
 async function sendCourtReservationEmails(r) {
   const t = getTransporter();
   if (!t) {
@@ -573,7 +600,7 @@ async function sendCourtCancellationEmails(r) {
 }
 
 module.exports = {
-  courtReservationTexts, sendCourtReservationEmails, courtCancellationTexts, sendCourtCancellationEmails,
+  sendContactRequestEmail, courtReservationTexts, sendCourtReservationEmails, courtCancellationTexts, sendCourtCancellationEmails,
   sendSeasonRegistrationEmail,
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendProposalReceivedEmail,

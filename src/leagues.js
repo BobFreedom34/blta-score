@@ -146,10 +146,20 @@ function playedOf(leagueId, today) {
   };
 }
 
+// The players that count as players of the league on the national page: the ones who finished at least one league match (Elite, Next Gen,
+// Novice) or one tournament match (a tournament season, a bracket, VIP Cup, ATA Tennis). Friendly matches and a profile with no match don't count.
+const ACTIVE_PLAYERS_SQL = `
+  SELECT COUNT(*) AS n FROM players p WHERE p.league_id = ? AND COALESCE(p.hidden, 0) = 0 AND EXISTS (
+    SELECT 1 FROM matches m WHERE (m.player1_id = p.id OR m.player2_id = p.id) AND m.status = 'FINISHED' AND (
+      m.category IN ('ELITE', 'NEXT_GEN', 'NOVICE', 'VIP_CUP', 'ATA_TENNIS')
+      OR EXISTS (SELECT 1 FROM seasons s WHERE s.id = m.season_id AND s.kind = 'TOURNAMENT')
+      OR EXISTS (SELECT 1 FROM bracket_matches b WHERE b.match_id = m.id)))`;
+
 function countsOf(leagueId) {
   const n = (sql) => db.prepare(sql).get(leagueId).n;
   return {
     players: n('SELECT COUNT(*) AS n FROM players WHERE league_id = ? AND COALESCE(hidden, 0) = 0'),
+    activePlayers: n(ACTIVE_PLAYERS_SQL),
     seasons: n('SELECT COUNT(*) AS n FROM seasons WHERE league_id = ?'),
     venues: n('SELECT COUNT(*) AS n FROM venues WHERE league_id = ?'),
   };
@@ -169,6 +179,7 @@ function serialize(row, { admin = false } = {}) {
     lat: row.lat,
     lng: row.lng,
     players: counts.players,
+    activePlayers: counts.activePlayers,
     ...playedOf(row.id, today),
     seasons: counts.seasons,
     venues: counts.venues,

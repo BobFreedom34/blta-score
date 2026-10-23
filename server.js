@@ -348,6 +348,8 @@ app.use((req, res, next) => {
   }
   if (read && (national.isAsset(req.path) || req.path === '/api/faq' || req.path === '/api/leagues' || req.path.startsWith('/api/leagues/'))) return next();
   if (req.path === '/healthz') return next();
+  // the contact form of the national page
+  if (req.method === 'POST' && req.path === '/api/leagues/contact-request' && (!locked || national.hasAccess(req))) return next();
   const city = national.cityOrigin();
   if (read && city && !req.path.startsWith('/api/')) return res.redirect(302, city + req.originalUrl);
   return res.status(404).json({ error: 'Not found' });

@@ -159,6 +159,27 @@
   /* the logo is bigger than the row, tilted a little (top to bottom) and cut by the edge of the card */
   .sl-sched .sch-row > .sl-row-logo::before { content: ''; position: absolute; top: -115%; bottom: -115%; left: 0; right: -13%; background: var(--logo) no-repeat right center / auto 100%; opacity: .34; transform: rotate(-11deg); transform-origin: 70% 50%; }
   .sl-sched .sch-go { background: #000; }
+  /* the contact window ("Write to us") */
+  .sl-modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.72); overflow-y: auto; }
+  .sl-modal-box { position: relative; width: 100%; max-width: 480px; max-height: 100%; overflow-y: auto; background: #1b1b1f; border: 1px solid rgba(255,85,0,.45); border-radius: var(--radius); padding: 28px 26px 24px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+  .sl-modal-x { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255,255,255,.3); background: none; color: #fff; font-size: 20px; line-height: 1; cursor: pointer; }
+  .sl-modal-x:hover { border-color: var(--orange); color: var(--orange); }
+  .sl-modal h3 { margin: 0 0 6px; font-size: 24px; font-weight: 800; color: #fff; text-transform: none; }
+  .sl-modal p { margin: 0 0 18px; color: #c3c7cf; font-size: 14px; line-height: 1.5; }
+  .sl-field { display: block; margin-bottom: 14px; }
+  .sl-field > span { display: block; margin-bottom: 6px; color: #c3c7cf; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  .sl-field > span i { font-style: normal; font-weight: 600; color: #8b8f98; text-transform: none; letter-spacing: 0; }
+  .sl-field input, .sl-field textarea { width: 100%; box-sizing: border-box; background: var(--fill-grey); border: 1px solid rgba(255,255,255,.14); border-radius: var(--radius-sm); color: #fff; font: inherit; font-size: 15px; font-weight: 600; padding: 12px 14px; outline: 0; box-shadow: none; }
+  .sl-field textarea { min-height: 96px; resize: vertical; }
+  .sl-field input:focus, .sl-field textarea:focus { border-color: var(--orange); }
+  .sl-field input::placeholder, .sl-field textarea::placeholder { color: #6f737c; font-weight: 500; }
+  .sl-field.bad input, .sl-field.bad textarea { border-color: #ee3340; }
+  .sl-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .sl-form-error { min-height: 18px; margin: 0 0 10px; color: #ff6a74; font-size: 13px; font-weight: 700; }
+  .sl-modal .sl-send { width: 100%; border: 0; }
+  .sl-modal .sl-send[disabled] { opacity: .6; cursor: default; }
+  .sl-modal-ok { text-align: center; padding: 10px 0 4px; }
+  .sl-modal-ok h3 { color: var(--green); }
   /* a season with an open registration: a second, green button that blinks like the one on the season page */
   .sch-acts { display: inline-flex; align-items: center; gap: 10px; }
   /* both buttons of a row have the same size */
@@ -277,13 +298,13 @@
     </div>
   </section>
 </main>
-<footer class="sl-foot"><span data-i="footer">SLTA - Slovenská liga tenisových amatérov</span> · <a href="https://blta.sk">BLTA Bratislava</a></footer>
+<footer class="sl-foot"><span data-i="footer">SLTA - Slovenská liga tenisových amatérov</span></footer>
 
 <script src="/js/slovakia-map.js"></script>
 <script>
 const TEXT = {
   sk: {
-    navCities: 'Mestá', navRank: 'Rebríčky', navFeat: 'Funkcie', navHow: 'Ako to funguje', eyebrow: 'Slovenská liga tenisových amatérov',
+    contactTitle: 'Napíš nám', contactIntro: 'Zanechaj nám kontakt a ozveme sa ti.', fName: 'Meno', fPhone: 'Telefón', fEmail: 'Email', fInfo: 'Doplňujúce informácie', fInfoHint: 'Napr. z akého si mesta a čo by si chcel organizovať', fSend: 'Odoslať', fSending: 'Odosielam…', fOptional: 'nepovinné', fOkTitle: 'Ďakujeme!', fOkText: 'Správu sme dostali a ozveme sa ti čo najskôr.', fClose: 'Zavrieť', errName: 'Napíš svoje meno.', errEmail: 'Zadaj platný email.', errPhone: 'Telefónne číslo nie je platné.', errMany: 'Odoslali ste príliš veľa správ. Skúste to neskôr.', errFail: 'Správu sa nepodarilo odoslať. Skús to znova.', navCities: 'Mestá', navRank: 'Rebríčky', navFeat: 'Funkcie', navHow: 'Ako to funguje', eyebrow: 'Slovenská liga tenisových amatérov',
     h1: 'Hraj ligu vo svojom meste. <em>Na svojej úrovni.</em>',
     lead: 'Vyber si mesto, zaregistruj sa do kategórie a stúpaj v rebríčku. Každé mesto má vlastnú ligu, organizátora a zápasy.',
     search: 'Nájdi svoje mesto…', howTitle: 'Ako to funguje',
@@ -300,7 +321,7 @@ const TEXT = {
     dayOne: 'deň', dayFew: 'dni', dayMany: 'dní', schEmpty: 'Zatiaľ nie sú naplánované žiadne podujatia.', schError: 'Harmonogram sa nepodarilo načítať.',
   },
   en: {
-    navCities: 'Cities', navRank: 'Rankings', navFeat: 'Features', navHow: 'How it works', eyebrow: 'Slovak Amateur Tennis League',
+    contactTitle: 'Write to us', contactIntro: 'Leave us your contact and we will get back to you.', fName: 'Name', fPhone: 'Phone', fEmail: 'Email', fInfo: 'Additional information', fInfoHint: 'E.g. which city you are from and what you would like to organise', fSend: 'Send', fSending: 'Sending…', fOptional: 'optional', fOkTitle: 'Thank you!', fOkText: 'We have received your message and will get back to you as soon as possible.', fClose: 'Close', errName: 'Please write your name.', errEmail: 'Please enter a valid email.', errPhone: 'The phone number is not valid.', errMany: 'Too many messages were sent. Please try again later.', errFail: 'The message could not be sent. Please try again.', navCities: 'Cities', navRank: 'Rankings', navFeat: 'Features', navHow: 'How it works', eyebrow: 'Slovak Amateur Tennis League',
     h1: 'Play a league in your city. <em>At your level.</em>',
     lead: 'Pick your city, sign up for a category and climb the ranking. Every city has its own league, organiser and matches.',
     search: 'Find your city…', howTitle: 'How it works',
@@ -404,7 +425,7 @@ function draw() {
   });
   const shown = cities.map((c, i) => ({ c, i })).filter((o) => fold(o.c.name).includes(q));
   listEl.innerHTML = shown.length
-    ? shown.map((o) => `<button type="button" class="sl-city${o.i === sel ? ' on' : ''}" data-i="${o.i}"><div><b>${esc(o.c.name)}</b><small>${esc(o.c.brandName)}${o.c.players ? ` · ${o.c.players} ${T.players}` : ''}</small></div><span class="sl-tag ${kind(o.c)}">${esc(label(o.c))}</span></button>`).join('')
+    ? shown.map((o) => `<button type="button" class="sl-city${o.i === sel ? ' on' : ''}" data-i="${o.i}"><div><b>${esc(o.c.name)}</b><small>${esc(o.c.brandName)}${o.c.activePlayers ? ` · ${o.c.activePlayers} ${T.players}` : ''}</small></div><span class="sl-tag ${kind(o.c)}">${esc(label(o.c))}</span></button>`).join('')
     : `<div class="sl-empty">${T.none}</div>`;
   const c = cities[sel];
   if (!c) { detEl.hidden = true; return; }
@@ -420,7 +441,7 @@ function draw() {
     </div>
     ${buttons.length ? `<div class="sl-btns">${buttons.join('')}</div>` : ''}
     <div class="sl-det-tiles">${[
-      tileHtml(T.kPlayers, c.players || 0, T.ofPlayers, T.inLeague.replace('{name}', c.brandName || c.name), 'dark'),
+      tileHtml(T.kPlayers, c.activePlayers || 0, T.ofPlayers, T.inLeague.replace('{name}', c.brandName || c.name), 'dark'),
       tileHtml(T.kCats, c.categories || 0, T.ofCats, (c.categoryList || []).map((k) => ({ ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[k] || k)).join(' · '), 'dark'),
       tileHtml(T.kSeasons, c.seasonsPlayed || 0, T.ofSeasons, '', 'dark'),
       tileHtml(T.kTours, c.tournamentsPlayed || 0, T.ofTours, '', 'dark'),
@@ -580,14 +601,73 @@ async function showSchedule(c) {
 (async function organisers() {
   const box = document.getElementById('org-btns');
   try {
-    const c = await (await fetch('/api/leagues/contact')).json();
-    const out = [];
-    if (c.email) out.push('<a class="sl-btn g" href="mailto:' + esc(c.email) + '?subject=' + encodeURIComponent(T.orgSubject) + '">' + T.orgMail + '</a>');
-    if (c.phone) out.push('<a class="sl-btn d" href="tel:' + esc(String(c.phone).replace(/[^\d+]/g, '')) + '">' + esc(c.phone) + '</a>');
-    box.innerHTML = out.join('');
-    if (!out.length) box.closest('.sl-org').style.gridTemplateColumns = '1fr';
+    // "Write to us" opens the contact window (see the window below)
+    box.innerHTML = '<button type="button" class="sl-btn g" data-contact>' + T.orgMail + '</button>';
   } catch { box.remove(); }
 })();
+
+// Questions and answers: only one is open at a time (opening a second one closes the first)
+document.addEventListener('toggle', (e) => {
+  const d = e.target;
+  if (!d.matches || !d.matches('#faq details') || !d.open) return;
+  document.querySelectorAll('#faq details[open]').forEach((o) => { if (o !== d) o.open = false; });
+}, true);
+
+// The contact window: a name, a phone, an email and a few words; sent to POST /api/leagues/contact-request.
+function openContact() {
+  if (document.getElementById('contact-modal')) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'sl-modal';
+  wrap.id = 'contact-modal';
+  wrap.innerHTML = '<div class="sl-modal-box" role="dialog" aria-modal="true" aria-labelledby="contact-title">' +
+    '<button type="button" class="sl-modal-x" data-contact-close aria-label="' + esc(T.fClose) + '">&times;</button>' +
+    '<div id="contact-body">' +
+    '<h3 id="contact-title">' + esc(T.contactTitle) + '</h3><p>' + esc(T.contactIntro) + '</p>' +
+    '<form id="contact-form" novalidate>' +
+    '<label class="sl-field"><span>' + esc(T.fName) + '</span><input type="text" name="name" maxlength="100" autocomplete="name" required></label>' +
+    '<label class="sl-field"><span>' + esc(T.fPhone) + ' <i>(' + esc(T.fOptional) + ')</i></span><input type="tel" name="phone" maxlength="40" autocomplete="tel" inputmode="tel"></label>' +
+    '<label class="sl-field"><span>' + esc(T.fEmail) + '</span><input type="email" name="email" maxlength="120" autocomplete="email" required></label>' +
+    '<label class="sl-field"><span>' + esc(T.fInfo) + ' <i>(' + esc(T.fOptional) + ')</i></span><textarea name="message" maxlength="2000" placeholder="' + esc(T.fInfoHint) + '"></textarea></label>' +
+    '<div class="sl-hp" aria-hidden="true"><input type="text" name="website" tabindex="-1" autocomplete="off"></div>' +
+    '<div class="sl-form-error" id="contact-error" role="alert"></div>' +
+    '<button type="submit" class="sl-btn g sl-send">' + esc(T.fSend) + '</button>' +
+    '</form></div></div>';
+  document.body.appendChild(wrap);
+  document.body.style.overflow = 'hidden';
+  const form = wrap.querySelector('#contact-form');
+  const errorEl = wrap.querySelector('#contact-error');
+  const close = () => { wrap.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('[data-contact-close]')) close(); });
+  const mark = (name) => { const el = form.elements[name]; if (el) { el.closest('.sl-field').classList.add('bad'); el.focus(); } };
+  form.addEventListener('input', (e) => { const f = e.target.closest('.sl-field'); if (f) f.classList.remove('bad'); errorEl.textContent = ''; });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const v = (n) => form.elements[n].value.trim();
+    errorEl.textContent = '';
+    form.querySelectorAll('.bad').forEach((f) => f.classList.remove('bad'));
+    if (!v('name')) { errorEl.textContent = T.errName; mark('name'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v('email'))) { errorEl.textContent = T.errEmail; mark('email'); return; }
+    if (v('phone') && !/^[0-9+()\-./\s]{5,40}$/.test(v('phone'))) { errorEl.textContent = T.errPhone; mark('phone'); return; }
+    const send = form.querySelector('.sl-send');
+    send.disabled = true; send.textContent = T.fSending;
+    try {
+      const res = await fetch('/api/leagues/contact-request', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: v('name'), phone: v('phone'), email: v('email'), message: v('message'), website: v('website'), lang: LANG }),
+      });
+      if (res.status === 429) throw new Error('many');
+      if (!res.ok) throw new Error('fail');
+      wrap.querySelector('#contact-body').innerHTML = '<div class="sl-modal-ok"><h3>' + esc(T.fOkTitle) + '</h3><p>' + esc(T.fOkText) + '</p><button type="button" class="sl-btn d" data-contact-close style="width:100%">' + esc(T.fClose) + '</button></div>';
+    } catch (err) {
+      errorEl.textContent = err.message === 'many' ? T.errMany : T.errFail;
+      send.disabled = false; send.textContent = T.fSend;
+    }
+  });
+  form.elements.name.focus();
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-contact]')) openContact(); });
 
 // the "Schedule ↓" button of the city card: scrolls down to the schedule of the city (under the sticky header)
 document.addEventListener('click', (e) => {
@@ -638,7 +718,7 @@ document.getElementById('q').addEventListener('input', (e) => { q = fold(e.targe
     const running = cities.filter((c) => c.status === 'ACTIVE').length;
     statsEl.className = 'home-mine-grid sl-block';
     statsEl.innerHTML = tile(T.kCities, cities.length, T.ofCities, T.withLeague.replace('{n}', running)) +
-      tile(T.kPlayers, sum('players'), T.ofPlayers, inCities(cities.filter((c) => c.players > 0).length)) +
+      tile(T.kPlayers, sum('activePlayers'), T.ofPlayers, inCities(cities.filter((c) => c.activePlayers > 0).length)) +
       tile(T.kTours, sum('tournamentsPlayed'), T.ofTours, inCities(cities.filter((c) => c.tournamentsPlayed > 0).length));
     statsEl.hidden = false;
   }
