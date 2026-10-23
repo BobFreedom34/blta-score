@@ -238,7 +238,7 @@ function monthRange(startIso, endIso) {
 // All seasons in date order: finished ones greyed out, the running one highlighted, the coming ones outlined.
 function timelineHtml(d) {
   const seasons = [...(d.seasons || [])].filter((s) => s.kind !== 'TOURNAMENT').sort((a, b) => String(a.startDate || '9999').localeCompare(String(b.startDate || '9999')));
-  if (seasons.length < 2) return '';
+  if (!seasons.length) return ''; // one season is enough: a new city has just one
   const today = new Date().toISOString().slice(0, 10);
   const label = { past: t('home.tlPast'), now: t('home.tlNow'), future: t('home.tlFuture') };
   const cards = seasons.map((s) => {
