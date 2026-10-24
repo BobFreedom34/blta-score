@@ -30,13 +30,30 @@ function deleteFile(url) {
   fs.unlink(path.join(DIR, path.basename(url)), () => { /* fine if it is already gone */ });
 }
 
+// The old addresses of this site (score.blta.sk, the onrender.com one, and whatever REDIRECT_HOSTS lists): a slide that links to a page of the site by
+// one of them is stored as the plain path (/match/…), so it follows the site wherever it lives (blta.sk, slta.sk/<city>) and never breaks again.
+const OLD_HOSTS = new Set(['score.blta.sk', 'www.score.blta.sk', 'blta-score.onrender.com',
+  ...String(process.env.REDIRECT_HOSTS || '').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean)]);
+function ownPath(link) {
+  const m = /^https?:\/\/([^/?#]+)(.*)$/i.exec(link || '');
+  if (!m || !OLD_HOSTS.has(m[1].toLowerCase().split(':')[0])) return link;
+  const rest = m[2] || '';
+  return rest.startsWith('/') ? rest : `/${rest}`;
+}
+
 // A link is a page of the site (/players) or a full address; anything else (javascript:…) is refused.
 function cleanLink(raw) {
   const link = typeof raw === 'string' ? raw.trim() : '';
   if (link.length > 500) return { error: 'The link is too long' };
   if (link && !/^(\/(?!\/)|https?:\/\/)/.test(link)) return { error: 'The link must start with / or https://' };
-  return { link };
+  return { link: ownPath(link) };
 }
+
+// The slides made before: a link by an old address of the site becomes the plain path (every start; nothing to do once none is left)
+db.prepare("SELECT id, link FROM carousel_slides WHERE link LIKE 'http%'").all().forEach((r) => {
+  const fixed = ownPath(r.link);
+  if (fixed !== r.link) db.prepare('UPDATE carousel_slides SET link = ? WHERE id = ?').run(fixed, r.id);
+});
 
 function cleanText(raw, max, name) {
   const v = typeof raw === 'string' ? raw.trim() : '';

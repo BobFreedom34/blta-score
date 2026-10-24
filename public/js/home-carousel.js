@@ -6,6 +6,15 @@
   if (!host) return;
   const AUTOPLAY_MS = 5500;
 
+  // a slide saved with an old address of the site (score.blta.sk …) leads to the same page of THIS site: the plain path (the page then adds the
+  // prefix of the city and the Slovak or English address by itself)
+  const OLD_HOSTS = ['score.blta.sk', 'www.score.blta.sk', 'blta-score.onrender.com'];
+  function linkOf(link) {
+    const m = /^https?:\/\/([^/?#]+)(.*)$/i.exec(link || '');
+    if (!m || !OLD_HOSTS.includes(m[1].toLowerCase().split(':')[0])) return link;
+    return m[2].startsWith('/') ? m[2] : `/${m[2]}`;
+  }
+
   function slideHtml(s, index) {
     const en = currentLang === 'en';
     const caption = (en && s.captionEn) ? s.captionEn : s.captionSk;
@@ -14,8 +23,9 @@
     // phones (up to 700px wide, where the slide is 16:9) get the slide's own mobile picture when it has one
     const picture = s.mobileImageUrl ? `<picture><source media="(max-width: 700px)" srcset="${escapeHtml(s.mobileImageUrl)}">${img}</picture>` : img;
     const inner = `${picture}${caption || subtext ? `<span class="hc-caption">${caption ? `<b>${escapeHtml(caption)}</b>` : ''}${subtext ? `<small>${escapeHtml(subtext)}</small>` : ''}</span>` : ''}`;
-    return s.link
-      ? `<a class="hc-slide" href="${escapeHtml(s.link)}"${/^https?:/.test(s.link) ? ' target="_blank" rel="noopener"' : ''}>${inner}</a>`
+    const link = linkOf(s.link);
+    return link
+      ? `<a class="hc-slide" href="${escapeHtml(link)}"${/^https?:/.test(link) ? ' target="_blank" rel="noopener"' : ''}>${inner}</a>`
       : `<div class="hc-slide">${inner}</div>`;
   }
 
