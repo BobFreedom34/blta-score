@@ -235,6 +235,22 @@ function monthRange(startIso, endIso) {
   return `${left} – ${cap(monthShort(b))} ${b.getFullYear()}`;
 }
 
+// A tournament lasts days, not months: "27.–28. 10. 2026", "30. 10. – 2. 11. 2026", one day "27. 10. 2026" (English: "27–28 Oct 2026").
+function dayRange(startIso, endIso) {
+  const a = new Date(`${startIso}T12:00:00`);
+  const b = new Date(`${endIso || startIso}T12:00:00`);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return '';
+  const en = currentLang === 'en';
+  const one = (d, withMonth, withYear) => (en
+    ? `${d.getDate()}${withMonth ? ` ${monthShort(d)}` : ''}${withYear ? ` ${d.getFullYear()}` : ''}`
+    : `${d.getDate()}.${withMonth ? ` ${d.getMonth() + 1}.` : ''}${withYear ? ` ${d.getFullYear()}` : ''}`);
+  if (a.getTime() === b.getTime()) return one(a, true, true);
+  const sameMonth = a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+  const sameYear = a.getFullYear() === b.getFullYear();
+  const dash = sameMonth ? '–' : ' – ';
+  return `${one(a, !sameMonth, !sameYear)}${dash}${one(b, true, true)}`;
+}
+
 // The league seasons AND the tournaments in date order, each tagged as one or the other: finished ones greyed out, the running one highlighted,
 // the coming ones outlined.
 function kindOf(s) {
@@ -242,9 +258,22 @@ function kindOf(s) {
   return { cls: 'tour', label: t(s.playType === 'DOUBLES' ? 'home.kindDoubles' : 'home.kindTournament') };
 }
 
+// which cards the strip shows: all of them, only the leagues, or only the tournaments (the chips above it; only when there are both kinds)
+let stripFilter = 'ALL';
+let stripFilterChanged = false; // the next drawing centres the running card again instead of keeping the scroll position
+
 function timelineHtml(d) {
-  const seasons = [...(d.seasons || [])].sort((a, b) => String(a.startDate || '9999').localeCompare(String(b.startDate || '9999')));
-  if (!seasons.length) return ''; // one season is enough: a new city has just one
+  const everything = [...(d.seasons || [])].sort((a, b) => String(a.startDate || '9999').localeCompare(String(b.startDate || '9999')));
+  if (!everything.length) return ''; // one season is enough: a new city has just one
+  const leagueCount = everything.filter((s) => s.kind !== 'TOURNAMENT').length;
+  const tourCount = everything.length - leagueCount;
+  const filterable = leagueCount > 0 && tourCount > 0;
+  if (!filterable) stripFilter = 'ALL';
+  const seasons = everything.filter((s) => stripFilter === 'ALL' || (stripFilter === 'TOURNAMENT') === (s.kind === 'TOURNAMENT'));
+  const chip = (key, text, count) => `<button type="button" class="${stripFilter === key ? 'active' : ''}" data-strip="${key}">${escapeHtml(text)} · ${count}</button>`;
+  const filterHtml = filterable
+    ? `<div class="home-tl-filter" id="home-tl-filter">${chip('ALL', t('home.filterAll'), everything.length)}${chip('LEAGUE', t('home.filterLeagues'), leagueCount)}${chip('TOURNAMENT', t('home.filterTournaments'), tourCount)}</div>`
+    : '';
   const today = new Date().toISOString().slice(0, 10);
   const label = { past: t('home.tlPast'), now: t('home.tlNow'), future: t('home.tlFuture') };
   const cards = seasons.map((s) => {
@@ -256,26 +285,27 @@ function timelineHtml(d) {
     }
     // every season has its own page (/season/<name>); an upcoming one without groups yet shows its empty tabs
     const href = `/${s.kind === 'TOURNAMENT' ? 'tournament' : 'season'}/${encodeURIComponent(s.slug)}`;
-    const range = s.startDate && s.endDate ? monthRange(s.startDate, s.endDate) : '';
+    // a league season runs for months, a tournament for days
+    const range = s.startDate && s.endDate ? (s.kind === 'TOURNAMENT' ? dayRange(s.startDate, s.endDate) : monthRange(s.startDate, s.endDate)) : '';
     // the cover photo of the season (its wide hero picture), when it has one
     const cover = s.heroUrl || s.heroMobileUrl;
     const inner = `
-      <div class="home-tl-body${cover ? ' has-cover' : ''}${s.logoUrl ? ' has-logo' : ''}">
+      <div class="home-tl-body${cover ? ' has-cover' : ''}">
         ${cover ? `<img class="home-tl-cover" src="${escapeHtml(cover)}" alt="" loading="lazy">` : ''}
-        ${s.logoUrl ? `<img class="home-tl-logo" src="${escapeHtml(s.logoUrl)}" alt="" loading="lazy">` : ''}
-        <div class="home-tl-tags"><span class="home-tl-chip">${state === 'now' ? '<i></i>' : ''}${escapeHtml(label[state])}</span><span class="home-tl-kind ${kindOf(s).cls}">${escapeHtml(kindOf(s).label)}</span></div>
+        <span class="home-tl-chip">${state === 'now' ? '<i></i>' : ''}${escapeHtml(label[state])}</span>
         <div class="home-tl-name">${escapeHtml(s.name)}</div>
         <div class="home-tl-range">${escapeHtml(range)}</div>
         ${state === 'now' && !s.registrationOpen ? `<span class="home-tl-reg" role="img" title="${escapeHtml(t('home.seasonInfo'))}" aria-label="${escapeHtml(t('home.seasonInfo'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span>` : ''}
         ${s.registrationOpen && state !== 'past' ? `<span class="home-tl-reg" role="img" title="${escapeHtml(t('home.tlRegOpen'))}" aria-label="${escapeHtml(t('home.tlRegOpen'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M19 5v6M16 8h6"/></svg></span>` : ''}
-      </div>`;
+      </div>
+      <div class="home-tl-type">${escapeHtml(kindOf(s).label)}</div>`;
     // the running season: the elapsed part of the line is a light beam (see .home-tl-beam)
     const beam = state === 'now' && elapsed > 0 ? '<span class="home-tl-beam"><i></i></span>' : '';
     return href
       ? `<a class="home-tl ${state}" style="--p:${elapsed.toFixed(1)}%" href="${href}"${state === 'now' ? ' data-current="1"' : ''}>${beam}${inner}</a>`
       : `<div class="home-tl ${state}" style="--p:${elapsed.toFixed(1)}%">${beam}${inner}</div>`;
   }).join('');
-  return `<div class="home-tl-wrap" id="home-tl-wrap">
+  return `${filterHtml}<div class="home-tl-wrap" id="home-tl-wrap">
     <button type="button" class="home-tl-nav prev" aria-label="←">‹</button>
     <div class="home-timeline" id="home-timeline" aria-label="${escapeHtml(t('home.timeline'))}">${cards}</div>
     <button type="button" class="home-tl-nav next" aria-label="→">›</button>
@@ -531,7 +561,8 @@ function sub(d) {
 function renderHome() {
   const d = homeData;
   const oldRow = document.getElementById('home-timeline');
-  const keepLeft = oldRow ? oldRow.scrollLeft : undefined;
+  const keepLeft = oldRow && !stripFilterChanged ? oldRow.scrollLeft : undefined;
+  stripFilterChanged = false;
   document.getElementById('home-sub').innerHTML = sub(d);
   const stateEl = document.getElementById('home-state');
   if (d.season) {
@@ -568,6 +599,9 @@ function renderHome() {
     ${inviteShellHtml(d)}
     <section class="home-sec home-partners" id="home-partners" hidden></section>`;
   initTimelineScroll(keepLeft);
+  document.querySelectorAll('#home-tl-filter [data-strip]').forEach((btn) => {
+    btn.addEventListener('click', () => { stripFilter = btn.dataset.strip; stripFilterChanged = true; renderHome(); });
+  });
   loadPom();
   loadInvite();
   loadSponsorStrip(document.getElementById('home-partners'));
