@@ -5274,8 +5274,9 @@ body.rv-dragging, body.rv-dragging * { cursor: grabbing !important; user-select:
 }
 
 /* ---------- Sponsors: a black band with the "Partners" and their logos on ONE line (the home page, a season page, the national page) ---------- */
-.sp-box { background: #000; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius); padding: 16px 28px 18px; }
-.sp-title { margin: 0 0 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #8b8f98; }
+.sp-box { background: #000; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius); padding: 20px 28px; }
+/* the heading is the one of the other sections of the page (20px, bold, capitals, white) */
+.sp-title { margin: 0 0 14px; font-size: 20px; line-height: 1.2; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
 /* centred while the logos fit; when there are more than fit, the line scrolls sideways from its start */
 .sp-strip { display: flex; flex-wrap: nowrap; align-items: center; gap: 44px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .sp-strip::-webkit-scrollbar { display: none; }
@@ -5285,4 +5286,4 @@ body.rv-dragging, body.rv-dragging * { cursor: grabbing !important; user-select:
 a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .sp-item img { display: block; max-width: 160px; max-height: 48px; width: auto; height: auto; object-fit: contain; }
 .sv-partners { margin-top: 56px; }
-@media (max-width: 700px) { .sp-box { padding: 14px 18px 16px; } .sp-strip { gap: 32px; } }
+@media (max-width: 700px) { .sp-box { padding: 16px 18px; } .sp-strip { gap: 32px; } }

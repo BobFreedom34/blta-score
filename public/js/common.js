@@ -3558,7 +3558,7 @@ async function loadSponsorStrip(el, query = '') {
       ? `<a class="sp-item" href="${escapeHtml(s.link)}" target="_blank" rel="sponsored noopener noreferrer" data-sponsor="${s.id}" title="${escapeHtml(s.name)}">${inner}</a>`
       : `<span class="sp-item" title="${escapeHtml(s.name)}">${inner}</span>`;
   };
-  el.innerHTML = `<div class="sp-box"><h2 class="sp-title">${escapeHtml(t('sponsors.title'))}</h2><div class="sp-strip">${list.map(item).join('')}</div></div>`;
+  el.innerHTML = `<h2 class="sp-title">${escapeHtml(t('sponsors.title'))}</h2><div class="sp-box"><div class="sp-strip">${list.map(item).join('')}</div></div>`;
   el.hidden = false;
   el.addEventListener('click', (e) => {
     const a = e.target.closest('[data-sponsor]');
