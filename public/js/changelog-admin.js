@@ -66,7 +66,7 @@
   function cardHtml(e) {
     const [label, color] = KIND[e.kind] || [e.kind, 'var(--gray)'];
     const title = e.matchToken && e.kind !== 'DELETED'
-      ? `<a href="/match/${encodeURIComponent(e.matchToken)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">${escapeHtml(e.title)}</a>`
+      ? `<a data-public href="/match/${encodeURIComponent(e.matchToken)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">${escapeHtml(e.title)}</a>`
       : escapeHtml(e.title);
     return `
       <div class="card" style="margin-bottom:10px">

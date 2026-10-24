@@ -235,9 +235,15 @@ function monthRange(startIso, endIso) {
   return `${left} – ${cap(monthShort(b))} ${b.getFullYear()}`;
 }
 
-// All seasons in date order: finished ones greyed out, the running one highlighted, the coming ones outlined.
+// The league seasons AND the tournaments in date order, each tagged as one or the other: finished ones greyed out, the running one highlighted,
+// the coming ones outlined.
+function kindOf(s) {
+  if (s.kind !== 'TOURNAMENT') return { cls: 'league', label: t('home.kindLeague') };
+  return { cls: 'tour', label: t(s.playType === 'DOUBLES' ? 'home.kindDoubles' : 'home.kindTournament') };
+}
+
 function timelineHtml(d) {
-  const seasons = [...(d.seasons || [])].filter((s) => s.kind !== 'TOURNAMENT').sort((a, b) => String(a.startDate || '9999').localeCompare(String(b.startDate || '9999')));
+  const seasons = [...(d.seasons || [])].sort((a, b) => String(a.startDate || '9999').localeCompare(String(b.startDate || '9999')));
   if (!seasons.length) return ''; // one season is enough: a new city has just one
   const today = new Date().toISOString().slice(0, 10);
   const label = { past: t('home.tlPast'), now: t('home.tlNow'), future: t('home.tlFuture') };
@@ -254,10 +260,10 @@ function timelineHtml(d) {
     // the cover photo of the season (its wide hero picture), when it has one
     const cover = s.heroUrl || s.heroMobileUrl;
     const inner = `
-      <div class="home-tl-body${cover ? ' has-cover' : ''}">
+      <div class="home-tl-body${cover ? ' has-cover' : ''}${s.logoUrl ? ' has-logo' : ''}">
         ${cover ? `<img class="home-tl-cover" src="${escapeHtml(cover)}" alt="" loading="lazy">` : ''}
         ${s.logoUrl ? `<img class="home-tl-logo" src="${escapeHtml(s.logoUrl)}" alt="" loading="lazy">` : ''}
-        <span class="home-tl-chip">${state === 'now' ? '<i></i>' : ''}${escapeHtml(label[state])}</span>
+        <div class="home-tl-tags"><span class="home-tl-chip">${state === 'now' ? '<i></i>' : ''}${escapeHtml(label[state])}</span><span class="home-tl-kind ${kindOf(s).cls}">${escapeHtml(kindOf(s).label)}</span></div>
         <div class="home-tl-name">${escapeHtml(s.name)}</div>
         <div class="home-tl-range">${escapeHtml(range)}</div>
         ${state === 'now' && !s.registrationOpen ? `<span class="home-tl-reg" role="img" title="${escapeHtml(t('home.seasonInfo'))}" aria-label="${escapeHtml(t('home.seasonInfo'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span>` : ''}
@@ -548,7 +554,7 @@ function renderHome() {
   rootEl.innerHTML = `
     ${mineHtml(d)}
     <section class="home-current">
-      ${d.season ? secTitle(t('home.current'), d.season.name, '/harmonogram', t('home.fullSchedule')) : ''}
+      ${d.season || (d.seasons || []).length ? secTitle(t('home.current'), d.season ? d.season.name : '', '/harmonogram', t('home.fullSchedule')) : ''}
       ${timelineHtml(d)}
       ${progressHtml(d)}
       ${d.season ? statsHtml(d) : ''}

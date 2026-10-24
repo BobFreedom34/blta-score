@@ -502,6 +502,8 @@ const CONTACT_FIELDS = [
 
 async function loadContactCard() {
   const card = document.getElementById('contact-card');
+  // the contact details of the whole site: kept by the super admin only (the server refuses a city admin), so he is not shown the form
+  try { const me = await api('/admin/session'); if (me.role === 'CITY') { card.remove(); return; } } catch { /* shown as before */ }
   let c;
   try { c = await api('/contact'); } catch (err) { card.textContent = err.message; return; }
   card.innerHTML = `

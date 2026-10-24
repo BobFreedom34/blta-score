@@ -74,7 +74,7 @@
 
   function render() {
     host.innerHTML = `
-      <p style="color:var(--gray-dim);margin:0 0 14px">Changes show on <a href="/propozicie" target="_blank" style="text-decoration:underline;color:var(--orange)">/propozicie</a> as soon as you press Save. The buttons at the top of the page follow the sections, in this order.</p>
+      <p style="color:var(--gray-dim);margin:0 0 14px">Changes show on <a data-public href="/propozicie" target="_blank" style="text-decoration:underline;color:var(--orange)">/propozicie</a> as soon as you press Save. The buttons at the top of the page follow the sections, in this order.</p>
       ${sections.map(cardHtml).join('') || '<div class="card" style="color:var(--gray)">No sections yet.</div>'}
       <div class="card" style="margin-top:20px">
         <h3 style="margin-top:0">Add a section</h3>

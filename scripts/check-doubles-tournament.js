@@ -293,6 +293,9 @@ test('the pages carry the pieces: the partner field of the form, the pairs of th
   assert.ok(form.includes('sv-reg-partner') && form.includes('partner'), 'season.js: the partner field');
   const drawJs = read('js/season-draw.js');
   ['dbl-add', 'dbl-from-regs', 'dbl-remove', 'registrationId'].forEach((x) => assert.ok(drawJs.includes(x), 'season-draw.js: ' + x));
+  // the strip of the home page lists tournaments too and says whether a card is a league or a tournament
+  const home = read('js/home.js');
+  assert.ok(home.includes('home-tl-kind') && !home.includes("filter((s) => s.kind !== 'TOURNAMENT').sort"), 'home.js: tournaments in the strip, each tagged');
   const admin = read('js/seasons-admin.js');
   ['season-playtype', 'data-playtype', 'Add pair'].forEach((x) => assert.ok(admin.includes(x), 'seasons-admin.js: ' + x));
   const i18n = read('js/i18n.js');

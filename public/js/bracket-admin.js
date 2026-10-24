@@ -270,7 +270,7 @@ function bracketRowHtml(b) {
             <div style="font-size:12px;color:var(--gray)">${b.size}-draw · ${escapeHtml(formatLabel(b.format))}</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
-            <a href="/bracket/${b.id}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
+            <a data-public href="/bracket/${b.id}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
             <button type="button" class="btn btn-sm btn-outline" data-action="rename">Edit</button>
             <button type="button" class="btn btn-sm btn-outline" data-action="manage">${openManagePanels.has(b.id) ? 'Hide slots' : 'Manage slots'}</button>
             <button type="button" class="btn btn-sm btn-danger" data-action="delete">Delete</button>
@@ -391,7 +391,7 @@ function nodeStatusText(node) {
   }
   if (node.match) {
     const scoreText = node.match.scoreSummary ? ` — ${escapeHtml(node.match.scoreSummary)}` : '';
-    return `${p1} vs ${p2} <span style="color:var(--gray-dim)">(${escapeHtml(node.match.status)}${scoreText})</span> <a href="/match/${node.match.token}" target="_blank" rel="noopener" style="text-decoration:underline">Open match</a>`;
+    return `${p1} vs ${p2} <span style="color:var(--gray-dim)">(${escapeHtml(node.match.status)}${scoreText})</span> <a data-public href="/match/${node.match.token}" target="_blank" rel="noopener" style="text-decoration:underline">Open match</a>`;
   }
   if (node.isManualResult) {
     const winnerName = node.winnerId === (node.player1 && node.player1.id) ? p1 : p2;

@@ -114,6 +114,26 @@ test('the lists of a city show its own data and the first city shows its own', a
   assert.ok(first.json.some((s) => s.name === 'Bratislava Jar 2027') && !first.json.some((s) => s.name === 'Kosice Jar 2027'), 'Bratislava is separate');
 });
 
+test('the Backend tells where the visitors of the city it works on find it, and its links to public pages use that', async () => {
+  // opened on blta.sk (a host that is not a national one) while the super admin works on Kosice: the public site is slta.sk/kosice
+  const pick = await local('POST', '/api/admin/acting-city', { leagueId: cityId }, superCookie);
+  assert.strictEqual(pick.status, 200);
+  assert.strictEqual(pick.json.acting.slug, 'kosice');
+  assert.strictEqual(pick.json.acting.publicBase, 'https://slta.sk/kosice');
+  // a city with a domain of its own is reached there
+  assert.strictEqual((await local('PATCH', `/api/leagues/${cityId}`, { domain: 'kosice.example.sk' }, superCookie)).status, 200);
+  const withDomain = await local('POST', '/api/admin/acting-city', { leagueId: cityId }, superCookie);
+  assert.strictEqual(withDomain.json.acting.publicBase, 'https://kosice.example.sk');
+  assert.strictEqual((await local('PATCH', `/api/leagues/${cityId}`, { domain: '' }, superCookie)).status, 200);
+  // the pieces of the pages: the links are marked, one listener puts the address on them
+  const read = (p) => fs.readFileSync(path.join(ROOT, 'public', p), 'utf8');
+  assert.ok(read('js/common.js').includes("a[data-public]") && read('js/common.js').includes('publicBase'));
+  // a city admin sees only the tabs of the Backend he may use, also at slta.sk/<city>/admin where the links carry the prefix of the city; the contact form of the whole site is not his
+  assert.ok(read('js/common.js').includes('const tabPath') && read('js/common.js').includes('SUPER_ONLY_TABS.includes(tabPath(a))'), 'the tabs are compared without the prefix of the city');
+  assert.ok(read('js/header-admin.js').includes("me.role === 'CITY'"), 'the contact card is for the super admin only');
+  ['seasons-admin', 'bracket-admin', 'season-draw', 'venues-admin'].forEach((f) => assert.ok(read(`js/${f}.js`).includes('data-public'), `${f}.js marks its links`));
+});
+
 test('the blog and the rules are the city\'s own', async () => {
   const kosice = await local('POST', '/api/admin/acting-city', { leagueId: cityId }, superCookie);
   const withCity = `${superCookie}; ${cookieOf(kosice)}`;

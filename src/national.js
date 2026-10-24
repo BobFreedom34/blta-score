@@ -21,6 +21,14 @@ function origin(req) {
   return `https://${host}`;
 }
 
+// The national site as a visitor reaches it (https://slta.sk) from ANY host, also from a city's own domain (blta.sk) where the Backend may be
+// open: the request's own host when it is a national one, else the first real national host. null when there is none (a developer's machine).
+function siteOrigin(req) {
+  if (isNationalHost(req)) return origin(req);
+  const real = [...HOSTS].find((h) => !h.startsWith('www.') && !h.endsWith('.localhost'));
+  return real ? `https://${real}` : null;
+}
+
 // where an address that is not the national page goes: the first city's own domain (the same path), else nowhere
 function cityOrigin() {
   const first = db.prepare('SELECT domain FROM leagues WHERE id = 1').get();
@@ -151,4 +159,4 @@ function unlock(req, res) {
   return res.redirect(302, home);
 }
 
-module.exports = { cityOf, isNationalHost, origin, cityOrigin, isAsset, pageLang, isLocked, hasPassword, setLock, hasAccess, loginPage, unlock };
+module.exports = { cityOf, isNationalHost, origin, siteOrigin, cityOrigin, isAsset, pageLang, isLocked, hasPassword, setLock, hasAccess, loginPage, unlock };

@@ -5321,3 +5321,11 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 /* the "looking for a partner" post on the looking-to-play board */
 .dbl-badge { background: var(--orange); color: var(--white); }
 .mode-switch button { white-space: normal; line-height: 1.2; }
+
+/* a card of the home page strip says whether it is a league or a tournament */
+.home-tl-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.home-tl-kind { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: var(--radius-sm); font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid var(--border-grey); color: #c3c7cf; }
+.home-tl-kind.tour { border-color: var(--yellow); color: var(--yellow); }
+.home-tl.past .home-tl-kind { opacity: 0.8; }
+.home-tl-body.has-logo .home-tl-tags { padding-right: 52px; } /* the logo sits in the top right corner of the card */
+.home-tl-body.has-cover.has-logo .home-tl-tags { padding-right: 0; } /* with a cover photo the logo is lower, over the photo edge */

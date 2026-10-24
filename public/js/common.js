@@ -3219,6 +3219,25 @@ if (/(^|\/)(admin|[a-z-]+-admin|login-history)\/?$/.test(location.pathname)) {
 // a city sees only the tabs of his city (the settings of the whole site are closed to him on the server too, see src/cityScope.js).
 const SUPER_ONLY_TABS = ['/badges-admin', '/leagues-admin', '/admins-admin', '/faq-admin', '/reservations-admin', '/changelog-admin', '/login-history'];
 let adminSessionInfo = null;
+// A link of the Backend to a PUBLIC page (data-public, the href is the plain path: /tournament/slug) has to open the site of the city the admin
+// works on: the Backend may be open on blta.sk while the city is Košice, whose pages are at slta.sk/kosice. The address is put on the link
+// just before it is used (hover, focus, touch, click, right click), so lists drawn at any time are covered and the status bar shows the true one.
+function fixPublicLink(e) {
+  const a = e.target && e.target.closest ? e.target.closest('a[data-public]') : null;
+  const base = adminSessionInfo && adminSessionInfo.acting && adminSessionInfo.acting.publicBase;
+  if (!a || !base) return;
+  if (!a.dataset.publicPath) a.dataset.publicPath = a.getAttribute('href') || '';
+  if (a.dataset.publicPath.startsWith('/')) a.href = base + a.dataset.publicPath;
+}
+['pointerover', 'pointerdown', 'focusin', 'click', 'auxclick', 'contextmenu'].forEach((type) => document.addEventListener(type, fixPublicLink, true));
+// At slta.sk/<city>/… the links of the tab bar carry the prefix of the city (/kosice/badges-admin): compared without it, so the tabs a city admin
+// may not use are hidden there too, and no tab is added twice.
+const tabPath = (a) => {
+  const href = a.getAttribute('href') || '';
+  const base = window.CITY_BASE || '';
+  return base && href.startsWith(`${base}/`) ? href.slice(base.length) : href;
+};
+const tabLink = (bar, path) => [...bar.querySelectorAll('a')].find((a) => tabPath(a) === path) || null;
 async function setUpAdminTabs() {
   const bars = document.querySelectorAll('.admin-tabs');
   if (!bars.length) return;
@@ -3226,11 +3245,11 @@ async function setUpAdminTabs() {
   const info = adminSessionInfo;
   bars.forEach((bar) => {
     if (info.role === 'CITY') {
-      bar.querySelectorAll('a.tab').forEach((a) => { if (SUPER_ONLY_TABS.includes(a.getAttribute('href'))) a.style.display = 'none'; });
+      bar.querySelectorAll('a.tab').forEach((a) => { if (SUPER_ONLY_TABS.includes(tabPath(a))) a.style.display = 'none'; });
     }
     // the window of the home page is written by every admin, for the city he works on
-    if (!bar.querySelector('a[href="/about-admin"]')) {
-      const rules = bar.querySelector('a[href="/rules-admin"]') || bar.querySelector('a[href="/seo-admin"]');
+    if (!tabLink(bar, '/about-admin')) {
+      const rules = tabLink(bar, '/rules-admin') || tabLink(bar, '/seo-admin');
       const link = document.createElement('a');
       link.href = '/about-admin';
       link.className = `tab${location.pathname.endsWith('/about-admin') ? ' active' : ''}`;
@@ -3238,16 +3257,16 @@ async function setUpAdminTabs() {
       if (rules) rules.after(link); else bar.appendChild(link);
     }
     // the sponsors and partners of a city (shown as a "Partners" strip on its pages)
-    if (!bar.querySelector('a[href="/sponsors-admin"]')) {
-      const after = bar.querySelector('a[href="/media-admin"]') || bar.querySelector('a[href="/carousel-admin"]');
+    if (!tabLink(bar, '/sponsors-admin')) {
+      const after = tabLink(bar, '/media-admin') || tabLink(bar, '/carousel-admin');
       const link = document.createElement('a');
       link.href = '/sponsors-admin';
       link.className = `tab${location.pathname.endsWith('/sponsors-admin') ? ' active' : ''}`;
       link.textContent = 'Sponsors';
       if (after) after.after(link); else bar.appendChild(link);
     }
-    if (!bar.querySelector('a[href="/media-admin"]')) {
-      const after = bar.querySelector('a[href="/about-admin"]') || bar.querySelector('a[href="/rules-admin"]');
+    if (!tabLink(bar, '/media-admin')) {
+      const after = tabLink(bar, '/about-admin') || tabLink(bar, '/rules-admin');
       const link = document.createElement('a');
       link.href = '/media-admin';
       link.className = `tab${location.pathname.endsWith('/media-admin') ? ' active' : ''}`;
@@ -3255,16 +3274,16 @@ async function setUpAdminTabs() {
       if (after) after.after(link); else bar.appendChild(link);
     }
     // the questions and answers of slta.sk belong to the whole site
-    if (info.role === 'SUPER' && !bar.querySelector('a[href="/faq-admin"]')) {
-      const after = bar.querySelector('a[href="/media-admin"]') || bar.querySelector('a[href="/about-admin"]');
+    if (info.role === 'SUPER' && !tabLink(bar, '/faq-admin')) {
+      const after = tabLink(bar, '/media-admin') || tabLink(bar, '/about-admin');
       const link = document.createElement('a');
       link.href = '/faq-admin';
       link.className = `tab${location.pathname.endsWith('/faq-admin') ? ' active' : ''}`;
       link.textContent = 'Q&A';
       if (after) after.after(link); else bar.appendChild(link);
     }
-    if (info.role === 'SUPER' && !bar.querySelector('a[href="/admins-admin"]')) {
-      const cities = bar.querySelector('a[href="/leagues-admin"]');
+    if (info.role === 'SUPER' && !tabLink(bar, '/admins-admin')) {
+      const cities = tabLink(bar, '/leagues-admin');
       const link = document.createElement('a');
       link.href = '/admins-admin';
       link.className = `tab${location.pathname.endsWith('/admins-admin') ? ' active' : ''}`;

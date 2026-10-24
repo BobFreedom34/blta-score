@@ -50,7 +50,7 @@ function renderAdmin() {
         <input type="text" id="venue-name" maxlength="120" placeholder="e.g. NTC Bratislava" required style="flex:1;min-width:200px;${inputStyle}">
         <button type="submit" class="btn btn-primary">Add venue</button>
       </form>
-      <p style="font-size:12px;color:var(--gray-dim);margin:8px 0 0">Just the name is enough to start — then use Edit details to add the address, contact, courts and more. Venues show up on the public <a href="/courts" target="_blank" rel="noopener" style="text-decoration:underline">Courts page</a> and as suggestions when typing a match location.</p>
+      <p style="font-size:12px;color:var(--gray-dim);margin:8px 0 0">Just the name is enough to start — then use Edit details to add the address, contact, courts and more. Venues show up on the public <a data-public href="/courts" target="_blank" rel="noopener" style="text-decoration:underline">Courts page</a> and as suggestions when typing a match location.</p>
       <div id="add-venue-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
     </div>
     <div class="card">
@@ -98,7 +98,7 @@ function rowHtml(v, index) {
         <div style="font-size:12px;color:var(--gray)">${escapeHtml(summaryText(v))}</div>
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
-        <a href="/courts/${encodeURIComponent(v.slug)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
+        <a data-public href="/courts/${encodeURIComponent(v.slug)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
         <button type="button" class="btn btn-sm btn-outline" data-action="edit">Edit details</button>
         <button type="button" class="btn btn-sm btn-danger" data-action="delete">Delete</button>
       </div>

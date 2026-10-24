@@ -149,7 +149,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
     }
     if (c.brackets.length) {
       parts.push(`<div style="margin:6px 0"><div style="font-weight:700;font-size:13px">Pavúky <span style="font-weight:400;color:var(--gray)">${c.brackets.length}</span></div>${c.brackets.map((b) => `
-        <div style="font-size:13px;padding:2px 0"><a href="/bracket/${b.id}" target="_blank" rel="noopener" style="font-weight:700">${escapeHtml(b.name.replace(/^.*? — (Elite|Next Gen|Novice) — /, ''))}</a> <span style="color:var(--gray);font-size:12px">${b.size}-pavúk · ${b.finished}/${b.matches} zápasov odohraných · ${escapeHtml(t(`format.${b.format}.label`))}</span></div>`).join('')}</div>`);
+        <div style="font-size:13px;padding:2px 0"><a data-public href="/bracket/${b.id}" target="_blank" rel="noopener" style="font-weight:700">${escapeHtml(b.name.replace(/^.*? — (Elite|Next Gen|Novice) — /, ''))}</a> <span style="color:var(--gray);font-size:12px">${b.size}-pavúk · ${b.finished}/${b.matches} zápasov odohraných · ${escapeHtml(t(`format.${b.format}.label`))}</span></div>`).join('')}</div>`);
     } else if (s.format === 'GROUPS_BRACKET') {
       parts.push('<div style="font-size:13px;color:var(--gray);margin:6px 0">Pavúk ešte nie je vytvorený — vznikne z najlepších hráčov skupín.</div>');
     }
@@ -236,7 +236,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
             <input type="number" min="0" max="50" inputmode="numeric" class="sd-courts" value="${overview.courtCount || ''}" placeholder="0" style="width:64px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px;margin:0 6px">
           </label>
           <button type="button" class="btn btn-sm btn-outline" data-act="courts">Uložiť kurty</button>
-          <a href="/tournament/${encodeURIComponent(overview.slug)}#courts" target="_blank" rel="noopener" style="font-size:13px;font-weight:700">Harmonogram ›</a>
+          <a data-public href="/tournament/${encodeURIComponent(overview.slug)}#courts" target="_blank" rel="noopener" style="font-size:13px;font-weight:700">Harmonogram ›</a>
           <span class="sd-courts-note" style="font-size:12px;color:var(--gray)">${overview.courtCount ? Array.from({ length: Math.min(overview.courtCount, 6) }, (_, i) => `Kurt ${i + 1}`).join(', ') + (overview.courtCount > 6 ? ` … Kurt ${overview.courtCount}` : '') : 'Kurty zatiaľ nie sú nastavené'}</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:12px">${overview.categories.map(blockHtml).join('')}</div>

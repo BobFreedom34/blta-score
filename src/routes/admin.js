@@ -4,8 +4,16 @@ const auth = require('../auth');
 const backup = require('../backup');
 const courtIQBackfill = require('../courtIQBackfill');
 const leagues = require('../leagues');
+const national = require('../national');
 
 const router = express.Router();
+
+// where the visitors of a city find it: its own domain, else slta.sk/<its slug>; '' when that cannot be told (the Backend then keeps relative links)
+function publicBaseOf(req, city) {
+  if (city.domain) return `https://${city.domain}`;
+  const site = national.siteOrigin(req);
+  return site ? `${site}/${city.slug}` : '';
+}
 
 // Who is logged in as an admin: the super admin (all the cities; picks the one worked on) or the admin of one city
 function sessionInfo(req, actingId) {
@@ -15,7 +23,7 @@ function sessionInfo(req, actingId) {
   const out = {
     isAdmin: true,
     role: me.role,
-    acting: acting ? { id: acting.id, name: acting.name, slug: acting.slug, brandName: acting.brand_name || acting.name } : null,
+    acting: acting ? { id: acting.id, name: acting.name, slug: acting.slug, brandName: acting.brand_name || acting.name, publicBase: publicBaseOf(req, acting) } : null,
   };
   if (me.role === 'CITY') { out.name = me.name; out.email = me.email; }
   else out.cities = db.prepare('SELECT id, name, slug FROM leagues ORDER BY sort_order, name').all();
