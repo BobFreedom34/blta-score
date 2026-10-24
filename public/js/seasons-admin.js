@@ -82,6 +82,11 @@ function renderAdmin() {
     <div class="card" style="margin-bottom:20px">
       <h3 style="margin-top:0">Add a ${WORD}</h3>
       <form id="add-season-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        ${IS_TOURNAMENT ? `<label style="font-size:12px;font-weight:700">Typ turnaja
+          <select id="season-playtype" required style="display:block;margin-top:4px;${inputStyle}">
+            <option value="">— najprv vyber —</option><option value="SINGLES">Dvojhra</option><option value="DOUBLES">Štvorhra</option>
+          </select>
+        </label>` : ''}
         <label style="flex:1;min-width:220px;font-size:12px;font-weight:700">Name
           <input type="text" id="season-name" maxlength="120" placeholder="${IS_TOURNAMENT ? 'e.g. Slávia Filozof Cup 2026' : 'e.g. Winter Opening Series 2027'}" required style="display:block;width:100%;margin-top:4px;${inputStyle}">
         </label>
@@ -106,6 +111,8 @@ function renderAdmin() {
     const errorEl = document.getElementById('add-season-error');
     errorEl.textContent = '';
     try {
+      // a tournament is singles or doubles, never both: chosen first (it cannot be changed afterwards)
+      if (IS_TOURNAMENT && !document.getElementById('season-playtype').value) throw new Error('Najprv vyber, či ide o dvojhru alebo o štvorhru.');
       const created = await api('/seasons', {
         method: 'POST',
         body: {
@@ -114,6 +121,7 @@ function renderAdmin() {
           endDate: document.getElementById('season-end').value || null,
           kind: KIND,
           venue: IS_TOURNAMENT ? document.getElementById('season-venue').value.trim() : '',
+          ...(IS_TOURNAMENT ? { playType: document.getElementById('season-playtype').value } : {}),
         },
       });
       e.target.reset();
@@ -265,16 +273,17 @@ function seasonCardHtml(s) {
   const input = (name, value, attrs = '') => '<input ' + (/type=/.test(attrs) ? '' : 'type="text" ') + 'data-field="' + name + '" value="' + escapeHtml(value == null ? '' : String(value)) + '" ' + attrs + '>';
   const active = cardTab.get(s.id) || 'info';
   return `
-    <details class="card season-admin-card sa-card" data-season="${s.id}"${openIds.has(s.id) ? ' open' : ''} style="margin-bottom:12px">
+    <details class="card season-admin-card sa-card" data-season="${s.id}" data-playtype="${s.playType || 'SINGLES'}"${openIds.has(s.id) ? ' open' : ''} style="margin-bottom:12px">
       <summary class="sa-sum">
         <svg class="sa-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         <span class="sa-name">${escapeHtml(s.name)}</span>
+        ${IS_TOURNAMENT ? `<span class="sa-chip future">${s.playType === 'DOUBLES' ? 'Štvorhra' : 'Dvojhra'}</span>` : ''}
         <span class="sa-dates">${escapeHtml(s.startDate && s.endDate ? `${fmtDate(s.startDate)} – ${fmtDate(s.endDate)}` : '')}</span>
         <span class="sa-chip ${seasonStatus(s)}">${STATUS_LABEL[seasonStatus(s)]}</span>
         <span class="sa-count">${IS_TOURNAMENT ? '' : `${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'} · `}${s.matchCount} ${s.matchCount === 1 ? 'match' : 'matches'}</span>
       </summary>
       <div class="sa-tabs" role="tablist">
-        ${CARD_TABS.map(([key, label]) => `<button type="button" class="sa-tab${key === active ? ' active' : ''}" data-tab="${key}" role="tab">${label}</button>`).join('')}
+        ${CARD_TABS.filter(([key]) => !(s.playType === 'DOUBLES' && key === 'assign')).map(([key, label]) => `<button type="button" class="sa-tab${key === active ? ' active' : ''}" data-tab="${key}" role="tab">${label}</button>`).join('')}
         <a class="sa-tab-link" href="/${IS_TOURNAMENT ? 'tournament' : 'season'}/${escapeHtml(s.slug)}" target="_blank" rel="noopener">${IS_TOURNAMENT ? 'Stránka turnaja' : 'Stránka sezóny'} ↗</a>
       </div>
       <div class="sa-body">
@@ -289,7 +298,10 @@ function seasonCardHtml(s) {
                 ${field('Začiatok', input('startDate', s.startDate || '', 'type="date"'))}
                 ${field('Koniec', input('endDate', s.endDate || '', 'type="date"'))}
                 ${IS_TOURNAMENT ? field('Miesto', input('venue', s.venue || '', 'maxlength="200" placeholder="Adresa alebo klub"'), 'sa-wide') : ''}
-                ${IS_TOURNAMENT ? `<div class="sa-field sa-wide">Kategórie
+                ${IS_TOURNAMENT && s.playType === 'DOUBLES' ? `<div class="sa-field sa-wide">Typ turnaja
+                  <div style="padding-top:6px">Štvorhra — turnaj dvojíc (typ sa po vytvorení nedá zmeniť)</div>
+                </div>` : ''}
+                ${IS_TOURNAMENT && s.playType !== 'DOUBLES' ? `<div class="sa-field sa-wide">Kategórie
                   <div class="sa-checks">${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}> ${label}</label>`).join('')}</div>
                 </div>` : ''}
               </div>
@@ -411,6 +423,7 @@ function profileCategory(raw) {
 
 function wireSeason(card) {
   const id = Number(card.dataset.season);
+  const isDoubles = card.dataset.playtype === 'DOUBLES'; // a doubles tournament is entered as pairs, with no categories
   const season = seasons.find((s) => s.id === id);
   const errorEl = card.querySelector('.season-error');
   const fail = (err) => { errorEl.textContent = err.message; };
@@ -558,19 +571,22 @@ function wireSeason(card) {
     const box = `display:block;margin-top:4px;${inputStyle}`;
     return `
       <form class="reg-add" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;padding:2px 0 6px">
-        <label style="flex:2;min-width:220px;font-size:12px;font-weight:700">Add a player
+        <label style="flex:2;min-width:220px;font-size:12px;font-weight:700">${isDoubles ? 'Add a pair — player' : 'Add a player'}
           <div class="autocomplete"><input type="text" data-ra="player" id="reg-player-${id}" placeholder="Start typing a name or surname…" autocomplete="off" style="${box};width:100%"><div class="autocomplete-list" id="reg-player-list-${id}"></div></div>
         </label>
-        <label style="font-size:12px;font-weight:700">Category
+        ${isDoubles ? `<label style="flex:2;min-width:220px;font-size:12px;font-weight:700">Partner
+          <input type="text" data-ra="partner" list="reg-partner-names-${id}" maxlength="80" placeholder="Name of the partner" autocomplete="off" style="${box};width:100%">
+          <datalist id="reg-partner-names-${id}">${players.map((p) => `<option value="${escapeHtml(p.name)}"></option>`).join('')}</datalist>
+        </label>` : `<label style="font-size:12px;font-weight:700">Category
           <select data-ra="category" style="${box}"><option value="">${IS_TOURNAMENT ? 'No category' : 'Category…'}</option>${categoryOptions('')}</select>
-        </label>
+        </label>`}
         <label style="flex:1;min-width:130px;font-size:12px;font-weight:700">Phone
           <input type="text" data-ra="phone" maxlength="20" placeholder="from the profile" style="${box};width:100%">
         </label>
         <label style="flex:1;min-width:170px;font-size:12px;font-weight:700">Email
           <input type="text" data-ra="email" maxlength="120" placeholder="from the profile" style="${box};width:100%">
         </label>
-        <button type="submit" class="btn btn-sm btn-primary">Add player</button>
+        <button type="submit" class="btn btn-sm btn-primary">${isDoubles ? 'Add pair' : 'Add player'}</button>
       </form>
       <div class="reg-add-hint" style="font-size:12px;color:var(--gray);min-height:16px;margin-bottom:8px"></div>`;
   }
@@ -587,7 +603,7 @@ function wireSeason(card) {
       chosen = byName(field('player').value) || null;
       field('phone').value = chosen && chosen.phone ? chosen.phone : '';
       field('email').value = chosen && chosen.email ? chosen.email : '';
-      field('category').value = chosen ? profileCategory(chosen.category) : '';
+      if (!isDoubles) field('category').value = chosen ? profileCategory(chosen.category) : '';
       if (!chosen) { say(''); return; }
       const missing = [chosen.phone ? '' : 'phone', chosen.email ? '' : 'email', IS_TOURNAMENT || profileCategory(chosen.category) ? '' : 'category'].filter(Boolean);
       say(missing.length ? `No ${missing.join(', ')} in the profile yet — fill ${missing.length === 1 ? 'it' : 'them'} in here (only this registration gets it).` : 'Phone, email and category are taken from the profile.');
@@ -596,7 +612,12 @@ function wireSeason(card) {
       e.preventDefault();
       if (!chosen) { say('Choose a player from the list.', true); return; }
       // a tournament entry may have no category: the empty choice is sent as it is; a league season takes the profile's when none is picked
-      const body = { playerId: chosen.id, category: IS_TOURNAMENT ? field('category').value : (field('category').value || undefined) };
+      const body = { playerId: chosen.id, category: isDoubles ? '' : (IS_TOURNAMENT ? field('category').value : (field('category').value || undefined)) };
+      if (isDoubles) {
+        const partner = field('partner').value.trim();
+        if (!partner) { say('Enter the partner of the pair.', true); return; }
+        body.partner = partner;
+      }
       if (field('phone').value.trim() !== (chosen.phone || '')) body.phone = field('phone').value;
       if (field('email').value.trim() !== (chosen.email || '')) body.email = field('email').value;
       try {
@@ -641,9 +662,11 @@ function wireSeason(card) {
         <div style="padding:10px 0;border-top:1px solid #eee" data-reg="${r.id}">
           <strong>${escapeHtml(r.name)}</strong>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:6px">
-            <label style="font-size:12px;font-weight:700">Category
+            ${isDoubles ? `<label style="flex:1;min-width:170px;font-size:12px;font-weight:700">Partner
+              <input type="text" data-re="partner" maxlength="80" value="${escapeHtml(r.partnerName || '')}" style="${box};width:100%">
+            </label>` : `<label style="font-size:12px;font-weight:700">Category
               <select data-re="category" style="${box}">${IS_TOURNAMENT ? `<option value="">No category</option>` : ''}${categoryOptions(r.category)}</select>
-            </label>
+            </label>`}
             <label style="flex:1;min-width:130px;font-size:12px;font-weight:700">Phone
               <input type="text" data-re="phone" maxlength="20" value="${escapeHtml(r.phone || '')}" style="${box};width:100%">
             </label>
@@ -671,9 +694,8 @@ function wireSeason(card) {
       regsList.innerHTML = payBarHtml(rows) + addPlayerFormHtml(players, rows) + (shown.length ? shown.map((r) => (r.id === editingReg ? regEditHtml(r) : `
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #eee" data-reg="${r.id}">
           <div style="flex:1;min-width:220px">
-            <strong>${escapeHtml(r.name)}</strong> <span class="sa-chip future">${escapeHtml(r.category ? catLabel(r.category) : 'No category')}</span>${r.playerId ? '' : ' <span style="font-size:11px;color:var(--gray)">new name</span>'}
+            <strong>${escapeHtml(r.name)}${isDoubles && r.partnerName ? ` / ${escapeHtml(r.partnerName)}` : ''}</strong> ${isDoubles ? '' : `<span class="sa-chip future">${escapeHtml(r.category ? catLabel(r.category) : 'No category')}</span>`}${r.playerId ? '' : ' <span style="font-size:11px;color:var(--gray)">new name</span>'}
             <div style="font-size:12px;color:var(--gray)">${r.phone || r.email ? `${escapeHtml(r.phone)} · <a href="mailto:${escapeHtml(r.email)}" style="color:var(--orange)">${escapeHtml(r.email)}</a>` : 'no contact details'} · ${escapeHtml(fmtDate(r.createdAt.slice(0, 10)))}</div>
-            ${r.partnerName ? `<div style="font-size:13px;margin-top:4px"><strong>Partner (štvorhra):</strong> ${escapeHtml(r.partnerName)}</div>` : ''}
             ${r.note ? `<div style="font-size:13px;margin-top:4px;white-space:pre-wrap"><strong>Note:</strong> ${escapeHtml(r.note)}</div>` : ''}
           </div>
           ${r.remindedAt ? `<span style="font-size:11px;color:var(--gray)">pripomenuté ${escapeHtml(fmtDate(r.remindedAt))}</span>` : ''}
@@ -731,7 +753,7 @@ function wireSeason(card) {
         await loadRegs();
       } else if (e.target.closest('[data-reg-save]')) {
         const val = (name) => row.querySelector(`[data-re="${name}"]`).value;
-        await api(`/seasons/registrations/${rid}`, { method: 'PATCH', body: { category: val('category'), phone: val('phone'), email: val('email'), note: val('note') } });
+        await api(`/seasons/registrations/${rid}`, { method: 'PATCH', body: { ...(isDoubles ? { partner: val('partner') } : { category: val('category') }), phone: val('phone'), email: val('email'), note: val('note') } });
         editingReg = null;
         toast('Registration saved');
         await loadRegs();

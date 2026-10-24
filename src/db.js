@@ -1095,7 +1095,6 @@ if (!headerItemColumns.includes('is_my_profile')) {
 if (!headerItemColumns.includes('highlight')) {
   db.exec('ALTER TABLE header_items ADD COLUMN highlight INTEGER NOT NULL DEFAULT 0');
 }
-// Once: the main menu item "Liga" becomes a green button (after that the switch in /header-admin owns it).
 // The doubles badges (counted from doubles matches only, see src/badgeEngine.js), added once. The app_flags row, not the badges, stops a re-add:
 // an admin who edits or deletes one keeps it so.
 if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'doubles_badges'").get()) {
@@ -1111,6 +1110,7 @@ if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'doubles_badges'").get()) {
   ].forEach((row, i) => add.run(...row, next + i));
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('doubles_badges')").run();
 }
+// Once: the main menu item "Liga" becomes a green button (after that the switch in /header-admin owns it).
 if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'menu_liga_green'").get()) {
   db.prepare("UPDATE header_items SET highlight = 1 WHERE parent_id IS NULL AND lower(label_sk) = 'liga'").run();
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_liga_green')").run();
@@ -1443,6 +1443,9 @@ const seasonInfoColumns = db.prepare('PRAGMA table_info(seasons)').all().map((c)
 // A season is a league season ('LEAGUE') or a tournament ('TOURNAMENT'): the same page, registration, groups, brackets, matches and
 // winners; a tournament also has a venue and the categories it is played in (comma list of ELITE, NEXT_GEN, NOVICE; empty = all).
 if (!seasonInfoColumns.includes('kind')) db.exec("ALTER TABLE seasons ADD COLUMN kind TEXT NOT NULL DEFAULT 'LEAGUE'");
+// What a tournament is played as, chosen when it is made and never mixed: 'SINGLES' (the categories Elite / Next Gen / Novice) or 'DOUBLES' (a
+// tournament of pairs, the category Štvorhra only). A league season is always SINGLES.
+if (!seasonInfoColumns.includes('play_type')) db.exec("ALTER TABLE seasons ADD COLUMN play_type TEXT NOT NULL DEFAULT 'SINGLES'");
 // the number of courts of a tournament ("Kurt 1" … "Kurt n"), 0 = not set; used by the schedule
 if (!seasonInfoColumns.includes('court_count')) db.exec('ALTER TABLE seasons ADD COLUMN court_count INTEGER NOT NULL DEFAULT 0');
 // the tournament's court schedule (see tournamentSchedule.js): length of a match, the playing day, the minimum rest of a player between two
@@ -1517,6 +1520,19 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_tournament_pairs_season ON tournament_pairs(season_id);
 `);
+
+// Once: tournaments that already hold doubles (pairs or a draw of the category DOUBLES) and no singles draw are doubles tournaments now.
+if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'tournament_play_type'").get()) {
+  db.exec(`
+    UPDATE seasons SET play_type = 'DOUBLES'
+    WHERE kind = 'TOURNAMENT'
+      AND (EXISTS (SELECT 1 FROM tournament_pairs p WHERE p.season_id = seasons.id)
+        OR EXISTS (SELECT 1 FROM brackets b WHERE b.season_id = seasons.id AND b.category = 'DOUBLES'))
+      AND NOT EXISTS (SELECT 1 FROM brackets b WHERE b.season_id = seasons.id AND b.category IN ('ELITE', 'NEXT_GEN', 'NOVICE'))
+      AND NOT EXISTS (SELECT 1 FROM season_groups g WHERE g.season_id = seasons.id AND g.category IN ('ELITE', 'NEXT_GEN', 'NOVICE'))
+  `);
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('tournament_play_type')").run();
+}
 
 // Tournaments and other events of the schedule page (/harmonogram). League seasons are not stored here — the page reads
 // them from the seasons table. categories: comma list of ELITE, NEXT_GEN, NOVICE.

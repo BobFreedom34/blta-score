@@ -138,8 +138,10 @@ function serializeSeason(s) {
     name: s.name,
     slug: s.slug,
     kind: s.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE',
+    // what a tournament is played as (chosen when it was made): singles in the categories, or doubles (Štvorhra) only
+    playType: s.kind === 'TOURNAMENT' && s.play_type === 'DOUBLES' ? 'DOUBLES' : 'SINGLES',
     venue: s.venue || '',
-    categories: parseCategories(s.categories),
+    categories: s.kind === 'TOURNAMENT' && s.play_type === 'DOUBLES' ? ['DOUBLES'] : parseCategories(s.categories),
     startDate: s.start_date,
     endDate: s.end_date,
     entryFee: s.entry_fee || '',
@@ -245,11 +247,14 @@ router.get('/by-slug/:slug', (req, res) => {
     FROM matches WHERE season_id = ? AND round IS NOT NULL AND COALESCE(stage, 'GROUP') = 'GROUP'
     GROUP BY round ORDER BY round
   `).all(season.id).map((r) => ({ round: r.round, total: r.total, finished: r.finished }));
+  const doublesTournament = tournamentDraw.isDoublesTournament(season);
   const registrations = db.prepare(`
-    SELECT r.name, r.category, r.paid, p.slug AS player_slug
+    SELECT r.name, r.category, r.paid, r.partner_name, p.slug AS player_slug
     FROM season_registrations r LEFT JOIN players p ON p.id = r.player_id
     WHERE r.season_id = ? ORDER BY r.created_at, r.id
-  `).all(season.id).map((r) => ({ name: r.name, category: r.category, paid: !!r.paid, slug: r.player_slug || null }));
+  `).all(season.id).map((r) => (doublesTournament
+    ? { name: r.partner_name ? `${r.name} / ${r.partner_name}` : r.name, category: r.category, paid: !!r.paid, slug: null } // a pair: no profile link
+    : { name: r.name, category: r.category, paid: !!r.paid, slug: r.player_slug || null }));
   res.json({ ...serializeSeason(season), rounds, registrations });
 });
 
@@ -289,6 +294,11 @@ router.post('/:id/registrations', async (req, res) => {
   if (season.kind !== 'TOURNAMENT' && !BLTA_CATEGORIES.includes(body.category)) return res.status(400).json({ code: 'BAD_CATEGORY', error: 'Choose a category' });
   const note = typeof body.note === 'string' ? body.note.replace(/\r\n/g, '\n').trim() : '';
   if (note.length > 500) return res.status(400).json({ code: 'BAD_NOTE', error: 'The note is too long (max 500 characters)' });
+  // a doubles tournament is entered as a pair: the partner is required (the pair is made from it); a singles tournament has no partner
+  const doublesTournament = tournamentDraw.isDoublesTournament(season);
+  const partner = doublesTournament && typeof body.partner === 'string' ? body.partner.replace(/\s+/g, ' ').trim() : '';
+  if (doublesTournament && (partner.length < 3 || partner.length > 80)) return res.status(400).json({ code: 'BAD_PARTNER', error: 'Enter the name of your partner' });
+  if (doublesTournament && nameMatch.key(partner) === nameMatch.key(typed)) return res.status(400).json({ code: 'BAD_PARTNER', error: 'Your partner has to be somebody else' });
 
   // who is this: a chosen existing player, a typed name that is one, or a new name
   const players = db.prepare('SELECT id, name FROM players').all();
@@ -315,11 +325,11 @@ router.post('/:id/registrations', async (req, res) => {
   const account = openAccount(req, res, player, { name, phone, email, leagueId: season.league_id });
   if (account.player) player = account.player;
 
-  // a tournament entry may name a partner for the doubles: the organiser makes the pairs from these (draw panel)
-  const partner = season.kind === 'TOURNAMENT' && typeof body.partner === 'string' ? body.partner.replace(/\s+/g, ' ').trim() : '';
-  if (partner.length > 80) return res.status(400).json({ code: 'BAD_PARTNER', error: 'The name of the partner is too long' });
+  // (the partner of a doubles tournament was checked above, before anything is made)
   db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, note, partner_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
     .run(season.id, player ? player.id : null, name, phone, email, entryCategory, note, partner);
+  // the pair is made at once when both players are known; otherwise the organiser makes it (draw tab: "Páry z registrácií")
+  if (doublesTournament && player) { try { tournamentDraw.addPair(season, { player: player.id, partner }); } catch { /* the organiser makes it */ } }
   const total = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?').get(season.id).n;
   // the e-mail to the admin must never make the registration fail
   sendSeasonRegistrationEmail(season, { name, phone, email, category: entryCategory, note, isNew: !player, account: account.status, phoneHolder: account.holder }, total)
@@ -427,6 +437,7 @@ router.get('/:id/registrations', requireAdmin, (req, res) => {
 router.post('/:id/registrations/categories', requireAdmin, (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
+  if (tournamentDraw.isDoublesTournament(season)) return res.status(400).json({ error: 'A doubles tournament has no categories' });
   const list = req.body && req.body.assignments;
   if (!Array.isArray(list) || !list.length) return res.status(400).json({ error: 'Nothing to save' });
   const own = new Set(db.prepare('SELECT id FROM season_registrations WHERE season_id = ?').all(season.id).map((r) => r.id));
@@ -461,7 +472,7 @@ function tournamentOr404(req, res) {
 router.get('/:id/draw', requireAdmin, (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
-  res.json({ slug: season.slug, courtCount: season.court_count || 0, categories: tournamentDraw.overview(season.id) });
+  res.json({ slug: season.slug, courtCount: season.court_count || 0, playType: tournamentDraw.isDoublesTournament(season) ? 'DOUBLES' : 'SINGLES', categories: tournamentDraw.overview(season.id) });
 });
 
 // { category, seeds: [{ id: registrationId, seed }] } — replaces the seeds of that category; players left out are not seeded.
@@ -498,7 +509,7 @@ router.get('/:id/draw/groups-suggestion', requireAdmin, (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const category = req.query.category;
-  if (!tournamentDraw.CATEGORIES.includes(category)) return res.status(400).json({ error: 'Choose a category' });
+  if (!tournamentDraw.categoriesFor(season).includes(category)) return res.status(400).json({ error: 'Choose a category' });
   const regs = tournamentDraw.registrationsOf(season.id, category);
   const suggested = require('../tournamentGroups').suggestGroups(regs.map((r) => ({ playerId: r.id, seed: r.seed })), {
     groupSize: Number(req.query.groupSize) || 4, groupCount: Number(req.query.groupCount) || 0,
@@ -631,8 +642,12 @@ router.post('/:id/registrations/admin', requireAdmin, (req, res) => {
   if (!player) return res.status(400).json({ error: 'Choose a player from the list' });
   // a tournament entry may have no category (category = ''): sent as an empty category, or when the profile has none either
   const tournament = season.kind === 'TOURNAMENT';
+  const doublesTournament = tournamentDraw.isDoublesTournament(season);
+  const partnerName = doublesTournament && typeof body.partner === 'string' ? body.partner.replace(/\s+/g, ' ').trim() : '';
+  if (doublesTournament && (partnerName.length < 3 || partnerName.length > 80)) return res.status(400).json({ error: 'Enter the name of the partner' });
   let category = null;
-  if (BLTA_CATEGORIES.includes(body.category)) category = body.category;
+  if (doublesTournament) category = ''; // a pair has no Elite / Next Gen / Novice category
+  else if (BLTA_CATEGORIES.includes(body.category)) category = body.category;
   else if (tournament && body.category === '') category = '';
   else category = profileCategory(player.category) || (tournament ? '' : null);
   if (category === null) return res.status(400).json({ error: 'Choose a category' });
@@ -648,17 +663,20 @@ router.post('/:id/registrations/admin', requireAdmin, (req, res) => {
     .some((r) => r.player_id === player.id || nameMatch.key(r.name) === nameMatch.key(player.name));
   if (already) return res.status(409).json({ code: 'ALREADY_REGISTERED', error: `${player.name} is already registered for this season` });
 
-  const info = db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, paid) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(season.id, player.id, player.name, phone, email, category, body.paid ? 1 : 0);
+  const info = db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, paid, partner_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(season.id, player.id, player.name, phone, email, category, body.paid ? 1 : 0, partnerName);
+  if (doublesTournament) { try { tournamentDraw.addPair(season, { player: player.id, partner: partnerName }); } catch { /* the organiser makes the pair */ } }
   res.status(201).json(serializeRegistration(db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(info.lastInsertRowid)));
 });
 
 // The admin changes a registration: what is sent is changed, the rest stays — paid, category ('' = no category, tournaments only),
 // phone, e-mail and note.
 router.patch('/registrations/:rid', requireAdmin, (req, res) => {
-  const row = db.prepare('SELECT r.*, s.kind AS season_kind FROM season_registrations r LEFT JOIN seasons s ON s.id = r.season_id WHERE r.id = ?').get(Number(req.params.rid));
+  const row = db.prepare('SELECT r.*, s.kind AS season_kind, s.play_type AS season_play_type FROM season_registrations r LEFT JOIN seasons s ON s.id = r.season_id WHERE r.id = ?').get(Number(req.params.rid));
   if (!row) return res.status(404).json({ error: 'Registration not found' });
   const body = req.body || {};
+  const doublesEntry = row.season_kind === 'TOURNAMENT' && row.season_play_type === 'DOUBLES';
+  if (doublesEntry && body.category !== undefined && body.category !== '') return res.status(400).json({ error: 'A doubles tournament has no categories' });
   const next = { paid: row.paid, category: row.category, phone: row.phone, email: row.email, note: row.note || '' };
   if (body.paid !== undefined) next.paid = body.paid ? 1 : 0;
   if (body.category !== undefined) {
@@ -681,8 +699,13 @@ router.patch('/registrations/:rid', requireAdmin, (req, res) => {
     if (note.length > 500) return res.status(400).json({ error: 'The note is too long (max 500 characters)' });
     next.note = note;
   }
-  db.prepare('UPDATE season_registrations SET paid = ?, category = ?, phone = ?, email = ?, note = ? WHERE id = ?')
-    .run(next.paid, next.category, next.phone, next.email, next.note, row.id);
+  if (doublesEntry && body.partner !== undefined) {
+    const partner = String(body.partner || '').replace(/\s+/g, ' ').trim();
+    if (partner.length < 3 || partner.length > 80) return res.status(400).json({ error: 'Enter the name of the partner' });
+    next.partner = partner;
+  }
+  db.prepare('UPDATE season_registrations SET paid = ?, category = ?, phone = ?, email = ?, note = ?, partner_name = ? WHERE id = ?')
+    .run(next.paid, next.category, next.phone, next.email, next.note, next.partner !== undefined ? next.partner : (row.partner_name || ''), row.id);
   res.json({ ok: true, ...serializeRegistration(db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(row.id)) });
 });
 
@@ -769,11 +792,15 @@ router.post('/', requireAdmin, (req, res) => {
   if (!KINDS.includes(kind)) return res.status(400).json({ error: 'The type must be LEAGUE or TOURNAMENT' });
   const venue = typeof req.body.venue === 'string' ? req.body.venue.trim() : '';
   if (venue.length > 200) return res.status(400).json({ error: 'Venue is too long (max 200 characters)' });
+  // a tournament is singles or doubles, chosen when it is made (never mixed); a league season is always singles
+  const playTypeAsked = req.body.playType === undefined ? 'SINGLES' : req.body.playType;
+  if (!['SINGLES', 'DOUBLES'].includes(playTypeAsked)) return res.status(400).json({ error: 'The tournament is played as singles or doubles' });
+  const playType = kind === 'TOURNAMENT' ? playTypeAsked : 'SINGLES';
   const slug = uniqueSlug(slugify(name));
   const leagueId = leagues.actingIdOf(req);
   const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM seasons WHERE league_id = ?').get(leagueId).m;
-  const info = db.prepare('INSERT INTO seasons (name, slug, start_date, end_date, sort_order, kind, venue, categories, league_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    .run(name, slug, start.value, end.value, maxOrder + 1, kind, venue || null, categoriesToStore(req.body.categories), leagueId);
+  const info = db.prepare('INSERT INTO seasons (name, slug, start_date, end_date, sort_order, kind, venue, categories, league_id, play_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(name, slug, start.value, end.value, maxOrder + 1, kind, venue || null, playType === 'DOUBLES' ? null : categoriesToStore(req.body.categories), leagueId, playType);
   res.status(201).json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(info.lastInsertRowid))));
 });
 
@@ -783,6 +810,8 @@ router.patch('/:id', requireAdmin, (req, res) => {
   const name = req.body.name !== undefined ? String(req.body.name).trim() : season.name;
   if (!name) return res.status(400).json({ error: 'Season name is required' });
   if (name.length > 120) return res.status(400).json({ error: 'Season name is too long (max 120 characters)' });
+  // singles or doubles is chosen when the tournament is made and stays (a tournament is never mixed)
+  if (req.body.playType !== undefined && req.body.playType !== (season.play_type || 'SINGLES')) return res.status(409).json({ error: 'A tournament stays singles or doubles — make a new tournament for the other type' });
   const start = req.body.startDate !== undefined ? parseDate(req.body.startDate) : { value: season.start_date };
   const end = req.body.endDate !== undefined ? parseDate(req.body.endDate) : { value: season.end_date };
   if (start.error || end.error) return res.status(400).json({ error: start.error || end.error });
@@ -810,7 +839,7 @@ router.patch('/:id', requireAdmin, (req, res) => {
   const venue = text('venue', season.venue, 200);
   const kind = req.body.kind === undefined ? (season.kind || 'LEAGUE') : req.body.kind;
   if (!KINDS.includes(kind)) return res.status(400).json({ error: 'The type must be LEAGUE or TOURNAMENT' });
-  const categories = req.body.categories === undefined ? season.categories : categoriesToStore(req.body.categories);
+  const categories = req.body.categories === undefined || tournamentDraw.isDoublesTournament(season) ? season.categories : categoriesToStore(req.body.categories);
   const bad = fee.error || prize.error || info.error || gallery.error || payment.error || logo.error || draw.error || venue.error;
   if (bad) return res.status(400).json({ error: bad });
   if (gallery.value && !/^https?:\/\//i.test(gallery.value)) return res.status(400).json({ error: 'The gallery link must start with http:// or https://' });

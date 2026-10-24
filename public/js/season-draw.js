@@ -24,7 +24,10 @@ function drawFormatOptions(selected) {
 async function openDrawPanel(host, seasonId, onChanged) {
   host.innerHTML = '<div style="color:var(--gray)">Loading…</div>';
   let overview = await api(`/seasons/${seasonId}/draw`);
-  let doubles = await api(`/seasons/${seasonId}/doubles`);
+  // a doubles tournament has the category Štvorhra only (its pairs are made below); a singles tournament has no pairs at all
+  const isDoubles = overview.playType === 'DOUBLES';
+  const noPairs = { pairs: [], registrationsWithPartner: 0, locked: false };
+  let doubles = isDoubles ? await api(`/seasons/${seasonId}/doubles`) : noPairs;
   // the pairs of the tournament are the players of the category DOUBLES (Štvorhra): listed with the registrations, one row per pair
   const withPairs = (list) => [...list, ...doubles.pairs.map((p) => ({
     id: p.registrationId, pairId: p.id, name: `${p.player.name} / ${p.partner.name}`, category: 'DOUBLES', seed: p.seed, paid: null, partner: true,
@@ -237,13 +240,14 @@ async function openDrawPanel(host, seasonId, onChanged) {
           <span class="sd-courts-note" style="font-size:12px;color:var(--gray)">${overview.courtCount ? Array.from({ length: Math.min(overview.courtCount, 6) }, (_, i) => `Kurt ${i + 1}`).join(', ') + (overview.courtCount > 6 ? ` … Kurt ${overview.courtCount}` : '') : 'Kurty zatiaľ nie sú nastavené'}</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:12px">${overview.categories.map(blockHtml).join('')}</div>
-        ${pairsBlockHtml()}
+        ${isDoubles ? pairsBlockHtml() : ''}
       </div>`;
   }
 
   async function refresh() {
     let real;
-    [overview, real, doubles] = await Promise.all([api(`/seasons/${seasonId}/draw`), api(`/seasons/${seasonId}/registrations`), api(`/seasons/${seasonId}/doubles`)]);
+    [overview, real] = await Promise.all([api(`/seasons/${seasonId}/draw`), api(`/seasons/${seasonId}/registrations`)]);
+    doubles = isDoubles ? await api(`/seasons/${seasonId}/doubles`) : noPairs;
     regs = withPairs(real);
     drafts.clear();
     Object.keys(choice).forEach((k) => delete choice[k]);

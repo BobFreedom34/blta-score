@@ -42,7 +42,7 @@ async function tournament(label, pairNames) {
   counter += 1;
   const names = pairNames.flat();
   await players(names);
-  const s = await call('POST', '/api/seasons', { body: { name: `${label} ${counter}`, kind: 'TOURNAMENT', startDate: '2099-06-01', endDate: '2099-06-02' } });
+  const s = await call('POST', '/api/seasons', { body: { name: `${label} ${counter}`, kind: 'TOURNAMENT', playType: 'DOUBLES', startDate: '2099-06-01', endDate: '2099-06-02' } });
   assert.strictEqual(s.status, 201, JSON.stringify(s.json));
   for (const [a, b] of pairNames) {
     const r = await call('POST', `/api/seasons/${s.json.id}/doubles/pairs`, { body: { player: a, partner: b } });
@@ -60,9 +60,9 @@ const teamNames = (m) => [m.team1.map((p) => p.name).join(' / '), m.team2.map((p
 
 let season = null;
 
-test('the registration form can name a partner for the doubles; the organiser sees it', async () => {
+test('a doubles tournament is entered as a pair: the partner is required, and the pair is made at once when both are known', async () => {
   await players(['Adam A', 'Boris B', 'Cyril C', 'Dušan D', 'Emil E', 'Fero F', 'Gita G', 'Hana H']);
-  const s = await call('POST', '/api/seasons', { body: { name: 'Letný turnaj', kind: 'TOURNAMENT', startDate: '2099-06-01', endDate: '2099-06-02' } });
+  const s = await call('POST', '/api/seasons', { body: { name: 'Letný turnaj', kind: 'TOURNAMENT', playType: 'DOUBLES', startDate: '2099-06-01', endDate: '2099-06-02' } });
   assert.strictEqual(s.status, 201, JSON.stringify(s.json));
   season = s.json;
   assert.strictEqual((await call('PATCH', `/api/seasons/${season.id}`, { body: { registrationOpen: true } })).status, 200);
@@ -71,20 +71,31 @@ test('the registration form can name a partner for the doubles; the organiser se
   assert.strictEqual((await reg('Boris B', 'Adam A', '0903000002', 'b@example.com')).status, 201, 'the partner may name him back');
   assert.strictEqual((await reg('Cyril C', 'Dušan D', '0903000003', 'c@example.com')).status, 201);
   assert.strictEqual((await reg('Emil E', 'Neznámy Hráč', '0903000005', 'e@example.com')).status, 201, 'a partner who is not a player yet is only a note');
-  assert.strictEqual((await reg('Fero F', '', '0903000006', 'f@example.com')).status, 201, 'singles only');
+  const noPartner = await reg('Fero F', '', '0903000006', 'f@example.com');
+  assert.strictEqual(noPartner.status, 400, 'a doubles tournament needs the partner');
+  assert.strictEqual(noPartner.json.code, 'BAD_PARTNER');
+  assert.strictEqual((await reg('Fero F', 'fero  f', '0903000006', 'f@example.com')).status, 400, 'not yourself');
   const list = (await call('GET', `/api/seasons/${season.id}/registrations`)).json;
   assert.strictEqual(list.find((r) => r.name === 'Adam A').partnerName, 'Boris B');
-  assert.strictEqual(list.find((r) => r.name === 'Fero F').partnerName, '');
+  assert.ok(!list.some((r) => r.name === 'Fero F'), 'the refused entry was not saved');
+  // the pairs of the two entries that named known players exist already
+  const made = (await call('GET', `/api/seasons/${season.id}/doubles`)).json;
+  assert.deepStrictEqual(made.pairs.map((p) => `${p.player.name}+${p.partner.name}`).sort(), ['Adam A+Boris B', 'Cyril C+Dušan D']);
+  // the public page lists the pairs, not people
+  const pub = (await call('GET', `/api/seasons/by-slug/${season.slug}`, { cookie: '' })).json;
+  assert.strictEqual(pub.playType, 'DOUBLES');
+  assert.deepStrictEqual(pub.categories, ['DOUBLES']);
+  assert.ok(pub.registrations.some((r) => r.name === 'Adam A / Boris B' && r.slug === null));
 });
 
 test('pairs: made by hand or from the registrations, one pair per player; seeded with the ordinary seeds route', async () => {
   const get = async () => (await call('GET', `/api/seasons/${season.id}/doubles`)).json;
   let o = await get();
-  assert.strictEqual(o.pairs.length, 0);
+  assert.strictEqual(o.pairs.length, 2, 'made when the entries came in');
   assert.strictEqual(o.registrationsWithPartner, 4);
   const a = await call('POST', `/api/seasons/${season.id}/doubles/pairs`, { body: { fromRegistrations: true } });
   assert.strictEqual(a.status, 201, JSON.stringify(a.json));
-  assert.strictEqual(a.json.created, 2, 'Adam+Boris (once, though both wrote it) and Cyril+Dušan');
+  assert.strictEqual(a.json.created, 0, 'nothing new: only the entry of Emil names a partner who is not a player');
   assert.deepStrictEqual(a.json.skipped.map((x) => x.partner), ['Neznámy Hráč'], 'an unknown partner is reported, not guessed');
   assert.strictEqual((await call('POST', `/api/seasons/${season.id}/doubles/pairs`, { body: { player: 'Emil E', partner: 'Fero F' } })).status, 201);
   assert.strictEqual((await call('POST', `/api/seasons/${season.id}/doubles/pairs`, { body: { player: P['Gita G'], partner: P['Hana H'] } })).status, 201);
@@ -230,14 +241,58 @@ test('the court planner knows the partners of a doubles match; deleting the tour
   assert.strictEqual((await call('GET', `/api/brackets/${made.json.main}`, { cookie: '' })).status, 404);
 });
 
+test('singles or doubles is chosen when a tournament is made and never mixed', async () => {
+  // a singles tournament (the default): the three categories, no pairs, no doubles draw, a partner is not kept
+  const single = await call('POST', '/api/seasons', { body: { name: 'Dvojhra turnaj', kind: 'TOURNAMENT', startDate: '2099-08-01', endDate: '2099-08-02' } });
+  assert.strictEqual(single.status, 201, JSON.stringify(single.json));
+  assert.strictEqual(single.json.playType, 'SINGLES');
+  const sid = single.json.id;
+  await call('PATCH', `/api/seasons/${sid}`, { body: { registrationOpen: true } });
+  await players(['Solo S', 'Duo D']);
+  // (the public form is limited to a few entries an hour from one address, so the organiser's route is used here)
+  const reg = await call('POST', `/api/seasons/${sid}/registrations/admin`, { body: { playerId: P['Solo S'], partner: 'Duo D', category: '' } });
+  assert.strictEqual(reg.status, 201, 'a singles entry needs no partner');
+  assert.strictEqual((await call('GET', `/api/seasons/${sid}/registrations`)).json[0].partnerName, '', 'and a partner given is not kept');
+  const draw1 = (await call('GET', `/api/seasons/${sid}/draw`)).json;
+  assert.strictEqual(draw1.playType, 'SINGLES');
+  assert.deepStrictEqual(draw1.categories.map((c) => c.category), ['ELITE', 'NEXT_GEN', 'NOVICE']);
+  assert.strictEqual((await call('POST', `/api/seasons/${sid}/doubles/pairs`, { body: { player: 'Solo S', partner: 'Duo D' } })).status, 400, 'no pairs in a singles tournament');
+  assert.strictEqual((await draw({ id: sid }, { format: 'ELIMINATION' })).status, 400, 'no doubles draw in a singles tournament');
+  // a doubles tournament: the Štvorhra category only, no sorting into categories, no Elite draw
+  const dbl = await tournament('Štvorhra turnaj', [['Pat P', 'Pit PP'], ['Rob R', 'Ron RR']]);
+  assert.strictEqual(dbl.playType, 'DOUBLES');
+  const draw2 = (await call('GET', `/api/seasons/${dbl.id}/draw`)).json;
+  assert.strictEqual(draw2.playType, 'DOUBLES');
+  assert.deepStrictEqual(draw2.categories.map((c) => c.category), ['DOUBLES']);
+  assert.strictEqual((await call('POST', `/api/seasons/${dbl.id}/draw`, { body: { category: 'ELITE', format: 'ELIMINATION' } })).status, 400, 'no Elite draw');
+  assert.strictEqual((await call('POST', `/api/seasons/${dbl.id}/registrations/categories`, { body: { assignments: [{ id: 1, category: 'ELITE' }] } })).status, 400, 'no sorting into categories');
+  // the type stays
+  assert.strictEqual((await call('PATCH', `/api/seasons/${dbl.id}`, { body: { playType: 'SINGLES' } })).status, 409);
+  assert.strictEqual((await call('PATCH', `/api/seasons/${sid}`, { body: { playType: 'DOUBLES' } })).status, 409);
+  assert.strictEqual((await call('PATCH', `/api/seasons/${dbl.id}`, { body: { playType: 'DOUBLES', name: 'Štvorhra turnaj 2' } })).status, 200, 'saying the same type is fine');
+  assert.strictEqual((await call('POST', '/api/seasons', { body: { name: 'Zlý typ', kind: 'TOURNAMENT', playType: 'MIXED' } })).status, 400);
+  // the organiser adds an entry: the partner is required there too, and the pair is made
+  await players(['Gus GG', 'Hal HH']);
+  const admin = await call('POST', `/api/seasons/${dbl.id}/registrations/admin`, { body: { playerId: P['Gus GG'] } });
+  assert.strictEqual(admin.status, 400, 'the partner is needed');
+  const admin2 = await call('POST', `/api/seasons/${dbl.id}/registrations/admin`, { body: { playerId: P['Gus GG'], partner: 'Hal HH' } });
+  assert.strictEqual(admin2.status, 201, JSON.stringify(admin2.json));
+  assert.strictEqual(admin2.json.partnerName, 'Hal HH');
+  assert.strictEqual(admin2.json.category, '');
+  const pairsNow = (await call('GET', `/api/seasons/${dbl.id}/doubles`)).json.pairs;
+  assert.ok(pairsNow.some((p) => p.player.name === 'Gus GG' && p.partner.name === 'Hal HH'));
+});
+
 test('the pages carry the pieces: the partner field of the form, the pairs of the draw screen, the Štvorhra chip of the brackets and groups tabs', async () => {
   const read = (p) => fs.readFileSync(path.join(ROOT, 'public', p), 'utf8');
   const form = read('js/season.js');
   assert.ok(form.includes('sv-reg-partner') && form.includes('partner'), 'season.js: the partner field');
   const drawJs = read('js/season-draw.js');
   ['dbl-add', 'dbl-from-regs', 'dbl-remove', 'registrationId'].forEach((x) => assert.ok(drawJs.includes(x), 'season-draw.js: ' + x));
+  const admin = read('js/seasons-admin.js');
+  ['season-playtype', 'data-playtype', 'Add pair'].forEach((x) => assert.ok(admin.includes(x), 'seasons-admin.js: ' + x));
   const i18n = read('js/i18n.js');
-  ['season.regPartner', 'season.catDoubles'].forEach((k) => assert.strictEqual(i18n.split("'" + k + "'").length, 3, k + ' in Slovak and English'));
+  ['season.regPartner', 'season.catDoubles', 'season.pairsTitle'].forEach((k) => assert.strictEqual(i18n.split("'" + k + "'").length, 3, k + ' in Slovak and English'));
 });
 
 async function main() {

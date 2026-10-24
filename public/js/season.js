@@ -11,7 +11,7 @@ const CATEGORY_ORDER = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 const CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', get DOUBLES() { return t('season.catDoubles'); } };
 // the doubles (štvorhra) of a tournament is a category of its own in the groups, the schedule and the brackets (not in the registration form)
 const CATEGORY_ORDER_ALL = [...CATEGORY_ORDER, 'DOUBLES'];
-const playerCatName = (c) => (c === 'NONE' ? t('season.noCategory') : CATEGORY_NAMES[c]);
+const playerCatName = (c) => (c === 'NONE' ? t(isDoublesTournament() ? 'season.pairsTitle' : 'season.noCategory') : CATEGORY_NAMES[c]);
 
 let season = null;
 let standings = null;
@@ -174,6 +174,8 @@ function seriesWinnersHtml() {
 
 // a tournament is a season of its own kind: same page, with a "Turnaj" chip, a venue and its own categories
 const isTournament = () => season.kind === 'TOURNAMENT';
+// a tournament is played as singles or as doubles (chosen when it was made, never mixed): a doubles one is entered as a pair
+const isDoublesTournament = () => season.kind === 'TOURNAMENT' && season.playType === 'DOUBLES';
 
 // "Payment by transfer" in the window after a tournament registration. contact = GET /api/contact (the IBAN is edited in Backend > Contact).
 function bankTransferHtml(contact, alongsideOnline) {
@@ -452,7 +454,7 @@ async function openRegisterModal() {
         ${isTournament() ? '' : `<div class="field"><label for="sv-reg-cat">${escapeHtml(t('season.regCategory'))}</label>
           <select id="sv-reg-cat"><option value="">${escapeHtml(t('season.regChoose'))}</option>${CATEGORY_ORDER.filter((c) => !isTournament() || (season.categories || []).includes(c)).map((c) => `<option value="${c}">${escapeHtml(CATEGORY_NAMES[c])}</option>`).join('')}</select>
         </div>`}
-        ${isTournament() ? `<div class="field">
+        ${isDoublesTournament() ? `<div class="field">
           <label for="sv-reg-partner">${escapeHtml(t('season.regPartner'))}</label>
           <div class="autocomplete"><input type="text" id="sv-reg-partner" autocomplete="off" maxlength="80"><div class="autocomplete-list" id="sv-reg-partner-list"></div></div>
           <small>${escapeHtml(t('season.regPartnerHint'))}</small>
@@ -471,7 +473,7 @@ async function openRegisterModal() {
   const close = () => { wrap.remove(); if (askForCode) refreshPlayerAuth(); };
   wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('[data-close]')) close(); });
   setupAutocomplete('sv-reg-name', 'sv-reg-name-list');
-  if (isTournament()) setupAutocomplete('sv-reg-partner', 'sv-reg-partner-list');
+  if (isDoublesTournament()) setupAutocomplete('sv-reg-partner', 'sv-reg-partner-list');
   if (playerAuthed && currentPlayerName) $('name').value = currentPlayerName;
   if (typeof currentPlayerEmail === 'string' && currentPlayerEmail) $('email').value = currentPlayerEmail;
   $('name').focus();
@@ -489,6 +491,7 @@ async function openRegisterModal() {
     if (phone.replace(/\D/g, '').length < 9) return fail(t('season.regErrPhone'));
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(t('season.regErrEmail'));
     if (!category && !isTournament()) return fail(t('season.regErrCategory'));
+    if (isDoublesTournament() && $('partner').value.replace(/\s+/g, ' ').trim().length < 3) return fail(t('season.regErrPartner'));
     const known = chosenId ? { id: chosenId } : findPlayerByTypedName(typed);
     const button = $('send');
     button.disabled = true;
@@ -496,7 +499,7 @@ async function openRegisterModal() {
     try {
       const res = await api(`/seasons/${season.id}/registrations`, {
         method: 'POST',
-        body: { name: typed, phone, email, category, note: $('notetext').value.trim(), ...(isTournament() && $('partner') ? { partner: $('partner').value.trim() } : {}), website: $('website').value, ...(known ? { playerId: known.id } : {}), ...(confirmNew ? { confirmNew: true } : {}) },
+        body: { name: typed, phone, email, category, note: $('notetext').value.trim(), ...(isDoublesTournament() ? { partner: $('partner').value.trim() } : {}), website: $('website').value, ...(known ? { playerId: known.id } : {}), ...(confirmNew ? { confirmNew: true } : {}) },
       });
       const stripe = res && res.paymentUrl
         ? `<p>${escapeHtml(t('season.regPayHint'))}</p><a class="btn btn-primary btn-block" href="${escapeHtml(res.paymentUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.payOnline'))}</a>`
@@ -556,7 +559,7 @@ function availableTabs() {
   // the order of a season's tabs: Základné info · Hráči · Tabuľky · Rozpis · Výsledky · Play-off · Galéria (a tournament: Základné info · Harmonogram · Skupiny · Pavúky · Galéria)
   const tabs = [
     { key: 'info', label: t('season.navInfo'), has: !!season.info },
-    { key: 'players', label: t('season.navPlayers'), has: players > 0, count: players },
+    { key: 'players', label: t(isDoublesTournament() ? 'season.pairsTitle' : 'season.navPlayers'), has: players > 0, count: players },
     { key: 'courts', label: t('season.navCourts'), has: (season.courtCount || 0) > 0 },
     { key: 'tables', label: t(isTournament() ? 'season.navGroups' : 'season.navTables'), has: hasGroups },
     { key: 'schedule', label: t('season.navSchedule'), has: (season.rounds || []).length > 0 },
@@ -572,7 +575,7 @@ function availableTabs() {
 function fixedPlayersHtml() {
   if (!isTournament() || tab !== 'info') return '';
   const list = playersHtml() || `<div class="sv-empty">${escapeHtml(t('season.empty.playersTournament'))}</div>`;
-  return `<div class="sv-fixed-players"><div class="sv-sec-h"><h2>${escapeHtml(t('season.navPlayers'))}</h2></div>${list}</div>`;
+  return `<div class="sv-fixed-players"><div class="sv-sec-h"><h2>${escapeHtml(t(isDoublesTournament() ? 'season.pairsTitle' : 'season.navPlayers'))}</h2></div>${list}</div>`;
 }
 
 function renderFixedPlayers() {
