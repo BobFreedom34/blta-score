@@ -262,6 +262,9 @@ function kindOf(s) {
 let stripFilter = 'ALL';
 let stripFilterChanged = false; // the next drawing centres the running card again instead of keeping the scroll position
 
+// computer, as opposed to phone and tablet
+const isWideScreen = () => window.matchMedia('(min-width: 1025px)').matches;
+
 function timelineHtml(d) {
   const everything = [...(d.seasons || [])].sort((a, b) => String(a.startDate || '9999').localeCompare(String(b.startDate || '9999')));
   if (!everything.length) return ''; // one season is enough: a new city has just one
@@ -269,7 +272,13 @@ function timelineHtml(d) {
   const tourCount = everything.length - leagueCount;
   const filterable = leagueCount > 0 && tourCount > 0;
   if (!filterable) stripFilter = 'ALL';
-  const seasons = everything.filter((s) => stripFilter === 'ALL' || (stripFilter === 'TOURNAMENT') === (s.kind === 'TOURNAMENT'));
+  let seasons = everything.filter((s) => stripFilter === 'ALL' || (stripFilter === 'TOURNAMENT') === (s.kind === 'TOURNAMENT'));
+  // on a computer the strip starts at the card before the running one (the older ones are in the full schedule); phone and tablet scroll the whole row
+  if (isWideScreen()) {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const firstLive = seasons.findIndex((x) => seasonState(x, todayIso) !== 'past');
+    if (firstLive > 1) seasons = seasons.slice(firstLive - 1);
+  }
   const chip = (key, text, count) => `<button type="button" class="tab${stripFilter === key ? ' active' : ''}" data-strip="${key}">${escapeHtml(text)} · ${count}</button>`;
   const filterHtml = filterable
     ? `<div class="tabs home-tl-filter" id="home-tl-filter">${chip('ALL', t('home.filterAll'), everything.length)}${chip('LEAGUE', t('home.filterLeagues'), leagueCount)}${chip('TOURNAMENT', t('home.filterTournaments'), tourCount)}</div>`
@@ -329,7 +338,12 @@ function initTimelineScroll(keepLeft) {
   if (!wrap || !row) return;
   const cur = row.querySelector('[data-current]');
   if (typeof keepLeft === 'number') row.scrollLeft = keepLeft;
-  else if (cur && row.scrollWidth > row.clientWidth) row.scrollLeft = Math.max(0, cur.offsetLeft - (row.clientWidth - cur.offsetWidth) / 2);
+  else if (cur && !isWideScreen() && row.scrollWidth > row.clientWidth) {
+    // phone and tablet: the running card in the middle (no snapping while it is placed)
+    row.style.scrollSnapType = 'none';
+    row.scrollLeft = Math.max(0, cur.offsetLeft - (row.clientWidth - cur.offsetWidth) / 2);
+    requestAnimationFrame(() => { row.style.scrollSnapType = ''; });
+  }
   row.addEventListener('scroll', updateTimelineEdges, { passive: true });
   wrap.querySelector('.prev').addEventListener('click', () => row.scrollBy({ left: -row.clientWidth * 0.7, behavior: 'smooth' }));
   wrap.querySelector('.next').addEventListener('click', () => row.scrollBy({ left: row.clientWidth * 0.7, behavior: 'smooth' }));
@@ -360,6 +374,8 @@ function initTimelineScroll(keepLeft) {
 }
 
 window.addEventListener('resize', updateTimelineEdges);
+// crossing between computer and tablet width draws the strip again (a computer shows only one finished card before the running one)
+window.matchMedia('(min-width: 1025px)').addEventListener('change', () => { if (typeof homeData !== 'undefined' && homeData) { stripFilterChanged = true; renderHome(); } });
 
 // ---------- pieces ----------
 

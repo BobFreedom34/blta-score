@@ -287,6 +287,17 @@ test('the password lock covers the cities and sends the visitor back to where he
   assert.strictEqual((await local('PUT', '/api/leagues/national-lock', { enabled: false }, superCookie)).status, 200);
 });
 
+test('a city gets the coordinates of its town from its name, also with a small typo in a long name (Banska Bytrica); a short name with a typo is not guessed', async () => {
+  const typo = await local('POST', '/api/leagues', { name: 'Banska Bytrica' }, superCookie);
+  assert.strictEqual(typo.status, 201, JSON.stringify(typo.json));
+  assert.deepStrictEqual([typo.json.lat, typo.json.lng], [48.7363, 19.1462]);
+  const exact = await local('POST', '/api/leagues', { name: 'Zvolen' }, superCookie);
+  assert.deepStrictEqual([exact.json.lat, exact.json.lng], [48.5763, 19.1531]);
+  const short = await local('POST', '/api/leagues', { name: 'Nitre' }, superCookie);
+  assert.deepStrictEqual([short.json.lat, short.json.lng], [null, null], 'five letters: not guessed');
+  for (const c of [typo, exact, short]) assert.strictEqual((await local('DELETE', `/api/leagues/${c.json.id}`, undefined, superCookie)).status, 200);
+});
+
 async function main() {
   let failed = 0;
   try {

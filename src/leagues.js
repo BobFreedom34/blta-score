@@ -6,6 +6,7 @@
 // the request on `req.league` (an own domain such as blta.sk; otherwise Bratislava until the slta.sk/<city> addresses are served).
 const db = require('./db');
 const auth = require('./auth');
+const nameMatch = require('./nameMatch');
 
 const DEFAULT_LEAGUE_ID = 1;
 const STATUSES = ['ACTIVE', 'PREPARING', 'COMING_SOON', 'SEEKING_ORGANIZER', 'HIDDEN'];
@@ -38,10 +39,17 @@ const KNOWN_TOWNS = {
   galanta: [48.1903, 17.7273], skalica: [48.8451, 17.2263], cadca: [49.4375, 18.7895], snina: [48.9886, 22.1517], 'vranov nad toplou': [48.8883, 21.6847],
 };
 const foldName = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim();
-// [lat, lng] of a town by its name, or null when it is not one of the known towns
+// [lat, lng] of a town by its name, or null when it is not one of the known towns. A small typo in the name of a longer town is forgiven
+// ("Banska Bytrica" is Banská Bystrica): at most 2 letters wrong, and only when exactly one known town is that close.
 function coordsFor(name) {
-  const c = KNOWN_TOWNS[foldName(name)];
-  return c ? [c[0], c[1]] : null;
+  const key = foldName(name);
+  const exact = KNOWN_TOWNS[key];
+  if (exact) return [exact[0], exact[1]];
+  if (key.length < 6) return null;
+  const near = Object.keys(KNOWN_TOWNS).map((town) => ({ town, d: nameMatch.levenshtein(key, town) })).filter((x) => x.d <= 2).sort((a, b) => a.d - b.d);
+  if (!near.length || (near[1] && near[1].d === near[0].d)) return null;
+  const c = KNOWN_TOWNS[near[0].town];
+  return [c[0], c[1]];
 }
 
 // 'https://www.Blta.sk/' → 'blta.sk'; '' stays ''; anything that is not a host name → null
@@ -202,12 +210,14 @@ function hasData(leagueId) {
   return OWNED_TABLES.some((t) => db.prepare(`SELECT 1 FROM ${t} WHERE league_id = ? LIMIT 1`).get(leagueId));
 }
 
-// Once per city: a city that has no coordinates yet (made before the towns were known) gets those of its name, if it is a known town
+// Once per city: a city that has no coordinates yet (made before the towns were known, or with a typo in the name) gets those of its name, if it is a
+// known town. The flag is kept only once the coordinates were given, so a city whose name is not recognised yet is tried again at the next start.
 db.prepare('SELECT id, name FROM leagues WHERE lat IS NULL AND lng IS NULL').all().forEach((l) => {
-  if (db.prepare('SELECT 1 FROM app_flags WHERE key = ?').get(`city_coords_${l.id}`)) return;
+  if (db.prepare('SELECT 1 FROM app_flags WHERE key = ?').get(`city_coords2_${l.id}`)) return;
   const c = coordsFor(l.name);
-  if (c) db.prepare('UPDATE leagues SET lat = ?, lng = ? WHERE id = ? AND lat IS NULL AND lng IS NULL').run(c[0], c[1], l.id);
-  db.prepare('INSERT OR IGNORE INTO app_flags (key) VALUES (?)').run(`city_coords_${l.id}`);
+  if (!c) return;
+  db.prepare('UPDATE leagues SET lat = ?, lng = ? WHERE id = ? AND lat IS NULL AND lng IS NULL').run(c[0], c[1], l.id);
+  db.prepare('INSERT OR IGNORE INTO app_flags (key) VALUES (?)').run(`city_coords2_${l.id}`);
 });
 
 module.exports = { coordsFor, ACTING_COOKIE, actingIdOf, DEFAULT_LEAGUE_ID, STATUSES, RESERVED_SLUGS, slugify, normalizeDomain, byId, bySlug, forHost, invalidate, attach, serialize, hasData };
