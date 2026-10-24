@@ -287,15 +287,18 @@ async function sendNewRegistrationEmail(player) {
 // shows those to the owner, via this app's normal logged-in-player trust
 // model (see stripPrivateFields in auth.js) — just enough to recognize who
 // it is and go take a look.
-async function sendPlayRequestEmail(owner, joiner, slot, message) {
+async function sendPlayRequestEmail(owner, joiner, slot, message, mode = 'SINGLES') {
   const t = getTransporter();
   if (!t) {
     console.warn('[mailer] SMTP not configured — skipping play-request email.');
     return false;
   }
-  const subject = `${joiner.name} chce s tebou hrať!`;
+  const doubles = mode === 'DOUBLES';
+  const subject = doubles ? `${joiner.name} by s tebou hral štvorhru!` : `${joiner.name} chce s tebou hrať!`;
   const lines = [
-    `${joiner.name} videl tvoj príspevok „Chcem hrať“ na BLTA a vybral si jeden z tvojich voľných termínov na priateľský zápas:`,
+    doubles
+      ? `${joiner.name} videl tvoj príspevok „Hľadám partnera“ na BLTA a vybral si jeden z tvojich voľných termínov — chce s tebou hrať štvorhru ako tvoj partner:`
+      : `${joiner.name} videl tvoj príspevok „Chcem hrať“ na BLTA a vybral si jeden z tvojich voľných termínov na priateľský zápas:`,
     `Kedy: ${fmtDate(slot)}`,
   ];
   if (message) lines.push(`Jeho odkaz: "${message}"`);
@@ -333,6 +336,27 @@ async function sendPlayRequestAcceptedEmail(owner, joiner, slot, matchToken) {
     to: joiner.email,
     subject,
     text: lines.join('\n'),
+  });
+  return true;
+}
+
+// Sent to the player who offered to be a partner when the post's owner accepts (see POST /:id/joins/:playerId/accept for a DOUBLES post).
+// No match exists yet — a doubles match needs four players — so this says the two of them are a pair for that time.
+async function sendPartnerAcceptedEmail(owner, joiner, slot) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping partner-accepted email.');
+    return false;
+  }
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: joiner.email,
+    subject: `${owner.name} ťa prijal ako partnera na štvorhru!`,
+    text: [
+      `${owner.name} prijal tvoju ponuku na BLTA — ste partneri na štvorhru.`,
+      `Kedy: ${fmtDate(slot)}`,
+      'Zápas štvorhry vytvorí on; keď bude vytvorený, uvidíš ho v zozname svojich zápasov.',
+    ].join('\n'),
   });
   return true;
 }
@@ -629,5 +653,5 @@ module.exports = {
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendProposalReceivedEmail,
   sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendPlayRequestEmail,
-  sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail, sendBackupFailedEmail,
+  sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail, sendPartnerAcceptedEmail, sendBackupFailedEmail,
 };

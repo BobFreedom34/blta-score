@@ -21,6 +21,8 @@ const listEl = document.getElementById('availability-list');
 
 let posts = [];
 let myPostPicker = null;
+// the board shows every post, only the ones looking for an opponent, or only the ones looking for a doubles partner
+let boardFilter = 'ALL';
 
 // Deep-link support: a share button (see sharePostUrl below) copies a
 // plain ?post=<id> link back to this same page. Opening it should jump
@@ -252,9 +254,17 @@ function createLtpAvailabilityPicker({
 // ---------- My post card (create / edit / manage) ----------
 
 function myPostFormHtml(existing) {
+  const mode = existing && existing.mode === 'DOUBLES' ? 'DOUBLES' : 'SINGLES';
   return `
     <h2 style="margin-top:0">${t('lookingToPlay.myPostHeading')}</h2>
     <form id="my-post-form">
+      <div class="field">
+        <div class="mode-switch" id="my-post-mode">
+          <button type="button" class="${mode === 'SINGLES' ? 'active' : ''}" data-mode="SINGLES">${t('lookingToPlay.modeSingles')}</button>
+          <button type="button" class="${mode === 'DOUBLES' ? 'active' : ''}" data-mode="DOUBLES">${t('lookingToPlay.modeDoubles')}</button>
+        </div>
+        <p class="slot-hint" id="my-post-mode-hint" style="${mode === 'DOUBLES' ? '' : 'display:none'}">${t('lookingToPlay.modeDoublesHint')}</p>
+      </div>
       <div class="field">
         <label><span>${t('proposeTimes.markTimes')}</span> <span id="my-post-slot-count" style="font-weight:400;color:var(--gray-dim)"></span></label>
         <p class="slot-hint">${t('proposeTimes.startHint')}</p>
@@ -263,7 +273,7 @@ function myPostFormHtml(existing) {
         <button type="button" class="btn btn-sm btn-outline" id="my-post-clear-slots-btn" style="margin-top:10px">${t('common.clearAll')}</button>
       </div>
       ${existing ? blockedListHtml(existing) : ''}
-      <div class="field">
+      <div class="field" id="my-post-level" style="${mode === 'DOUBLES' ? 'display:none' : ''}">
         <label>${t('lookingToPlay.levelLabel')} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${t('common.optional')}</span></label>
         <div class="category-picker" id="my-post-categories">
           ${BLTA_CATEGORIES.map((c) => `<button type="button" class="badge badge-${c} category-toggle${existing && existing.categories && existing.categories.includes(c) ? ' active' : ''}" data-category="${c}">${LEVEL_LABELS[c]}</button>`).join('')}
@@ -293,7 +303,9 @@ function interestedListHtml(post) {
     ? joins.map((j) => {
       let statusLine = '';
       if (j.status === 'ACCEPTED') {
-        statusLine = `<span class="badge" style="background:var(--green);color:#0a0a0a">${t('lookingToPlay.accepted')}</span>${j.matchToken ? ` <a href="/match/${j.matchToken}" class="edit-link">${t('lookingToPlay.viewMatch')}</a>` : ''}`;
+        const createDoubles = post.mode === 'DOUBLES'
+          ? ` <a href="${siteUrl('/new-match')}?doubles=1&p1=${encodeURIComponent(post.player.name)}&p1b=${encodeURIComponent(j.player.name)}" class="edit-link">${t('lookingToPlay.createDoublesMatch')}</a>` : '';
+        statusLine = `<span class="badge" style="background:var(--green);color:#0a0a0a">${t(post.mode === 'DOUBLES' ? 'lookingToPlay.partnerAccepted' : 'lookingToPlay.accepted')}</span>${j.matchToken ? ` <a href="/match/${j.matchToken}" class="edit-link">${t('lookingToPlay.viewMatch')}</a>` : ''}${createDoubles}`;
       } else if (j.status === 'DENIED') {
         statusLine = `<span class="badge" style="background:var(--gray-light);color:var(--gray)">${t('lookingToPlay.deniedLabel')}</span> <span class="availability-join-message">“${escapeHtml(j.denyReason)}”</span>`;
       }
@@ -404,10 +416,11 @@ function renderMyPostArea() {
     btn.addEventListener('click', async () => {
       const playerId = btn.dataset.acceptJoin;
       const join = (mine.joins || []).find((j) => String(j.player.id) === playerId);
-      if (!confirm(t('lookingToPlay.acceptConfirm', { name: join ? join.player.name : '' }))) return;
+      const partnerPost = mine.mode === 'DOUBLES';
+      if (!confirm(t(partnerPost ? 'lookingToPlay.acceptPartnerConfirm' : 'lookingToPlay.acceptConfirm', { name: join ? join.player.name : '' }))) return;
       try {
         await api(`/availability/${mine.id}/joins/${playerId}/accept`, { method: 'POST' });
-        toast(t('lookingToPlay.acceptedToast'));
+        toast(t(partnerPost ? 'lookingToPlay.acceptedPartnerToast' : 'lookingToPlay.acceptedToast'));
         await loadPosts();
       } catch (err) {
         toast(err.message);
@@ -446,15 +459,27 @@ function renderMyPostArea() {
   document.querySelectorAll('#my-post-categories .category-toggle').forEach((btn) => {
     btn.addEventListener('click', () => btn.classList.toggle('active'));
   });
+  // looking for an opponent or for a doubles partner (a partner search has no league division)
+  const currentMode = () => (document.querySelector('#my-post-mode button.active') || { dataset: { mode: 'SINGLES' } }).dataset.mode;
+  document.querySelectorAll('#my-post-mode button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#my-post-mode button').forEach((b) => b.classList.toggle('active', b === btn));
+      const doubles = btn.dataset.mode === 'DOUBLES';
+      document.getElementById('my-post-level').style.display = doubles ? 'none' : '';
+      document.getElementById('my-post-mode-hint').style.display = doubles ? '' : 'none';
+    });
+  });
 
   document.getElementById('my-post-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errorEl = document.getElementById('my-post-error');
     errorEl.textContent = '';
     if (myPostPicker.selectedSlots.size === 0) { errorEl.textContent = t('lookingToPlay.selectSlotError'); return; }
-    const categories = [...document.querySelectorAll('#my-post-categories .category-toggle.active')].map((b) => b.dataset.category);
+    const mode = currentMode();
+    const categories = mode === 'DOUBLES' ? [] : [...document.querySelectorAll('#my-post-categories .category-toggle.active')].map((b) => b.dataset.category);
     const body = {
       slots: Array.from(myPostPicker.selectedSlots),
+      mode,
       categories,
       location: document.getElementById('my-post-location').value,
       note: document.getElementById('my-post-note').value,
@@ -534,7 +559,7 @@ function boardPostHtml(post) {
   return `
     <div class="match-card availability-post" data-id="${post.id}">
       <div class="match-card-top">
-        <div class="availability-post-days">${post.categories.map(levelBadge).join('')}<span class="availability-day-pill">${escapeHtml(t('lookingToPlay.slotsCount', { count: freeSlotCount }))}</span></div>
+        <div class="availability-post-days">${post.mode === 'DOUBLES' ? `<span class="badge dbl-badge">${t('lookingToPlay.partnerBadge')}</span>` : post.categories.map(levelBadge).join('')}<span class="availability-day-pill">${escapeHtml(t('lookingToPlay.slotsCount', { count: freeSlotCount }))}</span></div>
         ${post.location ? `<div class="match-card-meta" style="margin-left:auto"><span>${courtIcon('pin')}${escapeHtml(post.location)}</span></div>` : ''}
       </div>
       <div class="scoreboard">
@@ -564,7 +589,18 @@ function renderBoard() {
     listEl.innerHTML = `<div class="empty-state">${t('lookingToPlay.none')}</div>`;
     return;
   }
-  listEl.innerHTML = posts.map(boardPostHtml).join('');
+  // the filter only shows once both kinds of post exist
+  const hasBoth = posts.some((p) => p.mode === 'DOUBLES') && posts.some((p) => p.mode !== 'DOUBLES');
+  if (!hasBoth) boardFilter = 'ALL';
+  const shown = posts.filter((p) => boardFilter === 'ALL' || (boardFilter === 'DOUBLES') === (p.mode === 'DOUBLES'));
+  const filterHtml = hasBoth ? `
+    <div class="tabs dbl-views" id="board-filter">
+      ${['ALL', 'SINGLES', 'DOUBLES'].map((f) => `<button type="button" class="tab${f === boardFilter ? ' active' : ''}" data-filter="${f}">${t('lookingToPlay.filter.' + f)}</button>`).join('')}
+    </div>` : '';
+  listEl.innerHTML = filterHtml + shown.map(boardPostHtml).join('');
+  listEl.querySelectorAll('#board-filter .tab').forEach((btn) => {
+    btn.addEventListener('click', () => { boardFilter = btn.dataset.filter; renderBoard(); });
+  });
 
   listEl.querySelectorAll('[data-pick]').forEach((btn) => {
     btn.addEventListener('click', () => openPickSlotModal(Number(btn.dataset.pick)));
@@ -699,7 +735,7 @@ document.getElementById('pick-slot-confirm-btn').addEventListener('click', async
       body: { slot: pickSlotSelected, message: document.getElementById('pick-slot-message').value },
     });
     pickSlotModal.style.display = 'none';
-    toast(post ? t('lookingToPlay.joinSent', { name: post.player.name }) : t('lookingToPlay.joined'));
+    toast(post ? t(post.mode === 'DOUBLES' ? 'lookingToPlay.partnerOfferSent' : 'lookingToPlay.joinSent', { name: post.player.name }) : t('lookingToPlay.joined'));
     await loadPosts();
   } catch (err) {
     errorEl.textContent = err.message;

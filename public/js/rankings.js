@@ -72,42 +72,82 @@ async function buildCourtIQTable() {
   return { key: 'courtiq', label: t('rankings.courtiqTab'), rows };
 }
 
-// The doubles (štvorhra) tab: a ranking per player from the finished doubles matches (3 points for a win, 1 for a played loss;
-// see src/doubles.js). Its own columns (wins-losses, matches, points), so it has its own small render like the Badges and CourtIQ tabs.
+// The doubles (štvorhra) tab, in three views: the players by points (3 for a win, 1 for a played loss; see src/doubles.js), the doubles rating
+// (Glicko-2 like CourtIQ, but its own number: each player is rated against the average of the other pair) and the best pairs. Each view has
+// its own columns, so each has its own small render, like the Badges and CourtIQ tabs.
+let doublesView = 'players';
+
 async function buildDoublesTable() {
-  const { rows, pointsWin, pointsLoss } = await api('/doubles/ranking');
-  return { key: 'doubles', label: t('rankings.doublesTab'), rows, pointsWin, pointsLoss };
+  const [ranking, ratings, pairs] = await Promise.all([api('/doubles/ranking'), api('/doubles/ratings'), api('/doubles/pairs')]);
+  return {
+    key: 'doubles', label: t('rankings.doublesTab'), rows: ranking.rows, ratingRows: ratings.rows, pairRows: pairs.rows, pointsWin: ranking.pointsWin, pointsLoss: ranking.pointsLoss,
+  };
+}
+
+function doublesPlayerLink(p) {
+  const flag = flagImgHtml(p.nationality, 'rank-flag-icon');
+  return p.slug
+    ? `<a href="/player/${escapeHtml(p.slug)}" class="rank-name"${PLAYER_LINK_ATTRS}>${flag}${escapeHtml(p.name)}</a>`
+    : `<span class="rank-name">${flag}${escapeHtml(p.name)}</span>`;
 }
 
 function renderDoublesTable(table) {
   const listEl = document.getElementById('rankings-list');
-  if (!table.rows.length) {
-    listEl.innerHTML = `<p style="color:var(--gray)">${t('rankings.doublesNone')}</p>`;
-    return;
+  const views = ['players', 'ratings', 'pairs'];
+  const chips = `<div class="tabs dbl-views">${views.map((v) => `<button type="button" class="tab${v === doublesView ? ' active' : ''}" data-view="${v}">${t('rankings.doublesView.' + v)}</button>`).join('')}</div>`;
+  const rowsFor = { players: table.rows, ratings: table.ratingRows, pairs: table.pairRows }[doublesView];
+  let body;
+  if (!rowsFor.length) {
+    body = `<p style="color:var(--gray)">${t('rankings.doublesNone')}</p>`;
+  } else if (doublesView === 'ratings') {
+    body = `
+      <div class="rank-table">
+        <div class="rank-table-header rank-grid rank-grid-courtiq">
+          <div class="rank-col-pos"></div>
+          <div class="rank-col-player">${t('rankings.playerCol')}</div>
+          <div class="rank-col-points">${t('rankings.doublesBandCol')}</div>
+          <div class="rank-col-matches">${t('courtiq.ratingCol')}</div>
+          <div class="rank-col-matches">${t('courtiq.gamesCol')}</div>
+        </div>
+        ${rowsFor.map((r) => `
+        <div class="rank-row rank-grid rank-grid-courtiq">
+          <div class="rank-pos"><span class="rank-pos-num">${r.rank}</span></div>
+          ${doublesPlayerLink(r)}
+          <div class="rank-points">${r.band.toFixed(1)}${r.provisional ? `<span class="courtiq-provisional-tag" title="${escapeHtml(t('courtiq.provisional'))}">?</span>` : ''}</div>
+          <div class="rank-col-matches">${r.rating}</div>
+          <div class="rank-col-matches">${r.gamesPlayed}</div>
+        </div>`).join('')}
+      </div>
+      <p class="dbl-rule">${t('rankings.doublesRatingRule')}</p>`;
+  } else {
+    const isPairs = doublesView === 'pairs';
+    const nameCell = (r) => (isPairs
+      ? `<span class="rank-name dbl-pair-name">${r.players.map((p) => (p.slug ? `<a href="/player/${escapeHtml(p.slug)}"${PLAYER_LINK_ATTRS}>${escapeHtml(p.name)}</a>` : escapeHtml(p.name))).join(' <span class="dbl-sep">/</span> ')}</span>`
+      : doublesPlayerLink(r));
+    body = `
+      <div class="rank-table">
+        <div class="rank-table-header rank-grid">
+          <div class="rank-col-pos"></div>
+          <div class="rank-col-player">${t(isPairs ? 'rankings.doublesPairCol' : 'rankings.playerCol')}</div>
+          <div class="rank-col-age">${t('rankings.doublesWL')}</div>
+          <div class="rank-col-matches">${t('rankings.matchesCol')}</div>
+          <div class="rank-col-points">${t('rankings.doublesPoints')}</div>
+        </div>
+        ${rowsFor.map((r) => `
+        <div class="rank-row rank-grid">
+          <div class="rank-pos"><div class="rank-move rank-move-none"></div><span class="rank-pos-num">${r.rank}</span></div>
+          ${nameCell(r)}
+          <div class="rank-col-age">${r.wins}–${r.losses}</div>
+          <div class="rank-col-matches">${r.played}</div>
+          <div class="rank-points">${r.points}</div>
+        </div>`).join('')}
+      </div>
+      <p class="dbl-rule">${t(isPairs ? 'rankings.doublesPairsRule' : 'rankings.doublesRule', { win: table.pointsWin, loss: table.pointsLoss })}</p>`;
   }
-  const headerHtml = `
-    <div class="rank-table-header rank-grid">
-      <div class="rank-col-pos"></div>
-      <div class="rank-col-player">${t('rankings.playerCol')}</div>
-      <div class="rank-col-age">${t('rankings.doublesWL')}</div>
-      <div class="rank-col-matches">${t('rankings.matchesCol')}</div>
-      <div class="rank-col-points">${t('rankings.doublesPoints')}</div>
-    </div>`;
-  const rowsHtml = table.rows.map((r) => {
-    const flag = flagImgHtml(r.nationality, 'rank-flag-icon');
-    const nameHtml = r.slug
-      ? `<a href="/player/${escapeHtml(r.slug)}" class="rank-name"${PLAYER_LINK_ATTRS}>${flag}${escapeHtml(r.name)}</a>`
-      : `<span class="rank-name">${flag}${escapeHtml(r.name)}</span>`;
-    return `
-      <div class="rank-row rank-grid">
-        <div class="rank-pos"><div class="rank-move rank-move-none"></div><span class="rank-pos-num">${r.rank}</span></div>
-        ${nameHtml}
-        <div class="rank-col-age">${r.wins}–${r.losses}</div>
-        <div class="rank-col-matches">${r.played}</div>
-        <div class="rank-points">${r.points}</div>
-      </div>`;
-  }).join('');
-  listEl.innerHTML = `<div class="rank-table">${headerHtml}${rowsHtml}</div><p style="color:var(--gray-dim);font-size:12px;margin-top:10px">${t('rankings.doublesRule', { win: table.pointsWin, loss: table.pointsLoss })}</p>`;
+  listEl.innerHTML = chips + body;
+  listEl.querySelectorAll('.dbl-views .tab').forEach((btn) => {
+    btn.addEventListener('click', () => { doublesView = btn.dataset.view; renderDoublesTable(table); });
+  });
 }
 
 function renderTabs() {

@@ -186,7 +186,7 @@ router.get('/notifications', (req, res) => {
   }));
 
   const playRequestRows = db.prepare(`
-    SELECT prn.id, prn.seen, prn.created_at, prn.slot, prn.message,
+    SELECT prn.id, prn.seen, prn.created_at, prn.slot, prn.message, prn.mode,
            j.name AS joiner_name, j.slug AS joiner_slug
     FROM play_request_notifications prn
     JOIN players j ON j.id = prn.joiner_player_id
@@ -197,7 +197,7 @@ router.get('/notifications', (req, res) => {
     seen: !!r.seen,
     createdAt: r.created_at,
     playRequest: {
-      joinerName: r.joiner_name, joinerSlug: r.joiner_slug, slot: r.slot, message: r.message,
+      joinerName: r.joiner_name, joinerSlug: r.joiner_slug, slot: r.slot, message: r.message, mode: r.mode || 'SINGLES',
     },
   }));
 

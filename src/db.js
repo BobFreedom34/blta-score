@@ -994,6 +994,16 @@ const availabilityPostColumns = db.prepare('PRAGMA table_info(availability_posts
 if (!availabilityPostColumns.includes('categories')) {
   db.exec("ALTER TABLE availability_posts ADD COLUMN categories TEXT NOT NULL DEFAULT '[]'");
 }
+// What the post looks for: 'SINGLES' (an opponent) or 'DOUBLES' (a partner for doubles, "Hľadám partnera"). Accepting a DOUBLES join
+// makes a pair, not a match (a doubles match needs four players): the owner then creates the match from the board with the pair filled in.
+if (!availabilityPostColumns.includes('mode')) {
+  db.exec("ALTER TABLE availability_posts ADD COLUMN mode TEXT NOT NULL DEFAULT 'SINGLES'");
+}
+// the same for the bell notification of a request, so it can say "wants to be your partner"
+const playRequestNotificationColumns = db.prepare('PRAGMA table_info(play_request_notifications)').all().map((c) => c.name);
+if (!playRequestNotificationColumns.includes('mode')) {
+  db.exec("ALTER TABLE play_request_notifications ADD COLUMN mode TEXT NOT NULL DEFAULT 'SINGLES'");
+}
 
 // The site's top nav (see #header-dynamic-items in every page + renderHeaderNav
 // in common.js) — a top-level item has parent_id NULL; a sub-item points at

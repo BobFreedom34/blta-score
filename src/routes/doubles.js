@@ -12,6 +12,14 @@ router.get('/ranking', (req, res) => {
   res.json({ pointsWin: doubles.POINTS_WIN, pointsLoss: doubles.POINTS_LOSS, rows: doubles.ranking(leagues.actingIdOf(req)) });
 });
 
+// the doubles rating of the city (highest first) and the pairs that play well together
+router.get('/ratings', (req, res) => {
+  res.json({ rows: doubles.ratings(leagues.actingIdOf(req)) });
+});
+router.get('/pairs', (req, res) => {
+  res.json({ pointsWin: doubles.POINTS_WIN, pointsLoss: doubles.POINTS_LOSS, rows: doubles.pairs(leagues.actingIdOf(req)) });
+});
+
 // one player's doubles: totals, rank, partners and the latest matches (by id or slug; a player with no doubles gets zeros)
 router.get('/player/:id', (req, res) => {
   const key = req.params.id;

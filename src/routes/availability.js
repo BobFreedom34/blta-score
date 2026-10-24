@@ -6,7 +6,9 @@ const engine = require('../matchEngine');
 const {
   isAdmin, getPlayerId, stripPrivateFields, requireLoggedIn,
 } = require('../auth');
-const { sendPlayRequestEmail, sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail } = require('../mailer');
+const {
+  sendPlayRequestEmail, sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail, sendPartnerAcceptedEmail,
+} = require('../mailer');
 
 const router = express.Router();
 
@@ -24,6 +26,9 @@ const MAX_SLOTS = 120;
 // specifically about finding a friendly match, not slotting into one of
 // those other, more specific formats.
 const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+// A post looks for an opponent (SINGLES) or for a partner to play doubles with (DOUBLES, see db.js).
+const MODES = ['SINGLES', 'DOUBLES'];
+const modeOf = (row) => (row && row.mode === 'DOUBLES' ? 'DOUBLES' : 'SINGLES');
 // A tennis match runs a couple of hours — accepting a request blocks not
 // just the picked half-hour slot but this whole window after it too (see
 // blockedRangeIsos below), so the owner's calendar (and everyone else's
@@ -135,6 +140,7 @@ function serializePost(row, req) {
     player: player ? {
       id: player.id, name: player.name, slug: player.slug, photoUrl: player.photo_url,
     } : null,
+    mode: modeOf(row),
     slots: JSON.parse(row.days),
     categories: JSON.parse(row.categories || '[]'),
     location: row.location,
@@ -211,8 +217,12 @@ router.post('/', requirePlayerIdentity, (req, res) => {
 
   const { slots, error } = parseSlots(req.body.slots);
   if (error) return res.status(400).json({ error });
-  const { categories, error: categoryError } = parseCategories(req.body.categories);
+  const mode = req.body.mode === undefined || req.body.mode === null ? 'SINGLES' : req.body.mode;
+  if (!MODES.includes(mode)) return res.status(400).json({ error: 'Invalid mode' });
+  const { categories: pickedCategories, error: categoryError } = parseCategories(req.body.categories);
   if (categoryError) return res.status(400).json({ error: categoryError });
+  // the division is about an opponent in the league categories; a partner search for doubles has none
+  const categories = mode === 'DOUBLES' ? [] : pickedCategories;
 
   const location = typeof req.body.location === 'string' ? req.body.location.trim().slice(0, MAX_LOCATION_LEN) : '';
   const note = typeof req.body.note === 'string' ? req.body.note.trim().slice(0, MAX_NOTE_LEN) : '';
@@ -221,16 +231,16 @@ router.post('/', requirePlayerIdentity, (req, res) => {
   const existing = db.prepare('SELECT id FROM availability_posts WHERE player_id = ?').get(playerId);
   if (existing) {
     db.prepare(`
-      UPDATE availability_posts SET days = ?, categories = ?, location = ?, note = ?, updated_at = ?
+      UPDATE availability_posts SET days = ?, categories = ?, mode = ?, location = ?, note = ?, updated_at = ?
       WHERE id = ?
-    `).run(JSON.stringify(slots), JSON.stringify(categories), location, note, now, existing.id);
+    `).run(JSON.stringify(slots), JSON.stringify(categories), mode, location, note, now, existing.id);
     return res.json(serializePost(db.prepare('SELECT * FROM availability_posts WHERE id = ?').get(existing.id), req));
   }
 
   const info = db.prepare(`
-    INSERT INTO availability_posts (player_id, days, categories, location, note)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(playerId, JSON.stringify(slots), JSON.stringify(categories), location, note);
+    INSERT INTO availability_posts (player_id, days, categories, mode, location, note)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(playerId, JSON.stringify(slots), JSON.stringify(categories), mode, location, note);
   res.status(201).json(serializePost(db.prepare('SELECT * FROM availability_posts WHERE id = ?').get(info.lastInsertRowid), req));
 });
 
@@ -296,11 +306,11 @@ router.post('/:id/join', requirePlayerIdentity, async (req, res) => {
     const owner = getPlayer(row.player_id);
     const joiner = getPlayer(playerId);
     if (owner && joiner) {
-      db.prepare('INSERT INTO play_request_notifications (player_id, joiner_player_id, slot, message) VALUES (?, ?, ?, ?)')
-        .run(owner.id, joiner.id, slot, message);
+      db.prepare('INSERT INTO play_request_notifications (player_id, joiner_player_id, slot, message, mode) VALUES (?, ?, ?, ?, ?)')
+        .run(owner.id, joiner.id, slot, message, modeOf(row));
       if (owner.email) {
         try {
-          await sendPlayRequestEmail(owner, joiner, slot, message);
+          await sendPlayRequestEmail(owner, joiner, slot, message, modeOf(row));
         } catch (err) {
           console.error('[availability] play-request email failed:', err.message);
         }
@@ -344,6 +354,20 @@ router.post('/:id/joins/:playerId/accept', requireLoggedIn, async (req, res) => 
   const owner = getPlayer(row.player_id);
   const joiner = getPlayer(join.player_id);
   if (!owner || !joiner) return res.status(400).json({ error: 'One of the players no longer exists' });
+
+  // A partner search ends with a pair, not a match: nobody is scheduled against anybody yet. The join is accepted (the time is taken off the
+  // board) and the partner is told; the owner then creates the doubles match from the board, with the pair already filled in.
+  if (modeOf(row) === 'DOUBLES') {
+    db.prepare("UPDATE availability_joins SET status = 'ACCEPTED' WHERE id = ?").run(join.id);
+    if (joiner.email) {
+      try {
+        await sendPartnerAcceptedEmail(owner, joiner, join.slot);
+      } catch (err) {
+        console.error('[availability] partner accept email failed:', err.message);
+      }
+    }
+    return res.json(serializePost(db.prepare('SELECT * FROM availability_posts WHERE id = ?').get(row.id), req));
+  }
 
   const shareToken = crypto.randomUUID();
   const state = engine.initState(DEFAULT_MATCH_FORMAT);

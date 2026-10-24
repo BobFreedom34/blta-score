@@ -592,6 +592,8 @@ async function renderDoubles() {
         <div class="courtiq-meta">
           <div>${escapeHtml(t('player.doublesRecord', { played: d.played, wins: d.wins, losses: d.losses }))}</div>
           <div>${escapeHtml(t('player.doublesPoints', { points: d.points }))}</div>
+          ${d.rating ? `<div>${escapeHtml(t('player.doublesRating', { band: d.rating.band.toFixed(1) + (d.rating.provisional ? '?' : ''), rank: d.ratingRank || '–' }))}</div>` : ''}
+          ${d.bestPartner ? `<div>${escapeHtml(t('player.doublesBestPartner', { name: d.bestPartner.name, rate: d.bestPartner.winRate, played: d.bestPartner.played }))}</div>` : ''}
         </div>
       </div>
       <div class="dbl-partners"><span class="dbl-partners-label">${escapeHtml(t('player.doublesPartners'))}</span>${partners}</div>

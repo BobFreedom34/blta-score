@@ -91,13 +91,53 @@ test('partners, wins and the latest matches of one player', async () => {
   assert.strictEqual(none.json.played, 0);
 });
 
+test('the doubles rating: each player is rated against the average of the other pair, apart from the singles CourtIQ', async () => {
+  const r = await call('GET', '/api/doubles/ratings', { cookie: '' });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.json.rows.length, 4);
+  const row = (name) => r.json.rows.find((x) => x.name === name);
+  // Boris won both matches, Cyril lost both: the order follows the results
+  assert.strictEqual(r.json.rows[0].name, 'Boris Beta');
+  assert.strictEqual(r.json.rows[0].rank, 1);
+  assert.strictEqual(r.json.rows[3].name, 'Cyril Gama');
+  assert.ok(row('Boris Beta').rating > 1500 && row('Cyril Gama').rating < 1500);
+  assert.ok(r.json.rows.every((x) => x.gamesPlayed === 2 && x.provisional === true && x.band >= 1 && x.band <= 7));
+  const rk = await call('GET', '/api/doubles/ranking', { cookie: '' });
+  assert.strictEqual(rk.json.rows.find((x) => x.name === 'Boris Beta').doublesRating.rating, row('Boris Beta').rating, 'the ranking rows carry the rating');
+  const iq = await call('GET', `/api/courtiq/player/${ids.boris}`, { cookie: '' });
+  assert.strictEqual(iq.json.gamesPlayed, 0, 'the singles CourtIQ is untouched');
+  const s = await call('GET', `/api/doubles/player/${ids.boris}`, { cookie: '' });
+  assert.strictEqual(s.json.rating.rating, row('Boris Beta').rating);
+  assert.strictEqual(s.json.ratingRank, 1);
+});
+
+test('the best pairs and the partner figures', async () => {
+  const r = await call('GET', '/api/doubles/pairs', { cookie: '' });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.json.rows.length, 4, 'four different pairs played');
+  assert.deepStrictEqual(r.json.rows.slice(0, 2).map((p) => [p.name, p.rank, p.points, p.wins]), [['Anna Alfa / Boris Beta', 1, 3, 1], ['Boris Beta / Dana Delta', 1, 3, 1]]);
+  assert.ok(r.json.rows.slice(2).every((p) => p.rank === 3 && p.points === 1 && p.losses === 1));
+  assert.ok(r.json.rows.every((p) => p.players.length === 2 && p.players[0].name < p.players[1].name), 'the members of a pair in alphabetical order');
+  // a pair counts the same whoever was first: the same two playing again, the other way round, add to one row
+  const again = await make({ player1Name: 'Boris Beta', player1bName: 'Anna Alfa', player2Name: 'Dana Delta', player2bName: 'Cyril Gama' });
+  assert.strictEqual(again.status, 201, JSON.stringify(again.json));
+  assert.strictEqual((await manual(again.json.token, [{ p1: 6, p2: 0 }, { p1: 6, p2: 1 }])).status, 200);
+  const after = await call('GET', '/api/doubles/pairs', { cookie: '' });
+  const ab = after.json.rows.find((p) => p.name === 'Anna Alfa / Boris Beta');
+  assert.deepStrictEqual([ab.played, ab.wins, ab.points], [2, 2, 6]);
+  assert.strictEqual(after.json.rows[0].name, 'Anna Alfa / Boris Beta');
+  const s = await call('GET', `/api/doubles/player/${ids.anna}`, { cookie: '' });
+  assert.strictEqual(s.json.partners.find((p) => p.name === 'Boris Beta').winRate, 100);
+  assert.strictEqual(s.json.bestPartner.name, 'Boris Beta', 'the partner with the best share of wins, from two matches together');
+});
+
 test('doubles never reach the singles side: lists, CourtIQ, the player\'s own numbers', async () => {
   const plain = await call('GET', `/api/matches?playerId=${ids.anna}&status=FINISHED`, { cookie: '' });
   assert.strictEqual(plain.json.length, 0, 'a player\'s singles list has no doubles match');
   const withDoubles = await call('GET', `/api/matches?playerId=${ids.anna}&status=FINISHED&withDoubles=1`, { cookie: '' });
-  assert.strictEqual(withDoubles.json.length, 2, 'the "my matches" list can ask for them');
+  assert.strictEqual(withDoubles.json.length, 3, 'the "my matches" list can ask for them');
   const partner = await call('GET', `/api/matches?playerId=${ids.dana}&status=FINISHED&withDoubles=1`, { cookie: '' });
-  assert.strictEqual(partner.json.length, 2, 'the partner of a side sees the match too');
+  assert.strictEqual(partner.json.length, 3, 'the partner of a side sees the match too');
   const iq = await call('GET', `/api/courtiq/player/${ids.anna}`, { cookie: '' });
   assert.strictEqual(iq.json.gamesPlayed, 0, 'no CourtIQ from doubles');
   assert.strictEqual((await call('GET', '/api/courtiq', { cookie: '' })).json.rows.length, 0);

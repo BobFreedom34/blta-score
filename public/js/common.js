@@ -2971,7 +2971,7 @@ function renderBadgeNotifList() {
       subtitle = escapeHtml(truncateForNotif(n.chat.body, 80));
     } else if (n.type === 'PLAY_REQUEST') {
       icon = '👋';
-      title = t('notif.playRequestTitle', { name: escapeHtml(n.playRequest.joinerName) });
+      title = t(n.playRequest.mode === 'DOUBLES' ? 'notif.partnerRequestTitle' : 'notif.playRequestTitle', { name: escapeHtml(n.playRequest.joinerName) });
       subtitle = fmtDateShort(n.playRequest.slot);
     } else if (n.type === 'PROPOSAL') {
       // A missing otherPlayerName means something different depending on

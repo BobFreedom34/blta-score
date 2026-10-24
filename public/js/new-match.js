@@ -92,6 +92,17 @@ function setMode(mode) {
   else document.getElementById('player1').dispatchEvent(new Event('input')); // the pickers show the typed names again
 }
 modeButtons.forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+// a link from the partner search (looking-to-play.js) opens the form as doubles with the pair as team 1: ?doubles=1&p1=<name>&p1b=<name>
+(() => {
+  const q = new URLSearchParams(window.location.search);
+  if (q.get('doubles') !== '1') return;
+  setMode('doubles');
+  [['player1', 'p1'], ['player1b', 'p1b']].forEach(([id, key]) => {
+    const name = (q.get(key) || '').trim();
+    if (name) { const el = document.getElementById(id); el.value = name; el.dispatchEvent(new Event('input', { bubbles: true })); }
+  });
+})();
 seasonSelect.addEventListener('change', () => { groupSelect.value = ''; renderSeasonFields(); });
 
 document.getElementById('new-match-form').addEventListener('submit', async (e) => {
