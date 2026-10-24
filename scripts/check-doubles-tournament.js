@@ -271,6 +271,10 @@ test('singles or doubles is chosen when a tournament is made and never mixed', a
   assert.strictEqual((await call('PATCH', `/api/seasons/${sid}`, { body: { playType: 'DOUBLES' } })).status, 409);
   assert.strictEqual((await call('PATCH', `/api/seasons/${dbl.id}`, { body: { playType: 'DOUBLES', name: 'Štvorhra turnaj 2' } })).status, 200, 'saying the same type is fine');
   assert.strictEqual((await call('POST', '/api/seasons', { body: { name: 'Zlý typ', kind: 'TOURNAMENT', playType: 'MIXED' } })).status, 400);
+  // the schedule lists them by what they are played as
+  const sch = (await call('GET', '/api/schedule', { cookie: '' })).json;
+  assert.deepStrictEqual(sch.find((e) => e.name === 'Štvorhra turnaj 2').categories, ['DOUBLES']);
+  assert.deepStrictEqual(sch.find((e) => e.name === 'Dvojhra turnaj').categories, ['ELITE', 'NEXT_GEN', 'NOVICE']);
   // the organiser adds an entry: the partner is required there too, and the pair is made
   await players(['Gus GG', 'Hal HH']);
   const admin = await call('POST', `/api/seasons/${dbl.id}/registrations/admin`, { body: { playerId: P['Gus GG'] } });

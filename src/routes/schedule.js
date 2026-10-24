@@ -42,7 +42,8 @@ function scheduleOf(leagueId) {
       link: `/${tournament ? 'tournament' : 'season'}/${s.slug}`,
       logoUrl: s.logo_url || '',
       registrationOpen: !!s.registration_open,
-      categories: tournament && own.length ? own : CATEGORIES,
+      // a doubles tournament is played in the one category Štvorhra, not in the three league ones
+      categories: tournament && s.play_type === 'DOUBLES' ? ['DOUBLES'] : (tournament && own.length ? own : CATEGORIES),
     };
   });
   const events = db.prepare('SELECT * FROM schedule_events WHERE league_id = ?').all(leagueId).map(serializeEvent);

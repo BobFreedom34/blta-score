@@ -14,8 +14,8 @@ let year = null;
 let cat = 'ALL';
 let type = 'ALL';
 
-const CATEGORY_ORDER = ['ELITE', 'NEXT_GEN', 'NOVICE'];
-const CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
+const CATEGORY_ORDER = ['ELITE', 'NEXT_GEN', 'NOVICE', 'DOUBLES'];
+const CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', get DOUBLES() { return t('season.catDoubles'); } }; // DOUBLES: the doubles tournaments
 
 function locale() {
   return currentLang === 'en' ? 'en-GB' : 'sk-SK';
