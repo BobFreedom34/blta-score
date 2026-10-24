@@ -270,9 +270,9 @@ function timelineHtml(d) {
   const filterable = leagueCount > 0 && tourCount > 0;
   if (!filterable) stripFilter = 'ALL';
   const seasons = everything.filter((s) => stripFilter === 'ALL' || (stripFilter === 'TOURNAMENT') === (s.kind === 'TOURNAMENT'));
-  const chip = (key, text, count) => `<button type="button" class="${stripFilter === key ? 'active' : ''}" data-strip="${key}">${escapeHtml(text)} · ${count}</button>`;
+  const chip = (key, text, count) => `<button type="button" class="tab${stripFilter === key ? ' active' : ''}" data-strip="${key}">${escapeHtml(text)} · ${count}</button>`;
   const filterHtml = filterable
-    ? `<div class="home-tl-filter" id="home-tl-filter">${chip('ALL', t('home.filterAll'), everything.length)}${chip('LEAGUE', t('home.filterLeagues'), leagueCount)}${chip('TOURNAMENT', t('home.filterTournaments'), tourCount)}</div>`
+    ? `<div class="tabs home-tl-filter" id="home-tl-filter">${chip('ALL', t('home.filterAll'), everything.length)}${chip('LEAGUE', t('home.filterLeagues'), leagueCount)}${chip('TOURNAMENT', t('home.filterTournaments'), tourCount)}</div>`
     : '';
   const today = new Date().toISOString().slice(0, 10);
   const label = { past: t('home.tlPast'), now: t('home.tlNow'), future: t('home.tlFuture') };
@@ -585,7 +585,7 @@ function renderHome() {
   rootEl.innerHTML = `
     ${mineHtml(d)}
     <section class="home-current">
-      ${d.season || (d.seasons || []).length ? secTitle(t('home.current'), d.season ? d.season.name : '', '/harmonogram', t('home.fullSchedule')) : ''}
+      ${d.season || (d.seasons || []).length ? secTitle(t('home.current'), '', '/harmonogram', t('home.fullSchedule')) : ''}
       ${timelineHtml(d)}
       ${progressHtml(d)}
       ${d.season ? statsHtml(d) : ''}
