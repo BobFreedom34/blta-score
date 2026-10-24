@@ -23,7 +23,7 @@ const upload = multer({
   },
 });
 
-const LOGIC_TYPES = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP', 'BAGEL', 'COMEBACK', 'STRAIGHT_SETS', 'CALENDAR_DATE'];
+const LOGIC_TYPES = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP', 'BAGEL', 'COMEBACK', 'STRAIGHT_SETS', 'CALENDAR_DATE', 'DOUBLES_GAMES', 'DOUBLES_WINS', 'DOUBLES_WIN_STREAK', 'DOUBLES_PARTNERS'];
 // These logic types are count-based (need a threshold); the rest are
 // pass/fail conditions computed straight from a player's match history.
 // BAGEL/COMEBACK moved here once badgeEngine.js's own metrics for them
@@ -34,7 +34,7 @@ const LOGIC_TYPES = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP', 'BA
 // CALENDAR_DATE also needs the threshold field, but it isn't a count —
 // it holds the target day as MMDD (Jan 1 -> 101, Dec 25 -> 1225), so it's
 // validated separately below rather than as a "must be >= 1" count.
-const THRESHOLD_TYPES = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'STRAIGHT_SETS', 'BAGEL', 'COMEBACK', 'CALENDAR_DATE'];
+const THRESHOLD_TYPES = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'STRAIGHT_SETS', 'BAGEL', 'COMEBACK', 'CALENDAR_DATE', 'DOUBLES_GAMES', 'DOUBLES_WINS', 'DOUBLES_WIN_STREAK', 'DOUBLES_PARTNERS'];
 
 // Longest day each month can have — Feb is 29 so a "played on Feb 29"
 // badge is still allowed (leap years exist), it just never triggers in a

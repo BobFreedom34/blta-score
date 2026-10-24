@@ -131,6 +131,28 @@ test('the best pairs and the partner figures', async () => {
   assert.strictEqual(s.json.bestPartner.name, 'Boris Beta', 'the partner with the best share of wins, from two matches together');
 });
 
+test('the doubles badges: counted from doubles matches only, and a doubles match gives no singles badge', async () => {
+  const defs = await call('GET', '/api/badges', { cookie: '' });
+  const doublesDefs = defs.json.filter((b) => b.logicType.startsWith('DOUBLES_'));
+  assert.strictEqual(doublesDefs.length, 6, 'six doubles badges are made once');
+  assert.deepStrictEqual([...new Set(doublesDefs.map((b) => b.logicType))].sort(), ['DOUBLES_GAMES', 'DOUBLES_PARTNERS', 'DOUBLES_WINS', 'DOUBLES_WIN_STREAK']);
+  const bellOf = async (name, phone) => {
+    const id = ids[name];
+    assert.strictEqual((await call('PATCH', `/api/players/${id}/phone`, { body: { phone } })).status, 200);
+    const login = await call('POST', '/api/player/login', { cookie: '', body: { code: phone } });
+    assert.strictEqual(login.status, 200, JSON.stringify(login.json));
+    const n = await call('GET', '/api/player/notifications', { cookie: cookieOf(login) });
+    return JSON.stringify(n.json);
+  };
+  // Boris: 3 doubles matches, 3 wins in a row, 2 different partners; Cyril: 3 matches, no win
+  const boris = await bellOf('boris', '0902000001');
+  ['Doubles debut', 'First doubles win', 'Doubles streak'].forEach((b) => assert.ok(boris.includes(b), 'Boris earned ' + b));
+  ['Doubles regular', 'Doubles winner', 'Team player'].forEach((b) => assert.ok(!boris.includes(b), 'Boris did not earn ' + b + ' yet'));
+  ['First serve', 'First win', 'Hot streak'].forEach((b) => assert.ok(!boris.includes(b), 'a doubles match gives no singles badge: ' + b));
+  const cyril = await bellOf('cyril', '0902000002');
+  assert.ok(cyril.includes('Doubles debut') && !cyril.includes('First doubles win'), 'Cyril played but never won');
+});
+
 test('doubles never reach the singles side: lists, CourtIQ, the player\'s own numbers', async () => {
   const plain = await call('GET', `/api/matches?playerId=${ids.anna}&status=FINISHED`, { cookie: '' });
   assert.strictEqual(plain.json.length, 0, 'a player\'s singles list has no doubles match');
@@ -163,7 +185,7 @@ test('the pages carry the pieces: the switch and the four fields, the ranking ta
   const js = read('js/new-match.js');
   assert.ok(js.includes('doubles: true') && js.includes('player1bName') && js.includes('player2bName'), 'new-match.js sends the four players');
   assert.ok(read('js/rankings.js').includes("'/doubles/ranking'"), 'rankings.js loads the doubles ranking');
-  assert.ok(read('js/rankings.js').includes('!m.isDoubles'), 'the badges tab leaves doubles out');
+  assert.ok(read('js/rankings.js').includes('m.isDoubles ? [...m.team1'), 'the badges tab counts a doubles match for all four players (the doubles badges only)');
   assert.ok(read('player.html').includes('doubles-card') && read('js/player.js').includes('/doubles/player/'), 'the profile card');
   assert.ok(read('js/app.js').includes("'withDoubles'"), 'my matches ask for the doubles too');
   const i18n = read('js/i18n.js');

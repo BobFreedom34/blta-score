@@ -1005,6 +1005,10 @@ const TRANSLATIONS = {
     'badge.group.COMEBACK': 'Comeback',
     'badge.group.STRAIGHT_SETS': 'Bez straty setu',
     'badge.group.CALENDAR_DATE': 'Špeciálne dni',
+    'badge.group.DOUBLES_GAMES': 'Štvorhra: zápasy',
+    'badge.group.DOUBLES_WINS': 'Štvorhra: výhry',
+    'badge.group.DOUBLES_WIN_STREAK': 'Štvorhra: séria výhier',
+    'badge.group.DOUBLES_PARTNERS': 'Štvorhra: partneri',
 
     'notif.bellLabel': 'Upozornenia',
     'notif.heading': 'Upozornenia',
@@ -2171,6 +2175,10 @@ const TRANSLATIONS = {
     'badge.group.COMEBACK': 'Comeback',
     'badge.group.STRAIGHT_SETS': 'Straight Sets',
     'badge.group.CALENDAR_DATE': 'Special Days',
+    'badge.group.DOUBLES_GAMES': 'Doubles Matches',
+    'badge.group.DOUBLES_WINS': 'Doubles Wins',
+    'badge.group.DOUBLES_WIN_STREAK': 'Doubles Streak',
+    'badge.group.DOUBLES_PARTNERS': 'Doubles Partners',
 
     'notif.bellLabel': 'Notifications',
     'notif.heading': 'Notifications',

@@ -34,8 +34,9 @@ async function buildBadgesTable() {
   ]);
   badgeDefsForBadgesTab = badgeDefs;
   const matchesByPlayerId = new Map();
-  finished.filter((m) => !m.isDoubles).forEach((m) => {
-    [m.player1.id, m.player2.id].forEach((pid) => {
+  finished.forEach((m) => {
+    // a doubles match belongs to all four players (computeBadgeMetrics keeps it out of the singles badges)
+    (m.isDoubles ? [...m.team1, ...m.team2].map((p) => p.id) : [m.player1.id, m.player2.id]).forEach((pid) => {
       if (!matchesByPlayerId.has(pid)) matchesByPlayerId.set(pid, []);
       matchesByPlayerId.get(pid).push(m);
     });

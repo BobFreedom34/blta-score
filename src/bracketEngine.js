@@ -87,6 +87,19 @@ function matchStageFor(bracket) {
   return BLTA_CATEGORIES.includes(bracket.category) ? 'PLAYOFF' : 'GROUP';
 }
 
+// The partner of an entrant of a doubles draw (null for a singles draw, or a player with no partner set).
+function partnerOf(bracketId, playerId) {
+  if (!playerId) return null;
+  const row = db.prepare('SELECT partner_id FROM bracket_partners WHERE bracket_id = ? AND player_id = ?').get(bracketId, playerId);
+  return row ? row.partner_id : null;
+}
+
+// Sets (or changes) who plays with a player in a doubles draw. Nobody may be in a draw twice, as a player or as a partner.
+function setPartner(bracketId, playerId, partnerId) {
+  db.prepare('INSERT INTO bracket_partners (bracket_id, player_id, partner_id) VALUES (?, ?, ?) ON CONFLICT(bracket_id, player_id) DO UPDATE SET partner_id = excluded.partner_id')
+    .run(bracketId, playerId, partnerId);
+}
+
 function maybeCreateMatch(node) {
   if (node.match_id || !node.player1_id || !node.player2_id) return node;
   const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(node.bracket_id);
@@ -95,9 +108,11 @@ function maybeCreateMatch(node) {
   // node's winner directly instead, via recordManualResult below.
   if (!bracket.auto_create_matches) return node;
   const state = engine.initState(bracket.format);
+  // a doubles draw makes doubles matches: the first player of each pair is player1/player2, the partners the b columns
+  const doubles = !!bracket.is_doubles;
   const info = db.prepare(`
-    INSERT INTO matches (share_token, category, season_id, stage, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, notes)
-    VALUES (?, ?, ?, ?, ?, ?, '', NULL, ?, 'PLANNED', ?, '[]', 1, ?)
+    INSERT INTO matches (share_token, category, season_id, stage, player1_id, player2_id, is_doubles, player1b_id, player2b_id, location, scheduled_at, format, status, state, history, created_by_admin, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', NULL, ?, 'PLANNED', ?, '[]', 1, ?)
   `).run(
     crypto.randomUUID(),
     bracket.category || 'OTHER',
@@ -105,6 +120,9 @@ function maybeCreateMatch(node) {
     matchStageFor(bracket),
     node.player1_id,
     node.player2_id,
+    doubles ? 1 : 0,
+    doubles ? partnerOf(bracket.id, node.player1_id) : null,
+    doubles ? partnerOf(bracket.id, node.player2_id) : null,
     bracket.format,
     JSON.stringify(state),
     `${bracket.name} — round ${node.round}`,
@@ -184,14 +202,16 @@ function applySeeding(bracketId, entries, size) {
 // past/historical draw where the games already happened outside this app,
 // so nothing here should try to create a live, scoreable match for them.
 function createBracket({
-  name, format, entries, size, autoCreateMatches, category, seasonId, kind, parentBracketId,
+  name, format, entries, size, autoCreateMatches, category, seasonId, kind, parentBracketId, doubles,
 }) {
   const drawSize = entries && entries.length > 0
     ? nextPowerOfTwo(entries.length)
     : nextPowerOfTwo(Math.max(size || 2, 2));
-  const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category, season_id, kind, parent_bracket_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-    .run(name, format, drawSize, autoCreateMatches === false ? 0 : 1, category || null, seasonId || null, kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN', parentBracketId || null);
+  const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category, season_id, kind, parent_bracket_id, is_doubles) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(name, format, drawSize, autoCreateMatches === false ? 0 : 1, category || null, seasonId || null, kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN', parentBracketId || null, doubles ? 1 : 0);
   const bracketId = info.lastInsertRowid;
+  // the pairs are known before the first match is made
+  if (doubles && entries) entries.forEach((e) => { if (e.partnerId) { setPartner(bracketId, e.playerId, e.partnerId); } });
   buildEmptyTree(bracketId, drawSize);
   if (entries && entries.length > 0) applySeeding(bracketId, entries, drawSize);
   return bracketId;
@@ -201,8 +221,14 @@ function createBracket({
 // (no seed numbers), then runs the same bye/match-creation follow-through
 // applySeeding's loop does for a single node, so a manually-built draw
 // still auto-creates matches and propagates byes exactly like a seeded one.
-function setSlotPlayers(nodeId, player1Id, player2Id) {
+function setSlotPlayers(nodeId, player1Id, player2Id, partners = {}) {
   const isBye = (!!player1Id) !== (!!player2Id);
+  // a doubles draw: the partners of the pairs seated here
+  const bracketId = (db.prepare('SELECT bracket_id FROM bracket_matches WHERE id = ?').get(nodeId) || {}).bracket_id;
+  if (bracketId) {
+    if (player1Id && partners.player1PartnerId) setPartner(bracketId, player1Id, partners.player1PartnerId);
+    if (player2Id && partners.player2PartnerId) setPartner(bracketId, player2Id, partners.player2PartnerId);
+  }
   db.prepare(`
     UPDATE bracket_matches
     SET player1_id = ?, player2_id = ?, is_bye = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
@@ -366,6 +392,7 @@ function buildLosers(mainBracketId, { name, format, type = 'PRINCE' }) {
   const main = db.prepare('SELECT * FROM brackets WHERE id = ?').get(mainBracketId);
   if (!main) return { error: 'Bracket not found' };
   if (main.kind === 'CONSOLATION') return { error: 'Only a main bracket gets losers brackets' };
+  if (main.is_doubles) return { error: 'A doubles draw has no consolation draw yet' };
   if (!['PRINCE', 'MONRAD'].includes(type)) return { error: 'Unknown type of the losers brackets' };
   if (consolationOf(mainBracketId)) return { error: 'This bracket already has a consolation draw' };
   const ready = consolationReadiness(mainBracketId);
@@ -465,6 +492,8 @@ module.exports = {
   createBracket,
   applySeeding,
   setSlotPlayers,
+  partnerOf,
+  setPartner,
   recordManualResult,
   resetManualResult,
   advanceWinner,

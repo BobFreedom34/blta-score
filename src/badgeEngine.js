@@ -68,8 +68,40 @@ function badgeWonWithoutDroppingSet(m, pid) {
   return sets.every((s) => s.winner === playerSetNum);
 }
 
-function computeBadgeMetrics(playerId, finished) {
+// Doubles badges: counted from the player's doubles matches only (a doubles match never touches the singles metrics below, and the singles
+// matches never touch these). `matches` carry team1Ids/team2Ids (the two players of each side); the winner is the first player of the winning
+// side (winnerId), the same convention as everywhere else.
+function computeDoublesMetrics(pid, matches) {
+  const sideOf = (m) => ((m.team1Ids || []).includes(pid) ? 1 : (m.team2Ids || []).includes(pid) ? 2 : null);
+  const winnerSideOf = (m) => (m.winnerId && m.winnerId === m.player1Id ? 1 : m.winnerId && m.winnerId === m.player2Id ? 2 : null);
+  const mine = matches
+    .filter((m) => m.endReason !== 'WALKOVER' && m.endReason !== 'UNFINISHED' && sideOf(m))
+    .sort((a, b) => new Date(a.scheduledAt || a.startTime || a.createdAt) - new Date(b.scheduledAt || b.startTime || b.createdAt));
+  let streak = 0;
+  let maxStreak = 0;
+  let wins = 0;
+  const partners = new Set();
+  mine.forEach((m) => {
+    const side = sideOf(m);
+    (side === 1 ? m.team1Ids : m.team2Ids).forEach((id) => { if (id !== pid) partners.add(id); });
+    const won = winnerSideOf(m);
+    if (!won) return;
+    if (won === side) { wins += 1; streak += 1; maxStreak = Math.max(maxStreak, streak); } else streak = 0;
+  });
+  return {
+    DOUBLES_GAMES: mine.length, DOUBLES_WINS: wins, DOUBLES_WIN_STREAK: maxStreak, DOUBLES_PARTNERS: partners.size,
+  };
+}
+
+function computeBadgeMetrics(playerId, allFinished) {
   const pid = Number(playerId);
+  return {
+    ...computeSinglesMetrics(pid, allFinished.filter((m) => !m.isDoubles)),
+    ...computeDoublesMetrics(pid, allFinished.filter((m) => m.isDoubles)),
+  };
+}
+
+function computeSinglesMetrics(pid, finished) {
   // A walkover means no tennis was actually played, and a match finished
   // "as is" from Unfinished never reached a real conclusion — neither
   // counts toward games played, wins, streaks, or any other badge metric,
@@ -147,13 +179,16 @@ function computeEarnedBadgeInstances(playerId, finished, badgeDefs) {
 // serialize() does, since none of that feeds into badge metrics.
 function loadFinishedMatchesForBadges(playerId) {
   const rows = db.prepare(
-    "SELECT * FROM matches WHERE status = 'FINISHED' AND COALESCE(is_doubles, 0) = 0 AND (player1_id = ? OR player2_id = ?)"
-  ).all(playerId, playerId);
+    "SELECT * FROM matches WHERE status = 'FINISHED' AND (player1_id = ? OR player2_id = ? OR (COALESCE(is_doubles, 0) = 1 AND (player1b_id = ? OR player2b_id = ?)))"
+  ).all(playerId, playerId, playerId, playerId);
   return rows.map((row) => {
     const state = JSON.parse(row.state);
     return {
       player1Id: row.player1_id,
       player2Id: row.player2_id,
+      isDoubles: !!row.is_doubles,
+      team1Ids: [row.player1_id, row.player1b_id].filter(Boolean),
+      team2Ids: [row.player2_id, row.player2b_id].filter(Boolean),
       winnerId: row.winner_id,
       category: row.category,
       endReason: row.end_reason,

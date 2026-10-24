@@ -46,6 +46,20 @@ function serializePlayer(player) {
   return { id: stripped.id, name: stripped.name, slug: stripped.slug, nationality: stripped.nationality };
 }
 
+// A slot of a doubles draw holds a pair: shown as one "player" named "A / B" (the id is the first player's, which is what the tree and the
+// match results use), with the two players listed for whoever wants them. No profile link: a pair has none.
+function serializeSlotPlayer(bracket, playerId) {
+  if (!playerId) return null;
+  const first = db.prepare('SELECT * FROM players WHERE id = ?').get(playerId);
+  if (!first) return null;
+  if (!bracket.is_doubles) return serializePlayer(first);
+  const partner = db.prepare('SELECT * FROM players WHERE id = ?').get(bracketEngine.partnerOf(bracket.id, playerId));
+  const team = [serializePlayer(first), partner ? serializePlayer(partner) : null].filter(Boolean);
+  return {
+    id: first.id, name: team.map((p) => p.name).join(' / '), slug: null, nationality: null, team,
+  };
+}
+
 // Minimal match summary embedded on a bracket node — just enough for the
 // draw display (status, score, a link to the real match) without pulling
 // in everything matches.js's own serialize() does (proposals, chat, etc,
@@ -65,7 +79,7 @@ function serializeNodeMatch(matchId) {
   };
 }
 
-function serializeNode(node) {
+function serializeNode(node, bracket) {
   const match = serializeNodeMatch(node.match_id);
   // A node is "decided" by exactly one of two sources — a real match's own
   // winner_id (the live case), or manual_winner_id (see recordManualResult
@@ -78,8 +92,8 @@ function serializeNode(node) {
     position: node.position,
     seed1: node.seed1,
     seed2: node.seed2,
-    player1: serializePlayer(node.player1_id ? db.prepare('SELECT * FROM players WHERE id = ?').get(node.player1_id) : null),
-    player2: serializePlayer(node.player2_id ? db.prepare('SELECT * FROM players WHERE id = ?').get(node.player2_id) : null),
+    player1: serializeSlotPlayer(bracket, node.player1_id),
+    player2: serializeSlotPlayer(bracket, node.player2_id),
     isBye: !!node.is_bye,
     match,
     winnerId: match ? match.winnerId : node.manual_winner_id,
@@ -99,6 +113,7 @@ function serializeBracket(bracketId) {
     format: tree.bracket.format,
     formatLabel: engine.FORMATS[tree.bracket.format] ? engine.FORMATS[tree.bracket.format].label : tree.bracket.format,
     category: tree.bracket.category || null,
+    isDoubles: !!tree.bracket.is_doubles,
     kind: tree.bracket.kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN',
     parentBracketId: tree.bracket.parent_bracket_id || null,
     season: seasonOf(tree.bracket.season_id),
@@ -107,7 +122,7 @@ function serializeBracket(bracketId) {
     rounds: bracketEngine.roundCount(tree.bracket.size),
     createdAt: tree.bracket.created_at,
     // a consolation draw's seeds only say where a loser is placed, not how good the player is: nothing to show
-    nodes: tree.nodes.map((n) => (tree.bracket.kind === 'CONSOLATION' ? serializeNode({ ...n, seed1: null, seed2: null }) : serializeNode(n))),
+    nodes: tree.nodes.map((n) => (tree.bracket.kind === 'CONSOLATION' ? serializeNode({ ...n, seed1: null, seed2: null }, tree.bracket) : serializeNode(n, tree.bracket))),
   };
 }
 
@@ -121,6 +136,7 @@ router.get('/', auth.requireAdmin, (req, res) => {
     name: r.name,
     format: r.format,
     category: r.category || null,
+    isDoubles: !!r.is_doubles,
     kind: r.kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN',
     parentBracketId: r.parent_bracket_id || null,
     seasonId: r.season_id || null,
@@ -170,30 +186,41 @@ router.post('/', auth.requireAdmin, (req, res) => {
   if (Number.isNaN(seasonId)) return res.status(400).json({ error: 'Invalid season' });
   const problem = seasonProblem(seasonId, category);
   if (problem) return res.status(400).json({ error: problem });
+  // A doubles draw (every entrant a pair). Its matches are doubles matches, which never count in the league: so no BLTA category, and
+  // therefore no season (a season needs one).
+  const doubles = req.body.doubles === true;
+  if (doubles && BLTA_CATEGORIES.includes(category)) return res.status(400).json({ error: 'A doubles draw cannot be tied to a league category (Elite, Next Gen, Novice)' });
 
   const rawEntries = Array.isArray(req.body.entries) ? req.body.entries : null;
   if (rawEntries) {
-    if (rawEntries.length < 2) return res.status(400).json({ error: 'Need at least 2 players to seed a draw' });
-    if (rawEntries.length > 128) return res.status(400).json({ error: 'Too many players (max 128)' });
+    if (rawEntries.length < 2) return res.status(400).json({ error: doubles ? 'Need at least 2 pairs to seed a draw' : 'Need at least 2 players to seed a draw' });
+    if (rawEntries.length > 128) return res.status(400).json({ error: doubles ? 'Too many pairs (max 128)' : 'Too many players (max 128)' });
     const seeds = new Set();
     const playerIds = new Set();
+    const known = (id) => Number.isInteger(id) && db.prepare('SELECT 1 FROM players WHERE id = ?').get(id);
     for (const e of rawEntries) {
       const playerId = Number(e.playerId);
       const seed = Number(e.seed);
-      if (!Number.isInteger(playerId) || !db.prepare('SELECT 1 FROM players WHERE id = ?').get(playerId)) {
+      if (!known(playerId)) {
         return res.status(400).json({ error: `Unknown player id ${e.playerId}` });
       }
       if (!Number.isInteger(seed) || seed < 1) {
-        return res.status(400).json({ error: 'Every player needs a whole-number seed (1, 2, 3…)' });
+        return res.status(400).json({ error: doubles ? 'Every pair needs a whole-number seed (1, 2, 3…)' : 'Every player needs a whole-number seed (1, 2, 3…)' });
       }
       if (seeds.has(seed)) return res.status(400).json({ error: `Seed ${seed} is used more than once` });
       if (playerIds.has(playerId)) return res.status(400).json({ error: 'The same player is listed twice' });
       seeds.add(seed);
       playerIds.add(playerId);
+      if (doubles) {
+        const partnerId = Number(e.partnerId);
+        if (!known(partnerId)) return res.status(400).json({ error: `Every pair needs a partner (unknown player id ${e.partnerId})` });
+        if (playerIds.has(partnerId)) return res.status(400).json({ error: 'The same player is listed twice' });
+        playerIds.add(partnerId);
+      }
     }
-    const entries = rawEntries.map((e) => ({ playerId: Number(e.playerId), seed: Number(e.seed) }));
+    const entries = rawEntries.map((e) => ({ playerId: Number(e.playerId), seed: Number(e.seed), partnerId: doubles ? Number(e.partnerId) : null }));
     const bracketId = bracketEngine.createBracket({
-      name, format, entries, autoCreateMatches, category, seasonId,
+      name, format, entries, autoCreateMatches, category, seasonId, doubles,
     });
     stampBracket(bracketId, seasonId, req);
     return res.status(201).json(serializeBracket(bracketId));
@@ -204,7 +231,7 @@ router.post('/', auth.requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Give either a list of seeded players, or a draw size (2-256) for a manual draw' });
   }
   const bracketId = bracketEngine.createBracket({
-    name, format, entries: null, size, autoCreateMatches, category, seasonId,
+    name, format, entries: null, size, autoCreateMatches, category, seasonId, doubles,
   });
   stampBracket(bracketId, seasonId, req);
   res.status(201).json(serializeBracket(bracketId));
@@ -223,6 +250,7 @@ router.patch('/:id', auth.requireAdmin, (req, res) => {
   if (Object.prototype.hasOwnProperty.call(req.body, 'category')) {
     const rawCategory = typeof req.body.category === 'string' ? req.body.category.trim() : '';
     if (rawCategory && !CATEGORIES.includes(rawCategory)) return res.status(400).json({ error: 'Invalid category' });
+    if (bracket.is_doubles && BLTA_CATEGORIES.includes(rawCategory)) return res.status(400).json({ error: 'A doubles draw cannot be tied to a league category (Elite, Next Gen, Novice)' });
     fields.category = rawCategory || null;
   }
   if (Object.prototype.hasOwnProperty.call(req.body, 'seasonId')) {
@@ -263,6 +291,7 @@ router.delete('/:id', auth.requireAdmin, (req, res) => {
   // a main bracket takes all its losers brackets with it
   const ids = [id, ...bracketEngine.descendants(id)];
   ids.forEach((bid) => {
+    db.prepare('DELETE FROM bracket_partners WHERE bracket_id = ?').run(bid);
     db.prepare('DELETE FROM bracket_matches WHERE bracket_id = ?').run(bid);
     db.prepare('DELETE FROM brackets WHERE id = ?').run(bid);
   });
@@ -275,6 +304,7 @@ router.post('/:id/consolation', auth.requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(id);
   if (!bracket) return res.status(404).json({ error: 'Bracket not found' });
+  if (bracket.is_doubles) return res.status(400).json({ error: 'A doubles draw has no consolation draw yet' });
   const format = (req.body && req.body.format) || 'BO3_G4_STB';
   if (!engine.FORMATS[format] || format === 'FREE_PLAY') return res.status(400).json({ error: 'Invalid match format' });
   const base = bracket.name.replace(/\s*—\s*Hlavný pavúk\s*$/, '');
@@ -322,7 +352,23 @@ router.patch('/:id/slots/:nodeId', auth.requireAdmin, (req, res) => {
   if (player1Id && player2Id && player1Id === player2Id) {
     return res.status(400).json({ error: 'Both slots have the same player' });
   }
-  bracketEngine.setSlotPlayers(nodeId, player1Id, player2Id);
+  // a doubles draw: every player seated needs a partner (sent now, or set before), and nobody may be in the draw twice
+  const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(bracketId);
+  let partners = {};
+  if (bracket.is_doubles) {
+    const p1Partner = player1Id ? (resolve(req.body.player1PartnerId) || bracketEngine.partnerOf(bracketId, player1Id)) : null;
+    const p2Partner = player2Id ? (resolve(req.body.player2PartnerId) || bracketEngine.partnerOf(bracketId, player2Id)) : null;
+    if ((player1Id && !p1Partner) || (player2Id && !p2Partner)) return res.status(400).json({ error: 'Every pair needs a partner' });
+    const seated = [player1Id, p1Partner, player2Id, p2Partner].filter(Boolean);
+    if (new Set(seated).size !== seated.length) return res.status(400).json({ error: 'The four players must be different' });
+    // nobody who is already in another slot of this draw (as a player or as a partner)
+    const others = db.prepare('SELECT player1_id, player2_id FROM bracket_matches WHERE bracket_id = ? AND id != ?').all(bracketId, nodeId);
+    const taken = new Set();
+    others.forEach((o) => [o.player1_id, o.player2_id].filter(Boolean).forEach((id) => { taken.add(id); const pp = bracketEngine.partnerOf(bracketId, id); if (pp) taken.add(pp); }));
+    if (seated.some((id) => taken.has(id))) return res.status(400).json({ error: 'A player is already in this draw' });
+    partners = { player1PartnerId: p1Partner, player2PartnerId: p2Partner };
+  }
+  bracketEngine.setSlotPlayers(nodeId, player1Id, player2Id, partners);
   res.json(serializeBracket(bracketId));
 });
 

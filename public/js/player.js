@@ -795,7 +795,13 @@ function applyBadgesClip() {
 // computed from a player's whole career, not the filtered match list.
 async function renderBadges() {
   if (!badgeDefsCache) badgeDefsCache = await api('/badges');
-  const finished = rawGroups[3] || [];
+  // the doubles badges are counted from the doubles matches, which the singles lists of this page do not have
+  let doublesFinished = [];
+  try {
+    const qs = new URLSearchParams({ playerId, status: 'FINISHED', withDoubles: '1' });
+    doublesFinished = (await api(`/matches?${qs.toString()}`)).filter((m) => m.isDoubles);
+  } catch { /* the doubles badges simply stay locked */ }
+  const finished = [...(rawGroups[3] || []), ...doublesFinished];
   earnedBadgesCache = computeEarnedBadges(playerId, finished, badgeDefsCache);
   badgeMetricsCache = computeBadgeMetrics(playerId, finished);
   document.getElementById('badges-grid').innerHTML = badgesGridHtml(badgeDefsCache, earnedBadgesCache);

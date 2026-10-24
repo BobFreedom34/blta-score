@@ -18,6 +18,11 @@ const LOGIC_TYPES = [
   // Counts matches, not sets (see badgeEngine.js/badges.js) — same reason
   // as BAGEL just above needing one.
   { value: 'COMEBACK', label: 'Comeback wins (lost 1st set) ≥', groupLabel: 'Comeback', needsThreshold: true },
+  // Doubles (štvorhra) badges: counted from the doubles matches only, never from singles (see computeDoublesMetrics in badgeEngine.js/badges.js).
+  { value: 'DOUBLES_GAMES', label: 'Doubles matches played ≥', groupLabel: 'Doubles Matches', needsThreshold: true },
+  { value: 'DOUBLES_WINS', label: 'Doubles wins ≥', groupLabel: 'Doubles Wins', needsThreshold: true },
+  { value: 'DOUBLES_WIN_STREAK', label: 'Doubles win streak ≥', groupLabel: 'Doubles Streak', needsThreshold: true },
+  { value: 'DOUBLES_PARTNERS', label: 'Different doubles partners played with ≥', groupLabel: 'Partners', needsThreshold: true },
   // "threshold" here isn't a count — it's the target day as MMDD (Jan 1
   // -> 101, Dec 25 -> 1225), still stored in the same threshold column,
   // but entered via a month + day picker (isDate) instead of the numeric

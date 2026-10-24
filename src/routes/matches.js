@@ -331,9 +331,10 @@ function deriveWinnerId(state, row) {
 // can just always call this on the post-write row rather than tracking
 // which branch they're in.
 function syncBadgesIfFinished(row) {
-  if (row.status !== 'FINISHED' || row.is_doubles) return;
-  badgeEngine.syncPlayerBadges(row.player1_id);
-  badgeEngine.syncPlayerBadges(row.player2_id);
+  if (row.status !== 'FINISHED') return;
+  // a doubles match counts for the doubles badges of all four players (and for no singles badge: see computeBadgeMetrics)
+  [row.player1_id, row.player2_id, ...(row.is_doubles ? [row.player1b_id, row.player2b_id] : [])].filter(Boolean)
+    .forEach((id) => badgeEngine.syncPlayerBadges(id));
 }
 
 // Same trigger as syncBadgesIfFinished above, but CourtIQ (see

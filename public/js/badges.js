@@ -52,8 +52,40 @@ function localYear(dateStr) {
 // One numeric (or 0/1) value per logic type a badge definition can key off
 // — a badge is earned once its metric reaches its threshold (or, for the
 // threshold-less pass/fail types, once the metric is truthy).
-function computeBadgeMetrics(playerId, finished) {
+// Doubles badges: counted from the player's doubles matches only (m.isDoubles; the sides are m.team1 / m.team2, the winner is the first player
+// of the winning side). Mirror of computeDoublesMetrics in src/badgeEngine.js.
+function computeDoublesMetrics(pid, matches) {
+  const ids = (team) => (team || []).map((p) => p.id);
+  const sideOf = (m) => (ids(m.team1).includes(pid) ? 1 : ids(m.team2).includes(pid) ? 2 : null);
+  const winnerSideOf = (m) => (m.winnerId && m.winnerId === m.player1.id ? 1 : m.winnerId && m.winnerId === m.player2.id ? 2 : null);
+  const mine = matches
+    .filter((m) => m.endReason !== 'WALKOVER' && m.endReason !== 'UNFINISHED' && sideOf(m))
+    .sort((a, b) => new Date(a.scheduledAt || a.startTime || a.createdAt) - new Date(b.scheduledAt || b.startTime || b.createdAt));
+  let streak = 0;
+  let maxStreak = 0;
+  let wins = 0;
+  const partners = new Set();
+  mine.forEach((m) => {
+    const side = sideOf(m);
+    ids(side === 1 ? m.team1 : m.team2).forEach((id) => { if (id !== pid) partners.add(id); });
+    const won = winnerSideOf(m);
+    if (!won) return;
+    if (won === side) { wins += 1; streak += 1; maxStreak = Math.max(maxStreak, streak); } else streak = 0;
+  });
+  return {
+    DOUBLES_GAMES: mine.length, DOUBLES_WINS: wins, DOUBLES_WIN_STREAK: maxStreak, DOUBLES_PARTNERS: partners.size,
+  };
+}
+
+function computeBadgeMetrics(playerId, allFinished) {
   const pid = Number(playerId);
+  return {
+    ...computeSinglesMetrics(pid, allFinished.filter((m) => !m.isDoubles)),
+    ...computeDoublesMetrics(pid, allFinished.filter((m) => m.isDoubles)),
+  };
+}
+
+function computeSinglesMetrics(pid, finished) {
   // A walkover means no tennis was actually played, and a match finished
   // "as is" from Unfinished never reached a real conclusion — neither
   // counts toward games played, wins, streaks, or any other badge metric,
@@ -205,7 +237,7 @@ function badgesGridHtml(badgeDefs, earnedMap) {
 // derived from whatever badges happen to exist, so the section order in
 // the modal stays stable even as badges are added/removed/reordered
 // within a type.
-const BADGE_GROUP_ORDER = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP', 'BAGEL', 'COMEBACK', 'STRAIGHT_SETS', 'CALENDAR_DATE'];
+const BADGE_GROUP_ORDER = ['GAMES_PLAYED', 'WINS', 'WIN_STREAK', 'CATEGORY_SWEEP', 'BAGEL', 'COMEBACK', 'STRAIGHT_SETS', 'CALENDAR_DATE', 'DOUBLES_GAMES', 'DOUBLES_WINS', 'DOUBLES_WIN_STREAK', 'DOUBLES_PARTNERS'];
 
 // Full grid for the "show all badges" modal — same badges, but with the
 // unlock condition written out under each one instead of hidden in a

@@ -1096,6 +1096,21 @@ if (!headerItemColumns.includes('highlight')) {
   db.exec('ALTER TABLE header_items ADD COLUMN highlight INTEGER NOT NULL DEFAULT 0');
 }
 // Once: the main menu item "Liga" becomes a green button (after that the switch in /header-admin owns it).
+// The doubles badges (counted from doubles matches only, see src/badgeEngine.js), added once. The app_flags row, not the badges, stops a re-add:
+// an admin who edits or deletes one keeps it so.
+if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'doubles_badges'").get()) {
+  const next = (db.prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM badge_definitions').get() || { n: 0 }).n;
+  const add = db.prepare('INSERT INTO badge_definitions (name, description, icon, logic_type, threshold, sort_order) VALUES (?, ?, ?, ?, ?, ?)');
+  [
+    ['Doubles debut', 'Play your 1st doubles match', '🤝', 'DOUBLES_GAMES', 1],
+    ['Doubles regular', 'Play 10 doubles matches', '👥', 'DOUBLES_GAMES', 10],
+    ['First doubles win', 'Win your 1st doubles match', '🥇', 'DOUBLES_WINS', 1],
+    ['Doubles winner', 'Win 10 doubles matches', '🏅', 'DOUBLES_WINS', 10],
+    ['Doubles streak', 'Win 3 doubles matches in a row', '🔥', 'DOUBLES_WIN_STREAK', 3],
+    ['Team player', 'Play doubles with 3 different partners', '🎾', 'DOUBLES_PARTNERS', 3],
+  ].forEach((row, i) => add.run(...row, next + i));
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('doubles_badges')").run();
+}
 if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'menu_liga_green'").get()) {
   db.prepare("UPDATE header_items SET highlight = 1 WHERE parent_id IS NULL AND lower(label_sk) = 'liga'").run();
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_liga_green')").run();
@@ -1350,6 +1365,21 @@ if (!matchSeasonColumns.includes('group_id')) {
 if (!matchSeasonColumns.includes('stage')) {
   db.exec("ALTER TABLE matches ADD COLUMN stage TEXT NOT NULL DEFAULT 'GROUP'");
 }
+
+// A doubles draw (is_doubles): every entrant is a pair. The tree keeps ONE player id per slot (the first player of the pair, the "captain"),
+// so the seeding, byes and advancing of src/bracketEngine.js stay exactly as they are for singles; bracket_partners says who plays with whom in
+// this draw, and the matches the draw creates are doubles matches (see maybeCreateMatch).
+if (!db.prepare('PRAGMA table_info(brackets)').all().some((c) => c.name === 'is_doubles')) {
+  db.exec('ALTER TABLE brackets ADD COLUMN is_doubles INTEGER NOT NULL DEFAULT 0');
+}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS bracket_partners (
+    bracket_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    partner_id INTEGER NOT NULL,
+    PRIMARY KEY (bracket_id, player_id)
+  );
+`);
 
 // A bracket (play-off draw) can belong to a season; the matches it creates then carry that season.
 if (!db.prepare('PRAGMA table_info(brackets)').all().some((c) => c.name === 'season_id')) {

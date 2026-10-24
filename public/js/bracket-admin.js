@@ -55,10 +55,31 @@ function entryRowHtml(rowId, seedDefault) {
         <input type="text" id="entry-${rowId}-name" placeholder="Player name" autocomplete="off" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
         <div class="autocomplete-list" id="entry-${rowId}-list"></div>
       </div>
+      <div class="autocomplete entry-partner" style="flex:1;position:relative;display:none">
+        <input type="text" id="entry-${rowId}-partner" placeholder="Partner" autocomplete="off" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
+        <div class="autocomplete-list" id="entry-${rowId}-partner-list"></div>
+      </div>
       <input type="number" id="entry-${rowId}-seed" min="1" value="${seedDefault}" style="width:70px;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px" title="Seed">
       <button type="button" class="btn btn-sm btn-outline" data-action="remove-entry" title="Remove">✕</button>
     </div>
   `;
+}
+
+// A doubles draw: every entrant is a pair, so each row asks for a partner too, and the league categories (and so a season) are off.
+function isDoublesForm() {
+  const box = document.getElementById('bracket-doubles');
+  return !!(box && box.checked);
+}
+function applyDoublesMode() {
+  const doubles = isDoublesForm();
+  document.querySelectorAll('.bracket-entry-row .entry-partner').forEach((el) => { el.style.display = doubles ? '' : 'none'; });
+  const category = document.getElementById('bracket-category');
+  if (!category) return;
+  Array.from(category.options).forEach((o) => { if (['ELITE', 'NEXT_GEN', 'NOVICE'].includes(o.value)) o.disabled = doubles; });
+  if (doubles && ['ELITE', 'NEXT_GEN', 'NOVICE'].includes(category.value)) {
+    category.value = '';
+    category.dispatchEvent(new Event('change', { bubbles: true }));
+  }
 }
 
 function addEntryRow() {
@@ -68,6 +89,8 @@ function addEntryRow() {
   const container = document.getElementById('bracket-entries-list');
   container.insertAdjacentHTML('beforeend', entryRowHtml(rowId, existingRows + 1));
   setupAutocomplete(`entry-${rowId}-name`, `entry-${rowId}-list`);
+  setupAutocomplete(`entry-${rowId}-partner`, `entry-${rowId}-partner-list`);
+  applyDoublesMode();
   document.querySelector(`.bracket-entry-row[data-row-id="${rowId}"] [data-action="remove-entry"]`)
     .addEventListener('click', () => {
       document.querySelector(`.bracket-entry-row[data-row-id="${rowId}"]`).remove();
@@ -82,6 +105,13 @@ function createFormHtml() {
         <div class="field">
           <label>Name</label>
           <input type="text" id="bracket-name" maxlength="120" placeholder="e.g. Summer Rally Series 2026 — Elite" required style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
+        </div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400">
+            <input type="checkbox" id="bracket-doubles" style="width:auto;flex-shrink:0;margin:0">
+            Doubles draw (štvorhra) — every entrant is a pair
+          </label>
+          <p style="font-size:12px;color:var(--gray-dim);margin:2px 0 0">The matches are doubles matches: they count in the doubles ranking, never in the league, CourtIQ or badges. No league category and no consolation draw.</p>
         </div>
         <div class="field">
           <label>Match format</label>
@@ -138,8 +168,10 @@ function resetCreateForm() {
   document.getElementById('bracket-entries-list').innerHTML = '';
   document.getElementById('bracket-auto-create-matches').checked = true;
   entryRowCounter = 0;
+  document.getElementById('bracket-doubles').checked = false;
   addEntryRow();
   addEntryRow();
+  applyDoublesMode();
 }
 
 function wireCreateForm() {
@@ -147,6 +179,7 @@ function wireCreateForm() {
   addEntryRow();
   addEntryRow();
   document.getElementById('add-entry-row-btn').addEventListener('click', addEntryRow);
+  document.getElementById('bracket-doubles').addEventListener('change', applyDoublesMode);
 
   document.querySelectorAll('input[name="bracket-mode"]').forEach((radio) => {
     radio.addEventListener('change', () => {
@@ -168,7 +201,9 @@ function wireCreateForm() {
       const category = document.getElementById('bracket-category').value;
       const seeded = document.querySelector('input[name="bracket-mode"]:checked').value === 'seeded';
       const autoCreateMatches = document.getElementById('bracket-auto-create-matches').checked;
+      const doubles = isDoublesForm();
       const body = { name, format, autoCreateMatches };
+      if (doubles) body.doubles = true;
       if (category) body.category = category;
       const seasonId = document.getElementById('bracket-season').value;
       if (seasonId) body.seasonId = Number(seasonId);
@@ -184,9 +219,17 @@ function wireCreateForm() {
           if (!player) throw new Error(`"${rawName}" isn't a known player — pick one from the suggestions`);
           const seed = Number(document.getElementById(`entry-${rowId}-seed`).value);
           if (!Number.isInteger(seed) || seed < 1) throw new Error(`Give "${rawName}" a whole-number seed`);
-          entries.push({ playerId: player.id, seed });
+          const entry = { playerId: player.id, seed };
+          if (doubles) {
+            const rawPartner = document.getElementById(`entry-${rowId}-partner`).value.trim();
+            if (!rawPartner) throw new Error(`"${rawName}" needs a partner`);
+            const partner = findPlayerByTypedName(rawPartner);
+            if (!partner) throw new Error(`"${rawPartner}" isn't a known player — pick one from the suggestions`);
+            entry.partnerId = partner.id;
+          }
+          entries.push(entry);
         }
-        if (entries.length < 2) throw new Error('Add at least 2 players');
+        if (entries.length < 2) throw new Error(doubles ? 'Add at least 2 pairs' : 'Add at least 2 players');
         body.entries = entries;
       } else {
         const size = Number(document.getElementById('bracket-manual-size').value);
@@ -223,7 +266,7 @@ function bracketRowHtml(b) {
       <div class="bracket-admin-row" data-id="${b.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div class="bracket-name-cell" style="flex:1;min-width:160px">
-            <div class="bracket-name-display" style="font-weight:700">${escapeHtml(displayName(b))}${b.category ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.category)}</span>` : ''}${b.seasonName && b.seasonKind !== 'TOURNAMENT' ? ` <span style="font-size:11px;font-weight:700;color:var(--charcoal);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.seasonName)}</span>` : ''}${b.autoCreateMatches === false ? ' <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">Historical</span>' : ''}</div>
+            <div class="bracket-name-display" style="font-weight:700">${escapeHtml(displayName(b))}${b.category ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.category)}</span>` : ''}${b.seasonName && b.seasonKind !== 'TOURNAMENT' ? ` <span style="font-size:11px;font-weight:700;color:var(--charcoal);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.seasonName)}</span>` : ''}${b.autoCreateMatches === false ? ' <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">Historical</span>' : ''}${b.isDoubles ? ' <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">Doubles</span>' : ''}</div>
             <div style="font-size:12px;color:var(--gray)">${b.size}-draw · ${escapeHtml(formatLabel(b.format))}</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
@@ -358,6 +401,8 @@ function nodeStatusText(node) {
   return `${p1} vs ${p2}`;
 }
 
+let manageIsDoubles = false; // set by renderManagePanel for the bracket being shown
+
 function slotAssignFormHtml(node) {
   // A bye's empty slot is intentional (a phantom seed beyond the entry
   // count, not a real pairing waiting to be filled in) — never offer to
@@ -370,15 +415,23 @@ function slotAssignFormHtml(node) {
     <form class="bracket-slot-form" data-node-id="${node.id}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap">
       ${needP1 ? `
         <div class="autocomplete" style="position:relative">
-          <input type="text" id="slot-${node.id}-p1" placeholder="Player 1" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+          <input type="text" id="slot-${node.id}-p1" placeholder="${manageIsDoubles ? 'Pair 1 — player' : 'Player 1'}" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
           <div class="autocomplete-list" id="slot-${node.id}-p1-list"></div>
         </div>
+        ${manageIsDoubles ? `<div class="autocomplete" style="position:relative">
+          <input type="text" id="slot-${node.id}-p1b" placeholder="Pair 1 — partner" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+          <div class="autocomplete-list" id="slot-${node.id}-p1b-list"></div>
+        </div>` : ''}
       ` : ''}
       ${needP2 ? `
         <div class="autocomplete" style="position:relative">
-          <input type="text" id="slot-${node.id}-p2" placeholder="Player 2" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+          <input type="text" id="slot-${node.id}-p2" placeholder="${manageIsDoubles ? 'Pair 2 — player' : 'Player 2'}" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
           <div class="autocomplete-list" id="slot-${node.id}-p2-list"></div>
         </div>
+        ${manageIsDoubles ? `<div class="autocomplete" style="position:relative">
+          <input type="text" id="slot-${node.id}-p2b" placeholder="Pair 2 — partner" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+          <div class="autocomplete-list" id="slot-${node.id}-p2b-list"></div>
+        </div>` : ''}
       ` : ''}
       <button type="submit" class="btn btn-sm btn-primary">Assign</button>
       <span class="bracket-slot-error" style="color:var(--danger);font-weight:600;font-size:12px"></span>
@@ -442,6 +495,7 @@ function wireResultForm(form, bracketId, nodeId, slotEl) {
 
 async function renderManagePanel(bracketId, slotEl) {
   const data = await api(`/brackets/${bracketId}`);
+  manageIsDoubles = !!data.isDoubles;
   const byRound = new Map();
   data.nodes.forEach((n) => {
     if (!byRound.has(n.round)) byRound.set(n.round, []);
@@ -473,6 +527,10 @@ async function renderManagePanel(bracketId, slotEl) {
     if (form) {
       if (!n.player1) setupAutocomplete(`slot-${n.id}-p1`, `slot-${n.id}-p1-list`);
       if (!n.player2) setupAutocomplete(`slot-${n.id}-p2`, `slot-${n.id}-p2-list`);
+      if (manageIsDoubles) {
+        if (!n.player1) setupAutocomplete(`slot-${n.id}-p1b`, `slot-${n.id}-p1b-list`);
+        if (!n.player2) setupAutocomplete(`slot-${n.id}-p2b`, `slot-${n.id}-p2b-list`);
+      }
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const errorEl = form.querySelector('.bracket-slot-error');
@@ -492,6 +550,12 @@ async function renderManagePanel(bracketId, slotEl) {
           const body = {};
           body.player1Id = p1Resolved !== undefined ? p1Resolved : (n.player1 ? n.player1.id : null);
           body.player2Id = p2Resolved !== undefined ? p2Resolved : (n.player2 ? n.player2.id : null);
+          if (manageIsDoubles) {
+            const p1b = resolve(`slot-${n.id}-p1b`);
+            const p2b = resolve(`slot-${n.id}-p2b`);
+            if (p1b) body.player1PartnerId = p1b;
+            if (p2b) body.player2PartnerId = p2b;
+          }
           await api(`/brackets/${bracketId}/slots/${n.id}`, { method: 'PATCH', body });
           toast('Slot updated');
           await renderManagePanel(bracketId, slotEl);
