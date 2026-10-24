@@ -587,9 +587,12 @@ function renderHome() {
     <section class="home-current">
       ${d.season || (d.seasons || []).length ? secTitle(t('home.current'), '', '/harmonogram', t('home.fullSchedule')) : ''}
       ${timelineHtml(d)}
-      ${progressHtml(d)}
-      ${d.season ? statsHtml(d) : ''}
     </section>
+    ${d.season ? `<section class="home-current home-current-season">
+      ${secTitle(t('home.currentSeason'), d.season.name, '', '')}
+      ${progressHtml(d)}
+      ${statsHtml(d)}
+    </section>` : ''}
     ${pomShellHtml()}
     ${leadersHtml(d)}
     ${matchesBlockHtml(d)}

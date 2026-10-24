@@ -5326,6 +5326,10 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .home-tl-type { position: absolute; top: -3px; left: 24px; z-index: 3; padding: 0 6px; background: #100e0b; font-weight: 800; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); white-space: nowrap; max-width: calc(100% - 30px); overflow: hidden; text-overflow: ellipsis; }
 
 /* the chips above the home page strip are the site's own tabs (.tabs .tab): the gap to the strip and the selected state are set like #home-cats */
-#home-tl-filter { margin: 0 0 14px; }
+#home-tl-filter { margin: 0 0 34px; } /* room between the chips and the timeline (its first row is pulled up by 12px) */
 #home-tl-filter .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); } /* the same as the category tabs below (#home-cats) */
-@media (max-width: 680px) { #home-tl-filter { margin: 0 -16px 14px; } }
+@media (max-width: 680px) { #home-tl-filter { margin: 0 -16px 30px; } }
+
+/* the strip of the schedule and the current season are two sections, with the gap of the other sections of the home page between them */
+.home-current .home-tl-wrap { margin-bottom: 0; }
+.home-current.home-current-season { margin-top: 88px; }
