@@ -328,8 +328,8 @@ router.delete('/:id', requireAdmin, (req, res) => {
   if (!player) return res.status(404).json({ error: 'Player not found' });
 
   const { count } = db.prepare(
-    'SELECT COUNT(*) AS count FROM matches WHERE player1_id = ? OR player2_id = ?'
-  ).get(player.id, player.id);
+    'SELECT COUNT(*) AS count FROM matches WHERE player1_id = ? OR player2_id = ? OR player1b_id = ? OR player2b_id = ?'
+  ).get(player.id, player.id, player.id, player.id);
   if (count > 0) {
     return res.status(400).json({
       error: `Can't delete ${player.name} — they're in ${count} match${count === 1 ? '' : 'es'}. Remove those matches first.`,

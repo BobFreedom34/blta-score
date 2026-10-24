@@ -3,6 +3,8 @@ setupFormatOptions('format-options');
 loadPlayers();
 setupAutocomplete('player1', 'player1-suggestions');
 setupAutocomplete('player2', 'player2-suggestions');
+setupAutocomplete('player1b', 'player1b-suggestions');
+setupAutocomplete('player2b', 'player2b-suggestions');
 const getBallsPlayer = setupBallsPicker();
 const getCourtPlayer = setupCourtPicker();
 
@@ -18,7 +20,7 @@ let isAdminCreator = false;
 
 function renderSeasonFields() {
   const isBlta = BLTA_CATEGORIES.includes(document.getElementById('category').value);
-  const show = isAdminCreator && isBlta;
+  const show = isAdminCreator && isBlta && !(typeof isDoubles === 'function' && isDoubles());
   seasonField.style.display = show ? '' : 'none';
   groupField.style.display = show ? '' : 'none';
   stageField.style.display = show ? '' : 'none';
@@ -57,6 +59,39 @@ categorySelect.addEventListener('change', () => { categoryTouched = true; });
   } catch { /* the season picker is optional */ }
 })();
 document.getElementById('category').addEventListener('change', renderSeasonFields);
+
+// Singles / doubles (štvorhra). Doubles is a friendly match of two pairs: the category is fixed, the league fields are hidden, and the
+// "who brings the balls / reserves the court" buttons name the pairs.
+const form = document.getElementById('new-match-form');
+const modeButtons = Array.from(document.querySelectorAll('#mode-switch button'));
+const isDoubles = () => form.classList.contains('is-doubles');
+const val = (id) => document.getElementById(id).value.trim();
+
+function refreshSideLabels() {
+  if (!isDoubles()) return;
+  const side = (a, b, key) => [val(a), val(b)].filter(Boolean).join(' / ') || t(key);
+  ['balls-choice-row', 'court-choice-row'].forEach((rowId) => {
+    const btns = document.querySelectorAll('#' + rowId + ' button');
+    btns[0].textContent = side('player1', 'player1b', 'newMatch.team1');
+    btns[1].textContent = side('player2', 'player2b', 'newMatch.team2');
+  });
+}
+['player1', 'player1b', 'player2', 'player2b'].forEach((id) => document.getElementById(id).addEventListener('input', refreshSideLabels));
+
+function setMode(mode) {
+  const doubles = mode === 'doubles';
+  form.classList.toggle('is-doubles', doubles);
+  modeButtons.forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
+  document.getElementById('doubles-note').style.display = doubles ? '' : 'none';
+  document.getElementById('player1b').required = doubles;
+  document.getElementById('player2b').required = doubles;
+  if (doubles) { categorySelect.value = 'FRIENDLY'; categoryTouched = true; }
+  categorySelect.disabled = doubles;
+  renderSeasonFields();
+  if (doubles) refreshSideLabels();
+  else document.getElementById('player1').dispatchEvent(new Event('input')); // the pickers show the typed names again
+}
+modeButtons.forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
 seasonSelect.addEventListener('change', () => { groupSelect.value = ''; renderSeasonFields(); });
 
 document.getElementById('new-match-form').addEventListener('submit', async (e) => {
@@ -66,6 +101,9 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
 
   const player1Name = document.getElementById('player1').value.trim();
   const player2Name = document.getElementById('player2').value.trim();
+  const doubles = isDoubles();
+  const player1bName = doubles ? val('player1b') : '';
+  const player2bName = doubles ? val('player2b') : '';
   const category = document.getElementById('category').value;
   const location = document.getElementById('location').value.trim();
   const scheduledAtDate = document.getElementById('scheduledAtDate').value;
@@ -73,13 +111,19 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
   const notes = document.getElementById('notes').value.trim();
   const format = document.querySelector('input[name="format"]:checked').value;
 
-  if (!player1Name || !player2Name) {
-    errorEl.textContent = t('newMatch.errorBothNames');
-    return;
-  }
-  if (nameKey(player1Name) === nameKey(player2Name)) {
-    errorEl.textContent = t('newMatch.errorSameName');
-    return;
+  if (doubles) {
+    const four = [player1Name, player1bName, player2Name, player2bName];
+    if (four.some((n) => !n)) { errorEl.textContent = t('newMatch.errorFourNames'); return; }
+    if (new Set(four.map(nameKey)).size !== 4) { errorEl.textContent = t('newMatch.errorFourDifferent'); return; }
+  } else {
+    if (!player1Name || !player2Name) {
+      errorEl.textContent = t('newMatch.errorBothNames');
+      return;
+    }
+    if (nameKey(player1Name) === nameKey(player2Name)) {
+      errorEl.textContent = t('newMatch.errorSameName');
+      return;
+    }
   }
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -87,6 +131,7 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
   const body = (extra) => ({
     player1Name,
     player2Name,
+    ...(doubles ? { doubles: true, player1bName, player2bName } : {}),
     category,
     location,
     scheduledAt: scheduledAtDate ? new Date(`${scheduledAtDate}T${scheduledAtTime || '00:00'}`).toISOString() : null,
@@ -94,10 +139,10 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
     notes,
     ballsPlayer: getBallsPlayer(),
     courtPlayer: getCourtPlayer(),
-    ...(isAdminCreator && BLTA_CATEGORIES.includes(category) && seasonSelect.value
+    ...(!doubles && isAdminCreator && BLTA_CATEGORIES.includes(category) && seasonSelect.value
       ? { seasonId: Number(seasonSelect.value), groupId: groupSelect.value ? Number(groupSelect.value) : null }
       : {}),
-    ...(isAdminCreator && BLTA_CATEGORIES.includes(category) && stageSelect.value === 'PLAYOFF' ? { stage: 'PLAYOFF' } : {}),
+    ...(!doubles && isAdminCreator && BLTA_CATEGORIES.includes(category) && stageSelect.value === 'PLAYOFF' ? { stage: 'PLAYOFF' } : {}),
     ...extra,
   });
 
@@ -129,7 +174,7 @@ function askWhoIsMeant(conflicts, previous, send) {
   errorEl.textContent = '';
   list.innerHTML = conflicts.map((c) => `
     <div class="similar-block" data-field="${c.field}">
-      <div class="similar-typed">${escapeHtml(t(c.field === 'player1' ? 'newMatch.similarPlayer1' : 'newMatch.similarPlayer2', { name: c.typed }))}</div>
+      <div class="similar-typed">${escapeHtml(t('newMatch.similarPlayer' + c.field.slice('player'.length), { name: c.typed }))}</div>
       ${c.suggestions.map((p) => `<label class="similar-opt"><input type="radio" name="similar-${c.field}" value="${p.id}"><span>${escapeHtml(p.name)}</span></label>`).join('')}
       <label class="similar-opt new"><input type="radio" name="similar-${c.field}" value="new"><span>${escapeHtml(t('newMatch.similarCreateNew', { name: c.typed }))}</span></label>
     </div>`).join('');

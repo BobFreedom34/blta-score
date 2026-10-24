@@ -192,8 +192,9 @@ async function openEditMatchModal(m, isAdminUser, onSaved) {
   // same as the format field hides for a status where it can't apply.
   const playersField = document.getElementById('edit-match-players-field');
   if (playersField) {
-    playersField.style.display = isAdminUser ? '' : 'none';
-    if (isAdminUser) {
+    // a doubles match keeps its four players (the server refuses a change), so nobody edits them here
+    playersField.style.display = isAdminUser && !m.isDoubles ? '' : 'none';
+    if (isAdminUser && !m.isDoubles) {
       if (!allPlayers.length) await loadPlayers();
       document.getElementById('edit-match-player1').value = m.player1.name;
       document.getElementById('edit-match-player2').value = m.player2.name;
@@ -299,7 +300,7 @@ async function openEditMatchModal(m, isAdminUser, onSaved) {
     // rather than trusting arbitrary typed text as a player id lookup.
     let player1Id;
     let player2Id;
-    if (isAdminUser && playersField) {
+    if (isAdminUser && playersField && playersField.style.display !== 'none') {
       const name1 = document.getElementById('edit-match-player1').value.trim();
       const name2 = document.getElementById('edit-match-player2').value.trim();
       const p1 = findPlayerByTypedName(name1);

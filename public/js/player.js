@@ -565,6 +565,41 @@ async function renderCourtIQ() {
   }
 }
 
+// The player's doubles (štvorhra) card (GET /api/doubles/player/:id, see src/doubles.js): rank, record, points, the usual partners and the
+// latest matches. Doubles matches are not in the singles lists and numbers of this page, so this is where they show. Left empty for a player
+// who has not played any doubles, like the CourtIQ card.
+async function renderDoubles() {
+  const el = document.getElementById('doubles-card');
+  if (!el || !playerId) return;
+  let d;
+  try { d = await api(`/doubles/player/${playerId}`); } catch { el.innerHTML = ''; return; }
+  if (!d.played) { el.innerHTML = ''; return; }
+  const partners = d.partners.slice(0, 3).map((p) => {
+    const name = p.slug ? `<a href="${siteUrl('/player/' + escapeHtml(p.slug))}">${escapeHtml(p.name)}</a>` : escapeHtml(p.name);
+    return `<span class="dbl-partner">${name} <small>${p.wins}–${p.losses}</small></span>`;
+  }).join('');
+  const matches = d.matches.map((m) => `
+    <a class="dbl-match ${m.won ? 'won' : 'lost'}" href="${siteUrl('/match/' + escapeHtml(m.token))}">
+      <span class="dbl-result">${m.won ? t('player.doublesWon') : t('player.doublesLost')}</span>
+      <span class="dbl-who">${escapeHtml(t('player.doublesWith', { partner: m.partner }))} · ${escapeHtml(t('player.doublesVs', { opponents: m.opponents.join(' / ') }))}</span>
+      <span class="dbl-score">${escapeHtml(m.score)}</span>
+    </a>`).join('');
+  el.innerHTML = `
+    <div class="section-label">${escapeHtml(t('player.doublesLabel'))}</div>
+    <div class="statistics-card">
+      <div class="courtiq-summary">
+        <div class="courtiq-band-big">${d.rank ? '#' + d.rank : '–'}</div>
+        <div class="courtiq-meta">
+          <div>${escapeHtml(t('player.doublesRecord', { played: d.played, wins: d.wins, losses: d.losses }))}</div>
+          <div>${escapeHtml(t('player.doublesPoints', { points: d.points }))}</div>
+        </div>
+      </div>
+      <div class="dbl-partners"><span class="dbl-partners-label">${escapeHtml(t('player.doublesPartners'))}</span>${partners}</div>
+      <div class="dbl-matches">${matches}</div>
+      <a class="section-link" href="${siteUrl('/rankings?tab=doubles')}">${escapeHtml(t('player.doublesRanking'))}</a>
+    </div>`;
+}
+
 // winRateTrendHtml needs the chart's real container width up front (see
 // its comment) — renders an empty measuring shell first, reads its
 // clientWidth, then the real chart. Skipped entirely (left blank, like
@@ -933,6 +968,7 @@ async function load() {
     await renderBadges();
     renderRankTrend();
     renderCourtIQ();
+    renderDoubles();
     renderRivals();
     renderH2H();
     render();

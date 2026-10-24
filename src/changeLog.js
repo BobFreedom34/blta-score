@@ -88,7 +88,8 @@ function groupImpact(previousRow, updatedRow) {
 function matchTitle(row) {
   const name = (id) => (db.prepare('SELECT name FROM players WHERE id = ?').get(id) || {}).name || `#${id}`;
   const score = row.status === 'FINISHED' ? engine.describeMatch(parseState(row.state)) : '';
-  return { title: `${name(row.player1_id)} vs ${name(row.player2_id)}`, score: score || '' };
+  const side = (id, partnerId) => (row.is_doubles && partnerId ? `${name(id)} / ${name(partnerId)}` : name(id));
+  return { title: `${side(row.player1_id, row.player1b_id)} vs ${side(row.player2_id, row.player2b_id)}`, score: score || '' };
 }
 
 function write(kind, row, token, title, details) {

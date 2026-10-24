@@ -30,6 +30,18 @@ function getPlayer(id) {
   return db.prepare('SELECT * FROM players WHERE id = ?').get(id);
 }
 
+// Doubles: every player of a match (the four of a doubles match), and a side as ONE player object whose name is "A / B" - so the cards, the
+// match page, the emails and the notifications that show `player1.name` show the whole pair without each of them knowing about doubles.
+function playerIdsOf(row) {
+  return [row.player1_id, row.player2_id, row.player1b_id, row.player2b_id].filter(Boolean);
+}
+function sideOf(row, side) {
+  const first = getPlayer(side === 1 ? row.player1_id : row.player2_id);
+  if (!row.is_doubles || !first) return first;
+  const partner = getPlayer(side === 1 ? row.player1b_id : row.player2b_id);
+  return partner ? { ...first, name: `${first.name} / ${partner.name}` } : first;
+}
+
 // Which of player1/player2 is proposing a time — "who's proposing" is an
 // optional field on the client (see proposeTimes.whoProposing), but that
 // optionality shouldn't be what decides whether respond-proposal's own
@@ -91,8 +103,8 @@ function notifyProposalConfirmed(matchId, proposerPlayerId, confirmerPlayerId) {
 async function notifySubscribers(matchId, type, updated) {
   const subs = db.prepare('SELECT * FROM match_notifications WHERE match_id = ? AND type = ? AND sent = 0').all(matchId, type);
   if (!subs.length) return;
-  const p1 = getPlayer(updated.player1_id);
-  const p2 = getPlayer(updated.player2_id);
+  const p1 = sideOf(updated, 1);
+  const p2 = sideOf(updated, 2);
   for (const sub of subs) {
     try {
       if (type === 'START') await sendMatchStartedEmailTo(updated, p1, p2, sub.email);
@@ -111,8 +123,8 @@ async function notifySubscribers(matchId, type, updated) {
 async function notifyPushSubscribers(matchId, type, updated) {
   const subs = db.prepare('SELECT * FROM push_subscriptions WHERE match_id = ? AND type = ? AND sent = 0').all(matchId, type);
   if (!subs.length) return;
-  const p1 = getPlayer(updated.player1_id);
-  const p2 = getPlayer(updated.player2_id);
+  const p1 = sideOf(updated, 1);
+  const p2 = sideOf(updated, 2);
   const url = `${process.env.PUBLIC_URL || ''}/match/${updated.share_token}`;
   const payload = type === 'START'
     ? { title: `Match started: ${p1.name} vs ${p2.name}`, body: 'Watch it live now.', url }
@@ -181,8 +193,8 @@ function seasonAndGroup(row) {
 }
 
 function serialize(row) {
-  const p1 = getPlayer(row.player1_id);
-  const p2 = getPlayer(row.player2_id);
+  const p1 = sideOf(row, 1);
+  const p2 = sideOf(row, 2);
   const state = JSON.parse(row.state);
   const history = JSON.parse(row.history);
   const notifyCounts = getNotifyCounts(row.id);
@@ -230,6 +242,10 @@ function serialize(row) {
     notifyFinishCount: notifyCounts.FINISH,
     player1: serializePlayer(p1),
     player2: serializePlayer(p2),
+    // a doubles match: both players of each side (player1 / player2 above are the sides, named "A / B")
+    isDoubles: !!row.is_doubles,
+    team1: row.is_doubles ? [serializePlayer(getPlayer(row.player1_id)), serializePlayer(getPlayer(row.player1b_id))] : null,
+    team2: row.is_doubles ? [serializePlayer(getPlayer(row.player2_id)), serializePlayer(getPlayer(row.player2b_id))] : null,
   };
 }
 
@@ -260,7 +276,7 @@ function checkMatchAccess(req, res, row) {
   if (isAdmin(req)) return true;
   const playerId = getPlayerId(req);
   if (playerId) {
-    const playsInMatch = playerId === row.player1_id || playerId === row.player2_id;
+    const playsInMatch = playerIdsOf(row).includes(playerId);
     if (row.created_by_admin && playsInMatch) return true;
     if (row.created_by_player_id === playerId) return true;
     // Grandfather clause: a match with no creator attribution at all
@@ -295,7 +311,7 @@ function checkMatchAccess(req, res, row) {
 function checkLiveScoreAccess(req, res, row) {
   if (isAdmin(req) || isReferee(req)) return true;
   const playerId = getPlayerId(req);
-  if (playerId && (playerId === row.player1_id || playerId === row.player2_id)) return true;
+  if (playerId && playerIdsOf(row).includes(playerId)) return true;
   res.status(403).json({ error: 'Only the players in this match, an admin, or a referee can control the live score' });
   return false;
 }
@@ -315,7 +331,7 @@ function deriveWinnerId(state, row) {
 // can just always call this on the post-write row rather than tracking
 // which branch they're in.
 function syncBadgesIfFinished(row) {
-  if (row.status !== 'FINISHED') return;
+  if (row.status !== 'FINISHED' || row.is_doubles) return;
   badgeEngine.syncPlayerBadges(row.player1_id);
   badgeEngine.syncPlayerBadges(row.player2_id);
 }
@@ -330,7 +346,7 @@ function syncBadgesIfFinished(row) {
 // after it subtly wrong. Re-run scripts/backfillCourtIQ.js to pick up a
 // correction like that instead.
 function syncCourtIQIfFinished(row) {
-  if (row.status !== 'FINISHED' || !row.winner_id) return;
+  if (row.status !== 'FINISHED' || !row.winner_id || row.is_doubles) return;
   if (row.end_reason === 'WALKOVER' || row.end_reason === 'UNFINISHED') return;
   const alreadyRated = db.prepare('SELECT 1 FROM courtiq_rating_history WHERE match_id = ?').get(row.id);
   if (alreadyRated) return;
@@ -438,7 +454,9 @@ function matchFilters(query) {
     params.round = round;
   }
   if (playerId) {
-    clauses.push('(m.player1_id = @playerId OR m.player2_id = @playerId)');
+    clauses.push(query.withDoubles === '1'
+      ? '(m.player1_id = @playerId OR m.player2_id = @playerId OR m.player1b_id = @playerId OR m.player2b_id = @playerId)'
+      : '(m.is_doubles = 0 AND (m.player1_id = @playerId OR m.player2_id = @playerId))');
     params.playerId = playerId;
   }
   if (noDate === '1') {
@@ -481,9 +499,11 @@ function selectMatchRows(query) {
           CASE m.status WHEN 'LIVE' THEN 0 WHEN 'PLANNED' THEN 1 ELSE 2 END,
           COALESCE(m.scheduled_at, m.created_at) DESC`;
   let rows = db.prepare(`
-    SELECT m.*, p1.name AS p1_name, p2.name AS p2_name FROM matches m
+    SELECT m.*, p1.name AS p1_name, p2.name AS p2_name, p1b.name AS p1b_name, p2b.name AS p2b_name FROM matches m
     JOIN players p1 ON p1.id = m.player1_id
     JOIN players p2 ON p2.id = m.player2_id
+    LEFT JOIN players p1b ON p1b.id = m.player1b_id
+    LEFT JOIN players p2b ON p2b.id = m.player2b_id
     ${where}
     ${orderBy}
   `).all(params);
@@ -492,7 +512,7 @@ function selectMatchRows(query) {
   // String.prototype.toLowerCase() handles this correctly for all of
   // Slovak's diacritics.
   if (q) {
-    rows = rows.filter((r) => nameMatch.matchesQuery(`${r.p1_name} ${r.p2_name}`, q));
+    rows = rows.filter((r) => nameMatch.matchesQuery(`${r.p1_name} ${r.p1b_name || ''} ${r.p2_name} ${r.p2b_name || ''}`, q));
   }
   return rows;
 }
@@ -534,7 +554,7 @@ router.get('/counts', (req, res) => {
     UNFINISHED: count({ status: 'UNFINISHED', ...timed }),
   };
   if (playerId) {
-    const mine = { ...base, playerId: String(playerId) };
+    const mine = { ...base, playerId: String(playerId), ...(req.query.withDoubles === '1' ? { withDoubles: '1' } : {}) };
     counts.MY_MATCHES = count({ status: 'LIVE' }, mine)
       + count({ status: 'PLANNED', hasDate: '1', ...(range || {}) }, mine)
       + count({ status: 'PLANNED', noDate: '1' }, mine)
@@ -628,6 +648,14 @@ router.patch('/:token/season', requireAdmin, (req, res) => {
 router.post('/', requireLoggedIn, (req, res) => {
   const { category, location, scheduledAt, format, notes } = req.body;
   let { player1Id, player2Id, player1Name, player2Name } = req.body;
+  // Doubles (štvorhra): four players, a friendly match for now (no season, group, bracket or ranking points)
+  const doubles = req.body.doubles === true || req.body.doubles === 'true';
+  if (doubles) {
+    if (category !== 'FRIENDLY') return res.status(400).json({ error: 'A doubles match is a friendly match for now' });
+    if (Array.isArray(req.body.proposalSlots) && req.body.proposalSlots.length > 0) {
+      return res.status(400).json({ error: 'Proposing times is not available for doubles yet - set the date or leave it open' });
+    }
+  }
 
   if (!CATEGORIES.includes(category)) {
     return res.status(400).json({ error: 'Invalid category' });
@@ -736,9 +764,16 @@ router.post('/', requireLoggedIn, (req, res) => {
   };
   const d1 = decide('player1', player1Id, player1Name);
   const d2 = decide('player2', player2Id, player2Name);
-  const conflicts = [d1.conflict, d2.conflict].filter(Boolean);
+  const d1b = doubles ? decide('player1b', req.body.player1bId, req.body.player1bName) : { player: null };
+  const d2b = doubles ? decide('player2b', req.body.player2bId, req.body.player2bName) : { player: null };
+  const conflicts = [d1.conflict, d2.conflict, d1b.conflict, d2b.conflict].filter(Boolean);
   if (conflicts.length) {
     return res.status(409).json({ error: 'Similar players already exist — choose who you mean', code: 'SIMILAR_PLAYERS', conflicts });
+  }
+  // the same name typed for two of the four players is one person (nobody is created twice)
+  if (doubles) {
+    const typed = [d1, d2, d1b, d2b].map((d) => (d.player ? d.player.name : d.create) || '');
+    if (new Set(typed.map((n) => nameMatch.key(n))).size !== 4) return res.status(400).json({ error: 'The four players must be different' });
   }
   const make = (d) => {
     if (d.create) {
@@ -750,8 +785,12 @@ router.post('/', requireLoggedIn, (req, res) => {
 
   const p1 = make(d1);
   const p2 = make(d2);
+  const p1b = doubles ? make(d1b) : null;
+  const p2b = doubles ? make(d2b) : null;
   if (!p1 || !p2) return res.status(400).json({ error: 'Both players are required' });
+  if (doubles && (!p1b || !p2b)) return res.status(400).json({ error: 'A doubles match needs four players' });
   if (p1.id === p2.id) return res.status(400).json({ error: 'Players must be different' });
+  if (doubles && new Set([p1.id, p2.id, p1b.id, p2b.id]).size !== 4) return res.status(400).json({ error: 'The four players must be different' });
   if (proposalSlots) proposedBy = inferProposedBy(req, proposedBy, p1.id, p2.id);
 
   // Season and group (BLTA categories only) can be set by an admin right when creating the match.
@@ -791,8 +830,8 @@ router.post('/', requireLoggedIn, (req, res) => {
 
   const state = engine.initState(format);
   const info = db.prepare(`
-    INSERT INTO matches (share_token, category, season_id, group_id, stage, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, created_by_player_id, notes, balls_player, court_player, proposal_slots, proposal_venues, proposal_notify_email, proposed_by)
-    VALUES (@share_token, @category, @season_id, @group_id, @stage, @player1_id, @player2_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @created_by_player_id, @notes, @balls_player, @court_player, @proposal_slots, @proposal_venues, @proposal_notify_email, @proposed_by)
+    INSERT INTO matches (share_token, category, season_id, group_id, stage, player1_id, player2_id, is_doubles, player1b_id, player2b_id, location, scheduled_at, format, status, state, history, created_by_admin, created_by_anonymous, created_by_player_id, notes, balls_player, court_player, proposal_slots, proposal_venues, proposal_notify_email, proposed_by)
+    VALUES (@share_token, @category, @season_id, @group_id, @stage, @player1_id, @player2_id, @is_doubles, @player1b_id, @player2b_id, @location, @scheduled_at, @format, 'PLANNED', @state, '[]', @created_by_admin, @created_by_anonymous, @created_by_player_id, @notes, @balls_player, @court_player, @proposal_slots, @proposal_venues, @proposal_notify_email, @proposed_by)
   `).run({
     share_token: crypto.randomUUID(),
     category,
@@ -801,6 +840,9 @@ router.post('/', requireLoggedIn, (req, res) => {
     stage,
     player1_id: p1.id,
     player2_id: p2.id,
+    is_doubles: doubles ? 1 : 0,
+    player1b_id: p1b ? p1b.id : null,
+    player2b_id: p2b ? p2b.id : null,
     location: (location || '').trim(),
     scheduled_at: scheduledAt || null,
     format,
@@ -892,6 +934,7 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
     if (!isAdmin(req)) {
       return res.status(403).json({ error: 'Only an admin can change the players in a match' });
     }
+    if (row.is_doubles) return res.status(400).json({ error: 'The players of a doubles match cannot be changed here yet - delete the match and make a new one' });
     const p1Id = req.body.player1Id !== undefined ? Number(req.body.player1Id) : row.player1_id;
     const p2Id = req.body.player2Id !== undefined ? Number(req.body.player2Id) : row.player2_id;
     if (!Number.isInteger(p1Id) || !Number.isInteger(p2Id)) {
@@ -1145,8 +1188,8 @@ router.post('/:token/respond-proposal', (req, res) => {
   const payload = broadcast(req, updated);
   res.json(payload);
 
-  const p1 = getPlayer(updated.player1_id);
-  const p2 = getPlayer(updated.player2_id);
+  const p1 = sideOf(updated, 1);
+  const p2 = sideOf(updated, 2);
   if (matched.notifyEmail) {
     sendProposalConfirmedEmail(updated, p1, p2, matched.notifyEmail).catch((err) => {
       console.error('[matches] failed to send proposal-confirmed email:', err.message);
@@ -1594,8 +1637,8 @@ router.post('/:token/finish-as-is', requireLoggedInOrReferee, async (req, res) =
   res.json(payload);
 
   try {
-    const p1 = getPlayer(updated.player1_id);
-    const p2 = getPlayer(updated.player2_id);
+    const p1 = sideOf(updated, 1);
+    const p2 = sideOf(updated, 2);
     await sendMatchFinishedEmail(updated, p1, p2);
     db.prepare('UPDATE matches SET notified = 1 WHERE id = ?').run(row.id);
   } catch (err) {
@@ -1807,8 +1850,8 @@ router.post('/:token/finish', requireLoggedInOrReferee, async (req, res) => {
   const payload = broadcast(req, updated);
   res.json(payload);
 
-  const finishedP1 = getPlayer(updated.player1_id);
-  const finishedP2 = getPlayer(updated.player2_id);
+  const finishedP1 = sideOf(updated, 1);
+  const finishedP2 = sideOf(updated, 2);
   try {
     await sendMatchFinishedEmail(updated, finishedP1, finishedP2);
     db.prepare('UPDATE matches SET notified = 1 WHERE id = ?').run(row.id);
@@ -1914,8 +1957,8 @@ router.post('/:token/manual-result', requireLoggedIn, async (req, res) => {
   const payload = broadcast(req, updated);
   res.json(payload);
 
-  const manualP1 = getPlayer(updated.player1_id);
-  const manualP2 = getPlayer(updated.player2_id);
+  const manualP1 = sideOf(updated, 1);
+  const manualP2 = sideOf(updated, 2);
   try {
     await sendMatchFinishedEmail(updated, manualP1, manualP2);
     db.prepare('UPDATE matches SET notified = 1 WHERE id = ?').run(row.id);
@@ -2020,7 +2063,7 @@ router.post('/:token/messages', requireLoggedIn, (req, res) => {
   const notifyChat = db.prepare(
     'INSERT INTO chat_notifications (player_id, match_id, message_id, seen) VALUES (?, ?, ?, 0)'
   );
-  [row.player1_id, row.player2_id]
+  playerIdsOf(row)
     .filter((playerId) => playerId !== posterId)
     .forEach((playerId) => notifyChat.run(playerId, row.id, result.lastInsertRowid));
 

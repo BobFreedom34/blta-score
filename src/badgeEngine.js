@@ -147,7 +147,7 @@ function computeEarnedBadgeInstances(playerId, finished, badgeDefs) {
 // serialize() does, since none of that feeds into badge metrics.
 function loadFinishedMatchesForBadges(playerId) {
   const rows = db.prepare(
-    "SELECT * FROM matches WHERE status = 'FINISHED' AND (player1_id = ? OR player2_id = ?)"
+    "SELECT * FROM matches WHERE status = 'FINISHED' AND COALESCE(is_doubles, 0) = 0 AND (player1_id = ? OR player2_id = ?)"
   ).all(playerId, playerId);
   return rows.map((row) => {
     const state = JSON.parse(row.state);

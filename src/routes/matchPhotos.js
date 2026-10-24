@@ -31,12 +31,15 @@ function getRowOr404(req, res) {
   return row;
 }
 
+// every player of a match: the two of a singles match, the four of a doubles match
+const playerIdsOf = (row) => [row.player1_id, row.player2_id, row.player1b_id, row.player2b_id].filter(Boolean);
+
 // Deliberately narrower than the match-management check in matches.js: only one of the two players of this match or an admin — not a
 // referee, and not a player who merely created the match.
 function canAddTo(req, row) {
   if (isAdmin(req)) return true;
   const playerId = getPlayerId(req);
-  return !!playerId && (playerId === row.player1_id || playerId === row.player2_id);
+  return !!playerId && playerIdsOf(row).includes(playerId);
 }
 
 function countPhotos(matchId) {
@@ -125,7 +128,7 @@ router.post('/:token/photos', (req, res) => {
       // Who is recorded as the uploader: the player of this match who is logged in, even when that person is an admin as well. An admin
       // who is not one of the two players has no uploader id (an admin is not a player), so both players are told about the photo.
       const playerId = getPlayerId(req);
-      const uploaderId = playerId && (playerId === row.player1_id || playerId === row.player2_id) ? playerId : null;
+      const uploaderId = playerId && playerIdsOf(row).includes(playerId) ? playerId : null;
       // The photo row and its notifications are written together or not at all, so a failure cannot leave a half-saved photo.
       let photoId;
       try {
@@ -135,7 +138,7 @@ router.post('/:token/photos', (req, res) => {
             .run(row.id, uploaded.id, uploaderId);
           photoId = Number(info.lastInsertRowid);
           const notify = db.prepare('INSERT INTO photo_notifications (player_id, match_id, photo_id, seen) VALUES (?, ?, ?, 0)');
-          [row.player1_id, row.player2_id]
+          playerIdsOf(row)
             .filter((pid) => pid !== uploaderId)
             .forEach((pid) => notify.run(pid, row.id, photoId));
           db.exec('COMMIT');

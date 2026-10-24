@@ -23,6 +23,7 @@ function loadRatableMatches() {
   const rows = db.prepare(`
     SELECT * FROM matches
     WHERE status = 'FINISHED'
+      AND COALESCE(is_doubles, 0) = 0
       AND winner_id IS NOT NULL
       AND (end_reason IS NULL OR end_reason NOT IN ('WALKOVER', 'UNFINISHED'))
   `).all();

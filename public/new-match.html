@@ -70,19 +70,41 @@ src="https://www.facebook.com/tr?id=1431392191315936&ev=PageView&noscript=1"
 
   <form id="new-match-form" class="card">
 
+    <div class="mode-switch" id="mode-switch" role="tablist">
+      <button type="button" class="active" data-mode="singles" data-i18n="newMatch.modeSingles">Dvojhra</button>
+      <button type="button" data-mode="doubles" data-i18n="newMatch.modeDoubles">Štvorhra</button>
+    </div>
+    <div class="field-hint" id="doubles-note" style="display:none;margin:-4px 0 14px;font-size:12px;color:var(--gray)" data-i18n="newMatch.doublesNote">Štvorhra je priateľský zápas dvoch dvojíc. Počíta sa len do rebríčka štvorhry — nie do bodov ligy, CourtIQ ani odznakov.</div>
+
     <div class="grid-2">
       <div class="field">
-        <label for="player1" data-i18n="common.player1">Hráč 1</label>
+        <label for="player1"><span class="only-single" data-i18n="common.player1">Hráč 1</span><span class="only-double" data-i18n="newMatch.team1a">Tím 1 · hráč 1</span></label>
         <div class="autocomplete">
           <input id="player1" name="player1" placeholder="Zadajte meno…" data-i18n-placeholder="newMatch.namePlaceholder" required autocomplete="off">
           <div class="autocomplete-list" id="player1-suggestions"></div>
         </div>
       </div>
       <div class="field">
-        <label for="player2" data-i18n="common.player2">Hráč 2</label>
+        <label for="player2"><span class="only-single" data-i18n="common.player2">Hráč 2</span><span class="only-double" data-i18n="newMatch.team2a">Tím 2 · hráč 1</span></label>
         <div class="autocomplete">
           <input id="player2" name="player2" placeholder="Zadajte meno…" data-i18n-placeholder="newMatch.namePlaceholder" required autocomplete="off">
           <div class="autocomplete-list" id="player2-suggestions"></div>
+        </div>
+      </div>
+    </div>
+    <div class="grid-2 only-double-block">
+      <div class="field">
+        <label for="player1b" data-i18n="newMatch.team1b">Tím 1 · hráč 2</label>
+        <div class="autocomplete">
+          <input id="player1b" name="player1b" placeholder="Zadajte meno…" data-i18n-placeholder="newMatch.namePlaceholder" autocomplete="off">
+          <div class="autocomplete-list" id="player1b-suggestions"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="player2b" data-i18n="newMatch.team2b">Tím 2 · hráč 2</label>
+        <div class="autocomplete">
+          <input id="player2b" name="player2b" placeholder="Zadajte meno…" data-i18n-placeholder="newMatch.namePlaceholder" autocomplete="off">
+          <div class="autocomplete-list" id="player2b-suggestions"></div>
         </div>
       </div>
     </div>

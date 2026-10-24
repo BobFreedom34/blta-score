@@ -50,6 +50,7 @@ const changeLogRouter = require('./src/routes/changelog');
 const reservationsRouter = require('./src/routes/reservations');
 const carouselRouter = require('./src/routes/carousel');
 const sponsorsRouter = require('./src/routes/sponsors');
+const doublesRouter = require('./src/routes/doubles');
 const rulesRouter = require('./src/routes/rules');
 const rules = require('./src/rules');
 const seo = require('./src/seo');
@@ -462,6 +463,7 @@ app.use('/api/changelog', changeLogRouter);
 app.use('/api/reservations', reservationsRouter);
 app.use('/api/carousel', carouselRouter);
 app.use('/api/sponsors', sponsorsRouter);
+app.use('/api/doubles', doublesRouter);
 app.use('/api/rules', rulesRouter);
 
 // Pretty routes -> static HTML pages (the page JS reads the share token from the URL).
@@ -483,9 +485,15 @@ function escapeHtmlAttr(str) {
 // The data the result image is drawn from (see src/shareImage.js).
 function matchImageData(row) {
   const player = (id) => db.prepare('SELECT id, name FROM players WHERE id = ?').get(id);
+  // in doubles a side is the pair, named "A / B"
+  const side = (id, partnerId) => {
+    const first = player(id);
+    const partner = row.is_doubles && partnerId ? player(partnerId) : null;
+    return partner && first ? { ...first, name: `${first.name} / ${partner.name}` } : first;
+  };
   return {
-    player1: player(row.player1_id),
-    player2: player(row.player2_id),
+    player1: side(row.player1_id, row.player1b_id),
+    player2: side(row.player2_id, row.player2b_id),
     winnerId: row.winner_id,
     endReason: row.end_reason,
     category: row.category,
@@ -523,9 +531,8 @@ app.get('/match/:token', (req, res) => {
   const row = db.prepare('SELECT * FROM matches WHERE share_token = ?').get(req.params.token);
   if (!row) return res.send(matchTemplate);
 
-  const p1 = db.prepare('SELECT * FROM players WHERE id = ?').get(row.player1_id);
-  const p2 = db.prepare('SELECT * FROM players WHERE id = ?').get(row.player2_id);
-  const title = `${p1.name} vs ${p2.name} — BLTA`;
+  const matchImage = matchImageData(row);
+  const title = `${matchImage.player1.name} vs ${matchImage.player2.name} — BLTA`;
 
   let description;
   if (row.status === 'PLANNED') {

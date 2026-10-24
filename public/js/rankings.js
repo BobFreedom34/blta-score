@@ -34,7 +34,7 @@ async function buildBadgesTable() {
   ]);
   badgeDefsForBadgesTab = badgeDefs;
   const matchesByPlayerId = new Map();
-  finished.forEach((m) => {
+  finished.filter((m) => !m.isDoubles).forEach((m) => {
     [m.player1.id, m.player2.id].forEach((pid) => {
       if (!matchesByPlayerId.has(pid)) matchesByPlayerId.set(pid, []);
       matchesByPlayerId.get(pid).push(m);
@@ -70,6 +70,44 @@ async function buildBadgesTable() {
 async function buildCourtIQTable() {
   const { rows } = await api('/courtiq');
   return { key: 'courtiq', label: t('rankings.courtiqTab'), rows };
+}
+
+// The doubles (štvorhra) tab: a ranking per player from the finished doubles matches (3 points for a win, 1 for a played loss;
+// see src/doubles.js). Its own columns (wins-losses, matches, points), so it has its own small render like the Badges and CourtIQ tabs.
+async function buildDoublesTable() {
+  const { rows, pointsWin, pointsLoss } = await api('/doubles/ranking');
+  return { key: 'doubles', label: t('rankings.doublesTab'), rows, pointsWin, pointsLoss };
+}
+
+function renderDoublesTable(table) {
+  const listEl = document.getElementById('rankings-list');
+  if (!table.rows.length) {
+    listEl.innerHTML = `<p style="color:var(--gray)">${t('rankings.doublesNone')}</p>`;
+    return;
+  }
+  const headerHtml = `
+    <div class="rank-table-header rank-grid">
+      <div class="rank-col-pos"></div>
+      <div class="rank-col-player">${t('rankings.playerCol')}</div>
+      <div class="rank-col-age">${t('rankings.doublesWL')}</div>
+      <div class="rank-col-matches">${t('rankings.matchesCol')}</div>
+      <div class="rank-col-points">${t('rankings.doublesPoints')}</div>
+    </div>`;
+  const rowsHtml = table.rows.map((r) => {
+    const flag = flagImgHtml(r.nationality, 'rank-flag-icon');
+    const nameHtml = r.slug
+      ? `<a href="/player/${escapeHtml(r.slug)}" class="rank-name"${PLAYER_LINK_ATTRS}>${flag}${escapeHtml(r.name)}</a>`
+      : `<span class="rank-name">${flag}${escapeHtml(r.name)}</span>`;
+    return `
+      <div class="rank-row rank-grid">
+        <div class="rank-pos"><div class="rank-move rank-move-none"></div><span class="rank-pos-num">${r.rank}</span></div>
+        ${nameHtml}
+        <div class="rank-col-age">${r.wins}–${r.losses}</div>
+        <div class="rank-col-matches">${r.played}</div>
+        <div class="rank-points">${r.points}</div>
+      </div>`;
+  }).join('');
+  listEl.innerHTML = `<div class="rank-table">${headerHtml}${rowsHtml}</div><p style="color:var(--gray-dim);font-size:12px;margin-top:10px">${t('rankings.doublesRule', { win: table.pointsWin, loss: table.pointsLoss })}</p>`;
 }
 
 function renderTabs() {
@@ -206,6 +244,7 @@ function renderTable() {
   const table = rankingsData.tables.find((t) => t.key === activeTab);
   if (table && table.key === 'badges') return renderBadgesTable(table);
   if (table && table.key === 'courtiq') return renderCourtIQTable(table);
+  if (table && table.key === 'doubles') return renderDoublesTable(table);
   const listEl = document.getElementById('rankings-list');
   // Skip anyone with no points at all (null) or exactly 0 — keeping the
   // original index (not the filtered position) on each entry so the
@@ -342,8 +381,9 @@ function startEdit(rowEl, table) {
 async function load() {
   let badgesTableResult;
   let courtIQTableResult;
+  let doublesTableResult;
   try {
-    [rankingsData, badgesTableResult, courtIQTableResult] = await Promise.all([
+    [rankingsData, badgesTableResult, courtIQTableResult, doublesTableResult] = await Promise.all([
       api('/rankings'),
       buildBadgesTable().catch((err) => {
         // Non-fatal — the scraped tables still work without it, just minus
@@ -353,6 +393,10 @@ async function load() {
       }),
       buildCourtIQTable().catch((err) => {
         console.error('[rankings] CourtIQ tab failed to build:', err.message);
+        return null;
+      }),
+      buildDoublesTable().catch((err) => {
+        console.error('[rankings] doubles tab failed to build:', err.message);
         return null;
       }),
     ]);
@@ -366,6 +410,7 @@ async function load() {
   // after the Race/Tournament tabs.
   if (courtIQTableResult) rankingsData.tables.splice(1, 0, courtIQTableResult);
   if (badgesTableResult) rankingsData.tables.push(badgesTableResult);
+  if (doublesTableResult) rankingsData.tables.push(doublesTableResult);
   // a link such as /rankings?tab=courtiq (the "How CourtIQ works" page) opens that tab first
   if (!activeTab) activeTab = new URLSearchParams(location.search).get('tab');
   if (!activeTab || !rankingsData.tables.some((t) => t.key === activeTab)) {

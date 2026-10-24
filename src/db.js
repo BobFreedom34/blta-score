@@ -216,6 +216,18 @@ if (!matchColumns.includes('first_server')) {
 if (!matchColumns.includes('end_reason')) {
   db.exec('ALTER TABLE matches ADD COLUMN end_reason TEXT');
 }
+// Doubles (štvorhra): a doubles match is a normal match whose two sides have a second player each. player1_id / player2_id stay the FIRST
+// player of each side (so every singles query keeps working), player1b_id / player2b_id are the partners, is_doubles marks the match.
+if (!matchColumns.includes('is_doubles')) {
+  db.exec('ALTER TABLE matches ADD COLUMN is_doubles INTEGER NOT NULL DEFAULT 0');
+}
+if (!matchColumns.includes('player1b_id')) {
+  db.exec('ALTER TABLE matches ADD COLUMN player1b_id INTEGER');
+}
+if (!matchColumns.includes('player2b_id')) {
+  db.exec('ALTER TABLE matches ADD COLUMN player2b_id INTEGER');
+}
+db.exec('CREATE INDEX IF NOT EXISTS idx_matches_doubles ON matches(is_doubles, status)');
 // Who's bringing the balls — 1 or 2 (player1/player2), set at match
 // creation and shown as a small marker on the match card while it's still
 // PLANNED (see the balls-icon rendering in common.js). NULL means nobody

@@ -282,7 +282,20 @@ function chatHtml() {
 // match itself) — fetched once per pair and cached, then re-rendered in
 // place. Runs independently of the frequent re-renders that happen while
 // scoring, since past history between them can't change from those.
+// One side of the match title: the player, or in doubles each of the pair, every name a link to the profile
+function titleSideHtml(m, side) {
+  const players = m.isDoubles ? (side === 1 ? m.team1 : m.team2) : [side === 1 ? m.player1 : m.player2];
+  return players.map((p, i) => {
+    const href = `/player/${p.slug || p.id}`;
+    const link = `<a class="player-name-link" href="${href}">${escapeHtml(p.name)}</a>`;
+    const info = (!m.isDoubles || i === players.length - 1)
+      ? `<a class="player-info-link" href="${href}" title="${escapeHtml(t('common.viewProfileTitle', { name: p.name }))}">i</a>` : '';
+    return link + info;
+  }).join(' <span style="color:var(--gray-dim);font-weight:500">/</span> ');
+}
+
 async function ensureH2H(m) {
+  if (m.isDoubles) return; // head-to-head is a singles thing
   const key = `${m.player1.id}-${m.player2.id}`;
   if (h2hKey === key) return;
   h2hKey = key;
@@ -714,7 +727,7 @@ function render(m) {
     <div class="match-header">
       <div>
         <div class="match-badges">${categoryBadge(m.category)}${statusBadge(m, { splitTime: true })}${videoBadge(m)}${m.status === 'LIVE' ? `<span class="badge badge-viewers" id="viewer-count-badge">${viewersHtml(viewerCount !== null ? viewerCount : '…')}</span>` : ''}</div>
-        <h1 style="margin-top:8px"><a class="player-name-link" href="/player/${m.player1.slug || m.player1.id}">${escapeHtml(m.player1.name)}</a><a class="player-info-link" href="/player/${m.player1.slug || m.player1.id}" title="${escapeHtml(t('common.viewProfileTitle', { name: m.player1.name }))}">i</a> <span style="color:var(--gray-dim);font-weight:500">${t('match.vsLabel')}</span> <a class="player-name-link" href="/player/${m.player2.slug || m.player2.id}">${escapeHtml(m.player2.name)}</a><a class="player-info-link" href="/player/${m.player2.slug || m.player2.id}" title="${escapeHtml(t('common.viewProfileTitle', { name: m.player2.name }))}">i</a></h1>
+        <h1 style="margin-top:8px">${titleSideHtml(m, 1)} <span style="color:var(--gray-dim);font-weight:500">${t('match.vsLabel')}</span> ${titleSideHtml(m, 2)}</h1>
         <div style="color:var(--gray-dim);font-size:13px">${m.formatLabel}${ballsPlayerName ? ` &nbsp;·&nbsp; ${ballsIconHtml(m, m.ballsPlayer)} ${escapeHtml(ballsPlayerName)}` : ''}</div>
       </div>
     </div>

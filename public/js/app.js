@@ -256,6 +256,7 @@ async function loadMyMatches() {
     const rawGroups = await Promise.all(MY_MATCHES_GROUPS.map((g) => {
       const params = buildFilterParamsForSpec(g.params);
       params.set('playerId', currentPlayerId);
+      params.set('withDoubles', '1'); // my matches include the doubles I play (the singles lists and numbers do not)
       return api(`/matches?${params.toString()}`);
     }));
     const parts = [];
@@ -353,7 +354,7 @@ function refreshCounts() {
   } else if (currentTimeFilter === 'tbd') {
     params.set('tbd', '1');
   }
-  if (playerAuthed && currentPlayerId) params.set('playerId', currentPlayerId);
+  if (playerAuthed && currentPlayerId) { params.set('playerId', currentPlayerId); params.set('withDoubles', '1'); }
   if (SEASON_FILTER) params.set('seasonId', String(SEASON_FILTER));
   countsRequest = (async () => {
     try {

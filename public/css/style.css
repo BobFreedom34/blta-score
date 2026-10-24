@@ -5287,3 +5287,25 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .sp-item img { display: block; max-width: 160px; max-height: 48px; width: auto; height: auto; object-fit: contain; }
 .sv-partners { margin-top: 56px; }
 @media (max-width: 700px) { .sp-box { padding: 16px 18px; } .sp-strip { gap: 32px; } }
+
+/* Doubles (štvorhra): the singles/doubles switch of the new-match form and what shows in each mode */
+.mode-switch { display: flex; gap: 0; margin-bottom: 14px; border: 1.5px solid var(--border, #d9d9d9); border-radius: 999px; overflow: hidden; }
+.mode-switch button { flex: 1; padding: 10px 14px; border: 0; background: transparent; font: inherit; font-weight: 700; cursor: pointer; color: var(--gray); }
+.mode-switch button.active { background: var(--orange); color: #fff; }
+.only-double, .only-double-block { display: none; }
+.is-doubles .only-single { display: none; }
+.is-doubles .only-double { display: inline; }
+.is-doubles .only-double-block { display: grid; }
+
+/* the doubles card of the player profile */
+.dbl-partners { margin: 12px 0 6px; font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; color: var(--white); }
+.dbl-partners a { color: var(--white); text-decoration: underline; }
+.dbl-partners-label { color: var(--gray-dim); font-weight: 700; }
+.dbl-partner small { color: var(--gray-dim); }
+.dbl-matches { display: flex; flex-direction: column; margin-top: 8px; }
+.dbl-match { display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; align-items: baseline; padding: 9px 0; border-top: 1px solid rgba(255,255,255,0.12); color: var(--white); text-decoration: none; font-size: 13px; }
+.dbl-result { font-weight: 800; }
+.dbl-match.won .dbl-result { color: var(--green-light); }
+.dbl-match.lost .dbl-result { color: var(--orange); }
+.dbl-score { font-weight: 700; white-space: nowrap; }
+@media (max-width: 480px) { .dbl-match { grid-template-columns: 24px 1fr; } .dbl-score { grid-column: 2; } }
