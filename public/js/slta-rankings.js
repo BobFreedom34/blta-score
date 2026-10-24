@@ -87,7 +87,7 @@ function cardHtml(city) {
   }).join('');
   return `
     <article class="rk-card">
-      <div class="rk-card-head"><h2 class="rk-city">${esc(city.name)}</h2><span class="rk-count">${r.total ? `${r.total} ${esc(T.players)}` : ''}</span></div>
+      <div class="rk-card-head"><h2 class="rk-city">${esc(city.name)}</h2><span class="rk-count">${(r.playerCount !== undefined ? r.playerCount : r.total) ? `${r.playerCount !== undefined ? r.playerCount : r.total} ${esc(T.players)}` : ''}</span></div>
       ${rows || `<div class="rk-empty">${esc(T.empty)}</div>`}
       ${r.total ? `<a class="rk-more" href="${esc(r.more)}">${esc(T.more)} ›</a>` : ''}
     </article>`;

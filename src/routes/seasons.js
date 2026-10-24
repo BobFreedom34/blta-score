@@ -311,8 +311,11 @@ router.post('/:id/registrations', async (req, res) => {
   const account = openAccount(req, res, player, { name, phone, email, leagueId: season.league_id });
   if (account.player) player = account.player;
 
-  db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, note) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(season.id, player ? player.id : null, name, phone, email, entryCategory, note);
+  // a tournament entry may name a partner for the doubles: the organiser makes the pairs from these (draw panel)
+  const partner = season.kind === 'TOURNAMENT' && typeof body.partner === 'string' ? body.partner.replace(/\s+/g, ' ').trim() : '';
+  if (partner.length > 80) return res.status(400).json({ code: 'BAD_PARTNER', error: 'The name of the partner is too long' });
+  db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, note, partner_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(season.id, player ? player.id : null, name, phone, email, entryCategory, note, partner);
   const total = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?').get(season.id).n;
   // the e-mail to the admin must never make the registration fail
   sendSeasonRegistrationEmail(season, { name, phone, email, category: entryCategory, note, isNew: !player, account: account.status, phoneHolder: account.holder }, total)
@@ -357,7 +360,7 @@ if (!db.prepare('PRAGMA table_info(season_registrations)').all().some((c) => c.n
 }
 
 function serializeRegistration(r) {
-  return { id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', seed: r.seed || null, createdAt: r.created_at, playerId: r.player_id, remindedAt: r.reminded_at || null };
+  return { id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', partnerName: r.partner_name || '', seed: r.seed || null, createdAt: r.created_at, playerId: r.player_id, remindedAt: r.reminded_at || null };
 }
 
 // The registrations as a spreadsheet (CSV with a byte-order mark so Excel reads the letters right).
@@ -513,6 +516,61 @@ router.post('/:id/draw/bracket', requireAdmin, (req, res) => {
   res.status(201).json({ ...made, categories: tournamentDraw.overview(season.id) });
 });
 
+// ---- the doubles (štvorhra) of the tournament: pairs, their seeds and one doubles bracket ----
+router.get('/:id/doubles', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  res.json(tournamentDraw.doublesOverview(season));
+});
+
+// { player, partner } (ids or names) makes a pair; { fromRegistrations: true } makes the pairs the registration forms named
+router.post('/:id/doubles/pairs', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const body = req.body || {};
+  const done = body.fromRegistrations
+    ? tournamentDraw.addPairsFromRegistrations(season)
+    : tournamentDraw.addPair(season, { player: body.player, partner: body.partner });
+  if (done.error) return res.status(done.status || 400).json({ error: done.error });
+  res.status(201).json({ ...(body.fromRegistrations ? { created: done.created, skipped: done.skipped } : {}), overview: tournamentDraw.doublesOverview(season) });
+});
+
+router.delete('/:id/doubles/pairs/:pairId', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const done = tournamentDraw.removePair(season, Number(req.params.pairId));
+  if (done.error) return res.status(done.status || 400).json({ error: done.error });
+  res.json(tournamentDraw.doublesOverview(season));
+});
+
+// { seeds: [{ id: pairId, seed }] }
+router.post('/:id/doubles/seeds', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const done = tournamentDraw.setPairSeeds(season, req.body && req.body.seeds);
+  if (done.error) return res.status(done.status || 400).json({ error: done.error });
+  res.json(tournamentDraw.doublesOverview(season));
+});
+
+// { mainFormat } — makes the doubles bracket
+router.post('/:id/doubles/draw', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const made = tournamentDraw.createDoublesDraw(season, { mainFormat: req.body && req.body.mainFormat });
+  if (made.error) return res.status(made.status || 400).json({ error: made.error });
+  const io = req.app.get('io');
+  if (io) io.emit('matches:changed', { seasonId: season.id, status: 'CREATED' });
+  res.status(201).json({ main: made.main, warnings: made.warnings, overview: tournamentDraw.doublesOverview(season) });
+});
+
+router.delete('/:id/doubles/draw', requireAdmin, (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const done = tournamentDraw.deleteDoublesDraw(season);
+  if (done.error) return res.status(done.status || 400).json({ error: done.error });
+  res.json(tournamentDraw.doublesOverview(season));
+});
+
 router.delete('/:id/draw/:category', requireAdmin, (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
@@ -661,7 +719,7 @@ router.delete('/registrations/:rid', requireAdmin, (req, res) => {
 router.get('/:id/brackets', (req, res) => {
   const season = db.prepare('SELECT id FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
-  res.json(db.prepare("SELECT id, name, category, COALESCE(kind, 'MAIN') AS kind, parent_bracket_id AS parentBracketId FROM brackets WHERE season_id = ? ORDER BY id").all(season.id));
+  res.json(db.prepare("SELECT id, name, category, COALESCE(kind, 'MAIN') AS kind, parent_bracket_id AS parentBracketId, is_doubles AS isDoubles FROM brackets WHERE season_id = ? ORDER BY id").all(season.id).map((b) => ({ ...b, isDoubles: !!b.isDoubles })));
 });
 
 // Public: the group tables of one season, calculated from the matches tagged with each group (see standings.js).
@@ -814,12 +872,14 @@ function deleteTournamentWithMatches(req, res, season) {
       db.prepare('DELETE FROM matches WHERE id = ?').run(m.id);
     });
     brackets.forEach((id) => {
+      db.prepare('DELETE FROM bracket_partners WHERE bracket_id = ?').run(id);
       db.prepare('DELETE FROM bracket_matches WHERE bracket_id = ?').run(id);
       db.prepare('DELETE FROM brackets WHERE id = ?').run(id);
     });
     db.prepare('DELETE FROM season_group_members WHERE group_id IN (SELECT id FROM season_groups WHERE season_id = ?)').run(season.id);
     db.prepare('DELETE FROM season_groups WHERE season_id = ?').run(season.id);
     db.prepare('DELETE FROM season_registrations WHERE season_id = ?').run(season.id);
+    db.prepare('DELETE FROM tournament_pairs WHERE season_id = ?').run(season.id);
     db.prepare('DELETE FROM seasons WHERE id = ?').run(season.id);
     db.exec('COMMIT');
   } catch (err) {
@@ -846,6 +906,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
   db.prepare('UPDATE matches SET group_id = NULL WHERE season_id = ?').run(season.id);
   db.prepare('DELETE FROM season_group_members WHERE group_id IN (SELECT id FROM season_groups WHERE season_id = ?)').run(season.id);
   db.prepare('DELETE FROM season_registrations WHERE season_id = ?').run(season.id);
+  db.prepare('DELETE FROM tournament_pairs WHERE season_id = ?').run(season.id);
   db.prepare('DELETE FROM seasons WHERE id = ?').run(season.id);
   res.json({ ok: true });
 });

@@ -11,6 +11,7 @@ const db = require('./db');
 const engine = require('./matchEngine');
 const bracketEngine = require('./bracketEngine');
 const groups = require('./tournamentGroups');
+const nameMatch = require('./nameMatch');
 
 const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 const CATEGORY_LABELS = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
@@ -417,7 +418,201 @@ function deleteMatchRow(id) {
   db.prepare('DELETE FROM matches WHERE id = ?').run(id);
 }
 
+// ---------- doubles (štvorhra) of a tournament ----------
+// The organiser puts pairs together from the players (the registration form lets a player name a partner), seeds them and makes ONE
+// doubles bracket: every entrant a pair, the matches doubles matches (see bracketEngine.js, is_doubles). Doubles has no groups and no
+// consolation draw, and its matches never count in the league (no BLTA category).
+
+function pairsOf(seasonId) {
+  return db.prepare(`
+    SELECT tp.*, p.name AS player_name, p.slug AS player_slug, q.name AS partner_name, q.slug AS partner_slug
+    FROM tournament_pairs tp JOIN players p ON p.id = tp.player_id JOIN players q ON q.id = tp.partner_id
+    WHERE tp.season_id = ? ORDER BY tp.seed IS NULL, tp.seed, tp.id
+  `).all(seasonId);
+}
+
+function doublesMainOf(seasonId) {
+  return db.prepare("SELECT * FROM brackets WHERE season_id = ? AND is_doubles = 1 AND COALESCE(kind, 'MAIN') = 'MAIN' ORDER BY id LIMIT 1").get(seasonId) || null;
+}
+
+// a player given by id or by (typed) name; the name is matched like everywhere else (capitals, accents, word order)
+function resolvePlayer(season, value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'number' || /^\d+$/.test(String(value))) {
+    return db.prepare('SELECT id, name FROM players WHERE id = ?').get(Number(value)) || null;
+  }
+  const all = db.prepare('SELECT id, name FROM players WHERE league_id = ?').all(season.league_id || 1);
+  const { exact } = nameMatch.findSimilar(String(value), all);
+  return exact ? { id: exact.id, name: exact.name } : null;
+}
+
+function inAPair(seasonId, playerId) {
+  return db.prepare('SELECT 1 FROM tournament_pairs WHERE season_id = ? AND (player_id = ? OR partner_id = ?)').get(seasonId, playerId, playerId);
+}
+
+// -> { error, status } | { pair }
+function addPair(season, { player, partner }) {
+  if (season.kind !== 'TOURNAMENT') return { status: 400, error: 'Only a tournament has a draw' };
+  if (doublesMainOf(season.id)) return { status: 409, error: 'The doubles draw already exists — delete it first to change the pairs' };
+  const a = resolvePlayer(season, player);
+  const b = resolvePlayer(season, partner);
+  if (!a) return { status: 400, error: `Unknown player: ${player}` };
+  if (!b) return { status: 400, error: `Unknown player: ${partner}` };
+  if (a.id === b.id) return { status: 400, error: 'A pair needs two different players' };
+  for (const p of [a, b]) {
+    if (inAPair(season.id, p.id)) return { status: 409, error: `${p.name} is already in a pair of this tournament` };
+  }
+  const info = db.prepare('INSERT INTO tournament_pairs (season_id, player_id, partner_id) VALUES (?, ?, ?)').run(season.id, a.id, b.id);
+  return { pair: Number(info.lastInsertRowid) };
+}
+
+// Pairs from what the players wrote in the registration form ("partner for doubles"): every registration with a partner whose name is a
+// player and who is in no pair yet. -> { created, skipped: [{ name, partner, reason }] }
+function addPairsFromRegistrations(season) {
+  if (season.kind !== 'TOURNAMENT') return { status: 400, error: 'Only a tournament has a draw' };
+  if (doublesMainOf(season.id)) return { status: 409, error: 'The doubles draw already exists — delete it first to change the pairs' };
+  const regs = db.prepare("SELECT * FROM season_registrations WHERE season_id = ? AND partner_name != '' ORDER BY created_at, id").all(season.id);
+  let created = 0;
+  const skipped = [];
+  regs.forEach((r) => {
+    const who = r.player_id ? { id: r.player_id } : resolvePlayer(season, r.name);
+    const partner = resolvePlayer(season, r.partner_name);
+    if (!who) { skipped.push({ name: r.name, partner: r.partner_name, reason: 'the player has no profile' }); return; }
+    if (!partner) { skipped.push({ name: r.name, partner: r.partner_name, reason: 'the partner is not a known player' }); return; }
+    if (who.id === partner.id) { skipped.push({ name: r.name, partner: r.partner_name, reason: 'the same player' }); return; }
+    if (inAPair(season.id, who.id) || inAPair(season.id, partner.id)) return; // already paired (for instance the partner wrote the same pair)
+    db.prepare('INSERT INTO tournament_pairs (season_id, player_id, partner_id) VALUES (?, ?, ?)').run(season.id, who.id, partner.id);
+    created += 1;
+  });
+  return { created, skipped };
+}
+
+function removePair(season, pairId) {
+  const row = db.prepare('SELECT * FROM tournament_pairs WHERE id = ? AND season_id = ?').get(pairId, season.id);
+  if (!row) return { status: 404, error: 'Pair not found' };
+  if (doublesMainOf(season.id)) return { status: 409, error: 'The doubles draw already exists — delete it first to change the pairs' };
+  db.prepare('DELETE FROM tournament_pairs WHERE id = ?').run(pairId);
+  return { ok: true };
+}
+
+// items = [{ id (pair), seed }]: whole numbers from 1, each once, gaps closed (like setSeeds)
+function setPairSeeds(season, items) {
+  if (!Array.isArray(items)) return { status: 400, error: 'Nothing to save' };
+  const pairs = pairsOf(season.id);
+  const own = new Set(pairs.map((p) => p.id));
+  const seen = new Set();
+  const used = new Set();
+  const seeded = [];
+  for (const item of items) {
+    const id = Number(item && item.id);
+    if (!own.has(id)) return { status: 400, error: 'A pair does not belong to this tournament' };
+    if (seen.has(id)) return { status: 400, error: 'The same pair is listed twice' };
+    seen.add(id);
+    if (item.seed === null || item.seed === undefined || item.seed === '') continue;
+    const seed = Number(item.seed);
+    if (!Number.isInteger(seed) || seed < 1) return { status: 400, error: 'A seed is a whole number from 1' };
+    if (seed > pairs.length) return { status: 400, error: `A seed cannot be higher than the number of pairs (${pairs.length})` };
+    if (used.has(seed)) return { status: 400, error: `Seed ${seed} is used more than once` };
+    used.add(seed);
+    seeded.push({ id, seed });
+  }
+  seeded.sort((a, b) => a.seed - b.seed);
+  db.exec('BEGIN');
+  try {
+    db.prepare('UPDATE tournament_pairs SET seed = NULL WHERE season_id = ?').run(season.id);
+    const set = db.prepare('UPDATE tournament_pairs SET seed = ? WHERE id = ?');
+    seeded.forEach((s, i) => set.run(i + 1, s.id));
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  return { ok: true };
+}
+
+function doublesOverview(season) {
+  const pairs = pairsOf(season.id);
+  const main = doublesMainOf(season.id);
+  const wanting = db.prepare("SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ? AND partner_name != ''").get(season.id).n;
+  return {
+    pairs: pairs.map((p) => ({
+      id: p.id, seed: p.seed || null,
+      player: { id: p.player_id, name: p.player_name, slug: p.player_slug },
+      partner: { id: p.partner_id, name: p.partner_name, slug: p.partner_slug },
+    })),
+    registrationsWithPartner: wanting,
+    size: pairs.length >= 2 ? bracketEngine.nextPowerOfTwo(pairs.length) : 0,
+    byes: pairs.length >= 2 ? bracketEngine.nextPowerOfTwo(pairs.length) - pairs.length : 0,
+    draw: bracketSummary(main),
+    mainFormat: main ? main.format : DEFAULT_MAIN_FORMAT,
+  };
+}
+
+// Makes the doubles bracket of the tournament from its pairs: the seeded pairs take seeds 1..k in the order the organiser gave, the rest get
+// the following seeds by lot; the byes go to the highest seeds. -> { error, status } | { main, warnings }
+function createDoublesDraw(season, opts = {}) {
+  if (season.kind !== 'TOURNAMENT') return { status: 400, error: 'Only a tournament has a draw' };
+  const format = opts.mainFormat || DEFAULT_MAIN_FORMAT;
+  if (!validFormat(format)) return { status: 400, error: 'Invalid match format of the draw' };
+  if (doublesMainOf(season.id)) return { status: 409, error: 'The doubles draw already exists — delete it first to make a new one' };
+  const pairs = pairsOf(season.id);
+  if (pairs.length < 2) return { status: 400, error: 'Need at least 2 pairs to make a draw' };
+  if (pairs.length > 128) return { status: 400, error: 'Too many pairs (max 128)' };
+  const random = opts.random || Math.random;
+  const seeded = pairs.filter((p) => p.seed).sort((a, b) => a.seed - b.seed);
+  const rest = shuffled(pairs.filter((p) => !p.seed), random);
+  const entries = [...seeded, ...rest].map((p, i) => ({ playerId: p.player_id, partnerId: p.partner_id, seed: i + 1 }));
+  const size = bracketEngine.nextPowerOfTwo(pairs.length);
+  const byes = size - pairs.length;
+  const warnings = [];
+  if (byes > seeded.length) warnings.push(`The draw has ${byes} free places (byes) but only ${seeded.length} seeded pairs: ${byes - seeded.length} unseeded ${byes - seeded.length === 1 ? 'pair' : 'pairs'} drawn by lot will skip round 1.`);
+  let mainId;
+  db.exec('BEGIN');
+  try {
+    mainId = bracketEngine.createBracket({
+      name: `${season.name} — Štvorhra — Hlavný pavúk`, format, entries, autoCreateMatches: true, category: null, seasonId: season.id, doubles: true,
+    });
+    db.prepare('UPDATE brackets SET league_id = ? WHERE id = ?').run(season.league_id || 1, mainId);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  bracketEngine.planCourts(mainId);
+  return { main: mainId, warnings };
+}
+
+// Removes the doubles draw (its planned matches go with it). Refused once a match of it has started or a result was entered by hand.
+function deleteDoublesDraw(season) {
+  const main = doublesMainOf(season.id);
+  if (!main) return { status: 404, error: 'There is no doubles draw' };
+  const matchIds = db.prepare('SELECT match_id FROM bracket_matches WHERE bracket_id = ? AND match_id IS NOT NULL').all(main.id).map((r) => r.match_id);
+  const started = matchIds.filter((id) => (db.prepare('SELECT status FROM matches WHERE id = ?').get(id) || {}).status !== 'PLANNED');
+  if (started.length) return { status: 409, error: 'Matches of this draw have already been played, so it cannot be deleted' };
+  if (db.prepare('SELECT 1 FROM bracket_matches WHERE bracket_id = ? AND manual_winner_id IS NOT NULL LIMIT 1').get(main.id)) return { status: 409, error: 'Results have already been entered in this draw, so it cannot be deleted' };
+  db.exec('BEGIN');
+  try {
+    matchIds.forEach((id) => deleteMatchRow(id));
+    db.prepare('DELETE FROM bracket_partners WHERE bracket_id = ?').run(main.id);
+    db.prepare('DELETE FROM bracket_matches WHERE bracket_id = ?').run(main.id);
+    db.prepare('DELETE FROM brackets WHERE id = ?').run(main.id);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  return { ok: true };
+}
+
 module.exports = {
+  doublesOverview,
+  addPair,
+  addPairsFromRegistrations,
+  removePair,
+  setPairSeeds,
+  createDoublesDraw,
+  deleteDoublesDraw,
+  doublesMainOf,
   CATEGORIES,
   FORMATS,
   BRACKET_TYPES,

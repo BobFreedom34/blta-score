@@ -109,17 +109,23 @@ function toMinutes(hhmm) {
 function loadMatches(seasonId) {
   return db.prepare(`
     SELECT m.*, bm.round AS b_round, bm.position AS b_position, b.id AS bracket_id, b.name AS bracket_name, b.kind AS bracket_kind, b.size AS bracket_size,
-           p1.name AS p1_name, p1.slug AS p1_slug, p2.name AS p2_name, p2.slug AS p2_slug, g.name AS group_name
+           CASE WHEN m.is_doubles = 1 AND p1b.name IS NOT NULL THEN p1.name || ' / ' || p1b.name ELSE p1.name END AS p1_name, CASE WHEN m.is_doubles = 1 THEN NULL ELSE p1.slug END AS p1_slug,
+           CASE WHEN m.is_doubles = 1 AND p2b.name IS NOT NULL THEN p2.name || ' / ' || p2b.name ELSE p2.name END AS p2_name, CASE WHEN m.is_doubles = 1 THEN NULL ELSE p2.slug END AS p2_slug, g.name AS group_name
     FROM matches m
     LEFT JOIN season_groups g ON g.id = m.group_id
     LEFT JOIN bracket_matches bm ON bm.match_id = m.id
     LEFT JOIN brackets b ON b.id = bm.bracket_id
     LEFT JOIN players p1 ON p1.id = m.player1_id
     LEFT JOIN players p2 ON p2.id = m.player2_id
+    LEFT JOIN players p1b ON p1b.id = m.player1b_id
+    LEFT JOIN players p2b ON p2b.id = m.player2b_id
     WHERE m.season_id = ?
     ORDER BY m.id
   `).all(seasonId);
 }
+
+// every player of a match: the four of a doubles match (a partner is busy on court like the first player)
+const playersOf = (r) => [r.player1_id, r.player2_id, r.player1b_id, r.player2b_id].filter(Boolean);
 
 const ms = (iso) => {
   const n = Date.parse(iso || '');
@@ -224,7 +230,7 @@ function placeMatch(season, token, courtNo, scheduledAt, now = Date.now()) {
   const warnings = [];
   const rest = settings.restMinutes * MIN;
   others.forEach((r) => {
-    const sharesPlayer = [r.player1_id, r.player2_id].some((id) => id && [match.player1_id, match.player2_id].includes(id));
+    const sharesPlayer = playersOf(r).some((id) => id && playersOf(match).includes(id));
     const i = intervalOf(r, settings, now);
     if (!sharesPlayer || !i) return;
     if (overlaps(i, slot)) warnings.push(`A player of this match is already on court at that time (${r.p1_name} – ${r.p2_name})`);
@@ -232,9 +238,9 @@ function placeMatch(season, token, courtNo, scheduledAt, now = Date.now()) {
   });
   if (settings.maxPerDay) {
     const day = dayOf(start);
-    [match.player1_id, match.player2_id].forEach((id) => {
-      const same = others.filter((r) => [r.player1_id, r.player2_id].includes(id) && r.status !== 'FINISHED' && r.scheduled_at && dayOf(ms(r.scheduled_at)) === day).length
-        + others.filter((r) => [r.player1_id, r.player2_id].includes(id) && r.status === 'FINISHED' && (r.start_time || r.scheduled_at) && dayOf(ms(r.start_time || r.scheduled_at)) === day).length;
+    playersOf(match).forEach((id) => {
+      const same = others.filter((r) => playersOf(r).includes(id) && r.status !== 'FINISHED' && r.scheduled_at && dayOf(ms(r.scheduled_at)) === day).length
+        + others.filter((r) => playersOf(r).includes(id) && r.status === 'FINISHED' && (r.start_time || r.scheduled_at) && dayOf(ms(r.start_time || r.scheduled_at)) === day).length;
       if (same >= settings.maxPerDay) warnings.push(`A player would play more than ${settings.maxPerDay} ${settings.maxPerDay === 1 ? 'match' : 'matches'} that day`);
     });
   }
@@ -262,7 +268,7 @@ function planningEntries(rows, settings, now) {
   rows.forEach((r) => {
     const interval = intervalOf(r, settings, now);
     if (!interval) return;
-    entries.push({ id: r.id, players: [r.player1_id, r.player2_id], court: r.court_no && r.court_no <= settings.courtCount ? r.court_no : null, interval });
+    entries.push({ id: r.id, players: playersOf(r), court: r.court_no && r.court_no <= settings.courtCount ? r.court_no : null, interval });
   });
   return entries;
 }
@@ -340,7 +346,7 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
     candidates.forEach((r) => {
       const entry = entries.find((e) => e.id === r.id);
       if (!entry) return;
-      const players = [r.player1_id, r.player2_id];
+      const players = playersOf(r);
       const current = entry.interval;
       const clash = slotProblem(entries, settings, players, entry.court, current, r.id);
       const found = findSlot(entries, settings, windows, players, lengthOf(r), notBefore, r.id);
@@ -354,12 +360,12 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
     return { placed: 0, skipped: 0, moved };
   }
 
-  const availableAt = (r) => Math.max(0, ...entries.filter((e) => e.players.some((p) => [r.player1_id, r.player2_id].includes(p))).map((e) => e.interval[1]));
+  const availableAt = (r) => Math.max(0, ...entries.filter((e) => e.players.some((p) => playersOf(r).includes(p))).map((e) => e.interval[1]));
   const todo = rows.filter((r) => r.status === 'PLANNED' && !r.scheduled_at);
   // the earlier round first; within a round the pair whose players have been resting longest first
   todo.sort((a, b) => ((a.b_round || a.round || 0) - (b.b_round || b.round || 0)) || (availableAt(a) - availableAt(b)) || (a.id - b.id));
   todo.forEach((r) => {
-    const players = [r.player1_id, r.player2_id];
+    const players = playersOf(r);
     const found = findSlot(entries, settings, windows, players, lengthOf(r), notBefore, r.id);
     if (!found) { skipped += 1; return; }
     entries.push({ id: r.id, players, court: found.court, interval: found.slot });

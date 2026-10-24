@@ -21,9 +21,12 @@ const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 
 // A season is optional, but it only goes with a BLTA category (the same rule as for a match). Returns an error text
 // or null.
-function seasonProblem(seasonId, category) {
+// (a doubles draw has no league category: it can belong to a tournament only, whose matches carry the season but count in no league table)
+function seasonProblem(seasonId, category, doubles = false) {
   if (seasonId === null || seasonId === undefined) return null;
-  if (!db.prepare('SELECT 1 FROM seasons WHERE id = ?').get(seasonId)) return 'That season does not exist';
+  const season = db.prepare('SELECT kind FROM seasons WHERE id = ?').get(seasonId);
+  if (!season) return 'That season does not exist';
+  if (doubles) return season.kind === 'TOURNAMENT' ? null : 'A doubles draw can belong to a tournament only';
   if (!BLTA_CATEGORIES.includes(category)) return 'A season needs a BLTA category (Elite, Next Gen or Novice)';
   return null;
 }
@@ -184,11 +187,11 @@ router.post('/', auth.requireAdmin, (req, res) => {
   if (category && !CATEGORIES.includes(category)) return res.status(400).json({ error: 'Invalid category' });
   const seasonId = parseSeasonId(req.body.seasonId);
   if (Number.isNaN(seasonId)) return res.status(400).json({ error: 'Invalid season' });
-  const problem = seasonProblem(seasonId, category);
-  if (problem) return res.status(400).json({ error: problem });
-  // A doubles draw (every entrant a pair). Its matches are doubles matches, which never count in the league: so no BLTA category, and
-  // therefore no season (a season needs one).
+  // A doubles draw (every entrant a pair). Its matches are doubles matches, which never count in the league: so no BLTA category, and its
+  // season (if any) is a tournament.
   const doubles = req.body.doubles === true;
+  const problem = seasonProblem(seasonId, category, doubles);
+  if (problem) return res.status(400).json({ error: problem });
   if (doubles && BLTA_CATEGORIES.includes(category)) return res.status(400).json({ error: 'A doubles draw cannot be tied to a league category (Elite, Next Gen, Novice)' });
 
   const rawEntries = Array.isArray(req.body.entries) ? req.body.entries : null;
@@ -262,11 +265,11 @@ router.patch('/:id', auth.requireAdmin, (req, res) => {
     const finalCategory = Object.prototype.hasOwnProperty.call(fields, 'category') ? fields.category : bracket.category;
     let finalSeason = Object.prototype.hasOwnProperty.call(fields, 'season_id') ? fields.season_id : bracket.season_id;
     // Changing a bracket to a non-BLTA category drops its season (the two only go together).
-    if (finalSeason && !BLTA_CATEGORIES.includes(finalCategory) && !Object.prototype.hasOwnProperty.call(fields, 'season_id')) {
+    if (finalSeason && !bracket.is_doubles && !BLTA_CATEGORIES.includes(finalCategory) && !Object.prototype.hasOwnProperty.call(fields, 'season_id')) {
       finalSeason = null;
       fields.season_id = null;
     }
-    const problem = seasonProblem(finalSeason || null, finalCategory);
+    const problem = seasonProblem(finalSeason || null, finalCategory, !!bracket.is_doubles);
     if (problem) return res.status(400).json({ error: problem });
   }
   if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Nothing to update' });

@@ -172,6 +172,16 @@ function cityRankings(lang) {
         AND m.category IN ('ELITE', 'NEXT_GEN', 'NOVICE') AND m.status = 'FINISHED')
     ORDER BY cr.rating DESC
   `);
+  // The number on the tournaments card: the players of the city who PLAYED a match of a tournament (a finished one, not a walkover or an
+  // unfinished one) - not everybody who has tournament points, some of whom only got them entered by hand.
+  const tournamentPlayers = db.prepare(`
+    SELECT COUNT(*) AS n FROM (
+      SELECT m.player1_id AS pid FROM matches m JOIN seasons s ON s.id = m.season_id WHERE s.kind = 'TOURNAMENT' AND m.status = 'FINISHED' AND (m.end_reason IS NULL OR m.end_reason NOT IN ('WALKOVER', 'UNFINISHED'))
+      UNION SELECT m.player2_id FROM matches m JOIN seasons s ON s.id = m.season_id WHERE s.kind = 'TOURNAMENT' AND m.status = 'FINISHED' AND (m.end_reason IS NULL OR m.end_reason NOT IN ('WALKOVER', 'UNFINISHED'))
+      UNION SELECT m.player1b_id FROM matches m JOIN seasons s ON s.id = m.season_id WHERE s.kind = 'TOURNAMENT' AND m.status = 'FINISHED' AND (m.end_reason IS NULL OR m.end_reason NOT IN ('WALKOVER', 'UNFINISHED')) AND m.player1b_id IS NOT NULL
+      UNION SELECT m.player2b_id FROM matches m JOIN seasons s ON s.id = m.season_id WHERE s.kind = 'TOURNAMENT' AND m.status = 'FINISHED' AND (m.end_reason IS NULL OR m.end_reason NOT IN ('WALKOVER', 'UNFINISHED')) AND m.player2b_id IS NOT NULL
+    ) x JOIN players p ON p.id = x.pid WHERE p.league_id = ?
+  `);
   const cities = rows.map((row) => {
     const city = leagues.serialize(row);
     const base = city.url || '';
@@ -203,7 +213,7 @@ function cityRankings(lang) {
       rankings: {
         blta: { ...fromPoints('blta'), more: at('/rankings') },
         courtiq: { total: courtiqRows.length, rows: courtiqRows.slice(0, RANK_TOP), more: `${at('/rankings')}?tab=courtiq` },
-        tournaments: { ...fromPoints('tournaments'), more: `${at('/rankings')}?tab=tournaments` },
+        tournaments: { ...fromPoints('tournaments'), playerCount: tournamentPlayers.get(row.id).n, more: `${at('/rankings')}?tab=tournaments` },
       },
     };
   }).filter((c) => Object.values(c.rankings).some((r) => r.total > 0));

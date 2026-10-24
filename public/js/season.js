@@ -379,17 +379,20 @@ function playoffHtml() {
   const hasGroups = standings && standings.groups.length;
   if (!brackets.length && (statusOf() === 'past' || !hasGroups)) return '';
   if (!brackets.length) return `<section class="sv-sec" id="sv-playoff"><div class="sv-empty">${escapeHtml(t('season.playoffSoon'))}</div></section>`;
-  const cats = CATEGORY_ORDER.filter((c) => brackets.some((b) => b.category === c));
+  // the doubles (štvorhra) draw of a tournament is a "category" of its own here
+  const catOfBracket = (b) => (b.isDoubles ? 'DOUBLES' : b.category);
+  const catName = (c) => (c === 'DOUBLES' ? t('season.catDoubles') : CATEGORY_NAMES[c]);
+  const cats = [...CATEGORY_ORDER, 'DOUBLES'].filter((c) => brackets.some((b) => catOfBracket(b) === c));
   if (playoffCat !== 'ALL' && !cats.includes(playoffCat)) playoffCat = 'ALL';
   const btn = (value, label, count) => `<button type="button" class="tab${playoffCat === value ? ' active' : ''}" data-oc="${value}">${escapeHtml(label)}<small>${count}</small></button>`;
-  const filter = `<div class="tabs sv-line" id="sv-pcats">${btn('ALL', t('season.schedAll'), brackets.length)}${cats.map((c) => btn(c, CATEGORY_NAMES[c], brackets.filter((b) => b.category === c).length)).join('')}</div>`;
+  const filter = `<div class="tabs sv-line" id="sv-pcats">${btn('ALL', t('season.schedAll'), brackets.length)}${cats.map((c) => btn(c, catName(c), brackets.filter((b) => catOfBracket(b) === c).length)).join('')}</div>`;
   const title = (b) => {
-    const cat = CATEGORY_NAMES[b.category] || '';
+    const cat = catName(catOfBracket(b)) || '';
     const named = cat && !b.name.toLowerCase().includes(cat.toLowerCase()) ? `${cat} · ${b.name}` : b.name;
     // a tournament's bracket carries the name of the tournament
     return isTournament() && !named.toLowerCase().includes(season.name.toLowerCase()) ? `${season.name} — ${named}` : named;
   };
-  const body = brackets.filter((b) => playoffCat === 'ALL' || b.category === playoffCat)
+  const body = brackets.filter((b) => playoffCat === 'ALL' || catOfBracket(b) === playoffCat)
     .map((b) => `<div class="sv-bracket" data-bracket="${b.id}"><h3 class="grp-title">${escapeHtml(title(b))}</h3><div class="sv-bracket-body">${escapeHtml(t('common.loading'))}</div></div>`).join('');
   return `<section class="sv-sec" id="sv-playoff">${filter}${body}</section>`;
 }
@@ -447,6 +450,11 @@ async function openRegisterModal() {
         ${isTournament() ? '' : `<div class="field"><label for="sv-reg-cat">${escapeHtml(t('season.regCategory'))}</label>
           <select id="sv-reg-cat"><option value="">${escapeHtml(t('season.regChoose'))}</option>${CATEGORY_ORDER.filter((c) => !isTournament() || (season.categories || []).includes(c)).map((c) => `<option value="${c}">${escapeHtml(CATEGORY_NAMES[c])}</option>`).join('')}</select>
         </div>`}
+        ${isTournament() ? `<div class="field">
+          <label for="sv-reg-partner">${escapeHtml(t('season.regPartner'))}</label>
+          <div class="autocomplete"><input type="text" id="sv-reg-partner" autocomplete="off" maxlength="80"><div class="autocomplete-list" id="sv-reg-partner-list"></div></div>
+          <small>${escapeHtml(t('season.regPartnerHint'))}</small>
+        </div>` : ''}
         <div class="field"><label for="sv-reg-notetext">${escapeHtml(t('season.regNoteLabel'))}</label><textarea id="sv-reg-notetext" rows="3" maxlength="500"></textarea></div>
         <input type="text" id="sv-reg-website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
         <div class="sv-reg-similar" id="sv-reg-similar"></div>
@@ -461,6 +469,7 @@ async function openRegisterModal() {
   const close = () => { wrap.remove(); if (askForCode) refreshPlayerAuth(); };
   wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('[data-close]')) close(); });
   setupAutocomplete('sv-reg-name', 'sv-reg-name-list');
+  if (isTournament()) setupAutocomplete('sv-reg-partner', 'sv-reg-partner-list');
   if (playerAuthed && currentPlayerName) $('name').value = currentPlayerName;
   if (typeof currentPlayerEmail === 'string' && currentPlayerEmail) $('email').value = currentPlayerEmail;
   $('name').focus();
@@ -485,7 +494,7 @@ async function openRegisterModal() {
     try {
       const res = await api(`/seasons/${season.id}/registrations`, {
         method: 'POST',
-        body: { name: typed, phone, email, category, note: $('notetext').value.trim(), website: $('website').value, ...(known ? { playerId: known.id } : {}), ...(confirmNew ? { confirmNew: true } : {}) },
+        body: { name: typed, phone, email, category, note: $('notetext').value.trim(), ...(isTournament() && $('partner') ? { partner: $('partner').value.trim() } : {}), website: $('website').value, ...(known ? { playerId: known.id } : {}), ...(confirmNew ? { confirmNew: true } : {}) },
       });
       const stripe = res && res.paymentUrl
         ? `<p>${escapeHtml(t('season.regPayHint'))}</p><a class="btn btn-primary btn-block" href="${escapeHtml(res.paymentUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.payOnline'))}</a>`

@@ -1475,6 +1475,24 @@ if (!db.prepare('PRAGMA table_info(season_registrations)').all().some((c) => c.n
   db.exec('ALTER TABLE season_registrations ADD COLUMN seed INTEGER');
 }
 
+// The doubles of a tournament: the pairs the organiser put together (the registration form can name a partner; "partner_name" is what the player
+// wrote, the pair itself is made in the draw panel) and their seed. A player is in one pair of a tournament. The draw made from them is a
+// doubles bracket (brackets.is_doubles) tied to the tournament.
+if (!db.prepare('PRAGMA table_info(season_registrations)').all().some((c) => c.name === 'partner_name')) {
+  db.exec("ALTER TABLE season_registrations ADD COLUMN partner_name TEXT NOT NULL DEFAULT ''");
+}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS tournament_pairs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    partner_id INTEGER NOT NULL,
+    seed INTEGER,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_tournament_pairs_season ON tournament_pairs(season_id);
+`);
+
 // Tournaments and other events of the schedule page (/harmonogram). League seasons are not stored here — the page reads
 // them from the seasons table. categories: comma list of ELITE, NEXT_GEN, NOVICE.
 db.exec(`

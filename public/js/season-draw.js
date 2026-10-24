@@ -25,6 +25,8 @@ async function openDrawPanel(host, seasonId, onChanged) {
   host.innerHTML = '<div style="color:var(--gray)">Loading…</div>';
   let overview = await api(`/seasons/${seasonId}/draw`);
   let regs = await api(`/seasons/${seasonId}/registrations`);
+  let doubles = await api(`/seasons/${seasonId}/doubles`);
+  const playerNames = (await api('/players').catch(() => [])).map((p) => p.name).sort((a, b) => a.localeCompare(b, 'sk'));
   const drafts = new Map(); // registration id -> seed text typed but not saved yet
   const choice = {}; // category -> the settings being edited
   const groupDraft = {}; // category -> { count, assign: Map(registration id -> group index) } (groups put together by hand)
@@ -173,6 +175,81 @@ async function openDrawPanel(host, seasonId, onChanged) {
       </div>`;
   }
 
+  // The doubles (štvorhra) of the tournament: pairs (made here, or from the partners the players named when registering), their seeds and one
+  // doubles bracket. No groups and no consolation draw.
+  function doublesBlockHtml() {
+    const d = doubles;
+    const locked = !!d.draw;
+    const rows = d.pairs.map((p) => `
+      <div style="display:flex;gap:8px;align-items:center;margin:4px 0;font-size:13px">
+        <input type="number" min="1" inputmode="numeric" class="sd-dseed" data-id="${p.id}" value="${p.seed || ''}" placeholder="–" ${locked ? 'disabled' : ''} style="width:60px;${inputStyle}" title="Nasadenie">
+        <span style="flex:1"><b>${escapeHtml(p.player.name)}</b> / <b>${escapeHtml(p.partner.name)}</b></span>
+        ${locked ? '' : `<button type="button" class="btn btn-sm btn-outline" data-act="dbl-remove" data-id="${p.id}" title="Zrušiť pár">✕</button>`}
+      </div>`).join('');
+    const summary = d.pairs.length < 2
+      ? (d.pairs.length ? 'Treba aspoň 2 páry.' : 'Zatiaľ nie sú žiadne páry.')
+      : `Párov: ${d.pairs.length} → pavúk na ${d.size}${d.byes ? `, voľných miest (bye): ${d.byes}` : ', všetci hrajú 1. kolo'}.`;
+    const drawState = d.draw
+      ? `<div style="margin-top:10px;font-size:13px">Pavúk štvorhry je vytvorený: ${d.draw.finished} z ${d.draw.matches} zápasov odohraných. <a href="/bracket/${d.draw.id}" target="_blank" rel="noopener" style="font-weight:700">Pavúk ›</a>
+          <button type="button" class="btn btn-sm btn-outline" data-act="dbl-delete" style="margin-left:8px">Zmazať pavúk štvorhry</button></div>`
+      : `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+          <label style="font-size:13px">Formát zápasov <select class="sd-dfmt" style="${inputStyle}">${drawFormatOptions(d.mainFormat || DRAW_MAIN_DEFAULT)}</select></label>
+          <button type="button" class="btn btn-sm btn-primary" data-act="dbl-draw" ${d.pairs.length < 2 ? 'disabled' : ''}>Vytvoriť pavúk štvorhry</button>
+        </div>`;
+    return `
+      <div style="background:#fff;border-radius:12px;padding:14px;margin-top:12px">
+        <strong style="font-size:15px">Štvorhra</strong>
+        <div style="font-size:12px;color:var(--gray);margin:2px 0 8px">Páry (hráči sa môžu pri registrácii prihlásiť s partnerom), nasadenie a jeden pavúk štvorhry. Bez skupín a bez útechy; zápasy sa nepočítajú do ligy ani do CourtIQ.</div>
+        ${rows}
+        <div style="font-size:13px;color:var(--gray);margin:6px 0">${summary}</div>
+        ${locked ? '' : `
+        <datalist id="sd-dplayers">${playerNames.map((n) => `<option value="${escapeHtml(n)}"></option>`).join('')}</datalist>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="text" class="sd-dplayer" list="sd-dplayers" placeholder="Hráč" autocomplete="off" style="${inputStyle}">
+          <input type="text" class="sd-dpartner" list="sd-dplayers" placeholder="Partner" autocomplete="off" style="${inputStyle}">
+          <button type="button" class="btn btn-sm btn-outline" data-act="dbl-add">Pridať pár</button>
+          ${d.registrationsWithPartner ? `<button type="button" class="btn btn-sm btn-outline" data-act="dbl-from-regs">Páry z registrácií (${d.registrationsWithPartner})</button>` : ''}
+          ${d.pairs.length ? '<button type="button" class="btn btn-sm btn-outline" data-act="dbl-seeds">Uložiť nasadenie</button>' : ''}
+        </div>`}
+        ${drawState}
+      </div>`;
+  }
+
+  async function doublesAction(act, btn) {
+    const base = `/seasons/${seasonId}/doubles`;
+    if (act === 'dbl-add') {
+      const player = host.querySelector('.sd-dplayer').value.trim();
+      const partner = host.querySelector('.sd-dpartner').value.trim();
+      if (!player || !partner) throw new Error('Zadaj oboch hráčov páru');
+      doubles = (await api(`${base}/pairs`, { method: 'POST', body: { player, partner } })).overview;
+      toast('Pár pridaný');
+      render();
+    } else if (act === 'dbl-from-regs') {
+      const made = await api(`${base}/pairs`, { method: 'POST', body: { fromRegistrations: true } });
+      doubles = made.overview;
+      toast(`Vytvorených párov: ${made.created}${made.skipped.length ? ` · preskočené: ${made.skipped.map((s) => `${s.name} + ${s.partner} (${s.reason})`).join('; ')}` : ''}`);
+      render();
+    } else if (act === 'dbl-remove') {
+      doubles = await api(`${base}/pairs/${btn.dataset.id}`, { method: 'DELETE' });
+      render();
+    } else if (act === 'dbl-seeds') {
+      const seeds = [...host.querySelectorAll('.sd-dseed')].map((i) => ({ id: Number(i.dataset.id), seed: i.value.trim() === '' ? null : Number(i.value) }));
+      doubles = await api(`${base}/seeds`, { method: 'POST', body: { seeds } });
+      toast('Nasadenie uložené');
+      render();
+    } else if (act === 'dbl-draw') {
+      const made = await api(`${base}/draw`, { method: 'POST', body: { mainFormat: host.querySelector('.sd-dfmt').value } });
+      doubles = made.overview;
+      toast(made.warnings && made.warnings.length ? `Pavúk štvorhry vytvorený. ${made.warnings.join(' ')}` : 'Pavúk štvorhry vytvorený');
+      await refresh();
+    } else if (act === 'dbl-delete') {
+      if (!confirm('Zmazať pavúk štvorhry? Naplánované zápasy sa zmažú.')) { btn.disabled = false; return; }
+      doubles = await api(`${base}/draw`, { method: 'DELETE' });
+      toast('Pavúk štvorhry zmazaný');
+      await refresh();
+    }
+  }
+
   function render() {
     host.innerHTML = `
       <div style="background:var(--gray-light);border-radius:12px;padding:14px">
@@ -187,11 +264,12 @@ async function openDrawPanel(host, seasonId, onChanged) {
           <span class="sd-courts-note" style="font-size:12px;color:var(--gray)">${overview.courtCount ? Array.from({ length: Math.min(overview.courtCount, 6) }, (_, i) => `Kurt ${i + 1}`).join(', ') + (overview.courtCount > 6 ? ` … Kurt ${overview.courtCount}` : '') : 'Kurty zatiaľ nie sú nastavené'}</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:12px">${overview.categories.map(blockHtml).join('')}</div>
+        ${doublesBlockHtml()}
       </div>`;
   }
 
   async function refresh() {
-    [overview, regs] = await Promise.all([api(`/seasons/${seasonId}/draw`), api(`/seasons/${seasonId}/registrations`)]);
+    [overview, regs, doubles] = await Promise.all([api(`/seasons/${seasonId}/draw`), api(`/seasons/${seasonId}/registrations`), api(`/seasons/${seasonId}/doubles`)]);
     drafts.clear();
     Object.keys(choice).forEach((k) => delete choice[k]);
     Object.keys(groupDraft).forEach((k) => delete groupDraft[k]);
@@ -271,7 +349,9 @@ async function openDrawPanel(host, seasonId, onChanged) {
     if (cat) showError(cat, '');
     btn.disabled = true;
     try {
-      if (act === 'courts') {
+      if (act.startsWith('dbl-')) {
+        await doublesAction(act, btn);
+      } else if (act === 'courts') {
         const raw = host.querySelector('.sd-courts').value.trim();
         await api(`/seasons/${seasonId}`, { method: 'PATCH', body: { courtCount: raw === '' ? 0 : Number(raw) } });
         toast('Kurty uložené');

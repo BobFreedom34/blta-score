@@ -673,6 +673,7 @@ function wireSeason(card) {
           <div style="flex:1;min-width:220px">
             <strong>${escapeHtml(r.name)}</strong> <span class="sa-chip future">${escapeHtml(r.category ? catLabel(r.category) : 'No category')}</span>${r.playerId ? '' : ' <span style="font-size:11px;color:var(--gray)">new name</span>'}
             <div style="font-size:12px;color:var(--gray)">${r.phone || r.email ? `${escapeHtml(r.phone)} · <a href="mailto:${escapeHtml(r.email)}" style="color:var(--orange)">${escapeHtml(r.email)}</a>` : 'no contact details'} · ${escapeHtml(fmtDate(r.createdAt.slice(0, 10)))}</div>
+            ${r.partnerName ? `<div style="font-size:13px;margin-top:4px"><strong>Partner (štvorhra):</strong> ${escapeHtml(r.partnerName)}</div>` : ''}
             ${r.note ? `<div style="font-size:13px;margin-top:4px;white-space:pre-wrap"><strong>Note:</strong> ${escapeHtml(r.note)}</div>` : ''}
           </div>
           ${r.remindedAt ? `<span style="font-size:11px;color:var(--gray)">pripomenuté ${escapeHtml(fmtDate(r.remindedAt))}</span>` : ''}
