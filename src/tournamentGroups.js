@@ -9,7 +9,21 @@ const roundRobin = require('./roundRobin');
 const { computeGroupStandings } = require('./standings');
 
 const groupName = (i) => `Skupina ${i < 26 ? String.fromCharCode(65 + i) : i + 1}`;
-const CATEGORY_LABELS = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
+const CATEGORY_LABELS = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', DOUBLES: 'Štvorhra' };
+
+// The doubles (DOUBLES) of a tournament are played by pairs (tournament_pairs): in a group or a bracket a pair is one entrant, identified by its first
+// player (the "captain"); this finds the partner of one, and makes the pair look like a player ("A / B", no profile) where tables are shown.
+function partnerIn(seasonId, playerId) {
+  const row = db.prepare('SELECT partner_id FROM tournament_pairs WHERE season_id = ? AND player_id = ?').get(seasonId, playerId);
+  return row ? row.partner_id : null;
+}
+function pairPlayer(seasonId, playerId) {
+  const first = db.prepare('SELECT id, name FROM players WHERE id = ?').get(playerId);
+  if (!first) return first;
+  const partnerId = partnerIn(seasonId, playerId);
+  const partner = partnerId ? db.prepare('SELECT id, name FROM players WHERE id = ?').get(partnerId) : null;
+  return { id: first.id, name: partner ? `${first.name} / ${partner.name}` : first.name, slug: null };
+}
 // A group name is unique in its season, so a group of a tournament carries its category: "Elite — Skupina A" (the pages that already show the
 // category leave the first part out)
 const fullGroupName = (category, name) => (name.startsWith(`${CATEGORY_LABELS[category]} — `) ? name : `${CATEGORY_LABELS[category]} — ${name}`);
@@ -50,9 +64,10 @@ function createGroups(season, category, assignments, format) {
   if (!engine.FORMATS[format] || format === 'FREE_PLAY') throw new Error('Invalid match format of the group matches');
   const insertGroup = db.prepare('INSERT INTO season_groups (season_id, name, category, sort_order) VALUES (?, ?, ?, ?)');
   const insertMember = db.prepare('INSERT INTO season_group_members (group_id, player_id, sort_order) VALUES (?, ?, ?)');
+  const doubles = category === 'DOUBLES';
   const insertMatch = db.prepare(`
-    INSERT INTO matches (share_token, category, season_id, group_id, stage, round, player1_id, player2_id, location, scheduled_at, format, status, state, history, created_by_admin, notes)
-    VALUES (?, ?, ?, ?, 'GROUP', ?, ?, ?, '', NULL, ?, 'PLANNED', ?, '[]', 1, '')
+    INSERT INTO matches (share_token, category, season_id, group_id, stage, round, player1_id, player2_id, is_doubles, player1b_id, player2b_id, location, scheduled_at, format, status, state, history, created_by_admin, notes)
+    VALUES (?, ?, ?, ?, 'GROUP', ?, ?, ?, ?, ?, ?, '', NULL, ?, 'PLANNED', ?, '[]', 1, '')
   `);
   const order = db.prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM season_groups WHERE season_id = ?').get(season.id).n;
   const made = [];
@@ -63,7 +78,11 @@ function createGroups(season, category, assignments, format) {
     const id = Number(info.lastInsertRowid);
     a.playerIds.forEach((pid, k) => insertMember.run(id, pid, k));
     const plan = roundRobin.planMissingMatches(a.playerIds, []);
-    plan.forEach((m) => insertMatch.run(crypto.randomUUID(), category, season.id, id, m.round, m.p1, m.p2, format, JSON.stringify(engine.initState(format))));
+    plan.forEach((m) => insertMatch.run(
+      crypto.randomUUID(), doubles ? 'OTHER' : category, season.id, id, m.round, m.p1, m.p2,
+      doubles ? 1 : 0, doubles ? partnerIn(season.id, m.p1) : null, doubles ? partnerIn(season.id, m.p2) : null,
+      format, JSON.stringify(engine.initState(format)),
+    ));
     made.push({ id, name, playerIds: a.playerIds, matches: plan.length });
     total += plan.length;
   });
@@ -77,7 +96,7 @@ function groupsOf(seasonId, category) {
 // The table of one group (the same rows as the league's tables): [{ position, player, points, played, wins, losses, setDiff, games }]
 function groupRows(group) {
   const players = new Map();
-  const playerStmt = db.prepare('SELECT id, name, slug FROM players WHERE id = ?');
+  const playerStmt = { get: (id) => (group.category === 'DOUBLES' ? pairPlayer(group.season_id, id) : db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(id)) };
   const records = db.prepare("SELECT player1_id, player2_id, winner_id, status, end_reason, state, COALESCE(scheduled_at, end_time, created_at) AS d FROM matches WHERE group_id = ? AND COALESCE(stage, 'GROUP') = 'GROUP'").all(group.id).map((r) => {
     [r.player1_id, r.player2_id].forEach((pid) => { if (!players.has(pid)) players.set(pid, playerStmt.get(pid)); });
     return { player1Id: r.player1_id, player2Id: r.player2_id, winnerId: r.winner_id, status: r.status, endReason: r.end_reason, date: r.d, state: JSON.parse(r.state) };
@@ -93,7 +112,8 @@ function groupsState(seasonId, category) {
   if (!groups.length) return null;
   const rows = groups.map((g) => {
     const counts = db.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'FINISHED' OR (status = 'UNFINISHED') THEN 1 ELSE 0 END) AS done FROM matches WHERE group_id = ? AND COALESCE(stage, 'GROUP') = 'GROUP'").get(g.id);
-    const players = db.prepare('SELECT p.id, p.name FROM season_group_members m JOIN players p ON p.id = m.player_id WHERE m.group_id = ? ORDER BY m.sort_order').all(g.id);
+    let players = db.prepare('SELECT p.id, p.name FROM season_group_members m JOIN players p ON p.id = m.player_id WHERE m.group_id = ? ORDER BY m.sort_order').all(g.id);
+    if (g.category === 'DOUBLES') players = players.map((p) => pairPlayer(seasonId, p.id)).map((p) => ({ id: p.id, name: p.name }));
     return { id: g.id, name: g.name, players, matches: counts.total, finished: counts.done || 0 };
   });
   const matches = rows.reduce((s, g) => s + g.matches, 0);
@@ -111,4 +131,6 @@ function qualifiers(seasonId, category, perGroup) {
   return out.sort((a, b) => a.place - b.place || b.points - a.points || b.setDiff - a.setDiff || b.wins - a.wins || a.gi - b.gi);
 }
 
-module.exports = { groupName, groupCountFor, suggestGroups, createGroups, groupsOf, groupRows, groupsState, qualifiers };
+module.exports = {
+  groupName, groupCountFor, suggestGroups, createGroups, groupsOf, groupRows, groupsState, qualifiers, partnerIn, pairPlayer,
+};

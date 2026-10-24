@@ -93,16 +93,20 @@ function parseDate(value) {
 }
 
 // The players of a group, in the order they were added.
-function groupMembers(groupId) {
+function groupMembers(groupId, group) {
+  const pairs = group && group.category === 'DOUBLES';
   return db.prepare(`
     SELECT m.player_id AS id, p.name, p.slug, m.withdrawn_at, m.paid
     FROM season_group_members m JOIN players p ON p.id = m.player_id
     WHERE m.group_id = ? ORDER BY m.sort_order, m.id
-  `).all(groupId).map((r) => ({ id: r.id, name: r.name, slug: r.slug, withdrawn: !!r.withdrawn_at, paid: !!r.paid }));
+  `).all(groupId).map((r) => {
+    const who = pairs ? require('../tournamentGroups').pairPlayer(group.season_id, r.id) : r;
+    return { id: r.id, name: who.name, slug: pairs ? null : r.slug, withdrawn: !!r.withdrawn_at, paid: !!r.paid };
+  });
 }
 
 function serializeGroup(g) {
-  const members = groupMembers(g.id);
+  const members = groupMembers(g.id, g);
   return {
     id: g.id,
     seasonId: g.season_id,
@@ -495,7 +499,7 @@ router.get('/:id/draw/groups-suggestion', requireAdmin, (req, res) => {
   if (!season) return;
   const category = req.query.category;
   if (!tournamentDraw.CATEGORIES.includes(category)) return res.status(400).json({ error: 'Choose a category' });
-  const regs = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? AND category = ? ORDER BY created_at, id').all(season.id, category);
+  const regs = tournamentDraw.registrationsOf(season.id, category);
   const suggested = require('../tournamentGroups').suggestGroups(regs.map((r) => ({ playerId: r.id, seed: r.seed })), {
     groupSize: Number(req.query.groupSize) || 4, groupCount: Number(req.query.groupCount) || 0,
   });
@@ -516,7 +520,7 @@ router.post('/:id/draw/bracket', requireAdmin, (req, res) => {
   res.status(201).json({ ...made, categories: tournamentDraw.overview(season.id) });
 });
 
-// ---- the doubles (štvorhra) of the tournament: pairs, their seeds and one doubles bracket ----
+// ---- the pairs of the doubles (štvorhra) of the tournament; seeds and the draw of the category DOUBLES use the ordinary draw routes ----
 router.get('/:id/doubles', requireAdmin, (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
@@ -539,34 +543,6 @@ router.delete('/:id/doubles/pairs/:pairId', requireAdmin, (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const done = tournamentDraw.removePair(season, Number(req.params.pairId));
-  if (done.error) return res.status(done.status || 400).json({ error: done.error });
-  res.json(tournamentDraw.doublesOverview(season));
-});
-
-// { seeds: [{ id: pairId, seed }] }
-router.post('/:id/doubles/seeds', requireAdmin, (req, res) => {
-  const season = tournamentOr404(req, res);
-  if (!season) return;
-  const done = tournamentDraw.setPairSeeds(season, req.body && req.body.seeds);
-  if (done.error) return res.status(done.status || 400).json({ error: done.error });
-  res.json(tournamentDraw.doublesOverview(season));
-});
-
-// { mainFormat } — makes the doubles bracket
-router.post('/:id/doubles/draw', requireAdmin, (req, res) => {
-  const season = tournamentOr404(req, res);
-  if (!season) return;
-  const made = tournamentDraw.createDoublesDraw(season, { mainFormat: req.body && req.body.mainFormat });
-  if (made.error) return res.status(made.status || 400).json({ error: made.error });
-  const io = req.app.get('io');
-  if (io) io.emit('matches:changed', { seasonId: season.id, status: 'CREATED' });
-  res.status(201).json({ main: made.main, warnings: made.warnings, overview: tournamentDraw.doublesOverview(season) });
-});
-
-router.delete('/:id/doubles/draw', requireAdmin, (req, res) => {
-  const season = tournamentOr404(req, res);
-  if (!season) return;
-  const done = tournamentDraw.deleteDoublesDraw(season);
   if (done.error) return res.status(done.status || 400).json({ error: done.error });
   res.json(tournamentDraw.doublesOverview(season));
 });
@@ -753,11 +729,14 @@ router.get('/:id/standings', (req, res) => {
   const playerStmt = db.prepare('SELECT id, name, slug FROM players WHERE id = ?');
   const result = groups.map((g) => {
     const rows = db.prepare('SELECT player1_id, player2_id, winner_id, status, end_reason, state, COALESCE(scheduled_at, end_time, created_at) AS d FROM matches WHERE group_id = ? AND COALESCE(stage, \'GROUP\') = \'GROUP\'').all(g.id);
+    // the groups of the doubles are tables of PAIRS (named "A / B", no profile); kept apart from the players of the other groups
+    const pairGroup = g.category === 'DOUBLES';
+    const known = pairGroup ? new Map() : players;
     const records = rows.map((r) => {
-      [r.player1_id, r.player2_id].forEach((pid) => { if (!players.has(pid)) players.set(pid, playerStmt.get(pid)); });
+      [r.player1_id, r.player2_id].forEach((pid) => { if (!known.has(pid)) known.set(pid, pairGroup ? require('../tournamentGroups').pairPlayer(season.id, pid) : playerStmt.get(pid)); });
       return { player1Id: r.player1_id, player2Id: r.player2_id, winnerId: r.winner_id, status: r.status, endReason: r.end_reason, date: r.d, state: JSON.parse(r.state) };
     });
-    const table = computeGroupStandings(records, players);
+    const table = computeGroupStandings(records, known);
     return {
       id: g.id,
       name: g.name,

@@ -1353,6 +1353,29 @@ db.exec(`
     UNIQUE (season_id, name)
   );
 `);
+// A tournament has a category of its own for doubles (DOUBLES, "Štvorhra", with groups and brackets like the others), so the groups table may no
+// longer limit the category to the three league ones. SQLite cannot drop a CHECK: the table is rebuilt once, the new one is made, filled, the old
+// one dropped and the new one renamed (the other tables point at the NAME season_groups, which is the new table again at the end).
+{
+  const old = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'season_groups'").get();
+  if (old && /CHECK\s*\(\s*category\s+IN/i.test(old.sql)) {
+    const cols = db.prepare('PRAGMA table_info(season_groups)').all().map((c) => c.name).join(', ');
+    const indexes = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'season_groups' AND sql IS NOT NULL").all().map((r) => r.sql);
+    const fresh = old.sql.replace(/\s*CHECK\s*\(\s*category\s+IN\s*\([^)]*\)\s*\)/i, '').replace(/CREATE TABLE\s+(IF NOT EXISTS\s+)?["']?season_groups["']?/i, 'CREATE TABLE season_groups_new');
+    db.exec('BEGIN');
+    try {
+      db.exec(fresh);
+      db.exec(`INSERT INTO season_groups_new (${cols}) SELECT ${cols} FROM season_groups`);
+      db.exec('DROP TABLE season_groups');
+      db.exec('ALTER TABLE season_groups_new RENAME TO season_groups');
+      indexes.forEach((sql) => db.exec(sql));
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+  }
+}
 const matchSeasonColumns = db.prepare('PRAGMA table_info(matches)').all().map((c) => c.name);
 if (!matchSeasonColumns.includes('season_id')) {
   db.exec('ALTER TABLE matches ADD COLUMN season_id INTEGER REFERENCES seasons(id) ON DELETE SET NULL');
@@ -1385,6 +1408,8 @@ db.exec(`
 if (!db.prepare('PRAGMA table_info(brackets)').all().some((c) => c.name === 'season_id')) {
   db.exec('ALTER TABLE brackets ADD COLUMN season_id INTEGER REFERENCES seasons(id) ON DELETE SET NULL');
 }
+// The doubles draws of a tournament made before doubles became a category of its own carry no category: they are the category DOUBLES now.
+db.exec("UPDATE brackets SET category = 'DOUBLES' WHERE is_doubles = 1 AND category IS NULL AND season_id IS NOT NULL");
 
 // Who plays in a group this season (the season maker fills it, the schedule is made from it). A player is in one group
 // per season (checked in routes/seasons.js). withdrawn_at: the player left mid-season; their unplayed matches became

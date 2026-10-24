@@ -8,7 +8,9 @@ const rootEl = document.getElementById('sv-root');
 const slug = decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '');
 
 const CATEGORY_ORDER = ['ELITE', 'NEXT_GEN', 'NOVICE'];
-const CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
+const CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', get DOUBLES() { return t('season.catDoubles'); } };
+// the doubles (štvorhra) of a tournament is a category of its own in the groups, the schedule and the brackets (not in the registration form)
+const CATEGORY_ORDER_ALL = [...CATEGORY_ORDER, 'DOUBLES'];
 const playerCatName = (c) => (c === 'NONE' ? t('season.noCategory') : CATEGORY_NAMES[c]);
 
 let season = null;
@@ -225,7 +227,7 @@ function tilesHtml() {
   const players = playersModel().total;
   const groupCount = (season.groups || []).length || (standings ? standings.groups.length : 0);
   const tile = (key, value, sub) => `<div class="sv-tile"><div class="k">${escapeHtml(t(key))}</div><div class="v">${value}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</div></div>`;
-  const cats = CATEGORY_ORDER.filter((c) => (isTournament() && (season.categories || []).includes(c)) || (season.groups || []).some((g) => g.category === c) || (standings && standings.groups.some((g) => g.category === c)));
+  const cats = CATEGORY_ORDER_ALL.filter((c) => (isTournament() && (season.categories || []).includes(c)) || (season.groups || []).some((g) => g.category === c) || (standings && standings.groups.some((g) => g.category === c)));
   const tiles = [
     cats.length ? tile('season.tileCats', String(cats.length), cats.map((c) => CATEGORY_NAMES[c]).join(' · ')) : '',
     season.venue ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileVenue'))}</div><div class="v sm">${escapeHtml(season.venue)}</div></div>` : '',
@@ -283,7 +285,7 @@ function resultsHtml() {
 function tablesHtml() {
   const groups = standings ? standings.groups : [];
   if (!groups.length) return '';
-  const cats = CATEGORY_ORDER.filter((c) => groups.some((g) => g.category === c));
+  const cats = CATEGORY_ORDER_ALL.filter((c) => groups.some((g) => g.category === c));
   if (!cats.includes(category)) category = cats[0];
   const pills = cats.map((c) => `<button type="button" class="tab${c === category ? ' active' : ''}" data-cat="${c}">${escapeHtml(CATEGORY_NAMES[c])}<small>${groups.filter((g) => g.category === c).length}</small></button>`).join('');
   const frozen = standings.frozen ? `<p class="sv-note">${escapeHtml(t('tables.frozen'))}</p>` : '';
@@ -311,7 +313,7 @@ function scheduleHtml() {
   const rounds = season.rounds || [];
   if (!rounds.length) return '';
   const groups = season.groups || [];
-  const cats = CATEGORY_ORDER.filter((c) => groups.some((g) => g.category === c));
+  const cats = CATEGORY_ORDER_ALL.filter((c) => groups.some((g) => g.category === c));
   if (!cats.includes(schedCat)) schedCat = cats[0] || null;
   const inCat = groups.filter((g) => g.category === schedCat);
   if (!inCat.some((g) => g.id === schedGroup)) schedGroup = inCat.length ? inCat[0].id : null;

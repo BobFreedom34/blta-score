@@ -87,10 +87,21 @@ function matchStageFor(bracket) {
   return BLTA_CATEGORIES.includes(bracket.category) ? 'PLAYOFF' : 'GROUP';
 }
 
+// The main bracket a losers bracket hangs under (itself for a main bracket): the partners of a doubles draw are kept on the main one.
+function rootBracketId(bracketId) {
+  let id = bracketId;
+  for (let i = 0; i < 20; i += 1) {
+    const row = db.prepare('SELECT parent_bracket_id FROM brackets WHERE id = ?').get(id);
+    if (!row || !row.parent_bracket_id) return id;
+    id = row.parent_bracket_id;
+  }
+  return id;
+}
+
 // The partner of an entrant of a doubles draw (null for a singles draw, or a player with no partner set).
 function partnerOf(bracketId, playerId) {
   if (!playerId) return null;
-  const row = db.prepare('SELECT partner_id FROM bracket_partners WHERE bracket_id = ? AND player_id = ?').get(bracketId, playerId);
+  const row = db.prepare('SELECT partner_id FROM bracket_partners WHERE bracket_id = ? AND player_id = ?').get(rootBracketId(bracketId), playerId);
   return row ? row.partner_id : null;
 }
 
@@ -115,7 +126,7 @@ function maybeCreateMatch(node) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', NULL, ?, 'PLANNED', ?, '[]', 1, ?)
   `).run(
     crypto.randomUUID(),
-    bracket.category || 'OTHER',
+    doubles ? 'OTHER' : (bracket.category || 'OTHER'), // a doubles match belongs to no league category
     bracket.season_id || null,
     matchStageFor(bracket),
     node.player1_id,
@@ -392,7 +403,6 @@ function buildLosers(mainBracketId, { name, format, type = 'PRINCE' }) {
   const main = db.prepare('SELECT * FROM brackets WHERE id = ?').get(mainBracketId);
   if (!main) return { error: 'Bracket not found' };
   if (main.kind === 'CONSOLATION') return { error: 'Only a main bracket gets losers brackets' };
-  if (main.is_doubles) return { error: 'A doubles draw has no consolation draw yet' };
   if (!['PRINCE', 'MONRAD'].includes(type)) return { error: 'Unknown type of the losers brackets' };
   if (consolationOf(mainBracketId)) return { error: 'This bracket already has a consolation draw' };
   const ready = consolationReadiness(mainBracketId);
@@ -411,8 +421,8 @@ function buildLosers(mainBracketId, { name, format, type = 'PRINCE' }) {
       const size = nextPowerOfTwo(real.length);
       let childName = name;
       if (type === 'MONRAD') childName = isMain ? (/Útecha$/.test(name) ? name.replace(/Útecha$/, `Útecha po ${round}. kole`) : `${name} po ${round}. kole`) : `${parent.name} › po ${round}. kole`;
-      const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category, season_id, kind, parent_bracket_id, feeds_round) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        .run(childName, format, size, main.auto_create_matches, main.category, main.season_id, 'CONSOLATION', parent.id, round);
+      const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category, season_id, kind, parent_bracket_id, feeds_round, is_doubles) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(childName, format, size, main.auto_create_matches, main.category, main.season_id, 'CONSOLATION', parent.id, round, main.is_doubles ? 1 : 0);
       const childId = Number(info.lastInsertRowid);
       buildEmptyTree(childId, size);
       // seeds and byes only; the players arrive one by one with dropLoser
@@ -480,7 +490,7 @@ function syncBracketMatches(bracketId) {
   const category = db.prepare('UPDATE matches SET category = ? WHERE id = ? AND status != \'FINISHED\'');
   ids.forEach((id) => {
     labels.run(bracket.season_id || null, matchStageFor(bracket), id);
-    category.run(bracket.category || 'OTHER', id);
+    category.run(bracket.is_doubles ? 'OTHER' : (bracket.category || 'OTHER'), id);
   });
   return ids.length;
 }
@@ -494,6 +504,7 @@ module.exports = {
   setSlotPlayers,
   partnerOf,
   setPartner,
+  rootBracketId,
   recordManualResult,
   resetManualResult,
   advanceWinner,

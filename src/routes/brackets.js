@@ -307,7 +307,6 @@ router.post('/:id/consolation', auth.requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(id);
   if (!bracket) return res.status(404).json({ error: 'Bracket not found' });
-  if (bracket.is_doubles) return res.status(400).json({ error: 'A doubles draw has no consolation draw yet' });
   const format = (req.body && req.body.format) || 'BO3_G4_STB';
   if (!engine.FORMATS[format] || format === 'FREE_PLAY') return res.status(400).json({ error: 'Invalid match format' });
   const base = bracket.name.replace(/\s*—\s*Hlavný pavúk\s*$/, '');

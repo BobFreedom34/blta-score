@@ -111,7 +111,7 @@ function createFormHtml() {
             <input type="checkbox" id="bracket-doubles" style="width:auto;flex-shrink:0;margin:0">
             Doubles draw (štvorhra) — every entrant is a pair
           </label>
-          <p style="font-size:12px;color:var(--gray-dim);margin:2px 0 0">The matches are doubles matches: they count in the doubles ranking, never in the league, CourtIQ or badges. No league category and no consolation draw.</p>
+          <p style="font-size:12px;color:var(--gray-dim);margin:2px 0 0">The matches are doubles matches: they count in the doubles ranking, never in the league, CourtIQ or badges. No league category.</p>
         </div>
         <div class="field">
           <label>Match format</label>

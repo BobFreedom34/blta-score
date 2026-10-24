@@ -111,7 +111,7 @@ test('an odd number of pairs: the bye keeps the partner, who plays in the next r
   assert.ok(names.includes('Iva I') && names.includes('Jan J'), 'the top seed (the bye) is in it with its partner');
 });
 
-test('what is refused: a league category, a missing partner, a player twice, one pair only, a consolation draw', async () => {
+test('what is refused: a league category, a missing partner, a player twice, one pair only, a consolation draw of a draw with no round-1 pairs to drop', async () => {
   await players(['Olga O', 'Pavol P', 'Rado R', 'Sona S']);
   const entries = [pair('Olga O', 'Pavol P', 1), pair('Rado R', 'Sona S', 2)];
   assert.strictEqual((await create({ category: 'ELITE', entries })).status, 400, 'no league category');
@@ -122,7 +122,7 @@ test('what is refused: a league category, a missing partner, a player twice, one
   const ok = await create({ name: 'Dva páry', entries });
   assert.strictEqual(ok.status, 201, JSON.stringify(ok.json));
   const c = await call('POST', `/api/brackets/${ok.json.id}/consolation`, { body: {} });
-  assert.strictEqual(c.status, 400, 'no consolation draw for doubles');
+  assert.strictEqual(c.status, 400, 'two pairs: one round-1 match, nobody to play a consolation draw');
   const patch = await call('PATCH', `/api/brackets/${ok.json.id}`, { body: { category: 'NOVICE' } });
   assert.strictEqual(patch.status, 400, 'and it cannot be moved into a league category later');
   const list = await call('GET', '/api/brackets');
@@ -160,6 +160,21 @@ test('a past doubles draw (no matches): the winner is entered by hand and the pa
   const done = node(res.json, 1, 0);
   assert.strictEqual(done.winnerId, P['Alex A2']);
   assert.strictEqual(done.player2.name, 'Alex A2 / Bela B2');
+});
+
+test('a doubles draw can have a consolation draw (of pairs, with their partners)', async () => {
+  await players(['Kari K3', 'Liam L3', 'Mia M3', 'Noel N3', 'Ola O3', 'Pit P3', 'Quin Q3', 'Rea R3']);
+  const r = await create({ name: 'S útechou', entries: [pair('Kari K3', 'Liam L3', 1), pair('Mia M3', 'Noel N3', 2), pair('Ola O3', 'Pit P3', 3), pair('Quin Q3', 'Rea R3', 4)] });
+  assert.strictEqual(r.status, 201, JSON.stringify(r.json));
+  const made = await call('POST', `/api/brackets/${r.json.id}/consolation`, { body: { format: 'BO3' } });
+  assert.strictEqual(made.status, 201, JSON.stringify(made.json));
+  assert.strictEqual(made.json.isDoubles, true);
+  const played = r.json.nodes.filter((n) => n.round === 1 && n.match);
+  for (const n of played) assert.strictEqual((await finish(n.match.token, [{ p1: 6, p2: 1 }, { p1: 6, p2: 1 }])).status, 200);
+  const cons = await bracketOf(made.json.id);
+  const node1 = cons.nodes.find((n) => n.match);
+  assert.ok(node1, 'the two losers meet');
+  assert.strictEqual(node1.player1.team.length, 2, 'a loser dropped in with its partner');
 });
 
 test('the admin page carries the pieces', async () => {
