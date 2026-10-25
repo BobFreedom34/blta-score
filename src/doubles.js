@@ -65,7 +65,8 @@ function statsByPlayer(leagueId) {
 // ---- the doubles rating ----------------------------------------------------------------------------------------------------------------
 // Replays the finished doubles matches of a city in the order they were played. A walkover decided no tennis, so it does not move a rating
 // (it still counts in the points above). Returns Map(playerId -> { rating, deviation, volatility, lastMatchAt, gamesPlayed }).
-function ratingStates(leagueId) {
+// `capture` (optional) is called after each match with the match row and what it did to its four players: [{ id, before, after }].
+function ratingStates(leagueId, capture) {
   const states = new Map();
   const stateOf = (id) => {
     if (!states.has(id)) states.set(id, { ...courtIQ.defaultRatingState(), lastMatchAt: null, gamesPlayed: 0 });
@@ -92,13 +93,22 @@ function ratingStates(leagueId) {
         const result = i === 0
           ? courtIQ.processMatch({ player1: mine, player2: opponent, winner: winnerSide, sets: state.sets || [], matchDate }).player1
           : courtIQ.processMatch({ player1: opponent, player2: mine, winner: winnerSide, sets: state.sets || [], matchDate }).player2;
-        updates.push([me.id, result, me.gamesPlayed]);
+        updates.push([me.id, result, me.gamesPlayed, me.rating]);
       });
     });
     // everybody is updated from the ratings BEFORE this match, then all four are written
     updates.forEach(([id, result, games]) => states.set(id, { ...result, lastMatchAt: matchDate, gamesPlayed: games + 1 }));
+    if (capture) capture(row, updates.map(([id, result, , was]) => ({ id, before: was, after: result.rating })));
   });
   return states;
+}
+
+// What one finished doubles match did to the doubles rating of its four players: [{ id, before, after }] (raw ratings), or [] when it did
+// not move any (a walkover, an unfinished match, a match that is not finished)
+function matchRatingChanges(row) {
+  let found = [];
+  ratingStates(row.league_id, (r, changes) => { if (r.id === row.id) found = changes; });
+  return found;
 }
 
 const publicRating = (st) => (st ? {
@@ -232,4 +242,4 @@ function playerSummary(playerId, leagueId) {
   };
 }
 
-module.exports = { POINTS_WIN, POINTS_LOSS, ranking, ratings, pairs, playerSummary, statsByPlayer };
+module.exports = { POINTS_WIN, POINTS_LOSS, ranking, ratings, pairs, playerSummary, statsByPlayer, matchRatingChanges };

@@ -13,6 +13,7 @@ const {
 } = require('../auth');
 const badgeEngine = require('../badgeEngine');
 const courtIQ = require('../courtIQEngine');
+const ratingChanges = require('../ratingChanges');
 const bracketEngine = require('../bracketEngine');
 const rankingPoints = require('../rankingPoints');
 const youtube = require('../youtube');
@@ -569,6 +570,13 @@ router.get('/:token', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   res.json(serialize(row));
+});
+
+// What a finished match did to the level (CourtIQ, or the doubles rating) of each of its players - the card "Zmeny úrovne" of the match page
+router.get('/:token/rating-changes', (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  res.json(ratingChanges.forMatch(row));
 });
 
 // Admin-only, and deliberately its own tiny route rather than a field on

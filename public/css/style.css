@@ -5333,3 +5333,15 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 /* the strip of the schedule and the current season are two sections, with the gap of the other sections of the home page between them */
 .home-current .home-tl-wrap { margin-bottom: 0; }
 .home-current.home-current-season { margin-top: 88px; }
+
+/* the card "Zmeny úrovne" of a finished match: the change of the level of each player after the match (two columns, one on a phone) */
+.lc-card { margin-bottom: 16px; }
+.lc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.lc-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--fill-grey); color: var(--white); font-weight: 700; font-size: 15px; text-decoration: none; }
+.lc-row:hover .lc-name { color: var(--orange); }
+.lc-change { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 17px; white-space: nowrap; }
+.lc-change .venue-icon { width: 14px; height: 14px; }
+.lc-change.up { color: var(--green); }
+.lc-change.down { color: #ff3b30; }
+.lc-change.same { color: var(--gray); }
+@media (max-width: 560px) { .lc-grid { grid-template-columns: 1fr; } }

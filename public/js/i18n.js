@@ -1206,6 +1206,8 @@ const TRANSLATIONS = {
     'match.finishedTitle': 'Zápas ukončený 🎉',
     'match.sendResultWhatsapp': 'Odošlite výsledok do vašej WhatsApp skupiny:',
     'match.watching': 'divákov',
+    'match.levelChanges': 'Zmeny úrovne',
+    'match.levelChangesDoubles': 'Zmeny úrovne · štvorhra',
     'match.reasonLabel': 'Dôvod',
     'match.loadingMatch': 'Načítavam zápas…',
 
@@ -2388,6 +2390,8 @@ const TRANSLATIONS = {
     'match.finishedTitle': 'Match finished 🎉',
     'match.sendResultWhatsapp': 'Send the result to your WhatsApp group:',
     'match.watching': 'watching',
+    'match.levelChanges': 'Level changes',
+    'match.levelChangesDoubles': 'Level changes · doubles',
     'match.reasonLabel': 'Reason',
     'match.loadingMatch': 'Loading match…',
 

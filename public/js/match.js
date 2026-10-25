@@ -9,6 +9,8 @@ let editSetIndex = null;
 let viewerCount = null;
 let h2hKey = null;
 let h2hHtml = '';
+let levelKey = null;
+let levelChanges = null; // what the finished match did to the level of its players (GET /api/matches/:token/rating-changes)
 
 // Mirrors src/matchEngine.js FORMATS — only the bits needed to build the
 // manual-result-entry form (how many sets, and whether the last one is a
@@ -292,6 +294,34 @@ function titleSideHtml(m, side) {
       ? `<a class="player-info-link" href="${href}" title="${escapeHtml(t('common.viewProfileTitle', { name: p.name }))}">i</a>` : '';
     return link + info;
   }).join(' <span style="color:var(--gray-dim);font-weight:500">/</span> ');
+}
+
+// The card "Zmeny úrovne" of a finished match: the change of the level (CourtIQ, or the doubles rating) of each player after this match
+function levelChangesHtml(m) {
+  if (m.status !== 'FINISHED' || !levelChanges || !levelChanges.players.length) return '';
+  const rows = levelChanges.players.map((p) => {
+    const c = p.change;
+    const cls = c > 0 ? 'up' : c < 0 ? 'down' : 'same';
+    const shown = c > 0 ? `+${c.toFixed(2)}` : c < 0 ? `−${Math.abs(c).toFixed(2)}` : '0.00';
+    const icon = c > 0 ? courtIcon('trendUp') : c < 0 ? courtIcon('trendDown') : '';
+    return `<a class="lc-row" href="/player/${p.slug || p.id}"><span class="lc-name">${escapeHtml(p.name)}</span><span class="lc-change ${cls}">${icon}${shown}</span></a>`;
+  }).join('');
+  return `
+    <div class="card lc-card">
+      <div class="label card-label">${t(levelChanges.kind === 'DOUBLES' ? 'match.levelChangesDoubles' : 'match.levelChanges')}</div>
+      <div class="lc-grid">${rows}</div>
+    </div>`;
+}
+
+async function ensureLevelChanges(m) {
+  if (m.status !== 'FINISHED') { levelKey = null; levelChanges = null; return; }
+  const key = `${matchToken}-${m.winnerId}-${JSON.stringify((m.state && m.state.sets) || [])}`;
+  if (levelKey === key) return;
+  levelKey = key;
+  try {
+    levelChanges = await api(`/matches/${matchToken}/rating-changes`);
+  } catch (err) { levelChanges = null; /* non-critical — leave the card out */ }
+  if (current && levelKey === key) render(current);
 }
 
 async function ensureH2H(m) {
@@ -737,6 +767,7 @@ function render(m) {
     ${scoreboardHtml(m, durationHtml)}
     ${controlsHtml(m, canControlLiveScoreOrReferee)}
     ${videoEmbedHtml(m)}
+    ${levelChangesHtml(m)}
 
     <div class="info-grid">
       <div class="info-item">
@@ -807,6 +838,7 @@ function render(m) {
   attachHandlers(m);
   bindMatchPhotos(matchToken, () => { if (current) render(current); });
   ensureH2H(m);
+  ensureLevelChanges(m);
 }
 
 // Admin editor for the season and group of a BLTA-league match.
