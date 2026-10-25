@@ -260,11 +260,11 @@ async function cropHero(file, w, h) {
 }
 
 // The card of a tournament or a season: under the name the tabs — a tournament: Základné info · Registrácie · Zaradenie do kategórií ·
-// Pavúk turnaja; a season: Základné info · Registrácie · Skupiny · Rozpis — and only the chosen one is shown (what is in a tab is loaded
+// Pavúk turnaja; a season: Základné info · Registrácie · Skupiny · Rozpis · Pavúk (its play-off brackets) — and only the chosen one is shown (what is in a tab is loaded
 // when it is opened). The form of the basic info is in sections.
 const CARD_TABS = IS_TOURNAMENT
   ? [['info', 'Základné info'], ['regs', 'Registrácie'], ['assign', 'Zaradenie do kategórií'], ['draw', 'Pavúk turnaja']]
-  : [['info', 'Základné info'], ['regs', 'Registrácie'], ['groups', 'Skupiny'], ['schedule', 'Rozpis']];
+  : [['info', 'Základné info'], ['regs', 'Registrácie'], ['groups', 'Skupiny'], ['schedule', 'Rozpis'], ['brackets', 'Pavúk']];
 const cardTab = new Map(); // season id -> the tab last opened (kept when the list is drawn again)
 
 function seasonCardHtml(s) {
@@ -383,7 +383,8 @@ function seasonCardHtml(s) {
             <button type="submit" class="btn btn-sm btn-primary">Add group</button>
           </form>
         </div>
-        <div class="sa-panel" data-panel="schedule"${active === 'schedule' ? '' : ' hidden'}>${scheduleSectionHtml()}</div>`}
+        <div class="sa-panel" data-panel="schedule"${active === 'schedule' ? '' : ' hidden'}>${scheduleSectionHtml()}</div>
+        <div class="sa-panel" data-panel="brackets"${active === 'brackets' ? '' : ' hidden'}><div class="season-brackets"></div></div>`}
       </div>
     </details>
   `;
@@ -711,11 +712,19 @@ function wireSeason(card) {
   {
     const assignHost = card.querySelector('.season-assign');
     const drawHost = card.querySelector('.season-draw');
+    const bracketsHost = card.querySelector('.season-brackets');
     const openers = IS_TOURNAMENT ? {
       regs: () => loadRegs(),
       assign: () => openAssignPanel(assignHost, id, () => {}),
       draw: () => openDrawPanel(drawHost, id),
-    } : { regs: () => loadRegs() };
+    } : {
+      regs: () => loadRegs(),
+      // the play-off brackets of the season: one panel is mounted at a time (the fields of the form have ids), so the others are emptied
+      brackets: async () => {
+        document.querySelectorAll('.season-brackets').forEach((el) => { if (el !== bracketsHost) el.innerHTML = ''; });
+        if (window.mountBracketAdmin) await window.mountBracketAdmin(bracketsHost, id);
+      },
+    };
     async function showTab(name) {
       cardTab.set(id, name);
       card.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));

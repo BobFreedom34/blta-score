@@ -1,4 +1,9 @@
-const root = document.getElementById('bracket-admin-root');
+(function bracketAdmin() {
+// Two homes: the page Backend > Brackets (every bracket of the city, root = #bracket-admin-root) and the tab "Pavúk" of a season (public/js/seasons-admin.js
+// calls window.mountBracketAdmin(host, seasonId): only the brackets of that season, and a new bracket is made for it). One of them is shown at a time:
+// the ids of the fields are the ones of the document.
+let root = document.getElementById('bracket-admin-root');
+let scopeSeasonId = null;
 
 let brackets = [];
 let seasonsList = [];
@@ -38,13 +43,18 @@ function syncSeasonSelect(categorySelect, seasonSelect) {
   seasonSelect.disabled = !isBlta;
   if (!isBlta) seasonSelect.value = '';
 }
-root.addEventListener('change', (e) => {
-  if (e.target.id === 'bracket-category') {
-    syncSeasonSelect(e.target, document.getElementById('bracket-season'));
-  } else if (e.target.classList && e.target.classList.contains('bracket-rename-category')) {
-    syncSeasonSelect(e.target, e.target.closest('form').querySelector('.bracket-rename-season'));
-  }
-});
+function wireRootListeners() {
+  if (!root || root._bracketWired) return;
+  root._bracketWired = true;
+  root.addEventListener('change', (e) => {
+    if (e.target.id === 'bracket-category') {
+      const seasonSelect = document.getElementById('bracket-season');
+      if (seasonSelect && !scopeSeasonId) syncSeasonSelect(e.target, seasonSelect);
+    } else if (e.target.classList && e.target.classList.contains('bracket-rename-category')) {
+      syncSeasonSelect(e.target, e.target.closest('form').querySelector('.bracket-rename-season'));
+    }
+  });
+}
 
 // ---------- Create form ----------
 
@@ -163,8 +173,10 @@ function resetCreateForm() {
   document.getElementById('bracket-name').value = '';
   document.getElementById('bracket-category').value = '';
   const seasonReset = document.getElementById('bracket-season');
-  seasonReset.value = '';
-  seasonReset.disabled = true;
+  if (!scopeSeasonId) {
+    seasonReset.value = '';
+    seasonReset.disabled = true;
+  }
   document.getElementById('bracket-entries-list').innerHTML = '';
   document.getElementById('bracket-auto-create-matches').checked = true;
   entryRowCounter = 0;
@@ -205,8 +217,9 @@ function wireCreateForm() {
       const body = { name, format, autoCreateMatches };
       if (doubles) body.doubles = true;
       if (category) body.category = category;
-      const seasonId = document.getElementById('bracket-season').value;
+      const seasonId = scopeSeasonId || document.getElementById('bracket-season').value;
       if (seasonId) body.seasonId = Number(seasonId);
+      if (scopeSeasonId && !category) throw new Error('Choose the category of the bracket');
 
       if (seeded) {
         const rows = Array.from(document.querySelectorAll('.bracket-entry-row'));
@@ -252,6 +265,7 @@ function wireCreateForm() {
 
 async function loadBrackets() {
   brackets = await api('/brackets');
+  if (scopeSeasonId) brackets = brackets.filter((b) => b.seasonId === scopeSeasonId);
   renderList();
 }
 
@@ -283,6 +297,7 @@ function bracketRowHtml(b) {
 
 // the list is divided into leagues, tournaments (a heading per tournament) and brackets without a season
 function groupedHtml() {
+  if (scopeSeasonId) return brackets.map(bracketRowHtml).join('');
   const groups = [
     ['Leagues', brackets.filter((b) => b.seasonId && b.seasonKind !== 'TOURNAMENT'), (b) => b.seasonName],
     ['Tournaments', brackets.filter((b) => b.seasonId && b.seasonKind === 'TOURNAMENT').sort((x, y) => String(x.seasonName).localeCompare(String(y.seasonName)) || x.id - y.id), (b) => b.seasonName],
@@ -613,7 +628,23 @@ function renderAdmin() {
     </div>
   `;
   wireCreateForm();
+  if (scopeSeasonId) scopeCreateForm();
   loadBrackets();
+}
+
+// In the tab of a season the bracket is made for that season: no doubles and no season to pick, only the categories of the league, a title that says so
+function scopeCreateForm() {
+  const hide = (id) => { const el = document.getElementById(id); const field = el && el.closest('.field'); if (field) field.style.display = 'none'; };
+  hide('bracket-doubles');
+  hide('bracket-season');
+  const category = document.getElementById('bracket-category');
+  Array.from(category.options).forEach((o) => { if (!BLTA_CATEGORY_KEYS.includes(o.value)) o.remove(); });
+  category.required = true;
+  category.value = '';
+  const label = document.querySelector('label[for="bracket-category"]');
+  if (label) label.innerHTML = 'Category <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(the matches of the bracket get it and this season, and count as play-off matches)</span>';
+  const title = document.querySelector('#create-bracket-form').closest('.card').querySelector('h3');
+  if (title) title.textContent = 'Create a play-off bracket of this season';
 }
 
 function renderLoggedOut() {
@@ -627,10 +658,28 @@ function renderLoggedOut() {
   `;
 }
 
-(async () => {
-  const isAdminUser = await checkAdmin();
-  if (!isAdminUser) return renderLoggedOut();
+// the tab "Pavúk" of a season (the card is shown to an admin only)
+window.mountBracketAdmin = async function mountBracketAdmin(host, seasonId) {
+  root = host;
+  scopeSeasonId = Number(seasonId) || null;
+  brackets = [];
+  entryRowCounter = 0;
+  openManagePanels.clear();
+  wireRootListeners();
+  root.innerHTML = '<p style="color:var(--gray-dim);margin:6px 0">Loading…</p>';
   await loadPlayers();
   try { seasonsList = await api('/seasons'); } catch { seasonsList = []; }
   renderAdmin();
+};
+
+if (root) {
+  (async () => {
+    wireRootListeners();
+    const isAdminUser = await checkAdmin();
+    if (!isAdminUser) return renderLoggedOut();
+    await loadPlayers();
+    try { seasonsList = await api('/seasons'); } catch { seasonsList = []; }
+    renderAdmin();
+  })();
+}
 })();
