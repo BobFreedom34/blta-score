@@ -138,27 +138,36 @@ function rowHtml(e, today) {
   const status = statusOf(e, today);
   const isLeague = e.type === 'LEAGUE';
   let extra = '';
+  let eta = '';
   let bar = '';
   if (status === 'now') {
     const left = Math.max(0, daysBetween(today, e.endDate));
-    extra = ` · ${t('schedule.daysLeft', { n: left, d: dayWord(left) })}`;
+    eta = t('schedule.daysLeft', { n: left, d: dayWord(left) });
     bar = `<div class="home-bar mini"><i style="width:${progressOf(e, today)}%"></i></div>`;
   } else if (status === 'future') {
     const n = daysBetween(today, e.startDate);
-    extra = ` · ${t('schedule.startsIn', { n, d: dayWord(n) })}`;
+    eta = t('schedule.startsIn', { n, d: dayWord(n) });
   }
-  const tags = `<span class="sch-tag${isLeague ? '' : ' tour'}">${escapeHtml(t(isLeague ? 'schedule.league' : 'schedule.tournament'))}</span>`
+  if (eta) extra = ` · ${eta}`;
+  const tags = `<span class="sch-tags"><span class="sch-tag${isLeague ? '' : ' tour'}">${escapeHtml(t(isLeague ? 'schedule.league' : 'schedule.tournament'))}</span>`
     + (status === 'now' ? `<span class="sch-tag now">${escapeHtml(t('schedule.running'))}</span>` : '')
-    + (status === 'past' ? `<span class="sch-tag past">${escapeHtml(t('schedule.finishedTag'))}</span>` : '');
-  const sub = `${e.venue ? `${escapeHtml(e.venue)} · ` : ''}<b>${escapeHtml(categoriesText(e))}</b>${escapeHtml(extra)}`;
-  const more = e.link ? `<span class="sch-go">${escapeHtml(t('schedule.more'))} ›</span>` : '<span></span>';
+    + (status === 'past' ? `<span class="sch-tag past">${escapeHtml(t('schedule.finishedTag'))}</span>` : '')
+    + '</span>';
+  const chips = e.categories.map((c) => `<span class="sch-chip">${escapeHtml(CATEGORY_NAMES[c] || c)}</span>`).join('');
+  const sub = `${e.venue ? `<span class="sch-venue">${escapeHtml(e.venue)} · </span>` : ''}<b class="sch-cats">${chips}</b><span class="sch-extra">${escapeHtml(extra)}</span>`;
+  // a season with an open registration has a green button of its own (it sits inside the link of the row, so it is a link by role: see the click handler below)
+  const registerTo = status !== 'past' && e.registrationOpen && e.link ? `${e.link}#register` : '';
+  const reg = registerTo ? `<span class="sch-reg" role="link" tabindex="0" data-href="${escapeHtml(registerTo)}">${escapeHtml(t('schedule.register'))}</span>` : '';
+  const go = e.link ? `<span class="sch-go">${escapeHtml(t('schedule.more'))} ›</span>` : '';
+  const more = reg ? `<span class="sch-acts">${reg}${go}</span>` : (go || '<span></span>');
   const open = e.link
     ? `<a class="sch-row link ${status}" href="${escapeHtml(e.link)}"${/^https?:/i.test(e.link) ? ' target="_blank" rel="noopener"' : ''}>`
     : `<div class="sch-row ${status}">`;
   return `
     ${open}
       <div class="sch-date">${escapeHtml(dateRange(e))}<small>${escapeHtml(yearText(e))}</small></div>
-      <div class="sch-info${e.logoUrl ? ' with-logo' : ''}">${e.logoUrl ? `<img class="sch-logo" src="${escapeHtml(e.logoUrl)}" alt="" loading="lazy">` : ''}<div class="sch-text"><div class="sch-name">${escapeHtml(e.name)} ${tags}</div><div class="sch-sub">${sub}</div>${bar}</div></div>
+      <span class="sch-eta">${escapeHtml(eta)}</span>
+      <div class="sch-info"><div class="sch-text"><div class="sch-name"><span class="sch-title">${escapeHtml(e.name)}</span>${tags}</div><div class="sch-sub">${sub}</div>${bar}</div></div>
       ${more}
     ${e.link ? '</a>' : '</div>'}`;
 }
@@ -178,7 +187,7 @@ function render() {
     return;
   }
   timelineEl.innerHTML = timelineHtml(shown, today);
-  // grouped by the month the event starts in (inside the shown year)
+  // in the order of time: the past, what is running now and what is coming, grouped by the month the event starts in (inside the shown year)
   const byMonth = new Map();
   shown.forEach((e) => {
     const start = e.startDate < from ? from : e.startDate;
@@ -199,6 +208,21 @@ yearsEl.addEventListener('click', (e) => {
   if (!btn) return;
   year = Number(btn.dataset.year);
   render();
+});
+// the green "Registrácia" of a row sits inside the link of the row: it leads to the registration of the season by itself (in the address of the page's language)
+function goRegister(el) {
+  const to = el.dataset.href;
+  location.href = window.BLTA_LOCALIZE && window.BLTA_LOCALIZE.localUrl ? window.BLTA_LOCALIZE.localUrl(to) : to;
+}
+rootEl.addEventListener('click', (e) => {
+  const r = e.target.closest('.sch-reg');
+  if (!r) return;
+  e.preventDefault();
+  e.stopPropagation();
+  goRegister(r);
+});
+rootEl.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('sch-reg')) { e.preventDefault(); goRegister(e.target); }
 });
 catEl.addEventListener('change', () => { cat = catEl.value; render(); });
 typeEl.addEventListener('change', () => { type = typeEl.value; render(); });

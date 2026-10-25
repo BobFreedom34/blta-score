@@ -5345,3 +5345,62 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .lc-change.down { color: #ff3b30; }
 .lc-change.same { color: var(--gray); }
 @media (max-width: 560px) { .lc-grid { grid-template-columns: 1fr; } }
+
+/* the lists of the schedule (the schedule page of every city, the schedule of a city on slta.sk): the cards with the countdown, the green "Registrácia"
+   next to "Viac info", the categories as chips on a phone. A list carries the class sch-lists. */
+.sch-lists .sch-card { overflow: hidden; }
+.sch-lists .sch-row { position: relative; }
+.sch-lists .sch-row > * { position: relative; z-index: 1; }
+.sch-lists .sch-go { background: #000; border-color: var(--orange); color: var(--orange); }
+.sch-lists .sch-row.link:hover .sch-go, .sch-lists .sch-go:hover { border-color: var(--white); color: var(--white); }/* a season with an open registration: a second, green button that blinks like the one on the season page */
+.sch-acts { display: inline-flex; align-items: center; gap: 10px; }
+/* both buttons of a row have the same size */
+.sch-lists .sch-go, .sch-reg { box-sizing: border-box; min-width: 132px; height: 34px; justify-content: center; text-align: center; }
+.sch-reg { display: inline-flex; align-items: center; padding: 9px 16px; border-radius: var(--radius-sm); border: 1px solid var(--green); background: var(--green); color: #0a0a0a; font-weight: 800; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; cursor: pointer; }
+.sch-reg:hover { background: #c6ff3a; border-color: #c6ff3a; }
+@media (prefers-reduced-motion: no-preference) { .sch-reg { animation: sv-register-glow 1.8s ease-out infinite; } }
+/* the pieces of a schedule row: on a computer they read as before (the countdown after the categories); on a phone the row is a card
+   of its own: date and countdown on top, the name, the tags and the categories as chips, then the buttons across the width */
+/* on a tablet the two buttons stand under each other */
+@media (min-width: 701px) and (max-width: 1024px) { .sch-acts { flex-direction: column; align-items: stretch; gap: 8px; } }
+.sch-tags { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.sch-eta { display: none; }
+.sch-cats { font-weight: 700; }
+.sch-chip + .sch-chip::before { content: ' · '; }
+@media (max-width: 700px) {
+  .sch-lists .sch-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "date date eta" "name name name" "tags sub sub" "bar bar bar" "acts acts acts"; gap: 10px 10px; padding: 18px 0; align-items: center; }
+  .sch-lists .sch-info, .sch-lists .sch-text, .sch-lists .sch-name { display: contents; }
+  .sch-lists .sch-date { grid-area: date; display: flex; align-items: baseline; gap: 8px; font-size: 18px; }
+  .sch-lists .sch-date small { margin-top: 0; }
+  .sch-lists .sch-eta { display: block; grid-area: eta; align-self: baseline; color: var(--orange); font-size: 12px; font-weight: 800; white-space: nowrap; }
+  .sch-lists .sch-title { grid-area: name; font-size: 19px; font-weight: 800; line-height: 1.2; color: var(--white); }
+  .sch-lists .sch-tags { grid-area: tags; }
+  .sch-lists .sch-sub { grid-area: sub; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .sch-lists .sch-extra { display: none; }
+  .sch-lists .sch-cats { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+  .sch-lists .sch-chip { background: #2a2a30; color: #e6e8ec; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
+  .sch-lists .sch-chip + .sch-chip::before { content: none; }
+  .sch-lists .home-bar.mini { grid-area: bar; margin-top: 2px; max-width: none; }
+  .sch-lists .sch-acts, .sch-lists .sch-row > .sch-go { grid-area: acts; margin-top: 4px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12); }
+  .sch-lists .sch-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; justify-self: stretch; }
+  .sch-lists .sch-row > .sch-go { width: 100%; justify-self: stretch; }
+  .sch-lists .sch-acts .sch-reg, .sch-lists .sch-acts .sch-go { min-width: 0; height: 44px; width: 100%; }
+  .sch-lists .sch-row > .sch-go { height: 44px; box-sizing: border-box; }
+}
+
+/* the highlight of a row under the mouse reaches the edges of its card (no dark strip left and right): the rows run out to the border of the card and
+   keep their own padding; the line between two rows stays inside */
+.sch-lists { --sch-pad: 22px; --sch-rpv: 16px; }
+@media (max-width: 700px) { .sch-lists { --sch-pad: 16px; --sch-rpv: 18px; } }
+.sch-lists .sch-card { padding-top: 0; padding-bottom: 0; }
+.sch-lists .sch-row {
+  margin-left: calc(-1 * var(--sch-pad)); margin-right: calc(-1 * var(--sch-pad)); padding-left: var(--sch-pad); padding-right: var(--sch-pad);
+  border-bottom: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.12)); background-repeat: no-repeat;
+  background-size: calc(100% - 2 * var(--sch-pad)) 1px; background-position: var(--sch-pad) 100%;
+}
+.sch-lists .sch-row:last-child { background-image: none; }
+.sch-lists .sch-row.link:hover { background-color: rgba(255, 255, 255, 0.04); background-image: linear-gradient(rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.12)); }
+.sch-lists .sch-row.link:last-child:hover { background-image: none; }
+.sch-lists .sch-row:first-child { padding-top: calc(var(--sch-rpv) + 4px); }
+.sch-lists .sch-row:last-child { padding-bottom: calc(var(--sch-rpv) + 4px); }

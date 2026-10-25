@@ -151,10 +151,6 @@
   .sl-sched-head { display: block; padding-bottom: 16px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.16); }
   .sl-sched-city { margin-top: 10px; color: var(--orange); font-size: 15px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
   .sl-sched-head h3 { margin: 0; font-size: 24px; line-height: 1; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #fff; }
-  .sl-sched .sch-card { overflow: hidden; }
-  .sl-sched .sch-row { position: relative; }
-  .sl-sched .sch-row > * { position: relative; z-index: 1; }
-  .sl-sched .sch-go { background: #000; }
   /* the contact window ("Write to us") */
   .sl-modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.72); overflow-y: auto; }
   .sl-modal-box { position: relative; width: 100%; max-width: 480px; max-height: 100%; overflow-y: auto; background: #1b1b1f; border: 1px solid rgba(255,85,0,.45); border-radius: var(--radius); padding: 28px 26px 24px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
@@ -176,41 +172,6 @@
   .sl-modal .sl-send[disabled] { opacity: .6; cursor: default; }
   .sl-modal-ok { text-align: center; padding: 10px 0 4px; }
   .sl-modal-ok h3 { color: var(--green); }
-  /* a season with an open registration: a second, green button that blinks like the one on the season page */
-  .sch-acts { display: inline-flex; align-items: center; gap: 10px; }
-  /* both buttons of a row have the same size */
-  .sl-sched .sch-go, .sch-reg { box-sizing: border-box; min-width: 132px; height: 34px; justify-content: center; text-align: center; }
-  .sch-reg { display: inline-flex; align-items: center; padding: 9px 16px; border-radius: var(--radius-sm); border: 1px solid var(--green); background: var(--green); color: #0a0a0a; font-weight: 800; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; cursor: pointer; }
-  .sch-reg:hover { background: #c6ff3a; border-color: #c6ff3a; }
-  @media (prefers-reduced-motion: no-preference) { .sch-reg { animation: sv-register-glow 1.8s ease-out infinite; } }
-  /* the pieces of a schedule row: on a computer they read as before (the countdown after the categories); on a phone the row is a card
-     of its own: date and countdown on top, the name, the tags and the categories as chips, then the buttons across the width */
-  /* on a tablet the two buttons stand under each other */
-  @media (min-width: 701px) and (max-width: 1024px) { .sch-acts { flex-direction: column; align-items: stretch; gap: 8px; } }
-  .sch-tags { display: inline-flex; flex-wrap: wrap; gap: 8px; }
-  .sch-eta { display: none; }
-  .sch-cats { font-weight: 700; }
-  .sch-chip + .sch-chip::before { content: ' · '; }
-  @media (max-width: 700px) {
-    .sl-sched .sch-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "date date eta" "name name name" "tags sub sub" "bar bar bar" "acts acts acts"; gap: 10px 10px; padding: 18px 0; align-items: center; }
-    .sl-sched .sch-info, .sl-sched .sch-text, .sl-sched .sch-name { display: contents; }
-    .sl-sched .sch-date { grid-area: date; display: flex; align-items: baseline; gap: 8px; font-size: 18px; }
-    .sl-sched .sch-date small { margin-top: 0; }
-    .sl-sched .sch-eta { display: block; grid-area: eta; align-self: baseline; color: var(--orange); font-size: 12px; font-weight: 800; white-space: nowrap; }
-    .sl-sched .sch-title { grid-area: name; font-size: 19px; font-weight: 800; line-height: 1.2; color: var(--white); }
-    .sl-sched .sch-tags { grid-area: tags; }
-    .sl-sched .sch-sub { grid-area: sub; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-    .sl-sched .sch-extra { display: none; }
-    .sl-sched .sch-cats { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-    .sl-sched .sch-chip { background: #2a2a30; color: #e6e8ec; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
-    .sl-sched .sch-chip + .sch-chip::before { content: none; }
-    .sl-sched .home-bar.mini { grid-area: bar; margin-top: 2px; max-width: none; }
-    .sl-sched .sch-acts, .sl-sched .sch-row > .sch-go { grid-area: acts; margin-top: 4px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12); }
-    .sl-sched .sch-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; justify-self: stretch; }
-    .sl-sched .sch-row > .sch-go { width: 100%; justify-self: stretch; }
-    .sl-sched .sch-acts .sch-reg, .sl-sched .sch-acts .sch-go { min-width: 0; height: 44px; width: 100%; }
-    .sl-sched .sch-row > .sch-go { height: 44px; box-sizing: border-box; }
-  }
   .sl-sched-head p { margin: 8px 0 0; text-align: left; color: #8b8f98; font-size: 14px; font-weight: 600; }
   /* the block for people who want to run a league in their own city */
   .sl-org { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px 48px; align-items: center; background: #0a0a0a; border: 1px solid rgba(255, 85, 0, 0.6); border-radius: var(--radius); padding: 36px 40px; box-shadow: 0 0 30px -14px rgba(255, 85, 0, 0.55); }
@@ -275,7 +236,7 @@
 
   <section class="sl-det" id="det" hidden></section>
 
-  <section class="sl-sched" id="sch" hidden></section>
+  <section class="sl-sched sch-lists" id="sch" hidden></section>
 
   <section class="sl-stats sl-block" id="stats" hidden></section>
 
