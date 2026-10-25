@@ -636,7 +636,7 @@ groups are optional). The schedule (`/api/schedule`, `/harmonogram`) lists it wi
 League-only places (home overview, season timeline, tables page) leave tournaments out (tables show one only if it has groups).
 
 - `src/tournamentsSeed.js` moved the old schedule events into seasons once (flag `tournaments_as_seasons`) and linked a winners
-  edition with the same title. `schedule_events` / Backend → Schedule stay for plain events that need no page.
+  edition with the same title. `schedule_events` stay for plain events that need no page (an event of another club): they are added under the tournaments in Backend → Tournaments ("Events outside the app"); the old Backend → Schedule tab is gone and its address leads there.
 - Check: `node scripts/check-tournaments.js`.
 
 ### Registration to a series / tournament = registration to the app

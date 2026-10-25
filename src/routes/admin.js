@@ -63,6 +63,12 @@ router.post('/login', (req, res) => {
       failed(ip);
       return res.status(401).json({ error: 'Incorrect email or password' });
     }
+    // the account of a city logs in on the address of that city only: on the page of another city it is refused (and no cookie is given)
+    const home = leagues.byId(row.league_id);
+    if (req.pageLeagueId && req.pageLeagueId !== row.league_id) {
+      const where = home ? publicBaseOf(req, home) : '';
+      return res.status(403).json({ error: `This account runs ${home ? home.name : 'another city'} only. Log in on its own address${where ? ` (${where.replace(/^https?:\/\//, '')})` : ''}.` });
+    }
     db.prepare("UPDATE city_admins SET last_login_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(row.id);
     auth.logInCityAdmin(res, row.id);
     return res.json({ isAdmin: true, role: 'CITY' });

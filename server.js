@@ -209,6 +209,7 @@ app.use((req, res, next) => {
   const base = `/${league.slug}`;
   req.cityBase = base;
   req.league = league;
+  req.pageLeagueId = league.id;
   const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
   req.url = (hit.rest || '/') + query;
   const redirect = res.redirect.bind(res);
@@ -400,6 +401,8 @@ app.use((req, res, next) => {
     return next();
   }
 });
+// Backend > Schedule is gone: the events outside the app are on the Tournaments tab now
+app.get(['/schedule-admin', '/schedule-admin.html'], (req, res) => res.redirect(302, '/tournaments-admin'));
 const IMAGE_FILE = /\.(png|jpe?g|gif|svg|webp|avif|ico)$/i;
 const staticFiles = express.static(PUBLIC_DIR, {
   extensions: ['html'],

@@ -75,7 +75,10 @@ function forHost(host) {
 }
 
 function attach(req, res, next) {
-  req.league = forHost(req.hostname) || byId(DEFAULT_LEAGUE_ID);
+  const own = forHost(req.hostname);
+  req.league = own || byId(DEFAULT_LEAGUE_ID);
+  // the city the ADDRESS belongs to (blta.sk: Bratislava); an address of no city (slta.sk, a development host) has none until its city prefix is read
+  req.pageLeagueId = own ? own.id : null;
   next();
 }
 

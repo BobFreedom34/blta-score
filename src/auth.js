@@ -58,7 +58,17 @@ function cookieOptions() {
 // Two kinds of admin share the one cookie: the super admin ('ok', logged in with the ADMIN_PASSWORD of the server: all the cities and the
 // settings of the whole site) and a city admin ('city:<id>', an account of Backend > Admins that runs one city only; see src/cityScope.js).
 // -> { role: 'SUPER' } | { role: 'CITY', id, leagueId, name, email } | null
+//
+// A city admin is an admin on the pages of his OWN city only (blta.sk for Bratislava, slta.sk/kosice for Košice): on the page of another city the
+// same cookie counts for nothing, he is a visitor there (req.pageLeagueId is the city of the address, set by leagues.attach and the city prefix of
+// server.js; null on an address that belongs to no city: the national page, a development host). The super admin works everywhere.
 function adminSession(req) {
+  const session = rawAdminSession(req);
+  if (session && session.role === 'CITY' && req.pageLeagueId && req.pageLeagueId !== session.leagueId) return null;
+  return session;
+}
+
+function rawAdminSession(req) {
   if (req._adminSession !== undefined) return req._adminSession;
   const value = req.signedCookies && req.signedCookies[COOKIE_NAME];
   let session = null;

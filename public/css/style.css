@@ -5404,3 +5404,9 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .sch-lists .sch-row.link:last-child:hover { background-image: none; }
 .sch-lists .sch-row:first-child { padding-top: calc(var(--sch-rpv) + 4px); }
 .sch-lists .sch-row:last-child { padding-bottom: calc(var(--sch-rpv) + 4px); }
+
+/* Backend > Media on the dark page: headings, picture names and the outline buttons of the tiles are white (they were dark on dark) */
+#media-admin-root h3, #media-admin-root summary { color: var(--white); }
+.md-name { color: var(--white); }
+.md-tile .btn-outline { color: var(--white); border-color: rgba(255, 255, 255, 0.55); background: transparent; }
+.md-tile .btn-outline:hover { color: var(--orange); border-color: var(--orange); }

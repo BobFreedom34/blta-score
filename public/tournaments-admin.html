@@ -34,7 +34,6 @@
     <a href="/leagues-admin" class="tab">Cities</a>
     <a href="/seasons-admin" class="tab">Seasons</a>
     <a href="/tournaments-admin" class="tab active">Tournaments</a>
-    <a href="/schedule-admin" class="tab">Schedule</a>
     <a href="/winners-admin" class="tab">Winners</a>
     <a href="/reservations-admin" class="tab">Reservations</a>
     <a href="/blog-admin" class="tab">Blog</a>
@@ -48,6 +47,8 @@
   <p style="color:var(--gray-dim)">Tournaments — each has its own public page (info, description, registration, brackets, matches and winners; set the winners in <a href="/winners-admin" style="text-decoration:underline;color:var(--orange)">Winners</a>) and shows on the schedule with the venue and the categories it is played in. Groups are optional for a tournament; matches get the tournament like they get a season. League seasons are in <a href="/seasons-admin" style="text-decoration:underline;color:var(--orange)">Seasons</a>.</p>
 
   <div id="seasons-admin-root" data-kind="TOURNAMENT">Loading…</div>
+
+  <div id="events-admin-root"></div>
 </div>
 
 <footer class="site-footer">
@@ -65,5 +66,6 @@
 <script src="/js/season-assign.js"></script>
 <script src="/js/season-draw.js"></script>
 <script src="/js/seasons-admin.js"></script>
+<script src="/js/events-admin.js"></script>
 </body>
 </html>

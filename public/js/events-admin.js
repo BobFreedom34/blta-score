@@ -1,5 +1,5 @@
-// Backend > Schedule (/schedule-admin): the other events (no page of their own) of the public schedule page (/harmonogram), plus a
-// read-only list of the league seasons the schedule takes from Seasons.
+// Backend > Tournaments, under the tournaments: the events outside the app - an event of another club or site, which has no page of its own here, only
+// an optional link - that the public schedule page (/harmonogram) shows next to the seasons and the tournaments.
 (function eventsAdmin() {
   const host = document.getElementById('events-admin-root');
   if (!host) return;
@@ -7,7 +7,6 @@
   const CATS = [['ELITE', 'Elite'], ['NEXT_GEN', 'Next Gen'], ['NOVICE', 'Novice']];
   const field = 'padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px';
   let list = [];
-  let leagues = [];
   let editingId = null;
 
   function fmt(iso) {
@@ -57,17 +56,9 @@
         <button type="button" class="btn btn-sm btn-outline" data-edit="${e.eventId}">Edit</button>
         <button type="button" class="btn btn-sm btn-outline" data-del="${e.eventId}">Delete</button>
       </div>`).join('');
-    const leagueRows = leagues.map((e) => `
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #eee">
-        <strong style="flex:1;min-width:200px">${escapeHtml(e.name)}</strong>
-        <span style="color:var(--gray);font-size:13px">${fmt(e.startDate)} – ${fmt(e.endDate)}</span>
-      </div>`).join('');
     host.innerHTML = `
-      <div class="card">
-        <h3 style="margin-top:0">League seasons <span style="font-weight:600;font-size:12px;color:var(--gray)">— from <a href="/seasons-admin" style="text-decoration:underline;color:var(--orange)">Seasons</a>, change their dates there</span></h3>
-        ${leagueRows || '<span style="color:var(--gray)">No seasons with a start date yet.</span>'}
-      </div>
-      <h2 style="margin:30px 0 12px;color:var(--white)">Tournaments &amp; events</h2>
+      <h2 style="margin:36px 0 4px;color:var(--white)">Events outside the app</h2>
+      <p style="color:var(--gray-dim);margin:0 0 12px">An event held elsewhere (another club, an outside site) that you only want on the public <a href="/harmonogram" style="text-decoration:underline;color:var(--orange)">/harmonogram</a> page: it has no page of its own here, only the optional link behind "Viac info". Tournaments of this app are listed above and get on the schedule by themselves.</p>
       <div class="card">
         <h3 style="margin-top:0">${editing ? 'Edit event' : 'Add an event'}</h3>
         ${formHtml(editing)}
@@ -79,8 +70,8 @@
 
   async function load() {
     const all = await api('/schedule');
-    list = all.filter((e) => e.type === 'TOURNAMENT').sort((a, b) => b.startDate.localeCompare(a.startDate));
-    leagues = all.filter((e) => e.type === 'LEAGUE').sort((a, b) => b.startDate.localeCompare(a.startDate));
+    // only the plain events (a tournament made in this app is a season with a page of its own: it is managed above)
+    list = all.filter((e) => e.type === 'TOURNAMENT' && e.eventId).sort((a, b) => b.startDate.localeCompare(a.startDate));
     render();
   }
 
@@ -122,6 +113,6 @@
   // only for a logged-in admin
   checkAdmin().then((isAdmin) => {
     if (isAdmin) { load(); return; }
-    host.innerHTML = '<div class="card"><p style="margin:0;color:var(--gray)">Managing the schedule requires an admin login. <a href="/admin" style="text-decoration:underline;color:var(--orange)">Log in as admin</a>.</p></div>';
+    host.innerHTML = '';
   });
 })();

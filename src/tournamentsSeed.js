@@ -1,4 +1,4 @@
-// One-off: the tournaments of the schedule (the schedule_events table, edited in /schedule-admin) become seasons of the type
+// One-off: the tournaments of the schedule (the schedule_events table, edited in the old Backend > Schedule tab) become seasons of the type
 // TOURNAMENT, so a tournament has everything a season has — its own page (/season/<slug>), the info tiles and description,
 // registration, groups, brackets, matches and winners — and is edited in /seasons-admin. Runs once (flag in app_flags). The
 // events are removed from schedule_events (the schedule page reads tournaments from the seasons now; the table stays for the
