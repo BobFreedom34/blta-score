@@ -5410,3 +5410,9 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .md-name { color: var(--white); }
 .md-tile .btn-outline { color: var(--white); border-color: rgba(255, 255, 255, 0.55); background: transparent; }
 .md-tile .btn-outline:hover { color: var(--orange); border-color: var(--orange); }
+
+/* the button of an admin under a match of a drawn bracket: enter its result (public/js/bracket-result.js) */
+.bracket-match-card { position: relative; }
+.bracket-res-btn { position: absolute; top: 6px; right: 8px; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--orange); cursor: pointer; }
+.bracket-res-btn .venue-icon { width: 15px; height: 15px; }
+.bracket-res-btn:hover { background: rgba(255, 85, 0, 0.18); }

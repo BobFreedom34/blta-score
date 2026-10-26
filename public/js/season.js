@@ -26,6 +26,8 @@ let schedGroup = null;
 let playersCat = 'ALL'; // the Hráči tab's category filter
 let playoffCat = 'ALL'; // the Play-off tab's category filter
 const bracketData = new Map(); // bracket id -> full bracket, cleared whenever the data is refreshed
+// a result entered in a drawn bracket (bracket-result.js) comes back as the new bracket
+document.addEventListener('bracket:changed', (e) => { if (e.detail && bracketData.has(e.detail.id)) bracketData.set(e.detail.id, e.detail); });
 let tab = null; // the open tab: info, tables, results, schedule, players, playoff or gallery
 const loaded = new Set(); // tabs whose data is loaded and still current
 

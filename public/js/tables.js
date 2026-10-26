@@ -22,6 +22,8 @@ let groupId = null; // null = all groups of the category
 let phase = 'GROUP'; // 'GROUP' = group stage tables, 'PLAYOFF' = the bracket
 let brackets = []; // the season's brackets: { id, name, category }
 const bracketData = new Map(); // bracket id -> full bracket, cleared whenever the data is refreshed
+// a result entered in a drawn bracket (bracket-result.js) comes back as the new bracket
+document.addEventListener('bracket:changed', (e) => { if (e.detail && bracketData.has(e.detail.id)) bracketData.set(e.detail.id, e.detail); });
 let bracketRun = 0; // guards a slow bracket request against a newer selection
 
 // The season whose dates include today; otherwise the newest one that has matches.

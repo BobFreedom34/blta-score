@@ -12,6 +12,9 @@
 // round 2 always had.
 const ROW_HEIGHT = 50;
 
+// every board drawn, by bracket id (bracket-result.js finds the match behind a button here)
+const BRACKET_BOARDS = new Map();
+
 function slotHtml(node, which) {
   const player = which === 1 ? node.player1 : node.player2;
   const seed = which === 1 ? node.seed1 : node.seed2;
@@ -71,10 +74,11 @@ function nodeHtml(node) {
   if (node.round > 1) connectorClasses.push('bracket-node--incoming');
   const connectorLen = (span / 2) * ROW_HEIGHT;
 
-  return `<div class="bracket-node${connectorClasses.length ? ` ${connectorClasses.join(' ')}` : ''}" style="grid-column:${node.round};grid-row:${node.position * span + 2} / span ${span};--connector-len:${connectorLen}px"><div class="${cardClass}"${clickNav}>${inner}</div></div>`;
+  return `<div data-node-id="${node.id}" class="bracket-node${connectorClasses.length ? ` ${connectorClasses.join(' ')}` : ''}" style="grid-column:${node.round};grid-row:${node.position * span + 2} / span ${span};--connector-len:${connectorLen}px"><div class="${cardClass}"${clickNav}>${inner}</div></div>`;
 }
 
 function bracketBoardHtml(data) {
+  BRACKET_BOARDS.set(data.id, data);
   const finalNode = data.nodes.find((n) => n.round === data.rounds);
   const finalDecided = finalNode && ((finalNode.match && finalNode.match.status === 'FINISHED') || finalNode.isManualResult);
   const championId = finalDecided ? finalNode.winnerId : null;
@@ -97,7 +101,7 @@ function bracketBoardHtml(data) {
   `;
 
   return `
-    <div class="bracket-wrap card card-dark">
+    <div class="bracket-wrap card card-dark" data-bracket-id="${data.id}">
       <div class="bracket-grid" style="grid-template-columns:repeat(${totalColumns}, minmax(180px, 1fr));grid-template-rows:auto repeat(${data.size}, ${ROW_HEIGHT}px)">
         ${headerHtml}
         ${nodesHtml}
