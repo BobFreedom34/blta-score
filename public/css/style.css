@@ -3408,7 +3408,6 @@ body:not(.embed-light) .match-card.result-won:hover { border-color: var(--status
   .nav-item-dropdown-toggle { justify-content: stretch; }
   .nav-item-dropdown-toggle a { flex: 1; }
   .nav-submenu a { padding: 12px 16px 12px 50px; font-size: 12px; }
-  .nav-submenu a::before { display: none; }
 }
 
 /* Embeds: status pills outside a match card get the same outlined 8px look as inside one. */
@@ -4290,7 +4289,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
     letter-spacing: 0.05em;
     text-align: left;
   }
-  .nav-links .nav-submenu a::before { display: block; content: ''; width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: #6b6f78; -webkit-mask: none; mask: none; }
+  .nav-links .nav-submenu a::before { display: block; content: ''; width: 16px; height: 16px; flex: 0 0 16px; background: #a9adb6; -webkit-mask: var(--nav-ico) center / contain no-repeat; mask: var(--nav-ico) center / contain no-repeat; }
   .nav-links .nav-submenu a::after { display: none; }
   .nav-links .nav-submenu a:hover { background: var(--fill-grey); color: var(--orange); }
   .nav-links .nav-submenu a:hover::before { background: var(--orange); }
@@ -5571,3 +5570,15 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .msg-layout .btn-outline { border-color: var(--border-grey); color: var(--white); }
 .msg-layout .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
 .nav-msg-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 999px; background: var(--status-green); color: #0a0a0a; font-size: 11px; font-weight: 800; vertical-align: middle; }
+
+/* Menu icons: every item of the main menu has one before its name, on a computer and on a phone, also inside a dropdown (public/js/common.js puts the
+   icon on each link as --nav-ico; on a phone the rule above colours it grey, orange on hover and green when active) */
+@media (min-width: 1025px) {
+  .nav-links a::before { content: ''; display: inline-block; flex: none; width: 16px; height: 16px; margin-right: 7px; vertical-align: -3px; background: currentColor; -webkit-mask: var(--nav-ico) center / contain no-repeat; mask: var(--nav-ico) center / contain no-repeat; }
+  .nav-links a.nav-btn-green::before { background: #0a0a0a; }
+  .nav-submenu a { justify-content: flex-start; }
+  .nav-submenu a::before { margin-right: 0; }
+}
+@media (max-width: 1024px) {
+  .nav-submenu a { padding: 12px 16px; }
+}
