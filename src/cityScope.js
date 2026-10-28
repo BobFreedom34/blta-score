@@ -11,9 +11,9 @@ const auth = require('./auth');
 
 // (the blog and the rules of the page are the city's own too)
 // the areas in which a city admin may write at all (the rest is for the super admin); everything in them is checked row by row
-const CITY_AREAS = new Set(['seasons', 'venues', 'players', 'matches', 'brackets', 'winners', 'carousel', 'sponsors', 'header-items', 'schedule', 'articles', 'rules', 'seo', 'about', 'media']);
+const CITY_AREAS = new Set(['seasons', 'venues', 'players', 'matches', 'brackets', 'winners', 'carousel', 'sponsors', 'header-items', 'schedule', 'articles', 'rules', 'seo', 'about', 'media', 'communities']);
 // areas that anybody may write to (a player, a visitor) whatever the admin is
-const OPEN_AREAS = new Set(['player', 'push', 'availability', 'invites']);
+const OPEN_AREAS = new Set(['player', 'push', 'availability', 'invites', 'messages']);
 
 const id = (s) => (/^\d+$/.test(String(s || '')) ? Number(s) : null);
 const one = (sql, ...args) => {
@@ -36,6 +36,7 @@ function leagueOfAddress(seg) {
       return id(a) ? one('SELECT league_id FROM players WHERE id = ?', id(a)) : one('SELECT league_id FROM players WHERE slug = ?', a);
     case 'matches': return a ? one('SELECT league_id FROM matches WHERE share_token = ?', a) : undefined;
     case 'brackets': return id(a) ? one('SELECT league_id FROM brackets WHERE id = ?', id(a)) : undefined;
+    case 'communities': return id(a) ? one('SELECT league_id FROM organisations WHERE id = ?', id(a)) : undefined;
     case 'articles': return a === 'admin' && id(b) ? one('SELECT league_id FROM articles WHERE id = ?', id(b)) : undefined;
     case 'rules': return id(a) ? one('SELECT league_id FROM rules_sections WHERE id = ?', id(a)) : undefined;
     case 'carousel': return id(a) ? one('SELECT league_id FROM carousel_slides WHERE id = ?', id(a)) : undefined;

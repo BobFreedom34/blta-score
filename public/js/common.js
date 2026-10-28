@@ -1395,6 +1395,7 @@ async function renderHeaderNav() {
   const labelFor = (item) => (currentLang === 'en' && item.labelEn) ? item.labelEn : item.labelSk;
   const isActive = (link) => link === currentCodePath();
   const myProfileEl = document.getElementById('nav-my-profile-link');
+  if (myProfileEl) myProfileEl.style.display = ''; // shown again when the club menu gives way to the normal one
   const makeLink = (item) => {
     const a = document.createElement('a');
     const heading = isHeadingLink(item.link);
@@ -1466,8 +1467,165 @@ async function renderHeaderNav() {
   container.innerHTML = '';
   container.appendChild(frag);
   attachLookingToPlayBadge();
+  // a player who has switched to the profile of his club sees the menu of the club (the switcher block below knows it by then, or applies it itself later)
+  if (actingOrg) applyClubMenu();
+  if (messageUnread) applyMessageBadge();
 }
 renderHeaderNav();
+
+// Komunity a kluby: the profile switcher. A player who runs a community or a club can switch to its profile (top right, in the account menu): the topbar
+// then shows a chip with its name and the menu becomes the menu of the club (Domov · Členovia · Udalosti · Profil klubu). Switching changes nothing about
+// the player himself; the server decides on every request whether he still runs that club (GET /api/communities/mine, POST /api/communities/act-as).
+// Only DOM text is used here: the names of the clubs are written by players.
+let actingOrg = null; // the club the player acts as (as GET /api/communities/mine reports it), or null
+
+function applyClubMenu() {
+  const container = document.getElementById('header-dynamic-items');
+  if (!container || !actingOrg) return;
+  const base = `/community/${encodeURIComponent(actingOrg.slug)}`;
+  // the "my profile" link of the normal menu lives inside the container: take it out first (hidden while acting), or the menu could not bring it back
+  const myProfile = document.getElementById('nav-my-profile-link');
+  if (myProfile) {
+    if (container.contains(myProfile)) container.after(myProfile);
+    myProfile.style.display = 'none';
+  }
+  container.textContent = '';
+  [['com.menuHome', base], ['com.menuMembers', `${base}#members`], ['com.menuEvents', `${base}#events`], ['com.menuProfile', `${base}#settings`]].forEach(([key, href]) => {
+    const a = document.createElement('a');
+    a.href = href;
+    a.textContent = t(key);
+    container.appendChild(a);
+  });
+}
+
+async function switchActing(organisation) {
+  try {
+    await api('/communities/act-as', { method: 'POST', body: { organisationId: organisation ? organisation.id : null } });
+  } catch (err) {
+    toast(err.message);
+    return;
+  }
+  if (organisation) window.location.href = siteUrl(`/community/${encodeURIComponent(organisation.slug)}`);
+  else window.location.reload();
+}
+
+function clubInitials(name) {
+  return String(name || '?').split(/\s+/).filter((w) => /^[\p{L}\p{N}]/u.test(w)).slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('') || '?';
+}
+
+async function refreshActingOrg() {
+  document.querySelectorAll('.com-switch, .acting-chip').forEach((el) => el.remove());
+  const wasActing = !!actingOrg;
+  actingOrg = null;
+  if (!playerAuthed || !currentPlayerId) {
+    if (wasActing) renderHeaderNav(); // logged out: the normal menu comes back
+    return;
+  }
+  let mine;
+  try {
+    mine = await api('/communities/mine');
+  } catch {
+    if (wasActing) renderHeaderNav();
+    return; // the menu simply has no switcher
+  }
+  actingOrg = mine.acting;
+  if (wasActing && !actingOrg) renderHeaderNav(); // left the club or no longer its admin: the normal menu comes back
+  const admins = mine.items.filter((o) => o.me && o.me.role === 'ADMIN');
+  if (!admins.length) return;
+
+  const panel = document.getElementById('auth-menu-panel');
+  if (panel) {
+    const block = document.createElement('div');
+    block.className = 'com-switch';
+    const title = document.createElement('div');
+    title.className = 'com-switch-title';
+    title.textContent = t('com.switchTitle');
+    block.appendChild(title);
+    const row = (label, organisation, active) => {
+      const a = document.createElement('a');
+      a.href = '#';
+      a.className = `auth-menu-item com-switch-item${active ? ' on' : ''}`;
+      const av = document.createElement('span');
+      av.className = `com-switch-av${organisation ? ' club' : ''}`;
+      av.textContent = organisation ? clubInitials(organisation.name) : clubInitials(currentPlayerName);
+      const text = document.createElement('span');
+      text.textContent = label;
+      a.append(av, text);
+      if (active) {
+        const mark = document.createElement('span');
+        mark.className = 'com-switch-mark';
+        mark.textContent = '✓';
+        a.appendChild(mark);
+      }
+      a.addEventListener('click', (e) => { e.preventDefault(); if (!active) switchActing(organisation); });
+      return a;
+    };
+    block.appendChild(row(t('nav.myProfile'), null, !actingOrg));
+    admins.forEach((o) => block.appendChild(row(o.name, o, !!actingOrg && actingOrg.id === o.id)));
+    const create = document.createElement('a');
+    create.href = '/communities';
+    create.className = 'auth-menu-item com-switch-item';
+    create.textContent = `＋ ${t('com.create')}`;
+    block.appendChild(create);
+    panel.insertBefore(block, panel.firstChild);
+  }
+
+  if (actingOrg) {
+    const chip = document.createElement('a');
+    chip.className = 'acting-chip';
+    chip.href = `/community/${encodeURIComponent(actingOrg.slug)}`;
+    chip.title = t('com.actingAs', { name: actingOrg.name });
+    const name = document.createElement('span');
+    name.textContent = actingOrg.name;
+    const off = document.createElement('button');
+    off.type = 'button';
+    off.className = 'acting-chip-off';
+    off.setAttribute('aria-label', t('com.backToMe'));
+    off.title = t('com.backToMe');
+    off.textContent = '✕';
+    off.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); switchActing(null); });
+    chip.append(name, off);
+    const right = document.querySelector('.topbar-right');
+    if (right) right.insertBefore(chip, right.firstChild);
+    applyClubMenu();
+  }
+}
+window.addEventListener('blta:auth-changed', refreshActingOrg);
+
+// Správy / Messages: the number of unread conversations and waiting requests as a small badge on the "Správy" item of the main menu. It is asked for at
+// every page load of a logged-in player and kept current live by the Messages page itself (it sends 'msg:unread'); other pages do not open a live
+// connection just for this.
+let messageUnread = 0;
+
+function applyMessageBadge() {
+  document.querySelectorAll('.nav-msg-badge').forEach((el) => el.remove());
+  if (!messageUnread) return;
+  const container = document.getElementById('header-dynamic-items');
+  // a heading (href="#") or the contact link ("#kontakt") has the path of the page it is on: only a real address counts
+  const link = container && [...container.querySelectorAll('a')].find((a) => !/^#/.test(a.getAttribute('href') || '#') && /\/(messages|spravy)\/?$/.test(a.pathname));
+  if (!link) return;
+  const badge = document.createElement('span');
+  badge.className = 'nav-msg-badge';
+  badge.textContent = String(messageUnread);
+  link.appendChild(badge);
+}
+
+async function refreshMessageBadge() {
+  messageUnread = 0;
+  if (playerAuthed && currentPlayerId) {
+    try {
+      const counts = await api('/messages/unread');
+      messageUnread = (counts.main || 0) + (counts.requests || 0);
+    } catch { /* no badge */ }
+  }
+  applyMessageBadge();
+}
+window.addEventListener('blta:auth-changed', refreshMessageBadge);
+window.addEventListener('msg:unread', (e) => {
+  const counts = e.detail || {};
+  messageUnread = (counts.main || 0) + (counts.requests || 0);
+  applyMessageBadge();
+});
 
 // Small orange "N" pill next to whichever nav item links to /looking-to-play
 // — one row per player currently posted there (GET /api/availability/count
@@ -1697,7 +1855,8 @@ document.addEventListener('click', (e) => {
 // Skipped on embeds and the admin tools.
 (function initBottomNav() {
   if (!document.querySelector('.topbar') || document.body.classList.contains('embed')) return;
-  if (/admin|login-history/.test(window.location.pathname)) return;
+  // the admin tools only (a path that ends in admin, <name>-admin or login-history), not a club or a player whose name merely contains "admin"
+  if (/(^|\/)(admin|[a-z-]+-admin|login-history)\/?$/.test(window.location.pathname)) return;
   const path = currentCodePath();
   const items = [
     { key: 'home', href: '/', icon: 'home', label: t('bottomNav.home') },
@@ -1841,6 +2000,8 @@ async function api(path, options = {}) {
     // server sent alongside the error (e.g. pinRequired in the player
     // login flow) rather than only ever having the message text.
     err.data = data;
+    // the HTTP status, so a page can show a text of its own in the language of the page instead of the server's English message
+    err.status = res.status;
     throw err;
   }
   return data;

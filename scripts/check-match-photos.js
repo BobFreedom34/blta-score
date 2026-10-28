@@ -49,7 +49,7 @@ async function startServer(name, { configured }) {
 
 const signed = (name, value) => `${name}=${encodeURIComponent(`s:${cookieSignature.sign(String(value), 'test')}`)}`;
 const playerCookie = (id) => signed('blta_player', id);
-const refereeCookie = signed('blta_referee', 'ok');
+const refereeCookie = signed('blta_referee', 'ref:ok');
 
 async function call(srv, method, url, { body, form, cookie = '' } = {}) {
   const headers = {};

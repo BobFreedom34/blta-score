@@ -1678,4 +1678,97 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_matches_scheduled_at ON matches(scheduled_at);
 `);
 
+// Komunity a kluby (communities and clubs): a group of players with its own page, news and members (src/routes/communities.js). type is CLUB or
+// COMMUNITY (only the label differs); join_policy is OPEN (anyone joins at once) or APPROVAL (a request an admin of the group decides); a member's
+// status is ACTIVE, PENDING or REJECTED (kept so a rejected request can be sent again only after 7 days). hidden is set by an admin (moderation).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS organisations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    league_id INTEGER NOT NULL DEFAULT 1,
+    type TEXT NOT NULL CHECK (type IN ('CLUB', 'COMMUNITY')),
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    description TEXT NOT NULL DEFAULT '',
+    contact TEXT NOT NULL DEFAULT '',
+    logo_url TEXT,
+    cover_url TEXT,
+    join_policy TEXT NOT NULL DEFAULT 'OPEN' CHECK (join_policy IN ('OPEN', 'APPROVAL')),
+    hidden INTEGER NOT NULL DEFAULT 0,
+    approved INTEGER NOT NULL DEFAULT 1,
+    created_by_player_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_organisations_league ON organisations(league_id);
+  CREATE TABLE IF NOT EXISTS organisation_members (
+    organisation_id INTEGER NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+    player_id INTEGER NOT NULL,
+    role TEXT NOT NULL DEFAULT 'MEMBER' CHECK (role IN ('ADMIN', 'MEMBER')),
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'PENDING', 'REJECTED')),
+    joined_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    decided_at TEXT,
+    PRIMARY KEY (organisation_id, player_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_organisation_members_player ON organisation_members(player_id);
+  CREATE TABLE IF NOT EXISTS organisation_posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    organisation_id INTEGER NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+    author_player_id INTEGER NOT NULL,
+    body TEXT NOT NULL,
+    hidden INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_organisation_posts_org ON organisation_posts(organisation_id, id);
+`);
+// Správy / Messages: private one-to-one chats between players (src/routes/messages.js, src/messages.js). A conversation is private to its members;
+// direct_key ("<smaller id>:<larger id>") keeps it to one direct conversation per pair. A member's state is MAIN, REQUEST (a first message from a
+// stranger that he has not accepted yet) or ARCHIVED (later); last_read_message_id is how unread messages are counted.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS conversations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL DEFAULT 'DIRECT' CHECK (type IN ('DIRECT', 'GROUP')),
+    title TEXT,
+    direct_key TEXT UNIQUE,
+    created_by_player_id INTEGER NOT NULL,
+    started_as_request INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    last_message_at TEXT
+  );
+  CREATE TABLE IF NOT EXISTS conversation_members (
+    conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    player_id INTEGER NOT NULL,
+    state TEXT NOT NULL DEFAULT 'MAIN' CHECK (state IN ('MAIN', 'REQUEST', 'ARCHIVED')),
+    muted INTEGER NOT NULL DEFAULT 0,
+    last_read_message_id INTEGER NOT NULL DEFAULT 0,
+    joined_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    PRIMARY KEY (conversation_id, player_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_conversation_members_player ON conversation_members(player_id);
+  CREATE TABLE IF NOT EXISTS direct_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    sender_player_id INTEGER NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_direct_messages_conversation ON direct_messages(conversation_id, id);
+  CREATE TABLE IF NOT EXISTS message_request_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_message_request_log_player ON message_request_log(player_id, created_at);
+  CREATE TABLE IF NOT EXISTS message_blocks (
+    blocker_player_id INTEGER NOT NULL,
+    blocked_player_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    PRIMARY KEY (blocker_player_id, blocked_player_id)
+  );
+`);
+
+// approved: a COMMUNITY is public at once (1); a CLUB is made with 0 and goes public when the super admin approves it (until then only its own
+// admins and the admins of the site see it). A database that had the table before this column keeps its rows public.
+if (!db.prepare('PRAGMA table_info(organisations)').all().some((c) => c.name === 'approved')) {
+  db.exec('ALTER TABLE organisations ADD COLUMN approved INTEGER NOT NULL DEFAULT 1');
+}
+
 module.exports = db;

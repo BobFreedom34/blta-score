@@ -28,6 +28,8 @@ const headerItemsRouter = require('./src/routes/headerItems');
 const courtIQRouter = require('./src/routes/courtiq');
 const bracketsRouter = require('./src/routes/brackets');
 const venuesRouter = require('./src/routes/venues');
+const communitiesRouter = require('./src/routes/communities');
+const messagesRouter = require('./src/routes/messages');
 const leaguesRouter = require('./src/routes/leagues');
 const cityAdminsRouter = require('./src/routes/cityAdmins');
 const aboutRouter = require('./src/routes/about');
@@ -131,6 +133,16 @@ try {
   require('./src/seasonSeed').ensureWinnersMenuItem(db);
 } catch (err) {
   console.error('Winners menu item failed:', err);
+}
+try {
+  require('./src/seasonSeed').ensureCommunitiesMenuItem(db);
+} catch (err) {
+  console.error('Communities menu item failed:', err);
+}
+try {
+  require('./src/seasonSeed').ensureMessagesMenuItem(db);
+} catch (err) {
+  console.error('Messages menu item failed:', err);
 }
 try {
   require('./src/seasonSeed').ensureContactMenuItem(db);
@@ -304,6 +316,12 @@ const TEMPLATE_ENTITY = {
     const v = db.prepare('SELECT name FROM venues WHERE slug = ?').get(slug);
     return v ? { name: v.name } : null;
   },
+  // a private conversation: the page has no name of its own (and is noindex), the chat is loaded by the script
+  conversation: () => ({ name: 'Messages' }),
+  community: (slug, lang, leagueId) => {
+    const o = db.prepare('SELECT name, logo_url, cover_url FROM organisations WHERE slug = ? AND league_id = ? AND hidden = 0 AND approved = 1').get(slug, leagueId);
+    return o ? { name: o.name, image: o.cover_url || o.logo_url || '' } : null;
+  },
 };
 function pageNotFound(res) {
   res.status(404).type('html').send('<!DOCTYPE html><html lang="sk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
@@ -429,6 +447,7 @@ app.use('/carousel-images', express.static(path.join(db.dataDir, 'carousel'), { 
 app.use('/sponsor-logos', express.static(path.join(db.dataDir, 'sponsor-logos'), { maxAge: '30d' }));
 app.use('/venue-photos', express.static(path.join(db.dataDir, 'venue-photos'), { maxAge: '30d' }));
 app.use('/season-heroes', express.static(path.join(db.dataDir, 'season-heroes'), { maxAge: '30d' }));
+app.use('/community-images', express.static(path.join(db.dataDir, 'community-images'), { maxAge: '30d' }));
 app.use('/winner-photos', express.static(path.join(db.dataDir, 'winner-photos'), { maxAge: '30d' }));
 // the media library (Backend > Media)
 app.use('/media', express.static(mediaRouter.DIR, { maxAge: '30d' }));
@@ -449,6 +468,8 @@ app.use('/api/header-items', headerItemsRouter);
 app.use('/api/courtiq', courtIQRouter);
 app.use('/api/brackets', bracketsRouter);
 app.use('/api/venues', venuesRouter);
+app.use('/api/communities', communitiesRouter);
+app.use('/api/messages', messagesRouter);
 app.use('/api/leagues', leaguesRouter);
 app.use('/api/city-admins', cityAdminsRouter);
 app.use('/api/about', aboutRouter);
@@ -589,8 +610,12 @@ function broadcastViewerCount(room) {
 }
 
 io.on('connection', (socket) => {
+  // a player's private room (Správy / Messages) is joined by the server only, from the signed cookie of the handshake
+  const connectedPlayer = require('./src/messages').playerIdFromSocket(socket);
+  if (connectedPlayer) socket.join(`player:${connectedPlayer}`);
   socket.on('join', (room) => {
-    if (typeof room === 'string' && room.length < 100) {
+    // a client may join a public room (a match) but never a private one by name
+    if (typeof room === 'string' && room.length < 100 && !room.startsWith('player:') && !room.startsWith('dm:')) {
       socket.join(room);
       if (room.startsWith('match:')) broadcastViewerCount(room);
     }

@@ -231,6 +231,48 @@ function ensureWinnersMenuItem(db) {
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_winners_added')").run();
 }
 
+// The "Komunity a kluby" menu item (the communities and clubs page), added once right after "Víťazi" (else after "Harmonogram", else at the end; an admin
+// can rename, move or delete it afterwards - the flag keeps a deleted one from coming back).
+function ensureCommunitiesMenuItem(db) {
+  if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'menu_communities_added'").get()) return;
+  if (!db.prepare("SELECT 1 FROM header_items WHERE link = '/communities'").get()) {
+    const after = db.prepare("SELECT sort_order FROM header_items WHERE link = '/vitazi' AND parent_id IS NULL").get()
+      || db.prepare("SELECT sort_order FROM header_items WHERE link = '/harmonogram' AND parent_id IS NULL").get();
+    let sortOrder;
+    if (after) {
+      sortOrder = after.sort_order + 1;
+      db.prepare('UPDATE header_items SET sort_order = sort_order + 1 WHERE parent_id IS NULL AND sort_order >= ?').run(sortOrder);
+    } else {
+      const maxSort = db.prepare('SELECT MAX(sort_order) AS m FROM header_items').get().m;
+      sortOrder = (maxSort == null ? 0 : maxSort) + 1;
+    }
+    db.prepare('INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order) VALUES (NULL, ?, ?, ?, ?)')
+      .run('Komunity a kluby', 'Communities and clubs', '/communities', sortOrder);
+  }
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_communities_added')").run();
+}
+
+// The "Správy" menu item (the private messages page), added once right after "Komunity a kluby" (else after "Harmonogram", else at the end; an admin
+// can rename, move or delete it afterwards - the flag keeps a deleted one from coming back).
+function ensureMessagesMenuItem(db) {
+  if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'menu_messages_added'").get()) return;
+  if (!db.prepare("SELECT 1 FROM header_items WHERE link = '/messages'").get()) {
+    const after = db.prepare("SELECT sort_order FROM header_items WHERE link = '/communities' AND parent_id IS NULL").get()
+      || db.prepare("SELECT sort_order FROM header_items WHERE link = '/harmonogram' AND parent_id IS NULL").get();
+    let sortOrder;
+    if (after) {
+      sortOrder = after.sort_order + 1;
+      db.prepare('UPDATE header_items SET sort_order = sort_order + 1 WHERE parent_id IS NULL AND sort_order >= ?').run(sortOrder);
+    } else {
+      const maxSort = db.prepare('SELECT MAX(sort_order) AS m FROM header_items').get().m;
+      sortOrder = (maxSort == null ? 0 : maxSort) + 1;
+    }
+    db.prepare('INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order) VALUES (NULL, ?, ?, ?, ?)')
+      .run('Správy', 'Messages', '/messages', sortOrder);
+  }
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('menu_messages_added')").run();
+}
+
 // The "Kontakt" menu item: its link #kontakt opens the contact window instead of a page. Added once at the end of the menu (an
 // admin can rename, move or delete it afterwards).
 function ensureContactMenuItem(db) {
@@ -268,4 +310,4 @@ function removeDescriptionSignOff(db) {
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('season_info_signoff_removed')").run();
 }
 
-module.exports = { removeDescriptionSignOff, ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, ensureWinnersMenuItem, ensureContactMenuItem, fixWinterStart };
+module.exports = { removeDescriptionSignOff, ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, ensureWinnersMenuItem, ensureCommunitiesMenuItem, ensureMessagesMenuItem, ensureContactMenuItem, fixWinterStart };

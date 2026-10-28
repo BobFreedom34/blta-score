@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLTA — Manage communities and clubs</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/"><img src="/img/blta-logo-sm.png" alt="BLTA" class="brand-logo"><span class="brand-text"><span class="brand-tennis">LIGA</span><small>BLTA</small></span></a>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">☰</button>
+    <nav class="nav-links" id="nav-links">
+      <span id="header-dynamic-items"></span>
+    </nav>
+  </div>
+</div>
+
+<div class="container">
+  <h1 style="margin-top:22px">Backend</h1>
+  <div class="tabs admin-tabs" style="display:none">
+    <a href="/admin" class="tab">Overview</a>
+    <a href="/header-admin" class="tab">Menu</a>
+    <a href="/badges-admin" class="tab">Badges</a>
+    <a href="/players" class="tab">Players</a>
+    <a href="/bracket-admin" class="tab">Brackets</a>
+    <a href="/venues-admin" class="tab">Venues</a>
+    <a href="/leagues-admin" class="tab">Cities</a>
+    <a href="/seasons-admin" class="tab">Seasons</a>
+    <a href="/tournaments-admin" class="tab">Tournaments</a>
+    <a href="/communities-admin" class="tab active">Communities</a>
+    <a href="/winners-admin" class="tab">Winners</a>
+    <a href="/reservations-admin" class="tab">Reservations</a>
+    <a href="/blog-admin" class="tab">Blog</a>
+    <a href="/seo-admin" class="tab">SEO</a>
+    <a href="/carousel-admin" class="tab">Carousel</a>
+    <a href="/rules-admin" class="tab">Rules</a>
+    <a href="/changelog-admin" class="tab">Points log</a>
+    <a href="/login-history" class="tab">Login History</a>
+  </div>
+  <h2 style="margin:18px 0 4px">Communities and clubs</h2>
+  <p style="color:var(--gray-dim)">Anybody can create a community or a club; there is no approval before it appears. Here you can hide one that should not be public (it disappears from every list and its admins cannot run it) and show it again.</p>
+
+  <div id="communities-admin-root">Loading…</div>
+</div>
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <span>BLTA - Bratislavská Liga Tenisových Amatérov</span>
+    <div style="display:flex;gap:12px">
+      <a href="/admin">Admin</a>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/localize.js"></script>
+<script src="/js/i18n.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/communities-admin.js"></script>
+</body>
+</html>

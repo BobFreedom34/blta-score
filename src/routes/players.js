@@ -337,7 +337,32 @@ router.delete('/:id', requireAdmin, (req, res) => {
   }
 
   deletePhotoFile(player.photo_url);
-  db.prepare('DELETE FROM players WHERE id = ?').run(player.id);
+  // a deleted player leaves the communities and clubs he was in (no ghost admin, no wrong member count)
+  // and from his private chats (all or nothing): a direct conversation that loses a member is deleted with its messages, his blocks go
+  const removed = [];
+  db.exec('BEGIN');
+  try {
+    db.prepare('DELETE FROM organisation_members WHERE player_id = ?').run(player.id);
+    const chats = db.prepare('SELECT conversation_id FROM conversation_members WHERE player_id = ?').all(player.id).map((r) => r.conversation_id);
+    db.prepare('DELETE FROM conversation_members WHERE player_id = ?').run(player.id);
+    chats.forEach((id) => {
+      const left = db.prepare('SELECT player_id FROM conversation_members WHERE conversation_id = ?').all(id).map((r) => r.player_id);
+      if (left.length < 2) {
+        db.prepare('DELETE FROM direct_messages WHERE conversation_id = ?').run(id);
+        db.prepare('DELETE FROM conversation_members WHERE conversation_id = ?').run(id);
+        db.prepare('DELETE FROM conversations WHERE id = ?').run(id);
+        removed.push({ id, left });
+      }
+    });
+    db.prepare('DELETE FROM message_blocks WHERE blocker_player_id = ? OR blocked_player_id = ?').run(player.id, player.id);
+    db.prepare('DELETE FROM players WHERE id = ?').run(player.id);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  // whoever was still in one of those chats sees it go
+  removed.forEach((c) => require('../messages').emitToPlayers(req.app.get('io'), c.left, 'dm:removed', { conversationId: c.id }));
   res.status(204).end();
 });
 

@@ -57,7 +57,7 @@ test('a logged-out visitor can read the chat but cannot write: 401, nothing stor
 });
 
 test('a referee (shared code, not a player) cannot write either', async () => {
-  const posted = await call('POST', `/api/matches/${token}/messages`, { cookie: signed('blta_referee', 'ok'), body: { body: 'hello' } });
+  const posted = await call('POST', `/api/matches/${token}/messages`, { cookie: signed('blta_referee', 'ref:ok'), body: { body: 'hello' } });
   assert.strictEqual(posted.status, 401, posted.text);
 });
 

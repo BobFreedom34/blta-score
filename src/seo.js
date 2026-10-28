@@ -82,6 +82,26 @@ const PAGES = [
     description: 'Rezervácie kurtov BLTA - vyber si voľný termín na tenisovom kurte na najbližších 7 dní a rezervuj si ho jedným kliknutím.',
   },
   {
+    key: 'messages', label: 'Messages (inbox)', path: '/messages', file: 'messages.html', blta: null, slugSk: 'spravy', noindex: true,
+    title: `Správy${SUFFIX}`,
+    description: 'Súkromné správy medzi hráčmi BLTA.',
+  },
+  {
+    key: 'conversation', label: 'Messages (a conversation, template)', path: '/messages/:id', file: 'messages.html', template: true, blta: null, slugSk: 'konverzacia', noindex: true,
+    title: `Správy${SUFFIX}`,
+    description: 'Súkromné správy medzi hráčmi BLTA.',
+  },
+  {
+    key: 'communities', label: 'Communities and clubs (list)', path: '/communities', file: 'communities.html', blta: null, slugSk: 'komunity-a-kluby',
+    title: `Komunity a kluby${SUFFIX}`,
+    description: 'Komunity a kluby BLTA - skupiny hráčov, ktoré si organizujú vlastné turnaje a akcie. Pridaj sa do klubu alebo si vytvor vlastnú komunitu.',
+  },
+  {
+    key: 'community', label: 'Community or club page (template)', path: '/community/:slug', file: 'community.html', template: true, blta: null, slugSk: 'komunita',
+    title: `{name}${SUFFIX}`,
+    description: '{name} - komunita alebo klub hráčov BLTA: novinky, členovia a nadchádzajúce turnaje a akcie.',
+  },
+  {
     key: 'blog', label: 'Blog (list of articles)', path: '/blog', file: 'blog.html', blta: 'https://old.blta.sk/blog/', slugSk: 'blog',
     title: `Blog${SUFFIX}`,
     description: 'Novinky z tenisovej amatérskej ligy BLTA, ktorá sa hrá v Bratislave a v okolí. Ak chces byť informovaný o novinkách z amatérskeho tenisu tak si tu správne.',
@@ -222,6 +242,26 @@ const ENGLISH = {
     slug: 'court-booking',
     title: `Court booking${SUFFIX_EN}`,
     description: 'BLTA court booking - pick a free time on the tennis court for the next 7 days and reserve it with one click.',
+  },
+  messages: {
+    slug: 'messages',
+    title: `Messages${SUFFIX_EN}`,
+    description: 'Private messages between BLTA players.',
+  },
+  conversation: {
+    slug: 'chat',
+    title: `Messages${SUFFIX_EN}`,
+    description: 'Private messages between BLTA players.',
+  },
+  communities: {
+    slug: 'communities',
+    title: `Communities and clubs${SUFFIX_EN}`,
+    description: 'BLTA communities and clubs - groups of players who run their own tournaments and events. Join a club or create your own community.',
+  },
+  community: {
+    slug: 'community',
+    title: `{name}${SUFFIX_EN}`,
+    description: '{name} - a community or club of BLTA players: news, members and upcoming tournaments and events.',
   },
   blog: {
     slug: 'blog',

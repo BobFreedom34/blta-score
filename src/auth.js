@@ -128,12 +128,18 @@ function requireAdmin(req, res, next) {
 // like editing location/date or deleting the match). Same boolean-cookie
 // shape as isAdmin above, since there's no specific identity to track —
 // just "this browser proved it knows the code" — not a specific referee.
+// A signature covers the VALUE of a cookie only, not its name, and every cookie here is signed with the same secret: a value taken from one cookie
+// would be valid in another. So every kind of cookie carries a tag of its own in its value and is read strictly: the referee cookie is "ref:ok" (it
+// used to be a bare "ok", which is exactly what the admin cookie holds - a referee could have used his cookie as an admin cookie), the club cookie
+// is "org:<id>"; the admin cookie ("ok", "city:<id>") and the player cookie (a bare id) are what they have always been.
+const REFEREE_VALUE = 'ref:ok';
+
 function isReferee(req) {
-  return req.signedCookies && req.signedCookies[REFEREE_COOKIE_NAME] === 'ok';
+  return !!req.signedCookies && req.signedCookies[REFEREE_COOKIE_NAME] === REFEREE_VALUE;
 }
 
 function logInReferee(res) {
-  res.cookie(REFEREE_COOKIE_NAME, 'ok', cookieOptions());
+  res.cookie(REFEREE_COOKIE_NAME, REFEREE_VALUE, cookieOptions());
 }
 
 function logOutReferee(res) {
@@ -169,11 +175,33 @@ function isPlayer(req) {
 // function at all, so failed attempts never show up here either.
 function logInPlayer(res, playerId) {
   res.cookie(PLAYER_COOKIE_NAME, String(playerId), cookieOptions());
+  // a new login never starts as a club the browser was acting as before (the previous person's choice)
+  clearActingOrg(res);
   db.prepare('INSERT INTO login_events (player_id) VALUES (?)').run(playerId);
 }
 
 function logOutPlayer(res) {
   res.clearCookie(PLAYER_COOKIE_NAME, clearOptions());
+  clearActingOrg(res);
+}
+
+// "Acting as a club" (src/routes/communities.js): the id of the community or club whose profile a player has switched to. The cookie alone grants
+// nothing - communities.actingOrganisation() checks on every request that the logged-in player is still an admin of that organisation.
+const ACTING_ORG_COOKIE = 'blta_acting_org';
+
+function getActingOrgId(req) {
+  const raw = req.signedCookies && req.signedCookies[ACTING_ORG_COOKIE];
+  const m = /^org:(\d+)$/.exec(typeof raw === 'string' ? raw : '');
+  const id = m ? Number(m[1]) : 0;
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function setActingOrg(res, id) {
+  res.cookie(ACTING_ORG_COOKIE, `org:${id}`, cookieOptions());
+}
+
+function clearActingOrg(res) {
+  res.clearCookie(ACTING_ORG_COOKIE, clearOptions());
 }
 
 function requirePlayer(req, res, next) {
@@ -246,4 +274,5 @@ module.exports = {
   isPlayer, getPlayerId, logInPlayer, logOutPlayer, requirePlayer,
   requireLoggedIn, hashPin, verifyPin, canSeePrivateFields, stripPrivateFields,
   isReferee, logInReferee, logOutReferee, requireLoggedInOrReferee,
+  ACTING_ORG_COOKIE, getActingOrgId, setActingOrg, clearActingOrg,
 };
