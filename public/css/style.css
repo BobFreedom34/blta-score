@@ -457,19 +457,25 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
    otherwise wrap awkwardly instead of failing cleanly down to this
    hamburger menu. */
 @media (max-width: 1024px) {
-  /* Centered rather than left in .topbar-right — the toggle is the main
-     way in to the rest of the site at this width, so it gets the same
-     prominent middle position .nav-links itself takes above 1024px,
-     rather than being just another icon crowded against the language
-     switcher and the bell. Positioned against .topbar (position:sticky),
-     not .topbar-right, for exactly that reason — it needs to escape
-     .topbar-right's own right-aligned position to get there. */
+  /* The hamburger is the first item of the group of icons on the right (hamburger, profile pill, person, messages, bell), all close together: on a small
+     phone a hamburger centred in the bar ran into the avatar and spread the icons over the whole width. */
+  .topbar-right { gap: 4px; }
+  /* very small phones (320-380px): every icon a little narrower so the whole group still fits beside the logo */
+  @media (max-width: 380px) {
+    .topbar-inner { padding-left: 12px; padding-right: 12px; gap: 6px; }
+    .topbar-right { gap: 1px; }
+    .nav-toggle { padding: 4px 3px; font-size: 22px; }
+    .auth-menu-btn, .topbar-msg { width: 28px; height: 28px; }
+    .badge-bell-btn { padding: 4px 3px; }
+    .profile-pill-av { width: 26px; height: 26px; }
+    .brand-logo { height: 30px; }
+  }
   .nav-toggle {
     display: block;
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
+    position: static;
+    transform: none;
+    order: -2;
+    flex: none;
   }
   .nav-links {
     display: none;
