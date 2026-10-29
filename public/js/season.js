@@ -293,11 +293,15 @@ function tablesHtml() {
   if (!cats.includes(category)) category = cats[0];
   const pills = cats.map((c) => `<button type="button" class="tab${c === category ? ' active' : ''}" data-cat="${c}">${escapeHtml(CATEGORY_NAMES[c])}<small>${groups.filter((g) => g.category === c).length}</small></button>`).join('');
   const frozen = standings.frozen ? `<p class="sv-note">${escapeHtml(t('tables.frozen'))}</p>` : '';
+  // a tournament that chose its rules says how the tables are calculated
+  const rules = standings.rules
+    ? `<p class="sv-note" id="sv-rules">${escapeHtml(t(`season.rulesScoring.${standings.rules.scoring}`))} ${escapeHtml(t('season.rulesOrder', { list: standings.rules.tiebreakers.map((k, i) => `${i + 1}. ${t(`season.rulesTie.${k}`)}`).join(', ') }))}</p>`
+    : '';
   return `
     <section class="sv-sec" id="sv-tables">
       <div class="tabs" id="sv-cats">${pills}<a class="sv-more" href="/tables?season=${season.id}">${escapeHtml(t('season.fullTables'))} ›</a></div>
       <div class="sv-gl">${groups.filter((g) => g.category === category).map(groupTableHtml).join('')}</div>
-      ${frozen}
+      ${frozen}${rules}
     </section>`;
 }
 

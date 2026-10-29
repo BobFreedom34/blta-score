@@ -73,6 +73,7 @@ test('texts: every kind has a Slovak and an English wording that matches the bel
     PHOTO: { name: 'Dana', matchToken: 'tok3' },
     RANKING_UP: { amount: 3, rank: 4 },
     RANKING_DOWN: { amount: 2, rank: 9 },
+    INVITE: { fromName: 'Anna', orgName: 'VIP CUP' },
     BADGE: { badge: 'Maratónec' },
     BADGE_REMINDER: { badge: 'Vianočný' },
   };

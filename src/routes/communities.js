@@ -12,6 +12,8 @@ const leagues = require('../leagues');
 const communities = require('../communities');
 const clubTournaments = require('../clubTournaments');
 const seasonsRoutes = require('./seasons');
+const messagesRoutes = require('./messages');
+const messagesLib = require('../messages');
 const courtIQ = require('../courtIQEngine');
 
 const router = express.Router();
@@ -20,6 +22,19 @@ const { serialize, slugFor, isOrgAdmin } = communities;
 const TYPES = ['CLUB', 'COMMUNITY'];
 const POLICIES = ['OPEN', 'APPROVAL'];
 const MAX_PER_DAY = 3;
+
+// the emoji a player can put on a published post (the page offers exactly these)
+const REACTION_EMOJI = ['👍', '❤️', '🔥', '💪', '👏', '🎾', '🚀', '🏆', '😂', '😮'];
+
+// the reactions of posts as [{ emoji, count, mine }] by post id, in the order of REACTION_EMOJI; `viewer` is the player asking (or null)
+function reactionsOf(postIds, viewer) {
+  const out = new Map(postIds.map((id) => [id, []]));
+  if (!postIds.length) return out;
+  const rows = db.prepare(`SELECT post_id, emoji, COUNT(*) AS n, SUM(CASE WHEN player_id = ? THEN 1 ELSE 0 END) AS mine FROM organisation_post_reactions WHERE post_id IN (${postIds.map(() => '?').join(',')}) GROUP BY post_id, emoji`).all(viewer || 0, ...postIds);
+  rows.sort((a, b) => REACTION_EMOJI.indexOf(a.emoji) - REACTION_EMOJI.indexOf(b.emoji));
+  rows.forEach((r) => out.get(r.post_id).push({ emoji: r.emoji, count: r.n, mine: r.mine > 0 }));
+  return out;
+}
 
 const tidy = (value) => String(value === undefined || value === null ? '' : value).replace(/\s+/g, ' ').trim();
 
@@ -78,16 +93,19 @@ function needPlayer(req, res) {
 }
 
 // the organisation of the address of an organisation route, and the player only if he is one of its admins
+// The super admin of the site runs any community or club too (the player behind the request is null when he is not logged in as a player as well).
 function needOrgAdmin(req, res) {
-  const playerId = needPlayer(req, res);
-  if (!playerId) return null;
+  const session = auth.adminSession(req);
+  const superAdmin = !!session && session.role === 'SUPER';
+  const playerId = superAdmin ? auth.getPlayerId(req) : needPlayer(req, res);
+  if (!superAdmin && !playerId) return null;
   const org = orgOr404(req, res, 'manage');
   if (!org) return null;
-  if (!isOrgAdmin(org.id, playerId)) {
+  if (!superAdmin && !isOrgAdmin(org.id, playerId)) {
     res.status(403).json({ error: 'Only an admin of this community or club can do this' });
     return null;
   }
-  return { org, playerId };
+  return { org, playerId, superAdmin };
 }
 
 router.get('/', (req, res) => {
@@ -128,7 +146,7 @@ router.get('/feed', (req, res) => {
   const orgOf = (r) => ({ id: r.org_id, slug: r.org_slug, name: r.org_name, type: r.org_type, logoUrl: r.org_logo || '' });
   const orgColumns = 'o.id AS org_id, o.slug AS org_slug, o.name AS org_name, o.type AS org_type, o.logo_url AS org_logo';
   const posts = db.prepare(`
-    SELECT po.id, po.body, po.created_at, p.name, p.slug, ${orgColumns}
+    SELECT po.id, po.body, po.image_url, po.created_at, p.name, p.slug, ${orgColumns}
     FROM organisation_posts po
     JOIN organisations o ON o.id = po.organisation_id
     ${member}
@@ -136,8 +154,10 @@ router.get('/feed', (req, res) => {
     WHERE po.hidden = 0 AND o.hidden = 0 AND o.approved = 1 ${cursor ? 'AND po.created_at < ?' : ''}
     ORDER BY po.created_at DESC, po.id DESC LIMIT ${POSTS_PAGE + 1}
   `).all(...(cursor ? [playerId, cursor] : [playerId])).map((r) => ({
-    type: 'POST', id: r.id, body: r.body, authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at, organisation: orgOf(r),
+    type: 'POST', id: r.id, body: r.body, imageUrl: r.image_url || '', authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at, organisation: orgOf(r),
   }));
+  const postReactions = reactionsOf(posts.map((p) => p.id), playerId);
+  posts.forEach((p) => { p.reactions = postReactions.get(p.id); });
   const tournaments = db.prepare(`
     SELECT s.id, s.name, s.slug, s.start_date, s.end_date, s.venue, s.play_type, s.registration_open, s.created_at, ${orgColumns}
     FROM seasons s
@@ -312,16 +332,110 @@ const adminCount = (orgId) => db.prepare("SELECT COUNT(*) AS n FROM organisation
 const nowIso = () => new Date().toISOString();
 
 // a player asks to join (APPROVAL) or joins at once (OPEN); asking again is harmless, a rejected player waits REREQUEST_DAYS
+// the invitation link: the private token of an organisation, made on the first ask
+function inviteTokenOf(org) {
+  if (org.invite_token) return org.invite_token;
+  return newInviteToken(org.id);
+}
+function newInviteToken(orgId) {
+  const token = crypto.randomBytes(18).toString('base64url');
+  db.prepare('UPDATE organisations SET invite_token = ? WHERE id = ?').run(token, orgId);
+  return token;
+}
+// the link a request brings: null = none, true = the right one, false = a wrong or old one
+function inviteAsked(org, asked) {
+  if (asked === undefined || asked === null || asked === '') return null;
+  if (typeof asked !== 'string' || !org.invite_token || asked.length !== org.invite_token.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(asked), Buffer.from(org.invite_token));
+}
+
+// ---------------- invitations to players (a message with a Join button) ----------------
+
+const INVITES_PER_DAY = 50;
+const MAX_INVITES_AT_ONCE = 50;
+
+// the list an admin picks names from: the players of the city who can read a message (a phone on file), not himself, not a member, not a blocked one;
+// ?q= narrows it by name. Names and pictures only.
+router.get('/:id/invite-candidates', (req, res) => {
+  const ctx = needOrgAdmin(req, res);
+  if (!ctx) return;
+  const q = tidy(req.query.q);
+  const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const me = ctx.playerId || 0;
+  const rows = db.prepare(`
+    SELECT p.id, p.name, p.slug, p.photo_url, EXISTS (SELECT 1 FROM organisation_invites i WHERE i.organisation_id = ? AND i.player_id = p.id) AS invited FROM players p
+    WHERE p.league_id = ? AND p.id != ? AND p.phone IS NOT NULL AND p.phone != '' AND p.name LIKE ? ESCAPE '\\'
+      AND NOT EXISTS (SELECT 1 FROM organisation_members m WHERE m.organisation_id = ? AND m.player_id = p.id AND m.status = 'ACTIVE')
+      AND NOT EXISTS (SELECT 1 FROM message_blocks b WHERE (b.blocker_player_id = ? AND b.blocked_player_id = p.id) OR (b.blocker_player_id = p.id AND b.blocked_player_id = ?))
+    ORDER BY p.name COLLATE NOCASE LIMIT 50
+  `).all(ctx.org.id, ctx.org.league_id, me, like, ctx.org.id, me, me);
+  res.json({ items: rows.map((r) => ({ ...messagesLib.card(r), invited: !!r.invited })) });
+});
+
+// An admin invites players: each gets a message from him with the community in it and joins from it at once, without the approval. The admin writes as a
+// player, so a super admin who is not logged in as a player cannot send.
+router.post('/:id/invite-players', (req, res) => {
+  const ctx = needOrgAdmin(req, res);
+  if (!ctx) return;
+  if (!ctx.playerId) return res.status(401).json({ error: 'Please log in as a player to send invitations' });
+  const ids = req.body && req.body.playerIds;
+  if (!Array.isArray(ids) || !ids.length || ids.length > MAX_INVITES_AT_ONCE || !ids.every((id) => Number.isInteger(id) && id > 0)) {
+    return res.status(400).json({ error: `Pick 1 to ${MAX_INVITES_AT_ONCE} players` });
+  }
+  if (!ctx.org.approved) return res.status(409).json({ error: 'A club can invite people once it is approved' });
+  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  const today = db.prepare('SELECT COUNT(*) AS n FROM organisation_invites WHERE invited_by_player_id = ? AND created_at >= ?').get(ctx.playerId, since).n;
+  if (today + new Set(ids).size > INVITES_PER_DAY) return res.status(429).json({ error: `You can send at most ${INVITES_PER_DAY} invitations a day` });
+  const typeWord = ctx.org.type === 'CLUB' ? 'klubu' : 'komunity';
+  const io = req.app.get('io');
+  let sent = 0;
+  const skipped = [];
+  [...new Set(ids)].forEach((id) => {
+    const skip = (reason) => skipped.push({ playerId: id, reason });
+    if (id === ctx.playerId) return skip('SELF');
+    const player = db.prepare('SELECT id, league_id, phone FROM players WHERE id = ?').get(id);
+    if (!player || !player.phone || player.league_id !== ctx.org.league_id) return skip('NOT_FOUND');
+    if (messagesLib.isBlocked(ctx.playerId, id)) return skip('BLOCKED');
+    if (db.prepare("SELECT 1 FROM organisation_members WHERE organisation_id = ? AND player_id = ? AND status = 'ACTIVE'").get(ctx.org.id, id)) return skip('MEMBER');
+    if (db.prepare('SELECT 1 FROM organisation_invites WHERE organisation_id = ? AND player_id = ?').get(ctx.org.id, id)) return skip('ALREADY_INVITED');
+    db.prepare('INSERT INTO organisation_invites (organisation_id, player_id, invited_by_player_id) VALUES (?, ?, ?)').run(ctx.org.id, id, ctx.playerId);
+    const conversationId = messagesRoutes.conversationOf(ctx.playerId, id);
+    messagesRoutes.deliver(io, conversationId, ctx.playerId, `Pozývam ťa do ${typeWord} „${ctx.org.name}“. Kliknutím na Pridať sa sa pridáš hneď, bez schvaľovania.`, ctx.org.id);
+    sent += 1;
+  });
+  res.json({ sent, skipped });
+});
+
+router.get('/:id/invite', (req, res) => {
+  const ctx = needOrgAdmin(req, res);
+  if (!ctx) return;
+  res.json({ token: inviteTokenOf(ctx.org) });
+});
+
+// a new link: the old one stops working
+router.post('/:id/invite/reset', (req, res) => {
+  const ctx = needOrgAdmin(req, res);
+  if (!ctx) return;
+  res.json({ token: newInviteToken(ctx.org.id) });
+});
+
 router.post('/:id/join', (req, res) => {
   const playerId = needPlayer(req, res);
   if (!playerId) return;
   const org = orgOr404(req, res, 'join');
   if (!org) return;
+  const asked = inviteAsked(org, req.body && req.body.inviteToken);
+  if (asked === false) return res.status(400).json({ error: 'This invitation is no longer valid' });
+  // invited by the link, or by a message of an admin (organisation_invites)
+  const byMessage = !!db.prepare('SELECT 1 FROM organisation_invites WHERE organisation_id = ? AND player_id = ?').get(org.id, playerId);
+  const invited = asked === true || byMessage;
   const m = communities.memberOf(org.id, playerId);
-  if (m && (m.status === 'ACTIVE' || m.status === 'PENDING')) return res.json({ status: m.status });
-  const wait = communities.canRequestAgainAt(m);
+  if (m && m.status === 'ACTIVE') return res.json({ status: m.status });
+  if (m && m.status === 'PENDING' && !invited) return res.json({ status: m.status });
+  const wait = invited ? null : communities.canRequestAgainAt(m);
   if (wait) return res.status(409).json({ error: 'Your request was declined; you can ask again later', canRequestAgainAt: wait });
-  const status = org.join_policy === 'OPEN' ? 'ACTIVE' : 'PENDING';
+  const status = invited || org.join_policy === 'OPEN' ? 'ACTIVE' : 'PENDING';
+  if (status === 'ACTIVE') db.prepare('DELETE FROM organisation_invites WHERE organisation_id = ? AND player_id = ?').run(org.id, playerId); // the invitation is used
   if (m) db.prepare("UPDATE organisation_members SET status = ?, role = 'MEMBER', joined_at = ?, decided_at = NULL WHERE organisation_id = ? AND player_id = ?").run(status, nowIso(), org.id, playerId);
   else db.prepare("INSERT INTO organisation_members (organisation_id, player_id, role, status) VALUES (?, ?, 'MEMBER', ?)").run(org.id, playerId, status);
   res.json({ status });
@@ -358,7 +472,7 @@ router.get('/:id/members', (req, res) => {
   `).all(org.id).map((r) => ({ playerId: r.player_id, name: r.name, slug: r.slug, role: r.role, joinedAt: r.joined_at }));
   const viewer = auth.getPlayerId(req);
   let pending = [];
-  if (viewer && isOrgAdmin(org.id, viewer)) {
+  if ((viewer && isOrgAdmin(org.id, viewer)) || communities.isSuperAdmin(req)) {
     pending = db.prepare(`
       SELECT m.player_id, m.joined_at, p.name, p.slug, cr.rating FROM organisation_members m JOIN players p ON p.id = m.player_id
       LEFT JOIN courtiq_ratings cr ON cr.player_id = m.player_id
@@ -425,13 +539,15 @@ router.get('/:id/posts', (req, res) => {
   if (!org) return;
   const before = /^\d+$/.test(String(req.query.before || '')) ? Number(req.query.before) : null;
   const rows = db.prepare(`
-    SELECT po.id, po.body, po.author_player_id, po.created_at, p.name, p.slug FROM organisation_posts po LEFT JOIN players p ON p.id = po.author_player_id
+    SELECT po.id, po.body, po.image_url, po.author_player_id, po.created_at, p.name, p.slug FROM organisation_posts po LEFT JOIN players p ON p.id = po.author_player_id
     WHERE po.organisation_id = ? AND po.hidden = 0 ${before ? 'AND po.id < ?' : ''} ORDER BY po.id DESC LIMIT ${POSTS_PAGE + 1}
   `).all(...(before ? [org.id, before] : [org.id]));
   const viewer = auth.getPlayerId(req);
   const viewerAdmin = !!viewer && isOrgAdmin(org.id, viewer);
-  const items = rows.slice(0, POSTS_PAGE).map((r) => ({
-    id: r.id, body: r.body, authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at,
+  const page = rows.slice(0, POSTS_PAGE);
+  const postReactions = reactionsOf(page.map((r) => r.id), viewer);
+  const items = page.map((r) => ({
+    id: r.id, body: r.body, imageUrl: r.image_url || '', reactions: postReactions.get(r.id), authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at,
     canDelete: communities.siteAdminFor(req, org) || viewerAdmin || (!!viewer && r.author_player_id === viewer),
   }));
   res.json({ items, more: rows.length > POSTS_PAGE });
@@ -440,12 +556,18 @@ router.get('/:id/posts', (req, res) => {
 router.post('/:id/posts', (req, res) => {
   const ctx = needOrgAdmin(req, res);
   if (!ctx) return;
+  if (!ctx.playerId) return res.status(401).json({ error: 'Please log in as a player to write a post' }); // a post has a player as its author
   const body = String(req.body.body || '').trim();
-  if (!body) return res.status(400).json({ error: 'Write something first' });
+  // a picture is optional, and only one this community uploaded (post-image below) can be used: never a link of somebody else's
+  const imageUrl = req.body.imageUrl === undefined || req.body.imageUrl === null || req.body.imageUrl === '' ? '' : req.body.imageUrl;
+  if (imageUrl !== '' && !(typeof imageUrl === 'string' && new RegExp(`^/community-images/${ctx.org.id}-post-[\\w.-]+$`).test(imageUrl) && !imageUrl.includes('..'))) {
+    return res.status(400).json({ error: 'The picture must be one uploaded for this community' });
+  }
+  if (!body && !imageUrl) return res.status(400).json({ error: 'Write something first' });
   if (body.length > 2000) return res.status(400).json({ error: 'The text is too long (max 2000 characters)' });
-  const info = db.prepare('INSERT INTO organisation_posts (organisation_id, author_player_id, body) VALUES (?, ?, ?)').run(ctx.org.id, ctx.playerId, body);
-  const row = db.prepare('SELECT po.id, po.body, po.created_at, p.name, p.slug FROM organisation_posts po LEFT JOIN players p ON p.id = po.author_player_id WHERE po.id = ?').get(Number(info.lastInsertRowid));
-  res.status(201).json({ id: row.id, body: row.body, authorName: row.name || '', authorSlug: row.slug || '', createdAt: row.created_at, canDelete: true });
+  const info = db.prepare('INSERT INTO organisation_posts (organisation_id, author_player_id, body, image_url) VALUES (?, ?, ?, ?)').run(ctx.org.id, ctx.playerId, body, imageUrl || null);
+  const row = db.prepare('SELECT po.id, po.body, po.image_url, po.created_at, p.name, p.slug FROM organisation_posts po LEFT JOIN players p ON p.id = po.author_player_id WHERE po.id = ?').get(Number(info.lastInsertRowid));
+  res.status(201).json({ id: row.id, body: row.body, imageUrl: row.image_url || '', reactions: [], authorName: row.name || '', authorSlug: row.slug || '', createdAt: row.created_at, canDelete: true });
 });
 
 // the author, an admin of the organisation or an admin of the site
@@ -458,7 +580,24 @@ router.delete('/:id/posts/:postId', (req, res) => {
   if (!post) return res.status(404).json({ error: 'Post not found' });
   if (!communities.siteAdminFor(req, org) && !isOrgAdmin(org.id, viewer) && post.author_player_id !== viewer) return res.status(403).json({ error: 'Only the author or an admin of this community can delete a post' });
   db.prepare('DELETE FROM organisation_posts WHERE id = ?').run(post.id);
+  db.prepare('DELETE FROM organisation_post_reactions WHERE post_id = ?').run(post.id);
+  deleteImageFile(post.image_url);
   res.json({ ok: true });
+});
+
+// a logged-in player puts an emoji on a published post, or takes his own back (the same call again)
+router.post('/:id/posts/:postId/reactions', (req, res) => {
+  const playerId = needPlayer(req, res);
+  if (!playerId) return;
+  const org = orgOr404(req, res, 'read');
+  if (!org) return;
+  const post = /^\d+$/.test(req.params.postId) ? db.prepare('SELECT id FROM organisation_posts WHERE id = ? AND organisation_id = ? AND hidden = 0').get(Number(req.params.postId), org.id) : null;
+  if (!post) return res.status(404).json({ error: 'Post not found' });
+  const emoji = req.body && req.body.emoji;
+  if (!REACTION_EMOJI.includes(emoji)) return res.status(400).json({ error: 'Pick one of the offered emoji' });
+  const had = db.prepare('DELETE FROM organisation_post_reactions WHERE post_id = ? AND player_id = ? AND emoji = ?').run(post.id, playerId, emoji).changes;
+  if (!had) db.prepare('INSERT INTO organisation_post_reactions (post_id, player_id, emoji) VALUES (?, ?, ?)').run(post.id, playerId, emoji);
+  res.json({ reactions: reactionsOf([post.id], playerId).get(post.id) });
 });
 
 // ---------------- the logo and the cover ----------------
@@ -488,7 +627,7 @@ router.post('/:id/:which(logo|cover)', (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Upload a JPG, PNG or WebP picture' });
     // the file took its time: the club may have been hidden, or the player demoted, meanwhile
     const fresh = orgById(ctx.org.id);
-    if (!fresh || fresh.hidden || !isOrgAdmin(fresh.id, ctx.playerId)) return res.status(403).json({ error: 'Only an admin of this community or club can do this' });
+    if (!fresh || fresh.hidden || !(ctx.superAdmin || isOrgAdmin(fresh.id, ctx.playerId))) return res.status(403).json({ error: 'Only an admin of this community or club can do this' });
     ctx.org = fresh;
     const column = IMAGE_COLUMN[req.params.which];
     const filename = `${ctx.org.id}-${req.params.which}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}${MIME_EXT[req.file.mimetype]}`;
@@ -496,6 +635,21 @@ router.post('/:id/:which(logo|cover)', (req, res) => {
     db.prepare(`UPDATE organisations SET ${column} = ? WHERE id = ?`).run(`/community-images/${filename}`, ctx.org.id);
     deleteImageFile(ctx.org[column]);
     res.json(serialize(orgById(ctx.org.id), req));
+  });
+});
+
+// a picture for a news post: stored like the logo and the cover, answered with its address (the post then names it as imageUrl)
+router.post('/:id/post-image', (req, res) => {
+  const ctx = needOrgAdmin(req, res);
+  if (!ctx) return;
+  imageUpload.single('image')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'The picture must be under 6 MB' : 'Could not process the uploaded file' });
+    if (!req.file) return res.status(400).json({ error: 'Upload a JPG, PNG or WebP picture' });
+    const fresh = orgById(ctx.org.id);
+    if (!fresh || fresh.hidden || !(ctx.superAdmin || isOrgAdmin(fresh.id, ctx.playerId))) return res.status(403).json({ error: 'Only an admin of this community or club can do this' });
+    const filename = `${fresh.id}-post-${Date.now()}-${crypto.randomBytes(4).toString('hex')}${MIME_EXT[req.file.mimetype]}`;
+    fs.writeFileSync(path.join(IMAGE_DIR, filename), req.file.buffer);
+    res.status(201).json({ url: `/community-images/${filename}` });
   });
 });
 
@@ -511,4 +665,5 @@ router.delete('/:id/:which(logo|cover)', (req, res) => {
 module.exports = router;
 module.exports.needOrgAdmin = needOrgAdmin;
 module.exports.needPlayer = needPlayer;
+module.exports.REACTION_EMOJI = REACTION_EMOJI;
 module.exports.orgById = orgById;

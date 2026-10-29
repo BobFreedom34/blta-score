@@ -211,7 +211,7 @@ test('the switcher puts only DOM text, never markup from a name, into the page',
   assert.ok(/textContent/.test(block));
 });
 
-test('the club page reacts to the menu links: #members and #events open the tab, #settings scrolls to the panel', () => {
+test('the club page reacts to the menu links: #members and #events open the tab, #settings opens the settings dialog', () => {
   const js = read('js/community.js');
   assert.ok(js.includes("addEventListener('hashchange'") && js.includes("'#settings'"));
 });
@@ -306,7 +306,7 @@ test('the list page has a Feed tab first (and open by default) with the news of 
   assert.ok(js.indexOf("['feed', 'com.tabFeed']") >= 0 && js.indexOf("['feed', 'com.tabFeed']") < js.indexOf("['discover', 'com.tabDiscover']"), 'Feed is the first tab');
   assert.ok(js.includes("api('/communities/feed") && js.includes('before='), 'it reads the feed and the older pages');
   ['com.feedEmptyTitle', 'com.feedEmptyText', 'com.feedExplore', 'com.feedSuggested', 'com.feedLogin'].forEach((k) => assert.ok(js.includes(`t('${k}')`), `${k} is used`));
-  assert.ok(js.includes('escapeHtml(p.body)') && js.includes('escapeHtml(p.organisation.name)') && js.includes('encodeURIComponent(p.organisation.slug)'), 'a news item is escaped');
+  assert.ok(js.includes('comPostText(p.body)') && read('js/community-post.js').includes('escapeHtml(text)') && js.includes('escapeHtml(p.organisation.name)') && js.includes('encodeURIComponent(p.organisation.slug)'), 'a news item is escaped');
   // a tournament made by one of his communities is a card of the feed too; the older pages start at the time the answer names
   assert.ok(js.includes("p.type === 'TOURNAMENT'") && js.includes("t('com.feedNewTournament')"), 'the feed draws tournaments');
   assert.ok(js.includes('escapeHtml(p.name)') && js.includes('/tournament/${encodeURIComponent(p.slug)}'), 'a tournament is escaped and links to its page');

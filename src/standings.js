@@ -33,10 +33,28 @@ function gameCounts(record) {
   return { 1: g1, 2: g2 };
 }
 
+// The rules a tournament can choose (the league's tables use the BLTA scoring and the order described at the top):
+// scoring BLTA = 3 / 2 / 1 / 0 as described above, WIN2 = 2 points for a win and 0 for a loss, WIN1 = 1 point for a win and 0 for a loss.
+// Tie-break conditions, tried in the chosen order for players level on points: H2H = the match between them (only when exactly two are
+// level), SETS = set difference, WINS = number of wins, GAMES = game difference. Players level on every one share a position.
+const SCORING = ['BLTA', 'WIN2', 'WIN1'];
+const DEFAULT_TIEBREAKERS = ['H2H', 'SETS', 'WINS', 'GAMES'];
+
+// {scoring, tiebreakers} from whatever is stored (a comma text or a list); a bad value falls back, a repeated condition counts once and
+// a missing one goes to the end, so the list always holds all four.
+function normalizeRules(rules) {
+  const r = rules || {};
+  const scoring = SCORING.includes(r.scoring) ? r.scoring : 'BLTA';
+  const asked = (Array.isArray(r.tiebreakers) ? r.tiebreakers : String(r.tiebreakers || '').split(',')).map((s) => String(s).trim()).filter((s) => DEFAULT_TIEBREAKERS.includes(s));
+  const tiebreakers = [...new Set(asked)];
+  DEFAULT_TIEBREAKERS.forEach((k) => { if (!tiebreakers.includes(k)) tiebreakers.push(k); });
+  return { scoring, tiebreakers };
+}
+
 // record: { player1Id, player2Id, winnerId, status, endReason, date, state: { setsWon, sets } }
 // Returns { winnerSide, sets1, sets2, games1, games2, pts1, pts2 } or null when the match doesn't count
 // (not finished, no winner, or marked unfinished).
-function scoreRecord(record) {
+function scoreRecord(record, scoring = 'BLTA') {
   if (record.status !== 'FINISHED' || !record.winnerId || record.endReason === 'UNFINISHED') return null;
   const winnerSide = record.winnerId === record.player1Id ? 1 : record.winnerId === record.player2Id ? 2 : 0;
   if (!winnerSide) return null;
@@ -49,8 +67,10 @@ function scoreRecord(record) {
     sets2 = winnerSide === 2 ? 2 : 0;
   }
   const loserSets = winnerSide === 1 ? sets2 : sets1;
-  const winnerPts = loserSets === 0 ? 3 : 2;
-  const loserPts = loserSets === 0 ? 0 : 1;
+  let winnerPts = loserSets === 0 ? 3 : 2;
+  let loserPts = loserSets === 0 ? 0 : 1;
+  if (scoring === 'WIN2') { winnerPts = 2; loserPts = 0; }
+  if (scoring === 'WIN1') { winnerPts = 1; loserPts = 0; }
   const games = gameCounts(state);
   return {
     winnerSide,
@@ -64,8 +84,10 @@ function scoreRecord(record) {
 }
 
 // matches: every match tagged with ONE group (any status) — the scheduled ones put their players on the
-// table with zeros. players: Map or object id -> { id, name, slug }.
-function computeGroupStandings(matches, players) {
+// table with zeros. players: Map or object id -> { id, name, slug }. rules: a tournament's { scoring, tiebreakers } (see normalizeRules);
+// without it the table is calculated the league's way.
+function computeGroupStandings(matches, players, rules) {
+  const chosen = rules ? normalizeRules(rules) : null;
   const rows = new Map();
   const row = (id) => {
     if (!rows.has(id)) {
@@ -79,7 +101,7 @@ function computeGroupStandings(matches, players) {
   const byDate = [...matches].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
   const counted = new Set();
   for (const m of byDate) {
-    const r = scoreRecord(m);
+    const r = scoreRecord(m, chosen ? chosen.scoring : 'BLTA');
     if (!r) continue;
     const pair = m.player1Id < m.player2Id ? `${m.player1Id}-${m.player2Id}` : `${m.player2Id}-${m.player1Id}`;
     if (counted.has(pair)) continue;
@@ -106,6 +128,8 @@ function computeGroupStandings(matches, players) {
     player: (players instanceof Map ? players.get(x.playerId) : players[x.playerId]) || { id: x.playerId, name: `#${x.playerId}`, slug: null },
   }));
 
+  if (chosen) return rankByRules(list, chosen.tiebreakers, h2h);
+
   // Head-to-head only decides a tie between exactly two players: the points they took off each other.
   const byPoints = new Map();
   list.forEach((x) => { if (!byPoints.has(x.points)) byPoints.set(x.points, []); byPoints.get(x.points).push(x); });
@@ -131,4 +155,46 @@ function computeGroupStandings(matches, players) {
   return list;
 }
 
-module.exports = { computeGroupStandings, scoreRecord };
+// The table of a tournament: points first, then the conditions in the chosen order. Each condition splits the players still level into
+// smaller blocks; what no condition separates stays one block and shares a position (listed by name, which is only for the eye).
+function rankByRules(list, conditions, h2h) {
+  const keyOf = { SETS: (x) => x.setDiff, WINS: (x) => x.wins, GAMES: (x) => x.gameDiff };
+  const split = (block, remaining) => {
+    if (block.length === 1 || !remaining.length) return [block];
+    const [condition, ...rest] = remaining;
+    if (condition === 'H2H') {
+      if (block.length !== 2) return split(block, rest);
+      const [a, b] = block;
+      const pa = h2h.get(`${a.playerId}|${b.playerId}`) || 0;
+      const pb = h2h.get(`${b.playerId}|${a.playerId}`) || 0;
+      return pa === pb ? split(block, rest) : [[pa > pb ? a : b], [pa > pb ? b : a]];
+    }
+    const key = keyOf[condition];
+    const sorted = [...block].sort((x, y) => key(y) - key(x));
+    const groups = [];
+    sorted.forEach((x) => {
+      const last = groups[groups.length - 1];
+      if (last && key(last[0]) === key(x)) last.push(x); else groups.push([x]);
+    });
+    return groups.flatMap((g) => split(g, rest));
+  };
+  const byPoints = [...list].sort((x, y) => y.points - x.points);
+  const levels = [];
+  byPoints.forEach((x) => {
+    const last = levels[levels.length - 1];
+    if (last && last[0].points === x.points) last.push(x); else levels.push([x]);
+  });
+  const out = [];
+  levels.flatMap((level) => split(level, conditions)).forEach((block) => {
+    const position = out.length + 1;
+    [...block].sort((x, y) => String(x.player.name).localeCompare(String(y.player.name), 'sk')).forEach((x) => { x.position = position; out.push(x); });
+  });
+  return out;
+}
+
+// the rules a season row asks for: a tournament that has chosen them; null (the league's way) for everything else
+function rulesOfSeason(season) {
+  return season && season.kind === 'TOURNAMENT' && season.scoring ? normalizeRules({ scoring: season.scoring, tiebreakers: season.tiebreakers }) : null;
+}
+
+module.exports = { computeGroupStandings, scoreRecord, normalizeRules, rulesOfSeason, SCORING, DEFAULT_TIEBREAKERS };

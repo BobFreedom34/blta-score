@@ -347,6 +347,11 @@ function seasonCardHtml(s) {
               </div>
             </section>` : ''}
 
+            ${IS_TOURNAMENT ? `<section class="sa-section" data-rules-section>
+              <h4>Bodovanie a podmienky</h4>
+              ${TournamentRules.html(`season-${s.id}`, { scoring: s.scoring, tiebreakers: s.tiebreakers })}
+            </section>` : ''}
+
             <section class="sa-section">
               <h4>Štartovné a registrácia</h4>
               <div class="sa-grid">
@@ -467,6 +472,8 @@ function wireSeason(card) {
 
   // "Bez kategórie" switches the three categories off (and back on when it is unticked): a tournament is played in some of the categories or in none
   const editForm = card.querySelector('.season-edit-form'); // (only the boxes of this form: the draw tab has controls with a data-cat of their own)
+  const rulesSection = editForm.querySelector('[data-rules-section]');
+  if (rulesSection) TournamentRules.mount(rulesSection);
   const noCategoryBox = editForm.querySelector('[data-cat="OPEN"]');
   if (noCategoryBox) {
     noCategoryBox.addEventListener('change', () => {
@@ -482,7 +489,7 @@ function wireSeason(card) {
     errorEl.textContent = '';
     const f = (name) => e.target.querySelector(`[data-field="${name}"]`).value;
     try {
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(IS_TOURNAMENT ? { venue: f('venue'), courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), categories: [...e.target.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat) } : {}) } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(IS_TOURNAMENT ? { ...TournamentRules.read(e.target.querySelector('[data-rules-section]')), venue: f('venue'), courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), categories: [...e.target.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat) } : {}) } });
       toast('Saved');
       await load();
     } catch (err) { fail(err); }

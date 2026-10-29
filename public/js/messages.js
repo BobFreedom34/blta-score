@@ -144,13 +144,30 @@
 
   // ---------------------------------------------------------------- the chat
 
+  // an invitation to a community or club: its card with what the viewer can do (join at once, he is a member, it was sent, it is no longer valid)
+  function inviteHtml(m) {
+    const inv = m.invite;
+    const org = inv.organisation;
+    const kind = org && org.type === 'CLUB' ? t('com.typeClub') : t('com.typeCommunity');
+    const from = chat && chat.conv && chat.conv.other ? chat.conv.other.name : '';
+    const link = org ? siteUrl(`/community/${encodeURIComponent(org.slug)}`) : '#';
+    const act = inv.status === 'INVITED' ? `<button type="button" class="btn btn-join com-small" data-invite-join="${org.id}">${escapeHtml(t('msg.inviteJoin'))}</button>`
+      : inv.status === 'MEMBER' ? `<span class="msg-invite-state">✓ ${escapeHtml(t('msg.inviteMember'))}</span>`
+        : inv.status === 'SENT' ? `<span class="msg-invite-state">${escapeHtml(t('msg.inviteSent'))}</span>`
+          : `<span class="msg-invite-state">${escapeHtml(t('msg.inviteGone'))}</span>`;
+    return `<div class="msg-invite">
+      ${m.mine ? '' : `<span class="msg-text">${escapeHtml(t('msg.inviteText', { name: from, type: kind, org: org ? org.name : '' }))}</span>`}
+      <a class="msg-invite-card" href="${escapeHtml(link)}"><span class="com-logo">${org && org.logoUrl ? `<img src="${escapeHtml(org.logoUrl)}" alt="">` : escapeHtml(String(org ? org.name : '?').trim().charAt(0).toUpperCase())}</span><b>${escapeHtml(org ? org.name : '')}</b><small>${escapeHtml(kind)}</small></a>
+      ${act}</div>`;
+  }
+
   function bubblesHtml(items) {
     let out = '';
     let day = null;
     items.forEach((m) => {
       const d = new Date(m.createdAt);
       if (!day || !sameDay(day, d)) { out += `<div class="msg-day">${escapeHtml(dayLabel(m.createdAt))}</div>`; day = d; }
-      out += `<div class="msg-bubble${m.mine ? ' mine' : ''}" data-id="${m.id}"><span class="msg-text">${linkify(m.body)}</span><span class="msg-time">${escapeHtml(clock(m.createdAt))}</span></div>`;
+      out += `<div class="msg-bubble${m.mine ? ' mine' : ''}" data-id="${m.id}">${m.invite ? inviteHtml(m) : `<span class="msg-text">${linkify(m.body)}</span>`}<span class="msg-time">${escapeHtml(clock(m.createdAt))}</span></div>`;
     });
     return out;
   }
@@ -303,6 +320,17 @@
 
   function bindChat() {
     document.getElementById('msg-back').addEventListener('click', goBack);
+    // joining from an invitation: no approval; the card then says he is a member
+    document.getElementById('msg-bubbles').addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-invite-join]');
+      if (!btn || btn.disabled) return;
+      btn.disabled = true;
+      try {
+        await api(`/communities/${btn.dataset.inviteJoin}/join`, { method: 'POST' });
+        chat.items.forEach((m) => { if (m.invite && m.invite.organisation && String(m.invite.organisation.id) === btn.dataset.inviteJoin && m.invite.status === 'INVITED') m.invite.status = 'MEMBER'; });
+        document.getElementById('msg-bubbles').innerHTML = bubblesHtml(chat.items);
+      } catch (err) { btn.disabled = false; if (typeof toast === 'function') toast(err.message); }
+    });
     const older = document.getElementById('msg-older');
     if (older) {
       older.addEventListener('click', async () => {
@@ -448,7 +476,7 @@
     socket.on('dm:message', (e) => {
       if (chat && e.conversationId === chat.id) {
         const mine = e.message.senderPlayerId === myId;
-        const added = appendMessage({ id: e.message.id, body: e.message.body, createdAt: e.message.createdAt, mine });
+        const added = appendMessage({ id: e.message.id, body: e.message.body, createdAt: e.message.createdAt, mine, invite: e.message.invite });
         if (added && !mine) {
           markRead();
           // an answer opens the composer of a stranger's request again (and the count of what he may still send)

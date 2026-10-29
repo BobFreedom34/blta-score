@@ -58,6 +58,33 @@ function conversationJson(conversation, member, playerId) {
   };
 }
 
+// makes the direct conversation of two players (or finds the one the other side made at the very same moment); the other side gets a REQUEST when asRequest;
+// logRequest counts it among the sender's requests of the day
+function createDirectConversation(me, otherId, asRequest, logRequest) {
+  const key = directKey(me, otherId);
+  db.exec('BEGIN');
+  try {
+    const info = db.prepare("INSERT INTO conversations (type, direct_key, created_by_player_id, started_as_request) VALUES ('DIRECT', ?, ?, ?)").run(key, me, asRequest ? 1 : 0);
+    const id = Number(info.lastInsertRowid);
+    db.prepare("INSERT INTO conversation_members (conversation_id, player_id, state) VALUES (?, ?, 'MAIN')").run(id, me);
+    db.prepare('INSERT INTO conversation_members (conversation_id, player_id, state) VALUES (?, ?, ?)').run(id, otherId, asRequest ? 'REQUEST' : 'MAIN');
+    if (asRequest && logRequest) db.prepare('INSERT INTO message_request_log (player_id) VALUES (?)').run(me);
+    db.exec('COMMIT');
+    return id;
+  } catch (err) {
+    db.exec('ROLLBACK');
+    const raced = db.prepare('SELECT id FROM conversations WHERE direct_key = ?').get(key);
+    if (raced) return raced.id;
+    throw err;
+  }
+}
+
+// the conversation of two players, made when there is none (the invitations of a community use it); the other side gets a REQUEST unless he is connected
+function conversationOf(me, otherId) {
+  const existing = db.prepare('SELECT id FROM conversations WHERE direct_key = ?').get(directKey(me, otherId));
+  return existing ? existing.id : createDirectConversation(me, otherId, !areConnected(me, otherId), false);
+}
+
 // start (or find) the direct conversation with a player; the other side gets a REQUEST unless he is connected to the sender
 router.post('/conversations', (req, res) => {
   const me = needPlayer(req, res);
@@ -80,23 +107,7 @@ router.post('/conversations', (req, res) => {
     const n = db.prepare('SELECT COUNT(*) AS n FROM message_request_log WHERE player_id = ? AND created_at >= ?').get(me, since).n;
     if (n >= MAX_REQUESTS_PER_DAY) return res.status(429).json({ error: `You can start at most ${MAX_REQUESTS_PER_DAY} new conversations with strangers per day` });
   }
-  let id;
-  db.exec('BEGIN');
-  try {
-    const info = db.prepare("INSERT INTO conversations (type, direct_key, created_by_player_id, started_as_request) VALUES ('DIRECT', ?, ?, ?)").run(key, me, asRequest ? 1 : 0);
-    id = Number(info.lastInsertRowid);
-    db.prepare("INSERT INTO conversation_members (conversation_id, player_id, state) VALUES (?, ?, 'MAIN')").run(id, me);
-    db.prepare('INSERT INTO conversation_members (conversation_id, player_id, state) VALUES (?, ?, ?)').run(id, otherId, asRequest ? 'REQUEST' : 'MAIN');
-    if (asRequest) db.prepare('INSERT INTO message_request_log (player_id) VALUES (?)').run(me);
-    db.exec('COMMIT');
-  } catch (err) {
-    db.exec('ROLLBACK');
-    // the other side started it at the same moment: join that conversation instead of making a second one
-    const raced = db.prepare('SELECT id FROM conversations WHERE direct_key = ?').get(key);
-    if (raced) return res.json({ id: raced.id });
-    throw err;
-  }
-  res.status(201).json({ id });
+  res.status(201).json({ id: createDirectConversation(me, otherId, asRequest, true) });
 });
 
 router.get('/conversations/:id', (req, res) => {
@@ -195,25 +206,38 @@ router.post('/conversations/:id/messages', (req, res) => {
   const allowance = requestAllowanceLeft(found.conversation.id, me);
   if (allowance !== null && allowance <= 0) return res.status(409).json({ error: 'Wait until they answer or accept your request before you write more' });
   if (!rateLimitOk(me)) return res.status(429).json({ error: 'You are writing too fast, wait a moment' });
-  const info = db.prepare('INSERT INTO direct_messages (conversation_id, sender_player_id, body) VALUES (?, ?, ?)').run(found.conversation.id, me, body);
+  const row = deliver(req.app.get('io'), found.conversation.id, me, body);
+  res.status(201).json(serializeMessage(row, me));
+});
+
+// Stores a message in a conversation and tells everybody concerned: the sockets of both members and the devices of the other member (a push). An
+// invitation (inviteOrgId) is a message with a community in it. Returns the stored row.
+function deliver(io, conversationId, me, body, inviteOrgId = null) {
+  const info = db.prepare('INSERT INTO direct_messages (conversation_id, sender_player_id, body, invite_org_id) VALUES (?, ?, ?, ?)').run(conversationId, me, body, inviteOrgId);
   const row = db.prepare('SELECT * FROM direct_messages WHERE id = ?').get(Number(info.lastInsertRowid));
-  db.prepare('UPDATE conversations SET last_message_at = ? WHERE id = ?').run(row.created_at, found.conversation.id);
+  db.prepare('UPDATE conversations SET last_message_at = ? WHERE id = ?').run(row.created_at, conversationId);
   // the sender has seen his own message; an answer by the recipient of a request accepts it
-  db.prepare('UPDATE conversation_members SET last_read_message_id = ?, state = CASE WHEN state = \'REQUEST\' THEN \'MAIN\' ELSE state END WHERE conversation_id = ? AND player_id = ?').run(row.id, found.conversation.id, me);
-  const io = req.app.get('io');
-  const memberIds = membersOf(found.conversation.id);
+  db.prepare('UPDATE conversation_members SET last_read_message_id = ?, state = CASE WHEN state = \'REQUEST\' THEN \'MAIN\' ELSE state END WHERE conversation_id = ? AND player_id = ?').run(row.id, conversationId, me);
+  const memberIds = membersOf(conversationId);
   memberIds.forEach((id) => {
     messages.emitToPlayers(io, [id], 'dm:message', {
-      conversationId: found.conversation.id,
-      message: { id: row.id, body: row.body, createdAt: row.created_at, senderPlayerId: me },
-      other: otherPlayer(found.conversation.id, id),
+      conversationId,
+      message: { id: row.id, body: row.body, createdAt: row.created_at, senderPlayerId: me, invite: messages.inviteOf(row, id) },
+      other: otherPlayer(conversationId, id),
     });
     messages.emitToPlayers(io, [id], 'dm:unread', unreadCounts(id));
   });
   // the other member's devices get it as a push (a push never blocks or fails the send)
-  playerPush.notifyPlayer(other.player_id, 'DM', { fromName: (playerRow(me) || {}).name, body: row.body, conversationId: found.conversation.id });
-  res.status(201).json(serializeMessage(row, me));
-});
+  const otherId = memberIds.find((id) => id !== me);
+  const fromName = (playerRow(me) || {}).name;
+  if (inviteOrgId) {
+    const org = db.prepare('SELECT name, type FROM organisations WHERE id = ?').get(inviteOrgId);
+    playerPush.notifyPlayer(otherId, 'INVITE', { fromName, orgName: org && org.name, orgType: org && org.type });
+  } else {
+    playerPush.notifyPlayer(otherId, 'DM', { fromName, body: row.body, conversationId });
+  }
+  return row;
+}
 
 router.post('/conversations/:id/read', (req, res) => {
   const me = needPlayer(req, res);
@@ -267,6 +291,8 @@ function deleteConversation(id) {
 }
 
 module.exports = router;
+module.exports.deliver = deliver;
+module.exports.conversationOf = conversationOf;
 module.exports.needPlayer = needPlayer;
 module.exports.unreadCounts = unreadCounts;
 module.exports.deleteConversation = deleteConversation;

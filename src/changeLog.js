@@ -4,7 +4,7 @@
 // saved as text in the row itself, so the log keeps showing what happened even after players or matches are renamed or deleted.
 const db = require('./db');
 const engine = require('./matchEngine');
-const { computeGroupStandings } = require('./standings');
+const { computeGroupStandings, rulesOfSeason } = require('./standings');
 const { FROZEN } = require('./frozenStandings');
 
 db.exec(`
@@ -44,12 +44,12 @@ function groupRecords(groupId) {
   return db.prepare("SELECT * FROM matches WHERE group_id = ? AND COALESCE(stage, 'GROUP') = 'GROUP'").all(groupId).map(recordOf);
 }
 
-function tableOf(records) {
+function tableOf(records, rules) {
   const players = new Map();
   records.forEach((r) => [r.player1Id, r.player2Id].forEach((id) => {
     if (!players.has(id)) players.set(id, db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(id) || { id, name: `#${id}`, slug: null });
   }));
-  const rows = computeGroupStandings(records, players);
+  const rows = computeGroupStandings(records, players, rules);
   return new Map(rows.map((r) => [r.playerId, { name: r.player.name, points: r.points, position: r.position, played: r.played, wins: r.wins, setDiff: r.setDiff }]));
 }
 
@@ -58,15 +58,16 @@ function tableOf(records) {
 function groupImpact(previousRow, updatedRow) {
   const row = updatedRow || previousRow;
   if (!row || !row.group_id || (row.stage || 'GROUP') !== 'GROUP') return null;
-  const group = db.prepare('SELECT g.id, g.name, g.category, s.name AS season_name, s.slug AS season_slug FROM season_groups g LEFT JOIN seasons s ON s.id = g.season_id WHERE g.id = ?').get(row.group_id);
+  const group = db.prepare('SELECT g.id, g.name, g.category, s.name AS season_name, s.slug AS season_slug, s.kind AS season_kind, s.scoring AS season_scoring, s.tiebreakers AS season_tiebreakers FROM season_groups g LEFT JOIN seasons s ON s.id = g.season_id WHERE g.id = ?').get(row.group_id);
   if (!group || (group.season_slug && FROZEN[group.season_slug])) return null; // a finished season shows its saved official tables
   const now = groupRecords(group.id);
   let before;
   if (!updatedRow) before = [...now, recordOf(previousRow)]; // the match is gone: before = with it
   else if (previousRow && previousRow.group_id === updatedRow.group_id && (previousRow.stage || 'GROUP') === 'GROUP') before = now.map((r) => (r.id === updatedRow.id ? recordOf(previousRow) : r));
   else before = now.filter((r) => r.id !== updatedRow.id);
-  const a = tableOf(now);
-  const b = tableOf(before);
+  const rules = rulesOfSeason({ kind: group.season_kind, scoring: group.season_scoring, tiebreakers: group.season_tiebreakers });
+  const a = tableOf(now, rules);
+  const b = tableOf(before, rules);
   const inMatch = new Set([row.player1_id, row.player2_id]);
   const empty = { points: 0, position: null, played: 0, wins: 0, setDiff: 0 };
   const changed = [];

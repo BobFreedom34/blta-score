@@ -68,7 +68,26 @@ function rateLimitOk(playerId) {
 }
 
 // what a client is told about a message; mine = it was written by the viewer
-const serializeMessage = (row, viewerId) => ({ id: row.id, body: row.body, createdAt: row.created_at, mine: row.sender_player_id === viewerId });
+// An invitation message carries the community and what the viewer can do with it: SENT (he wrote it), INVITED (he can join from it), MEMBER (he has joined),
+// GONE (the invitation is not valid any more: withdrawn, or the community is hidden)
+function inviteOf(row, viewerId) {
+  if (!row.invite_org_id) return undefined;
+  const org = db.prepare('SELECT id, slug, name, type, logo_url, hidden, approved FROM organisations WHERE id = ?').get(row.invite_org_id);
+  const organisation = org ? { id: org.id, slug: org.slug, name: org.name, type: org.type, logoUrl: org.logo_url || '' } : null;
+  let status = 'GONE';
+  if (org && !org.hidden && org.approved) {
+    if (row.sender_player_id === viewerId) status = 'SENT';
+    else if (db.prepare("SELECT 1 FROM organisation_members WHERE organisation_id = ? AND player_id = ? AND status = 'ACTIVE'").get(org.id, viewerId)) status = 'MEMBER';
+    else if (db.prepare('SELECT 1 FROM organisation_invites WHERE organisation_id = ? AND player_id = ?').get(org.id, viewerId)) status = 'INVITED';
+  }
+  return { organisation, status };
+}
+const serializeMessage = (row, viewerId) => {
+  const out = { id: row.id, body: row.body, createdAt: row.created_at, mine: row.sender_player_id === viewerId };
+  const invite = inviteOf(row, viewerId);
+  if (invite) out.invite = invite;
+  return out;
+};
 
 // a message is 1-2000 characters (emoji count as one), trimmed; null when it is not acceptable
 function cleanBody(value) {
@@ -110,4 +129,4 @@ function emitToPlayers(io, playerIds, event, payload) {
   [...new Set(playerIds)].forEach((id) => io.to(`player:${id}`).emit(event, payload));
 }
 
-module.exports = { directKey, areConnected, isBlocked, memberOf, otherPlayer, card, rateLimitOk, serializeMessage, cleanBody, playerIdFromSocket, emitToPlayers };
+module.exports = { inviteOf, directKey, areConnected, isBlocked, memberOf, otherPlayer, card, rateLimitOk, serializeMessage, cleanBody, playerIdFromSocket, emitToPlayers };

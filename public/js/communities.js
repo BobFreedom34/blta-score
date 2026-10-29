@@ -68,13 +68,15 @@
   function feedPostHtml(p) {
     if (p.type === 'TOURNAMENT') return feedTournamentHtml(p);
     return `
-      <div class="com-post com-feed-post">
+      <div class="com-post com-feed-post" data-post="${p.id}" data-org="${p.organisation.id}">
         <a class="com-feed-head" href="/community/${encodeURIComponent(p.organisation.slug)}">
           ${logoHtml(p.organisation)}
           <span class="com-feed-from"><b>${escapeHtml(p.organisation.name)}</b><span class="com-badge">${escapeHtml(typeText(p.organisation))}</span></span>
           <span class="com-feed-date">${escapeHtml(dateText(p.createdAt))}</span>
         </a>
-        <div class="com-post-body">${escapeHtml(p.body)}</div>
+        ${p.body ? `<div class="com-post-body">${comPostText(p.body)}</div>` : ''}
+        ${comPostImage(p.imageUrl)}
+        ${comReactionsHtml(p)}
       </div>`;
   }
 
@@ -117,6 +119,7 @@
       ${body}
       <button type="button" class="btn btn-primary com-create" id="com-create-btn">＋ ${escapeHtml(t('com.create'))}</button>`;
     root.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; render(); }));
+    comBindReactions(root, (el) => el.dataset.org);
     document.getElementById('com-create-btn').addEventListener('click', () => requireRealPlayer(openCreate));
     const loginBtn = document.getElementById('com-login-btn');
     if (loginBtn) loginBtn.addEventListener('click', () => requireRealPlayer(() => {}));

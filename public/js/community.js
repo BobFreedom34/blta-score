@@ -13,6 +13,9 @@
   let members = { members: [], pending: [] };
   let posts = { items: [], more: false };
   let tournaments = [];
+  // a page opened from an invitation link (?invite=...): joining with it needs no approval
+  const inviteToken = new URLSearchParams(window.location.search).get('invite') || '';
+  let draftImage = ''; // the picture chosen for the post that is being written (an address the server gave)
   // the tabs: News, Events, Info (the members are in Info; the old #members link of the club menu opens it)
   const tabFromHash = (hash) => (hash === 'members' ? 'info' : ['news', 'events', 'info'].includes(hash) ? hash : null);
   let tab = tabFromHash(window.location.hash.slice(1)) || 'news';
@@ -28,7 +31,8 @@
   // 2026-10-28 -> 28. 10. 2026 (a plain date is read at noon, so no time zone moves it to the neighbouring day)
   const dayText = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString(locale(), { day: 'numeric', month: 'numeric', year: 'numeric' }) : '');
   const rangeText = (a, b) => (a && b && a !== b ? `${dayText(a)} – ${dayText(b)}` : dayText(a || b));
-  const isActing = () => !!(acting && org && acting.id === org.id);
+  // managing: acting as this club (a player who runs it), or the super admin of the site (the server says so: org.canManage)
+  const isActing = () => !!(org && ((acting && acting.id === org.id) || org.canManage));
   const isAdminOfOrg = () => !!(org && org.me && org.me.role === 'ADMIN');
 
   async function upload(which, file) {
@@ -51,7 +55,7 @@
         <button type="button" class="btn btn-outline" data-act="cancel-request">${escapeHtml(t('com.cancelRequest'))}</button>`;
     }
     if (me && me.canRequestAgainAt) return `<p class="com-hint">${escapeHtml(t('com.requestAgain', { date: dateText(me.canRequestAgainAt) }))}</p>`;
-    return `<button type="button" class="btn btn-join" data-act="join">${escapeHtml(t(org.joinPolicy === 'OPEN' ? 'com.join' : 'com.requestJoin'))}</button>`;
+    return `<button type="button" class="btn btn-join" data-act="join">${escapeHtml(t(org.joinPolicy === 'OPEN' || inviteToken ? 'com.join' : 'com.requestJoin'))}</button>`;
   }
 
   function postHtml(p) {
@@ -59,7 +63,9 @@
       <div class="com-post" data-post="${p.id}">
         <div class="com-post-head"><b>${escapeHtml(p.authorName)}</b><span>${escapeHtml(dateText(p.createdAt))}</span>
           ${p.canDelete ? `<button type="button" class="com-link" data-delete-post="${p.id}">${escapeHtml(t('com.deletePost'))}</button>` : ''}</div>
-        <div class="com-post-body">${escapeHtml(p.body)}</div>
+        ${p.body ? `<div class="com-post-body">${comPostText(p.body)}</div>` : ''}
+        ${comPostImage(p.imageUrl)}
+        ${comReactionsHtml(p)}
       </div>`;
   }
 
@@ -79,10 +85,15 @@
     const pending = members.pending;
     return `
       <div class="com-panel">
-        <h3>${escapeHtml(t('com.adminPanel'))}</h3>
+        <h3>${escapeHtml(t('com.adminPanel'))}<button type="button" class="btn btn-outline com-small com-invite-btn" data-act="invite">👥 ${escapeHtml(t('com.invite'))}</button></h3>
         <div class="com-newpost">
           <textarea id="com-post-text" rows="3" maxlength="2000" placeholder="${escapeHtml(t('com.postPlaceholder'))}"></textarea>
-          <button type="button" class="btn btn-primary" id="com-post-btn">${escapeHtml(t('com.publish'))}</button>
+          <div class="com-newpost-img" id="com-post-img"${draftImage ? '' : ' hidden'}>${draftImage ? draftImageHtml() : ''}</div>
+          <div class="com-newpost-bar">
+            <button type="button" class="btn btn-outline com-small com-tool" id="com-post-emoji" aria-label="${escapeHtml(t('com.emoji'))}" title="${escapeHtml(t('com.emoji'))}">😊</button>
+            <label class="btn btn-outline com-small com-tool" title="${escapeHtml(t('com.addImage'))}">📷 ${escapeHtml(t('com.addImage'))}<input type="file" accept="image/png,image/jpeg,image/webp" id="com-post-file" hidden></label>
+            <button type="button" class="btn btn-primary" id="com-post-btn">${escapeHtml(t('com.publish'))}</button>
+          </div>
         </div>
         ${pending.length ? `
         <div class="com-lab">${escapeHtml(t('com.requests'))} (${pending.length})</div>
@@ -96,24 +107,6 @@
             </span>
           </div>`).join('')}
         ${pending.length > 1 ? `<button type="button" class="btn btn-outline com-small" id="com-approve-all">${escapeHtml(t('com.approveAll'))}</button>` : ''}` : ''}
-        <div class="com-lab">${escapeHtml(t('com.settings'))}</div>
-        <form id="com-settings">
-          <div class="field"><label>${escapeHtml(t('com.fieldName'))}</label><input type="text" id="com-s-name" maxlength="120" value="${escapeHtml(org.name)}" required></div>
-          <div class="field"><label>${escapeHtml(t('com.fieldDescription'))}</label><textarea id="com-s-description" rows="3" maxlength="2000">${escapeHtml(org.description)}</textarea></div>
-          <div class="field"><label>${escapeHtml(t('com.fieldContact'))}</label><input type="text" id="com-s-contact" maxlength="200" value="${escapeHtml(org.contact)}"></div>
-          <div class="field"><label>${escapeHtml(t('com.fieldJoin'))}</label>
-            <label class="com-radio"><input type="radio" name="com-s-join" value="OPEN"${org.joinPolicy === 'OPEN' ? ' checked' : ''}> ${escapeHtml(t('com.joinOpen'))}</label>
-            <label class="com-radio"><input type="radio" name="com-s-join" value="APPROVAL"${org.joinPolicy === 'APPROVAL' ? ' checked' : ''}> ${escapeHtml(t('com.joinApproval'))}</label>
-          </div>
-          <div id="com-s-error" style="color:var(--danger);font-weight:600;margin-bottom:8px"></div>
-          <button type="submit" class="btn btn-primary">${escapeHtml(t('com.save'))}</button>
-        </form>
-        <div class="com-pictures">
-          <label class="btn btn-outline com-small">${escapeHtml(t('com.uploadLogo'))}<input type="file" accept="image/png,image/jpeg,image/webp" data-upload="logo" hidden></label>
-          <label class="btn btn-outline com-small">${escapeHtml(t('com.uploadCover'))}<input type="file" accept="image/png,image/jpeg,image/webp" data-upload="cover" hidden></label>
-          ${org.logoUrl ? `<button type="button" class="com-link" data-remove-image="logo">${escapeHtml(t('com.removeImage'))} (logo)</button>` : ''}
-          ${org.coverUrl ? `<button type="button" class="com-link" data-remove-image="cover">${escapeHtml(t('com.removeImage'))} (cover)</button>` : ''}
-        </div>
       </div>`;
   }
 
@@ -184,6 +177,7 @@
         </div>
         <div class="field"><label>${escapeHtml(t('com.tFieldFee'))}</label><input type="text" id="com-t-fee" maxlength="40" placeholder="${escapeHtml(t('com.tFeeHint'))}"></div>
         <div class="field"><label>${escapeHtml(t('com.tFieldInfo'))}</label><textarea id="com-t-info" rows="4" maxlength="4000" placeholder="${escapeHtml(t('com.tInfoHint'))}"></textarea></div>
+        <div class="field" id="com-t-rules"><label>${escapeHtml(t('com.tFieldRules'))}</label>${TournamentRules.html('club', null)}</div>
         <label class="com-radio"><input type="checkbox" id="com-t-reg" checked> ${escapeHtml(t('com.tRegOpen'))}</label>
         <div id="com-t-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
         <button type="submit" class="btn btn-primary">${escapeHtml(t('com.tCreate'))}</button>
@@ -195,6 +189,7 @@
     back.addEventListener('click', (e) => { if (e.target === back) close(); });
     document.body.appendChild(back);
     const form = back.querySelector('#com-t-form');
+    TournamentRules.mount(back.querySelector('#com-t-rules'));
     const cats = back.querySelector('#com-t-cats');
     // "Bez kategórie" switches the three categories off: the tournament is played without them (one draw for everybody)
     const noCategory = form.querySelector('#com-t-open');
@@ -214,7 +209,7 @@
       try {
         const body = {
           name: value('#com-t-name').trim(), venue: value('#com-t-venue').trim(), startDate: value('#com-t-start') || null, endDate: value('#com-t-end') || null,
-          playType, entryFee: value('#com-t-fee').trim(), info: value('#com-t-info').trim() ? `<p>${escapeHtml(value('#com-t-info').trim()).replace(/\n/g, '<br>')}</p>` : '',
+          playType, ...TournamentRules.read(back.querySelector('#com-t-rules')), entryFee: value('#com-t-fee').trim(), info: value('#com-t-info').trim() ? `<p>${escapeHtml(value('#com-t-info').trim()).replace(/\n/g, '<br>')}</p>` : '',
         };
         if (playType === 'SINGLES') body.categories = noCategory.checked ? ['OPEN'] : [...cats.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat);
         const made = await api(`/communities/${org.id}/tournaments`, { method: 'POST', body });
@@ -223,6 +218,156 @@
       } catch (err) { errorEl.textContent = err.message; delete submit.dataset.busy; }
     });
     back.querySelector('#com-t-name').focus();
+  }
+
+  // Invite people: the admin picks names from a list (one or several) and each gets an invitation message he can join from at once; below it the
+  // private link to copy, share or renew (the old one then stops working)
+  async function openInviteDialog() {
+    document.querySelectorAll('.com-idialog-back').forEach((el) => el.remove());
+    let token;
+    try { token = (await api(`/communities/${org.id}/invite`)).token; } catch (err) { toast(err.message); return; }
+    const linkOf = (tk) => `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(tk)}`;
+    const back = document.createElement('div');
+    back.className = 'modal-backdrop com-idialog-back';
+    back.style.display = 'flex';
+    back.innerHTML = `<div class="modal com-tdialog" role="dialog" aria-modal="true"><button type="button" class="close" aria-label="Close">&times;</button>
+      <h3 style="margin-top:0">${escapeHtml(t('com.inviteTitle'))}</h3>
+      <div class="com-lab com-lab-dark">${escapeHtml(t('com.invitePlayers'))}</div>
+      <div class="field"><input type="search" id="com-invite-search" maxlength="60" placeholder="${escapeHtml(t('com.inviteSearch'))}" autocomplete="off"></div>
+      <div class="com-invite-list" id="com-invite-list"></div>
+      <button type="button" class="btn btn-primary" id="com-invite-send" disabled>${escapeHtml(t('com.inviteSend'))}</button>
+      <div class="com-lab com-lab-dark" style="margin-top:18px">${escapeHtml(t('com.inviteOr'))}</div>
+      <p style="font-size:13.5px;line-height:1.5;margin:0 0 8px">${escapeHtml(t('com.inviteHint'))}</p>
+      <div class="field"><input type="text" id="com-invite-link" readonly value="${escapeHtml(linkOf(token))}"></div>
+      <div class="com-invite-acts">
+        <button type="button" class="btn btn-outline" id="com-invite-copy">${escapeHtml(t('com.inviteCopy'))}</button>
+        ${navigator.share ? `<button type="button" class="btn btn-outline" id="com-invite-share">${escapeHtml(t('com.inviteShare'))}</button>` : ''}
+        <button type="button" class="btn btn-outline" id="com-invite-new">${escapeHtml(t('com.inviteNew'))}</button>
+      </div></div>`;
+    const close = () => back.remove();
+    back.querySelector('.close').addEventListener('click', close);
+    back.addEventListener('click', (e) => { if (e.target === back) close(); });
+    document.body.appendChild(back);
+
+    // the list of players
+    const picked = new Map(); // id -> name, kept while the search changes
+    const list = back.querySelector('#com-invite-list');
+    const send = back.querySelector('#com-invite-send');
+    const search = back.querySelector('#com-invite-search');
+    const refreshSend = () => {
+      send.disabled = !picked.size;
+      send.textContent = picked.size ? `${t('com.inviteSend')} (${picked.size})` : t('com.inviteSend');
+    };
+    let run = 0;
+    async function loadList() {
+      const mine = ++run;
+      let items = [];
+      try { items = (await api(`/communities/${org.id}/invite-candidates?q=${encodeURIComponent(search.value.trim())}`)).items; } catch (err) { list.innerHTML = `<p class="com-empty">${escapeHtml(err.message)}</p>`; return; }
+      if (mine !== run) return; // a newer search is on its way
+      list.innerHTML = items.length ? items.map((p) => `<label class="com-invite-row${p.invited ? ' done' : ''}">
+          <input type="checkbox" value="${p.playerId}"${picked.has(p.playerId) ? ' checked' : ''}${p.invited ? ' disabled' : ''}>
+          <span class="com-invite-name">${escapeHtml(p.name)}</span>${p.invited ? `<small>${escapeHtml(t('com.inviteAlready'))}</small>` : ''}</label>`).join('') : `<p class="com-empty">${escapeHtml(t('com.inviteNobody'))}</p>`;
+      list.querySelectorAll('input[type="checkbox"]').forEach((box) => box.addEventListener('change', () => {
+        const id = Number(box.value);
+        if (box.checked) picked.set(id, box.closest('label').querySelector('.com-invite-name').textContent); else picked.delete(id);
+        refreshSend();
+      }));
+    }
+    let timer = null;
+    search.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(loadList, 250); });
+    send.addEventListener('click', () => guard(send, async () => {
+      const res = await api(`/communities/${org.id}/invite-players`, { method: 'POST', body: { playerIds: [...picked.keys()] } });
+      toast(t('com.inviteSent', { n: res.sent }));
+      picked.clear();
+      refreshSend();
+      await loadList();
+    }));
+    refreshSend();
+    loadList();
+
+    // the link
+    const field = back.querySelector('#com-invite-link');
+    field.addEventListener('focus', () => field.select());
+    back.querySelector('#com-invite-copy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(field.value); } catch { field.select(); document.execCommand('copy'); }
+      toast(t('com.inviteCopied'));
+    });
+    const share = back.querySelector('#com-invite-share');
+    if (share) share.addEventListener('click', () => navigator.share({ title: org.name, url: field.value }).catch(() => {}));
+    back.querySelector('#com-invite-new').addEventListener('click', () => guard(back.querySelector('#com-invite-new'), async () => {
+      if (!window.confirm(t('com.inviteNewConfirm'))) return;
+      token = (await api(`/communities/${org.id}/invite/reset`, { method: 'POST' })).token;
+      field.value = linkOf(token);
+    }));
+  }
+
+  const draftImageHtml = () => `<img src="${escapeHtml(draftImage)}" alt=""><button type="button" class="com-link" id="com-post-img-remove">${escapeHtml(t('com.removeImage'))}</button>`;
+
+  // the settings of the community or club: a dialog opened by the gear beside its name (name, description, contact, who may join, logo and cover)
+  function openSettingsDialog(keep) {
+    document.querySelectorAll('.com-sdialog-back').forEach((el) => el.remove());
+    const v = keep || { name: org.name, description: org.description, contact: org.contact, join: org.joinPolicy };
+    const back = document.createElement('div');
+    back.className = 'modal-backdrop com-sdialog-back';
+    back.style.display = 'flex';
+    back.innerHTML = `<div class="modal com-tdialog" role="dialog" aria-modal="true"><button type="button" class="close" aria-label="Close">&times;</button>
+      <h3 style="margin-top:0">${escapeHtml(t('com.settings'))}</h3>
+      <form id="com-settings">
+        <div class="field"><label>${escapeHtml(t('com.fieldName'))}</label><input type="text" id="com-s-name" maxlength="120" value="${escapeHtml(v.name)}" required></div>
+        <div class="field"><label>${escapeHtml(t('com.fieldDescription'))}</label><textarea id="com-s-description" rows="3" maxlength="2000">${escapeHtml(v.description)}</textarea></div>
+        <div class="field"><label>${escapeHtml(t('com.fieldContact'))}</label><input type="text" id="com-s-contact" maxlength="200" value="${escapeHtml(v.contact)}"></div>
+        <div class="field"><label>${escapeHtml(t('com.fieldJoin'))}</label>
+          <label class="com-radio"><input type="radio" name="com-s-join" value="OPEN"${v.join === 'OPEN' ? ' checked' : ''}> ${escapeHtml(t('com.joinOpen'))}</label>
+          <label class="com-radio"><input type="radio" name="com-s-join" value="APPROVAL"${v.join === 'APPROVAL' ? ' checked' : ''}> ${escapeHtml(t('com.joinApproval'))}</label>
+        </div>
+        <div class="com-pictures">
+          <label class="btn btn-outline com-small">${escapeHtml(t('com.uploadLogo'))}<input type="file" accept="image/png,image/jpeg,image/webp" data-upload="logo" hidden></label>
+          <label class="btn btn-outline com-small">${escapeHtml(t('com.uploadCover'))}<input type="file" accept="image/png,image/jpeg,image/webp" data-upload="cover" hidden></label>
+          ${org.logoUrl ? `<button type="button" class="com-link com-link-dark" data-remove-image="logo">${escapeHtml(t('com.removeImage'))} (logo)</button>` : ''}
+          ${org.coverUrl ? `<button type="button" class="com-link com-link-dark" data-remove-image="cover">${escapeHtml(t('com.removeImage'))} (cover)</button>` : ''}
+        </div>
+        <div id="com-s-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+        <button type="submit" class="btn btn-primary">${escapeHtml(t('com.save'))}</button>
+        <button type="button" class="btn btn-outline" id="com-s-cancel">${escapeHtml(t('com.tCancel'))}</button>
+      </form></div>`;
+    const close = () => back.remove();
+    back.querySelector('.close').addEventListener('click', close);
+    back.querySelector('#com-s-cancel').addEventListener('click', close);
+    back.addEventListener('click', (e) => { if (e.target === back) close(); });
+    document.body.appendChild(back);
+    const form = back.querySelector('#com-settings');
+    const typedNow = () => ({ name: form.querySelector('#com-s-name').value, description: form.querySelector('#com-s-description').value, contact: form.querySelector('#com-s-contact').value, join: form.querySelector('input[name="com-s-join"]:checked').value });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submit = form.querySelector('button[type="submit"]');
+      if (submit.dataset.busy) return;
+      submit.dataset.busy = '1';
+      const errorEl = back.querySelector('#com-s-error');
+      errorEl.textContent = '';
+      try {
+        const now = typedNow();
+        await api(`/communities/${org.id}`, { method: 'PATCH', body: { name: now.name, description: now.description, contact: now.contact, joinPolicy: now.join } });
+        close();
+        toast(t('com.saved'));
+        await load();
+        refreshActingOrg(); // the chip and the switcher show the new name
+      } catch (err) { errorEl.textContent = err.message; } finally { delete submit.dataset.busy; }
+    });
+    // a picture is saved at once; the dialog opens again with what was typed so far
+    back.querySelectorAll('[data-upload]').forEach((input) => input.addEventListener('change', () => guard(input, async () => {
+      if (!input.files[0]) return;
+      const kept = typedNow();
+      await upload(input.dataset.upload, input.files[0]);
+      await load();
+      openSettingsDialog(kept);
+    })));
+    back.querySelectorAll('[data-remove-image]').forEach((b) => b.addEventListener('click', () => guard(b, async () => {
+      const kept = typedNow();
+      await api(`/communities/${org.id}/${b.dataset.removeImage}`, { method: 'DELETE' });
+      await load();
+      openSettingsDialog(kept);
+    })));
+    back.querySelector('#com-s-name').focus();
   }
 
   function tabBody() {
@@ -243,12 +388,13 @@
       <div class="com-cover${cover ? '' : ' com-cover-empty'}"${cover ? ` style="background-image:url('${escapeHtml(cover)}')"` : ''}></div>
       <div class="com-head">
         <span class="com-logo com-logo-lg">${logo}</span>
-        <h1>${escapeHtml(org.name)}</h1>
+        <h1>${escapeHtml(org.name)}${isActing() ? `<button type="button" class="com-gear" data-act="settings" aria-label="${escapeHtml(t('com.settings'))}" title="${escapeHtml(t('com.settings'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>` : ''}</h1>
         <div class="com-sub"><span class="com-badge">${escapeHtml(typeText(org))}</span>${org.city ? `${escapeHtml(org.city)} · ` : ''}${escapeHtml(membersText(org.memberCount))}</div>
         ${org.approved ? `<p class="com-join-info">${escapeHtml(joinInfoText())}</p>` : ''}
         <div class="com-actions" id="com-join">${joinHtml()}</div>
       </div>
       ${org.approved ? '' : `<div class="com-hint-box com-wait">${escapeHtml(t('com.pendingBanner'))}</div>`}
+      ${inviteToken && !(org.me && (org.me.status === 'ACTIVE')) ? `<div class="com-hint-box com-invited">${escapeHtml(t('com.invitedBanner', { name: org.name }))}</div>` : ''}
       ${isAdminOfOrg() && !isActing() ? `<div class="com-hint-box"><span>${escapeHtml(t('com.adminHint'))}</span><button type="button" class="btn btn-outline com-small" data-act="switch">${escapeHtml(t('com.switchTitle'))}</button></div>` : ''}
       ${isActing() ? panelHtml() : ''}
       <div class="com-tabs" role="tablist">
@@ -272,7 +418,7 @@
   }
 
   // what an admin has typed (the news, the settings) survives a re-render of the page
-  const TYPED = ['com-post-text', 'com-s-name', 'com-s-description', 'com-s-contact'];
+  const TYPED = ['com-post-text'];
   const keepTyped = () => TYPED.map((id) => [id, (document.getElementById(id) || {}).value]).filter(([, v]) => v);
   const restoreTyped = (kept) => kept.forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
 
@@ -285,12 +431,20 @@
     }));
     root.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
       const act = b.dataset.act;
-      if (act === 'join') requireRealPlayer(() => guard(b, async () => { await api(`/communities/${org.id}/join`, { method: 'POST' }); await load(); }));
+      if (act === 'join') {
+        requireRealPlayer(() => guard(b, async () => {
+          await api(`/communities/${org.id}/join`, { method: 'POST', body: inviteToken ? { inviteToken } : undefined });
+          if (inviteToken) window.history.replaceState(null, '', window.location.pathname + window.location.hash); // the invitation is used
+          await load();
+        }));
+      }
+      if (act === 'invite') openInviteDialog();
       if (act === 'cancel-request') guard(b, async () => { await api(`/communities/${org.id}/cancel-request`, { method: 'POST' }); await load(); });
       if (act === 'leave' && window.confirm(t('com.leaveConfirm', { name: org.name }))) {
         guard(b, async () => { await api(`/communities/${org.id}/leave`, { method: 'POST' }); await load(); refreshActingOrg(); });
       }
       if (act === 'new-tournament') openTournamentDialog();
+      if (act === 'settings') openSettingsDialog();
       if (act === 'switch') guard(b, async () => { await api('/communities/act-as', { method: 'POST', body: { organisationId: org.id } }); window.location.reload(); });
     }));
     root.querySelectorAll('[data-delete-post]').forEach((b) => b.addEventListener('click', () => guard(b, async () => {
@@ -318,52 +472,36 @@
     })));
     const all = document.getElementById('com-approve-all');
     if (all) all.addEventListener('click', () => guard(all, async () => { await api(`/communities/${org.id}/approve-all`, { method: 'POST' }); await load(); }));
+    comBindReactions(root, () => org.id);
     const post = document.getElementById('com-post-btn');
     if (post) {
+      const box = document.getElementById('com-post-text');
+      document.getElementById('com-post-emoji').addEventListener('click', (e) => { e.stopPropagation(); comEmojiPanel(e.currentTarget, COM_EMOJI, (emoji) => comInsertAtCursor(box, emoji)); });
+      const preview = document.getElementById('com-post-img');
+      const showDraft = () => { preview.hidden = !draftImage; preview.innerHTML = draftImage ? draftImageHtml() : ''; const rm = document.getElementById('com-post-img-remove'); if (rm) rm.addEventListener('click', () => { draftImage = ''; showDraft(); }); };
+      showDraft();
+      const file = document.getElementById('com-post-file');
+      file.addEventListener('change', () => guard(file, async () => {
+        if (!file.files[0]) return;
+        const form = new FormData();
+        form.append('image', file.files[0]);
+        const res = await fetch(`/api/communities/${org.id}/post-image`, { method: 'POST', body: form });
+        const data = await res.json().catch(() => null);
+        file.value = '';
+        if (!res.ok) throw new Error((data && data.error) || `Request failed (${res.status})`);
+        draftImage = data.url;
+        showDraft();
+      }));
       post.addEventListener('click', () => guard(post, async () => {
-        const box = document.getElementById('com-post-text');
-        if (!box.value.trim()) return;
-        await api(`/communities/${org.id}/posts`, { method: 'POST', body: { body: box.value } });
+        if (!box.value.trim() && !draftImage) return;
+        await api(`/communities/${org.id}/posts`, { method: 'POST', body: { body: box.value, imageUrl: draftImage } });
         box.value = '';
+        draftImage = '';
         tab = 'news';
         await loadPosts();
         render();
       }));
     }
-    const settings = document.getElementById('com-settings');
-    if (settings) {
-      settings.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const submit = settings.querySelector('button[type="submit"]');
-        if (submit.dataset.busy) return;
-        submit.dataset.busy = '1';
-        const errorEl = document.getElementById('com-s-error');
-        errorEl.textContent = '';
-        try {
-          await api(`/communities/${org.id}`, {
-            method: 'PATCH',
-            body: {
-              name: document.getElementById('com-s-name').value,
-              description: document.getElementById('com-s-description').value,
-              contact: document.getElementById('com-s-contact').value,
-              joinPolicy: settings.querySelector('input[name="com-s-join"]:checked').value,
-            },
-          });
-          toast(t('com.saved'));
-          await load();
-          refreshActingOrg(); // the chip and the switcher show the new name
-        } catch (err) { errorEl.textContent = err.message; } finally { delete submit.dataset.busy; }
-      });
-    }
-    root.querySelectorAll('[data-upload]').forEach((input) => input.addEventListener('change', () => guard(input, async () => {
-      if (!input.files[0]) return;
-      await upload(input.dataset.upload, input.files[0]);
-      await load();
-    })));
-    root.querySelectorAll('[data-remove-image]').forEach((b) => b.addEventListener('click', () => guard(b, async () => {
-      await api(`/communities/${org.id}/${b.dataset.removeImage}`, { method: 'DELETE' });
-      await load();
-    })));
   }
 
   async function loadPosts() { posts = await api(`/communities/${org.id}/posts`); }
@@ -393,11 +531,11 @@
     render();
   }
 
-  // the links of the club menu: #members and #events open that tab, #settings takes the admin to the panel of the club
+  // the links of the club menu: #members and #events open that tab, #settings opens the settings of the club
   const scrollToPanel = () => {
-    if (window.location.hash !== '#settings') return;
-    const panel = root.querySelector('.com-panel');
-    if (panel) panel.scrollIntoView();
+    if (window.location.hash !== '#settings' || !org || !isActing()) return;
+    openSettingsDialog();
+    window.history.replaceState(null, '', window.location.pathname + window.location.search); // so the link works again the next time
   };
   window.addEventListener('hashchange', () => {
     const next = window.location.hash.slice(1);

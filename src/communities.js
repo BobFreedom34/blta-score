@@ -80,6 +80,8 @@ function serialize(row, req) {
     city: cityName(row.league_id),
     hidden: !!row.hidden,
     approved: !!row.approved,
+    // the super admin can edit and run it without being one of its admins
+    canManage: isSuperAdmin(req),
     countsForRating: !!row.counts_for_rating,
     maxOpenTournaments: row.max_open_tournaments || 5,
     memberCount: memberCount(row.id),
@@ -92,6 +94,12 @@ function serialize(row, req) {
 function siteAdminFor(req, org) {
   const me = auth.adminSession(req);
   return !!me && (me.role === 'SUPER' || me.leagueId === org.league_id);
+}
+
+// the super admin of the site (not a city admin): he runs every community and club
+function isSuperAdmin(req) {
+  const me = req ? auth.adminSession(req) : null;
+  return !!me && me.role === 'SUPER';
 }
 
 // who may read an organisation: everybody when it is public; a hidden one (moderation) only an admin of the site; a club that is not approved yet only
@@ -114,4 +122,4 @@ function actingOrganisation(req) {
   return org && isOrgAdmin(org.id, playerId) ? org : null;
 }
 
-module.exports = { siteAdminFor, canRead, actingOrganisation, REREQUEST_DAYS, slugify, slugFor, memberOf, isOrgAdmin, memberCount, canRequestAgainAt, serialize };
+module.exports = { isSuperAdmin, siteAdminFor, canRead, actingOrganisation, REREQUEST_DAYS, slugify, slugFor, memberOf, isOrgAdmin, memberCount, canRequestAgainAt, serialize };

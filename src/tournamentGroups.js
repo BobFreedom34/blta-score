@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const engine = require('./matchEngine');
 const roundRobin = require('./roundRobin');
-const { computeGroupStandings } = require('./standings');
+const { computeGroupStandings, rulesOfSeason } = require('./standings');
 
 const groupName = (i) => `Skupina ${i < 26 ? String.fromCharCode(65 + i) : i + 1}`;
 const CATEGORY_LABELS = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', DOUBLES: 'Štvorhra', OPEN: 'Bez kategórie' };
@@ -103,7 +103,7 @@ function groupRows(group) {
   });
   // a member without a match yet still has a row
   db.prepare('SELECT player_id FROM season_group_members WHERE group_id = ?').all(group.id).forEach((m) => { if (!players.has(m.player_id)) players.set(m.player_id, playerStmt.get(m.player_id)); });
-  return computeGroupStandings(records, players);
+  return computeGroupStandings(records, players, rulesOfSeason(db.prepare('SELECT kind, scoring, tiebreakers FROM seasons WHERE id = ?').get(group.season_id)));
 }
 
 // How far the groups of a category are: { groups: [{ id, name, players, matches, finished }], matches, finished, allFinished }; null without groups.

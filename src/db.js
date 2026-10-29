@@ -1458,9 +1458,11 @@ if (!db.prepare('PRAGMA table_info(matches)').all().some((c) => c.name === 'roun
 // a short description and a link to the photo gallery (all optional text, edited in /seasons-admin); and, per player of a
 // group, whether the entry fee is paid.
 const seasonInfoColumns = db.prepare('PRAGMA table_info(seasons)').all().map((c) => c.name);
-['entry_fee', 'prize_money', 'draw_date', 'info', 'gallery_url', 'payment_url', 'logo_url', 'venue', 'categories', 'hero_url', 'hero_mobile_url'].forEach((col) => {
+['entry_fee', 'prize_money', 'draw_date', 'info', 'gallery_url', 'payment_url', 'logo_url', 'venue', 'categories', 'hero_url', 'hero_mobile_url', 'scoring', 'tiebreakers'].forEach((col) => {
   if (!seasonInfoColumns.includes(col)) db.exec(`ALTER TABLE seasons ADD COLUMN ${col} TEXT`);
 });
+// A tournament's table rules (see standings.js): scoring = BLTA / WIN2 / WIN1, tiebreakers = the conditions in order (comma list of H2H, SETS,
+// WINS, GAMES). NULL (a league season, or a tournament made before the rules existed) = the league's way of calculating.
 // A season is a league season ('LEAGUE') or a tournament ('TOURNAMENT'): the same page, registration, groups, brackets, matches and
 // winners; a tournament also has a venue and the categories it is played in (comma list of ELITE, NEXT_GEN, NOVICE; empty = all).
 if (!seasonInfoColumns.includes('kind')) db.exec("ALTER TABLE seasons ADD COLUMN kind TEXT NOT NULL DEFAULT 'LEAGUE'");
@@ -1739,6 +1741,27 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
   CREATE INDEX IF NOT EXISTS idx_organisation_posts_org ON organisation_posts(organisation_id, id);
+  CREATE TABLE IF NOT EXISTS organisation_post_reactions (
+    post_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    emoji TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    PRIMARY KEY (post_id, player_id, emoji)
+  );
+  CREATE INDEX IF NOT EXISTS idx_organisation_post_reactions_post ON organisation_post_reactions(post_id);
+`);
+// a picture in a news post: the address of a file this community uploaded (/community-images/<org id>-post-...)
+if (!db.prepare('PRAGMA table_info(organisation_posts)').all().some((c) => c.name === 'image_url')) db.exec('ALTER TABLE organisation_posts ADD COLUMN image_url TEXT');
+// An invitation an admin sent to a player (a message with a Join button, see src/routes/communities.js): the player joins from it without the approval.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS organisation_invites (
+    organisation_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    invited_by_player_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    PRIMARY KEY (organisation_id, player_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_organisation_invites_by ON organisation_invites(invited_by_player_id, created_at);
 `);
 // Správy / Messages: private one-to-one chats between players (src/routes/messages.js, src/messages.js). A conversation is private to its members;
 // direct_key ("<smaller id>:<larger id>") keeps it to one direct conversation per pair. A member's state is MAIN, REQUEST (a first message from a
@@ -1785,11 +1808,17 @@ db.exec(`
     PRIMARY KEY (blocker_player_id, blocked_player_id)
   );
 `);
+// a message that is an invitation to a community or club names it (the chat shows a card with a Join button)
+if (!db.prepare('PRAGMA table_info(direct_messages)').all().some((c) => c.name === 'invite_org_id')) db.exec('ALTER TABLE direct_messages ADD COLUMN invite_org_id INTEGER');
 
 // approved: a COMMUNITY is public at once (1); a CLUB is made with 0 and goes public when the super admin approves it (until then only its own
 // admins and the admins of the site see it). A database that had the table before this column keeps its rows public.
 if (!db.prepare('PRAGMA table_info(organisations)').all().some((c) => c.name === 'approved')) {
   db.exec('ALTER TABLE organisations ADD COLUMN approved INTEGER NOT NULL DEFAULT 1');
+}
+// The private invitation link of a community or club (src/routes/communities.js): whoever follows it joins at once, whatever the join policy.
+if (!db.prepare('PRAGMA table_info(organisations)').all().some((c) => c.name === 'invite_token')) {
+  db.exec('ALTER TABLE organisations ADD COLUMN invite_token TEXT');
 }
 // Club tournaments (phase 2): a tournament season made by a community or club has organisation_id (null for the league and for the tournaments an admin
 // makes); counts_for_rating (default 0, only the super admin) says whether its results move the ratings; max_open_tournaments is the limit of open ones.
