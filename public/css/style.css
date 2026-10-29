@@ -169,10 +169,9 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   box-shadow: 0 0 18px rgba(255, 85, 0, 0.25);
 }
 .topbar-inner {
-  /* Wider than .container's own 1080px on purpose — the nav has grown to
-     8+ items over time, and a header is a reasonable place to be a bit
-     roomier than the body content column beneath it. */
-  max-width: 1280px;
+  /* The same width as .container (1080px, same 16px side padding), so the logo lines up with the left edge of the page content and the last icon of the top
+     strip with its right edge. (It used to be 1280px, wider than the content, which left the header sticking out on both sides.) */
+  max-width: 1080px;
   margin: 0 auto;
   padding: 12px 16px;
   display: flex;
