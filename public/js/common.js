@@ -1562,6 +1562,13 @@ async function switchActing(organisation) {
   else window.location.reload();
 }
 
+// the address of a picture written by a player or an admin (a photo, a logo): only a picture of this site or an https address goes into src, else ''
+function safePictureUrl(url) {
+  const u = String(url || '');
+  if (/^\/(player-photos|community-images|season-heroes|winner-photos|media)\/[\w.\-\/]+$/.test(u)) return u;
+  return /^https:\/\/[^\s"'<>\\]+$/.test(u) ? u : '';
+}
+
 function clubInitials(name) {
   return String(name || '?').split(/\s+/).filter((w) => /^[\p{L}\p{N}]/u.test(w)).slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('') || '?';
 }
@@ -1571,6 +1578,7 @@ let actingRun = 0; // the number of the newest refresh: the session event can fi
 async function refreshActingOrg() {
   const run = ++actingRun;
   document.querySelectorAll('.profile-pill-wrap').forEach((el) => el.remove());
+  document.body.classList.remove('has-profile-pill');
   const wasActing = !!actingOrg;
   actingOrg = null;
   if (!playerAuthed || !currentPlayerId) {
@@ -1586,6 +1594,7 @@ async function refreshActingOrg() {
   }
   if (run !== actingRun) return; // a newer refresh is on its way (or already drew the pill)
   document.querySelectorAll('.profile-pill-wrap').forEach((el) => el.remove());
+  document.body.classList.remove('has-profile-pill');
   actingOrg = mine.acting;
   if (wasActing && !actingOrg) renderHeaderNav(); // left the club or no longer its admin: the normal menu comes back
   const admins = mine.items.filter((o) => o.me && o.me.role === 'ADMIN');
@@ -1597,9 +1606,10 @@ async function refreshActingOrg() {
     const avatar = (organisation) => {
       const av = document.createElement('span');
       av.className = organisation ? 'profile-pill-av club' : 'profile-pill-av';
-      if (organisation && /^\/community-images\/[\w.-]+$/.test(organisation.logoUrl || '')) {
+      const picture = safePictureUrl(organisation ? organisation.logoUrl : currentPlayerPhotoUrl);
+      if (picture) {
         const img = document.createElement('img');
-        img.src = organisation.logoUrl;
+        img.src = picture;
         img.alt = '';
         av.appendChild(img);
       } else {
@@ -1626,6 +1636,7 @@ async function refreshActingOrg() {
     const menu = document.createElement('div');
     menu.className = 'auth-menu-panel profile-pill-menu com-switch';
     menu.hidden = true;
+    menu.appendChild(buildLangRow());
     const title = document.createElement('div');
     title.className = 'com-switch-title';
     title.textContent = t('com.switchTitle');
@@ -1658,6 +1669,12 @@ async function refreshActingOrg() {
     create.className = 'auth-menu-item com-switch-item';
     create.textContent = '＋ ' + t('com.create');
     menu.appendChild(create);
+    const logout = document.createElement('a');
+    logout.href = '#';
+    logout.className = 'auth-menu-item com-switch-item pill-logout';
+    logout.textContent = t('nav.logout');
+    logout.addEventListener('click', (e) => { e.preventDefault(); document.querySelector('.player-login-link').click(); });
+    menu.appendChild(logout);
 
     const close = () => { menu.hidden = true; pill.setAttribute('aria-expanded', 'false'); };
     pill.addEventListener('click', () => {
@@ -1669,6 +1686,7 @@ async function refreshActingOrg() {
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
     wrap.append(pill, menu);
     right.insertBefore(wrap, right.firstChild);
+    document.body.classList.add('has-profile-pill');
   }
 
   if (actingOrg) applyClubMenu();
@@ -1879,9 +1897,7 @@ document.addEventListener('click', (e) => {
 
 // Language on phones and tablets: a row at the top of the person-icon dropdown (SK | EN) instead of a pill in the top bar, which took too much room there. The
 // CSS shows the row and hides the pill below 1025px; on a wide screen the pill of the grey strip stays and the row is hidden.
-function mountLangRow() {
-  const panel = document.getElementById('auth-menu-panel');
-  if (!panel || panel.querySelector('.auth-lang-row')) return;
+function buildLangRow() {
   const row = document.createElement('div');
   row.className = 'auth-lang-row';
   const label = document.createElement('span');
@@ -1897,7 +1913,13 @@ function mountLangRow() {
     seg.appendChild(b);
   });
   row.append(label, seg);
-  panel.insertBefore(row, panel.firstChild);
+  return row;
+}
+// (a logged-in player has no person icon any more: for him the same row is in the dropdown of his profile pill, see refreshActingOrg)
+function mountLangRow() {
+  const panel = document.getElementById('auth-menu-panel');
+  if (!panel || panel.querySelector('.auth-lang-row')) return;
+  panel.insertBefore(buildLangRow(), panel.firstChild);
 }
 mountLangRow();
 
@@ -2477,6 +2499,7 @@ let playerAuthed = false;
 // handlers) — nothing else in the app checks it or should.
 let refereeAuthed = false;
 let currentPlayerName = null;
+let currentPlayerPhotoUrl = null; // the photo of the logged-in player (his profile pill shows it instead of letters), or null
 // Null for a pure admin session (no player cookie) or no session at all —
 // only set once a *specific* player is logged in via their phone number.
 // Pages that need to scope a button/action to "this player's own stuff"
@@ -2549,6 +2572,7 @@ async function refreshPlayerAuth() {
     const res = await loadSession();
     playerAuthed = !!res.isPlayer;
     currentPlayerName = res.playerName || null;
+    currentPlayerPhotoUrl = res.playerPhotoUrl || null;
     currentPlayerId = res.playerId || null;
     currentPlayerSlug = res.playerSlug || null;
     currentPlayerEmail = res.playerEmail || null;
@@ -2762,6 +2786,7 @@ function openPlayerLoginModal(onSuccess, opts) {
   function applySession(res) {
     playerAuthed = !!res.isPlayer;
     currentPlayerName = res.playerName || null;
+    currentPlayerPhotoUrl = res.playerPhotoUrl || null;
     currentPlayerId = res.playerId || null;
     currentPlayerSlug = res.playerSlug || null;
     updatePlayerNavLinks();

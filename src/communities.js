@@ -5,7 +5,7 @@ const auth = require('./auth');
 
 const REREQUEST_DAYS = 7;
 // the first part of an address under /api/communities that is a route of its own: no organisation may get it as its slug
-const RESERVED_SLUGS = new Set(['mine', 'act-as']);
+const RESERVED_SLUGS = new Set(['mine', 'act-as', 'feed']);
 
 function slugify(name) {
   return String(name)

@@ -153,6 +153,45 @@ test('a logged-in player always sees his name as a profile pill in the top strip
   ['.profile-pill {', '.profile-pill-av {', '.profile-pill-caret {', '.profile-pill-wrap {'].forEach((sel) => assert.ok(css.includes(sel), `${sel} has a rule`));
 });
 
+test('a logged-in player has no person icon any more: log out and the language row are in the profile pill dropdown, under "create a community or club"', () => {
+  const js = read('js/common.js');
+  const fn = js.slice(js.indexOf('async function refreshActingOrg'), js.indexOf("window.addEventListener('blta:auth-changed', refreshActingOrg"));
+  assert.ok(fn.includes("document.body.classList.add('has-profile-pill')") && fn.includes("document.body.classList.remove('has-profile-pill')"), 'the page knows whether the pill is there');
+  assert.ok(fn.indexOf("t('nav.logout')") > fn.indexOf("t('com.create')"), 'log out comes after "create a community or club"');
+  assert.ok(fn.includes('pill-logout') && /player-login-link'\)\.click\(\)/.test(fn), 'it uses the same logout as the account menu');
+  assert.ok(fn.includes('buildLangRow()'), 'the language row is also in the pill dropdown (for a logged-in player the person icon is gone)');
+  const css = read('css/style.css');
+  assert.ok(/\.has-profile-pill \.auth-menu-wrap \{ display: none; \}/.test(css), 'the person icon is hidden while the pill is there');
+});
+
+test('on phones the account dropdown is full width with everything aligned to the left', () => {
+  const css = read('css/style.css');
+  const at = css.indexOf('/* phones and tablets: the account dropdown');
+  assert.ok(at >= 0, 'the block is there');
+  const block = css.slice(at, css.indexOf('\n}', at) + 2);
+  assert.ok(/@media \(max-width: 1024px\)/.test(block));
+  assert.ok(/\.auth-menu-panel:not\(\.profile-pill-menu\) \{[^}]*position: fixed[^}]*left: 10px[^}]*right: 10px/.test(block), 'full width like the profile sheet');
+  assert.ok(/\.auth-menu-panel \.auth-menu-item \{[^}]*justify-content: flex-start[^}]*text-align: left/.test(block), 'the items are aligned to the left');
+  assert.ok(/\.auth-lang-row \{ display: flex; align-items: center; justify-content: flex-start/.test(css), 'the language row is aligned to the left');
+  assert.ok(/\.profile-pill-menu \.pill-logout \{ justify-content: flex-start/.test(css), 'log out is aligned to the left too');
+  assert.ok(/\.profile-pill-menu \.com-switch-mark \{ margin-left: 8px; \}/.test(block), 'the tick of the current profile does not push the row to the left');
+});
+
+test('the session of a player carries his photo, and the pill and the dropdown show pictures (his photo, the logo of a club) instead of letters when there are any', async () => {
+  const player = await makePlayer('Hrac S Fotkou');
+  const put = await call('PATCH', `/api/players/${player.id}`, { body: { name: 'Hrac S Fotkou', photoUrl: '/player-photos/hrac.jpg' } });
+  assert.ok([200, 201].includes(put.status), JSON.stringify(put.json));
+  const session = await call('GET', '/api/player/session', { cookie: player.cookie });
+  assert.strictEqual(session.json.playerPhotoUrl, '/player-photos/hrac.jpg');
+  const plain = await makePlayer('Hrac Bez Fotky');
+  assert.strictEqual((await call('GET', '/api/player/session', { cookie: plain.cookie })).json.playerPhotoUrl, null, 'null without a photo');
+  const js = read('js/common.js');
+  const fn = js.slice(js.indexOf('async function refreshActingOrg'), js.indexOf("window.addEventListener('blta:auth-changed', refreshActingOrg"));
+  assert.ok(fn.includes('currentPlayerPhotoUrl') && fn.includes('safePictureUrl('), 'the avatar of the player uses his photo');
+  assert.ok(js.includes('function safePictureUrl') && js.includes('currentPlayerPhotoUrl = res.playerPhotoUrl'), 'a picture address is checked, and the session fills it');
+  assert.ok(/logoUrl/.test(fn), 'the logo of a club is used for its avatar');
+});
+
 test('two refreshes at once (the session event fires twice on some pages) leave ONE pill: the older run gives up after its await, and the pill is removed right before it is added', () => {
   const js = read('js/common.js');
   const fn = js.slice(js.indexOf('async function refreshActingOrg'), js.indexOf("window.addEventListener('blta:auth-changed', refreshActingOrg"));
@@ -258,6 +297,32 @@ test('Join is green and Leave is red, and no button of the club page is dark on 
   assert.ok(/status-green/.test(rule('.btn-join')), 'Join is the green of the site');
   assert.ok(/#e5484d|#ff6b6b|red/i.test(rule('.btn-leave')), 'Leave is red');
   assert.ok(/color: var\(--white\)/.test(rule('.com-actions .btn-outline')), 'a neutral button is readable on the dark page');
+});
+
+test('the list page has a Feed tab first (and open by default) with the news of the joined communities, an empty state with a way to Discover, and a login prompt', () => {
+  const js = read('js/communities.js');
+  assert.ok(/let tab = 'feed'/.test(js), 'the page opens on the feed');
+  assert.ok(js.indexOf("['feed', 'com.tabFeed']") >= 0 && js.indexOf("['feed', 'com.tabFeed']") < js.indexOf("['discover', 'com.tabDiscover']"), 'Feed is the first tab');
+  assert.ok(js.includes("api('/communities/feed") && js.includes('before='), 'it reads the feed and the older pages');
+  ['com.feedEmptyTitle', 'com.feedEmptyText', 'com.feedExplore', 'com.feedSuggested', 'com.feedLogin'].forEach((k) => assert.ok(js.includes(`t('${k}')`), `${k} is used`));
+  assert.ok(js.includes('escapeHtml(p.body)') && js.includes('escapeHtml(p.organisation.name)') && js.includes('encodeURIComponent(p.organisation.slug)'), 'a news item is escaped');
+  // a tournament made by one of his communities is a card of the feed too; the older pages start at the time the answer names
+  assert.ok(js.includes("p.type === 'TOURNAMENT'") && js.includes("t('com.feedNewTournament')"), 'the feed draws tournaments');
+  assert.ok(js.includes('escapeHtml(p.name)') && js.includes('/tournament/${encodeURIComponent(p.slug)}'), 'a tournament is escaped and links to its page');
+  assert.ok(js.includes('encodeURIComponent(feed.next)'), 'the older pages follow the cursor of the answer');
+  const i18n = read('js/i18n.js');
+  ['com.tabFeed', 'com.feedEmptyTitle', 'com.feedEmptyText', 'com.feedExplore', 'com.feedSuggested', 'com.feedLogin', 'com.feedNewTournament'].forEach((k) => assert.strictEqual(i18n.split(`'${k}':`).length, 3, `${k} in both languages`));
+  const css = read('css/style.css');
+  ['.com-feed-head {', '.com-feed-empty {'].forEach((sel) => assert.ok(css.includes(sel), `${sel} has a rule`));
+  assert.ok(css.includes('#com-root .btn-outline {'), 'an outline button of the list page (Show, Show older) is readable on the dark page');
+});
+
+test('the "Prihlásiť sa" button of the Moje tab is green like Join, not a dark outline on a dark page', () => {
+  const js = read('js/communities.js');
+  const at = js.indexOf('id="com-login-btn"');
+  assert.ok(at > 0, 'the button exists');
+  const tag = js.slice(js.lastIndexOf('<button', at), at);
+  assert.ok(/class="btn btn-join"/.test(tag), 'it has the green Join style: ' + tag);
 });
 
 test('the new texts of the club page exist in both languages', () => {

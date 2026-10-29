@@ -1,13 +1,15 @@
-// Komunity a kluby (communities and clubs): the list page (/komunity-a-kluby, code address /communities). Three tabs - everybody's communities and clubs
-// (Discover), the ones the logged-in player belongs to (Mine) and the events of them (not there yet) - and a button that opens the form to make a new one.
-// Data: GET /api/communities, GET /api/communities/mine, POST /api/communities (src/routes/communities.js).
+// Komunity a kluby (communities and clubs): the list page (/komunity-a-kluby, code address /communities). Four tabs - the Feed (the news of the communities and clubs
+// the player has joined), everybody's communities and clubs (Discover), the ones the logged-in player belongs to (Mine) and the events of them (not there yet) - and a
+// button that opens the form to make a new one.
+// Data: GET /api/communities, GET /api/communities/mine, GET /api/communities/feed, POST /api/communities (src/routes/communities.js).
 (function communitiesPage() {
   const root = document.getElementById('com-root');
   if (!root) return;
 
-  let tab = 'discover';
+  let tab = 'feed';
   let items = [];
   let mine = [];
+  let feed = { items: [], more: false, next: null };
   let loggedIn = false;
 
   const goTo = (path) => { window.location.href = window.BLTA_LOCALIZE && BLTA_LOCALIZE.localUrl ? BLTA_LOCALIZE.localUrl(path) : path; };
@@ -35,17 +37,80 @@
       </a>`;
   }
 
+  const dateText = (iso) => new Date(iso).toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'sk-SK', { day: 'numeric', month: 'numeric', year: 'numeric' });
+
+  const dayText = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'sk-SK', { day: 'numeric', month: 'numeric', year: 'numeric' }) : '');
+  const rangeText = (a, b) => (a && b && a !== b ? `${dayText(a)} – ${dayText(b)}` : dayText(a || b));
+
+  // a tournament made by one of his communities: what it is, when and where, and the way to its page (and to register while it is open)
+  function feedTournamentHtml(p) {
+    const link = `/tournament/${encodeURIComponent(p.slug)}`;
+    const facts = [rangeText(p.startDate, p.endDate), p.venue, t(p.playType === 'DOUBLES' ? 'com.tDoubles' : 'com.tSingles')].filter(Boolean).map(escapeHtml).join(' · ');
+    const over = !!p.endDate && p.endDate < new Date().toISOString().slice(0, 10);
+    return `
+      <div class="com-post com-feed-post com-feed-tournament">
+        <a class="com-feed-head" href="/community/${encodeURIComponent(p.organisation.slug)}">
+          ${logoHtml(p.organisation)}
+          <span class="com-feed-from"><b>${escapeHtml(p.organisation.name)}</b><span class="com-badge">${escapeHtml(typeText(p.organisation))}</span></span>
+          <span class="com-feed-date">${escapeHtml(dateText(p.createdAt))}</span>
+        </a>
+        <div class="com-feed-kicker">${escapeHtml(t('com.feedNewTournament'))}</div>
+        <a class="com-feed-tname" href="${escapeHtml(link)}">${escapeHtml(p.name)}</a>
+        <div class="com-feed-facts">${facts}</div>
+        <div class="com-feed-acts">
+          ${p.registrationOpen && !over ? `<a class="btn btn-join com-small" href="${escapeHtml(link)}#register">${escapeHtml(t('com.eventRegister'))}</a>` : ''}
+          <a class="btn btn-outline com-small" href="${escapeHtml(link)}">${escapeHtml(t('com.eventView'))}</a>
+        </div>
+      </div>`;
+  }
+
+  // one news item of the feed: the community it comes from (logo, name, kind), when, who wrote it, the text
+  function feedPostHtml(p) {
+    if (p.type === 'TOURNAMENT') return feedTournamentHtml(p);
+    return `
+      <div class="com-post com-feed-post">
+        <a class="com-feed-head" href="/community/${encodeURIComponent(p.organisation.slug)}">
+          ${logoHtml(p.organisation)}
+          <span class="com-feed-from"><b>${escapeHtml(p.organisation.name)}</b><span class="com-badge">${escapeHtml(typeText(p.organisation))}</span></span>
+          <span class="com-feed-date">${escapeHtml(dateText(p.createdAt))}</span>
+        </a>
+        <div class="com-post-body">${escapeHtml(p.body)}</div>
+      </div>`;
+  }
+
+  // the Feed: the news of the communities he has joined; without any, a way to Discover and a few communities to start with; logged out, a login prompt
+  function feedHtml() {
+    if (!loggedIn) {
+      return `<div class="com-feed-empty"><p class="com-empty">${escapeHtml(t('com.feedLogin'))}</p>
+        <button type="button" class="btn btn-join" id="com-login-btn">${escapeHtml(t('nav.loginPlayer'))}</button></div>`;
+    }
+    if (feed.items.length) {
+      return `${feed.items.map(feedPostHtml).join('')}${feed.more ? `<button type="button" class="btn btn-outline com-small" id="com-feed-older">${escapeHtml(t('com.showOlder'))}</button>` : ''}`;
+    }
+    const joined = new Set(mine.map((o) => o.id));
+    const suggested = items.filter((o) => o.approved && !joined.has(o.id)).slice(0, 5);
+    return `
+      <div class="com-feed-empty">
+        <span class="com-feed-icon" aria-hidden="true">${courtIcon('group')}</span>
+        <h3>${escapeHtml(t('com.feedEmptyTitle'))}</h3>
+        <p class="com-empty">${escapeHtml(t('com.feedEmptyText'))}</p>
+        <button type="button" class="btn btn-join" id="com-explore-btn">${escapeHtml(t('com.feedExplore'))}</button>
+      </div>
+      ${suggested.length ? `<div class="com-lab">${escapeHtml(t('com.feedSuggested'))}</div>${listHtml(suggested, 'com.empty')}` : ''}`;
+  }
+
   function listHtml(list, emptyKey) {
     return list.length ? `<div class="com-list">${list.map(cardHtml).join('')}</div>` : `<p class="com-empty">${escapeHtml(t(emptyKey))}</p>`;
   }
 
   function render() {
-    const body = tab === 'discover' ? listHtml(items, 'com.empty')
-      : tab === 'mine' ? (loggedIn ? listHtml(mine, 'com.emptyMine') : `<p class="com-empty">${escapeHtml(t('com.emptyMine'))}</p><button type="button" class="btn btn-outline" id="com-login-btn">${escapeHtml(t('nav.loginPlayer'))}</button>`)
+    const body = tab === 'feed' ? feedHtml()
+      : tab === 'discover' ? listHtml(items, 'com.empty')
+      : tab === 'mine' ? (loggedIn ? listHtml(mine, 'com.emptyMine') : `<p class="com-empty">${escapeHtml(t('com.emptyMine'))}</p><button type="button" class="btn btn-join" id="com-login-btn">${escapeHtml(t('nav.loginPlayer'))}</button>`)
         : `<p class="com-empty">${escapeHtml(t('com.emptyEvents'))}</p>`;
     root.innerHTML = `
       <div class="com-tabs" role="tablist">
-        ${[['discover', 'com.tabDiscover'], ['mine', 'com.tabMine'], ['events', 'com.tabEvents']]
+        ${[['feed', 'com.tabFeed'], ['discover', 'com.tabDiscover'], ['mine', 'com.tabMine'], ['events', 'com.tabEvents']]
           .map(([id, key]) => `<button type="button" class="com-tab${tab === id ? ' on' : ''}" data-tab="${id}" role="tab">${escapeHtml(t(key))}</button>`).join('')}
       </div>
       ${tab === 'mine' ? `<div class="com-lab">${escapeHtml(t('com.mineTitle'))}</div>` : ''}
@@ -55,6 +120,20 @@
     document.getElementById('com-create-btn').addEventListener('click', () => requirePlayerAuth(openCreate));
     const loginBtn = document.getElementById('com-login-btn');
     if (loginBtn) loginBtn.addEventListener('click', () => requirePlayerAuth(() => {}));
+    const explore = document.getElementById('com-explore-btn');
+    if (explore) explore.addEventListener('click', () => { tab = 'discover'; render(); });
+    const older = document.getElementById('com-feed-older');
+    if (older) {
+      older.addEventListener('click', async () => {
+        if (older.disabled) return;
+        older.disabled = true;
+        try {
+          const more = await api(`/communities/feed?before=${encodeURIComponent(feed.next)}`);
+          feed = { items: feed.items.concat(more.items), more: more.more, next: more.next };
+          render();
+        } catch { older.disabled = false; }
+      });
+    }
   }
 
   function openCreate() {
@@ -124,6 +203,7 @@
       loggedIn = !!session.isPlayer && !!session.playerId;
       items = (await api('/communities')).items;
       mine = loggedIn ? (await api('/communities/mine')).items : [];
+      feed = loggedIn ? await api('/communities/feed') : { items: [], more: false, next: null };
     } catch (err) {
       root.innerHTML = `<p class="com-empty">${escapeHtml(err.message)}</p>`;
       return;

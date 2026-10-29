@@ -115,6 +115,45 @@ router.get('/mine', (req, res) => {
   res.json({ items, acting: acting ? serialize(acting, req) : null });
 });
 
+// The feed of a player: what happened in the communities and clubs he is an ACTIVE member of, newest first - the news they posted and the tournaments they made -
+// in pages of POSTS_PAGE. ?before=<the time of the last item of the page before> gives the older ones (the answer's `next`). Only public organisations (approved, not
+// hidden); removed news are left out; each item carries its community.
+router.get('/feed', (req, res) => {
+  const playerId = needPlayer(req, res);
+  if (!playerId) return;
+  // the cursor is a time (the createdAt of the last item); anything else is ignored. (Two items made in the very same millisecond could hide each other at a page
+  // border - the stamps have millisecond precision, so it does not happen in practice.)
+  const cursor = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(String(req.query.before || '')) ? String(req.query.before) : null;
+  const member = "JOIN organisation_members m ON m.organisation_id = o.id AND m.player_id = ? AND m.status = 'ACTIVE'";
+  const orgOf = (r) => ({ id: r.org_id, slug: r.org_slug, name: r.org_name, type: r.org_type, logoUrl: r.org_logo || '' });
+  const orgColumns = 'o.id AS org_id, o.slug AS org_slug, o.name AS org_name, o.type AS org_type, o.logo_url AS org_logo';
+  const posts = db.prepare(`
+    SELECT po.id, po.body, po.created_at, p.name, p.slug, ${orgColumns}
+    FROM organisation_posts po
+    JOIN organisations o ON o.id = po.organisation_id
+    ${member}
+    LEFT JOIN players p ON p.id = po.author_player_id
+    WHERE po.hidden = 0 AND o.hidden = 0 AND o.approved = 1 ${cursor ? 'AND po.created_at < ?' : ''}
+    ORDER BY po.created_at DESC, po.id DESC LIMIT ${POSTS_PAGE + 1}
+  `).all(...(cursor ? [playerId, cursor] : [playerId])).map((r) => ({
+    type: 'POST', id: r.id, body: r.body, authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at, organisation: orgOf(r),
+  }));
+  const tournaments = db.prepare(`
+    SELECT s.id, s.name, s.slug, s.start_date, s.end_date, s.venue, s.play_type, s.registration_open, s.created_at, ${orgColumns}
+    FROM seasons s
+    JOIN organisations o ON o.id = s.organisation_id
+    ${member}
+    WHERE s.kind = 'TOURNAMENT' AND o.hidden = 0 AND o.approved = 1 ${cursor ? 'AND s.created_at < ?' : ''}
+    ORDER BY s.created_at DESC, s.id DESC LIMIT ${POSTS_PAGE + 1}
+  `).all(...(cursor ? [playerId, cursor] : [playerId])).map((r) => ({
+    type: 'TOURNAMENT', id: r.id, name: r.name, slug: r.slug, startDate: r.start_date || null, endDate: r.end_date || null, venue: r.venue || '',
+    playType: r.play_type || 'SINGLES', registrationOpen: !!r.registration_open, createdAt: r.created_at, organisation: orgOf(r),
+  }));
+  const merged = [...posts, ...tournaments].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || (a.type === b.type ? b.id - a.id : (a.type === 'TOURNAMENT' ? -1 : 1)));
+  const items = merged.slice(0, POSTS_PAGE);
+  res.json({ items, more: merged.length > POSTS_PAGE, next: items.length ? items[items.length - 1].createdAt : null });
+});
+
 // switch to the profile of a club he runs (organisationId) or back to himself (null)
 router.post('/act-as', (req, res) => {
   const playerId = needPlayer(req, res);

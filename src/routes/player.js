@@ -26,6 +26,8 @@ function sessionInfo({ isPlayerFlag, player }) {
     playerId: player ? player.id : null,
     playerName: player ? player.name : null,
     playerSlug: player ? player.slug : null,
+    // his own photo (the profile pill of the top bar shows it instead of his initials)
+    playerPhotoUrl: player ? (player.photo_url || null) : null,
   };
 }
 
@@ -86,7 +88,7 @@ function countUnreadNotifications(playerId) {
 
 router.get('/session', (req, res) => {
   const playerId = auth.getPlayerId(req);
-  const player = playerId ? db.prepare('SELECT id, name, slug, login_pin, email FROM players WHERE id = ?').get(playerId) : null;
+  const player = playerId ? db.prepare('SELECT id, name, slug, login_pin, email, photo_url FROM players WHERE id = ?').get(playerId) : null;
   // Cheap enough to compute on every page load (two indexed COUNTs) — lets
   // the nav bell's unread bubble (see common.js) stay in sync without its
   // own separate poll. 0 for a logged-out visitor or an admin with no
@@ -488,7 +490,7 @@ router.post('/register', async (req, res) => {
   let player;
   if (existingByName) {
     db.prepare('UPDATE players SET phone = ?, email = ? WHERE id = ?').run(digits, email.slice(0, 100), existingByName.id);
-    player = db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(existingByName.id);
+    player = db.prepare('SELECT id, name, slug, photo_url FROM players WHERE id = ?').get(existingByName.id);
   } else {
     const slug = uniqueSlugFor(name);
     const info = db.prepare('INSERT INTO players (name, slug, phone, email, league_id) VALUES (?, ?, ?, ?, ?)').run(name, slug, digits, email.slice(0, 100), (req.league && req.league.id) || 1);
@@ -564,7 +566,7 @@ router.post('/forgot-pin', async (req, res) => {
 router.post('/reset-pin', (req, res) => {
   const token = String(req.body.token || '').trim();
   if (!token) return res.status(400).json({ error: 'Missing reset token', errorCode: 'missingResetToken' });
-  const player = db.prepare('SELECT id, name, slug, reset_token_expires FROM players WHERE reset_token = ?').get(token);
+  const player = db.prepare('SELECT id, name, slug, photo_url, reset_token_expires FROM players WHERE reset_token = ?').get(token);
   if (!player || !player.reset_token_expires || new Date(player.reset_token_expires) < new Date()) {
     return res.status(400).json({ error: 'This reset link is invalid or has expired — request a new one', errorCode: 'resetLinkInvalid' });
   }

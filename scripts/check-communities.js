@@ -622,6 +622,95 @@ test('logging in as a player clears a club the browser was still acting as', asy
 
 // (the tests of the next tasks go here)
 
+// ---------- the feed: the news of the communities and clubs a player has joined ----------
+
+const post = (who, org, text) => call('POST', `/api/communities/${org.id}/posts`, { cookie: who.cookie, body: { body: text } });
+const feedOf = (who, query = '') => call('GET', `/api/communities/feed${query}`, { cookie: who.cookie });
+
+test('the feed needs a logged-in player', async () => {
+  assert.strictEqual((await call('GET', '/api/communities/feed', { cookie: '' })).status, 401);
+});
+
+test('the feed has the news of the public communities and clubs the player is an ACTIVE member of, newest first, each with its community; nothing else', async () => {
+  const me = await makePlayer('Feed Ja');
+  const other = await makePlayer('Feed Iny');
+  const mk = async (who, name, over = {}) => (await call('POST', '/api/communities', { cookie: who.cookie, body: club({ type: 'COMMUNITY', name: uniqueName(name), ...over }) })).json;
+  const joined = await mk(me, 'Moja komunita');
+  const second = await mk(me, 'Druha komunita');
+  const notJoined = await mk(other, 'Cudzia komunita');
+  const waiting = await mk(other, 'Cakaren', { joinPolicy: 'APPROVAL' });
+  const hidden = await mk(me, 'Skryta komunita');
+  const unapprovedClub = (await call('POST', '/api/communities', { cookie: me.cookie, body: club({ name: uniqueName('Neschvaleny klub') }) })).json;
+  assert.strictEqual((await call('POST', `/api/communities/${waiting.id}/join`, { cookie: me.cookie })).status, 200, 'a request to join waits for approval');
+  const p1 = (await post(me, joined, 'Prva novinka')).json;
+  const gone = (await post(me, joined, 'Zmazana novinka')).json;
+  const p2 = (await post(me, second, 'Druha novinka')).json;
+  await post(other, notJoined, 'Cudzia novinka');
+  await post(other, waiting, 'Novinka cakarne');
+  await post(me, hidden, 'Novinka skrytej');
+  await post(me, unapprovedClub, 'Novinka neschvaleneho klubu');
+  assert.strictEqual((await call('DELETE', `/api/communities/${joined.id}/posts/${gone.id}`, { cookie: me.cookie })).status, 200);
+  assert.strictEqual((await call('PATCH', `/api/communities/${hidden.id}/moderation`, { body: { hidden: true } })).status, 200);
+  const feed = await feedOf(me);
+  assert.strictEqual(feed.status, 200, JSON.stringify(feed.json));
+  assert.deepStrictEqual(feed.json.items.map((i) => i.body), ['Druha novinka', 'Prva novinka'], 'only the news of the two public communities he joined, newest first');
+  assert.strictEqual(feed.json.more, false);
+  const first = feed.json.items[0];
+  assert.deepStrictEqual([first.organisation.id, first.organisation.slug, first.organisation.name, first.organisation.type], [second.id, second.slug, second.name, 'COMMUNITY']);
+  assert.ok('logoUrl' in first.organisation && first.authorName === 'Feed Ja' && first.createdAt && first.id === p2.id);
+  assert.strictEqual(feed.json.items[1].id, p1.id);
+  // the other player runs the two communities that I left out above: his feed has their news (and none of mine)
+  assert.deepStrictEqual((await feedOf(other)).json.items.map((i) => i.body), ['Novinka cakarne', 'Cudzia novinka']);
+});
+
+test('a tournament made by a joined community or club is in the feed too, in time order with the news; the ones of other communities, hidden ones and admin tournaments are not', async () => {
+  const me = await makePlayer('Feed Turnaje');
+  const other = await makePlayer('Feed Cudzi Turnaje');
+  const org = (await call('POST', '/api/communities', { cookie: me.cookie, body: club({ type: 'COMMUNITY', name: uniqueName('Turnajova komunita') }) })).json;
+  const foreign = (await call('POST', '/api/communities', { cookie: other.cookie, body: club({ type: 'COMMUNITY', name: uniqueName('Cudzia turnajova') }) })).json;
+  const tournament = (who, o, name) => call('POST', `/api/communities/${o.id}/tournaments`, { cookie: who.cookie, body: { name, playType: 'SINGLES', startDate: '2027-05-01', endDate: '2027-05-02', venue: 'Kurty Slovan', entryFee: '10 €' } });
+  await post(me, org, 'Pred turnajom');
+  const made = await tournament(me, org, 'Jarny pohar');
+  assert.strictEqual(made.status, 201, JSON.stringify(made.json));
+  await post(me, org, 'Po turnaji');
+  await tournament(other, foreign, 'Cudzi pohar');
+  await call('POST', '/api/seasons', { body: { name: uniqueName('Admin turnaj'), kind: 'TOURNAMENT' } });
+  const feed = (await feedOf(me)).json;
+  assert.deepStrictEqual(feed.items.map((i) => i.type), ['POST', 'TOURNAMENT', 'POST'], 'news, tournament, news - newest first');
+  const t = feed.items[1];
+  assert.deepStrictEqual([t.id, t.name, t.slug, t.startDate, t.endDate, t.venue, t.playType, t.registrationOpen, t.organisation.slug], [made.json.id, 'Jarny pohar', made.json.slug, '2027-05-01', '2027-05-02', 'Kurty Slovan', 'SINGLES', true, org.slug]);
+  assert.ok(t.createdAt, 'it has the time it was made');
+  // hidden community: its tournament goes with it
+  assert.strictEqual((await call('PATCH', `/api/communities/${org.id}/moderation`, { body: { hidden: true } })).status, 200);
+  assert.deepStrictEqual((await feedOf(me)).json.items, []);
+});
+
+test('the feed comes in pages of 20 (news and tournaments together), older ones with ?before= the time the last item was made', async () => {
+  const me = await makePlayer('Feed Strankovac');
+  const org = (await call('POST', '/api/communities', { cookie: me.cookie, body: club({ type: 'COMMUNITY', name: uniqueName('Plna komunita') }) })).json;
+  for (let i = 1; i <= 23; i += 1) {
+    assert.strictEqual((await post(me, org, `Novinka ${i}`)).status, 201);
+    if (i === 10) assert.strictEqual((await call('POST', `/api/communities/${org.id}/tournaments`, { cookie: me.cookie, body: { name: 'Turnaj v strede', playType: 'SINGLES', startDate: '2027-06-01', endDate: '2027-06-02' } })).status, 201);
+  }
+  const page1 = (await feedOf(me)).json;
+  assert.strictEqual(page1.items.length, 20);
+  assert.strictEqual(page1.more, true);
+  assert.strictEqual(page1.items[0].body, 'Novinka 23');
+  assert.ok(page1.items.some((i) => i.type === 'TOURNAMENT'), 'the tournament is among the 20 newest');
+  assert.ok(page1.next, 'the answer says where the next page starts');
+  const page2 = (await feedOf(me, `?before=${encodeURIComponent(page1.next)}`)).json;
+  assert.deepStrictEqual(page2.items.map((i) => i.body), ['Novinka 4', 'Novinka 3', 'Novinka 2', 'Novinka 1']);
+  assert.strictEqual(page2.more, false);
+  assert.strictEqual((await feedOf(me, '?before=nonsense')).json.items.length, 20, 'a cursor that is not a time is ignored');
+});
+
+test('a club or community cannot take the address "feed" (it is a route)', async () => {
+  const p = await makePlayer('Feed Adresa');
+  const a = (await call('POST', '/api/communities', { cookie: p.cookie, body: club({ type: 'COMMUNITY', name: 'Feed' }) })).json;
+  assert.notStrictEqual(a.slug, 'feed');
+  assert.strictEqual((await call('GET', `/api/communities/${a.slug}`, { cookie: '' })).json.name, 'Feed');
+});
+
 async function main() {
   let failed = 0;
   try {

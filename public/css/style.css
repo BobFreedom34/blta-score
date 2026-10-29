@@ -425,11 +425,17 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 @media (min-width: 1025px) { .install-app-btn { display: none !important; } }
 .nav-links a.active { background: var(--orange); color: var(--white); }
 .lang-switcher { display: flex; gap: 4px; align-items: center; order: 2; }
+/* phones and tablets: the account dropdown is full width, like the sheet of the profile pill, with its content centred */
+@media (max-width: 1024px) {
+  .auth-menu-panel:not(.profile-pill-menu) { position: fixed; top: 58px; left: 10px; right: 10px; min-width: 0; z-index: 60; }
+  .auth-menu-panel .auth-menu-item { display: flex; align-items: center; justify-content: flex-start; gap: 8px; text-align: left; }
+  .profile-pill-menu .com-switch-mark { margin-left: 8px; }
+}
 /* language: phones and tablets - no pill in the top bar; SK | EN is a row at the top of the person-icon dropdown (mountLangRow in common.js) */
 .auth-lang-row { display: none; }
 @media (max-width: 1024px) {
   #lang-switcher { display: none; }
-  .auth-lang-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--gray-light); color: var(--ink); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .auth-lang-row { display: flex; align-items: center; justify-content: flex-start; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--gray-light); color: var(--ink); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
   .auth-lang-seg { display: inline-flex; border: 1px solid var(--gray-light); border-radius: var(--radius-sm); overflow: hidden; }
   .auth-lang-seg button { padding: 6px 14px; border: 0; background: none; color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
   .auth-lang-seg button.on { background: var(--orange); color: var(--white); }
@@ -5515,6 +5521,24 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .com-pictures { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
 .com-pictures label { cursor: pointer; }
 .com-link { border: 0; background: transparent; color: var(--orange); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: underline; }
+/* the Feed tab of the list page: the news of the joined communities, and the empty state */
+.com-feed-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; color: var(--white); text-decoration: none; }
+.com-feed-head .com-logo { flex: none; width: 36px; height: 36px; font-size: 13px; }
+.com-feed-from { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.com-feed-from b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.com-feed-date { margin-left: auto; font-size: 12px; color: var(--gray-dim); white-space: nowrap; }
+/* a tournament in the feed: a green "New tournament" line, its name, when and where, and the buttons */
+.com-feed-tournament { border-color: var(--status-green); }
+.com-feed-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--status-green); }
+.com-feed-tname { display: block; margin: 2px 0; font-size: 18px; font-weight: 800; color: var(--white); text-decoration: none; overflow-wrap: anywhere; }
+.com-feed-tname:hover { color: var(--status-green); }
+.com-feed-facts { font-size: 13px; color: var(--gray-dim); }
+.com-feed-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.com-feed-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 28px 8px 18px; }
+.com-feed-empty h3 { margin: 12px 0 0; font-size: 20px; font-weight: 800; color: var(--white); }
+.com-feed-empty .com-empty { padding: 8px 4px 16px; max-width: 420px; }
+.com-feed-icon { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: var(--fill-grey); color: var(--gray-dim); }
+.com-feed-icon .venue-icon { width: 28px; height: 28px; }
 .com-post { margin-bottom: 10px; padding: 12px 16px; background: var(--ink); border: 1px solid var(--border-grey); border-radius: var(--radius); color: var(--white); }
 .com-post-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 13px; }
 .com-post-head span { color: var(--gray-dim); }
@@ -5533,6 +5557,9 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .com-switch-av { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--orange); color: var(--white); font-size: 10px; font-weight: 800; }
 .com-switch-av.club { background: var(--status-green); color: #111; }
 .com-switch-mark { margin-left: auto; color: var(--status-green); font-weight: 800; }
+/* a logged-in player has the profile pill and no person icon: log out and the language are in the dropdown of the pill */
+.has-profile-pill .auth-menu-wrap { display: none; }
+.profile-pill-menu .pill-logout { justify-content: flex-start; color: var(--orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
 /* the profile pill of a logged-in player (top strip, left of the icons): avatar, name, caret; green outline while acting as a club */
 .profile-pill-wrap { position: relative; order: -1; margin-right: 6px; }
 .profile-pill { display: inline-flex; align-items: center; gap: 8px; max-width: 230px; padding: 3px 12px 3px 4px; border: 1px solid transparent; border-radius: 999px; background: none; color: var(--white); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
@@ -5555,8 +5582,8 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .btn-join:hover { filter: brightness(1.08); }
 .btn-leave { background: transparent; border: 2px solid #e5484d; color: #ff6b6b; font-weight: 800; }
 .btn-leave:hover { background: #e5484d; color: var(--white); }
-#com-page .btn-outline { border-color: var(--border-grey); color: var(--white); }
-#com-page .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+#com-page .btn-outline, #com-root .btn-outline { border-color: var(--border-grey); color: var(--white); }
+#com-page .btn-outline:hover, #com-root .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
 .com-actions .btn-outline { border-color: var(--border-grey); color: var(--white); }
 .com-actions .btn { min-width: 150px; }
 .com-join-info { margin: 6px 0 0; color: var(--status-green); font-size: 13px; font-weight: 700; }

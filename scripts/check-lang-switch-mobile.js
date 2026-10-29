@@ -16,8 +16,8 @@ const rule = (css, selector) => {
 
 test('the account dropdown gets a language row with the two languages, and it switches through setLang', () => {
   const js = read('js/common.js');
-  const fn = js.slice(js.indexOf('function mountLangRow'), js.indexOf('mountLangRow();'));
-  assert.ok(fn.length > 200, 'mountLangRow exists');
+  const fn = js.slice(js.indexOf('function buildLangRow'), js.indexOf('mountLangRow();'));
+  assert.ok(fn.length > 200 && fn.includes('function mountLangRow'), 'buildLangRow and mountLangRow exist');
   ['auth-lang-row', 'auth-lang-seg', 'auth-menu-panel', 'setLang(', 'currentLang', "t('nav.language')", 'textContent'].forEach((s) => assert.ok(fn.includes(s), `${s} is used`));
   assert.ok(!/innerHTML/.test(fn), 'only DOM text');
   const i18n = read('js/i18n.js');
