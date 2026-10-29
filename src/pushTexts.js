@@ -17,6 +17,9 @@ const WORDING = {
   PHOTO: { sk: '📷 {name} pridal fotku k tvojmu zápasu', en: '📷 {name} added a photo to your match' },
   RANKING_UP: { sk: '📈 V BLTA rebríčku si sa posunul o {amount} hore — teraz si na {rank}. mieste', en: '📈 You climbed {amount} places in the BLTA ranking — now #{rank}' },
   RANKING_DOWN: { sk: '📉 V BLTA rebríčku si klesol o {amount} dole — teraz si na {rank}. mieste', en: '📉 You dropped {amount} places in the BLTA ranking — now #{rank}' },
+  POST: { sk: '📢 {org}: nová novinka od {name}', en: '📢 {org}: a new post from {name}' },
+  REACTION: { sk: '{emoji} {name} reagoval na tvoju novinku v {org}', en: '{emoji} {name} reacted to your post in {org}' },
+  COMMENT: { sk: '💬 {name} komentoval tvoju novinku v {org}', en: '💬 {name} commented on your post in {org}' },
   APPROVAL: { sk: '🏟️ Nový klub čaká na schválenie: {org}', en: '🏟️ A new club waits for your approval: {org}' },
   INVITE: { sk: '👥 {name} ťa pozýva: {org}', en: '👥 {name} invites you to {org}' },
   BADGE: { sk: '🏅 Získal si odznak: {badge}', en: '🏅 You earned a badge: {badge}' },
@@ -43,6 +46,9 @@ function build(kind, data = {}, lang = 'sk') {
     case 'PROPOSAL_RECEIVED':
     case 'PROPOSAL_CONFIRMED':
       return { title: fill(WORDING[kind][l], { name }), body: '', url: matchUrl, tag: `proposal-${data.matchToken || 'x'}` };
+    case 'POST': return { title: fill(WORDING.POST[l], { name, org: data.orgName || '' }), body: clip(data.body), url: data.orgSlug ? `/community/${encodeURIComponent(data.orgSlug)}` : '/communities', tag: `post-${data.postId || 'x'}` };
+    case 'REACTION': return { title: fill(WORDING.REACTION[l], { name, org: data.orgName || '', emoji: data.emoji || '' }), body: '', url: data.orgSlug ? `/community/${encodeURIComponent(data.orgSlug)}` : '/communities', tag: `reaction-${data.postId || 'x'}` };
+    case 'COMMENT': return { title: fill(WORDING.COMMENT[l], { name, org: data.orgName || '' }), body: clip(data.body), url: data.orgSlug ? `/community/${encodeURIComponent(data.orgSlug)}` : '/communities', tag: `comment-${data.postId || 'x'}` };
     case 'APPROVAL': return { title: fill(WORDING.APPROVAL[l], { org: data.orgName || '' }), body: data.fromName ? `${data.fromName}` : '', url: '/messages', tag: 'approval' };
     case 'INVITE': return { title: fill(WORDING.INVITE[l], { name, org: data.orgName || '' }), body: '', url: '/messages', tag: 'invite' };
     case 'PHOTO': return { title: fill(WORDING.PHOTO[l], { name }), body: '', url: matchUrl, tag: `photo-${data.matchToken || 'x'}` };

@@ -13,6 +13,7 @@
   const filters = { q: '', type: '', city: null };
   let mine = [];
   let feed = { items: [], more: false, next: null };
+  let events = []; // the tournaments of the communities he is a member of
   let loggedIn = false;
 
   const goTo = (path) => { window.location.href = window.BLTA_LOCALIZE && BLTA_LOCALIZE.localUrl ? BLTA_LOCALIZE.localUrl(path) : path; };
@@ -50,21 +51,14 @@
     const link = `/tournament/${encodeURIComponent(p.slug)}`;
     const facts = [rangeText(p.startDate, p.endDate), p.venue, t(p.playType === 'DOUBLES' ? 'com.tDoubles' : 'com.tSingles')].filter(Boolean).map(escapeHtml).join(' · ');
     const over = !!p.endDate && p.endDate < new Date().toISOString().slice(0, 10);
-    return `
-      <div class="com-post com-feed-post com-feed-tournament">
-        <a class="com-feed-head" href="/community/${encodeURIComponent(p.organisation.slug)}">
+    // the card of a Harmonogram row under the community, the kind of news and the day it was posted
+    const head = `<a class="com-feed-head" href="/community/${encodeURIComponent(p.organisation.slug)}">
           ${logoHtml(p.organisation)}
           <span class="com-feed-from"><b>${escapeHtml(p.organisation.name)}</b><span class="com-badge">${escapeHtml(typeText(p.organisation))}</span></span>
           <span class="com-feed-date">${escapeHtml(dateText(p.createdAt))}</span>
         </a>
-        <div class="com-feed-kicker">${escapeHtml(t('com.feedNewTournament'))}</div>
-        <a class="com-feed-tname" href="${escapeHtml(link)}">${escapeHtml(p.name)}</a>
-        <div class="com-feed-facts">${facts}</div>
-        <div class="com-feed-acts">
-          ${p.registrationOpen && !over ? `<a class="btn btn-join com-small" href="${escapeHtml(link)}#register">${escapeHtml(t('com.eventRegister'))}</a>` : ''}
-          <a class="btn btn-outline com-small" href="${escapeHtml(link)}">${escapeHtml(t('com.eventView'))}</a>
-        </div>
-      </div>`;
+        <div class="com-feed-kicker">${escapeHtml(t('com.feedNewTournament'))}</div>`;
+    return comTournamentNewsHtml(p, head).replace('class="com-post com-news-tournament"', 'class="com-post com-feed-post com-feed-tournament com-news-tournament"');
   }
 
   // one news item of the feed: the community it comes from (logo, name, kind), when, who wrote it, the text
@@ -80,6 +74,7 @@
         ${p.body ? `<div class="com-post-body">${comPostText(p.body)}</div>` : ''}
         ${comPostImage(p.imageUrl)}
         ${comReactionsHtml(p)}
+        ${comCommentsHtml(p)}
       </div>`;
   }
 
@@ -131,6 +126,13 @@
     <div id="com-discover-list">${listHtml(filtered(), items.length ? 'com.filterNone' : 'com.empty')}</div>`;
   }
 
+  // the Udalosti tab: the tournaments of his communities as the cards of the Harmonogram, each under the community that runs it
+  function eventsHtml() {
+    if (!loggedIn) return `<p class="com-empty">${escapeHtml(t('com.eventsLogin'))}</p><button type="button" class="btn btn-join" id="com-login-btn">${escapeHtml(t('nav.loginPlayer'))}</button>`;
+    if (!events.length) return `<p class="com-empty">${escapeHtml(t('com.eventsNone'))}</p>`;
+    return events.map((e) => `<div class="com-post com-news-tournament com-event-item"><a class="com-feed-head" href="/community/${encodeURIComponent(e.organisation.slug)}">${logoHtml(e.organisation)}<span class="com-feed-from"><b>${escapeHtml(e.organisation.name)}</b><span class="com-badge">${escapeHtml(typeText(e.organisation))}</span></span></a>${comTournamentRow(e)}</div>`).join('');
+  }
+
   function listHtml(list, emptyKey) {
     return list.length ? `<div class="com-list">${list.map(cardHtml).join('')}</div>` : `<p class="com-empty">${escapeHtml(t(emptyKey))}</p>`;
   }
@@ -139,7 +141,7 @@
     const body = tab === 'feed' ? feedHtml()
       : tab === 'discover' ? discoverHtml()
       : tab === 'mine' ? (loggedIn ? listHtml(mine, 'com.emptyMine') : `<p class="com-empty">${escapeHtml(t('com.emptyMine'))}</p><button type="button" class="btn btn-join" id="com-login-btn">${escapeHtml(t('nav.loginPlayer'))}</button>`)
-        : `<p class="com-empty">${escapeHtml(t('com.emptyEvents'))}</p>`;
+        : eventsHtml();
     root.innerHTML = `
       <div class="com-tabs" role="tablist">
         ${[['feed', 'com.tabFeed'], ['discover', 'com.tabDiscover'], ['mine', 'com.tabMine'], ['events', 'com.tabEvents']]
@@ -150,6 +152,8 @@
       <button type="button" class="btn btn-primary com-create" id="com-create-btn">＋ ${escapeHtml(t('com.create'))}</button>`;
     root.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; render(); }));
     comBindReactions(root, (el) => el.dataset.org);
+    comBindComments(root, (el) => el.dataset.org);
+    comBindTournaments(root);
     // the Discover filters change the list only (the search box keeps the focus)
     const refilter = () => { document.getElementById('com-discover-list').innerHTML = listHtml(filtered(), items.length ? 'com.filterNone' : 'com.empty'); };
     const fSearch = document.getElementById('com-f-search');
@@ -248,6 +252,7 @@
       currentLeagueId = all.currentLeagueId;
       mine = loggedIn ? (await api('/communities/mine')).items : [];
       feed = loggedIn ? await api('/communities/feed') : { items: [], more: false, next: null };
+      events = loggedIn ? (await api('/communities/my-events')).items : [];
     } catch (err) {
       root.innerHTML = `<p class="com-empty">${escapeHtml(err.message)}</p>`;
       return;

@@ -74,3 +74,159 @@ function comBindReactions(root, orgIdOf) {
     if (add) add.addEventListener('click', (e) => { e.stopPropagation(); comEmojiPanel(add, COM_REACTIONS, send); });
   });
 }
+
+// ---- comments under a post (the members of the community write them; everybody reads them) ----
+const comCountText = (n) => (n === 0 ? t('com.commentFirst') : n === 1 ? t('com.commentsOne') : n >= 2 && n <= 4 ? t('com.commentsFew', { n }) : t('com.commentsMany', { n }));
+const comWhen = (iso) => new Date(iso).toLocaleString(currentLang === 'en' ? 'en-GB' : 'sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+function comCommentsHtml(post) {
+  return `<div class="com-comments" data-comments="${post.id}" data-count="${post.commentCount || 0}">
+    <button type="button" class="com-comments-toggle" data-comments-toggle>💬 <span class="com-comments-label">${escapeHtml(comCountText(post.commentCount || 0))}</span></button>
+    <div class="com-comments-body" hidden></div></div>`;
+}
+
+function comCommentHtml(c) {
+  const face = c.authorPhotoUrl ? `<img src="${escapeHtml(c.authorPhotoUrl)}" alt="">` : escapeHtml(String(c.authorName || '?').trim().charAt(0).toUpperCase());
+  const name = c.authorSlug ? `<a href="/player/${encodeURIComponent(c.authorSlug)}">${escapeHtml(c.authorName)}</a>` : escapeHtml(c.authorName);
+  return `<div class="com-comment" data-comment="${c.id}"><span class="com-comment-face">${face}</span>
+    <div class="com-comment-main"><div class="com-comment-bubble"><b>${name}</b><span class="com-comment-text">${comPostText(c.body)}</span></div>
+    <div class="com-comment-meta">${escapeHtml(comWhen(c.createdAt))}${c.canDelete ? ` · <button type="button" class="com-link" data-comment-delete="${c.id}">${escapeHtml(t('com.commentDelete'))}</button>` : ''}</div></div></div>`;
+}
+
+function comBindComments(root, orgIdOf) {
+  root.querySelectorAll('[data-comments]').forEach((box) => {
+    const postEl = box.closest('[data-post]') || box.parentElement;
+    const postId = box.dataset.comments;
+    const body = box.querySelector('.com-comments-body');
+    const label = box.querySelector('.com-comments-label');
+    const url = (suffix = '') => `/communities/${orgIdOf(postEl)}/posts/${postId}/comments${suffix}`;
+    let state = null; // { items, more, canComment }
+    const setCount = (n) => { box.dataset.count = String(n); label.textContent = comCountText(n); };
+
+    function paint() {
+      const composer = state.canComment
+        ? `<div class="com-comment-new"><textarea rows="1" maxlength="1000" placeholder="${escapeHtml(t('com.commentWrite'))}"></textarea>
+            <button type="button" class="btn btn-outline com-small com-tool" data-comment-emoji aria-label="${escapeHtml(t('com.emoji'))}">😊</button>
+            <button type="button" class="btn btn-primary com-small" data-comment-send>${escapeHtml(t('com.commentSend'))}</button></div>`
+        : `<p class="com-comment-hint">${escapeHtml(t('com.commentMembersOnly'))}</p>`;
+      body.innerHTML = `${state.more ? `<button type="button" class="com-link" data-comments-older>${escapeHtml(t('com.commentsOlder'))}</button>` : ''}
+        <div class="com-comment-list">${state.items.map(comCommentHtml).join('')}</div>${composer}`;
+      const older = body.querySelector('[data-comments-older]');
+      if (older) older.addEventListener('click', async () => {
+        older.disabled = true;
+        try {
+          const more = await api(url(`?before=${state.items[0].id}`));
+          state.items = more.items.concat(state.items);
+          state.more = more.more;
+          paint();
+        } catch (err) { older.disabled = false; if (typeof toast === 'function') toast(err.message); }
+      });
+      body.querySelectorAll('[data-comment-delete]').forEach((b) => b.addEventListener('click', async () => {
+        b.disabled = true;
+        try {
+          await api(url(`/${b.dataset.commentDelete}`), { method: 'DELETE' });
+          state.items = state.items.filter((c) => String(c.id) !== b.dataset.commentDelete);
+          setCount(Math.max(0, Number(box.dataset.count) - 1));
+          paint();
+        } catch (err) { b.disabled = false; if (typeof toast === 'function') toast(err.message); }
+      }));
+      const area = body.querySelector('textarea');
+      if (area) {
+        const send = async () => {
+          const text = area.value.trim();
+          if (!text) return;
+          const btn = body.querySelector('[data-comment-send]');
+          btn.disabled = true;
+          try {
+            const made = await api(url(), { method: 'POST', body: { body: text } });
+            state.items.push(made);
+            setCount(Number(box.dataset.count) + 1);
+            paint();
+            body.querySelector('textarea').focus();
+          } catch (err) { btn.disabled = false; if (typeof toast === 'function') toast(err.message); }
+        };
+        body.querySelector('[data-comment-send]').addEventListener('click', send);
+        area.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+        const emoji = body.querySelector('[data-comment-emoji]');
+        emoji.addEventListener('click', (e) => { e.stopPropagation(); comEmojiPanel(emoji, COM_EMOJI, (em) => comInsertAtCursor(area, em)); });
+      }
+    }
+
+    box.querySelector('[data-comments-toggle]').addEventListener('click', async () => {
+      if (!body.hidden) { body.hidden = true; return; }
+      body.hidden = false;
+      if (state) return;
+      try {
+        state = await api(url());
+        paint();
+        const area = body.querySelector('textarea');
+        if (area && !state.items.length) area.focus();
+      } catch (err) { body.hidden = true; if (typeof toast === 'function') toast(err.message); }
+    });
+  });
+}
+
+// ---- a tournament of the community as a piece of news: the card of a Harmonogram row (the same markup and styles, src/css .sch-*) under a line with the day it
+// was posted. s: { name, slug, startDate, endDate, venue, categories, registrationOpen, organisation: { name, slug } }
+const COM_CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
+const comCategoryName = (c) => (c === 'DOUBLES' ? t('season.catDoubles') : COM_CATEGORY_NAMES[c] || c);
+const comDay = (iso) => new Date(`${iso}T12:00:00`);
+const comDaysBetween = (a, b) => Math.round((comDay(b) - comDay(a)) / 864e5);
+function comDayWord(n) {
+  if (n === 1) return t('schedule.dayOne');
+  if (currentLang === 'en') return t('schedule.dayMany');
+  return n >= 2 && n <= 4 ? t('schedule.dayFew') : t('schedule.dayMany');
+}
+// "01.05. – 31.08.", "14. – 15.11.", "13.12."
+function comDateRange(a, b) {
+  if (!a) return '';
+  const x = comDay(a);
+  const y = comDay(b || a);
+  const two = (n) => String(n).padStart(2, '0');
+  const dm = (d) => `${two(d.getDate())}.${two(d.getMonth() + 1)}.`;
+  if (!b || a === b) return dm(x);
+  if (x.getMonth() === y.getMonth() && x.getFullYear() === y.getFullYear()) return `${two(x.getDate())}. – ${dm(y)}`;
+  return `${dm(x)} – ${dm(y)}`;
+}
+
+function comTournamentRow(s) {
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const start = s.startDate || '';
+  const end = s.endDate || s.startDate || '';
+  const status = !start ? 'future' : end < today ? 'past' : start > today ? 'future' : 'now';
+  let extra = '';
+  if (status === 'now') extra = t('schedule.daysLeft', { n: Math.max(0, comDaysBetween(today, end)), d: comDayWord(Math.max(0, comDaysBetween(today, end))) });
+  else if (status === 'future' && start) extra = t('schedule.startsIn', { n: comDaysBetween(today, start), d: comDayWord(comDaysBetween(today, start)) });
+  const link = `/tournament/${encodeURIComponent(s.slug)}`;
+  const org = s.organisation;
+  const tags = `<span class="sch-tags"><span class="sch-tag tour">${escapeHtml(t('schedule.tournament'))}</span>`
+    + (status === 'now' ? `<span class="sch-tag now">${escapeHtml(t('schedule.running'))}</span>` : '')
+    + (status === 'past' ? `<span class="sch-tag past">${escapeHtml(t('schedule.finishedTag'))}</span>` : '')
+    + (org ? `<span class="sch-tag sch-club" role="link" tabindex="0" title="${escapeHtml(t('schedule.organiser', { name: org.name }))}" data-href="/community/${encodeURIComponent(org.slug)}">${escapeHtml(org.name)}</span>` : '')
+    + '</span>';
+  const chips = (s.categories || []).map((c) => `<span class="sch-chip">${escapeHtml(comCategoryName(c))}</span>`).join('');
+  const sub = `${s.venue ? `<span class="sch-venue">${escapeHtml(s.venue)} · </span>` : ''}<b class="sch-cats">${chips}</b><span class="sch-extra">${extra ? escapeHtml(` · ${extra}`) : ''}</span>`;
+  const reg = s.registrationOpen && status !== 'past' ? `<span class="sch-reg" role="link" tabindex="0" data-href="${escapeHtml(link)}#register">${escapeHtml(t('schedule.register'))}</span>` : '';
+  const go = `<span class="sch-go">${escapeHtml(t('schedule.more'))} ›</span>`;
+  return `<a class="sch-row link ${status}" href="${escapeHtml(link)}">
+      <div class="sch-date">${escapeHtml(comDateRange(start, end) || t('com.eventNoDate'))}<small>${start ? escapeHtml(String(comDay(start).getFullYear())) : ''}</small></div>
+      <span class="sch-eta"></span>
+      <div class="sch-info"><div class="sch-text"><div class="sch-name"><span class="sch-title">${escapeHtml(s.name)}</span>${tags}</div><div class="sch-sub">${sub}</div></div></div>
+      ${reg ? `<span class="sch-acts">${reg}${go}</span>` : go}
+    </a>`;
+}
+
+// the whole item: headHtml (who and when it was posted) and the card
+function comTournamentNewsHtml(s, headHtml) {
+  return `<div class="com-post com-news-tournament">${headHtml}${comTournamentRow(s)}</div>`;
+}
+
+// the buttons and the club tag inside the card are links by role: they lead somewhere of their own, not to the page of the card
+function comBindTournaments(root) {
+  root.querySelectorAll('.sch-row [data-href]').forEach((el) => {
+    const go = (e) => { e.preventDefault(); e.stopPropagation(); window.location.href = siteUrl(el.dataset.href); };
+    el.addEventListener('click', go);
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(e); });
+  });
+}

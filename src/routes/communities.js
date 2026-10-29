@@ -16,6 +16,7 @@ const messagesRoutes = require('./messages');
 const messagesLib = require('../messages');
 const courtIQ = require('../courtIQEngine');
 const { sendClubWaitingEmail } = require('../mailer');
+const playerPush = require('../playerPush');
 
 const router = express.Router();
 const { serialize, slugFor, isOrgAdmin } = communities;
@@ -34,6 +35,24 @@ function reactionsOf(postIds, viewer) {
   const rows = db.prepare(`SELECT post_id, emoji, COUNT(*) AS n, SUM(CASE WHEN player_id = ? THEN 1 ELSE 0 END) AS mine FROM organisation_post_reactions WHERE post_id IN (${postIds.map(() => '?').join(',')}) GROUP BY post_id, emoji`).all(viewer || 0, ...postIds);
   rows.sort((a, b) => REACTION_EMOJI.indexOf(a.emoji) - REACTION_EMOJI.indexOf(b.emoji));
   rows.forEach((r) => out.get(r.post_id).push({ emoji: r.emoji, count: r.n, mine: r.mine > 0 }));
+  return out;
+}
+
+// the categories a tournament is played in, as the Harmonogram shows them: DOUBLES for a doubles tournament, none for one without categories, else the chosen
+// ones (all three when none is saved)
+function tournamentCategories(row) {
+  if (row.play_type === 'DOUBLES') return ['DOUBLES'];
+  if (row.categories === 'OPEN') return [];
+  const all = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+  const picked = String(row.categories || '').split(',').filter((c) => all.includes(c));
+  return picked.length ? picked : all;
+}
+
+// the number of comments of posts by post id
+function commentCountsOf(postIds) {
+  const out = new Map(postIds.map((id) => [id, 0]));
+  if (!postIds.length) return out;
+  db.prepare(`SELECT post_id, COUNT(*) AS n FROM organisation_post_comments WHERE post_id IN (${postIds.map(() => '?').join(',')}) GROUP BY post_id`).all(...postIds).forEach((r) => out.set(r.post_id, r.n));
   return out;
 }
 
@@ -212,6 +231,30 @@ router.get('/mine', (req, res) => {
 // The feed of a player: what happened in the communities and clubs he is an ACTIVE member of, newest first - the news they posted and the tournaments they made -
 // in pages of POSTS_PAGE. ?before=<the time of the last item of the page before> gives the older ones (the answer's `next`). Only public organisations (approved, not
 // hidden); removed news are left out; each item carries its community.
+// The events of a player: the tournaments of the communities and clubs he is an ACTIVE member of (public ones only): the running and coming ones first (soonest
+// first), then the finished ones (latest first). Each carries its community, like the tournaments of the feed.
+router.get('/my-events', (req, res) => {
+  const playerId = needPlayer(req, res);
+  if (!playerId) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = db.prepare(`
+    SELECT s.id, s.name, s.slug, s.start_date, s.end_date, s.venue, s.play_type, s.categories, s.registration_open, s.created_at,
+           o.id AS org_id, o.slug AS org_slug, o.name AS org_name, o.type AS org_type, o.logo_url AS org_logo
+    FROM seasons s
+    JOIN organisations o ON o.id = s.organisation_id
+    JOIN organisation_members m ON m.organisation_id = o.id AND m.player_id = ? AND m.status = 'ACTIVE'
+    WHERE s.kind = 'TOURNAMENT' AND o.hidden = 0 AND o.approved = 1
+  `).all(playerId).map((r) => ({
+    type: 'TOURNAMENT', id: r.id, name: r.name, slug: r.slug, startDate: r.start_date || null, endDate: r.end_date || null, venue: r.venue || '',
+    playType: r.play_type || 'SINGLES', categories: tournamentCategories(r), registrationOpen: !!r.registration_open, createdAt: r.created_at,
+    organisation: { id: r.org_id, slug: r.org_slug, name: r.org_name, type: r.org_type, logoUrl: r.org_logo || '' },
+  }));
+  const over = (s) => !!(s.endDate || s.startDate) && (s.endDate || s.startDate) < today;
+  const coming = rows.filter((s) => !over(s)).sort((a, b) => (a.startDate || '9999').localeCompare(b.startDate || '9999') || a.id - b.id);
+  const past = rows.filter(over).sort((a, b) => (b.endDate || b.startDate).localeCompare(a.endDate || a.startDate) || b.id - a.id);
+  res.json({ items: [...coming, ...past].slice(0, 100) });
+});
+
 router.get('/feed', (req, res) => {
   const playerId = needPlayer(req, res);
   if (!playerId) return;
@@ -233,9 +276,10 @@ router.get('/feed', (req, res) => {
     type: 'POST', id: r.id, body: r.body, imageUrl: r.image_url || '', authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at, organisation: orgOf(r),
   }));
   const postReactions = reactionsOf(posts.map((p) => p.id), playerId);
-  posts.forEach((p) => { p.reactions = postReactions.get(p.id); });
+  const postComments = commentCountsOf(posts.map((p) => p.id));
+  posts.forEach((p) => { p.reactions = postReactions.get(p.id); p.commentCount = postComments.get(p.id); });
   const tournaments = db.prepare(`
-    SELECT s.id, s.name, s.slug, s.start_date, s.end_date, s.venue, s.play_type, s.registration_open, s.created_at, ${orgColumns}
+    SELECT s.id, s.name, s.slug, s.start_date, s.end_date, s.venue, s.play_type, s.categories, s.registration_open, s.created_at, ${orgColumns}
     FROM seasons s
     JOIN organisations o ON o.id = s.organisation_id
     ${member}
@@ -243,7 +287,7 @@ router.get('/feed', (req, res) => {
     ORDER BY s.created_at DESC, s.id DESC LIMIT ${POSTS_PAGE + 1}
   `).all(...(cursor ? [playerId, cursor] : [playerId])).map((r) => ({
     type: 'TOURNAMENT', id: r.id, name: r.name, slug: r.slug, startDate: r.start_date || null, endDate: r.end_date || null, venue: r.venue || '',
-    playType: r.play_type || 'SINGLES', registrationOpen: !!r.registration_open, createdAt: r.created_at, organisation: orgOf(r),
+    playType: r.play_type || 'SINGLES', categories: tournamentCategories(r), registrationOpen: !!r.registration_open, createdAt: r.created_at, organisation: orgOf(r),
   }));
   const merged = [...posts, ...tournaments].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || (a.type === b.type ? b.id - a.id : (a.type === 'TOURNAMENT' ? -1 : 1)));
   const items = merged.slice(0, POSTS_PAGE);
@@ -334,6 +378,7 @@ router.delete('/:id', (req, res) => {
   db.exec('BEGIN');
   try {
     posts.forEach((p) => db.prepare('DELETE FROM organisation_post_reactions WHERE post_id = ?').run(p.id));
+    db.prepare('DELETE FROM organisation_post_comments WHERE organisation_id = ?').run(org.id);
     db.prepare('DELETE FROM organisation_posts WHERE organisation_id = ?').run(org.id);
     db.prepare('DELETE FROM organisation_invites WHERE organisation_id = ?').run(org.id);
     db.prepare('DELETE FROM organisation_members WHERE organisation_id = ?').run(org.id);
@@ -405,7 +450,7 @@ router.get('/:id/tournaments', (req, res) => {
   if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
   const rows = db.prepare("SELECT * FROM seasons WHERE organisation_id = ? AND kind = 'TOURNAMENT' ORDER BY COALESCE(start_date, '') DESC, id DESC").all(org.id);
   const registered = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?');
-  res.json({ items: rows.map((s) => ({ ...seasonsRoutes.serializeSeason(s), registrationCount: registered.get(s.id).n, organisation: { id: org.id, slug: org.slug, name: org.name } })) });
+  res.json({ items: rows.map((s) => ({ ...seasonsRoutes.serializeSeason(s), createdAt: s.created_at, registrationCount: registered.get(s.id).n, organisation: { id: org.id, slug: org.slug, name: org.name } })) });
 });
 
 // The super admin decides whether the results of the tournaments of a club move ratings (CourtIQ, the doubles rating, ranking points, badges) and how many
@@ -662,8 +707,9 @@ router.get('/:id/posts', (req, res) => {
   const viewerAdmin = !!viewer && isOrgAdmin(org.id, viewer);
   const page = rows.slice(0, POSTS_PAGE);
   const postReactions = reactionsOf(page.map((r) => r.id), viewer);
+  const postComments = commentCountsOf(page.map((r) => r.id));
   const items = page.map((r) => ({
-    id: r.id, body: r.body, imageUrl: r.image_url || '', reactions: postReactions.get(r.id), authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at,
+    id: r.id, body: r.body, imageUrl: r.image_url || '', reactions: postReactions.get(r.id), commentCount: postComments.get(r.id), authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at,
     canDelete: communities.siteAdminFor(req, org) || viewerAdmin || (!!viewer && r.author_player_id === viewer),
   }));
   res.json({ items, more: rows.length > POSTS_PAGE });
@@ -683,7 +729,13 @@ router.post('/:id/posts', (req, res) => {
   if (body.length > 2000) return res.status(400).json({ error: 'The text is too long (max 2000 characters)' });
   const info = db.prepare('INSERT INTO organisation_posts (organisation_id, author_player_id, body, image_url) VALUES (?, ?, ?, ?)').run(ctx.org.id, ctx.playerId, body, imageUrl || null);
   const row = db.prepare('SELECT po.id, po.body, po.image_url, po.created_at, p.name, p.slug FROM organisation_posts po LEFT JOIN players p ON p.id = po.author_player_id WHERE po.id = ?').get(Number(info.lastInsertRowid));
-  res.status(201).json({ id: row.id, body: row.body, imageUrl: row.image_url || '', reactions: [], authorName: row.name || '', authorSlug: row.slug || '', createdAt: row.created_at, canDelete: true });
+  // every other active member is told (bell and push); a push never blocks or fails the post
+  const insertNote = db.prepare("INSERT INTO community_notifications (player_id, kind, post_id, actor_player_id) VALUES (?, 'POST', ?, ?)");
+  db.prepare("SELECT player_id FROM organisation_members WHERE organisation_id = ? AND status = 'ACTIVE' AND player_id != ?").all(ctx.org.id, ctx.playerId).forEach((m) => {
+    insertNote.run(m.player_id, row.id, ctx.playerId);
+    playerPush.notifyPlayer(m.player_id, 'POST', { name: row.name, body: row.body, orgName: ctx.org.name, orgSlug: ctx.org.slug, postId: row.id });
+  });
+  res.status(201).json({ id: row.id, body: row.body, imageUrl: row.image_url || '', reactions: [], commentCount: 0, authorName: row.name || '', authorSlug: row.slug || '', createdAt: row.created_at, canDelete: true });
 });
 
 // the author, an admin of the organisation or an admin of the site
@@ -697,7 +749,91 @@ router.delete('/:id/posts/:postId', (req, res) => {
   if (!communities.siteAdminFor(req, org) && !isOrgAdmin(org.id, viewer) && post.author_player_id !== viewer) return res.status(403).json({ error: 'Only the author or an admin of this community can delete a post' });
   db.prepare('DELETE FROM organisation_posts WHERE id = ?').run(post.id);
   db.prepare('DELETE FROM organisation_post_reactions WHERE post_id = ?').run(post.id);
+  db.prepare('DELETE FROM organisation_post_comments WHERE post_id = ?').run(post.id);
   deleteImageFile(post.image_url);
+  res.json({ ok: true });
+});
+
+// ---------------- comments under a post ----------------
+
+const COMMENTS_PAGE = 20;
+const MAX_COMMENT = 1000;
+const commentTimes = new Map(); // player id -> the times of his latest comments (at most 20 a minute, in memory: one server process)
+function commentRateOk(playerId) {
+  const now = Date.now();
+  const times = (commentTimes.get(playerId) || []).filter((t) => now - t < 60000);
+  if (times.length >= 20) { commentTimes.set(playerId, times); return false; }
+  times.push(now);
+  commentTimes.set(playerId, times);
+  return true;
+}
+
+// the post of the address, in the organisation of the address (or a 404)
+function postOf(req, res, org) {
+  const post = /^\d+$/.test(req.params.postId) ? db.prepare('SELECT id, author_player_id FROM organisation_posts WHERE id = ? AND organisation_id = ? AND hidden = 0').get(Number(req.params.postId), org.id) : null;
+  if (!post) res.status(404).json({ error: 'Post not found' });
+  return post;
+}
+const isActiveMember = (org, playerId) => { const m = playerId ? communities.memberOf(org.id, playerId) : null; return !!m && m.status === 'ACTIVE'; };
+
+const commentJson = (r, req, org, viewer) => ({
+  id: r.id, body: r.body, createdAt: r.created_at, authorName: r.name || '', authorSlug: r.slug || '', authorPhotoUrl: /^(https:\/\/|\/)/.test(r.photo_url || '') ? r.photo_url : '',
+  canDelete: communities.siteAdminFor(req, org) || (!!viewer && (r.author_player_id === viewer || isOrgAdmin(org.id, viewer))),
+});
+
+// the comments of a post, oldest first: the newest COMMENTS_PAGE, ?before=<id> gives the ones before; canComment says whether the viewer is a member
+router.get('/:id/posts/:postId/comments', (req, res) => {
+  const org = orgOr404(req, res, 'read');
+  if (!org) return;
+  if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
+  const post = postOf(req, res, org);
+  if (!post) return;
+  const before = /^\d+$/.test(String(req.query.before || '')) ? Number(req.query.before) : null;
+  const rows = db.prepare(`
+    SELECT c.id, c.body, c.author_player_id, c.created_at, p.name, p.slug, p.photo_url FROM organisation_post_comments c LEFT JOIN players p ON p.id = c.author_player_id
+    WHERE c.post_id = ? ${before ? 'AND c.id < ?' : ''} ORDER BY c.id DESC LIMIT ${COMMENTS_PAGE + 1}
+  `).all(...(before ? [post.id, before] : [post.id]));
+  const viewer = auth.getPlayerId(req);
+  res.json({
+    items: rows.slice(0, COMMENTS_PAGE).reverse().map((r) => commentJson(r, req, org, viewer)),
+    more: rows.length > COMMENTS_PAGE,
+    canComment: isActiveMember(org, viewer),
+  });
+});
+
+// a member or an admin of the community comments on a post; the author of the post is pushed
+router.post('/:id/posts/:postId/comments', (req, res) => {
+  const playerId = needPlayer(req, res);
+  if (!playerId) return;
+  const org = orgOr404(req, res, 'read');
+  if (!org) return;
+  const post = postOf(req, res, org);
+  if (!post) return;
+  if (!isActiveMember(org, playerId)) return res.status(403).json({ error: 'Only members can comment' });
+  const raw = req.body && req.body.body;
+  const body = typeof raw === 'string' ? raw.trim() : '';
+  if (!body || Array.from(body).length > MAX_COMMENT) return res.status(400).json({ error: `A comment is 1 to ${MAX_COMMENT} characters` });
+  if (!commentRateOk(playerId)) return res.status(429).json({ error: 'You are commenting too fast, wait a moment' });
+  const info = db.prepare('INSERT INTO organisation_post_comments (post_id, organisation_id, author_player_id, body) VALUES (?, ?, ?, ?)').run(post.id, org.id, playerId, body);
+  const row = db.prepare('SELECT c.id, c.body, c.author_player_id, c.created_at, p.name, p.slug, p.photo_url FROM organisation_post_comments c LEFT JOIN players p ON p.id = c.author_player_id WHERE c.id = ?').get(Number(info.lastInsertRowid));
+  if (post.author_player_id && post.author_player_id !== playerId) {
+    db.prepare('INSERT INTO post_comment_notifications (player_id, post_id, comment_id) VALUES (?, ?, ?)').run(post.author_player_id, post.id, row.id);
+    playerPush.notifyPlayer(post.author_player_id, 'COMMENT', { name: row.name, body, orgName: org.name, orgSlug: org.slug, postId: post.id });
+  }
+  res.status(201).json(commentJson(row, req, org, playerId));
+});
+
+// the author of the comment, an admin of the community or an admin of the site
+router.delete('/:id/posts/:postId/comments/:commentId', (req, res) => {
+  const org = orgOr404(req, res, 'manage');
+  if (!org) return;
+  const viewer = auth.getPlayerId(req);
+  if (!viewer && !communities.siteAdminFor(req, org)) return res.status(401).json({ error: 'Please log in to do this' });
+  const comment = /^\d+$/.test(req.params.commentId) && /^\d+$/.test(req.params.postId)
+    ? db.prepare('SELECT * FROM organisation_post_comments WHERE id = ? AND post_id = ? AND organisation_id = ?').get(Number(req.params.commentId), Number(req.params.postId), org.id) : null;
+  if (!comment) return res.status(404).json({ error: 'Comment not found' });
+  if (!communities.siteAdminFor(req, org) && !isOrgAdmin(org.id, viewer) && comment.author_player_id !== viewer) return res.status(403).json({ error: 'Only the author or an admin of this community can delete a comment' });
+  db.prepare('DELETE FROM organisation_post_comments WHERE id = ?').run(comment.id);
   res.json({ ok: true });
 });
 
@@ -708,12 +844,22 @@ router.post('/:id/posts/:postId/reactions', (req, res) => {
   const org = orgOr404(req, res, 'read');
   if (!org) return;
   if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
-  const post = /^\d+$/.test(req.params.postId) ? db.prepare('SELECT id FROM organisation_posts WHERE id = ? AND organisation_id = ? AND hidden = 0').get(Number(req.params.postId), org.id) : null;
+  const post = /^\d+$/.test(req.params.postId) ? db.prepare('SELECT id, author_player_id FROM organisation_posts WHERE id = ? AND organisation_id = ? AND hidden = 0').get(Number(req.params.postId), org.id) : null;
   if (!post) return res.status(404).json({ error: 'Post not found' });
   const emoji = req.body && req.body.emoji;
   if (!REACTION_EMOJI.includes(emoji)) return res.status(400).json({ error: 'Pick one of the offered emoji' });
   const had = db.prepare('DELETE FROM organisation_post_reactions WHERE post_id = ? AND player_id = ? AND emoji = ?').run(post.id, playerId, emoji).changes;
-  if (!had) db.prepare('INSERT INTO organisation_post_reactions (post_id, player_id, emoji) VALUES (?, ?, ?)').run(post.id, playerId, emoji);
+  if (!had) {
+    db.prepare('INSERT INTO organisation_post_reactions (post_id, player_id, emoji) VALUES (?, ?, ?)').run(post.id, playerId, emoji);
+    // the author is told once per person and emoji (taking it back and putting it again does not tell him twice); never about his own reaction
+    if (post.author_player_id && post.author_player_id !== playerId) {
+      const made = db.prepare("INSERT OR IGNORE INTO community_notifications (player_id, kind, post_id, actor_player_id, emoji) VALUES (?, 'REACTION', ?, ?, ?)").run(post.author_player_id, post.id, playerId, emoji).changes;
+      if (made) {
+        const actor = db.prepare('SELECT name FROM players WHERE id = ?').get(playerId);
+        playerPush.notifyPlayer(post.author_player_id, 'REACTION', { name: actor && actor.name, emoji, orgName: org.name, orgSlug: org.slug, postId: post.id });
+      }
+    }
+  }
   res.json({ reactions: reactionsOf([post.id], playerId).get(post.id) });
 });
 

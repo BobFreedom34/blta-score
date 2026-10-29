@@ -5690,6 +5690,33 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .msg-invite-card small { color: var(--gray-dim); }
 .msg-invite-state { font-size: 13px; font-weight: 700; color: var(--status-green); }
 .com-lab-dark { color: var(--ink); margin: 6px 0; }
+/* a tournament as news: the card of a Harmonogram row (.sch-*) under the line with the day it was posted */
+.com-post.com-news-tournament { padding: 0; border: 0; background: none; box-shadow: none; }
+.com-news-tournament .com-feed-head, .com-news-tournament .com-post-head { padding: 0 4px; }
+.com-news-tournament .com-feed-kicker { padding: 0 4px; margin-bottom: 8px; }
+.com-news-tournament .sch-row { padding: 18px 22px; border: 1px solid var(--orange); border-radius: var(--radius); background: var(--ink); box-shadow: 0 0 18px rgba(255, 85, 0, 0.18); }
+.com-news-tournament .sch-row:last-child { border-bottom: 1px solid var(--orange); }
+/* hovering the card lights it like a row of the schedule page */
+.com-news-tournament .sch-row.link:hover { background: #1a1c21; }
+.com-event-item { margin-bottom: 24px; }
+.com-event-item .com-feed-head { padding: 0 4px; }
+.com-comments { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-grey); }
+.com-comments-toggle { padding: 4px 0; border: 0; background: transparent; color: var(--gray-dim); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.com-comments-toggle:hover { color: var(--white); }
+.com-comment { display: flex; gap: 10px; margin: 10px 0; }
+.com-comment-face { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; background: var(--fill-grey); color: var(--white); font-size: 13px; font-weight: 800; }
+.com-comment-face img { width: 100%; height: 100%; object-fit: cover; }
+.com-comment-main { min-width: 0; }
+.com-comment-bubble { display: inline-block; max-width: 100%; padding: 8px 12px; border-radius: 16px; background: #1a1d24; }
+.com-comment-bubble b { display: block; font-size: 13px; }
+.com-comment-bubble b a { color: var(--white); text-decoration: none; }
+.com-comment-text { display: block; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; font-size: 14px; }
+.com-comment-text a { color: var(--orange); text-decoration: underline; }
+.com-comment-meta { margin: 2px 0 0 12px; font-size: 12px; color: var(--gray-dim); }
+.com-comment-new { position: relative; display: flex; align-items: flex-end; gap: 8px; margin-top: 8px; }
+.com-comment-new textarea { flex: 1 1 auto; min-width: 0; resize: vertical; min-height: 38px; padding: 8px 12px; border-radius: 18px; }
+.com-comment-new .com-tool { margin: 0; }
+.com-comment-hint { margin: 8px 0 0; font-size: 13px; color: var(--gray-dim); }
 .com-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 .com-link-chip { color: var(--white); }
 .com-danger { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--gray-light); }

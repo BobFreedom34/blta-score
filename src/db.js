@@ -1750,6 +1750,46 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_organisation_post_reactions_post ON organisation_post_reactions(post_id);
 `);
+// Comments under a news post of a community or club: written by its members and admins (src/routes/communities.js).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS organisation_post_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    organisation_id INTEGER NOT NULL,
+    author_player_id INTEGER NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_organisation_post_comments_post ON organisation_post_comments(post_id, id);
+`);
+// The bell notification for the author of a post when somebody comments on it (src/routes/player.js lists them).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS post_comment_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    post_id INTEGER NOT NULL,
+    comment_id INTEGER NOT NULL,
+    seen INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_post_comment_notifications_player ON post_comment_notifications(player_id, seen);
+`);
+// The bell notifications of the news of a community or club: POST = a new post (to every member but its author; actor = the author), REACTION = somebody
+// put an emoji on a post (to its author; actor = who, one per person and emoji). src/routes/player.js lists them, src/routes/communities.js writes them.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS community_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('POST', 'REACTION')),
+    post_id INTEGER NOT NULL,
+    actor_player_id INTEGER,
+    emoji TEXT,
+    seen INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_community_notifications_player ON community_notifications(player_id, seen);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_community_notifications_reaction ON community_notifications(player_id, post_id, actor_player_id, emoji) WHERE kind = 'REACTION';
+`);
 // a picture in a news post: the address of a file this community uploaded (/community-images/<org id>-post-...)
 if (!db.prepare('PRAGMA table_info(organisation_posts)').all().some((c) => c.name === 'image_url')) db.exec('ALTER TABLE organisation_posts ADD COLUMN image_url TEXT');
 // An invitation an admin sent to a player (a message with a Join button, see src/routes/communities.js): the player joins from it without the approval.

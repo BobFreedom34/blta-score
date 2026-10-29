@@ -74,6 +74,9 @@ test('texts: every kind has a Slovak and an English wording that matches the bel
     RANKING_UP: { amount: 3, rank: 4 },
     RANKING_DOWN: { amount: 2, rank: 9 },
     INVITE: { fromName: 'Anna', orgName: 'VIP CUP' },
+    POST: { name: 'Anna', orgName: 'VIP CUP', body: 'Turnaj v sobotu', orgSlug: 'vip-cup' },
+    REACTION: { name: 'Anna', orgName: 'VIP CUP', emoji: '🔥', orgSlug: 'vip-cup' },
+    COMMENT: { name: 'Anna', orgName: 'VIP CUP', body: 'Super', orgSlug: 'vip-cup' },
     BADGE: { badge: 'Maratónec' },
     BADGE_REMINDER: { badge: 'Vianočný' },
   };

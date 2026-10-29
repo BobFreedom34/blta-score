@@ -83,7 +83,22 @@ function countUnreadNotifications(playerId) {
     JOIN match_photos mp ON mp.id = pn.photo_id
     WHERE pn.player_id = ? AND pn.seen = 0
   `).get(playerId).c;
-  return badges + chats + playRequests + proposals + rankings + badgeReminders + photos;
+  // a comment under a post of the player in a community or club (the comment, the post and the community can all be deleted since)
+  const postComments = db.prepare(`
+    SELECT COUNT(*) AS c FROM post_comment_notifications n
+    JOIN organisation_post_comments c ON c.id = n.comment_id
+    JOIN organisation_posts po ON po.id = n.post_id
+    JOIN organisations o ON o.id = po.organisation_id AND o.hidden = 0
+    WHERE n.player_id = ? AND n.seen = 0
+  `).get(playerId).c;
+  // new posts and reactions in the communities and clubs (the post and the community can be deleted since)
+  const communityNews = db.prepare(`
+    SELECT COUNT(*) AS c FROM community_notifications n
+    JOIN organisation_posts po ON po.id = n.post_id AND po.hidden = 0
+    JOIN organisations o ON o.id = po.organisation_id AND o.hidden = 0
+    WHERE n.player_id = ? AND n.seen = 0
+  `).get(playerId).c;
+  return badges + chats + playRequests + proposals + rankings + badgeReminders + photos + postComments + communityNews;
 }
 
 router.get('/session', (req, res) => {
@@ -279,7 +294,36 @@ router.get('/notifications', (req, res) => {
     badge: { id: r.badge_id, name: r.name, description: r.description, icon: r.icon },
   }));
 
-  const merged = [...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows, ...rankingRows, ...badgeReminderRows, ...photoRows]
+  // "Somebody commented on your post" in a community or club
+  const commentRows = db.prepare(`
+    SELECT n.id, n.seen, n.created_at, c.body, p.name AS author_name, po.id AS post_id, o.name AS org_name, o.slug AS org_slug
+    FROM post_comment_notifications n
+    JOIN organisation_post_comments c ON c.id = n.comment_id
+    JOIN organisation_posts po ON po.id = n.post_id
+    JOIN organisations o ON o.id = po.organisation_id AND o.hidden = 0
+    LEFT JOIN players p ON p.id = c.author_player_id
+    WHERE n.player_id = ?
+  `).all(playerId).map((r) => ({
+    type: 'COMMENT',
+    id: r.id,
+    seen: !!r.seen,
+    createdAt: r.created_at,
+    comment: { authorName: r.author_name || '', body: r.body, postId: r.post_id, orgName: r.org_name, orgSlug: r.org_slug },
+  }));
+
+  // a new post of a community he is in, and an emoji somebody put on his post
+  const newsRows = db.prepare(`
+    SELECT n.id, n.seen, n.created_at, n.kind, n.emoji, po.id AS post_id, po.body, o.name AS org_name, o.slug AS org_slug, a.name AS actor_name
+    FROM community_notifications n
+    JOIN organisation_posts po ON po.id = n.post_id AND po.hidden = 0
+    JOIN organisations o ON o.id = po.organisation_id AND o.hidden = 0
+    LEFT JOIN players a ON a.id = n.actor_player_id
+    WHERE n.player_id = ?
+  `).all(playerId).map((r) => (r.kind === 'POST'
+    ? { type: 'POST', id: r.id, seen: !!r.seen, createdAt: r.created_at, post: { authorName: r.actor_name || '', body: r.body, postId: r.post_id, orgName: r.org_name, orgSlug: r.org_slug } }
+    : { type: 'REACTION', id: r.id, seen: !!r.seen, createdAt: r.created_at, reaction: { actorName: r.actor_name || '', emoji: r.emoji, postId: r.post_id, orgName: r.org_name, orgSlug: r.org_slug } }));
+
+  const merged = [...newsRows, ...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows, ...rankingRows, ...badgeReminderRows, ...photoRows, ...commentRows]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json(merged);
 });
@@ -302,6 +346,8 @@ router.post('/notifications/:type/:id/read', (req, res) => {
     : type === 'ranking' ? 'ranking_notifications'
     : type === 'badge_reminder' ? 'badge_reminder_notifications'
     : type === 'photo' ? 'photo_notifications'
+    : type === 'comment' ? 'post_comment_notifications'
+    : (type === 'post' || type === 'reaction') ? 'community_notifications'
     : null;
   if (!table) return res.status(400).json({ error: 'Invalid notification type' });
   const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
