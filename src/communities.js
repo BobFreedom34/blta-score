@@ -80,6 +80,8 @@ function serialize(row, req) {
     city: cityName(row.league_id),
     hidden: !!row.hidden,
     approved: !!row.approved,
+    countsForRating: !!row.counts_for_rating,
+    maxOpenTournaments: row.max_open_tournaments || 5,
     memberCount: memberCount(row.id),
     createdAt: row.created_at,
     me,

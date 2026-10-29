@@ -34,7 +34,7 @@ function checklistOf(leagueId) {
     {
       key: 'registration', page: '/seasons-admin', label: 'Registration is open',
       hint: 'A season or tournament that takes registrations, so players can sign up.',
-      ok: n("SELECT COUNT(*) AS n FROM seasons WHERE league_id = ? AND registration_open = 1 AND (end_date IS NULL OR end_date = '' OR end_date >= ?)", today) > 0,
+      ok: n("SELECT COUNT(*) AS n FROM seasons WHERE league_id = ? AND organisation_id IS NULL AND registration_open = 1 AND (end_date IS NULL OR end_date = '' OR end_date >= ?)", today) > 0,
     },
     {
       key: 'rules', page: '/rules-admin', label: 'The rules (Propozície)',

@@ -152,6 +152,7 @@ function rowHtml(e, today) {
   const tags = `<span class="sch-tags"><span class="sch-tag${isLeague ? '' : ' tour'}">${escapeHtml(t(isLeague ? 'schedule.league' : 'schedule.tournament'))}</span>`
     + (status === 'now' ? `<span class="sch-tag now">${escapeHtml(t('schedule.running'))}</span>` : '')
     + (status === 'past' ? `<span class="sch-tag past">${escapeHtml(t('schedule.finishedTag'))}</span>` : '')
+    + (e.organisation ? `<span class="sch-tag sch-club" role="link" tabindex="0" title="${escapeHtml(t('schedule.organiser', { name: e.organisation.name }))}" data-href="/community/${encodeURIComponent(e.organisation.slug)}">${escapeHtml(e.organisation.name)}</span>` : '')
     + '</span>';
   const chips = e.categories.map((c) => `<span class="sch-chip">${escapeHtml(CATEGORY_NAMES[c] || c)}</span>`).join('');
   const sub = `${e.venue ? `<span class="sch-venue">${escapeHtml(e.venue)} · </span>` : ''}<b class="sch-cats">${chips}</b><span class="sch-extra">${escapeHtml(extra)}</span>`;
@@ -209,20 +210,20 @@ yearsEl.addEventListener('click', (e) => {
   year = Number(btn.dataset.year);
   render();
 });
-// the green "Registrácia" of a row sits inside the link of the row: it leads to the registration of the season by itself (in the address of the page's language)
+// the green "Registrácia" and the club tag of a row sit inside the link of the row: it leads to the registration of the season by itself (in the address of the page's language)
 function goRegister(el) {
   const to = el.dataset.href;
   location.href = window.BLTA_LOCALIZE && window.BLTA_LOCALIZE.localUrl ? window.BLTA_LOCALIZE.localUrl(to) : to;
 }
 rootEl.addEventListener('click', (e) => {
-  const r = e.target.closest('.sch-reg');
+  const r = e.target.closest('.sch-reg, .sch-club');
   if (!r) return;
   e.preventDefault();
   e.stopPropagation();
   goRegister(r);
 });
 rootEl.addEventListener('keydown', (e) => {
-  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('sch-reg')) { e.preventDefault(); goRegister(e.target); }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && (e.target.classList.contains('sch-reg') || e.target.classList.contains('sch-club'))) { e.preventDefault(); goRegister(e.target); }
 });
 catEl.addEventListener('change', () => { cat = catEl.value; render(); });
 typeEl.addEventListener('change', () => { type = typeEl.value; render(); });

@@ -47,7 +47,7 @@ test('the drawn brackets carry the hooks of the admin button, and only an admin 
   const view = read('js/bracket-view.js');
   assert.ok(view.includes('BRACKET_BOARDS') && view.includes('data-bracket-id') && view.includes('data-node-id'));
   const js = read('js/bracket-result.js');
-  assert.ok(js.includes('checkAdmin()') && js.includes('if (!admin) return;'), 'nothing is added for a visitor');
+  assert.ok(js.includes('checkAdmin()') && js.includes('!(admin || data.canManage)'), 'nothing is added for a visitor (neither an admin nor the manager of the tournament)');
   assert.ok(js.includes('/nodes/') && js.includes('manual-result'), 'both ways of entering a result');
   ['season.html', 'bracket.html', 'tables.html'].forEach((f) => assert.ok(read(f).includes('/js/bracket-result.js'), f));
   assert.ok(!read('embed-bracket.html').includes('bracket-result.js'), 'not in the embed');

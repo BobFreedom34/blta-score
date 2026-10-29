@@ -19,6 +19,7 @@ const { creditInviter } = require('./invites');
 const tournamentDraw = require('../tournamentDraw');
 const matchPhotos = require('./matchPhotos');
 const rankingPoints = require('../rankingPoints');
+const clubTournaments = require('../clubTournaments');
 const changeLog = require('../changeLog');
 
 const router = express.Router();
@@ -154,6 +155,8 @@ function serializeSeason(s) {
     heroUrl: s.hero_url || '',
     heroMobileUrl: s.hero_mobile_url || '',
     registrationOpen: !!s.registration_open,
+    // the community or club that runs this tournament (null for the league and for the tournaments of the Backend)
+    organisationId: s.organisation_id || null,
     courtCount: s.court_count || 0,
     maxMatchesPerDay: s.max_matches_per_day || 0,
     matchCount: db.prepare('SELECT COUNT(*) AS n FROM matches WHERE season_id = ?').get(s.id).n,
@@ -179,7 +182,7 @@ function deleteHeroFile(url) {
   fs.unlink(path.join(HERO_DIR, path.basename(url)), () => { /* fine if it is already gone */ });
 }
 
-router.post('/:id/hero', requireAdmin, (req, res) => {
+router.post('/:id/hero', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   heroUpload.single('photo')(req, res, (err) => {
     const column = heroColumn(req.query.kind);
     if (!column) return res.status(400).json({ error: 'kind must be desktop or mobile' });
@@ -195,7 +198,7 @@ router.post('/:id/hero', requireAdmin, (req, res) => {
   });
 });
 
-router.delete('/:id/hero', requireAdmin, (req, res) => {
+router.delete('/:id/hero', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const column = heroColumn(req.query.kind);
   if (!column) return res.status(400).json({ error: 'kind must be desktop or mobile' });
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
@@ -207,7 +210,7 @@ router.delete('/:id/hero', requireAdmin, (req, res) => {
 
 // The logo of a season or a tournament (the picture on its schedule row and its page): a picture from the computer or from the library
 // (Backend > Media); the file is a copy of its own, like a hero photo. It is sent as it is (a logo keeps its transparent background).
-router.post('/:id/logo', requireAdmin, (req, res) => {
+router.post('/:id/logo', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   heroUpload.single('photo')(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'The picture must be under 8 MB' : 'Could not process the uploaded file' });
     if (!req.file) return res.status(400).json({ error: 'Upload a JPG, PNG or WebP picture' });
@@ -221,7 +224,7 @@ router.post('/:id/logo', requireAdmin, (req, res) => {
   });
 });
 
-router.delete('/:id/logo', requireAdmin, (req, res) => {
+router.delete('/:id/logo', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
   db.prepare('UPDATE seasons SET logo_url = NULL WHERE id = ?').run(season.id);
@@ -231,7 +234,8 @@ router.delete('/:id/logo', requireAdmin, (req, res) => {
 
 // Public: the match page and its admin editor read this (newest season first).
 router.get('/', (req, res) => {
-  const rows = db.prepare('SELECT * FROM seasons WHERE league_id = ? ORDER BY COALESCE(start_date, \'\') DESC, id DESC').all(leagues.actingIdOf(req));
+  // (the tournaments of the clubs are not part of the league: they show on the page of their club and in the Harmonogram)
+  const rows = db.prepare('SELECT * FROM seasons WHERE league_id = ? AND organisation_id IS NULL ORDER BY COALESCE(start_date, \'\') DESC, id DESC').all(leagues.actingIdOf(req));
   res.json(rows.map(serializeSeason));
 });
 
@@ -242,6 +246,9 @@ router.get('/by-slug/:slug', (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE slug = ?').get(req.params.slug);
   // a season belongs to one city: under the address of another city it does not exist
   if (!season || season.league_id !== leagues.actingIdOf(req)) return res.status(404).json({ error: 'Season not found' });
+  // the tournament of a club that is hidden, or whose approval was withdrawn, does not exist for the public
+  const face = clubTournaments.publicFace(season);
+  if (face.hidden) return res.status(404).json({ error: 'Season not found' });
   const rounds = db.prepare(`
     SELECT round, COUNT(*) AS total, SUM(CASE WHEN status = 'FINISHED' THEN 1 ELSE 0 END) AS finished
     FROM matches WHERE season_id = ? AND round IS NOT NULL AND COALESCE(stage, 'GROUP') = 'GROUP'
@@ -255,7 +262,13 @@ router.get('/by-slug/:slug', (req, res) => {
   `).all(season.id).map((r) => (doublesTournament
     ? { name: r.partner_name ? `${r.name} / ${r.partner_name}` : r.name, category: r.category, paid: !!r.paid, slug: null } // a pair: no profile link
     : { name: r.name, category: r.category, paid: !!r.paid, slug: r.player_slug || null }));
-  res.json({ ...serializeSeason(season), rounds, registrations });
+  res.json({ ...serializeSeason(season), organisation: face.organisation, canManage: clubTournaments.canManageSeason(req, season), rounds, registrations });
+});
+
+// the manager of a season (an admin, or the admin of the club that runs it) reads it by id: the manage page of a club tournament starts from this
+router.get('/:id(\\d+)', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  res.json({ ...serializeSeason(season), organisation: clubTournaments.publicFace(season).organisation });
 });
 
 // ---------- registration to a season ----------
@@ -277,7 +290,7 @@ function registrationOpen(season) {
 
 router.post('/:id/registrations', async (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
-  if (!season) return res.status(404).json({ error: 'Season not found' });
+  if (!season || clubTournaments.publicFace(season).hidden) return res.status(404).json({ error: 'Season not found' });
   const body = req.body || {};
   if (body.website) return res.status(201).json({ ok: true }); // the hidden field was filled in: a bot, pretend it worked
   if (!registrationOpen(season)) return res.status(403).json({ code: 'REGISTRATION_CLOSED', error: 'Registration for this season is closed' });
@@ -378,7 +391,7 @@ function serializeRegistration(r) {
 }
 
 // The registrations as a spreadsheet (CSV with a byte-order mark so Excel reads the letters right).
-router.get('/:id/registrations.csv', requireAdmin, (req, res) => {
+router.get('/:id/registrations.csv', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
   const rows = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(season.id);
@@ -395,7 +408,7 @@ router.get('/:id/registrations.csv', requireAdmin, (req, res) => {
 
 // A reminder e-mail to the players who have not paid: { ids: [..] } (all the unpaid ones with an e-mail when left out). A registration
 // that was reminded in the last 24 hours is skipped (so a double click does not write twice). -> { sent, noEmail, recent, failed }
-router.post('/:id/registrations/remind', requireAdmin, async (req, res) => {
+router.post('/:id/registrations/remind', clubTournaments.requireSeasonManager(clubTournaments.byParamId), async (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
   const wanted = Array.isArray(req.body && req.body.ids) ? new Set(req.body.ids.map(Number)) : null;
@@ -427,14 +440,14 @@ function profileCategory(raw) {
 }
 
 // The admin's list: with the contact details (never sent to the public page).
-router.get('/:id/registrations', requireAdmin, (req, res) => {
+router.get('/:id/registrations', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const rows = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(Number(req.params.id));
   res.json(rows.map(serializeRegistration));
 });
 
 // The admin sorts many players into categories at once (the "Zaradenie do kategórií" screen): { assignments: [{ id, category }] }, category
 // ELITE / NEXT_GEN / NOVICE or '' for "not sorted yet" (tournaments only). All or nothing: one bad entry changes nothing.
-router.post('/:id/registrations/categories', requireAdmin, (req, res) => {
+router.post('/:id/registrations/categories', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
   if (tournamentDraw.isDoublesTournament(season)) return res.status(400).json({ error: 'A doubles tournament has no categories' });
@@ -469,14 +482,14 @@ function tournamentOr404(req, res) {
 }
 
 // Per category: players, seeds, draw size and byes, and the brackets already made.
-router.get('/:id/draw', requireAdmin, (req, res) => {
+router.get('/:id/draw', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   res.json({ slug: season.slug, courtCount: season.court_count || 0, playType: tournamentDraw.isDoublesTournament(season) ? 'DOUBLES' : 'SINGLES', categories: tournamentDraw.overview(season.id) });
 });
 
 // { category, seeds: [{ id: registrationId, seed }] } — replaces the seeds of that category; players left out are not seeded.
-router.post('/:id/seeds', requireAdmin, (req, res) => {
+router.post('/:id/seeds', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const done = tournamentDraw.setSeeds(season.id, req.body && req.body.category, req.body && req.body.seeds);
@@ -488,7 +501,7 @@ router.post('/:id/seeds', requireAdmin, (req, res) => {
 // Makes the draw of one category: { category, format: 'PRINCE' | 'MONRAD' | 'ELIMINATION' | 'GROUPS' | 'GROUPS_BRACKET', mode: 'AUTO' | 'MANUAL',
 // mainFormat, consolationFormat, groupFormat (match formats), groupSize, groupCount, qualifiers, bracketType, autoBracket,
 // groups: [{ name, registrationIds }] (the groups as the organiser put them together; left out = suggested) } — see tournamentDraw.createDraw.
-router.post('/:id/draw', requireAdmin, (req, res) => {
+router.post('/:id/draw', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const body = req.body || {};
@@ -505,7 +518,7 @@ router.post('/:id/draw', requireAdmin, (req, res) => {
 
 // The suggested split of a category into groups (what an automatic draw would do), for the organiser to look at and change before making
 // the groups: ?category=ELITE&groupSize=4&groupCount=0
-router.get('/:id/draw/groups-suggestion', requireAdmin, (req, res) => {
+router.get('/:id/draw/groups-suggestion', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const category = req.query.category;
@@ -520,7 +533,7 @@ router.get('/:id/draw/groups-suggestion', requireAdmin, (req, res) => {
 
 // The bracket after the groups of a GROUPS_BRACKET category: { category, mode: 'AUTO' | 'MANUAL', force } — the best of every group go in
 // (needs every group match played unless force).
-router.post('/:id/draw/bracket', requireAdmin, (req, res) => {
+router.post('/:id/draw/bracket', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const body = req.body || {};
@@ -532,14 +545,14 @@ router.post('/:id/draw/bracket', requireAdmin, (req, res) => {
 });
 
 // ---- the pairs of the doubles (štvorhra) of the tournament; seeds and the draw of the category DOUBLES use the ordinary draw routes ----
-router.get('/:id/doubles', requireAdmin, (req, res) => {
+router.get('/:id/doubles', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   res.json(tournamentDraw.doublesOverview(season));
 });
 
 // { player, partner } (ids or names) makes a pair; { fromRegistrations: true } makes the pairs the registration forms named
-router.post('/:id/doubles/pairs', requireAdmin, (req, res) => {
+router.post('/:id/doubles/pairs', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const body = req.body || {};
@@ -550,7 +563,7 @@ router.post('/:id/doubles/pairs', requireAdmin, (req, res) => {
   res.status(201).json({ ...(body.fromRegistrations ? { created: done.created, skipped: done.skipped } : {}), overview: tournamentDraw.doublesOverview(season) });
 });
 
-router.delete('/:id/doubles/pairs/:pairId', requireAdmin, (req, res) => {
+router.delete('/:id/doubles/pairs/:pairId', clubTournaments.requireSeasonManager(clubTournaments.byIdAndPairId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const done = tournamentDraw.removePair(season, Number(req.params.pairId));
@@ -558,7 +571,7 @@ router.delete('/:id/doubles/pairs/:pairId', requireAdmin, (req, res) => {
   res.json(tournamentDraw.doublesOverview(season));
 });
 
-router.delete('/:id/draw/:category', requireAdmin, (req, res) => {
+router.delete('/:id/draw/:category', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const done = tournamentDraw.deleteDraw(season, req.params.category);
@@ -583,7 +596,7 @@ router.get('/:id/schedule', (req, res) => {
 });
 
 // { matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule }
-router.patch('/:id/schedule/settings', requireAdmin, (req, res) => {
+router.patch('/:id/schedule/settings', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const saved = tournamentSchedule.saveSettings(season, req.body || {});
@@ -593,7 +606,7 @@ router.patch('/:id/schedule/settings', requireAdmin, (req, res) => {
 
 // { mode: 'fill' | 'rebuild' | 'compact' | 'clear' | 'unlock' } (compact: unlocked planned matches move forward where time was freed;
 // unlock: every planned match is unlocked, none is moved) — the planner puts the matches without a time on the courts (see tournamentSchedule.autoPlan)
-router.post('/:id/schedule/auto', requireAdmin, (req, res) => {
+router.post('/:id/schedule/auto', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const mode = ['fill', 'rebuild', 'compact', 'clear', 'unlock'].includes(req.body && req.body.mode) ? req.body.mode : 'fill';
@@ -605,7 +618,7 @@ router.post('/:id/schedule/auto', requireAdmin, (req, res) => {
 
 // { courtNo, scheduledAt } puts a match that has not started on a court at a time (the planner never moves it afterwards);
 // { courtNo: null } takes it off the schedule.
-router.put('/:id/schedule/matches/:token', requireAdmin, (req, res) => {
+router.put('/:id/schedule/matches/:token', clubTournaments.requireSeasonManager(clubTournaments.byIdAndMatchToken), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   const body = req.body || {};
@@ -634,7 +647,7 @@ router.put('/:id/schedule/matches/:token', requireAdmin, (req, res) => {
 // The admin registers a player who is already in the app, without the registration form: the phone number and the e-mail
 // come from the player's profile unless the admin types others, the category from the profile unless the admin picks one.
 // It works whether or not the season's registration is open, and sends no e-mail.
-router.post('/:id/registrations/admin', requireAdmin, (req, res) => {
+router.post('/:id/registrations/admin', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
   const body = req.body || {};
@@ -652,11 +665,13 @@ router.post('/:id/registrations/admin', requireAdmin, (req, res) => {
   else category = profileCategory(player.category) || (tournament ? '' : null);
   if (category === null) return res.status(400).json({ error: 'Choose a category' });
 
-  const typedPhone = typeof body.phone === 'string' ? body.phone.trim() : '';
-  const phone = String(typedPhone || player.phone || '').replace(/[^\d+]/g, '');
+  // (the organiser of a club gets no phone number or e-mail of a player from his profile, and writes none: players who register themselves give their own)
+  const siteAdmin = auth.isAdmin(req);
+  const typedPhone = siteAdmin && typeof body.phone === 'string' ? body.phone.trim() : '';
+  const phone = siteAdmin ? String(typedPhone || player.phone || '').replace(/[^\d+]/g, '') : '';
   if (typedPhone && (phone.replace(/\D/g, '').length < 9 || phone.length > 20)) return res.status(400).json({ error: 'Enter a valid phone number' });
-  const typedEmail = typeof body.email === 'string' ? body.email.trim() : '';
-  const email = typedEmail || String(player.email || '').trim();
+  const typedEmail = siteAdmin && typeof body.email === 'string' ? body.email.trim() : '';
+  const email = siteAdmin ? (typedEmail || String(player.email || '').trim()) : '';
   if (typedEmail && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typedEmail) || typedEmail.length > 120)) return res.status(400).json({ error: 'Enter a valid e-mail address' });
 
   const already = db.prepare('SELECT player_id, name FROM season_registrations WHERE season_id = ?').all(season.id)
@@ -671,7 +686,7 @@ router.post('/:id/registrations/admin', requireAdmin, (req, res) => {
 
 // The admin changes a registration: what is sent is changed, the rest stays — paid, category ('' = no category, tournaments only),
 // phone, e-mail and note.
-router.patch('/registrations/:rid', requireAdmin, (req, res) => {
+router.patch('/registrations/:rid', clubTournaments.requireSeasonManager(clubTournaments.byRegistrationId), (req, res) => {
   const row = db.prepare('SELECT r.*, s.kind AS season_kind, s.play_type AS season_play_type FROM season_registrations r LEFT JOIN seasons s ON s.id = r.season_id WHERE r.id = ?').get(Number(req.params.rid));
   if (!row) return res.status(404).json({ error: 'Registration not found' });
   const body = req.body || {};
@@ -684,12 +699,13 @@ router.patch('/registrations/:rid', requireAdmin, (req, res) => {
     else if (body.category === '' && row.season_kind === 'TOURNAMENT') next.category = '';
     else return res.status(400).json({ error: 'Choose a category' });
   }
-  if (body.phone !== undefined) {
+  const siteAdmin = auth.isAdmin(req); // the organiser of a club cannot write the phone or e-mail of a registration
+  if (body.phone !== undefined && siteAdmin) {
     const phone = String(body.phone || '').trim().replace(/[^\d+]/g, '');
     if (phone && (phone.replace(/\D/g, '').length < 9 || phone.length > 20)) return res.status(400).json({ error: 'Enter a valid phone number' });
     next.phone = phone;
   }
-  if (body.email !== undefined) {
+  if (body.email !== undefined && siteAdmin) {
     const email = String(body.email || '').trim();
     if (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120)) return res.status(400).json({ error: 'Enter a valid e-mail address' });
     next.email = email;
@@ -709,7 +725,7 @@ router.patch('/registrations/:rid', requireAdmin, (req, res) => {
   res.json({ ok: true, ...serializeRegistration(db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(row.id)) });
 });
 
-router.delete('/registrations/:rid', requireAdmin, (req, res) => {
+router.delete('/registrations/:rid', clubTournaments.requireSeasonManager(clubTournaments.byRegistrationId), (req, res) => {
   const info = db.prepare('DELETE FROM season_registrations WHERE id = ?').run(Number(req.params.rid));
   if (!info.changes) return res.status(404).json({ error: 'Registration not found' });
   res.json({ ok: true });
@@ -780,31 +796,43 @@ router.get('/:id/standings', (req, res) => {
   res.json({ id: season.id, name: season.name, slug: season.slug, startDate: season.start_date, endDate: season.end_date, frozen: false, groups: result });
 });
 
-router.post('/', requireAdmin, (req, res) => {
-  const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
-  if (!name) return res.status(400).json({ error: 'Season name is required' });
-  if (name.length > 120) return res.status(400).json({ error: 'Season name is too long (max 120 characters)' });
-  const start = parseDate(req.body.startDate);
-  const end = parseDate(req.body.endDate);
-  if (start.error || end.error) return res.status(400).json({ error: start.error || end.error });
-  if (start.value && end.value && start.value > end.value) return res.status(400).json({ error: 'The end date is before the start date' });
-  const kind = req.body.kind === undefined ? 'LEAGUE' : req.body.kind;
-  if (!KINDS.includes(kind)) return res.status(400).json({ error: 'The type must be LEAGUE or TOURNAMENT' });
-  const venue = typeof req.body.venue === 'string' ? req.body.venue.trim() : '';
-  if (venue.length > 200) return res.status(400).json({ error: 'Venue is too long (max 200 characters)' });
+// the checks of a new season or tournament, shared by the Backend (POST /api/seasons) and the clubs (POST /api/communities/:id/tournaments):
+// { error } or { values }
+function readNewSeason(body) {
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  if (!name) return { error: 'Season name is required' };
+  if (name.length > 120) return { error: 'Season name is too long (max 120 characters)' };
+  const start = parseDate(body.startDate);
+  const end = parseDate(body.endDate);
+  if (start.error || end.error) return { error: start.error || end.error };
+  if (start.value && end.value && start.value > end.value) return { error: 'The end date is before the start date' };
+  const kind = body.kind === undefined ? 'LEAGUE' : body.kind;
+  if (!KINDS.includes(kind)) return { error: 'The type must be LEAGUE or TOURNAMENT' };
+  const venue = typeof body.venue === 'string' ? body.venue.trim() : '';
+  if (venue.length > 200) return { error: 'Venue is too long (max 200 characters)' };
   // a tournament is singles or doubles, chosen when it is made (never mixed); a league season is always singles
-  const playTypeAsked = req.body.playType === undefined ? 'SINGLES' : req.body.playType;
-  if (!['SINGLES', 'DOUBLES'].includes(playTypeAsked)) return res.status(400).json({ error: 'The tournament is played as singles or doubles' });
+  const playTypeAsked = body.playType === undefined ? 'SINGLES' : body.playType;
+  if (!['SINGLES', 'DOUBLES'].includes(playTypeAsked)) return { error: 'The tournament is played as singles or doubles' };
   const playType = kind === 'TOURNAMENT' ? playTypeAsked : 'SINGLES';
-  const slug = uniqueSlug(slugify(name));
-  const leagueId = leagues.actingIdOf(req);
+  return { values: { name, start: start.value, end: end.value, kind, venue, playType, categories: playType === 'DOUBLES' ? null : categoriesToStore(body.categories) } };
+}
+
+// inserts a checked new season and returns its row; a club tournament carries the id of its organisation
+function insertSeason(values, leagueId, organisationId = null) {
+  const slug = uniqueSlug(slugify(values.name));
   const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM seasons WHERE league_id = ?').get(leagueId).m;
-  const info = db.prepare('INSERT INTO seasons (name, slug, start_date, end_date, sort_order, kind, venue, categories, league_id, play_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    .run(name, slug, start.value, end.value, maxOrder + 1, kind, venue || null, playType === 'DOUBLES' ? null : categoriesToStore(req.body.categories), leagueId, playType);
-  res.status(201).json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(info.lastInsertRowid))));
+  const info = db.prepare('INSERT INTO seasons (name, slug, start_date, end_date, sort_order, kind, venue, categories, league_id, play_type, organisation_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(values.name, slug, values.start, values.end, maxOrder + 1, values.kind, values.venue || null, values.categories, leagueId, values.playType, organisationId);
+  return db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(info.lastInsertRowid));
+}
+
+router.post('/', requireAdmin, (req, res) => {
+  const read = readNewSeason(req.body);
+  if (read.error) return res.status(400).json({ error: read.error });
+  res.status(201).json(serializeSeason(insertSeason(read.values, leagues.actingIdOf(req))));
 });
 
-router.patch('/:id', requireAdmin, (req, res) => {
+router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
   const name = req.body.name !== undefined ? String(req.body.name).trim() : season.name;
@@ -837,7 +865,8 @@ router.patch('/:id', requireAdmin, (req, res) => {
   const logo = text('logoUrl', season.logo_url, 300);
   const draw = req.body.drawDate !== undefined ? parseDate(req.body.drawDate) : { value: season.draw_date };
   const venue = text('venue', season.venue, 200);
-  const kind = req.body.kind === undefined ? (season.kind || 'LEAGUE') : req.body.kind;
+  // the organiser of a club cannot change what a club tournament is (only an admin of the site may)
+  const kind = req.body.kind === undefined || !auth.isAdmin(req) ? (season.kind || 'LEAGUE') : req.body.kind;
   if (!KINDS.includes(kind)) return res.status(400).json({ error: 'The type must be LEAGUE or TOURNAMENT' });
   const categories = req.body.categories === undefined || tournamentDraw.isDoublesTournament(season) ? season.categories : categoriesToStore(req.body.categories);
   const bad = fee.error || prize.error || info.error || gallery.error || payment.error || logo.error || draw.error || venue.error;
@@ -845,6 +874,7 @@ router.patch('/:id', requireAdmin, (req, res) => {
   if (gallery.value && !/^https?:\/\//i.test(gallery.value)) return res.status(400).json({ error: 'The gallery link must start with http:// or https://' });
   if (payment.value && !/^https?:\/\//i.test(payment.value)) return res.status(400).json({ error: 'The payment link must start with http:// or https://' });
   if (logo.value && !/^(https?:\/\/|\/)/i.test(logo.value)) return res.status(400).json({ error: 'The logo must be a link starting with http://, https:// or /' });
+  if (logo.value && logo.value !== season.logo_url && !auth.isAdmin(req) && !/^https:\/\//i.test(logo.value)) return res.status(400).json({ error: 'The logo must be a link starting with https:// (or uploaded)' });
   const open = req.body.registrationOpen === undefined ? season.registration_open : (req.body.registrationOpen ? 1 : 0);
   let courts = season.court_count || 0;
   if (req.body.courtCount !== undefined) {
@@ -907,9 +937,16 @@ function deleteTournamentWithMatches(req, res, season) {
   return res.json({ ok: true, deletedMatches: matches.length });
 }
 
-router.delete('/:id', requireAdmin, (req, res) => {
+router.delete('/:id', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
+  // the organiser of a club deletes his tournament together with its matches, and only while none of them is finished (an admin of the site may always)
+  if (!auth.isAdmin(req)) {
+    if (db.prepare("SELECT COUNT(*) AS n FROM matches WHERE season_id = ? AND status = 'FINISHED'").get(season.id).n > 0) {
+      return res.status(409).json({ error: 'A tournament with finished matches can only be deleted by an admin of the site' });
+    }
+    return deleteTournamentWithMatches(req, res, season);
+  }
   if (req.query.withMatches === '1') return deleteTournamentWithMatches(req, res, season);
   db.prepare('UPDATE matches SET group_id = NULL WHERE season_id = ?').run(season.id);
   db.prepare('DELETE FROM season_group_members WHERE group_id IN (SELECT id FROM season_groups WHERE season_id = ?)').run(season.id);
@@ -927,7 +964,7 @@ function parseGroup(body) {
   return { name, category: body.category };
 }
 
-router.post('/:id/groups', requireAdmin, (req, res) => {
+router.post('/:id/groups', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
   const parsed = parseGroup(req.body);
@@ -941,7 +978,7 @@ router.post('/:id/groups', requireAdmin, (req, res) => {
   res.status(201).json(serializeGroup(db.prepare('SELECT * FROM season_groups WHERE id = ?').get(Number(info.lastInsertRowid))));
 });
 
-router.patch('/groups/:groupId', requireAdmin, (req, res) => {
+router.patch('/groups/:groupId', clubTournaments.requireSeasonManager(clubTournaments.byGroupId), (req, res) => {
   const group = db.prepare('SELECT * FROM season_groups WHERE id = ?').get(Number(req.params.groupId));
   if (!group) return res.status(404).json({ error: 'Group not found' });
   const parsed = parseGroup({ name: req.body.name !== undefined ? req.body.name : group.name, category: req.body.category !== undefined ? req.body.category : group.category });
@@ -954,7 +991,7 @@ router.patch('/groups/:groupId', requireAdmin, (req, res) => {
   res.json(serializeGroup(db.prepare('SELECT * FROM season_groups WHERE id = ?').get(group.id)));
 });
 
-router.delete('/groups/:groupId', requireAdmin, (req, res) => {
+router.delete('/groups/:groupId', clubTournaments.requireSeasonManager(clubTournaments.byGroupId), (req, res) => {
   const group = db.prepare('SELECT * FROM season_groups WHERE id = ?').get(Number(req.params.groupId));
   if (!group) return res.status(404).json({ error: 'Group not found' });
   db.prepare('DELETE FROM season_group_members WHERE group_id = ?').run(group.id);
@@ -1001,7 +1038,7 @@ function otherGroupOf(seasonId, playerId, exceptGroupId) {
   `).get(seasonId, playerId, exceptGroupId) || null;
 }
 
-router.post('/groups/:groupId/members', requireAdmin, (req, res) => {
+router.post('/groups/:groupId/members', clubTournaments.requireSeasonManager(clubTournaments.byGroupId), (req, res) => {
   const group = groupOr404(req, res);
   if (!group) return;
   const groupSeason = db.prepare('SELECT league_id FROM seasons WHERE id = ?').get(group.season_id);
@@ -1022,7 +1059,7 @@ router.post('/groups/:groupId/members', requireAdmin, (req, res) => {
 });
 
 // Marks whether a player of the group has paid the entry fee (shown on the season page).
-router.patch('/groups/:groupId/members/:playerId', requireAdmin, (req, res) => {
+router.patch('/groups/:groupId/members/:playerId', clubTournaments.requireSeasonManager(clubTournaments.byGroupId), (req, res) => {
   const group = groupOr404(req, res);
   if (!group) return;
   const playerId = Number(req.params.playerId);
@@ -1034,7 +1071,7 @@ router.patch('/groups/:groupId/members/:playerId', requireAdmin, (req, res) => {
 });
 
 // Removing is only for a mistake: once the player has matches in the group they have to be withdrawn instead.
-router.delete('/groups/:groupId/members/:playerId', requireAdmin, (req, res) => {
+router.delete('/groups/:groupId/members/:playerId', clubTournaments.requireSeasonManager(clubTournaments.byGroupId), (req, res) => {
   const group = groupOr404(req, res);
   if (!group) return;
   const playerId = Number(req.params.playerId);
@@ -1049,7 +1086,7 @@ router.delete('/groups/:groupId/members/:playerId', requireAdmin, (req, res) => 
 
 // The player leaves mid-season: no new matches for them, and every unplayed match of theirs becomes a walkover win for
 // the opponent (3 points, as in the tables). Live matches and matches against another withdrawn player are left alone.
-router.post('/groups/:groupId/members/:playerId/withdraw', requireAdmin, (req, res) => {
+router.post('/groups/:groupId/members/:playerId/withdraw', clubTournaments.requireSeasonManager(clubTournaments.byGroupId), (req, res) => {
   const group = groupOr404(req, res);
   if (!group) return;
   const playerId = Number(req.params.playerId);
@@ -1085,7 +1122,7 @@ router.post('/groups/:groupId/members/:playerId/withdraw', requireAdmin, (req, r
 });
 
 // For a group that already has matches (a season made before the maker existed): take its players from the matches.
-router.post('/groups/:groupId/members/import', requireAdmin, (req, res) => {
+router.post('/groups/:groupId/members/import', clubTournaments.requireSeasonManager(clubTournaments.byGroupId), (req, res) => {
   const group = groupOr404(req, res);
   if (!group) return;
   const ids = db.prepare(`
@@ -1134,7 +1171,7 @@ function groupSchedule(group) {
   return { plan, rounds, unassigned, members, activeCount: active.length, existing: existing.length };
 }
 
-router.get('/:id/schedule-preview', requireAdmin, (req, res) => {
+router.get('/:id/schedule-preview', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
   const groups = db.prepare('SELECT * FROM season_groups WHERE season_id = ? ORDER BY sort_order, name COLLATE NOCASE').all(season.id);
@@ -1153,7 +1190,7 @@ router.get('/:id/schedule-preview', requireAdmin, (req, res) => {
 
 // Creates the missing matches of every group of the season (or of the listed groups): planned, no date, tagged with the
 // season, the group, the category and the round. Safe to run again: only pairs without a match get one.
-router.post('/:id/schedule', requireAdmin, (req, res) => {
+router.post('/:id/schedule', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
   const format = req.body.format || MATCH_FORMAT_DEFAULT;
@@ -1190,3 +1227,7 @@ router.post('/:id/schedule', requireAdmin, (req, res) => {
 
 module.exports = router;
 module.exports.BLTA_CATEGORIES = BLTA_CATEGORIES;
+module.exports.serializeSeason = serializeSeason;
+module.exports.readNewSeason = readNewSeason;
+module.exports.insertSeason = insertSeason;
+module.exports.sanitizeHtml = sanitizeHtml;

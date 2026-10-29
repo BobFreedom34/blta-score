@@ -161,7 +161,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
       const cf = settingsFor(c).consolationFormat;
       buttons.push(`<select class="sd-cons-format" data-cat="${c.category}" style="${inputStyle}">${drawFormatOptions(cf)}</select><button type="button" class="btn btn-sm btn-primary" data-act="consolation" data-cat="${c.category}">Vytvoriť útechu</button>`);
     }
-    if (c.main) buttons.push('<a class="btn btn-sm btn-outline" href="/bracket-admin" target="_blank" rel="noopener">Upraviť pavúk</a>');
+    if (c.main && !document.querySelector('[data-club]')) buttons.push('<a class="btn btn-sm btn-outline" href="/bracket-admin" target="_blank" rel="noopener">Upraviť pavúk</a>');
     buttons.push(`<button type="button" class="btn btn-sm btn-outline" data-act="delete" data-cat="${c.category}" style="color:var(--danger)">Zmazať ${c.groups && !c.main ? 'skupiny' : 'pavúk'}</button>`);
     parts.push(`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">${buttons.join('')}</div>`);
     return parts.join('');

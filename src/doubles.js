@@ -9,6 +9,7 @@
 // player is rated against the AVERAGE of the opposing pair, so a doubles result moves each of the four players on their own rating. It is a
 // separate number from the singles CourtIQ, which doubles never touch. pairs() ranks the pairs themselves (who plays well TOGETHER).
 const db = require('./db');
+const clubTournaments = require('./clubTournaments');
 const engine = require('./matchEngine');
 const courtIQ = require('./courtIQEngine');
 
@@ -19,7 +20,7 @@ const POINTS_LOSS = 1;
 function countedMatches(leagueId) {
   const rows = db.prepare(`
     SELECT * FROM matches
-    WHERE is_doubles = 1 AND status = 'FINISHED' AND league_id = ? AND (end_reason IS NULL OR end_reason != 'UNFINISHED')
+    WHERE is_doubles = 1 AND status = 'FINISHED' AND league_id = ? AND (end_reason IS NULL OR end_reason != 'UNFINISHED') AND ${clubTournaments.countingSql()}
     ORDER BY COALESCE(scheduled_at, end_time, updated_at), id
   `).all(leagueId);
   const out = [];

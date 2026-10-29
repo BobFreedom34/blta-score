@@ -13,6 +13,7 @@
 // src/badgeEngine.js already uses for badges/stats. A RETIREMENT DOES
 // count, using whatever partial score was actually played.
 const db = require('./db');
+const clubTournaments = require('./clubTournaments');
 const courtIQ = require('./courtIQEngine');
 
 function matchDateOf(row) {
@@ -26,6 +27,7 @@ function loadRatableMatches() {
       AND COALESCE(is_doubles, 0) = 0
       AND winner_id IS NOT NULL
       AND (end_reason IS NULL OR end_reason NOT IN ('WALKOVER', 'UNFINISHED'))
+      AND ${clubTournaments.countingSql()}
   `).all();
   return rows.sort((a, b) => {
     const dateDiff = new Date(matchDateOf(a)) - new Date(matchDateOf(b));

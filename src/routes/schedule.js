@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db');
 const leagues = require('../leagues');
 const { requireAdmin } = require('../auth');
+const clubTournaments = require('../clubTournaments');
 
 const router = express.Router();
 
@@ -29,7 +30,7 @@ function serializeEvent(e) {
 // backend changes the schedule) and the tournaments / other events added in the backend, soonest first. A league
 // season has every BLTA category; its "more info" is its season page.
 function scheduleOf(leagueId) {
-  const seasons = db.prepare("SELECT * FROM seasons WHERE start_date IS NOT NULL AND start_date != '' AND league_id = ?").all(leagueId).map((s) => {
+  const seasons = db.prepare("SELECT * FROM seasons WHERE start_date IS NOT NULL AND start_date != '' AND league_id = ?").all(leagueId).filter((s) => !clubTournaments.publicFace(s).hidden).map((s) => {
     const tournament = s.kind === 'TOURNAMENT';
     const own = parseCategories(s.categories);
     return {
@@ -44,6 +45,8 @@ function scheduleOf(leagueId) {
       registrationOpen: !!s.registration_open,
       // a doubles tournament is played in the one category Štvorhra, not in the three league ones
       categories: tournament && s.play_type === 'DOUBLES' ? ['DOUBLES'] : (tournament && own.length ? own : CATEGORIES),
+      // a tournament of a club carries the club (the Harmonogram labels it); null for the others
+      organisation: clubTournaments.publicFace(s).organisation,
     };
   });
   const events = db.prepare('SELECT * FROM schedule_events WHERE league_id = ?').all(leagueId).map(serializeEvent);

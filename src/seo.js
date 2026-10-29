@@ -102,6 +102,11 @@ const PAGES = [
     description: '{name} - komunita alebo klub hráčov BLTA: novinky, členovia a nadchádzajúce turnaje a akcie.',
   },
   {
+    key: 'clubtournament', label: 'Club tournament (manage page, template)', path: '/community-tournament/:id', file: 'club-tournament.html', template: true, blta: null, slugSk: 'turnaj-klubu', noindex: true,
+    title: `Turnaj klubu${SUFFIX}`,
+    description: 'Správa turnaja klubu BLTA: registrácie, žrebovanie, pavúk a výsledky.',
+  },
+  {
     key: 'blog', label: 'Blog (list of articles)', path: '/blog', file: 'blog.html', blta: 'https://old.blta.sk/blog/', slugSk: 'blog',
     title: `Blog${SUFFIX}`,
     description: 'Novinky z tenisovej amatérskej ligy BLTA, ktorá sa hrá v Bratislave a v okolí. Ak chces byť informovaný o novinkách z amatérskeho tenisu tak si tu správne.',
@@ -257,6 +262,11 @@ const ENGLISH = {
     slug: 'communities',
     title: `Communities and clubs${SUFFIX_EN}`,
     description: 'BLTA communities and clubs - groups of players who run their own tournaments and events. Join a club or create your own community.',
+  },
+  clubtournament: {
+    slug: 'club-tournament',
+    title: `Club tournament${SUFFIX_EN}`,
+    description: 'Manage a BLTA club tournament: registrations, draw, bracket and results.',
   },
   community: {
     slug: 'community',
@@ -841,7 +851,7 @@ function sitemapXml(origin, { national = false, leagueId = 1 } = {}) {
   PAGES.filter((p) => !p.template && !hidden(p.key) && !NATIONAL_KEYS.has(p.key)).forEach((p) => add(p.path));
   const day = (iso) => (iso ? String(iso).slice(0, 10) : undefined);
   if (!hidden('season')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND COALESCE(kind, 'LEAGUE') != 'TOURNAMENT' AND league_id = ?").all(leagueId).forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`));
-  if (!hidden('tournament')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND kind = 'TOURNAMENT' AND league_id = ?").all(leagueId).forEach((r) => add(`/tournament/${encodeURIComponent(r.slug)}`));
+  if (!hidden('tournament')) db.prepare("SELECT slug FROM seasons s WHERE slug IS NOT NULL AND kind = 'TOURNAMENT' AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").all(leagueId).forEach((r) => add(`/tournament/${encodeURIComponent(r.slug)}`));
   if (!hidden('article')) blog.publishedRows(leagueId).forEach((r) => add(`/article/${encodeURIComponent(r.slug_sk)}`, day(r.modified_at)));
   if (!hidden('court')) db.prepare('SELECT slug FROM venues WHERE slug IS NOT NULL AND league_id = ?').all(leagueId).forEach((r) => add(`/courts/${encodeURIComponent(r.slug)}`));
   if (!hidden('player')) db.prepare('SELECT slug FROM players WHERE slug IS NOT NULL AND league_id = ?').all(leagueId).forEach((r) => add(`/player/${encodeURIComponent(r.slug)}`));

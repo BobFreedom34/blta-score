@@ -111,7 +111,7 @@ function withPaths(season, tournament = false) {
 // The season a visitor can register to now: the one of the city whose registration is open (not ended) that starts soonest from today on,
 // else the one that is running. null when no registration is open anywhere in the city.
 function registrationSeasonOf(leagueId, today) {
-  const open = db.prepare("SELECT name, slug, kind, start_date FROM seasons WHERE league_id = ? AND registration_open = 1 AND slug IS NOT NULL AND (end_date IS NULL OR end_date = '' OR end_date >= ?)").all(leagueId, today);
+  const open = db.prepare("SELECT name, slug, kind, start_date FROM seasons WHERE league_id = ? AND organisation_id IS NULL AND registration_open = 1 AND slug IS NOT NULL AND (end_date IS NULL OR end_date = '' OR end_date >= ?)").all(leagueId, today);
   if (!open.length) return null;
   const coming = open.filter((s) => s.start_date && s.start_date > today).sort((a, b) => (a.start_date < b.start_date ? -1 : 1));
   const pick = coming[0] || open.sort((a, b) => ((a.start_date || '') < (b.start_date || '') ? 1 : -1))[0];
@@ -130,7 +130,7 @@ function currentSeasonOf(leagueId, today) {
 // tournaments that are over.
 const ALL_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 function playedOf(leagueId, today) {
-  const seasons = db.prepare("SELECT name, kind, categories, end_date FROM seasons WHERE league_id = ? AND COALESCE(slug, '') != ''").all(leagueId);
+  const seasons = db.prepare("SELECT name, kind, categories, end_date FROM seasons WHERE league_id = ? AND organisation_id IS NULL AND COALESCE(slug, '') != ''").all(leagueId);
   const events = db.prepare('SELECT name, categories, end_date, start_date FROM schedule_events WHERE league_id = ?').all(leagueId);
   const cats = new Set();
   seasons.forEach((s) => {
@@ -163,7 +163,7 @@ const ACTIVE_PLAYERS_SQL = `
   SELECT COUNT(*) AS n FROM players p WHERE p.league_id = ? AND COALESCE(p.hidden, 0) = 0 AND EXISTS (
     SELECT 1 FROM matches m WHERE (m.player1_id = p.id OR m.player2_id = p.id) AND m.status = 'FINISHED' AND (
       m.category IN ('ELITE', 'NEXT_GEN', 'NOVICE', 'VIP_CUP', 'ATA_TENNIS')
-      OR EXISTS (SELECT 1 FROM seasons s WHERE s.id = m.season_id AND s.kind = 'TOURNAMENT')
+      OR EXISTS (SELECT 1 FROM seasons s WHERE s.id = m.season_id AND s.kind = 'TOURNAMENT' AND s.organisation_id IS NULL)
       OR EXISTS (SELECT 1 FROM bracket_matches b WHERE b.match_id = m.id)))`;
 
 function countsOf(leagueId) {
@@ -171,7 +171,7 @@ function countsOf(leagueId) {
   return {
     players: n('SELECT COUNT(*) AS n FROM players WHERE league_id = ? AND COALESCE(hidden, 0) = 0'),
     activePlayers: n(ACTIVE_PLAYERS_SQL),
-    seasons: n('SELECT COUNT(*) AS n FROM seasons WHERE league_id = ?'),
+    seasons: n('SELECT COUNT(*) AS n FROM seasons WHERE league_id = ? AND organisation_id IS NULL'),
     venues: n('SELECT COUNT(*) AS n FROM venues WHERE league_id = ?'),
   };
 }
@@ -194,7 +194,7 @@ function serialize(row, { admin = false } = {}) {
     ...playedOf(row.id, today),
     seasons: counts.seasons,
     venues: counts.venues,
-    registrationOpen: !!db.prepare('SELECT 1 FROM seasons WHERE league_id = ? AND registration_open = 1 AND (end_date IS NULL OR end_date >= ?) LIMIT 1').get(row.id, today),
+    registrationOpen: !!db.prepare('SELECT 1 FROM seasons WHERE league_id = ? AND organisation_id IS NULL AND registration_open = 1 AND (end_date IS NULL OR end_date >= ?) LIMIT 1').get(row.id, today),
     // where the Registration button of the national page leads: the season that really takes registrations
     registrationSeason: registrationSeasonOf(row.id, today),
     currentSeason: currentSeasonOf(row.id, today),

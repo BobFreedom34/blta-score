@@ -10,6 +10,8 @@ const db = require('../db');
 const auth = require('../auth');
 const leagues = require('../leagues');
 const communities = require('../communities');
+const clubTournaments = require('../clubTournaments');
+const seasonsRoutes = require('./seasons');
 const courtIQ = require('../courtIQEngine');
 
 const router = express.Router();
@@ -197,6 +199,73 @@ router.patch('/:id/approval', auth.requireSuperAdmin, (req, res) => {
   db.prepare('UPDATE organisations SET approved = ? WHERE id = ?').run(req.body.approved ? 1 : 0, org.id);
   res.json(serialize(orgById(org.id), req));
 });
+
+// ---------------- tournaments of the organisation (phase 2) ----------------
+
+// An admin of a public community or club makes a tournament of it, on the front end. It is an ordinary tournament season with organisation_id (the
+// league and the Backend do not list it); the limit of open ones is max_open_tournaments (5 unless the super admin changed it).
+router.post('/:id/tournaments', (req, res) => {
+  const ctx = needOrgAdmin(req, res);
+  if (!ctx) return;
+  if (!clubTournaments.isPublicOrg(ctx.org)) return res.status(404).json({ error: 'Community not found' });
+  const read = seasonsRoutes.readNewSeason({ ...req.body, kind: 'TOURNAMENT' });
+  if (read.error) return res.status(400).json({ error: read.error });
+  const fee = req.body.entryFee === undefined ? '' : String(req.body.entryFee).trim();
+  if (fee.length > 40) return res.status(400).json({ error: 'The entry fee is too long (max 40 characters)' });
+  let info = null;
+  if (req.body.info !== undefined) {
+    const clean = seasonsRoutes.sanitizeHtml(req.body.info).trim();
+    if (clean.length > 8000) return res.status(400).json({ error: 'The description is too long' });
+    info = clean.replace(/<[^>]*>|&nbsp;|\s/g, '') ? clean : null;
+  }
+  if (clubTournaments.openTournamentCount(ctx.org.id) >= ctx.org.max_open_tournaments) {
+    return res.status(409).json({ error: `This community or club already has ${ctx.org.max_open_tournaments} open tournaments` });
+  }
+  const season = seasonsRoutes.insertSeason(read.values, ctx.org.league_id, ctx.org.id);
+  if (fee || info) db.prepare('UPDATE seasons SET entry_fee = ?, info = ? WHERE id = ?').run(fee || null, info, season.id);
+  res.status(201).json(seasonsRoutes.serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
+});
+
+// the tournaments of an organisation, newest first (public, like the page of the organisation itself)
+router.get('/:id/tournaments', (req, res) => {
+  const org = orgOr404(req, res, 'read');
+  if (!org) return;
+  const rows = db.prepare("SELECT * FROM seasons WHERE organisation_id = ? AND kind = 'TOURNAMENT' ORDER BY COALESCE(start_date, '') DESC, id DESC").all(org.id);
+  const registered = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?');
+  res.json({ items: rows.map((s) => ({ ...seasonsRoutes.serializeSeason(s), registrationCount: registered.get(s.id).n, organisation: { id: org.id, slug: org.slug, name: org.name } })) });
+});
+
+// The super admin decides whether the results of the tournaments of a club move ratings (CourtIQ, the doubles rating, ranking points, badges) and how many
+// open tournaments it may have. Switching it changes what the results already there are worth, so they are counted again.
+router.patch('/:id/rating', auth.requireSuperAdmin, (req, res) => {
+  const org = orgById(req.params.id);
+  if (!org) return res.status(404).json({ error: 'Community not found' });
+  const { countsForRating, maxOpenTournaments } = req.body;
+  if (countsForRating === undefined && maxOpenTournaments === undefined) return res.status(400).json({ error: 'Nothing to change' });
+  if (countsForRating !== undefined && typeof countsForRating !== 'boolean') return res.status(400).json({ error: 'countsForRating must be true or false' });
+  if (maxOpenTournaments !== undefined && (!Number.isInteger(maxOpenTournaments) || maxOpenTournaments < 1 || maxOpenTournaments > 50)) {
+    return res.status(400).json({ error: 'maxOpenTournaments must be a whole number from 1 to 50' });
+  }
+  const changed = countsForRating !== undefined && (countsForRating ? 1 : 0) !== org.counts_for_rating;
+  db.prepare('UPDATE organisations SET counts_for_rating = ?, max_open_tournaments = ? WHERE id = ?')
+    .run(countsForRating === undefined ? org.counts_for_rating : (countsForRating ? 1 : 0), maxOpenTournaments === undefined ? org.max_open_tournaments : maxOpenTournaments, org.id);
+  if (changed) recountRatings(org.id);
+  res.json(serialize(orgById(org.id)));
+});
+
+// the finished matches of the tournaments of an organisation are counted again: the ranking tables take them (back) as the gate now says, CourtIQ and the doubles
+// rating are rebuilt, the badges of the players are looked at again (a badge once earned stays)
+function recountRatings(orgId) {
+  const rankingPoints = require('../rankingPoints');
+  const courtIQBackfill = require('../courtIQBackfill');
+  const badgeEngine = require('../badgeEngine');
+  const rows = db.prepare("SELECT m.* FROM matches m JOIN seasons s ON s.id = m.season_id WHERE s.organisation_id = ? AND m.status = 'FINISHED'").all(orgId);
+  rows.forEach((row) => rankingPoints.reconcile(row, row));
+  courtIQBackfill.runBackfill();
+  const players = new Set();
+  rows.forEach((row) => [row.player1_id, row.player2_id, row.player1b_id, row.player2b_id].filter(Boolean).forEach((id) => players.add(id)));
+  players.forEach((id) => badgeEngine.syncPlayerBadges(id));
+}
 
 // ---------------- members and the join policy ----------------
 

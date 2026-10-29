@@ -13,6 +13,7 @@
 // Every award is written to ranking_awards, so a corrected score, a restarted match or a deleted match takes back exactly what
 // that match added before anything new is awarded: reconcile() is safe to call any number of times for the same match.
 const db = require('./db');
+const clubTournaments = require('./clubTournaments');
 const engine = require('./matchEngine');
 const nameMatch = require('./nameMatch');
 
@@ -154,7 +155,8 @@ function reconcile(previousRow, updatedRow) {
   return inTransaction(() => {
     const moves = [];
     reverseRows(updatedRow.id, moves);
-    if (updatedRow.status === 'FINISHED') {
+    // (a match of a club tournament earns nothing unless the club counts for rating: what it added before is still taken back above)
+    if (updatedRow.status === 'FINISHED' && clubTournaments.matchCountsForRating(updatedRow)) {
       const computed = computeAwards(updatedRow);
       if (computed) recordAwards(updatedRow.id, computed, false, moves);
     }

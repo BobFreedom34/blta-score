@@ -5,6 +5,7 @@
 // with no auth at all, same as a match page, since the whole point is a
 // shareable/embeddable draw anyone can look at.
 const express = require('express');
+const clubTournaments = require('../clubTournaments');
 const db = require('../db');
 const leagues = require('../leagues');
 const auth = require('../auth');
@@ -156,7 +157,9 @@ router.get('/:id', (req, res) => {
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid bracket id' });
   const payload = serializeBracket(id);
   if (!payload) return res.status(404).json({ error: 'Bracket not found' });
-  res.json(payload);
+  // whether the viewer may enter results in it (an admin; the admin of the club that runs its tournament): the bracket page draws the buttons by it
+  const season = payload.season && payload.season.id ? db.prepare('SELECT * FROM seasons WHERE id = ?').get(payload.season.id) : null;
+  res.json({ ...payload, canManage: clubTournaments.canManageSeason(req, season) });
 });
 
 // Two ways in: `entries` (auto-generate — [{playerId, seed}], size derived
@@ -173,7 +176,7 @@ function stampBracket(bracketId, seasonId, req) {
   db.prepare('UPDATE brackets SET league_id = ? WHERE id = ?').run(season ? season.league_id : leagues.actingIdOf(req), bracketId);
 }
 
-router.post('/', auth.requireAdmin, (req, res) => {
+router.post('/', clubTournaments.requireSeasonManager(clubTournaments.byBodySeasonId), (req, res) => {
   const name = (req.body.name || '').trim();
   const format = req.body.format;
   const autoCreateMatches = req.body.autoCreateMatches !== false;
@@ -240,7 +243,7 @@ router.post('/', auth.requireAdmin, (req, res) => {
   res.status(201).json(serializeBracket(bracketId));
 });
 
-router.patch('/:id', auth.requireAdmin, (req, res) => {
+router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byBracketId), (req, res) => {
   const id = Number(req.params.id);
   const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(id);
   if (!bracket) return res.status(404).json({ error: 'Bracket not found' });
@@ -250,9 +253,15 @@ router.patch('/:id', auth.requireAdmin, (req, res) => {
     if (!name) return res.status(400).json({ error: 'Name cannot be empty' });
     fields.name = name;
   }
+  // the organiser of a club keeps his bracket in his tournament: moving it to another season (or out of any) is for an admin of the site, and so is a category that drops the season
+  const siteAdmin = auth.isAdmin(req);
+  if (!siteAdmin && Object.prototype.hasOwnProperty.call(req.body, 'seasonId') && parseSeasonId(req.body.seasonId) !== bracket.season_id) {
+    return res.status(403).json({ error: 'Only an admin can move a bracket to another season' });
+  }
   if (Object.prototype.hasOwnProperty.call(req.body, 'category')) {
     const rawCategory = typeof req.body.category === 'string' ? req.body.category.trim() : '';
     if (rawCategory && !CATEGORIES.includes(rawCategory)) return res.status(400).json({ error: 'Invalid category' });
+    if (!siteAdmin && bracket.season_id && !bracket.is_doubles && !BLTA_CATEGORIES.includes(rawCategory)) return res.status(403).json({ error: 'Only an admin can take a bracket out of its season' });
     if (bracket.is_doubles && BLTA_CATEGORIES.includes(rawCategory)) return res.status(400).json({ error: 'A doubles draw cannot be tied to a league category (Elite, Next Gen, Novice)' });
     fields.category = rawCategory || null;
   }
@@ -287,7 +296,7 @@ router.patch('/:id', auth.requireAdmin, (req, res) => {
 // bracket already created stay exactly where they are (as ordinary
 // matches, still findable/playable, just no longer linked to any draw).
 // Never silently deletes real score data.
-router.delete('/:id', auth.requireAdmin, (req, res) => {
+router.delete('/:id', clubTournaments.requireSeasonManager(clubTournaments.byBracketId), (req, res) => {
   const id = Number(req.params.id);
   const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(id);
   if (!bracket) return res.status(404).json({ error: 'Bracket not found' });
@@ -303,7 +312,7 @@ router.delete('/:id', auth.requireAdmin, (req, res) => {
 
 // Makes the consolation draw of a main bracket once every round-1 match is seated (a draw made automatically has it already).
 // { format } — the match format of the consolation draw (default: best of 3 to 4 games with a super tie-break).
-router.post('/:id/consolation', auth.requireAdmin, (req, res) => {
+router.post('/:id/consolation', clubTournaments.requireSeasonManager(clubTournaments.byBracketId), (req, res) => {
   const id = Number(req.params.id);
   const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(id);
   if (!bracket) return res.status(404).json({ error: 'Bracket not found' });
@@ -319,7 +328,7 @@ router.post('/:id/consolation', auth.requireAdmin, (req, res) => {
 
 // Takes back a result entered by hand: the winner leaves the next round. With ?cascade=1 later results that depend on it are cleared too;
 // without it a result that others depend on is refused (409, code HAS_DEPENDENTS, how many).
-router.delete('/:id/nodes/:nodeId/result', auth.requireAdmin, (req, res) => {
+router.delete('/:id/nodes/:nodeId/result', clubTournaments.requireSeasonManager(clubTournaments.byBracketId), (req, res) => {
   const bracketId = Number(req.params.id);
   const nodeId = Number(req.params.nodeId);
   const node = db.prepare('SELECT * FROM bracket_matches WHERE id = ? AND bracket_id = ?').get(nodeId, bracketId);
@@ -332,7 +341,7 @@ router.delete('/:id/nodes/:nodeId/result', auth.requireAdmin, (req, res) => {
 // Manual-mode slot assignment — only for a node that doesn't have a real
 // match yet (once two players are seated and a match exists, editing the
 // pairing belongs on the match itself, not here).
-router.patch('/:id/slots/:nodeId', auth.requireAdmin, (req, res) => {
+router.patch('/:id/slots/:nodeId', clubTournaments.requireSeasonManager(clubTournaments.byBracketId), (req, res) => {
   const bracketId = Number(req.params.id);
   const nodeId = Number(req.params.nodeId);
   const node = db.prepare('SELECT * FROM bracket_matches WHERE id = ? AND bracket_id = ?').get(nodeId, bracketId);
@@ -391,7 +400,7 @@ router.patch('/:id/slots/:nodeId', auth.requireAdmin, (req, res) => {
 // THAT node too, and silently swapping this result out from under it
 // would leave a decided later round pointing at a player who's no longer
 // even in it. Clear the next round's result first in that case.
-router.patch('/:id/nodes/:nodeId/result', auth.requireAdmin, (req, res) => {
+router.patch('/:id/nodes/:nodeId/result', clubTournaments.requireSeasonManager(clubTournaments.byBracketId), (req, res) => {
   const bracketId = Number(req.params.id);
   const nodeId = Number(req.params.nodeId);
   const node = db.prepare('SELECT * FROM bracket_matches WHERE id = ? AND bracket_id = ?').get(nodeId, bracketId);

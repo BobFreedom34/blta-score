@@ -1,6 +1,10 @@
 const root = document.getElementById('seasons-admin-root');
 // The same editor serves two pages: /seasons-admin (league seasons) and /tournaments-admin (tournaments, data-kind="TOURNAMENT").
-const KIND = root && root.dataset.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE';
+// A third use: the manage page of a tournament of a club (/community-tournament/<id>, data-club): the same card for the one tournament, for the admin of its club.
+// There is no list and no "add a tournament" (it is made on the page of the club), and the club admin is a logged-in player, not a site admin.
+const CLUB = !!(root && root.dataset.club);
+const CLUB_SEASON_ID = CLUB ? Number(window.location.pathname.split('/').filter(Boolean).pop()) : 0;
+const KIND = CLUB || (root && root.dataset.kind === 'TOURNAMENT') ? 'TOURNAMENT' : 'LEAGUE';
 const IS_TOURNAMENT = KIND === 'TOURNAMENT';
 const WORD = IS_TOURNAMENT ? 'tournament' : 'season';
 
@@ -67,6 +71,11 @@ function richText(value) {
 }
 
 function renderLoggedOut() {
+  if (CLUB) {
+    root.innerHTML = `<div class="card"><p style="margin:0;color:var(--gray)">${escapeHtml(t('ct.loginNeeded'))} <button type="button" class="btn btn-primary com-small" id="ct-login">${escapeHtml(t('ct.login'))}</button></p></div>`;
+    document.getElementById('ct-login').addEventListener('click', () => requirePlayerAuth(() => window.location.reload()));
+    return;
+  }
   root.innerHTML = `
     <div class="card">
       <p style="margin:0;color:var(--gray)">
@@ -78,6 +87,11 @@ function renderLoggedOut() {
 }
 
 function renderAdmin() {
+  if (CLUB) {
+    root.innerHTML = '<div id="season-list">Loading…</div>';
+    load();
+    return;
+  }
   root.innerHTML = `
     <div class="card" style="margin-bottom:20px">
       <h3 style="margin-top:0">Add a ${WORD}</h3>
@@ -137,6 +151,22 @@ function renderAdmin() {
 }
 
 async function load() {
+  if (CLUB) {
+    try {
+      seasons = [await api(`/seasons/${CLUB_SEASON_ID}`)];
+    } catch (err) {
+      root.innerHTML = `<div class="card"><p style="margin:0;color:var(--gray)">${escapeHtml(t('ct.notFound'))}</p></div>`;
+      return;
+    }
+    const season = seasons[0];
+    document.getElementById('ct-title').textContent = season.name;
+    const back = document.getElementById('ct-back');
+    if (season.organisation) { back.href = `/community/${encodeURIComponent(season.organisation.slug)}#events`; back.textContent = `‹ ${season.organisation.name}`; }
+    initOpenIds();
+    openIds.add(season.id);
+    renderList();
+    return;
+  }
   seasons = (await api('/seasons')).filter((s) => s.kind === KIND);
   initOpenIds();
   renderList();
@@ -791,6 +821,7 @@ function wireSeason(card) {
     try {
       const res = await api(`/seasons/${id}${IS_TOURNAMENT ? '?withMatches=1' : ''}`, { method: 'DELETE' });
       toast(IS_TOURNAMENT ? `Tournament deleted (${res.deletedMatches || 0} matches)` : 'Season deleted');
+      if (CLUB) { window.location.href = siteUrl(season.organisation ? `/community/${encodeURIComponent(season.organisation.slug)}#events` : '/communities'); return; }
       await load();
     } catch (err) { fail(err); }
   });
@@ -953,6 +984,11 @@ function wireSchedule(card, seasonId, fail) {
 }
 
 (async () => {
+  if (CLUB) {
+    const session = await loadSession();
+    if (!session.isAdmin && !session.isPlayer) return renderLoggedOut();
+    return renderAdmin();
+  }
   const isAdminUser = await checkAdmin();
   if (!isAdminUser) return renderLoggedOut();
   await loadPlayers();

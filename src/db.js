@@ -1770,5 +1770,11 @@ db.exec(`
 if (!db.prepare('PRAGMA table_info(organisations)').all().some((c) => c.name === 'approved')) {
   db.exec('ALTER TABLE organisations ADD COLUMN approved INTEGER NOT NULL DEFAULT 1');
 }
+// Club tournaments (phase 2): a tournament season made by a community or club has organisation_id (null for the league and for the tournaments an admin
+// makes); counts_for_rating (default 0, only the super admin) says whether its results move the ratings; max_open_tournaments is the limit of open ones.
+[['seasons', 'organisation_id', 'INTEGER'], ['organisations', 'counts_for_rating', 'INTEGER NOT NULL DEFAULT 0'], ['organisations', 'max_open_tournaments', 'INTEGER NOT NULL DEFAULT 5']].forEach(([table, column, ddl]) => {
+  if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+});
+db.exec('CREATE INDEX IF NOT EXISTS idx_seasons_organisation ON seasons(organisation_id)');
 
 module.exports = db;

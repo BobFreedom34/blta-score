@@ -7,6 +7,7 @@
 (function bracketResult() {
   if (typeof BRACKET_BOARDS === 'undefined') return;
   let admin = false;
+  let ready = false; // whether the session is known: the buttons are drawn for an admin and for the admin of the club that runs the tournament of the bracket
 
   const setsOf = (format) => (/^BO5/.test(format) ? 5 : /^BO1/.test(format) ? 1 : 3);
   const hasMatchTiebreak = (format) => /_STB$/.test(format);
@@ -21,7 +22,7 @@
 
   function addButtons(wrap) {
     const data = BRACKET_BOARDS.get(Number(wrap.dataset.bracketId));
-    if (!data) return;
+    if (!data || !(admin || data.canManage)) return;
     data.nodes.forEach((node) => {
       const kind = kindOf(node);
       const card = kind && wrap.querySelector(`.bracket-node[data-node-id="${node.id}"] .bracket-match-card`);
@@ -40,7 +41,7 @@
   }
 
   function scan() {
-    if (!admin) return;
+    if (!ready) return;
     document.querySelectorAll('.bracket-wrap[data-bracket-id]:not([data-res-done])').forEach((wrap) => {
       wrap.setAttribute('data-res-done', '1');
       addButtons(wrap);
@@ -155,7 +156,7 @@
 
   checkAdmin().then((isAdmin) => {
     admin = isAdmin;
-    if (!admin) return;
+    ready = true;
     scan();
     // the boards are drawn when their data has arrived (and again when a tab or a filter is changed)
     let timer = null;

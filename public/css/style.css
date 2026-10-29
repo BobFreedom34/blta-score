@@ -3916,6 +3916,9 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sch-sub b { color: var(--white); font-weight: 700; }
 .sch-tag { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: var(--radius-sm); border: 1px solid var(--green); color: var(--green); }
 .sch-tag.tour { border-color: var(--orange); color: var(--orange); }
+/* the club that runs a tournament: grey, so it reads as who, not as what; it leads to the page of the club */
+.sch-tag.sch-club { border-color: #8b8f98; color: #c3c7cf; text-transform: none; letter-spacing: .02em; cursor: pointer; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sch-tag.sch-club:hover, .sch-tag.sch-club:focus-visible { border-color: var(--green); color: var(--green); }
 .sch-tag.now { background: var(--green); border-color: var(--green); color: #0a0a0a; }
 .sch-row.link { color: inherit; text-decoration: none; cursor: pointer; }
 .sch-row.link:hover { background: rgba(255, 255, 255, 0.04); }
@@ -5433,6 +5436,27 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .com-badge { display: inline-block; margin-right: 8px; padding: 2px 7px; border-radius: var(--radius-sm); background: var(--fill-grey); border: 1px solid var(--border-grey); color: var(--white); font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
 .com-card-count { margin-left: auto; flex: none; color: var(--gray-dim); font-size: 13px; font-weight: 600; }
 .com-empty { padding: 22px 4px; color: var(--gray-dim); }
+/* the tournaments of a club (the Events tab) */
+.com-new-tournament { margin: 4px 0 12px; }
+.com-events { display: grid; gap: 10px; }
+.com-event { display: grid; grid-template-columns: 150px 1fr auto; gap: 14px; align-items: center; padding: 14px 16px; background: var(--ink); border: 1px solid var(--border-grey); border-radius: var(--radius-md); color: var(--white); }
+.com-event.over { opacity: .65; }
+.com-event-date { font-weight: 800; font-size: 13px; color: #0a0a0a; background: var(--green); border-radius: var(--radius-sm); padding: 6px 10px; text-align: center; }
+.com-event-name { font-weight: 800; font-size: 17px; color: var(--white); text-decoration: none; }
+.com-event-name:hover { color: var(--green); }
+.com-event-sub { margin-top: 3px; font-size: 13px; color: var(--gray-dim); }
+.com-event-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.com-tdialog { max-width: 520px; width: calc(100% - 24px); max-height: calc(100vh - 32px); overflow-y: auto; }
+.com-t-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.com-tdialog [hidden] { display: none; }
+@media (max-width: 640px) {
+  .com-event { grid-template-columns: 1fr; }
+  .com-event-acts { justify-content: flex-start; }
+  .com-t-row { grid-template-columns: 1fr; }
+}
+/* the manage page of a tournament of a club (/community-tournament/<id>) */
+.ct-bar { margin: 18px 0 4px; }
+.ct-title { margin: 6px 0 14px; }
 .com-create { margin-top: 16px; }
 .com-radio { display: flex; flex-direction: row; align-items: center; gap: 8px; font-weight: 500; }
 .com-radio input { width: auto; margin: 0; }

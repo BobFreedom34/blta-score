@@ -20,6 +20,7 @@ const youtube = require('../youtube');
 const drivePhotos = require('../drivePhotos');
 const changeLog = require('../changeLog');
 const matchPhotos = require('./matchPhotos');
+const clubTournaments = require('../clubTournaments');
 
 const router = express.Router();
 
@@ -273,8 +274,24 @@ function getRowOr404(req, res) {
 // match that already carries that flag from before removal is simply no
 // longer manageable by anyone but an admin, same as it would be for any
 // other creator who's no longer around to log back in as themselves.
+// the admin of a club who runs the tournament this match belongs to (checked on every request); false for a match of no tournament
+function managesMatchSeason(req, row) {
+  if (!row || !row.season_id) return false;
+  return clubTournaments.canManageSeason(req, db.prepare('SELECT * FROM seasons WHERE id = ?').get(row.season_id));
+}
+
+// the season a new match asks for in its body (through its group, or by id), or null
+function seasonAskedBy(body) {
+  if (body.groupId !== undefined && body.groupId !== null) {
+    const group = db.prepare('SELECT season_id FROM season_groups WHERE id = ?').get(Number(body.groupId));
+    return group ? db.prepare('SELECT * FROM seasons WHERE id = ?').get(group.season_id) : null;
+  }
+  if (body.seasonId !== undefined && body.seasonId !== null) return db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(body.seasonId)) || null;
+  return null;
+}
+
 function checkMatchAccess(req, res, row) {
-  if (isAdmin(req)) return true;
+  if (isAdmin(req) || managesMatchSeason(req, row)) return true;
   const playerId = getPlayerId(req);
   if (playerId) {
     const playsInMatch = playerIdsOf(row).includes(playerId);
@@ -310,7 +327,7 @@ function checkMatchAccess(req, res, row) {
 // people as player1/player2 and then start/control its live score purely
 // by virtue of being its creator.
 function checkLiveScoreAccess(req, res, row) {
-  if (isAdmin(req) || isReferee(req)) return true;
+  if (isAdmin(req) || isReferee(req) || managesMatchSeason(req, row)) return true;
   const playerId = getPlayerId(req);
   if (playerId && playerIdsOf(row).includes(playerId)) return true;
   res.status(403).json({ error: 'Only the players in this match, an admin, or a referee can control the live score' });
@@ -332,7 +349,7 @@ function deriveWinnerId(state, row) {
 // can just always call this on the post-write row rather than tracking
 // which branch they're in.
 function syncBadgesIfFinished(row) {
-  if (row.status !== 'FINISHED') return;
+  if (row.status !== 'FINISHED' || !clubTournaments.matchCountsForRating(row)) return;
   // a doubles match counts for the doubles badges of all four players (and for no singles badge: see computeBadgeMetrics)
   [row.player1_id, row.player2_id, ...(row.is_doubles ? [row.player1b_id, row.player2b_id] : [])].filter(Boolean)
     .forEach((id) => badgeEngine.syncPlayerBadges(id));
@@ -348,7 +365,7 @@ function syncBadgesIfFinished(row) {
 // after it subtly wrong. Re-run scripts/backfillCourtIQ.js to pick up a
 // correction like that instead.
 function syncCourtIQIfFinished(row) {
-  if (row.status !== 'FINISHED' || !row.winner_id || row.is_doubles) return;
+  if (row.status !== 'FINISHED' || !row.winner_id || row.is_doubles || !clubTournaments.matchCountsForRating(row)) return;
   if (row.end_reason === 'WALKOVER' || row.end_reason === 'UNFINISHED') return;
   const alreadyRated = db.prepare('SELECT 1 FROM courtiq_rating_history WHERE match_id = ?').get(row.id);
   if (alreadyRated) return;
@@ -670,7 +687,9 @@ router.post('/', requireLoggedIn, (req, res) => {
     return res.status(400).json({ error: 'Invalid category' });
   }
   // ELITE, NEXT GEN and NOVICE are the league's own categories: only an admin creates a match in one of them
-  if (BLTA_CATEGORIES.includes(category) && !isAdmin(req)) {
+  // (the admin of a club may create one in the tournament of his club: the draw of a tournament is played in these categories)
+  const clubManaged = !isAdmin(req) && clubTournaments.canManageSeason(req, seasonAskedBy(req.body));
+  if (BLTA_CATEGORIES.includes(category) && !isAdmin(req) && !clubManaged) {
     return res.status(403).json({ error: 'Only an admin can create a match in the ELITE, NEXT GEN or NOVICE category' });
   }
   if (!engine.FORMATS[format]) {
@@ -806,7 +825,7 @@ router.post('/', requireLoggedIn, (req, res) => {
   let seasonId = null;
   let groupId = null;
   if ((req.body.seasonId !== undefined && req.body.seasonId !== null) || (req.body.groupId !== undefined && req.body.groupId !== null)) {
-    if (!isAdmin(req)) return res.status(403).json({ error: 'Only an admin can set the season and group' });
+    if (!isAdmin(req) && !clubManaged) return res.status(403).json({ error: 'Only an admin can set the season and group' });
     if (!BLTA_CATEGORIES.includes(category)) {
       return res.status(400).json({ error: 'Seasons and groups only apply to BLTA league matches (Elite, Next Gen, Novice)' });
     }

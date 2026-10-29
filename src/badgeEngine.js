@@ -12,6 +12,7 @@
 // possible at all — so this module also owns the player_badges table
 // (see src/db.js) that records each of those moments once, permanently.
 const db = require('./db');
+const clubTournaments = require('./clubTournaments');
 
 const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 
@@ -179,7 +180,7 @@ function computeEarnedBadgeInstances(playerId, finished, badgeDefs) {
 // serialize() does, since none of that feeds into badge metrics.
 function loadFinishedMatchesForBadges(playerId) {
   const rows = db.prepare(
-    "SELECT * FROM matches WHERE status = 'FINISHED' AND (player1_id = ? OR player2_id = ? OR (COALESCE(is_doubles, 0) = 1 AND (player1b_id = ? OR player2b_id = ?)))"
+    `SELECT * FROM matches WHERE status = 'FINISHED' AND ${clubTournaments.countingSql()} AND (player1_id = ? OR player2_id = ? OR (COALESCE(is_doubles, 0) = 1 AND (player1b_id = ? OR player2b_id = ?)))`
   ).all(playerId, playerId, playerId, playerId);
   return rows.map((row) => {
     const state = JSON.parse(row.state);

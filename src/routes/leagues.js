@@ -176,10 +176,10 @@ function cityRankings(lang) {
   // unfinished one) - not everybody who has tournament points, some of whom only got them entered by hand.
   const tournamentPlayers = db.prepare(`
     SELECT COUNT(*) AS n FROM (
-      SELECT m.player1_id AS pid FROM matches m JOIN seasons s ON s.id = m.season_id WHERE s.kind = 'TOURNAMENT' AND m.status = 'FINISHED' AND (m.end_reason IS NULL OR m.end_reason NOT IN ('WALKOVER', 'UNFINISHED'))
-      UNION SELECT m.player2_id FROM matches m JOIN seasons s ON s.id = m.season_id WHERE s.kind = 'TOURNAMENT' AND m.status = 'FINISHED' AND (m.end_reason IS NULL OR m.end_reason NOT IN ('WALKOVER', 'UNFINISHED'))
-      UNION SELECT m.player1b_id FROM matches m JOIN seasons s ON s.id = m.season_id WHERE s.kind = 'TOURNAMENT' AND m.status = 'FINISHED' AND (m.end_reason IS NULL OR m.end_reason NOT IN ('WALKOVER', 'UNFINISHED')) AND m.player1b_id IS NOT NULL
-      UNION SELECT m.player2b_id FROM matches m JOIN seasons s ON s.id = m.season_id WHERE s.kind = 'TOURNAMENT' AND m.status = 'FINISHED' AND (m.end_reason IS NULL OR m.end_reason NOT IN ('WALKOVER', 'UNFINISHED')) AND m.player2b_id IS NOT NULL
+      SELECT m.player1_id AS pid FROM matches m JOIN seasons s ON s.id = m.season_id WHERE s.kind = 'TOURNAMENT' AND s.organisation_id IS NULL AND m.status = 'FINISHED' AND (m.end_reason IS NULL OR m.end_reason NOT IN ('WALKOVER', 'UNFINISHED'))
+      UNION SELECT m.player2_id FROM matches m JOIN seasons s ON s.id = m.season_id WHERE s.kind = 'TOURNAMENT' AND s.organisation_id IS NULL AND m.status = 'FINISHED' AND (m.end_reason IS NULL OR m.end_reason NOT IN ('WALKOVER', 'UNFINISHED'))
+      UNION SELECT m.player1b_id FROM matches m JOIN seasons s ON s.id = m.season_id WHERE s.kind = 'TOURNAMENT' AND s.organisation_id IS NULL AND m.status = 'FINISHED' AND (m.end_reason IS NULL OR m.end_reason NOT IN ('WALKOVER', 'UNFINISHED')) AND m.player1b_id IS NOT NULL
+      UNION SELECT m.player2b_id FROM matches m JOIN seasons s ON s.id = m.season_id WHERE s.kind = 'TOURNAMENT' AND s.organisation_id IS NULL AND m.status = 'FINISHED' AND (m.end_reason IS NULL OR m.end_reason NOT IN ('WALKOVER', 'UNFINISHED')) AND m.player2b_id IS NOT NULL
     ) x JOIN players p ON p.id = x.pid WHERE p.league_id = ?
   `);
   const cities = rows.map((row) => {
@@ -246,7 +246,9 @@ router.get('/:slug/schedule', (req, res) => {
     if (/^https?:\/\//i.test(raw)) return raw;
     return raw.startsWith('/') ? base + seo.pageUrl(raw.replace(/\/+$/, '') || '/', lang) : raw;
   };
+  // (the card of a city is the league's own schedule: the tournaments of clubs are in the Harmonogram, labelled with their club)
   const items = schedule.scheduleOf(row.id)
+    .filter((e) => !e.organisation)
     .filter((e) => e.endDate >= today && e.startDate <= horizon)
     .map((e) => ({ ...e, link: link(e.link), registerLink: e.registrationOpen && e.link ? `${link(e.link)}#register` : '', state: e.startDate <= today ? 'now' : 'future' }));
   const rank = (e) => (e.state === 'now' ? (e.type === 'LEAGUE' ? 0 : 1) : 2);

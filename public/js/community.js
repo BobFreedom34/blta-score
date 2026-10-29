@@ -1,5 +1,5 @@
 // Komunity a kluby: the page of one community or club (/komunita/<slug>, code address /community/<slug>). A cover, the logo, the name, how to join, and three tabs
-// (events - not there yet, news, members). An admin of the club who has switched to its profile ("acting as", see GET /api/communities/mine) also gets
+// (news, events - the tournaments of the club -, info with the members). An admin of the club who has switched to its profile ("acting as", see GET /api/communities/mine) also gets
 // the panel of the club: a news box, the requests to join, the settings and the pictures.
 // Data: /api/communities/... (src/routes/communities.js).
 (function communityPage() {
@@ -12,6 +12,7 @@
   let loggedIn = false;
   let members = { members: [], pending: [] };
   let posts = { items: [], more: false };
+  let tournaments = [];
   // the tabs: News, Events, Info (the members are in Info; the old #members link of the club menu opens it)
   const tabFromHash = (hash) => (hash === 'members' ? 'info' : ['news', 'events', 'info'].includes(hash) ? hash : null);
   let tab = tabFromHash(window.location.hash.slice(1)) || 'news';
@@ -24,6 +25,9 @@
   // the first letters of the first two words (a lone dash or an ampersand is not a word)
   const initials = (name) => String(name || '?').split(/\s+/).filter((w) => /^[\p{L}\p{N}]/u.test(w)).slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('') || '?';
   const playerLink = (p) => `/player/${encodeURIComponent(p.slug || p.playerId)}`;
+  // 2026-10-28 -> 28. 10. 2026 (a plain date is read at noon, so no time zone moves it to the neighbouring day)
+  const dayText = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString(locale(), { day: 'numeric', month: 'numeric', year: 'numeric' }) : '');
+  const rangeText = (a, b) => (a && b && a !== b ? `${dayText(a)} – ${dayText(b)}` : dayText(a || b));
   const isActing = () => !!(acting && org && acting.id === org.id);
   const isAdminOfOrg = () => !!(org && org.me && org.me.role === 'ADMIN');
 
@@ -132,8 +136,91 @@
       ${members.members.length ? `<div class="com-members">${members.members.map(memberHtml).join('')}</div>` : ''}`;
   }
 
+  // ---- the Events tab: the tournaments of the club (and, for its admin acting as the club, the way to make one and to manage it)
+  function tournamentHtml(s) {
+    const today = new Date().toISOString().slice(0, 10);
+    const over = !!s.endDate && s.endDate < today;
+    const open = s.registrationOpen && !over;
+    const link = `/tournament/${encodeURIComponent(s.slug)}`;
+    const facts = [s.venue, t(s.playType === 'DOUBLES' ? 'com.tDoubles' : 'com.tSingles'), t('com.eventRegistered', { n: s.registrationCount || 0 })].filter(Boolean).map(escapeHtml).join(' · ');
+    return `
+      <div class="com-event${over ? ' over' : ''}">
+        <div class="com-event-date">${escapeHtml(rangeText(s.startDate, s.endDate) || t('com.eventNoDate'))}</div>
+        <div class="com-event-main"><a class="com-event-name" href="${escapeHtml(link)}">${escapeHtml(s.name)}</a><div class="com-event-sub">${facts}</div></div>
+        <div class="com-event-acts">
+          ${open ? `<a class="btn btn-primary com-small" href="${escapeHtml(link)}#register">${escapeHtml(t('com.eventRegister'))}</a>` : ''}
+          <a class="btn btn-outline com-small" href="${escapeHtml(link)}">${escapeHtml(t('com.eventView'))}</a>
+          ${isActing() ? `<a class="btn btn-outline com-small" href="/community-tournament/${s.id}">${escapeHtml(t('com.eventManage'))}</a>` : ''}
+        </div>
+      </div>`;
+  }
+
+  function eventsHtml() {
+    const make = isActing() && org.approved ? `<button type="button" class="btn btn-primary com-new-tournament" data-act="new-tournament">+ ${escapeHtml(t('com.newTournament'))}</button>` : '';
+    return `${make}${tournaments.length ? `<div class="com-events">${tournaments.map(tournamentHtml).join('')}</div>` : `<p class="com-empty">${escapeHtml(t('com.noEvents'))}</p>`}`;
+  }
+
+  // the dialog that makes a tournament of the club: the same few fields the editor of a tournament starts with; the rest is set on its manage page
+  function openTournamentDialog() {
+    const back = document.createElement('div');
+    back.className = 'modal-backdrop';
+    back.style.display = 'flex';
+    back.innerHTML = `<div class="modal com-tdialog" role="dialog" aria-modal="true"><button type="button" class="close" aria-label="Close">&times;</button>
+      <h3 style="margin-top:0">${escapeHtml(t('com.tournamentTitle'))}</h3>
+      <form id="com-t-form">
+        <div class="field"><label>${escapeHtml(t('com.tFieldName'))}</label><input type="text" id="com-t-name" maxlength="120" required></div>
+        <div class="field"><label>${escapeHtml(t('com.tFieldVenue'))}</label><input type="text" id="com-t-venue" maxlength="200"></div>
+        <div class="com-t-row">
+          <div class="field"><label>${escapeHtml(t('com.tFieldStart'))}</label><input type="date" id="com-t-start" required></div>
+          <div class="field"><label>${escapeHtml(t('com.tFieldEnd'))}</label><input type="date" id="com-t-end"></div>
+        </div>
+        <div class="field"><label>${escapeHtml(t('com.tFieldType'))}</label>
+          <label class="com-radio"><input type="radio" name="com-t-type" value="SINGLES" checked> ${escapeHtml(t('com.tSingles'))}</label>
+          <label class="com-radio"><input type="radio" name="com-t-type" value="DOUBLES"> ${escapeHtml(t('com.tDoubles'))}</label>
+        </div>
+        <div class="field" id="com-t-cats"><label>${escapeHtml(t('com.tFieldCategories'))}</label>
+          ${[['ELITE', 'Elite'], ['NEXT_GEN', 'Next Gen'], ['NOVICE', 'Novice']].map(([k, label]) => `<label class="com-radio"><input type="checkbox" data-cat="${k}" checked> ${label}</label>`).join('')}
+        </div>
+        <div class="field"><label>${escapeHtml(t('com.tFieldFee'))}</label><input type="text" id="com-t-fee" maxlength="40" placeholder="${escapeHtml(t('com.tFeeHint'))}"></div>
+        <div class="field"><label>${escapeHtml(t('com.tFieldInfo'))}</label><textarea id="com-t-info" rows="4" maxlength="4000" placeholder="${escapeHtml(t('com.tInfoHint'))}"></textarea></div>
+        <label class="com-radio"><input type="checkbox" id="com-t-reg" checked> ${escapeHtml(t('com.tRegOpen'))}</label>
+        <div id="com-t-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+        <button type="submit" class="btn btn-primary">${escapeHtml(t('com.tCreate'))}</button>
+        <button type="button" class="btn btn-outline" id="com-t-cancel">${escapeHtml(t('com.tCancel'))}</button>
+      </form></div>`;
+    const close = () => back.remove();
+    back.querySelector('.close').addEventListener('click', close);
+    back.querySelector('#com-t-cancel').addEventListener('click', close);
+    back.addEventListener('click', (e) => { if (e.target === back) close(); });
+    document.body.appendChild(back);
+    const form = back.querySelector('#com-t-form');
+    const cats = back.querySelector('#com-t-cats');
+    form.querySelectorAll('input[name="com-t-type"]').forEach((r) => r.addEventListener('change', () => { cats.hidden = form.querySelector('input[name="com-t-type"]:checked').value === 'DOUBLES'; }));
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submit = form.querySelector('button[type="submit"]');
+      if (submit.dataset.busy) return;
+      submit.dataset.busy = '1';
+      const errorEl = back.querySelector('#com-t-error');
+      errorEl.textContent = '';
+      const value = (id) => back.querySelector(id).value;
+      const playType = form.querySelector('input[name="com-t-type"]:checked').value;
+      try {
+        const body = {
+          name: value('#com-t-name').trim(), venue: value('#com-t-venue').trim(), startDate: value('#com-t-start') || null, endDate: value('#com-t-end') || null,
+          playType, entryFee: value('#com-t-fee').trim(), info: value('#com-t-info').trim() ? `<p>${escapeHtml(value('#com-t-info').trim()).replace(/\n/g, '<br>')}</p>` : '',
+        };
+        if (playType === 'SINGLES') body.categories = [...cats.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat);
+        const made = await api(`/communities/${org.id}/tournaments`, { method: 'POST', body });
+        if (back.querySelector('#com-t-reg').checked) await api(`/seasons/${made.id}`, { method: 'PATCH', body: { registrationOpen: true } });
+        window.location.href = siteUrl(`/community-tournament/${made.id}`); // (a code address is only turned into the real one by siteUrl, links are rewritten by localize.js)
+      } catch (err) { errorEl.textContent = err.message; delete submit.dataset.busy; }
+    });
+    back.querySelector('#com-t-name').focus();
+  }
+
   function tabBody() {
-    if (tab === 'events') return `<p class="com-empty">${escapeHtml(t('com.noEvents'))}</p>`;
+    if (tab === 'events') return eventsHtml();
     if (tab === 'info') return infoHtml();
     return `${posts.items.length ? posts.items.map(postHtml).join('') : `<p class="com-empty">${escapeHtml(t('com.noNews'))}</p>`}
       ${posts.more ? `<button type="button" class="btn btn-outline com-small" id="com-older">${escapeHtml(t('com.showOlder'))}</button>` : ''}`;
@@ -197,6 +284,7 @@
       if (act === 'leave' && window.confirm(t('com.leaveConfirm', { name: org.name }))) {
         guard(b, async () => { await api(`/communities/${org.id}/leave`, { method: 'POST' }); await load(); refreshActingOrg(); });
       }
+      if (act === 'new-tournament') openTournamentDialog();
       if (act === 'switch') guard(b, async () => { await api('/communities/act-as', { method: 'POST', body: { organisationId: org.id } }); window.location.reload(); });
     }));
     root.querySelectorAll('[data-delete-post]').forEach((b) => b.addEventListener('click', () => guard(b, async () => {
@@ -281,14 +369,16 @@
       const session = await loadSession();
       loggedIn = !!session.isPlayer && !!session.playerId;
       org = await api(`/communities/${encodeURIComponent(slug)}`);
-      const [m, p, mineRes] = await Promise.all([
+      const [m, p, mineRes, ts] = await Promise.all([
         api(`/communities/${org.id}/members`),
         api(`/communities/${org.id}/posts`),
         loggedIn ? api('/communities/mine') : Promise.resolve({ acting: null }),
+        api(`/communities/${org.id}/tournaments`).catch(() => ({ items: [] })),
       ]);
       if (run !== loadRun) return; // a newer load is on its way
       members = m;
       posts = p;
+      tournaments = ts.items;
       acting = mineRes.acting;
     } catch (err) {
       root.innerHTML = `<p class="com-empty">${escapeHtml(err.status === 404 || /not found/i.test(err.message) ? t('com.notFound') : err.message)}</p>`;

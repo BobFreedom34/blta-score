@@ -309,7 +309,7 @@ const TEMPLATE_ENTITY = {
     return s ? { name: s.name, image: s.hero_url || s.logo_url || '' } : null;
   },
   tournament: (slug, lang, leagueId) => {
-    const s = db.prepare("SELECT name, logo_url, hero_url FROM seasons WHERE slug = ? AND kind = 'TOURNAMENT' AND league_id = ?").get(slug, leagueId);
+    const s = db.prepare("SELECT name, logo_url, hero_url FROM seasons WHERE slug = ? AND kind = 'TOURNAMENT' AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").get(slug, leagueId);
     return s ? { name: s.name, image: s.hero_url || s.logo_url || '' } : null;
   },
   court: (slug) => {
@@ -318,6 +318,8 @@ const TEMPLATE_ENTITY = {
   },
   // a private conversation: the page has no name of its own (and is noindex), the chat is loaded by the script
   conversation: () => ({ name: 'Messages' }),
+  // the manage page of a club tournament: noindex, the editor is loaded by the script
+  clubtournament: () => ({ name: 'Club tournament' }),
   community: (slug, lang, leagueId) => {
     const o = db.prepare('SELECT name, logo_url, cover_url FROM organisations WHERE slug = ? AND league_id = ? AND hidden = 0 AND approved = 1').get(slug, leagueId);
     return o ? { name: o.name, image: o.cover_url || o.logo_url || '' } : null;

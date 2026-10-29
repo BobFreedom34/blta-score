@@ -355,7 +355,7 @@ async function initCourtSchedule(host, season) {
     csState.host.removeEventListener('pointerdown', csOnPointerDown);
     csState.host.onclick = null;
   }
-  csState = { host, season, admin, data };
+  csState = { host, season, admin: admin || !!season.canManage, data };
   host.removeEventListener('pointerdown', csOnPointerDown);
   host.addEventListener('pointerdown', csOnPointerDown);
   host.ondblclick = (e) => {
