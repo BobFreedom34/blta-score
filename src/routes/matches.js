@@ -472,6 +472,9 @@ function matchFilters(query) {
   if (Number.isInteger(seasonId)) {
     clauses.push('m.season_id = @seasonId');
     params.seasonId = seasonId;
+  } else {
+    // the league's lists do not hold the matches of the tournaments of communities and clubs: those are on the page of their tournament
+    clauses.push(clubTournaments.leagueOnlySql('m'));
   }
   if (Number.isInteger(round)) {
     clauses.push('m.round = @round');

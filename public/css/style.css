@@ -275,12 +275,18 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   background: none;
   border: none;
   color: var(--white);
-  font-size: 24px;
-  line-height: 1;
-  padding: 4px 6px;
+  /* the three bars are drawn here, not typed as a character: a text glyph sits a little high or low in its line, this one is exactly in the middle of the box */
+  font-size: 0;
+  line-height: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   cursor: pointer;
   border-radius: var(--radius-sm);
+  align-items: center;
+  justify-content: center;
 }
+.nav-toggle::before { content: ''; display: block; width: 20px; height: 2px; border-radius: 1px; background: currentColor; box-shadow: 0 -6px 0 currentColor, 0 6px 0 currentColor; }
 .nav-toggle:hover { background: rgba(255,255,255,0.08); }
 /* A direct child of .topbar-inner in the markup — a sibling of .brand and
    .topbar-right, not nested inside the latter — specifically so it can
@@ -470,14 +476,14 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   @media (max-width: 380px) {
     .topbar-inner { padding-left: 12px; padding-right: 12px; gap: 6px; }
     .topbar-right { gap: 1px; }
-    .nav-toggle { padding: 4px 3px; font-size: 22px; }
+    .nav-toggle { width: 32px; height: 32px; }
     .auth-menu-btn, .topbar-msg { width: 28px; height: 28px; }
     .badge-bell-btn { padding: 4px 3px; }
     .profile-pill-av { width: 26px; height: 26px; }
     .brand-logo { height: 30px; }
   }
   .nav-toggle {
-    display: block;
+    display: flex;
     position: static;
     transform: none;
     order: -2;

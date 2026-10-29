@@ -43,6 +43,7 @@ router.get('/month', (req, res) => {
       AND COALESCE(scheduled_at, start_time, created_at) >= ? AND COALESCE(scheduled_at, start_time, created_at) < ?
       AND league_id = ?
       AND ${clubTournaments.countingSql()}
+      AND ${clubTournaments.leagueOnlySql()}
     ORDER BY d, id
   `).all(...BLTA_CATEGORIES, range.from, range.to, leagues.actingIdOf(req));
 

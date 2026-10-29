@@ -62,6 +62,13 @@ function countingSql(alias) {
   return `(${column} IS NULL OR ${column} NOT IN (SELECT s.id FROM seasons s JOIN organisations o ON o.id = s.organisation_id WHERE o.counts_for_rating = 0))`;
 }
 
+// The matches of the tournaments of communities and clubs stay out of the league's own lists (matches page, home page, highlights): this is the SQL that
+// leaves them out (alias = the alias of the matches table, if it has one). Their own tournament page lists them.
+function leagueOnlySql(alias) {
+  const column = alias ? `${alias}.season_id` : 'season_id';
+  return `(${column} IS NULL OR ${column} NOT IN (SELECT s.id FROM seasons s WHERE s.organisation_id IS NOT NULL))`;
+}
+
 // ---- resolvers: which season is a request about (each returns a season row, or null/undefined when there is none or the ids do not belong together) ----
 const seasonById = (id) => (/^\d+$/.test(String(id)) ? db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(id)) : undefined);
 const byParamId = (req) => seasonById(req.params.id);
@@ -92,4 +99,4 @@ const byBracketId = (req) => {
 };
 const byBodySeasonId = (req) => seasonById(req.body && req.body.seasonId);
 
-module.exports = { publicFace, matchCountsForRating, countingSql, byBracketId, byBodySeasonId, byParamId, byGroupId, byRegistrationId, byIdAndPairId, byIdAndMatchToken, isPublicOrg, organisationOf, canManageSeason, requireSeasonManager, openTournamentCount };
+module.exports = { publicFace, matchCountsForRating, countingSql, leagueOnlySql, byBracketId, byBodySeasonId, byParamId, byGroupId, byRegistrationId, byIdAndPairId, byIdAndMatchToken, isPublicOrg, organisationOf, canManageSeason, requireSeasonManager, openTournamentCount };

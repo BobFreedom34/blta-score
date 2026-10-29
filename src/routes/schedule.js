@@ -30,7 +30,7 @@ function serializeEvent(e) {
 // backend changes the schedule) and the tournaments / other events added in the backend, soonest first. A league
 // season has every BLTA category; its "more info" is its season page.
 function scheduleOf(leagueId) {
-  const seasons = db.prepare("SELECT * FROM seasons WHERE start_date IS NOT NULL AND start_date != '' AND league_id = ?").all(leagueId).filter((s) => !clubTournaments.publicFace(s).hidden).map((s) => {
+  const seasons = db.prepare("SELECT * FROM seasons WHERE start_date IS NOT NULL AND start_date != '' AND league_id = ? AND organisation_id IS NULL").all(leagueId).map((s) => {
     const tournament = s.kind === 'TOURNAMENT';
     const own = parseCategories(s.categories);
     return {

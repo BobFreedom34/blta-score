@@ -487,19 +487,14 @@ test('a club tournament is not in the league: not in the public season list, not
   assert.ok(ids.includes(adminTournament.id) && ids.includes(league.id), 'the others are');
 });
 
-test('the Harmonogram lists a club tournament with its club; a hidden club, or one whose approval is withdrawn, is not in it', async () => {
+test('the Harmonogram (the league schedule) does not list a club tournament - not while its club is public, not after it was hidden or shown again; the tournaments of the Backend stay', async () => {
   const { org, tournament } = await clubWithTournament({ startDate: future(20), endDate: future(21) });
-  const mine = (await scheduleItems()).find((e) => e.seasonId === tournament.id);
-  assert.ok(mine, 'listed');
-  assert.deepStrictEqual([mine.type, mine.organisation && mine.organisation.slug, mine.organisation && mine.organisation.name], ['TOURNAMENT', org.slug, org.name]);
+  assert.ok(!(await scheduleItems()).some((e) => e.seasonId === tournament.id), 'a club tournament is not in the league schedule');
   const adminTournament = (await call('POST', '/api/seasons', { body: { name: uniq('Admin turnaj'), kind: 'TOURNAMENT', startDate: future(20), endDate: future(21) } })).json;
   assert.strictEqual((await scheduleItems()).find((e) => e.seasonId === adminTournament.id).organisation || null, null, 'the others carry no club');
   await call('PATCH', `/api/communities/${org.id}/moderation`, { body: { hidden: true } });
-  assert.ok(!(await scheduleItems()).some((e) => e.seasonId === tournament.id), 'hidden club');
   await call('PATCH', `/api/communities/${org.id}/moderation`, { body: { hidden: false } });
-  assert.ok((await scheduleItems()).some((e) => e.seasonId === tournament.id));
-  await call('PATCH', `/api/communities/${org.id}/approval`, { body: { approved: false } });
-  assert.ok(!(await scheduleItems()).some((e) => e.seasonId === tournament.id), 'approval withdrawn');
+  assert.ok(!(await scheduleItems()).some((e) => e.seasonId === tournament.id));
 });
 
 test('the schedule card of a city on the national page leaves the tournaments of clubs out', async () => {

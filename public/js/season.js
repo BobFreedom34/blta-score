@@ -20,6 +20,7 @@ let brackets = [];
 let results = [];
 let upcoming = [];
 let roundMatches = [];
+let allMatches = []; // every match of a tournament (its Zápasy tab)
 let category = null;
 let schedCat = null; // the Rozpis tab's category and group choice (always one of each)
 let schedGroup = null;
@@ -91,6 +92,11 @@ async function loadBlocks() {
 // The matches of every round — the group-stage matches that have a round.
 async function loadRound() {
   roundMatches = (await api(`/matches?seasonId=${season.id}`).catch(() => [])).filter((m) => m.round);
+}
+
+// Every match of the tournament, whatever its status (the Zápasy tab); the league's own lists do not hold the matches of a community's tournament.
+async function loadAllMatches() {
+  allMatches = await api(`/matches?seasonId=${season.id}`).catch(() => []);
 }
 
 // ---------- pieces ----------
@@ -284,6 +290,51 @@ function resultsHtml() {
     ${col(t('home.results'), `/matches?season=${season.id}&tab=FINISHED`, results.map(resultRow), t('home.noResults'))}
     ${col(t('home.upcoming'), `/matches?season=${season.id}`, upcoming.map(upcomingRow), t('home.noUpcoming'))}
   </div>`;
+}
+
+// A match as a card of the league's matches page (the same markup and styles), without the buttons that need that page's own scripts
+function leagueMatchCardHtml(m) {
+  const winnerP1 = m.status === 'FINISHED' && m.winnerId === m.player1.id;
+  const winnerP2 = m.status === 'FINISHED' && m.winnerId === m.player2.id;
+  const scoreboard = cardScoreboardHtml(m);
+  return `
+    <a class="match-card status-${m.status}${m.status === 'PLANNED' && m.scheduledAt ? ' has-date' : ''}" href="/match/${m.token}">
+      <div class="match-card-top">
+        ${categoryBadge(m.category)}
+        ${statusBadge(m, { splitTime: true })}${videoBadge(m)}${photoBadge(m)}
+        <div class="match-card-meta" style="margin-left:auto">
+          ${m.location ? `<span>${courtIcon('pin')}${escapeHtml(m.location)}</span>` : ''}
+          ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>${courtIcon('calendar')}${fmtDateShort(m.scheduledAt)}</span>`}
+        </div>
+        ${matchRoundHtml(m)}
+      </div>
+      ${scoreboard || `
+        <div class="match-players-box">
+          <div class="match-players">
+            <div class="match-players-names">
+              <div class="name ${winnerP1 ? 'winner' : ''}">${playerNameLink(m.player1, { rank: m.status !== 'FINISHED' })}${ballsIconHtml(m, 1)}${courtIconHtml(m, 1)}</div>
+              <div class="vs">vs</div>
+              <div class="name ${winnerP2 ? 'winner' : ''}">${playerNameLink(m.player2, { rank: m.status !== 'FINISHED' })}${ballsIconHtml(m, 2)}${courtIconHtml(m, 2)}</div>
+            </div>
+            <div class="match-score${m.status === 'PLANNED' ? ' match-score-format' : ''}">${matchScoreHtml(m)}</div>
+          </div>
+        </div>
+      `}
+    </a>`;
+}
+
+// The Zápasy tab of a tournament: all its matches in the groups of the league's matches page - live, scheduled, not yet scheduled, finished, unfinished
+function matchesHtml() {
+  if (!allMatches.length) return '';
+  const when = (m) => m.scheduledAt || m.endTime || '';
+  const groups = [
+    ['liveHeading', allMatches.filter((m) => m.status === 'LIVE')],
+    ['scheduledHeading', allMatches.filter((m) => m.status === 'PLANNED' && m.scheduledAt).sort((a, b) => when(a).localeCompare(when(b)))],
+    ['plannedHeading', allMatches.filter((m) => m.status === 'PLANNED' && !m.scheduledAt)],
+    ['finishedHeading', allMatches.filter((m) => m.status === 'FINISHED').sort((a, b) => when(b).localeCompare(when(a)))],
+    ['unfinishedHeading', allMatches.filter((m) => m.status === 'UNFINISHED').sort((a, b) => when(b).localeCompare(when(a)))],
+  ].filter(([, list]) => list.length);
+  return `<div class="sv-matches">${groups.map(([key, list]) => `<div class="match-list-heading">${matchHeadingHtml(key)}</div>${list.map(leagueMatchCardHtml).join('')}`).join('')}</div>`;
 }
 
 function tablesHtml() {
@@ -571,10 +622,11 @@ function availableTabs() {
     { key: 'schedule', label: t('season.navSchedule'), has: (season.rounds || []).length > 0 },
     { key: 'results', label: t('season.navResults'), has: season.matchCount > 0 },
     { key: 'playoff', label: t(isTournament() ? 'season.navBrackets' : 'season.navPlayoff'), has: brackets.length > 0 || (hasGroups && statusOf() !== 'past') },
+    { key: 'matches', label: t('season.navMatches'), has: season.matchCount > 0 },
     { key: 'gallery', label: t('season.navGallery'), has: !!season.galleryUrl },
   ];
   // a tournament has only the tabs Základné info, Harmonogram (court timetable with live scores), Skupiny (the group tables), Pavúky and Galéria (Rozpis is for league seasons); its players are shown below the Základné info tab (see fixedPlayersHtml)
-  return isTournament() ? tabs.filter((x) => ['info', 'courts', 'tables', 'playoff', 'gallery'].includes(x.key)) : tabs.filter((x) => x.key !== 'courts');
+  return isTournament() ? tabs.filter((x) => ['info', 'courts', 'tables', 'playoff', 'matches', 'gallery'].includes(x.key)) : tabs.filter((x) => x.key !== 'courts');
 }
 
 // the players of a tournament are shown on the Základné info tab only
@@ -591,7 +643,8 @@ function renderFixedPlayers() {
 
 function panelHtml() {
   const html = tab === 'tables' ? tablesHtml()
-    : tab === 'results' ? resultsHtml()
+    : tab === 'matches' ? matchesHtml()
+      : tab === 'results' ? resultsHtml()
       : tab === 'schedule' ? scheduleHtml()
         : tab === 'players' ? playersHtml()
           : tab === 'playoff' ? playoffHtml()
@@ -607,6 +660,7 @@ async function ensureLoaded() {
   if (loaded.has(tab)) return;
   if (tab === 'results') await loadBlocks();
   if (tab === 'schedule') await loadRound();
+  if (tab === 'matches') await loadAllMatches();
   loaded.add(tab);
 }
 

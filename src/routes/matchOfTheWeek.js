@@ -8,6 +8,7 @@
 const express = require('express');
 const db = require('../db');
 const leagues = require('../leagues');
+const clubTournaments = require('../clubTournaments');
 
 const router = express.Router();
 
@@ -50,6 +51,7 @@ function pick(now = Date.now(), leagueId = leagues.DEFAULT_LEAGUE_ID) {
     WHERE category IN ('ELITE', 'NEXT_GEN', 'NOVICE')
       AND (status = 'LIVE' OR (status = 'PLANNED' AND scheduled_at IS NOT NULL AND scheduled_at >= ? AND scheduled_at <= ?))
       AND league_id = ?
+      AND ${clubTournaments.leagueOnlySql()}
   `).all(from, to, leagueId);
   let best = null;
   rows.forEach((row) => {
