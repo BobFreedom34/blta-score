@@ -1089,6 +1089,7 @@ const TRANSLATIONS = {
 
     'page.playerTitle': 'BLTA — Hráč',
     'player.plannedMatchesLabel': 'Plánované<br>zápasy',
+    'player.writeMessage': 'Napísať správu',
     'player.editProfile': 'Upraviť profil',
     'player.statisticsLabel': 'Štatistiky',
     'player.bltaTab': 'Zápasy BLTA',
@@ -2431,6 +2432,7 @@ const TRANSLATIONS = {
 
     'page.playerTitle': 'BLTA — Player',
     'player.plannedMatchesLabel': 'Planned<br>matches',
+    'player.writeMessage': 'Write a message',
     'player.editProfile': 'Edit profile',
     'player.statisticsLabel': 'Statistics',
     'player.bltaTab': 'BLTA matches',

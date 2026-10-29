@@ -143,6 +143,24 @@ test('the new texts exist in both languages, and the server messages are shown i
   assert.ok(read('js/messages.js').includes('msg.errWait') && read('js/common.js').includes('err.status = res.status'), 'errors carry their status and are mapped to texts');
 });
 
+test('the profile of a player has a "Write a message" button beside the planned matches: it starts the chat and opens it, asks a visitor to log in first, and is not shown on your own profile', () => {
+  const html = read('player.html');
+  assert.ok(/class="player-stat-row"/.test(html) && html.includes('id="player-msg-btn"'), 'the button sits in a row with the planned matches tile');
+  assert.ok(html.indexOf('player-upcoming-stat') > html.indexOf('player-stat-row') && html.indexOf('id="player-msg-btn"') > html.indexOf('player-upcoming-stat'), 'after the tile');
+  const js = read('js/player.js');
+  const at = js.indexOf('player-msg-btn');
+  assert.ok(at > 0, 'the page script wires it');
+  const block = js.slice(js.indexOf('function updateMessageButton'), js.indexOf('function updateMessageButton') + 1800);
+  assert.ok(block.includes('playerAuthed') && block.includes('currentPlayerId') && block.includes('style.display'), 'it is hidden on the own profile');
+  assert.ok(js.includes("'/messages/conversations'") && js.includes('playerId: currentPlayer.id'), 'the chat is started with this player');
+  assert.ok(js.includes('requirePlayerAuth(') && js.includes('siteUrl(`/messages/${') , 'a visitor logs in first, then the chat is opened');
+  assert.ok(js.includes('toast(err.message)'), 'a refusal of the server (blocked, too many strangers today, no phone) is shown');
+  const i18n = read('js/i18n.js');
+  assert.strictEqual(i18n.split("'player.writeMessage':").length, 3, 'the label exists in both languages');
+  const css = read('css/style.css');
+  assert.ok(css.includes('.player-stat-row {') && css.includes('.player-msg-btn {'), 'it is styled');
+});
+
 test('cookie-signature is a declared dependency (the live connection uses it directly)', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   assert.ok(pkg.dependencies && pkg.dependencies['cookie-signature']);

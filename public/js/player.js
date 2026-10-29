@@ -1018,6 +1018,24 @@ document.querySelector('.player-upcoming-stat').addEventListener('click', () => 
   window.scrollTo({ top, behavior: 'smooth' });
 });
 
+// "Write a message" (beside the planned matches): starts - or finds - the private chat with this player and opens it on the Messages page. A visitor logs in first;
+// it is not shown on your own profile (nobody writes to himself). The server's refusals (blocked, too many new strangers today, a player with no phone) are shown.
+const messageBtn = document.getElementById('player-msg-btn'); // (null on an older copy of the page: the profile still works without it)
+if (messageBtn) document.getElementById('player-msg-icon').innerHTML = courtIcon('send');
+function updateMessageButton() {
+  const btn = document.getElementById('player-msg-btn');
+  if (!btn || !currentPlayer) return;
+  btn.style.display = playerAuthed && currentPlayerId && currentPlayerId === currentPlayer.id ? 'none' : '';
+}
+window.addEventListener('blta:auth-changed', updateMessageButton);
+if (messageBtn) messageBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+  if (!currentPlayer || currentPlayerId === currentPlayer.id) return;
+  try {
+    const chat = await api('/messages/conversations', { method: 'POST', body: { playerId: currentPlayer.id } });
+    window.location.href = siteUrl(`/messages/${chat.id}`);
+  } catch (err) { toast(err.message); }
+}));
+
 document.getElementById('badges-toggle').addEventListener('click', openBadgesModal);
 window.addEventListener('resize', applyBadgesClip);
 
@@ -1292,6 +1310,7 @@ document.getElementById('player-bio-form').addEventListener('submit', async (e) 
     const player = await api(`/players/${playerId}`);
     playerId = player.id;
     currentPlayer = player;
+    updateMessageButton();
     nameEl.innerHTML = nameLinesHtml(player.name);
     document.getElementById('player-flag').innerHTML = flagImgHtml(player.nationality, 'player-flag-img');
     const rank = RANK_BY_NAME.get(player.name);

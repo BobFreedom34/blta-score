@@ -1411,8 +1411,12 @@ body:not(.embed-light) .match-card .scoreboard .set-win { color: var(--status-gr
    equally bold everywhere. */
 .player-courtiq-value { font-size: 44px; font-weight: 800; color: var(--white); line-height: 1; -webkit-text-stroke: 0.6px currentColor; }
 .player-flag-img { display: block; height: 28px; width: auto; border-radius: 3px; box-shadow: var(--shadow); }
+/* the planned matches tile and, beside it, the button that writes to the player */
+.player-stat-row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; margin-top: 24px; }
+.player-msg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 18px; min-height: 52px; border-radius: 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.03em; }
+.player-msg-btn .venue-icon { width: 18px; height: 18px; }
 .player-upcoming-stat {
-  margin-top: 24px;
+  margin-top: 0;
   width: 168px;
   padding: 8px 14px;
   display: flex;
@@ -1441,6 +1445,7 @@ body:not(.embed-light) .match-card .scoreboard .set-win { color: var(--status-gr
 }
 @media (max-width: 480px) {
   .player-upcoming-stat { width: 100%; }
+  .player-msg-btn { width: 100%; }
 }
 .bio-flag-icon { width: 20px; height: auto; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
 .player-bio-header { display: flex; justify-content: flex-end; margin-top: 24px; }
