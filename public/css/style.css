@@ -5518,11 +5518,19 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .com-switch-av { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--orange); color: var(--white); font-size: 10px; font-weight: 800; }
 .com-switch-av.club { background: var(--status-green); color: #111; }
 .com-switch-mark { margin-left: auto; color: var(--status-green); font-weight: 800; }
-.acting-chip { display: inline-flex; align-items: center; gap: 8px; max-width: 190px; margin-right: 8px; padding: 4px 6px 4px 12px; border: 1px solid var(--status-green); border-radius: 999px; background: rgba(178, 250, 6, 0.1); color: var(--white); font-size: 12px; font-weight: 700; text-decoration: none; }
-.acting-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.acting-chip-off { flex: none; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: var(--fill-grey); color: var(--white); font-size: 11px; line-height: 1; cursor: pointer; }
-.acting-chip-off:hover { background: var(--orange); }
-@media (max-width: 560px) { .acting-chip { max-width: 120px; } }
+/* the profile pill of a logged-in player (top strip, left of the icons): avatar, name, caret; green outline while acting as a club */
+.profile-pill-wrap { position: relative; order: -1; margin-right: 6px; }
+.profile-pill { display: inline-flex; align-items: center; gap: 8px; max-width: 230px; padding: 3px 12px 3px 4px; border: 1px solid transparent; border-radius: 999px; background: none; color: var(--white); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.profile-pill:hover, .profile-pill[aria-expanded="true"] { background: rgba(255, 255, 255, 0.08); }
+.profile-pill.club { border-color: var(--status-green); background: rgba(178, 250, 6, 0.1); }
+.profile-pill-av { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; overflow: hidden; background: var(--orange); color: var(--white); font-size: 11px; font-weight: 800; }
+.profile-pill-av.club { background: var(--status-green); color: #111; }
+.profile-pill-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.profile-pill-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-pill-caret { flex: none; width: 7px; height: 7px; margin: -3px 0 0 2px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); opacity: .7; }
+.profile-pill-menu { right: auto; left: 0; min-width: 260px; }
+.profile-pill-menu .com-switch-item { text-transform: none; letter-spacing: 0; font-size: 14px; }
+.profile-pill-menu .com-switch-av { display: none; }
 .com-badge-wait { background: transparent; border-color: var(--orange); color: var(--orange); }
 .com-wait { border-color: var(--orange); }
 .com-post-head b { overflow-wrap: anywhere; min-width: 0; }
@@ -5629,4 +5637,11 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 }
 @media (max-width: 1024px) {
   .nav-submenu a { padding: 12px 16px; }
+}
+/* phones and tablets: the hamburger sits in the middle of the bar, so the pill is only the avatar (the dropdown still names everybody) */
+@media (max-width: 1024px) {
+  .profile-pill { padding: 3px; }
+  .profile-pill-name, .profile-pill-caret { display: none; }
+  /* the dropdown is a sheet under the top bar, the width of the screen (the pill itself is too far from the edges for a normal dropdown) */
+  .profile-pill-menu { position: fixed; top: 58px; left: 10px; right: 10px; min-width: 0; z-index: 60; }
 }

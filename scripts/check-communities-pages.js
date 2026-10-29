@@ -137,9 +137,20 @@ test('common.js asks for the clubs of a player only once a player is known, and 
   const at = js.indexOf("api('/communities/mine')");
   const fn = js.slice(js.lastIndexOf('async function refreshActingOrg', at), at);
   assert.ok(/playerAuthed/.test(fn) && /currentPlayerId/.test(fn), 'the call is guarded by the player session');
-  assert.ok(js.includes('/communities/act-as') && js.includes('acting-chip') && js.includes('com-switch') && js.includes('applyClubMenu'));
+  assert.ok(js.includes('/communities/act-as') && js.includes('profile-pill') && js.includes('com-switch') && js.includes('applyClubMenu'));
   assert.ok(/blta:auth-changed', refreshActingOrg/.test(js), 'it runs after the session is known');
   checkKeys('js/common.js');
+});
+
+test('a logged-in player always sees his name as a profile pill in the top strip (also with no club), with a dropdown to switch between himself and his clubs', () => {
+  const js = read('js/common.js');
+  const fn = js.slice(js.indexOf('async function refreshActingOrg'), js.indexOf("window.addEventListener('blta:auth-changed', refreshActingOrg"));
+  assert.ok(!fn.includes('if (!admins.length) return'), 'the pill does not depend on having a club');
+  ['profile-pill', 'profile-pill-menu', 'profile-pill-caret', 'currentPlayerName', "'aria-expanded'", "'Escape'", 'switchActing('].forEach((s) => assert.ok(fn.includes(s), `${s} is in the switcher`));
+  assert.ok(!fn.includes('acting-chip'), 'the old chip with the cross is gone');
+  assert.ok(!/panel\.insertBefore\(block/.test(fn), 'the switcher is no longer inside the account menu');
+  const css = read('css/style.css');
+  ['.profile-pill {', '.profile-pill-av {', '.profile-pill-caret {', '.profile-pill-wrap {'].forEach((sel) => assert.ok(css.includes(sel), `${sel} has a rule`));
 });
 
 test('the switcher puts only DOM text, never markup from a name, into the page', () => {

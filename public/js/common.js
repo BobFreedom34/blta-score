@@ -1525,8 +1525,8 @@ function mountMessagesLink() {
 }
 mountMessagesLink();
 
-// Komunity a kluby: the profile switcher. A player who runs a community or a club can switch to its profile (top right, in the account menu): the topbar
-// then shows a chip with its name and the menu becomes the menu of the club (Domov · Členovia · Udalosti · Profil klubu). Switching changes nothing about
+// Komunity a kluby: the profile switcher. A player who runs a community or a club can switch to its profile (the profile pill in the top strip): the pill
+// then shows its name and the menu becomes the menu of the club (Domov · Členovia · Udalosti · Profil klubu). Switching changes nothing about
 // the player himself; the server decides on every request whether he still runs that club (GET /api/communities/mine, POST /api/communities/act-as).
 // Only DOM text is used here: the names of the clubs are written by players.
 let actingOrg = null; // the club the player acts as (as GET /api/communities/mine reports it), or null
@@ -1542,10 +1542,11 @@ function applyClubMenu() {
     myProfile.style.display = 'none';
   }
   container.textContent = '';
-  [['com.menuHome', base], ['com.menuMembers', `${base}#members`], ['com.menuEvents', `${base}#events`], ['com.menuProfile', `${base}#settings`]].forEach(([key, href]) => {
+  [['com.menuHome', base, 'home'], ['com.menuMembers', `${base}#members`, 'users'], ['com.menuEvents', `${base}#events`, 'calendar'], ['com.menuProfile', `${base}#settings`, 'user']].forEach(([key, href, icon]) => {
     const a = document.createElement('a');
     a.href = href;
     a.textContent = t(key);
+    a.style.setProperty('--nav-ico', navIconUrl(icon)); // an icon before every item, like the normal menu
     container.appendChild(a);
   });
 }
@@ -1566,7 +1567,7 @@ function clubInitials(name) {
 }
 
 async function refreshActingOrg() {
-  document.querySelectorAll('.com-switch, .acting-chip').forEach((el) => el.remove());
+  document.querySelectorAll('.profile-pill-wrap').forEach((el) => el.remove());
   const wasActing = !!actingOrg;
   actingOrg = null;
   if (!playerAuthed || !currentPlayerId) {
@@ -1583,64 +1584,89 @@ async function refreshActingOrg() {
   actingOrg = mine.acting;
   if (wasActing && !actingOrg) renderHeaderNav(); // left the club or no longer its admin: the normal menu comes back
   const admins = mine.items.filter((o) => o.me && o.me.role === 'ADMIN');
-  if (!admins.length) return;
 
-  const panel = document.getElementById('auth-menu-panel');
-  if (panel) {
-    const block = document.createElement('div');
-    block.className = 'com-switch';
+  // The profile pill, first in the top strip: who the player is acting as (himself, or one of his clubs) with a dropdown to switch. Every logged-in player has it,
+  // with or without a club. Only DOM text and src of a picture the server itself wrote are used: names are written by players.
+  const right = document.querySelector('.topbar-right');
+  if (right) {
+    const avatar = (organisation) => {
+      const av = document.createElement('span');
+      av.className = organisation ? 'profile-pill-av club' : 'profile-pill-av';
+      if (organisation && /^\/community-images\/[\w.-]+$/.test(organisation.logoUrl || '')) {
+        const img = document.createElement('img');
+        img.src = organisation.logoUrl;
+        img.alt = '';
+        av.appendChild(img);
+      } else {
+        av.textContent = clubInitials(organisation ? organisation.name : currentPlayerName);
+      }
+      return av;
+    };
+    const wrap = document.createElement('div');
+    wrap.className = 'profile-pill-wrap';
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = actingOrg ? 'profile-pill club' : 'profile-pill';
+    pill.setAttribute('aria-haspopup', 'true');
+    pill.setAttribute('aria-expanded', 'false');
+    pill.title = actingOrg ? t('com.actingAs', { name: actingOrg.name }) : t('com.switchTitle');
+    const label = document.createElement('span');
+    label.className = 'profile-pill-name';
+    label.textContent = actingOrg ? actingOrg.name : currentPlayerName;
+    const caret = document.createElement('span');
+    caret.className = 'profile-pill-caret';
+    caret.setAttribute('aria-hidden', 'true');
+    pill.append(avatar(actingOrg), label, caret);
+
+    const menu = document.createElement('div');
+    menu.className = 'auth-menu-panel profile-pill-menu com-switch';
+    menu.hidden = true;
     const title = document.createElement('div');
     title.className = 'com-switch-title';
     title.textContent = t('com.switchTitle');
-    block.appendChild(title);
-    const row = (label, organisation, active) => {
+    menu.appendChild(title);
+    const row = (text, organisation, active) => {
       const a = document.createElement('a');
       a.href = '#';
-      a.className = `auth-menu-item com-switch-item${active ? ' on' : ''}`;
-      const av = document.createElement('span');
-      av.className = `com-switch-av${organisation ? ' club' : ''}`;
-      av.textContent = organisation ? clubInitials(organisation.name) : clubInitials(currentPlayerName);
-      const text = document.createElement('span');
-      text.textContent = label;
-      a.append(av, text);
+      a.className = 'auth-menu-item com-switch-item' + (active ? ' on' : '');
+      const name = document.createElement('span');
+      name.textContent = text;
+      a.append(avatar(organisation), name);
       if (active) {
         const mark = document.createElement('span');
         mark.className = 'com-switch-mark';
         mark.textContent = '✓';
         a.appendChild(mark);
       }
-      a.addEventListener('click', (e) => { e.preventDefault(); if (!active) switchActing(organisation); });
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!active) { switchActing(organisation); return; }
+        // the one you are acting as: its own page
+        window.location.href = siteUrl(organisation ? '/community/' + encodeURIComponent(organisation.slug) : '/player/' + encodeURIComponent(currentPlayerSlug || currentPlayerId));
+      });
       return a;
     };
-    block.appendChild(row(t('nav.myProfile'), null, !actingOrg));
-    admins.forEach((o) => block.appendChild(row(o.name, o, !!actingOrg && actingOrg.id === o.id)));
+    menu.appendChild(row(currentPlayerName, null, !actingOrg));
+    admins.forEach((o) => menu.appendChild(row(o.name, o, !!actingOrg && actingOrg.id === o.id)));
     const create = document.createElement('a');
     create.href = '/communities';
     create.className = 'auth-menu-item com-switch-item';
-    create.textContent = `＋ ${t('com.create')}`;
-    block.appendChild(create);
-    panel.insertBefore(block, panel.firstChild);
+    create.textContent = '＋ ' + t('com.create');
+    menu.appendChild(create);
+
+    const close = () => { menu.hidden = true; pill.setAttribute('aria-expanded', 'false'); };
+    pill.addEventListener('click', () => {
+      // (the click goes on to the document, which closes the account menu if it is open: only one dropdown at a time)
+      menu.hidden = !menu.hidden;
+      pill.setAttribute('aria-expanded', String(!menu.hidden));
+    });
+    document.addEventListener('click', (e) => { if (!menu.hidden && !wrap.contains(e.target)) close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    wrap.append(pill, menu);
+    right.insertBefore(wrap, right.firstChild);
   }
 
-  if (actingOrg) {
-    const chip = document.createElement('a');
-    chip.className = 'acting-chip';
-    chip.href = `/community/${encodeURIComponent(actingOrg.slug)}`;
-    chip.title = t('com.actingAs', { name: actingOrg.name });
-    const name = document.createElement('span');
-    name.textContent = actingOrg.name;
-    const off = document.createElement('button');
-    off.type = 'button';
-    off.className = 'acting-chip-off';
-    off.setAttribute('aria-label', t('com.backToMe'));
-    off.title = t('com.backToMe');
-    off.textContent = '✕';
-    off.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); switchActing(null); });
-    chip.append(name, off);
-    const right = document.querySelector('.topbar-right');
-    if (right) right.insertBefore(chip, right.firstChild);
-    applyClubMenu();
-  }
+  if (actingOrg) applyClubMenu();
 }
 window.addEventListener('blta:auth-changed', refreshActingOrg);
 
