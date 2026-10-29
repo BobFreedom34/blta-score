@@ -1872,6 +1872,30 @@ document.addEventListener('click', (e) => {
   });
 })();
 
+// Language on phones and tablets: a row at the top of the person-icon dropdown (SK | EN) instead of a pill in the top bar, which took too much room there. The
+// CSS shows the row and hides the pill below 1025px; on a wide screen the pill of the grey strip stays and the row is hidden.
+function mountLangRow() {
+  const panel = document.getElementById('auth-menu-panel');
+  if (!panel || panel.querySelector('.auth-lang-row')) return;
+  const row = document.createElement('div');
+  row.className = 'auth-lang-row';
+  const label = document.createElement('span');
+  label.textContent = t('nav.language');
+  const seg = document.createElement('span');
+  seg.className = 'auth-lang-seg';
+  [['sk', 'SK'], ['en', 'EN']].forEach(([code, text]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = text;
+    if (code === currentLang) b.className = 'on';
+    b.addEventListener('click', () => { if (code !== currentLang) setLang(code); });
+    seg.appendChild(b);
+  });
+  row.append(label, seg);
+  panel.insertBefore(row, panel.firstChild);
+}
+mountLangRow();
+
 // Desktop-only scroll-to-top button — skipped on pages with no topbar
 // (the embed views), which are short widgets that don't need it.
 (function initScrollTop() {

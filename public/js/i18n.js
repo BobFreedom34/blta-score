@@ -550,6 +550,7 @@ const TRANSLATIONS = {
     'nav.newMatch': '+ Nový zápas',
     'nav.loginPlayer': 'PRIHLÁSIŤ SA',
     'nav.logout': 'ODHLÁSIŤ SA',
+    'nav.language': 'Jazyk',
     'nav.logoutWithName': 'ODHLÁSIŤ SA ({name})',
 
     'install.navBtn': '📲 Inštalovať appku',
@@ -1888,6 +1889,7 @@ const TRANSLATIONS = {
     'nav.newMatch': '+ New match',
     'nav.loginPlayer': 'LOGIN',
     'nav.logout': 'LOG OUT',
+    'nav.language': 'Language',
     'nav.logoutWithName': 'LOG OUT ({name})',
 
     'install.navBtn': '📲 Install app',

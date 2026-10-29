@@ -425,6 +425,15 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 @media (min-width: 1025px) { .install-app-btn { display: none !important; } }
 .nav-links a.active { background: var(--orange); color: var(--white); }
 .lang-switcher { display: flex; gap: 4px; align-items: center; order: 2; }
+/* language: phones and tablets - no pill in the top bar; SK | EN is a row at the top of the person-icon dropdown (mountLangRow in common.js) */
+.auth-lang-row { display: none; }
+@media (max-width: 1024px) {
+  #lang-switcher { display: none; }
+  .auth-lang-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--gray-light); color: var(--ink); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .auth-lang-seg { display: inline-flex; border: 1px solid var(--gray-light); border-radius: var(--radius-sm); overflow: hidden; }
+  .auth-lang-seg button { padding: 6px 14px; border: 0; background: none; color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
+  .auth-lang-seg button.on { background: var(--orange); color: var(--white); }
+}
 .lang-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; color: #d8d8d8; background: none; border: 1px solid rgba(255,255,255,0.25); cursor: pointer; font-family: inherit; }
 .lang-btn:hover { background: rgba(255,255,255,0.08); color: var(--white); }
 .lang-btn.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
