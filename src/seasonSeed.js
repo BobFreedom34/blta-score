@@ -310,4 +310,25 @@ function removeDescriptionSignOff(db) {
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('season_info_signoff_removed')").run();
 }
 
-module.exports = { removeDescriptionSignOff, ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, ensureWinnersMenuItem, ensureCommunitiesMenuItem, ensureMessagesMenuItem, ensureContactMenuItem, fixWinterStart };
+// "Komunity a kluby" in the menu of EVERY city. The menu is data of each city (header_items.league_id), so the item added in Backend > Menu of the first city was
+// missing everywhere else. (Messages is not a menu item: it is an icon in the top strip of every page, see mountMessagesLink in public/js/common.js.)
+// One time per city that already has a menu: it gets the item if it lacks it, at the end (an admin of the city can rename,
+// move or delete them afterwards - the flag per city stops a second add). A city with no menu yet is left alone: its admin builds the menu.
+const COMMUNITY_MENU_ITEMS = [['Komunity a kluby', 'Communities and clubs', '/communities']];
+function ensureCommunityMenuItems(db) {
+  const insert = db.prepare('INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, league_id) VALUES (NULL, ?, ?, ?, ?, ?)');
+  db.prepare('SELECT id FROM leagues').all().forEach(({ id }) => {
+    const flag = `menu_communities_${id}`;
+    if (db.prepare('SELECT 1 FROM app_flags WHERE key = ?').get(flag)) return;
+    if (db.prepare('SELECT 1 FROM header_items WHERE league_id = ? AND parent_id IS NULL').get(id)) {
+      COMMUNITY_MENU_ITEMS.forEach(([sk, en, link]) => {
+        if (db.prepare('SELECT 1 FROM header_items WHERE league_id = ? AND link = ?').get(id, link)) return;
+        const max = db.prepare('SELECT MAX(sort_order) AS m FROM header_items WHERE league_id = ? AND parent_id IS NULL').get(id).m;
+        insert.run(sk, en, link, (max == null ? 0 : max) + 1, id);
+      });
+    }
+    db.prepare('INSERT OR IGNORE INTO app_flags (key) VALUES (?)').run(flag);
+  });
+}
+
+module.exports = { ensureCommunityMenuItems, removeDescriptionSignOff, ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, ensureWinnersMenuItem, ensureCommunitiesMenuItem, ensureMessagesMenuItem, ensureContactMenuItem, fixWinterStart };

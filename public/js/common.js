@@ -1422,6 +1422,9 @@ async function renderHeaderNav() {
     });
     items = prune(items);
   }
+  // the main menu does not draw a Messages item (a city that still has one): it is the icon of the top strip now
+  const withoutMessages = (list) => list.filter((i) => i.link !== '/messages').map((i) => ({ ...i, children: i.children ? withoutMessages(i.children) : i.children }));
+  items = withoutMessages(items);
   const today = new Date().toISOString().slice(0, 10);
   const seasonPillLabel = { past: t('home.tlPast'), now: t('home.tlNow'), future: t('home.tlFuture') };
   const labelFor = (item) => (currentLang === 'en' && item.labelEn) ? item.labelEn : item.labelSk;
@@ -1506,6 +1509,21 @@ async function renderHeaderNav() {
   if (messageUnread) applyMessageBadge();
 }
 renderHeaderNav();
+
+// Správy / Messages: an icon in the top strip (next to the bell) on every page, with the unread badge on it. It is not an item of the main menu any more.
+function mountMessagesLink() {
+  const right = document.querySelector('.topbar-right');
+  if (!right || document.getElementById('topbar-msg')) return;
+  const a = document.createElement('a');
+  a.id = 'topbar-msg';
+  a.className = 'topbar-msg';
+  a.href = '/messages';
+  a.title = t('msg.heading');
+  a.setAttribute('aria-label', t('msg.heading'));
+  a.innerHTML = courtIcon('send');
+  right.appendChild(a);
+}
+mountMessagesLink();
 
 // Komunity a kluby: the profile switcher. A player who runs a community or a club can switch to its profile (top right, in the account menu): the topbar
 // then shows a chip with its name and the menu becomes the menu of the club (Domov · Členovia · Udalosti · Profil klubu). Switching changes nothing about
@@ -1634,9 +1652,7 @@ let messageUnread = 0;
 function applyMessageBadge() {
   document.querySelectorAll('.nav-msg-badge').forEach((el) => el.remove());
   if (!messageUnread) return;
-  const container = document.getElementById('header-dynamic-items');
-  // a heading (href="#") or the contact link ("#kontakt") has the path of the page it is on: only a real address counts
-  const link = container && [...container.querySelectorAll('a')].find((a) => !/^#/.test(a.getAttribute('href') || '#') && /\/(messages|spravy)\/?$/.test(a.pathname));
+  const link = document.getElementById('topbar-msg');
   if (!link) return;
   const badge = document.createElement('span');
   badge.className = 'nav-msg-badge';

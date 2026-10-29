@@ -135,6 +135,11 @@ try {
   console.error('Winners menu item failed:', err);
 }
 try {
+  require('./src/seasonSeed').ensureCommunityMenuItems(db);
+} catch (err) {
+  console.error('Communities menu items failed:', err);
+}
+try {
   require('./src/seasonSeed').ensureCommunitiesMenuItem(db);
 } catch (err) {
   console.error('Communities menu item failed:', err);

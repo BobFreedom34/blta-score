@@ -209,6 +209,21 @@ test('reorder refuses a list that is not exactly the items of that level, and ne
   assert.strictEqual((await call('POST', '/api/header-items/reorder', { parentId: parent.id, ids: [b.id, a.id] }, false)).status, 401);
 });
 
+test('the menu of one city is reordered and extended without being confused with the menus of the other cities', async () => {
+  // a second city with a menu of its own (the lists of /reorder and the positions of new items are per city)
+  fixtureDb.prepare("INSERT OR IGNORE INTO leagues (id, slug, name, brand_name, status, sort_order) VALUES (77, 'druhe-mesto', 'Druhe mesto', 'Druhe mesto', 'ACTIVE', 9)").run();
+  ['Iny1', 'Iny2', 'Iny3'].forEach((label, i) => fixtureDb.prepare('INSERT INTO header_items (label_sk, link, sort_order, league_id) VALUES (?, ?, ?, 77)').run(label, `/iny-${i}`, 40 + i));
+  const top = (await tree()).map((i) => i.id);
+  const reversed = top.slice().reverse();
+  const r = await call('POST', '/api/header-items/reorder', { parentId: null, ids: reversed });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.json));
+  assert.deepStrictEqual((await tree()).map((i) => i.id), reversed, 'the first city has the new order');
+  assert.deepStrictEqual(fixtureDb.prepare('SELECT sort_order FROM header_items WHERE league_id = 77 ORDER BY id').all().map((x) => x.sort_order), [40, 41, 42], 'the other city is untouched');
+  // a new item goes to the end of ITS OWN city's list, not after the highest position of every city
+  const added = await made('NaKonci');
+  assert.strictEqual(added.sortOrder, top.length, 'the position after the last item of this city');
+});
+
 // ---------------------------------------------------------------- the contact window (Kontakt)
 test('the Kontakt menu item is there, opening the contact window (#kontakt)', async () => {
   const kontakt = (await tree()).find((i) => i.link === '#kontakt');

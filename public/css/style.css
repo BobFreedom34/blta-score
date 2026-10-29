@@ -5609,6 +5609,11 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 }
 .msg-layout .btn-outline { border-color: var(--border-grey); color: var(--white); }
 .msg-layout .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+/* the Messages icon of the top strip, just before the bell (order 9, the bell has 10); the unread number sits on its corner */
+.topbar-msg { order: 9; position: relative; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; color: var(--white); border-radius: var(--radius-sm); }
+.topbar-msg:hover { background: rgba(255, 255, 255, 0.08); }
+.topbar-msg .venue-icon { width: 18px; height: 18px; }
+.topbar-msg .nav-msg-badge { position: absolute; top: -3px; right: -4px; margin: 0; min-width: 16px; height: 16px; font-size: 10px; }
 .nav-msg-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 999px; background: var(--status-green); color: #0a0a0a; font-size: 11px; font-weight: 800; vertical-align: middle; }
 
 /* Menu icons: every item of the main menu has one before its name, on a computer and on a phone, also inside a dropdown (public/js/common.js puts the

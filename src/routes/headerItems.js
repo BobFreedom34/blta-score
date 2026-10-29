@@ -73,10 +73,10 @@ function validateBody(body, self) {
   return { labelSk, labelEn: labelEn || null, link, sortOrder, parentId, highlight: body.highlight ? 1 : 0 };
 }
 
-// the position after the last item of a list (the main items, or the sub-items of a parent)
-function nextOrder(parentId) {
+// the position after the last item of a list (the main items OF ONE CITY, or the sub-items of a parent)
+function nextOrder(parentId, leagueId) {
   const row = parentId === null
-    ? db.prepare('SELECT MAX(sort_order) AS m FROM header_items WHERE parent_id IS NULL').get()
+    ? db.prepare('SELECT MAX(sort_order) AS m FROM header_items WHERE parent_id IS NULL AND league_id = ?').get(leagueId)
     : db.prepare('SELECT MAX(sort_order) AS m FROM header_items WHERE parent_id = ?').get(parentId);
   return (row.m === null || row.m === undefined ? -1 : row.m) + 1;
 }
@@ -95,7 +95,7 @@ router.post('/', requireAdmin, (req, res) => {
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const info = db.prepare(
     'INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, highlight, league_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, parsed.sortOrder === null ? nextOrder(parsed.parentId) : parsed.sortOrder, parsed.highlight, leagues.actingIdOf(req));
+  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, parsed.sortOrder === null ? nextOrder(parsed.parentId, leagues.actingIdOf(req)) : parsed.sortOrder, parsed.highlight, leagues.actingIdOf(req));
   res.status(201).json(serialize(db.prepare('SELECT * FROM header_items WHERE id = ?').get(info.lastInsertRowid)));
 });
 
@@ -139,7 +139,7 @@ router.post('/reorder', requireAdmin, (req, res) => {
   if (parentId !== null && !Number.isInteger(parentId)) return res.status(400).json({ error: 'Invalid parent item' });
   const ids = Array.isArray(body.ids) ? body.ids.map(Number) : [];
   const current = (parentId === null
-    ? db.prepare('SELECT id FROM header_items WHERE parent_id IS NULL').all()
+    ? db.prepare('SELECT id FROM header_items WHERE parent_id IS NULL AND league_id = ?').all(leagues.actingIdOf(req))
     : db.prepare('SELECT id FROM header_items WHERE parent_id = ?').all(parentId)).map((r) => r.id);
   if (!ids.every(Number.isInteger) || new Set(ids).size !== ids.length || ids.length !== current.length || !ids.every((id) => current.includes(id))) {
     return res.status(400).json({ error: 'The list does not match the items of that menu level' });
@@ -172,7 +172,7 @@ router.patch('/:id', requireAdmin, (req, res) => {
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   // no position sent: the item keeps its place, or goes last when it moves to another list
   const moved = (parsed.parentId || null) !== (item.parent_id || null);
-  const sortOrder = parsed.sortOrder !== null ? parsed.sortOrder : (moved ? nextOrder(parsed.parentId) : item.sort_order);
+  const sortOrder = parsed.sortOrder !== null ? parsed.sortOrder : (moved ? nextOrder(parsed.parentId, item.league_id) : item.sort_order);
   db.prepare(
     'UPDATE header_items SET parent_id = ?, label_sk = ?, label_en = ?, link = ?, sort_order = ?, highlight = ? WHERE id = ?'
   ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, sortOrder, parsed.highlight, item.id);
