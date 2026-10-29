@@ -244,21 +244,25 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
      rather than getting squeezed by .nav-links' flex:1. */
   flex-shrink: 0;
 }
-/* Desktop: the account icon, the language switch, the bell (and the club chip) are a thin bar of their own above the logo and the menu, so the menu
-   has the whole width of the header instead of wrapping into two rows beside them. Below 1025px the hamburger layout is unchanged. */
-/* The strip is grey across the whole width of the header: the colour is painted by .topbar itself (the strip is only as wide as .topbar-inner), so the strip
-   has a fixed height that the gradient stop below must match (--topstrip). */
+/* Desktop: the grey strip on top holds the logo (left) and the account icon, the language switch, Messages and the bell (right); the menu is a row of its own
+   under it and has the whole width of the header. The colour is painted by .topbar itself (the strip is only as wide as .topbar-inner), so the strip has a fixed
+   height that the gradient stop must match (--topstrip). Below 1025px the hamburger layout is unchanged. */
 @media (min-width: 1025px) {
-  .topbar { --topstrip: 40px; background: linear-gradient(to bottom, var(--charcoal) var(--topstrip), var(--ink) var(--topstrip)); }
-  .topbar-inner { flex-wrap: wrap; row-gap: 0; padding-top: 0; }
-  .topbar-right {
-    order: -1;
-    flex: 0 0 100%;
-    box-sizing: border-box;
-    height: var(--topstrip);
-    justify-content: flex-end;
-    margin-bottom: 10px;
+  .topbar { --topstrip: 54px; background: linear-gradient(to bottom, var(--charcoal) var(--topstrip), var(--ink) var(--topstrip)); }
+  .topbar-inner {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "brand right" "nav nav";
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 0;
+    padding-top: 0;
+    padding-bottom: 8px;
   }
+  .brand { grid-area: brand; height: var(--topstrip); }
+  .topbar-right { grid-area: right; box-sizing: border-box; height: var(--topstrip); justify-content: flex-end; }
+  /* left-aligned: the box of the first item starts at the left edge of the page, like the logo above it */
+  .topbar-inner .nav-links { grid-area: nav; justify-content: flex-start; margin: 8px 0 0; }
 }
 .nav-toggle {
   display: none;
