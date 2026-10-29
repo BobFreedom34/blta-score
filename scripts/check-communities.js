@@ -174,8 +174,8 @@ test('an APPROVAL club: a request is PENDING, not counted nor listed; only its a
   assert.strictEqual(asAdmin.pending.length, 1);
   assert.strictEqual(asAdmin.pending[0].name, 'Nino Nu');
   assert.ok('level' in asAdmin.pending[0], 'the level (CourtIQ) is reported, null when the player has none yet');
-  assert.deepStrictEqual((await membersOf(org, M.Nino)).json.pending, [], 'a plain player sees no requests');
-  assert.deepStrictEqual((await membersOf(org)).json.pending, [], 'a visitor sees no requests');
+  assert.strictEqual((await membersOf(org, M.Nino)).status, 403, 'a player who is not a member sees neither members nor requests of a club that decides on every request');
+  assert.strictEqual((await membersOf(org)).status, 403, 'a visitor neither');
 });
 
 test('approve makes an ACTIVE member; reject keeps the player out and a new request waits 7 days', async () => {
@@ -590,7 +590,7 @@ test('a request waiting in a hidden club cannot be cancelled; an approved member
   file.prepare("UPDATE organisation_members SET joined_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-3 days') WHERE organisation_id = ? AND player_id = ?").run(org.id, M.Pavol.id);
   file.close();
   await call('POST', `/api/communities/${org.id}/members/${M.Pavol.id}/approve`, { cookie: ana.cookie });
-  const joined = (await membersOf(org)).json.members.find((m) => m.name === 'Pavol Pi').joinedAt;
+  const joined = (await membersOf(org, ana)).json.members.find((m) => m.name === 'Pavol Pi').joinedAt;
   assert.ok(Date.now() - new Date(joined).getTime() < 60000, 'joinedAt is the day of the approval: ' + joined);
   const other = await makeOrg(ana, { joinPolicy: 'APPROVAL' });
   await join(other, M.Olga);

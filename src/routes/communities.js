@@ -194,7 +194,9 @@ router.post('/act-as', (req, res) => {
 router.get('/:slug', (req, res) => {
   const org = db.prepare('SELECT * FROM organisations WHERE slug = ? AND league_id = ?').get(String(req.params.slug), leagues.actingIdOf(req));
   if (!org || !communities.canRead(req, org)) return res.status(404).json({ error: 'Community not found' });
-  res.json(serialize(org, req));
+  const out = serialize(org, req);
+  if (out.locked) out.previewPhotos = communities.previewPhotos(org.id);
+  res.json(out);
 });
 
 router.post('/', (req, res) => {
@@ -289,6 +291,7 @@ router.post('/:id/tournaments', (req, res) => {
 router.get('/:id/tournaments', (req, res) => {
   const org = orgOr404(req, res, 'read');
   if (!org) return;
+  if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
   const rows = db.prepare("SELECT * FROM seasons WHERE organisation_id = ? AND kind = 'TOURNAMENT' ORDER BY COALESCE(start_date, '') DESC, id DESC").all(org.id);
   const registered = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?');
   res.json({ items: rows.map((s) => ({ ...seasonsRoutes.serializeSeason(s), registrationCount: registered.get(s.id).n, organisation: { id: org.id, slug: org.slug, name: org.name } })) });
@@ -466,6 +469,7 @@ router.post('/:id/leave', (req, res) => {
 router.get('/:id/members', (req, res) => {
   const org = orgOr404(req, res, 'read');
   if (!org) return;
+  if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
   const members = db.prepare(`
     SELECT m.player_id, m.role, m.joined_at, p.name, p.slug FROM organisation_members m JOIN players p ON p.id = m.player_id
     WHERE m.organisation_id = ? AND m.status = 'ACTIVE' ORDER BY (m.role = 'ADMIN') DESC, m.joined_at, p.name
@@ -537,6 +541,7 @@ const POSTS_PAGE = 20;
 router.get('/:id/posts', (req, res) => {
   const org = orgOr404(req, res, 'read');
   if (!org) return;
+  if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
   const before = /^\d+$/.test(String(req.query.before || '')) ? Number(req.query.before) : null;
   const rows = db.prepare(`
     SELECT po.id, po.body, po.image_url, po.author_player_id, po.created_at, p.name, p.slug FROM organisation_posts po LEFT JOIN players p ON p.id = po.author_player_id
@@ -591,6 +596,7 @@ router.post('/:id/posts/:postId/reactions', (req, res) => {
   if (!playerId) return;
   const org = orgOr404(req, res, 'read');
   if (!org) return;
+  if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
   const post = /^\d+$/.test(req.params.postId) ? db.prepare('SELECT id FROM organisation_posts WHERE id = ? AND organisation_id = ? AND hidden = 0').get(Number(req.params.postId), org.id) : null;
   if (!post) return res.status(404).json({ error: 'Post not found' });
   const emoji = req.body && req.body.emoji;

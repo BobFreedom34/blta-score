@@ -5689,6 +5689,10 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .msg-invite-card small { color: var(--gray-dim); }
 .msg-invite-state { font-size: 13px; font-weight: 700; color: var(--status-green); }
 .com-lab-dark { color: var(--ink); margin: 6px 0; }
+.com-faces { display: flex; justify-content: center; gap: 4px; margin: 10px 0 2px; }
+.com-faces img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #100e0b; margin-left: -8px; background: var(--fill-grey); }
+.com-faces img:first-child { margin-left: 0; }
+.com-locked { margin: 14px auto 0; max-width: 360px; text-align: center; color: var(--gray-dim); font-size: 16px; line-height: 1.5; }
 .com-invite-list { max-height: 220px; overflow-y: auto; margin-bottom: 10px; border: 1px solid var(--gray-light); border-radius: var(--radius-sm); }
 .com-invite-list .com-empty { padding: 12px; color: var(--gray); }
 .com-invite-row { display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 12px; border-bottom: 1px solid var(--gray-light); cursor: pointer; font-weight: 600; color: var(--ink); }

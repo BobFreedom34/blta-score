@@ -53,9 +53,26 @@ function canRequestAgainAt(m) {
   return at.getTime() > Date.now() ? at.toISOString() : null;
 }
 
+// A community or club that decides on every request (join policy APPROVAL) shows only its header to somebody who is not a member yet: no description, contact,
+// news, members or events. Its active members and the admins of the site see everything.
+function isLockedFor(req, row) {
+  if (row.join_policy !== 'APPROVAL') return false;
+  if (siteAdminFor(req, row)) return false;
+  const playerId = auth.getPlayerId(req);
+  const m = playerId ? memberOf(row.id, playerId) : null;
+  return !(m && m.status === 'ACTIVE');
+}
+
+// the pictures of a few members (no names) for the header of a locked community
+function previewPhotos(orgId) {
+  return db.prepare("SELECT p.photo_url FROM organisation_members m JOIN players p ON p.id = m.player_id WHERE m.organisation_id = ? AND m.status = 'ACTIVE' AND p.photo_url IS NOT NULL AND p.photo_url != '' ORDER BY (m.role = 'ADMIN') DESC, m.joined_at LIMIT 5").all(orgId)
+    .map((r) => r.photo_url).filter((u) => /^(https:\/\/|\/)/.test(u));
+}
+
 // the organisation as every client sees it; me = what the visitor is to it (null when not a logged-in player)
 function serialize(row, req) {
   const playerId = req ? auth.getPlayerId(req) : null;
+  const locked = !!req && isLockedFor(req, row);
   let me = null;
   if (playerId) {
     const m = memberOf(row.id, playerId);
@@ -71,8 +88,9 @@ function serialize(row, req) {
     slug: row.slug,
     type: row.type,
     name: row.name,
-    description: row.description || '',
-    contact: row.contact || '',
+    locked,
+    description: locked ? '' : row.description || '',
+    contact: locked ? '' : row.contact || '',
     logoUrl: row.logo_url || '',
     coverUrl: row.cover_url || '',
     joinPolicy: row.join_policy,
@@ -122,4 +140,4 @@ function actingOrganisation(req) {
   return org && isOrgAdmin(org.id, playerId) ? org : null;
 }
 
-module.exports = { isSuperAdmin, siteAdminFor, canRead, actingOrganisation, REREQUEST_DAYS, slugify, slugFor, memberOf, isOrgAdmin, memberCount, canRequestAgainAt, serialize };
+module.exports = { isLockedFor, previewPhotos, isSuperAdmin, siteAdminFor, canRead, actingOrganisation, REREQUEST_DAYS, slugify, slugFor, memberOf, isOrgAdmin, memberCount, canRequestAgainAt, serialize };

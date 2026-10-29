@@ -390,18 +390,20 @@
         <span class="com-logo com-logo-lg">${logo}</span>
         <h1>${escapeHtml(org.name)}${isActing() ? `<button type="button" class="com-gear" data-act="settings" aria-label="${escapeHtml(t('com.settings'))}" title="${escapeHtml(t('com.settings'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>` : ''}</h1>
         <div class="com-sub"><span class="com-badge">${escapeHtml(typeText(org))}</span>${org.city ? `${escapeHtml(org.city)} · ` : ''}${escapeHtml(membersText(org.memberCount))}</div>
+        ${org.locked && (org.previewPhotos || []).length ? `<div class="com-faces">${org.previewPhotos.map((u) => `<img src="${escapeHtml(u)}" alt="">`).join('')}</div>` : ''}
         ${org.approved ? `<p class="com-join-info">${escapeHtml(joinInfoText())}</p>` : ''}
         <div class="com-actions" id="com-join">${joinHtml()}</div>
       </div>
       ${org.approved ? '' : `<div class="com-hint-box com-wait">${escapeHtml(t('com.pendingBanner'))}</div>`}
       ${inviteToken && !(org.me && (org.me.status === 'ACTIVE')) ? `<div class="com-hint-box com-invited">${escapeHtml(t('com.invitedBanner', { name: org.name }))}</div>` : ''}
       ${isAdminOfOrg() && !isActing() ? `<div class="com-hint-box"><span>${escapeHtml(t('com.adminHint'))}</span><button type="button" class="btn btn-outline com-small" data-act="switch">${escapeHtml(t('com.switchTitle'))}</button></div>` : ''}
-      ${isActing() ? panelHtml() : ''}
-      <div class="com-tabs" role="tablist">
+      ${org.locked ? `<p class="com-locked">${escapeHtml(t('com.lockedNote'))}</p>` : ''}
+      ${isActing() && !org.locked ? panelHtml() : ''}
+      ${org.locked ? '' : `<div class="com-tabs" role="tablist">
         ${[['news', 'com.tabNews'], ['events', 'com.tabEvents'], ['info', 'com.tabInfo']]
           .map(([id, key]) => `<button type="button" class="com-tab${tab === id ? ' on' : ''}" data-tab="${id}" role="tab">${escapeHtml(t(key))}</button>`).join('')}
       </div>
-      <div id="com-body">${tabBody()}</div>`;
+      <div id="com-body">${tabBody()}</div>`}`;
     bind();
     restoreTyped(typed);
   }
@@ -513,6 +515,17 @@
       const session = await loadSession();
       loggedIn = !!session.isPlayer && !!session.playerId;
       org = await api(`/communities/${encodeURIComponent(slug)}`);
+      // a community that decides on every request shows its header only until the player is approved: the server refuses the rest
+      if (org.locked) {
+        const mine = loggedIn ? await api('/communities/mine') : { acting: null };
+        if (run !== loadRun) return;
+        members = { members: [], pending: [] };
+        posts = { items: [], more: false };
+        tournaments = [];
+        acting = mine.acting;
+        render();
+        return;
+      }
       const [m, p, mineRes, ts] = await Promise.all([
         api(`/communities/${org.id}/members`),
         api(`/communities/${org.id}/posts`),
