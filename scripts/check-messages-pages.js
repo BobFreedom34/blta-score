@@ -57,7 +57,7 @@ test('messages.js uses only texts that exist in both languages, escapes what pla
   assert.ok(/https\?:/.test(js), 'links are made for http and https');
   assert.ok(!/javascript:/i.test(js.replace(/\/\/.*$/gm, '')), 'no javascript: anywhere in the code');
   assert.ok(js.includes('rel="noopener noreferrer'), 'links open safely');
-  assert.ok(js.includes('requirePlayerAuth') && js.includes("io(") && js.includes('dm:message') && js.includes('dm:unread') && js.includes('dm:removed'), 'login prompt and the live events');
+  assert.ok(js.includes('requireRealPlayer') && js.includes("io(") && js.includes('dm:message') && js.includes('dm:unread') && js.includes('dm:removed'), 'login prompt and the live events');
 });
 
 test('the page is served at its Slovak and English address, also for a conversation, and is kept out of search engines', async () => {
@@ -153,12 +153,31 @@ test('the profile of a player has a "Write a message" button beside the planned 
   const block = js.slice(js.indexOf('function updateMessageButton'), js.indexOf('function updateMessageButton') + 1800);
   assert.ok(block.includes('playerAuthed') && block.includes('currentPlayerId') && block.includes('style.display'), 'it is hidden on the own profile');
   assert.ok(js.includes("'/messages/conversations'") && js.includes('playerId: currentPlayer.id'), 'the chat is started with this player');
-  assert.ok(js.includes('requirePlayerAuth(') && js.includes('siteUrl(`/messages/${') , 'a visitor logs in first, then the chat is opened');
+  assert.ok(js.includes('requireRealPlayer(') && js.includes('siteUrl(`/messages/${') , 'a visitor logs in first, then the chat is opened');
   assert.ok(js.includes('toast(err.message)'), 'a refusal of the server (blocked, too many strangers today, no phone) is shown');
   const i18n = read('js/i18n.js');
   assert.strictEqual(i18n.split("'player.writeMessage':").length, 3, 'the label exists in both languages');
   const css = read('css/style.css');
   assert.ok(css.includes('.player-stat-row {') && css.includes('.player-msg-btn {'), 'it is styled');
+  // it is a tile of the page, like the planned matches tile beside it: the same grey, corner radius and faint border (not a green block with sharp corners)
+  const rule = css.slice(css.indexOf('.player-msg-btn {'), css.indexOf('}', css.indexOf('.player-msg-btn {')));
+  assert.ok(rule.includes('background: var(--fill-grey)') && rule.includes('border-radius: var(--radius)') && rule.includes('rgba(255, 255, 255, 0.07)'), 'the look of the tile: ' + rule);
+  assert.ok(/\.player-msg-btn \.venue-icon \{[^}]*color: var\(--status-green\)/.test(css), 'the icon is green');
+  assert.ok(!/class="[^"]*btn-join/.test(html.slice(html.indexOf('id="player-msg-btn"') - 120, html.indexOf('id="player-msg-btn"'))), 'not the green Join button');
+});
+
+test('an admin without a player profile is not "logged in" for the player-only features: their login buttons open the login window (they used to do nothing)', () => {
+  const common = read('js/common.js');
+  const at = common.indexOf('function requireRealPlayer');
+  assert.ok(at > 0, 'requireRealPlayer exists');
+  const fn = common.slice(at, at + 500);
+  assert.ok(fn.includes('playerAuthed') && fn.includes('currentPlayerId') && fn.includes('openPlayerLoginModal(onReady)'), 'it needs a player identity, else it opens the login window');
+  // (the session of an admin says isPlayer: true with no player id, so requirePlayerAuth lets him through and the button did nothing)
+  assert.ok(read('js/messages.js').includes("requireRealPlayer(init)") && !read('js/messages.js').includes('requirePlayerAuth(init)'), 'the Messages login button');
+  const communities = read('js/communities.js');
+  assert.ok(communities.includes('requireRealPlayer(openCreate)') && communities.includes('requireRealPlayer(() => {})') && !/requirePlayerAuth\(/.test(communities), 'the communities list');
+  assert.ok(!/requirePlayerAuth\(/.test(read('js/community.js').slice(read('js/community.js').indexOf("act === 'join'"), read('js/community.js').indexOf("act === 'join'") + 120)), 'Join');
+  assert.ok(read('js/player.js').includes('messageBtn.addEventListener(\'click\', () => requireRealPlayer('), 'Write a message');
 });
 
 test('cookie-signature is a declared dependency (the live connection uses it directly)', () => {

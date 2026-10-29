@@ -44,7 +44,8 @@ function scheduleOf(leagueId) {
       logoUrl: s.logo_url || '',
       registrationOpen: !!s.registration_open,
       // a doubles tournament is played in the one category Štvorhra, not in the three league ones
-      categories: tournament && s.play_type === 'DOUBLES' ? ['DOUBLES'] : (tournament && own.length ? own : CATEGORIES),
+      // (a tournament without categories has no category chips)
+      categories: tournament && s.play_type === 'DOUBLES' ? ['DOUBLES'] : (tournament && s.categories === 'OPEN' ? [] : (tournament && own.length ? own : CATEGORIES)),
       // a tournament of a club carries the club (the Harmonogram labels it); null for the others
       organisation: clubTournaments.publicFace(s).organisation,
     };

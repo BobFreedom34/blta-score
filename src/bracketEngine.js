@@ -126,7 +126,7 @@ function maybeCreateMatch(node) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', NULL, ?, 'PLANNED', ?, '[]', 1, ?)
   `).run(
     crypto.randomUUID(),
-    doubles ? 'OTHER' : (bracket.category || 'OTHER'), // a doubles match belongs to no league category
+    doubles || bracket.category === 'OPEN' ? 'OTHER' : (bracket.category || 'OTHER'), // a doubles match, or a match of a tournament without categories, belongs to no league category
     bracket.season_id || null,
     matchStageFor(bracket),
     node.player1_id,
@@ -490,7 +490,7 @@ function syncBracketMatches(bracketId) {
   const category = db.prepare('UPDATE matches SET category = ? WHERE id = ? AND status != \'FINISHED\'');
   ids.forEach((id) => {
     labels.run(bracket.season_id || null, matchStageFor(bracket), id);
-    category.run(bracket.is_doubles ? 'OTHER' : (bracket.category || 'OTHER'), id);
+    category.run(bracket.is_doubles || bracket.category === 'OPEN' ? 'OTHER' : (bracket.category || 'OTHER'), id);
   });
   return ids.length;
 }

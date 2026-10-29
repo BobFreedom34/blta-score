@@ -40,7 +40,9 @@ async function openDrawPanel(host, seasonId, onChanged) {
 
   const settingsFor = (c) => choice[c.category] || (choice[c.category] = { ...c.settings });
   const draftOf = (r) => (drafts.has(r.id) ? drafts.get(r.id) : (r.seed ? String(r.seed) : ''));
-  const dirty = (category) => regs.filter((r) => r.category === category && draftOf(r) !== (r.seed ? String(r.seed) : '')).length;
+  // the players of a category (in a tournament without categories, 'OPEN', everybody who registered)
+  const rowsOf = (category) => (category === 'OPEN' ? regs : regs.filter((r) => r.category === category));
+  const dirty = (category) => rowsOf(category).filter((r) => draftOf(r) !== (r.seed ? String(r.seed) : '')).length;
   const isGroups = (f) => f === 'GROUPS' || f === 'GROUPS_BRACKET';
   const inputStyle = 'padding:7px 9px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px;max-width:100%';
   const groupLetter = (i) => (i < 26 ? String.fromCharCode(65 + i) : String(i + 1));
@@ -62,7 +64,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
   }
 
   function seedRowsHtml(c) {
-    const rows = regs.filter((r) => r.category === c.category);
+    const rows = rowsOf(c.category);
     if (!rows.length) return '';
     const sorted = [...rows].sort((a, b) => (Number(draftOf(a)) || 1e9) - (Number(draftOf(b)) || 1e9) || a.name.localeCompare(b.name));
     const locked = c.stage !== 'NONE';
@@ -78,7 +80,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
   function groupEditorHtml(c, s) {
     const d = groupDraft[c.category];
     if (!d) return '<div style="font-size:12px;color:var(--gray)">Načítavam návrh skupín…</div>';
-    const rows = regs.filter((r) => r.category === c.category);
+    const rows = rowsOf(c.category);
     const opts = (cur) => Array.from({ length: d.count }, (_, i) => `<option value="${i}"${i === cur ? ' selected' : ''}>${groupLetter(i)}</option>`).join('');
     const sizes = Array.from({ length: d.count }, (_, i) => rows.filter((r) => d.assign.get(r.id) === i).length);
     return `
@@ -336,7 +338,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
         toast('Kurty uložené');
         await refresh();
       } else if (act === 'seeds') {
-        const seeds = regs.filter((r) => r.category === cat).map((r) => ({ id: r.id, seed: draftOf(r) === '' ? null : Number(draftOf(r)) }));
+        const seeds = rowsOf(cat).map((r) => ({ id: r.id, seed: draftOf(r) === '' ? null : Number(draftOf(r)) }));
         const savedList = await api(`/seasons/${seasonId}/seeds`, { method: 'POST', body: { category: cat, seeds } });
         if (cat === 'DOUBLES') doubles = await api(`/seasons/${seasonId}/doubles`); // the seeds of the pairs are kept with the pairs
         regs = withPairs(savedList);
@@ -355,7 +357,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
         const body = { category: cat, ...s };
         if (isGroups(s.format) && s.mode === 'MANUAL') {
           const d = groupDraft[cat];
-          const rows = regs.filter((r) => r.category === cat);
+          const rows = rowsOf(cat);
           body.groups = Array.from({ length: d.count }, (_, i) => ({ name: `Skupina ${groupLetter(i)}`, registrationIds: rows.filter((r) => d.assign.get(r.id) === i).map((r) => r.id) })).filter((g) => g.registrationIds.length);
         }
         const made = await api(`/seasons/${seasonId}/draw`, { method: 'POST', body });

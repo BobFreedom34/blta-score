@@ -121,13 +121,15 @@ function serializeGroup(g) {
 
 const CATEGORY_KEYS = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 const KINDS = ['LEAGUE', 'TOURNAMENT'];
-// the categories of a season as an array (all three when none is saved)
+// the categories of a season as an array (all three when none is saved; ['OPEN'] for a tournament without categories)
 function parseCategories(raw) {
+  if (raw === 'OPEN') return ['OPEN'];
   const list = String(raw || '').split(',').filter((c) => CATEGORY_KEYS.includes(c));
   return list.length ? list : CATEGORY_KEYS;
 }
-// a request's category list as the stored comma text; null = all of them
+// a request's category list as the stored comma text; null = all of them; 'OPEN' = no categories at all (it wins over the others)
 function categoriesToStore(list) {
+  if (Array.isArray(list) && list.includes('OPEN')) return 'OPEN';
   const picked = (Array.isArray(list) ? list : []).filter((c) => CATEGORY_KEYS.includes(c));
   return picked.length && picked.length < CATEGORY_KEYS.length ? CATEGORY_KEYS.filter((c) => picked.includes(c)).join(',') : null;
 }
@@ -451,12 +453,14 @@ router.post('/:id/registrations/categories', clubTournaments.requireSeasonManage
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
   if (tournamentDraw.isDoublesTournament(season)) return res.status(400).json({ error: 'A doubles tournament has no categories' });
+  if (tournamentDraw.isOpenTournament(season)) return res.status(400).json({ error: 'A tournament without categories needs no sorting' });
   const list = req.body && req.body.assignments;
   if (!Array.isArray(list) || !list.length) return res.status(400).json({ error: 'Nothing to save' });
   const own = new Set(db.prepare('SELECT id FROM season_registrations WHERE season_id = ?').all(season.id).map((r) => r.id));
   for (const item of list) {
     if (!item || !own.has(Number(item.id))) return res.status(400).json({ error: 'A registration does not belong to this season' });
-    const ok = BLTA_CATEGORIES.includes(item.category) || (item.category === '' && season.kind === 'TOURNAMENT');
+    const allowed = season.kind === 'TOURNAMENT' ? tournamentDraw.categoriesFor(season) : BLTA_CATEGORIES; // (a tournament played in Elite and Next Gen has no Novice to sort into)
+    const ok = allowed.includes(item.category) || (item.category === '' && season.kind === 'TOURNAMENT');
     if (!ok) return res.status(400).json({ error: 'Choose a category' });
   }
   const update = db.prepare('UPDATE season_registrations SET category = ?, seed = CASE WHEN category = ? THEN seed ELSE NULL END WHERE id = ?');

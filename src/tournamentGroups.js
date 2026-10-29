@@ -9,7 +9,7 @@ const roundRobin = require('./roundRobin');
 const { computeGroupStandings } = require('./standings');
 
 const groupName = (i) => `Skupina ${i < 26 ? String.fromCharCode(65 + i) : i + 1}`;
-const CATEGORY_LABELS = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', DOUBLES: 'Štvorhra' };
+const CATEGORY_LABELS = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', DOUBLES: 'Štvorhra', OPEN: 'Bez kategórie' };
 
 // The doubles (DOUBLES) of a tournament are played by pairs (tournament_pairs): in a group or a bracket a pair is one entrant, identified by its first
 // player (the "captain"); this finds the partner of one, and makes the pair look like a player ("A / B", no profile) where tables are shown.
@@ -79,7 +79,7 @@ function createGroups(season, category, assignments, format) {
     a.playerIds.forEach((pid, k) => insertMember.run(id, pid, k));
     const plan = roundRobin.planMissingMatches(a.playerIds, []);
     plan.forEach((m) => insertMatch.run(
-      crypto.randomUUID(), doubles ? 'OTHER' : category, season.id, id, m.round, m.p1, m.p2,
+      crypto.randomUUID(), doubles || category === 'OPEN' ? 'OTHER' : category, season.id, id, m.round, m.p1, m.p2,
       doubles ? 1 : 0, doubles ? partnerIn(season.id, m.p1) : null, doubles ? partnerIn(season.id, m.p2) : null,
       format, JSON.stringify(engine.initState(format)),
     ));

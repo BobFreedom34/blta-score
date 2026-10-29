@@ -1028,7 +1028,7 @@ function updateMessageButton() {
   btn.style.display = playerAuthed && currentPlayerId && currentPlayerId === currentPlayer.id ? 'none' : '';
 }
 window.addEventListener('blta:auth-changed', updateMessageButton);
-if (messageBtn) messageBtn.addEventListener('click', () => requirePlayerAuth(async () => {
+if (messageBtn) messageBtn.addEventListener('click', () => requireRealPlayer(async () => {
   if (!currentPlayer || currentPlayerId === currentPlayer.id) return;
   try {
     const chat = await api('/messages/conversations', { method: 'POST', body: { playerId: currentPlayer.id } });

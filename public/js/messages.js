@@ -474,7 +474,7 @@
       myId = session.playerId || null;
       if (!loggedIn) {
         root.innerHTML = `<div class="msg-login"><p>${escapeHtml(t('msg.loginNeeded'))}</p><button type="button" class="btn btn-primary" id="msg-login">${escapeHtml(t('nav.loginPlayer'))}</button></div>`;
-        document.getElementById('msg-login').addEventListener('click', () => requirePlayerAuth(init));
+        document.getElementById('msg-login').addEventListener('click', () => requireRealPlayer(init));
         return;
       }
       renderLayout();

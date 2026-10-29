@@ -15,11 +15,20 @@ const nameMatch = require('./nameMatch');
 
 // DOUBLES (štvorhra) is a category like the three league ones, with the same formats: its entrants are the PAIRS of the tournament
 // (tournament_pairs), seeded and drawn like players, a pair being identified by its first player (see tournamentGroups.partnerIn).
-const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE', 'DOUBLES'];
-const CATEGORY_LABELS = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', DOUBLES: 'Štvorhra' };
+const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE', 'DOUBLES', 'OPEN'];
+const CATEGORY_LABELS = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', DOUBLES: 'Štvorhra', OPEN: 'Bez kategórie' };
 // a tournament is played as singles (Elite, Next Gen, Novice) or as doubles (Štvorhra), never both
 const isDoublesTournament = (season) => !!season && season.kind === 'TOURNAMENT' && season.play_type === 'DOUBLES';
-const categoriesFor = (season) => (isDoublesTournament(season) ? ['DOUBLES'] : ['ELITE', 'NEXT_GEN', 'NOVICE']);
+// A singles tournament is played in the categories its organiser chose (seasons.categories: some of Elite / Next Gen / Novice, all three when nothing is saved),
+// or in none ('OPEN', "Bez kategórie"): then there is one draw for everybody who registered and nobody has to be sorted into a category.
+const SINGLES_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+const isOpenTournament = (season) => !!season && season.kind === 'TOURNAMENT' && season.play_type !== 'DOUBLES' && season.categories === 'OPEN';
+function categoriesFor(season) {
+  if (isDoublesTournament(season)) return ['DOUBLES'];
+  if (isOpenTournament(season)) return ['OPEN'];
+  const chosen = String((season && season.categories) || '').split(',').filter((c) => SINGLES_CATEGORIES.includes(c));
+  return chosen.length ? SINGLES_CATEGORIES.filter((c) => chosen.includes(c)) : SINGLES_CATEGORIES;
+}
 // a pair is listed like a registration for the seeds and the groups: its id is this plus the id of the pair (so it never meets a registration id)
 const PAIR_ID_OFFSET = 1000000;
 const FORMATS = ['PRINCE', 'MONRAD', 'ELIMINATION', 'GROUPS', 'GROUPS_BRACKET'];
@@ -29,6 +38,7 @@ const DEFAULT_CONSOLATION_FORMAT = 'BO3_G4_STB';
 
 function registrationsOf(seasonId, category) {
   if (category === 'DOUBLES') return pairRegistrations(seasonId);
+  if (category === 'OPEN') return db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(seasonId); // everybody who registered
   return db.prepare('SELECT * FROM season_registrations WHERE season_id = ? AND category = ? ORDER BY created_at, id').all(seasonId, category);
 }
 
@@ -545,6 +555,7 @@ function doublesOverview(season) {
 }
 
 module.exports = {
+  isOpenTournament,
   doublesOverview,
   addPair,
   addPairsFromRegistrations,

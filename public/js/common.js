@@ -3062,6 +3062,13 @@ function requirePlayerAuth(onReady) {
   openPlayerLoginModal(onReady);
 }
 
+// For what needs a real PLAYER (messages, communities and clubs, writing to a player): a session that is only an admin says isPlayer, but has no player identity
+// (currentPlayerId is null), so requirePlayerAuth let it through and the button did nothing. Here it needs the identity, else the login window opens.
+function requireRealPlayer(onReady) {
+  if (playerAuthed && currentPlayerId) { onReady(); return; }
+  openPlayerLoginModal(onReady);
+}
+
 // Same idea as requirePlayerAuth, but also lets a referee session through
 // (see refereeAuthed above) — used ONLY by match.js's live-scoring button
 // handlers (start/score/undo/pause/resume/restart/finish/unfinished/

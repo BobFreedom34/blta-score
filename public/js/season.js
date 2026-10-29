@@ -8,9 +8,9 @@ const rootEl = document.getElementById('sv-root');
 const slug = decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '');
 
 const CATEGORY_ORDER = ['ELITE', 'NEXT_GEN', 'NOVICE'];
-const CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', get DOUBLES() { return t('season.catDoubles'); } };
+const CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', get DOUBLES() { return t('season.catDoubles'); }, get OPEN() { return t('season.catOpen'); } };
 // the doubles (štvorhra) of a tournament is a category of its own in the groups, the schedule and the brackets (not in the registration form)
-const CATEGORY_ORDER_ALL = [...CATEGORY_ORDER, 'DOUBLES'];
+const CATEGORY_ORDER_ALL = [...CATEGORY_ORDER, 'DOUBLES', 'OPEN']; // (OPEN = a tournament played without categories: one draw for everybody)
 const playerCatName = (c) => (c === 'NONE' ? t(isDoublesTournament() ? 'season.pairsTitle' : 'season.noCategory') : CATEGORY_NAMES[c]);
 
 let season = null;
@@ -388,7 +388,7 @@ function playoffHtml() {
   // the doubles (štvorhra) draw of a tournament is a "category" of its own here
   const catOfBracket = (b) => (b.isDoubles ? 'DOUBLES' : b.category);
   const catName = (c) => (c === 'DOUBLES' ? t('season.catDoubles') : CATEGORY_NAMES[c]);
-  const cats = [...CATEGORY_ORDER, 'DOUBLES'].filter((c) => brackets.some((b) => catOfBracket(b) === c));
+  const cats = [...CATEGORY_ORDER, 'DOUBLES', 'OPEN'].filter((c) => brackets.some((b) => catOfBracket(b) === c));
   if (playoffCat !== 'ALL' && !cats.includes(playoffCat)) playoffCat = 'ALL';
   const btn = (value, label, count) => `<button type="button" class="tab${playoffCat === value ? ' active' : ''}" data-oc="${value}">${escapeHtml(label)}<small>${count}</small></button>`;
   const filter = `<div class="tabs sv-line" id="sv-pcats">${btn('ALL', t('season.schedAll'), brackets.length)}${cats.map((c) => btn(c, catName(c), brackets.filter((b) => catOfBracket(b) === c).length)).join('')}</div>`;

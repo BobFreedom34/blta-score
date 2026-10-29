@@ -642,6 +642,19 @@ test('"Hráč mesiaca" on the home page ignores the matches of a club that does 
   assert.ok(after.player && after.player.id === adminWinner.id, 'the same wins in an admin tournament make a player of the month');
 });
 
+test('a club tournament can be made in some categories or without any (Bez kategórie)', async () => {
+  const a = await clubWithTournament();
+  const two = await createTournament(a.org, a.owner, { categories: ['ELITE', 'NEXT_GEN'] });
+  assert.strictEqual(two.status, 201, JSON.stringify(two.json));
+  assert.deepStrictEqual(two.json.categories, ['ELITE', 'NEXT_GEN']);
+  const none = await createTournament(a.org, a.owner, { categories: ['OPEN'] });
+  assert.strictEqual(none.status, 201, JSON.stringify(none.json));
+  assert.deepStrictEqual(none.json.categories, ['OPEN']);
+  // and the organiser reads the draw of it: one draw for everybody
+  const overview = await call('GET', `/api/seasons/${none.json.id}/draw`, { cookie: a.owner.cookie });
+  assert.deepStrictEqual(overview.json.categories.map((c) => c.category), ['OPEN']);
+});
+
 // (the tests of the next tasks go here)
 
 async function main() {

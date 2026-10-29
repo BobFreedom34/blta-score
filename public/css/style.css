@@ -1413,8 +1413,10 @@ body:not(.embed-light) .match-card .scoreboard .set-win { color: var(--status-gr
 .player-flag-img { display: block; height: 28px; width: auto; border-radius: 3px; box-shadow: var(--shadow); }
 /* the planned matches tile and, beside it, the button that writes to the player */
 .player-stat-row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; margin-top: 24px; }
-.player-msg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 18px; min-height: 52px; border-radius: 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.03em; }
-.player-msg-btn .venue-icon { width: 18px; height: 18px; }
+/* a tile of the page like the planned matches tile beside it: the same grey, corner radius, faint border and height, the label in the type of the tile labels, a green icon */
+.player-msg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 8px 18px; background: var(--fill-grey); color: var(--white); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: var(--radius); box-shadow: none; font-family: inherit; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; cursor: pointer; transition: box-shadow 0.15s ease, border-color 0.15s ease; }
+.player-msg-btn:hover { box-shadow: var(--shadow-lg); border-color: var(--orange); }
+.player-msg-btn .venue-icon { width: 20px; height: 20px; color: var(--status-green); }
 .player-upcoming-stat {
   margin-top: 0;
   width: 168px;

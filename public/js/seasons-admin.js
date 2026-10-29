@@ -313,7 +313,7 @@ function seasonCardHtml(s) {
         <span class="sa-count">${IS_TOURNAMENT ? '' : `${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'} · `}${s.matchCount} ${s.matchCount === 1 ? 'match' : 'matches'}</span>
       </summary>
       <div class="sa-tabs" role="tablist">
-        ${CARD_TABS.filter(([key]) => !(s.playType === 'DOUBLES' && key === 'assign')).map(([key, label]) => `<button type="button" class="sa-tab${key === active ? ' active' : ''}" data-tab="${key}" role="tab">${label}</button>`).join('')}
+        ${CARD_TABS.filter(([key]) => !(s.playType === 'DOUBLES' && key === 'assign') && !(s.categories.includes('OPEN') && key === 'assign')).map(([key, label]) => `<button type="button" class="sa-tab${key === active ? ' active' : ''}" data-tab="${key}" role="tab">${label}</button>`).join('')}
         <a class="sa-tab-link" data-public href="/${IS_TOURNAMENT ? 'tournament' : 'season'}/${escapeHtml(s.slug)}" target="_blank" rel="noopener">${IS_TOURNAMENT ? 'Stránka turnaja' : 'Stránka sezóny'} ↗</a>
       </div>
       <div class="sa-body">
@@ -332,7 +332,9 @@ function seasonCardHtml(s) {
                   <div style="padding-top:6px">Štvorhra — turnaj dvojíc (typ sa po vytvorení nedá zmeniť)</div>
                 </div>` : ''}
                 ${IS_TOURNAMENT && s.playType !== 'DOUBLES' ? `<div class="sa-field sa-wide">Kategórie
-                  <div class="sa-checks">${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}> ${label}</label>`).join('')}</div>
+                  <div class="sa-checks">${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}${s.categories.includes('OPEN') ? ' disabled' : ''}> ${label}</label>`).join('')}
+                    <label><input type="checkbox" data-cat="OPEN"${s.categories.includes('OPEN') ? ' checked' : ''}> Bez kategórie</label></div>
+                  <span class="sa-hint">Turnaj sa hrá len v zaškrtnutých kategóriách (len tie sa ukážu v „Zaradenie do kategórií“ a v „Pavúk turnaja“). „Bez kategórie“: hráči sa nezaraďujú, hrá sa jeden pavúk pre všetkých prihlásených.</span>
                 </div>` : ''}
               </div>
             </section>
@@ -462,6 +464,18 @@ function wireSeason(card) {
     if (card.open) openIds.add(id); else openIds.delete(id);
     saveOpenIds();
   });
+
+  // "Bez kategórie" switches the three categories off (and back on when it is unticked): a tournament is played in some of the categories or in none
+  const editForm = card.querySelector('.season-edit-form'); // (only the boxes of this form: the draw tab has controls with a data-cat of their own)
+  const noCategoryBox = editForm.querySelector('[data-cat="OPEN"]');
+  if (noCategoryBox) {
+    noCategoryBox.addEventListener('change', () => {
+      editForm.querySelectorAll('[data-cat]:not([data-cat="OPEN"])').forEach((box) => {
+        box.disabled = noCategoryBox.checked;
+        if (noCategoryBox.checked) box.checked = false;
+      });
+    });
+  }
 
   card.querySelector('.season-edit-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -745,7 +759,7 @@ function wireSeason(card) {
     const bracketsHost = card.querySelector('.season-brackets');
     const openers = IS_TOURNAMENT ? {
       regs: () => loadRegs(),
-      assign: () => openAssignPanel(assignHost, id, () => {}),
+      assign: () => openAssignPanel(assignHost, id, () => {}, season.categories),
       draw: () => openDrawPanel(drawHost, id),
     } : {
       regs: () => loadRegs(),

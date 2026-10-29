@@ -117,9 +117,9 @@
       ${body}
       <button type="button" class="btn btn-primary com-create" id="com-create-btn">＋ ${escapeHtml(t('com.create'))}</button>`;
     root.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; render(); }));
-    document.getElementById('com-create-btn').addEventListener('click', () => requirePlayerAuth(openCreate));
+    document.getElementById('com-create-btn').addEventListener('click', () => requireRealPlayer(openCreate));
     const loginBtn = document.getElementById('com-login-btn');
-    if (loginBtn) loginBtn.addEventListener('click', () => requirePlayerAuth(() => {}));
+    if (loginBtn) loginBtn.addEventListener('click', () => requireRealPlayer(() => {}));
     const explore = document.getElementById('com-explore-btn');
     if (explore) explore.addEventListener('click', () => { tab = 'discover'; render(); });
     const older = document.getElementById('com-feed-older');

@@ -180,6 +180,7 @@
         </div>
         <div class="field" id="com-t-cats"><label>${escapeHtml(t('com.tFieldCategories'))}</label>
           ${[['ELITE', 'Elite'], ['NEXT_GEN', 'Next Gen'], ['NOVICE', 'Novice']].map(([k, label]) => `<label class="com-radio"><input type="checkbox" data-cat="${k}" checked> ${label}</label>`).join('')}
+          <label class="com-radio"><input type="checkbox" id="com-t-open"> ${escapeHtml(t('com.tNoCategory'))}</label>
         </div>
         <div class="field"><label>${escapeHtml(t('com.tFieldFee'))}</label><input type="text" id="com-t-fee" maxlength="40" placeholder="${escapeHtml(t('com.tFeeHint'))}"></div>
         <div class="field"><label>${escapeHtml(t('com.tFieldInfo'))}</label><textarea id="com-t-info" rows="4" maxlength="4000" placeholder="${escapeHtml(t('com.tInfoHint'))}"></textarea></div>
@@ -195,6 +196,11 @@
     document.body.appendChild(back);
     const form = back.querySelector('#com-t-form');
     const cats = back.querySelector('#com-t-cats');
+    // "Bez kategórie" switches the three categories off: the tournament is played without them (one draw for everybody)
+    const noCategory = form.querySelector('#com-t-open');
+    noCategory.addEventListener('change', () => {
+      cats.querySelectorAll('[data-cat]').forEach((b) => { b.disabled = noCategory.checked; if (noCategory.checked) b.checked = false; });
+    });
     form.querySelectorAll('input[name="com-t-type"]').forEach((r) => r.addEventListener('change', () => { cats.hidden = form.querySelector('input[name="com-t-type"]:checked').value === 'DOUBLES'; }));
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -210,7 +216,7 @@
           name: value('#com-t-name').trim(), venue: value('#com-t-venue').trim(), startDate: value('#com-t-start') || null, endDate: value('#com-t-end') || null,
           playType, entryFee: value('#com-t-fee').trim(), info: value('#com-t-info').trim() ? `<p>${escapeHtml(value('#com-t-info').trim()).replace(/\n/g, '<br>')}</p>` : '',
         };
-        if (playType === 'SINGLES') body.categories = [...cats.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat);
+        if (playType === 'SINGLES') body.categories = noCategory.checked ? ['OPEN'] : [...cats.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat);
         const made = await api(`/communities/${org.id}/tournaments`, { method: 'POST', body });
         if (back.querySelector('#com-t-reg').checked) await api(`/seasons/${made.id}`, { method: 'PATCH', body: { registrationOpen: true } });
         window.location.href = siteUrl(`/community-tournament/${made.id}`); // (a code address is only turned into the real one by siteUrl, links are rewritten by localize.js)
@@ -279,7 +285,7 @@
     }));
     root.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
       const act = b.dataset.act;
-      if (act === 'join') requirePlayerAuth(() => guard(b, async () => { await api(`/communities/${org.id}/join`, { method: 'POST' }); await load(); }));
+      if (act === 'join') requireRealPlayer(() => guard(b, async () => { await api(`/communities/${org.id}/join`, { method: 'POST' }); await load(); }));
       if (act === 'cancel-request') guard(b, async () => { await api(`/communities/${org.id}/cancel-request`, { method: 'POST' }); await load(); });
       if (act === 'leave' && window.confirm(t('com.leaveConfirm', { name: org.name }))) {
         guard(b, async () => { await api(`/communities/${org.id}/leave`, { method: 'POST' }); await load(); refreshActingOrg(); });
