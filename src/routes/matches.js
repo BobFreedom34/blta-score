@@ -21,6 +21,7 @@ const drivePhotos = require('../drivePhotos');
 const changeLog = require('../changeLog');
 const matchPhotos = require('./matchPhotos');
 const clubTournaments = require('../clubTournaments');
+const playerPush = require('../playerPush');
 
 const router = express.Router();
 
@@ -83,6 +84,7 @@ function notifyProposalReceived(row, proposedBy) {
 
   const recipient = getPlayer(recipientId);
   const proposer = getPlayer(proposerId);
+  playerPush.notifyPlayer(recipientId, 'PROPOSAL_RECEIVED', { name: proposer && proposer.name, matchToken: row.share_token });
   if (recipient && recipient.email && proposer) {
     sendProposalReceivedEmail(row, proposer, recipient).catch((err) => {
       console.error('[matches] failed to send proposal-received email:', err.message);
@@ -99,6 +101,9 @@ function notifyProposalConfirmed(matchId, proposerPlayerId, confirmerPlayerId) {
   if (!proposerPlayerId) return;
   db.prepare('INSERT INTO proposal_notifications (player_id, match_id, kind, other_player_id) VALUES (?, ?, ?, ?)')
     .run(proposerPlayerId, matchId, 'CONFIRMED', confirmerPlayerId || null);
+  const confirmer = confirmerPlayerId ? getPlayer(confirmerPlayerId) : null;
+  const confirmedMatch = db.prepare('SELECT share_token FROM matches WHERE id = ?').get(matchId);
+  playerPush.notifyPlayer(proposerPlayerId, 'PROPOSAL_CONFIRMED', { name: confirmer ? confirmer.name : 'Admin', matchToken: confirmedMatch && confirmedMatch.share_token });
 }
 
 // Emails everyone subscribed to this match/type who hasn't been notified yet.
@@ -2093,7 +2098,10 @@ router.post('/:token/messages', requireLoggedIn, (req, res) => {
   );
   playerIdsOf(row)
     .filter((playerId) => playerId !== posterId)
-    .forEach((playerId) => notifyChat.run(playerId, row.id, result.lastInsertRowid));
+    .forEach((playerId) => {
+      notifyChat.run(playerId, row.id, result.lastInsertRowid);
+      playerPush.notifyPlayer(playerId, 'CHAT', { fromName: author, body, matchToken: row.share_token });
+    });
 
   req.app.get('io').to(`match:${row.share_token}`).emit('message:new', { token: row.share_token, message });
   res.status(201).json(message);

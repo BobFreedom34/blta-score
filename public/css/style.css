@@ -1767,6 +1767,9 @@ body:not(.embed-light) .match-card .scoreboard .set-win { color: var(--status-gr
   top: 0;
   background: var(--white);
 }
+.badge-notif-push { padding: 10px 14px; border-top: 1px solid var(--gray-light); font-size: 12px; color: var(--gray); text-align: left; line-height: 1.4; }
+.badge-notif-push-btn { min-width: 0; padding: 6px 14px; font-size: 12.5px; font-weight: 800; }
+.badge-notif-push .btn-outline.badge-notif-push-btn { margin-top: 6px; color: var(--ink); }
 .badge-notif-empty {
   padding: 24px 14px;
   text-align: center;
@@ -5509,7 +5512,9 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .com-radio input { width: auto; margin: 0; }
 
 /* Komunity a kluby: the page of one community or club (public/js/community.js) */
-.com-cover { height: 180px; margin: 0 -4px; border-radius: var(--radius); background-size: cover; background-position: center; }
+/* the same proportions as the carousel on the home page (.hc-slide) */
+.com-cover { aspect-ratio: 16 / 6; margin: 0 -4px; border-radius: var(--radius); background-size: cover; background-position: center; }
+@media (max-width: 700px) { .com-cover { aspect-ratio: 16 / 9; } }
 .com-cover-empty { background: linear-gradient(120deg, #2a2f3a, #3d4452 45%, rgba(255, 85, 0, 0.55)); }
 .com-head { position: relative; margin-top: -42px; padding: 0 4px 6px; text-align: center; }
 .com-logo-lg { width: 84px; height: 84px; margin: 0 auto 8px; border-width: 3px; border-color: var(--status-green); background: var(--fill-grey); font-size: 26px; box-shadow: 0 0 0 4px #100e0b; }
@@ -5587,8 +5592,8 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 /* the club page: Join is green, Leave is red, the neutral buttons are readable on the dark page; the Info tab */
 .btn-join { background: var(--status-green); border: 2px solid var(--status-green); color: #0a0a0a; font-weight: 800; }
 .btn-join:hover { filter: brightness(1.08); }
-.btn-leave { background: transparent; border: 2px solid #e5484d; color: #ff6b6b; font-weight: 800; }
-.btn-leave:hover { background: #e5484d; color: var(--white); }
+.com-actions .btn.btn-leave { min-width: 0; padding: 6px 16px; font-size: 13px; font-weight: 800; background: var(--orange); border: 0; color: var(--white); }
+.com-actions .btn.btn-leave:hover { filter: brightness(1.1); }
 #com-page .btn-outline, #com-root .btn-outline { border-color: var(--border-grey); color: var(--white); }
 #com-page .btn-outline:hover, #com-root .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
 .com-actions .btn-outline { border-color: var(--border-grey); color: var(--white); }

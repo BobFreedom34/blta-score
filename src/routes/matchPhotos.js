@@ -5,6 +5,7 @@ const express = require('express');
 const multer = require('multer');
 const db = require('../db');
 const drivePhotos = require('../drivePhotos');
+const playerPush = require('../playerPush');
 const { isAdmin, getPlayerId, isReferee } = require('../auth');
 
 const router = express.Router();
@@ -142,6 +143,10 @@ router.post('/:token/photos', (req, res) => {
             .filter((pid) => pid !== uploaderId)
             .forEach((pid) => notify.run(pid, row.id, photoId));
           db.exec('COMMIT');
+          const uploader = uploaderId ? db.prepare('SELECT name FROM players WHERE id = ?').get(uploaderId) : null;
+          playerIdsOf(row)
+            .filter((pid) => pid !== uploaderId)
+            .forEach((pid) => playerPush.notifyPlayer(pid, 'PHOTO', { name: uploader ? uploader.name : 'Admin', matchToken: row.share_token }));
         } catch (dbErr) {
           db.exec('ROLLBACK');
           throw dbErr;

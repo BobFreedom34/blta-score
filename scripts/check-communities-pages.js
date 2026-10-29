@@ -289,13 +289,14 @@ test('the club page has the tabs News, Events, Info (in this order) with the mem
   assert.ok(/'#members'|"members"|members/.test(js) && js.includes("'info'"), 'the old #members link still opens the Info tab');
 });
 
-test('Join is green and Leave is red, and no button of the club page is dark on dark', () => {
+test('Join is green and Leave is a small orange button, and no button of the club page is dark on dark', () => {
   const js = read('js/community.js');
   assert.ok(js.includes('btn-join') && js.includes('btn-leave'));
   const css = read('css/style.css');
   const rule = (sel) => { const at = css.indexOf(`${sel} {`); assert.ok(at >= 0, `${sel} has a rule`); return css.slice(at, css.indexOf('}', at)); };
   assert.ok(/status-green/.test(rule('.btn-join')), 'Join is the green of the site');
-  assert.ok(/#e5484d|#ff6b6b|red/i.test(rule('.btn-leave')), 'Leave is red');
+  const leave = rule('.com-actions .btn.btn-leave');
+  assert.ok(/background: var\(--orange\)/.test(leave) && /padding: 6px/.test(leave), 'Leave is a small orange button');
   assert.ok(/color: var\(--white\)/.test(rule('.com-actions .btn-outline')), 'a neutral button is readable on the dark page');
 });
 

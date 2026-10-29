@@ -35,6 +35,11 @@ self.addEventListener('push', (event) => {
     badge: '/notification-badge.png',
     data: { url: data.url || '/' },
   };
+  // pushes of the bell and of the messages carry a tag: a second one about the same thing replaces the first instead of piling up
+  if (data.tag) {
+    options.tag = data.tag;
+    options.renotify = true;
+  }
   event.waitUntil(self.registration.showNotification(title, options));
 });
 

@@ -4,6 +4,7 @@ const express = require('express');
 const db = require('../db');
 const auth = require('../auth');
 const messages = require('../messages');
+const playerPush = require('../playerPush');
 
 const router = express.Router();
 const { directKey, areConnected, isBlocked, memberOf, otherPlayer, card, rateLimitOk, serializeMessage, cleanBody } = messages;
@@ -209,6 +210,8 @@ router.post('/conversations/:id/messages', (req, res) => {
     });
     messages.emitToPlayers(io, [id], 'dm:unread', unreadCounts(id));
   });
+  // the other member's devices get it as a push (a push never blocks or fails the send)
+  playerPush.notifyPlayer(other.player_id, 'DM', { fromName: (playerRow(me) || {}).name, body: row.body, conversationId: found.conversation.id });
   res.status(201).json(serializeMessage(row, me));
 });
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const leagues = require('../leagues');
+const playerPush = require('../playerPush');
 const { requireSuperAdmin } = require('../auth');
 const rankingPoints = require('../rankingPoints');
 const { getMoves, getHistory } = require('../rankingSnapshots');
@@ -63,7 +64,8 @@ function buildRankings(leagueId = leagues.DEFAULT_LEAGUE_ID) {
         const row = t.rows.find((r) => normalize(r.name) === normName);
         const player = row && playerOf(row);
         if (!player) return;
-        insert.run(player.id, t.key, move.direction, move.amount, row.rank, currentWeek);
+        const made = insert.run(player.id, t.key, move.direction, move.amount, row.rank, currentWeek);
+        if (made.changes) playerPush.notifyPlayer(player.id, move.direction === 'up' ? 'RANKING_UP' : 'RANKING_DOWN', { amount: move.amount, rank: row.rank });
       });
     }
 

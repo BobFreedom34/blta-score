@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const express = require('express');
 const db = require('../db');
 const leagues = require('../leagues');
+const playerPush = require('../playerPush');
 const engine = require('../matchEngine');
 const {
   isAdmin, getPlayerId, stripPrivateFields, requireLoggedIn,
@@ -308,6 +309,7 @@ router.post('/:id/join', requirePlayerIdentity, async (req, res) => {
     if (owner && joiner) {
       db.prepare('INSERT INTO play_request_notifications (player_id, joiner_player_id, slot, message, mode) VALUES (?, ?, ?, ?, ?)')
         .run(owner.id, joiner.id, slot, message, modeOf(row));
+      playerPush.notifyPlayer(owner.id, modeOf(row) === 'DOUBLES' ? 'PARTNER_REQUEST' : 'PLAY_REQUEST', { name: joiner.name, message, mode: modeOf(row) });
       if (owner.email) {
         try {
           await sendPlayRequestEmail(owner, joiner, slot, message, modeOf(row));

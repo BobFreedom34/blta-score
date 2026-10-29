@@ -475,6 +475,27 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_push_subscriptions_match_id ON push_subscriptions(match_id);
 `);
 
+// Automatic push of the bell and of direct messages (src/playerPush.js): one row per device of a player. The endpoint is unique, so a phone
+// that is shared by two players belongs to the one who turned push on last. player_push_log is only written when PUSH_DRY_RUN=1 (the tests).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS player_push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL UNIQUE,
+    subscription TEXT NOT NULL,
+    lang TEXT NOT NULL DEFAULT 'sk',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_player_push_subscriptions_player ON player_push_subscriptions(player_id);
+  CREATE TABLE IF NOT EXISTS player_push_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    endpoint TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+
 // SQLite silently rewrites OTHER tables' foreign-key clauses to follow a
 // renamed table — so every "ALTER TABLE matches RENAME TO matches_old ...
 // DROP TABLE matches_old" rebuild above (there'll be more of these over

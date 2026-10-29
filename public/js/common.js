@@ -2589,6 +2589,7 @@ async function refreshPlayerAuth() {
   }
   updatePlayerNavLinks();
   updateBadgeBellUI(unreadNotificationCount);
+  syncPlayerPush();
   // Lets any page's own script react to a login/logout finishing (e.g. the
   // homepage re-showing/hiding "Set date & location" once it knows who's
   // logged in) without common.js needing to know what each page does.
@@ -2877,6 +2878,26 @@ function openPlayerLoginModal(onSuccess, opts) {
     submitBtn.disabled = false;
   };
 
+  // a visible way to register for somebody who has no account yet (the link under the form only appears after an unknown number)
+  let registerBtn = document.getElementById('player-login-register-btn');
+  if (!registerBtn) {
+    registerBtn = document.createElement('button');
+    registerBtn.type = 'button';
+    registerBtn.id = 'player-login-register-btn';
+    registerBtn.className = 'btn btn-outline btn-block';
+    registerBtn.style.marginTop = '10px';
+    registerBtn.textContent = t('login.registerBtn');
+    form.insertAdjacentElement('afterend', registerBtn);
+  }
+  registerBtn.onclick = () => {
+    registerPhoneInput.value = input.value.trim();
+    registerNameInput.value = '';
+    registerEmailInput.value = '';
+    registerErrorEl.textContent = '';
+    showStep(registerStep);
+    setTimeout(() => (registerPhoneInput.value ? registerNameInput : registerPhoneInput).focus(), 50);
+  };
+
   registerLink.onclick = (e) => {
     e.preventDefault();
     // Already known from the phone step that led here (see notFound
@@ -3085,6 +3106,7 @@ document.querySelectorAll('.player-login-link').forEach((el) => {
   el.addEventListener('click', async (e) => {
     e.preventDefault();
     if (playerAuthed) {
+      await dropDevicePush(); // before the logout: it needs the session
       try { await api('/player/logout', { method: 'POST' }); } catch { /* ignore */ }
       playerAuthed = false;
       currentPlayerName = null;
@@ -3176,6 +3198,7 @@ function ensureBadgeBellUI() {
   panel.innerHTML = `
     <div class="badge-notif-panel-header">${t('notif.heading')}</div>
     <div class="badge-notif-list" id="badge-notif-list"></div>
+    <div class="badge-notif-push" id="badge-notif-push" hidden></div>
   `;
   wrap.appendChild(panel);
   badgeNotifPanelEl = panel;
@@ -3235,6 +3258,7 @@ async function toggleBadgeNotifPanel() {
   const opening = badgeNotifPanelEl.hidden;
   badgeNotifPanelEl.hidden = !opening;
   if (!opening) return;
+  refreshPushRow();
   const list = document.getElementById('badge-notif-list');
   list.innerHTML = `<div class="badge-notif-empty">${t('notif.loading')}</div>`;
   try {
@@ -3486,6 +3510,95 @@ async function subscribeToPush(matchToken, type) {
     applicationServerKey: urlBase64ToUint8Array(publicKey),
   });
   await api(`/matches/${matchToken}/push-subscribe`, { method: 'POST', body: { subscription: subscription.toJSON(), type } });
+}
+
+// ---- automatic push of the bell and the messages, for this device ----
+// The player turns it on once in the bell panel; after that every bell notification and every new message arrives as a push
+// (src/playerPush.js). localStorage remembers WHICH player turned it on here, so the device is re-linked when that player logs in again and
+// is never linked to somebody else who just happens to use the same phone.
+const PUSH_PLAYER_KEY = 'blta-push-player';
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const rememberedPushPlayer = () => { try { return localStorage.getItem(PUSH_PLAYER_KEY); } catch { return null; } };
+const rememberPushPlayer = (id) => { try { if (id) localStorage.setItem(PUSH_PLAYER_KEY, String(id)); else localStorage.removeItem(PUSH_PLAYER_KEY); } catch { /* private mode */ } };
+
+async function devicePushSubscription() {
+  if (!pushSupported()) return null;
+  try {
+    // `ready` never settles when no service worker is registered (e.g. a page opened inside a frame): do not hang a logout on it
+    const registration = await Promise.race([navigator.serviceWorker.ready, new Promise((resolve) => setTimeout(resolve, 1500))]);
+    return registration ? await registration.pushManager.getSubscription() : null;
+  } catch { return null; }
+}
+
+async function enablePlayerPush() {
+  if (!pushSupported()) throw new Error(t('notif.pushUnsupported'));
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') throw new Error(t('notif.pushDenied'));
+  const { publicKey } = await api('/push/vapid-public-key');
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = (await registration.pushManager.getSubscription()) || await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(publicKey),
+  });
+  await api('/player/push/subscribe', { method: 'POST', body: { subscription: subscription.toJSON(), lang: currentLang } });
+  rememberPushPlayer(currentPlayerId);
+}
+
+// stops the pushes to this device on the server (the browser's own subscription stays: the match start/finish push uses it too)
+async function dropDevicePush() {
+  const sub = await devicePushSubscription();
+  if (!sub) return;
+  try { await api('/player/push/unsubscribe', { method: 'POST', body: { endpoint: sub.endpoint } }); } catch { /* ignore */ }
+}
+
+// called after every login check: the player who turned push on here gets the device linked again (and the language kept up to date)
+async function syncPlayerPush() {
+  if (!playerAuthed || !currentPlayerId || !pushSupported()) return;
+  if (rememberedPushPlayer() !== String(currentPlayerId) || Notification.permission !== 'granted') return;
+  const sub = await devicePushSubscription();
+  if (!sub) return;
+  try { await api('/player/push/subscribe', { method: 'POST', body: { subscription: sub.toJSON(), lang: currentLang } }); } catch { /* ignore */ }
+}
+
+// the row at the bottom of the bell panel: turn the push on or off, or say why it cannot be turned on here
+async function refreshPushRow() {
+  const row = document.getElementById('badge-notif-push');
+  if (!row) return;
+  row.hidden = true;
+  row.innerHTML = '';
+  if (!playerAuthed || !currentPlayerId) return;
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.navigator.standalone;
+  if (!pushSupported()) {
+    if (ios) { row.textContent = t('notif.pushIosHint'); row.hidden = false; }
+    return;
+  }
+  let status;
+  try {
+    const sub = await devicePushSubscription();
+    status = await api(`/player/push/status?endpoint=${encodeURIComponent(sub ? sub.endpoint : '')}`);
+  } catch { return; }
+  if (!status.available) return;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'btn btn-primary badge-notif-push-btn';
+  if (Notification.permission === 'denied' && !status.subscribed) {
+    row.textContent = t('notif.pushBlocked');
+  } else if (status.subscribed) {
+    row.textContent = `${t('notif.pushOnLabel')} `;
+    button.classList.replace('btn-primary', 'btn-outline');
+    button.textContent = t('notif.pushOff');
+    button.onclick = async () => { await dropDevicePush(); rememberPushPlayer(null); refreshPushRow(); };
+    row.appendChild(button);
+  } else {
+    button.textContent = t('notif.pushOn');
+    button.onclick = async () => {
+      button.disabled = true;
+      try { await enablePlayerPush(); } catch (err) { window.alert(err.message || t('notif.pushError')); }
+      refreshPushRow();
+    };
+    row.appendChild(button);
+  }
+  row.hidden = false;
 }
 
 // Reveals the backend section-nav tabs (Overview/Menu/Badges/Players/Login

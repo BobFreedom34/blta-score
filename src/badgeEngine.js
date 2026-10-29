@@ -12,6 +12,7 @@
 // possible at all — so this module also owns the player_badges table
 // (see src/db.js) that records each of those moments once, permanently.
 const db = require('./db');
+const playerPush = require('./playerPush');
 const clubTournaments = require('./clubTournaments');
 
 const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
@@ -233,7 +234,9 @@ function syncPlayerBadges(playerId) {
   // plain loop is fine without one.
   const insert = db.prepare('INSERT INTO player_badges (player_id, badge_id, earned_year, seen) VALUES (?, ?, ?, 0)');
   newlyEarned.forEach((inst) => insert.run(pid, inst.badgeId, inst.year));
-  return newlyEarned.map((inst) => badgeDefs.find((b) => b.id === inst.badgeId));
+  const earnedDefs = newlyEarned.map((inst) => badgeDefs.find((b) => b.id === inst.badgeId));
+  earnedDefs.forEach((b) => playerPush.notifyPlayer(pid, 'BADGE', { badge: b.name, description: b.description }));
+  return earnedDefs;
 }
 
 // One-time bootstrap, called once from server.js at startup — marks every
@@ -309,7 +312,7 @@ function sendCalendarDateReminders() {
     );
     players.forEach(({ id }) => {
       if (alreadyEarnedThisYear.has(id)) return;
-      insert.run(id, badge.id, year);
+      if (insert.run(id, badge.id, year).changes) playerPush.notifyPlayer(id, 'BADGE_REMINDER', { badge: badge.name });
     });
   });
 }
