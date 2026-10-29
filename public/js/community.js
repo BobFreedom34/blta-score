@@ -125,6 +125,8 @@
       <div class="com-info">
         ${rows.map(([key, value, text]) => `<div class="com-info-row"><span class="com-info-label">${escapeHtml(t(key))}</span><span class="com-info-value${text ? ' com-info-text' : ''}">${escapeHtml(value)}</span></div>`).join('')}
       </div>
+      ${[['website', org.website], ['facebook', org.facebook], ['instagram', org.instagram]].filter(([, url]) => /^https?:\/\//.test(url || '')).length ? `<div class="com-lab">${escapeHtml(t('com.infoLinks'))}</div>
+      <div class="com-links">${[['website', org.website, 'com.fieldWebsite'], ['facebook', org.facebook, 'com.fieldFacebook'], ['instagram', org.instagram, 'com.fieldInstagram']].filter(([, url]) => /^https?:\/\//.test(url || '')).map(([key, url, label]) => `<a class="btn btn-outline com-small com-link-chip" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer nofollow">${escapeHtml(t(label))} ↗</a>`).join('')}</div>` : ''}
       <div class="com-lab">${escapeHtml(t('com.tabMembers'))} (${members.members.length})</div>
       ${members.members.length ? `<div class="com-members">${members.members.map(memberHtml).join('')}</div>` : ''}`;
   }
@@ -306,7 +308,7 @@
   // the settings of the community or club: a dialog opened by the gear beside its name (name, description, contact, who may join, logo and cover)
   function openSettingsDialog(keep) {
     document.querySelectorAll('.com-sdialog-back').forEach((el) => el.remove());
-    const v = keep || { name: org.name, description: org.description, contact: org.contact, join: org.joinPolicy };
+    const v = keep || { name: org.name, description: org.description, contact: org.contact, join: org.joinPolicy, website: org.website, facebook: org.facebook, instagram: org.instagram };
     const back = document.createElement('div');
     back.className = 'modal-backdrop com-sdialog-back';
     back.style.display = 'flex';
@@ -320,6 +322,9 @@
           <label class="com-radio"><input type="radio" name="com-s-join" value="OPEN"${v.join === 'OPEN' ? ' checked' : ''}> ${escapeHtml(t('com.joinOpen'))}</label>
           <label class="com-radio"><input type="radio" name="com-s-join" value="APPROVAL"${v.join === 'APPROVAL' ? ' checked' : ''}> ${escapeHtml(t('com.joinApproval'))}</label>
         </div>
+        <div class="field"><label>${escapeHtml(t('com.fieldWebsite'))}</label><input type="url" id="com-s-website" maxlength="300" placeholder="https://" value="${escapeHtml(v.website || '')}"></div>
+        <div class="field"><label>${escapeHtml(t('com.fieldFacebook'))}</label><input type="url" id="com-s-facebook" maxlength="300" placeholder="https://facebook.com/…" value="${escapeHtml(v.facebook || '')}"></div>
+        <div class="field"><label>${escapeHtml(t('com.fieldInstagram'))}</label><input type="url" id="com-s-instagram" maxlength="300" placeholder="https://instagram.com/…" value="${escapeHtml(v.instagram || '')}"></div>
         <div class="com-pictures">
           <label class="btn btn-outline com-small">${escapeHtml(t('com.uploadLogo'))}<input type="file" accept="image/png,image/jpeg,image/webp" data-upload="logo" hidden></label>
           <label class="btn btn-outline com-small">${escapeHtml(t('com.uploadCover'))}<input type="file" accept="image/png,image/jpeg,image/webp" data-upload="cover" hidden></label>
@@ -329,6 +334,7 @@
         <div id="com-s-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
         <button type="submit" class="btn btn-primary">${escapeHtml(t('com.save'))}</button>
         <button type="button" class="btn btn-outline" id="com-s-cancel">${escapeHtml(t('com.tCancel'))}</button>
+        <div class="com-danger"><button type="button" class="btn btn-danger com-small" id="com-s-delete">${escapeHtml(t('com.deleteBtn'))}</button></div>
       </form></div>`;
     const close = () => back.remove();
     back.querySelector('.close').addEventListener('click', close);
@@ -336,7 +342,7 @@
     back.addEventListener('click', (e) => { if (e.target === back) close(); });
     document.body.appendChild(back);
     const form = back.querySelector('#com-settings');
-    const typedNow = () => ({ name: form.querySelector('#com-s-name').value, description: form.querySelector('#com-s-description').value, contact: form.querySelector('#com-s-contact').value, join: form.querySelector('input[name="com-s-join"]:checked').value });
+    const typedNow = () => ({ name: form.querySelector('#com-s-name').value, description: form.querySelector('#com-s-description').value, contact: form.querySelector('#com-s-contact').value, join: form.querySelector('input[name="com-s-join"]:checked').value, website: form.querySelector('#com-s-website').value, facebook: form.querySelector('#com-s-facebook').value, instagram: form.querySelector('#com-s-instagram').value });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const submit = form.querySelector('button[type="submit"]');
@@ -346,13 +352,21 @@
       errorEl.textContent = '';
       try {
         const now = typedNow();
-        await api(`/communities/${org.id}`, { method: 'PATCH', body: { name: now.name, description: now.description, contact: now.contact, joinPolicy: now.join } });
+        await api(`/communities/${org.id}`, { method: 'PATCH', body: { name: now.name, description: now.description, contact: now.contact, joinPolicy: now.join, website: now.website, facebook: now.facebook, instagram: now.instagram } });
         close();
         toast(t('com.saved'));
         await load();
         refreshActingOrg(); // the chip and the switcher show the new name
       } catch (err) { errorEl.textContent = err.message; } finally { delete submit.dataset.busy; }
     });
+    // deleting: asks first; the server refuses while the community has tournaments
+    back.querySelector('#com-s-delete').addEventListener('click', () => guard(back.querySelector('#com-s-delete'), async () => {
+      if (!window.confirm(t('com.deleteConfirm', { name: org.name }))) return;
+      await api(`/communities/${org.id}`, { method: 'DELETE' });
+      toast(t('com.deleted'));
+      refreshActingOrg();
+      window.location.href = siteUrl('/communities');
+    }));
     // a picture is saved at once; the dialog opens again with what was typed so far
     back.querySelectorAll('[data-upload]').forEach((input) => input.addEventListener('change', () => guard(input, async () => {
       if (!input.files[0]) return;

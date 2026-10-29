@@ -5486,7 +5486,7 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .bracket-res-btn:hover { background: rgba(255, 85, 0, 0.18); }
 
 /* Komunity a kluby: the list page (public/js/communities.js) */
-.com-tabs { display: flex; gap: 4px; padding: 4px; margin: 6px 0 14px; background: var(--ink); border: 1px solid var(--border-grey); border-radius: var(--radius-md); }
+.com-tabs { display: flex; gap: 4px; padding: 4px; margin: 6px 0 40px; background: var(--ink); border: 1px solid var(--border-grey); border-radius: var(--radius-md); }
 .com-tab { flex: 1; padding: 9px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--gray-dim); font: inherit; font-weight: 700; cursor: pointer; }
 .com-tab.on { background: var(--orange); color: var(--white); }
 .com-lab { display: flex; align-items: center; gap: 8px; margin: 14px 0 8px; color: var(--gray-dim); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -5689,6 +5689,29 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .msg-invite-card small { color: var(--gray-dim); }
 .msg-invite-state { font-size: 13px; font-weight: 700; color: var(--status-green); }
 .com-lab-dark { color: var(--ink); margin: 6px 0; }
+.com-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.com-link-chip { color: var(--white); }
+.com-danger { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--gray-light); }
+.com-badge-open { background: rgba(120, 220, 0, 0.16); color: var(--status-green); }
+.com-badge-approval { background: transparent; border: 1px solid var(--orange); color: var(--orange); }
+/* the Discover filters look like the filters of the player profile (grey selects, a plain reset button) and keep the 40px gaps between sections */
+.com-filters { align-items: center; margin-bottom: 40px; }
+.com-filters select, .com-filters input[type="search"] {
+  flex: 1 1 160px;
+  min-width: 0;
+  background: var(--fill-grey);
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  padding: 11px 12px;
+  font-family: inherit;
+  font-size: 14px;
+}
+.com-filters input[type="search"] { flex: 2 1 220px; }
+.com-filters input[type="search"]::placeholder { color: #b8bcc4; }
+.com-filters .btn-outline { background: transparent; color: #b8bcc4; border: none; box-shadow: none; padding: 10px 6px; }
+.com-filters .btn-outline:hover { color: var(--white); box-shadow: none; }
+.admin-tabs .tab-count { display: inline-block; min-width: 18px; padding: 0 6px; border-radius: 999px; background: var(--orange); color: var(--white); font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; }
 .com-faces { display: flex; justify-content: center; gap: 4px; margin: 10px 0 2px; }
 .com-faces img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #100e0b; margin-left: -8px; background: var(--fill-grey); }
 .com-faces img:first-child { margin-left: 0; }

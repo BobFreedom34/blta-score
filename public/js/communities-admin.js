@@ -14,6 +14,25 @@ function renderLoggedOut() {
 }
 
 const TYPE_LABEL = { CLUB: 'Club', COMMUNITY: 'Community' };
+
+// who receives the requests to approve a new club in his messages (Správy); he can approve from the message too
+async function loadApprovalInbox() {
+  const box = document.getElementById('approval-inbox');
+  if (!box) return;
+  let current;
+  let players;
+  try {
+    [current, players] = await Promise.all([api('/communities/approval-inbox'), api('/players')]);
+  } catch { return; }
+  box.innerHTML = `<label style="font-size:13px;font-weight:700">Requests to approve a new club arrive in the messages of:
+    <select id="approval-inbox-select" style="display:block;margin-top:4px;min-width:240px"><option value="">— nobody (e-mail only) —</option>${players.map((p) => `<option value="${p.id}"${p.id === current.playerId ? ' selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}</select></label>`;
+  document.getElementById('approval-inbox-select').addEventListener('change', async (e) => {
+    try {
+      await api('/communities/approval-inbox', { method: 'PUT', body: { playerId: e.target.value ? Number(e.target.value) : null } });
+      toast('Saved');
+    } catch (err) { document.getElementById('communities-error').textContent = err.message; }
+  });
+}
 let isSuperAdmin = false;
 
 function rowHtml(o) {
@@ -39,6 +58,7 @@ async function load() {
   root.innerHTML = `
     <div class="card">
       <h3 style="margin-top:0">Communities and clubs <span style="font-weight:400;color:var(--gray-dim);font-size:13px">${items.length}</span></h3>
+      ${isSuperAdmin ? '<div id="approval-inbox" style="margin:0 0 14px"></div>' : ''}
       ${waiting ? `<p style="margin:0 0 10px;font-weight:700;color:var(--orange)">${waiting} club${waiting === 1 ? '' : 's'} waiting for approval${isSuperAdmin ? '' : ' (only the super admin can approve)'}</p>` : ''}
       <div id="communities-error" style="color:var(--danger);font-weight:600;margin-bottom:8px"></div>
       ${items.length ? `
@@ -47,6 +67,7 @@ async function load() {
         <tbody>${items.map(rowHtml).join('')}</tbody>
       </table></div>` : '<p style="margin:0;color:var(--gray)">Nobody has created a community or a club yet.</p>'}
     </div>`;
+  loadApprovalInbox();
   root.querySelectorAll('[data-approve]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.closest('tr').dataset.id;

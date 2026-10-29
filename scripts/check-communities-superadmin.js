@@ -102,6 +102,26 @@ test('the club page tells the client the super admin can manage it (canManage), 
   assert.strictEqual((await call('GET', `/api/communities/${org.slug}`, { cookie: '' })).json.canManage, false);
 });
 
+test('the super admin sees how many new clubs wait for his approval (nobody else asks), and it follows the approval', async () => {
+  const count = async (cookie) => call('GET', '/api/communities/pending-count', { cookie });
+  assert.strictEqual((await count('')).status, 401);
+  assert.strictEqual((await count(owner.cookie)).status, 401, 'a player is not an admin');
+  const before = (await count(adminCookie)).json.count;
+  const club = (await call('POST', '/api/communities', { cookie: owner.cookie, body: { type: 'CLUB', name: `Cakajuci klub ${seq += 1}`, description: 'x' } })).json;
+  assert.strictEqual((await count(adminCookie)).json.count, before + 1, 'a new club waits');
+  assert.strictEqual((await call('PATCH', `/api/communities/${club.id}/approval`, { body: { approved: true } })).status, 200);
+  assert.strictEqual((await count(adminCookie)).json.count, before, 'approved: no longer waiting');
+  // a community is public at once, so it never waits
+  await call('POST', '/api/communities', { cookie: owner.cookie, body: { type: 'COMMUNITY', name: `Hned verejna ${seq += 1}`, description: 'x' } });
+  assert.strictEqual((await count(adminCookie)).json.count, before);
+});
+
+test('the Backend tabs carry the number of clubs waiting for approval, and a new club e-mails the administrators', () => {
+  const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
+  assert.ok(read('public/js/common.js').includes('/communities/pending-count'), 'the Communities tab shows the count');
+  assert.ok(read('src/routes/communities.js').includes('sendClubWaitingEmail') && read('src/mailer.js').includes('async function sendClubWaitingEmail'), 'an e-mail goes out when a club is made');
+});
+
 test('the club page shows the management panel when the server says canManage', () => {
   const js = fs.readFileSync(path.join(ROOT, 'public/js/community.js'), 'utf8');
   assert.ok(/const isActing = \(\) => [^\n]*org\.canManage/.test(js));

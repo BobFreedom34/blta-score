@@ -212,8 +212,8 @@ router.post('/conversations/:id/messages', (req, res) => {
 
 // Stores a message in a conversation and tells everybody concerned: the sockets of both members and the devices of the other member (a push). An
 // invitation (inviteOrgId) is a message with a community in it. Returns the stored row.
-function deliver(io, conversationId, me, body, inviteOrgId = null) {
-  const info = db.prepare('INSERT INTO direct_messages (conversation_id, sender_player_id, body, invite_org_id) VALUES (?, ?, ?, ?)').run(conversationId, me, body, inviteOrgId);
+function deliver(io, conversationId, me, body, inviteOrgId = null, approvalOrgId = null) {
+  const info = db.prepare('INSERT INTO direct_messages (conversation_id, sender_player_id, body, invite_org_id, approval_org_id) VALUES (?, ?, ?, ?, ?)').run(conversationId, me, body, inviteOrgId, approvalOrgId);
   const row = db.prepare('SELECT * FROM direct_messages WHERE id = ?').get(Number(info.lastInsertRowid));
   db.prepare('UPDATE conversations SET last_message_at = ? WHERE id = ?').run(row.created_at, conversationId);
   // the sender has seen his own message; an answer by the recipient of a request accepts it
@@ -222,7 +222,7 @@ function deliver(io, conversationId, me, body, inviteOrgId = null) {
   memberIds.forEach((id) => {
     messages.emitToPlayers(io, [id], 'dm:message', {
       conversationId,
-      message: { id: row.id, body: row.body, createdAt: row.created_at, senderPlayerId: me, invite: messages.inviteOf(row, id) },
+      message: { id: row.id, body: row.body, createdAt: row.created_at, senderPlayerId: me, invite: messages.inviteOf(row, id), approval: messages.approvalOf(row, id) },
       other: otherPlayer(conversationId, id),
     });
     messages.emitToPlayers(io, [id], 'dm:unread', unreadCounts(id));
@@ -230,7 +230,10 @@ function deliver(io, conversationId, me, body, inviteOrgId = null) {
   // the other member's devices get it as a push (a push never blocks or fails the send)
   const otherId = memberIds.find((id) => id !== me);
   const fromName = (playerRow(me) || {}).name;
-  if (inviteOrgId) {
+  if (approvalOrgId) {
+    const org = db.prepare('SELECT name FROM organisations WHERE id = ?').get(approvalOrgId);
+    playerPush.notifyPlayer(otherId, 'APPROVAL', { fromName, orgName: org && org.name });
+  } else if (inviteOrgId) {
     const org = db.prepare('SELECT name, type FROM organisations WHERE id = ?').get(inviteOrgId);
     playerPush.notifyPlayer(otherId, 'INVITE', { fromName, orgName: org && org.name, orgType: org && org.type });
   } else {

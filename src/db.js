@@ -1810,12 +1810,18 @@ db.exec(`
 `);
 // a message that is an invitation to a community or club names it (the chat shows a card with a Join button)
 if (!db.prepare('PRAGMA table_info(direct_messages)').all().some((c) => c.name === 'invite_org_id')) db.exec('ALTER TABLE direct_messages ADD COLUMN invite_org_id INTEGER');
+// a message that asks the chosen player to approve a new club names it (the chat shows a card with an Approve button)
+if (!db.prepare('PRAGMA table_info(direct_messages)').all().some((c) => c.name === 'approval_org_id')) db.exec('ALTER TABLE direct_messages ADD COLUMN approval_org_id INTEGER');
 
 // approved: a COMMUNITY is public at once (1); a CLUB is made with 0 and goes public when the super admin approves it (until then only its own
 // admins and the admins of the site see it). A database that had the table before this column keeps its rows public.
 if (!db.prepare('PRAGMA table_info(organisations)').all().some((c) => c.name === 'approved')) {
   db.exec('ALTER TABLE organisations ADD COLUMN approved INTEGER NOT NULL DEFAULT 1');
 }
+// The web page, the Facebook page and the Instagram page of a community or club (shown on its Info tab).
+['website_url', 'facebook_url', 'instagram_url'].forEach((col) => {
+  if (!db.prepare('PRAGMA table_info(organisations)').all().some((c) => c.name === col)) db.exec(`ALTER TABLE organisations ADD COLUMN ${col} TEXT`);
+});
 // The private invitation link of a community or club (src/routes/communities.js): whoever follows it joins at once, whatever the join policy.
 if (!db.prepare('PRAGMA table_info(organisations)').all().some((c) => c.name === 'invite_token')) {
   db.exec('ALTER TABLE organisations ADD COLUMN invite_token TEXT');

@@ -3656,7 +3656,16 @@ async function setUpAdminTabs() {
   if (!bars.length) return;
   try { adminSessionInfo = await api('/admin/session'); } catch { return; }
   const info = adminSessionInfo;
+  // the super admin approves new clubs: the Communities tab says how many wait
+  let waitingClubs = 0;
+  if (info.role === 'SUPER') {
+    try { waitingClubs = (await api('/communities/pending-count')).count || 0; } catch { /* the tab just has no number */ }
+  }
   bars.forEach((bar) => {
+    if (waitingClubs > 0) {
+      const link = tabLink(bar, '/communities-admin');
+      if (link && !link.querySelector('.tab-count')) link.insertAdjacentHTML('beforeend', ` <span class="tab-count">${waitingClubs}</span>`);
+    }
     if (info.role === 'CITY') {
       bar.querySelectorAll('a.tab').forEach((a) => { if (SUPER_ONLY_TABS.includes(tabPath(a))) a.style.display = 'none'; });
     }

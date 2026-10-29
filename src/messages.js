@@ -82,10 +82,21 @@ function inviteOf(row, viewerId) {
   }
   return { organisation, status };
 }
+// The request to approve a new club: SENT (the founder wrote it), WAITING (the club is not approved yet), APPROVED, GONE (the club does not exist any more or is hidden)
+function approvalOf(row, viewerId) {
+  if (!row.approval_org_id) return undefined;
+  const org = db.prepare('SELECT id, slug, name, type, logo_url, hidden, approved FROM organisations WHERE id = ?').get(row.approval_org_id);
+  const organisation = org ? { id: org.id, slug: org.slug, name: org.name, type: org.type, logoUrl: org.logo_url || '' } : null;
+  let status = 'GONE';
+  if (org && !org.hidden) status = row.sender_player_id === viewerId ? 'SENT' : org.approved ? 'APPROVED' : 'WAITING';
+  return { organisation, status };
+}
 const serializeMessage = (row, viewerId) => {
   const out = { id: row.id, body: row.body, createdAt: row.created_at, mine: row.sender_player_id === viewerId };
   const invite = inviteOf(row, viewerId);
   if (invite) out.invite = invite;
+  const approval = approvalOf(row, viewerId);
+  if (approval) out.approval = approval;
   return out;
 };
 
@@ -129,4 +140,4 @@ function emitToPlayers(io, playerIds, event, payload) {
   [...new Set(playerIds)].forEach((id) => io.to(`player:${id}`).emit(event, payload));
 }
 
-module.exports = { inviteOf, directKey, areConnected, isBlocked, memberOf, otherPlayer, card, rateLimitOk, serializeMessage, cleanBody, playerIdFromSocket, emitToPlayers };
+module.exports = { approvalOf, inviteOf, directKey, areConnected, isBlocked, memberOf, otherPlayer, card, rateLimitOk, serializeMessage, cleanBody, playerIdFromSocket, emitToPlayers };

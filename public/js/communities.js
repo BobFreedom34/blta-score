@@ -8,6 +8,9 @@
 
   let tab = 'feed';
   let items = [];
+  let currentLeagueId = null;
+  // the filters of the Discover tab: a search text, the kind and the city (the city of the page unless he picks another or all)
+  const filters = { q: '', type: '', city: null };
   let mine = [];
   let feed = { items: [], more: false, next: null };
   let loggedIn = false;
@@ -31,7 +34,7 @@
         ${logoHtml(o)}
         <span class="com-card-body">
           <span class="com-card-name">${escapeHtml(o.name)}</span>
-          <span class="com-card-meta"><span class="com-badge">${escapeHtml(typeText(o))}</span>${o.approved ? '' : `<span class="com-badge com-badge-wait">${escapeHtml(t('com.pendingApproval'))}</span>`}${o.city ? escapeHtml(o.city) : ''}</span>
+          <span class="com-card-meta"><span class="com-badge">${escapeHtml(typeText(o))}</span><span class="com-badge ${o.joinPolicy === 'OPEN' ? 'com-badge-open' : 'com-badge-approval'}">${escapeHtml(t(o.joinPolicy === 'OPEN' ? 'com.cardOpen' : 'com.cardApproval'))}</span>${o.approved ? '' : `<span class="com-badge com-badge-wait">${escapeHtml(t('com.pendingApproval'))}</span>`}${o.city ? escapeHtml(o.city) : ''}</span>
         </span>
         <span class="com-card-count">${escapeHtml(membersText(o.memberCount))}</span>
       </a>`;
@@ -90,7 +93,7 @@
       return `${feed.items.map(feedPostHtml).join('')}${feed.more ? `<button type="button" class="btn btn-outline com-small" id="com-feed-older">${escapeHtml(t('com.showOlder'))}</button>` : ''}`;
     }
     const joined = new Set(mine.map((o) => o.id));
-    const suggested = items.filter((o) => o.approved && !joined.has(o.id)).slice(0, 5);
+    const suggested = items.filter((o) => o.approved && !joined.has(o.id) && o.leagueId === currentLeagueId).slice(0, 5);
     return `
       <div class="com-feed-empty">
         <span class="com-feed-icon" aria-hidden="true">${courtIcon('group')}</span>
@@ -101,13 +104,40 @@
       ${suggested.length ? `<div class="com-lab">${escapeHtml(t('com.feedSuggested'))}</div>${listHtml(suggested, 'com.empty')}` : ''}`;
   }
 
+  // plain text for the search: no accents, no capitals
+  const plain = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const filtered = () => {
+    const q = plain(filters.q).trim();
+    return items.filter((o) => (!filters.type || o.type === filters.type)
+      && (filters.city === '' || String(o.leagueId) === String(filters.city))
+      && (!q || plain([o.name, o.description, o.city].join(' ')).includes(q)));
+  };
+  function discoverHtml() {
+    if (filters.city === null) filters.city = items.some((o) => o.leagueId === currentLeagueId) ? String(currentLeagueId) : '';
+    const cities = [...new Map(items.map((o) => [o.leagueId, o.city])).entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'sk'));
+    return `<div class="filters com-filters">
+      <input type="search" id="com-f-search" class="com-f-search" maxlength="60" placeholder="${escapeHtml(t('com.filterSearch'))}" value="${escapeHtml(filters.q)}" autocomplete="off">
+      <select id="com-f-type" aria-label="${escapeHtml(t('com.filterAllTypes'))}">
+        <option value="">${escapeHtml(t('com.filterAllTypes'))}</option>
+        <option value="COMMUNITY"${filters.type === 'COMMUNITY' ? ' selected' : ''}>${escapeHtml(t('com.filterCommunities'))}</option>
+        <option value="CLUB"${filters.type === 'CLUB' ? ' selected' : ''}>${escapeHtml(t('com.filterClubs'))}</option>
+      </select>
+      <select id="com-f-city" aria-label="${escapeHtml(t('com.filterAllCities'))}">
+        <option value="">${escapeHtml(t('com.filterAllCities'))}</option>
+        ${cities.map(([id, name]) => `<option value="${id}"${String(filters.city) === String(id) ? ' selected' : ''}>${escapeHtml(name)}</option>`).join('')}
+      </select>
+      <button type="button" class="btn btn-outline" id="com-f-reset"><span style="color:var(--orange)">✕</span> ${escapeHtml(t('filters.reset'))}</button>
+    </div>
+    <div id="com-discover-list">${listHtml(filtered(), items.length ? 'com.filterNone' : 'com.empty')}</div>`;
+  }
+
   function listHtml(list, emptyKey) {
     return list.length ? `<div class="com-list">${list.map(cardHtml).join('')}</div>` : `<p class="com-empty">${escapeHtml(t(emptyKey))}</p>`;
   }
 
   function render() {
     const body = tab === 'feed' ? feedHtml()
-      : tab === 'discover' ? listHtml(items, 'com.empty')
+      : tab === 'discover' ? discoverHtml()
       : tab === 'mine' ? (loggedIn ? listHtml(mine, 'com.emptyMine') : `<p class="com-empty">${escapeHtml(t('com.emptyMine'))}</p><button type="button" class="btn btn-join" id="com-login-btn">${escapeHtml(t('nav.loginPlayer'))}</button>`)
         : `<p class="com-empty">${escapeHtml(t('com.emptyEvents'))}</p>`;
     root.innerHTML = `
@@ -120,6 +150,15 @@
       <button type="button" class="btn btn-primary com-create" id="com-create-btn">＋ ${escapeHtml(t('com.create'))}</button>`;
     root.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; render(); }));
     comBindReactions(root, (el) => el.dataset.org);
+    // the Discover filters change the list only (the search box keeps the focus)
+    const refilter = () => { document.getElementById('com-discover-list').innerHTML = listHtml(filtered(), items.length ? 'com.filterNone' : 'com.empty'); };
+    const fSearch = document.getElementById('com-f-search');
+    if (fSearch) {
+      fSearch.addEventListener('input', () => { filters.q = fSearch.value; refilter(); });
+      document.getElementById('com-f-type').addEventListener('change', (e) => { filters.type = e.target.value; refilter(); });
+      document.getElementById('com-f-city').addEventListener('change', (e) => { filters.city = e.target.value; refilter(); });
+      document.getElementById('com-f-reset').addEventListener('click', () => { filters.q = ''; filters.type = ''; filters.city = ''; render(); });
+    }
     document.getElementById('com-create-btn').addEventListener('click', () => requireRealPlayer(openCreate));
     const loginBtn = document.getElementById('com-login-btn');
     if (loginBtn) loginBtn.addEventListener('click', () => requireRealPlayer(() => {}));
@@ -204,7 +243,9 @@
     try {
       const session = await loadSession();
       loggedIn = !!session.isPlayer && !!session.playerId;
-      items = (await api('/communities')).items;
+      const all = await api('/communities?scope=all');
+      items = all.items;
+      currentLeagueId = all.currentLeagueId;
       mine = loggedIn ? (await api('/communities/mine')).items : [];
       feed = loggedIn ? await api('/communities/feed') : { items: [], more: false, next: null };
     } catch (err) {

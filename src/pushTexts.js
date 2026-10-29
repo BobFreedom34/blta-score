@@ -17,6 +17,7 @@ const WORDING = {
   PHOTO: { sk: '📷 {name} pridal fotku k tvojmu zápasu', en: '📷 {name} added a photo to your match' },
   RANKING_UP: { sk: '📈 V BLTA rebríčku si sa posunul o {amount} hore — teraz si na {rank}. mieste', en: '📈 You climbed {amount} places in the BLTA ranking — now #{rank}' },
   RANKING_DOWN: { sk: '📉 V BLTA rebríčku si klesol o {amount} dole — teraz si na {rank}. mieste', en: '📉 You dropped {amount} places in the BLTA ranking — now #{rank}' },
+  APPROVAL: { sk: '🏟️ Nový klub čaká na schválenie: {org}', en: '🏟️ A new club waits for your approval: {org}' },
   INVITE: { sk: '👥 {name} ťa pozýva: {org}', en: '👥 {name} invites you to {org}' },
   BADGE: { sk: '🏅 Získal si odznak: {badge}', en: '🏅 You earned a badge: {badge}' },
   BADGE_REMINDER: { sk: '📅 Blíži sa: {badge}', en: '📅 Coming up: {badge}' },
@@ -42,6 +43,7 @@ function build(kind, data = {}, lang = 'sk') {
     case 'PROPOSAL_RECEIVED':
     case 'PROPOSAL_CONFIRMED':
       return { title: fill(WORDING[kind][l], { name }), body: '', url: matchUrl, tag: `proposal-${data.matchToken || 'x'}` };
+    case 'APPROVAL': return { title: fill(WORDING.APPROVAL[l], { org: data.orgName || '' }), body: data.fromName ? `${data.fromName}` : '', url: '/messages', tag: 'approval' };
     case 'INVITE': return { title: fill(WORDING.INVITE[l], { name, org: data.orgName || '' }), body: '', url: '/messages', tag: 'invite' };
     case 'PHOTO': return { title: fill(WORDING.PHOTO[l], { name }), body: '', url: matchUrl, tag: `photo-${data.matchToken || 'x'}` };
     case 'RANKING_UP':

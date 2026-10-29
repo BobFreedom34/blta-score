@@ -15,6 +15,7 @@ const seasonsRoutes = require('./seasons');
 const messagesRoutes = require('./messages');
 const messagesLib = require('../messages');
 const courtIQ = require('../courtIQEngine');
+const { sendClubWaitingEmail } = require('../mailer');
 
 const router = express.Router();
 const { serialize, slugFor, isOrgAdmin } = communities;
@@ -39,6 +40,21 @@ function reactionsOf(postIds, viewer) {
 const tidy = (value) => String(value === undefined || value === null ? '' : value).replace(/\s+/g, ' ').trim();
 
 // the fields a creator or an admin writes; `current` (an organisation row) is what an update starts from
+// a link of the profile: '' (none) or an http(s) address of at most 300 characters; for Facebook and Instagram the address must be on that site
+function readLink(value, hosts) {
+  if (value === undefined || value === null) return { value: '' };
+  if (typeof value !== 'string') return { error: 'A link must be text' };
+  const v = value.trim();
+  if (!v) return { value: '' };
+  if (v.length > 300) return { error: 'A link is too long (max 300 characters)' };
+  let u;
+  try { u = new URL(v); } catch { return { error: 'A link must be a web address starting with https://' }; }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return { error: 'A link must start with http:// or https://' };
+  if (hosts && !hosts.some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`))) return { error: `This link must be an address on ${hosts[0]}` };
+  return { value: v };
+}
+const LINK_FIELDS = [['website', 'website_url', null], ['facebook', 'facebook_url', ['facebook.com', 'fb.com', 'fb.me']], ['instagram', 'instagram_url', ['instagram.com', 'instagr.am']]];
+
 function readFields(body, current) {
   const out = {};
   if (current === undefined || body.name !== undefined) {
@@ -56,6 +72,13 @@ function readFields(body, current) {
     const contact = tidy(body.contact);
     if (contact.length > 200) return { error: 'The contact is too long (max 200 characters)' };
     out.contact = contact;
+  }
+  for (const [key, , hosts] of LINK_FIELDS) {
+    if (body[key] !== undefined) {
+      const link = readLink(body[key], hosts);
+      if (link.error) return { error: link.error };
+      out[key] = link.value;
+    }
   }
   if (body.joinPolicy !== undefined) {
     if (!POLICIES.includes(body.joinPolicy)) return { error: 'Joining is OPEN (anyone) or APPROVAL (on approval)' };
@@ -108,17 +131,70 @@ function needOrgAdmin(req, res) {
   return { org, playerId, superAdmin };
 }
 
+// The player whose messages receive the requests to approve a new club (chosen by the super admin in Backend > Communities; none = nobody): he may also
+// approve from the message. Kept in site_settings.
+const APPROVER_KEY = 'club_approval_player';
+function approverId() {
+  const row = db.prepare('SELECT value FROM site_settings WHERE key = ?').get(APPROVER_KEY);
+  const id = row ? Number(row.value) : 0;
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+const approverJson = () => {
+  const id = approverId();
+  const player = id ? db.prepare('SELECT id, name FROM players WHERE id = ?').get(id) : null;
+  return { playerId: player ? player.id : null, name: player ? player.name : '' };
+};
+
+router.get('/approval-inbox', auth.requireSuperAdmin, (req, res) => res.json(approverJson()));
+
+router.put('/approval-inbox', auth.requireSuperAdmin, (req, res) => {
+  const asked = req.body && req.body.playerId;
+  if (asked === null) {
+    db.prepare('DELETE FROM site_settings WHERE key = ?').run(APPROVER_KEY);
+    return res.json(approverJson());
+  }
+  if (!Number.isInteger(asked) || asked <= 0) return res.status(400).json({ error: 'playerId must be a number or null' });
+  if (!db.prepare('SELECT 1 FROM players WHERE id = ?').get(asked)) return res.status(404).json({ error: 'Player not found' });
+  db.prepare('INSERT INTO site_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(APPROVER_KEY, String(asked));
+  res.json(approverJson());
+});
+
+// the super admin, or the player he chose to receive the requests, approves a club
+function requireApprover(req, res, next) {
+  if (auth.isSuperAdmin(req)) return next();
+  const playerId = auth.getPlayerId(req);
+  // anybody else is treated as before: an admin of a city gets 403, a visitor or a player 401
+  if (!playerId || playerId !== approverId()) return res.status(auth.isAdmin(req) ? 403 : 401).json({ error: auth.isAdmin(req) ? 'Only the super admin can do this' : 'Admin login required for this action' });
+  next();
+}
+
+// the request to approve a new club goes to the messages of the chosen player (main box, with a push); nothing when nobody is chosen
+function sendApprovalRequest(req, org, creatorId) {
+  const to = approverId();
+  if (!to || to === creatorId || !db.prepare('SELECT 1 FROM players WHERE id = ?').get(to) || messagesLib.isBlocked(creatorId, to)) return;
+  const conversationId = messagesRoutes.conversationOf(creatorId, to);
+  db.prepare("UPDATE conversation_members SET state = 'MAIN' WHERE conversation_id = ? AND player_id = ? AND state = 'REQUEST'").run(conversationId, to);
+  messagesRoutes.deliver(req.app.get('io'), conversationId, creatorId, `Nový klub čaká na schválenie: „${org.name}“.`, null, org.id);
+}
+
+// how many new clubs wait for the approval of the super admin (the Communities tab of the Backend shows it)
+router.get('/pending-count', auth.requireSuperAdmin, (req, res) => {
+  res.json({ count: db.prepare("SELECT COUNT(*) AS n FROM organisations WHERE type = 'CLUB' AND approved = 0 AND hidden = 0").get().n });
+});
+
 router.get('/', (req, res) => {
   const leagueId = leagues.actingIdOf(req);
   // an admin may ask for the hidden ones too (the Backend page)
   const withHidden = req.query.includeHidden === '1' && auth.isAdmin(req);
   const viewer = auth.getPlayerId(req);
   // a club that waits for approval is listed for its own admins only
-  const items = db.prepare(`SELECT * FROM organisations WHERE league_id = ?${withHidden ? '' : ' AND hidden = 0'}`).all(leagueId)
+  // ?scope=all: the communities of every city (the Discover page filters them by city); otherwise only the city of the address
+  const everywhere = req.query.scope === 'all';
+  const items = (everywhere ? db.prepare(`SELECT * FROM organisations WHERE ${withHidden ? '1 = 1' : 'hidden = 0'}`).all() : db.prepare(`SELECT * FROM organisations WHERE league_id = ?${withHidden ? '' : ' AND hidden = 0'}`).all(leagueId))
     .filter((row) => withHidden || row.approved || (viewer && isOrgAdmin(row.id, viewer)))
     .map((row) => serialize(row, req))
     .sort((a, b) => b.memberCount - a.memberCount || b.id - a.id);
-  res.json({ items });
+  res.json({ items, currentLeagueId: leagueId });
 });
 
 // the clubs and communities the logged-in player belongs to, and the one he is acting as (null = himself)
@@ -214,8 +290,8 @@ router.post('/', (req, res) => {
   let id;
   db.exec('BEGIN');
   try {
-    const info = db.prepare('INSERT INTO organisations (league_id, type, name, slug, description, contact, join_policy, approved, created_by_player_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(leagueId, req.body.type, f.name, slug, f.description, f.contact, f.joinPolicy || 'OPEN', req.body.type === 'COMMUNITY' ? 1 : 0, playerId);
+    const info = db.prepare('INSERT INTO organisations (league_id, type, name, slug, description, contact, join_policy, approved, created_by_player_id, website_url, facebook_url, instagram_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(leagueId, req.body.type, f.name, slug, f.description, f.contact, f.joinPolicy || 'OPEN', req.body.type === 'COMMUNITY' ? 1 : 0, playerId, f.website || null, f.facebook || null, f.instagram || null);
     id = Number(info.lastInsertRowid);
     db.prepare("INSERT INTO organisation_members (organisation_id, player_id, role, status) VALUES (?, ?, 'ADMIN', 'ACTIVE')").run(id, playerId);
     db.exec('COMMIT');
@@ -224,6 +300,12 @@ router.post('/', (req, res) => {
     throw err;
   }
   res.status(201).json(serialize(orgById(id), req));
+  // a club is not public until the super admin approves it: tell the administrators (after the answer, a mail problem must not fail the club)
+  if (req.body.type === 'CLUB') {
+    const creator = db.prepare('SELECT name FROM players WHERE id = ?').get(playerId);
+    try { sendApprovalRequest(req, orgById(id), playerId); } catch (err) { console.error('[communities] could not send the approval request:', err.message); }
+    sendClubWaitingEmail({ name: f.name, city: serialize(orgById(id)).city, creator: creator && creator.name }).catch((err) => console.error('[communities] could not send the new-club email:', err.message));
+  }
 });
 
 router.patch('/:id', (req, res) => {
@@ -232,10 +314,39 @@ router.patch('/:id', (req, res) => {
   const read = readFields(req.body, ctx.org);
   if (read.error) return res.status(400).json({ error: read.error });
   const f = read.fields;
-  db.prepare('UPDATE organisations SET name = ?, description = ?, contact = ?, join_policy = ? WHERE id = ?')
+  db.prepare('UPDATE organisations SET name = ?, description = ?, contact = ?, join_policy = ?, website_url = ?, facebook_url = ?, instagram_url = ? WHERE id = ?')
     .run(f.name !== undefined ? f.name : ctx.org.name, f.description !== undefined ? f.description : ctx.org.description,
-      f.contact !== undefined ? f.contact : ctx.org.contact, f.joinPolicy !== undefined ? f.joinPolicy : ctx.org.join_policy, ctx.org.id);
+      f.contact !== undefined ? f.contact : ctx.org.contact, f.joinPolicy !== undefined ? f.joinPolicy : ctx.org.join_policy,
+      ...LINK_FIELDS.map(([key, column]) => (f[key] !== undefined ? f[key] || null : ctx.org[column])), ctx.org.id);
   res.json(serialize(orgById(ctx.org.id), req));
+});
+
+// An admin of the community or club (or the super admin) deletes it with everything that belongs to it. Its tournaments are not touched: it is refused
+// while it has any, so no result is lost by accident (delete or finish them first).
+router.delete('/:id', (req, res) => {
+  const ctx = needOrgAdmin(req, res);
+  if (!ctx) return;
+  const org = ctx.org;
+  if (db.prepare('SELECT 1 FROM seasons WHERE organisation_id = ?').get(org.id)) {
+    return res.status(409).json({ error: 'This community or club still has tournaments: delete them first' });
+  }
+  const posts = db.prepare('SELECT id, image_url FROM organisation_posts WHERE organisation_id = ?').all(org.id);
+  db.exec('BEGIN');
+  try {
+    posts.forEach((p) => db.prepare('DELETE FROM organisation_post_reactions WHERE post_id = ?').run(p.id));
+    db.prepare('DELETE FROM organisation_posts WHERE organisation_id = ?').run(org.id);
+    db.prepare('DELETE FROM organisation_invites WHERE organisation_id = ?').run(org.id);
+    db.prepare('DELETE FROM organisation_members WHERE organisation_id = ?').run(org.id);
+    db.prepare('DELETE FROM organisations WHERE id = ?').run(org.id);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  posts.forEach((p) => deleteImageFile(p.image_url));
+  deleteImageFile(org.logo_url);
+  deleteImageFile(org.cover_url);
+  res.json({ ok: true });
 });
 
 // ---------------- moderation ----------------
@@ -252,7 +363,7 @@ router.patch('/:id/moderation', auth.requireAdmin, (req, res) => {
 
 // A community is public as soon as it is made; a CLUB waits until the super admin approves it (a city admin cannot): the Backend page lists the clubs that
 // wait. Taking the approval back hides the club from the public again.
-router.patch('/:id/approval', auth.requireSuperAdmin, (req, res) => {
+router.patch('/:id/approval', requireApprover, (req, res) => {
   const org = orgById(req.params.id);
   if (!org) return res.status(404).json({ error: 'Community not found' });
   if (typeof req.body.approved !== 'boolean') return res.status(400).json({ error: 'approved must be true or false' });

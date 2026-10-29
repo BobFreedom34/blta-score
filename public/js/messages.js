@@ -161,13 +161,28 @@
       ${act}</div>`;
   }
 
+  // the request to approve a new club: the club on a card, and the button for the player who may approve it
+  function approvalHtml(m) {
+    const ap = m.approval;
+    const org = ap.organisation;
+    const from = chat && chat.conv && chat.conv.other ? chat.conv.other.name : '';
+    const act = ap.status === 'WAITING' ? `<button type="button" class="btn btn-join com-small" data-approval-approve="${org.id}">${escapeHtml(t('msg.approvalApprove'))}</button>`
+      : ap.status === 'APPROVED' ? `<span class="msg-invite-state">✓ ${escapeHtml(t('msg.approvalApproved'))}</span>`
+        : ap.status === 'SENT' ? `<span class="msg-invite-state">${escapeHtml(t('msg.approvalSent'))}</span>`
+          : `<span class="msg-invite-state">${escapeHtml(t('msg.approvalGone'))}</span>`;
+    return `<div class="msg-invite">
+      ${m.mine ? '' : `<span class="msg-text">${escapeHtml(t('msg.approvalText', { name: from, org: org ? org.name : '' }))}</span>`}
+      <div class="msg-invite-card"><span class="com-logo">${org && org.logoUrl ? `<img src="${escapeHtml(org.logoUrl)}" alt="">` : escapeHtml(String(org ? org.name : '?').trim().charAt(0).toUpperCase())}</span><b>${escapeHtml(org ? org.name : '')}</b><small>${escapeHtml(t('com.typeClub'))}</small></div>
+      ${act}</div>`;
+  }
+
   function bubblesHtml(items) {
     let out = '';
     let day = null;
     items.forEach((m) => {
       const d = new Date(m.createdAt);
       if (!day || !sameDay(day, d)) { out += `<div class="msg-day">${escapeHtml(dayLabel(m.createdAt))}</div>`; day = d; }
-      out += `<div class="msg-bubble${m.mine ? ' mine' : ''}" data-id="${m.id}">${m.invite ? inviteHtml(m) : `<span class="msg-text">${linkify(m.body)}</span>`}<span class="msg-time">${escapeHtml(clock(m.createdAt))}</span></div>`;
+      out += `<div class="msg-bubble${m.mine ? ' mine' : ''}" data-id="${m.id}">${m.invite ? inviteHtml(m) : m.approval ? approvalHtml(m) : `<span class="msg-text">${linkify(m.body)}</span>`}<span class="msg-time">${escapeHtml(clock(m.createdAt))}</span></div>`;
     });
     return out;
   }
@@ -321,6 +336,17 @@
   function bindChat() {
     document.getElementById('msg-back').addEventListener('click', goBack);
     // joining from an invitation: no approval; the card then says he is a member
+    // approving a new club from its request (the server lets the super admin and the player chosen to receive the requests do it)
+    document.getElementById('msg-bubbles').addEventListener('click', async (e) => {
+      const ok = e.target.closest('[data-approval-approve]');
+      if (!ok || ok.disabled) return;
+      ok.disabled = true;
+      try {
+        await api(`/communities/${ok.dataset.approvalApprove}/approval`, { method: 'PATCH', body: { approved: true } });
+        chat.items.forEach((m) => { if (m.approval && m.approval.organisation && String(m.approval.organisation.id) === ok.dataset.approvalApprove && m.approval.status === 'WAITING') m.approval.status = 'APPROVED'; });
+        document.getElementById('msg-bubbles').innerHTML = bubblesHtml(chat.items);
+      } catch (err) { ok.disabled = false; if (typeof toast === 'function') toast(err.message); }
+    });
     document.getElementById('msg-bubbles').addEventListener('click', async (e) => {
       const btn = e.target.closest('[data-invite-join]');
       if (!btn || btn.disabled) return;
@@ -476,7 +502,7 @@
     socket.on('dm:message', (e) => {
       if (chat && e.conversationId === chat.id) {
         const mine = e.message.senderPlayerId === myId;
-        const added = appendMessage({ id: e.message.id, body: e.message.body, createdAt: e.message.createdAt, mine, invite: e.message.invite });
+        const added = appendMessage({ id: e.message.id, body: e.message.body, createdAt: e.message.createdAt, mine, invite: e.message.invite, approval: e.message.approval });
         if (added && !mine) {
           markRead();
           // an answer opens the composer of a stranger's request again (and the count of what he may still send)

@@ -280,6 +280,29 @@ async function sendNewRegistrationEmail(player) {
   return true;
 }
 
+// Sent to the administrators when a player makes a club: a club is public only after the super admin approves it (Backend > Communities).
+async function sendClubWaitingEmail(club) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping new-club email.');
+    return false;
+  }
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
+    subject: `Nový klub čaká na schválenie: ${club.name}`,
+    text: [
+      'Hráč založil nový klub, ktorý čaká na tvoje schválenie:',
+      `Názov: ${club.name}`,
+      `Mesto: ${club.city || ''}`,
+      `Založil: ${club.creator || ''}`,
+      '',
+      `Schváliť ho môžeš v Backende > Communities: ${(process.env.PUBLIC_URL || '').replace(/\/$/, '')}/communities-admin`,
+    ].join('\n'),
+  });
+  return true;
+}
+
 // Sent to a "looking to play" post's owner the moment another player taps
 // "I want to play!" on it (see POST /availability/:id/join) — the whole
 // point of that board is not having to keep checking it yourself. The
@@ -652,6 +675,6 @@ module.exports = {
   sendSeasonRegistrationEmail,
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendProposalReceivedEmail,
-  sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendPlayRequestEmail,
+  sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendClubWaitingEmail, sendPlayRequestEmail,
   sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail, sendPartnerAcceptedEmail, sendBackupFailedEmail,
 };
