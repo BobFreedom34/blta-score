@@ -59,11 +59,13 @@
     return `<button type="button" class="btn btn-join" data-act="join">${escapeHtml(t(org.joinPolicy === 'OPEN' || inviteToken ? 'com.join' : 'com.requestJoin'))}</button>`;
   }
 
+  // the logo of this community in the header of its news
+  const orgLogoHtml = () => (org.logoUrl ? `<span class="com-logo"><img src="${escapeHtml(org.logoUrl)}" alt=""></span>` : `<span class="com-logo">${escapeHtml(initials(org.name))}</span>`);
+
   function postHtml(p) {
     return `
       <div class="com-post" data-post="${p.id}">
-        <div class="com-post-head"><b>${escapeHtml(p.authorName)}</b><span>${escapeHtml(dateText(p.createdAt))}</span>
-          ${p.canDelete ? `<button type="button" class="com-link" data-delete-post="${p.id}">${escapeHtml(t('com.deletePost'))}</button>` : ''}</div>
+        ${comPostHeadHtml({ logo: orgLogoHtml(), name: org.name, by: t('com.postedBy', { name: p.authorName }), date: dateText(p.createdAt), postId: p.id, canDelete: p.canDelete })}
         ${p.body ? `<div class="com-post-body">${comPostText(p.body)}</div>` : ''}
         ${comPostImage(p.imageUrl)}
         ${comReactionsHtml(p)}
@@ -392,7 +394,7 @@
     const cutoff = posts.more && posts.items.length ? new Date(posts.items[posts.items.length - 1].createdAt).getTime() : 0;
     const list = posts.items.map((p) => ({ at: new Date(p.createdAt).getTime(), html: postHtml(p) }));
     tournaments.filter((s) => s.createdAt && new Date(s.createdAt).getTime() >= cutoff).forEach((s) => {
-      const head = `<div class="com-post-head"><b>${escapeHtml(t('com.feedNewTournament'))}</b><span>${escapeHtml(dateText(s.createdAt))}</span></div>`;
+      const head = comPostHeadHtml({ logo: orgLogoHtml(), name: org.name, by: t('com.feedNewTournament'), date: dateText(s.createdAt) });
       list.push({ at: new Date(s.createdAt).getTime(), html: comTournamentNewsHtml(s, head) });
     });
     return list.sort((a, b) => b.at - a.at).map((x) => x.html);
@@ -506,6 +508,7 @@
     comBindReactions(root, () => org.id);
     comBindComments(root, () => org.id);
     comBindTournaments(root);
+    comBindPostMenus(root);
     const post = document.getElementById('com-post-btn');
     if (post) {
       const box = document.getElementById('com-post-text');

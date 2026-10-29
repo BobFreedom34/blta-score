@@ -230,3 +230,25 @@ function comBindTournaments(root) {
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(e); });
   });
 }
+
+// ---- the header of a piece of news, like a social post: the logo of the community, its name, "Posted by <author> · <date>", and - for who may delete it - a
+// three-dot menu. o: { logo (html), name, href (optional), by, date, postId, canDelete }
+function comPostHeadHtml(o) {
+  const name = o.href ? `<a href="${escapeHtml(o.href)}">${escapeHtml(o.name)}</a>` : escapeHtml(o.name);
+  const menu = o.canDelete && o.postId
+    ? `<div class="com-dots-wrap"><button type="button" class="com-dots" data-dots aria-label="${escapeHtml(t('com.postMenu'))}" title="${escapeHtml(t('com.postMenu'))}" aria-haspopup="true">⋮</button>
+        <div class="com-dots-menu" hidden><button type="button" data-delete-post="${o.postId}">${escapeHtml(t('com.deletePost'))}</button></div></div>` : '';
+  return `<div class="com-post-head2">${o.logo}<div class="com-post-who"><b>${name}</b><span>${escapeHtml(o.by)} · ${escapeHtml(o.date)}</span></div>${menu}</div>`;
+}
+
+// opens and closes the three-dot menus inside root (one open at a time; a click anywhere else closes them)
+function comBindPostMenus(root) {
+  root.querySelectorAll('[data-dots]').forEach((b) => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const menu = b.parentElement.querySelector('.com-dots-menu');
+    const wasHidden = menu.hidden;
+    document.querySelectorAll('.com-dots-menu').forEach((m) => { m.hidden = true; });
+    menu.hidden = !wasHidden;
+  }));
+}
+document.addEventListener('click', () => document.querySelectorAll('.com-dots-menu').forEach((m) => { m.hidden = true; }));

@@ -52,12 +52,7 @@
     const facts = [rangeText(p.startDate, p.endDate), p.venue, t(p.playType === 'DOUBLES' ? 'com.tDoubles' : 'com.tSingles')].filter(Boolean).map(escapeHtml).join(' · ');
     const over = !!p.endDate && p.endDate < new Date().toISOString().slice(0, 10);
     // the card of a Harmonogram row under the community, the kind of news and the day it was posted
-    const head = `<a class="com-feed-head" href="/community/${encodeURIComponent(p.organisation.slug)}">
-          ${logoHtml(p.organisation)}
-          <span class="com-feed-from"><b>${escapeHtml(p.organisation.name)}</b><span class="com-badge">${escapeHtml(typeText(p.organisation))}</span></span>
-          <span class="com-feed-date">${escapeHtml(dateText(p.createdAt))}</span>
-        </a>
-        <div class="com-feed-kicker">${escapeHtml(t('com.feedNewTournament'))}</div>`;
+    const head = comPostHeadHtml({ logo: logoHtml(p.organisation), name: p.organisation.name, href: `/community/${encodeURIComponent(p.organisation.slug)}`, by: t('com.feedNewTournament'), date: dateText(p.createdAt) });
     return comTournamentNewsHtml(p, head).replace('class="com-post com-news-tournament"', 'class="com-post com-feed-post com-feed-tournament com-news-tournament"');
   }
 
@@ -66,11 +61,7 @@
     if (p.type === 'TOURNAMENT') return feedTournamentHtml(p);
     return `
       <div class="com-post com-feed-post" data-post="${p.id}" data-org="${p.organisation.id}">
-        <a class="com-feed-head" href="/community/${encodeURIComponent(p.organisation.slug)}">
-          ${logoHtml(p.organisation)}
-          <span class="com-feed-from"><b>${escapeHtml(p.organisation.name)}</b><span class="com-badge">${escapeHtml(typeText(p.organisation))}</span></span>
-          <span class="com-feed-date">${escapeHtml(dateText(p.createdAt))}</span>
-        </a>
+        ${comPostHeadHtml({ logo: logoHtml(p.organisation), name: p.organisation.name, href: `/community/${encodeURIComponent(p.organisation.slug)}`, by: t('com.postedBy', { name: p.authorName }), date: dateText(p.createdAt) })}
         ${p.body ? `<div class="com-post-body">${comPostText(p.body)}</div>` : ''}
         ${comPostImage(p.imageUrl)}
         ${comReactionsHtml(p)}

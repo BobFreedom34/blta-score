@@ -111,6 +111,22 @@ test('the page side: one card like a Harmonogram row, with the day it was posted
   assert.ok(/.com-news-tournament .sch-row.link:hover {[^}]*background/.test(css), 'the card gets a background on hover, like a row of the schedule');
 });
 
+test('the page side: every item of the news is a bordered card with the header of a social post (logo, community, "Zverejnil <author> · date", a three-dot menu for who may delete)', () => {
+  const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
+  const shared = pub('js/community-post.js');
+  assert.ok(shared.includes('function comPostHeadHtml') && shared.includes('com-dots') && shared.includes('data-delete-post') && shared.includes('function comBindPostMenus'), 'the shared header with the menu');
+  const club = pub('js/community.js');
+  assert.ok(club.includes('comPostHeadHtml(') && club.includes('comBindPostMenus(') && club.includes("t('com.postedBy'"), 'the club page uses it for posts and tournaments');
+  assert.ok(!club.includes('class="com-post-head"><b>${escapeHtml(p.authorName)}'), 'the old plain header is gone');
+  const feed = pub('js/communities.js');
+  assert.ok(feed.includes('comPostHeadHtml(') && feed.includes("t('com.postedBy'"), 'the Feed too');
+  const css = pub('css/style.css');
+  assert.ok(!/.com-post.com-news-tournament {[^}]*border: 0/.test(css), 'a tournament is a bordered card like a post');
+  assert.ok(/.com-post-img img {[^}]*width: 100%/.test(css), 'the picture runs the whole width of the card');
+  const i18n = pub('js/i18n.js');
+  for (const key of ['com.postedBy', 'com.postMenu']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
+});
+
 async function main() {
   let failed = 0;
   try {

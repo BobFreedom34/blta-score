@@ -482,11 +482,14 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
     .profile-pill-av { width: 26px; height: 26px; }
     .brand-logo { height: 30px; }
   }
+  /* the hamburger sits in the middle of the bar, between the logo and the icons on the right (its containing block is .topbar, the sticky bar itself:
+     .topbar-right and .topbar-inner are not positioned, see the note at .badge-bell-wrap) */
   .nav-toggle {
     display: flex;
-    position: static;
-    transform: none;
-    order: -2;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     flex: none;
   }
   .nav-links {
@@ -5560,7 +5563,7 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .com-newpost-img img { max-height: 120px; max-width: 60%; border-radius: var(--radius-sm); border: 1px solid var(--border-grey); }
 .com-post-body a { color: var(--orange); text-decoration: underline; overflow-wrap: anywhere; }
 .com-post-img { display: block; margin-top: 10px; }
-.com-post-img img { display: block; max-width: 100%; max-height: 420px; border-radius: var(--radius-sm); border: 1px solid var(--border-grey); }
+.com-post-img img { display: block; width: 100%; height: auto; border-radius: var(--radius); }
 .com-reactions { position: relative; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .com-react { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border-grey); background: #1a1d24; color: var(--white); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 .com-react:hover { border-color: var(--orange); }
@@ -5697,9 +5700,21 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .msg-invite-state { font-size: 13px; font-weight: 700; color: var(--status-green); }
 .com-lab-dark { color: var(--ink); margin: 6px 0; }
 /* a tournament as news: the card of a Harmonogram row (.sch-*) under the line with the day it was posted */
-.com-post.com-news-tournament { padding: 0; border: 0; background: none; box-shadow: none; }
-.com-news-tournament .com-feed-head, .com-news-tournament .com-post-head { padding: 0 4px; }
-.com-news-tournament .com-feed-kicker { padding: 0 4px; margin-bottom: 8px; }
+/* every piece of news is a bordered card of its own: a post or a tournament */
+.com-post { padding: 18px 22px; }
+.com-post-head2 { position: relative; display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.com-post-head2 .com-logo { flex: none; width: 48px; height: 48px; font-size: 16px; }
+.com-post-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.com-post-who b { font-size: 17px; line-height: 1.2; color: var(--white); overflow-wrap: anywhere; }
+.com-post-who b a { color: var(--white); text-decoration: none; }
+.com-post-who span { font-size: 14px; color: var(--gray-dim); }
+.com-dots-wrap { position: relative; margin-left: auto; flex: none; }
+.com-dots { width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--gray-dim); font-size: 22px; line-height: 1; cursor: pointer; }
+.com-dots:hover { background: rgba(255, 255, 255, 0.08); color: var(--white); }
+.com-dots-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 40; min-width: 140px; padding: 6px; background: #1a1d24; border: 1px solid var(--border-grey); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); }
+.com-dots-menu[hidden] { display: none; }
+.com-dots-menu button { display: block; width: 100%; padding: 9px 12px; border: 0; border-radius: var(--radius-sm); background: transparent; color: #ff6b6b; font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; }
+.com-dots-menu button:hover { background: rgba(255, 255, 255, 0.08); }
 .com-news-tournament .sch-row { padding: 18px 22px; border: 1px solid var(--orange); border-radius: var(--radius); background: var(--ink); box-shadow: 0 0 18px rgba(255, 85, 0, 0.18); }
 .com-news-tournament .sch-row:last-child { border-bottom: 1px solid var(--orange); }
 /* hovering the card lights it like a row of the schedule page */
