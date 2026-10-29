@@ -1,31 +1,43 @@
 const root = document.getElementById('admin-root');
 
-function renderLoggedOut() {
+// Two separate logins: the super admin (the password of the server, no email) and the admin of one city (his email and password). The form starts as the super
+// admin, with no email field at all: a browser would fill that field with the saved email of a logged-in player, and the super admin's password would then be
+// checked as a city login and refused.
+function renderLoggedOut(mode = 'SUPER') {
+  const city = mode === 'CITY';
   root.innerHTML = `
     <p style="color:var(--gray);margin-top:0">
       Admin can add/rename/delete players and correct a match after it's finished.
     </p>
-    <form id="login-form">
+    <div class="tabs" style="margin-bottom:14px">
+      <a href="#" class="tab${city ? '' : ' active'}" data-mode="SUPER">Super admin</a>
+      <a href="#" class="tab${city ? ' active' : ''}" data-mode="CITY">City admin</a>
+    </div>
+    <form id="login-form" autocomplete="off">
+      ${city ? `<div class="field">
+        <label for="email">Email of the city admin</label>
+        <input type="email" id="email" autocomplete="username" placeholder="name@example.com" required>
+      </div>` : ''}
       <div class="field">
-        <label for="email">Email <span style="font-weight:400;color:var(--gray-dim)">(admins of a city; leave empty if you are the super admin)</span></label>
-        <input type="email" id="email" autocomplete="username" placeholder="name@example.com">
-      </div>
-      <div class="field">
-        <label for="password">Password</label>
-        <input type="password" id="password" required autofocus>
+        <label for="password">${city ? 'Password' : 'Password of the super admin'}</label>
+        <input type="password" id="password" autocomplete="current-password" required autofocus>
       </div>
       <button type="submit" class="btn btn-primary btn-block">Log in</button>
       <div id="login-error" style="color:var(--danger);font-weight:600;margin-top:10px"></div>
     </form>
   `;
+  root.querySelectorAll('[data-mode]').forEach((a) => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    renderLoggedOut(a.dataset.mode === 'CITY' ? 'CITY' : 'SUPER');
+  }));
   document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errorEl = document.getElementById('login-error');
     errorEl.textContent = '';
     const password = document.getElementById('password').value;
-    const email = document.getElementById('email').value.trim();
+    const email = city ? document.getElementById('email').value.trim() : '';
     try {
-      await api('/admin/login', { method: 'POST', body: { password, email } });
+      await api('/admin/login', { method: 'POST', body: { password, email: mode === 'CITY' ? email : '' } });
       toast('Logged in as admin');
       location.reload();
     } catch (err) {
@@ -33,6 +45,7 @@ function renderLoggedOut() {
     }
   });
 }
+
 
 // The admin of a city: what he runs, in a few lines (the tabs above are his whole backend)
 function renderCityAdmin(info) {

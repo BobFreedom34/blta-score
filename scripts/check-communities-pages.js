@@ -153,6 +153,17 @@ test('a logged-in player always sees his name as a profile pill in the top strip
   ['.profile-pill {', '.profile-pill-av {', '.profile-pill-caret {', '.profile-pill-wrap {'].forEach((sel) => assert.ok(css.includes(sel), `${sel} has a rule`));
 });
 
+test('two refreshes at once (the session event fires twice on some pages) leave ONE pill: the older run gives up after its await, and the pill is removed right before it is added', () => {
+  const js = read('js/common.js');
+  const fn = js.slice(js.indexOf('async function refreshActingOrg'), js.indexOf("window.addEventListener('blta:auth-changed', refreshActingOrg"));
+  assert.ok(/const run = \+\+actingRun/.test(fn), 'each run takes a number');
+  const awaited = fn.indexOf("await api('/communities/mine')");
+  assert.ok(awaited > 0 && fn.indexOf('run !== actingRun', awaited) > awaited, 'a run that is no longer the newest stops after its await');
+  const build = fn.indexOf("document.createElement('div');", awaited);
+  const removeAt = fn.lastIndexOf(".profile-pill-wrap').forEach((el) => el.remove())");
+  assert.ok(removeAt > awaited, 'the old pill is removed after the await, not only before it');
+});
+
 test('the switcher puts only DOM text, never markup from a name, into the page', () => {
   const js = read('js/common.js');
   const block = js.slice(js.indexOf('// Komunity a kluby: the profile switcher'), js.indexOf("window.addEventListener('blta:auth-changed', refreshActingOrg"));

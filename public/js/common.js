@@ -1566,7 +1566,10 @@ function clubInitials(name) {
   return String(name || '?').split(/\s+/).filter((w) => /^[\p{L}\p{N}]/u.test(w)).slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('') || '?';
 }
 
+let actingRun = 0; // the number of the newest refresh: the session event can fire twice at once, and only the newest run may draw the pill
+
 async function refreshActingOrg() {
+  const run = ++actingRun;
   document.querySelectorAll('.profile-pill-wrap').forEach((el) => el.remove());
   const wasActing = !!actingOrg;
   actingOrg = null;
@@ -1578,9 +1581,11 @@ async function refreshActingOrg() {
   try {
     mine = await api('/communities/mine');
   } catch {
-    if (wasActing) renderHeaderNav();
+    if (wasActing && run === actingRun) renderHeaderNav();
     return; // the menu simply has no switcher
   }
+  if (run !== actingRun) return; // a newer refresh is on its way (or already drew the pill)
+  document.querySelectorAll('.profile-pill-wrap').forEach((el) => el.remove());
   actingOrg = mine.acting;
   if (wasActing && !actingOrg) renderHeaderNav(); // left the club or no longer its admin: the normal menu comes back
   const admins = mine.items.filter((o) => o.me && o.me.role === 'ADMIN');
