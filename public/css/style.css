@@ -5566,7 +5566,8 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .com-emoji-panel button { width: 36px; height: 36px; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; font-size: 22px; line-height: 1; cursor: pointer; }
 .com-emoji-panel button:hover { background: rgba(255, 255, 255, 0.12); }
 .com-panel h3 { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.com-invite-btn { font-size: 13px; }
+.com-actions .com-invite-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #fff; color: #000; border: 0; font-weight: 800; }
+.com-actions .com-invite-btn:hover { background: #e9e9e9; color: #000; }
 .com-invite-acts { display: flex; flex-wrap: wrap; gap: 8px; }
 .com-invited { border-color: var(--status-green); color: var(--white); }
 .com-gear { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-left: 10px; vertical-align: middle; padding: 0; border: 1px solid var(--border-grey); border-radius: 50%; background: transparent; color: var(--gray-dim); cursor: pointer; }

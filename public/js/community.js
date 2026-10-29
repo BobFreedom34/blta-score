@@ -85,7 +85,7 @@
     const pending = members.pending;
     return `
       <div class="com-panel">
-        <h3>${escapeHtml(t('com.adminPanel'))}<button type="button" class="btn btn-outline com-small com-invite-btn" data-act="invite">👥 ${escapeHtml(t('com.invite'))}</button></h3>
+        <h3>${escapeHtml(t('com.adminPanel'))}</h3>
         <div class="com-newpost">
           <textarea id="com-post-text" rows="3" maxlength="2000" placeholder="${escapeHtml(t('com.postPlaceholder'))}"></textarea>
           <div class="com-newpost-img" id="com-post-img"${draftImage ? '' : ' hidden'}>${draftImage ? draftImageHtml() : ''}</div>
@@ -406,7 +406,7 @@
         <div class="com-sub"><span class="com-badge">${escapeHtml(typeText(org))}</span>${org.city ? `${escapeHtml(org.city)} · ` : ''}${escapeHtml(membersText(org.memberCount))}</div>
         ${org.locked && (org.previewPhotos || []).length ? `<div class="com-faces">${org.previewPhotos.map((u) => `<img src="${escapeHtml(u)}" alt="">`).join('')}</div>` : ''}
         ${org.approved ? `<p class="com-join-info">${escapeHtml(joinInfoText())}</p>` : ''}
-        <div class="com-actions" id="com-join">${joinHtml()}</div>
+        <div class="com-actions" id="com-join">${joinHtml()}${isActing() ? `<button type="button" class="btn com-invite-btn" data-act="invite"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>${escapeHtml(t('com.invite'))}</button>` : ''}</div>
       </div>
       ${org.approved ? '' : `<div class="com-hint-box com-wait">${escapeHtml(t('com.pendingBanner'))}</div>`}
       ${inviteToken && !(org.me && (org.me.status === 'ACTIVE')) ? `<div class="com-hint-box com-invited">${escapeHtml(t('com.invitedBanner', { name: org.name }))}</div>` : ''}
