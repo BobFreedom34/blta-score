@@ -1785,6 +1785,19 @@ body:not(.embed-light) .match-card .scoreboard .set-win { color: var(--status-gr
   box-shadow: var(--shadow-lg);
   z-index: 45;
 }
+/* phones and tablets: the notifications open full width under the top strip, like the account dropdown, and never run under the bottom menu */
+@media (max-width: 1024px) {
+  .badge-notif-panel {
+    position: fixed; top: 58px; left: 10px; right: 10px; width: auto; max-width: none; z-index: 60;
+    max-height: calc(100vh - 58px - 16px);
+    max-height: calc(100dvh - 58px - 16px);
+    overscroll-behavior: contain;
+  }
+  body.has-bottom-nav .badge-notif-panel {
+    max-height: calc(100vh - 58px - 76px - 16px - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 58px - 76px - 16px - env(safe-area-inset-bottom));
+  }
+}
 .badge-notif-panel-header {
   padding: 12px 14px;
   font-weight: 800;
@@ -1795,6 +1808,7 @@ body:not(.embed-light) .match-card .scoreboard .set-win { color: var(--status-gr
   border-bottom: 1px solid var(--gray-light);
   position: sticky;
   top: 0;
+  z-index: 2; /* above the items (position: relative, later in the panel), or their badges and texts show through it while the list scrolls */
   background: var(--white);
 }
 .badge-notif-push { padding: 10px 14px; border-bottom: 1px solid var(--gray-light); font-size: 12px; color: var(--gray); text-align: left; line-height: 1.4; }
@@ -2187,8 +2201,12 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   grid-template-columns: repeat(3, 1fr);
   column-gap: 28px;
 }
-@media (max-width: 680px) {
+/* a phone is too narrow for two columns (avatar + name + "Next Gen · courtIQ 4.0" are cut off): one name per row, the pair side by side from a tablet on */
+@media (min-width: 560px) and (max-width: 680px) {
   #player-list { grid-template-columns: repeat(2, 1fr); column-gap: 16px; }
+}
+@media (max-width: 559px) {
+  #player-list { grid-template-columns: 1fr; }
 }
 .player-group-heading {
   grid-column: 1 / -1;
@@ -2228,7 +2246,7 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
 .player-name { font-weight: 700; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* the name and under it the category in a lighter grey, the pair centred next to the avatar */
 .player-name-stack { display: flex; flex-direction: column; justify-content: center; gap: 5px; min-width: 0; line-height: 1.25; }
-.player-cat { font-size: 12.5px; font-weight: 500; color: #b8bcc4; white-space: nowrap; }
+.player-cat { font-size: 12.5px; font-weight: 500; color: #b8bcc4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .player-cat .player-iq { font-weight: 700; color: var(--white); }
 .player-row-avatar {
   width: 48px;
@@ -4632,6 +4650,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 @media (max-width: 1024px) {
   .nav-links {
     flex-wrap: nowrap; /* a single column that scrolls — with a height limit it would otherwise wrap into a second column */
+    justify-content: flex-start; /* the desktop bar centres its items; centred in a column that is taller than the panel (a dropdown open) the top rows would run out above it, where no scrolling reaches */
     max-height: calc(100vh - 60px);
     max-height: calc(100dvh - 60px);
     overflow-y: auto;
