@@ -145,9 +145,9 @@ function serializeSeason(s) {
     // what a tournament is played as (chosen when it was made): singles in the categories, or doubles (Štvorhra) only
     playType: s.kind === 'TOURNAMENT' && s.play_type === 'DOUBLES' ? 'DOUBLES' : 'SINGLES',
     venue: s.venue || '',
-    // how a tournament's group tables are calculated (a tournament made before the rules existed shows the defaults)
-    scoring: s.kind === 'TOURNAMENT' ? normalizeRules({ scoring: s.scoring, tiebreakers: s.tiebreakers }).scoring : null,
-    tiebreakers: s.kind === 'TOURNAMENT' ? normalizeRules({ scoring: s.scoring, tiebreakers: s.tiebreakers }).tiebreakers : null,
+    // how the group tables are calculated (a tournament made before the rules existed shows the defaults; a season shows them once it has chosen them, else null = the league's own way)
+    scoring: s.kind === 'TOURNAMENT' || s.scoring ? normalizeRules({ scoring: s.scoring, tiebreakers: s.tiebreakers }).scoring : null,
+    tiebreakers: s.kind === 'TOURNAMENT' || s.scoring ? normalizeRules({ scoring: s.scoring, tiebreakers: s.tiebreakers }).tiebreakers : null,
     categories: s.kind === 'TOURNAMENT' && s.play_type === 'DOUBLES' ? ['DOUBLES'] : parseCategories(s.categories),
     startDate: s.start_date,
     endDate: s.end_date,
@@ -850,8 +850,8 @@ function readNewSeason(body) {
   const playType = kind === 'TOURNAMENT' ? playTypeAsked : 'SINGLES';
   const asked = readRules(body);
   if (asked.error) return { error: asked.error };
-  // a tournament always starts with explicit rules (the BLTA scoring and the default order unless it chooses); a league season has none
-  const rules = kind === 'TOURNAMENT' ? normalizeRules(asked) : null;
+  // a tournament always starts with explicit rules (the BLTA scoring and the default order unless it chooses); a season has them only when it chooses (else the league's own way)
+  const rules = kind === 'TOURNAMENT' || asked.scoring !== undefined || asked.tiebreakers !== undefined ? normalizeRules(asked) : null;
   return { values: { name, start: start.value, end: end.value, kind, venue, playType, categories: playType === 'DOUBLES' ? null : categoriesToStore(body.categories), scoring: rules ? rules.scoring : null, tiebreakers: rules ? rules.tiebreakers.join(',') : null } };
 }
 
@@ -909,10 +909,10 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
   const categories = req.body.categories === undefined || tournamentDraw.isDoublesTournament(season) ? season.categories : categoriesToStore(req.body.categories);
   const askedRules = readRules(req.body);
   if (askedRules.error) return res.status(400).json({ error: askedRules.error });
-  // unchanged unless the request names them; only a tournament has rules
+  // unchanged unless the request names them
   let scoring = season.scoring;
   let tiebreakers = season.tiebreakers;
-  if (kind === 'TOURNAMENT' && (askedRules.scoring !== undefined || askedRules.tiebreakers !== undefined)) {
+  if (askedRules.scoring !== undefined || askedRules.tiebreakers !== undefined) {
     const now = normalizeRules({ scoring: season.scoring, tiebreakers: season.tiebreakers });
     const next = normalizeRules({ scoring: askedRules.scoring !== undefined ? askedRules.scoring : now.scoring, tiebreakers: askedRules.tiebreakers !== undefined ? askedRules.tiebreakers : now.tiebreakers });
     scoring = next.scoring;

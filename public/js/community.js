@@ -243,6 +243,7 @@
           <div class="field"><label>${escapeHtml(t('com.tFieldEnd'))}</label><input type="date" id="com-s-end" required></div>
         </div>
         <div class="field"><label>${escapeHtml(t('com.tFieldInfo'))}</label><textarea id="com-s-info" rows="4" maxlength="4000" placeholder="${escapeHtml(t('com.sInfoHint'))}"></textarea></div>
+        <div class="field" id="com-s-rules"><label>${escapeHtml(t('com.tFieldRules'))}</label>${TournamentRules.html('club-season', null)}</div>
         <div id="com-s-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
         <button type="submit" class="btn btn-primary">${escapeHtml(t('com.tCreate'))}</button>
         <button type="button" class="btn btn-outline" id="com-s-cancel">${escapeHtml(t('com.tCancel'))}</button>
@@ -253,6 +254,7 @@
     back.addEventListener('click', (e) => { if (e.target === back) close(); });
     document.body.appendChild(back);
     const form = back.querySelector('#com-s-form');
+    TournamentRules.mount(back.querySelector('#com-s-rules'));
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const submit = form.querySelector('button[type="submit"]');
@@ -263,7 +265,7 @@
       const value = (id) => back.querySelector(id).value;
       try {
         const info = value('#com-s-info').trim();
-        const body = { name: value('#com-s-name').trim(), venue: value('#com-s-venue').trim(), startDate: value('#com-s-start') || null, endDate: value('#com-s-end') || null, info: info ? `<p>${escapeHtml(info).replace(/\n/g, '<br>')}</p>` : '' };
+        const body = { name: value('#com-s-name').trim(), venue: value('#com-s-venue').trim(), startDate: value('#com-s-start') || null, endDate: value('#com-s-end') || null, ...TournamentRules.read(back.querySelector('#com-s-rules')), info: info ? `<p>${escapeHtml(info).replace(/\n/g, '<br>')}</p>` : '' };
         const made = await api(`/communities/${org.id}/seasons`, { method: 'POST', body });
         window.location.href = siteUrl(`/community-tournament/${made.id}`); // (its manage page: the groups and their players)
       } catch (err) { errorEl.textContent = err.message; delete submit.dataset.busy; }

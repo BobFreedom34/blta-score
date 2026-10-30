@@ -192,9 +192,9 @@ function rankByRules(list, conditions, h2h) {
   return out;
 }
 
-// the rules a season row asks for: a tournament that has chosen them; null (the league's way) for everything else
+// the rules a season row asks for: a season or tournament that has chosen them; null (the league's way) for a season that has not
 function rulesOfSeason(season) {
-  return season && season.kind === 'TOURNAMENT' && season.scoring ? normalizeRules({ scoring: season.scoring, tiebreakers: season.tiebreakers }) : null;
+  return season && season.scoring ? normalizeRules({ scoring: season.scoring, tiebreakers: season.tiebreakers }) : null;
 }
 
 module.exports = { computeGroupStandings, scoreRecord, normalizeRules, rulesOfSeason, SCORING, DEFAULT_TIEBREAKERS };

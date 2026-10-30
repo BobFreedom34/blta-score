@@ -452,7 +452,7 @@ router.post('/:id/seasons', (req, res) => {
   const ctx = needOrgAdmin(req, res);
   if (!ctx) return;
   if (!clubTournaments.isPublicOrg(ctx.org)) return res.status(404).json({ error: 'Community not found' });
-  const read = seasonsRoutes.readNewSeason({ name: req.body.name, startDate: req.body.startDate, endDate: req.body.endDate, venue: req.body.venue, kind: 'LEAGUE' });
+  const read = seasonsRoutes.readNewSeason({ name: req.body.name, startDate: req.body.startDate, endDate: req.body.endDate, venue: req.body.venue, scoring: req.body.scoring, tiebreakers: req.body.tiebreakers, kind: 'LEAGUE' });
   if (read.error) return res.status(400).json({ error: read.error });
   let info = null;
   if (req.body.info !== undefined) {

@@ -60,11 +60,25 @@ test('an unknown scoring or condition is refused (400), nothing is created', asy
   assert.strictEqual((await call('GET', '/api/seasons')).json.length, before);
 });
 
-test('a league season has no rules of its own', async () => {
-  const made = await call('POST', '/api/seasons', { body: { name: `Liga pravidla ${seq += 1}`, startDate: '2026-12-01', endDate: '2027-02-02', scoring: 'WIN1' } });
-  assert.strictEqual(made.status, 201, made.text);
-  assert.strictEqual(made.json.scoring, null);
-  assert.strictEqual(made.json.tiebreakers, null);
+test('a season takes rules only when it chooses them; without them it keeps the league way', async () => {
+  const plain = await call('POST', '/api/seasons', { body: { name: `Liga pravidla ${seq += 1}`, startDate: '2026-12-01', endDate: '2027-02-02' } });
+  assert.strictEqual(plain.status, 201, plain.text);
+  assert.strictEqual(plain.json.scoring, null);
+  assert.strictEqual(plain.json.tiebreakers, null);
+  // a change that does not mention the rules leaves it without them
+  const kept = await call('PATCH', `/api/seasons/${plain.json.id}`, { body: { name: plain.json.name, startDate: '2026-12-01', endDate: '2027-02-02' } });
+  assert.strictEqual(kept.status, 200, kept.text);
+  assert.strictEqual(kept.json.scoring, null);
+  // a season that chooses them has them, in its tables too, and they can be changed later
+  const chosen = await call('POST', '/api/seasons', { body: { name: `Liga pravidla ${seq += 1}`, startDate: '2026-12-01', endDate: '2027-02-02', scoring: 'WIN1', tiebreakers: ['WINS', 'SETS'] } });
+  assert.strictEqual(chosen.status, 201, chosen.text);
+  assert.strictEqual(chosen.json.scoring, 'WIN1');
+  assert.deepStrictEqual(chosen.json.tiebreakers, ['WINS', 'SETS', 'H2H', 'GAMES']);
+  const st = await call('GET', `/api/seasons/${chosen.json.id}/standings`, { cookie: '' });
+  assert.strictEqual(st.json.rules.scoring, 'WIN1');
+  const later = await call('PATCH', `/api/seasons/${plain.json.id}`, { body: { name: plain.json.name, startDate: '2026-12-01', endDate: '2027-02-02', scoring: 'WIN2' } });
+  assert.strictEqual(later.json.scoring, 'WIN2');
+  assert.strictEqual((await call('GET', `/api/seasons/${plain.json.id}/standings`, { cookie: '' })).json.rules.scoring, 'WIN2');
 });
 
 test('the rules can be changed later; a bad change is refused and leaves them as they were', async () => {
@@ -137,6 +151,7 @@ test('the page side: the shared form is on the Backend card, the club manage pag
   assert.ok(card.includes('Bodovanie a podmienky') && card.includes('TournamentRules.read(') && card.includes('TournamentRules.mount('), 'the card shows, wires and saves the rules');
   const club = pub('js/community.js');
   assert.ok(club.includes("TournamentRules.html('club'") && club.includes('TournamentRules.read('), 'the club create window asks for the rules');
+  assert.ok(club.includes("TournamentRules.html('club-season'"), 'the club season window asks for the rules too');
   const form = pub('js/tournament-rules.js');
   for (const text of ['BLTA bodovanie', '2 body za výhru', '1 bod za výhru', 'Vzájomný zápas', 'Rozdiel setov', 'Počet výhier', 'Rozdiel gemov']) assert.ok(form.includes(text), text);
   const i18n = pub('js/i18n.js');
