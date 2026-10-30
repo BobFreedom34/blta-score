@@ -23,7 +23,7 @@ A *Klub* and a *Komunita* work the same way; the type only changes the label and
 ## Non-goals (v1)
 
 - No approval step before a community, a tournament or a post goes public (decided by the user). Only a club is approved, by the super admin (decided by the user, after the first design).
-- No chat or private messages, no payments (an entry fee is text and an optional payment link, as for existing tournaments), no members-only tournaments, no club leagues (only tournaments and friendly matches).
+- No chat or private messages, no payments (an entry fee is text and an optional payment link, as for existing tournaments), no members-only tournaments, no club leagues (only tournaments and friendly matches) - lifted on 2026-10-30, see [club seasons](2026-10-30-club-seasons-design.md).
 - Club tournament results do not count for league tables, ranking points, badges or CourtIQ (see Rating below), unless an admin turns it on for a club.
 
 ## Anti-goals

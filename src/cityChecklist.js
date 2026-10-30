@@ -29,7 +29,7 @@ function checklistOf(leagueId) {
     {
       key: 'season', page: '/seasons-admin', label: 'A season with dates',
       hint: 'A league season with a start and an end date.',
-      ok: n("SELECT COUNT(*) AS n FROM seasons WHERE league_id = ? AND COALESCE(kind, 'LEAGUE') = 'LEAGUE' AND COALESCE(start_date, '') != ''") > 0,
+      ok: n("SELECT COUNT(*) AS n FROM seasons WHERE league_id = ? AND organisation_id IS NULL AND COALESCE(kind, 'LEAGUE') = 'LEAGUE' AND COALESCE(start_date, '') != ''") > 0,
     },
     {
       key: 'registration', page: '/seasons-admin', label: 'Registration is open',

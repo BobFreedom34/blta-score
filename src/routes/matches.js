@@ -178,6 +178,8 @@ function serializePlayer(player) {
 }
 
 const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+// a group without a category (a season of a community or club) plays the category OTHER, like a tournament without categories
+const matchCategoryOf = (groupCategory) => (groupCategory === 'OPEN' ? 'OTHER' : groupCategory);
 const MATCH_STAGES = ['GROUP', 'PLAYOFF'];
 
 // A BLTA-league match's season ("Autumn Finals Series 2026") and group ("Babolat") — see seasons/season_groups in
@@ -663,7 +665,7 @@ router.patch('/:token/season', requireAdmin, (req, res) => {
   if (groupId !== undefined && groupId !== null) {
     group = db.prepare('SELECT * FROM season_groups WHERE id = ?').get(Number(groupId));
     if (!group) return res.status(400).json({ error: 'That group does not exist' });
-    if (group.category !== row.category) {
+    if (matchCategoryOf(group.category) !== row.category) {
       return res.status(400).json({ error: 'The group is in a different category than this match' });
     }
     season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(group.season_id);
@@ -697,7 +699,9 @@ router.post('/', requireLoggedIn, (req, res) => {
   // ELITE, NEXT GEN and NOVICE are the league's own categories: only an admin creates a match in one of them
   // (the admin of a club may create one in the tournament of his club: the draw of a tournament is played in these categories)
   const clubManaged = !isAdmin(req) && clubTournaments.canManageSeason(req, seasonAskedBy(req.body));
-  if (BLTA_CATEGORIES.includes(category) && !isAdmin(req) && !clubManaged) {
+  // a member of a group of a season of a community or club makes the matches of that group himself (against another member; checked once the players are known)
+  const memberOfGroup = !isAdmin(req) && !clubManaged && !doubles ? clubTournaments.memberGroupFor(req, req.body.groupId) : null;
+  if (BLTA_CATEGORIES.includes(category) && !isAdmin(req) && !clubManaged && !memberOfGroup) {
     return res.status(403).json({ error: 'Only an admin can create a match in the ELITE, NEXT GEN or NOVICE category' });
   }
   if (!engine.FORMATS[format]) {
@@ -811,6 +815,8 @@ router.post('/', requireLoggedIn, (req, res) => {
     const typed = [d1, d2, d1b, d2b].map((d) => (d.player ? d.player.name : d.create) || '');
     if (new Set(typed.map((n) => nameMatch.key(n))).size !== 4) return res.status(400).json({ error: 'The four players must be different' });
   }
+  // in a season of a community or club a member only plays the other members of his group: nobody new is made by this request
+  if (memberOfGroup && (d1.create || d2.create)) return res.status(400).json({ error: 'Choose the players from the group' });
   const make = (d) => {
     if (d.create) {
       const info = db.prepare('INSERT INTO players (name, created_by_anonymous, league_id) VALUES (?, ?, ?)').run(d.create, 0, leagues.actingIdOf(req));
@@ -833,14 +839,28 @@ router.post('/', requireLoggedIn, (req, res) => {
   let seasonId = null;
   let groupId = null;
   if ((req.body.seasonId !== undefined && req.body.seasonId !== null) || (req.body.groupId !== undefined && req.body.groupId !== null)) {
-    if (!isAdmin(req) && !clubManaged) return res.status(403).json({ error: 'Only an admin can set the season and group' });
-    if (!BLTA_CATEGORIES.includes(category)) {
+    if (!isAdmin(req) && !clubManaged && !memberOfGroup) return res.status(403).json({ error: 'Only an admin can set the season and group' });
+    if (memberOfGroup) {
+      // the match is in the group the member is in, between him and another member of it
+      const me = getPlayerId(req);
+      if (req.body.seasonId !== undefined && req.body.seasonId !== null && Number(req.body.seasonId) !== memberOfGroup.group.season_id) {
+        return res.status(400).json({ error: 'That group does not belong to the selected season' });
+      }
+      if (![p1.id, p2.id].includes(me)) return res.status(403).json({ error: 'You can only make a match you play yourself' });
+      if (!clubTournaments.isGroupMember(memberOfGroup.group.id, p1.id) || !clubTournaments.isGroupMember(memberOfGroup.group.id, p2.id)) {
+        return res.status(400).json({ error: 'Both players must be in the group' });
+      }
+    }
+    // (a group of a season of a community or club without a category takes the matches of the category OTHER)
+    const openGroup = category === 'OTHER' && req.body.groupId !== undefined && req.body.groupId !== null
+      && (db.prepare('SELECT category FROM season_groups WHERE id = ?').get(Number(req.body.groupId)) || {}).category === 'OPEN';
+    if (!BLTA_CATEGORIES.includes(category) && !openGroup) {
       return res.status(400).json({ error: 'Seasons and groups only apply to BLTA league matches (Elite, Next Gen, Novice)' });
     }
     if (req.body.groupId !== undefined && req.body.groupId !== null) {
       const group = db.prepare('SELECT * FROM season_groups WHERE id = ?').get(Number(req.body.groupId));
       if (!group) return res.status(400).json({ error: 'That group does not exist' });
-      if (group.category !== category) return res.status(400).json({ error: 'The group is in a different category than this match' });
+      if (matchCategoryOf(group.category) !== category) return res.status(400).json({ error: 'The group is in a different category than this match' });
       if (req.body.seasonId !== undefined && req.body.seasonId !== null && Number(req.body.seasonId) !== group.season_id) {
         return res.status(400).json({ error: 'That group does not belong to the selected season' });
       }
@@ -954,7 +974,7 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
       fields.group_id = null;
     } else if (row.group_id) {
       const g = db.prepare('SELECT category FROM season_groups WHERE id = ?').get(row.group_id);
-      if (!g || g.category !== req.body.category) fields.group_id = null;
+      if (!g || matchCategoryOf(g.category) !== req.body.category) fields.group_id = null;
     }
   }
   if (typeof req.body.notes === 'string') {

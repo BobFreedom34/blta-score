@@ -2,16 +2,19 @@ const root = document.getElementById('seasons-admin-root');
 // The same editor serves two pages: /seasons-admin (league seasons) and /tournaments-admin (tournaments, data-kind="TOURNAMENT").
 // A third use: the manage page of a tournament of a club (/community-tournament/<id>, data-club): the same card for the one tournament, for the admin of its club.
 // There is no list and no "add a tournament" (it is made on the page of the club), and the club admin is a logged-in player, not a site admin.
+// The season of a club (a league-style one with groups and a table, made on the page of the club too) uses the season card: the kind of that page is set when the season is read.
 const CLUB = !!(root && root.dataset.club);
 const CLUB_SEASON_ID = CLUB ? Number(window.location.pathname.split('/').filter(Boolean).pop()) : 0;
-const KIND = CLUB || (root && root.dataset.kind === 'TOURNAMENT') ? 'TOURNAMENT' : 'LEAGUE';
-const IS_TOURNAMENT = KIND === 'TOURNAMENT';
-const WORD = IS_TOURNAMENT ? 'tournament' : 'season';
+let KIND = CLUB || (root && root.dataset.kind === 'TOURNAMENT') ? 'TOURNAMENT' : 'LEAGUE';
+let IS_TOURNAMENT = KIND === 'TOURNAMENT';
+let WORD = IS_TOURNAMENT ? 'tournament' : 'season';
+// the page of a season of a club: its members arrange the matches, so there are no public registrations and no play-off brackets here
+const isClubSeason = () => CLUB && !IS_TOURNAMENT;
 
 let seasons = [];
 
 // Which season cards are unfolded. Remembered in this browser; the first time only the running season is open.
-const OPEN_KEY = IS_TOURNAMENT ? 'blta_tournaments_admin_open' : 'blta_seasons_admin_open';
+const openKey = () => (IS_TOURNAMENT ? 'blta_tournaments_admin_open' : 'blta_seasons_admin_open');
 let openIds = null;
 const openPanels = new Set(); // groups whose players panel is unfolded
 const previewOpen = new Set(); // seasons whose schedule preview is shown
@@ -34,14 +37,14 @@ function seasonStatus(s) {
 function initOpenIds() {
   if (openIds) return;
   try {
-    const stored = JSON.parse(localStorage.getItem(OPEN_KEY));
+    const stored = JSON.parse(localStorage.getItem(openKey()));
     if (Array.isArray(stored)) openIds = new Set(stored);
   } catch { /* no saved state */ }
   if (!openIds) openIds = new Set(seasons.filter((s) => seasonStatus(s) === 'now').map((s) => s.id));
 }
 
 function saveOpenIds() {
-  try { localStorage.setItem(OPEN_KEY, JSON.stringify([...openIds])); } catch { /* ignore */ }
+  try { localStorage.setItem(openKey(), JSON.stringify([...openIds])); } catch { /* ignore */ }
 }
 
 function fmtDate(iso) {
@@ -60,7 +63,9 @@ const CATEGORIES = [
 const inputStyle = 'padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px';
 
 function categoryOptions(selected) {
-  return CATEGORIES.map(([key, label]) => `<option value="${key}"${key === selected ? ' selected' : ''}>${label}</option>`).join('');
+  // a group of a season of a club may also be without a category (like a tournament without categories)
+  const list = isClubSeason() ? [...CATEGORIES, ['OPEN', 'Bez kategórie']] : CATEGORIES;
+  return list.map(([key, label]) => `<option value="${key}"${key === selected ? ' selected' : ''}>${label}</option>`).join('');
 }
 
 // The stored description is cleaned HTML, or plain text from before the editor existed (blank lines = paragraphs).
@@ -159,6 +164,10 @@ async function load() {
       return;
     }
     const season = seasons[0];
+    KIND = season.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE';
+    IS_TOURNAMENT = KIND === 'TOURNAMENT';
+    WORD = IS_TOURNAMENT ? 'tournament' : 'season';
+    if (!IS_TOURNAMENT && !allPlayers.length) await loadPlayers(); // (the names offered when a player is added to a group)
     document.getElementById('ct-title').textContent = season.name;
     const back = document.getElementById('ct-back');
     if (season.organisation) { back.href = `/community/${encodeURIComponent(season.organisation.slug)}#events`; back.textContent = `‹ ${season.organisation.name}`; }
@@ -292,9 +301,11 @@ async function cropHero(file, w, h) {
 // The card of a tournament or a season: under the name the tabs — a tournament: Základné info · Registrácie · Zaradenie do kategórií ·
 // Pavúk turnaja; a season: Základné info · Registrácie · Skupiny · Rozpis · Pavúk (its play-off brackets) — and only the chosen one is shown (what is in a tab is loaded
 // when it is opened). The form of the basic info is in sections.
-const CARD_TABS = IS_TOURNAMENT
+const cardTabs = () => (IS_TOURNAMENT
   ? [['info', 'Základné info'], ['regs', 'Registrácie'], ['assign', 'Zaradenie do kategórií'], ['draw', 'Pavúk turnaja']]
-  : [['info', 'Základné info'], ['regs', 'Registrácie'], ['groups', 'Skupiny'], ['schedule', 'Rozpis'], ['brackets', 'Pavúk']];
+  : isClubSeason()
+    ? [['info', 'Základné info'], ['groups', 'Skupiny'], ['schedule', 'Rozpis']]
+    : [['info', 'Základné info'], ['regs', 'Registrácie'], ['groups', 'Skupiny'], ['schedule', 'Rozpis'], ['brackets', 'Pavúk']]);
 const cardTab = new Map(); // season id -> the tab last opened (kept when the list is drawn again)
 
 function seasonCardHtml(s) {
@@ -313,7 +324,7 @@ function seasonCardHtml(s) {
         <span class="sa-count">${IS_TOURNAMENT ? '' : `${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'} · `}${s.matchCount} ${s.matchCount === 1 ? 'match' : 'matches'}</span>
       </summary>
       <div class="sa-tabs" role="tablist">
-        ${CARD_TABS.filter(([key]) => !(s.playType === 'DOUBLES' && key === 'assign') && !(s.categories.includes('OPEN') && key === 'assign')).map(([key, label]) => `<button type="button" class="sa-tab${key === active ? ' active' : ''}" data-tab="${key}" role="tab">${label}</button>`).join('')}
+        ${cardTabs().filter(([key]) => !(s.playType === 'DOUBLES' && key === 'assign') && !(s.categories.includes('OPEN') && key === 'assign')).map(([key, label]) => `<button type="button" class="sa-tab${key === active ? ' active' : ''}" data-tab="${key}" role="tab">${label}</button>`).join('')}
         <a class="sa-tab-link" data-public href="/${IS_TOURNAMENT ? 'tournament' : 'season'}/${escapeHtml(s.slug)}" target="_blank" rel="noopener">${IS_TOURNAMENT ? 'Stránka turnaja' : 'Stránka sezóny'} ↗</a>
       </div>
       <div class="sa-body">
@@ -357,9 +368,11 @@ function seasonCardHtml(s) {
               <div class="sa-grid">
                 ${field('Štartovné', input('entryFee', s.entryFee || '', 'maxlength="40" placeholder="napr. 20 €"'))}
                 ${field('Ceny pre víťazov', input('prizeMoney', s.prizeMoney || '', 'maxlength="120"'))}
+                <div style="display:${isClubSeason() ? 'none' : 'contents'}">
                 ${field('Dátum žrebovania', input('drawDate', s.drawDate || '', 'type="date"'))}
                 <label class="sa-field sa-check"><input type="checkbox" data-field="registrationOpen"${s.registrationOpen ? ' checked' : ''}> Registrácia je otvorená</label>
                 ${field('Odkaz na platbu (Stripe) — tlačidlo „Úhrada štartovného online“', input('paymentUrl', s.paymentUrl || '', 'maxlength="500" placeholder="https://buy.stripe.com/…"'), 'sa-full')}
+                </div>
               </div>
             </section>
 
@@ -835,12 +848,12 @@ function wireSeason(card) {
   card.querySelector('[data-action="delete-season"]').addEventListener('click', async () => {
     const extra = season.matchCount ? ` ${season.matchCount} matches will lose their season and group (the matches stay).` : '';
     // a tournament goes with everything that belongs to it: its matches, brackets, registrations
-    if (IS_TOURNAMENT) {
+    if (IS_TOURNAMENT || CLUB) {
       const matches = season.matchCount ? `ALL ${season.matchCount} of its matches (with their results and the ranking points they gave)` : 'its brackets';
-      if (!confirm(`Delete the tournament "${season.name}" together with ${matches}, its registrations and brackets?\n\nThis cannot be undone.`)) return;
+      if (!confirm(`Delete the ${WORD} "${season.name}" together with ${matches}, its registrations and brackets?\n\nThis cannot be undone.`)) return;
     } else if (!confirm(`Delete "${season.name}" and its ${season.groups.length} groups?${extra}`)) return;
     try {
-      const res = await api(`/seasons/${id}${IS_TOURNAMENT ? '?withMatches=1' : ''}`, { method: 'DELETE' });
+      const res = await api(`/seasons/${id}${IS_TOURNAMENT || CLUB ? '?withMatches=1' : ''}`, { method: 'DELETE' });
       toast(IS_TOURNAMENT ? `Tournament deleted (${res.deletedMatches || 0} matches)` : 'Season deleted');
       if (CLUB) { window.location.href = siteUrl(season.organisation ? `/community/${encodeURIComponent(season.organisation.slug)}#events` : '/communities'); return; }
       await load();

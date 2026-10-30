@@ -43,10 +43,29 @@ function requireSeasonManager(resolve) {
   };
 }
 
-// how many tournaments of an organisation are open: the end date is empty or not past
+// how many events (tournaments and seasons) of an organisation are open: the end date is empty or not past
 function openTournamentCount(orgId) {
-  return db.prepare("SELECT COUNT(*) AS n FROM seasons WHERE organisation_id = ? AND kind = 'TOURNAMENT' AND (end_date IS NULL OR end_date = '' OR end_date >= date('now'))").get(orgId).n;
+  return db.prepare("SELECT COUNT(*) AS n FROM seasons WHERE organisation_id = ? AND (end_date IS NULL OR end_date = '' OR end_date >= date('now'))").get(orgId).n;
 }
+
+// A member of a group of a season of a public community or club may make the matches of that group himself (the season is played by arrangement between
+// its members). Returns { group, season } when the request is a logged-in player who is in the group (not withdrawn) of a SEASON (not a tournament) of a
+// public organisation, else null. Nothing else is opened by it: the caller still checks who plays the match.
+function memberGroupFor(req, groupId) {
+  const playerId = auth.getPlayerId(req);
+  if (!playerId || groupId === undefined || groupId === null || !/^\d+$/.test(String(groupId))) return null;
+  const group = db.prepare('SELECT * FROM season_groups WHERE id = ?').get(Number(groupId));
+  const season = group ? seasonById(group.season_id) : undefined;
+  if (!season || season.kind !== 'LEAGUE' || !isPublicOrg(organisationOf(season))) return null;
+  const member = db.prepare('SELECT withdrawn_at FROM season_group_members WHERE group_id = ? AND player_id = ?').get(group.id, playerId);
+  return member && !member.withdrawn_at ? { group, season } : null;
+}
+
+// is the player an active (not withdrawn) member of this group
+const isGroupMember = (groupId, playerId) => {
+  const member = db.prepare('SELECT withdrawn_at FROM season_group_members WHERE group_id = ? AND player_id = ?').get(groupId, playerId);
+  return !!member && !member.withdrawn_at;
+};
 
 // The rating gate. A match of a club tournament moves no rating (CourtIQ, the doubles rating, ranking points, badges) unless the super admin has switched
 // the club to counts_for_rating: a result entered by the organiser is not checked by anybody. Everything else counts as always.
@@ -99,4 +118,4 @@ const byBracketId = (req) => {
 };
 const byBodySeasonId = (req) => seasonById(req.body && req.body.seasonId);
 
-module.exports = { publicFace, matchCountsForRating, countingSql, leagueOnlySql, byBracketId, byBodySeasonId, byParamId, byGroupId, byRegistrationId, byIdAndPairId, byIdAndMatchToken, isPublicOrg, organisationOf, canManageSeason, requireSeasonManager, openTournamentCount };
+module.exports = { memberGroupFor, isGroupMember, publicFace, matchCountsForRating, countingSql, leagueOnlySql, byBracketId, byBodySeasonId, byParamId, byGroupId, byRegistrationId, byIdAndPairId, byIdAndMatchToken, isPublicOrg, organisationOf, canManageSeason, requireSeasonManager, openTournamentCount };

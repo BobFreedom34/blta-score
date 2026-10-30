@@ -784,6 +784,16 @@ router.get('/:id/standings', (req, res) => {
       return { player1Id: r.player1_id, player2Id: r.player2_id, winnerId: r.winner_id, status: r.status, endReason: r.end_reason, date: r.d, state: JSON.parse(r.state) };
     });
     const table = computeGroupStandings(records, known, rulesOfSeason(season));
+    // a season of a community or club lists every member of the group from the start, with nothing played yet (the members arrange their matches themselves)
+    if (season.organisation_id && !pairGroup) {
+      const listed = new Set(table.map((x) => x.player.id));
+      const last = table.length ? Math.max(...table.map((x) => x.position)) : 0;
+      db.prepare('SELECT player_id FROM season_group_members WHERE group_id = ? ORDER BY sort_order, rowid').all(g.id).forEach((m) => {
+        if (listed.has(m.player_id)) return;
+        const player = playerStmt.get(m.player_id);
+        if (player) table.push({ position: last + 1, player, points: 0, played: 0, wins: 0, losses: 0, setDiff: 0 });
+      });
+    }
     return {
       id: g.id,
       name: g.name,
@@ -935,7 +945,7 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
 // ?withMatches=1 (tournaments only): the tournament goes together with ALL its matches, its brackets, registrations and groups. A deleted
 // match takes the ranking points it added back with it, like deleting one match does (the CourtIQ rating of the players is not recalculated).
 function deleteTournamentWithMatches(req, res, season) {
-  if (season.kind !== 'TOURNAMENT') return res.status(400).json({ error: 'Only a tournament can be deleted together with its matches' });
+  if (season.kind !== 'TOURNAMENT' && !season.organisation_id) return res.status(400).json({ error: 'Only a tournament or a season of a community or club can be deleted together with its matches' });
   const matches = db.prepare('SELECT * FROM matches WHERE season_id = ?').all(season.id);
   const brackets = db.prepare('SELECT id FROM brackets WHERE season_id = ?').all(season.id).map((b) => b.id);
   db.exec('BEGIN');
@@ -982,7 +992,7 @@ router.delete('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPar
   // the organiser of a club deletes his tournament together with its matches, and only while none of them is finished (an admin of the site may always)
   if (!auth.isAdmin(req)) {
     if (db.prepare("SELECT COUNT(*) AS n FROM matches WHERE season_id = ? AND status = 'FINISHED'").get(season.id).n > 0) {
-      return res.status(409).json({ error: 'A tournament with finished matches can only be deleted by an admin of the site' });
+      return res.status(409).json({ error: 'A tournament or season with finished matches can only be deleted by an admin of the site' });
     }
     return deleteTournamentWithMatches(req, res, season);
   }
@@ -995,18 +1005,23 @@ router.delete('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPar
   res.json({ ok: true });
 });
 
-function parseGroup(body) {
+// A group of a season of a community or club may also be "without a category" (OPEN, like a tournament without categories): its matches are then
+// of the category OTHER, as the matches of such a tournament are. Every other group is one of the three league categories.
+const matchCategoryOf = (groupCategory) => (groupCategory === 'OPEN' ? 'OTHER' : groupCategory);
+
+function parseGroup(body, season) {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   if (!name) return { error: 'Group name is required' };
   if (name.length > 80) return { error: 'Group name is too long (max 80 characters)' };
-  if (!BLTA_CATEGORIES.includes(body.category)) return { error: 'Every group needs a category: ELITE, NEXT_GEN or NOVICE' };
+  const open = !!season && !!season.organisation_id && body.category === 'OPEN';
+  if (!BLTA_CATEGORIES.includes(body.category) && !open) return { error: 'Every group needs a category: ELITE, NEXT_GEN or NOVICE' };
   return { name, category: body.category };
 }
 
 router.post('/:id/groups', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
-  const parsed = parseGroup(req.body);
+  const parsed = parseGroup(req.body, season);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   if (db.prepare('SELECT 1 FROM season_groups WHERE season_id = ? AND name = ? COLLATE NOCASE').get(season.id, parsed.name)) {
     return res.status(409).json({ error: 'This season already has a group with that name' });
@@ -1020,13 +1035,13 @@ router.post('/:id/groups', clubTournaments.requireSeasonManager(clubTournaments.
 router.patch('/groups/:groupId', clubTournaments.requireSeasonManager(clubTournaments.byGroupId), (req, res) => {
   const group = db.prepare('SELECT * FROM season_groups WHERE id = ?').get(Number(req.params.groupId));
   if (!group) return res.status(404).json({ error: 'Group not found' });
-  const parsed = parseGroup({ name: req.body.name !== undefined ? req.body.name : group.name, category: req.body.category !== undefined ? req.body.category : group.category });
+  const parsed = parseGroup({ name: req.body.name !== undefined ? req.body.name : group.name, category: req.body.category !== undefined ? req.body.category : group.category }, db.prepare('SELECT * FROM seasons WHERE id = ?').get(group.season_id));
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const clash = db.prepare('SELECT id FROM season_groups WHERE season_id = ? AND name = ? COLLATE NOCASE').get(group.season_id, parsed.name);
   if (clash && clash.id !== group.id) return res.status(409).json({ error: 'This season already has a group with that name' });
   db.prepare('UPDATE season_groups SET name = ?, category = ? WHERE id = ?').run(parsed.name, parsed.category, group.id);
   // A match must stay in a group of its own category: changing the group's category un-tags the other ones.
-  db.prepare('UPDATE matches SET group_id = NULL WHERE group_id = ? AND category != ?').run(group.id, parsed.category);
+  db.prepare('UPDATE matches SET group_id = NULL WHERE group_id = ? AND category != ?').run(group.id, matchCategoryOf(parsed.category));
   res.json(serializeGroup(db.prepare('SELECT * FROM season_groups WHERE id = ?').get(group.id)));
 });
 
@@ -1249,7 +1264,7 @@ router.post('/:id/schedule', clubTournaments.requireSeasonManager(clubTournament
       const sch = groupSchedule(g);
       if (sch.activeCount < 2) { result.push({ groupId: g.id, name: g.name, created: 0, skipped: 'needs at least 2 players' }); return; }
       sch.plan.forEach((m) => {
-        insert.run(crypto.randomUUID(), g.category, season.id, g.id, m.round, m.p1, m.p2, format, JSON.stringify(engine.initState(format)));
+        insert.run(crypto.randomUUID(), matchCategoryOf(g.category), season.id, g.id, m.round, m.p1, m.p2, format, JSON.stringify(engine.initState(format)));
       });
       created += sch.plan.length;
       result.push({ groupId: g.id, name: g.name, created: sch.plan.length });
@@ -1266,6 +1281,7 @@ router.post('/:id/schedule', clubTournaments.requireSeasonManager(clubTournament
 
 module.exports = router;
 module.exports.BLTA_CATEGORIES = BLTA_CATEGORIES;
+module.exports.matchCategoryOf = matchCategoryOf;
 module.exports.serializeSeason = serializeSeason;
 module.exports.readNewSeason = readNewSeason;
 module.exports.insertSeason = insertSeason;

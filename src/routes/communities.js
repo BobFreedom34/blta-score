@@ -40,6 +40,8 @@ function reactionsOf(postIds, viewer) {
 
 // the categories a tournament is played in, as the Harmonogram shows them: DOUBLES for a doubles tournament, none for one without categories, else the chosen
 // ones (all three when none is saved)
+// an event of an organisation is a tournament or a season (a league-style competition with groups and tables): they share the feed and the lists
+const eventKind = (row) => (row.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE');
 function tournamentCategories(row) {
   if (row.play_type === 'DOUBLES') return ['DOUBLES'];
   if (row.categories === 'OPEN') return [];
@@ -238,14 +240,14 @@ router.get('/my-events', (req, res) => {
   if (!playerId) return;
   const today = new Date().toISOString().slice(0, 10);
   const rows = db.prepare(`
-    SELECT s.id, s.name, s.slug, s.start_date, s.end_date, s.venue, s.play_type, s.categories, s.registration_open, s.created_at,
+    SELECT s.id, s.name, s.slug, s.kind, s.start_date, s.end_date, s.venue, s.play_type, s.categories, s.registration_open, s.created_at,
            o.id AS org_id, o.slug AS org_slug, o.name AS org_name, o.type AS org_type, o.logo_url AS org_logo
     FROM seasons s
     JOIN organisations o ON o.id = s.organisation_id
     JOIN organisation_members m ON m.organisation_id = o.id AND m.player_id = ? AND m.status = 'ACTIVE'
-    WHERE s.kind = 'TOURNAMENT' AND o.hidden = 0 AND o.approved = 1
+    WHERE o.hidden = 0 AND o.approved = 1
   `).all(playerId).map((r) => ({
-    type: 'TOURNAMENT', id: r.id, name: r.name, slug: r.slug, startDate: r.start_date || null, endDate: r.end_date || null, venue: r.venue || '',
+    type: 'TOURNAMENT', kind: eventKind(r), id: r.id, name: r.name, slug: r.slug, startDate: r.start_date || null, endDate: r.end_date || null, venue: r.venue || '',
     playType: r.play_type || 'SINGLES', categories: tournamentCategories(r), registrationOpen: !!r.registration_open, createdAt: r.created_at,
     organisation: { id: r.org_id, slug: r.org_slug, name: r.org_name, type: r.org_type, logoUrl: r.org_logo || '' },
   }));
@@ -279,14 +281,14 @@ router.get('/feed', (req, res) => {
   const postComments = commentCountsOf(posts.map((p) => p.id));
   posts.forEach((p) => { p.reactions = postReactions.get(p.id); p.commentCount = postComments.get(p.id); });
   const tournaments = db.prepare(`
-    SELECT s.id, s.name, s.slug, s.start_date, s.end_date, s.venue, s.play_type, s.categories, s.registration_open, s.created_at, ${orgColumns}
+    SELECT s.id, s.name, s.slug, s.kind, s.start_date, s.end_date, s.venue, s.play_type, s.categories, s.registration_open, s.created_at, ${orgColumns}
     FROM seasons s
     JOIN organisations o ON o.id = s.organisation_id
     ${member}
-    WHERE s.kind = 'TOURNAMENT' AND o.hidden = 0 AND o.approved = 1 ${cursor ? 'AND s.created_at < ?' : ''}
+    WHERE o.hidden = 0 AND o.approved = 1 ${cursor ? 'AND s.created_at < ?' : ''}
     ORDER BY s.created_at DESC, s.id DESC LIMIT ${POSTS_PAGE + 1}
   `).all(...(cursor ? [playerId, cursor] : [playerId])).map((r) => ({
-    type: 'TOURNAMENT', id: r.id, name: r.name, slug: r.slug, startDate: r.start_date || null, endDate: r.end_date || null, venue: r.venue || '',
+    type: 'TOURNAMENT', kind: eventKind(r), id: r.id, name: r.name, slug: r.slug, startDate: r.start_date || null, endDate: r.end_date || null, venue: r.venue || '',
     playType: r.play_type || 'SINGLES', categories: tournamentCategories(r), registrationOpen: !!r.registration_open, createdAt: r.created_at, organisation: orgOf(r),
   }));
   const merged = [...posts, ...tournaments].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || (a.type === b.type ? b.id - a.id : (a.type === 'TOURNAMENT' ? -1 : 1)));
@@ -436,11 +438,43 @@ router.post('/:id/tournaments', (req, res) => {
     info = clean.replace(/<[^>]*>|&nbsp;|\s/g, '') ? clean : null;
   }
   if (clubTournaments.openTournamentCount(ctx.org.id) >= ctx.org.max_open_tournaments) {
-    return res.status(409).json({ error: `This community or club already has ${ctx.org.max_open_tournaments} open tournaments` });
+    return res.status(409).json({ error: `This community or club already has ${ctx.org.max_open_tournaments} open tournaments or seasons` });
   }
   const season = seasonsRoutes.insertSeason(read.values, ctx.org.league_id, ctx.org.id);
   if (fee || info) db.prepare('UPDATE seasons SET entry_fee = ?, info = ? WHERE id = ?').run(fee || null, info, season.id);
   res.status(201).json(seasonsRoutes.serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
+});
+
+// An admin of a public community or club makes a SEASON of it: a league-style competition over a period, with groups of its members and a table that builds up
+// from the matches the members arrange between themselves. An ordinary league season with organisation_id (the league, the Backend and the ratings leave it
+// out, like a club tournament); it counts towards the same limit of open events as the tournaments.
+router.post('/:id/seasons', (req, res) => {
+  const ctx = needOrgAdmin(req, res);
+  if (!ctx) return;
+  if (!clubTournaments.isPublicOrg(ctx.org)) return res.status(404).json({ error: 'Community not found' });
+  const read = seasonsRoutes.readNewSeason({ name: req.body.name, startDate: req.body.startDate, endDate: req.body.endDate, venue: req.body.venue, kind: 'LEAGUE' });
+  if (read.error) return res.status(400).json({ error: read.error });
+  let info = null;
+  if (req.body.info !== undefined) {
+    const clean = seasonsRoutes.sanitizeHtml(req.body.info).trim();
+    if (clean.length > 8000) return res.status(400).json({ error: 'The description is too long' });
+    info = clean.replace(/<[^>]*>|&nbsp;|s/g, '') ? clean : null;
+  }
+  if (clubTournaments.openTournamentCount(ctx.org.id) >= ctx.org.max_open_tournaments) {
+    return res.status(409).json({ error: `This community or club already has ${ctx.org.max_open_tournaments} open tournaments or seasons` });
+  }
+  const season = seasonsRoutes.insertSeason(read.values, ctx.org.league_id, ctx.org.id);
+  if (info) db.prepare('UPDATE seasons SET info = ? WHERE id = ?').run(info, season.id);
+  res.status(201).json(seasonsRoutes.serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
+});
+
+// the seasons of an organisation, newest first (public, like its tournaments)
+router.get('/:id/seasons', (req, res) => {
+  const org = orgOr404(req, res, 'read');
+  if (!org) return;
+  if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
+  const rows = db.prepare("SELECT * FROM seasons WHERE organisation_id = ? AND kind = 'LEAGUE' ORDER BY COALESCE(start_date, '') DESC, id DESC").all(org.id);
+  res.json({ items: rows.map((s) => ({ ...seasonsRoutes.serializeSeason(s), createdAt: s.created_at, organisation: { id: org.id, slug: org.slug, name: org.name } })) });
 });
 
 // the tournaments of an organisation, newest first (public, like the page of the organisation itself)

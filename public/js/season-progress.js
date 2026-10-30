@@ -24,9 +24,9 @@ function seasonProgressHtml(season, standings) {
   const over = (standings && standings.frozen) || (season.endDate && season.endDate < today);
   const pct = total ? Math.min(100, Math.round((counted / total) * 100)) : 0;
 
-  // Two phases when the dates allow it: group stage up to the last calendar month, play-offs in that month.
+  // Two phases when the dates allow it: group stage up to the last calendar month, play-offs in that month (a season of a club has no play-off phase: noPlayoff).
   const playoffStart = season.endDate ? season.endDate.slice(0, 8) + '01' : null;
-  const phased = !!(season.startDate && season.endDate && playoffStart > season.startDate);
+  const phased = !season.noPlayoff && !!(season.startDate && season.endDate && playoffStart > season.startDate);
   const inPlayoff = phased && today >= playoffStart;
 
   const right = over ? t('home.seasonOver') : (inPlayoff ? t('home.playoffOn') : (total ? t('home.playedOf', { done: counted, total }) : ''));

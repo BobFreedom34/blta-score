@@ -198,16 +198,17 @@ function comTournamentRow(s) {
   let extra = '';
   if (status === 'now') extra = t('schedule.daysLeft', { n: Math.max(0, comDaysBetween(today, end)), d: comDayWord(Math.max(0, comDaysBetween(today, end))) });
   else if (status === 'future' && start) extra = t('schedule.startsIn', { n: comDaysBetween(today, start), d: comDayWord(comDaysBetween(today, start)) });
-  const link = `/tournament/${encodeURIComponent(s.slug)}`;
+  const season = s.kind === 'LEAGUE'; // a season of the community (groups and a table) or a tournament
+  const link = `/${season ? 'season' : 'tournament'}/${encodeURIComponent(s.slug)}`;
   const org = s.organisation;
-  const tags = `<span class="sch-tags"><span class="sch-tag tour">${escapeHtml(t('schedule.tournament'))}</span>`
+  const tags = `<span class="sch-tags"><span class="sch-tag ${season ? 'league' : 'tour'}">${escapeHtml(season ? t('com.seasonTag') : t('schedule.tournament'))}</span>`
     + (status === 'now' ? `<span class="sch-tag now">${escapeHtml(t('schedule.running'))}</span>` : '')
     + (status === 'past' ? `<span class="sch-tag past">${escapeHtml(t('schedule.finishedTag'))}</span>` : '')
     + (org ? `<span class="sch-tag sch-club" role="link" tabindex="0" title="${escapeHtml(t('schedule.organiser', { name: org.name }))}" data-href="/community/${encodeURIComponent(org.slug)}">${escapeHtml(org.name)}</span>` : '')
     + '</span>';
   const chips = (s.categories || []).map((c) => `<span class="sch-chip">${escapeHtml(comCategoryName(c))}</span>`).join('');
   const sub = `${s.venue ? `<span class="sch-venue">${escapeHtml(s.venue)} · </span>` : ''}<b class="sch-cats">${chips}</b><span class="sch-extra">${extra ? escapeHtml(` · ${extra}`) : ''}</span>`;
-  const reg = s.registrationOpen && status !== 'past' ? `<span class="sch-reg" role="link" tabindex="0" data-href="${escapeHtml(link)}#register">${escapeHtml(t('schedule.register'))}</span>` : '';
+  const reg = !season && s.registrationOpen && status !== 'past' ? `<span class="sch-reg" role="link" tabindex="0" data-href="${escapeHtml(link)}#register">${escapeHtml(t('schedule.register'))}</span>` : '';
   const go = `<span class="sch-go">${escapeHtml(t('schedule.more'))} ›</span>`;
   return `<a class="sch-row link ${status}" href="${escapeHtml(link)}">
       <div class="sch-date">${escapeHtml(comDateRange(start, end) || t('com.eventNoDate'))}<small>${start ? escapeHtml(String(comDay(start).getFullYear())) : ''}</small></div>

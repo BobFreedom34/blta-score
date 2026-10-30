@@ -850,7 +850,7 @@ function sitemapXml(origin, { national = false, leagueId = 1 } = {}) {
   if (national && !noindexOf('slta') && !noindexOf('slta-rankings')) add('/slta-rankings');
   PAGES.filter((p) => !p.template && !hidden(p.key) && !NATIONAL_KEYS.has(p.key)).forEach((p) => add(p.path));
   const day = (iso) => (iso ? String(iso).slice(0, 10) : undefined);
-  if (!hidden('season')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND COALESCE(kind, 'LEAGUE') != 'TOURNAMENT' AND league_id = ?").all(leagueId).forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`));
+  if (!hidden('season')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND COALESCE(kind, 'LEAGUE') != 'TOURNAMENT' AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").all(leagueId).forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`));
   if (!hidden('tournament')) db.prepare("SELECT slug FROM seasons s WHERE slug IS NOT NULL AND kind = 'TOURNAMENT' AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").all(leagueId).forEach((r) => add(`/tournament/${encodeURIComponent(r.slug)}`));
   if (!hidden('article')) blog.publishedRows(leagueId).forEach((r) => add(`/article/${encodeURIComponent(r.slug_sk)}`, day(r.modified_at)));
   if (!hidden('court')) db.prepare('SELECT slug FROM venues WHERE slug IS NOT NULL AND league_id = ?').all(leagueId).forEach((r) => add(`/courts/${encodeURIComponent(r.slug)}`));

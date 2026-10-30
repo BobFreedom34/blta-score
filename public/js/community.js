@@ -139,9 +139,10 @@
   function tournamentHtml(s) {
     const today = new Date().toISOString().slice(0, 10);
     const over = !!s.endDate && s.endDate < today;
-    const open = s.registrationOpen && !over;
-    const link = `/tournament/${encodeURIComponent(s.slug)}`;
-    const facts = [s.venue, t(s.playType === 'DOUBLES' ? 'com.tDoubles' : 'com.tSingles'), t('com.eventRegistered', { n: s.registrationCount || 0 })].filter(Boolean).map(escapeHtml).join(' · ');
+    const season = s.kind === 'LEAGUE'; // a season (groups and a table) or a tournament
+    const open = !season && s.registrationOpen && !over;
+    const link = `/${season ? 'season' : 'tournament'}/${encodeURIComponent(s.slug)}`;
+    const facts = (season ? [t('com.seasonTag'), s.venue, t('com.seasonMatches', { n: s.matchCount || 0 })] : [s.venue, t(s.playType === 'DOUBLES' ? 'com.tDoubles' : 'com.tSingles'), t('com.eventRegistered', { n: s.registrationCount || 0 })]).filter(Boolean).map(escapeHtml).join(' · ');
     return `
       <div class="com-event${over ? ' over' : ''}">
         <div class="com-event-date">${escapeHtml(rangeText(s.startDate, s.endDate) || t('com.eventNoDate'))}</div>
@@ -155,7 +156,7 @@
   }
 
   function eventsHtml() {
-    const make = isActing() && org.approved ? `<button type="button" class="btn btn-primary com-new-tournament" data-act="new-tournament">+ ${escapeHtml(t('com.newTournament'))}</button>` : '';
+    const make = isActing() && org.approved ? `<button type="button" class="btn btn-primary com-new-tournament" data-act="new-tournament">+ ${escapeHtml(t('com.newTournament'))}</button> <button type="button" class="btn btn-outline com-new-tournament" data-act="new-season">+ ${escapeHtml(t('com.newSeason'))}</button>` : '';
     return `${make}${tournaments.length ? `<div class="com-events">${tournaments.map(tournamentHtml).join('')}</div>` : `<p class="com-empty">${escapeHtml(t('com.noEvents'))}</p>`}`;
   }
 
@@ -224,6 +225,50 @@
       } catch (err) { errorEl.textContent = err.message; delete submit.dataset.busy; }
     });
     back.querySelector('#com-t-name').focus();
+  }
+
+  // the dialog that makes a season of the club: a name, a place, the dates and a description; the groups and their players are set on its manage page
+  function openSeasonDialog() {
+    const back = document.createElement('div');
+    back.className = 'modal-backdrop';
+    back.style.display = 'flex';
+    back.innerHTML = `<div class="modal com-tdialog" role="dialog" aria-modal="true"><button type="button" class="close" aria-label="Close">&times;</button>
+      <h3 style="margin-top:0">${escapeHtml(t('com.seasonTitle'))}</h3>
+      <p style="font-size:13.5px;line-height:1.5;margin:0 0 10px">${escapeHtml(t('com.seasonHint'))}</p>
+      <form id="com-s-form">
+        <div class="field"><label>${escapeHtml(t('com.sFieldName'))}</label><input type="text" id="com-s-name" maxlength="120" required></div>
+        <div class="field"><label>${escapeHtml(t('com.tFieldVenue'))}</label><input type="text" id="com-s-venue" maxlength="200"></div>
+        <div class="com-t-row">
+          <div class="field"><label>${escapeHtml(t('com.tFieldStart'))}</label><input type="date" id="com-s-start" required></div>
+          <div class="field"><label>${escapeHtml(t('com.tFieldEnd'))}</label><input type="date" id="com-s-end" required></div>
+        </div>
+        <div class="field"><label>${escapeHtml(t('com.tFieldInfo'))}</label><textarea id="com-s-info" rows="4" maxlength="4000" placeholder="${escapeHtml(t('com.sInfoHint'))}"></textarea></div>
+        <div id="com-s-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+        <button type="submit" class="btn btn-primary">${escapeHtml(t('com.tCreate'))}</button>
+        <button type="button" class="btn btn-outline" id="com-s-cancel">${escapeHtml(t('com.tCancel'))}</button>
+      </form></div>`;
+    const close = () => back.remove();
+    back.querySelector('.close').addEventListener('click', close);
+    back.querySelector('#com-s-cancel').addEventListener('click', close);
+    back.addEventListener('click', (e) => { if (e.target === back) close(); });
+    document.body.appendChild(back);
+    const form = back.querySelector('#com-s-form');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submit = form.querySelector('button[type="submit"]');
+      if (submit.dataset.busy) return;
+      submit.dataset.busy = '1';
+      const errorEl = back.querySelector('#com-s-error');
+      errorEl.textContent = '';
+      const value = (id) => back.querySelector(id).value;
+      try {
+        const info = value('#com-s-info').trim();
+        const body = { name: value('#com-s-name').trim(), venue: value('#com-s-venue').trim(), startDate: value('#com-s-start') || null, endDate: value('#com-s-end') || null, info: info ? `<p>${escapeHtml(info).replace(/\n/g, '<br>')}</p>` : '' };
+        const made = await api(`/communities/${org.id}/seasons`, { method: 'POST', body });
+        window.location.href = siteUrl(`/community-tournament/${made.id}`); // (its manage page: the groups and their players)
+      } catch (err) { errorEl.textContent = err.message; delete submit.dataset.busy; }
+    });
+    back.querySelector('#com-s-name').focus();
   }
 
   // Invite people: the admin picks names from a list (one or several) and each gets an invitation message he can join from at once; below it the
@@ -394,7 +439,7 @@
     const cutoff = posts.more && posts.items.length ? new Date(posts.items[posts.items.length - 1].createdAt).getTime() : 0;
     const list = posts.items.map((p) => ({ at: new Date(p.createdAt).getTime(), html: postHtml(p) }));
     tournaments.filter((s) => s.createdAt && new Date(s.createdAt).getTime() >= cutoff).forEach((s) => {
-      const head = comPostHeadHtml({ logo: orgLogoHtml(), name: org.name, by: t('com.feedNewTournament'), date: dateText(s.createdAt) });
+      const head = comPostHeadHtml({ logo: orgLogoHtml(), name: org.name, by: t(s.kind === 'LEAGUE' ? 'com.feedNewSeason' : 'com.feedNewTournament'), date: dateText(s.createdAt) });
       list.push({ at: new Date(s.createdAt).getTime(), html: comTournamentNewsHtml(s, head) });
     });
     return list.sort((a, b) => b.at - a.at).map((x) => x.html);
@@ -477,6 +522,7 @@
         guard(b, async () => { await api(`/communities/${org.id}/leave`, { method: 'POST' }); await load(); refreshActingOrg(); });
       }
       if (act === 'new-tournament') openTournamentDialog();
+      if (act === 'new-season') openSeasonDialog();
       if (act === 'settings') openSettingsDialog();
       if (act === 'switch') guard(b, async () => { await api('/communities/act-as', { method: 'POST', body: { organisationId: org.id } }); window.location.reload(); });
     }));
@@ -560,16 +606,18 @@
         render();
         return;
       }
-      const [m, p, mineRes, ts] = await Promise.all([
+      const [m, p, mineRes, ts, ss] = await Promise.all([
         api(`/communities/${org.id}/members`),
         api(`/communities/${org.id}/posts`),
         loggedIn ? api('/communities/mine') : Promise.resolve({ acting: null }),
         api(`/communities/${org.id}/tournaments`).catch(() => ({ items: [] })),
+        api(`/communities/${org.id}/seasons`).catch(() => ({ items: [] })),
       ]);
       if (run !== loadRun) return; // a newer load is on its way
       members = m;
       posts = p;
-      tournaments = ts.items;
+      // the events of the club: its tournaments and its seasons together, the latest start first
+      tournaments = [...ts.items, ...ss.items].sort((x, y) => (y.startDate || '').localeCompare(x.startDate || '') || y.id - x.id);
       acting = mineRes.acting;
     } catch (err) {
       root.innerHTML = `<p class="com-empty">${escapeHtml(err.status === 404 || /not found/i.test(err.message) ? t('com.notFound') : err.message)}</p>`;

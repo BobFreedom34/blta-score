@@ -120,9 +120,9 @@ function registrationSeasonOf(leagueId, today) {
 
 // the running season of a city, else the nearest coming one
 function currentSeasonOf(leagueId, today) {
-  const running = db.prepare("SELECT name, slug FROM seasons WHERE league_id = ? AND kind = 'LEAGUE' AND start_date <= ? AND (end_date IS NULL OR end_date >= ?) ORDER BY start_date DESC LIMIT 1").get(leagueId, today, today);
+  const running = db.prepare("SELECT name, slug FROM seasons WHERE league_id = ? AND organisation_id IS NULL AND kind = 'LEAGUE' AND start_date <= ? AND (end_date IS NULL OR end_date >= ?) ORDER BY start_date DESC LIMIT 1").get(leagueId, today, today);
   if (running) return withPaths({ name: running.name, slug: running.slug, state: 'now' });
-  const next = db.prepare("SELECT name, slug FROM seasons WHERE league_id = ? AND kind = 'LEAGUE' AND start_date > ? ORDER BY start_date LIMIT 1").get(leagueId, today);
+  const next = db.prepare("SELECT name, slug FROM seasons WHERE league_id = ? AND organisation_id IS NULL AND kind = 'LEAGUE' AND start_date > ? ORDER BY start_date LIMIT 1").get(leagueId, today);
   return next ? withPaths({ name: next.name, slug: next.slug, state: 'future' }) : null;
 }
 

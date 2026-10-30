@@ -146,7 +146,9 @@ function secHead(id, title, linkHref, linkText) {
 // "Registrácia" (opens the form) and "Úhrada štartovného online" (the Stripe payment link set in the backend).
 function actionsHtml(status) {
   const buttons = [];
-  if (status !== 'past') {
+  if (isClubSeason()) {
+    if (myGroup && status !== 'past') buttons.push(`<a class="sv-btn primary" href="/new-match?season=${encodeURIComponent(season.slug)}&group=${myGroup.id}">${escapeHtml(t('season.arrangeMatch'))}</a>`);
+  } else if (status !== 'past') {
     buttons.push(season.registrationOpen
       ? `<button type="button" class="sv-btn primary" id="sv-register">${escapeHtml(t('season.register'))}</button>`
       : `<span class="sv-btn off">${escapeHtml(t('season.registerClosed'))}</span>`);
@@ -184,6 +186,19 @@ function seriesWinnersHtml() {
 const isTournament = () => season.kind === 'TOURNAMENT';
 // a tournament is played as singles or as doubles (chosen when it was made, never mixed): a doubles one is entered as a pair
 const isDoublesTournament = () => season.kind === 'TOURNAMENT' && season.playType === 'DOUBLES';
+// a season of a community or club: its members arrange the matches themselves (no public registration, no Harmonogram entry)
+const isClubSeason = () => !isTournament() && !!season.organisation;
+// the group of this club season the logged-in player plays in (he can arrange a match in it), else null; set when the page is loaded
+let myGroup = null;
+async function findMyGroup() {
+  myGroup = null;
+  if (!isClubSeason()) return;
+  try {
+    const me = (await loadSession()).playerId;
+    const group = me ? (season.groups || []).find((g) => (g.members || []).some((m) => m.id === me && !m.withdrawn)) : null;
+    myGroup = group || null;
+  } catch { /* a visitor: no button */ }
+}
 
 // "Payment by transfer" in the window after a tournament registration. contact = GET /api/contact (the IBAN is edited in Backend > Contact).
 function bankTransferHtml(contact, alongsideOnline) {
@@ -224,13 +239,13 @@ function headerHtml() {
       ${logo}
       <div class="sv-head-main">
         <div class="sv-head-text">
-          <div class="sv-crumb"><a href="/harmonogram">${escapeHtml(t('schedule.heading'))}</a> › ${escapeHtml(termText())}</div>
+          <div class="sv-crumb">${isClubSeason() ? `<a href="/community/${encodeURIComponent(season.organisation.slug)}#events">${escapeHtml(season.organisation.name)}</a>` : `<a href="/harmonogram">${escapeHtml(t('schedule.heading'))}</a>`} › ${escapeHtml(termText())}</div>
           <h1 class="sv-title">${escapeHtml(season.name)}</h1>
         </div>
-        <div class="sv-chips"><span class="sv-chip ${isTournament() ? 't' : 'l'}">${escapeHtml(t(isTournament() ? 'schedule.tournament' : 'schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
+        <div class="sv-chips"><span class="sv-chip ${isTournament() ? 't' : 'l'}">${escapeHtml(isClubSeason() ? t('com.seasonTag') : t(isTournament() ? 'schedule.tournament' : 'schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
       </div>
     </div>
-    ${isTournament() ? '' : `<div class="sv-progress">${seasonProgressHtml(season, standings)}</div>`}`;
+    ${isTournament() ? '' : `<div class="sv-progress">${seasonProgressHtml({ ...season, noPlayoff: isClubSeason() }, standings)}</div>`}`;
 }
 
 function tilesHtml() {
@@ -728,6 +743,7 @@ async function refresh() {
   try {
     season = await api(`/seasons/by-slug/${encodeURIComponent(slug)}`);
     await loadStandings();
+    await findMyGroup();
   } catch { return; }
   loaded.clear();
   const y = window.scrollY;
@@ -744,6 +760,7 @@ async function refresh() {
   }
   if (!document.title.includes(season.name)) document.title = `${season.name} — BLTA`; // the server already put the title from Backend > SEO
   await loadStandings();
+  await findMyGroup();
   const wantsRegister = window.location.hash === '#register'; // the green "Registrácia" button of a schedule row (slta.sk) leads here
   tab = (wantsRegister ? '' : window.location.hash.slice(1)) || null; // renderTabs picks the first tab with content when there is none
   await render();

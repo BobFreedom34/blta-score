@@ -311,7 +311,7 @@ const TEMPLATE_ENTITY = {
     return b ? { name: b.name } : null;
   },
   season: (slug, lang, leagueId) => {
-    const s = db.prepare('SELECT name, logo_url, hero_url FROM seasons WHERE slug = ? AND league_id = ?').get(slug, leagueId);
+    const s = db.prepare('SELECT name, logo_url, hero_url FROM seasons WHERE slug = ? AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))').get(slug, leagueId);
     return s ? { name: s.name, image: s.hero_url || s.logo_url || '' } : null;
   },
   tournament: (slug, lang, leagueId) => {

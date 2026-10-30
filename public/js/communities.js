@@ -52,7 +52,7 @@
     const facts = [rangeText(p.startDate, p.endDate), p.venue, t(p.playType === 'DOUBLES' ? 'com.tDoubles' : 'com.tSingles')].filter(Boolean).map(escapeHtml).join(' · ');
     const over = !!p.endDate && p.endDate < new Date().toISOString().slice(0, 10);
     // the card of a Harmonogram row under the community, the kind of news and the day it was posted
-    const head = comPostHeadHtml({ logo: logoHtml(p.organisation), name: p.organisation.name, href: `/community/${encodeURIComponent(p.organisation.slug)}`, by: t('com.feedNewTournament'), date: dateText(p.createdAt) });
+    const head = comPostHeadHtml({ logo: logoHtml(p.organisation), name: p.organisation.name, href: `/community/${encodeURIComponent(p.organisation.slug)}`, by: t(p.kind === 'LEAGUE' ? 'com.feedNewSeason' : 'com.feedNewTournament'), date: dateText(p.createdAt) });
     return comTournamentNewsHtml(p, head).replace('class="com-post com-news-tournament"', 'class="com-post com-feed-post com-feed-tournament com-news-tournament"');
   }
 

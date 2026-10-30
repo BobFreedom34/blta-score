@@ -1,8 +1,12 @@
 setupFormatOptions('format-options');
 
 loadPlayers();
-setupAutocomplete('player1', 'player1-suggestions');
-setupAutocomplete('player2', 'player2-suggestions');
+// A match of a season of a community or club (?season=<slug>&group=<id>, from the button on the season page): a member plays another member of his group, the
+// category is the group's, and the names offered are the group's. { season, group, members: [{ id, name }] } once the group is read.
+let seasonMode = null;
+const memberNames = () => (seasonMode ? seasonMode.members.map((m) => m.name) : allPlayers.map((p) => p.name));
+setupAutocomplete('player1', 'player1-suggestions', memberNames);
+setupAutocomplete('player2', 'player2-suggestions', memberNames);
 setupAutocomplete('player1b', 'player1b-suggestions');
 setupAutocomplete('player2b', 'player2b-suggestions');
 const getBallsPlayer = setupBallsPicker();
@@ -20,7 +24,7 @@ let isAdminCreator = false;
 
 function renderSeasonFields() {
   const isBlta = BLTA_CATEGORIES.includes(document.getElementById('category').value);
-  const show = isAdminCreator && isBlta && !(typeof isDoubles === 'function' && isDoubles());
+  const show = isAdminCreator && isBlta && !seasonMode && !(typeof isDoubles === 'function' && isDoubles());
   seasonField.style.display = show ? '' : 'none';
   groupField.style.display = show ? '' : 'none';
   stageField.style.display = show ? '' : 'none';
@@ -59,6 +63,40 @@ categorySelect.addEventListener('change', () => { categoryTouched = true; });
   } catch { /* the season picker is optional */ }
 })();
 document.getElementById('category').addEventListener('change', renderSeasonFields);
+
+(async () => {
+  const q = new URLSearchParams(window.location.search);
+  const slug = q.get('season');
+  const groupId = Number(q.get('group'));
+  if (!slug || !groupId) return;
+  try {
+    const season = await api(`/seasons/by-slug/${encodeURIComponent(slug)}`);
+    const group = (season.groups || []).find((g) => g.id === groupId);
+    if (!group || !season.organisation) return;
+    const members = group.members.filter((m) => !m.withdrawn).map((m) => ({ id: m.id, name: m.name }));
+    seasonMode = { season, group, members };
+    // the category is the group's; the switch to doubles and the league's own fields are not for a season of a club
+    categoryTouched = true;
+    const matchCategory = group.category === 'OPEN' ? 'OTHER' : group.category; // a group without a category plays the category OTHER
+    const option = categorySelect.querySelector(`option[value="${matchCategory}"]`);
+    if (option) option.disabled = false;
+    categorySelect.value = matchCategory;
+    categorySelect.disabled = true;
+    document.getElementById('category-admin-note').style.display = 'none';
+    document.getElementById('mode-switch').style.display = 'none';
+    seasonField.style.display = 'none';
+    groupField.style.display = 'none';
+    stageField.style.display = 'none';
+    const banner = document.createElement('div');
+    banner.className = 'field-hint';
+    banner.style.cssText = 'margin:0 0 14px;padding:10px 12px;border:1px solid var(--green);border-radius:var(--radius-sm);font-weight:600';
+    banner.textContent = t('newMatch.seasonBanner', { season: season.name, group: group.name });
+    form.insertBefore(banner, form.firstChild);
+    const me = await loadSession().catch(() => null);
+    const mine = me && me.playerId ? members.find((m) => m.id === me.playerId) : null;
+    if (mine) { const first = document.getElementById('player1'); first.value = mine.name; first.dispatchEvent(new Event('input', { bubbles: true })); document.getElementById('player1-suggestions').classList.remove('open'); }
+  } catch { /* the form stays an ordinary one */ }
+})();
 
 // Singles / doubles (štvorhra). Doubles is a friendly match of two pairs: the category is fixed, the league fields are hidden, and the
 // "who brings the balls / reserves the court" buttons name the pairs.
@@ -137,6 +175,16 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
     }
   }
 
+  // a season of a community or club: both are members of the group and one of them is the player himself (the server checks it again)
+  let seasonPlayers = {};
+  if (seasonMode) {
+    const find = (name) => seasonMode.members.find((m) => nameKey(m.name) === nameKey(name));
+    const first = find(player1Name);
+    const second = find(player2Name);
+    if (!first || !second) { errorEl.textContent = t('newMatch.errorNotInGroup'); return; }
+    seasonPlayers = { player1Id: first.id, player2Id: second.id, groupId: seasonMode.group.id };
+  }
+
   const submitBtn = e.target.querySelector('button[type="submit"]');
 
   const body = (extra) => ({
@@ -154,6 +202,7 @@ document.getElementById('new-match-form').addEventListener('submit', async (e) =
       ? { seasonId: Number(seasonSelect.value), groupId: groupSelect.value ? Number(groupSelect.value) : null }
       : {}),
     ...(!doubles && isAdminCreator && BLTA_CATEGORIES.includes(category) && stageSelect.value === 'PLAYOFF' ? { stage: 'PLAYOFF' } : {}),
+    ...seasonPlayers,
     ...extra,
   });
 
