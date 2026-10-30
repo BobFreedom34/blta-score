@@ -2589,7 +2589,6 @@ async function refreshPlayerAuth() {
   }
   updatePlayerNavLinks();
   updateBadgeBellUI(unreadNotificationCount);
-  syncPlayerPush();
   // Lets any page's own script react to a login/logout finishing (e.g. the
   // homepage re-showing/hiding "Set date & location" once it knows who's
   // logged in) without common.js needing to know what each page does.
@@ -3531,13 +3530,18 @@ async function subscribeToPush(matchToken, type) {
 }
 
 // ---- automatic push of the bell and the messages, for this device ----
-// The player turns it on once in the bell panel; after that every bell notification and every new message arrives as a push
-// (src/playerPush.js). localStorage remembers WHICH player turned it on here, so the device is re-linked when that player logs in again and
-// is never linked to somebody else who just happens to use the same phone.
+// Once the phone allows notifications for the site, a player who logs in here gets the device linked automatically (no button); every bell
+// notification and every new message then arrives as a push (src/playerPush.js). A phone that has not been asked yet gets one friendly question
+// after the login (again after a week if it was waved away); the bell panel and the Messages page keep the button. A player who turned the push
+// off on a device ("Vypnúť") is not linked there again, and logging out unlinks the device, so it never stays with somebody else on a shared phone.
 const PUSH_PLAYER_KEY = 'blta-push-player';
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 const rememberedPushPlayer = () => { try { return localStorage.getItem(PUSH_PLAYER_KEY); } catch { return null; } };
 const rememberPushPlayer = (id) => { try { if (id) localStorage.setItem(PUSH_PLAYER_KEY, String(id)); else localStorage.removeItem(PUSH_PLAYER_KEY); } catch { /* private mode */ } };
+const PUSH_ASK_DAYS = 7; // a phone that waved the question away is asked again after this many days
+const pushStore = (key, value) => { try { if (value === undefined) return localStorage.getItem(key); if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, String(value)); } catch { /* private mode */ } return null; };
+const pushOptedOut = (id) => pushStore(`blta-push-off-${id}`) === '1';
+const pushAskedRecently = (id) => Date.now() - (Number(pushStore(`blta-push-asked-${id}`)) || 0) < PUSH_ASK_DAYS * 86400000;
 
 async function devicePushSubscription() {
   if (!pushSupported()) return null;
@@ -3552,12 +3556,18 @@ async function enablePlayerPush() {
   if (!pushSupported()) throw new Error(t('notif.pushUnsupported'));
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new Error(t('notif.pushDenied'));
-  const { publicKey } = await api('/push/vapid-public-key');
+  pushStore(`blta-push-off-${currentPlayerId}`, null);
+  await linkDevicePush();
+}
+
+// links this device to the logged-in player (the browser's permission is already given): the subscription of the browser is made if there is none
+async function linkDevicePush() {
   const registration = await navigator.serviceWorker.ready;
-  const subscription = (await registration.pushManager.getSubscription()) || await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicKey),
-  });
+  let subscription = await registration.pushManager.getSubscription();
+  if (!subscription) {
+    const { publicKey } = await api('/push/vapid-public-key');
+    subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+  }
   await api('/player/push/subscribe', { method: 'POST', body: { subscription: subscription.toJSON(), lang: currentLang } });
   rememberPushPlayer(currentPlayerId);
 }
@@ -3569,13 +3579,58 @@ async function dropDevicePush() {
   try { await api('/player/push/unsubscribe', { method: 'POST', body: { endpoint: sub.endpoint } }); } catch { /* ignore */ }
 }
 
-// called after every login check: the player who turned push on here gets the device linked again (and the language kept up to date)
+// called after every login check and every login: a phone that already allows notifications is linked to the player (and the language kept up to
+// date) without asking; a phone that has not been asked yet gets the question once in a while
 async function syncPlayerPush() {
-  if (!playerAuthed || !currentPlayerId || !pushSupported()) return;
-  if (rememberedPushPlayer() !== String(currentPlayerId) || Notification.permission !== 'granted') return;
-  const sub = await devicePushSubscription();
-  if (!sub) return;
-  try { await api('/player/push/subscribe', { method: 'POST', body: { subscription: sub.toJSON(), lang: currentLang } }); } catch { /* ignore */ }
+  if (!playerAuthed || !currentPlayerId || !pushSupported() || document.body.classList.contains('embed')) return;
+  const id = String(currentPlayerId);
+  if (Notification.permission === 'denied' || pushOptedOut(id)) return;
+  if (Notification.permission === 'granted') {
+    try { await linkDevicePush(); } catch { /* not available (no keys on the server) or no service worker: nothing to link */ }
+    return;
+  }
+  if (pushAskedRecently(id) || pushAskShown) return;
+  try {
+    const sub = await devicePushSubscription();
+    const status = await api(`/player/push/status?endpoint=${encodeURIComponent(sub ? sub.endpoint : '')}`);
+    if (!status.available || status.subscribed) return;
+  } catch { return; }
+  // not over a window that is open (the login, the code to create): try again a few times, then wait for the next page
+  for (let i = 0; i < 4; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    if (!playerAuthed || String(currentPlayerId) !== id) return;
+    if (![...document.querySelectorAll('.modal-backdrop')].some((m) => getComputedStyle(m).display !== 'none')) { askPlayerPush(id); return; }
+  }
+}
+window.addEventListener('blta:auth-changed', () => { syncPlayerPush(); });
+
+let pushAskShown = false;
+// the question after a login: one tap on the button, then the phone's own "Allow"
+function askPlayerPush(id) {
+  if (pushAskShown) return;
+  pushAskShown = true;
+  pushStore(`blta-push-asked-${id}`, Date.now());
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.style.display = 'flex';
+  modal.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true" style="max-width:380px">
+      <button type="button" class="close" aria-label="Close">&times;</button>
+      <h3 style="margin-top:0">${escapeHtml(t('notif.askTitle'))}</h3>
+      <p style="color:var(--ink);font-size:14px;line-height:1.5">${escapeHtml(t('notif.askBody'))}</p>
+      <button type="button" class="btn btn-primary btn-block" id="push-ask-yes">${escapeHtml(t('notif.pushOn'))}</button>
+      <button type="button" class="btn btn-outline btn-block" id="push-ask-no" style="margin-top:8px">${escapeHtml(t('notif.askLater'))}</button>
+    </div>`;
+  document.body.appendChild(modal);
+  const close = () => modal.remove();
+  modal.querySelector('.close').addEventListener('click', close);
+  modal.querySelector('#push-ask-no').addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  modal.querySelector('#push-ask-yes').addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    try { await enablePlayerPush(); } catch (err) { window.alert(err.message || t('notif.pushError')); }
+    close();
+  });
 }
 
 // the row of the bell panel (or of the Messages page: row given, with data-hide-on so it disappears once the push is on): turn the push on or off, or
@@ -3609,7 +3664,7 @@ async function refreshPushRow(target) {
     row.textContent = `${t('notif.pushOnLabel')} `;
     button.classList.replace('btn-primary', 'btn-outline');
     button.textContent = t('notif.pushOff');
-    button.onclick = async () => { await dropDevicePush(); rememberPushPlayer(null); refreshPushRow(row); };
+    button.onclick = async () => { await dropDevicePush(); rememberPushPlayer(null); pushStore(`blta-push-off-${currentPlayerId}`, 1); refreshPushRow(row); };
     row.appendChild(button);
   } else {
     // not on yet: a bright box at the top of the panel (at the bottom it was scrolled out of sight), saying that it covers the messages too

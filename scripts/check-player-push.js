@@ -290,6 +290,22 @@ test('the module: pushing a player with two devices sends to both; a player with
   assert.strictEqual(pushesTo(other.id).length, 0);
 });
 
+test('the page side: a phone that allows notifications is linked at login without asking, one that was not asked gets the question once a week, a player who turned it off is left alone', () => {
+  const common = fs.readFileSync(path.join(ROOT, 'public', 'js', 'common.js'), 'utf8');
+  const parts = [
+    'async function linkDevicePush()',
+    'function askPlayerPush(',
+    'PUSH_ASK_DAYS',
+    'pushOptedOut(id)',
+    "Notification.permission === 'granted'",
+    "window.addEventListener('blta:auth-changed', () => { syncPlayerPush(); })",
+    'pushStore(`blta-push-off-${currentPlayerId}`, 1)',
+  ];
+  for (const part of parts) assert.ok(common.includes(part), part);
+  const i18n = fs.readFileSync(path.join(ROOT, 'public', 'js', 'i18n.js'), 'utf8');
+  for (const key of ['notif.askTitle', 'notif.askBody', 'notif.askLater']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
+});
+
 async function main() {
   let failed = 0;
   try {
