@@ -97,6 +97,8 @@
   .sl-btn { display: block; text-align: center; border-radius: var(--radius-sm); padding: 13px 20px; font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; text-decoration: none; border: 1px solid transparent; cursor: pointer; font-family: inherit; }
   .sl-btn.g { background: var(--green); color: #0a0a0a; }
   .sl-btn.g:hover { background: #c6ff3a; }
+  .sl-btn.o { background: var(--orange); color: #fff; }
+  .sl-btn.o:hover { background: #ff6a22; }
   .sl-btn.d { background: var(--fill-grey); color: #fff; border-color: rgba(255,255,255,.2); }
   .sl-btn.d:hover { border-color: var(--orange); }
   /* the "Schedule ↓" under the numbers of the city card: just text */
@@ -207,6 +209,10 @@
     .sl-det .url { display: block; margin: 2px 0 0; }
     .sl-btns { min-width: 0; gap: 8px; }
     .sl-btn { padding: 12px 12px; font-size: 10.5px; white-space: nowrap; }
+    /* the buttons of the city card stand in its top right corner, narrow (the text wraps) so the name of the city keeps its room */
+    .sl-det { align-items: start; }
+    .sl-det .sl-btns { width: 132px; }
+    .sl-det .sl-btn { padding: 10px 8px; font-size: 10px; line-height: 1.25; white-space: normal; }
     .sl-det .sl-tag { font-size: 9px; padding: 4px 8px; letter-spacing: .04em; }
     .sl-list { order: -1; }
   }
@@ -427,7 +433,7 @@ function draw() {
   // the buttons of the card: "Become the organiser" while the city has none; "Enter the league" only when the city has an open registration
   // (a city in preparation has no such button)
   const buttons = [];
-  if (c.status === 'SEEKING_ORGANIZER') buttons.push(`<a class="sl-btn g" href="#organizator">${T.becomeOrg}</a>`);
+  if (c.status === 'SEEKING_ORGANIZER') buttons.push(`<a class="sl-btn o" href="#organizator">${T.becomeOrg}</a>`);
   if (c.url && c.registrationOpen) buttons.push(`<a class="sl-btn g" href="${esc(c.url)}">${T.enter}</a>`);
   showSchedule(c);
   detEl.innerHTML = `<div><div class="sl-det-eyebrow">${T.cityLabel}</div><h2>${esc(c.brandName)}${c.url ? `<span class="url">${esc(c.url.charAt(0) === '/' ? location.host.replace(/^www\./, '') + c.url : c.url.replace(/^https?:\/\//, ''))}</span>` : ''}</h2><span class="sl-tag ${kind(c)}">${esc(label(c))}</span>

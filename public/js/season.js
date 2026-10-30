@@ -349,7 +349,7 @@ function matchesHtml() {
     ['finishedHeading', allMatches.filter((m) => m.status === 'FINISHED').sort((a, b) => when(b).localeCompare(when(a)))],
     ['unfinishedHeading', allMatches.filter((m) => m.status === 'UNFINISHED').sort((a, b) => when(b).localeCompare(when(a)))],
   ].filter(([, list]) => list.length);
-  return `<div class="sv-matches">${groups.map(([key, list]) => `<div class="match-list-heading">${matchHeadingHtml(key)}</div>${list.map(leagueMatchCardHtml).join('')}`).join('')}</div>`;
+  return `<div class="sv-matches match-list">${groups.map(([key, list]) => `<div class="match-list-heading">${matchHeadingHtml(key)}</div>${list.map(leagueMatchCardHtml).join('')}`).join('')}</div>`;
 }
 
 function tablesHtml() {

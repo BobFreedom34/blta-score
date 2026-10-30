@@ -227,6 +227,13 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
+/* phones and tablets: the name of the city is a small line under the logo (beside it, it ran into the menu button) */
+@media (max-width: 1024px) {
+  /* the negative margin keeps the strip at its usual height (the menu panels hang from it at a fixed distance): the two lines are taller than the buttons beside them */
+  .brand:has(.brand-city) { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; margin: -5px 0; }
+  .brand:has(.brand-city) .brand-logo { height: 28px; }
+  .brand-city { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+}
 .brand-tennis {
   font-weight: 400;
   font-size: 10px;
@@ -5491,7 +5498,7 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .sch-cats { font-weight: 700; }
 .sch-chip + .sch-chip::before { content: ' · '; }
 @media (max-width: 700px) {
-  .sch-lists .sch-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "date date eta" "name name name" "tags sub sub" "bar bar bar" "acts acts acts"; gap: 10px 10px; padding: 18px 0; align-items: center; }
+  .sch-lists .sch-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "date date eta" "name name name" "tags tags tags" "sub sub sub" "bar bar bar" "acts acts acts"; gap: 10px 10px; padding: 18px 0; align-items: center; }
   .sch-lists .sch-info, .sch-lists .sch-text, .sch-lists .sch-name { display: contents; }
   .sch-lists .sch-date { grid-area: date; display: flex; align-items: baseline; gap: 8px; font-size: 18px; }
   .sch-lists .sch-date small { margin-top: 0; }
@@ -5509,6 +5516,7 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
   .sch-lists .sch-row > .sch-go { width: 100%; justify-self: stretch; }
   .sch-lists .sch-acts .sch-reg, .sch-lists .sch-acts .sch-go { min-width: 0; height: 44px; width: 100%; }
   .sch-lists .sch-row > .sch-go { height: 44px; box-sizing: border-box; }
+  .sch-lists .sch-row.past .sch-go { opacity: 1; } /* a finished season keeps its button at full strength: faded to half it looks cut off on the card */
 }
 
 /* the highlight of a row under the mouse reaches the edges of its card (no dark strip left and right): the rows run out to the border of the card and
