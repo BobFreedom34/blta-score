@@ -168,6 +168,21 @@ test('a group of a club season can be without a category: its members play the c
   assert.strictEqual((await call('GET', `/api/matches/${made.json.token}`, { cookie: '' })).json.group, null);
 });
 
+test('a club season is run like a league season: public registration (listed for its admin only) and play-off brackets made by its admin', async () => {
+  assert.strictEqual((await call('PATCH', `/api/seasons/${season.id}`, { cookie: owner.cookie, body: { registrationOpen: true } })).status, 200);
+  const reg = await call('POST', `/api/seasons/${season.id}/registrations`, { cookie: '', body: { name: 'Novy Zaujemca', email: 'zaujemca@example.com', phone: '0905123456', category: 'ELITE' } });
+  assert.strictEqual(reg.status, 201, JSON.stringify(reg.json));
+  const list = await call('GET', `/api/seasons/${season.id}/registrations`, { cookie: owner.cookie });
+  assert.strictEqual(list.status, 200);
+  assert.ok(list.json.some((r) => r.name === 'Novy Zaujemca'));
+  assert.strictEqual((await call('GET', `/api/seasons/${season.id}/registrations`, { cookie: outsider.cookie })).status, 401);
+  const entries = [a, b, c, outsider].map((p, i) => ({ playerId: p.id, seed: i + 1 }));
+  const bracket = await call('POST', '/api/brackets', { cookie: owner.cookie, body: { name: 'Play-off klubu', format: 'BO3', seasonId: season.id, category: 'ELITE', autoCreateMatches: false, entries } });
+  assert.strictEqual(bracket.status, 201, JSON.stringify(bracket.json));
+  assert.strictEqual((await call('POST', '/api/brackets', { cookie: outsider.cookie, body: { name: 'Cudzi', format: 'BO3', seasonId: season.id, category: 'ELITE', autoCreateMatches: false, entries } })).status, 401);
+  assert.ok((await call('GET', `/api/seasons/${season.id}/brackets`, { cookie: '' })).json.some((x) => x.name === 'Play-off klubu'));
+});
+
 test('the limit of open events counts seasons together with tournaments', async () => {
   const fresh = (await call('POST', '/api/communities', { cookie: owner.cookie, body: { type: 'COMMUNITY', name: 'Limit komunita', description: 'x' } })).json;
   for (let i = 0; i < 5; i += 1) {

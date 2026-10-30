@@ -8,7 +8,7 @@ const CLUB_SEASON_ID = CLUB ? Number(window.location.pathname.split('/').filter(
 let KIND = CLUB || (root && root.dataset.kind === 'TOURNAMENT') ? 'TOURNAMENT' : 'LEAGUE';
 let IS_TOURNAMENT = KIND === 'TOURNAMENT';
 let WORD = IS_TOURNAMENT ? 'tournament' : 'season';
-// the page of a season of a club: its members arrange the matches, so there are no public registrations and no play-off brackets here
+// the page of a season of a club: the same card as a league season (registration, groups, schedule, brackets); only its groups may also be without a category
 const isClubSeason = () => CLUB && !IS_TOURNAMENT;
 
 let seasons = [];
@@ -62,9 +62,9 @@ const CATEGORIES = [
 ];
 const inputStyle = 'padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px';
 
-function categoryOptions(selected) {
+function categoryOptions(selected, forGroup = false) {
   // a group of a season of a club may also be without a category (like a tournament without categories)
-  const list = isClubSeason() ? [...CATEGORIES, ['OPEN', 'Bez kategórie']] : CATEGORIES;
+  const list = forGroup && isClubSeason() ? [...CATEGORIES, ['OPEN', 'Bez kategórie']] : CATEGORIES;
   return list.map(([key, label]) => `<option value="${key}"${key === selected ? ' selected' : ''}>${label}</option>`).join('');
 }
 
@@ -209,7 +209,7 @@ function groupRowHtml(g) {
     <div class="season-group" data-group-wrap="${g.id}">
       <div class="season-group-row" data-group="${g.id}" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--gray-light)">
         <input type="text" data-field="name" value="${escapeHtml(g.name)}" maxlength="80" style="flex:1;min-width:140px;${inputStyle}">
-        <select data-field="category" style="${inputStyle}">${categoryOptions(g.category)}</select>
+        <select data-field="category" style="${inputStyle}">${categoryOptions(g.category, true)}</select>
         <span style="font-size:12px;color:var(--gray);min-width:70px">${g.matchCount} ${g.matchCount === 1 ? 'match' : 'matches'}</span>
         <button type="button" class="btn btn-sm btn-outline" data-action="toggle-players">Players (${g.activeMemberCount})</button>
         <button type="button" class="btn btn-sm btn-outline" data-action="save-group">Save</button>
@@ -303,9 +303,7 @@ async function cropHero(file, w, h) {
 // when it is opened). The form of the basic info is in sections.
 const cardTabs = () => (IS_TOURNAMENT
   ? [['info', 'Základné info'], ['regs', 'Registrácie'], ['assign', 'Zaradenie do kategórií'], ['draw', 'Pavúk turnaja']]
-  : isClubSeason()
-    ? [['info', 'Základné info'], ['groups', 'Skupiny'], ['schedule', 'Rozpis']]
-    : [['info', 'Základné info'], ['regs', 'Registrácie'], ['groups', 'Skupiny'], ['schedule', 'Rozpis'], ['brackets', 'Pavúk']]);
+  : [['info', 'Základné info'], ['regs', 'Registrácie'], ['groups', 'Skupiny'], ['schedule', 'Rozpis'], ['brackets', 'Pavúk']]);
 const cardTab = new Map(); // season id -> the tab last opened (kept when the list is drawn again)
 
 function seasonCardHtml(s) {
@@ -368,11 +366,9 @@ function seasonCardHtml(s) {
               <div class="sa-grid">
                 ${field('Štartovné', input('entryFee', s.entryFee || '', 'maxlength="40" placeholder="napr. 20 €"'))}
                 ${field('Ceny pre víťazov', input('prizeMoney', s.prizeMoney || '', 'maxlength="120"'))}
-                <div style="display:${isClubSeason() ? 'none' : 'contents'}">
                 ${field('Dátum žrebovania', input('drawDate', s.drawDate || '', 'type="date"'))}
                 <label class="sa-field sa-check"><input type="checkbox" data-field="registrationOpen"${s.registrationOpen ? ' checked' : ''}> Registrácia je otvorená</label>
                 ${field('Odkaz na platbu (Stripe) — tlačidlo „Úhrada štartovného online“', input('paymentUrl', s.paymentUrl || '', 'maxlength="500" placeholder="https://buy.stripe.com/…"'), 'sa-full')}
-                </div>
               </div>
             </section>
 
@@ -428,7 +424,7 @@ function seasonCardHtml(s) {
             <input type="text" data-field="name" maxlength="80" placeholder="New group, e.g. Babolat" required style="flex:1;min-width:160px;${inputStyle}">
             <select data-field="category" required style="${inputStyle}">
               <option value="">Category…</option>
-              ${categoryOptions('')}
+              ${categoryOptions('', true)}
             </select>
             <button type="submit" class="btn btn-sm btn-primary">Add group</button>
           </form>

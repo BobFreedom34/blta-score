@@ -146,9 +146,9 @@ function secHead(id, title, linkHref, linkText) {
 // "Registrácia" (opens the form) and "Úhrada štartovného online" (the Stripe payment link set in the backend).
 function actionsHtml(status) {
   const buttons = [];
-  if (isClubSeason()) {
-    if (myGroup && status !== 'past') buttons.push(`<a class="sv-btn primary" href="/new-match?season=${encodeURIComponent(season.slug)}&group=${myGroup.id}">${escapeHtml(t('season.arrangeMatch'))}</a>`);
-  } else if (status !== 'past') {
+  // a member of a group of a club season can arrange a match in it (the registration below is the same as for the league)
+  if (isClubSeason() && myGroup && status !== 'past') buttons.push(`<a class="sv-btn primary" href="/new-match?season=${encodeURIComponent(season.slug)}&group=${myGroup.id}">${escapeHtml(t('season.arrangeMatch'))}</a>`);
+  if (status !== 'past') {
     buttons.push(season.registrationOpen
       ? `<button type="button" class="sv-btn primary" id="sv-register">${escapeHtml(t('season.register'))}</button>`
       : `<span class="sv-btn off">${escapeHtml(t('season.registerClosed'))}</span>`);
@@ -186,7 +186,7 @@ function seriesWinnersHtml() {
 const isTournament = () => season.kind === 'TOURNAMENT';
 // a tournament is played as singles or as doubles (chosen when it was made, never mixed): a doubles one is entered as a pair
 const isDoublesTournament = () => season.kind === 'TOURNAMENT' && season.playType === 'DOUBLES';
-// a season of a community or club: its members arrange the matches themselves (no public registration, no Harmonogram entry)
+// a season of a community or club: the same page as a league season, with the club in the crumb and, for a member of a group, a button to arrange a match
 const isClubSeason = () => !isTournament() && !!season.organisation;
 // the group of this club season the logged-in player plays in (he can arrange a match in it), else null; set when the page is loaded
 let myGroup = null;
@@ -245,7 +245,7 @@ function headerHtml() {
         <div class="sv-chips"><span class="sv-chip ${isTournament() ? 't' : 'l'}">${escapeHtml(isClubSeason() ? t('com.seasonTag') : t(isTournament() ? 'schedule.tournament' : 'schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
       </div>
     </div>
-    ${isTournament() ? '' : `<div class="sv-progress">${seasonProgressHtml({ ...season, noPlayoff: isClubSeason() }, standings)}</div>`}`;
+    ${isTournament() ? '' : `<div class="sv-progress">${seasonProgressHtml(season, standings)}</div>`}`;
 }
 
 function tilesHtml() {
