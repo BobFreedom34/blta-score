@@ -576,8 +576,8 @@ async function setupCopyMenu() {
 
 function renderAdmin() {
   root.innerHTML = `
-    <div class="card" style="margin-bottom:20px" id="copy-menu-card"></div>
-    <div class="card" style="margin-bottom:20px">
+    <div class="card" style="margin-bottom:20px" id="copy-menu-card" data-sec="fold" data-sec-title="Copy the menu of another city"></div>
+    <div class="card" style="margin-bottom:20px" data-sec="fold">
       <h3 style="margin-top:0">Add a header item</h3>
       <form id="add-header-item-form">
         ${headerItemFormHtml('add')}
@@ -585,10 +585,10 @@ function renderAdmin() {
         <button type="submit" class="btn btn-primary">+ Add item</button>
       </form>
     </div>
-    <div class="card">
+    <div class="card" data-sec="keep">
       <div id="header-items-list">Loading…</div>
     </div>
-    <div class="card" id="contact-card" style="margin-top:20px">Loading…</div>
+    <div class="card" id="contact-card" style="margin-top:20px" data-sec="fold" data-sec-title="Contact window">Loading…</div>
   `;
   loadContactCard();
   setupCopyMenu();

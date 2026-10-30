@@ -580,6 +580,22 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   padding: 18px;
 }
 
+/* Backend: a section that can be folded - a bar with its title before the card (js/admin-sections.js) */
+.sec-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+  margin: 0 0 12px; padding: 14px 18px;
+  background: var(--white); color: var(--charcoal); border: 0; border-radius: var(--radius); box-shadow: var(--shadow);
+  font: inherit; font-size: 16px; font-weight: 800; text-align: left; cursor: pointer;
+}
+.sec-head[hidden] { display: none; }
+.sec-head:hover .sec-title { color: var(--orange); }
+.sec-chev { flex: 0 0 18px; color: var(--gray); font-size: 22px; line-height: 1; transition: transform 0.15s ease; }
+.sec-head.open .sec-chev { transform: rotate(90deg); }
+.sec-head.open { margin-bottom: 0; border-radius: var(--radius) var(--radius) 0 0; border-bottom: 1px solid var(--gray-light); box-shadow: none; }
+.sec-head.open + .sec-card { border-radius: 0 0 var(--radius) var(--radius); }
+.sec-card.sec-closed { display: none; }
+.sec-orig-title { display: none; }
+
 /* ---------- Tabs ---------- */
 .tabs {
   display: flex;

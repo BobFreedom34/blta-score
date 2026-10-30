@@ -38,7 +38,7 @@ function renderAdmin() {
       </form>
       <div id="lock-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
     </div>
-    <div class="card" style="margin-bottom:20px">
+    <div class="card" style="margin-bottom:20px" data-sec="keep">
       <h3 style="margin-top:0">Add a city</h3>
       <form id="add-city-form" style="display:flex;gap:8px;flex-wrap:wrap">
         <input type="text" id="city-name" maxlength="60" placeholder="e.g. Košice" required style="flex:1;min-width:200px;${inputStyle};width:auto">

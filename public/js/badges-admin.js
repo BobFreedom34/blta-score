@@ -326,7 +326,7 @@ function renderAdmin() {
         <button type="submit" class="btn btn-primary">+ Add badge</button>
       </form>
     </div>
-    <div class="card">
+    <div class="card" data-sec-title="Badges">
       <div id="badges-list">Loading…</div>
     </div>
   `;

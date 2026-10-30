@@ -59,11 +59,11 @@
     host.innerHTML = `
       <h2 style="margin:36px 0 4px;color:var(--white)">Events outside the app</h2>
       <p style="color:var(--gray-dim);margin:0 0 12px">An event held elsewhere (another club, an outside site) that you only want on the public <a href="/harmonogram" style="text-decoration:underline;color:var(--orange)">/harmonogram</a> page: it has no page of its own here, only the optional link behind "Viac info". Tournaments of this app are listed above and get on the schedule by themselves.</p>
-      <div class="card">
+      <div class="card"${editing ? ' data-sec-open="1"' : ''} data-sec="fold">
         <h3 style="margin-top:0">${editing ? 'Edit event' : 'Add an event'}</h3>
         ${formHtml(editing)}
       </div>
-      <div class="card" style="margin-top:14px">
+      <div class="card" style="margin-top:14px" data-sec="fold" data-sec-title="Events">
         ${rows || '<span style="color:var(--gray)">No events yet.</span>'}
       </div>`;
   }
