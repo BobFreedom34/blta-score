@@ -31,8 +31,8 @@
     const mine = library.filter(matches);
     const there = server.filter(matches);
     host.innerHTML = `
-      <div class="card md-drop" id="md-drop">
-        <strong>Upload pictures</strong>
+      <div class="card md-drop" id="md-drop" data-sec-title="Upload pictures">
+        <strong class="sec-orig-title">Upload pictures</strong>
         <p style="margin:4px 0 10px;font-size:13px;color:var(--gray-dim)">PNG, JPG, WebP or GIF, up to 8 MB each. Choose several at once or drop them here.</p>
         <input type="file" id="md-files" accept="image/png,image/jpeg,image/webp,image/gif" multiple style="display:none">
         <button type="button" class="btn btn-primary" id="md-pick">Choose pictures…</button>

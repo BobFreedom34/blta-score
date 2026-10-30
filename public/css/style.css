@@ -593,6 +593,11 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
 .sec-head.open .sec-chev { transform: rotate(90deg); }
 .sec-head.open { margin-bottom: 0; border-radius: var(--radius) var(--radius) 0 0; border-bottom: 1px solid var(--gray-light); box-shadow: none; }
 .sec-head.open + .sec-card { border-radius: 0 0 var(--radius) var(--radius); }
+/* the bar of an "add" section: green with black text */
+.sec-head.add { background: var(--green); color: #0a0a0a; }
+.sec-head.add .sec-chev { color: #0a0a0a; }
+.sec-head.add:hover .sec-title { color: inherit; text-decoration: underline; }
+.sec-head.add.open { border-bottom-color: rgba(10, 10, 10, 0.18); }
 .sec-card.sec-closed { display: none; }
 .sec-orig-title { display: none; }
 

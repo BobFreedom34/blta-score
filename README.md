@@ -370,7 +370,7 @@ file and a change event), so no page needed changes and the picture is copied to
 The block "Otázky a odpovede" at the bottom of the national page. The questions are kept in `faq_items` (a question and an answer in Slovak and in English,
 `position` = the order); `src/faq.js` puts the first nine in once (flag `faq_seeded`, so a deleted question stays deleted). `public/faq-admin.html` +
 `public/js/faq-admin.js` (the Q&A tab, super admin only, hidden for a city admin) add, change, re-order (arrows) and remove them through `/api/faq`
-`public/js/admin-sections.js` (loaded by every Backend tab) folds the sections of a tab: a bar with the title before each card, closed each time the tab opens; the first card of a tab (or the one marked `data-sec="keep"`) stays open. Marks on a card: `data-sec="keep|fold"`, `data-sec-title`, `data-sec-open`. A new tab needs only the script tag.
+`public/js/admin-sections.js` (loaded by every Backend tab) folds the sections of a tab: a bar with the title before each card, all closed each time the tab opens; the bar of an "add" section (title starts with Add / Create / New / Upload) is green with black text. A card with no title is left alone. Marks on a card: `data-sec-title`, `data-sec-open`, `data-sec="fold"` (on a page marked `data-sec-mode="marked"`). A new tab needs only the script tag.
 (reading is public, writing is `requireSuperAdmin`; `faq` is not in the CITY_AREAS of `src/cityScope.js`, so a city admin is refused). The national
 page (`public/slta.html`) loads `/api/faq`, draws the foldable rows and builds the FAQPage data for search engines from the same list; with no
 question the block and the menu link are not shown. An empty English text shows the Slovak one. `node scripts/check-faq.js` tests it.

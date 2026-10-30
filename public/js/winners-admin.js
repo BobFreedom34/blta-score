@@ -117,7 +117,7 @@
   function render() {
     const y = window.scrollY;
     host.innerHTML = `
-      <div class="card">
+      <div class="card" data-sec-title="Add winners">
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
           ${addPickerHtml()}
           <button type="button" class="btn btn-primary" data-act="new-edition">+ New edition</button>

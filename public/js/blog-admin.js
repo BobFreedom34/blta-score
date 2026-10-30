@@ -87,7 +87,7 @@
   function editorHtml() {
     const tabs = LANGS.map(([l, name]) => `<button type="button" class="tab${lang === l ? ' active' : ''}" data-lang="${l}">${name}</button>`).join('');
     return `
-      <div class="card" style="margin-bottom:16px">
+      <div class="card" style="margin-bottom:16px" data-sec-open="1">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
           <h3 style="margin:0">${draft.id ? 'Edit article' : 'New article'}</h3>
           <button type="button" class="btn btn-sm btn-outline" data-act="back">← All articles</button>

@@ -1,13 +1,13 @@
-// Backend: every section (card) of a tab can be folded and unfolded, with its title on a bar above it. The first section of
-// a tab - the main one, like "Add a tournament" or "Add winners" - stays as it is; the others are folded each time the tab is
-// opened. A section the admin opened stays open while the page draws itself again (after an add, a save, a delete).
+// Backend: every section (card) of a tab can be folded and unfolded, with its title on a bar above it. All of them are folded each
+// time the tab is opened; the bar of an "add" section (Add a venue, New edition, Upload pictures...) is green with black text. A section
+// the admin opened stays open while the page draws itself again (after an add, a save, a delete).
 //
 // The cards are drawn by each tab's own script, so this works on the finished page: it watches for cards and puts a bar before
-// each one to fold (the card itself is not touched, so the script that drew it keeps working with it). Marks on a card:
-//   data-sec="keep"      a main section that stays open (when a tab has such a card, the first-card rule is not used)
-//   data-sec="fold"      always folded, even when it is the first card
+// each one (the card itself is not touched, so the script that drew it keeps working with it). A card with no title (an error, a
+// note, "Loading...") is not a section and is left as it is. Marks on a card:
 //   data-sec-title="…"   the title for a card with no heading (else the text of its first heading)
 //   data-sec-open="1"    opened when drawn (a form that was just filled for editing)
+//   data-sec="fold"      on a page marked below: this card is folded
 // Only the cards straight inside the page (.container or a …-root box) count; a card inside another card or a list is left.
 // On a page with <body data-sec-mode="marked"> (a page that is public as well) only the cards marked data-sec="fold" are folded.
 (function () {
@@ -15,6 +15,7 @@
   const opened = new Set(); // "page|title" of the sections the admin opened (a count in the title, like "Venues (7)", is not part of it)
   const keyOf = (title) => `${pageKey}|${title.replace(/\s*\(\d+\)\s*$/, '')}`;
   const marked = document.body.dataset.secMode === 'marked';
+  const ADD = /^((add|create|new|upload)\b|prida)/i; // the title of an "add" section (Slovak: Pridat)
 
   const eligible = (card) => {
     if (card.tagName === 'DETAILS' || card.closest('details, .modal, [role="dialog"]')) return false;
@@ -29,7 +30,7 @@
     if (card.dataset.secTitle) return card.dataset.secTitle;
     const h = heading(card);
     const text = h ? h.textContent.replace(/\s+/g, ' ').trim().split(/ [—·] /)[0] : '';
-    return text || head.dataset.last || '';
+    return text || (head && head.dataset.last) || '';
   };
 
   function setOpen(card, head, on) {
@@ -61,24 +62,15 @@
   function pass() {
     // a bar whose card has gone (the page drew itself again, or the script removed the card) goes too
     document.querySelectorAll('.sec-head').forEach((h) => { if (!h._card.isConnected || h._card.previousElementSibling !== h) h.remove(); });
-    const cards = [...document.querySelectorAll('.card')].filter(eligible);
-    const kept = cards.some((c) => c.dataset.sec === 'keep');
-    let first = null;
-    if (!marked && !kept) first = cards.find((c) => c.dataset.sec !== 'fold') || null;
-    cards.forEach((card) => {
-      const folds = marked ? true : card.dataset.sec === 'fold' || (card.dataset.sec !== 'keep' && card !== first);
+    [...document.querySelectorAll('.card')].filter(eligible).forEach((card) => {
       let head = card.previousElementSibling && card.previousElementSibling.classList.contains('sec-head') ? card.previousElementSibling : null;
-      if (!folds) {
-        if (head) { head.remove(); card.classList.remove('sec-card', 'sec-closed'); }
-        const own = heading(card);
-        if (own) own.classList.remove('sec-orig-title');
-        return;
-      }
+      const title = titleOf(card, head);
+      if (!title) return;
       const fresh = !head;
       if (!head) head = makeHead(card);
-      const title = titleOf(card, head);
       head.querySelector('.sec-title').textContent = title;
       head.dataset.last = title;
+      head.classList.toggle('add', ADD.test(title));
       const h = heading(card);
       if (h) h.classList.add('sec-orig-title'); // the bar shows the title, so the card's own heading is not shown again
       // a card the page itself hides (display:none) has no bar either
