@@ -68,7 +68,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
     if (!rows.length) return '';
     const sorted = [...rows].sort((a, b) => (Number(draftOf(a)) || 1e9) - (Number(draftOf(b)) || 1e9) || a.name.localeCompare(b.name));
     const locked = c.stage !== 'NONE';
-    return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px;margin:8px 0">${sorted.map((r) => `
+    return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(210px,100%),1fr));gap:6px 14px;margin:8px 0">${sorted.map((r) => `
       <label style="display:flex;gap:8px;align-items:center;font-size:13px">
         <input type="number" min="1" max="${c.players}" inputmode="numeric" class="sd-seed" data-reg="${r.id}" value="${escapeHtml(draftOf(r))}" placeholder="–" style="width:54px;${inputStyle}"${locked ? ' disabled' : ''}>
         <span>${escapeHtml(r.name)}</span>
@@ -91,7 +91,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
           <button type="button" class="btn btn-sm btn-outline" data-act="suggest" data-cat="${c.category}">Navrhnúť rozdelenie</button>
           <span style="font-size:12px;color:var(--gray)">${sizes.map((n, i) => `${groupLetter(i)}: ${n}`).join(' · ')}</span>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px">${rows.map((r) => `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(210px,100%),1fr));gap:6px 14px">${rows.map((r) => `
           <label style="display:flex;gap:8px;align-items:center;font-size:13px">
             <select class="sd-assign" data-reg="${r.id}" data-cat="${c.category}" style="${inputStyle}">${opts(d.assign.get(r.id))}</select>
             <span>${escapeHtml(r.name)}</span>
@@ -112,7 +112,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
         <label><input type="radio" name="sd-mode-${c.category}" value="AUTO" data-cat="${c.category}"${s.mode === 'AUTO' ? ' checked' : ''}> ${modeLabel[0]}</label>
         <label><input type="radio" name="sd-mode-${c.category}" value="MANUAL" data-cat="${c.category}"${s.mode === 'MANUAL' ? ' checked' : ''}> ${modeLabel[1]}</label>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px">`;
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:10px;margin-bottom:10px">`;
     if (isGroups(s.format)) {
       body += `
         <label style="font-size:12px;color:var(--gray)">Hráčov v skupine (najviac)<input type="number" min="2" max="12" class="sd-gsize" data-cat="${c.category}" value="${s.groupSize}" style="${inputStyle};display:block;width:100%;margin-top:3px"></label>
@@ -241,7 +241,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
           <a data-public href="/tournament/${encodeURIComponent(overview.slug)}#courts" target="_blank" rel="noopener" style="font-size:13px;font-weight:700">Harmonogram ›</a>
           <span class="sd-courts-note" style="font-size:12px;color:var(--gray)">${overview.courtCount ? Array.from({ length: Math.min(overview.courtCount, 6) }, (_, i) => `Kurt ${i + 1}`).join(', ') + (overview.courtCount > 6 ? ` … Kurt ${overview.courtCount}` : '') : 'Kurty zatiaľ nie sú nastavené'}</span>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:12px">${overview.categories.map(blockHtml).join('')}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:12px">${overview.categories.map(blockHtml).join('')}</div>
         ${isDoubles ? pairsBlockHtml() : ''}
       </div>`;
   }

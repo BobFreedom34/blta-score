@@ -121,7 +121,7 @@ async function openAssignPanel(host, seasonId, onSaved, categories) {
           <button type="button" class="btn btn-sm btn-primary" data-act="save" ${changed ? '' : 'disabled'}>Uložiť zaradenie${changed ? ` (${changed})` : ''}</button>
         </div>
         <div class="as-error" style="color:var(--danger);font-weight:600;margin-bottom:8px"></div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px">
           ${sectionHtml('Nezaradení', unsorted)}
           ${cats.map(([key, name]) => sectionHtml(name, players.filter((p) => p.draft === key))).join('')}
         </div>

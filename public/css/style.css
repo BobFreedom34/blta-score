@@ -5082,7 +5082,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sa-checks label { display: flex; align-items: center; gap: 6px; }
 .sa-hint { font-weight: 600; color: var(--gray); }
 /* Bodovanie a podmienky of a tournament (public/js/tournament-rules.js) */
-.tr-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 28px; }
+.tr-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px 28px; }
 .tr-title { font-size: 14px; font-weight: 800; color: var(--ink); margin-bottom: 6px; }
 .tr-hint { margin: 0 0 8px; font-size: 12.5px; line-height: 1.4; color: var(--gray); font-weight: 600; }
 .tr-opt { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 8px; cursor: pointer; font-weight: 600; }
@@ -5112,7 +5112,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 @media (max-width: 700px) { .sv-head.has-hero { aspect-ratio: 4 / 3; min-height: 0; padding: 18px; } .sv-head.has-hero .sv-title { font-size: 24px; } }
 
 /* the hero photo blocks in the card of a season / tournament */
-.sa-hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 10px; }
+.sa-hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 14px; margin-top: 10px; }
 .sa-hero { background: var(--white); border-radius: var(--radius-md); padding: 12px; display: grid; gap: 10px; align-content: start; }
 .sa-hero-pic { width: 100%; border-radius: 8px; overflow: hidden; background: #d9d9d9; display: flex; align-items: center; justify-content: center; color: var(--gray); font-size: 13px; font-weight: 600; }
 .sa-hero-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
