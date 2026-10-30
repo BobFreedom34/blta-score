@@ -109,6 +109,19 @@
     return list.length ? list.map(rowHtml).join('') : `<p class="msg-empty">${escapeHtml(t(tab === 'requests' ? 'msg.emptyRequests' : 'msg.emptyMain'))}</p>`;
   }
 
+  // the push box is one element for the whole page; it is hidden once the push is on
+  let pushEl = null;
+  function pushBox() {
+    if (!pushEl) {
+      pushEl = document.createElement('div');
+      pushEl.className = 'badge-notif-push msg-push';
+      pushEl.dataset.hideOn = '1';
+      pushEl.hidden = true;
+      if (typeof refreshPushRow === 'function') refreshPushRow(pushEl);
+    }
+    return pushEl;
+  }
+
   function renderSide() {
     const side = document.getElementById('msg-side');
     if (!side) return;
@@ -120,6 +133,8 @@
         <button type="button" class="msg-tab${tab === 'requests' ? ' on' : ''}" data-tab="requests" role="tab" aria-selected="${tab === 'requests'}">${escapeHtml(t('msg.tabRequests'))}${counts.requests ? `<span class="msg-badge">${counts.requests}</span>` : ''}</button>
       </div>
       <div class="msg-list">${listBody(list)}</div>`;
+    // the box that turns the phone notifications on (kept between redraws; it asks the server only when it is made and after a click)
+    side.querySelector('.msg-side-head').after(pushBox());
     side.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; renderSide(); }));
     side.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => go(`/messages/${b.dataset.open}`)));
     document.getElementById('msg-plus').addEventListener('click', () => go('/messages/new'));

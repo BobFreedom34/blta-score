@@ -3197,8 +3197,8 @@ function ensureBadgeBellUI() {
   panel.hidden = true;
   panel.innerHTML = `
     <div class="badge-notif-panel-header">${t('notif.heading')}</div>
-    <div class="badge-notif-list" id="badge-notif-list"></div>
     <div class="badge-notif-push" id="badge-notif-push" hidden></div>
+    <div class="badge-notif-list" id="badge-notif-list"></div>
   `;
   wrap.appendChild(panel);
   badgeNotifPanelEl = panel;
@@ -3578,16 +3578,18 @@ async function syncPlayerPush() {
   try { await api('/player/push/subscribe', { method: 'POST', body: { subscription: sub.toJSON(), lang: currentLang } }); } catch { /* ignore */ }
 }
 
-// the row at the bottom of the bell panel: turn the push on or off, or say why it cannot be turned on here
-async function refreshPushRow() {
-  const row = document.getElementById('badge-notif-push');
+// the row of the bell panel (or of the Messages page: row given, with data-hide-on so it disappears once the push is on): turn the push on or off, or
+// say why it cannot be turned on here
+async function refreshPushRow(target) {
+  const row = target || document.getElementById('badge-notif-push');
   if (!row) return;
   row.hidden = true;
   row.innerHTML = '';
+  row.classList.remove('prominent');
   if (!playerAuthed || !currentPlayerId) return;
   const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.navigator.standalone;
   if (!pushSupported()) {
-    if (ios) { row.textContent = t('notif.pushIosHint'); row.hidden = false; }
+    if (ios) { row.textContent = t('notif.pushIosHint'); row.classList.add('prominent'); row.hidden = false; }
     return;
   }
   let status;
@@ -3601,18 +3603,23 @@ async function refreshPushRow() {
   button.className = 'btn btn-primary badge-notif-push-btn';
   if (Notification.permission === 'denied' && !status.subscribed) {
     row.textContent = t('notif.pushBlocked');
+    row.classList.add('prominent');
   } else if (status.subscribed) {
+    if (row.dataset.hideOn) return; // (hidden: nothing to ask for any more)
     row.textContent = `${t('notif.pushOnLabel')} `;
     button.classList.replace('btn-primary', 'btn-outline');
     button.textContent = t('notif.pushOff');
-    button.onclick = async () => { await dropDevicePush(); rememberPushPlayer(null); refreshPushRow(); };
+    button.onclick = async () => { await dropDevicePush(); rememberPushPlayer(null); refreshPushRow(row); };
     row.appendChild(button);
   } else {
+    // not on yet: a bright box at the top of the panel (at the bottom it was scrolled out of sight), saying that it covers the messages too
+    row.classList.add('prominent');
+    row.textContent = t('notif.pushOnHint');
     button.textContent = t('notif.pushOn');
     button.onclick = async () => {
       button.disabled = true;
       try { await enablePlayerPush(); } catch (err) { window.alert(err.message || t('notif.pushError')); }
-      refreshPushRow();
+      refreshPushRow(row);
     };
     row.appendChild(button);
   }

@@ -1797,9 +1797,15 @@ body:not(.embed-light) .match-card .scoreboard .set-win { color: var(--status-gr
   top: 0;
   background: var(--white);
 }
-.badge-notif-push { padding: 10px 14px; border-top: 1px solid var(--gray-light); font-size: 12px; color: var(--gray); text-align: left; line-height: 1.4; }
+.badge-notif-push { padding: 10px 14px; border-bottom: 1px solid var(--gray-light); font-size: 12px; color: var(--gray); text-align: left; line-height: 1.4; }
 .badge-notif-push-btn { min-width: 0; padding: 6px 14px; font-size: 12.5px; font-weight: 800; }
 .badge-notif-push .btn-outline.badge-notif-push-btn { margin-top: 6px; color: var(--ink); }
+/* push not on yet: a bright box at the top of the bell panel with a wide button */
+.badge-notif-push.prominent { display: flex; flex-direction: column; gap: 10px; padding: 14px; background: var(--green); color: #0a0a0a; font-size: 13.5px; font-weight: 700; line-height: 1.4; }
+.badge-notif-push.prominent[hidden] { display: none; }
+/* the same box at the top of the list of the Messages page */
+.msg-side .msg-push { margin: 0 0 10px; border-bottom: 0; border-radius: var(--radius-md); }
+.badge-notif-push.prominent .badge-notif-push-btn { width: 100%; padding: 11px 14px; font-size: 14px; background: #0a0a0a; border-color: #0a0a0a; color: #fff; }
 .badge-notif-empty {
   padding: 24px 14px;
   text-align: center;
