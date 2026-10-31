@@ -34,6 +34,23 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_media_league ON media_files(league_id);
 `);
+// the fingerprint of the file's content (sha-256): the same picture uploaded again (from another page, another day) is the one already in the library
+try { db.exec("ALTER TABLE media_files ADD COLUMN hash TEXT NOT NULL DEFAULT ''"); } catch { /* already there */ }
+const sha256 = (buffer) => crypto.createHash('sha256').update(buffer).digest('hex');
+
+// the picture of this city's library that has exactly these bytes, or undefined. Rows from before the fingerprint existed are read once and get theirs.
+function sameInLibrary(leagueId, buffer, hash) {
+  const known = db.prepare('SELECT * FROM media_files WHERE league_id = ? AND hash = ? ORDER BY id LIMIT 1').get(leagueId, hash);
+  if (known) return known;
+  const old = db.prepare("SELECT * FROM media_files WHERE league_id = ? AND hash = '' AND size = ?").all(leagueId, buffer.length);
+  for (const row of old) {
+    let h = '';
+    try { h = sha256(fs.readFileSync(path.join(DIR, row.filename))); } catch { continue; /* the file is gone */ }
+    db.prepare('UPDATE media_files SET hash = ? WHERE id = ?').run(h, row.id);
+    if (h === hash) return { ...row, hash: h };
+  }
+  return undefined;
+}
 
 const serialize = (r) => ({ id: r.id, url: `/media/${r.filename}`, name: r.original_name, mime: r.mime, size: r.size, createdAt: r.created_at });
 
@@ -79,14 +96,23 @@ router.post('/', requireAdmin, (req, res) => {
     const files = req.files || [];
     if (!files.length) return res.status(400).json({ error: 'Choose PNG, JPG, WebP or GIF pictures' });
     const leagueId = leagues.actingIdOf(req);
-    const added = files.map((f) => {
+    // a picture that is in the library already (the same bytes) is not stored again: it comes back under "reused", in the order of the files too
+    const added = [];
+    const reused = [];
+    const all = [];
+    files.forEach((f) => {
+      const hash = sha256(f.buffer);
+      const same = sameInLibrary(leagueId, f.buffer, hash);
+      if (same) { const item = serialize(same); reused.push(item); all.push(item); return; }
       const base = path.basename(f.originalname || 'picture', path.extname(f.originalname || '')).replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'picture';
       const filename = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}-${base}${MIME_EXT[f.mimetype]}`;
       fs.writeFileSync(path.join(DIR, filename), f.buffer);
-      const info = db.prepare('INSERT INTO media_files (league_id, filename, original_name, mime, size) VALUES (?, ?, ?, ?, ?)').run(leagueId, filename, String(f.originalname || '').slice(0, 120), f.mimetype, f.size);
-      return serialize(db.prepare('SELECT * FROM media_files WHERE id = ?').get(Number(info.lastInsertRowid)));
+      const info = db.prepare('INSERT INTO media_files (league_id, filename, original_name, mime, size, hash) VALUES (?, ?, ?, ?, ?, ?)').run(leagueId, filename, String(f.originalname || '').slice(0, 120), f.mimetype, f.size, hash);
+      const item = serialize(db.prepare('SELECT * FROM media_files WHERE id = ?').get(Number(info.lastInsertRowid)));
+      added.push(item);
+      all.push(item);
     });
-    res.status(201).json({ added });
+    res.status(201).json({ added, reused, files: all });
   });
 });
 

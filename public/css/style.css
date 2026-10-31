@@ -5925,3 +5925,9 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 #new-match-form button[type="submit"]:hover { background: #c6ff3a; border-color: #c6ff3a; }
 #new-match-form #form-error { color: #ff6a74; }
 @media (max-width: 480px) { #new-match-form { padding: 22px 16px 20px; } }
+
+/* the live card at the very top of the home page, above the carousel: only the card, with the gap of the page above and below it */
+.home-live-top:not(:empty) { margin-top: 22px; }
+.home-live-top:not(:empty) + .home-carousel { margin-top: 14px; }
+.home-live-top:not(:empty) + .home-head { margin-top: 28px; }
+.home-live-top .home-live { margin: 0; }

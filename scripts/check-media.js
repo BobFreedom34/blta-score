@@ -28,6 +28,8 @@ async function call(method, url, { cookie = adminCookie, body, form, headers = {
   try { json = await res.clone().json(); } catch { /* not json */ }
   return { status: res.status, json, res };
 }
+// a picture of its own (a few extra bytes after the PNG, which a viewer ignores): the same bytes are one picture for the library
+const unique = (n) => Buffer.concat([PNG, Buffer.from(`-${n}`)]);
 const picture = (name = 'logo.png', type = 'image/png', bytes = PNG) => { const f = new FormData(); f.append('image', new Blob([bytes], { type }), name); return f; };
 const cookieOf = (r) => r.res.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
 
@@ -46,8 +48,8 @@ test('an admin uploads a picture; it is in the library and shown at its address'
 
 test('several pictures at once; only pictures are accepted; only an admin', async () => {
   const f = new FormData();
-  f.append('image', new Blob([PNG], { type: 'image/png' }), 'a.png');
-  f.append('image', new Blob([PNG], { type: 'image/png' }), 'b.png');
+  f.append('image', new Blob([unique(1)], { type: 'image/png' }), 'a.png');
+  f.append('image', new Blob([unique(2)], { type: 'image/png' }), 'b.png');
   const two = await call('POST', '/api/media', { form: f });
   assert.strictEqual(two.json.added.length, 2);
   const bad = await call('POST', '/api/media', { form: picture('x.txt', 'text/plain', Buffer.from('hello')) });
@@ -55,6 +57,32 @@ test('several pictures at once; only pictures are accepted; only an admin', asyn
   assert.strictEqual((await call('POST', '/api/media', { cookie: '', form: picture() })).status, 401);
   assert.strictEqual((await call('GET', '/api/media', { cookie: '' })).status, 401);
   assert.strictEqual((await call('DELETE', '/api/media/1', { cookie: '' })).status, 401);
+});
+
+test('the same picture uploaded again is the one in the library already (from any page), also one from before the fingerprint existed', async () => {
+  const before = (await call('GET', '/api/media')).json.library.length;
+  const first = await call('POST', '/api/media', { form: picture('share.png', 'image/png', unique(7)) });
+  assert.strictEqual(first.json.added.length, 1);
+  const again = await call('POST', '/api/media', { form: picture('other-name.png', 'image/png', unique(7)) });
+  assert.strictEqual(again.status, 201);
+  assert.deepStrictEqual([again.json.added.length, again.json.reused.length], [0, 1]);
+  assert.strictEqual(again.json.files[0].id, first.json.added[0].id, 'the same picture comes back');
+  assert.strictEqual((await call('GET', '/api/media')).json.library.length, before + 1, 'one copy only');
+  // a mix in one request: one known, one new, in the order of the files
+  const f = new FormData();
+  f.append('image', new Blob([unique(8)], { type: 'image/png' }), 'new.png');
+  f.append('image', new Blob([unique(7)], { type: 'image/png' }), 'known.png');
+  const mix = await call('POST', '/api/media', { form: f });
+  assert.deepStrictEqual([mix.json.added.length, mix.json.reused.length], [1, 1]);
+  assert.deepStrictEqual(mix.json.files.map((x) => x.id), [mix.json.added[0].id, first.json.added[0].id]);
+  // a picture that was stored before there were fingerprints (empty hash) is recognised too, and gets its fingerprint
+  const { DatabaseSync } = require('node:sqlite');
+  const db = new DatabaseSync(path.join(dir, 'blta-score.db'));
+  db.prepare("UPDATE media_files SET hash = '' WHERE id = ?").run(first.json.added[0].id);
+  db.close();
+  const legacy = await call('POST', '/api/media', { form: picture('legacy.png', 'image/png', unique(7)) });
+  assert.deepStrictEqual([legacy.json.added.length, legacy.json.reused.length], [0, 1], 'an old row is found by its bytes');
+  // another city has its own library: the same bytes are a picture of its own there (see the next tests)
 });
 
 test('rename and delete (the file goes with it)', async () => {

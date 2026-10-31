@@ -202,6 +202,7 @@
     delete input.dataset.pickedUrl;
     if (!file) return;
     msg.style.color = ''; msg.textContent = 'Uploading…';
+    let reusedPic = false;
     try {
       let url = libraryUrl;
       if (!url) {
@@ -210,12 +211,13 @@
         const res = await fetch('/api/media', { method: 'POST', body, credentials: 'same-origin' });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-        url = data.added[0].url;
+        url = data.files[0].url;
+        if (!data.added.length) reusedPic = true;
       }
       field.value = url;
       field.dispatchEvent(new Event('input', { bubbles: true }));
       msg.style.color = 'var(--green, #2e9e4f)';
-      msg.textContent = 'Picture set — press Save';
+      msg.textContent = reusedPic ? 'This picture is in the library already, that one is used — press Save' : 'Picture set — press Save';
     } catch (err) { msg.style.color = 'var(--danger)'; msg.textContent = err.message; }
     input.value = '';
   });

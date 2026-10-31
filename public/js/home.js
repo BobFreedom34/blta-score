@@ -559,10 +559,11 @@ function moversHtml(d) {
   return `<section class="home-sec">${secTitle(t('home.movers'), '', '/rankings', t('home.whole'))}<div class="home-movers n${tiles.length}">${tiles.join('')}</div></section>`;
 }
 
+// the card of the matches that are being played now, alone at the very top of the page (above the carousel); nothing is shown when no match is live
 function liveHtml(d) {
   if (!d.live.length) return '';
   const items = d.live.slice(0, 2).map((m) => `<a class="item" href="/match/${m.token}"><b>${escapeHtml(m.player1.name)}</b> ${escapeHtml(m.scoreSummary || '–')} <b>${escapeHtml(m.player2.name)}</b></a>`).join('<span class="sep">·</span>');
-  return `<section class="home-sec home-sec-live"><div class="home-live"><span class="p"><i></i>${escapeHtml(t('home.live'))} · ${d.live.length}</span>${items}<a class="go" href="/matches">${escapeHtml(t('home.watch'))}</a></div></section>`;
+  return `<div class="home-live"><span class="p"><i></i>${escapeHtml(t('home.live'))} · ${d.live.length}</span>${items}<a class="go" href="/matches">${escapeHtml(t('home.watch'))}</a></div>`;
 }
 
 // ---------- render ----------
@@ -580,6 +581,7 @@ function renderHome() {
   const keepLeft = oldRow && !stripFilterChanged ? oldRow.scrollLeft : undefined;
   stripFilterChanged = false;
   document.getElementById('home-sub').innerHTML = sub(d);
+  document.getElementById('home-live-top').innerHTML = liveHtml(d);
   const stateEl = document.getElementById('home-state');
   if (d.season) {
     const state = seasonState(d.season, new Date().toISOString().slice(0, 10));
@@ -614,7 +616,6 @@ function renderHome() {
     ${matchesBlockHtml(d)}
     ${rankingAndLookingHtml(d)}
     ${moversHtml(d)}
-    ${liveHtml(d)}
     ${inviteShellHtml(d)}
     <section class="home-sec home-partners" id="home-partners" hidden></section>`;
   initTimelineScroll(keepLeft);

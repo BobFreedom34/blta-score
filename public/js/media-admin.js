@@ -57,6 +57,7 @@
     if (!list.length) { say('Choose PNG, JPG, WebP or GIF pictures', true); return; }
     say(`Uploading ${list.length}…`);
     let done = 0;
+    let already = 0;
     // a few at a time, so one big batch does not hit the size limit of a request
     for (let i = 0; i < list.length; i += 5) {
       const form = new FormData();
@@ -65,9 +66,11 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { say(data.error || 'Upload failed', true); await load(false); return; }
       done += data.added.length;
+      already += (data.reused || []).length;
     }
     await load(false);
-    say(`Added ${done} picture${done === 1 ? '' : 's'} ✓`);
+    const kept = already ? ` (${already} ${already === 1 ? 'was' : 'were'} in the library already, not added again)` : '';
+    say(done ? `Added ${done} picture${done === 1 ? '' : 's'} ✓${kept}` : `Nothing new: ${already === 1 ? 'that picture is' : 'those pictures are'} in the library already ✓`);
   }
 
   async function load(withServer = true) {
