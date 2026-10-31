@@ -353,7 +353,8 @@ function seoSectionHtml(v) {
   const area = (id, value, max) => `<textarea id="vf-${id}" rows="2" maxlength="${max}" style="${inputStyle}">${escapeHtml(value || '')}</textarea>`;
   return `
     ${sectionTitle('SEO — Google and link preview')}
-    <p style="font-size:12px;color:var(--gray);margin:0 0 8px">What a search result and a shared link (WhatsApp, Facebook…) show for this court's page. A field left empty uses the shared text of Backend → SEO → Court page, where <code>{name}</code> is the name of the court.</p>
+    <p style="font-size:12px;color:var(--gray);margin:0 0 4px">What a search result and a shared link (WhatsApp, Facebook…) show for this court's page. A field left empty uses the shared text of Backend → SEO → Court page — the grey text in the empty fields below is what that text gives for this court.</p>
+    <p style="font-size:12px;color:var(--gray);margin:0 0 8px">Placeholders you can use in the shared text (and in the fields below): <code>{name}</code> the name, <code>{area}</code> the area, <code>{address}</code> the address, <code>{courts}</code> the number of courts, <code>{surface}</code> the surfaces. A part in <code>[square brackets]</code> is left out when its placeholder has no value.</p>
     <div class="grid-2">
       ${textField('seoTitleSk', 'Title (Slovak)', v.seoTitleSk, { hint: '(up to about 60 characters)', attrs: 'maxlength="120"' })}
       ${textField('seoTitleEn', 'Title (English)', v.seoTitleEn, { hint: '(up to about 60 characters)', attrs: 'maxlength="120"' })}
@@ -374,6 +375,49 @@ function seoSectionHtml(v) {
       </div>
     </div>
   `;
+}
+
+// The shared text of Backend > SEO > Court page (loaded once) and the empty fields of the SEO section showing what it gives for THIS court, as grey
+// placeholder text that follows the details of the court being edited (same filling as src/seo.js).
+let courtSeoTemplate; // undefined = not asked yet, null = not available (not allowed or the request failed)
+const SURFACE_WORDS = {
+  sk: { CLAY: 'antuka', HARD: 'hard', ARTIFICIAL_GRASS: 'umelá tráva', CARPET: 'koberec', GRASS: 'tráva' },
+  en: { CLAY: 'clay', HARD: 'hard', ARTIFICIAL_GRASS: 'artificial grass', CARPET: 'carpet', GRASS: 'grass' },
+};
+
+function fillSeoText(text, vars) {
+  return String(text || '')
+    .replace(/\[([^\[\]]*)\]/g, (whole, inner) => {
+      const keys = inner.match(/\{\w+\}/g);
+      if (!keys) return whole;
+      return keys.every((k) => vars[k.slice(1, -1)]) ? inner : '';
+    })
+    .replace(/\{(\w+)\}/g, (whole, k) => (Object.prototype.hasOwnProperty.call(vars, k) ? String(vars[k]) : whole))
+    .replace(/\s+/g, ' ').replace(/\s+([,.:;])/g, '$1').trim();
+}
+
+async function wireSeoPlaceholders(form) {
+  if (courtSeoTemplate === undefined) {
+    try { courtSeoTemplate = ((await api('/seo')).find((p) => p.key === 'court') || {}).values || null; } catch { courtSeoTemplate = null; }
+  }
+  if (!courtSeoTemplate) return;
+  const read = (id) => { const el = form.querySelector(`#vf-${id}`); return el ? el.value.trim() : ''; };
+  const show = () => {
+    const picked = Array.from(form.querySelectorAll('input[name="vf-surfaces"]:checked')).map((el) => el.value);
+    const fields = { seoTitleSk: ['sk', 'title'], seoTitleEn: ['en', 'title'], seoDescriptionSk: ['sk', 'description'], seoDescriptionEn: ['en', 'description'] };
+    Object.entries(fields).forEach(([id, [lang, part]]) => {
+      const el = form.querySelector(`#vf-${id}`);
+      if (!el || !courtSeoTemplate[lang]) return;
+      const vars = {
+        name: read('name'), area: read('area'), address: read('address'), courts: read('courtsCount'),
+        surface: picked.map((k) => SURFACE_WORDS[lang][k]).filter(Boolean).join(', '),
+      };
+      el.placeholder = fillSeoText(courtSeoTemplate[lang][part], vars);
+    });
+  };
+  form.addEventListener('input', show);
+  form.addEventListener('change', show);
+  show();
 }
 
 // the picture button: from the computer or the library (the window of the backend), the same picture is never stored twice (POST /api/media)
@@ -498,6 +542,7 @@ function openEditor(id) {
 
   wirePhoto(form, id, slot);
   wireSeoPicture(form);
+  wireSeoPlaceholders(form);
   form.querySelector('[data-action="cancel"]').addEventListener('click', () => { slot.innerHTML = ''; });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

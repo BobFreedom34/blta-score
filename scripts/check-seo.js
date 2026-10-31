@@ -264,6 +264,12 @@ test('a court can have its own title, description and preview picture (Backend >
   const en = await get('/en/courts/tk-slovan');
   assert.ok(/^TK Slovan - tennis court/.test(titleOf(en.text)), 'English has no text of its own: the shared one');
   assert.ok(metaOf(en.text, 'property', 'og:image').endsWith('/media/slovan-share.png'), 'the picture is for both languages');
+  // the texts of the court take the placeholders too
+  assert.strictEqual((await call('PATCH', `/api/venues/${id}`, { body: { seoTitleSk: 'Kurty {name}[ — {area}]', seoDescriptionSk: '' } })).status, 200);
+  assert.strictEqual(titleOf((await get('/courts/tk-slovan')).text), 'Kurty TK Slovan', 'no area: the bracket is left out');
+  fixtureDb.prepare("UPDATE venues SET area = 'Petržalka' WHERE id = ?").run(id);
+  assert.strictEqual(titleOf((await get('/courts/tk-slovan')).text), 'Kurty TK Slovan — Petržalka');
+  fixtureDb.prepare('UPDATE venues SET area = NULL WHERE id = ?').run(id);
   // a bad picture address is refused; empty fields bring the shared texts and the photo back
   assert.strictEqual((await call('PATCH', `/api/venues/${id}`, { body: { seoImage: 'slovan.png' } })).status, 400);
   assert.strictEqual((await call('PATCH', `/api/venues/${id}`, { body: { seoTitleSk: '', seoDescriptionSk: '', seoImage: '' } })).status, 200);

@@ -799,11 +799,11 @@ function render(key, { origin, canonical, lang = 'sk', entity, siteName = 'BLTA'
   const own = entity && entity.seo ? entity.seo : null;
   // a page with a name can carry texts of its own for one field or two (a court: Backend > Venues > SEO): those win, the other fields keep the shared texts
   const over = entity && entity.seoOverride ? entity.seoOverride : {};
-  const title = own ? String(own.title || '').trim() : (over.title || fill(v.title));
-  const description = own ? String(own.description || '').trim() : (over.description || fill(v.description));
+  const title = own ? String(own.title || '').trim() : (fill(over.title) || fill(v.title));
+  const description = own ? String(own.description || '').trim() : (fill(over.description) || fill(v.description));
   const keywords = (own && own.keywords) || v.keywords;
-  const ogTitle = own ? title : (over.title || fill(v.ogTitle) || title);
-  const ogDescription = own ? description : (over.description || fill(v.ogDescription) || description);
+  const ogTitle = own ? title : (fill(over.title) || fill(v.ogTitle) || title);
+  const ogDescription = own ? description : (fill(over.description) || fill(v.ogDescription) || description);
   const image = (entity && entity.image) || v.ogImage || '/img/blta-logo.png';
   const imageUrl = /^https?:\/\//.test(image) ? image : `${origin}${image.startsWith('/') ? '' : '/'}${image}`;
   const urlOf = (lg) => `${origin}${pageUrl(canonical, lg)}`;
