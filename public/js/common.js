@@ -4156,7 +4156,7 @@ async function loadSponsorStrip(el, query = '') {
           <span class="mc-or">or choose one that is on the server</span>
           <input type="search" class="mc-search" placeholder="Search by name">
         </div>
-        <div class="mc-tabs"><button type="button" class="tab active" data-tab="library">Library</button><button type="button" class="tab" data-tab="server">On the server</button><a href="/media-admin" class="mc-manage" target="_blank" rel="noopener">Manage the library ↗</a></div>
+        <div class="mc-tabs"><button type="button" class="tab active" data-tab="library">Library</button><button type="button" class="tab" data-tab="server">On the server</button><select class="mc-place" aria-label="Kind of picture" style="display:none"></select><a href="/media-admin" class="mc-manage" target="_blank" rel="noopener">Manage the library ↗</a></div>
         <div class="mc-grid"><div class="mc-empty">Loading…</div></div>
         <div class="mc-foot" style="display:${input.multiple ? 'flex' : 'none'}"><span class="mc-count">Nothing chosen</span><button type="button" class="btn btn-primary" data-use disabled>Use the chosen</button></div>
       </div>`;
@@ -4166,10 +4166,21 @@ async function loadSponsorStrip(el, query = '') {
     let tab = 'library';
     let data = { library: [], server: [] };
     const chosen = new Set();
-    const items = () => (data[tab] || []).filter((m) => accepts(input, m.mime) && (!wrap.querySelector('.mc-search').value || String(m.name).toLowerCase().includes(wrap.querySelector('.mc-search').value.toLowerCase())));
+    let place = ''; // the kind of the pictures on the server that is shown ('' = all of them)
+    const query = () => wrap.querySelector('.mc-search').value.toLowerCase();
+    const items = () => (data[tab] || []).filter((m) => accepts(input, m.mime) && (tab !== 'server' || !place || m.place === place) && (!query() || [m.name, m.label, m.place].join(' ').toLowerCase().includes(query())));
+    const drawPlaces = () => {
+      const select = wrap.querySelector('.mc-place');
+      select.style.display = tab === 'server' ? '' : 'none';
+      if (tab !== 'server') return;
+      const counts = new Map();
+      (data.server || []).filter((m) => accepts(input, m.mime)).forEach((m) => counts.set(m.place, (counts.get(m.place) || 0) + 1));
+      select.innerHTML = `<option value="">All kinds (${[...counts.values()].reduce((a, b) => a + b, 0)})</option>${[...counts].sort((a, b) => a[0].localeCompare(b[0])).map(([k, n]) => `<option value="${escapeHtml(k)}"${k === place ? ' selected' : ''}>${escapeHtml(k)} (${n})</option>`).join('')}`;
+    };
     const draw = () => {
+      drawPlaces();
       const list = items();
-      grid.innerHTML = list.length ? list.map((m) => `<button type="button" class="mc-item${chosen.has(m.url) ? ' on' : ''}" data-url="${escapeHtml(m.url)}" title="${escapeHtml(m.name)}"><img src="${escapeHtml(m.url)}" alt="" loading="lazy"><span>${escapeHtml(m.name)}</span></button>`).join('')
+      grid.innerHTML = list.length ? list.map((m) => `<button type="button" class="mc-item${chosen.has(m.url) ? ' on' : ''}" data-url="${escapeHtml(m.url)}" title="${escapeHtml(m.label ? `${m.label} — ${m.name}` : m.name)}"><img src="${escapeHtml(m.url)}" alt="" loading="lazy"><span>${escapeHtml(m.label || m.name)}</span></button>`).join('')
         : `<div class="mc-empty">${tab === 'library' ? 'The library has no picture of a fitting type yet. Upload some in Backend → Media, or choose one that is on the server.' : 'No picture of a fitting type on the server.'}</div>`;
       const n = chosen.size;
       wrap.querySelector('.mc-count').textContent = n ? `${n} chosen` : 'Nothing chosen';
@@ -4202,6 +4213,7 @@ async function loadSponsorStrip(el, query = '') {
       draw();
     });
     wrap.querySelector('.mc-search').addEventListener('input', draw);
+    wrap.querySelector('.mc-place').addEventListener('change', (e) => { place = e.target.value; draw(); });
     document.addEventListener('keydown', function onKey(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); } });
     try { data = await api('/media?server=1'); } catch (err) { grid.innerHTML = `<div class="mc-empty">${escapeHtml(err.message)}</div>`; return; }
     // the library first; when it is empty the pictures on the server are the useful ones

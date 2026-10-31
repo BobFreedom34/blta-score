@@ -340,10 +340,12 @@ function seasonCardHtml(s) {
                 ${IS_TOURNAMENT && s.playType === 'DOUBLES' ? `<div class="sa-field sa-wide">Typ turnaja
                   <div style="padding-top:6px">Štvorhra — turnaj dvojíc (typ sa po vytvorení nedá zmeniť)</div>
                 </div>` : ''}
-                ${IS_TOURNAMENT && s.playType !== 'DOUBLES' ? `<div class="sa-field sa-wide">Kategórie
+                ${s.playType !== 'DOUBLES' ? `<div class="sa-field sa-wide">Kategórie
                   <div class="sa-checks">${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}${s.categories.includes('OPEN') ? ' disabled' : ''}> ${label}</label>`).join('')}
-                    <label><input type="checkbox" data-cat="OPEN"${s.categories.includes('OPEN') ? ' checked' : ''}> Bez kategórie</label></div>
-                  <span class="sa-hint">Turnaj sa hrá len v zaškrtnutých kategóriách (len tie sa ukážu v „Zaradenie do kategórií“ a v „Pavúk turnaja“). „Bez kategórie“: hráči sa nezaraďujú, hrá sa jeden pavúk pre všetkých prihlásených.</span>
+                    ${IS_TOURNAMENT ? `<label><input type="checkbox" data-cat="OPEN"${s.categories.includes('OPEN') ? ' checked' : ''}> Bez kategórie</label>` : ''}</div>
+                  <span class="sa-hint">${IS_TOURNAMENT
+                    ? 'Turnaj sa hrá len v zaškrtnutých kategóriách (len tie sa ukážu v „Zaradenie do kategórií“ a v „Pavúk turnaja“). „Bez kategórie“: hráči sa nezaraďujú, hrá sa jeden pavúk pre všetkých prihlásených.'
+                    : 'Sezóna sa hrá len v zaškrtnutých kategóriách: tie sa ukážu pri registrácii hráčov a v harmonograme (pri skupinách môžeš použiť len tieto kategórie).'}</span>
                 </div>` : ''}
               </div>
             </section>
@@ -504,7 +506,9 @@ function wireSeason(card) {
     errorEl.textContent = '';
     const f = (name) => e.target.querySelector(`[data-field="${name}"]`).value;
     try {
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(IS_TOURNAMENT ? { venue: f('venue'), courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), categories: [...e.target.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat) } : {}) } });
+      // a season is played in at least one category (an empty choice would mean "all" to the server)
+      if (!IS_TOURNAMENT && e.target.querySelectorAll('[data-cat]').length && ![...e.target.querySelectorAll('[data-cat]')].some((b) => b.checked)) throw new Error('Vyber aspoň jednu kategóriu.');
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(IS_TOURNAMENT ? { venue: f('venue'), courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')) } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
       toast('Saved');
       await load();
     } catch (err) { fail(err); }

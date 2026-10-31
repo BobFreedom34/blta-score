@@ -84,6 +84,24 @@ test('a league season needs a real category: "not sorted" is refused there', asy
   assert.strictEqual(ok.json[0].category, 'ELITE');
 });
 
+test('a league season is played in the categories the admin ticks: the season, the Harmonogram and the registration follow; every category until then', async () => {
+  const made = await call('POST', '/api/seasons', { name: 'Test League 2099', startDate: '2099-01-01', endDate: '2099-03-31' });
+  assert.strictEqual(made.status, 201, made.text);
+  const slug = made.json.slug;
+  assert.deepStrictEqual(made.json.categories, ['ELITE', 'NEXT_GEN', 'NOVICE'], 'every category at first');
+  const chips = async () => ((await call('GET', '/api/schedule')).json.find((e) => e.seasonId === made.json.id) || {}).categories;
+  assert.deepStrictEqual(await chips(), ['ELITE', 'NEXT_GEN', 'NOVICE']);
+  const two = await call('PATCH', `/api/seasons/${made.json.id}`, { categories: ['ELITE', 'NEXT_GEN'] });
+  assert.strictEqual(two.status, 200, two.text);
+  assert.deepStrictEqual((await call('GET', `/api/seasons/by-slug/${slug}`)).json.categories, ['ELITE', 'NEXT_GEN']);
+  assert.deepStrictEqual(await chips(), ['ELITE', 'NEXT_GEN'], 'the Harmonogram shows the categories of the season');
+  // a request that does not name the categories leaves them alone
+  assert.strictEqual((await call('PATCH', `/api/seasons/${made.json.id}`, { info: 'x' })).status, 200);
+  assert.deepStrictEqual((await call('GET', `/api/seasons/by-slug/${slug}`)).json.categories, ['ELITE', 'NEXT_GEN']);
+  assert.strictEqual((await call('PATCH', `/api/seasons/${made.json.id}`, { categories: ['ELITE', 'NEXT_GEN', 'NOVICE'] })).status, 200);
+  assert.deepStrictEqual(await chips(), ['ELITE', 'NEXT_GEN', 'NOVICE']);
+});
+
 async function main() {
   let failed = 0;
   try {

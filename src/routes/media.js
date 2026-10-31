@@ -63,11 +63,36 @@ const PLACES = [
   ['venue-photos', '/venue-photos', 'Venue photos'],
   ['winner-photos', '/winner-photos', 'Winners'],
   ['blog-images', '/blog-images', 'Blog'],
+  // the logos and covers of the communities and clubs, the sponsors' logos, the icons of the badges, and the pictures the site ships with
+  ['community-images', '/community-images', 'Communities and clubs'],
+  ['sponsor-logos', '/sponsor-logos', 'Sponsor logos'],
+  ['badge-icons', '/badge-icons', 'Badge icons'],
+  ['img', '/img', 'Site logos', PUBLIC_DIR],
+  ['img/slta', '/img/slta', 'SLTA icons', PUBLIC_DIR],
+  ['img/courts', '/img/courts', 'Court photos (shipped with the site)', PUBLIC_DIR],
+  ['img/blog', '/img/blog', 'Blog pictures (shipped with the site)', PUBLIC_DIR],
+  ['player-photos', '/player-photos', 'Player photos'],
 ];
 const IMAGE = /\.(png|jpe?g|webp|gif)$/i;
 const MIME_OF = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
 
+// What a picture is used for, as a readable name ("VIP Cup · cover", "Summer Rally 2026 · hero", "Tomáš Paulen · photo"): the address of a picture is
+// looked up in the places that hold one. Pictures nobody uses (a file left behind) have no label.
+function pictureLabels() {
+  const labels = new Map();
+  const add = (url, text) => { if (url && !labels.has(url)) labels.set(url, text); };
+  const each = (sql, fn) => { try { db.prepare(sql).all().forEach(fn); } catch { /* a table that is not there (an old database): no labels from it */ } };
+  each('SELECT name, logo_url, cover_url FROM organisations', (r) => { add(r.logo_url, `${r.name} · logo`); add(r.cover_url, `${r.name} · cover`); });
+  each('SELECT name, logo_url, hero_url, hero_mobile_url FROM seasons', (r) => { add(r.hero_url, `${r.name} · hero`); add(r.hero_mobile_url, `${r.name} · hero (phone)`); add(r.logo_url, `${r.name} · logo`); });
+  each('SELECT name, image_url, seo_image FROM venues', (r) => { add(r.image_url, `${r.name} · photo`); add(r.seo_image, `${r.name} · link preview`); });
+  each('SELECT name, logo_url FROM sponsors', (r) => add(r.logo_url, `${r.name} · sponsor logo`));
+  each('SELECT name, photo_url FROM players', (r) => add(r.photo_url, `${r.name} · photo`));
+  each('SELECT image_url, mobile_image_url, caption_sk FROM carousel_slides', (r) => { add(r.image_url, `Carousel · ${r.caption_sk || 'slide'}`); add(r.mobile_image_url, `Carousel · ${r.caption_sk || 'slide'} (phone)`); });
+  return labels;
+}
+
 function onTheServer() {
+  const labels = pictureLabels();
   const out = [];
   PLACES.forEach(([folder, base, label, root]) => {
     const dir = path.join(root || db.dataDir, folder);
@@ -76,11 +101,11 @@ function onTheServer() {
     names.filter((n) => IMAGE.test(n)).forEach((n) => {
       try {
         const st = fs.statSync(path.join(dir, n));
-        out.push({ url: `${base}/${n}`, name: n, place: label, mime: MIME_OF[path.extname(n).toLowerCase()] || 'image/jpeg', size: st.size, createdAt: st.mtime.toISOString() });
+        out.push({ url: `${base}/${n}`, name: n, label: labels.get(`${base}/${n}`) || '', place: label, mime: MIME_OF[path.extname(n).toLowerCase()] || 'image/jpeg', size: st.size, createdAt: st.mtime.toISOString() });
       } catch { /* gone meanwhile */ }
     });
   });
-  return out.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 400);
+  return out.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 800);
 }
 
 // the library of the city the admin works on, newest first; ?server=1 adds the pictures that are on the server already

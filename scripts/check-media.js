@@ -107,6 +107,37 @@ test('the pictures that are on the server already are listed for reuse (a carous
   assert.strictEqual((await fetch(base + found.url)).status, 200, 'and can be read to use it again');
 });
 
+test('the pictures of the communities and clubs, the sponsor logos, the badge icons and the logos of the site are listed too', async () => {
+  // what a club admin, a sponsor and a badge put on the disk (the folders of the data directory)
+  for (const [folder, name] of [['community-images', '7-cover-1700000000000-abcd.png'], ['community-images', '7-logo-1700000000001-abcd.jpg'], ['sponsor-logos', 'sponsor-1.png'], ['badge-icons', 'ace.png']]) {
+    fs.mkdirSync(path.join(dir, folder), { recursive: true });
+    fs.writeFileSync(path.join(dir, folder, name), PNG);
+  }
+  const listed = (await call('GET', '/api/media?server=1')).json.server;
+  const placeOf = (url) => (listed.find((x) => x.url === url) || {}).place;
+  assert.strictEqual(placeOf('/community-images/7-cover-1700000000000-abcd.png'), 'Communities and clubs');
+  assert.strictEqual(placeOf('/community-images/7-logo-1700000000001-abcd.jpg'), 'Communities and clubs');
+  assert.strictEqual(placeOf('/sponsor-logos/sponsor-1.png'), 'Sponsor logos');
+  assert.strictEqual(placeOf('/badge-icons/ace.png'), 'Badge icons');
+  assert.strictEqual(placeOf('/img/blta-logo.png'), 'Site logos', 'the logos the site ships with');
+  assert.strictEqual(placeOf('/img/slta-logo.png'), 'Site logos');
+  assert.strictEqual(placeOf('/img/slta/icon-192.png'), 'SLTA icons');
+  // the player photos are listed too, and a picture that a page uses is named by what it is for ("Test Sponsor · sponsor logo")
+  fs.mkdirSync(path.join(dir, 'player-photos'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'player-photos', 'p-1.jpg'), PNG);
+  const { DatabaseSync } = require('node:sqlite');
+  const db = new DatabaseSync(path.join(dir, 'blta-score.db'));
+  db.prepare("INSERT INTO sponsors (name, logo_url) VALUES ('Test Sponsor', '/sponsor-logos/sponsor-1.png')").run();
+  db.prepare("INSERT INTO venues (name, slug, image_url) VALUES ('Label Court', 'label-court', '/community-images/7-cover-1700000000000-abcd.png')").run();
+  db.close();
+  const again = (await call('GET', '/api/media?server=1')).json.server;
+  const find = (url) => again.find((x) => x.url === url) || {};
+  assert.strictEqual(find('/player-photos/p-1.jpg').place, 'Player photos');
+  assert.strictEqual(find('/sponsor-logos/sponsor-1.png').label, 'Test Sponsor · sponsor logo');
+  assert.strictEqual(find('/community-images/7-cover-1700000000000-abcd.png').label, 'Label Court · photo', 'named by the first place that uses it');
+  assert.strictEqual(find('/badge-icons/ace.png').label, '', 'a picture nothing uses has no label');
+});
+
 test('every city has its own library; a city admin works on his own only', async () => {
   const city = await call('POST', '/api/leagues', { body: { name: 'Kosice' } });
   const pick = await call('POST', '/api/admin/acting-city', { body: { leagueId: city.json.id } });

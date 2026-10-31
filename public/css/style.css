@@ -5931,3 +5931,6 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .home-live-top:not(:empty) + .home-carousel { margin-top: 14px; }
 .home-live-top:not(:empty) + .home-head { margin-top: 28px; }
 .home-live-top .home-live { margin: 0; }
+
+/* the picture window of the backend: the kind of the pictures on the server (communities, sponsors, players…) */
+.mc-place { padding: 6px 10px; border-radius: 8px; border: 1.5px solid #ddd; background: #fff; color: #111; font: inherit; font-size: 13px; max-width: 100%; }
