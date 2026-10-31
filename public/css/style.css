@@ -5948,3 +5948,11 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
   .tabs-progress[data-on="1"] { display: block; position: relative; height: 3px; border-radius: 2px; background: #2a2a30; }
   .tabs-progress i { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: var(--orange); }
 }
+
+/* The heading and description the server puts into a page before its script runs (see PAGE_SSR in src/seo.js): shown while the page loads (the script then
+   replaces it), or only for screen readers and crawlers (.sr-only) where the page draws its own heading. */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.ssr-intro { padding: 28px 2px 8px; }
+.ssr-intro h1 { margin: 0 0 10px; font-size: 28px; line-height: 1.15; }
+.ssr-intro p { margin: 0; color: rgba(255, 255, 255, 0.72); max-width: 70ch; }
+.ssr-intro.sr-only { padding: 0; }

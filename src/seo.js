@@ -778,7 +778,7 @@ const OG_LOCALE = { sk: 'sk_SK', en: 'en_GB' };
 
 // `canonical` is the code address of the page (/rankings, /season/<slug>); `lang` the language of the address asked for;
 // `entity` is { name } for a template page; `origin` the public address of the site.
-function render(key, { origin, canonical, lang = 'sk', entity, siteName = 'BLTA', leagueId = 1 }) {
+function render(key, { origin, canonical, lang = 'sk', entity, siteName = 'BLTA', leagueId = 1, leagueName = '' }) {
   const page = BY_KEY.get(key);
   const html = TEMPLATES.get(key);
   const v = getValues(key, lang, leagueId);
@@ -832,14 +832,80 @@ function render(key, { origin, canonical, lang = 'sk', entity, siteName = 'BLTA'
     ogDescription ? `<meta name="twitter:description" content="${esc(ogDescription)}">` : '',
     `<meta name="twitter:image" content="${esc(imageUrl)}">`,
     entity && entity.ogType === 'article' ? articleJsonLd({ title, description, imageUrl, url: urlOf(lang), entity }) : '',
+    v.noindex || (entity && entity.ogType === 'article') ? '' : structuredData({ key, entity, origin, siteName, leagueName, lang, title: ogTitle || title, description, imageUrl, urlOf, canonical, leagueId }),
   ].filter(Boolean).join('\n');
   const stripped = html.replace(OLD_TAGS, '').replace(HTML_LANG, `<html lang="${lang}"`);
   // without a saved title the page keeps its own (translated) one
   const out = title
     ? stripped.replace(TITLE_TAG, () => lines)
     : stripped.replace(TITLE_TAG, (t) => `${t}\n${lines}`);
+  // The text a crawler (or a visitor without scripts) reads before the page's script has drawn anything: the heading and the description. A page file marks the
+  // place with <!--PAGE_SSR--> (inside the box its script fills, so the script's own heading replaces it) or <!--PAGE_SSR:hidden--> (a page whose own
+  // heading is not in its file: the intro is there for screen readers and crawlers only).
+  const introTitle = (entity && entity.name) || String(ogTitle || title).split(' - ')[0];
+  const intro = (hidden) => (introTitle ? `<div class="ssr-intro${hidden ? ' sr-only' : ''}"><h1>${esc(introTitle)}</h1>${description ? `<p>${esc(description)}</p>` : ''}</div>` : '');
+  const withIntro = out.replace(INTRO_MARKER, (whole, hidden) => intro(!!hidden));
   // the page's own content (the list of the blog, an article) goes where its file says so
-  return entity && entity.html ? out.replace('<!--PAGE_CONTENT-->', () => entity.html) : out;
+  return entity && entity.html ? withIntro.replace('<!--PAGE_CONTENT-->', () => entity.html) : withIntro;
+}
+
+const INTRO_MARKER = /<!--PAGE_SSR(:hidden)?-->/;
+
+// ---------- structured data (JSON-LD) ----------
+
+// The page that is the list a page belongs to (a season is listed in Harmonogram, a player in Hráči…): the middle step of its breadcrumb.
+const BREADCRUMB_PARENT = { season: 'harmonogram', tournament: 'harmonogram', player: 'players', court: 'courts', community: 'communities', article: 'blog', bracket: 'tables' };
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}/;
+const scriptTag = (data) => `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
+
+// What Google reads next to the meta tags: who the site is (home page), what the page is about (an event, a person, a place, an organisation —
+// from the `ld` the page's entity brings, see TEMPLATE_ENTITY in server.js) and where it sits (breadcrumb). Only facts that are on the page anyway.
+function structuredData({ key, entity, origin, siteName, leagueName, lang, title, description, imageUrl, urlOf, canonical, leagueId }) {
+  const page = BY_KEY.get(key);
+  if (!page) return '';
+  const url = urlOf(lang);
+  const logo = `${origin}${siteName === 'SLTA' ? '/img/slta-logo.png' : '/img/blta-logo.png'}`;
+  const org = { '@type': 'SportsOrganization', '@id': `${origin}/#organization`, name: siteName, url: `${origin}/`, logo, sport: 'Tennis' };
+  if (leagueName) org.areaServed = leagueName;
+  const graph = [];
+  if (key === 'home') {
+    graph.push(org, { '@type': 'WebSite', '@id': `${origin}/#website`, url: `${origin}/`, name: siteName, inLanguage: lang, publisher: { '@id': org['@id'] } });
+  }
+  const ld = entity && entity.ld;
+  const orgRef = { '@type': 'Organization', name: siteName, url: `${origin}/` };
+  const place = { '@type': 'Place', name: leagueName || 'Bratislava', address: { '@type': 'PostalAddress', addressLocality: leagueName || 'Bratislava', addressCountry: 'SK' } };
+  if (ld && ld.type === 'event') {
+    const event = { '@type': 'SportsEvent', name: entity.name, url, image: [imageUrl], description, sport: 'Tennis', eventStatus: 'https://schema.org/EventScheduled', eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode', location: place, organizer: orgRef, inLanguage: lang };
+    if (DATE_ONLY.test(ld.start || '')) event.startDate = ld.start.slice(0, 10);
+    if (DATE_ONLY.test(ld.end || '')) event.endDate = ld.end.slice(0, 10);
+    // Google lists an event only with a start date
+    if (event.startDate) graph.push(event);
+  } else if (ld && ld.type === 'person') {
+    graph.push({ '@type': 'Person', name: entity.name, url, ...(entity.image ? { image: imageUrl } : {}), memberOf: orgRef });
+  } else if (ld && ld.type === 'place') {
+    const address = { '@type': 'PostalAddress', addressLocality: ld.area || leagueName || 'Bratislava', addressCountry: 'SK' };
+    if (ld.address) address.streetAddress = ld.address;
+    const venue = { '@type': 'SportsActivityLocation', name: entity.name, url, image: [imageUrl], description, address };
+    if (Number.isFinite(ld.lat) && Number.isFinite(ld.lng)) venue.geo = { '@type': 'GeoCoordinates', latitude: ld.lat, longitude: ld.lng };
+    if (ld.phone) venue.telephone = ld.phone;
+    if (/^https?:\/\//.test(ld.website || '')) venue.sameAs = [ld.website];
+    graph.push(venue);
+  } else if (ld && ld.type === 'org') {
+    graph.push({ '@type': 'SportsOrganization', name: entity.name, url, ...(entity.image ? { logo: imageUrl } : {}), description, sport: 'Tennis', parentOrganization: orgRef });
+  }
+  // breadcrumb: Home > (the list) > this page
+  if (key !== 'home') {
+    const short = (text) => String(text || '').split(' - ')[0];
+    const items = [{ name: siteName, url: `${origin}/` }];
+    const parent = BREADCRUMB_PARENT[key] && BY_KEY.get(BREADCRUMB_PARENT[key]);
+    if (parent) {
+      const pv = getValues(parent.key, lang, leagueId);
+      if (pv && pv.title) items.push({ name: short(pv.title), url: `${origin}${pageUrl(parent.path, lang)}` });
+    }
+    items.push({ name: (entity && entity.name) || short(title), url });
+    graph.push({ '@type': 'BreadcrumbList', itemListElement: items.map((it, i) => ({ '@type': 'ListItem', position: i + 1, name: it.name, item: it.url })) });
+  }
+  return graph.length ? scriptTag({ '@context': 'https://schema.org', '@graph': graph }) : '';
 }
 
 // the structured data of an article (what Google reads next to the meta tags)

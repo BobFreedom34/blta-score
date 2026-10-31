@@ -185,6 +185,23 @@ backup.startScheduledBackups();
 // package itself). Registered first, before the static files and every route, so all of them are covered. Responses
 // under 1 kB are left alone, and the ETag the next middleware sets still works with it (304 Not Modified).
 app.use(compression());
+// Security headers on every response. The widgets that other websites put in a frame (/embed/..., /compact, /compactblta) stay frameable; every
+// other page may only be framed by the site itself (clickjacking). The Content-Security-Policy here is the part that cannot break a page: it does not
+// limit scripts, styles or images (the pages use inline code and a few outside services), only <object>, <base> and who may frame the page.
+app.disable('x-powered-by');
+const FRAMEABLE = /(?:^|\/)(?:embed\/|compact(?:blta)?(?:$|[/?]))/;
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(self), microphone=(), geolocation=(self), payment=()',
+  });
+  // only over https (a plain http answer, such as the local server, must not teach a browser to insist on https)
+  if (req.secure || req.get('x-forwarded-proto') === 'https') res.set('Strict-Transport-Security', 'max-age=31536000');
+  if (FRAMEABLE.test(req.path)) res.set('Content-Security-Policy', "object-src 'none'; base-uri 'self'");
+  else res.set({ 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "object-src 'none'; base-uri 'self'; frame-ancestors 'self'" });
+  next();
+});
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser(process.env.SESSION_SECRET || 'dev-only-insecure-secret'));
@@ -338,7 +355,7 @@ const TEMPLATE_ENTITY = {
   article: (slug, lang, leagueId) => blog.articleEntity(slug, lang, leagueId),
   player: (id) => {
     const p = db.prepare('SELECT name, photo_url FROM players WHERE slug = ? OR id = ?').get(id, /^\d+$/.test(id) ? Number(id) : -1);
-    return p ? { name: p.name, image: p.photo_url || '' } : null;
+    return p ? { name: p.name, image: p.photo_url || '', ld: { type: 'person' } } : null;
   },
   // The link preview of these pages is always their own picture (it wins over the picture of Backend > SEO, which is only the fallback when the
   // page has none): a season / tournament / bracket its hero image (the one of the season, the desktop one first), a player his photo, a court its photo.
@@ -347,16 +364,16 @@ const TEMPLATE_ENTITY = {
     return b ? { name: b.name, image: b.hero_url || b.hero_mobile_url || b.logo_url || '' } : null;
   },
   season: (slug, lang, leagueId) => {
-    const s = db.prepare('SELECT name, logo_url, hero_url, hero_mobile_url FROM seasons WHERE slug = ? AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))').get(slug, leagueId);
-    return s ? { name: s.name, image: s.hero_url || s.hero_mobile_url || s.logo_url || '' } : null;
+    const s = db.prepare('SELECT name, logo_url, hero_url, hero_mobile_url, start_date, end_date FROM seasons WHERE slug = ? AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))').get(slug, leagueId);
+    return s ? { name: s.name, image: s.hero_url || s.hero_mobile_url || s.logo_url || '', ld: { type: 'event', start: s.start_date, end: s.end_date } } : null;
   },
   tournament: (slug, lang, leagueId) => {
-    const s = db.prepare("SELECT name, logo_url, hero_url, hero_mobile_url FROM seasons WHERE slug = ? AND kind = 'TOURNAMENT' AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").get(slug, leagueId);
-    return s ? { name: s.name, image: s.hero_url || s.hero_mobile_url || s.logo_url || '' } : null;
+    const s = db.prepare("SELECT name, logo_url, hero_url, hero_mobile_url, start_date, end_date FROM seasons WHERE slug = ? AND kind = 'TOURNAMENT' AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").get(slug, leagueId);
+    return s ? { name: s.name, image: s.hero_url || s.hero_mobile_url || s.logo_url || '', ld: { type: 'event', start: s.start_date, end: s.end_date } } : null;
   },
   // a court: the texts and the preview picture of its own (Backend > Venues > SEO) first, then its photo, then the shared ones of Backend > SEO
   court: (slug, lang) => {
-    const v = db.prepare('SELECT name, area, address, courts_count, surfaces, image_url, seo_image, seo_title_sk, seo_title_en, seo_description_sk, seo_description_en FROM venues WHERE slug = ?').get(slug);
+    const v = db.prepare('SELECT name, area, address, courts_count, surfaces, image_url, seo_image, seo_title_sk, seo_title_en, seo_description_sk, seo_description_en, lat, lng, phone, website FROM venues WHERE slug = ?').get(slug);
     if (!v) return null;
     const en = lang === 'en';
     return {
@@ -365,6 +382,7 @@ const TEMPLATE_ENTITY = {
       seoOverride: { title: (en ? v.seo_title_en : v.seo_title_sk) || '', description: (en ? v.seo_description_en : v.seo_description_sk) || '' },
       // the placeholders of the shared texts of Backend > SEO > Court page: {area} {address} {courts} {surface}
       vars: { area: v.area || '', address: v.address || '', courts: v.courts_count || '', surface: courtSurfaces(v.surfaces, en) },
+      ld: { type: 'place', area: v.area || '', address: v.address || '', lat: v.lat, lng: v.lng, phone: v.phone || '', website: v.website || '' },
     };
   },
   // a private conversation: the page has no name of its own (and is noindex), the chat is loaded by the script
@@ -373,7 +391,7 @@ const TEMPLATE_ENTITY = {
   clubtournament: () => ({ name: 'Club tournament' }),
   community: (slug, lang, leagueId) => {
     const o = db.prepare('SELECT name, logo_url, cover_url FROM organisations WHERE slug = ? AND league_id = ? AND hidden = 0 AND approved = 1').get(slug, leagueId);
-    return o ? { name: o.name, image: o.cover_url || o.logo_url || '' } : null;
+    return o ? { name: o.name, image: o.cover_url || o.logo_url || '', ld: { type: 'org' } } : null;
   },
 };
 function pageNotFound(res) {
@@ -467,7 +485,7 @@ app.use((req, res, next) => {
     if (req.cityBase) entity.html = entity.html.replace(/BLTA/g, req.league.brand_name || req.league.name);
   }
   try {
-    const html = seo.render(hit.key, { origin: publicOrigin(req), canonical: hit.canonical, lang: hit.lang, entity, siteName: req.cityBase ? (req.league.brand_name || req.league.name) : undefined, leagueId: req.league.id });
+    const html = seo.render(hit.key, { origin: publicOrigin(req), canonical: hit.canonical, lang: hit.lang, entity, siteName: req.cityBase ? (req.league.brand_name || req.league.name) : undefined, leagueId: req.league.id, leagueName: req.league.name });
     // the propozície text comes from Backend > Rules
     return res.type('html').send(hit.key === 'propozicie' ? rules.injectInto(html, req.league.id) : html);
   } catch (err) {

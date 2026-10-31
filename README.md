@@ -685,6 +685,9 @@ and `/en`. The first English texts and slugs are built in (`ENGLISH` in `src/seo
 - A page file added to `public/` shows up here by itself (see `discoverPages` in `src/seo.js`) with the same slug in both languages.
 - Tables: `seo_pages` (Slovak texts, `slug`, `slug_en`, `noindex`) and `seo_pages_en` (English texts). An old database is upgraded on
   the first start.
+- **Structured data and a readable intro** (`render()` in `src/seo.js`): every indexable page carries JSON-LD — the home page an organisation and a website, a season / tournament a `SportsEvent` (only with a start date), a player a `Person`, a court a `SportsActivityLocation` (address, position, phone, website), a community a `SportsOrganization`, every page but the home a `BreadcrumbList`. A template page brings its facts as `ld` on its entity (`TEMPLATE_ENTITY` in `server.js`). A page whose script draws everything gets a heading and its description in the raw HTML where its file has `<!--PAGE_SSR-->` (inside the box the script fills; the script replaces it) or `<!--PAGE_SSR:hidden-->` (screen-reader/crawler only, for a page whose own heading is not in its file).
+- **Security headers** (`server.js`, before `cors()`): `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS (https only), `X-Frame-Options: SAMEORIGIN` and a CSP of `object-src`, `base-uri` and `frame-ancestors` only (it does not limit scripts or styles). `/embed/…`, `/compact` and `/compactblta` stay frameable by other sites.
+- Check them: `node scripts/check-structured-data.js`
 - Check it: `node scripts/check-seo.js` (starts its own server on a temporary data folder; nothing else is touched).
 
 ### Tournament registration, payment window and sorting into categories (Backend → Tournaments, `/tournaments-admin`)
