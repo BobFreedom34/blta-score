@@ -309,8 +309,10 @@ router.post('/:id/registrations', async (req, res) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120) return res.status(400).json({ code: 'BAD_EMAIL', error: 'Enter a valid e-mail address' });
   if (phone.replace(/\D/g, '').length < 9 || phone.length > 20) return res.status(400).json({ code: 'BAD_PHONE', error: 'Enter a valid phone number' });
   // a tournament entry has no category: the admin sorts the players into categories afterwards
-  const entryCategory = season.kind === 'TOURNAMENT' ? '' : body.category;
-  if (season.kind !== 'TOURNAMENT' && !BLTA_CATEGORIES.includes(body.category)) return res.status(400).json({ code: 'BAD_CATEGORY', error: 'Choose a category' });
+  // (a season without categories has none either: its groups are made by the organiser)
+  const noCategory = season.kind === 'TOURNAMENT' || season.categories === 'OPEN';
+  const entryCategory = noCategory ? '' : body.category;
+  if (!noCategory && !parseCategories(season.categories).includes(body.category)) return res.status(400).json({ code: 'BAD_CATEGORY', error: 'Choose a category' });
   const note = typeof body.note === 'string' ? body.note.replace(/\r\n/g, '\n').trim() : '';
   if (note.length > 500) return res.status(400).json({ code: 'BAD_NOTE', error: 'The note is too long (max 500 characters)' });
   // a doubles tournament is entered as a pair: the partner is required (the pair is made from it); a singles tournament has no partner
@@ -667,7 +669,7 @@ router.post('/:id/registrations/admin', clubTournaments.requireSeasonManager(clu
   const partnerName = doublesTournament && typeof body.partner === 'string' ? body.partner.replace(/\s+/g, ' ').trim() : '';
   if (doublesTournament && (partnerName.length < 3 || partnerName.length > 80)) return res.status(400).json({ error: 'Enter the name of the partner' });
   let category = null;
-  if (doublesTournament) category = ''; // a pair has no Elite / Next Gen / Novice category
+  if (doublesTournament || season.categories === 'OPEN') category = ''; // a pair has no Elite / Next Gen / Novice category, nor has a player of a season without categories
   else if (BLTA_CATEGORIES.includes(body.category)) category = body.category;
   else if (tournament && body.category === '') category = '';
   else category = profileCategory(player.category) || (tournament ? '' : null);
@@ -695,7 +697,7 @@ router.post('/:id/registrations/admin', clubTournaments.requireSeasonManager(clu
 // The admin changes a registration: what is sent is changed, the rest stays — paid, category ('' = no category, tournaments only),
 // phone, e-mail and note.
 router.patch('/registrations/:rid', clubTournaments.requireSeasonManager(clubTournaments.byRegistrationId), (req, res) => {
-  const row = db.prepare('SELECT r.*, s.kind AS season_kind, s.play_type AS season_play_type FROM season_registrations r LEFT JOIN seasons s ON s.id = r.season_id WHERE r.id = ?').get(Number(req.params.rid));
+  const row = db.prepare('SELECT r.*, s.kind AS season_kind, s.play_type AS season_play_type, s.categories AS season_categories FROM season_registrations r LEFT JOIN seasons s ON s.id = r.season_id WHERE r.id = ?').get(Number(req.params.rid));
   if (!row) return res.status(404).json({ error: 'Registration not found' });
   const body = req.body || {};
   const doublesEntry = row.season_kind === 'TOURNAMENT' && row.season_play_type === 'DOUBLES';
@@ -704,7 +706,7 @@ router.patch('/registrations/:rid', clubTournaments.requireSeasonManager(clubTou
   if (body.paid !== undefined) next.paid = body.paid ? 1 : 0;
   if (body.category !== undefined) {
     if (BLTA_CATEGORIES.includes(body.category)) next.category = body.category;
-    else if (body.category === '' && row.season_kind === 'TOURNAMENT') next.category = '';
+    else if (body.category === '' && (row.season_kind === 'TOURNAMENT' || row.season_categories === 'OPEN')) next.category = '';
     else return res.status(400).json({ error: 'Choose a category' });
   }
   const siteAdmin = auth.isAdmin(req); // the organiser of a club cannot write the phone or e-mail of a registration
@@ -1013,7 +1015,10 @@ function parseGroup(body, season) {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   if (!name) return { error: 'Group name is required' };
   if (name.length > 80) return { error: 'Group name is too long (max 80 characters)' };
-  const open = !!season && !!season.organisation_id && body.category === 'OPEN';
+  // (a season without categories has groups without a category only; a season of a club may have both kinds)
+  const withoutCategories = !!season && season.categories === 'OPEN';
+  const open = !!season && (!!season.organisation_id || withoutCategories) && body.category === 'OPEN';
+  if (withoutCategories && body.category !== 'OPEN') return { error: 'A season without categories has groups without a category (Bez kategórie)' };
   if (!BLTA_CATEGORIES.includes(body.category) && !open) return { error: 'Every group needs a category: ELITE, NEXT_GEN or NOVICE' };
   return { name, category: body.category };
 }

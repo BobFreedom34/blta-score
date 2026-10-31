@@ -8,6 +8,8 @@ const rootEl = document.getElementById('sv-root');
 const slug = decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '');
 
 const CATEGORY_ORDER = ['ELITE', 'NEXT_GEN', 'NOVICE'];
+// no category to choose when registering: a tournament (the admin sorts the players) and a season played without categories
+const noCategoryChoice = () => isTournament() || (season.categories || []).includes('OPEN');
 const CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', get DOUBLES() { return t('season.catDoubles'); }, get OPEN() { return t('season.catOpen'); } };
 // the doubles (štvorhra) of a tournament is a category of its own in the groups, the schedule and the brackets (not in the registration form)
 const CATEGORY_ORDER_ALL = [...CATEGORY_ORDER, 'DOUBLES', 'OPEN']; // (OPEN = a tournament played without categories: one draw for everybody)
@@ -124,8 +126,8 @@ function playersModel() {
   };
   (season.groups || []).forEach((g) => {
     const members = g.members.filter((m) => !m.withdrawn);
-    if (members.length) members.forEach((m) => add(m.name, m.slug, g.category, !!(m.paid || (regs.get(nameKey(m.name)) || {}).paid)));
-    else ((tables.get(g.id) || { rows: [] }).rows).forEach((r) => add(r.player.name, r.player.slug, g.category, regs.has(nameKey(r.player.name)) ? regs.get(nameKey(r.player.name)).paid : null));
+    if (members.length) members.forEach((m) => add(m.name, m.slug, g.category === 'OPEN' ? 'NONE' : g.category, !!(m.paid || (regs.get(nameKey(m.name)) || {}).paid)));
+    else ((tables.get(g.id) || { rows: [] }).rows).forEach((r) => add(r.player.name, r.player.slug, g.category === 'OPEN' ? 'NONE' : g.category, regs.has(nameKey(r.player.name)) ? regs.get(nameKey(r.player.name)).paid : null));
   });
   // a tournament entry may have no category: those players are listed last, under "Bez kategórie"
   (season.registrations || []).forEach((r) => add(r.name, r.slug, r.category || 'NONE', r.paid));
@@ -523,7 +525,7 @@ async function openRegisterModal() {
         </div>
         <div class="field"><label for="sv-reg-phone">${escapeHtml(t('season.regPhone'))}</label><input type="tel" id="sv-reg-phone" autocomplete="tel" maxlength="20" placeholder="0903 111 222"></div>
         <div class="field"><label for="sv-reg-email">${escapeHtml(t('season.regEmail'))}</label><input type="email" id="sv-reg-email" autocomplete="email" maxlength="120"></div>
-        ${isTournament() ? '' : `<div class="field"><label for="sv-reg-cat">${escapeHtml(t('season.regCategory'))}</label>
+        ${noCategoryChoice() ? '' : `<div class="field"><label for="sv-reg-cat">${escapeHtml(t('season.regCategory'))}</label>
           <select id="sv-reg-cat"><option value="">${escapeHtml(t('season.regChoose'))}</option>${CATEGORY_ORDER.filter((c) => (season.categories || []).includes(c)).map((c) => `<option value="${c}">${escapeHtml(CATEGORY_NAMES[c])}</option>`).join('')}</select>
         </div>`}
         ${isDoublesTournament() ? `<div class="field">
@@ -558,11 +560,11 @@ async function openRegisterModal() {
     const typed = $('name').value.replace(/\s+/g, ' ').trim();
     const phone = $('phone').value.trim();
     const email = $('email').value.trim();
-    const category = isTournament() ? '' : $('cat').value; // a tournament has no category choice: the admin sorts the players
+    const category = noCategoryChoice() ? '' : $('cat').value; // a tournament, or a season without categories, has no category choice: the admin sorts the players
     if (typed.length < 3) return fail(t('season.regErrName'));
     if (phone.replace(/\D/g, '').length < 9) return fail(t('season.regErrPhone'));
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(t('season.regErrEmail'));
-    if (!category && !isTournament()) return fail(t('season.regErrCategory'));
+    if (!category && !noCategoryChoice()) return fail(t('season.regErrCategory'));
     if (isDoublesTournament() && $('partner').value.replace(/\s+/g, ' ').trim().length < 3) return fail(t('season.regErrPartner'));
     const known = chosenId ? { id: chosenId } : findPlayerByTypedName(typed);
     const button = $('send');

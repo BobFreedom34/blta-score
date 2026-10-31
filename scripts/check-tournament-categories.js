@@ -102,6 +102,52 @@ test('a league season is played in the categories the admin ticks: the season, t
   assert.deepStrictEqual(await chips(), ['ELITE', 'NEXT_GEN', 'NOVICE']);
 });
 
+let fakeAddress = 0;
+async function publicRegistration(id, body) {
+  fakeAddress += 1;
+  const res = await fetch(`${base}/api/seasons/${id}/registrations`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': `10.9.8.${fakeAddress}` }, body: JSON.stringify(body) });
+  const text = await res.text();
+  let json = null;
+  try { json = JSON.parse(text); } catch { /* not json */ }
+  return { status: res.status, json, text };
+}
+
+test('a season can be played without categories ("Bez kategórie"): groups without a category, registration without one, no category chips; the rules return with the categories', async () => {
+  const made = await call('POST', '/api/seasons', { name: 'Open League 2099', startDate: '2099-04-01', endDate: '2099-06-30' });
+  assert.strictEqual(made.status, 201, made.text);
+  const id = made.json.id;
+  const chips = async () => ((await call('GET', '/api/schedule')).json.find((e) => e.seasonId === id) || {}).categories;
+  assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { registrationOpen: true, categories: ['OPEN'] })).status, 200);
+  assert.deepStrictEqual((await call('GET', `/api/seasons/by-slug/${made.json.slug}`)).json.categories, ['OPEN']);
+  assert.deepStrictEqual(await chips(), [], 'a season without categories has no category chips');
+  // its groups are without a category too
+  const bad = await call('POST', `/api/seasons/${id}/groups`, { name: 'Group A', category: 'ELITE' });
+  assert.strictEqual(bad.status, 400, bad.text);
+  const group = await call('POST', `/api/seasons/${id}/groups`, { name: 'Group A', category: 'OPEN' });
+  assert.strictEqual(group.status, 201, group.text);
+  assert.strictEqual(group.json.category, 'OPEN');
+  // a public registration needs no category (and a category sent is ignored)
+  const reg = await publicRegistration(id, { name: 'Open Player', email: 'open1@example.com', phone: '0903112233' });
+  assert.strictEqual(reg.status, 201, reg.text);
+  assert.strictEqual(reg.json.category, '');
+  const sent = await publicRegistration(id, { name: 'Karol Bednar', email: 'open2@example.com', phone: '0903112244', category: 'ELITE' });
+  assert.strictEqual(sent.status, 201, sent.text);
+  assert.strictEqual(sent.json.category, '');
+  // the admin can leave a registration without a category in a season like this, but not in a season with categories
+  const regs = (await call('GET', `/api/seasons/${id}/registrations`)).json;
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${regs[0].id}`, { category: '' })).status, 200);
+  // back to categories: a category is needed again, and only one of the season's own
+  assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { categories: ['ELITE', 'NEXT_GEN'] })).status, 200);
+  assert.deepStrictEqual(await chips(), ['ELITE', 'NEXT_GEN']);
+  const none = await publicRegistration(id, { name: 'Marek Zeman', email: 'open3@example.com', phone: '0903112255' });
+  assert.strictEqual(none.status, 400);
+  assert.strictEqual(none.json.code, 'BAD_CATEGORY');
+  const outside = await publicRegistration(id, { name: 'Marek Zeman', email: 'open3@example.com', phone: '0903112255', category: 'NOVICE' });
+  assert.strictEqual(outside.status, 400, 'Novice is not played in this season');
+  assert.strictEqual((await publicRegistration(id, { name: 'Marek Zeman', email: 'open3@example.com', phone: '0903112255', category: 'ELITE' })).status, 201);
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${regs[0].id}`, { category: '' })).status, 400, 'no "no category" in a season with categories');
+});
+
 async function main() {
   let failed = 0;
   try {

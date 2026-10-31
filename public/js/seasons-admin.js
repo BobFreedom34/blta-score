@@ -62,9 +62,12 @@ const CATEGORIES = [
 ];
 const inputStyle = 'padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px';
 
-function categoryOptions(selected, forGroup = false) {
-  // a group of a season of a club may also be without a category (like a tournament without categories)
-  const list = forGroup && isClubSeason() ? [...CATEGORIES, ['OPEN', 'Bez kategórie']] : CATEGORIES;
+// a season played without categories (the box "Bez kategórie" of its editor)
+const seasonWithoutCategories = (s) => !!s && (s.categories || []).includes('OPEN');
+
+function categoryOptions(selected, forGroup = false, season = null) {
+  // a group of a season of a club may also be without a category (like a tournament without categories); a season without categories has only such groups
+  const list = forGroup && seasonWithoutCategories(season) ? [['OPEN', 'Bez kategórie']] : forGroup && isClubSeason() ? [...CATEGORIES, ['OPEN', 'Bez kategórie']] : CATEGORIES;
   return list.map(([key, label]) => `<option value="${key}"${key === selected ? ' selected' : ''}>${label}</option>`).join('');
 }
 
@@ -204,12 +207,12 @@ function playersPanelHtml(g) {
     </div>`;
 }
 
-function groupRowHtml(g) {
+function groupRowHtml(g, season) {
   return `
     <div class="season-group" data-group-wrap="${g.id}">
       <div class="season-group-row" data-group="${g.id}" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--gray-light)">
         <input type="text" data-field="name" value="${escapeHtml(g.name)}" maxlength="80" style="flex:1;min-width:140px;${inputStyle}">
-        <select data-field="category" style="${inputStyle}">${categoryOptions(g.category, true)}</select>
+        <select data-field="category" style="${inputStyle}">${categoryOptions(g.category, true, season)}</select>
         <span style="font-size:12px;color:var(--gray);min-width:70px">${g.matchCount} ${g.matchCount === 1 ? 'match' : 'matches'}</span>
         <button type="button" class="btn btn-sm btn-outline" data-action="toggle-players">Players (${g.activeMemberCount})</button>
         <button type="button" class="btn btn-sm btn-outline" data-action="save-group">Save</button>
@@ -342,10 +345,10 @@ function seasonCardHtml(s) {
                 </div>` : ''}
                 ${s.playType !== 'DOUBLES' ? `<div class="sa-field sa-wide">Kategórie
                   <div class="sa-checks">${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}${s.categories.includes('OPEN') ? ' disabled' : ''}> ${label}</label>`).join('')}
-                    ${IS_TOURNAMENT ? `<label><input type="checkbox" data-cat="OPEN"${s.categories.includes('OPEN') ? ' checked' : ''}> Bez kategórie</label>` : ''}</div>
+                    <label><input type="checkbox" data-cat="OPEN"${s.categories.includes('OPEN') ? ' checked' : ''}> Bez kategórie</label></div>
                   <span class="sa-hint">${IS_TOURNAMENT
                     ? 'Turnaj sa hrá len v zaškrtnutých kategóriách (len tie sa ukážu v „Zaradenie do kategórií“ a v „Pavúk turnaja“). „Bez kategórie“: hráči sa nezaraďujú, hrá sa jeden pavúk pre všetkých prihlásených.'
-                    : 'Sezóna sa hrá len v zaškrtnutých kategóriách: tie sa ukážu pri registrácii hráčov a v harmonograme (pri skupinách môžeš použiť len tieto kategórie).'}</span>
+                    : 'Sezóna sa hrá len v zaškrtnutých kategóriách: tie sa ukážu pri registrácii hráčov a v harmonograme. „Bez kategórie“: hráči sa pri registrácii kategóriu nevyberajú a skupiny sezóny sú bez kategórie (hrajú sa ako zápasy kategórie Iné).'}</span>
                 </div>` : ''}
               </div>
             </section>
@@ -422,12 +425,12 @@ function seasonCardHtml(s) {
         <div class="sa-panel" data-panel="draw"${active === 'draw' ? '' : ' hidden'}><div class="season-draw"></div></div>` : `<div class="sa-panel" data-panel="groups"${active === 'groups' ? '' : ' hidden'}>
           <div style="font-size:12px;color:var(--gray);margin:0 0 12px">${s.matchCount} tagged ${s.matchCount === 1 ? 'match' : 'matches'} · ${s.groups.length} ${s.groups.length === 1 ? 'group' : 'groups'}
             (${byCategory[0]} Elite, ${byCategory[1]} Next Gen, ${byCategory[2]} Novice) — each group is one standings table</div>
-          <div class="season-groups">${s.groups.length ? s.groups.map(groupRowHtml).join('') : '<div class="empty-state" style="padding:12px 0">No groups yet.</div>'}</div>
+          <div class="season-groups">${s.groups.length ? s.groups.map((g) => groupRowHtml(g, s)).join('') : '<div class="empty-state" style="padding:12px 0">No groups yet.</div>'}</div>
           <form class="add-group-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
             <input type="text" data-field="name" maxlength="80" placeholder="New group, e.g. Babolat" required style="flex:1;min-width:160px;${inputStyle}">
             <select data-field="category" required style="${inputStyle}">
               <option value="">Category…</option>
-              ${categoryOptions('', true)}
+              ${categoryOptions('', true, s)}
             </select>
             <button type="submit" class="btn btn-sm btn-primary">Add group</button>
           </form>
@@ -649,7 +652,7 @@ function wireSeason(card) {
           <input type="text" data-ra="partner" list="reg-partner-names-${id}" maxlength="80" placeholder="Name of the partner" autocomplete="off" style="${box};width:100%">
           <datalist id="reg-partner-names-${id}">${players.map((p) => `<option value="${escapeHtml(p.name)}"></option>`).join('')}</datalist>
         </label>` : `<label style="font-size:12px;font-weight:700">Category
-          <select data-ra="category" style="${box}"><option value="">${IS_TOURNAMENT ? 'No category' : 'Category…'}</option>${categoryOptions('')}</select>
+          <select data-ra="category" style="${box}"><option value="">${IS_TOURNAMENT || seasonWithoutCategories(seasons.find((x) => x.id === id)) ? 'No category' : 'Category…'}</option>${categoryOptions('')}</select>
         </label>`}
         <label style="flex:1;min-width:130px;font-size:12px;font-weight:700">Phone
           <input type="text" data-ra="phone" maxlength="20" placeholder="from the profile" style="${box};width:100%">
@@ -736,7 +739,7 @@ function wireSeason(card) {
             ${isDoubles ? `<label style="flex:1;min-width:170px;font-size:12px;font-weight:700">Partner
               <input type="text" data-re="partner" maxlength="80" value="${escapeHtml(r.partnerName || '')}" style="${box};width:100%">
             </label>` : `<label style="font-size:12px;font-weight:700">Category
-              <select data-re="category" style="${box}">${IS_TOURNAMENT ? `<option value="">No category</option>` : ''}${categoryOptions(r.category)}</select>
+              <select data-re="category" style="${box}">${IS_TOURNAMENT || seasonWithoutCategories(seasons.find((x) => x.id === id)) ? `<option value="">No category</option>` : ''}${categoryOptions(r.category)}</select>
             </label>`}
             <label style="flex:1;min-width:130px;font-size:12px;font-weight:700">Phone
               <input type="text" data-re="phone" maxlength="20" value="${escapeHtml(r.phone || '')}" style="${box};width:100%">
