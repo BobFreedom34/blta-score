@@ -78,6 +78,10 @@
   .sl-city b { display: block; font-size: 17px; font-weight: 800; }
   .sl-city small { color: #aeb2ba; font-size: 12px; font-weight: 600; }
   .sl-city .sl-tag { margin-left: auto; }
+  /* the status of the city and, when its registration is open, the green button under it */
+  .sl-city-side { margin-left: auto; display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+  .sl-city-side .sl-tag { margin-left: 0; justify-content: center; } /* the tag and the button under it are as wide as each other */
+  .sl-city .sl-city-go { padding: 6px 9px; font-size: 10px; letter-spacing: .06em; line-height: 1.3; white-space: nowrap; } /* the type of the tag above it */
   .sl-tag { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-sm); padding: 4px 9px; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
   .sl-tag.now { background: var(--orange); color: #fff; }
   .sl-tag.reg { background: var(--green); color: #0a0a0a; }
@@ -425,7 +429,7 @@ function draw() {
   });
   const shown = cities.map((c, i) => ({ c, i })).filter((o) => fold(o.c.name).includes(q));
   listEl.innerHTML = shown.length
-    ? shown.map((o) => `<button type="button" class="sl-city${o.i === sel ? ' on' : ''}" data-i="${o.i}"><div><b>${esc(o.c.name)}</b><small>${esc(o.c.brandName)}${o.c.activePlayers ? ` · ${o.c.activePlayers} ${word('players', o.c.activePlayers)}` : ''}</small></div><span class="sl-tag ${kind(o.c)}">${esc(label(o.c))}</span></button>`).join('')
+    ? shown.map((o) => `<div role="button" tabindex="0" class="sl-city${o.i === sel ? ' on' : ''}" data-i="${o.i}"><div><b>${esc(o.c.name)}</b><small>${esc(o.c.brandName)}${o.c.activePlayers ? ` · ${o.c.activePlayers} ${word('players', o.c.activePlayers)}` : ''}</small></div><div class="sl-city-side"><span class="sl-tag ${kind(o.c)}">${esc(label(o.c))}</span>${o.c.url && o.c.registrationOpen ? `<a class="sl-btn o sl-city-go" href="${esc(o.c.url)}">${T.enter}</a>` : ''}</div></div>`).join('')
     : `<div class="sl-empty">${T.none}</div>`;
   const c = cities[sel];
   if (!c) { detEl.hidden = true; return; }
@@ -713,6 +717,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('click', (e) => {
+  if (e.target.closest('.sl-city-go')) return; // the link goes to the league of the city
   const t = e.target.closest('#map [data-i], #list [data-i]');
   if (!t) return;
   sel = Number(t.dataset.i);
@@ -720,6 +725,9 @@ document.addEventListener('click', (e) => {
   // on every device: bring the map to the top (under the sticky header) so the card of the city shows under it
   const top = document.querySelector('.sl-map').getBoundingClientRect().top + window.scrollY - document.querySelector('.sl-top').offsetHeight - 12;
   window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+});
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('sl-city')) { e.preventDefault(); e.target.click(); }
 });
 document.getElementById('q').addEventListener('input', (e) => { q = fold(e.target.value); draw(); });
 
