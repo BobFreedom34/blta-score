@@ -599,6 +599,46 @@ router.post('/:id/invite-players', (req, res) => {
   res.json({ sent, skipped });
 });
 
+// ---- adding players by hand: the admin of the community or club, or the super admin, picks players and they are members at once (no message to accept,
+// no approval; the players need no phone). The list is every player of the city who is not a member yet.
+router.get('/:id/add-candidates', (req, res) => {
+  const ctx = needOrgAdmin(req, res);
+  if (!ctx) return;
+  const q = tidy(req.query.q);
+  const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const rows = db.prepare(`
+    SELECT p.id, p.name, p.slug, p.photo_url, EXISTS (SELECT 1 FROM organisation_members m WHERE m.organisation_id = ? AND m.player_id = p.id AND m.status = 'PENDING') AS waiting FROM players p
+    WHERE p.league_id = ? AND COALESCE(p.hidden, 0) = 0 AND p.name LIKE ? ESCAPE '\\'
+      AND NOT EXISTS (SELECT 1 FROM organisation_members m WHERE m.organisation_id = ? AND m.player_id = p.id AND m.status = 'ACTIVE')
+    ORDER BY p.name COLLATE NOCASE LIMIT 50
+  `).all(ctx.org.id, ctx.org.league_id, like, ctx.org.id);
+  res.json({ items: rows.map((r) => ({ ...messagesLib.card(r), waiting: !!r.waiting })) });
+});
+
+router.post('/:id/add-members', (req, res) => {
+  const ctx = needOrgAdmin(req, res);
+  if (!ctx) return;
+  const ids = req.body && req.body.playerIds;
+  if (!Array.isArray(ids) || !ids.length || ids.length > MAX_INVITES_AT_ONCE || !ids.every((id) => Number.isInteger(id) && id > 0)) {
+    return res.status(400).json({ error: `Pick 1 to ${MAX_INVITES_AT_ONCE} players` });
+  }
+  const now = nowIso();
+  let added = 0;
+  const skipped = [];
+  [...new Set(ids)].forEach((id) => {
+    const player = db.prepare('SELECT id, league_id FROM players WHERE id = ?').get(id);
+    if (!player || player.league_id !== ctx.org.league_id) { skipped.push({ playerId: id, reason: 'NOT_FOUND' }); return; }
+    const m = communities.memberOf(ctx.org.id, id);
+    if (m && m.status === 'ACTIVE') { skipped.push({ playerId: id, reason: 'MEMBER' }); return; }
+    // a waiting or declined request (or a removed member) becomes a membership; a new one is made
+    if (m) db.prepare("UPDATE organisation_members SET status = 'ACTIVE', role = 'MEMBER', joined_at = ?, decided_at = ? WHERE organisation_id = ? AND player_id = ?").run(now, now, ctx.org.id, id);
+    else db.prepare("INSERT INTO organisation_members (organisation_id, player_id, role, status, joined_at, decided_at) VALUES (?, ?, 'MEMBER', 'ACTIVE', ?, ?)").run(ctx.org.id, id, now, now);
+    db.prepare('DELETE FROM organisation_invites WHERE organisation_id = ? AND player_id = ?').run(ctx.org.id, id); // an invitation that was open is used
+    added += 1;
+  });
+  res.json({ added, skipped });
+});
+
 router.get('/:id/invite', (req, res) => {
   const ctx = needOrgAdmin(req, res);
   if (!ctx) return;

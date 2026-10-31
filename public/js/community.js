@@ -354,6 +354,61 @@
     }));
   }
 
+  // Add members by hand: the admin of the community or club (or the super admin) picks players from the list of the city; they are members at once, with no
+  // message to accept and no approval, and need no phone (POST /api/communities/:id/add-members)
+  function openAddMembersDialog() {
+    document.querySelectorAll('.com-adialog-back').forEach((el) => el.remove());
+    const back = document.createElement('div');
+    back.className = 'modal-backdrop com-adialog-back';
+    back.style.display = 'flex';
+    back.innerHTML = `<div class="modal com-tdialog" role="dialog" aria-modal="true"><button type="button" class="close" aria-label="Close">&times;</button>
+      <h3 style="margin-top:0">${escapeHtml(t('com.addTitle'))}</h3>
+      <p style="font-size:13.5px;line-height:1.5;margin:0 0 8px">${escapeHtml(t('com.addHint'))}</p>
+      <div class="field"><input type="search" id="com-add-search" maxlength="60" placeholder="${escapeHtml(t('com.inviteSearch'))}" autocomplete="off"></div>
+      <div class="com-invite-list" id="com-add-list"></div>
+      <button type="button" class="btn btn-primary" id="com-add-send" disabled>${escapeHtml(t('com.addSend'))}</button></div>`;
+    const close = () => back.remove();
+    back.querySelector('.close').addEventListener('click', close);
+    back.addEventListener('click', (e) => { if (e.target === back) close(); });
+    document.body.appendChild(back);
+    const picked = new Map(); // id -> name, kept while the search changes
+    const list = back.querySelector('#com-add-list');
+    const send = back.querySelector('#com-add-send');
+    const search = back.querySelector('#com-add-search');
+    const refreshSend = () => {
+      send.disabled = !picked.size;
+      send.textContent = picked.size ? `${t('com.addSend')} (${picked.size})` : t('com.addSend');
+    };
+    let run = 0;
+    async function loadList() {
+      const mine = ++run;
+      let items = [];
+      try { items = (await api(`/communities/${org.id}/add-candidates?q=${encodeURIComponent(search.value.trim())}`)).items; } catch (err) { list.innerHTML = `<p class="com-empty">${escapeHtml(err.message)}</p>`; return; }
+      if (mine !== run) return; // a newer search is on its way
+      list.innerHTML = items.length ? items.map((p) => `<label class="com-invite-row">
+          <input type="checkbox" value="${p.playerId}"${picked.has(p.playerId) ? ' checked' : ''}>
+          <span class="com-invite-name">${escapeHtml(p.name)}</span>${p.waiting ? `<small>${escapeHtml(t('com.addWaiting'))}</small>` : ''}</label>`).join('') : `<p class="com-empty">${escapeHtml(t('com.inviteNobody'))}</p>`;
+      list.querySelectorAll('input[type="checkbox"]').forEach((box) => box.addEventListener('change', () => {
+        const id = Number(box.value);
+        if (box.checked) picked.set(id, box.closest('label').querySelector('.com-invite-name').textContent); else picked.delete(id);
+        refreshSend();
+      }));
+    }
+    let timer = null;
+    search.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(loadList, 250); });
+    send.addEventListener('click', () => guard(send, async () => {
+      const res = await api(`/communities/${org.id}/add-members`, { method: 'POST', body: { playerIds: [...picked.keys()] } });
+      toast(t('com.addDone', { n: res.added }));
+      picked.clear();
+      refreshSend();
+      await loadList();
+      await load(); // the member list behind the dialog
+    }));
+    refreshSend();
+    loadList();
+    search.focus();
+  }
+
   const draftImageHtml = () => `<img src="${escapeHtml(draftImage)}" alt=""><button type="button" class="com-link" id="com-post-img-remove">${escapeHtml(t('com.removeImage'))}</button>`;
 
   // the settings of the community or club: a dialog opened by the gear beside its name (name, description, contact, who may join, logo and cover)
@@ -470,7 +525,7 @@
         <div class="com-sub"><span class="com-badge">${escapeHtml(typeText(org))}</span>${org.city ? `${escapeHtml(org.city)} · ` : ''}${escapeHtml(membersText(org.memberCount))}</div>
         ${org.locked && (org.previewPhotos || []).length ? `<div class="com-faces">${org.previewPhotos.map((u) => `<img src="${escapeHtml(u)}" alt="">`).join('')}</div>` : ''}
         ${org.approved ? `<p class="com-join-info">${escapeHtml(joinInfoText())}</p>` : ''}
-        <div class="com-actions" id="com-join">${joinHtml()}${isActing() ? `<button type="button" class="btn com-invite-btn" data-act="invite"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>${escapeHtml(t('com.invite'))}</button>` : ''}</div>
+        <div class="com-actions" id="com-join">${joinHtml()}${isActing() ? `<button type="button" class="btn com-invite-btn" data-act="invite"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>${escapeHtml(t('com.invite'))}</button><button type="button" class="btn com-invite-btn" data-act="add-members"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 11 2 2 4-4"/></svg>${escapeHtml(t('com.addMembers'))}</button>` : ''}</div>
       </div>
       ${org.approved ? '' : `<div class="com-hint-box com-wait">${escapeHtml(t('com.pendingBanner'))}</div>`}
       ${inviteToken && !(org.me && (org.me.status === 'ACTIVE')) ? `<div class="com-hint-box com-invited">${escapeHtml(t('com.invitedBanner', { name: org.name }))}</div>` : ''}
@@ -519,6 +574,7 @@
         }));
       }
       if (act === 'invite') openInviteDialog();
+      if (act === 'add-members') openAddMembersDialog();
       if (act === 'cancel-request') guard(b, async () => { await api(`/communities/${org.id}/cancel-request`, { method: 'POST' }); await load(); });
       if (act === 'leave' && window.confirm(t('com.leaveConfirm', { name: org.name }))) {
         guard(b, async () => { await api(`/communities/${org.id}/leave`, { method: 'POST' }); await load(); refreshActingOrg(); });
