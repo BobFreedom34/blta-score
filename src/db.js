@@ -1797,6 +1797,8 @@ db.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_community_notifications_reaction ON community_notifications(player_id, post_id, actor_player_id, emoji) WHERE kind = 'REACTION';
 `);
 // a picture in a news post: the address of a file this community uploaded (/community-images/<org id>-post-...)
+// the time a post was last edited (null = never): the page says "upravené" beside the date
+if (!db.prepare('PRAGMA table_info(organisation_posts)').all().some((c) => c.name === 'edited_at')) db.exec('ALTER TABLE organisation_posts ADD COLUMN edited_at TEXT');
 if (!db.prepare('PRAGMA table_info(organisation_posts)').all().some((c) => c.name === 'image_url')) db.exec('ALTER TABLE organisation_posts ADD COLUMN image_url TEXT');
 // An invitation an admin sent to a player (a message with a Join button, see src/routes/communities.js): the player joins from it without the approval.
 db.exec(`

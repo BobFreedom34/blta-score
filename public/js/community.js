@@ -62,11 +62,16 @@
   // the logo of this community in the header of its news
   const orgLogoHtml = () => (org.logoUrl ? `<span class="com-logo"><img src="${escapeHtml(org.logoUrl)}" alt=""></span>` : `<span class="com-logo">${escapeHtml(initials(org.name))}</span>`);
 
+  // Editing a post: the text turns into a box with Save and Cancel (one post at a time); only the text can be changed, the picture stays
+  let editingPost = null;
+  const postEditHtml = (p) => `<div class="com-post-edit"><textarea id="com-edit-text" rows="5" maxlength="2000">${escapeHtml(p.body || '')}</textarea>
+      <div class="com-post-edit-bar"><button type="button" class="btn btn-outline com-small" id="com-edit-cancel">${escapeHtml(t('com.cancelEdit'))}</button><button type="button" class="btn btn-primary com-small" id="com-edit-save">${escapeHtml(t('com.saveEdit'))}</button></div></div>`;
+
   function postHtml(p) {
     return `
       <div class="com-post" data-post="${p.id}">
-        ${comPostHeadHtml({ logo: orgLogoHtml(), name: org.name, by: t('com.postedBy', { name: p.authorName }), date: dateText(p.createdAt), postId: p.id, canDelete: p.canDelete })}
-        ${p.body ? `<div class="com-post-body">${comPostText(p.body)}</div>` : ''}
+        ${comPostHeadHtml({ logo: orgLogoHtml(), name: org.name, by: t('com.postedBy', { name: p.authorName }), date: dateText(p.createdAt) + (p.editedAt ? ` · ${t('com.edited')}` : ''), postId: p.id, canDelete: p.canDelete, canEdit: p.canEdit })}
+        ${editingPost === p.id ? postEditHtml(p) : p.body ? `<div class="com-post-body">${comPostText(p.body)}</div>` : ''}
         ${comPostImage(p.imageUrl)}
         ${comReactionsHtml(p)}
         ${comCommentsHtml(p)}
@@ -583,6 +588,23 @@
       if (act === 'new-season') openSeasonDialog();
       if (act === 'settings') openSettingsDialog();
       if (act === 'switch') guard(b, async () => { await api('/communities/act-as', { method: 'POST', body: { organisationId: org.id } }); window.location.reload(); });
+    }));
+    root.querySelectorAll('[data-edit-post]').forEach((b) => b.addEventListener('click', () => {
+      editingPost = Number(b.dataset.editPost);
+      render();
+      const box = document.getElementById('com-edit-text');
+      if (box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
+    }));
+    const editCancel = document.getElementById('com-edit-cancel');
+    if (editCancel) editCancel.addEventListener('click', () => { editingPost = null; render(); });
+    const editSave = document.getElementById('com-edit-save');
+    if (editSave) editSave.addEventListener('click', () => guard(editSave, async () => {
+      const saved = await api(`/communities/${org.id}/posts/${editingPost}`, { method: 'PATCH', body: { body: document.getElementById('com-edit-text').value } });
+      const post = posts.items.find((x) => x.id === editingPost);
+      if (post) { post.body = saved.body; post.editedAt = saved.editedAt; }
+      editingPost = null;
+      toast(t('com.postEdited'));
+      render();
     }));
     root.querySelectorAll('[data-delete-post]').forEach((b) => b.addEventListener('click', () => guard(b, async () => {
       await api(`/communities/${org.id}/posts/${b.dataset.deletePost}`, { method: 'DELETE' });

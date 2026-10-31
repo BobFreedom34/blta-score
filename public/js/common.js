@@ -4073,14 +4073,73 @@ function highlightMyName() {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
 })();
 
-// A row of tabs that is wider than the screen scrolls sideways with its scrollbar hidden, so nothing says there is more: the edge with more tabs behind
-// it fades out (the class fade-end / fade-start, see .tabs.fade-* in style.css) and the fade goes when the end is reached.
+// A row of tabs that is wider than the screen scrolls sideways with its scrollbar hidden, so nothing says there is more. Three hints together (phones only):
+//  - the edge with more tabs behind it fades out (the class fade-start / fade-end, see .tabs.fade-* in style.css) and the fade goes when the end is reached;
+//  - once, when the row first comes into view, it slides left a little and back, so the next tab peeks in (not for people who asked for less motion, and
+//    not when they touch it first);
+//  - a thin line under the row whose orange part is the visible share of the row and moves as it scrolls (.tabs-progress).
 (function initTabFades() {
+  const phone = () => window.matchMedia('(max-width: 680px)').matches;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  // the line under a row; not made where the row sits in a flex or grid box (it would become one more item of it)
+  const barOf = (el) => {
+    if (el._tabsBar && el._tabsBar.isConnected && el._tabsBar.previousElementSibling === el) return el._tabsBar;
+    const parentDisplay = el.parentElement ? getComputedStyle(el.parentElement).display : '';
+    if (parentDisplay.includes('flex') || parentDisplay.includes('grid')) return null;
+    const bar = document.createElement('div');
+    bar.className = 'tabs-progress';
+    bar.setAttribute('aria-hidden', 'true');
+    bar.innerHTML = '<i></i>';
+    el.insertAdjacentElement('afterend', bar);
+    el._tabsBar = bar;
+    return bar;
+  };
+  let seen = null;
+  const nudge = (el) => {
+    const room = Math.min(72, el.scrollWidth - el.clientWidth);
+    const t0 = performance.now();
+    const step = (now) => {
+      const p = (now - t0) / 1300;
+      if (p >= 1 || el._tabsTouched) { if (!el._tabsTouched) el.scrollLeft = 0; return; }
+      el.scrollLeft = Math.sin(p * Math.PI) * room;
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+  const watchForNudge = (el) => {
+    if (el._tabsNudge || reduced.matches || !('IntersectionObserver' in window)) return;
+    el._tabsNudge = true;
+    ['pointerdown', 'touchstart', 'wheel'].forEach((type) => el.addEventListener(type, () => { el._tabsTouched = true; }, { once: true, passive: true }));
+    if (!seen) {
+      seen = new IntersectionObserver((entries) => entries.forEach((entry) => {
+        const row = entry.target;
+        if (!entry.isIntersecting || row._tabsTouched || row.scrollLeft > 4) return;
+        seen.unobserve(row);
+        setTimeout(() => { if (!row._tabsTouched && row.scrollLeft <= 4) nudge(row); }, 450);
+      }), { threshold: 0.9 });
+    }
+    seen.observe(el);
+  };
   const update = (el) => {
     const max = el.scrollWidth - el.clientWidth;
     const scrolls = max > 4;
     el.classList.toggle('fade-start', scrolls && el.scrollLeft > 4);
     el.classList.toggle('fade-end', scrolls && el.scrollLeft < max - 4);
+    if (scrolls && phone()) {
+      const bar = barOf(el);
+      if (bar) {
+        const share = (el.clientWidth / el.scrollWidth) * 100;
+        bar.dataset.on = '1';
+        // the line sits 6px under the tabs whatever space the row itself has below it (the two margins add up to 6px), and the space under it stays what it was
+        const below = parseFloat(getComputedStyle(el).marginBottom) || 0;
+        bar.style.margin = `${6 - below}px 0 ${Math.max(below - 9, 4)}px`;
+        bar.firstChild.style.width = `${share}%`;
+        bar.firstChild.style.left = `${(el.scrollLeft / max) * (100 - share)}%`;
+      }
+      watchForNudge(el);
+    } else if (el._tabsBar) {
+      el._tabsBar.dataset.on = '';
+    }
   };
   const updateAll = () => document.querySelectorAll('.tabs').forEach(update);
   let queued = false;

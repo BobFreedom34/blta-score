@@ -61,7 +61,7 @@
     if (p.type === 'TOURNAMENT') return feedTournamentHtml(p);
     return `
       <div class="com-post com-feed-post" data-post="${p.id}" data-org="${p.organisation.id}">
-        ${comPostHeadHtml({ logo: logoHtml(p.organisation), name: p.organisation.name, href: `/community/${encodeURIComponent(p.organisation.slug)}`, by: t('com.postedBy', { name: p.authorName }), date: dateText(p.createdAt) })}
+        ${comPostHeadHtml({ logo: logoHtml(p.organisation), name: p.organisation.name, href: `/community/${encodeURIComponent(p.organisation.slug)}`, by: t('com.postedBy', { name: p.authorName }), date: dateText(p.createdAt) + (p.editedAt ? ` · ${t('com.edited')}` : '') })}
         ${p.body ? `<div class="com-post-body">${comPostText(p.body)}</div>` : ''}
         ${comPostImage(p.imageUrl)}
         ${comReactionsHtml(p)}

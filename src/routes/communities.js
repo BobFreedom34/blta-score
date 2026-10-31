@@ -267,7 +267,7 @@ router.get('/feed', (req, res) => {
   const orgOf = (r) => ({ id: r.org_id, slug: r.org_slug, name: r.org_name, type: r.org_type, logoUrl: r.org_logo || '' });
   const orgColumns = 'o.id AS org_id, o.slug AS org_slug, o.name AS org_name, o.type AS org_type, o.logo_url AS org_logo';
   const posts = db.prepare(`
-    SELECT po.id, po.body, po.image_url, po.created_at, p.name, p.slug, ${orgColumns}
+    SELECT po.id, po.body, po.image_url, po.created_at, po.edited_at, p.name, p.slug, ${orgColumns}
     FROM organisation_posts po
     JOIN organisations o ON o.id = po.organisation_id
     ${member}
@@ -275,7 +275,7 @@ router.get('/feed', (req, res) => {
     WHERE po.hidden = 0 AND o.hidden = 0 AND o.approved = 1 ${cursor ? 'AND po.created_at < ?' : ''}
     ORDER BY po.created_at DESC, po.id DESC LIMIT ${POSTS_PAGE + 1}
   `).all(...(cursor ? [playerId, cursor] : [playerId])).map((r) => ({
-    type: 'POST', id: r.id, body: r.body, imageUrl: r.image_url || '', authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at, organisation: orgOf(r),
+    type: 'POST', id: r.id, body: r.body, imageUrl: r.image_url || '', authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at, editedAt: r.edited_at || null, organisation: orgOf(r),
   }));
   const postReactions = reactionsOf(posts.map((p) => p.id), playerId);
   const postComments = commentCountsOf(posts.map((p) => p.id));
@@ -774,7 +774,7 @@ router.get('/:id/posts', (req, res) => {
   if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
   const before = /^\d+$/.test(String(req.query.before || '')) ? Number(req.query.before) : null;
   const rows = db.prepare(`
-    SELECT po.id, po.body, po.image_url, po.author_player_id, po.created_at, p.name, p.slug FROM organisation_posts po LEFT JOIN players p ON p.id = po.author_player_id
+    SELECT po.id, po.body, po.image_url, po.author_player_id, po.created_at, po.edited_at, p.name, p.slug FROM organisation_posts po LEFT JOIN players p ON p.id = po.author_player_id
     WHERE po.organisation_id = ? AND po.hidden = 0 ${before ? 'AND po.id < ?' : ''} ORDER BY po.id DESC LIMIT ${POSTS_PAGE + 1}
   `).all(...(before ? [org.id, before] : [org.id]));
   const viewer = auth.getPlayerId(req);
@@ -783,9 +783,10 @@ router.get('/:id/posts', (req, res) => {
   const postReactions = reactionsOf(page.map((r) => r.id), viewer);
   const postComments = commentCountsOf(page.map((r) => r.id));
   const items = page.map((r) => ({
-    id: r.id, body: r.body, imageUrl: r.image_url || '', reactions: postReactions.get(r.id), commentCount: postComments.get(r.id), authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at,
+    id: r.id, body: r.body, imageUrl: r.image_url || '', reactions: postReactions.get(r.id), commentCount: postComments.get(r.id), authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at, editedAt: r.edited_at || null,
     canDelete: communities.siteAdminFor(req, org) || viewerAdmin || (!!viewer && r.author_player_id === viewer),
   }));
+  items.forEach((i) => { i.canEdit = i.canDelete; }); // who may delete a post may edit it
   res.json({ items, more: rows.length > POSTS_PAGE });
 });
 
@@ -809,7 +810,25 @@ router.post('/:id/posts', (req, res) => {
     insertNote.run(m.player_id, row.id, ctx.playerId);
     playerPush.notifyPlayer(m.player_id, 'POST', { name: row.name, body: row.body, orgName: ctx.org.name, orgSlug: ctx.org.slug, postId: row.id });
   });
-  res.status(201).json({ id: row.id, body: row.body, imageUrl: row.image_url || '', reactions: [], commentCount: 0, authorName: row.name || '', authorSlug: row.slug || '', createdAt: row.created_at, canDelete: true });
+  res.status(201).json({ id: row.id, body: row.body, imageUrl: row.image_url || '', reactions: [], commentCount: 0, authorName: row.name || '', authorSlug: row.slug || '', createdAt: row.created_at, editedAt: null, canDelete: true, canEdit: true });
+});
+
+// Edit the text of a post: who may delete it may edit it (the author, an admin of the organisation, an admin of the site). The picture stays; the members are not
+// told again, the post only says "upravené" beside its date.
+router.patch('/:id/posts/:postId', (req, res) => {
+  const org = orgOr404(req, res, 'manage');
+  if (!org) return;
+  const post = /^\d+$/.test(req.params.postId) ? db.prepare('SELECT * FROM organisation_posts WHERE id = ? AND organisation_id = ? AND hidden = 0').get(Number(req.params.postId), org.id) : null;
+  const viewer = auth.getPlayerId(req);
+  if (!viewer && !communities.siteAdminFor(req, org)) return res.status(401).json({ error: 'Please log in to do this' });
+  if (!post) return res.status(404).json({ error: 'Post not found' });
+  if (!communities.siteAdminFor(req, org) && !isOrgAdmin(org.id, viewer) && post.author_player_id !== viewer) return res.status(403).json({ error: 'Only the author or an admin of this community can edit a post' });
+  const body = String((req.body && req.body.body) === undefined ? '' : req.body.body).trim();
+  if (!body && !post.image_url) return res.status(400).json({ error: 'Write something first' });
+  if (body.length > 2000) return res.status(400).json({ error: 'The text is too long (max 2000 characters)' });
+  const editedAt = nowIso();
+  if (body !== post.body) db.prepare('UPDATE organisation_posts SET body = ?, edited_at = ? WHERE id = ?').run(body, editedAt, post.id);
+  res.json({ id: post.id, body, editedAt: body !== post.body ? editedAt : (post.edited_at || null) });
 });
 
 // the author, an admin of the organisation or an admin of the site

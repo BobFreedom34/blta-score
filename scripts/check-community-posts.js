@@ -128,6 +128,51 @@ test('the feed carries the picture and the reactions of a news item for a member
   assert.ok(feed.reactions.some((r) => r.emoji === '💪' && r.count === 1));
 });
 
+test('editing a post: the author, an admin of the community and the super admin may; nobody else; the text only; the post then says it was edited', async () => {
+  const url = `/api/communities/${org.id}/posts/${post.id}`;
+  const edit = (who, body) => call('PATCH', url, { cookie: who, body: { body } });
+  assert.strictEqual((await edit(fan.cookie, 'cudzi text')).status, 403, 'a member who is not the author');
+  assert.strictEqual((await edit(stranger.cookie, 'cudzi text')).status, 403, 'a stranger');
+  assert.strictEqual((await edit('', 'cudzi text')).status, 401, 'a visitor');
+  // the author
+  const first = await edit(owner.cookie, 'Opraveny text 🎾');
+  assert.strictEqual(first.status, 200, JSON.stringify(first.json));
+  assert.strictEqual(first.json.body, 'Opraveny text 🎾');
+  assert.ok(first.json.editedAt);
+  const listed = (await call('GET', `/api/communities/${org.id}/posts`, { cookie: owner.cookie })).json.items.find((p) => p.id === post.id);
+  assert.deepStrictEqual([listed.body, !!listed.editedAt, listed.canEdit], ['Opraveny text 🎾', true, true]);
+  assert.strictEqual(listed.imageUrl, post.imageUrl, 'the picture stays');
+  const asFan = (await call('GET', `/api/communities/${org.id}/posts`, { cookie: fan.cookie })).json.items.find((p) => p.id === post.id);
+  assert.strictEqual(asFan.canEdit, false, 'a member does not get the button');
+  // the same text again changes nothing (no new "edited" time)
+  const same = await edit(owner.cookie, 'Opraveny text 🎾');
+  assert.strictEqual(same.json.editedAt, first.json.editedAt);
+  // an admin of the community who is not the author, and the super admin
+  assert.strictEqual((await call('PATCH', `/api/communities/${org.id}/members/${fan.id}`, { cookie: owner.cookie, body: { role: 'ADMIN' } })).status, 200);
+  assert.strictEqual((await edit(fan.cookie, 'Text od admina')).status, 200);
+  assert.strictEqual((await edit(adminCookie, 'Text od super admina')).status, 200);
+  assert.strictEqual((await call('PATCH', `/api/communities/${org.id}/members/${fan.id}`, { cookie: owner.cookie, body: { role: 'MEMBER' } })).status, 200);
+  // bad requests: too long; nothing at all on a post without a picture; a picture may be all a post has; another community's post; a post that is not there
+  assert.strictEqual((await edit(owner.cookie, 'x'.repeat(2001))).status, 400);
+  const plain = (await call('POST', `/api/communities/${org.id}/posts`, { cookie: owner.cookie, body: { body: 'len text' } })).json;
+  assert.strictEqual((await call('PATCH', `/api/communities/${org.id}/posts/${plain.id}`, { cookie: owner.cookie, body: { body: '   ' } })).status, 400, 'nothing left to show');
+  assert.strictEqual((await edit(owner.cookie, '')).status, 200, 'the picture is enough');
+  assert.strictEqual((await call('PATCH', `/api/communities/${other.id}/posts/${post.id}`, { cookie: stranger.cookie, body: { body: 'x' } })).status, 404, "not through another community");
+  assert.strictEqual((await call('PATCH', `/api/communities/${org.id}/posts/999999`, { cookie: owner.cookie, body: { body: 'x' } })).status, 404);
+  assert.strictEqual((await edit(owner.cookie, 'Hotovy text')).status, 200);
+});
+
+test('the page side: the menu of a post has Upraviť, the text turns into a box with Save and Cancel, the post says "upravené", in both languages', () => {
+  const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
+  const head = pub('js/community-post.js');
+  assert.ok(head.includes('data-edit-post') && head.includes("t('com.editPost')"));
+  const club = pub('js/community.js');
+  assert.ok(club.includes('id="com-edit-text"') && club.includes('id="com-edit-save"') && club.includes("method: 'PATCH', body: { body:") && club.includes("t('com.edited')"));
+  assert.ok(pub('js/communities.js').includes("t('com.edited')"), 'the feed says it too');
+  const i18n = pub('js/i18n.js');
+  for (const key of ['com.editPost', 'com.edited', 'com.saveEdit', 'com.cancelEdit', 'com.postEdited']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, key);
+});
+
 test('deleting a post takes its picture file and its reactions with it', async () => {
   const file = path.join(dir, 'community-images', path.basename(post.imageUrl));
   assert.ok(fs.existsSync(file));

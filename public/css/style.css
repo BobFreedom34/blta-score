@@ -4251,7 +4251,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 }
 
 /* Hráči: the category filter above the tables (like the one on the Tabuľky tab) */
-#sv-pcats { margin: 0 0 48px; align-items: center; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
+#sv-pcats { margin-top: 0; margin-bottom: 48px; /* (not the shorthand: on a phone the sides keep the negative margin that lines the first button up, see above) */ align-items: center; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
 #sv-pcats .tab { white-space: nowrap; flex: 0 0 auto; }
 #sv-pcats .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 #sv-pcats .tab small { color: rgba(255, 255, 255, 0.65); font-weight: 700; margin-left: 6px; }
@@ -5936,3 +5936,15 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 
 /* the picture window of the backend: the kind of the pictures on the server (communities, sponsors, players…) */
 .mc-place { padding: 6px 10px; border-radius: 8px; border: 1.5px solid #ddd; background: #fff; color: #111; font: inherit; font-size: 13px; max-width: 100%; }
+
+/* editing a post of a community: the text becomes a box with Save and Cancel */
+.com-post-edit { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 4px; }
+.com-post-edit textarea { width: 100%; box-sizing: border-box; font: inherit; }
+.com-post-edit-bar { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* the line under a row of tabs that scrolls sideways (phones; made by initTabFades in common.js): the orange part is the visible share of the row */
+.tabs-progress { display: none; }
+@media (max-width: 680px) {
+  .tabs-progress[data-on="1"] { display: block; position: relative; height: 3px; border-radius: 2px; background: #2a2a30; }
+  .tabs-progress i { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: var(--orange); }
+}
