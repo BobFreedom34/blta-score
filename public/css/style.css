@@ -634,6 +634,10 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   }
   .tabs::-webkit-scrollbar { display: none; }
   .tab { flex: 0 0 auto; }
+  /* more tabs out of sight: the edge they are behind fades out (set by initTabFades in common.js) */
+  .tabs.fade-end { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent); }
+  .tabs.fade-start { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 56px), transparent); }
+  .tabs.fade-start.fade-end { -webkit-mask-image: linear-gradient(to right, transparent, #000 56px, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to right, transparent, #000 56px, #000 calc(100% - 56px), transparent); }
 }
 .tab {
   padding: 9px 16px;
@@ -5511,7 +5515,9 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
   .sch-lists .sch-chip { background: #2a2a30; color: #e6e8ec; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
   .sch-lists .sch-chip + .sch-chip::before { content: none; }
   .sch-lists .home-bar.mini { grid-area: bar; margin-top: 2px; max-width: none; }
-  .sch-lists .sch-acts, .sch-lists .sch-row > .sch-go { grid-area: acts; margin-top: 4px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12); }
+  .sch-lists .sch-acts { grid-area: acts; margin-top: 4px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12); }
+  /* a button on its own (no registration beside it) keeps its whole orange frame: the line above is only for the pair of buttons, and the gap comes from the margin */
+  .sch-lists .sch-row > .sch-go { grid-area: acts; margin-top: 8px; }
   .sch-lists .sch-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; justify-self: stretch; }
   .sch-lists .sch-row > .sch-go { width: 100%; justify-self: stretch; }
   .sch-lists .sch-acts .sch-reg, .sch-lists .sch-acts .sch-go { min-width: 0; height: 44px; width: 100%; }
@@ -5886,3 +5892,36 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
   /* the dropdown is a sheet under the top bar, the width of the screen (the pill itself is too far from the edges for a normal dropdown) */
   .profile-pill-menu { position: fixed; top: 58px; left: 10px; right: 10px; min-width: 0; z-index: 60; }
 }
+
+/* ---------- New match (/new-match): the form in the dark of the contact window: a dark card with an orange hairline, small capital labels, grey fields,
+   a green button ---------- */
+#new-match-form { background: #1b1b1f; color: var(--white); border: 1px solid rgba(255, 85, 0, 0.45); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); padding: 28px 26px 24px; color-scheme: dark; }
+#new-match-form .field > label { color: #c3c7cf; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+#new-match-form .field > label span[data-i18n="common.optional"] { text-transform: none; letter-spacing: 0; font-weight: 600; color: #8b8f98; }
+#new-match-form .field small { color: #8b8f98; font-weight: 500; }
+#new-match-form #doubles-note, #new-match-form #category-admin-note { color: #8b8f98 !important; }
+#new-match-form .field input, #new-match-form .field select, #new-match-form .field textarea { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: var(--radius-sm); color: #fff; font-size: 15px; font-weight: 600; padding: 12px 14px; outline: 0; box-shadow: none; }
+#new-match-form .field input::placeholder, #new-match-form .field textarea::placeholder { color: #6f737c; font-weight: 500; }
+#new-match-form .field input:focus, #new-match-form .field select:focus, #new-match-form .field textarea:focus { border-color: var(--orange); }
+#new-match-form .field select option { background: #1b1b1f; color: #fff; }
+#new-match-form .field select option:disabled { color: #6f737c; }
+#new-match-form .field textarea { min-height: 120px; resize: vertical; }
+#new-match-form .time-input-picker-btn { color: #c3c7cf; }
+#new-match-form .autocomplete-list { background: #26262c; border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55); }
+#new-match-form .autocomplete-item { color: #fff; }
+#new-match-form .autocomplete-item:hover, #new-match-form .autocomplete-item.active { background: var(--fill-grey); }
+#new-match-form .mode-switch { border-color: rgba(255, 255, 255, 0.2); }
+#new-match-form .mode-switch button { color: #c3c7cf; }
+#new-match-form .mode-switch button.active { background: var(--orange); color: #fff; }
+#new-match-form .format-option { border-color: rgba(255, 255, 255, 0.14); background: var(--fill-grey); }
+#new-match-form .format-option:has(input:checked) { border-color: var(--orange); background: rgba(255, 85, 0, 0.14); }
+#new-match-form .format-option > span > div:first-child { color: #fff; }
+#new-match-form .format-option > span > div:last-child { color: #a9adb6 !important; }
+#new-match-form .format-option span span { color: #8b8f98 !important; }
+#new-match-form .server-choice-row .btn { background: transparent; border-color: rgba(255, 255, 255, 0.3); color: #fff; }
+#new-match-form .server-choice-row .btn:hover { border-color: var(--orange); color: var(--orange); }
+#new-match-form .server-choice-row button.active { border-color: var(--orange); background: rgba(255, 85, 0, 0.14); color: var(--orange); }
+#new-match-form button[type="submit"] { background: var(--green); border-color: var(--green); color: #0a0a0a; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 14px 16px; margin-top: 10px; }
+#new-match-form button[type="submit"]:hover { background: #c6ff3a; border-color: #c6ff3a; }
+#new-match-form #form-error { color: #ff6a74; }
+@media (max-width: 480px) { #new-match-form { padding: 22px 16px 20px; } }

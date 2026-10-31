@@ -4089,6 +4089,25 @@ async function loadSponsorStrip(el, query = '') {
   });
 }
 
+// A row of tabs that is wider than the screen scrolls sideways with its scrollbar hidden, so nothing says there is more: the edge with more tabs behind
+// it fades out (the class fade-end / fade-start, see .tabs.fade-* in style.css) and the fade goes when the end is reached.
+(function initTabFades() {
+  const update = (el) => {
+    const max = el.scrollWidth - el.clientWidth;
+    const scrolls = max > 4;
+    el.classList.toggle('fade-start', scrolls && el.scrollLeft > 4);
+    el.classList.toggle('fade-end', scrolls && el.scrollLeft < max - 4);
+  };
+  const updateAll = () => document.querySelectorAll('.tabs').forEach(update);
+  let queued = false;
+  const later = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; updateAll(); }); };
+  document.addEventListener('scroll', (e) => { if (e.target && e.target.classList && e.target.classList.contains('tabs')) update(e.target); }, true);
+  window.addEventListener('resize', later);
+  window.addEventListener('load', later);
+  new MutationObserver(later).observe(document.documentElement, { childList: true, subtree: true });
+  later();
+})();
+
 // ---------------------------------------------------------------- pictures from the media library (admin)
 // Wherever an admin is about to pick a picture from the computer (a hero image, a carousel slide, a venue photo, a blog picture, a photo of a
 // player …), a window asks where from: the computer (as before) or the library (Backend > Media: the pictures uploaded there and the ones
@@ -4178,6 +4197,8 @@ async function loadSponsorStrip(el, query = '') {
     // the library first; when it is empty the pictures on the server are the useful ones
     if (!data.library.length && data.server && data.server.length) { tab = 'server'; wrap.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === 'server')); }
     draw();
+        // a page that can use the address of a library picture as it is (no copy) reads it from here; others just take the file
+        if (urls.length === 1) input.dataset.pickedUrl = urls[0]; else delete input.dataset.pickedUrl;
   }
 
   // a click that would open the file window of the computer (a visible input, a label around a hidden one) opens this window first

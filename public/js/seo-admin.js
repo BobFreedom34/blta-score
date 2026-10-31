@@ -17,6 +17,20 @@
 
   const SAMPLE = '{name}';
 
+  // the picture of the link preview: the chosen one, or the BLTA logo the pages fall back to
+  const DEFAULT_PIC = '/img/blta-logo.png';
+  const PIC_BOX = 'flex:none;width:200px;height:105px;border-radius:8px;border:1.5px solid #ddd;background:#1b1b1f;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative';
+  function picInner(url) {
+    const u = String(url || '').trim();
+    return `<img src="${escapeHtml(u || DEFAULT_PIC)}" alt="" style="max-width:100%;max-height:100%;object-fit:contain${u ? '' : ';opacity:.55'}">${u ? '' : '<span style="position:absolute;left:6px;bottom:4px;font-size:10px;font-weight:800;color:#fff;background:rgba(0,0,0,.6);padding:1px 6px;border-radius:4px">DEFAULT</span>'}`;
+  }
+  // after the address changed (typed, uploaded, chosen, cleared): the thumbnail and the buttons follow it
+  function showPic(panel, url) {
+    panel.querySelector('.seo-pic-box').innerHTML = picInner(url);
+    panel.querySelector('[data-pic-pick]').textContent = String(url || '').trim() ? 'Replace the picture' : 'Upload or choose a picture';
+    panel.querySelector('[data-pic-clear]').style.display = String(url || '').trim() ? '' : 'none';
+  }
+
   function counter(text, good) {
     const n = [...text].length;
     return `<span class="seo-count" style="font-weight:600;color:${n > good ? 'var(--danger)' : 'var(--gray)'}">${n} / ${good}</span>`;
@@ -73,9 +87,21 @@
         <label style="${label}">Preview description
           <textarea name="${lang}.ogDescription" rows="2" maxlength="320" style="${field}">${escapeHtml(v.ogDescription)}</textarea>
         </label>
-        <label style="${label}">Preview picture <span style="font-weight:600;color:var(--gray)">(address, https://… or /img/…; empty = the BLTA logo${p.template ? ', or the season / player picture' : ''})</span>
-          <input type="text" name="${lang}.ogImage" maxlength="500" value="${escapeHtml(v.ogImage)}" placeholder="/img/blta-logo.png" style="${field}">
-        </label>
+        <div style="${label}">Preview picture <span style="font-weight:600;color:var(--gray)">(upload one or choose it from the library; empty = the BLTA logo${p.template ? ', or the season / player picture' : ''})</span></div>
+        <div class="seo-pic" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-top:6px">
+          <div class="seo-pic-box" style="${PIC_BOX}">${picInner(v.ogImage)}</div>
+          <div style="flex:1;min-width:220px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <button type="button" class="btn btn-primary btn-sm" data-pic-pick>${v.ogImage ? 'Replace the picture' : 'Upload or choose a picture'}</button>
+              <button type="button" class="btn btn-outline btn-sm" data-pic-clear style="${v.ogImage ? '' : 'display:none'}">Use the default</button>
+              <input type="file" class="seo-pic-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+              <span class="seo-pic-msg" style="font-size:12px;font-weight:600"></span>
+            </div>
+            <label style="${label};font-weight:600;color:var(--gray)">Picture address <span style="font-weight:400">(filled in by the button; https://… or /img/… also works)</span>
+              <input type="text" name="${lang}.ogImage" maxlength="500" value="${escapeHtml(v.ogImage)}" placeholder="/img/blta-logo.png" style="${field}">
+            </label>
+          </div>
+        </div>
         ${snippet(p, lang, v, slug)}
       </div>`;
   }
@@ -161,6 +187,37 @@
     counts[1].style.color = [...v.description].length > DESC_GOOD ? 'var(--danger)' : 'var(--gray)';
     const slugEl = form.elements[`${lang}.slug`];
     panel.querySelector('.seo-snippet').outerHTML = snippet(p, lang, v, slugEl ? slugEl.value : '');
+    if (e.target.name === `${lang}.ogImage`) showPic(panel, e.target.value);
+  });
+
+  // a picture chosen in the window (from the computer or the library): a library picture is used as it is, one from the computer goes to the library first
+  host.addEventListener('change', async (e) => {
+    const input = e.target.closest('.seo-pic-file');
+    if (!input) return;
+    const panel = input.closest('.seo-panel');
+    const msg = panel.querySelector('.seo-pic-msg');
+    const field = panel.querySelector(`[name="${panel.dataset.lang}.ogImage"]`);
+    const file = input.files[0];
+    const libraryUrl = input.dataset.pickedUrl;
+    delete input.dataset.pickedUrl;
+    if (!file) return;
+    msg.style.color = ''; msg.textContent = 'Uploading…';
+    try {
+      let url = libraryUrl;
+      if (!url) {
+        const body = new FormData();
+        body.append('image', file, file.name || 'picture.png');
+        const res = await fetch('/api/media', { method: 'POST', body, credentials: 'same-origin' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+        url = data.added[0].url;
+      }
+      field.value = url;
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      msg.style.color = 'var(--green, #2e9e4f)';
+      msg.textContent = 'Picture set — press Save';
+    } catch (err) { msg.style.color = 'var(--danger)'; msg.textContent = err.message; }
+    input.value = '';
   });
 
   // The addresses that change with this save — the old ones stop working, there is no redirect.
@@ -201,6 +258,19 @@
         b.classList.toggle('btn-outline', b !== tab);
       });
       form.querySelectorAll('.seo-panel').forEach((panel) => { panel.style.display = panel.dataset.lang === tab.dataset.tab ? '' : 'none'; });
+      return;
+    }
+    const pick = e.target.closest('[data-pic-pick]');
+    if (pick) { pick.closest('.seo-panel').querySelector('.seo-pic-file').click(); return; }
+    const clear = e.target.closest('[data-pic-clear]');
+    if (clear) {
+      const panel = clear.closest('.seo-panel');
+      const field = panel.querySelector(`[name="${panel.dataset.lang}.ogImage"]`);
+      field.value = '';
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      const msg = panel.querySelector('.seo-pic-msg');
+      msg.style.color = 'var(--gray)';
+      msg.textContent = 'The default is used — press Save';
       return;
     }
     const reset = e.target.closest('[data-reset]');
