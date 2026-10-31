@@ -299,6 +299,16 @@ app.get('/robots.txt', (req, res) => {
 });
 // a city's own sitemap (slta.sk/<slug>/sitemap.xml, or blta.sk for the first one); the national host lists only the national page
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemapXml(publicOrigin(req), { national: national.isNationalHost(req) && !req.cityBase, leagueId: req.league.id })));
+// the surfaces of a court in words for a text of a page ("antuka, hard")
+const SURFACE_WORDS = {
+  sk: { CLAY: 'antuka', HARD: 'hard', ARTIFICIAL_GRASS: 'umelá tráva', CARPET: 'koberec', GRASS: 'tráva' },
+  en: { CLAY: 'clay', HARD: 'hard', ARTIFICIAL_GRASS: 'artificial grass', CARPET: 'carpet', GRASS: 'grass' },
+};
+function courtSurfaces(json, en) {
+  let list = [];
+  try { list = JSON.parse(json || '[]'); } catch { list = []; }
+  return (Array.isArray(list) ? list : []).map((k) => SURFACE_WORDS[en ? 'en' : 'sk'][k]).filter(Boolean).join(', ');
+}
 // the entity behind a template page: { name, image } or null
 const TEMPLATE_ENTITY = {
   article: (slug, lang, leagueId) => blog.articleEntity(slug, lang, leagueId),
@@ -322,13 +332,15 @@ const TEMPLATE_ENTITY = {
   },
   // a court: the texts and the preview picture of its own (Backend > Venues > SEO) first, then its photo, then the shared ones of Backend > SEO
   court: (slug, lang) => {
-    const v = db.prepare('SELECT name, image_url, seo_image, seo_title_sk, seo_title_en, seo_description_sk, seo_description_en FROM venues WHERE slug = ?').get(slug);
+    const v = db.prepare('SELECT name, area, address, courts_count, surfaces, image_url, seo_image, seo_title_sk, seo_title_en, seo_description_sk, seo_description_en FROM venues WHERE slug = ?').get(slug);
     if (!v) return null;
     const en = lang === 'en';
     return {
       name: v.name,
       image: v.seo_image || v.image_url || '',
       seoOverride: { title: (en ? v.seo_title_en : v.seo_title_sk) || '', description: (en ? v.seo_description_en : v.seo_description_sk) || '' },
+      // the placeholders of the shared texts of Backend > SEO > Court page: {area} {address} {courts} {surface}
+      vars: { area: v.area || '', address: v.address || '', courts: v.courts_count || '', surface: courtSurfaces(v.surfaces, en) },
     };
   },
   // a private conversation: the page has no name of its own (and is noindex), the chat is loaded by the script

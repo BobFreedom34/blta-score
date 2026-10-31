@@ -17,6 +17,22 @@
 
   const SAMPLE = '{name}';
 
+  // the extra placeholders of a page with a name, with an example of each for the preview below (src/seo.js, "fill")
+  const COURT_VARS = { area: 'Petržalka', address: 'Príkopova 6, Bratislava', courts: '4', surface: 'antuka, hard' };
+  const EXTRA_VARS = { court: COURT_VARS };
+  // the text as the page will show it: placeholders filled, a part in [square brackets] only when every placeholder in it has a value
+  function sampleText(p, text) {
+    const vars = { name: p.template ? 'Example' : '', ...(EXTRA_VARS[p.key] || {}) };
+    return String(text || '')
+      .replace(/\[([^\[\]]*)\]/g, (whole, inner) => {
+        const keys = inner.match(/\{\w+\}/g);
+        if (!keys) return whole;
+        return keys.every((k) => vars[k.slice(1, -1)]) ? inner : '';
+      })
+      .replace(/\{(\w+)\}/g, (whole, k) => (Object.prototype.hasOwnProperty.call(vars, k) ? vars[k] : whole))
+      .replace(/\s+/g, ' ').replace(/\s+([,.:;])/g, '$1').trim();
+  }
+
   // the picture of the link preview: the chosen one, or the BLTA logo the pages fall back to
   const DEFAULT_PIC = '/img/blta-logo.png';
   // what a page with a name uses as its link preview before the picture below (src/seo.js, TEMPLATE_ENTITY in server.js)
@@ -46,7 +62,7 @@
   }
 
   function snippet(p, lang, v, slug) {
-    const sample = (t) => String(t || '').split(SAMPLE).join(p.template ? 'Example' : '');
+    const sample = (t) => sampleText(p, t);
     const url = `${location.origin}${addressOf(p, lang, slug)}`.replace('<name>', 'example').replace('<id>', '1');
     return `
       <div class="seo-snippet" style="margin-top:14px;padding:12px 14px;border-radius:10px;background:#fff;color:#202124;font-family:Arial,sans-serif">
@@ -73,6 +89,11 @@
     return `
       <div class="seo-panel" data-lang="${lang}"${shown ? '' : ' style="display:none"'}>
         ${slugField}
+        ${p.key === 'court' ? `<div style="margin-top:12px;padding:10px 12px;border-radius:8px;background:#f4f4f4;font-size:12px;line-height:1.6;color:#444">
+          <strong>The text for every court that has no title or description of its own</strong> (a court's own ones are set in Backend → Venues → the court → SEO).
+          Placeholders: <code>{name}</code> the name, <code>{area}</code> the area, <code>{address}</code> the address, <code>{courts}</code> the number of courts, <code>{surface}</code> the surfaces.
+          A part in <code>[square brackets]</code> is left out when the court has no value for the placeholder inside it, e.g. <code>[Počet kurtov: {courts}. ]</code>.
+        </div>` : ''}
         <label style="${label}">Title ${counter(v.title, TITLE_GOOD)}
           <input type="text" name="${lang}.title" maxlength="120" value="${escapeHtml(v.title)}" style="${field}">
         </label>

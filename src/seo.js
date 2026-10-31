@@ -139,8 +139,9 @@ const PAGES = [
   },
   {
     key: 'court', label: 'Court page (template)', path: '/courts/:slug', file: 'court.html', template: true, blta: 'https://www.blta.sk/tenisove-kurty-v-bratislave/',
-    title: `{name} - tenisový kurt${SUFFIX}`,
-    description: '{name} - tenisový kurt, na ktorom sa hrá liga BLTA: adresa, kontakt, kurty, otváracie hodiny a odohrané zápasy.',
+    // {area} {address} {courts} {surface} come from the court itself; what stands in [square brackets] is left out when the court has no such value
+    title: `{name} - tenisový kurt[, {area}]${SUFFIX}`,
+    description: '{name} - tenisový kurt[ v lokalite {area}][, {address}]. [Počet kurtov: {courts}. ][Povrch: {surface}. ]Kontakt, otváracie hodiny a zápasy ligy BLTA odohrané na tomto kurte.',
   },
   {
     key: 'bracket', label: 'Bracket page (template)', path: '/bracket/:id', file: 'bracket.html', template: true, blta: null,
@@ -305,8 +306,8 @@ const ENGLISH = {
   },
   court: {
     slug: 'courts',
-    title: `{name} - tennis court${SUFFIX_EN}`,
-    description: '{name} - a tennis court where the BLTA league is played: address, contact, courts, opening hours and the matches played there.',
+    title: `{name} - tennis court[, {area}]${SUFFIX_EN}`,
+    description: '{name} - a tennis court[ in {area}][, {address}]. [Courts: {courts}. ][Surface: {surface}. ]Contact, opening hours and the BLTA league matches played here.',
   },
   bracket: {
     slug: 'bracket',
@@ -389,6 +390,15 @@ if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'slta_noindex'").get()) {
 // the link-preview picture of the blog list, as the old blog page had it (put in once, while nothing is set)
 db.prepare("UPDATE seo_pages SET og_image = '/img/blog/lopta-2bllta.png' WHERE page_key = 'blog' AND og_image = ''").run();
 db.prepare("UPDATE seo_pages_en SET og_image = '/img/blog/lopta-2bllta.png' WHERE page_key = 'blog' AND og_image = ''").run();
+// the court template got more placeholders: the stored first values (never edited) become the new ones, an edited text is left alone
+[['seo_pages', 'sk'], ['seo_pages_en', 'en']].forEach(([table, lang]) => {
+  const was = lang === 'sk'
+    ? { title: `{name} - tenisový kurt${SUFFIX}`, description: '{name} - tenisový kurt, na ktorom sa hrá liga BLTA: adresa, kontakt, kurty, otváracie hodiny a odohrané zápasy.' }
+    : { title: `{name} - tennis court${SUFFIX_EN}`, description: '{name} - a tennis court where the BLTA league is played: address, contact, courts, opening hours and the matches played there.' };
+  const now = lang === 'sk' ? PAGES.find((p) => p.key === 'court') : ENGLISH.court;
+  db.prepare(`UPDATE ${table} SET title = ? WHERE page_key = 'court' AND title = ?`).run(now.title, was.title);
+  db.prepare(`UPDATE ${table} SET description = ? WHERE page_key = 'court' AND description = ?`).run(now.description, was.description);
+});
 // the home page used to start with "BLTA Score - …": a title still at that first value becomes the "BLTA - …" one (an edited title is left alone)
 db.prepare("UPDATE seo_pages SET title = ? WHERE page_key = 'home' AND title = ?").run('BLTA - Živé skóre a tabuľky amatérskej tenisovej ligy', 'BLTA Score - Živé skóre a tabuľky amatérskej tenisovej ligy');
 db.prepare("UPDATE seo_pages_en SET title = ? WHERE page_key = 'home' AND title = ?").run('BLTA - Live scores and tables of the amateur tennis league', 'BLTA Score - Live scores and tables of the amateur tennis league');
@@ -774,7 +784,17 @@ function render(key, { origin, canonical, lang = 'sk', entity, siteName = 'BLTA'
   const v = getValues(key, lang, leagueId);
   if (!page || !html || !v) return html || '';
   const name = entity && entity.name ? entity.name : '';
-  const fill = (text) => String(text || '').split('{name}').join(name).replace(/\s+/g, ' ').trim();
+  // {name} and, for a page that brings them (a court: area, address, courts, surface), more placeholders. A part in [square brackets] stays only when every
+  // placeholder in it has a value, so a court without an address does not leave ", " behind.
+  const vars = { name, ...((entity && entity.vars) || {}) };
+  const fill = (text) => String(text || '')
+    .replace(/\[([^\[\]]*)\]/g, (whole, inner) => {
+      const keys = inner.match(/\{\w+\}/g);
+      if (!keys) return whole;
+      return keys.every((k) => vars[k.slice(1, -1)]) ? inner : '';
+    })
+    .replace(/\{(\w+)\}/g, (whole, k) => (Object.prototype.hasOwnProperty.call(vars, k) ? String(vars[k]) : whole))
+    .replace(/\s+/g, ' ').replace(/\s+([,.:;])/g, '$1').trim();
   // an article brings its own meta texts (the ones it had on the old website); the other pages use the texts of Backend > SEO
   const own = entity && entity.seo ? entity.seo : null;
   // a page with a name can carry texts of its own for one field or two (a court: Backend > Venues > SEO): those win, the other fields keep the shared texts

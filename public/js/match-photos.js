@@ -8,7 +8,6 @@ let photoUploading = false;
 let photoLoadSeq = 0; // a slow answer must not overwrite a newer one
 let photoViewerId = null; // id of the photo the viewer shows; null while it is closed
 let photoViewerIndex = 0;
-let photoFileInput = null;
 // Pictures that fail to load: one retry after a few seconds (with a cache-busting parameter), then the picture is given up on and never
 // rendered again. Kept here (by picture URL) because render() rebuilds the page's markup all the time, so a loop of "render, fail,
 // render, fail" must not be possible. Entry: { issued: retry started, failed: gave up, useUrl: the URL that is rendered from now on }.
@@ -117,24 +116,58 @@ function bindMatchPhotos(token, onChange) {
     });
   }
   const addBtn = document.getElementById('match-photo-add');
-  if (addBtn) addBtn.addEventListener('click', () => { if (!photoUploading) ensurePhotoFileInput().click(); });
+  if (addBtn) addBtn.addEventListener('click', () => { if (!photoUploading) askPhotoSource(); });
 }
 
-// One file input that lives on <body> for good: the page markup is replaced all the time (every score update), and an input that
-// is removed from the page while the phone's picker is open would never report the chosen photo.
-function ensurePhotoFileInput() {
-  if (photoFileInput) return photoFileInput;
-  photoFileInput = document.createElement('input');
-  photoFileInput.type = 'file';
-  photoFileInput.accept = PHOTO_TYPES.join(','); // so a phone that keeps its photos as HEIC hands over a JPEG
-  photoFileInput.hidden = true;
-  photoFileInput.addEventListener('change', () => {
-    const file = photoFileInput.files && photoFileInput.files[0];
-    photoFileInput.value = ''; // so choosing the same photo again still fires "change"
+// A phone or tablet (touch) asks first: take a photo now, or choose one that is on the phone. A computer opens the file window at once.
+function askPhotoSource() {
+  const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  if (!touch) { ensurePhotoFileInput(false).click(); return; }
+  if (document.getElementById('photo-source-modal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'photo-source-modal';
+  modal.className = 'modal-backdrop';
+  modal.style.display = 'flex';
+  modal.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true" style="max-width:340px">
+      <button type="button" class="btn btn-primary btn-block" data-take>📷 ${escapeHtml(t('match.photoTake'))}</button>
+      <button type="button" class="btn btn-outline btn-block" data-choose style="margin-top:8px">🖼 ${escapeHtml(t('match.photoChoose'))}</button>
+      <button type="button" class="btn btn-outline btn-block" data-cancel style="margin-top:8px">${escapeHtml(t('common.cancel'))}</button>
+    </div>`;
+  document.body.appendChild(modal);
+  const close = () => modal.remove();
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal || e.target.closest('[data-cancel]')) { close(); return; }
+    if (e.target.closest('[data-take]')) { close(); ensurePhotoFileInput(true).click(); return; }
+    if (e.target.closest('[data-choose]')) { close(); ensurePhotoFileInput(false).click(); }
+  });
+}
+
+// Two file inputs that live on <body> for good (one opens the camera, one the photos of the phone): the page markup is replaced all the time (every
+// score update), and an input that is removed from the page while the phone's picker is open would never report the chosen photo. data-no-library: the
+// "choose from the picture library" window of the backend (common.js) is not for photos of a match.
+const photoInputs = {};
+function ensurePhotoFileInput(camera) {
+  const key = camera ? 'camera' : 'gallery';
+  if (photoInputs[key]) return photoInputs[key];
+  const input = document.createElement('input');
+  input.type = 'file';
+  if (camera) {
+    input.accept = 'image/*';
+    input.setAttribute('capture', 'environment'); // the back camera of the phone
+  } else {
+    input.accept = PHOTO_TYPES.join(','); // so a phone that keeps its photos as HEIC hands over a JPEG
+  }
+  input.dataset.noLibrary = '1';
+  input.hidden = true;
+  input.addEventListener('change', () => {
+    const file = input.files && input.files[0];
+    input.value = ''; // so choosing the same photo again still fires "change"
     if (file) uploadMatchPhoto(file);
   });
-  document.body.appendChild(photoFileInput);
-  return photoFileInput;
+  document.body.appendChild(input);
+  photoInputs[key] = input;
+  return input;
 }
 
 // Decodes the picture (honouring the EXIF rotation) into something drawable; resolves with { source, width, height, release() }.

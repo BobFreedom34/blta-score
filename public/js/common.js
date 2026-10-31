@@ -4120,7 +4120,8 @@ async function loadSponsorStrip(el, query = '') {
   checkAdmin().then((ok) => { enabled = !!ok; });
 
   const realClick = HTMLInputElement.prototype.click;
-  const isPicture = (input) => !!input && input.type === 'file' && /image/i.test(input.accept || '');
+  // an input marked data-no-library (the photos of a match: take one or choose one on the phone) never gets the window of the library
+  const isPicture = (input) => !!input && input.type === 'file' && /image/i.test(input.accept || '') && !input.dataset.noLibrary;
   const openNative = (input) => { bypass = true; try { realClick.call(input); } finally { bypass = false; } };
 
   // a picture of the library that the input accepts (accept="image/png,image/jpeg" excludes a WebP one)

@@ -273,6 +273,24 @@ test('a court can have its own title, description and preview picture (Backend >
   fixtureDb.prepare('UPDATE venues SET image_url = NULL WHERE id = ?').run(id);
 });
 
+test('the shared court text fills {area} {address} {courts} {surface} from the court and leaves out what the court does not have', async () => {
+  const id = fixtureDb.prepare("SELECT id FROM venues WHERE slug = 'tk-slovan'").get().id;
+  const bare = await get('/courts/tk-slovan');
+  assert.ok(/^TK Slovan - tenisový kurt - BLTA/.test(titleOf(bare.text)), `no area: nothing left behind (${titleOf(bare.text)})`);
+  assert.ok(metaOf(bare.text, 'name', 'description').startsWith('TK Slovan - tenisový kurt. Kontakt, otváracie hodiny'), metaOf(bare.text, 'name', 'description'));
+  assert.ok(!/[\[\]{}]/.test(titleOf(bare.text) + metaOf(bare.text, 'name', 'description')), 'no placeholder or bracket is shown');
+  fixtureDb.prepare("UPDATE venues SET area = 'Petržalka', address = 'Príkopova 6, Bratislava', courts_count = 4, surfaces = ? WHERE id = ?").run(JSON.stringify(['CLAY', 'HARD']), id);
+  const sk = await get('/courts/tk-slovan');
+  assert.ok(/^TK Slovan - tenisový kurt, Petržalka - BLTA/.test(titleOf(sk.text)), titleOf(sk.text));
+  assert.strictEqual(metaOf(sk.text, 'name', 'description'), 'TK Slovan - tenisový kurt v lokalite Petržalka, Príkopova 6, Bratislava. Počet kurtov: 4. Povrch: antuka, hard. Kontakt, otváracie hodiny a zápasy ligy BLTA odohrané na tomto kurte.');
+  const en = await get('/en/courts/tk-slovan');
+  assert.strictEqual(metaOf(en.text, 'name', 'description'), 'TK Slovan - a tennis court in Petržalka, Príkopova 6, Bratislava. Courts: 4. Surface: clay, hard. Contact, opening hours and the BLTA league matches played here.');
+  // a court with only an area
+  fixtureDb.prepare("UPDATE venues SET address = NULL, courts_count = NULL, surfaces = NULL WHERE id = ?").run(id);
+  assert.ok(metaOf((await get('/courts/tk-slovan')).text, 'name', 'description').startsWith('TK Slovan - tenisový kurt v lokalite Petržalka. Kontakt'), 'only the area');
+  fixtureDb.prepare("UPDATE venues SET area = NULL WHERE id = ?").run(id);
+});
+
 test('a court can have a whole address of its own (kept from the old website); the pattern address is retired (404, no redirect)', async () => {
   const list = (await call('GET', '/api/seo/court-paths')).json;
   const slovan = list.find((c) => c.slug === 'tk-slovan');
