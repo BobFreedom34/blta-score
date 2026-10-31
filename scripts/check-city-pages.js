@@ -78,6 +78,37 @@ test('the home page of a city: the site with its prefix, brand and address', asy
   assert.ok(!blta.body.includes('CITY_BASE'), 'blta.sk is untouched');
 });
 
+test('a city has an app of its own: its manifest opens its page with the SLTA icons; the national page has one too; blta.sk keeps the BLTA one', async () => {
+  const page = await nat('/kosice');
+  assert.ok(page.body.includes('<link rel="manifest" href="/kosice/manifest.json">'), 'the page of a city points to its own manifest');
+  assert.ok(page.body.includes('href="/img/slta/favicon-64.png"') && page.body.includes('href="/img/slta/icon-192.png"'), 'and to the SLTA icons');
+  assert.ok(!page.body.includes('/favicon-64.png"') || page.body.includes('/img/slta/favicon-64.png'), 'not the BLTA favicon');
+  const m = await nat('/kosice/manifest.json');
+  assert.strictEqual(m.status, 200);
+  assert.ok(/manifest\+json/.test(m.headers['content-type']), m.headers['content-type']);
+  assert.deepStrictEqual([m.json.name, m.json.start_url, m.json.scope, m.json.id, m.json.display], ['SLTA Kosice', '/kosice/', '/kosice/', '/kosice/', 'standalone']);
+  assert.ok(m.json.icons.some((i) => i.sizes === '192x192') && m.json.icons.some((i) => i.sizes === '512x512') && m.json.icons.some((i) => i.purpose === 'maskable'));
+  for (const icon of m.json.icons) {
+    const file = await nat(icon.src);
+    assert.strictEqual(file.status, 200, `${icon.src} is served on the national address`);
+    assert.strictEqual(file.headers['content-type'], 'image/png');
+  }
+  // the national page: its own app, opening the picker
+  const national = await nat('/manifest.json');
+  assert.deepStrictEqual([national.json.name, national.json.start_url, national.json.scope], ['SLTA', '/', '/']);
+  const home = await nat('/');
+  assert.ok(home.body.includes('<link rel="manifest" href="/manifest.json">') && home.body.includes('/img/slta/favicon-64.png'));
+  // the service worker is served on the national host (the apps of the cities are installable with it), and the national page itself offers no install sheet
+  const worker = await nat('/sw.js');
+  assert.strictEqual(worker.status, 200, 'the service worker is not redirected to another host');
+  assert.ok(/javascript/.test(worker.headers['content-type']) && worker.body.includes("addEventListener('fetch'"));
+  assert.ok(!home.body.includes('slta-install') && !home.body.includes('install-banner'), 'no install pop-up on the national page');
+  // blta.sk (a city with its own address) keeps the static manifest and its icons
+  const blta = await local('GET', '/manifest.json');
+  assert.deepStrictEqual([blta.json.name, blta.json.start_url], ['BLTA', '/']);
+  assert.ok((await local('GET', '/')).body.includes('<link rel="manifest" href="/manifest.json">'));
+});
+
 test('the pages of a city: a page with an address of its own, a backend page, the files, the script of the addresses', async () => {
   const rankings = await nat('/kosice/rankings');
   assert.strictEqual(rankings.status, 200);

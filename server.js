@@ -193,6 +193,25 @@ app.use(leagues.attach);
 // The whole site of a city under the national address: slta.sk/<slug>/... is the same site as blta.sk with that city's own seasons, players,
 // venues, pictures and menu. The prefix is taken off the address here (everything after it works exactly as on a city's own domain), the page
 // learns its prefix (window.CITY_BASE, see public/js/localize.js: links and /api calls get it), and redirects keep it.
+// The app of a city under the national address (slta.sk/<slug>): its own manifest, so a player installs HIS city (opens at slta.sk/<slug>/, named
+// "SLTA <city>", with the SLTA icon) and not the national picker; the national page has one too (opens at slta.sk). A city with a domain of its own
+// (blta.sk) keeps the static public/manifest.json.
+const SLTA_ICONS = [
+  { src: '/img/slta/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+  { src: '/img/slta/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+  { src: '/img/slta/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+];
+const sltaManifest = ({ id, name, shortName, description, start }) => JSON.stringify({
+  id, name, short_name: shortName, description, start_url: start, scope: start, display: 'standalone',
+  background_color: '#ffffff', theme_color: '#0a0a0a', orientation: 'portrait-primary', icons: SLTA_ICONS,
+});
+const cityManifest = (league, base) => {
+  const brand = league.brand_name || `SLTA ${league.name}`;
+  return sltaManifest({ id: `${base}/`, name: brand, shortName: brand.length > 14 ? league.name : brand, description: `${brand} - amatérska tenisová liga: zápasy, tabuľky a rebríček`, start: `${base}/` });
+};
+const nationalManifest = () => sltaManifest({ id: '/', name: 'SLTA', shortName: 'SLTA', description: 'SLTA - Slovenská liga tenisových amatérov', start: '/' });
+const sendManifest = (res, json) => res.type('application/manifest+json').set('Cache-Control', 'no-cache').send(json);
+
 const cityHtml = (html, req) => {
   const league = req.league;
   const brand = league.brand_name || league.name;
@@ -201,6 +220,10 @@ const cityHtml = (html, req) => {
   // the title ends with the name of the Bratislava league: a city has its own brand there
   const own = (t) => t.replace(/ - BLTA - (Bratislavská Liga Tenisových Amatérov|Bratislava Amateur Tennis League)/g, ` - ${brand}`).replace(/BLTA/g, brand);
   out = out.replace(/<title>([\s\S]*?)<\/title>/i, (m, t) => `<title>${own(t)}</title>`);
+  // the app and the icons of the city under the national address (see cityManifest above)
+  out = out.replace(/<link rel="manifest" href="\/manifest\.json">/i, `<link rel="manifest" href="${req.cityBase}/manifest.json">`)
+    .replace(/<link rel="icon"[^>]*>/i, '<link rel="icon" type="image/png" sizes="64x64" href="/img/slta/favicon-64.png">')
+    .replace(/<link rel="apple-touch-icon"[^>]*>/i, '<link rel="apple-touch-icon" href="/img/slta/icon-192.png">');
   out = out.replace(/(<meta property="og:(?:title|site_name)" content=")([^"]*)/gi, (m, a, b) => a + own(b));
   return out;
 };
@@ -225,6 +248,7 @@ app.use((req, res, next) => {
   // a city with a domain of its own (Bratislava: blta.sk) lives there
   if (league.domain && read && !isApi) return res.redirect(302, `https://${league.domain}${hit.rest || '/'}${req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : ''}`);
   const base = `/${league.slug}`;
+  if (read && hit.rest === '/manifest.json') return sendManifest(res, cityManifest(league, base));
   req.cityBase = base;
   req.league = league;
   req.pageLeagueId = league.id;
@@ -396,6 +420,9 @@ app.use((req, res, next) => {
       return next();
     }
   }
+  if (read && req.path === '/manifest.json') return sendManifest(res, nationalManifest());
+  // the service worker (it makes the app installable and carries the push): the same file for every address, so it has to be there on this host too
+  if (read && req.path === '/sw.js') return next();
   if (read && (national.isAsset(req.path) || req.path === '/api/faq' || req.path === '/api/sponsors' || req.path === '/sponsor-logos' || req.path.startsWith('/sponsor-logos/') || req.path === '/api/leagues' || req.path.startsWith('/api/leagues/'))) return next();
   if (req.method === 'POST' && /^\/api\/sponsors\/\d+\/click$/.test(req.path) && (!locked || national.hasAccess(req))) return next();
   if (req.path === '/healthz') return next();

@@ -3830,8 +3830,15 @@ async function setUpAdminTabs() {
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   if (isStandalone) return; // already installed — nothing to offer
 
-  const INSTALL_DISMISS_KEY = 'blta_install_banner_dismissed_until';
-  const INSTALL_DONE_KEY = 'blta_app_installed';
+  // the app that is offered is the one of the page: on a city under the national address (slta.sk/kosice) it is "SLTA Košice" with the SLTA icon
+  // (its own manifest, see cityManifest in server.js), not BLTA. Every app remembers "installed" and "not now" for itself (slta.sk is one origin for
+  // the national app and all the cities, so one shared memory would keep a player who installed one from being offered the other).
+  const cityApp = window.CITY && !window.CITY.first;
+  const appName = cityApp ? (window.CITY.brand || window.CITY.name) : 'BLTA';
+  const appIcon = cityApp ? '/img/slta/favicon-64.png' : '/icon-64.png';
+  const named = (key) => t(key).replace(/BLTA/g, appName);
+  const INSTALL_DISMISS_KEY = `blta_install_banner_dismissed_until${cityApp ? window.CITY_BASE : ''}`;
+  const INSTALL_DONE_KEY = `blta_app_installed${cityApp ? window.CITY_BASE : ''}`;
   const DISMISS_DAYS = 30;
 
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
@@ -3863,7 +3870,7 @@ async function setUpAdminTabs() {
     modal.innerHTML = `
       <div class="modal" style="max-width:340px;text-align:center">
         <button type="button" class="close" data-close="install-ios-modal" aria-label="Close">&times;</button>
-        <h3 style="margin-top:0">${t('install.iosTitle')}</h3>
+        <h3 style="margin-top:0">${escapeHtml(named('install.iosTitle'))}</h3>
         <p style="color:var(--gray);font-size:14px;text-align:left">
           1. ${t('install.iosStep1')}<br><br>
           2. ${t('install.iosStep2')}<br><br>
@@ -3918,11 +3925,11 @@ async function setUpAdminTabs() {
   const banner = document.createElement('div');
   banner.className = 'install-banner';
   banner.setAttribute('role', 'dialog');
-  banner.setAttribute('aria-label', t('install.bannerTitle'));
+  banner.setAttribute('aria-label', named('install.bannerTitle'));
   banner.innerHTML = `
     <div class="install-banner-row">
-      <img src="/icon-64.png" alt="" class="install-banner-icon">
-      <strong class="install-banner-title">${t('install.bannerTitle')}</strong>
+      <img src="${appIcon}" alt="" class="install-banner-icon">
+      <strong class="install-banner-title">${escapeHtml(named('install.bannerTitle'))}</strong>
       <button type="button" class="install-banner-close" data-action="dismiss" aria-label="${t('install.notNow')}">&times;</button>
     </div>
     <p class="install-banner-body">${t('install.bannerBody')}</p>
@@ -4066,6 +4073,25 @@ function highlightMyName() {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
 })();
 
+// A row of tabs that is wider than the screen scrolls sideways with its scrollbar hidden, so nothing says there is more: the edge with more tabs behind
+// it fades out (the class fade-end / fade-start, see .tabs.fade-* in style.css) and the fade goes when the end is reached.
+(function initTabFades() {
+  const update = (el) => {
+    const max = el.scrollWidth - el.clientWidth;
+    const scrolls = max > 4;
+    el.classList.toggle('fade-start', scrolls && el.scrollLeft > 4);
+    el.classList.toggle('fade-end', scrolls && el.scrollLeft < max - 4);
+  };
+  const updateAll = () => document.querySelectorAll('.tabs').forEach(update);
+  let queued = false;
+  const later = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; updateAll(); }); };
+  document.addEventListener('scroll', (e) => { if (e.target && e.target.classList && e.target.classList.contains('tabs')) update(e.target); }, true);
+  window.addEventListener('resize', later);
+  window.addEventListener('load', later);
+  new MutationObserver(later).observe(document.documentElement, { childList: true, subtree: true });
+  later();
+})();
+
 // ---------------------------------------------------------------- sponsors
 // The "Partners" strip: the logos of the sponsors to show now (/api/sponsors: the whole city; ?seasonId=… one season), each a link to the
 // sponsor's site. A click is counted (a beacon, so the page is not slowed down). The element stays hidden when there is nobody to show.
@@ -4088,25 +4114,6 @@ async function loadSponsorStrip(el, query = '') {
     try { navigator.sendBeacon(`/api/sponsors/${a.dataset.sponsor}/click`); } catch { /* not counted */ }
   });
 }
-
-// A row of tabs that is wider than the screen scrolls sideways with its scrollbar hidden, so nothing says there is more: the edge with more tabs behind
-// it fades out (the class fade-end / fade-start, see .tabs.fade-* in style.css) and the fade goes when the end is reached.
-(function initTabFades() {
-  const update = (el) => {
-    const max = el.scrollWidth - el.clientWidth;
-    const scrolls = max > 4;
-    el.classList.toggle('fade-start', scrolls && el.scrollLeft > 4);
-    el.classList.toggle('fade-end', scrolls && el.scrollLeft < max - 4);
-  };
-  const updateAll = () => document.querySelectorAll('.tabs').forEach(update);
-  let queued = false;
-  const later = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; updateAll(); }); };
-  document.addEventListener('scroll', (e) => { if (e.target && e.target.classList && e.target.classList.contains('tabs')) update(e.target); }, true);
-  window.addEventListener('resize', later);
-  window.addEventListener('load', later);
-  new MutationObserver(later).observe(document.documentElement, { childList: true, subtree: true });
-  later();
-})();
 
 // ---------------------------------------------------------------- pictures from the media library (admin)
 // Wherever an admin is about to pick a picture from the computer (a hero image, a carousel slide, a venue photo, a blog picture, a photo of a
@@ -4175,6 +4182,8 @@ async function loadSponsorStrip(el, query = '') {
         const dt = new DataTransfer();
         files.forEach((f) => dt.items.add(f));
         input.files = dt.files;
+        // a page that can use the address of a library picture as it is (no copy) reads it from here; others just take the file
+        if (urls.length === 1) input.dataset.pickedUrl = urls[0]; else delete input.dataset.pickedUrl;
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
         close();
@@ -4198,8 +4207,6 @@ async function loadSponsorStrip(el, query = '') {
     // the library first; when it is empty the pictures on the server are the useful ones
     if (!data.library.length && data.server && data.server.length) { tab = 'server'; wrap.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === 'server')); }
     draw();
-        // a page that can use the address of a library picture as it is (no copy) reads it from here; others just take the file
-        if (urls.length === 1) input.dataset.pickedUrl = urls[0]; else delete input.dataset.pickedUrl;
   }
 
   // a click that would open the file window of the computer (a visible input, a label around a hidden one) opens this window first

@@ -390,6 +390,13 @@ switch and every `/api` call the prefix; `common.js` (cityBrand) shows the brand
 the BLTA logo and the court booking button (the courts of the booking are Bratislava's). Every list reads the
 city of the request with `leagues.actingIdOf(req)`. `node scripts/check-city-pages.js` tests it.
 The rankings tables use the shared points rules but show only the city's own players (ranks are counted again).
+
+**The app of a city.** A player installs HIS city, not the national picker: every city under slta.sk has its own manifest
+(`/<slug>/manifest.json`, built in `server.js` by `cityManifest`: named "SLTA <city>", opens at `/<slug>/`, scope `/<slug>/`) and its pages link
+to it and to the SLTA icons (`public/img/slta/`: favicon-64, icon-192, icon-512, icon-maskable-512, made from `icon-source.jpg`; replace the
+PNGs by sharper ones when a bigger logo exists). The national page has its own manifest at `/manifest.json` on slta.sk (opens the picker) but shows NO install pop-up (only the pages of a city do, in
+`common.js` initInstallPrompt, each app remembering "installed" / "not now" for itself); `/sw.js` is served on slta.sk for the apps of the cities; blta.sk keeps the
+static `public/manifest.json`.
 The blog (Backend > Blog) and the rules page (Backend > Rules) are per city too: a city starts with none and writes its own;
 a city admin manages them. The Info window of the home page (the "O nás – info o lige" button; Backend > Info) is per city: every
 city writes its own tabs in Slovak and English; Bratislava keeps the texts that came with the site until it edits a tab, another city
