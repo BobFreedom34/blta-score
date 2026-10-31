@@ -306,21 +306,30 @@ const TEMPLATE_ENTITY = {
     const p = db.prepare('SELECT name, photo_url FROM players WHERE slug = ? OR id = ?').get(id, /^\d+$/.test(id) ? Number(id) : -1);
     return p ? { name: p.name, image: p.photo_url || '' } : null;
   },
+  // The link preview of these pages is always their own picture (it wins over the picture of Backend > SEO, which is only the fallback when the
+  // page has none): a season / tournament / bracket its hero image (the one of the season, the desktop one first), a player his photo, a court its photo.
   bracket: (id) => {
-    const b = /^\d+$/.test(id) ? db.prepare('SELECT name FROM brackets WHERE id = ?').get(Number(id)) : null;
-    return b ? { name: b.name } : null;
+    const b = /^\d+$/.test(id) ? db.prepare('SELECT b.name, s.hero_url, s.hero_mobile_url, s.logo_url FROM brackets b LEFT JOIN seasons s ON s.id = b.season_id WHERE b.id = ?').get(Number(id)) : null;
+    return b ? { name: b.name, image: b.hero_url || b.hero_mobile_url || b.logo_url || '' } : null;
   },
   season: (slug, lang, leagueId) => {
-    const s = db.prepare('SELECT name, logo_url, hero_url FROM seasons WHERE slug = ? AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))').get(slug, leagueId);
-    return s ? { name: s.name, image: s.hero_url || s.logo_url || '' } : null;
+    const s = db.prepare('SELECT name, logo_url, hero_url, hero_mobile_url FROM seasons WHERE slug = ? AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))').get(slug, leagueId);
+    return s ? { name: s.name, image: s.hero_url || s.hero_mobile_url || s.logo_url || '' } : null;
   },
   tournament: (slug, lang, leagueId) => {
-    const s = db.prepare("SELECT name, logo_url, hero_url FROM seasons WHERE slug = ? AND kind = 'TOURNAMENT' AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").get(slug, leagueId);
-    return s ? { name: s.name, image: s.hero_url || s.logo_url || '' } : null;
+    const s = db.prepare("SELECT name, logo_url, hero_url, hero_mobile_url FROM seasons WHERE slug = ? AND kind = 'TOURNAMENT' AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").get(slug, leagueId);
+    return s ? { name: s.name, image: s.hero_url || s.hero_mobile_url || s.logo_url || '' } : null;
   },
-  court: (slug) => {
-    const v = db.prepare('SELECT name FROM venues WHERE slug = ?').get(slug);
-    return v ? { name: v.name } : null;
+  // a court: the texts and the preview picture of its own (Backend > Venues > SEO) first, then its photo, then the shared ones of Backend > SEO
+  court: (slug, lang) => {
+    const v = db.prepare('SELECT name, image_url, seo_image, seo_title_sk, seo_title_en, seo_description_sk, seo_description_en FROM venues WHERE slug = ?').get(slug);
+    if (!v) return null;
+    const en = lang === 'en';
+    return {
+      name: v.name,
+      image: v.seo_image || v.image_url || '',
+      seoOverride: { title: (en ? v.seo_title_en : v.seo_title_sk) || '', description: (en ? v.seo_description_en : v.seo_description_sk) || '' },
+    };
   },
   // a private conversation: the page has no name of its own (and is noindex), the chat is loaded by the script
   conversation: () => ({ name: 'Messages' }),

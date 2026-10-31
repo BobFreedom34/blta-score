@@ -669,7 +669,7 @@ and `/en`. The first English texts and slugs are built in (`ENGLISH` in `src/seo
 - **Changing a slug retires the old address at once: 404, no redirect, no alias** (the backend asks first). The code address of a
   page (`/rankings`, `/rankings.html`) is retired the same way, and no other page may take it as its slug. The words the app itself
   uses (`api`, `css`, `admin`, `en`, `match`…) are refused as slugs.
-- **A court can keep the address it had on the old website** (`/kurty-tennis-one`, `/en/tennis-one-courts`…): Backend → SEO → *Court addresses* sets a
+- **A court can keep the address it had on the old website** (`/kurty-tennis-one`, `/en/tennis-one-courts`…): Backend → Venues → *Court addresses* (at the bottom of the page; the title, description and preview picture of one court are in its editor, section *SEO*) sets a
   whole address (one segment) per language for a court; empty = the pattern `/tenisove-kurty/<court>`. The code address stays `/courts/<slug>`,
   the page is served at its own address (canonical, `hreflang` and the sitemap use it) and the pattern address of that court is retired (404,
   no redirect, like every retired address). The addresses of the old website's ten courts (`OLD_COURT_ADDRESSES` in `src/seo.js`) go in once, on the first start, for the courts

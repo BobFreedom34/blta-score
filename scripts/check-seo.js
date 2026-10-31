@@ -245,6 +245,34 @@ test('the player and venue pages work in both languages', async () => {
   assert.strictEqual((await get('/courts/tk-slovan')).status, 200);
 });
 
+test('a court can have its own title, description and preview picture (Backend > Venues); empty fields keep the shared texts; the photo is the picture by default', async () => {
+  const id = fixtureDb.prepare("SELECT id FROM venues WHERE slug = 'tk-slovan'").get().id;
+  const own = metaOf((await get('/courts/tk-slovan')).text, 'property', 'og:image');
+  assert.ok(own.endsWith('/img/blta-logo.png'), 'no photo, no picture: the logo');
+  // the photo of the venue is the preview picture
+  fixtureDb.prepare("UPDATE venues SET image_url = '/img/courts/slovan.jpg' WHERE id = ?").run(id);
+  assert.ok(metaOf((await get('/courts/tk-slovan')).text, 'property', 'og:image').endsWith('/img/courts/slovan.jpg'));
+  // own texts (Slovak only) and an own picture: they win; English keeps the shared title
+  const saved = await call('PATCH', `/api/venues/${id}`, { body: { seoTitleSk: 'Kurty Slovan: rezervácia a ceny', seoDescriptionSk: 'Tri antukové kurty pri Dunaji.', seoImage: '/media/slovan-share.png' } });
+  assert.strictEqual(saved.status, 200, JSON.stringify(saved.json));
+  assert.strictEqual(saved.json.seoTitleSk, 'Kurty Slovan: rezervácia a ceny');
+  const sk = await get('/courts/tk-slovan');
+  assert.strictEqual(titleOf(sk.text), 'Kurty Slovan: rezervácia a ceny');
+  assert.strictEqual(metaOf(sk.text, 'name', 'description'), 'Tri antukové kurty pri Dunaji.');
+  assert.strictEqual(metaOf(sk.text, 'property', 'og:title'), 'Kurty Slovan: rezervácia a ceny');
+  assert.ok(metaOf(sk.text, 'property', 'og:image').endsWith('/media/slovan-share.png'));
+  const en = await get('/en/courts/tk-slovan');
+  assert.ok(/^TK Slovan - tennis court/.test(titleOf(en.text)), 'English has no text of its own: the shared one');
+  assert.ok(metaOf(en.text, 'property', 'og:image').endsWith('/media/slovan-share.png'), 'the picture is for both languages');
+  // a bad picture address is refused; empty fields bring the shared texts and the photo back
+  assert.strictEqual((await call('PATCH', `/api/venues/${id}`, { body: { seoImage: 'slovan.png' } })).status, 400);
+  assert.strictEqual((await call('PATCH', `/api/venues/${id}`, { body: { seoTitleSk: '', seoDescriptionSk: '', seoImage: '' } })).status, 200);
+  const back = await get('/courts/tk-slovan');
+  assert.ok(/^TK Slovan - tenisový kurt/.test(titleOf(back.text)), titleOf(back.text));
+  assert.ok(metaOf(back.text, 'property', 'og:image').endsWith('/img/courts/slovan.jpg'));
+  fixtureDb.prepare('UPDATE venues SET image_url = NULL WHERE id = ?').run(id);
+});
+
 test('a court can have a whole address of its own (kept from the old website); the pattern address is retired (404, no redirect)', async () => {
   const list = (await call('GET', '/api/seo/court-paths')).json;
   const slovan = list.find((c) => c.slug === 'tk-slovan');

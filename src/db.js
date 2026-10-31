@@ -1092,6 +1092,12 @@ Object.entries({
   lng: 'REAL',
   seeded_at: 'TEXT',
   image_url: 'TEXT',
+  // what Google and link previews show for this court's own page (empty = the shared texts of Backend > SEO > Court page, and the photo above)
+  seo_title_sk: 'TEXT',
+  seo_title_en: 'TEXT',
+  seo_description_sk: 'TEXT',
+  seo_description_en: 'TEXT',
+  seo_image: 'TEXT',
 }).forEach(([column, type]) => {
   if (!venueColumns.includes(column)) db.exec(`ALTER TABLE venues ADD COLUMN ${column} ${type}`);
 });

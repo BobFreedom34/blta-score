@@ -67,6 +67,11 @@ function serialize(row) {
     lat: row.lat == null ? null : row.lat,
     lng: row.lng == null ? null : row.lng,
     imageUrl: row.image_url || null,
+    seoTitleSk: row.seo_title_sk || null,
+    seoTitleEn: row.seo_title_en || null,
+    seoDescriptionSk: row.seo_description_sk || null,
+    seoDescriptionEn: row.seo_description_en || null,
+    seoImage: row.seo_image || null,
   };
 }
 
@@ -129,8 +134,20 @@ const coordinate = (min, max) => (value) => {
   return Number.isFinite(n) && n >= min && n <= max ? { value: n } : { error: `must be a number between ${min} and ${max}` };
 };
 
+// the address of a preview picture: of this site (/media/…, /img/…) or https://…
+const pictureAddress = (value) => {
+  const r = text(500)(value);
+  if (r.error || !r.value) return r;
+  return /^(https?:\/\/|\/)/.test(r.value) ? r : { error: 'must be a full address (https://…) or start with /' };
+};
+
 // body key -> [column, label, validator]
 const FIELDS = {
+  seoTitleSk: ['seo_title_sk', 'SEO title (Slovak)', text(120)],
+  seoTitleEn: ['seo_title_en', 'SEO title (English)', text(120)],
+  seoDescriptionSk: ['seo_description_sk', 'SEO description (Slovak)', text(320)],
+  seoDescriptionEn: ['seo_description_en', 'SEO description (English)', text(320)],
+  seoImage: ['seo_image', 'Preview picture', pictureAddress],
   area: ['area', 'Area', text(80)],
   address: ['address', 'Address', text(200)],
   imageUrl: ['image_url', 'Image', text(300)],

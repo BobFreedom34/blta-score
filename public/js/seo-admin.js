@@ -19,6 +19,8 @@
 
   // the picture of the link preview: the chosen one, or the BLTA logo the pages fall back to
   const DEFAULT_PIC = '/img/blta-logo.png';
+  // what a page with a name uses as its link preview before the picture below (src/seo.js, TEMPLATE_ENTITY in server.js)
+  const OWN_PIC = { season: "the season's hero image", tournament: "the tournament's hero image", bracket: "the hero image of its season", player: "the player's photo", court: "the court's own preview picture, else its photo (both set in Backend > Venues, where a court also gets title and description of its own)", community: "its cover picture", article: "the article's picture" };
   const PIC_BOX = 'flex:none;width:200px;height:105px;border-radius:8px;border:1.5px solid #ddd;background:#1b1b1f;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative';
   function picInner(url) {
     const u = String(url || '').trim();
@@ -87,7 +89,7 @@
         <label style="${label}">Preview description
           <textarea name="${lang}.ogDescription" rows="2" maxlength="320" style="${field}">${escapeHtml(v.ogDescription)}</textarea>
         </label>
-        <div style="${label}">Preview picture <span style="font-weight:600;color:var(--gray)">(upload one or choose it from the library; empty = the BLTA logo${p.template ? ', or the season / player picture' : ''})</span></div>
+        <div style="${label}">Preview picture <span style="font-weight:600;color:var(--gray)">(${p.template ? `the page's own picture is always used when it has one (${OWN_PIC[p.key] || 'its picture'}); this one is the fallback for a page without` : 'upload one or choose it from the library; empty = the BLTA logo'})</span></div>
         <div class="seo-pic" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-top:6px">
           <div class="seo-pic-box" style="${PIC_BOX}">${picInner(v.ogImage)}</div>
           <div style="flex:1;min-width:220px">
@@ -294,74 +296,9 @@
     }
   });
 
-  // ---------------------------------------------------------------- the courts' own addresses
-
-  // A court can have a whole address of its own per language (kept from the old website, so Google finds it where it always was):
-  // /kurty-tennis-one instead of /tenisove-kurty/tennis-one. The pattern address of that court is then retired (404, no redirect).
-  const courtHost = document.createElement('div');
-  host.insertAdjacentElement('afterend', courtHost);
-  let courtPaths = [];
-
-  function courtRowHtml(c) {
-    const input = (lang, value, prefix) => `<label style="${label};flex:1;min-width:230px">${lang === 'sk' ? 'Slovak' : 'English'} address
-        <span style="display:flex;align-items:center;gap:4px"><span style="font-weight:700;color:var(--gray)">${prefix}/</span><input type="text" data-lang="${lang}" value="${escapeHtml(value)}" maxlength="80" placeholder="${escapeHtml(c.pattern[lang])}" style="${field};margin-top:4px"></span>
-      </label>`;
-    return `
-      <div class="seo-court" data-slug="${escapeHtml(c.slug)}" style="padding:12px 0;border-top:1px solid #eee">
-        <div style="font-weight:800">${escapeHtml(c.name)} <span style="font-weight:600;color:var(--gray);font-size:12px">· code <code>${escapeHtml(c.code)}</code></span></div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
-          ${input('sk', c.own.sk, '')}
-          ${input('en', c.own.en, '/en')}
-          <button type="button" class="btn btn-sm btn-primary" data-act="save-court">Save</button>
-          ${c.old ? '<button type="button" class="btn btn-sm btn-outline" data-act="old-court">Old website address</button>' : ''}
-        </div>
-        <div class="seo-court-msg" style="font-size:12px;margin-top:4px;min-height:16px"></div>
-      </div>`;
-  }
-
-  function renderCourtPaths() {
-    courtHost.innerHTML = `
-      <h3 style="margin:26px 0 4px;color:var(--white)">Court addresses <span style="font-weight:600;font-size:13px;color:var(--gray)">— a whole address of its own for a court (like on the old website: <code>/kurty-tennis-one</code>); empty = the pattern <code>/tenisove-kurty/&lt;court&gt;</code></span></h3>
-      <div class="card" style="margin-top:10px">
-        ${courtPaths.length ? courtPaths.map(courtRowHtml).join('') : '<div class="empty-state" style="padding:8px 0">No courts yet.</div>'}
-        <div style="font-size:12px;color:var(--gray);margin-top:10px">When a court has an address of its own, the pattern address of that court stops working (404, no redirect). Changing an address later makes the old one stop working too — search engines would lose it.</div>
-      </div>`;
-  }
-
-  courtHost.addEventListener('click', async (e) => {
-    const row = e.target.closest('.seo-court');
-    const btn = e.target.closest('[data-act]');
-    if (!row || !btn) return;
-    const court = courtPaths.find((c) => c.slug === row.dataset.slug);
-    const msg = row.querySelector('.seo-court-msg');
-    if (btn.dataset.act === 'old-court') {
-      row.querySelector('[data-lang="sk"]').value = court.old.sk;
-      row.querySelector('[data-lang="en"]').value = court.old.en;
-      msg.style.color = 'var(--gray)';
-      msg.textContent = 'The old website addresses are filled in — press Save.';
-      return;
-    }
-    const body = { sk: row.querySelector('[data-lang="sk"]').value, en: row.querySelector('[data-lang="en"]').value };
-    try {
-      const saved = await api(`/seo/court-paths/${encodeURIComponent(court.slug)}`, { method: 'PUT', body });
-      courtPaths = courtPaths.map((c) => (c.slug === court.slug ? saved : c));
-      renderCourtPaths();
-      const fresh = courtHost.querySelector(`.seo-court[data-slug="${CSS.escape(court.slug)}"] .seo-court-msg`);
-      if (fresh) { fresh.style.color = 'var(--success, #1b8a3a)'; fresh.textContent = 'Saved ✓'; }
-    } catch (err) {
-      msg.style.color = 'var(--danger)';
-      msg.textContent = err.message;
-    }
-  });
-
   async function load() {
     pages = await api('/seo');
     render();
-    // the addresses of the courts are shared by every city: the super admin's, on the first city
-    if (pages.length && pages[0].slugsEditable) {
-      courtPaths = await api('/seo/court-paths');
-      renderCourtPaths();
-    }
   }
 
   checkAdmin().then((isAdmin) => {

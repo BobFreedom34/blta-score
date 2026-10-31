@@ -303,6 +303,7 @@ function wirePhoto(form, id, slot) {
     holder.innerHTML = photoSectionHtml(updated);
     box.replaceWith(holder.querySelector('.venue-photo-box'));
     wirePhoto(form, id, slot);
+    if (form._seoShow) form._seoShow(); // the preview picture shows the new photo while it has none of its own
     const rowThumb = document.querySelector(`.venue-admin-row[data-id="${id}"] .venue-row-thumb`);
     if (rowThumb) rowThumb.innerHTML = updated.imageUrl ? `<img src="${escapeHtml(updated.imageUrl)}" alt="" style="display:block;width:100%;height:100%;object-fit:cover">` : '';
   };
@@ -336,6 +337,87 @@ function wirePhoto(form, id, slot) {
       }
     });
   }
+}
+
+// ---- SEO of this court's own page: what Google and the link previews (WhatsApp, Facebook…) show. Empty = the shared texts of Backend > SEO > Court page,
+// and the photo of the venue as the preview picture.
+const SEO_DEFAULT_PIC = '/img/blta-logo.png';
+
+function seoPicInner(seoImage, photo) {
+  const shown = seoImage || photo || SEO_DEFAULT_PIC;
+  const tag = seoImage ? '' : (photo ? 'THE VENUE PHOTO' : 'DEFAULT');
+  return `<img src="${escapeHtml(shown)}" alt="" style="max-width:100%;max-height:100%;object-fit:cover;width:100%;height:100%;${seoImage || photo ? '' : 'opacity:.55;object-fit:contain'}">${tag ? `<span style="position:absolute;left:6px;bottom:6px;font-size:10px;font-weight:800;color:#fff;background:rgba(0,0,0,.65);padding:2px 7px;border-radius:4px">${tag}</span>` : ''}`;
+}
+
+function seoSectionHtml(v) {
+  const area = (id, value, max) => `<textarea id="vf-${id}" rows="2" maxlength="${max}" style="${inputStyle}">${escapeHtml(value || '')}</textarea>`;
+  return `
+    ${sectionTitle('SEO — Google and link preview')}
+    <p style="font-size:12px;color:var(--gray);margin:0 0 8px">What a search result and a shared link (WhatsApp, Facebook…) show for this court's page. A field left empty uses the shared text of Backend → SEO → Court page, where <code>{name}</code> is the name of the court.</p>
+    <div class="grid-2">
+      ${textField('seoTitleSk', 'Title (Slovak)', v.seoTitleSk, { hint: '(up to about 60 characters)', attrs: 'maxlength="120"' })}
+      ${textField('seoTitleEn', 'Title (English)', v.seoTitleEn, { hint: '(up to about 60 characters)', attrs: 'maxlength="120"' })}
+      <div class="field" style="margin-bottom:0"><label for="vf-seoDescriptionSk">Description (Slovak) <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(up to about 160 characters)</span></label>${area('seoDescriptionSk', v.seoDescriptionSk, 320)}</div>
+      <div class="field" style="margin-bottom:0"><label for="vf-seoDescriptionEn">Description (English) <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(up to about 160 characters)</span></label>${area('seoDescriptionEn', v.seoDescriptionEn, 320)}</div>
+    </div>
+    <div style="font-weight:700;font-size:13px;margin:12px 0 6px">Preview picture <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(empty = the photo of the venue above)</span></div>
+    <div class="venue-seo-pic" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start">
+      <div class="venue-seo-box" style="flex:none;width:200px;aspect-ratio:1200/630;border-radius:8px;overflow:hidden;background:#1b1b1f;position:relative">${seoPicInner(v.seoImage, v.imageUrl)}</div>
+      <div style="flex:1;min-width:220px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button type="button" class="btn btn-sm btn-outline" data-seo-pick>${v.seoImage ? 'Replace the picture' : 'Upload or choose another picture'}</button>
+          <button type="button" class="btn btn-sm btn-outline" data-seo-clear style="${v.seoImage ? '' : 'display:none'}">Use the venue photo</button>
+          <input type="file" class="venue-seo-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+          <span class="venue-seo-msg" style="font-size:12px;font-weight:600"></span>
+        </div>
+        <input type="hidden" id="vf-seoImage" value="${escapeHtml(v.seoImage || '')}">
+      </div>
+    </div>
+  `;
+}
+
+// the picture button: from the computer or the library (the window of the backend), the same picture is never stored twice (POST /api/media)
+function wireSeoPicture(form) {
+  const field = form.querySelector('#vf-seoImage');
+  const box = form.querySelector('.venue-seo-box');
+  const msg = form.querySelector('.venue-seo-msg');
+  const pick = form.querySelector('[data-seo-pick]');
+  const clear = form.querySelector('[data-seo-clear]');
+  const input = form.querySelector('.venue-seo-file');
+  const photoNow = () => { const img = form.querySelector('.venue-photo-preview img'); return img ? img.getAttribute('src') : null; };
+  const show = () => {
+    box.innerHTML = seoPicInner(field.value, photoNow());
+    pick.textContent = field.value ? 'Replace the picture' : 'Upload or choose another picture';
+    clear.style.display = field.value ? '' : 'none';
+  };
+  form._seoShow = show;
+  pick.addEventListener('click', () => input.click());
+  clear.addEventListener('click', () => { field.value = ''; show(); msg.style.color = 'var(--gray)'; msg.textContent = 'The venue photo is used — press Save'; });
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    const library = input.dataset.pickedUrl;
+    delete input.dataset.pickedUrl;
+    if (!file) return;
+    msg.style.color = ''; msg.textContent = 'Uploading…';
+    try {
+      let url = library;
+      let reused = false;
+      if (!url) {
+        const body = new FormData();
+        body.append('image', file, file.name || 'picture.png');
+        const res = await fetch('/api/media', { method: 'POST', body, credentials: 'same-origin' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+        url = data.files[0].url;
+        reused = !data.added.length;
+      }
+      field.value = url;
+      show();
+      msg.style.color = 'var(--green, #2e9e4f)';
+      msg.textContent = reused ? 'This picture is in the library already, that one is used — press Save' : 'Picture set — press Save';
+    } catch (err) { msg.style.color = 'var(--danger)'; msg.textContent = err.message; }
+    input.value = '';
+  });
 }
 
 function editorHtml(v) {
@@ -390,6 +472,8 @@ function editorHtml(v) {
       </div>
       <p style="font-size:12px;color:var(--gray);margin:6px 0 0">Needed for the pin on the maps. In Google Maps, right-click the spot and click the coordinates to copy them (latitude first).</p>
 
+      ${seoSectionHtml(v)}
+
       <div class="venue-editor-error" style="color:var(--danger);font-weight:600;margin-top:12px"></div>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button type="submit" class="btn btn-primary">Save</button>
@@ -413,6 +497,7 @@ function openEditor(id) {
   const val = (name) => form.querySelector(`#vf-${name}`).value.trim();
 
   wirePhoto(form, id, slot);
+  wireSeoPicture(form);
   form.querySelector('[data-action="cancel"]').addEventListener('click', () => { slot.innerHTML = ''; });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -442,6 +527,11 @@ function openEditor(id) {
           facilities: checked(form, 'facilities'),
           lat: val('lat'),
           lng: val('lng'),
+          seoTitleSk: val('seoTitleSk'),
+          seoTitleEn: val('seoTitleEn'),
+          seoDescriptionSk: val('seoDescriptionSk'),
+          seoDescriptionEn: val('seoDescriptionEn'),
+          seoImage: val('seoImage'),
         },
       });
       toast('Venue saved');
