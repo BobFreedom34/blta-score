@@ -1992,8 +1992,26 @@ function getClubContext() {
 }
 // the admin tools keep their own menu: no club view there (the bottom bar skips them the same way)
 const clubViewShown = () => !!getClubContext() && !/(^|\/)(admin|[a-z-]+-admin|login-history)\/?$/.test(window.location.pathname);
-function syncClubView() {
+// Only an app installed FROM a club is a club app: it starts on the club page with ?app=1 (the start_url of the club's manifest, see src/clubApp.js) and keeps
+// that in sessionStorage for the window. The general BLTA app (or a browser tab) is not one, so it can always leave the club view with "← BLTA".
+const CLUB_APP_KEY = 'blta_club_app';
+let clubAppMemory = false;
+const isStandaloneApp = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+if (isStandaloneApp() && new URLSearchParams(window.location.search).get('app') === '1') {
+  clubAppMemory = true;
+  try { sessionStorage.setItem(CLUB_APP_KEY, '1'); } catch { /* the memory above keeps it for this page */ }
+}
+function inClubApp() {
+  let stored = false;
+  try { stored = sessionStorage.getItem(CLUB_APP_KEY) === '1'; } catch { stored = false; }
+  return isStandaloneApp() && (clubAppMemory || stored);
+}
+function syncClubViewClasses() {
   document.body.classList.toggle('club-view', clubViewShown());
+  document.body.classList.toggle('club-app', clubViewShown() && inClubApp()); // in the club's own app there is nothing to leave
+}
+function syncClubView() {
+  syncClubViewClasses();
   window.dispatchEvent(new CustomEvent('blta:club-context'));
 }
 function setClubContext(ctx) {
@@ -2006,7 +2024,7 @@ function clearClubContext() {
   try { sessionStorage.removeItem(CLUB_CTX_KEY); } catch { /* nothing stored */ }
   syncClubView();
 }
-document.body.classList.toggle('club-view', clubViewShown());
+syncClubViewClasses();
 
 // The app of the club: the page's manifest (and the icon iOS uses for "Add to Home Screen") become the club's own, so what gets installed is the club.
 function setClubManifest(orgSlug) {

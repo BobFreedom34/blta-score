@@ -3448,8 +3448,9 @@ body.club-view .booking-btn,
 body.club-view .booking-spacer,
 body.club-view .install-app-btn { display: none !important; }
 .club-exit { font-weight: 700; letter-spacing: 0.04em; }
-/* in the installed app the app IS the club: there is nothing to leave */
-@media (display-mode: standalone) { body.club-view .nav-links { display: none; } }
+/* in an app installed from the club (body.club-app, see inClubApp in common.js) the app IS the club: there is nothing to leave. The general BLTA app is not one. */
+body.club-app .club-exit { display: none; }
+body.club-app.club-view .nav-links { display: none; }
 
 /* ---------- Phone bottom menu (Home / My matches / My profile / Rankings) ---------- */
 .bottom-nav { display: none; }
