@@ -10,8 +10,9 @@ const CITY_STATUS_OPTIONS = [
   ['COMING_SOON', 'Coming soon (pre-registration)'],
   ['PREPARING', 'In preparation'],
   ['ACTIVE', 'Active (running)'],
+  ['ACTIVE_SEEKING', 'Active and looking for an organizer'],
 ];
-const CITY_STATUS_SHORT = { HIDDEN: 'Hidden', SEEKING_ORGANIZER: 'Looking for an organizer', COMING_SOON: 'Coming soon', PREPARING: 'In preparation', ACTIVE: 'Active' };
+const CITY_STATUS_SHORT = { HIDDEN: 'Hidden', SEEKING_ORGANIZER: 'Looking for an organizer', COMING_SOON: 'Coming soon', PREPARING: 'In preparation', ACTIVE: 'Active', ACTIVE_SEEKING: 'Active · looking for an organizer' };
 
 const inputStyle = 'padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px;width:100%';
 
@@ -113,7 +114,7 @@ async function loadCities() {
           <strong>${escapeHtml(c.name)}</strong> <span style="color:var(--gray-dim)">· ${escapeHtml(c.brandName)}</span>
           <div style="font-size:12px;color:var(--gray-dim);margin-top:2px">slta.sk/${escapeHtml(c.slug)}${c.domain ? ` · ${escapeHtml(c.domain)}` : ''}</div>
         </div>
-        <span style="font-size:12px;font-weight:700;color:${c.status === 'ACTIVE' ? 'var(--green-dark, #2d7a1f)' : 'var(--gray)'}">${escapeHtml(CITY_STATUS_SHORT[c.status] || c.status)}</span>
+        <span style="font-size:12px;font-weight:700;color:${c.status === 'ACTIVE' || c.status === 'ACTIVE_SEEKING' ? 'var(--green-dark, #2d7a1f)' : 'var(--gray)'}">${escapeHtml(CITY_STATUS_SHORT[c.status] || c.status)}</span>
         <span style="font-size:12px;color:var(--gray-dim)">${c.players} players · ${c.seasons} seasons · ${c.venues} venues</span>
         ${c.checklist ? `<button type="button" class="btn btn-sm btn-outline" data-action="check" style="${c.checklist.done === c.checklist.total ? 'border-color:#2d7a1f;color:#2d7a1f' : ''}" title="What the city still needs before it is opened">Launch checklist ${c.checklist.done}/${c.checklist.total}</button>` : ''}
         <button type="button" class="btn btn-sm btn-outline" data-action="edit">Edit</button>

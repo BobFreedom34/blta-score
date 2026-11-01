@@ -337,7 +337,7 @@ The app serves many cities (SLTA, slta.sk). Two kinds of admin:
 
 Managing the cities as the super admin:
 1. **Backend → Cities** (`/leagues-admin`): add a city, set its address (slta.sk/<slug>), brand name, own
-   domain, status (Hidden → Coming soon → In preparation → Active) and its pin on the map. The status
+   domain, status (Hidden → Looking for an organizer → Coming soon → In preparation → Active; **Active and looking for an organizer** is a running league — indexable, counted as running, orange pin — whose card still shows the "Become the organiser" button) and its pin on the map. The status
    decides how it appears on the picker of slta.sk.
 2. **Backend → Admins**: give the city's organiser an account.
 3. Fill in a city yourself at any time by picking it in the **Working on** bar.

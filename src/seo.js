@@ -448,7 +448,7 @@ function cityDefaults(page, lang, leagueId) {
 // is a city's page hidden from search engines when nothing was saved: until the city is Active
 function cityDefaultNoindex(leagueId) {
   const league = cityOf(leagueId);
-  return !league || league.status !== 'ACTIVE';
+  return !league || !(league.status === 'ACTIVE' || league.status === 'ACTIVE_SEEKING');
 }
 
 function getValues(key, lang = 'sk', leagueId = 1) {

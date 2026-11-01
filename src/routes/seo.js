@@ -26,7 +26,7 @@ router.get('/sitemaps', requireAdmin, (req, res) => {
   const cities = superAdmin ? db.prepare('SELECT * FROM leagues ORDER BY sort_order, name').all() : [leagues.byId(leagues.actingIdOf(req))].filter(Boolean);
   cities.forEach((c) => {
     const base = c.domain ? `https://${c.domain}` : `${nat}/${c.slug}`;
-    out.push({ key: c.slug, name: c.brand_name || c.name, status: c.status, url: `${base}/sitemap.xml`, indexable: c.status === 'ACTIVE' });
+    out.push({ key: c.slug, name: c.brand_name || c.name, status: c.status, url: `${base}/sitemap.xml`, indexable: leagues.isRunning(c.status) });
   });
   res.json(out);
 });

@@ -511,6 +511,14 @@ test('Backend > SEO lists the XML sitemap addresses for Google Search Console: t
   assert.strictEqual(made.status, 201);
   const again = (await call('GET', '/api/seo/sitemaps')).json.find((s) => s.key === made.json.slug);
   assert.ok(again && again.indexable === false && again.url.endsWith('/' + made.json.slug + '/sitemap.xml'), JSON.stringify(again));
+  // "Active and looking for an organizer" is a running city: indexable, its pages are not hidden by default
+  assert.strictEqual((await call('PATCH', '/api/leagues/' + made.json.id, { body: { status: 'NOT_A_STATUS' } })).status, 400);
+  assert.strictEqual((await call('PATCH', '/api/leagues/' + made.json.id, { body: { status: 'ACTIVE_SEEKING' } })).status, 200);
+  const seeking = (await call('GET', '/api/seo/sitemaps')).json.find((x) => x.key === made.json.slug);
+  assert.strictEqual(seeking.status, 'ACTIVE_SEEKING');
+  assert.strictEqual(seeking.indexable, true);
+  assert.strictEqual((await call('PATCH', '/api/leagues/' + made.json.id, { body: { status: 'SEEKING_ORGANIZER' } })).status, 200);
+  assert.strictEqual((await call('GET', '/api/seo/sitemaps')).json.find((x) => x.key === made.json.slug).indexable, false);
   await call('DELETE', '/api/leagues/' + made.json.id);
 });
 

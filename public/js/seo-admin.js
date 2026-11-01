@@ -158,7 +158,7 @@
   }
 
   // the XML sitemaps to give to Google Search Console (Indexing > Sitemaps)
-  const STATUS_WORDS = { ACTIVE: 'Active', HIDDEN: 'Hidden', SEEKING_ORGANIZER: 'Looking for an organizer', COMING_SOON: 'Coming soon', PREPARING: 'In preparation' };
+  const STATUS_WORDS = { ACTIVE: 'Active', ACTIVE_SEEKING: 'Active · looking for an organizer', HIDDEN: 'Hidden', SEEKING_ORGANIZER: 'Looking for an organizer', COMING_SOON: 'Coming soon', PREPARING: 'In preparation' };
   function sitemapsHtml() {
     if (!sitemaps.length) return '';
     return `<div class="card" style="margin:18px 0 0" id="seo-sitemaps">

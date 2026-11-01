@@ -9,7 +9,10 @@ const auth = require('./auth');
 const nameMatch = require('./nameMatch');
 
 const DEFAULT_LEAGUE_ID = 1;
-const STATUSES = ['ACTIVE', 'PREPARING', 'COMING_SOON', 'SEEKING_ORGANIZER', 'HIDDEN'];
+// ACTIVE_SEEKING is both at once: the league is running (open to search engines, counted as running) and still looks for an organiser (the card shows the
+// "Become the organiser" button)
+const STATUSES = ['ACTIVE', 'ACTIVE_SEEKING', 'PREPARING', 'COMING_SOON', 'SEEKING_ORGANIZER', 'HIDDEN'];
+const isRunning = (status) => status === 'ACTIVE' || status === 'ACTIVE_SEEKING';
 
 // slta.sk/<slug> must never collide with an address the app already serves
 const RESERVED_SLUGS = new Set([
@@ -223,4 +226,4 @@ db.prepare('SELECT id, name FROM leagues WHERE lat IS NULL AND lng IS NULL').all
   db.prepare('INSERT OR IGNORE INTO app_flags (key) VALUES (?)').run(`city_coords2_${l.id}`);
 });
 
-module.exports = { coordsFor, ACTING_COOKIE, actingIdOf, DEFAULT_LEAGUE_ID, STATUSES, RESERVED_SLUGS, slugify, normalizeDomain, byId, bySlug, forHost, invalidate, attach, serialize, hasData };
+module.exports = { coordsFor, ACTING_COOKIE, actingIdOf, DEFAULT_LEAGUE_ID, STATUSES, isRunning, RESERVED_SLUGS, slugify, normalizeDomain, byId, bySlug, forHost, invalidate, attach, serialize, hasData };
