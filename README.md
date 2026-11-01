@@ -541,6 +541,16 @@ while the server is running), living wherever `DATA_DIR` points.
   0 3 * * * cp /var/www/blta-score/data/blta-score.db /var/backups/blta-score-$(date +\%F).db
   ```
 
+**Restoring a backup:** stop the server, download the two files of the day from the Drive folder (`blta-score-backup-<date>.db` and, for the pictures, `blta-score-files-<date>.zip`) and run
+
+```bash
+node scripts/restore-backup.js blta-score-backup-2026-11-01.db blta-score-files-2026-11-01.zip --to /var/data --force
+```
+
+The backup is checked first (SQLite integrity check, the main tables, the checksums of the zip, no file outside the folder) and a bad one is refused with the folder untouched. `--force` is needed when the folder already has a database; the old one is kept next to it as `*.before-restore-<time>` — nothing is deleted. Without `--to` it restores into `DATA_DIR` (else `./data`). To see that a backup is good without touching anything, restore it into an empty folder (`--to /tmp/try`) and start the server there with `DATA_DIR=/tmp/try`. Check: `node scripts/check-restore.js`.
+
+**All the checks at once:** `npm test` runs every `scripts/check-*.js` one after the other (each on its own server and temporary data folder, so the real data is never touched) and ends with one list of what failed; `npm test -- seo` runs only the checks with "seo" in the name, `--bail` stops at the first failure. GitHub runs it on every push to `main` and on pull requests (`.github/workflows/checks.yml`); Render deploys a push without waiting for it, so a red cross next to a commit means "fix it now", not "it was not deployed".
+
 ### Rankings (the app's own tables)
 
 The Rankings page (BLTA overall, Elite / Next Gen / Novice race, Tournaments) is calculated and stored by the app itself — nothing
@@ -688,6 +698,9 @@ and `/en`. The first English texts and slugs are built in (`ENGLISH` in `src/seo
 - **Structured data and a readable intro** (`render()` in `src/seo.js`): every indexable page carries JSON-LD — the home page an organisation and a website, a season / tournament a `SportsEvent` (only with a start date), a player a `Person`, a court a `SportsActivityLocation` (address, position, phone, website), a community a `SportsOrganization`, every page but the home a `BreadcrumbList`. A template page brings its facts as `ld` on its entity (`TEMPLATE_ENTITY` in `server.js`). A page whose script draws everything gets a heading and its description in the raw HTML where its file has `<!--PAGE_SSR-->` (inside the box the script fills; the script replaces it) or `<!--PAGE_SSR:hidden-->` (screen-reader/crawler only, for a page whose own heading is not in its file).
 - **Security headers** (`server.js`, before `cors()`): `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS (https only), `X-Frame-Options: SAMEORIGIN` and a CSP of `object-src`, `base-uri` and `frame-ancestors` only (it does not limit scripts or styles). `/embed/…`, `/compact` and `/compactblta` stay frameable by other sites.
 - Check them: `node scripts/check-structured-data.js`
+- **Accessibility layer** (`initAccessibility` in `public/js/common.js`, runs on every page): a "Skip to content" link and the first `.container` outside the top bar marked `role="main"`; every `.modal-backdrop` is a dialog (`role`, `aria-modal`, named by its first heading), keeps Tab inside while it is open, closes on Escape (it presses the dialog's own close button) and gives the focus back to what opened it; the five code boxes have "Digit n of 5" labels. The touch areas of the small icons and text links grow with a `::after` (block at the end of `style.css`), so nothing moves. The top-bar logo has its size in every page file.
+- **404**: `pageNotFound()` in `server.js` (Slovak, or English under `/en/`, with links to the main pages, noindex); an unknown `/api/…` address or a wrong method answers `{ "error": "Not found" }`. The catch-all is the last route before Socket.IO.
+- Check them: `node scripts/check-not-found.js`
 - Check it: `node scripts/check-seo.js` (starts its own server on a temporary data folder; nothing else is touched).
 
 ### Tournament registration, payment window and sorting into categories (Backend → Tournaments, `/tournaments-admin`)

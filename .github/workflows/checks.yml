@@ -1,0 +1,21 @@
+# Runs every scripts/check-*.js (npm test) on each push to main and on each pull request. Render deploys a push to main on its own, without waiting for this:
+# the run is the alarm that says a change broke something (the red cross next to the commit on GitHub), not a gate in front of the deploy.
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test

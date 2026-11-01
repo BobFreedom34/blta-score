@@ -2055,6 +2055,7 @@ function initOtpGroups() {
     const sync = () => { hidden.value = boxes.map((b) => b.value).join(''); };
 
     boxes.forEach((box, i) => {
+      box.setAttribute('aria-label', t('a11y.digit', { n: i + 1, total: boxes.length }));
       box.addEventListener('input', () => {
         box.value = box.value.replace(/\D/g, '').slice(-1);
         sync();
@@ -4071,6 +4072,120 @@ function highlightMyName() {
     document.querySelectorAll('.site-footer-inner > span').forEach((el) => { el.textContent = city.brand; });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
+})();
+
+// Keyboard and screen-reader help that every page gets, whatever its script builds:
+//  - a "Skip to content" link, the first thing Tab reaches, and the page's content box marked as the main landmark;
+//  - every dialog (a .modal-backdrop, written in a page file or built by a script) is announced as a dialog with its heading as its name; while it is open
+//    Tab stays inside it and Escape presses its close button; when it closes the focus goes back to what opened it.
+(function initAccessibility() {
+  const mountSkipLink = () => {
+    if (document.querySelector('.skip-link')) return;
+    const main = document.querySelector('main, [role="main"]') || [...document.querySelectorAll('.container')].find((c) => !c.closest('.topbar, .modal-backdrop'));
+    if (!main) return;
+    if (main.tagName !== 'MAIN') main.setAttribute('role', 'main');
+    if (!main.id) main.id = 'main-content';
+    main.tabIndex = -1;
+    const link = document.createElement('a');
+    link.className = 'skip-link';
+    link.href = '#' + main.id;
+    link.textContent = t('a11y.skip');
+    // no jump to the address #main-content: some pages read the part after # (a season opens its tab from it)
+    link.addEventListener('click', (e) => { e.preventDefault(); main.focus(); main.scrollIntoView(); });
+    document.body.insertBefore(link, document.body.firstChild);
+  };
+
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  const shown = (el) => el.isConnected && getComputedStyle(el).display !== 'none';
+  const boxOf = (backdrop) => backdrop.firstElementChild;
+  const focusables = (box) => [...box.querySelectorAll(FOCUSABLE)].filter((e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
+  const openDialogs = () => [...document.querySelectorAll('.modal-backdrop')].filter(shown);
+  const wasOpen = new WeakSet();
+  const openers = new WeakMap();
+
+  const describe = (box) => {
+    if (!box.getAttribute('role')) box.setAttribute('role', 'dialog');
+    if (!box.getAttribute('aria-modal')) box.setAttribute('aria-modal', 'true');
+    if (!box.getAttribute('aria-labelledby') && !box.getAttribute('aria-label')) {
+      const heading = box.querySelector('h1, h2, h3, h4, [role="heading"]');
+      if (heading && heading.textContent.trim()) {
+        if (!heading.id) heading.id = 'dlg-title-' + Math.random().toString(36).slice(2, 8);
+        box.setAttribute('aria-labelledby', heading.id);
+      }
+    }
+  };
+
+  const check = (backdrop) => {
+    const open = shown(backdrop);
+    if (open && !wasOpen.has(backdrop)) {
+      wasOpen.add(backdrop);
+      const from = document.activeElement;
+      if (from && from !== document.body && !backdrop.contains(from)) openers.set(backdrop, from);
+      const box = boxOf(backdrop);
+      if (!box) return;
+      describe(box);
+      // the dialog's own script may focus a field; otherwise the focus goes to the dialog itself (a box, so no phone keyboard pops up)
+      setTimeout(() => {
+        if (!shown(backdrop) || backdrop.contains(document.activeElement)) return;
+        box.tabIndex = -1;
+        box.focus({ preventScroll: true });
+      }, 50);
+    } else if (!open && wasOpen.has(backdrop)) {
+      wasOpen.delete(backdrop);
+      const from = openers.get(backdrop);
+      openers.delete(backdrop);
+      const active = document.activeElement;
+      if (from && from.isConnected && (!active || active === document.body || backdrop.contains(active))) from.focus({ preventScroll: true });
+    }
+  };
+
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.type === 'attributes') {
+        if (m.target.classList && m.target.classList.contains('modal-backdrop')) check(m.target);
+        continue;
+      }
+      m.addedNodes.forEach((n) => {
+        if (n.nodeType !== 1) return;
+        if (n.classList.contains('modal-backdrop')) check(n);
+        n.querySelectorAll && n.querySelectorAll('.modal-backdrop').forEach(check);
+      });
+      m.removedNodes.forEach((n) => {
+        if (n.nodeType !== 1) return;
+        const gone = n.classList.contains('modal-backdrop') ? [n] : [...(n.querySelectorAll ? n.querySelectorAll('.modal-backdrop') : [])];
+        gone.forEach((b) => { if (wasOpen.has(b)) check(b); });
+      });
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab' && e.key !== 'Escape') return;
+    const dialogs = openDialogs();
+    const top = dialogs[dialogs.length - 1];
+    const box = top && boxOf(top);
+    if (!box) return;
+    if (e.key === 'Escape') {
+      const close = box.querySelector('.close, .ct-close, [data-close], [aria-label="Close"]');
+      if (close) close.click();
+      return;
+    }
+    const list = focusables(box);
+    if (!list.length) { e.preventDefault(); box.focus(); return; }
+    const first = list[0];
+    const last = list[list.length - 1];
+    const active = document.activeElement;
+    if (!box.contains(active) || active === box) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+    else if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+  });
+
+  const start = () => {
+    mountSkipLink();
+    document.querySelectorAll('.modal-backdrop').forEach(check);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
+  };
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+  // a page that draws its content box late (the season page) gets the link from the first pass above; the box is in the file, so nothing more is needed
 })();
 
 // A row of tabs that is wider than the screen scrolls sideways with its scrollbar hidden, so nothing says there is more. Three hints together (phones only):

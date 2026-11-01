@@ -989,6 +989,10 @@ const TRANSLATIONS = {
     'lookingToPlay.postGone': 'Táto ponuka už nie je dostupná — voľné termíny medzitým vypršali alebo boli zrušené.',
 
     'common.loading': 'Načítavam…',
+    'a11y.skip': 'Preskočiť na obsah',
+    'a11y.digit': 'Číslica {n} z {total}',
+    'filters.categoryLabel': 'Kategória',
+    'filters.timeLabel': 'Čas',
 
     'page.rankingsTitle': 'BLTA — Rebríček',
     'page.bracketTitle': 'BLTA — Pavúk',
@@ -2443,6 +2447,10 @@ const TRANSLATIONS = {
     'lookingToPlay.postGone': "This post isn't available anymore — its free times have since expired or been closed.",
 
     'common.loading': 'Loading…',
+    'a11y.skip': 'Skip to content',
+    'a11y.digit': 'Digit {n} of {total}',
+    'filters.categoryLabel': 'Category',
+    'filters.timeLabel': 'When',
 
     'page.rankingsTitle': 'BLTA — Rankings',
     'page.bracketTitle': 'BLTA — Bracket',
@@ -2974,6 +2982,9 @@ function applyStaticTranslations() {
   });
   document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
     el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  document.querySelectorAll('[data-i18n-aria-label]').forEach((el) => {
+    el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel));
   });
   document.querySelectorAll('[data-i18n-html]').forEach((el) => {
     el.innerHTML = t(el.dataset.i18nHtml);

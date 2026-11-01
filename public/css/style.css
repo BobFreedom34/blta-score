@@ -5956,3 +5956,14 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .ssr-intro h1 { margin: 0 0 10px; font-size: 28px; line-height: 1.15; }
 .ssr-intro p { margin: 0; color: rgba(255, 255, 255, 0.72); max-width: 70ch; }
 .ssr-intro.sr-only { padding: 0; }
+
+/* Accessibility: the skip link (shown while it has the keyboard focus), bigger touch areas for the pieces that were 13-30 px high (the hit area grows, nothing
+   moves), and no ring around the content box when the skip link has moved the focus into it. */
+.skip-link { position: fixed; left: 12px; top: -64px; z-index: 1000; padding: 10px 16px; border-radius: var(--radius-sm); background: var(--orange); color: #fff; font-weight: 800; font-size: 14px; text-decoration: none; transition: top 0.15s; }
+.skip-link:focus { top: 12px; }
+[role="main"]:focus, main:focus { outline: none; }
+.modal-backdrop > [role="dialog"]:focus { outline: none; }
+.auth-menu-btn, .topbar-msg, .home-sec-title a, .sv-crumb a, .section-link, .court-line { position: relative; }
+.auth-menu-btn::after, .topbar-msg::after { content: ''; position: absolute; inset: -8px; }
+.home-sec-title a::after, .sv-crumb a::after, .section-link::after, .court-line::after { content: ''; position: absolute; inset: -12px -6px; }
+.booking-btn::after { content: ''; position: absolute; inset: 0 0 -12px -8px; }

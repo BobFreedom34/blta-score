@@ -394,10 +394,21 @@ const TEMPLATE_ENTITY = {
     return o ? { name: o.name, image: o.cover_url || o.logo_url || '', ld: { type: 'org' } } : null;
   },
 };
+// The page for an address that is not there: in the language of the address (/en/… is English), with the way back to the main pages. Status 404, noindex.
 function pageNotFound(res) {
-  res.status(404).type('html').send('<!DOCTYPE html><html lang="sk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
-    + '<meta name="robots" content="noindex"><title>404 - BLTA</title></head><body style="font-family:sans-serif;background:#191919;color:#fff;text-align:center;padding:80px 20px">'
-    + '<h1>404</h1><p>Stránka sa nenašla / Page not found</p><p><a href="/" style="color:#ff8a00">BLTA</a></p></body></html>');
+  const req = res.req || {};
+  const en = /^\/en(\/|$)/.test(req.path || '');
+  const lang = en ? 'en' : 'sk';
+  const base = req.cityBase || '';
+  const brand = (req.league && (req.league.brand_name || req.league.name)) || 'BLTA';
+  const link = (key, sk, enText) => `<a href="${base}${seo.pageUrl(key, lang)}">${en ? enText : sk}</a>`;
+  const links = [link('/matches', 'Zápasy', 'Matches'), link('/tables', 'Tabuľky', 'Tables'), link('/rankings', 'Rebríčky', 'Rankings'), link('/players', 'Hráči', 'Players'), link('/courts', 'Kurty', 'Courts')].join('');
+  res.status(404).type('html').send(`<!DOCTYPE html><html lang="${lang}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex"><title>404 - ${brand}</title>
+<style>body{margin:0;font-family:Montserrat,system-ui,sans-serif;background:#0a0a0a;color:#fff;text-align:center;padding:72px 20px}h1{font-size:72px;margin:0;color:#ff5500;line-height:1}p{color:#c3c7cf;margin:14px 0 28px}
+.btn{display:inline-block;background:#ff5500;color:#fff;font-weight:800;text-decoration:none;padding:12px 22px;border-radius:8px}nav{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:center}nav a{color:#c3c7cf}nav a:hover{color:#ff5500}</style></head>
+<body><main><h1>404</h1><p>${en ? 'This page does not exist (any more).' : 'Táto stránka neexistuje (alebo už neexistuje).'}</p>
+<a class="btn" href="${base || '/'}">${en ? 'Back to' : 'Späť na'} ${brand}</a><nav>${links}</nav></main></body></html>`);
 }
 // The national site (slta.sk, see src/national.js) serves its own page, the files the page needs and the public list of the cities; any other
 // page address goes on to the first city (blta.sk), anything else is not found there. The other hosts never serve the national page.
@@ -676,6 +687,13 @@ app.get('/embed/rankings', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'emb
 app.get('/embed/bracket/:id', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'embed-bracket.html')));
 app.get('/compact', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'compact.html')));
 app.get('/compactblta', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'compactblta.html')));
+
+// Everything that is still unanswered is an address that is not there: the API says it in JSON, a page address shows the 404 page above (not Express's bare
+// "Cannot GET"). Last of all the routes; the Socket.IO endpoint is handled before the app, so it never gets here.
+app.use((req, res) => {
+  if (req.path.startsWith('/api/') || (req.method !== 'GET' && req.method !== 'HEAD')) return res.status(404).json({ error: 'Not found' });
+  return pageNotFound(res);
+});
 
 // Live viewer count for a match room — everyone in the room gets the
 // updated headcount whenever someone joins, leaves, or disconnects.
