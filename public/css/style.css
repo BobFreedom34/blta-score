@@ -2275,7 +2275,7 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   font-weight: 800;
   font-size: 14px;
 }
-.player-row-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.player-row-actions { display: flex; flex-wrap: wrap; gap: 6px 8px; }
 .player-row .edit-name-input {
   flex: 1;
   padding: 8px 10px;

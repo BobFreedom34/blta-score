@@ -136,6 +136,41 @@ test('the biggest courtIQ progress of the month: a different player than the pla
   assert.strictEqual((await get()).improved, null);
 });
 
+test('a player who is left out is never the player of the month or the biggest progress: the next best one is shown (switch: PATCH /api/players/:id/no-highlights, admin only)', async () => {
+  const { m } = S;
+  const as = (method, url, body, cookie) => fetch(BASE + url, { method, headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie, 'X-Backend': '1' } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  // Boris is the player of the month (60 points); Anna is next (48)
+  assert.strictEqual((await get()).player.id, S.b);
+  assert.strictEqual((await as('PATCH', `/api/players/${S.b}/no-highlights`, { noHighlights: true })).status, 401, 'a visitor cannot');
+  const login = await as('POST', '/api/admin/login', { password: 'test' });
+  const cookie = login.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
+  const set = await as('PATCH', `/api/players/${S.b}/no-highlights`, { noHighlights: true }, cookie);
+  assert.strictEqual(set.status, 200);
+  assert.strictEqual((await set.json()).no_highlights, 1);
+  assert.strictEqual((await get()).player.id, S.a, 'Boris is left out: Anna is next');
+  // the same for the biggest courtIQ progress: Anna (1500 -> 1900) is ahead of Cyril (1500 -> 1750)
+  [S.a, S.c].forEach((id) => rating(id, m.aug, 1500));
+  rating(S.a, m.s6, 1900);
+  rating(S.c, m.s6, 1750);
+  assert.strictEqual((await get()).improved.id, S.c, 'Anna is the player of the month now, the progress goes to Cyril');
+  db.prepare('UPDATE players SET no_highlights = 1 WHERE id = ?').run(S.c);
+  assert.strictEqual((await get()).improved, null, 'Cyril is left out too: nobody else improved');
+  db.prepare('UPDATE players SET no_highlights = 0 WHERE id = ?').run(S.c);
+  db.prepare('DELETE FROM courtiq_rating_history').run();
+  // switched back on: Boris is chosen again
+  assert.strictEqual((await (await as('PATCH', `/api/players/${S.b}/no-highlights`, { noHighlights: false }, cookie)).json()).no_highlights, 0);
+  assert.strictEqual((await get()).player.id, S.b);
+  assert.strictEqual((await as('PATCH', '/api/players/999999/no-highlights', { noHighlights: true }, cookie)).status, 404);
+});
+
+test('the Players page has the switch, with its texts in both languages; a new database has the column (default: everybody may be chosen)', async () => {
+  const js = await (await fetch(`${BASE}/js/players.js`)).text();
+  assert.ok(js.includes('toggle-highlights') && js.includes('/no-highlights'));
+  const i18n = await (await fetch(`${BASE}/js/i18n.js`)).text();
+  ['players.noMonth', 'players.yesMonth', 'players.noMonthBadge', 'players.noMonthOn', 'players.noMonthOff'].forEach((k) => assert.strictEqual(i18n.split(`'${k}':`).length - 1, 2, k));
+  assert.strictEqual(db.prepare("SELECT COUNT(*) AS n FROM players WHERE no_highlights = 1").get().n, 0);
+});
+
 test('the month is the last FULL month, also over the new year', async () => {
   const hl = require('../src/routes/highlights');
   assert.deepStrictEqual(hl.lastMonth('2026-10-10'), { month: '2026-09', from: '2026-09-01T00:00:00.000Z', to: '2026-10-01T00:00:00.000Z' });

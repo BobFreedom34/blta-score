@@ -772,6 +772,8 @@ Every category (Elite, Next Gen, Novice) of a tournament has its own **format** 
   no match in that month the card is not shown. `HIGHLIGHTS_NOW=YYYY-MM-DD` fixes the date for the checks. Check:
   `node scripts/check-highlights.js`.
 
+**Leaving a player out of "Hráči mesiaca":** every player has the switch "Skip in Player of the month" / "Include in Player of the month" (Players page, admin buttons; `players.no_highlights`, `PATCH /api/players/:id/no-highlights`). A player who is switched off is never chosen as the player of the month or for the biggest courtIQ progress — the next best one is shown — and the row carries the tag "Not in Player of the month". Róbert Sloboda was switched off once by a migration (`owner_no_highlights` in `app_flags`); the switch can change it later.
+
 ### Blog (`/blog`, Backend → Blog `/blog-admin`)
 
 - **Articles** live in the table `articles` (`src/blog.js`): a Slovak and an English version of the title, the short text for the list, the text (HTML), the

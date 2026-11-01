@@ -315,6 +315,11 @@ const playerColumns = db.prepare('PRAGMA table_info(players)').all().map((c) => 
 if (!playerColumns.includes('photo_url')) {
   db.exec('ALTER TABLE players ADD COLUMN photo_url TEXT');
 }
+// a player who is left out of "Hráči mesiaca" (the player of the month and the biggest courtIQ progress on the home page): a switch on the player in the
+// Players page
+if (!playerColumns.includes('no_highlights')) {
+  db.exec('ALTER TABLE players ADD COLUMN no_highlights INTEGER NOT NULL DEFAULT 0');
+}
 if (!playerColumns.includes('slug')) {
   db.exec('ALTER TABLE players ADD COLUMN slug TEXT');
 }
@@ -1121,6 +1126,12 @@ if (!headerItemColumns.includes('is_my_profile')) {
 // An item shown as a green button in the top menu (a switch on the item in /header-admin).
 if (!headerItemColumns.includes('highlight')) {
   db.exec('ALTER TABLE header_items ADD COLUMN highlight INTEGER NOT NULL DEFAULT 0');
+}
+// Róbert Sloboda (who runs the league) is left out of "Hráči mesiaca" on the home page for good, once; the switch on the player in the Players page can
+// change it later (an app_flags row stops this from running again)
+if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'owner_no_highlights'").get()) {
+  db.prepare("UPDATE players SET no_highlights = 1 WHERE slug = 'sloboda'").run();
+  db.prepare("INSERT INTO app_flags (key) VALUES ('owner_no_highlights')").run();
 }
 // The doubles badges (counted from doubles matches only, see src/badgeEngine.js), added once. The app_flags row, not the badges, stops a re-add:
 // an admin who edits or deletes one keeps it so.

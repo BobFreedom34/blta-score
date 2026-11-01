@@ -61,7 +61,8 @@ router.get('/month', (req, res) => {
     });
   });
 
-  const info = db.prepare('SELECT id, name, slug, category, photo_url FROM players WHERE id = ? AND hidden = 0');
+  // a hidden player, and a player who is left out of the highlights (Players page: "Skip in Player of the month"), is never chosen — the next one is
+  const info = db.prepare('SELECT id, name, slug, category, photo_url FROM players WHERE id = ? AND hidden = 0 AND no_highlights = 0');
   const ready = [...stats.values()].filter((s) => s.played >= MIN_MATCHES && s.wins >= 1 && info.get(s.id));
   ready.sort((a, b) => b.points - a.points || b.wins - a.wins || (b.wins / b.played) - (a.wins / a.played) || b.played - a.played || a.id - b.id);
   const best = ready[0] || null;

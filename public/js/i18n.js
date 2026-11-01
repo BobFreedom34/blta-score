@@ -926,6 +926,11 @@ const TRANSLATIONS = {
     'players.hide': 'Skryť',
     'players.unhide': 'Zobraziť',
     'players.hiddenBadge': 'Skrytý',
+    'players.noMonthBadge': 'Mimo Hráča mesiaca',
+    'players.noMonth': 'Vynechať z Hráča mesiaca',
+    'players.yesMonth': 'Zahrnúť do Hráča mesiaca',
+    'players.noMonthOn': '{name} sa už nebude zobrazovať ako Hráč mesiaca',
+    'players.noMonthOff': '{name} môže byť zase Hráčom mesiaca',
     'players.hiddenToast': 'Skrytý: {name}',
     'players.shown': 'Zobrazený: {name}',
 
@@ -2384,6 +2389,11 @@ const TRANSLATIONS = {
     'players.hide': 'Hide',
     'players.unhide': 'Unhide',
     'players.hiddenBadge': 'Hidden',
+    'players.noMonthBadge': 'Not in Player of the month',
+    'players.noMonth': 'Skip in Player of the month',
+    'players.yesMonth': 'Include in Player of the month',
+    'players.noMonthOn': '{name} will no longer be shown as Player of the month',
+    'players.noMonthOff': '{name} can be Player of the month again',
     'players.hiddenToast': 'Hidden {name}',
     'players.shown': 'Unhidden {name}',
 

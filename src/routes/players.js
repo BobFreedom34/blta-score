@@ -323,6 +323,14 @@ router.patch('/:id/hidden', requireAdmin, (req, res) => {
   res.json(stripPrivateFields(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id), req));
 });
 
+// Leave a player out of "Hráči mesiaca" on the home page (the player of the month and the biggest courtIQ progress): the next best one is shown instead.
+router.patch('/:id/no-highlights', requireAdmin, (req, res) => {
+  const player = findPlayerByIdOrSlug(req.params.id);
+  if (!player) return res.status(404).json({ error: 'Player not found' });
+  db.prepare('UPDATE players SET no_highlights = ? WHERE id = ?').run(req.body && req.body.noHighlights ? 1 : 0, player.id);
+  res.json(stripPrivateFields(db.prepare('SELECT * FROM players WHERE id = ?').get(player.id), req));
+});
+
 router.delete('/:id', requireAdmin, (req, res) => {
   const player = findPlayerByIdOrSlug(req.params.id);
   if (!player) return res.status(404).json({ error: 'Player not found' });

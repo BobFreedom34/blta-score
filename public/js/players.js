@@ -19,11 +19,12 @@ function playerRowHtml(p) {
   // Only an admin ever sees a hidden row at all (see render() below), so
   // the badge and the toggle button are both admin-only markup — no need
   // to guard them separately from `actions`.
-  const hiddenBadge = p.hidden ? `<span class="badge badge-hidden">${t('players.hiddenBadge')}</span>` : '';
+  const hiddenBadge = (p.hidden ? `<span class="badge badge-hidden">${t('players.hiddenBadge')}</span>` : '') + (p.no_highlights ? `<span class="badge badge-hidden">${t('players.noMonthBadge')}</span>` : '');
   const actions = isAdminUser ? `
       <div class="player-row-actions">
         <button type="button" class="btn btn-sm btn-outline" data-action="edit">${t('common.edit')}</button>
         <button type="button" class="btn btn-sm btn-outline" data-action="toggle-hidden">${p.hidden ? t('players.unhide') : t('players.hide')}</button>
+        <button type="button" class="btn btn-sm btn-outline" data-action="toggle-highlights">${p.no_highlights ? t('players.yesMonth') : t('players.noMonth')}</button>
         <button type="button" class="btn btn-sm btn-danger" data-action="delete">${t('common.delete')}</button>
       </div>
   ` : '';
@@ -203,6 +204,16 @@ function attachRowHandlers() {
       try {
         await api(`/players/${id}/hidden`, { method: 'PATCH', body: { hidden: !player.hidden } });
         toast(player.hidden ? t('players.shown', { name: player.name }) : t('players.hiddenToast', { name: player.name }));
+        loadPlayers();
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+
+    row.querySelector('[data-action="toggle-highlights"]').addEventListener('click', async () => {
+      try {
+        await api(`/players/${id}/no-highlights`, { method: 'PATCH', body: { noHighlights: !player.no_highlights } });
+        toast(t(player.no_highlights ? 'players.noMonthOff' : 'players.noMonthOn', { name: player.name }));
         loadPlayers();
       } catch (err) {
         toast(err.message);
