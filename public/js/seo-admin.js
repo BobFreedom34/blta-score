@@ -138,7 +138,6 @@
           <span style="color:var(--gray);font-size:13px">${escapeHtml(addressOf(p, 'sk', p.slugs.sk))}</span>
           <span style="color:var(--gray);font-size:13px">${escapeHtml(addressOf(p, 'en', p.slugs.en))}</span>
           ${p.noindex ? '<span style="font-size:11px;font-weight:800;color:var(--orange)">NOINDEX</span>' : ''}
-          ${p.blta ? `<a href="${escapeHtml(p.blta)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="margin-left:auto;font-size:12px;color:var(--orange);text-decoration:underline">blta.sk page ↗</a>` : ''}
         </summary>
         <form class="seo-form">
           <div class="seo-tabs" style="display:flex;gap:8px;margin-top:14px">

@@ -5967,3 +5967,16 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .auth-menu-btn::after, .topbar-msg::after { content: ''; position: absolute; inset: -8px; }
 .home-sec-title a::after, .sv-crumb a::after, .section-link::after, .court-line::after { content: ''; position: absolute; inset: -12px -6px; }
 .booking-btn::after { content: ''; position: absolute; inset: 0 0 -12px -8px; }
+
+/* The cookie banner of the Tag Manager tag (public/js/consent.js): a card at the bottom, above the bottom menu on a phone. */
+.cookie-banner { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 900; max-width: 640px; margin: 0 auto; padding: 14px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; background: #202124; color: #fff; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: var(--radius); box-shadow: var(--shadow-lg); }
+.cookie-banner p { margin: 0; flex: 1 1 260px; font-size: 13px; line-height: 1.45; color: #c3c7cf; }
+.cookie-banner p strong { color: #fff; }
+.cookie-banner-btns { display: flex; gap: 8px; margin-left: auto; }
+.cookie-settings-link { margin-left: 12px; color: inherit; text-decoration: underline; }
+@media (max-width: 680px) {
+  .cookie-banner { bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .cookie-banner-btns { width: 100%; }
+  .cookie-banner-btns .btn { flex: 1; }
+}
+.cookie-banner .btn-outline { color: #fff; background: transparent; border-color: rgba(255, 255, 255, 0.45); }

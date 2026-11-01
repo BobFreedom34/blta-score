@@ -969,6 +969,7 @@ function robotsTxt(origin, { cities = [] } = {}) {
     'Disallow: /media-admin',
     'Disallow: /about-admin',
     'Disallow: /faq-admin',
+    'Disallow: /tracking-admin',
     'Disallow: /sponsors-admin',
     'Disallow: /seasons-admin',
     'Disallow: /tournaments-admin',

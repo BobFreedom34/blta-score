@@ -3711,7 +3711,7 @@ if (/(^|\/)(admin|[a-z-]+-admin|login-history)\/?$/.test(location.pathname)) {
 
 // The backend is for two kinds of admin. The super admin sees every tab, gets the Admins tab and a picker of the city he works on; the admin of
 // a city sees only the tabs of his city (the settings of the whole site are closed to him on the server too, see src/cityScope.js).
-const SUPER_ONLY_TABS = ['/badges-admin', '/leagues-admin', '/admins-admin', '/faq-admin', '/reservations-admin', '/changelog-admin', '/login-history'];
+const SUPER_ONLY_TABS = ['/badges-admin', '/leagues-admin', '/admins-admin', '/faq-admin', '/tracking-admin', '/reservations-admin', '/changelog-admin', '/login-history'];
 let adminSessionInfo = null;
 // A link of the Backend to a PUBLIC page (data-public, the href is the plain path: /tournament/slug) has to open the site of the city the admin
 // works on: the Backend may be open on blta.sk while the city is Košice, whose pages are at slta.sk/kosice. The address is put on the link
@@ -3783,6 +3783,15 @@ async function setUpAdminTabs() {
       link.href = '/faq-admin';
       link.className = `tab${location.pathname.endsWith('/faq-admin') ? ' active' : ''}`;
       link.textContent = 'Q&A';
+      if (after) after.after(link); else bar.appendChild(link);
+    }
+    // the Tag Manager of blta.sk and slta.sk belongs to the whole site too
+    if (info.role === 'SUPER' && !tabLink(bar, '/tracking-admin')) {
+      const after = tabLink(bar, '/faq-admin') || tabLink(bar, '/media-admin');
+      const link = document.createElement('a');
+      link.href = '/tracking-admin';
+      link.className = `tab${location.pathname.endsWith('/tracking-admin') ? ' active' : ''}`;
+      link.textContent = 'Tracking';
       if (after) after.after(link); else bar.appendChild(link);
     }
     if (info.role === 'SUPER' && !tabLink(bar, '/admins-admin')) {

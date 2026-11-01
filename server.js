@@ -35,6 +35,8 @@ const leaguesRouter = require('./src/routes/leagues');
 const cityAdminsRouter = require('./src/routes/cityAdmins');
 const aboutRouter = require('./src/routes/about');
 const faqRouter = require('./src/routes/faq');
+const trackingRouter = require('./src/routes/tracking');
+const tracking = require('./src/tracking');
 const mediaRouter = require('./src/routes/media');
 const cityScope = require('./src/cityScope');
 const leagues = require('./src/leagues');
@@ -207,6 +209,8 @@ app.use(express.json());
 app.use(cookieParser(process.env.SESSION_SECRET || 'dev-only-insecure-secret'));
 // the city of the request on req.league (an own domain such as blta.sk; otherwise Bratislava)
 app.use(leagues.attach);
+// Google Tag Manager (Backend > Tracking): the tag of blta.sk or of slta.sk goes into the <head> of every public page that is sent
+app.use(tracking.middleware);
 // The whole site of a city under the national address: slta.sk/<slug>/... is the same site as blta.sk with that city's own seasons, players,
 // venues, pictures and menu. The prefix is taken off the address here (everything after it works exactly as on a city's own domain), the page
 // learns its prefix (window.CITY_BASE, see public/js/localize.js: links and /api calls get it), and redirects keep it.
@@ -560,6 +564,7 @@ app.use('/api/leagues', leaguesRouter);
 app.use('/api/city-admins', cityAdminsRouter);
 app.use('/api/about', aboutRouter);
 app.use('/api/faq', faqRouter);
+app.use('/api/tracking', trackingRouter);
 app.use('/api/media', mediaRouter);
 app.use('/api/seasons', seasonsRouter);
 app.use('/api/invites', invitesRouter);
