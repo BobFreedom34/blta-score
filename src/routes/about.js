@@ -12,6 +12,13 @@ router.get('/', (req, res) => {
   res.json({ useDefaults: leagueId === leagues.DEFAULT_LEAGUE_ID, tabs: about.forCity(leagueId) });
 });
 
+// The texts of another city, to copy them into the one the backend works on (Backend > Info > "Copy from another city"). They are public texts anyway.
+router.get('/of/:cityId', requireAdmin, (req, res) => {
+  const city = leagues.byId(Number(req.params.cityId));
+  if (!city) return res.status(404).json({ error: 'City not found' });
+  res.json({ city: { id: city.id, name: city.name }, useDefaults: city.id === leagues.DEFAULT_LEAGUE_ID, tabs: about.forCity(city.id) });
+});
+
 router.put('/:tab', requireAdmin, (req, res) => {
   const r = about.save(leagues.actingIdOf(req), req.params.tab, req.body);
   if (r.error) return res.status(400).json({ error: r.error });

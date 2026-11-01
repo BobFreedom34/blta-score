@@ -13,6 +13,7 @@
   const LANGS = [['sk', 'Slovenčina'], ['en', 'English']];
   const PLACEHOLDER = { sk: 'tenisová liga, Bratislava, amatérsky tenis', en: 'tennis league, Bratislava, amateur tennis' };
   let pages = [];
+  let sitemaps = [];
   const tabOf = new Map(); // page key -> the language tab that is showing
 
   const SAMPLE = '{name}';
@@ -156,13 +157,36 @@
       </details>`;
   }
 
+  // the XML sitemaps to give to Google Search Console (Indexing > Sitemaps)
+  const STATUS_WORDS = { ACTIVE: 'Active', HIDDEN: 'Hidden', SEEKING_ORGANIZER: 'Looking for an organizer', COMING_SOON: 'Coming soon', PREPARING: 'In preparation' };
+  function sitemapsHtml() {
+    if (!sitemaps.length) return '';
+    return `<div class="card" style="margin:18px 0 0" id="seo-sitemaps">
+      <strong>Sitemaps (XML)</strong>
+      <div style="color:var(--gray);font-size:13px;margin:4px 0 10px">Add these in Google Search Console under <em>Indexing → Sitemaps</em>. A city's sitemap is worth adding once the city is <strong>Active</strong>; until then its pages are hidden from search engines.</div>
+      ${sitemaps.map((s) => `<div style="display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:8px 0;border-top:1px solid #eee">
+        <strong style="min-width:150px">${escapeHtml(s.name)}</strong>
+        <span style="font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:${s.indexable ? 'var(--green-dark, #2d7a1f)' : 'var(--gray)'}">${escapeHtml(STATUS_WORDS[s.status] || s.status)}${s.indexable ? '' : ' · not indexed yet'}</span>
+        <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" style="flex:1 1 260px;min-width:0;word-break:break-all;color:var(--orange);text-decoration:underline;font-size:13px">${escapeHtml(s.url)}</a>
+        <button type="button" class="btn btn-sm btn-outline" data-copy-sitemap="${escapeHtml(s.url)}">Copy</button>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  host.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-copy-sitemap]');
+    if (!b) return;
+    try { await navigator.clipboard.writeText(b.dataset.copySitemap); b.textContent = 'Copied ✓'; } catch { window.prompt('Copy the address', b.dataset.copySitemap); }
+    setTimeout(() => { b.textContent = 'Copy'; }, 1500);
+  });
+
   function render() {
     const open = new Set([...host.querySelectorAll('details[open]')].map((d) => d.dataset.key));
     const fixed = pages.filter((p) => !p.template);
     const templates = pages.filter((p) => p.template);
     const city = pages.length && pages[0].city;
     const note = city ? `<div class="card" style="margin:18px 0 0"><strong>The SEO of the city you work on.</strong> <span style="color:var(--gray)">The titles, descriptions, link previews and the noindex switch below belong to this city only (the picker above the tabs changes the city). A page you have not edited speaks with the first texts and the name of the city; the pages of a city stay hidden from search engines until the city is Active (or you switch a page on here). The addresses are the same for every city.</span></div>` : '';
-    host.innerHTML = `${note}
+    host.innerHTML = `${sitemapsHtml()}${note}
       <h3 style="margin:22px 0 10px;color:var(--white)">Pages</h3>
       ${fixed.map(cardHtml).join('')}
       <h3 style="margin:26px 0 4px;color:var(--white)">Pages with a name <span style="font-weight:600;font-size:13px;color:var(--gray)">— one text for all seasons / players / courts / brackets, <code>{name}</code> becomes the name; the slug is the first part of the address (<code>/season/summer-2026</code>)</span></h3>
@@ -317,7 +341,7 @@
   });
 
   async function load() {
-    pages = await api('/seo');
+    [pages, sitemaps] = await Promise.all([api('/seo'), api('/seo/sitemaps').catch(() => [])]);
     render();
   }
 

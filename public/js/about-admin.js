@@ -8,6 +8,8 @@
   const TABS = [['us', 'About us'], ['rules', 'Rules'], ['cats', 'Categories'], ['dates', 'League dates'], ['tour', 'Tournaments']];
   const LANGS = [['sk', 'Slovenčina'], ['en', 'English']];
   let data = { useDefaults: false, tabs: {} };
+  let me = null; // the admin session: the city that is worked on, and the cities to copy from
+  let sources = []; // [{ id, name }] the other cities
   const openTabs = new Set();
   const langOf = new Map(); // tab -> the language that is showing
 
@@ -94,8 +96,59 @@
       </details>`;
   }
 
+  // "Copy from another city": every tab the other city has (what it wrote, or — for the first city — the text that came with the site) is saved into the
+  // city that is worked on, both languages; a tab the other city has nothing for is left as it is
+  function copyBox() {
+    if (!sources.length) return '';
+    return `
+      <div class="card" style="margin-bottom:14px" id="ab-copy-box">
+        <strong>Copy the texts from another city</strong>
+        <div style="color:var(--gray);font-size:13px;margin:4px 0 10px">Start from the texts of a city that already has them: all five tabs, in Slovak and in English, are copied into this city and then you change them below. A tab the other city has not written is skipped; a tab this city has written is replaced.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="ab-copy-from" aria-label="Copy from" style="${field};width:auto;min-width:200px;margin-top:0">${sources.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
+          <button type="button" class="btn btn-primary" id="ab-copy-go">Copy</button>
+          <span id="ab-copy-msg" style="font-weight:600"></span>
+        </div>
+      </div>`;
+  }
+
   function render() {
-    host.innerHTML = TABS.map(card).join('');
+    host.innerHTML = copyBox() + TABS.map(card).join('');
+  }
+
+  async function copyFromCity() {
+    const msg = document.getElementById('ab-copy-msg');
+    const select = document.getElementById('ab-copy-from');
+    const from = sources.find((c) => String(c.id) === select.value);
+    const here = me && me.acting ? me.acting.name : 'this city';
+    if (!from) return;
+    msg.style.color = '';
+    if (!window.confirm(`Copy the Info texts of ${from.name} into ${here}? The tabs that ${here} has written and that ${from.name} also has are replaced.`)) return;
+    msg.textContent = 'Copying…';
+    try {
+      const other = await api(`/about/of/${from.id}`);
+      const done = [];
+      for (const [tab] of TABS) {
+        const saved = other.tabs[tab] || {};
+        const body = {};
+        LANGS.forEach(([lang]) => {
+          body[lang] = saved[lang] || (other.useDefaults ? defaults(tab, lang) : { title: '', html: '' });
+        });
+        if (!LANGS.some(([lang]) => body[lang].title || body[lang].html)) continue;
+        data = await api(`/about/${tab}`, { method: 'PUT', body });
+        openTabs.add(tab);
+        done.push(tab);
+      }
+      if (!done.length) { msg.style.color = 'var(--danger)'; msg.textContent = `${from.name} has no texts to copy`; return; }
+      data = await api('/about');
+      render();
+      const fresh = document.getElementById('ab-copy-msg');
+      fresh.style.color = 'var(--green, #2e9e4f)';
+      fresh.textContent = `Copied ${done.length} tab${done.length === 1 ? '' : 's'} from ${from.name} ✓ — now change them below`;
+    } catch (err) {
+      msg.style.color = 'var(--danger)';
+      msg.textContent = err.message;
+    }
   }
 
   const cardOf = (el) => el.closest('.ab-card');
@@ -112,6 +165,7 @@
   host.addEventListener('mousedown', (e) => { if (e.target.closest('.rte-toolbar button')) e.preventDefault(); });
 
   host.addEventListener('click', async (e) => {
+    if (e.target.closest('#ab-copy-go')) { copyFromCity(); return; }
     const lang = e.target.closest('[data-lang-tab]');
     if (lang) {
       const c = cardOf(lang);
@@ -176,6 +230,13 @@
 
   checkAdmin().then(async (isAdmin) => {
     if (!isAdmin) { host.innerHTML = '<div class="card"><p style="margin:0;color:var(--gray)">Editing the Info window requires an admin login. <a href="/admin" style="text-decoration:underline;color:var(--orange)">Log in as admin</a>.</p></div>'; return; }
-    try { data = await api('/about'); render(); } catch (err) { host.innerHTML = `<div class="card" style="color:var(--danger)">${escapeHtml(err.message)}</div>`; }
+    try {
+      me = await api('/admin/session');
+      // the cities to copy from: all of them for the super admin, else the ones the public list shows — never the city that is worked on
+      const all = me.cities || (await api('/leagues').catch(() => [])).map((c) => ({ id: c.id, name: c.name }));
+      sources = all.filter((c) => !me.acting || c.id !== me.acting.id);
+      data = await api('/about');
+      render();
+    } catch (err) { host.innerHTML = `<div class="card" style="color:var(--danger)">${escapeHtml(err.message)}</div>`; }
   });
 })();

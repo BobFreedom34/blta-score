@@ -497,6 +497,23 @@ test('the pages say BLTA, not "BLTA Score" or "Tennis SCORE" (og:site_name, mani
   assert.ok(!/Tennis SCORE|BLTA Score/.test(texts), 'an old name is left in the texts');
 });
 
+test('Backend > SEO lists the XML sitemap addresses for Google Search Console: the national site and every city, only for an admin', async () => {
+  assert.strictEqual((await get('/api/seo/sitemaps')).status, 401);
+  const r = await call('GET', '/api/seo/sitemaps');
+  assert.strictEqual(r.status, 200);
+  const list = r.json;
+  assert.strictEqual(list[0].key, 'national');
+  assert.ok(list.every((s) => /^https?:\/\/[^/]+(\/[a-z0-9-]+)?\/sitemap\.xml$/.test(s.url)), JSON.stringify(list.map((s) => s.url)));
+  const first = list.find((s) => s.key === 'bratislava');
+  assert.ok(first && first.status === 'ACTIVE' && first.indexable === true);
+  // a city that is not active yet is listed, and marked as not indexed
+  const made = await call('POST', '/api/leagues', { body: { name: 'Sitemapville' } });
+  assert.strictEqual(made.status, 201);
+  const again = (await call('GET', '/api/seo/sitemaps')).json.find((s) => s.key === made.json.slug);
+  assert.ok(again && again.indexable === false && again.url.endsWith('/' + made.json.slug + '/sitemap.xml'), JSON.stringify(again));
+  await call('DELETE', '/api/leagues/' + made.json.id);
+});
+
 // ---------------------------------------------------------------- run
 async function startServer() {
   child = spawn(process.execPath, ['server.js'], {
