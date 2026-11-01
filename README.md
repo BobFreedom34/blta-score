@@ -397,7 +397,7 @@ to it and to the SLTA icons (`public/img/slta/`: favicon-64, icon-192, icon-512,
 PNGs by sharper ones when a bigger logo exists). The national page has its own manifest at `/manifest.json` on slta.sk (opens the picker) but shows NO install pop-up (only the pages of a city do, in
 `common.js` initInstallPrompt, each app remembering "installed" / "not now" for itself); `/sw.js` is served on slta.sk for the apps of the cities; blta.sk keeps the
 static `public/manifest.json`.
-The blog (Backend > Blog) and the rules page (Backend > Rules) are per city too: a city starts with none and writes its own;
+The blog (Backend > Blog) and the rules page (Backend > Rules; its box "Copy the rules from another city" — `POST /api/rules/copy`, all or nothing — replaces the city's sections with those of another city, with addresses of their own; `node scripts/check-rules-copy.js`) are per city too: a city starts with none and writes its own;
 a city admin manages them. The Info window of the home page (the "O nás – info o lige" button; Backend > Info) is per city: every
 city writes its own tabs in Slovak and English (the box "Copy the texts from another city" at the top of Backend > Info copies all the tabs of a city — for Bratislava the text that came with the site — into the city that is worked on, via `GET /api/about/of/:cityId` and the normal save; `node scripts/check-about-copy.js`); Bratislava keeps the texts that came with the site until it edits a tab, another city
 shows only the tabs it has written (no button at all while it has written none). The SEO (Backend > SEO: titles, descriptions, link previews, noindex) and the sitemap are per city too

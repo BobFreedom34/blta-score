@@ -7,6 +7,8 @@
 
   const field = 'display:block;width:100%;margin-top:4px;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px';
   let sections = [];
+  let sources = []; // [{ id, name }] the other cities the rules can be copied from
+  let here = ''; // the name of the city that is worked on
   const openIds = new Set();
 
   // text pasted into the editor keeps no formatting: its lines become paragraphs
@@ -72,8 +74,48 @@
       </details>`;
   }
 
+  // "Copy from another city": all its sections, in its order, replace the sections of this city (the server makes the whole copy or nothing)
+  function copyBox() {
+    if (!sources.length) return '';
+    return `
+      <div class="card" style="margin-bottom:14px" id="rl-copy-box">
+        <strong>Copy the rules from another city</strong>
+        <div style="color:var(--gray);font-size:13px;margin:4px 0 10px">Start from the rules of a city that already has them: all its sections are copied here, in the same order, and then you change them below. The sections this city has now are replaced.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="rl-copy-from" aria-label="Copy from" style="${field};width:auto;min-width:200px;margin-top:0">${sources.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select>
+          <button type="button" class="btn btn-primary" id="rl-copy-go">Copy</button>
+          <span id="rl-copy-msg" style="font-weight:600"></span>
+        </div>
+      </div>`;
+  }
+
+  async function copyFromCity() {
+    const select = document.getElementById('rl-copy-from');
+    const msg = document.getElementById('rl-copy-msg');
+    const from = sources.find((c) => String(c.id) === select.value);
+    if (!from) return;
+    msg.style.color = '';
+    const ask = sections.length
+      ? `Replace the ${sections.length} section${sections.length === 1 ? '' : 's'} of ${here || 'this city'} with the rules of ${from.name}? What is here now is lost.`
+      : `Copy the rules of ${from.name} into ${here || 'this city'}?`;
+    if (!window.confirm(ask)) return;
+    msg.textContent = 'Copying…';
+    try {
+      sections = await api('/rules/copy', { method: 'POST', body: { fromCityId: from.id } });
+      openIds.clear();
+      render();
+      const fresh = document.getElementById('rl-copy-msg');
+      fresh.style.color = 'var(--green, #2e9e4f)';
+      fresh.textContent = `Copied ${sections.length} section${sections.length === 1 ? '' : 's'} from ${from.name} ✓ — now change them below`;
+    } catch (err) {
+      msg.style.color = 'var(--danger)';
+      msg.textContent = err.message;
+    }
+  }
+
   function render() {
     host.innerHTML = `
+      ${copyBox()}
       <p style="color:var(--gray-dim);margin:0 0 14px">Changes show on <a data-public href="/propozicie" target="_blank" style="text-decoration:underline;color:var(--orange)">/propozicie</a> as soon as you press Save. The buttons at the top of the page follow the sections, in this order.</p>
       ${sections.map(cardHtml).join('') || '<div class="card" style="color:var(--gray)">No sections yet.</div>'}
       <div class="card" style="margin-top:20px">
@@ -95,6 +137,11 @@
 
   async function load() {
     sections = await api('/rules');
+    // the cities to copy from: all of them for the super admin, else the ones the public list shows — never the city that is worked on
+    const me = await api('/admin/session').catch(() => null);
+    const all = (me && me.cities) || (await api('/leagues').catch(() => [])).map((c) => ({ id: c.id, name: c.name }));
+    here = (me && me.acting && me.acting.name) || '';
+    sources = all.filter((c) => !me || !me.acting || c.id !== me.acting.id);
     render();
   }
 
@@ -117,6 +164,7 @@
   // the toolbar acts on the selection of the editor above it
   host.addEventListener('mousedown', (e) => { if (e.target.closest('.rte-toolbar button')) e.preventDefault(); });
   host.addEventListener('click', async (e) => {
+    if (e.target.closest('#rl-copy-go')) { copyFromCity(); return; }
     const tb = e.target.closest('.rte-toolbar [data-cmd]');
     if (tb) {
       const card = cardOf(tb);

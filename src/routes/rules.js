@@ -22,6 +22,28 @@ const mine = (req, row) => !!row && row.league_id === leagues.actingIdOf(req);
 
 router.get('/', requireAdmin, (req, res) => res.json(rules.list(leagues.actingIdOf(req))));
 
+// Backend > Rules > "Copy from another city": the sections of another city become the sections of the city that is worked on, in the same order. What this city
+// has now is replaced (the whole copy is made or nothing). The addresses (#slug) must be different in every city, so a copy gets its own (-2, -3 …). The text is copied as it is stored (it is the first text or was cleaned when it was saved).
+router.post('/copy', requireAdmin, (req, res) => {
+  const from = leagues.byId(Number(req.body && req.body.fromCityId));
+  if (!from) return res.status(404).json({ error: 'City not found' });
+  const leagueId = leagues.actingIdOf(req);
+  if (from.id === leagueId) return res.status(400).json({ error: 'Pick another city to copy from' });
+  const source = db.prepare('SELECT * FROM rules_sections WHERE league_id = ? ORDER BY sort_order, id').all(from.id);
+  if (!source.length) return res.status(400).json({ error: `${from.name} has no rules to copy` });
+  db.exec('BEGIN');
+  try {
+    db.prepare('DELETE FROM rules_sections WHERE league_id = ?').run(leagueId);
+    const insert = db.prepare('INSERT INTO rules_sections (slug, nav_label, title, body_html, sort_order, league_id) VALUES (?, ?, ?, ?, ?, ?)');
+    source.forEach((row, n) => insert.run(rules.uniqueSlug(rules.slugify(row.slug)), row.nav_label, row.title, row.body_html, n, leagueId));
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  res.json(rules.list(leagueId));
+});
+
 router.post('/', requireAdmin, (req, res) => {
   const parsed = parseBody(req.body || {});
   if (parsed.error) return res.status(400).json({ error: parsed.error });
