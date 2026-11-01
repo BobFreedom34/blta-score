@@ -18,7 +18,7 @@ const CONTACT_URLS = ['instagramUrl', 'facebookUrl', 'youtubeUrl', 'whatsappUrl'
 // the pages a link can point at by their code address (their public address follows Backend > SEO): the ones with a fixed address
 const pageCodes = () => seo.PAGES.filter((p) => !p.template && !p.noindex).map((p) => ({ code: p.path, label: p.label.replace(/\s*\([^)]*\)\s*/g, ' ').trim() }));
 
-const EMPTY = () => ({ desc: { sk: '', en: '' }, contact: { address: '', email: '', instagramUrl: '', facebookUrl: '', youtubeUrl: '', whatsappUrl: '' }, groups: null, showCities: true, legal: { sk: '', en: '' } });
+const EMPTY = () => ({ desc: { sk: '', en: '' }, contact: { address: '', email: '', instagramUrl: '', facebookUrl: '', youtubeUrl: '', whatsappUrl: '' }, groups: null, showCities: true, hiddenCities: [], contactHidden: [], legal: { sk: '', en: '' } });
 
 const cache = new Map();
 function get(scope) {
@@ -49,6 +49,12 @@ function set(scope, body) {
     if (out.contact[key] && !/^https?:\/\/\S+$/i.test(out.contact[key])) return { error: 'A social link must start with https://' };
   }
   out.showCities = b.showCities !== false;
+  // a part of the contact that is not shown at all (an empty field would use the built-in one)
+  const hideable = ['address', 'email', ...CONTACT_URLS];
+  out.contactHidden = Array.isArray(b.contactHidden) ? [...new Set(b.contactHidden.filter((k) => hideable.includes(k)))] : [];
+  // the cities (by their address slug, 'slta' = the national site) that are left out of the row
+  if (b.hiddenCities !== undefined && !(Array.isArray(b.hiddenCities) && b.hiddenCities.length <= 100 && b.hiddenCities.every((c) => typeof c === 'string' && /^[a-z0-9-]{1,60}$/.test(c)))) return { error: 'The list of hidden cities is not valid' };
+  out.hiddenCities = [...new Set(b.hiddenCities || [])];
   if (b.groups === null || b.groups === undefined) {
     out.groups = null;
   } else {

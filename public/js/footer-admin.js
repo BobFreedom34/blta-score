@@ -25,6 +25,8 @@
         contact: { ...d.settings.contact },
         groups: clone(d.settings.groups || d.builtIn.groups),
         showCities: d.settings.showCities !== false,
+        hiddenCities: [...(d.settings.hiddenCities || [])],
+        contactHidden: [...(d.settings.contactHidden || [])],
         legal: { ...d.settings.legal },
       };
       touched = false;
@@ -75,6 +77,9 @@
       : '';
     const c = model.contact;
     const ph = (k) => (b.contact && b.contact[k]) || '';
+    // "Don't show": the part is left out of the footer altogether (an empty field would show the built-in one)
+    const hid = (k) => model.contactHidden.includes(k);
+    const hideBox = (k) => `<label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--gray);margin-top:4px"><input type="checkbox" data-hide="${k}"${hid(k) ? ' checked' : ''}> Don't show this</label>`;
     host.innerHTML = `
       ${sw}
       <div class="card" style="margin-bottom:14px">
@@ -85,15 +90,15 @@
         <label style="display:block;font-size:12px;font-weight:700;margin-top:10px">Description (English)
           <textarea id="fa-desc-en" rows="3" maxlength="400" placeholder="${esc(b.desc.en)}" style="${field};resize:vertical">${esc(model.desc.en)}</textarea></label>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
-          <label style="flex:1 1 240px;font-size:12px;font-weight:700;margin-top:6px">Address (one line per row)
-            <textarea id="fa-address" rows="2" maxlength="300" placeholder="${esc(ph('address'))}" style="${field};resize:vertical">${esc(c.address)}</textarea></label>
-          <label style="flex:1 1 240px;font-size:12px;font-weight:700;margin-top:6px">E-mail
-            <input type="text" id="fa-email" maxlength="120" placeholder="${esc(ph('email'))}" value="${esc(c.email)}" style="${field}"></label>
+          <div style="flex:1 1 240px"><label style="display:block;font-size:12px;font-weight:700;margin-top:6px">Address (one line per row)
+            <textarea id="fa-address" rows="2" maxlength="300" placeholder="${esc(ph('address'))}" style="${field};resize:vertical"${hid('address') ? ' disabled' : ''}>${esc(c.address)}</textarea></label>${hideBox('address')}</div>
+          <div style="flex:1 1 240px"><label style="display:block;font-size:12px;font-weight:700;margin-top:6px">E-mail
+            <input type="text" id="fa-email" maxlength="120" placeholder="${esc(ph('email'))}" value="${esc(c.email)}" style="${field}"${hid('email') ? ' disabled' : ''}></label>${hideBox('email')}</div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           ${[['instagramUrl', 'Instagram'], ['facebookUrl', 'Facebook'], ['youtubeUrl', 'YouTube'], ['whatsappUrl', 'WhatsApp']].map(([k, label]) => `
-          <label style="flex:1 1 220px;font-size:12px;font-weight:700;margin-top:6px">${label} link
-            <input type="text" data-social="${k}" maxlength="300" placeholder="${esc(ph(k) || 'https://…')}" value="${esc(c[k])}" style="${field}"></label>`).join('')}
+          <div style="flex:1 1 220px"><label style="display:block;font-size:12px;font-weight:700;margin-top:6px">${label} link
+            <input type="text" data-social="${k}" maxlength="300" placeholder="${esc(ph(k) || 'https://…')}" value="${esc(c[k])}" style="${field}"${hid(k) ? ' disabled' : ''}></label>${hideBox(k)}</div>`).join('')}
         </div>
       </div>
 
@@ -110,6 +115,10 @@
       <div class="card" style="margin-bottom:14px">
         <strong>Cities and small print</strong>
         <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-top:10px"><input type="checkbox" id="fa-cities"${model.showCities ? ' checked' : ''} style="margin-top:3px"><span>Show the row with the other cities (links between the cities help visitors and search engines)</span></label>
+        ${data.cities.length ? `<div id="fa-city-list" style="margin:8px 0 0 26px${model.showCities ? '' : ';opacity:.5'}">
+          <div style="font-size:12px;font-weight:700;color:var(--gray);margin-bottom:4px">Which cities are shown in the row</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px 18px">${data.cities.map((c) => `<label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" data-city="${esc(c.slug)}"${model.hiddenCities.includes(c.slug) ? '' : ' checked'}${model.showCities ? '' : ' disabled'}>${esc(c.name)}</label>`).join('')}</div>
+        </div>` : ''}
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <label style="flex:1 1 260px;font-size:12px;font-weight:700;margin-top:10px">Small print after the © line (Slovak)
             <input type="text" id="fa-legal-sk" maxlength="200" value="${esc(model.legal.sk)}" placeholder="${esc(b.contact ? `${b.contact.orgName} · IČO ${b.contact.ico}` : 'e.g. the name of the organiser')}" style="${field}"></label>
@@ -120,7 +129,7 @@
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
         <button type="button" class="btn btn-primary" data-act="save">Save</button>
-        <button type="button" class="btn btn-outline" data-act="reset">Reset the whole footer to the built-in one</button>
+        <button type="button" class="btn btn-outline" data-act="reset" style="color:#fff;border-color:rgba(255,255,255,.45)">Reset the whole footer to the built-in one</button>
         <a href="/" target="_blank" rel="noopener" style="color:var(--orange);text-decoration:underline;font-size:13px">Open the site ↗</a>
         <span id="fa-msg" style="font-weight:600"></span>
       </div>`;
@@ -133,7 +142,11 @@
     model.contact.address = val('fa-address');
     model.contact.email = val('fa-email');
     host.querySelectorAll('[data-social]').forEach((i) => { model.contact[i.dataset.social] = i.value; });
+    model.contactHidden = [...host.querySelectorAll('[data-hide]')].filter((i) => i.checked).map((i) => i.dataset.hide);
     model.showCities = document.getElementById('fa-cities').checked;
+    // a city that is not ticked is left out of the row (a city that is not in the list, e.g. one that is hidden now, keeps what it had)
+    const listed = new Set([...host.querySelectorAll('[data-city]')].map((i) => i.dataset.city));
+    model.hiddenCities = model.hiddenCities.filter((s) => !listed.has(s)).concat([...host.querySelectorAll('[data-city]')].filter((i) => !i.checked).map((i) => i.dataset.city));
     model.legal = { sk: val('fa-legal-sk'), en: val('fa-legal-en') };
     model.groups = [...host.querySelectorAll('.fa-group')].map((gEl) => ({
       sk: gEl.querySelector('.fa-gsk').value,
@@ -152,6 +165,18 @@
   const say = (text, bad) => { const m = document.getElementById('fa-msg'); m.textContent = text; m.style.color = bad ? 'var(--danger)' : 'var(--green, #2e9e4f)'; };
 
   host.addEventListener('input', (e) => { if (e.target.closest('#fa-groups')) touched = true; });
+  // the list of cities follows the switch of the whole row; a part of the contact that is not shown is greyed out
+  host.addEventListener('change', (e) => {
+    if (e.target.dataset && e.target.dataset.hide) {
+      const k = e.target.dataset.hide;
+      const input = k === 'address' ? document.getElementById('fa-address') : k === 'email' ? document.getElementById('fa-email') : host.querySelector(`[data-social="${k}"]`);
+      if (input) input.disabled = e.target.checked;
+      return;
+    }
+    if (e.target.id !== 'fa-cities') return;
+    const list = document.getElementById('fa-city-list');
+    if (list) { list.style.opacity = e.target.checked ? '' : '0.5'; list.querySelectorAll('input').forEach((i) => { i.disabled = !e.target.checked; }); }
+  });
   host.addEventListener('change', (e) => {
     // a link switched between "a page" and "an address" gets the other field
     if (e.target.classList.contains('fa-type')) { read(); touched = true; render(); }
@@ -171,7 +196,7 @@
         read();
         // the groups are sent only when they were changed (else they stay the built-in ones, which can then still improve with the site)
         const groups = data.settings.groups === null && !touched ? null : model.groups.filter((g) => g.sk.trim() || g.links.length);
-        data = await api(`/footer${query()}`, { method: 'PUT', body: { desc: model.desc, contact: model.contact, groups, showCities: model.showCities, legal: model.legal } });
+        data = await api(`/footer${query()}`, { method: 'PUT', body: { desc: model.desc, contact: model.contact, groups, showCities: model.showCities, hiddenCities: model.hiddenCities, contactHidden: model.contactHidden, legal: model.legal } });
         await load();
         say('Saved ✓ — the footer is changed on the site');
         return;

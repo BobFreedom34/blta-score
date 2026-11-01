@@ -52,14 +52,14 @@ const ICON = {
 const SOCIAL = [['instagramUrl', 'instagram', 'Instagram'], ['facebookUrl', 'facebook', 'Facebook'], ['youtubeUrl', 'youtube', 'YouTube'], ['whatsappUrl', 'whatsapp', 'WhatsApp']];
 
 // the other cities, as the visitor reaches them: a city with a domain of its own there, any other under the national address (slta.sk/<slug>)
-function cityPills(req, currentId, isNational) {
+function cityPills(req, currentId, isNational, hidden = new Set()) {
   const natOrigin = national.siteOrigin(req);
   const rows = db.prepare("SELECT * FROM leagues WHERE status != 'HIDDEN' ORDER BY sort_order, name").all();
-  const pills = rows.filter((r) => isNational || r.id !== currentId).map((r) => ({
+  const pills = rows.filter((r) => (isNational || r.id !== currentId) && !hidden.has(r.slug)).map((r) => ({
     label: r.brand_name || r.name,
     href: r.domain ? `https://${r.domain}` : `${natOrigin || ''}/${r.slug}`,
   }));
-  if (!isNational && natOrigin) pills.unshift({ label: 'SLTA', href: natOrigin });
+  if (!isNational && natOrigin && !hidden.has('slta')) pills.unshift({ label: 'SLTA', href: natOrigin });
   return pills;
 }
 
@@ -86,6 +86,8 @@ function render(req) {
   const ownContact = Object.fromEntries(Object.entries(S.contact).filter(([, v]) => v));
   const fallback = first ? contact.read() : null;
   const info = Object.keys(ownContact).length || fallback ? { ...(fallback || {}), ...ownContact } : null;
+  // what Backend > Footer says is not shown, is not shown (also what would come from the contact window)
+  (S.contactHidden || []).forEach((k) => { if (info) info[k] = ''; });
   const social = info ? SOCIAL.filter(([key]) => /^https?:\/\//.test(info[key] || '')).map(([key, icon, label]) => `<li><a href="${esc(info[key])}" target="_blank" rel="noopener me" aria-label="${label}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[icon]}</svg></a></li>`).join('') : '';
   const addressLines = [info && info.address ? esc(info.address).replace(/\r?\n/g, '<br>') : '', info && info.email ? `<a href="mailto:${esc(info.email)}">${esc(info.email)}</a>` : ''].filter(Boolean);
   const address = addressLines.length ? `<address class="sf-address">${addressLines.join('<br>')}</address>` : '';
@@ -96,7 +98,7 @@ function render(req) {
   const shownName = first ? brand : isNational ? '' : league.name;
   const nameHtml = shownName ? `<span class="sf-name">${esc(shownName)}</span>` : '';
   const desc = S.desc[lang] || (isNational ? T.descNational : first ? T.descBlta : T.descCity(brand));
-  const pills = S.showCities === false ? [] : cityPills(req, league && league.id, isNational);
+  const pills = S.showCities === false ? [] : cityPills(req, league && league.id, isNational, new Set(S.hiddenCities || []));
   const legal = S.legal[lang] ? ` · ${esc(S.legal[lang])}` : (first && info && info.orgName ? ` · ${esc(info.orgName)}${info.ico ? ` · IČO ${esc(info.ico)}` : ''}` : '');
   const homeHref = isNational ? (lang === 'en' ? '/en' : '/') : `${base}${seo.pageUrl('/', lang)}` || '/';
 

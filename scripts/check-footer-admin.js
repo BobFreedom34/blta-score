@@ -87,6 +87,51 @@ test('the row of cities can be switched off', async () => {
   assert.ok(!footerOf((await blta('/')).body).includes('class="sf-cities"'));
 });
 
+test('a part of the contact can be left out altogether, also the one that comes from the contact window; an empty field alone would show it again', async () => {
+  assert.strictEqual((await put(BASE)).status, 200);
+  let f = footerOf((await blta('/')).body);
+  assert.ok(f.includes('Bárdošova 2939/23') && f.includes('mailto:info@blta.sk') && f.includes('aria-label="Instagram"'), 'the contact window shows by default');
+  assert.strictEqual((await put({ ...BASE, contactHidden: ['address'] })).status, 200);
+  f = footerOf((await blta('/')).body);
+  assert.ok(!f.includes('Bárdošova') && f.includes('mailto:info@blta.sk'), 'only the address is gone');
+  assert.strictEqual((await put({ ...BASE, contactHidden: ['address', 'email', 'instagramUrl'] })).status, 200);
+  f = footerOf((await blta('/')).body);
+  assert.ok(!f.includes('sf-address') && !f.includes('aria-label="Instagram"') && f.includes('aria-label="Facebook"'), 'no address block, no Instagram, the other links stay');
+  assert.deepStrictEqual((await blta('/api/footer', { cookie: admin })).json.settings.contactHidden.sort(), ['address', 'email', 'instagramUrl']);
+  // unknown names are dropped
+  assert.deepStrictEqual((await put({ ...BASE, contactHidden: ['address', 'bogus'] })).json.settings.contactHidden, ['address']);
+  // a city: what it types is shown unless it is hidden
+  assert.strictEqual((await put({ ...BASE, contactHidden: ['email'], contact: { email: 'x@example.sk', address: 'Moja 1' } })).status, 200);
+  f = footerOf((await blta('/')).body);
+  assert.ok(f.includes('Moja 1') && !f.includes('x@example.sk') && !f.includes('info@blta.sk'));
+  assert.strictEqual((await put(BASE)).status, 200);
+});
+
+test('single cities can be left out of the row: the editor lists them, the footer follows, bad lists are refused', async () => {
+  assert.strictEqual((await put(BASE)).status, 200); // the row is on again (an earlier test switched it off)
+  // two other cities so there is something to choose from
+  const a = await blta('/api/leagues', { method: 'POST', body: { name: 'Zilina' }, cookie: admin });
+  const b = await blta('/api/leagues', { method: 'POST', body: { name: 'Presov' }, cookie: admin });
+  for (const c of [a, b]) await blta(`/api/leagues/${c.json.id}`, { method: 'PATCH', body: { status: 'SEEKING_ORGANIZER' }, cookie: admin });
+  const view = (await blta('/api/footer', { cookie: admin })).json;
+  const slugs = view.cities.map((c) => c.slug);
+  assert.ok(slugs.includes('slta') && slugs.includes(a.json.slug) && slugs.includes(b.json.slug), slugs.join(','));
+  assert.ok(!slugs.includes('bratislava'), 'the city of the footer is not in its own list');
+  const pills = (html) => [...footerOf(html).matchAll(/<a class="sf-pill"[^>]*>([^<]*)</g)].map((m) => m[1]);
+  const all = pills((await blta('/')).body);
+  assert.ok(all.includes('SLTA') && all.some((n) => /Zilina/.test(n)) && all.some((n) => /Presov/.test(n)), all.join(','));
+  assert.strictEqual((await put({ ...BASE, hiddenCities: [a.json.slug, 'slta'] })).status, 200);
+  const some = pills((await blta('/')).body);
+  assert.ok(!some.includes('SLTA') && !some.some((n) => /Zilina/.test(n)) && some.some((n) => /Presov/.test(n)), some.join(','));
+  assert.deepStrictEqual((await blta('/api/footer', { cookie: admin })).json.settings.hiddenCities.sort(), ['slta', a.json.slug].sort());
+  // all of them left out: no row at all
+  assert.strictEqual((await put({ ...BASE, hiddenCities: ['slta', a.json.slug, b.json.slug] })).status, 200);
+  assert.ok(!footerOf((await blta('/')).body).includes('class="sf-cities"'), 'no city left: no row');
+  for (const bad of [['Bad Slug'], ['x'.repeat(61)], [1], 'slta']) assert.strictEqual((await put({ ...BASE, hiddenCities: bad })).status, 400, JSON.stringify(bad));
+  assert.strictEqual((await put({ ...BASE })).status, 200);
+  assert.ok(pills((await blta('/')).body).length >= 3, 'back to all cities');
+});
+
 test('bad input is refused and nothing is saved: a page that does not exist, javascript:, a link without text, a group without a title, too many groups, bad e-mail or social link', async () => {
   const before = (await blta('/api/footer', { cookie: admin })).json.settings;
   const link = (l) => ({ ...BASE, groups: [{ sk: 'G', en: 'G', links: [l] }] });
@@ -178,7 +223,7 @@ async function main() {
     admin = cookieOf(await blta('/api/admin/login', { method: 'POST', body: { password: 'test' } }));
     assert.ok(admin, 'the super admin login gave no cookie');
     for (const { name, fn } of tests) {
-      try { await fn(); console.log(`PASS  ${name}`); } catch (err) { failed += 1; console.log(`FAIL  ${name}\n      ${String(err && err.message).split('\n').slice(0, 6).join('\n      ')}`); }
+      try { await fn(); console.log(`PASS  ${name}`); } catch (err) { failed += 1; console.log(`FAIL  ${name}\n      ${String(err && (err.message || err.stack)).split('\n').slice(0, 6).join('\n      ')}`); }
     }
   } catch (err) {
     failed += 1;

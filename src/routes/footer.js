@@ -5,6 +5,7 @@ const express = require('express');
 const settings = require('../footerSettings');
 const footer = require('../footer');
 const leagues = require('../leagues');
+const db = require('../db');
 const auth = require('../auth');
 
 const router = express.Router();
@@ -17,7 +18,14 @@ function scopeOf(req, res) {
   }
   return leagues.actingIdOf(req);
 }
-const view = (scope) => ({ scope: scope === settings.NATIONAL ? 'national' : scope, settings: settings.get(scope), builtIn: footer.builtIn(scope), pages: settings.pageCodes() });
+// the cities that can be in the row of the footer of this scope: every city that is shown on the picker but the one the footer belongs to, and the national
+// site (slug 'slta') on a city's footer
+function citiesFor(scope) {
+  const rows = db.prepare("SELECT id, slug, name, brand_name FROM leagues WHERE status != 'HIDDEN' ORDER BY sort_order, name").all().filter((r) => scope === settings.NATIONAL || r.id !== scope);
+  const list = rows.map((r) => ({ slug: r.slug, name: r.brand_name || r.name }));
+  return scope === settings.NATIONAL ? list : [{ slug: 'slta', name: 'SLTA (the national site)' }, ...list];
+}
+const view = (scope) => ({ scope: scope === settings.NATIONAL ? 'national' : scope, settings: settings.get(scope), builtIn: footer.builtIn(scope), pages: settings.pageCodes(), cities: citiesFor(scope) });
 
 router.get('/', auth.requireAdmin, (req, res) => {
   const scope = scopeOf(req, res);
