@@ -3759,6 +3759,15 @@ async function setUpAdminTabs() {
       link.textContent = 'Info';
       if (rules) rules.after(link); else bar.appendChild(link);
     }
+    // the footer of the public pages is written by every admin, for the city he works on
+    if (!tabLink(bar, '/footer-admin')) {
+      const after = tabLink(bar, '/about-admin') || tabLink(bar, '/rules-admin');
+      const link = document.createElement('a');
+      link.href = '/footer-admin';
+      link.className = `tab${location.pathname.endsWith('/footer-admin') ? ' active' : ''}`;
+      link.textContent = 'Footer';
+      if (after) after.after(link); else bar.appendChild(link);
+    }
     // the sponsors and partners of a city (shown as a "Partners" strip on its pages)
     if (!tabLink(bar, '/sponsors-admin')) {
       const after = tabLink(bar, '/media-admin') || tabLink(bar, '/carousel-admin');

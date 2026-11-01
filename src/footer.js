@@ -8,6 +8,7 @@ const seo = require('./seo');
 const leagues = require('./leagues');
 const national = require('./national');
 const contact = require('./routes/contact');
+const settings = require('./footerSettings');
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -21,6 +22,10 @@ const NATIONAL_GROUPS = [
   { sk: 'SLTA', en: 'SLTA', links: [['#mesta', 'Mestá', 'Cities'], ['/slta-rankings', 'Rebríčky miest', 'City rankings'], ['#ako', 'Ako to funguje', 'How it works'], ['#funkcie', 'Funkcie', 'Features']] },
   { sk: 'Organizátori', en: 'Organisers', links: [['#organizator', 'Staň sa organizátorom', 'Become the organiser'], ['#otazky', 'Otázky a odpovede', 'Questions and answers']] },
 ];
+
+// a group as Backend > Footer edits and stores it: { sk, en, links: [{ sk, en, page: '/matches' } | { sk, en, url: '#mesta' | '/x' | 'https://…' }] }
+const toModel = (groups) => groups.map((g) => ({ sk: g.sk, en: g.en, links: g.links.map(([code, sk, en]) => (code.startsWith('#') ? { sk, en, url: code } : { sk, en, page: code })) }));
+const defaultGroups = (isNational) => toModel(isNational ? NATIONAL_GROUPS : GROUPS);
 
 const TEXT = {
   sk: {
@@ -66,26 +71,33 @@ function render(req) {
   const first = !isNational && league && league.id === leagues.DEFAULT_LEAGUE_ID;
   const base = req.cityBase || '';
   const brand = isNational ? 'SLTA' : (league.brand_name || league.name);
-  // a #… link stays on the page (the contact window, the parts of the national page); the others go to the page of the city, in the language of the page
-  const url = (code) => (code.startsWith('#') ? code : `${base}${seo.pageUrl(code, lang)}`);
-  const groups = (isNational ? NATIONAL_GROUPS : GROUPS).map((g) => `
+  const S = settings.get(isNational ? settings.NATIONAL : league.id);
+  // a link to a page goes to its public address in the language of the page, under the city; a #… link stays on the page (the contact window, the parts of
+  // the national page); a path of its own gets the city's prefix; an address of another website opens in a new tab
+  const hrefOf = (l) => (l.page ? `${base}${seo.pageUrl(l.page, lang)}` : (l.url.charAt(0) === '/' && base && l.url !== base && !l.url.startsWith(`${base}/`) ? `${base}${l.url}` : l.url));
+  const outside = (l) => /^https?:\/\//i.test(l.url || '');
+  const groups = (S.groups || defaultGroups(isNational)).filter((g) => g.links.length).map((g) => `
         <div class="sf-group">
-          <h2 class="sf-h">${esc(g[lang])}</h2>
-          <ul>${g.links.map(([code, sk, en]) => `<li><a href="${esc(url(code))}">${esc(lang === 'en' ? en : sk)}</a></li>`).join('')}</ul>
+          <h2 class="sf-h">${esc(lang === 'en' ? g.en : g.sk)}</h2>
+          <ul>${g.links.map((l) => `<li><a href="${esc(hrefOf(l))}"${outside(l) ? ' target="_blank" rel="noopener"' : ''}>${esc(lang === 'en' ? l.en : l.sk)}</a></li>`).join('')}</ul>
         </div>`).join('');
 
-  const info = first ? contact.read() : null;
+  // the contact of the card: what Backend > Footer has for this city, else (Bratislava) the contact window of Backend > Menu
+  const ownContact = Object.fromEntries(Object.entries(S.contact).filter(([, v]) => v));
+  const fallback = first ? contact.read() : null;
+  const info = Object.keys(ownContact).length || fallback ? { ...(fallback || {}), ...ownContact } : null;
   const social = info ? SOCIAL.filter(([key]) => /^https?:\/\//.test(info[key] || '')).map(([key, icon, label]) => `<li><a href="${esc(info[key])}" target="_blank" rel="noopener me" aria-label="${label}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[icon]}</svg></a></li>`).join('') : '';
-  const address = info && info.address ? `<address class="sf-address">${esc(info.address).replace(/\r?\n/g, '<br>')}${info.email ? `<br><a href="mailto:${esc(info.email)}">${esc(info.email)}</a>` : ''}</address>` : '';
+  const addressLines = [info && info.address ? esc(info.address).replace(/\r?\n/g, '<br>') : '', info && info.email ? `<a href="mailto:${esc(info.email)}">${esc(info.email)}</a>` : ''].filter(Boolean);
+  const address = addressLines.length ? `<address class="sf-address">${addressLines.join('<br>')}</address>` : '';
   const logo = first
     ? '<img src="/img/blta-logo-sm.png" alt="" width="136" height="102">'
     : '<img src="/img/slta-logo.png" alt="" width="500" height="141" class="sf-logo-wide">';
   // the logo of SLTA already says SLTA: next to it only the name of the city
   const shownName = first ? brand : isNational ? '' : league.name;
   const nameHtml = shownName ? `<span class="sf-name">${esc(shownName)}</span>` : '';
-  const desc = isNational ? T.descNational : first ? T.descBlta : T.descCity(brand);
-  const pills = cityPills(req, league && league.id, isNational);
-  const legal = first && info && info.orgName ? ` · ${esc(info.orgName)}${info.ico ? ` · IČO ${esc(info.ico)}` : ''}` : '';
+  const desc = S.desc[lang] || (isNational ? T.descNational : first ? T.descBlta : T.descCity(brand));
+  const pills = S.showCities === false ? [] : cityPills(req, league && league.id, isNational);
+  const legal = S.legal[lang] ? ` · ${esc(S.legal[lang])}` : (first && info && info.orgName ? ` · ${esc(info.orgName)}${info.ico ? ` · IČO ${esc(info.ico)}` : ''}` : '');
   const homeHref = isNational ? (lang === 'en' ? '/en' : '/') : `${base}${seo.pageUrl('/', lang)}` || '/';
 
   return `<footer class="site-footer sf">
@@ -126,4 +138,15 @@ function middleware(req, res, next) {
   return next();
 }
 
-module.exports = { render, inject, middleware };
+// what Backend > Footer shows as the built-in values of a scope (a city id, or settings.NATIONAL): the groups of links, the description of each language and the
+// contact window (first city)
+function builtIn(scope) {
+  const national_ = scope === settings.NATIONAL;
+  const league = national_ ? null : leagues.byId(scope);
+  const first = !national_ && !!league && league.id === leagues.DEFAULT_LEAGUE_ID;
+  const brand = national_ ? 'SLTA' : (league && (league.brand_name || league.name)) || '';
+  const desc = (lang) => (national_ ? TEXT[lang].descNational : first ? TEXT[lang].descBlta : TEXT[lang].descCity(brand));
+  return { groups: defaultGroups(national_), desc: { sk: desc('sk'), en: desc('en') }, contact: first ? contact.read() : null, brand };
+}
+
+module.exports = { render, inject, middleware, builtIn };
