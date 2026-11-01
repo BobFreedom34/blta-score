@@ -124,6 +124,16 @@ test('turning it off (an empty ID) takes the tag away again, and the consent cho
   assert.ok(!/Google Tag Manager -->/.test((await blta('/')).body));
 });
 
+test('no page file carries an Analytics tag or a Meta Pixel of its own any more (both are set up inside Tag Manager)', () => {
+  const pages = fs.readdirSync(path.join(ROOT, 'public')).filter((f) => f.endsWith('.html'));
+  assert.ok(pages.length > 40);
+  pages.forEach((f) => {
+    const html = fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
+    assert.ok(!/gtag\/js|G-W3BY57RTF9|gtag\('config'/.test(html), `${f} still has a Google Analytics tag`);
+    assert.ok(!/fbq\(|connect\.facebook\.net|facebook\.com\/tr\?/.test(html), `${f} still has a Meta Pixel`);
+  });
+});
+
 test('the banner script and the backend page exist, and the page asks for the super admin tab', async () => {
   const js = await blta('/js/consent.js');
   assert.strictEqual(js.status, 200);
