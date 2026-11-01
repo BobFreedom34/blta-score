@@ -2048,16 +2048,17 @@ async function clubShare(title) {
 }
 
 // The two buttons of a club page ("Install as app" and "Share"): the community page and the season / tournament page of a club draw them with this and
-// share the clicks (below). Install stays hidden until the browser can install (BLTA_INSTALL.ready, see initInstallPrompt); iOS can at once.
+// share the clicks (below). Install is always there (BLTA_INSTALL.offer, see initInstallPrompt) unless this is the installed app already or the club is installed: it installs
+// in one tap where the browser allows it (BLTA_INSTALL.ready), and otherwise shows how to do it from the browser menu.
 function clubAppButtonsHtml(btnClass, shareTitle) {
   const svg = (d) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-  const ready = !!(window.BLTA_INSTALL && window.BLTA_INSTALL.ready);
-  return `<button type="button" class="${btnClass}" id="club-install" data-club-act="install"${ready ? '' : ' style="display:none"'}>${svg('<path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v3h16v-3"/>')}${escapeHtml(t('club.installApp'))}</button>`
+  const offer = !!(window.BLTA_INSTALL && window.BLTA_INSTALL.offer);
+  return `<button type="button" class="${btnClass}" id="club-install" data-club-act="install"${offer ? '' : ' style="display:none"'}>${svg('<path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v3h16v-3"/>')}${escapeHtml(t('club.installApp'))}</button>`
     + `<button type="button" class="${btnClass}" id="club-share" data-club-act="share" data-title="${escapeHtml(shareTitle || '')}">${svg('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>')}${escapeHtml(t('club.share'))}</button>`;
 }
 function syncClubInstallButton() {
   const b = document.getElementById('club-install');
-  if (b) b.style.display = window.BLTA_INSTALL && window.BLTA_INSTALL.ready ? '' : 'none';
+  if (b) b.style.display = window.BLTA_INSTALL && window.BLTA_INSTALL.offer ? '' : 'none';
 }
 ['blta:install-state', 'blta:club-context', 'blta:manifest-changed'].forEach((name) => window.addEventListener(name, syncClubInstallButton));
 document.addEventListener('click', (e) => {
@@ -3982,12 +3983,48 @@ async function setUpAdminTabs() {
 (function initInstallPrompt() {
   if (document.body.classList.contains('embed')) return;
   // the club pages offer "Install as app" in their own buttons: they ask here whether the browser can install (ready) and install (run)
-  window.BLTA_INSTALL = { ready: false, run: async () => {} };
+  window.BLTA_INSTALL = { ready: false, offer: false, run: async () => {} };
   const navLinks = document.querySelector('.nav-links');
   if (!navLinks) return;
 
+  // a small help window with a title and a text (the steps to install from the browser menu, or where to do it)
+  let helpModal = null;
+  function showInstallHelp(title, bodyHtml) {
+    if (!helpModal) {
+      helpModal = document.createElement('div');
+      helpModal.className = 'modal-backdrop';
+      helpModal.style.display = 'none';
+      helpModal.innerHTML = `
+        <div class="modal" style="max-width:340px;text-align:center">
+          <button type="button" class="close" aria-label="Close">&times;</button>
+          <h3 style="margin-top:0" data-role="title"></h3>
+          <p style="color:var(--gray);font-size:14px;text-align:left" data-role="body"></p>
+        </div>`;
+      document.body.appendChild(helpModal);
+      helpModal.querySelector('.close').addEventListener('click', () => { helpModal.style.display = 'none'; });
+      helpModal.addEventListener('click', (e) => { if (e.target === helpModal) helpModal.style.display = 'none'; });
+    }
+    helpModal.querySelector('[data-role="title"]').textContent = title;
+    helpModal.querySelector('[data-role="body"]').innerHTML = bodyHtml;
+    helpModal.style.display = 'flex';
+  }
+
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  if (isStandalone) return; // already installed — nothing to offer
+  if (isStandalone) {
+    // Inside an installed app another app cannot be installed. The general BLTA app still shows the club buttons and says where to do it; an app installed from
+    // a club does not (it is the club).
+    const sync = () => {
+      window.BLTA_INSTALL.offer = !inClubApp();
+      window.dispatchEvent(new CustomEvent('blta:install-state'));
+    };
+    window.BLTA_INSTALL.run = async () => {
+      const c = getClubContext();
+      showInstallHelp(t('install.inAppTitle').replace(/BLTA/g, c ? c.orgName : 'BLTA'), t('install.inAppBody'));
+    };
+    window.addEventListener('blta:club-context', sync);
+    sync();
+    return;
+  }
 
   // the app that is offered is the one of the page: on a city under the national address (slta.sk/kosice) it is "SLTA Košice" with the SLTA icon
   // (its own manifest, see cityManifest in server.js), not BLTA. Every app remembers "installed" and "not now" for itself (slta.sk is one origin for
@@ -4027,14 +4064,19 @@ async function setUpAdminTabs() {
   let deferredPrompt = null;
   const readyNow = () => !installedNow() && (isIOS || !!deferredPrompt);
   let wasReady = false;
-  // the nav button (not in the club view, whose menu is only "← BLTA") and the club buttons follow the same answer
+  let wasOffer = false;
+  // the nav button (not in the club view, whose menu is only "← BLTA") follows `ready` (the browser can install in one tap); the club buttons follow `offer`
+  // (this app / club is not installed yet), so they are there even where the browser never offers an install
   function refresh() {
     const ready = readyNow();
+    const offer = !installedNow();
     btn.style.display = ready && !club() ? '' : 'none';
     window.BLTA_INSTALL.ready = ready;
+    window.BLTA_INSTALL.offer = offer;
     if (ready && !wasReady) window.dispatchEvent(new CustomEvent('blta:install-ready'));
-    if (ready !== wasReady) window.dispatchEvent(new CustomEvent('blta:install-state'));
+    if (ready !== wasReady || offer !== wasOffer) window.dispatchEvent(new CustomEvent('blta:install-state'));
     wasReady = ready;
+    wasOffer = offer;
   }
 
   let showIosModal = () => {};
@@ -4101,7 +4143,8 @@ async function setUpAdminTabs() {
   }
   window.BLTA_INSTALL.run = async () => {
     if (isIOS) { showIosModal(); return; }
-    await triggerAndroidInstall();
+    if (deferredPrompt) { await triggerAndroidInstall(); return; }
+    showInstallHelp(named('install.manualTitle'), t('install.manualBody')); // a browser that offered no install (or not yet): the steps from its own menu
   };
   refresh();
 
