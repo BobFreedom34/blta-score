@@ -835,6 +835,20 @@ Every category (Elite, Next Gen, Novice) of a tournament has its own **format** 
 
 ---
 
+### Club view and the app of a club (community / club page, and its seasons and tournaments)
+
+Inside a community or club — its page `/community/<slug>` or a season / tournament of it (`/season/<slug>`, `/tournament/<slug>` with an `organisation`) —
+the phone bottom bar becomes **Domov** (the club page) / **Zápasy** / **Môj profil** / **Tabuľky** / **Play off** (the three event items open that tab of the
+club's current event; a club with no event sends them to its Events tab), and the top menu is only a small "← BLTA" item (hidden in the installed app).
+The view lasts the whole visit: the club page and the season page store `{ orgSlug, orgName, logoUrl, path, event }` in `sessionStorage` (`blta_club_ctx`,
+`getClubContext / setClubContext / clearClubContext` in `common.js`); every other page only reads it. A league (BLTA) season clears it. The club page picks the
+event (running or coming soonest first, else the latest finished: `pickCurrentEvent` in `community.js`); an event page uses itself.
+The buttons **Nainštaluj ako appku** and **Zdieľať** (`clubAppButtonsHtml` in `common.js`) sit in the action row of the club page and in a row under the hero of a
+club event page. Install installs the CLUB: `src/clubApp.js` + two routes in `src/routes/communities.js` serve `/api/communities/<slug>/manifest.json` (name of the
+club, opens on its page) and `/icon-192|512|maskable.png` drawn from the club logo (BLTA icons when there is none); the pages swap their `<link rel="manifest">`
+for it (`setClubManifest`), and `initInstallPrompt` (common.js) installs that app and remembers "installed" per club. Check: `node scripts/check-club-app.js`.
+Spec/plan: `docs/superpowers/specs|plans/2026-11-01-club-season-menu-and-install*`.
+
 ## 7. Embedding on the blta.sk WordPress site
 
 - **Full live-matches list**, always up to date:

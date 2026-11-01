@@ -7,6 +7,7 @@
   if (!root) return;
 
   const slug = decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '');
+  setClubManifest(slug); // the app that can be installed from this page is this club (see clubApp.js); done now, before the browser decides what to offer
   let org = null;
   let acting = null;
   let loggedIn = false;
@@ -530,7 +531,7 @@
         <div class="com-sub"><span class="com-badge">${escapeHtml(typeText(org))}</span>${org.city ? `${escapeHtml(org.city)} · ` : ''}${escapeHtml(membersText(org.memberCount))}</div>
         ${org.locked && (org.previewPhotos || []).length ? `<div class="com-faces">${org.previewPhotos.map((u) => `<img src="${escapeHtml(u)}" alt="">`).join('')}</div>` : ''}
         ${org.approved ? `<p class="com-join-info">${escapeHtml(joinInfoText())}</p>` : ''}
-        <div class="com-actions" id="com-join">${joinHtml()}${isActing() ? `<button type="button" class="btn com-invite-btn" data-act="invite"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>${escapeHtml(t('com.invite'))}</button><button type="button" class="btn com-invite-btn" data-act="add-members"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 11 2 2 4-4"/></svg>${escapeHtml(t('com.addMembers'))}</button>` : ''}</div>
+        <div class="com-actions" id="com-join">${joinHtml()}${isActing() ? `<button type="button" class="btn com-invite-btn" data-act="invite"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>${escapeHtml(t('com.invite'))}</button><button type="button" class="btn com-invite-btn" data-act="add-members"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 11 2 2 4-4"/></svg>${escapeHtml(t('com.addMembers'))}</button>` : ''}${org.approved && !org.locked ? clubAppButtonsHtml('btn com-invite-btn', org.name) : ''}</div>
       </div>
       ${org.approved ? '' : `<div class="com-hint-box com-wait">${escapeHtml(t('com.pendingBanner'))}</div>`}
       ${inviteToken && !(org.me && (org.me.status === 'ACTIVE')) ? `<div class="com-hint-box com-invited">${escapeHtml(t('com.invitedBanner', { name: org.name }))}</div>` : ''}
@@ -668,6 +669,32 @@
 
   async function loadPosts() { posts = await api(`/communities/${org.id}/posts`); }
 
+  // The event the club bar points to when nothing else says: the running or coming one (soonest first), else the latest finished one (the order of
+  // GET /api/communities/my-events). A season is kind LEAGUE.
+  function pickCurrentEvent(events, today) {
+    const day = (s) => s.endDate || s.startDate || '';
+    const over = (s) => !!day(s) && day(s) < today;
+    const coming = events.filter((s) => !over(s)).sort((a, b) => (a.startDate || '9999').localeCompare(b.startDate || '9999') || a.id - b.id);
+    const past = events.filter(over).sort((a, b) => day(b).localeCompare(day(a)) || b.id - a.id);
+    return coming[0] || past[0] || null;
+  }
+  const clubEvent = (s) => {
+    const season = s.kind === 'LEAGUE';
+    return { slug: s.slug, name: s.name, kind: season ? 'SEASON' : 'TOURNAMENT', path: '/' + (season ? 'season' : 'tournament') + '/' + s.slug }; // (plain text for the storage of the club view, not markup)
+  };
+
+  // The club view (bottom bar and top menu of the club, see getClubContext in common.js) starts here. A club view of THIS club keeps the event the player
+  // opened; otherwise the club's own pick is used.
+  function publishClubView() {
+    const prev = getClubContext();
+    let event = prev && prev.orgSlug === org.slug && prev.event && tournaments.some((s) => s.slug === prev.event.slug) ? prev.event : null;
+    if (!event) {
+      const picked = pickCurrentEvent(tournaments, new Date().toISOString().slice(0, 10));
+      event = picked ? clubEvent(picked) : null;
+    }
+    setClubContext({ orgSlug: org.slug, orgName: org.name, logoUrl: org.logoUrl || '', path: '/community/' + org.slug, event });
+  }
+
   let loadRun = 0;
   async function load() {
     const run = ++loadRun;
@@ -683,6 +710,7 @@
         posts = { items: [], more: false };
         tournaments = [];
         acting = mine.acting;
+        publishClubView();
         render();
         return;
       }
@@ -700,9 +728,11 @@
       tournaments = [...ts.items, ...ss.items].sort((x, y) => (y.startDate || '').localeCompare(x.startDate || '') || y.id - x.id);
       acting = mineRes.acting;
     } catch (err) {
+      if (err.status === 404) clearClubContext(); // no such club (any more): no club view either
       root.innerHTML = `<p class="com-empty">${escapeHtml(err.status === 404 || /not found/i.test(err.message) ? t('com.notFound') : err.message)}</p>`;
       return;
     }
+    publishClubView();
     render();
   }
 

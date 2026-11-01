@@ -11,6 +11,7 @@ const auth = require('../auth');
 const leagues = require('../leagues');
 const communities = require('../communities');
 const clubTournaments = require('../clubTournaments');
+const clubApp = require('../clubApp');
 const seasonsRoutes = require('./seasons');
 const messagesRoutes = require('./messages');
 const messagesLib = require('../messages');
@@ -319,6 +320,26 @@ router.get('/:slug', (req, res) => {
   const out = serialize(org, req);
   if (out.locked) out.previewPhotos = communities.previewPhotos(org.id);
   res.json(out);
+});
+
+// The app of a club: a web manifest named after it that opens on its page, and its icons drawn from the logo (the BLTA icons when it has none).
+// Public like the page itself: a hidden club, an unknown one or one the visitor may not read has neither.
+function readableClub(req, res) {
+  const org = db.prepare('SELECT * FROM organisations WHERE slug = ? AND league_id = ?').get(String(req.params.slug), leagues.actingIdOf(req));
+  if (!org || !communities.canRead(req, org)) { res.status(404).json({ error: 'Community not found' }); return null; }
+  return org;
+}
+router.get('/:slug/manifest.json', (req, res) => {
+  const org = readableClub(req, res);
+  if (!org) return;
+  res.type('application/manifest+json').set('Cache-Control', 'no-cache').send(JSON.stringify(clubApp.manifestFor(org)));
+});
+router.get('/:slug/icon-:variant(192|512|maskable).png', (req, res) => {
+  const org = readableClub(req, res);
+  if (!org) return;
+  const png = clubApp.iconPng(org.logo_url, req.params.variant);
+  if (!png) return res.redirect(302, clubApp.fallbackIcon(req.params.variant));
+  res.type('image/png').set('Cache-Control', 'public, max-age=86400').send(png);
 });
 
 router.post('/', (req, res) => {

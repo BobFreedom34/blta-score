@@ -247,7 +247,27 @@ function headerHtml() {
         <div class="sv-chips"><span class="sv-chip ${isTournament() ? 't' : 'l'}">${escapeHtml(isClubSeason() ? t('com.seasonTag') : t(isTournament() ? 'schedule.tournament' : 'schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
       </div>
     </div>
+    ${clubActionsHtml()}
     ${isTournament() ? '' : `<div class="sv-progress">${seasonProgressHtml(season, standings)}</div>`}`;
+}
+
+// A season or tournament of a community or club: "Install as app" (installs the club) and "Share" in a row under the hero, on the right.
+function clubActionsHtml() {
+  if (!season.organisation) return '';
+  return `<div class="sv-club-actions">${clubAppButtonsHtml('sv-btn', season.name)}</div>`;
+}
+
+// The club view (bottom bar and top menu of the club, see getClubContext in common.js) starts here, with this event as the one the bar points to; a league
+// season or tournament has no club view. The page's app is the club's (see clubApp.js).
+function publishClubView() {
+  const org = season.organisation;
+  if (!org) { clearClubContext(); return; }
+  const tournament = isTournament();
+  setClubContext({
+    orgSlug: org.slug, orgName: org.name, logoUrl: org.logoUrl || '', path: `/community/${org.slug}`,
+    event: { slug: season.slug, name: season.name, kind: tournament ? 'TOURNAMENT' : 'SEASON', path: `${tournament ? '/tournament/' : '/season/'}${season.slug}` },
+  });
+  setClubManifest(org.slug);
 }
 
 function tilesHtml() {
@@ -715,6 +735,7 @@ function render() {
 function openTab(key) {
   tab = key;
   try { history.replaceState(null, '', `#${key}`); } catch { /* the address just stays as it is */ }
+  window.dispatchEvent(new CustomEvent('blta:season-tab', { detail: { tab } })); // the club bar highlights it
   renderPanel();
 }
 
@@ -757,15 +778,18 @@ async function refresh() {
   try {
     season = await api(`/seasons/by-slug/${encodeURIComponent(slug)}`);
   } catch {
+    clearClubContext(); // no such event (any more): no club view either
     rootEl.innerHTML = `<div class="empty-state">${escapeHtml(t('season.notFound'))}</div>`;
     return;
   }
+  publishClubView();
   if (!document.title.includes(season.name)) document.title = `${season.name} — BLTA`; // the server already put the title from Backend > SEO
   await loadStandings();
   await findMyGroup();
   const wantsRegister = window.location.hash === '#register'; // the green "Registrácia" button of a schedule row (slta.sk) leads here
   tab = (wantsRegister ? '' : window.location.hash.slice(1)) || null; // renderTabs picks the first tab with content when there is none
   await render();
+  window.dispatchEvent(new CustomEvent('blta:season-tab', { detail: { tab } }));
   if (wantsRegister && season.registrationOpen && document.getElementById('sv-register')) openRegisterModal();
   if (typeof io === 'function') {
     io().on('matches:changed', () => {

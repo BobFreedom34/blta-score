@@ -1978,49 +1978,169 @@ mountLangRow();
   }, { passive: true });
 })();
 
+// ---- Club view: while a player is inside a community or club (its page, or a season / tournament of it) the phone bottom bar and the top menu work for that club.
+// The community page and the season page store the club (and the event the bar points to) here; every other page only reads it, so the club view lasts the whole
+// visit. sessionStorage: it ends with the tab (or the installed app window), and a page that opens cold (a link from WhatsApp) shows the normal bar.
+//   ctx = { orgSlug, orgName, logoUrl, path: '/community/<slug>', event: { slug, name, kind: 'SEASON'|'TOURNAMENT', path: '/season/<slug>' | '/tournament/<slug>' } | null }
+const CLUB_CTX_KEY = 'blta_club_ctx';
+let clubCtxMemory = null; // the same, for a browser that does not let the page use sessionStorage
+function getClubContext() {
+  let c = null;
+  try { c = JSON.parse(sessionStorage.getItem(CLUB_CTX_KEY)); } catch { c = null; }
+  if (!c) c = clubCtxMemory;
+  return c && typeof c.orgSlug === 'string' && typeof c.path === 'string' && c.path.startsWith('/community/') ? c : null;
+}
+// the admin tools keep their own menu: no club view there (the bottom bar skips them the same way)
+const clubViewShown = () => !!getClubContext() && !/(^|\/)(admin|[a-z-]+-admin|login-history)\/?$/.test(window.location.pathname);
+function syncClubView() {
+  document.body.classList.toggle('club-view', clubViewShown());
+  window.dispatchEvent(new CustomEvent('blta:club-context'));
+}
+function setClubContext(ctx) {
+  clubCtxMemory = ctx;
+  try { sessionStorage.setItem(CLUB_CTX_KEY, JSON.stringify(ctx)); } catch { /* the memory above keeps it for this page */ }
+  syncClubView();
+}
+function clearClubContext() {
+  clubCtxMemory = null;
+  try { sessionStorage.removeItem(CLUB_CTX_KEY); } catch { /* nothing stored */ }
+  syncClubView();
+}
+document.body.classList.toggle('club-view', clubViewShown());
+
+// The app of the club: the page's manifest (and the icon iOS uses for "Add to Home Screen") become the club's own, so what gets installed is the club.
+function setClubManifest(orgSlug) {
+  const base = `${window.CITY_BASE || ''}/api/communities/${encodeURIComponent(orgSlug)}`;
+  const manifest = document.querySelector('link[rel="manifest"]');
+  const changed = !!manifest && manifest.getAttribute('href') !== `${base}/manifest.json`;
+  if (manifest && changed) manifest.setAttribute('href', `${base}/manifest.json`);
+  const touch = document.querySelector('link[rel="apple-touch-icon"]');
+  if (touch) touch.setAttribute('href', `${base}/icon-192.png`);
+  if (changed) window.dispatchEvent(new CustomEvent('blta:manifest-changed'));
+}
+
+// "Share": the phone's share sheet where there is one, else the link is copied. Always the address of the page the player is on.
+async function clubShare(title) {
+  const url = window.location.origin + window.location.pathname;
+  if (navigator.share) {
+    try { await navigator.share({ title, url }); } catch { /* the player closed the sheet */ }
+    return;
+  }
+  try { await copyToClipboard(url); toast(t('share.linkCopied')); } catch { window.prompt(t('share.copyLink'), url); }
+}
+
+// The two buttons of a club page ("Install as app" and "Share"): the community page and the season / tournament page of a club draw them with this and
+// share the clicks (below). Install stays hidden until the browser can install (BLTA_INSTALL.ready, see initInstallPrompt); iOS can at once.
+function clubAppButtonsHtml(btnClass, shareTitle) {
+  const svg = (d) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const ready = !!(window.BLTA_INSTALL && window.BLTA_INSTALL.ready);
+  return `<button type="button" class="${btnClass}" id="club-install" data-club-act="install"${ready ? '' : ' style="display:none"'}>${svg('<path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v3h16v-3"/>')}${escapeHtml(t('club.installApp'))}</button>`
+    + `<button type="button" class="${btnClass}" id="club-share" data-club-act="share" data-title="${escapeHtml(shareTitle || '')}">${svg('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>')}${escapeHtml(t('club.share'))}</button>`;
+}
+function syncClubInstallButton() {
+  const b = document.getElementById('club-install');
+  if (b) b.style.display = window.BLTA_INSTALL && window.BLTA_INSTALL.ready ? '' : 'none';
+}
+['blta:install-state', 'blta:club-context', 'blta:manifest-changed'].forEach((name) => window.addEventListener(name, syncClubInstallButton));
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-club-act]');
+  if (!b) return;
+  if (b.dataset.clubAct === 'install') { if (window.BLTA_INSTALL) window.BLTA_INSTALL.run(); } else clubShare(b.dataset.title);
+});
+
 // Phone bottom menu: Home / Matches / My profile / Tables / Rankings (shown by CSS below ~1024px, where the top menu collapses).
-// Skipped on embeds and the admin tools.
+// In the club view: Home (the club page) / Matches / My profile / Tables / Play-off, the three event items for the event of the club view (or the club's Events tab
+// when it has none). Skipped on embeds and the admin tools.
 (function initBottomNav() {
   if (!document.querySelector('.topbar') || document.body.classList.contains('embed')) return;
   // the admin tools only (a path that ends in admin, <name>-admin or login-history), not a club or a player whose name merely contains "admin"
   if (/(^|\/)(admin|[a-z-]+-admin|login-history)\/?$/.test(window.location.pathname)) return;
   const path = currentCodePath();
-  const items = [
-    { key: 'home', href: '/', icon: 'home', label: t('bottomNav.home') },
-    { key: 'matches', href: '/matches', icon: 'ball', label: t('nav.matches') },
-    { key: 'profile', href: '#', icon: 'user', label: t('nav.myProfile') },
-    { key: 'tables', href: '/tables', icon: 'table', label: t('bottomNav.tables') },
-    { key: 'rankings', href: '/rankings', icon: 'barChart', label: t('nav.rankings') },
-  ];
   const nav = document.createElement('nav');
   nav.className = 'bottom-nav';
   nav.setAttribute('aria-label', 'Main');
-  nav.innerHTML = items.map((i) => `<a class="bottom-nav-item" data-nav="${i.key}" href="${i.href}">${courtIcon(i.icon)}<span>${escapeHtml(i.label)}</span></a>`).join('');
   document.body.appendChild(nav);
   document.body.classList.add('has-bottom-nav');
+
+  const itemsFor = (ctx) => {
+    if (!ctx) {
+      return [
+        { key: 'home', href: '/', icon: 'home', label: t('bottomNav.home') },
+        { key: 'matches', href: '/matches', icon: 'ball', label: t('nav.matches') },
+        { key: 'profile', href: '#', icon: 'user', label: t('nav.myProfile') },
+        { key: 'tables', href: '/tables', icon: 'table', label: t('bottomNav.tables') },
+        { key: 'rankings', href: '/rankings', icon: 'barChart', label: t('nav.rankings') },
+      ];
+    }
+    const to = (tab) => (ctx.event ? `${ctx.event.path}#${tab}` : `${ctx.path}#events`);
+    return [
+      { key: 'home', href: ctx.path, icon: 'home', label: t('bottomNav.home') },
+      { key: 'matches', href: to('matches'), icon: 'ball', label: t('nav.matches') },
+      { key: 'profile', href: '#', icon: 'user', label: t('nav.myProfile') },
+      { key: 'tables', href: to('tables'), icon: 'table', label: t('bottomNav.tables') },
+      { key: 'playoff', href: to('playoff'), icon: 'trophy', label: t('bottomNav.playoff') },
+    ];
+  };
   const el = (k) => nav.querySelector(`[data-nav="${k}"]`);
+  let eventTab = null; // the tab the event page has open (the page tells us; its address only has it after a click)
 
   const setActive = () => {
-    el('home').classList.toggle('active', path === '/');
-    el('matches').classList.toggle('active', path === '/matches');
-    el('tables').classList.toggle('active', path.startsWith('/tables'));
-    el('rankings').classList.toggle('active', path.startsWith('/rankings'));
-    el('profile').classList.toggle('active', path.startsWith('/player/') && el('profile').dataset.code === path);
+    const ctx = getClubContext();
+    const tab = eventTab || window.location.hash.slice(1);
+    const onEvent = !!(ctx && ctx.event && path === ctx.event.path);
+    nav.querySelectorAll('.bottom-nav-item').forEach((a) => {
+      const k = a.dataset.nav;
+      let on = false;
+      if (k === 'profile') on = path.startsWith('/player/') && a.dataset.code === path;
+      else if (ctx) on = k === 'home' ? path === ctx.path : onEvent && tab === k;
+      else on = k === 'home' ? path === '/' : k === 'matches' ? path === '/matches' : k === 'tables' ? path.startsWith('/tables') : path.startsWith('/rankings');
+      a.classList.toggle('active', on);
+    });
   };
-  setActive();
-
-  el('profile').addEventListener('click', (e) => {
-    if (playerAuthed && currentPlayerId) return; // real href already set
-    e.preventDefault();
-    requirePlayerAuth(() => { window.location.href = siteUrl(`/player/${currentPlayerSlug || currentPlayerId}`); });
-  });
   const syncProfile = () => {
-    el('profile').dataset.code = (playerAuthed && currentPlayerId) ? `/player/${currentPlayerSlug || currentPlayerId}` : '';
-    el('profile').href = (playerAuthed && currentPlayerId) ? `/player/${currentPlayerSlug || currentPlayerId}` : '#';
+    // (the first draw of the bar runs before the login state exists, and reading it then throws: no profile link yet, blta:auth-changed brings it)
+    let mine = '';
+    try { mine = (playerAuthed && currentPlayerId) ? `/player/${currentPlayerSlug || currentPlayerId}` : ''; } catch { /* not known yet */ }
+    const a = el('profile');
+    if (!a) return;
+    a.dataset.code = mine;
+    a.href = mine || '#';
     setActive();
   };
+  const render = () => {
+    nav.innerHTML = itemsFor(getClubContext()).map((i) => `<a class="bottom-nav-item" data-nav="${i.key}" href="${i.href}">${courtIcon(i.icon)}<span>${escapeHtml(i.label)}</span></a>`).join('');
+    el('profile').addEventListener('click', (e) => {
+      if (playerAuthed && currentPlayerId) return; // real href already set
+      e.preventDefault();
+      requirePlayerAuth(() => { window.location.href = siteUrl(`/player/${currentPlayerSlug || currentPlayerId}`); });
+    });
+    syncProfile();
+  };
+  render();
   window.addEventListener('blta:auth-changed', syncProfile);
+  window.addEventListener('blta:club-context', render);
+  window.addEventListener('blta:season-tab', (e) => { eventTab = e.detail && e.detail.tab; setActive(); });
+  window.addEventListener('hashchange', () => { eventTab = null; setActive(); });
+})();
 
+// The top menu in the club view is one small "← BLTA" item that leaves the club view (the rest of the menu is hidden by CSS, see body.club-view; in the
+// installed app the item is hidden too: the app is the club).
+(function initClubExit() {
+  const links = document.getElementById('nav-links');
+  if (!links || document.body.classList.contains('embed')) return;
+  const sync = () => {
+    let a = links.querySelector('.club-exit');
+    if (!clubViewShown()) { if (a) a.remove(); return; }
+    if (a) return;
+    a = document.createElement('a');
+    a.className = 'club-exit';
+    a.href = siteUrl('/');
+    a.textContent = t('clubView.exit');
+    a.addEventListener('click', () => clearClubContext());
+    links.appendChild(a);
+  };
+  sync();
+  window.addEventListener('blta:club-context', sync);
 })();
 
 document.querySelectorAll('[data-close]').forEach((el) => {
@@ -3843,6 +3963,8 @@ async function setUpAdminTabs() {
 // closes it or installs, so it never turns into a nag.
 (function initInstallPrompt() {
   if (document.body.classList.contains('embed')) return;
+  // the club pages offer "Install as app" in their own buttons: they ask here whether the browser can install (ready) and install (run)
+  window.BLTA_INSTALL = { ready: false, run: async () => {} };
   const navLinks = document.querySelector('.nav-links');
   if (!navLinks) return;
 
@@ -3852,12 +3974,16 @@ async function setUpAdminTabs() {
   // the app that is offered is the one of the page: on a city under the national address (slta.sk/kosice) it is "SLTA Košice" with the SLTA icon
   // (its own manifest, see cityManifest in server.js), not BLTA. Every app remembers "installed" and "not now" for itself (slta.sk is one origin for
   // the national app and all the cities, so one shared memory would keep a player who installed one from being offered the other).
+  // In the club view (a community or club, see getClubContext) the app is the club: its name, its own manifest and icon, and its own memory.
   const cityApp = window.CITY && !window.CITY.first;
   const appName = cityApp ? (window.CITY.brand || window.CITY.name) : 'BLTA';
   const appIcon = cityApp ? '/img/slta/favicon-64.png' : '/icon-64.png';
-  const named = (key) => t(key).replace(/BLTA/g, appName);
-  const INSTALL_DISMISS_KEY = `blta_install_banner_dismissed_until${cityApp ? window.CITY_BASE : ''}`;
-  const INSTALL_DONE_KEY = `blta_app_installed${cityApp ? window.CITY_BASE : ''}`;
+  const club = () => getClubContext();
+  const nameNow = () => (club() ? club().orgName : appName);
+  const named = (key) => t(key).replace(/BLTA/g, nameNow());
+  const memorySuffix = () => (club() ? `:club:${club().orgSlug}` : (cityApp ? window.CITY_BASE : ''));
+  const dismissKey = () => `blta_install_banner_dismissed_until${memorySuffix()}`;
+  const doneKey = () => `blta_app_installed${memorySuffix()}`;
   const DISMISS_DAYS = 30;
 
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
@@ -3865,13 +3991,13 @@ async function setUpAdminTabs() {
 
   // A regular (non-standalone) browser tab can't tell on its own that this
   // browser already has the app installed — display-mode only reflects
-  // *this* tab. INSTALL_DONE_KEY, set once by the appinstalled handler
+  // *this* tab. The "installed" key, set once by the appinstalled handler
   // below, is what keeps the banner from reoffering an install that
   // already happened the next time this same browser visits in a normal
   // tab (e.g. a search-result link) instead of the installed app.
-  let alreadyInstalled = false;
-  try { alreadyInstalled = localStorage.getItem(INSTALL_DONE_KEY) === '1'; } catch { /* ignore */ }
-  if (alreadyInstalled) return;
+  const installedNow = () => {
+    try { return localStorage.getItem(doneKey()) === '1'; } catch { return false; }
+  };
 
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -3879,6 +4005,19 @@ async function setUpAdminTabs() {
   btn.textContent = t('install.navBtn');
   btn.style.display = 'none';
   navLinks.appendChild(btn);
+
+  let deferredPrompt = null;
+  const readyNow = () => !installedNow() && (isIOS || !!deferredPrompt);
+  let wasReady = false;
+  // the nav button (not in the club view, whose menu is only "← BLTA") and the club buttons follow the same answer
+  function refresh() {
+    const ready = readyNow();
+    btn.style.display = ready && !club() ? '' : 'none';
+    window.BLTA_INSTALL.ready = ready;
+    if (ready && !wasReady) window.dispatchEvent(new CustomEvent('blta:install-ready'));
+    if (ready !== wasReady) window.dispatchEvent(new CustomEvent('blta:install-state'));
+    wasReady = ready;
+  }
 
   let showIosModal = () => {};
   if (isIOS) {
@@ -3889,7 +4028,7 @@ async function setUpAdminTabs() {
     modal.innerHTML = `
       <div class="modal" style="max-width:340px;text-align:center">
         <button type="button" class="close" data-close="install-ios-modal" aria-label="Close">&times;</button>
-        <h3 style="margin-top:0">${escapeHtml(named('install.iosTitle'))}</h3>
+        <h3 style="margin-top:0" id="install-ios-title"></h3>
         <p style="color:var(--gray);font-size:14px;text-align:left">
           1. ${t('install.iosStep1')}<br><br>
           2. ${t('install.iosStep2')}<br><br>
@@ -3903,13 +4042,14 @@ async function setUpAdminTabs() {
     modal.querySelector('[data-close]').addEventListener('click', () => { modal.style.display = 'none'; });
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
 
-    showIosModal = () => { modal.style.display = 'flex'; };
-    btn.style.display = '';
+    showIosModal = () => {
+      modal.querySelector('#install-ios-title').textContent = named('install.iosTitle');
+      modal.style.display = 'flex';
+    };
     btn.addEventListener('click', showIosModal);
   }
 
-  let deferredPrompt = null;
-  let triggerAndroidInstall = () => {};
+  let triggerAndroidInstall = async () => {};
   if (!isIOS) {
     triggerAndroidInstall = async () => {
       if (!deferredPrompt) return;
@@ -3917,11 +4057,12 @@ async function setUpAdminTabs() {
       deferredPrompt = null;
       prompt.prompt();
       await prompt.userChoice;
+      refresh();
     };
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      btn.style.display = '';
+      refresh();
       maybeShowBanner();
     });
     btn.addEventListener('click', async () => {
@@ -3931,16 +4072,26 @@ async function setUpAdminTabs() {
       btn.disabled = false;
     });
     window.addEventListener('appinstalled', () => {
-      btn.style.display = 'none';
+      try { localStorage.setItem(doneKey(), '1'); } catch { /* ignore */ }
+      deferredPrompt = null;
       hideBanner();
-      try { localStorage.setItem(INSTALL_DONE_KEY, '1'); } catch { /* ignore */ }
+      refresh();
     });
+    // the page's manifest was swapped for the club's (setClubManifest): a prompt that came for the old one would install the wrong app, so the browser's
+    // next one (it offers again for the new manifest) is the one to use
+    window.addEventListener('blta:manifest-changed', () => { deferredPrompt = null; refresh(); });
   }
+  window.BLTA_INSTALL.run = async () => {
+    if (isIOS) { showIosModal(); return; }
+    await triggerAndroidInstall();
+  };
+  refresh();
 
   // The banner itself — a bottom sheet that shows once, unprompted, so
   // someone who'd never think to open the mobile nav menu still sees the
   // option. Desktop gets nothing here (see the min-width guard in CSS) —
   // the nav button alone covers that case, same as before this existed.
+  // Never in the club view: the club pages have their own install button.
   const banner = document.createElement('div');
   banner.className = 'install-banner';
   banner.setAttribute('role', 'dialog');
@@ -3959,7 +4110,7 @@ async function setUpAdminTabs() {
   function hideBanner() { banner.classList.remove('show'); }
   function dismissBanner() {
     hideBanner();
-    try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now() + DISMISS_DAYS * 86400000)); } catch { /* ignore */ }
+    try { localStorage.setItem(dismissKey(), String(Date.now() + DISMISS_DAYS * 86400000)); } catch { /* ignore */ }
   }
   banner.querySelector('[data-action="dismiss"]').addEventListener('click', dismissBanner);
   banner.querySelector('[data-action="install"]').addEventListener('click', async () => {
@@ -3970,11 +4121,15 @@ async function setUpAdminTabs() {
 
   function maybeShowBanner() {
     if (!window.matchMedia('(max-width: 680px)').matches) return; // mobile only
+    if (club() || installedNow()) return;
     let dismissedUntil = 0;
-    try { dismissedUntil = Number(localStorage.getItem(INSTALL_DISMISS_KEY)) || 0; } catch { /* ignore */ }
+    try { dismissedUntil = Number(localStorage.getItem(dismissKey())) || 0; } catch { /* ignore */ }
     if (Date.now() < dismissedUntil) return;
     banner.classList.add('show');
   }
+
+  // the club view can start after the banner was due (the club page knows its club only once it has loaded)
+  window.addEventListener('blta:club-context', () => { if (club()) hideBanner(); refresh(); });
 
   // iOS never fires beforeinstallprompt at all, so it's the only signal
   // there ever will be to wait on — show after a short delay instead so

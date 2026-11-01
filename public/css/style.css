@@ -3442,6 +3442,15 @@ body:not(.embed-light) .match-card.result-won { border-color: var(--status-green
 body:not(.embed-light) .match-card.status-PLANNED.has-date:hover,
 body:not(.embed-light) .match-card.result-won:hover { border-color: var(--status-green); }
 
+/* ---------- Club view: inside a community or club the top menu is only "← BLTA" (see initClubExit in common.js) ---------- */
+body.club-view .nav-links > *:not(.club-exit),
+body.club-view .booking-btn,
+body.club-view .booking-spacer,
+body.club-view .install-app-btn { display: none !important; }
+.club-exit { font-weight: 700; letter-spacing: 0.04em; }
+/* in the installed app the app IS the club: there is nothing to leave */
+@media (display-mode: standalone) { body.club-view .nav-links { display: none; } }
+
 /* ---------- Phone bottom menu (Home / My matches / My profile / Rankings) ---------- */
 .bottom-nav { display: none; }
 @media (max-width: 1024px) {
@@ -4105,6 +4114,10 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 
 /* season page: registration + payment buttons and the registration form */
 .sv-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+/* a club's season or tournament: Install as app + Share, right-aligned under the hero (inside the gap above the progress card / the numbers) */
+.sv-club-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin: -28px 0 40px; position: relative; z-index: 1; }
+.sv-club-actions .sv-btn { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: #000; border: 0; font-weight: 800; }
+.sv-club-actions .sv-btn:hover { background: #e9e9e9; color: #000; }
 .sv-btn { display: inline-flex; align-items: center; padding: 9px 16px; border-radius: var(--radius-sm); font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; border: 1px solid transparent; cursor: pointer; white-space: nowrap; }
 .sv-btn.primary { background: var(--orange); color: var(--white); }
 .sv-btn.primary:hover { background: var(--orange-dark); }
