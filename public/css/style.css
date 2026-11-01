@@ -5980,3 +5980,42 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
   .cookie-banner-btns .btn { flex: 1; }
 }
 .cookie-banner .btn-outline { color: #fff; background: transparent; border-color: rgba(255, 255, 255, 0.45); }
+
+/* The footer of the public pages (src/footer.js): a card with the logo, the name and a description, three groups of links, the other cities, the small print.
+   Green accents (the site's lime), dark panels. */
+.sf { background: var(--ink); margin-top: 48px; padding-top: 28px; color: #c3c7cf; font-size: 13px; }
+.sf-wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+.sf-main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); gap: 16px; }
+.sf-brand { background: #202124; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius); padding: 20px; }
+.sf-logo { display: inline-flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; }
+.sf-logo img { height: 40px; width: auto; display: block; }
+.sf-logo img.sf-logo-wide { height: 30px; }
+.sf-name { font-weight: 800; font-size: 16px; letter-spacing: 0.02em; text-transform: uppercase; }
+.sf-desc { margin: 14px 0 0; line-height: 1.55; }
+.sf-address { font-style: normal; margin-top: 14px; color: #fff; line-height: 1.55; }
+.sf-address a { color: var(--green); text-decoration: none; }
+.sf-address a:hover { text-decoration: underline; }
+.sf-social { list-style: none; display: flex; gap: 8px; margin: 16px 0 0; padding: 0; }
+.sf-social a { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--fill-grey); color: #fff; transition: background 0.15s, color 0.15s; }
+.sf-social a:hover, .sf-social a:focus-visible { background: var(--green); color: var(--ink); }
+.sf-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px 24px; padding: 8px 4px; align-content: start; }
+.sf-h { margin: 0 0 10px; padding-left: 10px; border-left: 3px solid var(--green); font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #fff; line-height: 1.2; }
+.sf-group ul { list-style: none; margin: 0; padding: 0; }
+.sf-group a { display: block; padding: 5px 0; color: #c3c7cf; font-weight: 600; text-decoration: none; transition: color 0.15s; }
+.sf-group a:hover, .sf-group a:focus-visible { color: var(--green); }
+.sf-cities { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.sf-cities > span { color: #8b8f98; font-size: 12px; font-weight: 700; margin-right: 2px; }
+.sf-pill { background: var(--fill-grey); color: #fff; border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; text-decoration: none; transition: background 0.15s, color 0.15s; }
+.sf-pill:hover, .sf-pill:focus-visible { background: var(--green); color: var(--ink); }
+.sf-bottom { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; padding: 16px 0 24px; color: #8b8f98; font-size: 12px; }
+.sf-legal { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.sf-legal a { color: #8b8f98; text-decoration: none; }
+.sf-legal a:hover, .sf-legal a:focus-visible { color: var(--green); }
+.sf-legal .cookie-settings-link { margin: 0; }
+@media (max-width: 680px) {
+  .sf-main { grid-template-columns: minmax(0, 1fr); }
+  .sf-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sf-group a { padding: 8px 0; }
+  .sf-pill { padding: 9px 16px; }
+  .sf-legal a { padding: 6px 0; }
+}

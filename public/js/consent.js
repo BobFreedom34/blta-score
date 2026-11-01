@@ -48,7 +48,7 @@
   }
 
   function addFooterLink() {
-    const spot = document.querySelector('.site-footer-inner > div') || document.querySelector('footer.credit') || document.querySelector('.site-footer-inner');
+    const spot = document.querySelector('.sf-legal') || document.querySelector('.site-footer-inner > div') || document.querySelector('footer.credit') || document.querySelector('.site-footer-inner');
     if (!spot || spot.querySelector('.cookie-settings-link')) return;
     const a = document.createElement('a');
     a.href = '#';

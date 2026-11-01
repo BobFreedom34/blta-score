@@ -107,7 +107,8 @@
     const done = new WeakMap(); // anchor -> the href it carries after the rewrite (so it is not rewritten twice)
     function fix(a) {
       const raw = a.getAttribute('href');
-      if (!raw || raw.charAt(0) === '#' || done.get(a) === raw) return;
+      // a link marked data-nobase goes exactly where it says (the footer's link from a city to the national site)
+      if (!raw || raw.charAt(0) === '#' || done.get(a) === raw || a.hasAttribute('data-nobase')) return;
       let url;
       try { url = new URL(raw, location.href); } catch { return; }
       if (url.origin !== location.origin) return;
