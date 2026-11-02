@@ -6044,41 +6044,41 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 
 /* ---------- Dark windows: "Your availability" (/looking-to-play), the profile edit window, the "Get notified" window and the bell panel: the dark of the
    new-match form (#new-match-form above): #1b1b1f with an orange hairline, small capital labels, grey fields, a green button ---------- */
-#my-post-card, #player-bio-modal .modal, #notify-modal .modal { background: #1b1b1f; color: var(--white); border: 1px solid rgba(255, 85, 0, 0.45); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); color-scheme: dark; --green: #b2fa06; --green-light: #b2fa06; }
+#my-post-card, .modal { background: #1b1b1f; color: var(--white); border: 1px solid rgba(255, 85, 0, 0.45); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); color-scheme: dark; --green: #b2fa06; --green-light: #b2fa06; }
 #my-post-card { padding: 28px 26px 24px; }
-#player-bio-modal .modal, #notify-modal .modal { padding: 28px 26px 24px; }
-#my-post-card h2, #player-bio-modal .modal h3, #notify-modal .modal h3 { color: var(--white); }
-#player-bio-modal .close, #notify-modal .close { color: #c3c7cf; }
-#player-bio-modal .close:hover, #notify-modal .close:hover { color: var(--orange); }
-:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field > label { color: #c3c7cf; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
-:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field > label span[data-i18n="common.optional"], #my-post-card .field > label > span[style], :is(#my-post-card, #player-bio-modal .modal) .field small, #my-post-card .field > label .optional { text-transform: none; letter-spacing: 0; font-weight: 600; color: #8b8f98 !important; }
-:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field input, :is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field select, :is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field textarea { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: var(--radius-sm); color: #fff; font-size: 15px; font-weight: 600; padding: 12px 14px; outline: 0; box-shadow: none; }
-:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field input::placeholder, :is(#my-post-card, #player-bio-modal .modal) .field textarea::placeholder { color: #6f737c; font-weight: 500; }
-:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field input:focus, :is(#my-post-card, #player-bio-modal .modal) .field select:focus, :is(#my-post-card, #player-bio-modal .modal) .field textarea:focus { border-color: var(--orange); }
-:is(#my-post-card, #player-bio-modal .modal) .field select option { background: #1b1b1f; color: #fff; }
-#player-bio-modal .modal > form > p, #notify-modal #notify-modal-desc, #my-post-card .slot-hint { color: #8b8f98 !important; }
+.modal { padding: 28px 26px 24px; }
+#my-post-card h2, .modal h3 { color: var(--white); }
+.modal .close { color: #c3c7cf; }
+.modal .close:hover { color: var(--orange); }
+:is(#my-post-card, .modal) .field > label { color: #c3c7cf; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+:is(#my-post-card, .modal) .field > label span[data-i18n="common.optional"], #my-post-card .field > label > span[style], :is(#my-post-card, .modal) .field small, #my-post-card .field > label .optional { text-transform: none; letter-spacing: 0; font-weight: 600; color: #8b8f98 !important; }
+:is(#my-post-card, .modal) .field input, :is(#my-post-card, .modal) .field select, :is(#my-post-card, .modal) .field textarea { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: var(--radius-sm); color: #fff; font-size: 15px; font-weight: 600; padding: 12px 14px; outline: 0; box-shadow: none; }
+:is(#my-post-card, .modal) .field input::placeholder, :is(#my-post-card, .modal) .field textarea::placeholder { color: #6f737c; font-weight: 500; }
+:is(#my-post-card, .modal) .field input:focus, :is(#my-post-card, .modal) .field select:focus, :is(#my-post-card, .modal) .field textarea:focus { border-color: var(--orange); }
+:is(#my-post-card, .modal) .field select option { background: #1b1b1f; color: #fff; }
+#notify-modal-desc, #my-post-card .slot-hint { color: #8b8f98 !important; }
 #notify-modal .modal > div[style*="text-align:center"] { color: #8b8f98 !important; }
 /* the buttons: the main one green like "Naplánovať", the others an outline */
-:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) button[type="submit"] { background: var(--green); border-color: var(--green); color: #0a0a0a; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 14px 16px; }
-:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) button[type="submit"]:hover { background: #c6ff3a; border-color: #c6ff3a; }
-:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .btn-outline { background: transparent; border-color: rgba(255, 255, 255, 0.3); color: #fff; }
-:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+:is(#my-post-card, .modal) button[type="submit"] { background: var(--green); border-color: var(--green); color: #0a0a0a; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 14px 16px; }
+:is(#my-post-card, .modal) button[type="submit"]:hover { background: #c6ff3a; border-color: #c6ff3a; }
+:is(#my-post-card, .modal) .btn-outline { background: transparent; border-color: rgba(255, 255, 255, 0.3); color: #fff; }
+:is(#my-post-card, .modal) .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
 #my-post-card .btn-primary:not([type="submit"]) { background: var(--green); border-color: var(--green); color: #0a0a0a; }
 #my-post-card #my-post-error { color: #ff6a74; }
-#player-bio-modal #bio-error, #notify-modal #notify-error, #notify-modal #notify-push-error { color: #ff6a74; }
+.modal #bio-error, #notify-modal #notify-error, #notify-modal #notify-push-error { color: #ff6a74; }
 /* "Your availability": the singles/doubles switch, the week tabs, the calendar, the level chips and the lists under it */
-#my-post-card .mode-switch { border-color: rgba(255, 255, 255, 0.2); }
-#my-post-card .mode-switch button { color: #c3c7cf; }
-#my-post-card .mode-switch button.active { background: var(--orange); color: #fff; }
-#my-post-card .week-picker-tabs .tab { background: transparent; color: var(--white); box-shadow: none; border: 1px solid var(--border-grey); }
-#my-post-card .week-picker-tabs .tab.active { background: var(--orange); border-color: var(--orange); }
-#my-post-card .avail-day-head, #my-post-card .avail-time-label { color: #8b8f98; }
-#my-post-card .avail-cell { background: rgba(255, 255, 255, 0.07); }
-#my-post-card .avail-cell:hover { background: rgba(255, 255, 255, 0.14); }
-#my-post-card .avail-cell.selected { background: var(--orange); }
-#my-post-card .avail-cell.selected:hover { background: var(--orange-dark); }
-#my-post-card .avail-cell.blocked { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.04) 3px, rgba(255, 255, 255, 0.13) 3px, rgba(255, 255, 255, 0.13) 6px); }
-#my-post-card .avail-grid-compact .hour-start { border-top-color: rgba(255, 255, 255, 0.14); }
+:is(#my-post-card, .modal) .mode-switch { border-color: rgba(255, 255, 255, 0.2); }
+:is(#my-post-card, .modal) .mode-switch button { color: #c3c7cf; }
+:is(#my-post-card, .modal) .mode-switch button.active { background: var(--orange); color: #fff; }
+:is(#my-post-card, .modal) .week-picker-tabs .tab { background: transparent; color: var(--white); box-shadow: none; border: 1px solid var(--border-grey); }
+:is(#my-post-card, .modal) .week-picker-tabs .tab.active { background: var(--orange); border-color: var(--orange); }
+:is(#my-post-card, .modal) .avail-day-head, :is(#my-post-card, .modal) .avail-time-label { color: #8b8f98; }
+:is(#my-post-card, .modal) .avail-cell { background: rgba(255, 255, 255, 0.07); }
+:is(#my-post-card, .modal) .avail-cell:hover { background: rgba(255, 255, 255, 0.14); }
+:is(#my-post-card, .modal) .avail-cell.selected { background: var(--orange); }
+:is(#my-post-card, .modal) .avail-cell.selected:hover { background: var(--orange-dark); }
+:is(#my-post-card, .modal) .avail-cell.blocked { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.04) 3px, rgba(255, 255, 255, 0.13) 3px, rgba(255, 255, 255, 0.13) 6px); }
+:is(#my-post-card, .modal) .avail-grid-compact .hour-start { border-top-color: rgba(255, 255, 255, 0.14); }
 #my-post-card #my-post-categories .category-toggle { background: var(--fill-grey); color: #c3c7cf; border: 2px solid rgba(255, 255, 255, 0.14); }
 #my-post-card #my-post-categories .category-toggle:hover { border-color: var(--orange); color: var(--orange); }
 #my-post-card #my-post-categories .category-toggle.active { background: var(--orange); border-color: var(--orange); color: #fff; }
@@ -6092,7 +6092,7 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 #my-post-card div[style*="border-top"] { border-top-color: rgba(255, 255, 255, 0.12) !important; }
 #my-post-card p[style*="color:var(--gray-dim)"] { color: #8b8f98 !important; }
 #my-post-card .btn-danger { color: #fff; }
-@media (max-width: 480px) { #my-post-card, #player-bio-modal .modal, #notify-modal .modal { padding: 22px 16px 20px; } }
+@media (max-width: 480px) { #my-post-card, .modal { padding: 22px 16px 20px; } }
 
 /* the bell panel (notifications) */
 .badge-notif-panel { background: #1b1b1f; color: var(--white); border: 1px solid rgba(255, 85, 0, 0.45); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); color-scheme: dark; }
@@ -6111,3 +6111,35 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .badge-notif-date { color: #8b8f98; }
 #login-required-card { background: #1b1b1f; border: 1px solid rgba(255, 85, 0, 0.45); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
 #login-required-card p { color: #c3c7cf !important; }
+
+/* every window (.modal): the pieces that were written for a white window follow the dark one — the greys and the ink are re-pointed inside it, so every
+   inline colour:var(--gray) / var(--ink) of a page or script reads on the dark card without being touched */
+.modal { --ink: #fff; --gray: #c3c7cf; --gray-dim: #8b8f98; --gray-light: rgba(255, 255, 255, 0.1); }
+.modal .btn-dark { background: var(--fill-grey); border-color: rgba(255, 255, 255, 0.12); color: #fff; }
+.modal .btn-yellow { color: #0a0a0a; }
+.modal .btn-danger { color: #fff; }
+.modal .code-box { background: var(--fill-grey); color: #fff; }
+.modal .tab { background: var(--fill-grey); color: #d6d8dd; box-shadow: none; }
+.modal .tab.active { background: var(--orange); color: #fff; }
+.modal .tab .count { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.modal hr { border-color: rgba(255, 255, 255, 0.12); }
+.modal a:not(.btn):not(.tab) { color: var(--orange); }
+.modal .badge-status.status-UNFINISHED, .modal .badge-status.status-FINISHED { color: #0a0a0a; }
+.modal .badge-status.status-FINISHED { background: var(--fill-grey); color: #fff; }
+.modal #pick-slot-grid-wrap .avail-cell:hover, .modal #proposal-grid-wrap .avail-cell:hover, .modal #counter-proposal-grid-wrap .avail-cell:hover { background: rgba(255, 255, 255, 0.14); }
+.modal #pick-slot-grid-wrap .avail-cell.proposed, .modal #proposal-grid-wrap .avail-cell.proposed, .modal #counter-proposal-grid-wrap .avail-cell.proposed { background: rgba(255, 85, 0, 0.22); border: 1.5px solid var(--orange); }
+.modal #pick-slot-grid-wrap .avail-cell.proposed:hover, .modal #proposal-grid-wrap .avail-cell.proposed:hover, .modal #counter-proposal-grid-wrap .avail-cell.proposed:hover { background: rgba(255, 85, 0, 0.38); }
+.modal #pick-slot-grid-wrap .avail-cell.proposed.selected, .modal #proposal-grid-wrap .avail-cell.proposed.selected, .modal #counter-proposal-grid-wrap .avail-cell.proposed.selected { background: var(--orange); border-color: var(--orange-dark); }
+.modal .btn-green { color: #0a0a0a; }
+/* a plain .btn (white with ink text) becomes a grey one; the coloured variants keep their own look */
+.modal .btn:where(:not(.btn-primary, .btn-green, .btn-yellow, .btn-dark, .btn-outline, .btn-danger, .btn-icon, .btn-join, .btn-reserve-court, .btn-giant, .btn-minus, .btn-score-number)) { background: var(--fill-grey); color: #fff; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: none; }
+.modal .autocomplete-list { background: #26262c; border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55); }
+.modal .autocomplete-item { color: #fff; }
+.modal .autocomplete-item:hover, .modal .autocomplete-item.active { background: var(--fill-grey); }
+.modal .sv-reg-opt { background: var(--fill-grey); color: #fff; border-color: rgba(255, 255, 255, 0.14); }
+.modal .sv-reg-opt:hover { border-color: var(--orange); }
+.modal .mc-search { background: var(--fill-grey); color: #fff; border: 1px solid rgba(255, 255, 255, 0.14); }
+/* the hero photo of the registration window runs to the edges of the (now roomier) window */
+.modal .sv-reg-cover { margin: -28px -26px 18px; }
+.modal .sv-reg-cover-text { padding: 0 26px 16px; }
+@media (max-width: 480px) { .modal .sv-reg-cover { margin: -22px -16px 18px; } .modal .sv-reg-cover-text { padding: 0 16px 16px; } }
