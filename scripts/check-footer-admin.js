@@ -72,12 +72,12 @@ test('own groups of links: pages (their public address, in the language of the p
   assert.strictEqual((await put({ ...BASE, groups })).status, 200);
   const seo = (await blta('/api/seo', { cookie: admin })).json.find((p) => p.key === 'matches');
   const f = footerOf((await blta('/')).body);
-  assert.deepStrictEqual([...f.matchAll(/<h2 class="sf-h">([^<]*)</g)].map((m) => m[1]), ['Hrať', 'Partneri']);
+  assert.deepStrictEqual([...f.matchAll(/<p class="sf-h">([^<]*)</g)].map((m) => m[1]), ['Hrať', 'Partneri']);
   assert.ok(f.includes(`<a href="/${seo.slugs.sk}">Zápasy</a>`));
   assert.ok(f.includes('<a href="/registracia">Registrácia</a>') && f.includes('<a href="#kontakt">Kontakt</a>'));
   assert.ok(f.includes('<a href="https://skola.example/tenis" target="_blank" rel="noopener">Tenisová škola</a>'));
   const en = footerOf((await blta('/en')).body);
-  assert.ok(en.includes('<h2 class="sf-h">Partners</h2>') && en.includes('>Tennis school<'));
+  assert.ok(en.includes('<p class="sf-h">Partners</p>') && en.includes('>Tennis school<'));
   assert.ok(en.includes(`<a href="/en/${seo.slugs.en}">Matches</a>`));
 });
 
@@ -197,7 +197,7 @@ test('the national site has its own footer, only the super admin changes it', as
 test('reset goes back to the built-in footer (also for the groups); the backend page and its tab exist', async () => {
   assert.strictEqual((await blta('/api/footer', { method: 'DELETE', cookie: admin })).status, 200);
   const f = footerOf((await blta('/')).body);
-  assert.ok(f.includes('Liga pre rekreačných a amatérskych tenistov v Bratislave') && f.includes('<h2 class="sf-h">Komunita</h2>') && f.includes('IČO 51237971'));
+  assert.ok(f.includes('Liga pre rekreačných a amatérskych tenistov v Bratislave') && f.includes('<p class="sf-h">Komunita</p>') && f.includes('IČO 51237971'));
   assert.ok(f.includes('class="sf-cities"'), 'the row of cities is back');
   const page = await blta('/footer-admin');
   assert.strictEqual(page.status, 200);

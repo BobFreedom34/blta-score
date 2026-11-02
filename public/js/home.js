@@ -444,11 +444,11 @@ function matchesBlockHtml(d) {
   <section class="home-sec">
     <div class="home-cols">
       <div class="home-col">
-        ${secTitle(t('home.results'), '', '/matches', t('home.all'))}
+        ${secTitle(t('home.latestResults'), '', '/matches', t('home.allResults'))}
         <div class="home-card">${d.finished.length ? d.finished.map(resultRow).join('') : `<div class="home-empty">${escapeHtml(t('home.noResults'))}</div>`}</div>
       </div>
       <div class="home-col">
-        ${secTitle(t('home.upcoming'), '', '/matches', t('home.all'))}
+        ${secTitle(t('home.upcoming'), '', '/matches', t('home.allUpcoming'))}
         <div class="home-card">${upcomingRows(d)}</div>
       </div>
     </div>
@@ -475,7 +475,7 @@ function colTitle(label, note, href, linkText) {
 function rankingHtml(rows) {
   return `
   <div class="home-col">
-    ${colTitle(t('home.ranking'), t('home.top5'), '/rankings', t('home.whole'))}
+    ${colTitle(t('home.ranking'), t('home.top5'), '/rankings', t('home.wholeRanking'))}
     <div class="home-card">
       <div class="home-t-head rank"><span>#</span><span>${escapeHtml(t('tables.player'))}</span><span>${escapeHtml(t('home.change'))}</span><span>${escapeHtml(t('tables.points'))}</span></div>
       ${rows.slice(0, 5).map((r) => `
@@ -498,7 +498,7 @@ function nextSlot(post) {
 function lookingHtml(posts) {
   return `
   <div class="home-col">
-    ${colTitle(t('home.looking'), '', '/looking-to-play', t('home.everyone'))}
+    ${colTitle(t('home.looking'), '', '/looking-to-play', t('home.allLooking'))}
     <div class="home-card">
       ${posts.length ? posts.slice(0, 4).map((p) => {
         const cats = (p.categories || []).map((c) => categoryLabel(c)).join(' · ');
@@ -556,7 +556,7 @@ function moversHtml(d) {
   const tiles = [tile(t('home.moverLeader'), rows[0], `#1 · ${rows[0].points}`, '')];
   if (ups[0]) tiles.push(tile(t('home.moverUp'), ups[0], `▲ ${ups[0].move.amount} · #${ups[0].rank}`, 'up'));
   if (downs[0]) tiles.push(tile(t('home.moverDown'), downs[0], `▼ ${downs[0].move.amount} · #${downs[0].rank}`, 'down'));
-  return `<section class="home-sec">${secTitle(t('home.movers'), '', '/rankings', t('home.whole'))}<div class="home-movers n${tiles.length}">${tiles.join('')}</div></section>`;
+  return `<section class="home-sec">${secTitle(t('home.movers'), '', '/rankings', t('home.wholeRanking'))}<div class="home-movers n${tiles.length}">${tiles.join('')}</div></section>`;
 }
 
 // the card of the matches that are being played now, alone at the very top of the page (above the carousel); nothing is shown when no match is live
@@ -570,9 +570,9 @@ function liveHtml(d) {
 
 function sub(d) {
   if (!d.season) return '';
-  const end = d.season.endDate ? ` · ${t('home.endsOn', { date: dayMonth(d.season.endDate) })}` : '';
+  const end = d.season.endDate ? `<span>${escapeHtml(t('home.endsOn', { date: dayMonth(d.season.endDate) }))}</span>` : '';
   const name = d.season.slug ? `<a href="/season/${encodeURIComponent(d.season.slug)}">${escapeHtml(d.season.name)}</a>` : escapeHtml(d.season.name);
-  return `<p class="home-sub"><b>${name}</b>${escapeHtml(end)}</p>`;
+  return `<p class="home-sub"><b>${name}</b>${end}</p>`;
 }
 
 function renderHome() {
@@ -583,6 +583,7 @@ function renderHome() {
   document.getElementById('home-sub').innerHTML = sub(d);
   document.getElementById('home-live-top').innerHTML = liveHtml(d);
   const stateEl = document.getElementById('home-state');
+  document.getElementById('home-season-card').hidden = !d.season; // the card of the current season: nothing to show without one
   if (d.season) {
     const state = seasonState(d.season, new Date().toISOString().slice(0, 10));
     // a season that has not started yet but takes registrations says so (the same as the national page), not just "in preparation"

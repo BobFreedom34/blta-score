@@ -331,4 +331,23 @@ function ensureCommunityMenuItems(db) {
   });
 }
 
-module.exports = { ensureCommunityMenuItems, removeDescriptionSignOff, ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, ensureWinnersMenuItem, ensureCommunitiesMenuItem, ensureMessagesMenuItem, ensureContactMenuItem, fixWinterStart };
+// "Info o lige" (the page with the text of the info window of the home page, /about-league) as the LAST sub-item of the "Liga" menu item of a city. One time per
+// city (the flag per city stops a second add; an admin can rename, move or delete it afterwards). The first city always gets it; another city only once it has written
+// its info texts (Backend > Info), because the page has nothing to show before: it is added on the first start after that. A city with no "Liga" item is left alone.
+function ensureInfoMenuItems(db) {
+  db.prepare('SELECT id FROM leagues').all().forEach(({ id }) => {
+    const flag = `menu_info_${id}`;
+    if (db.prepare('SELECT 1 FROM app_flags WHERE key = ?').get(flag)) return;
+    const written = id === 1 || db.prepare("SELECT 1 FROM about_sections WHERE league_id = ? AND html != ''").get(id);
+    const liga = db.prepare("SELECT id FROM header_items WHERE league_id = ? AND parent_id IS NULL AND lower(label_sk) = 'liga'").get(id);
+    if (!written || !liga) return;
+    if (!db.prepare("SELECT 1 FROM header_items WHERE league_id = ? AND link = '/about-league'").get(id)) {
+      const max = db.prepare('SELECT MAX(sort_order) AS m FROM header_items WHERE parent_id = ?').get(liga.id).m;
+      db.prepare('INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, league_id) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(liga.id, 'Info o lige', 'League info', '/about-league', (max == null ? 0 : max) + 1, id);
+    }
+    db.prepare('INSERT OR IGNORE INTO app_flags (key) VALUES (?)').run(flag);
+  });
+}
+
+module.exports = { ensureInfoMenuItems, ensureCommunityMenuItems, removeDescriptionSignOff, ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, ensureWinnersMenuItem, ensureCommunitiesMenuItem, ensureMessagesMenuItem, ensureContactMenuItem, fixWinterStart };

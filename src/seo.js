@@ -61,6 +61,12 @@ const PAGES = [
     description: 'Propozície BLTA - kompletné a aktuálne pravidlá ligy a turnajov: kategórie, herný systém, bodovanie, termíny, dohadovanie zápasov a štartovné.',
   },
   {
+    // the "O nás – info o lige" window of the home page as a page: what the league is, the rules, the categories, the dates of the league and of the tournaments
+    key: 'about-league', label: 'Info o lige (the league info page)', path: '/about-league', file: 'about-league.html', blta: null, slugSk: 'info-o-amaterskej-tenisovej-lige',
+    title: `Info o amatérskej tenisovej lige${SUFFIX}`,
+    description: 'Info o amatérskej tenisovej lige BLTA: čo je BLTA, propozície, výkonnostné kategórie hráčov, termíny ligy a turnajov v Bratislave.',
+  },
+  {
     key: 'courtiq', label: 'How CourtIQ works', path: '/courtiq', file: 'courtiq.html', blta: null,
     title: `Ako funguje CourtIQ${SUFFIX}`,
     description: 'Ako funguje CourtIQ - automatický rating sily hráča v škále 1.0 až 7.0, ktorý sa počíta zo skutočne odohraných zápasov: čo ho mení a čo znamená otáznik.',
@@ -228,6 +234,11 @@ const ENGLISH = {
     slug: 'rules',
     title: `Rules${SUFFIX_EN}`,
     description: 'BLTA rules - the complete and current rules of the league and the tournaments: categories, game format, scoring, dates, arranging matches and entry fees.',
+  },
+  'about-league': {
+    slug: 'about-the-amateur-tennis-league',
+    title: `About the amateur tennis league${SUFFIX_EN}`,
+    description: 'About the BLTA amateur tennis league: what BLTA is, the rules, the player skill categories, and the dates of the league and the tournaments in Bratislava.',
   },
   'slta-rankings': {
     slug: 'city-rankings',

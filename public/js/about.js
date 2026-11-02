@@ -94,10 +94,26 @@ function savedPanel(tab, saved) {
   return `${own.title ? `<h3 class="about-h">${escapeHtml(own.title)}</h3>` : ''}<div class="about-html">${own.html}</div>`;
 }
 
+// the tabs a city shows: all of them in the first city (the saved text, else the one that came with the site), only the written ones elsewhere
+const aboutTabsOf = (data) => ABOUT_TABS.filter((k) => data.useDefaults || (data.tabs[k] && ['sk', 'en'].some((l) => data.tabs[k][l] && data.tabs[k][l].html)));
+
+// The same texts as the window, but as a page: the five tabs one under the other, with a row of links to them on top. Used by the page "Info o lige"
+// in the browser (js/about-league.js) and on the server (src/aboutPage.js runs this very file), so the text a crawler reads is the text a visitor reads.
+function aboutPageHtml(data) {
+  const tabs = aboutTabsOf(data);
+  if (!tabs.length) return '';
+  const nav = tabs.map((k) => `<a class="about-page-link" href="#about-${k}">${aboutIcon(k)}<span>${escapeHtml(t(`about.tab.${k}`))}</span></a>`).join('');
+  const sections = tabs.map((k) => {
+    const panel = (savedPanel(k, data.tabs[k]) || aboutPanel(k)).replace(/<h3 class="about-h">([\s\S]*?)<\/h3>/, '<h2 class="about-h">$1</h2>');
+    return `<section class="about-page-sec" id="about-${k}"><div class="about-body">${panel}</div></section>`;
+  }).join('');
+  return `<nav class="about-page-nav" aria-label="${escapeHtml(brandOf(t('about.title')))}">${nav}</nav>${sections}`;
+}
+
 async function openAbout(startTab) {
   if (document.getElementById('about-modal')) return;
   const data = await aboutTexts();
-  const tabs = ABOUT_TABS.filter((k) => data.useDefaults || (data.tabs[k] && ['sk', 'en'].some((l) => data.tabs[k][l] && data.tabs[k][l].html)));
+  const tabs = aboutTabsOf(data);
   if (!tabs.length || document.getElementById('about-modal')) return;
   const wrap = document.createElement('div');
   wrap.className = 'about-backdrop';
@@ -142,8 +158,12 @@ async function openAbout(startTab) {
   wrap.querySelector('.about-tab.on').focus();
 }
 
+// The button is a real link to the page "Info o lige" (so a crawler finds the page from the home page); a plain click opens the window as before, a click
+// with Ctrl, Cmd or Shift (a new tab) goes to the page like any link.
 document.addEventListener('click', (e) => {
-  if (e.target.closest('#home-about-btn')) openAbout('us');
+  if (!e.target.closest('#home-about-btn') || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button) return;
+  e.preventDefault();
+  openAbout('us');
 });
 
 // a city that has written nothing has no window: its button is not shown

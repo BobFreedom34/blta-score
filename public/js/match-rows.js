@@ -16,7 +16,7 @@ function chipDate(iso) {
 }
 
 function secTitle(label, note, linkHref, linkText) {
-  return `<div class="home-sec-title"><span class="l">${escapeHtml(label)}${note ? `<span>${escapeHtml(note)}</span>` : ''}</span>${linkHref ? `<a href="${linkHref}">${escapeHtml(linkText)}</a>` : ''}</div>`;
+  return `<div class="home-sec-title"><h2 class="l">${escapeHtml(label)}${note ? ` <span>${escapeHtml(note)}</span>` : ''}</h2>${linkHref ? `<a href="${linkHref}">${escapeHtml(linkText)}</a>` : ''}</div>`;
 }
 
 // scoreSummary lists each set as player1-player2 ("1-6, 3-6"); a result reads better from the winner's side.

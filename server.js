@@ -60,6 +60,8 @@ const sponsorsRouter = require('./src/routes/sponsors');
 const doublesRouter = require('./src/routes/doubles');
 const rulesRouter = require('./src/routes/rules');
 const rules = require('./src/rules');
+const aboutPage = require('./src/aboutPage');
+const browserTexts = require('./src/browserTexts');
 const seo = require('./src/seo');
 
 const app = express();
@@ -158,6 +160,12 @@ try {
   require('./src/seasonSeed').ensureContactMenuItem(db);
 } catch (err) {
   console.error('Contact menu item failed:', err);
+}
+try {
+  require('./src/about'); // creates the table of the info texts the next call looks at
+  require('./src/seasonSeed').ensureInfoMenuItems(db);
+} catch (err) {
+  console.error('Info menu item failed:', err);
 }
 try {
   require('./src/winnersSeed').seedWinners(db);
@@ -529,13 +537,33 @@ app.use((req, res, next) => {
   }
   try {
     const html = seo.render(hit.key, { origin: publicOrigin(req), canonical: hit.canonical, lang: hit.lang, entity, siteName: req.cityBase ? (req.league.brand_name || req.league.name) : undefined, leagueId: req.league.id, leagueName: req.league.name });
-    // the propozície text comes from Backend > Rules
-    return res.type('html').send(hit.key === 'propozicie' ? rules.injectInto(html, req.league.id) : html);
+    // the propozície text comes from Backend > Rules; the text of "Info o lige" is the one of the info window of the home page (Backend > Info)
+    let out = html;
+    if (hit.key === 'propozicie') out = rules.injectInto(html, req.league.id);
+    else if (hit.key === 'about-league') out = aboutPage.injectInto(html, { lang: hit.lang, leagueId: req.league.id, brand: req.league.brand_name || req.league.name, pageUrl: seo.pageUrl, base: req.cityBase || '' });
+    // the home page: the H1, the line above it and the intro are written in the language of the page (and with the name of the city) in the HTML a crawler reads, and the
+    // button "O nás – info o lige" is a link to the page "Info o lige" at its address in that language
+    else if (hit.key === 'home') out = homeHtml(html, hit.lang, req);
+    return res.type('html').send(out);
   } catch (err) {
     console.error('SEO page failed', hit.key, err);
     return next();
   }
 });
+// The heading block of the home page (public/index.html has the Slovak text of the first city in it): the language of the page, the name of another city
+function homeHtml(html, lang, req) {
+  const city = req.league.id !== 1 ? (req.league.brand_name || req.league.name) : '';
+  const text = city ? {
+    h1: browserTexts.t('home.h1City', lang, { brand: city }),
+    intro: browserTexts.t('home.introCity', lang),
+  } : { h1: browserTexts.t('home.h1', lang), intro: browserTexts.t('home.intro', lang) };
+  const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return html
+    .replace(/(<h1 class="home-h1">)[^<]*(<\/h1>)/, (m, a, b) => a + esc(text.h1) + b)
+    .replace(/(<p class="home-intro">)[^<]*(<\/p>)/, (m, a, b) => a + esc(text.intro) + b)
+    .replace('href="/about-league"', () => `href="${req.cityBase || ''}${seo.pageUrl('/about-league', lang)}"`);
+}
+
 // Backend > Schedule is gone: the events outside the app are on the Tournaments tab now
 app.get(['/schedule-admin', '/schedule-admin.html'], (req, res) => res.redirect(302, '/tournaments-admin'));
 const IMAGE_FILE = /\.(png|jpe?g|gif|svg|webp|avif|ico)$/i;

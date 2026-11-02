@@ -78,7 +78,7 @@ function render(req) {
   const outside = (l) => /^https?:\/\//i.test(l.url || '');
   const groups = (S.groups || defaultGroups(isNational)).filter((g) => g.links.length).map((g) => `
         <div class="sf-group">
-          <h2 class="sf-h">${esc(lang === 'en' ? g.en : g.sk)}</h2>
+          <p class="sf-h">${esc(lang === 'en' ? g.en : g.sk)}</p>
           <ul>${g.links.map((l) => `<li><a href="${esc(hrefOf(l))}"${outside(l) ? ' target="_blank" rel="noopener"' : ''}>${esc(lang === 'en' ? l.en : l.sk)}</a></li>`).join('')}</ul>
         </div>`).join('');
 

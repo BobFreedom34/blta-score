@@ -49,7 +49,7 @@ test('a page of blta.sk carries the new footer instead of the plain one: logo, n
   assert.ok(f.includes('<address class="sf-address">') && f.includes('Bardošova') === false && f.includes('mailto:info@blta.sk'));
   ['Instagram', 'Facebook', 'YouTube', 'WhatsApp'].forEach((n) => assert.ok(f.includes(`aria-label="${n}"`), n));
   assert.ok(/rel="noopener me"/.test(f));
-  ['Liga', 'Hrať', 'Komunita'].forEach((g) => assert.ok(f.includes(`<h2 class="sf-h">${g}</h2>`), g));
+  ['Liga', 'Hrať', 'Komunita'].forEach((g) => assert.ok(f.includes(`<p class="sf-h">${g}</p>`), g));
   assert.ok(f.includes('aria-label="Pätička stránky"'));
   assert.ok(/© \d{4} BLTA · OZ Ziegelfeld · IČO 51237971/.test(f));
   assert.ok(f.includes('class="sf-legal"') && f.includes('href="/sitemap.xml"') && f.includes('href="/admin"'));
@@ -71,7 +71,7 @@ test('the links go to the public addresses of the pages (the ones of Backend > S
 
 test('under /en/ the footer is English, with the English addresses', async () => {
   const f = footerOf((await blta('/en/matches')).body);
-  assert.ok(f.includes('<h2 class="sf-h">League</h2>') && f.includes('<h2 class="sf-h">Community</h2>'));
+  assert.ok(f.includes('<p class="sf-h">League</p>') && f.includes('<p class="sf-h">Community</p>'));
   assert.ok(/A league for recreational and amateur tennis players in Bratislava/.test(f));
   const links = linksOf(f);
   assert.strictEqual((links.find(([l]) => l === 'Matches') || [])[1], `/en${await slugOf('matches', 'en')}`);
@@ -105,7 +105,7 @@ test('a city under slta.sk has its own name, links with its address, no address 
 test('the national page has the footer of SLTA: its own groups, the cities, no contact of Bratislava', async () => {
   const f = footerOf((await slta('/')).body);
   assert.ok(f && !/<footer class="sl-foot">/.test((await slta('/')).body));
-  assert.ok(f.includes('<h2 class="sf-h">SLTA</h2>') && f.includes('<h2 class="sf-h">Organizátori</h2>'));
+  assert.ok(f.includes('<p class="sf-h">SLTA</p>') && f.includes('<p class="sf-h">Organizátori</p>'));
   assert.ok(f.includes('href="#mesta"') && f.includes('href="#organizator"'));
   assert.ok(/Slovenská liga tenisových amatérov\. Vyber si svoje mesto/.test(f));
   assert.ok(!f.includes('sf-name'), 'the logo says SLTA already');

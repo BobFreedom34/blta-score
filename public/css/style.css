@@ -5224,7 +5224,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 }
 
 /* the "O nás – info o lige" button in the home page header and the window it opens */
-.home-about-btn { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 13px; border-radius: var(--radius-sm); background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--white); font: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease; }
+.home-about-btn { text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 13px; border-radius: var(--radius-sm); background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--white); font: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease; }
 .home-about-btn svg { width: 16px; height: 16px; color: var(--orange); flex: none; }
 .home-about-btn:hover { border-color: var(--orange); }
 
@@ -6144,3 +6144,49 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .modal .sv-reg-cover { margin: -28px -26px 18px; }
 .modal .sv-reg-cover-text { padding: 0 26px 16px; }
 @media (max-width: 480px) { .modal .sv-reg-cover { margin: -22px -16px 18px; } .modal .sv-reg-cover-text { padding: 0 16px 16px; } }
+
+/* ---------- Info o lige (/info-o-amaterskej-tenisovej-lige): the text of the info window of the home page, as a page (js/about.js, src/aboutPage.js) ---------- */
+.about-page { color: var(--white); max-width: 960px; }
+.about-page-nav { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 6px; }
+.about-page-link { display: inline-flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 20px; border-radius: var(--radius-sm); background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.25); color: var(--white); font-size: 14px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; text-decoration: none; }
+.about-page-link svg { width: 20px; height: 20px; color: var(--orange); flex: none; }
+.about-page-link:hover { border-color: var(--orange); color: var(--orange); }
+.about-page-sec { margin-top: 24px; padding: 30px 34px 18px; border-radius: var(--radius); background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.1); scroll-margin-top: 84px; }
+.about-page-sec:target { border-color: var(--orange); }
+.about-page .about-body { padding: 0; overflow: visible; }
+.about-page .about-body > :last-child { margin-bottom: 12px; }
+@media (max-width: 680px) { .about-page-sec { padding: 22px 18px 10px; } .about-page-nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .about-page-link { flex: none; } }
+
+/* ---------- Home: the heading block. On the left what the page is and what to do: the name of the league, a short intro, the sign-in / register buttons and the league info. On the right ONE card for
+   the season that is running (its logo, its state, its name and its end), so that everything about the season sits together. On a phone the card goes under the buttons. ---------- */
+.home-head { display: flex; align-items: center; justify-content: space-between; gap: 40px; margin: 22px 0 88px; }
+.home-head-text { flex: 1 1 auto; min-width: 0; max-width: 640px; }
+.home-head .home-h1 { margin: 0 0 12px; font-size: clamp(26px, 3.4vw, 38px); line-height: 1.12; }
+.home-intro { margin: 0; max-width: 56ch; color: #c9ccd3; font-size: 15px; line-height: 1.6; }
+.home-head-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 22px; }
+.home-head .home-auth { margin: 0; flex: 0 0 auto; align-items: flex-start; }
+.home-head .home-auth-btn { padding: 11px 18px; font-size: 12px; }
+.home-head .home-auth-btn.info { padding: 11px 12px; }
+.home-head .home-tip { right: auto; left: 0; }
+.home-head .home-tip::before { right: auto; left: 22px; }
+.home-head-actions .home-about-btn { margin: 0; min-height: 40px; padding: 0 16px; }
+.home-season-card { flex: 0 0 auto; display: flex; align-items: center; gap: 20px; width: min(400px, 100%); padding: 20px 24px; border-radius: var(--radius); background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); }
+.home-season-card[hidden] { display: none; }
+.home-season-card .home-head-logo { height: 84px; }
+.home-season-info { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.home-season-info .home-head-state { margin: 0; }
+.home-season-info .home-sub { display: grid; gap: 3px; font-size: 17px; line-height: 1.25; }
+.home-season-info .home-sub span { color: #aeb2ba; font-size: 13px; font-weight: 600; }
+@media (max-width: 900px) {
+  .home-head { flex-direction: column; align-items: stretch; gap: 26px; margin-bottom: 68px; }
+  .home-head-text { max-width: none; }
+  .home-season-card { width: 100%; }
+}
+@media (max-width: 700px) {
+  .home-head-actions { flex-direction: column; align-items: stretch; }
+  .home-head .home-auth { align-items: stretch; order: 0; }
+  .home-head-actions .home-about-btn { justify-content: center; }
+  .home-season-card { padding: 16px 18px; gap: 16px; }
+  .home-season-card .home-head-logo { height: 64px; }
+}
+.home-sec-title h2.l { margin: 0; }
