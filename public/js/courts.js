@@ -30,7 +30,7 @@ function cardHtml(v) {
       ${v.imageUrl ? `<a class="court-card-img" href="${detailUrl}" tabindex="-1"><img src="${escapeHtml(v.imageUrl)}" alt="Kurty - ${escapeHtml(v.name)}" width="768" height="432" loading="lazy"></a>` : ''}
       <a class="court-card-head" href="${detailUrl}" aria-label="${escapeHtml(t('courts.details'))}: ${escapeHtml(v.name)}">
         <span class="court-card-arrow">${courtIcon('arrow')}</span>
-        <h3 class="court-card-name">${escapeHtml(v.name)}</h3>
+        <h2 class="court-card-name">${escapeHtml(v.name)}</h2>
         ${v.area ? `<div class="court-card-area">${escapeHtml(v.area)}</div>` : ''}
       </a>
       ${lines.length ? `<div class="court-lines">${lines.join('')}</div>` : ''}

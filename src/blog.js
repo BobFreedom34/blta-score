@@ -41,8 +41,8 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const SUFFIX = { sk: ' - BLTA - Bratislavská Liga Tenisových Amatérov', en: ' - BLTA - Bratislava Amateur Tennis League' };
 const TEXT = {
-  sk: { heading: 'Blog', sub: 'Novinky z tenisovej amatérskej ligy BLTA', readMore: 'Čítať viac', back: '← Všetky články', empty: 'Zatiaľ tu nie sú žiadne články.', by: 'BLTA' },
-  en: { heading: 'Blog', sub: 'News from the BLTA amateur tennis league', readMore: 'Read more', back: '← All articles', empty: 'There are no articles yet.', by: 'BLTA' },
+  sk: { heading: 'Blog BLTA – novinky z amatérskeho tenisu', sub: 'Novinky z tenisovej amatérskej ligy BLTA: rozhovory s hráčmi, turnaje a dianie v lige.', readMore: 'Čítať viac', back: '← Všetky články', empty: 'Zatiaľ tu nie sú žiadne články.', by: 'BLTA' },
+  en: { heading: 'BLTA blog – amateur tennis news', sub: 'News from the BLTA amateur tennis league: player interviews, tournaments and what is happening in the league.', readMore: 'Read more', back: '← All articles', empty: 'There are no articles yet.', by: 'BLTA' },
 };
 const LOCALE = { sk: 'sk-SK', en: 'en-GB' };
 

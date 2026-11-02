@@ -94,6 +94,18 @@ test('the home page of a city has its own H1: brand, the full name of the league
   assert.ok(blta.body.includes('<h1 class="home-h1">BLTA – Bratislavská Liga tenisových amatérov</h1>'), 'blta.sk keeps its own H1');
 });
 
+test('the other pages of a city say its brand and its place in the heading and the intro, not BLTA and Bratislava', async () => {
+  const courts = await nat('/kosice/courts');
+  assert.ok(courts.body.includes('Tenisové kurty v Košiciach</h1>'), 'courts: the place in the 6th case');
+  assert.ok(/class="page-intro"[^>]*>Prehľad tenisových kurtov v Košiciach a blízkeho okolia/.test(courts.body), 'courts: the intro');
+  const tables = await nat('/kosice/tables');
+  assert.ok(tables.body.includes('Ligové tabuľky SLTA Kosice</h1>'), 'tables: the brand of the city');
+  assert.ok(!/<h1[^>]*>[^<]*(BLTA|Bratislav)/.test(tables.body + courts.body), 'no BLTA or Bratislava in the headings of a city');
+  assert.ok((await nat('/kosice/en/tables')).body.includes('SLTA Kosice league tables</h1>'), 'English: the brand');
+  assert.ok((await nat('/kosice/en/courts')).body.includes('Tennis courts in Kosice</h1>'), 'English: the name of the city');
+  assert.ok((await local('GET', '/tables')).body.includes('Ligové tabuľky BLTA</h1>'), 'blta.sk keeps its own');
+});
+
 test('a city has an app of its own: its manifest opens its page with the SLTA icons; the national page has one too; blta.sk keeps the BLTA one', async () => {
   const page = await nat('/kosice');
   assert.ok(page.body.includes('<link rel="manifest" href="/kosice/manifest.json">'), 'the page of a city points to its own manifest');

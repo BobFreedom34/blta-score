@@ -180,15 +180,15 @@ function buildMatchListHtml(matches, liveMatches) {
   // Live sits in its own group above Scheduled/Not yet scheduled, and only
   // appears at all when there's something live right now.
   if (liveMatches && liveMatches.length) {
-    parts.push(`<div class="match-list-heading">${matchHeadingHtml('liveHeading')}</div>`);
+    parts.push(`<h2 class="match-list-heading">${matchHeadingHtml('liveHeading')}</h2>`);
     parts.push(...liveMatches.map(matchCardHtml));
   }
   matches.forEach((m, i) => {
     const curScheduled = !!m.scheduledAt;
     if (i === 0) {
-      parts.push(`<div class="match-list-heading">${matchHeadingHtml(curScheduled ? 'scheduledHeading' : 'plannedHeading')}</div>`);
+      parts.push(`<h2 class="match-list-heading">${matchHeadingHtml(curScheduled ? 'scheduledHeading' : 'plannedHeading')}</h2>`);
     } else if (matches[i - 1].scheduledAt && !curScheduled) {
-      parts.push(`<div class="match-list-heading">${matchHeadingHtml('plannedHeading')}</div>`);
+      parts.push(`<h2 class="match-list-heading">${matchHeadingHtml('plannedHeading')}</h2>`);
     }
     parts.push(matchCardHtml(m));
   });
@@ -262,7 +262,7 @@ async function loadMyMatches() {
     const parts = [];
     rawGroups.forEach((matches, i) => {
       if (!matches.length) return;
-      parts.push(`<div class="match-list-heading">${MY_MATCHES_GROUPS[i].heading}</div>`);
+      parts.push(`<h2 class="match-list-heading">${MY_MATCHES_GROUPS[i].heading}</h2>`);
       parts.push(...matches.map(matchCardHtml));
     });
     listEl.innerHTML = parts.length

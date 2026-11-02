@@ -6190,3 +6190,9 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
   .home-season-card .home-head-logo { height: 64px; }
 }
 .home-sec-title h2.l { margin: 0; }
+
+/* the intro under the heading of a page: what it shows, in a line or two (the same look as the intro of the home page) */
+.page-intro { margin: 0 0 28px; max-width: 64ch; color: #c9ccd3; font-size: 15px; line-height: 1.6; }
+/* a section heading with a small info button after it: the button stays out of the heading, so it is not part of the heading's name */
+.section-label-line { display: flex; align-items: center; margin: 56px 0 12px; }
+.section-label-line .section-label { margin: 0; }

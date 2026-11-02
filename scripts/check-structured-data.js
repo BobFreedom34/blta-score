@@ -154,7 +154,7 @@ test('the pages that draw everything by script carry a heading and a description
   assert.ok(/<h1>TK Slovan<\/h1>/.test(court), 'court intro');
   assert.ok(court.indexOf('ssr-intro') > court.indexOf('id="court-root"'));
   const matches = (await getPage('/matches')).text;
-  assert.ok(/<div class="ssr-intro sr-only"><h1>Zápasy<\/h1><p>[^<]+<\/p><\/div>/.test(matches), 'matches intro (hidden variant)');
+  assert.ok(/<div class="ssr-intro sr-only"><h1>Zápasy amatérskej tenisovej ligy BLTA<\/h1><p>[^<]+<\/p><\/div>/.test(matches), 'matches intro (hidden variant)');
   const ciq = (await getPage('/courtiq')).text;
   assert.ok(/<h1>[^<]+<\/h1>/.test(ciq.slice(ciq.indexOf('id="ciq-page"'))), 'courtiq intro');
   assert.ok(!/PAGE_SSR/.test(season + court + matches + ciq), 'a marker is left in a page');

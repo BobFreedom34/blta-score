@@ -132,7 +132,7 @@ function h2hRivalTileHtml(tile) {
 function h2hRivalsCardHtml(tiles) {
   if (!tiles.length) return '';
   return `
-    <div class="section-label">${t('rivals.title')}</div>
+    <h2 class="section-label">${t('rivals.title')}</h2>
     <div class="rivals-card">${tiles.map(h2hRivalTileHtml).join('')}</div>
   `;
 }

@@ -30,7 +30,7 @@ function blockHtml(b) {
 
 function editionHtml(e) {
   const link = e.seasonSlug ? `<a href="/season/${encodeURIComponent(e.seasonSlug)}">${escapeHtml(t('winners.season'))}</a>` : '';
-  return `<section class="win-edition"><div class="home-sec-title"><span class="l">${escapeHtml(e.title)}</span>${link}</div>${e.blocks.map(blockHtml).join('')}</section>`;
+  return `<section class="win-edition"><div class="home-sec-title"><h2 class="l">${escapeHtml(e.title)}</h2>${link}</div>${e.blocks.map(blockHtml).join('')}</section>`;
 }
 
 function render() {

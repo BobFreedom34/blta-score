@@ -492,6 +492,25 @@ const TRANSLATIONS = {
     'home.allUpcoming': 'Všetky zápasy →',
     'home.wholeRanking': 'Celý rebríček →',
     'home.allLooking': 'Všetci hľadajúci súpera →',
+    'tables.h1': 'Ligové tabuľky {brand}',
+    'tables.intro': 'Aktuálne poradie hráčov v skupinách kategórií Elite, Next Gen a Novice počas sezóny amatérskej tenisovej ligy {place}.',
+    'rankings.h1': 'Rebríček hráčov {brand}',
+    'rankings.intro': 'Bodové poradie hráčov amatérskej tenisovej ligy: celkový rebríček, body za jednotlivé kategórie a body z turnajov.',
+    'players.h1': 'Hráči amatérskej tenisovej ligy {brand}',
+    'players.leagueIntro': 'Komunita rekreačných a amatérskych tenistov {place}. Otvor profil hráča a pozri jeho štatistiky, výsledky zápasov a odznaky.',
+    'courts.h1': 'Tenisové kurty {place}',
+    'courts.intro': 'Prehľad tenisových kurtov {place} a blízkeho okolia: adresa, kontakt, mapa a odkaz na rezerváciu pri každom kurte.',
+    'schedule.h1': 'Harmonogram ligy a turnajov {brand}',
+    'schedule.intro': 'Rozpis sezón a turnajov: termíny, aktuálna sezóna a otvorené registrácie.',
+    'winners.h1': 'Víťazi ligy a turnajov {brand}',
+    'winners.intro': 'Víťazi, finalisti a semifinalisti jednotlivých sérií a turnajov v kategóriách Elite, Next Gen a Novice.',
+    'rv.h1': 'Rezervácie tenisových kurtov',
+    'rv.intro': 'Vyber si voľný termín na tenisovom kurte na najbližších 7 dní a rezervuj si ho jedným kliknutím.',
+    'com.h1': 'Komunity a kluby amatérskych tenistov',
+    'com.intro': 'Skupiny hráčov, ktoré si organizujú vlastné turnaje a akcie. Pridaj sa do klubu alebo si vytvor vlastnú komunitu.',
+    'lookingToPlay.h1': 'Hľadám súpera na tenis {place}',
+    'rules.h1': 'Propozície {brand}: pravidlá ligy a turnajov',
+    'rules.intro': 'Kompletné a aktuálne pravidlá ligy a turnajov: kategórie, herný systém, bodovanie, termíny, dohadovanie zápasov a štartovné.',
     'home.seasonProgress': 'Priebeh série',
     'home.playedOf': '{done} z {total} zápasov odohraných',
     'home.seasonOver': 'Séria skončila',
@@ -1974,6 +1993,25 @@ const TRANSLATIONS = {
     'home.allUpcoming': 'All matches →',
     'home.wholeRanking': 'Full ranking →',
     'home.allLooking': 'Everyone looking for a match →',
+    'tables.h1': '{brand} league tables',
+    'tables.intro': 'The current standings of the players in the groups of the Elite, Next Gen and Novice categories during the season of the amateur tennis league {place}.',
+    'rankings.h1': '{brand} player rankings',
+    'rankings.intro': 'The points standings of the players of the amateur tennis league: the overall ranking, the points of each category and the points from tournaments.',
+    'players.h1': 'Players of the {brand} amateur tennis league',
+    'players.leagueIntro': 'A community of recreational and amateur tennis players {place}. Open a player profile to see their statistics, match results and badges.',
+    'courts.h1': 'Tennis courts {place}',
+    'courts.intro': 'An overview of the tennis courts {place} and the surrounding area: the address, contact, map and a booking link for every court.',
+    'schedule.h1': '{brand} league and tournament schedule',
+    'schedule.intro': 'The schedule of the seasons and tournaments: dates, the current season and open registrations.',
+    'winners.h1': '{brand} league and tournament winners',
+    'winners.intro': 'The winners, finalists and semifinalists of every series and tournament in the Elite, Next Gen and Novice categories.',
+    'rv.h1': 'Tennis court booking',
+    'rv.intro': 'Pick a free time on a tennis court for the next 7 days and book it with one click.',
+    'com.h1': 'Communities and clubs of amateur tennis players',
+    'com.intro': 'Groups of players who organise their own tournaments and events. Join a club or start your own community.',
+    'lookingToPlay.h1': 'Looking for a tennis opponent {place}',
+    'rules.h1': '{brand} rules: how the league and tournaments work',
+    'rules.intro': 'The complete and current rules of the league and the tournaments: categories, game format, scoring, dates, arranging matches and entry fees.',
     'home.seasonProgress': 'Series progress',
     'home.playedOf': '{done} of {total} matches played',
     'home.seasonOver': 'Series finished',
@@ -2997,6 +3035,13 @@ function t(key, vars) {
       // a function, so that a $& or $' inside the value (a name written by a player) stays text
       s = s.replace(new RegExp(`\\{${k}\\}`, 'g'), () => String(vars[k]));
     }
+  }
+  // {brand} and {place} stand for the brand of the city of the page and its place: "BLTA" and "v Bratislave" / "in Bratislava", or "SLTA Košice" and "v Košiciach" / "in Košice"
+  // (written in Backend > Cities), so a heading written once reads right in every city
+  if (s.indexOf('{brand}') !== -1 || s.indexOf('{place}') !== -1) {
+    const city = typeof window !== 'undefined' && window.CITY && !window.CITY.first ? window.CITY : null;
+    const place = currentLang === 'en' ? `in ${city ? city.name : 'Bratislava'}` : (city ? (city.locative || '') : 'v Bratislave');
+    s = s.replace(/\{brand\}/g, city ? city.brand : 'BLTA').replace(/\{place\}/g, place).replace(/\s+([.,:;])/g, '$1').trim();
   }
   return s;
 }

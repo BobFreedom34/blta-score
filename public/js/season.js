@@ -371,7 +371,7 @@ function matchesHtml() {
     ['finishedHeading', allMatches.filter((m) => m.status === 'FINISHED').sort((a, b) => when(b).localeCompare(when(a)))],
     ['unfinishedHeading', allMatches.filter((m) => m.status === 'UNFINISHED').sort((a, b) => when(b).localeCompare(when(a)))],
   ].filter(([, list]) => list.length);
-  return `<div class="sv-matches match-list">${groups.map(([key, list]) => `<div class="match-list-heading">${matchHeadingHtml(key)}</div>${list.map(leagueMatchCardHtml).join('')}`).join('')}</div>`;
+  return `<div class="sv-matches match-list">${groups.map(([key, list]) => `<h2 class="match-list-heading">${matchHeadingHtml(key)}</h2>${list.map(leagueMatchCardHtml).join('')}`).join('')}</div>`;
 }
 
 function tablesHtml() {
@@ -721,6 +721,7 @@ async function renderPanel() {
     if (key !== tab) return; // another tab was opened meanwhile
   }
   panel.innerHTML = panelHtml();
+  if (!panel.querySelector('h2')) { const open = availableTabs().find((x) => x.key === tab); if (open) panel.insertAdjacentHTML('afterbegin', `<h2 class="sr-only">${escapeHtml(open.label)}</h2>`); }
   if (key === 'playoff') fillBrackets();
   if (key === 'courts') initCourtSchedule(document.getElementById('sv-courts'), season).catch(() => { document.getElementById('sv-courts').innerHTML = `<div class="sv-empty">${escapeHtml(t('season.empty.courts'))}</div>`; });
 }

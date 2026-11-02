@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./db');
 const blog = require('./blog');
+const browserTexts = require('./browserTexts');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const SUFFIX = ' - BLTA - Bratislavská Liga Tenisových Amatérov';
@@ -22,6 +23,7 @@ const PAGES = [
   },
   {
     key: 'matches', label: 'Matches', path: '/matches', file: 'matches.html', blta: null,
+    h1: 'Zápasy amatérskej tenisovej ligy {brand}', // the heading this page has for screen readers and crawlers (its file draws none)
     title: `Zápasy${SUFFIX}`,
     description: 'Zápasy BLTA - Bratislavskej Ligy Tenisových Amatérov: živé skóre, výsledky a rozpis nadchádzajúcich zápasov amatérskej tenisovej ligy.',
   },
@@ -197,6 +199,7 @@ const ENGLISH = {
   },
   matches: {
     slug: 'matches',
+    h1: '{brand} amateur tennis league matches',
     title: `Matches${SUFFIX_EN}`,
     description: 'BLTA matches - live scores, results and the schedule of upcoming matches of the Bratislava amateur tennis league.',
   },
@@ -448,9 +451,11 @@ function cityDefaults(page, lang, leagueId) {
   const league = cityOf(leagueId);
   const brand = (league && (league.brand_name || league.name)) || 'BLTA';
   const name = (league && league.name) || 'Bratislava';
+  const locative = (league && league.name_locative) || `v ${name}`; // "v Košiciach" (Backend > Cities)
   const speak = (t) => String(t || '')
     .replace(/ - BLTA - (Bratislavská Liga Tenisových Amatérov|Bratislava Amateur Tennis League)/g, ` - ${brand}`)
     .replace(/BLTA/g, brand)
+    .replace(/\bv Bratislave\b/g, locative)
     .replace(/Bratislav\w*/g, name);
   const d = defaultValues(page, lang);
   return { ...d, title: speak(d.title), description: speak(d.description) };
@@ -853,11 +858,26 @@ function render(key, { origin, canonical, lang = 'sk', entity, siteName = 'BLTA'
   // The text a crawler (or a visitor without scripts) reads before the page's script has drawn anything: the heading and the description. A page file marks the
   // place with <!--PAGE_SSR--> (inside the box its script fills, so the script's own heading replaces it) or <!--PAGE_SSR:hidden--> (a page whose own
   // heading is not in its file: the intro is there for screen readers and crawlers only).
-  const introTitle = (entity && entity.name) || String(ogTitle || title).split(' - ')[0];
+  // the heading of a page that draws none of its own: the name of what it shows, else the heading written for the page (with the brand of the city), else the start of the title
+  const pageH1 = String((lang === 'en' ? (ENGLISH[key] || {}).h1 : page.h1) || '').replace(/\{brand\}/g, siteName);
+  const introTitle = (entity && entity.name) || pageH1 || String(ogTitle || title).split(' - ')[0];
   const intro = (hidden) => (introTitle ? `<div class="ssr-intro${hidden ? ' sr-only' : ''}"><h1>${esc(introTitle)}</h1>${description ? `<p>${esc(description)}</p>` : ''}</div>` : '');
   const withIntro = out.replace(INTRO_MARKER, (whole, hidden) => intro(!!hidden));
   // the page's own content (the list of the blog, an article) goes where its file says so
-  return entity && entity.html ? withIntro.replace('<!--PAGE_CONTENT-->', () => entity.html) : withIntro;
+  const whole = entity && entity.html ? withIntro.replace('<!--PAGE_CONTENT-->', () => entity.html) : withIntro;
+  // the static texts in the language (and the city) of the page, then the name of what the page shows in the heading it draws itself (a player, a bracket)
+  const texts = translateStatic(whole, lang, leagueId);
+  return entity && entity.name ? texts.replace(NAME_HEADING, (m, a, b) => a + esc(entity.name) + b) : texts;
+}
+
+// The static texts of a page file carry their key (data-i18n="tables.h1"): the server writes them in the language and the city of the page, so the HTML a crawler reads
+// has the English text under /en/ and the brand and place of the city, not the Slovak text of the first city until a script runs. Only an element whose whole content is plain text.
+const STATIC_TEXT = /(<([a-z][a-z0-9]*)\b[^>]*?\sdata-i18n="([^"]+)"[^>]*>)([^<]*)(<\/\2>)/gi;
+const NAME_HEADING = /(<h1 id="(?:player-name|bracket-title)"[^>]*>)[^<]*(<\/h1>)/;
+function translateStatic(html, lang, leagueId) {
+  const league = leagueId !== 1 ? cityOf(leagueId) : null;
+  const city = league ? { brand: league.brand_name || league.name, name: league.name, locative: league.name_locative || '' } : null;
+  return html.replace(STATIC_TEXT, (whole, open, tag, key, text, close) => (browserTexts.has(key) ? open + esc(browserTexts.t(key, lang, null, city)) + close : whole));
 }
 
 const INTRO_MARKER = /<!--PAGE_SSR(:hidden)?-->/;

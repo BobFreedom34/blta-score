@@ -200,7 +200,7 @@ function render() {
     const name = new Date(year, month, 1, 12).toLocaleDateString(locale(), { month: 'long' });
     const states = byMonth.get(month).map((e) => statusOf(e, today));
     const tone = states.includes('now') ? ' now' : (states.every((x) => x === 'past') ? ' past' : '');
-    return `<div class="sch-month-title">${escapeHtml(name)}</div><div class="sch-card${tone}">${byMonth.get(month).map((e) => rowHtml(e, today)).join('')}</div>`;
+    return `<h2 class="sch-month-title">${escapeHtml(name)}</h2><div class="sch-card${tone}">${byMonth.get(month).map((e) => rowHtml(e, today)).join('')}</div>`;
   }).join('');
 }
 

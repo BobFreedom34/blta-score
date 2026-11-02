@@ -25,13 +25,21 @@ function load() {
   return sandbox;
 }
 
-// t(key, lang, vars) like t() in the browser
-function t(key, lang = 'sk', vars) {
-  const { context } = load();
+// t(key, lang, vars, city) like t() in the browser; city = { brand, name, locative } for the page of a city other than the first (its {brand} and {place})
+function t(key, lang = 'sk', vars, city) {
+  const { context, win } = load();
+  win.CITY = city ? { first: false, brand: city.brand, name: city.name, locative: city.locative || '' } : undefined;
   context.__key = key;
   context.__vars = vars;
   context.__lang = lang === 'en' ? 'en' : 'sk';
   return vm.runInContext('currentLang = __lang; t(__key, __vars)', context);
 }
 
-module.exports = { load, t };
+// Does the dictionary have this key (in Slovak or English)?
+function has(key) {
+  const { context } = load();
+  context.__key = key;
+  return vm.runInContext('!!(TRANSLATIONS.sk[__key] || TRANSLATIONS.en[__key])', context);
+}
+
+module.exports = { load, t, has };

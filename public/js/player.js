@@ -544,7 +544,7 @@ async function renderCourtIQ() {
     headerBadge.style.display = '';
   }
   el.innerHTML = `
-    <div class="section-label">${escapeHtml(t('courtiq.cardLabel'))}<button type="button" class="courtiq-info-btn" aria-label="What is CourtIQ?">i</button></div>
+    <div class="section-label-line"><h2 class="section-label">${escapeHtml(t('courtiq.cardLabel'))}</h2><button type="button" class="courtiq-info-btn" aria-label="What is CourtIQ?">i</button></div>
     <div class="statistics-card">
     <div class="courtiq-summary">
       <div class="courtiq-band-big">${data.band.toFixed(1)}${provisionalTag}</div>
@@ -585,7 +585,7 @@ async function renderDoubles() {
       <span class="dbl-score">${escapeHtml(m.score)}</span>
     </a>`).join('');
   el.innerHTML = `
-    <div class="section-label">${escapeHtml(t('player.doublesLabel'))}</div>
+    <h2 class="section-label">${escapeHtml(t('player.doublesLabel'))}</h2>
     <div class="statistics-card">
       <div class="courtiq-summary">
         <div class="courtiq-band-big">${d.rank ? '#' + d.rank : '–'}</div>
@@ -885,7 +885,7 @@ function renderH2H() {
     ? `<button type="button" class="h2h-toggle" id="h2h-toggle">${h2hExpanded ? t('player.showLess') : t('player.showMoreH2H', { count: remaining })}</button>`
     : '';
   el.innerHTML = `
-    <div class="section-label">${t('player.h2h')}</div>
+    <h2 class="section-label">${t('player.h2h')}</h2>
     <div class="h2h-card">${visible.map(h2hRowHtml).join('')}${toggleHtml}</div>
   `;
   if (remaining > 0) {
@@ -956,7 +956,7 @@ function render() {
   rawGroups.forEach((matches, i) => {
     const filtered = matches.filter(passesFilters);
     if (!filtered.length) return;
-    parts.push(`<div class="match-list-heading">${GROUPS[i].heading}</div>`);
+    parts.push(`<h2 class="match-list-heading">${GROUPS[i].heading}</h2>`);
     parts.push(...filtered.map(matchCardHtml));
   });
   listEl.innerHTML = parts.length ? parts.join('') : `<div class="empty-state">${t('player.noMatchesFilter')}</div>`;
