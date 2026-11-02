@@ -44,6 +44,7 @@ test('the section titles of the home page are H2s with the link outside the head
   const home = read('public/js/home.js');
   assert.ok(home.includes("secTitle(t('home.mine'), note, '', '', false)"), 'My season (only a signed-in player sees it) is not a heading');
   assert.ok(!/<h[1-6]/.test(read('public/js/home-carousel.js')), 'the slides of the carousel have no headings');
+  assert.ok(home.includes('d.season.heroMobileUrl || d.season.heroUrl') && home.includes('function dateRange(start, end)'), 'the card of the season: the poster of the series and the dates start – end');
   ['home.allResults', 'home.allUpcoming', 'home.wholeRanking', 'home.allLooking'].forEach((k) => assert.ok(home.includes(`t('${k}')`), `${k} on a link`));
   ["t('home.all')", "t('home.whole')", "t('home.everyone')"].forEach((k) => assert.ok(!home.includes(k), `${k} is not left on the home page`));
 });

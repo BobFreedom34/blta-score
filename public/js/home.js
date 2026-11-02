@@ -568,9 +568,18 @@ function liveHtml(d) {
 
 // ---------- render ----------
 
+// "1.9. – 31.12.2026": the days a season runs (the year of the start is left out when it is the year of the end)
+function dateRange(start, end) {
+  if (!start) return end ? dayMonth(end) : '';
+  if (!end || end === start) return dayMonth(start);
+  const from = dayMonth(start);
+  return `${String(start).slice(0, 4) === String(end).slice(0, 4) ? from.replace(/\.\d{4}$/, '.') : from} – ${dayMonth(end)}`;
+}
+
 function sub(d) {
   if (!d.season) return '';
-  const end = d.season.endDate ? `<span>${escapeHtml(t('home.endsOn', { date: dayMonth(d.season.endDate) }))}</span>` : '';
+  const range = dateRange(d.season.startDate, d.season.endDate);
+  const end = range ? `<span>${escapeHtml(range)}</span>` : '';
   const name = d.season.slug ? `<a href="/season/${encodeURIComponent(d.season.slug)}">${escapeHtml(d.season.name)}</a>` : escapeHtml(d.season.name);
   return `<p class="home-sub"><b>${name}</b>${end}</p>`;
 }
@@ -596,8 +605,13 @@ function renderHome() {
   }
   const headLogo = document.getElementById('home-head-logo');
   const headLogoLink = document.getElementById('home-head-logo-link');
-  if (d.season && d.season.logoUrl) {
-    headLogo.src = d.season.logoUrl;
+  // the poster of the series (the picture made for a phone, else the wide one), the logo only when the series has no poster
+  const poster = d.season ? (d.season.heroMobileUrl || d.season.heroUrl || '') : '';
+  if (d.season && (poster || d.season.logoUrl)) {
+    headLogo.src = poster || d.season.logoUrl;
+    headLogo.alt = d.season.name;
+    headLogo.classList.toggle('is-poster', !!poster);
+    headLogo.classList.toggle('is-logo', !poster);
     if (d.season.slug) headLogoLink.href = `/season/${encodeURIComponent(d.season.slug)}`; else headLogoLink.removeAttribute('href');
     headLogoLink.hidden = false;
   } else { headLogoLink.hidden = true; }

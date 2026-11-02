@@ -6196,3 +6196,20 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 /* a section heading with a small info button after it: the button stays out of the heading, so it is not part of the heading's name */
 .section-label-line { display: flex; align-items: center; margin: 56px 0 12px; }
 .section-label-line .section-label { margin: 0; }
+/* the card of the current season: the poster of the series (4:3, the picture made for a phone) and under or beside it the state, the name and the dates; the logo only when there is no poster */
+.home-season-card { width: min(460px, 100%); }
+.home-season-card .home-head-logo.is-poster { width: 176px; height: 132px; object-fit: cover; border-radius: var(--radius-md); }
+.home-season-card .home-head-logo.is-logo { width: auto; height: 84px; }
+@media (max-width: 700px) { .home-season-card .home-head-logo.is-poster { width: 112px; height: 84px; } .home-season-card .home-head-logo.is-logo { height: 64px; } }
+/* the poster fills the whole left side of the card, edge to edge (no space above, below or on the left); the text beside it keeps its own padding */
+.home-season-card { padding: 0; gap: 0; overflow: hidden; align-items: stretch; min-height: 132px; }
+.home-season-card .home-head-logo-link:has(.is-poster) { position: relative; flex: 0 0 200px; width: 200px; align-self: stretch; }
+.home-season-card .home-head-logo.is-poster { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 0; object-fit: cover; }
+.home-season-card .home-head-logo-link:not(:has(.is-poster)) { align-self: center; margin: 20px 0 20px 24px; }
+.home-season-info { padding: 20px 24px; justify-content: center; }
+@media (max-width: 700px) {
+  .home-season-card { min-height: 96px; }
+  .home-season-card .home-head-logo-link:has(.is-poster) { flex-basis: 112px; width: 112px; }
+  .home-season-card .home-head-logo-link:not(:has(.is-poster)) { margin: 16px 0 16px 18px; }
+  .home-season-info { padding: 16px 18px; }
+}
