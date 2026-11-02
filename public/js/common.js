@@ -2015,8 +2015,18 @@ function syncClubView() {
   syncClubViewClasses();
   window.dispatchEvent(new CustomEvent('blta:club-context'));
 }
+// The page the visitor came from when the club view began: "← BLTA" leads back to it (the first one is kept for the whole visit, also when the visitor moves on
+// from club to club). Only a page of this site counts (the same address, or one of the sites blta.sk / slta.sk), never a stranger's page.
+function clubBackAddress() {
+  try {
+    const u = new URL(document.referrer);
+    const ours = u.origin === window.location.origin || /(^|\.)(blta|slta)\.sk$/.test(u.hostname);
+    return /^https?:$/.test(u.protocol) && ours && u.href !== window.location.href ? u.href : '';
+  } catch { return ''; }
+}
 function setClubContext(ctx) {
-  ctx = { ...ctx, city: window.CITY_BASE || '' };
+  const before = getClubContext();
+  ctx = { ...ctx, city: window.CITY_BASE || '', back: before ? before.back || '' : clubBackAddress() };
   clubCtxMemory = ctx;
   try { sessionStorage.setItem(CLUB_CTX_KEY, JSON.stringify(ctx)); } catch { /* the memory above keeps it for this page */ }
   syncClubView();
@@ -2152,10 +2162,11 @@ document.addEventListener('click', (e) => {
   const sync = () => {
     let a = links.querySelector('.club-exit');
     if (!clubViewShown()) { if (a) a.remove(); return; }
-    if (a) return;
+    const back = getClubContext().back || siteUrl('/');
+    if (a) { a.href = back; return; }
     a = document.createElement('a');
     a.className = 'club-exit';
-    a.href = siteUrl('/');
+    a.href = back;
     a.textContent = t('clubView.exit');
     a.addEventListener('click', () => clearClubContext());
     links.appendChild(a);
