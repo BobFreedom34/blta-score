@@ -6213,3 +6213,10 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
   .home-season-card .home-head-logo-link:not(:has(.is-poster)) { margin: 16px 0 16px 18px; }
   .home-season-info { padding: 16px 18px; }
 }
+/* the "why register" tip of the sign-in buttons: on a phone it hangs under the whole row of buttons (not under the Register button, from where its 290px ran past the edge of the screen and made the page wider than the phone) */
+@media (max-width: 700px) {
+  .home-head .home-auth { position: relative; }
+  .home-head .home-reg-wrap { position: static; }
+  .home-head .home-tip { left: 0; right: 0; width: auto; }
+  .home-head .home-tip::before { left: auto; right: 16px; }
+}

@@ -49,6 +49,13 @@ test('the section titles of the home page are H2s with the link outside the head
   ["t('home.all')", "t('home.whole')", "t('home.everyone')"].forEach((k) => assert.ok(!home.includes(k), `${k} is not left on the home page`));
 });
 
+test('on a phone the "why register" tip hangs under the whole row of buttons, so it cannot run past the screen and widen the page (it did, for a visitor who is not signed in)', () => {
+  const css = read('public/css/style.css');
+  const phone = css.slice(css.lastIndexOf('/* the "why register" tip'));
+  assert.ok(/\.home-head \.home-reg-wrap \{ position: static; \}/.test(phone) && /\.home-head \.home-auth \{ position: relative; \}/.test(phone), 'the tip is positioned by the row, not by the Register button');
+  assert.ok(/\.home-head \.home-tip \{ left: 0; right: 0; width: auto; \}/.test(phone), 'and is as wide as the row');
+});
+
 test('the texts of another city: its brand, the full name of the league and the city in the 6th case (nothing about Bratislava)', () => {
   const { t } = require('../src/browserTexts');
   assert.strictEqual(t('home.h1City', 'sk', { brand: 'SLTA Košice', place: ' v Košiciach' }), 'SLTA Košice – Slovenská liga tenisových amatérov v Košiciach');
