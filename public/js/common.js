@@ -2042,11 +2042,12 @@ syncClubViewClasses();
 function setClubManifest(orgSlug) {
   const base = `${window.CITY_BASE || ''}/api/communities/${encodeURIComponent(orgSlug)}`;
   const manifest = document.querySelector('link[rel="manifest"]');
-  const changed = !!manifest && manifest.getAttribute('href') !== `${base}/manifest.json`;
-  if (manifest && changed) manifest.setAttribute('href', `${base}/manifest.json`);
+  if (manifest) manifest.setAttribute('href', `${base}/manifest.json`);
   const touch = document.querySelector('link[rel="apple-touch-icon"]');
   if (touch) touch.setAttribute('href', `${base}/icon-192.png`);
-  if (changed) window.dispatchEvent(new CustomEvent('blta:manifest-changed'));
+  // the icon a browser keeps for a home-screen shortcut of the page (Chrome: menu > Add to Home screen > Create shortcut) is the club's too
+  const icon = document.querySelector('link[rel="icon"]');
+  if (icon) { icon.setAttribute('href', `${base}/icon-192.png`); icon.setAttribute('type', 'image/png'); icon.setAttribute('sizes', '192x192'); }
 }
 
 // "Share": the phone's share sheet where there is one, else the link is copied. Always the address of the page the player is on.
@@ -2059,24 +2060,47 @@ async function clubShare(title) {
   try { await copyToClipboard(url); toast(t('share.linkCopied')); } catch { window.prompt(t('share.copyLink'), url); }
 }
 
-// The two buttons of a club page ("Install as app" and "Share"): the community page and the season / tournament page of a club draw them with this and
-// share the clicks (below). Install is always there (BLTA_INSTALL.offer, see initInstallPrompt) unless this is the installed app already or the club is installed: it installs
-// in one tap where the browser allows it (BLTA_INSTALL.ready), and otherwise shows how to do it from the browser menu.
+// The two buttons of a club page ("Add to Home screen" and "Share"): the community page and the season / tournament page of a club draw them with this and share
+// the clicks (below). Add to Home screen is always a SHORTCUT with the club's icon and name made from the browser's own menu (a web page cannot make one by itself),
+// never an installed app: where the BLTA app is installed already the browser treats every page of the site as part of it, so a club app cannot be installed
+// next to it. Not shown inside an installed app (its menu has no such entry).
 function clubAppButtonsHtml(btnClass, shareTitle) {
   const svg = (d) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-  const offer = !!(window.BLTA_INSTALL && window.BLTA_INSTALL.offer);
-  return `<button type="button" class="${btnClass}" id="club-install" data-club-act="install"${offer ? '' : ' style="display:none"'}>${svg('<path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v3h16v-3"/>')}${escapeHtml(t('club.installApp'))}</button>`
+  const shortcut = isStandaloneApp() ? '' : `<button type="button" class="${btnClass}" id="club-install" data-club-act="install">${svg('<path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v3h16v-3"/>')}${escapeHtml(t('club.installApp'))}</button>`;
+  return shortcut
     + `<button type="button" class="${btnClass}" id="club-share" data-club-act="share" data-title="${escapeHtml(shareTitle || '')}">${svg('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>')}${escapeHtml(t('club.share'))}</button>`;
 }
-function syncClubInstallButton() {
-  const b = document.getElementById('club-install');
-  if (b) b.style.display = window.BLTA_INSTALL && window.BLTA_INSTALL.offer ? '' : 'none';
+
+// The steps for the shortcut. The shortcut keeps the address of the page it is made on, so it is made on the club page, with ?app=1 (a shortcut opened in the BLTA app
+// then shows the club without the way back to BLTA, see inClubApp); from another page of the club the button first goes there.
+function clubShortcut() {
+  const club = getClubContext();
+  if (!club) return;
+  if (currentCodePath() !== club.path) { window.location.href = `${siteUrl(club.path)}?app=1#shortcut`; return; }
+  try { window.history.replaceState(null, '', `${window.location.pathname}?app=1`); } catch { /* the address stays as it is */ }
+  let modal = document.getElementById('club-shortcut-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.className = 'modal-backdrop';
+    modal.id = 'club-shortcut-modal';
+    modal.style.display = 'none';
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    modal.innerHTML = `
+      <div class="modal" style="max-width:340px;text-align:center">
+        <button type="button" class="close" aria-label="Close">&times;</button>
+        <h3 style="margin-top:0">${escapeHtml(t('club.installApp'))}</h3>
+        <p style="color:var(--gray);font-size:14px;text-align:left">${t(ios ? 'club.shortcutStepsIos' : 'club.shortcutSteps')}</p>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('.close').addEventListener('click', () => { modal.style.display = 'none'; });
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+  }
+  modal.style.display = 'flex';
 }
-['blta:install-state', 'blta:club-context', 'blta:manifest-changed'].forEach((name) => window.addEventListener(name, syncClubInstallButton));
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-club-act]');
   if (!b) return;
-  if (b.dataset.clubAct === 'install') { if (window.BLTA_INSTALL) window.BLTA_INSTALL.run(); } else clubShare(b.dataset.title);
+  if (b.dataset.clubAct === 'install') clubShortcut(); else clubShare(b.dataset.title);
 });
 
 // Phone bottom menu: Home / Matches / My profile / Tables / Rankings (shown by CSS below ~1024px, where the top menu collapses).
@@ -3995,63 +4019,21 @@ async function setUpAdminTabs() {
 // closes it or installs, so it never turns into a nag.
 (function initInstallPrompt() {
   if (document.body.classList.contains('embed')) return;
-  // the club pages offer "Install as app" in their own buttons: they ask here whether the browser can install (ready) and install (run)
-  window.BLTA_INSTALL = { ready: false, offer: false, run: async () => {} };
   const navLinks = document.querySelector('.nav-links');
   if (!navLinks) return;
 
-  // a small help window with a title and a text (the steps to install from the browser menu, or where to do it)
-  let helpModal = null;
-  function showInstallHelp(title, bodyHtml) {
-    if (!helpModal) {
-      helpModal = document.createElement('div');
-      helpModal.className = 'modal-backdrop';
-      helpModal.style.display = 'none';
-      helpModal.innerHTML = `
-        <div class="modal" style="max-width:340px;text-align:center">
-          <button type="button" class="close" aria-label="Close">&times;</button>
-          <h3 style="margin-top:0" data-role="title"></h3>
-          <p style="color:var(--gray);font-size:14px;text-align:left" data-role="body"></p>
-        </div>`;
-      document.body.appendChild(helpModal);
-      helpModal.querySelector('.close').addEventListener('click', () => { helpModal.style.display = 'none'; });
-      helpModal.addEventListener('click', (e) => { if (e.target === helpModal) helpModal.style.display = 'none'; });
-    }
-    helpModal.querySelector('[data-role="title"]').textContent = title;
-    helpModal.querySelector('[data-role="body"]').innerHTML = bodyHtml;
-    helpModal.style.display = 'flex';
-  }
-
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  if (isStandalone) {
-    // Inside an installed app another app cannot be installed. The general BLTA app still shows the club buttons and says where to do it; an app installed from
-    // a club does not (it is the club).
-    const sync = () => {
-      window.BLTA_INSTALL.offer = !inClubApp();
-      window.dispatchEvent(new CustomEvent('blta:install-state'));
-    };
-    window.BLTA_INSTALL.run = async () => {
-      const c = getClubContext();
-      showInstallHelp(t('install.inAppTitle').replace(/BLTA/g, c ? c.orgName : 'BLTA'), t('install.inAppBody'));
-    };
-    window.addEventListener('blta:club-context', sync);
-    sync();
-    return;
-  }
+  if (isStandalone) return; // already installed — nothing to offer
 
   // the app that is offered is the one of the page: on a city under the national address (slta.sk/kosice) it is "SLTA Košice" with the SLTA icon
   // (its own manifest, see cityManifest in server.js), not BLTA. Every app remembers "installed" and "not now" for itself (slta.sk is one origin for
   // the national app and all the cities, so one shared memory would keep a player who installed one from being offered the other).
-  // In the club view (a community or club, see getClubContext) the app is the club: its name, its own manifest and icon, and its own memory.
   const cityApp = window.CITY && !window.CITY.first;
   const appName = cityApp ? (window.CITY.brand || window.CITY.name) : 'BLTA';
   const appIcon = cityApp ? '/img/slta/favicon-64.png' : '/icon-64.png';
-  const club = () => getClubContext();
-  const nameNow = () => (club() ? club().orgName : appName);
-  const named = (key) => t(key).replace(/BLTA/g, nameNow());
-  const memorySuffix = () => (club() ? `:club:${club().orgSlug}` : (cityApp ? window.CITY_BASE : ''));
-  const dismissKey = () => `blta_install_banner_dismissed_until${memorySuffix()}`;
-  const doneKey = () => `blta_app_installed${memorySuffix()}`;
+  const named = (key) => t(key).replace(/BLTA/g, appName);
+  const INSTALL_DISMISS_KEY = `blta_install_banner_dismissed_until${cityApp ? window.CITY_BASE : ''}`;
+  const INSTALL_DONE_KEY = `blta_app_installed${cityApp ? window.CITY_BASE : ''}`;
   const DISMISS_DAYS = 30;
 
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
@@ -4059,13 +4041,13 @@ async function setUpAdminTabs() {
 
   // A regular (non-standalone) browser tab can't tell on its own that this
   // browser already has the app installed — display-mode only reflects
-  // *this* tab. The "installed" key, set once by the appinstalled handler
+  // *this* tab. INSTALL_DONE_KEY, set once by the appinstalled handler
   // below, is what keeps the banner from reoffering an install that
   // already happened the next time this same browser visits in a normal
   // tab (e.g. a search-result link) instead of the installed app.
-  const installedNow = () => {
-    try { return localStorage.getItem(doneKey()) === '1'; } catch { return false; }
-  };
+  let alreadyInstalled = false;
+  try { alreadyInstalled = localStorage.getItem(INSTALL_DONE_KEY) === '1'; } catch { /* ignore */ }
+  if (alreadyInstalled) return;
 
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -4073,24 +4055,6 @@ async function setUpAdminTabs() {
   btn.textContent = t('install.navBtn');
   btn.style.display = 'none';
   navLinks.appendChild(btn);
-
-  let deferredPrompt = null;
-  const readyNow = () => !installedNow() && (isIOS || !!deferredPrompt);
-  let wasReady = false;
-  let wasOffer = false;
-  // the nav button (not in the club view, whose menu is only "← BLTA") follows `ready` (the browser can install in one tap); the club buttons follow `offer`
-  // (this app / club is not installed yet), so they are there even where the browser never offers an install
-  function refresh() {
-    const ready = readyNow();
-    const offer = !installedNow();
-    btn.style.display = ready && !club() ? '' : 'none';
-    window.BLTA_INSTALL.ready = ready;
-    window.BLTA_INSTALL.offer = offer;
-    if (ready && !wasReady) window.dispatchEvent(new CustomEvent('blta:install-ready'));
-    if (ready !== wasReady || offer !== wasOffer) window.dispatchEvent(new CustomEvent('blta:install-state'));
-    wasReady = ready;
-    wasOffer = offer;
-  }
 
   let showIosModal = () => {};
   if (isIOS) {
@@ -4101,7 +4065,7 @@ async function setUpAdminTabs() {
     modal.innerHTML = `
       <div class="modal" style="max-width:340px;text-align:center">
         <button type="button" class="close" data-close="install-ios-modal" aria-label="Close">&times;</button>
-        <h3 style="margin-top:0" id="install-ios-title"></h3>
+        <h3 style="margin-top:0">${escapeHtml(named('install.iosTitle'))}</h3>
         <p style="color:var(--gray);font-size:14px;text-align:left">
           1. ${t('install.iosStep1')}<br><br>
           2. ${t('install.iosStep2')}<br><br>
@@ -4115,14 +4079,13 @@ async function setUpAdminTabs() {
     modal.querySelector('[data-close]').addEventListener('click', () => { modal.style.display = 'none'; });
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
 
-    showIosModal = () => {
-      modal.querySelector('#install-ios-title').textContent = named('install.iosTitle');
-      modal.style.display = 'flex';
-    };
+    showIosModal = () => { modal.style.display = 'flex'; };
+    btn.style.display = '';
     btn.addEventListener('click', showIosModal);
   }
 
-  let triggerAndroidInstall = async () => {};
+  let deferredPrompt = null;
+  let triggerAndroidInstall = () => {};
   if (!isIOS) {
     triggerAndroidInstall = async () => {
       if (!deferredPrompt) return;
@@ -4130,12 +4093,11 @@ async function setUpAdminTabs() {
       deferredPrompt = null;
       prompt.prompt();
       await prompt.userChoice;
-      refresh();
     };
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      refresh();
+      btn.style.display = '';
       maybeShowBanner();
     });
     btn.addEventListener('click', async () => {
@@ -4145,27 +4107,16 @@ async function setUpAdminTabs() {
       btn.disabled = false;
     });
     window.addEventListener('appinstalled', () => {
-      try { localStorage.setItem(doneKey(), '1'); } catch { /* ignore */ }
-      deferredPrompt = null;
+      btn.style.display = 'none';
       hideBanner();
-      refresh();
+      try { localStorage.setItem(INSTALL_DONE_KEY, '1'); } catch { /* ignore */ }
     });
-    // the page's manifest was swapped for the club's (setClubManifest): a prompt that came for the old one would install the wrong app, so the browser's
-    // next one (it offers again for the new manifest) is the one to use
-    window.addEventListener('blta:manifest-changed', () => { deferredPrompt = null; refresh(); });
   }
-  window.BLTA_INSTALL.run = async () => {
-    if (isIOS) { showIosModal(); return; }
-    if (deferredPrompt) { await triggerAndroidInstall(); return; }
-    showInstallHelp(named('install.manualTitle'), t('install.manualBody')); // a browser that offered no install (or not yet): the steps from its own menu
-  };
-  refresh();
 
   // The banner itself — a bottom sheet that shows once, unprompted, so
   // someone who'd never think to open the mobile nav menu still sees the
   // option. Desktop gets nothing here (see the min-width guard in CSS) —
   // the nav button alone covers that case, same as before this existed.
-  // Never in the club view: the club pages have their own install button.
   const banner = document.createElement('div');
   banner.className = 'install-banner';
   banner.setAttribute('role', 'dialog');
@@ -4184,7 +4135,7 @@ async function setUpAdminTabs() {
   function hideBanner() { banner.classList.remove('show'); }
   function dismissBanner() {
     hideBanner();
-    try { localStorage.setItem(dismissKey(), String(Date.now() + DISMISS_DAYS * 86400000)); } catch { /* ignore */ }
+    try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now() + DISMISS_DAYS * 86400000)); } catch { /* ignore */ }
   }
   banner.querySelector('[data-action="dismiss"]').addEventListener('click', dismissBanner);
   banner.querySelector('[data-action="install"]').addEventListener('click', async () => {
@@ -4193,17 +4144,17 @@ async function setUpAdminTabs() {
     hideBanner();
   });
 
+  // the club view can start after the banner was due (the club page knows its club only once it has loaded)
+  window.addEventListener('blta:club-context', () => { if (getClubContext()) hideBanner(); });
+
   function maybeShowBanner() {
     if (!window.matchMedia('(max-width: 680px)').matches) return; // mobile only
-    if (club() || installedNow()) return;
+    if (getClubContext()) return; // a club has its own button (a shortcut on the home screen), not the general install
     let dismissedUntil = 0;
-    try { dismissedUntil = Number(localStorage.getItem(dismissKey())) || 0; } catch { /* ignore */ }
+    try { dismissedUntil = Number(localStorage.getItem(INSTALL_DISMISS_KEY)) || 0; } catch { /* ignore */ }
     if (Date.now() < dismissedUntil) return;
     banner.classList.add('show');
   }
-
-  // the club view can start after the banner was due (the club page knows its club only once it has loaded)
-  window.addEventListener('blta:club-context', () => { if (club()) hideBanner(); refresh(); });
 
   // iOS never fires beforeinstallprompt at all, so it's the only signal
   // there ever will be to wait on — show after a short delay instead so

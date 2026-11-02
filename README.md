@@ -843,10 +843,12 @@ club's current event; a club with no event sends them to its Events tab), and th
 The view lasts the whole visit: the club page and the season page store `{ orgSlug, orgName, logoUrl, path, event }` in `sessionStorage` (`blta_club_ctx`,
 `getClubContext / setClubContext / clearClubContext` in `common.js`); every other page only reads it. A league (BLTA) season clears it. The club page picks the
 event (running or coming soonest first, else the latest finished: `pickCurrentEvent` in `community.js`); an event page uses itself.
-The buttons **Nainštaluj ako appku** and **Zdieľať** (`clubAppButtonsHtml` in `common.js`) sit in the action row of the club page and in a row under the hero of a
-club event page. Install installs the CLUB: `src/clubApp.js` + two routes in `src/routes/communities.js` serve `/api/communities/<slug>/manifest.json` (name of the
-club, opens on its page) and `/icon-192|512|maskable.png` drawn from the club logo (BLTA icons when there is none); the pages swap their `<link rel="manifest">`
-for it (`setClubManifest`), and `initInstallPrompt` (common.js) installs that app and remembers "installed" per club. Check: `node scripts/check-club-app.js`.
+The buttons **Pridať na plochu** and **Zdieľať** (`clubAppButtonsHtml` in `common.js`) sit in the action row of the club page and in a row under the hero of a
+club event page. "Pridať na plochu" is always a home-screen SHORTCUT (`clubShortcut`: a short window with the browser-menu steps; a web page cannot make one itself),
+never an installed app: with the BLTA app installed the browser treats every page of blta.sk / slta.sk as part of it, so a club app cannot be installed next to it.
+The shortcut is made on the club page with `?app=1` (opened in the BLTA app it is a club app: `inClubApp`, no way back to BLTA). The page's manifest and icons are the club's
+(`src/clubApp.js`, routes `/api/communities/<slug>/manifest.json|icon-192|512|maskable.png`, `setClubManifest`), so a shortcut carries the club's logo and any install the browser
+offers by itself is the club's. A real app per club would need an address of its own (`<club>.slta.sk`, not built). Check: `node scripts/check-club-app.js`.
 Spec/plan: `docs/superpowers/specs|plans/2026-11-01-club-season-menu-and-install*`.
 
 ## 7. Embedding on the blta.sk WordPress site
