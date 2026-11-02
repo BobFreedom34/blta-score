@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const assert = require('assert');
+const http = require('http');
 const { spawn } = require('child_process');
 const { Resvg } = require('@resvg/resvg-js');
 
@@ -76,13 +77,45 @@ test('the manifest names the club and opens on its page', async () => {
   assert.ok(/manifest\+json/.test(r.res.headers.get('content-type')), r.res.headers.get('content-type'));
   const m = r.json;
   assert.strictEqual(m.name, 'Klub s logom');
-  assert.strictEqual(m.start_url, `/community/${withLogo.slug}?app=1`);
-  assert.strictEqual(m.id, `/community/${withLogo.slug}`);
+  // the PUBLIC address of the club page (the code address /community/<slug> is no page: the app would open on a 404)
+  assert.strictEqual(m.start_url, `/komunita/${withLogo.slug}?app=1`);
+  assert.strictEqual(m.id, `/komunita/${withLogo.slug}`);
+  assert.strictEqual((await fetch(base + m.start_url)).status, 200, 'the start address is a real page');
   assert.strictEqual(m.scope, '/');
   assert.strictEqual(m.display, 'standalone');
   const src = m.icons.map((i) => i.src);
   assert.deepStrictEqual(src, [`/api/communities/${withLogo.slug}/icon-192.png`, `/api/communities/${withLogo.slug}/icon-512.png`, `/api/communities/${withLogo.slug}/icon-maskable.png`]);
   assert.deepStrictEqual(m.icons.map((i) => i.purpose), ['any', 'any', 'maskable']);
+});
+
+// the same on a city under the national address (slta.sk/<city>/...): the prefix stays on the start address, the scope and the icons
+test('a club of a city under the national address: the app opens on the club page of that city and stays in it', async () => {
+  const asHost = (host, url, extra = {}) => new Promise((resolve, reject) => {
+    const req = http.request({ host: 'localhost', port, path: url, method: extra.method || 'GET', headers: { Host: host, 'Content-Type': 'application/json', ...(extra.cookie ? { Cookie: extra.cookie } : {}), ...(extra.backend ? { 'X-Backend': '1' } : {}) } }, (res) => {
+      let text = ''; res.on('data', (d) => { text += d; });
+      res.on('end', () => { let json = null; try { json = JSON.parse(text); } catch { /* not json */ } resolve({ status: res.statusCode, json, headers: res.headers }); });
+    });
+    req.on('error', reject); req.end(extra.body ? JSON.stringify(extra.body) : undefined);
+  });
+  const city = (await call('POST', '/api/leagues', { body: { name: 'Kosice' } })).json;
+  await call('PATCH', `/api/leagues/${city.id}`, { body: { status: 'ACTIVE' } });
+  const pick = await call('POST', '/api/admin/acting-city', { body: { leagueId: city.id } });
+  const acting = `${adminCookie}; ${pick.res.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ')}`;
+  // the backend of the city (the X-Backend header, as the admin pages send it) makes the player in the city
+  const made = (await asHost('localhost', '/api/players', { method: 'POST', cookie: acting, backend: true, body: { name: 'Kosicky Majitel' } })).json;
+  const patched = await asHost('localhost', `/api/players/${made.id}/phone`, { method: 'PATCH', cookie: acting, backend: true, body: { phone: '0918765432' } });
+  const login = await asHost('slta.localhost', '/kosice/api/player/login', { method: 'POST', body: { code: '0918765432' } });
+  assert.strictEqual(login.status, 200, 'city login: ' + JSON.stringify(login.json));
+  assert.notStrictEqual(login.json.playerId, owner.id, 'a player of the city, not one of the first city: ' + JSON.stringify({ made: made.id, league: made.league_id, patch: patched.status, patchBody: patched.json && patched.json.error, login: login.json }));
+  const me = login.headers['set-cookie'].map((c) => c.split(';')[0]).join('; ');
+  const club = (await asHost('slta.localhost', '/kosice/api/communities', { method: 'POST', cookie: me, body: { type: 'COMMUNITY', name: 'Kosicka komunita', description: 'x' } })).json;
+  assert.ok(club && club.slug, JSON.stringify(club));
+  const m = (await asHost('slta.localhost', `/kosice/api/communities/${club.slug}/manifest.json`)).json;
+  assert.strictEqual(m.start_url, `/kosice/komunita/${club.slug}?app=1`);
+  assert.strictEqual(m.id, `/kosice/komunita/${club.slug}`);
+  assert.strictEqual(m.scope, '/kosice/');
+  assert.ok(m.icons.every((i) => i.src.startsWith('/kosice/img/slta/') || i.src.startsWith('/img/slta/')), JSON.stringify(m.icons.map((i) => i.src)));
+  assert.strictEqual((await asHost('slta.localhost', m.start_url)).status, 200, 'the start address is a real page of the city');
 });
 
 test('a long club name gets a short name that fits under the icon', async () => {

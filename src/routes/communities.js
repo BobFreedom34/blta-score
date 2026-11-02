@@ -12,6 +12,7 @@ const leagues = require('../leagues');
 const communities = require('../communities');
 const clubTournaments = require('../clubTournaments');
 const clubApp = require('../clubApp');
+const seo = require('../seo');
 const seasonsRoutes = require('./seasons');
 const messagesRoutes = require('./messages');
 const messagesLib = require('../messages');
@@ -332,13 +333,13 @@ function readableClub(req, res) {
 router.get('/:slug/manifest.json', (req, res) => {
   const org = readableClub(req, res);
   if (!org) return;
-  res.type('application/manifest+json').set('Cache-Control', 'no-cache').send(JSON.stringify(clubApp.manifestFor(org)));
+  res.type('application/manifest+json').set('Cache-Control', 'no-cache').send(JSON.stringify(clubApp.manifestFor(org, { page: (req.cityBase || '') + seo.pageUrl(`/community/${org.slug}`), cityBase: req.cityBase || '' })));
 });
 router.get('/:slug/icon-:variant(192|512|maskable).png', (req, res) => {
   const org = readableClub(req, res);
   if (!org) return;
   const png = clubApp.iconPng(org.logo_url, req.params.variant);
-  if (!png) return res.redirect(302, clubApp.fallbackIcon(req.params.variant));
+  if (!png) return res.redirect(302, clubApp.fallbackIcon(req.params.variant, req.cityBase || ''));
   res.type('image/png').set('Cache-Control', 'public, max-age=86400').send(png);
 });
 

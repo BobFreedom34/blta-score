@@ -11,6 +11,8 @@ const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
 // the size of the icon and how much of it the logo may fill (a maskable icon is cut to a circle or a rounded square by the phone, so it keeps a wider margin)
 const VARIANTS = { 192: { size: 192, fill: 0.8 }, 512: { size: 512, fill: 0.8 }, maskable: { size: 512, fill: 0.6 } };
 const BLTA_ICONS = { 192: '/icon-192.png', 512: '/icon-512.png', maskable: '/icon-maskable-512.png' };
+// a city under the national address (slta.sk/<city>) has the SLTA icons instead
+const SLTA_ICONS = { 192: '/img/slta/icon-192.png', 512: '/img/slta/icon-512.png', maskable: '/img/slta/icon-maskable-512.png' };
 const SHORT_NAME_MAX = 14;
 
 // a logo is drawn once per picture: a new upload has a new file name, so a changed logo never meets the old drawing
@@ -40,15 +42,15 @@ function iconPng(logoUrl, variant) {
 }
 
 // the address of the BLTA icon that stands in for a club icon
-const fallbackIcon = (variant) => BLTA_ICONS[variant] || null;
+const fallbackIcon = (variant, cityBase = '') => (cityBase ? SLTA_ICONS : BLTA_ICONS)[variant] || null;
 
-// `org` is the organisations row (name, slug, logo_url)
-function manifestFor(org) {
-  const page = `/community/${org.slug}`;
+// `org` is the organisations row (name, slug, logo_url); `page` is the PUBLIC address of the club page (the code address /community/<slug> is no page, see
+// seo.pageUrl), `cityBase` the prefix of a city under the national address ('/kosice') or ''. The app stays inside its city: scope and icons carry the prefix.
+function manifestFor(org, { page, cityBase = '' }) {
   // the club's own icons only when its logo can really be drawn (the three icons are cached after the first drawing)
   const own = !!org.logo_url && ['192', '512', 'maskable'].every((v) => iconPng(org.logo_url, v));
   const icon = (variant, size, purpose) => ({
-    src: own ? `/api/communities/${encodeURIComponent(org.slug)}/icon-${variant}.png` : BLTA_ICONS[variant],
+    src: own ? `${cityBase}/api/communities/${encodeURIComponent(org.slug)}/icon-${variant}.png` : fallbackIcon(variant, cityBase),
     sizes: `${size}x${size}`, type: 'image/png', purpose,
   });
   const name = String(org.name || '');
@@ -58,7 +60,7 @@ function manifestFor(org) {
     short_name: name.length > SHORT_NAME_MAX ? `${name.slice(0, SHORT_NAME_MAX - 1).trimEnd()}…` : name,
     description: `${name} - komunita a klub na BLTA`,
     start_url: `${page}?app=1`,
-    scope: '/',
+    scope: `${cityBase}/`,
     display: 'standalone',
     background_color: '#ffffff',
     theme_color: '#0a0a0a',

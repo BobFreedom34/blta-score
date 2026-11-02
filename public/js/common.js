@@ -1988,7 +1988,8 @@ function getClubContext() {
   let c = null;
   try { c = JSON.parse(sessionStorage.getItem(CLUB_CTX_KEY)); } catch { c = null; }
   if (!c) c = clubCtxMemory;
-  return c && typeof c.orgSlug === 'string' && typeof c.path === 'string' && c.path.startsWith('/community/') ? c : null;
+  // a club view belongs to the site it was made on: slta.sk is one origin for the national page and every city, and a club of one city does not exist in another
+  return c && typeof c.orgSlug === 'string' && typeof c.path === 'string' && c.path.startsWith('/community/') && (c.city || '') === (window.CITY_BASE || '') ? c : null;
 }
 // the admin tools keep their own menu: no club view there (the bottom bar skips them the same way)
 const clubViewShown = () => !!getClubContext() && !/(^|\/)(admin|[a-z-]+-admin|login-history)\/?$/.test(window.location.pathname);
@@ -2015,6 +2016,7 @@ function syncClubView() {
   window.dispatchEvent(new CustomEvent('blta:club-context'));
 }
 function setClubContext(ctx) {
+  ctx = { ...ctx, city: window.CITY_BASE || '' };
   clubCtxMemory = ctx;
   try { sessionStorage.setItem(CLUB_CTX_KEY, JSON.stringify(ctx)); } catch { /* the memory above keeps it for this page */ }
   syncClubView();
