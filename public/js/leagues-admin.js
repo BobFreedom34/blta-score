@@ -175,6 +175,7 @@ function openEdit(row, c) {
     <form class="city-edit" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 14px">
       ${cityField('City', 'name', c.name)}
       ${cityField('Brand name', 'brandName', c.brandName, 'Shown in titles, e-mails and the footer, e.g. BLTA or SLTA Košice')}
+      ${cityField('City in the 6th case', 'nameLocative', c.nameLocative, 'Slovak, for the heading of the home page: e.g. v Košiciach, v Trnave, v Banskej Bystrici')}
       ${cityField('Address (slug)', 'slug', c.slug, `slta.sk/&lt;slug&gt;`)}
       ${cityField('Own domain', 'domain', c.domain, 'Optional, e.g. blta.sk (without https://)')}
       <label style="display:block;font-size:12px;font-weight:700;margin-bottom:10px">Status

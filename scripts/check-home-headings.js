@@ -40,17 +40,21 @@ test('the footer group titles (Liga, Hrať, Komunita) are not H2s of the page', 
 
 test('the section titles of the home page are H2s with the link outside the heading, and the links say where they go', () => {
   const rows = read('public/js/match-rows.js');
-  assert.ok(/<h2 class="l">\$\{escapeHtml\(label\)\}/.test(rows) && /<\/h2>\$\{linkHref/.test(rows), 'secTitle: h2 first, the link after it');
+  assert.ok(rows.includes('heading = true) {') && rows.includes("heading ? 'h2' : 'div'") && /<\/\$\{tag\}>\$\{linkHref/.test(rows), 'secTitle: an h2 by default, the link after it (outside the heading)');
   const home = read('public/js/home.js');
+  assert.ok(home.includes("secTitle(t('home.mine'), note, '', '', false)"), 'My season (only a signed-in player sees it) is not a heading');
+  assert.ok(!/<h[1-6]/.test(read('public/js/home-carousel.js')), 'the slides of the carousel have no headings');
   ['home.allResults', 'home.allUpcoming', 'home.wholeRanking', 'home.allLooking'].forEach((k) => assert.ok(home.includes(`t('${k}')`), `${k} on a link`));
   ["t('home.all')", "t('home.whole')", "t('home.everyone')"].forEach((k) => assert.ok(!home.includes(k), `${k} is not left on the home page`));
 });
 
-test('the page for another city has its own H1 and an intro without a place name (no "Bratislava" in a Košice H1)', () => {
+test('the texts of another city: its brand, the full name of the league and the city in the 6th case (nothing about Bratislava)', () => {
   const { t } = require('../src/browserTexts');
-  assert.strictEqual(t('home.h1City', 'sk', { brand: 'SLTA Košice' }), 'SLTA Košice – amatérska tenisová liga');
-  assert.strictEqual(t('home.h1City', 'en', { brand: 'SLTA Košice' }), 'SLTA Košice – amateur tennis league');
-  ['sk', 'en'].forEach((lang) => assert.ok(!/Bratislav/.test(t('home.introCity', lang)), `introCity ${lang}`));
+  assert.strictEqual(t('home.h1City', 'sk', { brand: 'SLTA Košice', place: ' v Košiciach' }), 'SLTA Košice – Slovenská liga tenisových amatérov v Košiciach');
+  assert.strictEqual(t('home.h1City', 'sk', { brand: 'SLTA Košice', place: '' }), 'SLTA Košice – Slovenská liga tenisových amatérov', 'no place written yet');
+  assert.strictEqual(t('home.h1City', 'en', { brand: 'SLTA Košice', place: ' in Košice' }), 'SLTA Košice – Slovak Amateur Tennis League in Košice');
+  assert.ok(t('home.introCity', 'sk', { place: ' v Košiciach' }).startsWith('Amatérska tenisová liga pre rekreačných hráčov v Košiciach. Hraj'));
+  ['sk', 'en'].forEach((lang) => assert.ok(!/Bratislav/.test(t('home.introCity', lang, { place: '' })), `introCity ${lang}`));
 });
 
 test('every new key exists in both languages', () => {

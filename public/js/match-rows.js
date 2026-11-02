@@ -15,8 +15,10 @@ function chipDate(iso) {
   return `${weekdayShort(d)} ${d.getDate()}.${d.getMonth() + 1}. ${hhmm(d)}`;
 }
 
-function secTitle(label, note, linkHref, linkText) {
-  return `<div class="home-sec-title"><h2 class="l">${escapeHtml(label)}${note ? ` <span>${escapeHtml(note)}</span>` : ''}</h2>${linkHref ? `<a href="${linkHref}">${escapeHtml(linkText)}</a>` : ''}</div>`;
+// heading = false: the title is a plain line (a block only a signed-in player sees, "My season", is not a heading of the page)
+function secTitle(label, note, linkHref, linkText, heading = true) {
+  const tag = heading ? 'h2' : 'div';
+  return `<div class="home-sec-title"><${tag} class="l">${escapeHtml(label)}${note ? ` <span>${escapeHtml(note)}</span>` : ''}</${tag}>${linkHref ? `<a href="${linkHref}">${escapeHtml(linkText)}</a>` : ''}</div>`;
 }
 
 // scoreSummary lists each set as player1-player2 ("1-6, 3-6"); a result reads better from the winner's side.

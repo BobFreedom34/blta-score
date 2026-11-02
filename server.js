@@ -553,9 +553,11 @@ app.use((req, res, next) => {
 // The heading block of the home page (public/index.html has the Slovak text of the first city in it): the language of the page, the name of another city
 function homeHtml(html, lang, req) {
   const city = req.league.id !== 1 ? (req.league.brand_name || req.league.name) : '';
+  // the city in the 6th case (Slovak: "v Košiciach", written in Backend > Cities); English: "in Košice"; nothing while it is not written
+  const place = lang === 'en' ? ` in ${req.league.name}` : (req.league.name_locative ? ` ${req.league.name_locative}` : '');
   const text = city ? {
-    h1: browserTexts.t('home.h1City', lang, { brand: city }),
-    intro: browserTexts.t('home.introCity', lang),
+    h1: browserTexts.t('home.h1City', lang, { brand: city, place }),
+    intro: browserTexts.t('home.introCity', lang, { place }),
   } : { h1: browserTexts.t('home.h1', lang), intro: browserTexts.t('home.intro', lang) };
   const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return html

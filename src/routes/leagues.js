@@ -31,6 +31,11 @@ function parse(body, existing) {
   } else if (!existing) {
     fields.brand_name = `SLTA ${fields.name}`;
   }
+  if (body.nameLocative !== undefined) {
+    const place = String(body.nameLocative || '').replace(/s+/g, ' ').trim();
+    if (place.length > 60) return { error: 'The name of the city in the 6th case is too long (max 60 characters)' };
+    fields.name_locative = place;
+  }
   if (body.slug !== undefined || !existing) {
     const slug = leagues.slugify(body.slug || fields.name || (existing && existing.name));
     if (!slug) return { error: 'The address (slug) needs letters or digits' };

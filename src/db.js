@@ -1678,6 +1678,13 @@ db.exec(`
 if (!db.prepare('SELECT 1 FROM leagues WHERE id = 1').get()) {
   db.prepare("INSERT INTO leagues (id, slug, name, brand_name, domain, status, lat, lng, sort_order) VALUES (1, 'bratislava', 'Bratislava', 'BLTA', 'blta.sk', 'ACTIVE', 48.1486, 17.1077, 0)").run();
 }
+// The name of the city in the 6th case ("v Košiciach"), written by hand in Backend > Cities: Slovak cannot be declined by a rule, and the home page of a city says
+// "SLTA Košice – Slovenská liga tenisových amatérov v Košiciach" (and its intro "… pre rekreačných hráčov v Košiciach").
+if (!db.prepare('PRAGMA table_info(leagues)').all().some((c) => c.name === 'name_locative')) {
+  db.exec("ALTER TABLE leagues ADD COLUMN name_locative TEXT NOT NULL DEFAULT ''");
+  const known = { bratislava: 'v Bratislave', kosice: 'v Košiciach', trnava: 'v Trnave', 'banska-bystrica': 'v Banskej Bystrici' };
+  Object.keys(known).forEach((slug) => db.prepare("UPDATE leagues SET name_locative = ? WHERE slug = ? AND name_locative = ''").run(known[slug], slug));
+}
 for (const table of ['seasons', 'venues', 'players', 'matches', 'header_items', 'winner_editions', 'carousel_slides', 'brackets', 'schedule_events']) {
   const columns = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
   if (!columns.includes('league_id')) db.exec(`ALTER TABLE ${table} ADD COLUMN league_id INTEGER NOT NULL DEFAULT 1`);

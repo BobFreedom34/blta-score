@@ -187,6 +187,7 @@ function serialize(row, { admin = false } = {}) {
     slug: row.slug,
     name: row.name,
     brandName: row.brand_name || row.name,
+    nameLocative: row.name_locative || '',
     status: row.status,
     // where the city lives: its own domain, else its address under the national site (slta.sk/<slug>)
     url: row.domain ? `https://${row.domain}` : `/${row.slug}`,

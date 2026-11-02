@@ -218,7 +218,7 @@ function mineHtml(d) {
   const note = [d.season && d.season.name, group && group.name].filter(Boolean).join(' · ');
   return `
   <section class="home-mine">
-    ${secTitle(t('home.mine'), note, '', '')}
+    ${secTitle(t('home.mine'), note, '', '', false)}
     <div class="home-mine-grid${iqCell ? (tileCount % 2 === 1 ? ' mid-odd' : '') : (tileCount % 2 === 0 ? ' rest-odd' : '')}">${nextCell}${groupCells}${formCell}${rankCell}${iqCell}</div>
   </section>`;
 }
