@@ -3444,6 +3444,10 @@ body:not(.embed-light) .match-card.result-won:hover { border-color: var(--status
 
 /* ---------- Club view: inside a community or club the top menu is only "← BLTA" (see initClubExit in common.js) ---------- */
 body.club-view .nav-links > *:not(.club-exit),
+/* the header's logo is the club's (initClubBrand in common.js) and the footer of the site is not shown */
+body.club-view .brand > *:not(.club-brand-logo),
+body.club-view .site-footer { display: none !important; }
+.club-brand-logo { display: block; height: 44px; width: auto; max-width: 160px; object-fit: contain; }
 body.club-view .booking-btn,
 body.club-view .booking-spacer,
 body.club-view .install-app-btn { display: none !important; }

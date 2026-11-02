@@ -16,7 +16,7 @@ function publicFace(season) {
   if (!season || !season.organisation_id) return { organisation: null, hidden: false };
   const org = organisationOf(season);
   if (!isPublicOrg(org)) return { organisation: null, hidden: true };
-  return { organisation: { id: org.id, slug: org.slug, name: org.name }, hidden: false };
+  return { organisation: { id: org.id, slug: org.slug, name: org.name, logoUrl: org.logo_url || '' }, hidden: false };
 }
 
 // may this request manage this season? An admin of the site, or - for a club tournament of a public organisation - an ACTIVE admin of that organisation

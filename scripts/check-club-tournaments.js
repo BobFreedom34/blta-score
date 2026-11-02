@@ -509,7 +509,7 @@ test('the public page of a club tournament answers with its club; 404 while the 
   const { org, tournament } = await clubWithTournament();
   const page = await call('GET', `/api/seasons/by-slug/${tournament.slug}`, { cookie: '' });
   assert.strictEqual(page.status, 200, JSON.stringify(page.json));
-  assert.deepStrictEqual(page.json.organisation, { id: org.id, slug: org.slug, name: org.name });
+  assert.deepStrictEqual(page.json.organisation, { id: org.id, slug: org.slug, name: org.name, logoUrl: '' });
   const league = (await call('POST', '/api/seasons', { body: { name: uniq('Liga'), kind: 'LEAGUE' } })).json;
   assert.strictEqual((await call('GET', `/api/seasons/by-slug/${league.slug}`, { cookie: '' })).json.organisation, null);
   const register = () => call('POST', `/api/seasons/${tournament.id}/registrations`, { cookie: '', headers: { 'X-Forwarded-For': `10.9.0.${Math.floor(Math.random() * 200)}` }, body: { name: 'Hrac Verejny Test', email: 'verejny@example.com', phone: '0905999888', confirmNew: true } });

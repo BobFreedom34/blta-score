@@ -140,6 +140,16 @@ test('a club of another city is sent to its own city instead of "club not found"
   assert.strictEqual((await get('slta.localhost', `/kosice/komunita/${cityClub.slug}`)).status, 200);
 });
 
+// the club view keeps the logo of the club in the header on the pages of its seasons and tournaments too
+test('the season of a club carries the logo of the club (and none when it has no logo)', async () => {
+  const made = await call('POST', `/api/communities/${withLogo.id}/seasons`, { cookie: owner.cookie, body: { name: 'Sezona s logom', startDate: '2027-03-01', endDate: '2027-06-30' } });
+  assert.strictEqual(made.status, 201, JSON.stringify(made.json));
+  const season = (await call('GET', `/api/seasons/by-slug/${made.json.slug}`, { cookie: '' })).json;
+  assert.ok(/^\/community-images\/[\w.-]+$/.test(season.organisation.logoUrl), JSON.stringify(season.organisation));
+  const none = await call('POST', `/api/communities/${noLogo.id}/seasons`, { cookie: owner.cookie, body: { name: 'Sezona bez loga', startDate: '2027-03-01', endDate: '2027-06-30' } });
+  assert.strictEqual((await call('GET', `/api/seasons/by-slug/${none.json.slug}`, { cookie: '' })).json.organisation.logoUrl, '');
+});
+
 test('a long club name gets a short name that fits under the icon', async () => {
   const m = (await call('GET', `/api/communities/${noLogo.slug}/manifest.json`, { cookie: '' })).json;
   assert.strictEqual(m.name, 'Tenisovy klub Slavia Bratislava Petrzalka');

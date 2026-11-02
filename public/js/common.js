@@ -4310,6 +4310,32 @@ function highlightMyName() {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
 })();
 
+// In the club view the logo of the header is the logo of the club (a club with no logo has none: the header's logo place stays empty) and it leads to the club
+// page; the footer is hidden by CSS (body.club-view). Placed after cityBrand above: that one writes the logo of the city into the same place when the page is ready.
+(function initClubBrand() {
+  const brand = document.querySelector('.brand');
+  if (!brand || document.body.classList.contains('embed')) return;
+  const ownHref = brand.getAttribute('href');
+  const apply = () => {
+    brand.querySelectorAll('.club-brand-logo').forEach((el) => el.remove());
+    if (!clubViewShown()) { brand.setAttribute('href', ownHref); return; }
+    const ctx = getClubContext();
+    // only a picture the server itself stored (the same rule as the cover of the club page)
+    if (/^\/community-images\/[\w.-]+$/.test(ctx.logoUrl || '')) {
+      const img = document.createElement('img');
+      img.className = 'club-brand-logo';
+      img.src = ctx.logoUrl;
+      img.alt = ctx.orgName;
+      brand.prepend(img);
+    }
+    brand.setAttribute('href', siteUrl(ctx.path));
+  };
+  apply();
+  document.addEventListener('DOMContentLoaded', apply);
+  window.addEventListener('load', apply);
+  window.addEventListener('blta:club-context', apply);
+})();
+
 // Keyboard and screen-reader help that every page gets, whatever its script builds:
 //  - a "Skip to content" link, the first thing Tab reaches, and the page's content box marked as the main landmark;
 //  - every dialog (a .modal-backdrop, written in a page file or built by a script) is announced as a dialog with its heading as its name; while it is open
