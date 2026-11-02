@@ -359,6 +359,25 @@ function courtSurfaces(json, en) {
   return (Array.isArray(list) ? list : []).map((k) => SURFACE_WORDS[en ? 'en' : 'sk'][k]).filter(Boolean).join(', ');
 }
 // the entity behind a template page: { name, image } or null
+// The address of a club / season / tournament in the city that owns it, when the request is for it in another city (slta.sk/kosice/komunita/<club of Bratislava>):
+// the city's own domain, else its place under the national address. null when it is here, nowhere, or its city is hidden.
+function ownCityAddress(hit, req) {
+  let slug = hit.param;
+  try { slug = decodeURIComponent(slug); } catch { /* keep it as it is */ }
+  const row = hit.key === 'community'
+    ? db.prepare('SELECT league_id FROM organisations WHERE slug = ?').get(slug)
+    : db.prepare('SELECT league_id FROM seasons WHERE slug = ?').get(slug);
+  if (!row || row.league_id === req.league.id) return null;
+  const owner = leagues.byId(row.league_id);
+  if (!owner || owner.status === 'HIDDEN') return null;
+  const code = `/${hit.key}/${encodeURIComponent(slug)}`;
+  const tail = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  const page = `${seo.pageUrl(code, hit.lang)}${tail}`;
+  if (owner.domain) return `https://${owner.domain}${page}`;
+  const site = national.siteOrigin(req);
+  return site ? `${site}/${owner.slug}${page}` : null;
+}
+
 const TEMPLATE_ENTITY = {
   article: (slug, lang, leagueId) => blog.articleEntity(slug, lang, leagueId),
   player: (id) => {
@@ -497,6 +516,11 @@ app.use((req, res, next) => {
       // the texts of a city's blog speak of the city, not of BLTA
       if (entity && entity.html && req.cityBase) entity.html = entity.html.replace(/BLTA/g, req.league.brand_name || req.league.name);
     } catch (err) { console.error('SEO lookup failed', hit.key, err); }
+    // a club or an event of ANOTHER city (the Discover list and the feed show the clubs of every city): sent to the address of its own city
+    if (!entity && ['community', 'season', 'tournament'].includes(hit.key)) {
+      const elsewhere = ownCityAddress(hit, req);
+      if (elsewhere) return res.redirect(302, elsewhere);
+    }
     // an article that does not exist (or is a draft) is a real 404; the other pages show their own "not found"
     if (!entity) return hit.key === 'article' ? pageNotFound(res) : res.sendFile(path.join(PUBLIC_DIR, page.file));
   } else if (hit.key === 'blog') {

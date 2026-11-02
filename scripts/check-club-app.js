@@ -61,6 +61,7 @@ let owner;
 let withLogo;
 let noLogo;
 let lostLogo;
+let cityClub = null;
 
 test('setup: three clubs, one with a logo, one without, one whose logo file will vanish', async () => {
   owner = await makePlayer('App Majitel');
@@ -110,12 +111,33 @@ test('a club of a city under the national address: the app opens on the club pag
   const me = login.headers['set-cookie'].map((c) => c.split(';')[0]).join('; ');
   const club = (await asHost('slta.localhost', '/kosice/api/communities', { method: 'POST', cookie: me, body: { type: 'COMMUNITY', name: 'Kosicka komunita', description: 'x' } })).json;
   assert.ok(club && club.slug, JSON.stringify(club));
+  cityClub = club;
   const m = (await asHost('slta.localhost', `/kosice/api/communities/${club.slug}/manifest.json`)).json;
   assert.strictEqual(m.start_url, `/kosice/komunita/${club.slug}?app=1`);
   assert.strictEqual(m.id, `/kosice/komunita/${club.slug}`);
   assert.strictEqual(m.scope, '/kosice/');
   assert.ok(m.icons.every((i) => i.src.startsWith('/kosice/img/slta/') || i.src.startsWith('/img/slta/')), JSON.stringify(m.icons.map((i) => i.src)));
   assert.strictEqual((await asHost('slta.localhost', m.start_url)).status, 200, 'the start address is a real page of the city');
+});
+
+// the Discover list and the feed show the clubs of every city, so a link can point at a club of another city: the page sends the visitor to the club's own city
+test('a club of another city is sent to its own city instead of "club not found"', async () => {
+  const get = (host, url) => new Promise((resolve, reject) => {
+    const req = http.request({ host: 'localhost', port, path: url, method: 'GET', headers: { Host: host } }, (res) => { res.resume(); res.on('end', () => resolve({ status: res.statusCode, location: res.headers.location })); });
+    req.on('error', reject); req.end();
+  });
+  // a club of the city of Kosice asked for on the first city (blta.sk, here localhost): to slta.sk/kosice/...
+  const toKosice = await get('localhost', `/komunita/${cityClub.slug}`);
+  assert.strictEqual(toKosice.status, 302);
+  assert.strictEqual(toKosice.location, `https://slta.sk/kosice/komunita/${cityClub.slug}`);
+  // a club of the first city asked for under slta.sk/kosice: to the first city
+  const toFirst = await get('slta.localhost', `/kosice/komunita/${withLogo.slug}`);
+  assert.strictEqual(toFirst.status, 302);
+  assert.ok(toFirst.location.endsWith(`/komunita/${withLogo.slug}`) && !toFirst.location.includes('/kosice/'), toFirst.location);
+  // a club that is in no city stays what it was: the page with its own "not found"
+  assert.strictEqual((await get('slta.localhost', '/kosice/komunita/no-such-club')).status, 200);
+  // and a club asked for in its own city is the page itself
+  assert.strictEqual((await get('slta.localhost', `/kosice/komunita/${cityClub.slug}`)).status, 200);
 });
 
 test('a long club name gets a short name that fits under the icon', async () => {
