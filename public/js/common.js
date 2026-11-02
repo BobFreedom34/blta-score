@@ -2060,47 +2060,16 @@ async function clubShare(title) {
   try { await copyToClipboard(url); toast(t('share.linkCopied')); } catch { window.prompt(t('share.copyLink'), url); }
 }
 
-// The two buttons of a club page ("Add to Home screen" and "Share"): the community page and the season / tournament page of a club draw them with this and share
-// the clicks (below). Add to Home screen is always a SHORTCUT with the club's icon and name made from the browser's own menu (a web page cannot make one by itself),
-// never an installed app: where the BLTA app is installed already the browser treats every page of the site as part of it, so a club app cannot be installed
-// next to it. Not shown inside an installed app (its menu has no such entry).
+// The button of a club page: "Share" (the community page and the season / tournament page of a club draw it with this and share the click, below).
 function clubAppButtonsHtml(btnClass, shareTitle) {
   const svg = (d) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-  const shortcut = isStandaloneApp() ? '' : `<button type="button" class="${btnClass}" id="club-install" data-club-act="install">${svg('<path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v3h16v-3"/>')}${escapeHtml(t('club.installApp'))}</button>`;
-  return shortcut
-    + `<button type="button" class="${btnClass}" id="club-share" data-club-act="share" data-title="${escapeHtml(shareTitle || '')}">${svg('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>')}${escapeHtml(t('club.share'))}</button>`;
+  return `<button type="button" class="${btnClass}" id="club-share" data-club-act="share" data-title="${escapeHtml(shareTitle || '')}">${svg('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>')}${escapeHtml(t('club.share'))}</button>`;
 }
 
-// The steps for the shortcut. The shortcut keeps the address of the page it is made on, so it is made on the club page, with ?app=1 (a shortcut opened in the BLTA app
-// then shows the club without the way back to BLTA, see inClubApp); from another page of the club the button first goes there.
-function clubShortcut() {
-  const club = getClubContext();
-  if (!club) return;
-  if (currentCodePath() !== club.path) { window.location.href = `${siteUrl(club.path)}?app=1#shortcut`; return; }
-  try { window.history.replaceState(null, '', `${window.location.pathname}?app=1`); } catch { /* the address stays as it is */ }
-  let modal = document.getElementById('club-shortcut-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.className = 'modal-backdrop';
-    modal.id = 'club-shortcut-modal';
-    modal.style.display = 'none';
-    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    modal.innerHTML = `
-      <div class="modal" style="max-width:340px;text-align:center">
-        <button type="button" class="close" aria-label="Close">&times;</button>
-        <h3 style="margin-top:0">${escapeHtml(t('club.installApp'))}</h3>
-        <p style="color:var(--gray);font-size:14px;text-align:left">${t(ios ? 'club.shortcutStepsIos' : 'club.shortcutSteps')}</p>
-      </div>`;
-    document.body.appendChild(modal);
-    modal.querySelector('.close').addEventListener('click', () => { modal.style.display = 'none'; });
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
-  }
-  modal.style.display = 'flex';
-}
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-club-act]');
   if (!b) return;
-  if (b.dataset.clubAct === 'install') clubShortcut(); else clubShare(b.dataset.title);
+  clubShare(b.dataset.title);
 });
 
 // Phone bottom menu: Home / Matches / My profile / Tables / Rankings (shown by CSS below ~1024px, where the top menu collapses).
@@ -2178,25 +2147,57 @@ document.addEventListener('click', (e) => {
   window.addEventListener('hashchange', () => { eventTab = null; setActive(); });
 })();
 
-// The top menu in the club view is one small "← BLTA" item that leaves the club view (the rest of the menu is hidden by CSS, see body.club-view; in the
-// installed app the item is hidden too: the app is the club).
+// The top menu in the club view: "← blta.sk" (or "← slta.sk", the site the visitor came from) leaves the club view; "My profile" and "Communities and clubs"
+// stay inside it, like the phone's bottom bar (the club, with its logo in the header, stays around the page they open). The rest of the menu is hidden by CSS,
+// see body.club-view; in the installed app the whole menu is hidden: the app is the club.
+function clubBackLabel(href) {
+  let host = '';
+  try { host = new URL(href, window.location.href).hostname; } catch { host = ''; }
+  if (/(^|.)slta.sk$/.test(host)) return 'slta.sk';
+  if (/(^|.)blta.sk$/.test(host)) return 'blta.sk';
+  return window.CITY_BASE ? 'slta.sk' : 'blta.sk'; // a development address: a city under the national address is SLTA, the first city BLTA
+}
 (function initClubExit() {
   const links = document.getElementById('nav-links');
   if (!links || document.body.classList.contains('embed')) return;
+  const profileHref = () => {
+    try { return (playerAuthed && currentPlayerId) ? siteUrl(`/player/${currentPlayerSlug || currentPlayerId}`) : '#'; } catch { return '#'; }
+  };
+  const item = (cls, icon, label, href) => {
+    const a = document.createElement('a');
+    a.className = `club-nav-item ${cls}`;
+    a.href = href;
+    a.textContent = label;
+    a.style.setProperty('--nav-ico', navIconUrl(icon));
+    return a;
+  };
   const sync = () => {
     let a = links.querySelector('.club-exit');
-    if (!clubViewShown()) { if (a) a.remove(); return; }
+    if (!clubViewShown()) { links.querySelectorAll('.club-exit, .club-nav-item').forEach((el) => el.remove()); return; }
     const back = getClubContext().back || siteUrl('/');
-    if (a) { a.href = back; return; }
+    if (a) {
+      a.href = back;
+      a.textContent = `← ${clubBackLabel(back)}`;
+      const me = links.querySelector('.club-nav-profile');
+      if (me) me.href = profileHref();
+      return;
+    }
     a = document.createElement('a');
     a.className = 'club-exit';
     a.href = back;
-    a.textContent = t('clubView.exit');
+    a.textContent = `← ${clubBackLabel(back)}`;
     a.addEventListener('click', () => clearClubContext());
-    links.appendChild(a);
+    const me = item('club-nav-profile', 'user', t('nav.myProfile'), profileHref());
+    me.addEventListener('click', (e) => {
+      if (playerAuthed && currentPlayerId) return; // the real address is on the link already
+      e.preventDefault();
+      requirePlayerAuth(() => { window.location.href = siteUrl(`/player/${currentPlayerSlug || currentPlayerId}`); });
+    });
+    links.append(a, me, item('club-nav-communities', 'group', t('com.heading'), siteUrl('/communities')));
   };
   sync();
   window.addEventListener('blta:club-context', sync);
+  window.addEventListener('blta:auth-changed', sync);
 })();
 
 document.querySelectorAll('[data-close]').forEach((el) => {

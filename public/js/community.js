@@ -748,10 +748,5 @@
     if (org) { render(); scrollToPanel(); }
   });
   window.addEventListener('blta:auth-changed', load);
-  // "Add to Home screen" pressed on another page of the club: the steps for the shortcut, here, on the club page
-  load().then(scrollToPanel).then(() => {
-    if (window.location.hash !== '#shortcut') return;
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    clubShortcut();
-  });
+  load().then(scrollToPanel);
 })();

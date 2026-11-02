@@ -3442,8 +3442,8 @@ body:not(.embed-light) .match-card.result-won { border-color: var(--status-green
 body:not(.embed-light) .match-card.status-PLANNED.has-date:hover,
 body:not(.embed-light) .match-card.result-won:hover { border-color: var(--status-green); }
 
-/* ---------- Club view: inside a community or club the top menu is only "← BLTA" (see initClubExit in common.js) ---------- */
-body.club-view .nav-links > *:not(.club-exit),
+/* ---------- Club view: inside a community or club the top menu is only "← blta.sk", "My profile" and "Communities and clubs" (see initClubExit in common.js) ---------- */
+body.club-view .nav-links > *:not(.club-exit):not(.club-nav-item),
 /* the header's logo is the club's (initClubBrand in common.js) and the footer of the site is not shown */
 body.club-view .brand > *:not(.club-brand-logo),
 body.club-view .site-footer { display: none !important; }
@@ -3452,8 +3452,9 @@ body.club-view .booking-btn,
 body.club-view .booking-spacer,
 body.club-view .install-app-btn { display: none !important; }
 .club-exit { font-weight: 700; letter-spacing: 0.04em; }
+.club-exit::before { display: none !important; } /* the arrow is in its text; the menu's icon slot would show an empty square */
 /* in an app installed from the club (body.club-app, see inClubApp in common.js) the app IS the club: there is nothing to leave. The general BLTA app is not one. */
-body.club-app .club-exit { display: none; }
+body.club-app .club-exit, body.club-app .club-nav-item { display: none; }
 body.club-app.club-view .nav-links { display: none; }
 
 /* ---------- Phone bottom menu (Home / My matches / My profile / Rankings) ---------- */
