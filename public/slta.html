@@ -297,6 +297,7 @@
 <footer class="sl-foot"><span data-i="footer">SLTA - Slovenská liga tenisových amatérov</span></footer>
 
 <script src="/js/slovakia-map.js"></script>
+<script src="/js/sponsor-carousel.js"></script>
 <script>
 const TEXT = {
   sk: {
@@ -622,6 +623,7 @@ async function showSchedule(c) {
         : '<span class="sp-item" title="' + esc(p.name) + '">' + inner + '</span>';
     }).join('');
     block.hidden = false;
+    initSponsorCarousel(block.querySelector('.sp-box'));
     block.addEventListener('click', (e) => {
       const a = e.target.closest('[data-sponsor]');
       if (a) { try { navigator.sendBeacon('/api/sponsors/' + a.dataset.sponsor + '/click'); } catch { /* not counted */ } }

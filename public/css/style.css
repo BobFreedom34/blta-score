@@ -5428,19 +5428,23 @@ body.rv-dragging, body.rv-dragging * { cursor: grabbing !important; user-select:
 }
 
 /* ---------- Sponsors: a black band with the "Partners" and their logos on ONE line (the home page, a season page, the national page) ---------- */
-.sp-box { background: #000; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius); padding: 20px 28px; }
+.sp-box { display: flex; align-items: center; gap: 14px; background: #000; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius); padding: 16px 24px; }
 /* the heading is the one of the other sections of the page (20px, bold, capitals, white) */
 .sp-title { margin: 0 0 14px; font-size: 20px; line-height: 1.2; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
-/* centred while the logos fit; when there are more than fit, the line scrolls sideways from its start */
-.sp-strip { display: flex; flex-wrap: nowrap; align-items: center; gap: 44px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+/* centred while the logos fit; when there are more than fit, the line becomes a carousel: it scrolls sideways, an arrow on each side (js/sponsor-carousel.js) */
+.sp-strip { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: nowrap; align-items: center; gap: 72px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .sp-strip::-webkit-scrollbar { display: none; }
 .sp-strip > :first-child { margin-left: auto; }
 .sp-strip > :last-child { margin-right: auto; }
-.sp-item { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; height: 52px; color: #fff; font-size: 15px; font-weight: 800; text-decoration: none; opacity: 0.92; transition: opacity 0.15s ease, transform 0.15s ease; }
+.sp-item { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; height: 36px; color: #fff; font-size: 13px; font-weight: 800; text-decoration: none; opacity: 0.92; transition: opacity 0.15s ease, transform 0.15s ease; }
 a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
-.sp-item img { display: block; max-width: 160px; max-height: 48px; width: auto; height: auto; object-fit: contain; }
+.sp-item img { display: block; max-width: 110px; max-height: 32px; width: auto; height: auto; object-fit: contain; }
+.sp-arrow { display: none; flex: 0 0 auto; width: 36px; height: 36px; padding: 0 0 3px; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.22); background: var(--fill-grey); color: #fff; font: inherit; font-size: 22px; line-height: 1; cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease; }
+.sp-box.sp-overflow .sp-arrow { display: inline-flex; }
+.sp-arrow:hover:not(:disabled) { border-color: var(--orange); color: var(--orange); }
+.sp-arrow:disabled { opacity: 0.35; cursor: default; }
 .sv-partners { margin-top: 56px; }
-@media (max-width: 700px) { .sp-box { padding: 16px 18px; } .sp-strip { gap: 32px; } }
+@media (max-width: 700px) { .sp-box { padding: 14px 12px; gap: 8px; } .sp-strip { gap: 48px; } .sp-arrow { width: 32px; height: 32px; } }
 
 /* Doubles (štvorhra): the singles/doubles switch of the new-match form and what shows in each mode */
 .mode-switch { display: flex; gap: 0; margin-bottom: 14px; border: 1.5px solid var(--border, #d9d9d9); border-radius: 999px; overflow: hidden; }
@@ -6037,3 +6041,73 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
   .sf-pill { padding: 9px 16px; }
   .sf-legal a { padding: 6px 0; }
 }
+
+/* ---------- Dark windows: "Your availability" (/looking-to-play), the profile edit window, the "Get notified" window and the bell panel: the dark of the
+   new-match form (#new-match-form above): #1b1b1f with an orange hairline, small capital labels, grey fields, a green button ---------- */
+#my-post-card, #player-bio-modal .modal, #notify-modal .modal { background: #1b1b1f; color: var(--white); border: 1px solid rgba(255, 85, 0, 0.45); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); color-scheme: dark; --green: #b2fa06; --green-light: #b2fa06; }
+#my-post-card { padding: 28px 26px 24px; }
+#player-bio-modal .modal, #notify-modal .modal { padding: 28px 26px 24px; }
+#my-post-card h2, #player-bio-modal .modal h3, #notify-modal .modal h3 { color: var(--white); }
+#player-bio-modal .close, #notify-modal .close { color: #c3c7cf; }
+#player-bio-modal .close:hover, #notify-modal .close:hover { color: var(--orange); }
+:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field > label { color: #c3c7cf; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field > label span[data-i18n="common.optional"], #my-post-card .field > label > span[style], :is(#my-post-card, #player-bio-modal .modal) .field small, #my-post-card .field > label .optional { text-transform: none; letter-spacing: 0; font-weight: 600; color: #8b8f98 !important; }
+:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field input, :is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field select, :is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field textarea { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: var(--radius-sm); color: #fff; font-size: 15px; font-weight: 600; padding: 12px 14px; outline: 0; box-shadow: none; }
+:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field input::placeholder, :is(#my-post-card, #player-bio-modal .modal) .field textarea::placeholder { color: #6f737c; font-weight: 500; }
+:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .field input:focus, :is(#my-post-card, #player-bio-modal .modal) .field select:focus, :is(#my-post-card, #player-bio-modal .modal) .field textarea:focus { border-color: var(--orange); }
+:is(#my-post-card, #player-bio-modal .modal) .field select option { background: #1b1b1f; color: #fff; }
+#player-bio-modal .modal > form > p, #notify-modal #notify-modal-desc, #my-post-card .slot-hint { color: #8b8f98 !important; }
+#notify-modal .modal > div[style*="text-align:center"] { color: #8b8f98 !important; }
+/* the buttons: the main one green like "Naplánovať", the others an outline */
+:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) button[type="submit"] { background: var(--green); border-color: var(--green); color: #0a0a0a; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 14px 16px; }
+:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) button[type="submit"]:hover { background: #c6ff3a; border-color: #c6ff3a; }
+:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .btn-outline { background: transparent; border-color: rgba(255, 255, 255, 0.3); color: #fff; }
+:is(#my-post-card, #player-bio-modal .modal, #notify-modal .modal) .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+#my-post-card .btn-primary:not([type="submit"]) { background: var(--green); border-color: var(--green); color: #0a0a0a; }
+#my-post-card #my-post-error { color: #ff6a74; }
+#player-bio-modal #bio-error, #notify-modal #notify-error, #notify-modal #notify-push-error { color: #ff6a74; }
+/* "Your availability": the singles/doubles switch, the week tabs, the calendar, the level chips and the lists under it */
+#my-post-card .mode-switch { border-color: rgba(255, 255, 255, 0.2); }
+#my-post-card .mode-switch button { color: #c3c7cf; }
+#my-post-card .mode-switch button.active { background: var(--orange); color: #fff; }
+#my-post-card .week-picker-tabs .tab { background: transparent; color: var(--white); box-shadow: none; border: 1px solid var(--border-grey); }
+#my-post-card .week-picker-tabs .tab.active { background: var(--orange); border-color: var(--orange); }
+#my-post-card .avail-day-head, #my-post-card .avail-time-label { color: #8b8f98; }
+#my-post-card .avail-cell { background: rgba(255, 255, 255, 0.07); }
+#my-post-card .avail-cell:hover { background: rgba(255, 255, 255, 0.14); }
+#my-post-card .avail-cell.selected { background: var(--orange); }
+#my-post-card .avail-cell.selected:hover { background: var(--orange-dark); }
+#my-post-card .avail-cell.blocked { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.04) 3px, rgba(255, 255, 255, 0.13) 3px, rgba(255, 255, 255, 0.13) 6px); }
+#my-post-card .avail-grid-compact .hour-start { border-top-color: rgba(255, 255, 255, 0.14); }
+#my-post-card #my-post-categories .category-toggle { background: var(--fill-grey); color: #c3c7cf; border: 2px solid rgba(255, 255, 255, 0.14); }
+#my-post-card #my-post-categories .category-toggle:hover { border-color: var(--orange); color: var(--orange); }
+#my-post-card #my-post-categories .category-toggle.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+#my-post-card .availability-blocked-row { background: var(--fill-grey); color: #d6d8dd; }
+#my-post-card .availability-join-row { border-bottom-color: rgba(255, 255, 255, 0.1); }
+#my-post-card .availability-join-contact { color: #c3c7cf; }
+#my-post-card .availability-join-message { color: #8b8f98; }
+#my-post-card .player-name-link { color: var(--white); }
+#my-post-card .edit-link { color: var(--orange); }
+#my-post-card strong { color: #c3c7cf !important; }
+#my-post-card div[style*="border-top"] { border-top-color: rgba(255, 255, 255, 0.12) !important; }
+#my-post-card p[style*="color:var(--gray-dim)"] { color: #8b8f98 !important; }
+#my-post-card .btn-danger { color: #fff; }
+@media (max-width: 480px) { #my-post-card, #player-bio-modal .modal, #notify-modal .modal { padding: 22px 16px 20px; } }
+
+/* the bell panel (notifications) */
+.badge-notif-panel { background: #1b1b1f; color: var(--white); border: 1px solid rgba(255, 85, 0, 0.45); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); color-scheme: dark; }
+.badge-notif-panel-header { background: #1b1b1f; color: var(--white); border-bottom-color: rgba(255, 255, 255, 0.1); }
+.badge-notif-push { color: #c3c7cf; border-bottom-color: rgba(255, 255, 255, 0.1); }
+.badge-notif-push .btn-outline.badge-notif-push-btn { background: transparent; border-color: rgba(255, 255, 255, 0.3); color: #fff; }
+.badge-notif-push .btn-outline.badge-notif-push-btn:hover { border-color: var(--orange); color: var(--orange); }
+.badge-notif-push.prominent { color: #0a0a0a; }
+.badge-notif-empty { color: #8b8f98; }
+.badge-notif-item { border-bottom-color: rgba(255, 255, 255, 0.08); }
+.badge-notif-item:hover { background: var(--fill-grey); }
+.badge-notif-item.unread { background: rgba(255, 85, 0, 0.12); }
+.badge-notif-item.unread:hover { background: rgba(255, 85, 0, 0.2); }
+.badge-notif-icon { background: var(--fill-grey); }
+.badge-notif-title { color: var(--white); }
+.badge-notif-date { color: #8b8f98; }
+#login-required-card { background: #1b1b1f; border: 1px solid rgba(255, 85, 0, 0.45); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
+#login-required-card p { color: #c3c7cf !important; }

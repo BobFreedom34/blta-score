@@ -3843,6 +3843,29 @@ async function refreshPushRow(target) {
     button.textContent = t('notif.pushOff');
     button.onclick = async () => { await dropDevicePush(); rememberPushPlayer(null); pushStore(`blta-push-off-${currentPlayerId}`, 1); refreshPushRow(row); };
     row.appendChild(button);
+    // a test push to the devices of this account: tells at once whether the phone is linked and the browser accepts the push
+    const test = document.createElement('button');
+    test.type = 'button';
+    test.className = 'btn btn-outline badge-notif-push-btn';
+    test.style.marginLeft = '6px';
+    test.textContent = t('notif.pushTest');
+    const result = document.createElement('div');
+    result.className = 'badge-notif-push-result';
+    test.onclick = async () => {
+      test.disabled = true;
+      try {
+        const r = await api('/player/push/test', { method: 'POST' });
+        let key = 'notif.pushTestSent';
+        if (!r.available) key = 'notif.pushTestOff';
+        else if (!r.devices && !r.gone) key = 'notif.pushTestNone';
+        else if (!r.sent && r.gone) key = 'notif.pushTestGone';
+        else if (!r.sent) key = 'notif.pushTestFail';
+        result.textContent = t(key, { n: r.sent });
+      } catch (err) { result.textContent = err.message || t('notif.pushError'); }
+      test.disabled = false;
+    };
+    row.appendChild(test);
+    row.appendChild(result);
   } else {
     // not on yet: a bright box at the top of the panel (at the bottom it was scrolled out of sight), saying that it covers the messages too
     row.classList.add('prominent');
@@ -4511,6 +4534,15 @@ async function loadSponsorStrip(el, query = '') {
     if (!a) return;
     try { navigator.sendBeacon(`/api/sponsors/${a.dataset.sponsor}/click`); } catch { /* not counted */ }
   });
+  // the arrows (js/sponsor-carousel.js, loaded on demand so no page needs its own <script> for it)
+  const box = el.querySelector('.sp-box');
+  if (window.initSponsorCarousel) window.initSponsorCarousel(box);
+  else {
+    const s = document.createElement('script');
+    s.src = '/js/sponsor-carousel.js';
+    s.onload = () => window.initSponsorCarousel(box);
+    document.head.appendChild(s);
+  }
 }
 
 // ---------------------------------------------------------------- pictures from the media library (admin)
