@@ -56,6 +56,12 @@ test('on a phone the "why register" tip hangs under the whole row of buttons, so
   assert.ok(/\.home-head \.home-tip \{ left: 0; right: 0; width: auto; \}/.test(phone), 'and is as wide as the row');
 });
 
+test('on a phone the gap between the sign-in buttons and the league info button is the same as the one under it (26px, the gap of the heading block)', () => {
+  const css = read('public/css/style.css');
+  assert.ok(/@media \(max-width: 900px\) \{\s*\.home-head \{ flex-direction: column; align-items: stretch; gap: 26px;/.test(css), 'the gap under the last button');
+  assert.ok(/@media \(max-width: 700px\) \{\s*\.home-head-actions \{ gap: 26px; \}/.test(css), 'the gap between the buttons');
+});
+
 test('the texts of another city: its brand, the full name of the league and the city in the 6th case (nothing about Bratislava)', () => {
   const { t } = require('../src/browserTexts');
   assert.strictEqual(t('home.h1City', 'sk', { brand: 'SLTA Košice', place: ' v Košiciach' }), 'SLTA Košice – Slovenská liga tenisových amatérov v Košiciach');

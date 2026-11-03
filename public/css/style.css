@@ -4330,8 +4330,8 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .hc-slide picture { display: contents; }
 .hc-slide img { width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; -webkit-user-drag: none; }
 .hc-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 120px 26px 26px; background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.78) 35%, rgba(0, 0, 0, 0.4) 70%, transparent 100%); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); }
-.hc-caption b { display: block; font-size: 40px; font-weight: 800; line-height: 1.2; }
-.hc-caption small { display: block; margin-top: 4px; font-size: 15px; font-weight: 300; line-height: 1.4; color: #e6e8ec; }
+.hc-caption b { display: block; font-size: 28px; font-weight: 800; line-height: 1.2; }
+.hc-caption small { display: block; margin-top: 4px; font-size: 13px; font-weight: 300; line-height: 1.4; color: #e6e8ec; }
 .hc-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-grey); background: rgba(10, 10, 10, 0.55); color: var(--white); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 0 3px; }
 .hc-arrow:hover { background: var(--orange); border-color: var(--orange); }
 .hc-arrow.prev { left: 12px; }
@@ -4343,8 +4343,8 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 @media (max-width: 700px) {
   .hc-slide { aspect-ratio: 16 / 9; }
   .hc-caption { padding: 70px 14px 28px; }
-  .hc-caption b { font-size: 24px; }
-  .hc-caption small { font-size: 12px; margin-top: 2px; }
+  .hc-caption b { font-size: 19px; }
+  .hc-caption small { font-size: 11px; margin-top: 2px; }
   .hc-arrow { display: none; }
 }
 
@@ -6161,7 +6161,7 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
    the season that is running (its logo, its state, its name and its end), so that everything about the season sits together. On a phone the card goes under the buttons. ---------- */
 .home-head { display: flex; align-items: center; justify-content: space-between; gap: 40px; margin: 22px 0 88px; }
 .home-head-text { flex: 1 1 auto; min-width: 0; max-width: 640px; }
-.home-head .home-h1 { margin: 0 0 12px; font-size: clamp(26px, 3.4vw, 38px); line-height: 1.12; }
+.home-head .home-h1 { margin: 0 0 12px; font-size: clamp(26px, 3.4vw, 38px); font-weight: 900; line-height: 1.12; }
 .home-intro { margin: 0; max-width: 56ch; color: #c9ccd3; font-size: 15px; line-height: 1.6; }
 .home-head-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 22px; }
 .home-head .home-auth { margin: 0; flex: 0 0 auto; align-items: flex-start; }
@@ -6219,4 +6219,8 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
   .home-head .home-reg-wrap { position: static; }
   .home-head .home-tip { left: 0; right: 0; width: auto; }
   .home-head .home-tip::before { left: auto; right: 16px; }
+}
+/* on a phone the buttons are one under the other, and the space between them is the same as the space under the last one (the one between the heading block and the season card) */
+@media (max-width: 700px) {
+  .home-head-actions { gap: 26px; }
 }
