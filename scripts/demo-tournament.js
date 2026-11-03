@@ -4,7 +4,7 @@
 // The demo: "Demo Open" for the next 3 days, 4 courts, 12 Elite players (4 seeded), 8 Next Gen and 5 Novice, registered and sorted into
 // categories: Elite is drawn as PRINCE (bracket + consolation bracket), Next Gen as groups + bracket (two groups of 4, the best 2 of each go
 // on), and the matches are placed on the courts. Novice is left without a draw so you can make it yourself with any format
-// (Backend > Tournaments > Pavúk turnaja).
+// (Backend > Tournaments > Formát turnaja).
 const fs = require('fs');
 const os = require('os');
 const path = require('path');

@@ -302,10 +302,10 @@ async function cropHero(file, w, h) {
 }
 
 // The card of a tournament or a season: under the name the tabs — a tournament: Základné info · Registrácie · Zaradenie do kategórií ·
-// Pavúk turnaja; a season: Základné info · Registrácie · Skupiny · Rozpis · Pavúk (its play-off brackets) — and only the chosen one is shown (what is in a tab is loaded
+// Formát turnaja; a season: Základné info · Registrácie · Skupiny · Rozpis · Pavúk (its play-off brackets) — and only the chosen one is shown (what is in a tab is loaded
 // when it is opened). The form of the basic info is in sections.
 const cardTabs = () => (IS_TOURNAMENT
-  ? [['info', 'Základné info'], ['regs', 'Registrácie'], ['assign', 'Zaradenie do kategórií'], ['draw', 'Pavúk turnaja']]
+  ? [['info', 'Základné info'], ['regs', 'Registrácie'], ['assign', 'Zaradenie do kategórií'], ['draw', 'Formát turnaja']]
   : [['info', 'Základné info'], ['regs', 'Registrácie'], ['groups', 'Skupiny'], ['schedule', 'Rozpis'], ['brackets', 'Pavúk']]);
 const cardTab = new Map(); // season id -> the tab last opened (kept when the list is drawn again)
 
@@ -347,7 +347,7 @@ function seasonCardHtml(s) {
                   <div class="sa-checks">${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}${s.categories.includes('OPEN') ? ' disabled' : ''}> ${label}</label>`).join('')}
                     <label><input type="checkbox" data-cat="OPEN"${s.categories.includes('OPEN') ? ' checked' : ''}> Bez kategórie</label></div>
                   <span class="sa-hint">${IS_TOURNAMENT
-                    ? 'Turnaj sa hrá len v zaškrtnutých kategóriách (len tie sa ukážu v „Zaradenie do kategórií“ a v „Pavúk turnaja“). „Bez kategórie“: hráči sa nezaraďujú, hrá sa jeden pavúk pre všetkých prihlásených.'
+                    ? 'Turnaj sa hrá len v zaškrtnutých kategóriách (len tie sa ukážu v „Zaradenie do kategórií“ a v „Formát turnaja“). „Bez kategórie“: hráči sa nezaraďujú, hrá sa jeden pavúk pre všetkých prihlásených.'
                     : 'Sezóna sa hrá len v zaškrtnutých kategóriách: tie sa ukážu pri registrácii hráčov a v harmonograme. „Bez kategórie“: hráči sa pri registrácii kategóriu nevyberajú a skupiny sezóny sú bez kategórie (hrajú sa ako zápasy kategórie Iné).'}</span>
                 </div>` : ''}
               </div>

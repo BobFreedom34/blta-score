@@ -161,6 +161,27 @@ test('the page side: the shared form is on the Backend card, the club manage pag
   assert.ok(pub('js/season.js').includes('standings.rules'), 'the tournament page shows the rules');
 });
 
+test('the create window of a club tournament has its own section "Plánovanie turnaja" (the six settings of the court schedule), loaded before the window and sent with the tournament', () => {
+  const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
+  const page = pub('community.html');
+  assert.ok(page.indexOf('/js/tournament-planning.js') >= 0 && page.indexOf('/js/tournament-planning.js') < page.indexOf('/js/community.js'), 'the section is loaded before the window');
+  const club = pub('js/community.js');
+  assert.ok(club.includes("TournamentPlanning.html('club'") && club.includes("TournamentPlanning.read(back.querySelector('#com-t-plan'))"), 'the window shows it and sends it');
+  assert.ok(club.indexOf("TournamentRules.html('club'") < club.indexOf("TournamentPlanning.html('club'") && club.indexOf("TournamentPlanning.html('club'") < club.indexOf('id="com-t-reg"'), 'after the rules, before the registration switch');
+  const form = pub('js/tournament-planning.js');
+  for (const text of ['Dĺžka zápasu (min)', 'Začiatok dňa', 'Koniec dňa', 'Oddych hráča (min)', 'Max. zápasov hráča za deň', 'Rozvrh skladá systém sám']) assert.ok(form.includes(text), text);
+  const i18n = pub('js/i18n.js');
+  assert.strictEqual(i18n.split("'com.tFieldPlan':").length - 1, 2, 'the title in both languages');
+  assert.ok(i18n.includes("'com.tFieldPlan': 'Plánovanie turnaja'"));
+});
+
+test('in a window (.modal) the ink is white, so the rows and the arrows of the tie-break order are dark, not white boxes with white text (they could not be read)', () => {
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'css', 'style.css'), 'utf8');
+  assert.ok(/\.modal \{ --ink: #fff;/.test(css), 'the ink is white inside a window');
+  assert.ok(/\.modal \.tr-order li, \.modal \.tr-move \{ background: var\(--fill-grey\);/.test(css), 'the rows and the arrows have the dark fill inside a window');
+  assert.ok(/\.modal \.tr-move \{ color: #fff; \}/.test(css), 'and the arrows are white on it');
+});
+
 async function main() {
   let failed = 0;
   try {

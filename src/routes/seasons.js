@@ -854,7 +854,14 @@ function readNewSeason(body) {
   if (asked.error) return { error: asked.error };
   // a tournament always starts with explicit rules (the BLTA scoring and the default order unless it chooses); a season has them only when it chooses (else the league's own way)
   const rules = kind === 'TOURNAMENT' || asked.scoring !== undefined || asked.tiebreakers !== undefined ? normalizeRules(asked) : null;
-  return { values: { name, start: start.value, end: end.value, kind, venue, playType, categories: playType === 'DOUBLES' ? null : categoriesToStore(body.categories), scoring: rules ? rules.scoring : null, tiebreakers: rules ? rules.tiebreakers.join(',') : null } };
+  // the planning of a tournament (match length, playing day, rest, …) may be chosen when it is made; a bad value refuses the whole tournament, nothing is made
+  let schedule = null;
+  if (kind === 'TOURNAMENT' && tournamentSchedule.SETTING_KEYS.some((k) => body[k] !== undefined)) {
+    const planned = tournamentSchedule.readSettings({}, body);
+    if (planned.error) return { error: planned.error };
+    schedule = planned.next;
+  }
+  return { values: { name, start: start.value, end: end.value, kind, venue, playType, categories: playType === 'DOUBLES' ? null : categoriesToStore(body.categories), scoring: rules ? rules.scoring : null, tiebreakers: rules ? rules.tiebreakers.join(',') : null, schedule } };
 }
 
 // inserts a checked new season and returns its row; a club tournament carries the id of its organisation
@@ -863,7 +870,9 @@ function insertSeason(values, leagueId, organisationId = null) {
   const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM seasons WHERE league_id = ?').get(leagueId).m;
   const info = db.prepare('INSERT INTO seasons (name, slug, start_date, end_date, sort_order, kind, venue, categories, league_id, play_type, organisation_id, scoring, tiebreakers) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .run(values.name, slug, values.start, values.end, maxOrder + 1, values.kind, values.venue || null, values.categories, leagueId, values.playType, organisationId, values.scoring, values.tiebreakers);
-  return db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(info.lastInsertRowid));
+  const id = Number(info.lastInsertRowid);
+  if (values.schedule) tournamentSchedule.storeSettings(id, values.schedule);
+  return db.prepare('SELECT * FROM seasons WHERE id = ?').get(id);
 }
 
 router.post('/', requireAdmin, (req, res) => {

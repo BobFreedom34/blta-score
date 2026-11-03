@@ -191,6 +191,7 @@
         <div class="field"><label>${escapeHtml(t('com.tFieldFee'))}</label><input type="text" id="com-t-fee" maxlength="40" placeholder="${escapeHtml(t('com.tFeeHint'))}"></div>
         <div class="field"><label>${escapeHtml(t('com.tFieldInfo'))}</label><textarea id="com-t-info" rows="4" maxlength="4000" placeholder="${escapeHtml(t('com.tInfoHint'))}"></textarea></div>
         <div class="field" id="com-t-rules"><label>${escapeHtml(t('com.tFieldRules'))}</label>${TournamentRules.html('club', null)}</div>
+        <div class="field" id="com-t-plan"><label>${escapeHtml(t('com.tFieldPlan'))}</label>${TournamentPlanning.html('club', null)}</div>
         <label class="com-radio"><input type="checkbox" id="com-t-reg" checked> ${escapeHtml(t('com.tRegOpen'))}</label>
         <div id="com-t-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
         <button type="submit" class="btn btn-primary">${escapeHtml(t('com.tCreate'))}</button>
@@ -222,7 +223,7 @@
       try {
         const body = {
           name: value('#com-t-name').trim(), venue: value('#com-t-venue').trim(), startDate: value('#com-t-start') || null, endDate: value('#com-t-end') || null,
-          playType, ...TournamentRules.read(back.querySelector('#com-t-rules')), entryFee: value('#com-t-fee').trim(), info: value('#com-t-info').trim() ? `<p>${escapeHtml(value('#com-t-info').trim()).replace(/\n/g, '<br>')}</p>` : '',
+          playType, ...TournamentRules.read(back.querySelector('#com-t-rules')), ...TournamentPlanning.read(back.querySelector('#com-t-plan')), entryFee: value('#com-t-fee').trim(), info: value('#com-t-info').trim() ? `<p>${escapeHtml(value('#com-t-info').trim()).replace(/\n/g, '<br>')}</p>` : '',
         };
         if (playType === 'SINGLES') body.categories = noCategory.checked ? ['OPEN'] : [...cats.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat);
         const made = await api(`/communities/${org.id}/tournaments`, { method: 'POST', body });

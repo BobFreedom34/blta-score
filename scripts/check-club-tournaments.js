@@ -78,6 +78,25 @@ test('a club admin creates a tournament: kind TOURNAMENT, owned by the club, in 
   assert.strictEqual((await createTournament(org, owner, { playType: 'DOUBLES' })).json.playType, 'DOUBLES');
 });
 
+test('the "Plánovanie turnaja" of the create window: stored with the tournament (match length, playing day, rest, most matches a day, automatic schedule); a bad value makes no tournament', async () => {
+  const owner = await fresh('Organizator');
+  const org = await makeClub(owner);
+  const planningOf = (id) => withDb((f) => f.prepare('SELECT match_minutes AS m, day_start AS s, day_end AS e, rest_minutes AS r, max_matches_per_day AS x, auto_schedule AS a FROM seasons WHERE id = ?').get(id));
+  const made = await createTournament(org, owner, { matchMinutes: 60, dayStart: '08:30', dayEnd: '18:00', restMinutes: 5, maxPerDay: 3, autoSchedule: false });
+  assert.strictEqual(made.status, 201, JSON.stringify(made.json));
+  assert.deepStrictEqual({ ...planningOf(made.json.id) }, { m: 60, s: '08:30', e: '18:00', r: 5, x: 3, a: 0 });
+  const countOf = () => withDb((f) => f.prepare('SELECT COUNT(*) AS n FROM seasons WHERE organisation_id = ?').get(org.id).n);
+  const before = countOf();
+  for (const bad of [{ matchMinutes: 10 }, { restMinutes: 999 }, { dayStart: '9' }, { dayStart: '20:00', dayEnd: '08:00' }, { maxPerDay: -1 }]) {
+    const r = await createTournament(org, owner, bad);
+    assert.strictEqual(r.status, 400, `${JSON.stringify(bad)}: ${JSON.stringify(r.json)}`);
+  }
+  assert.strictEqual(countOf(), before, 'nothing was made');
+  const plain = await createTournament(org, owner);
+  assert.strictEqual(plain.status, 201);
+  assert.deepStrictEqual({ ...planningOf(plain.json.id) }, { m: 90, s: '09:00', e: '20:00', r: 30, x: 0, a: 1 }, 'nothing chosen: the defaults of the form (the same the planner uses)');
+});
+
 test('only an admin of the club creates: a plain member 403, a visitor 401, an admin of another club 403', async () => {
   const owner = await fresh('Organizator');
   const member = await fresh('Clen');

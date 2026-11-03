@@ -177,7 +177,7 @@ function csAdminHtml() {
         <button type="button" class="btn btn-sm btn-outline" data-cs="rebuild">Prepočítať odznova</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="unlock">Odomknúť všetky zápasy</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="clear">Vyčistiť rozvrh</button>
-        <span class="cs-hint">Potiahni zápas na kurt a čas, spodnú hranu bloku na zmenu dĺžky zápasu (zámok = ručne umiestnený, plánovač ho nepresúva; kliknutím na zámok ho odomkneš). Späť do „Nerozvrhnuté“ ho zrušíš. Počet kurtov: Pavúk turnaja.</span>
+        <span class="cs-hint">Potiahni zápas na kurt a čas, spodnú hranu bloku na zmenu dĺžky zápasu (zámok = ručne umiestnený, plánovač ho nepresúva; kliknutím na zámok ho odomkneš). Späť do „Nerozvrhnuté“ ho zrušíš. Počet kurtov: Formát turnaja.</span>
       </div>
     </div>`;
 }

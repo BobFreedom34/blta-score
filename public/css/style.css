@@ -5618,6 +5618,7 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .ct-bar { margin: 18px 0 4px; }
 .ct-title { margin: 6px 0 14px; }
 .com-create { margin-top: 16px; }
+.tp-hint { margin: 0 0 10px; font-size: 12.5px; line-height: 1.4; color: var(--gray); font-weight: 600; }
 .com-radio { display: flex; flex-direction: row; align-items: center; gap: 8px; font-weight: 500; }
 .com-radio input { width: auto; margin: 0; }
 
@@ -6139,6 +6140,9 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .modal .autocomplete-item:hover, .modal .autocomplete-item.active { background: var(--fill-grey); }
 .modal .sv-reg-opt { background: var(--fill-grey); color: #fff; border-color: rgba(255, 255, 255, 0.14); }
 .modal .sv-reg-opt:hover { border-color: var(--orange); }
+/* the tie-break order of the rules form: the rows and the arrows were white boxes, and the ink is white in a window, so the names and the arrows could not be read */
+.modal .tr-order li, .modal .tr-move { background: var(--fill-grey); border-color: rgba(255, 255, 255, 0.12); }
+.modal .tr-move { color: #fff; }
 .modal .mc-search { background: var(--fill-grey); color: #fff; border: 1px solid rgba(255, 255, 255, 0.14); }
 /* the hero photo of the registration window runs to the edges of the (now roomier) window */
 .modal .sv-reg-cover { margin: -28px -26px 18px; }

@@ -1,4 +1,4 @@
-// "Pavúk turnaja" — the organiser's screen for the draw of a tournament, one block per category (Elite, Next Gen, Novice): the number
+// "Formát turnaja" — the organiser's screen for the draw of a tournament, one block per category (Elite, Next Gen, Novice): the number
 // of courts, the seeds of the registered players, and the FORMAT of the category with its settings:
 //   PRINCE (a bracket + a consolation bracket for the round-1 losers) · MONRAD (a losers bracket for every round) · Eliminácia (a plain
 //   bracket) · Skupiny (round robin) · Skupiny + pavúk (groups, then a bracket of the best of every group).
@@ -232,7 +232,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
     host.innerHTML = `
       <div style="background:var(--gray-light);border-radius:12px;padding:14px">
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-          <strong style="font-size:15px">Pavúk turnaja</strong>
+          <strong style="font-size:15px">Formát turnaja</strong>
           <span style="flex:1"></span>
           <label style="font-size:13px">Počet kurtov
             <input type="number" min="0" max="50" inputmode="numeric" class="sd-courts" value="${overview.courtCount || ''}" placeholder="0" style="width:64px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px;margin:0 6px">

@@ -67,8 +67,9 @@ function settingsOf(season) {
   };
 }
 
-// validates and stores { matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule, maxPerDay }; returns { error } or { ok }
-function saveSettings(season, body) {
+// the planning settings a request asks for, laid over the ones of `season` (a new tournament: {} = the defaults):
+// { matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule, maxPerDay } -> { error } or { next }. Nothing is stored here.
+function readSettings(season, body) {
   const s = settingsOf(season);
   const next = { ...s };
   if (body.matchMinutes !== undefined) {
@@ -94,10 +95,25 @@ function saveSettings(season, body) {
     if (!Number.isInteger(next.maxPerDay) || next.maxPerDay < 0 || next.maxPerDay > 10) return { error: 'The most matches a player may play in a day must be 0 (no limit) to 10' };
   }
   if ((toMinutes(next.dayEnd) - toMinutes(next.dayStart)) < next.matchMinutes) return { error: 'The playing day is shorter than one match' };
+  return { next };
+}
+
+// writes checked settings (the `next` of readSettings) to a tournament
+function storeSettings(seasonId, next) {
   db.prepare('UPDATE seasons SET match_minutes = ?, day_start = ?, day_end = ?, rest_minutes = ?, auto_schedule = ?, max_matches_per_day = ? WHERE id = ?')
-    .run(next.matchMinutes, next.dayStart, next.dayEnd, next.restMinutes, next.autoSchedule ? 1 : 0, next.maxPerDay, season.id);
+    .run(next.matchMinutes, next.dayStart, next.dayEnd, next.restMinutes, next.autoSchedule ? 1 : 0, next.maxPerDay, seasonId);
+}
+
+// validates and stores { matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule, maxPerDay }; returns { error } or { ok }
+function saveSettings(season, body) {
+  const read = readSettings(season, body);
+  if (read.error) return { error: read.error };
+  storeSettings(season.id, read.next);
   return { ok: true };
 }
+
+// the keys of a request that are planning settings (a new tournament may bring them)
+const SETTING_KEYS = ['matchMinutes', 'dayStart', 'dayEnd', 'restMinutes', 'autoSchedule', 'maxPerDay'];
 
 function toMinutes(hhmm) {
   const [h, m] = hhmm.split(':').map(Number);
@@ -405,7 +421,10 @@ function setDuration(season, token, minutes) {
 
 module.exports = {
   settingsOf,
+  readSettings,
+  storeSettings,
   saveSettings,
+  SETTING_KEYS,
   getSchedule,
   placeMatch,
   setLocked,
