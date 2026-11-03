@@ -561,6 +561,7 @@ function homeHtml(html, lang, req) {
   } : { h1: browserTexts.t('home.h1', lang), intro: browserTexts.t('home.intro', lang) };
   const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return html
+    .replace(/(<div class="home-eyebrow">)[^<]*(<\/div>)/, (m, a, b) => a + esc(browserTexts.t('home.eyebrow', lang)) + b)
     .replace(/(<h1 class="home-h1">)[^<]*(<\/h1>)/, (m, a, b) => a + esc(text.h1) + b)
     .replace(/(<p class="home-intro">)[^<]*(<\/p>)/, (m, a, b) => a + esc(text.intro) + b)
     .replace('href="/about-league"', () => `href="${req.cityBase || ''}${seo.pageUrl('/about-league', lang)}"`);

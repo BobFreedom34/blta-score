@@ -6161,6 +6161,7 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
    the season that is running (its logo, its state, its name and its end), so that everything about the season sits together. On a phone the card goes under the buttons. ---------- */
 .home-head { display: flex; align-items: center; justify-content: space-between; gap: 40px; margin: 22px 0 88px; }
 .home-head-text { flex: 1 1 auto; min-width: 0; max-width: 640px; }
+.home-eyebrow { margin-bottom: 10px; color: var(--orange); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .home-head .home-h1 { margin: 0 0 12px; font-size: clamp(26px, 3.4vw, 38px); font-weight: 900; line-height: 1.12; }
 .home-intro { margin: 0; max-width: 56ch; color: #c9ccd3; font-size: 15px; line-height: 1.6; }
 .home-head-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 22px; }

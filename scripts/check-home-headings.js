@@ -20,7 +20,9 @@ test('the Slovak home page has one H1, "BLTA – Bratislavská Liga tenisových 
   const page = await html('/');
   assert.strictEqual((page.match(/<h1[ >]/g) || []).length, 1, 'one H1');
   assert.ok(page.includes('<h1 class="home-h1">BLTA – Bratislavská Liga tenisových amatérov</h1>'), 'H1 text');
-  assert.ok(!page.includes('home-kicker'), 'no small label above the H1');
+  assert.ok(!page.includes('home-kicker'), 'the old label is gone');
+  assert.ok(page.includes('<div class="home-eyebrow">Amatérska tenisová liga</div>'), 'the small line above the H1');
+  assert.ok(page.indexOf('class="home-eyebrow"') < page.indexOf('<h1'), 'and it is above the H1');
   assert.ok(/<p class="home-intro">Amatérska tenisová liga pre rekreačných hráčov v Bratislave\./.test(page), 'intro');
   assert.ok(page.indexOf('<h1') < page.indexOf('class="home-intro"') && page.indexOf('class="home-intro"') < page.indexOf('class="home-head-actions"') && page.indexOf('class="home-head-actions"') < page.indexOf('id="home-season-card"'), 'order: H1, intro, buttons, the card of the season');
   ['home-auth', 'home-about-btn', 'home-state', 'home-sub', 'home-head-logo-link'].forEach((id) => assert.ok(page.includes(`"${id}`) || page.includes(`id="${id}`), `${id} is still there for home.js`));
@@ -29,6 +31,7 @@ test('the Slovak home page has one H1, "BLTA – Bratislavská Liga tenisových 
 test('the English home page says the same in English (not the Slovak text until a script runs)', async () => {
   const page = await html('/en');
   assert.ok(page.includes('<h1 class="home-h1">BLTA – Bratislava Amateur Tennis League</h1>'));
+  assert.ok(page.includes('<div class="home-eyebrow">Amateur tennis league</div>'), 'the small line above the H1 in English');
   assert.ok(/<p class="home-intro">An amateur tennis league for recreational players in Bratislava\./.test(page));
 });
 
@@ -73,7 +76,7 @@ test('the texts of another city: its brand, the full name of the league and the 
 
 test('every new key exists in both languages', () => {
   const { t } = require('../src/browserTexts');
-  ['home.h1', 'home.h1City', 'home.intro', 'home.introCity', 'home.latestResults', 'home.allResults', 'home.allUpcoming', 'home.wholeRanking', 'home.allLooking'].forEach((k) => {
+  ['home.eyebrow', 'home.h1', 'home.h1City', 'home.intro', 'home.introCity', 'home.latestResults', 'home.allResults', 'home.allUpcoming', 'home.wholeRanking', 'home.allLooking'].forEach((k) => {
     ['sk', 'en'].forEach((lang) => assert.notStrictEqual(t(k, lang, { brand: 'X' }), k, `${k} (${lang})`));
   });
 });

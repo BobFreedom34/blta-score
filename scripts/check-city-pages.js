@@ -89,6 +89,8 @@ test('the home page of a city has its own H1: brand, the full name of the league
   assert.ok(r.body.includes('<p class="home-intro">Amatérska tenisová liga pre rekreačných hráčov v Košiciach. Hraj'), 'and the intro');
   const en = await nat('/kosice/en');
   assert.ok(en.body.includes('<h1 class="home-h1">SLTA Kosice – Slovak Amateur Tennis League in Kosice</h1>'), 'English H1 uses the name of the city');
+  assert.ok(r.body.includes('<div class="home-eyebrow">Amatérska tenisová liga</div>'), 'the small line above the H1 of a city (Slovak)');
+  assert.ok(en.body.includes('<div class="home-eyebrow">Amateur tennis league</div>'), 'and in English');
   assert.strictEqual((await local('PATCH', `/api/leagues/${cityId}`, { nameLocative: 'x'.repeat(61) }, superCookie)).status, 400, 'too long');
   const blta = await local('GET', '/');
   assert.ok(blta.body.includes('<h1 class="home-h1">BLTA – Bratislavská Liga tenisových amatérov</h1>'), 'blta.sk keeps its own H1');
