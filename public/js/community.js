@@ -166,7 +166,8 @@
     return `${make}${tournaments.length ? `<div class="com-events">${tournaments.map(tournamentHtml).join('')}</div>` : `<p class="com-empty">${escapeHtml(t('com.noEvents'))}</p>`}`;
   }
 
-  // the dialog that makes a tournament of the club: the same few fields the editor of a tournament starts with; the rest is set on its manage page
+  // the dialog that makes a tournament of the club: only what the tournament is (name, place, dates, type, categories, fee, description); it opens the manage page
+  // of the new tournament, where the rest (registration, courts and planning, scoring rules, look of the page) is set
   function openTournamentDialog() {
     const back = document.createElement('div');
     back.className = 'modal-backdrop';
@@ -190,9 +191,6 @@
         </div>
         <div class="field"><label>${escapeHtml(t('com.tFieldFee'))}</label><input type="text" id="com-t-fee" maxlength="40" placeholder="${escapeHtml(t('com.tFeeHint'))}"></div>
         <div class="field"><label>${escapeHtml(t('com.tFieldInfo'))}</label><textarea id="com-t-info" rows="4" maxlength="4000" placeholder="${escapeHtml(t('com.tInfoHint'))}"></textarea></div>
-        <div class="field" id="com-t-rules"><label>${escapeHtml(t('com.tFieldRules'))}</label>${TournamentRules.html('club', null)}</div>
-        <div class="field" id="com-t-plan"><label>${escapeHtml(t('com.tFieldPlan'))}</label>${TournamentPlanning.html('club', null)}</div>
-        <label class="com-radio"><input type="checkbox" id="com-t-reg" checked> ${escapeHtml(t('com.tRegOpen'))}</label>
         <div id="com-t-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
         <button type="submit" class="btn btn-primary">${escapeHtml(t('com.tCreate'))}</button>
         <button type="button" class="btn btn-outline" id="com-t-cancel">${escapeHtml(t('com.tCancel'))}</button>
@@ -203,7 +201,6 @@
     back.addEventListener('click', (e) => { if (e.target === back) close(); });
     document.body.appendChild(back);
     const form = back.querySelector('#com-t-form');
-    TournamentRules.mount(back.querySelector('#com-t-rules'));
     const cats = back.querySelector('#com-t-cats');
     // "Bez kategórie" switches the three categories off: the tournament is played without them (one draw for everybody)
     const noCategory = form.querySelector('#com-t-open');
@@ -223,11 +220,10 @@
       try {
         const body = {
           name: value('#com-t-name').trim(), venue: value('#com-t-venue').trim(), startDate: value('#com-t-start') || null, endDate: value('#com-t-end') || null,
-          playType, ...TournamentRules.read(back.querySelector('#com-t-rules')), ...TournamentPlanning.read(back.querySelector('#com-t-plan')), entryFee: value('#com-t-fee').trim(), info: value('#com-t-info').trim() ? `<p>${escapeHtml(value('#com-t-info').trim()).replace(/\n/g, '<br>')}</p>` : '',
+          playType, entryFee: value('#com-t-fee').trim(), info: value('#com-t-info').trim() ? `<p>${escapeHtml(value('#com-t-info').trim()).replace(/\n/g, '<br>')}</p>` : '',
         };
         if (playType === 'SINGLES') body.categories = noCategory.checked ? ['OPEN'] : [...cats.querySelectorAll('[data-cat]')].filter((b) => b.checked).map((b) => b.dataset.cat);
         const made = await api(`/communities/${org.id}/tournaments`, { method: 'POST', body });
-        if (back.querySelector('#com-t-reg').checked) await api(`/seasons/${made.id}`, { method: 'PATCH', body: { registrationOpen: true } });
         window.location.href = siteUrl(`/community-tournament/${made.id}`); // (a code address is only turned into the real one by siteUrl, links are rewritten by localize.js)
       } catch (err) { errorEl.textContent = err.message; delete submit.dataset.busy; }
     });

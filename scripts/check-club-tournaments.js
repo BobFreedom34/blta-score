@@ -78,23 +78,24 @@ test('a club admin creates a tournament: kind TOURNAMENT, owned by the club, in 
   assert.strictEqual((await createTournament(org, owner, { playType: 'DOUBLES' })).json.playType, 'DOUBLES');
 });
 
-test('the "Plánovanie turnaja" of the create window: stored with the tournament (match length, playing day, rest, most matches a day, automatic schedule); a bad value makes no tournament', async () => {
+test('a club tournament is made with the basics only (the window has no planning); the organiser sets the planning on its page: stored, checked, and a bad value changes nothing', async () => {
   const owner = await fresh('Organizator');
   const org = await makeClub(owner);
-  const planningOf = (id) => withDb((f) => f.prepare('SELECT match_minutes AS m, day_start AS s, day_end AS e, rest_minutes AS r, max_matches_per_day AS x, auto_schedule AS a FROM seasons WHERE id = ?').get(id));
-  const made = await createTournament(org, owner, { matchMinutes: 60, dayStart: '08:30', dayEnd: '18:00', restMinutes: 5, maxPerDay: 3, autoSchedule: false });
+  const planningOf = (id) => withDb((f) => f.prepare('SELECT match_minutes AS m, day_start AS s, day_end AS e, rest_minutes AS r, max_matches_per_day AS x, auto_schedule AS a, court_count AS c FROM seasons WHERE id = ?').get(id));
+  const made = await createTournament(org, owner);
   assert.strictEqual(made.status, 201, JSON.stringify(made.json));
-  assert.deepStrictEqual({ ...planningOf(made.json.id) }, { m: 60, s: '08:30', e: '18:00', r: 5, x: 3, a: 0 });
-  const countOf = () => withDb((f) => f.prepare('SELECT COUNT(*) AS n FROM seasons WHERE organisation_id = ?').get(org.id).n);
-  const before = countOf();
-  for (const bad of [{ matchMinutes: 10 }, { restMinutes: 999 }, { dayStart: '9' }, { dayStart: '20:00', dayEnd: '08:00' }, { maxPerDay: -1 }]) {
-    const r = await createTournament(org, owner, bad);
+  assert.deepStrictEqual({ ...planningOf(made.json.id) }, { m: 90, s: '09:00', e: '20:00', r: 30, x: 0, a: 1, c: 0 }, 'nothing asked for when it is made: the defaults of the planner, no courts yet');
+  const patch = (body) => call('PATCH', `/api/seasons/${made.json.id}`, { cookie: owner.cookie, body });
+  const saved = await patch({ matchMinutes: 60, dayStart: '08:30', dayEnd: '18:00', restMinutes: 5, maxMatchesPerDay: 3, autoSchedule: false, courtCount: 4 });
+  assert.strictEqual(saved.status, 200, JSON.stringify(saved.json));
+  assert.deepStrictEqual({ ...planningOf(made.json.id) }, { m: 60, s: '08:30', e: '18:00', r: 5, x: 3, a: 0, c: 4 });
+  assert.deepStrictEqual(saved.json.planning, { matchMinutes: 60, dayStart: '08:30', dayEnd: '18:00', restMinutes: 5, autoSchedule: false });
+  for (const bad of [{ matchMinutes: 10 }, { restMinutes: 999 }, { dayStart: '9' }, { dayStart: '20:00', dayEnd: '08:00' }]) {
+    const r = await patch({ entryFee: '99 €', ...bad });
     assert.strictEqual(r.status, 400, `${JSON.stringify(bad)}: ${JSON.stringify(r.json)}`);
   }
-  assert.strictEqual(countOf(), before, 'nothing was made');
-  const plain = await createTournament(org, owner);
-  assert.strictEqual(plain.status, 201);
-  assert.deepStrictEqual({ ...planningOf(plain.json.id) }, { m: 90, s: '09:00', e: '20:00', r: 30, x: 0, a: 1 }, 'nothing chosen: the defaults of the form (the same the planner uses)');
+  assert.deepStrictEqual({ ...planningOf(made.json.id) }, { m: 60, s: '08:30', e: '18:00', r: 5, x: 3, a: 0, c: 4 }, 'a refused save changes nothing');
+  assert.strictEqual(withDb((f) => f.prepare('SELECT entry_fee AS fee FROM seasons WHERE id = ?').get(made.json.id).fee), null, 'not even the entry fee');
 });
 
 test('only an admin of the club creates: a plain member 403, a visitor 401, an admin of another club 403', async () => {

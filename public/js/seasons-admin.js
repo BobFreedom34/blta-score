@@ -353,20 +353,6 @@ function seasonCardHtml(s) {
               </div>
             </section>
 
-            ${IS_TOURNAMENT ? `<section class="sa-section">
-              <h4>Kurty a pravidlá hrania</h4>
-              <div class="sa-grid">
-                ${field('Počet kurtov (Kurt 1 … Kurt n)', input('courtCount', s.courtCount || '', 'type="number" min="0" max="50" inputmode="numeric" placeholder="napr. 4"'))}
-                ${field('Max. zápasov hráča za deň', input('maxMatchesPerDay', s.maxMatchesPerDay || '', 'type="number" min="0" max="10" inputmode="numeric" placeholder="bez limitu"'))}
-              </div>
-            </section>` : ''}
-
-            <section class="sa-section" data-rules-section${IS_TOURNAMENT || s.scoring ? '' : ' data-rules-default'}>
-              <h4>Bodovanie a podmienky</h4>
-              ${IS_TOURNAMENT || s.scoring ? '' : '<p class="tr-hint">Kým tu nič nezmeníte, platí štandardné bodovanie a poradie ligy BLTA.</p>'}
-              ${TournamentRules.html(`season-${s.id}`, { scoring: s.scoring, tiebreakers: s.tiebreakers })}
-            </section>
-
             <section class="sa-section">
               <h4>Štartovné a registrácia</h4>
               <div class="sa-grid">
@@ -376,6 +362,29 @@ function seasonCardHtml(s) {
                 <label class="sa-field sa-check"><input type="checkbox" data-field="registrationOpen"${s.registrationOpen ? ' checked' : ''}> Registrácia je otvorená</label>
                 ${field('Odkaz na platbu (Stripe) — tlačidlo „Úhrada štartovného online“', input('paymentUrl', s.paymentUrl || '', 'maxlength="500" placeholder="https://buy.stripe.com/…"'), 'sa-full')}
               </div>
+            </section>
+
+            ${IS_TOURNAMENT ? `<section class="sa-section">
+              <h4>Kurty a pravidlá hrania</h4>
+              <div class="sa-grid">
+                ${field('Počet kurtov (Kurt 1 … Kurt n)', input('courtCount', s.courtCount || '', 'type="number" min="0" max="50" inputmode="numeric" placeholder="napr. 4"'))}
+                ${field('Max. zápasov hráča za deň', input('maxMatchesPerDay', s.maxMatchesPerDay || '', 'type="number" min="0" max="10" inputmode="numeric" placeholder="bez limitu"'))}
+              </div>
+              <div class="tr-title" style="margin-top:14px">Plánovanie turnaja</div>
+              <p class="tr-hint">Podľa týchto údajov systém skladá rozvrh zápasov na kurty. Rozvrh sa dá ďalej upravovať v časti Rozpis.</p>
+              <div class="sa-grid">
+                ${field('Dĺžka zápasu (min)', input('matchMinutes', s.planning.matchMinutes, 'type="number" min="15" max="300" step="5" inputmode="numeric"'))}
+                ${field('Oddych hráča (min)', input('restMinutes', s.planning.restMinutes, 'type="number" min="0" max="240" step="5" inputmode="numeric"'))}
+                ${field('Začiatok dňa', input('dayStart', s.planning.dayStart, 'type="time"'))}
+                ${field('Koniec dňa', input('dayEnd', s.planning.dayEnd, 'type="time"'))}
+                <label class="sa-field sa-check"><input type="checkbox" data-field="autoSchedule"${s.planning.autoSchedule ? ' checked' : ''}> Rozvrh skladá systém sám</label>
+              </div>
+            </section>` : ''}
+
+            <section class="sa-section" data-rules-section${IS_TOURNAMENT || s.scoring ? '' : ' data-rules-default'}>
+              <h4>Bodovanie a podmienky</h4>
+              ${IS_TOURNAMENT || s.scoring ? '' : '<p class="tr-hint">Kým tu nič nezmeníte, platí štandardné bodovanie a poradie ligy BLTA.</p>'}
+              ${TournamentRules.html(`season-${s.id}`, { scoring: s.scoring, tiebreakers: s.tiebreakers })}
             </section>
 
             <section class="sa-section">
@@ -511,7 +520,7 @@ function wireSeason(card) {
     try {
       // a season is played in at least one category (an empty choice would mean "all" to the server)
       if (!IS_TOURNAMENT && e.target.querySelectorAll('[data-cat]').length && ![...e.target.querySelectorAll('[data-cat]')].some((b) => b.checked)) throw new Error('Vyber aspoň jednu kategóriu.');
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(IS_TOURNAMENT ? { venue: f('venue'), courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')) } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(IS_TOURNAMENT ? { venue: f('venue'), courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), matchMinutes: Number(f('matchMinutes')), restMinutes: Number(f('restMinutes')), dayStart: f('dayStart'), dayEnd: f('dayEnd'), autoSchedule: e.target.querySelector('[data-field="autoSchedule"]').checked } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
       toast('Saved');
       await load();
     } catch (err) { fail(err); }

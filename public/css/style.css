@@ -5618,7 +5618,6 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .ct-bar { margin: 18px 0 4px; }
 .ct-title { margin: 6px 0 14px; }
 .com-create { margin-top: 16px; }
-.tp-hint { margin: 0 0 10px; font-size: 12.5px; line-height: 1.4; color: var(--gray); font-weight: 600; }
 .com-radio { display: flex; flex-direction: row; align-items: center; gap: 8px; font-weight: 500; }
 .com-radio input { width: auto; margin: 0; }
 

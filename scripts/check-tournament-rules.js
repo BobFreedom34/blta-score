@@ -148,10 +148,11 @@ test('the page side: the shared form is on the Backend card, the club manage pag
   }
   assert.ok(pub('community.html').indexOf('/js/tournament-rules.js') < pub('community.html').indexOf('/js/community.js'));
   const card = pub('js/seasons-admin.js');
+  const order = ['Základné údaje', 'Štartovné a registrácia', 'Kurty a pravidlá hrania', 'Bodovanie a podmienky', 'Vzhľad stránky'].map((h) => card.indexOf(`<h4>${h}</h4>`));
+  assert.ok(order.every((i) => i > 0) && order.every((i, n) => n === 0 || order[n - 1] < i), 'the sections of the card: the basics, then Štartovné a registrácia second, then the courts, the rules, the look');
   assert.ok(card.includes('Bodovanie a podmienky') && card.includes('TournamentRules.read(') && card.includes('TournamentRules.mount('), 'the card shows, wires and saves the rules');
   const club = pub('js/community.js');
-  assert.ok(club.includes("TournamentRules.html('club'") && club.includes('TournamentRules.read('), 'the club create window asks for the rules');
-  assert.ok(club.includes("TournamentRules.html('club-season'"), 'the club season window asks for the rules too');
+  assert.ok(club.includes("TournamentRules.html('club-season'") && club.includes('TournamentRules.read('), 'the club season window asks for the rules (the create window of a tournament does not: they are set on its page)');
   const form = pub('js/tournament-rules.js');
   for (const text of ['BLTA bodovanie', '2 body za výhru', '1 bod za výhru', 'Vzájomný zápas', 'Rozdiel setov', 'Počet výhier', 'Rozdiel gemov']) assert.ok(form.includes(text), text);
   const i18n = pub('js/i18n.js');
@@ -161,18 +162,20 @@ test('the page side: the shared form is on the Backend card, the club manage pag
   assert.ok(pub('js/season.js').includes('standings.rules'), 'the tournament page shows the rules');
 });
 
-test('the create window of a club tournament has its own section "Plánovanie turnaja" (the six settings of the court schedule), loaded before the window and sent with the tournament', () => {
+test('the create window of a club tournament asks only for the basics (name, place, dates, type, categories, entry fee, description) and opens the page of the new tournament; the rest is set on that page', () => {
   const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
-  const page = pub('community.html');
-  assert.ok(page.indexOf('/js/tournament-planning.js') >= 0 && page.indexOf('/js/tournament-planning.js') < page.indexOf('/js/community.js'), 'the section is loaded before the window');
   const club = pub('js/community.js');
-  assert.ok(club.includes("TournamentPlanning.html('club'") && club.includes("TournamentPlanning.read(back.querySelector('#com-t-plan'))"), 'the window shows it and sends it');
-  assert.ok(club.indexOf("TournamentRules.html('club'") < club.indexOf("TournamentPlanning.html('club'") && club.indexOf("TournamentPlanning.html('club'") < club.indexOf('id="com-t-reg"'), 'after the rules, before the registration switch');
-  const form = pub('js/tournament-planning.js');
-  for (const text of ['Dĺžka zápasu (min)', 'Začiatok dňa', 'Koniec dňa', 'Oddych hráča (min)', 'Max. zápasov hráča za deň', 'Rozvrh skladá systém sám']) assert.ok(form.includes(text), text);
+  const dialog = club.slice(club.indexOf('function openTournamentDialog()'), club.indexOf('function openSeasonDialog()'));
+  for (const id of ['com-t-name', 'com-t-venue', 'com-t-start', 'com-t-end', 'com-t-cats', 'com-t-fee', 'com-t-info']) assert.ok(dialog.includes(`id="${id}"`), `${id} is in the window`);
+  for (const gone of ['com-t-rules', 'com-t-plan', 'com-t-reg', 'com-t-step', 'TournamentRules', 'TournamentPlanning', 'registrationOpen']) assert.ok(!dialog.includes(gone), `${gone} is not in the window (it is set on the page of the tournament)`);
+  assert.ok(dialog.includes('window.location.href = siteUrl(`/community-tournament/${made.id}`)'), 'it opens the page of the new tournament');
+  assert.ok(!pub('community.html').includes('tournament-planning'), 'there is no separate planning script any more');
   const i18n = pub('js/i18n.js');
-  assert.strictEqual(i18n.split("'com.tFieldPlan':").length - 1, 2, 'the title in both languages');
-  assert.ok(i18n.includes("'com.tFieldPlan': 'Plánovanie turnaja'"));
+  assert.ok(i18n.includes("'com.tournamentTitle': 'Nový turnaj klubu alebo komunity'"), 'the heading of the window');
+  const card = pub('js/seasons-admin.js');
+  const courts = card.slice(card.indexOf('<h4>Kurty a pravidlá hrania</h4>'), card.indexOf('<h4>Bodovanie a podmienky</h4>'));
+  for (const text of ['Počet kurtov (Kurt 1 … Kurt n)', 'Max. zápasov hráča za deň', 'Plánovanie turnaja', 'Dĺžka zápasu (min)', 'Oddych hráča (min)', 'Začiatok dňa', 'Koniec dňa', 'Rozvrh skladá systém sám']) assert.ok(courts.includes(text), `${text} is in the section "Kurty a pravidlá hrania" of the page`);
+  assert.ok(/matchMinutes: Number\(f\('matchMinutes'\)\), restMinutes: Number\(f\('restMinutes'\)\), dayStart: f\('dayStart'\), dayEnd: f\('dayEnd'\), autoSchedule:/.test(card), 'the planning fields are sent with the Save of the page');
 });
 
 test('in a window (.modal) the ink is white, so the rows and the arrows of the tie-break order are dark, not white boxes with white text (they could not be read)', () => {

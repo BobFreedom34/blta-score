@@ -165,6 +165,8 @@ function serializeSeason(s) {
     organisationId: s.organisation_id || null,
     courtCount: s.court_count || 0,
     maxMatchesPerDay: s.max_matches_per_day || 0,
+    // the settings of the court planner (a tournament only): what the edit page shows under "Plánovanie turnaja"
+    planning: s.kind === 'TOURNAMENT' ? (({ matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule }) => ({ matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule }))(tournamentSchedule.settingsOf(s)) : null,
     matchCount: db.prepare('SELECT COUNT(*) AS n FROM matches WHERE season_id = ?').get(s.id).n,
     groups: groups.map(serializeGroup),
   };
@@ -854,14 +856,7 @@ function readNewSeason(body) {
   if (asked.error) return { error: asked.error };
   // a tournament always starts with explicit rules (the BLTA scoring and the default order unless it chooses); a season has them only when it chooses (else the league's own way)
   const rules = kind === 'TOURNAMENT' || asked.scoring !== undefined || asked.tiebreakers !== undefined ? normalizeRules(asked) : null;
-  // the planning of a tournament (match length, playing day, rest, …) may be chosen when it is made; a bad value refuses the whole tournament, nothing is made
-  let schedule = null;
-  if (kind === 'TOURNAMENT' && tournamentSchedule.SETTING_KEYS.some((k) => body[k] !== undefined)) {
-    const planned = tournamentSchedule.readSettings({}, body);
-    if (planned.error) return { error: planned.error };
-    schedule = planned.next;
-  }
-  return { values: { name, start: start.value, end: end.value, kind, venue, playType, categories: playType === 'DOUBLES' ? null : categoriesToStore(body.categories), scoring: rules ? rules.scoring : null, tiebreakers: rules ? rules.tiebreakers.join(',') : null, schedule } };
+  return { values: { name, start: start.value, end: end.value, kind, venue, playType, categories: playType === 'DOUBLES' ? null : categoriesToStore(body.categories), scoring: rules ? rules.scoring : null, tiebreakers: rules ? rules.tiebreakers.join(',') : null } };
 }
 
 // inserts a checked new season and returns its row; a club tournament carries the id of its organisation
@@ -870,9 +865,7 @@ function insertSeason(values, leagueId, organisationId = null) {
   const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM seasons WHERE league_id = ?').get(leagueId).m;
   const info = db.prepare('INSERT INTO seasons (name, slug, start_date, end_date, sort_order, kind, venue, categories, league_id, play_type, organisation_id, scoring, tiebreakers) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .run(values.name, slug, values.start, values.end, maxOrder + 1, values.kind, values.venue || null, values.categories, leagueId, values.playType, organisationId, values.scoring, values.tiebreakers);
-  const id = Number(info.lastInsertRowid);
-  if (values.schedule) tournamentSchedule.storeSettings(id, values.schedule);
-  return db.prepare('SELECT * FROM seasons WHERE id = ?').get(id);
+  return db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(info.lastInsertRowid));
 }
 
 router.post('/', requireAdmin, (req, res) => {
@@ -946,8 +939,17 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     maxPerDay = Number(req.body.maxMatchesPerDay);
     if (!Number.isInteger(maxPerDay) || maxPerDay < 0 || maxPerDay > 10) return res.status(400).json({ error: 'The most matches a player may play in a day must be 0 (no limit) to 10' });
   }
+  // the planning of a tournament (match length, playing day, rest, automatic schedule) saved with the rest of its page; checked like in the court schedule before anything is written
+  // (the most matches a day is the field above, so the value just checked goes along and is not written over)
+  let planning = null;
+  if (season.kind === 'TOURNAMENT' && tournamentSchedule.SETTING_KEYS.some((k) => k !== 'maxPerDay' && req.body[k] !== undefined)) {
+    const planned = tournamentSchedule.readSettings(season, { ...req.body, maxPerDay });
+    if (planned.error) return res.status(400).json({ error: planned.error });
+    planning = planned.next;
+  }
   db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ?, court_count = ?, max_matches_per_day = ?, scoring = ?, tiebreakers = ? WHERE id = ?')
     .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, scoring, tiebreakers, season.id);
+  if (planning) tournamentSchedule.storeSettings(season.id, planning);
   res.json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
 });
 

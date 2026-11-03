@@ -304,25 +304,30 @@ test('most matches per player per day: with a limit of 1 the next match of a pla
   assert.ok(warned.json.warnings.some((w) => /more than 1 match/.test(w)));
 });
 
-test('the planning can be chosen when the tournament is made: stored as sent; a bad value refuses the whole tournament; without it the defaults stay', async () => {
-  const count = async () => (await call('GET', '/api/seasons')).json.length;
-  const before = await count();
-  const planned = await call('POST', '/api/seasons', { name: 'Planned Cup 2099', kind: 'TOURNAMENT', startDate: '2099-07-01', endDate: '2099-07-01', matchMinutes: 75, dayStart: '10:00', dayEnd: '19:30', restMinutes: 5, maxPerDay: 2, autoSchedule: false });
-  assert.strictEqual(planned.status, 201, planned.text);
-  const s = (await call('GET', `/api/seasons/${planned.json.id}/schedule`, undefined, { admin: false })).json.settings;
-  assert.deepStrictEqual([s.matchMinutes, s.dayStart, s.dayEnd, s.restMinutes, s.maxPerDay, s.autoSchedule], [75, '10:00', '19:30', 5, 2, false], 'the settings of the form');
-  const plain = await call('POST', '/api/seasons', { name: 'Plain Cup 2099', kind: 'TOURNAMENT', startDate: '2099-07-02', endDate: '2099-07-02' });
-  const d = (await call('GET', `/api/seasons/${plain.json.id}/schedule`, undefined, { admin: false })).json.settings;
-  assert.deepStrictEqual([d.matchMinutes, d.dayStart, d.dayEnd, d.restMinutes, d.maxPerDay, d.autoSchedule], [90, '09:00', '20:00', 30, 0, true], 'no planning sent: the defaults');
-  const after = await count();
-  assert.strictEqual(after, before + 2);
-  for (const bad of [{ matchMinutes: 5 }, { restMinutes: -1 }, { dayStart: '25:00' }, { dayStart: '21:00', dayEnd: '20:00' }, { maxPerDay: 11 }, { matchMinutes: 300, dayStart: '09:00', dayEnd: '10:00' }]) {
-    const r = await call('POST', '/api/seasons', { name: 'Bad Plan Cup', kind: 'TOURNAMENT', ...bad });
+test('the planning of a tournament is saved with its page (PATCH): stored as sent and shown on the season; a bad value changes nothing; a league season has none', async () => {
+  const made = await call('POST', '/api/seasons', { name: 'Planned Cup 2099', kind: 'TOURNAMENT', startDate: '2099-07-01', endDate: '2099-07-01' });
+  assert.strictEqual(made.status, 201, made.text);
+  const seasonNow = async () => (await call('GET', `/api/seasons/${made.json.id}`)).json;
+  assert.deepStrictEqual((await seasonNow()).planning, { matchMinutes: 90, dayStart: '09:00', dayEnd: '20:00', restMinutes: 30, autoSchedule: true }, 'a new tournament has the defaults');
+  const saved = await call('PATCH', `/api/seasons/${made.json.id}`, { matchMinutes: 75, dayStart: '10:00', dayEnd: '19:30', restMinutes: 5, autoSchedule: false, maxMatchesPerDay: 2, courtCount: 3 });
+  assert.strictEqual(saved.status, 200, saved.text);
+  assert.deepStrictEqual(saved.json.planning, { matchMinutes: 75, dayStart: '10:00', dayEnd: '19:30', restMinutes: 5, autoSchedule: false });
+  assert.deepStrictEqual([saved.json.courtCount, saved.json.maxMatchesPerDay], [3, 2], 'the courts and the daily limit are saved beside it, the limit is not written over');
+  const s = (await call('GET', `/api/seasons/${made.json.id}/schedule`, undefined, { admin: false })).json.settings;
+  assert.deepStrictEqual([s.matchMinutes, s.dayStart, s.dayEnd, s.restMinutes, s.maxPerDay, s.autoSchedule, s.courtCount], [75, '10:00', '19:30', 5, 2, false, 3], 'the court schedule works with the same numbers');
+  for (const bad of [{ matchMinutes: 5 }, { restMinutes: -1 }, { dayStart: '25:00' }, { dayStart: '21:00', dayEnd: '20:00' }, { matchMinutes: 300, dayStart: '09:00', dayEnd: '10:00' }]) {
+    const r = await call('PATCH', `/api/seasons/${made.json.id}`, { name: 'Renamed Cup', ...bad });
     assert.strictEqual(r.status, 400, `${JSON.stringify(bad)}: ${r.text}`);
   }
-  assert.strictEqual(await count(), after, 'a refused tournament is not made');
-  const league = await call('POST', '/api/seasons', { name: 'League With Plan', kind: 'LEAGUE', matchMinutes: 5 });
-  assert.strictEqual(league.status, 201, 'a league season takes no planning and ignores it');
+  const after = await seasonNow();
+  assert.deepStrictEqual(after.planning, saved.json.planning, 'a refused save changes nothing');
+  assert.strictEqual(after.name, 'Planned Cup 2099', 'not even the name');
+  const only = await call('PATCH', `/api/seasons/${made.json.id}`, { name: 'Planned Cup 2099 B' });
+  assert.deepStrictEqual(only.json.planning, saved.json.planning, 'a save that does not mention the planning keeps it');
+  const league = (await call('POST', '/api/seasons', { name: 'League With Plan', kind: 'LEAGUE' })).json;
+  assert.strictEqual(league.planning, null, 'a league season has no planning');
+  const ignored = await call('PATCH', `/api/seasons/${league.id}`, { matchMinutes: 5 });
+  assert.strictEqual(ignored.status, 200, 'a league season ignores it');
 });
 
 test('a league season has no court schedule', async () => {
