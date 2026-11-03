@@ -140,23 +140,26 @@ test('the league page is not touched: a season without rules still has no rules 
   assert.strictEqual(st.json.rules, null);
 });
 
-test('the page side: the shared form is on the Backend card, the club manage page and the club create window; the tournament page says how the tables are calculated', () => {
+test('the page side: the shared form is on the Backend card and the club manage page (not in the create windows of a club); the tournament page says how the tables are calculated', () => {
   const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
   for (const page of ['seasons-admin.html', 'tournaments-admin.html', 'club-tournament.html']) {
     const html = pub(page);
     assert.ok(html.indexOf('/js/tournament-rules.js') >= 0 && html.indexOf('/js/tournament-rules.js') < html.indexOf('/js/seasons-admin.js'), `${page} loads the rules form before the card`);
   }
-  assert.ok(pub('community.html').indexOf('/js/tournament-rules.js') < pub('community.html').indexOf('/js/community.js'));
+  assert.ok(!pub('community.html').includes('/js/tournament-rules.js'), 'the community page has no rules form: its create windows ask only for the basics');
   const card = pub('js/seasons-admin.js');
   const order = ['Základné údaje', 'Štartovné a registrácia', 'Kurty a pravidlá hrania', 'Bodovanie a podmienky', 'Vzhľad stránky'].map((h) => card.indexOf(`<h4>${h}</h4>`));
   assert.ok(order.every((i) => i > 0) && order.every((i, n) => n === 0 || order[n - 1] < i), 'the sections of the card: the basics, then Štartovné a registrácia second, then the courts, the rules, the look');
   assert.ok(card.includes('Bodovanie a podmienky') && card.includes('TournamentRules.read(') && card.includes('TournamentRules.mount('), 'the card shows, wires and saves the rules');
   const club = pub('js/community.js');
-  assert.ok(club.includes("TournamentRules.html('club-season'") && club.includes('TournamentRules.read('), 'the club season window asks for the rules (the create window of a tournament does not: they are set on its page)');
+  assert.ok(!club.includes('TournamentRules'), 'neither create window of a club (tournament, season) asks for the rules: they are set on the page that opens');
+  const seasonDialog = club.slice(club.indexOf('function openSeasonDialog()'), club.indexOf('async function openInviteDialog()'));
+  for (const id of ['com-s-name', 'com-s-venue', 'com-s-start', 'com-s-end', 'com-s-info']) assert.ok(seasonDialog.includes(`id="${id}"`), `${id} is in the season window`);
+  assert.ok(seasonDialog.includes('window.location.href = siteUrl(`/community-tournament/${made.id}`)'), 'the season window opens the page of the new season');
   const form = pub('js/tournament-rules.js');
   for (const text of ['BLTA bodovanie', '2 body za výhru', '1 bod za výhru', 'Vzájomný zápas', 'Rozdiel setov', 'Počet výhier', 'Rozdiel gemov']) assert.ok(form.includes(text), text);
   const i18n = pub('js/i18n.js');
-  for (const key of ['season.rulesScoring.BLTA', 'season.rulesScoring.WIN2', 'season.rulesScoring.WIN1', 'season.rulesOrder', 'season.rulesTie.H2H', 'season.rulesTie.GAMES', 'com.tFieldRules']) {
+  for (const key of ['season.rulesScoring.BLTA', 'season.rulesScoring.WIN2', 'season.rulesScoring.WIN1', 'season.rulesOrder', 'season.rulesTie.H2H', 'season.rulesTie.GAMES']) {
     assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
   }
   assert.ok(pub('js/season.js').includes('standings.rules'), 'the tournament page shows the rules');
@@ -171,7 +174,7 @@ test('the create window of a club tournament asks only for the basics (name, pla
   assert.ok(dialog.includes('window.location.href = siteUrl(`/community-tournament/${made.id}`)'), 'it opens the page of the new tournament');
   assert.ok(!pub('community.html').includes('tournament-planning'), 'there is no separate planning script any more');
   const i18n = pub('js/i18n.js');
-  assert.ok(i18n.includes("'com.tournamentTitle': 'Nový turnaj klubu alebo komunity'"), 'the heading of the window');
+  assert.ok(i18n.includes("'com.tournamentTitle': 'Nový turnaj klubu alebo komunity'") && i18n.includes("'com.seasonTitle': 'Nová sezóna klubu alebo komunity'"), 'the headings of the two windows');
   const card = pub('js/seasons-admin.js');
   const courts = card.slice(card.indexOf('<h4>Kurty a pravidlá hrania</h4>'), card.indexOf('<h4>Bodovanie a podmienky</h4>'));
   for (const text of ['Počet kurtov (Kurt 1 … Kurt n)', 'Max. zápasov hráča za deň', 'Plánovanie turnaja', 'Dĺžka zápasu (min)', 'Oddych hráča (min)', 'Začiatok dňa', 'Koniec dňa', 'Rozvrh skladá systém sám']) assert.ok(courts.includes(text), `${text} is in the section "Kurty a pravidlá hrania" of the page`);
