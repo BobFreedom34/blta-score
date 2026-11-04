@@ -802,21 +802,26 @@ router.delete('/:id/members/:playerId', (req, res) => {
 });
 
 // ---------------- the ranking of an organisation (its tab Rebríček) ----------------
-// The points are set by hand by an admin of the organisation (or the super admin): for the moment nothing adds them by itself. The ranking is public like the
-// member list; players with equal points share a rank (1, 2, 2, 4).
+// Every ACTIVE member is in the ranking by himself (nobody is added): a member who joins is in it with 0 points, one who leaves is out of it (his points are kept,
+// should he come back). The points are set by hand by an admin of the organisation (or the super admin): for the moment nothing adds them by itself. The ranking
+// is public like the member list; players with equal points share a rank (1, 2, 2, 4); one with no points yet has no rank (null).
 
 const MAX_RANKING_POINTS = 1000000;
 
 function rankingOf(orgId) {
   const rows = db.prepare(`
-    SELECT r.player_id, r.points, p.name, p.slug FROM organisation_ranking r JOIN players p ON p.id = r.player_id
-    WHERE r.organisation_id = ? ORDER BY r.points DESC, p.name COLLATE NOCASE
+    SELECT m.player_id, COALESCE(r.points, 0) AS points, p.name, p.slug
+    FROM organisation_members m
+    JOIN players p ON p.id = m.player_id
+    LEFT JOIN organisation_ranking r ON r.organisation_id = m.organisation_id AND r.player_id = m.player_id
+    WHERE m.organisation_id = ? AND m.status = 'ACTIVE'
+    ORDER BY points DESC, p.name COLLATE NOCASE
   `).all(orgId);
   let rank = 0;
   let last;
   return rows.map((r, i) => {
     if (i === 0 || r.points !== last) { rank = i + 1; last = r.points; }
-    return { rank, playerId: r.player_id, name: r.name, slug: r.slug, points: r.points };
+    return { rank: r.points > 0 ? rank : null, playerId: r.player_id, name: r.name, slug: r.slug, points: r.points };
   });
 }
 
@@ -827,7 +832,7 @@ router.get('/:id/ranking', (req, res) => {
   res.json({ items: rankingOf(org.id) });
 });
 
-// sets the points of one player (a new row when the player has none yet); the player has to be an active member of the organisation
+// sets the points of one member (0 = no points); the player has to be an active member of the organisation
 router.put('/:id/ranking/:playerId', (req, res) => {
   const ctx = needOrgAdmin(req, res);
   if (!ctx) return;
@@ -837,20 +842,11 @@ router.put('/:id/ranking/:playerId', (req, res) => {
   const points = typeof rawPoints === 'number' || (typeof rawPoints === 'string' && rawPoints.trim() !== '') ? Number(rawPoints) : NaN;
   if (!Number.isInteger(points) || points < 0 || points > MAX_RANKING_POINTS) return res.status(400).json({ error: `The points are a whole number from 0 to ${MAX_RANKING_POINTS}` });
   const member = communities.memberOf(ctx.org.id, playerId);
-  const hasRow = db.prepare('SELECT 1 FROM organisation_ranking WHERE organisation_id = ? AND player_id = ?').get(ctx.org.id, playerId);
-  if (!hasRow && !(member && member.status === 'ACTIVE')) return res.status(404).json({ error: 'Only a member of this community or club can be in its ranking' });
+  if (!(member && member.status === 'ACTIVE')) return res.status(404).json({ error: 'Only a member of this community or club is in its ranking' });
   db.prepare(`
     INSERT INTO organisation_ranking (organisation_id, player_id, points) VALUES (?, ?, ?)
     ON CONFLICT(organisation_id, player_id) DO UPDATE SET points = excluded.points, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
   `).run(ctx.org.id, playerId, points);
-  res.json({ items: rankingOf(ctx.org.id) });
-});
-
-router.delete('/:id/ranking/:playerId', (req, res) => {
-  const ctx = needOrgAdmin(req, res);
-  if (!ctx) return;
-  const info = db.prepare('DELETE FROM organisation_ranking WHERE organisation_id = ? AND player_id = ?').run(ctx.org.id, Number(req.params.playerId) || 0);
-  if (!info.changes) return res.status(404).json({ error: 'This player is not in the ranking' });
   res.json({ items: rankingOf(ctx.org.id) });
 });
 

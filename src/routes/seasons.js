@@ -23,6 +23,7 @@ const rankingPoints = require('../rankingPoints');
 const clubTournaments = require('../clubTournaments');
 const changeLog = require('../changeLog');
 const capacity = require('../registrationCapacity');
+const playerPush = require('../playerPush');
 
 const router = express.Router();
 
@@ -365,6 +366,7 @@ router.post('/:id/registrations', async (req, res) => {
   // the pair is made at once when both players are known; otherwise the organiser makes it (draw tab: "Páry z registrácií"); a pair of substitutes is made when they come in
   if (doublesTournament && player && !substitute) { try { tournamentDraw.addPair(season, { player: player.id, partner }); } catch { /* the organiser makes it */ } }
   const total = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?').get(season.id).n;
+  notifyOrganisationAdmins(season, { name, substitute, playerId: player ? player.id : null }); // the bell of the admins of the club that runs it
   // the e-mail to the admin must never make the registration fail
   sendSeasonRegistrationEmail(season, { name, phone, email, category: entryCategory, note, isNew: !player, account: account.status, phoneHolder: account.holder, substitute }, total)
     .catch((err) => console.error('[season registration] admin e-mail failed:', err.message));
@@ -409,6 +411,24 @@ if (!db.prepare('PRAGMA table_info(season_registrations)').all().some((c) => c.n
 
 function serializeRegistration(r) {
   return { id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', partnerName: r.partner_name || '', seed: r.seed || null, createdAt: r.created_at, playerId: r.player_id, remindedAt: r.reminded_at || null };
+}
+
+// A registration for an event of a community or club: a bell notification (and a push) to every ACTIVE admin of it, except the player who registered (when he is
+// one of them). Never makes the registration fail.
+function notifyOrganisationAdmins(season, { name, substitute, playerId }) {
+  try {
+    if (!season.organisation_id) return;
+    const org = db.prepare('SELECT id, slug, name FROM organisations WHERE id = ?').get(season.organisation_id);
+    if (!org) return;
+    const admins = db.prepare("SELECT player_id FROM organisation_members WHERE organisation_id = ? AND role = 'ADMIN' AND status = 'ACTIVE'").all(org.id).map((r) => r.player_id).filter((id) => id !== playerId);
+    const insert = db.prepare('INSERT INTO registration_notifications (player_id, season_id, name, substitute) VALUES (?, ?, ?, ?)');
+    admins.forEach((adminId) => {
+      insert.run(adminId, season.id, name, substitute ? 1 : 0);
+      playerPush.notifyPlayer(adminId, 'REGISTRATION', { name, seasonName: season.name, seasonId: season.id, orgName: org.name, substitute: !!substitute });
+    });
+  } catch (err) {
+    console.error('[registration] could not notify the admins of the club:', err.message);
+  }
 }
 
 // the same with who is a substitute (waits after the maximum of players): substitute + substitutePosition (1, 2, ... among the substitutes of its category)
@@ -1071,6 +1091,7 @@ function deleteTournamentWithMatches(req, res, season) {
     throw err;
   }
   require('./seasonPhotos').removeAllForSeason(season.id); // the gallery goes too (the files leave Drive in the background)
+  db.prepare('DELETE FROM registration_notifications WHERE season_id = ?').run(season.id);
   matches.forEach((m) => {
     try {
       const ranking = rankingPoints.reverseForMatchWithChanges(m.id);
@@ -1101,6 +1122,7 @@ router.delete('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPar
   db.prepare('DELETE FROM tournament_pairs WHERE season_id = ?').run(season.id);
   db.prepare('DELETE FROM seasons WHERE id = ?').run(season.id);
   require('./seasonPhotos').removeAllForSeason(season.id); // the gallery goes too (the files leave Drive in the background)
+  db.prepare('DELETE FROM registration_notifications WHERE season_id = ?').run(season.id);
   res.json({ ok: true });
 });
 

@@ -98,7 +98,14 @@ function countUnreadNotifications(playerId) {
     JOIN organisations o ON o.id = po.organisation_id AND o.hidden = 0
     WHERE n.player_id = ? AND n.seen = 0
   `).get(playerId).c;
-  return badges + chats + playRequests + proposals + rankings + badgeReminders + photos + postComments + communityNews;
+  // somebody registered for a tournament or a season of the community or club the player is an admin of (the season can be deleted since)
+  const registrations = db.prepare(`
+    SELECT COUNT(*) AS c FROM registration_notifications n
+    JOIN seasons s ON s.id = n.season_id
+    JOIN organisations o ON o.id = s.organisation_id AND o.hidden = 0
+    WHERE n.player_id = ? AND n.seen = 0
+  `).get(playerId).c;
+  return badges + chats + playRequests + proposals + rankings + badgeReminders + photos + postComments + communityNews + registrations;
 }
 
 router.get('/session', (req, res) => {
@@ -323,7 +330,22 @@ router.get('/notifications', (req, res) => {
     ? { type: 'POST', id: r.id, seen: !!r.seen, createdAt: r.created_at, post: { authorName: r.actor_name || '', body: r.body, postId: r.post_id, orgName: r.org_name, orgSlug: r.org_slug } }
     : { type: 'REACTION', id: r.id, seen: !!r.seen, createdAt: r.created_at, reaction: { actorName: r.actor_name || '', emoji: r.emoji, postId: r.post_id, orgName: r.org_name, orgSlug: r.org_slug } }));
 
-  const merged = [...newsRows, ...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows, ...rankingRows, ...badgeReminderRows, ...photoRows, ...commentRows]
+  // somebody registered for an event of a club the player runs
+  const registrationRows = db.prepare(`
+    SELECT n.id, n.seen, n.created_at, n.name, n.substitute, s.id AS season_id, s.name AS season_name, s.kind AS season_kind, o.name AS org_name, o.slug AS org_slug
+    FROM registration_notifications n
+    JOIN seasons s ON s.id = n.season_id
+    JOIN organisations o ON o.id = s.organisation_id AND o.hidden = 0
+    WHERE n.player_id = ?
+  `).all(playerId).map((r) => ({
+    type: 'REGISTRATION',
+    id: r.id,
+    seen: !!r.seen,
+    createdAt: r.created_at,
+    registration: { name: r.name, substitute: !!r.substitute, seasonId: r.season_id, seasonName: r.season_name, seasonKind: r.season_kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE', orgName: r.org_name, orgSlug: r.org_slug },
+  }));
+
+  const merged = [...newsRows, ...registrationRows, ...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows, ...rankingRows, ...badgeReminderRows, ...photoRows, ...commentRows]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json(merged);
 });
@@ -348,6 +370,7 @@ router.post('/notifications/:type/:id/read', (req, res) => {
     : type === 'photo' ? 'photo_notifications'
     : type === 'comment' ? 'post_comment_notifications'
     : (type === 'post' || type === 'reaction') ? 'community_notifications'
+    : type === 'registration' ? 'registration_notifications'
     : null;
   if (!table) return res.status(400).json({ error: 'Invalid notification type' });
   const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);

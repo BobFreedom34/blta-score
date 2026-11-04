@@ -1841,6 +1841,21 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_community_notifications_player ON community_notifications(player_id, seen);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_community_notifications_reaction ON community_notifications(player_id, post_id, actor_player_id, emoji) WHERE kind = 'REACTION';
 `);
+// The bell notification of the admins of a community or club when somebody registers for one of its tournaments or seasons (to every ACTIVE admin of the
+// organisation; the name is kept in the row, the registration itself may be deleted since). substitute = the maximum of players was reached. src/routes/seasons.js
+// writes them, src/routes/player.js lists them.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS registration_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    season_id INTEGER NOT NULL,
+    name TEXT NOT NULL DEFAULT '',
+    substitute INTEGER NOT NULL DEFAULT 0,
+    seen INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_registration_notifications_player ON registration_notifications(player_id, seen);
+`);
 // a picture in a news post: the address of a file this community uploaded (/community-images/<org id>-post-...)
 // the time a post was last edited (null = never): the page says "upravené" beside the date
 if (!db.prepare('PRAGMA table_info(organisation_posts)').all().some((c) => c.name === 'edited_at')) db.exec('ALTER TABLE organisation_posts ADD COLUMN edited_at TEXT');

@@ -167,37 +167,25 @@
     return `${make}${tournaments.length ? `<div class="com-events">${tournaments.map(tournamentHtml).join('')}</div>` : `<p class="com-empty">${escapeHtml(t('com.noEvents'))}</p>`}`;
   }
 
-  // ---- the Ranking tab: the points of the players of the club, set by hand by its admin (a player of the ranking has to be a member)
+  // ---- the Ranking tab: every member of the club is in it by himself (nobody is added); the admin sets the points by hand, a member with none has no rank yet
   function rankingHtml() {
     const manage = isActing() && org.approved;
     const rows = ranking.items;
-    const inRanking = new Set(rows.map((r) => r.playerId));
-    const candidates = members.members.filter((m) => !inRanking.has(m.playerId));
-    const add = manage ? `
-      <div class="com-rank-add">
-        <div class="com-lab">${escapeHtml(t('com.rankAddTitle'))}</div>
-        ${candidates.length ? `<div class="com-rank-form">
-          <select id="com-rank-player" aria-label="${escapeHtml(t('com.rankPick'))}"><option value="">${escapeHtml(t('com.rankPick'))}</option>${candidates.map((m) => `<option value="${m.playerId}">${escapeHtml(m.name)}</option>`).join('')}</select>
-          <input type="number" id="com-rank-points" min="0" max="1000000" step="1" inputmode="numeric" placeholder="${escapeHtml(t('com.rankPoints'))}" aria-label="${escapeHtml(t('com.rankPoints'))}">
-          <button type="button" class="btn btn-primary com-small" data-act="rank-add">${escapeHtml(t('com.rankAdd'))}</button>
-        </div>` : `<p class="com-hint">${escapeHtml(t('com.rankNoCandidates'))}</p>`}
-        <p class="com-hint">${escapeHtml(t('com.rankHint'))}</p>
-      </div>` : '';
-    const list = rows.length ? `
+    if (!rows.length) return `<p class="com-empty">${escapeHtml(t('com.rankEmpty'))}</p>`;
+    const list = `
       <div class="com-rank">
         <div class="com-rank-row com-rank-head"><span class="com-rank-pos">#</span><span class="com-rank-name">${escapeHtml(t('com.rankPlayer'))}</span><span class="com-rank-pts">${escapeHtml(t('com.rankPoints'))}</span></div>
         ${rows.map((r) => `
           <div class="com-rank-row">
-            <span class="com-rank-pos">${r.rank}</span>
+            <span class="com-rank-pos${r.rank && r.rank <= 3 ? ' top' : ''}">${r.rank === null ? '–' : r.rank}</span>
             <a class="com-rank-name" href="${escapeHtml(playerLink(r))}">${escapeHtml(r.name)}</a>
             ${manage ? `<span class="com-rank-edit">
               <input type="number" min="0" max="1000000" step="1" inputmode="numeric" value="${r.points}" data-rank-input="${r.playerId}" aria-label="${escapeHtml(t('com.rankPoints'))}">
               <button type="button" class="btn btn-outline com-small" data-rank-save="${r.playerId}">${escapeHtml(t('com.rankSave'))}</button>
-              <button type="button" class="com-link" data-rank-remove="${r.playerId}">${escapeHtml(t('com.rankRemove'))}</button>
             </span>` : `<span class="com-rank-pts">${r.points}</span>`}
           </div>`).join('')}
-      </div>` : `<p class="com-empty">${escapeHtml(t('com.rankEmpty'))}</p>`;
-    return `${list}${add}`;
+      </div>`;
+    return `${list}${manage ? `<p class="com-hint">${escapeHtml(t('com.rankHint'))}</p>` : ''}`;
   }
 
   // the dialog that makes a tournament of the club: only what the tournament is (name, place, dates, type, categories, fee, description); it opens the manage page
@@ -619,17 +607,6 @@
       if (act === 'new-tournament') openTournamentDialog();
       if (act === 'new-season') openSeasonDialog();
       if (act === 'settings') openSettingsDialog();
-      if (act === 'rank-add') {
-        guard(b, async () => {
-          const playerId = Number((document.getElementById('com-rank-player') || {}).value);
-          const raw = (document.getElementById('com-rank-points') || {}).value;
-          const points = raw === '' || raw === undefined ? NaN : Number(raw);
-          if (!playerId || !Number.isInteger(points) || points < 0) { toast(t('com.rankInvalid')); return; }
-          ranking = await api(`/communities/${org.id}/ranking/${playerId}`, { method: 'PUT', body: { points } });
-          toast(t('com.rankSaved'));
-          render();
-        });
-      }
       if (act === 'switch') guard(b, async () => { await api('/communities/act-as', { method: 'POST', body: { organisationId: org.id } }); window.location.reload(); });
     }));
     root.querySelectorAll('[data-rank-save]').forEach((b) => b.addEventListener('click', () => guard(b, async () => {
@@ -639,11 +616,6 @@
       if (!Number.isInteger(points) || points < 0) { toast(t('com.rankInvalid')); return; }
       ranking = await api(`/communities/${org.id}/ranking/${id}`, { method: 'PUT', body: { points } });
       toast(t('com.rankSaved'));
-      render();
-    })));
-    root.querySelectorAll('[data-rank-remove]').forEach((b) => b.addEventListener('click', () => guard(b, async () => {
-      ranking = await api(`/communities/${org.id}/ranking/${b.dataset.rankRemove}`, { method: 'DELETE' });
-      toast(t('com.rankRemoved'));
       render();
     })));
     root.querySelectorAll('[data-edit-post]').forEach((b) => b.addEventListener('click', () => {

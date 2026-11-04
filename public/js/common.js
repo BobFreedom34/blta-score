@@ -3524,6 +3524,11 @@ function renderBadgeNotifList() {
       icon = escapeHtml(n.reaction.emoji);
       title = t('notif.reactionTitle', { name: escapeHtml(n.reaction.actorName), org: escapeHtml(n.reaction.orgName) });
       subtitle = fmtDateShort(n.createdAt);
+    } else if (n.type === 'REGISTRATION') {
+      // an organiser of a club: somebody registered for one of its tournaments
+      icon = '🎾';
+      title = t(n.registration.substitute ? 'notif.registrationSubTitle' : 'notif.registrationTitle', { name: escapeHtml(n.registration.name), season: escapeHtml(n.registration.seasonName) });
+      subtitle = `${escapeHtml(n.registration.orgName)} · ${fmtDateShort(n.createdAt)}`;
     } else if (n.type === 'COMMENT') {
       icon = '💬';
       title = t('notif.commentTitle', { name: escapeHtml(n.comment.authorName), org: escapeHtml(n.comment.orgName) });
@@ -3653,6 +3658,7 @@ document.addEventListener('click', async (e) => {
         : notif.type === 'COMMENT' ? 'comment'
         : notif.type === 'POST' ? 'post'
         : notif.type === 'REACTION' ? 'reaction'
+        : notif.type === 'REGISTRATION' ? 'registration'
         : 'proposal';
       const res = await api(`/player/notifications/${urlType}/${id}/read`, { method: 'POST' });
       updateBadgeBellUI(res.unreadNotificationCount);
@@ -3664,6 +3670,7 @@ document.addEventListener('click', async (e) => {
   if (notif.type === 'COMMENT') window.location.href = siteUrl(`/community/${encodeURIComponent(notif.comment.orgSlug)}`);
   if (notif.type === 'POST') window.location.href = siteUrl(`/community/${encodeURIComponent(notif.post.orgSlug)}`);
   if (notif.type === 'REACTION') window.location.href = siteUrl(`/community/${encodeURIComponent(notif.reaction.orgSlug)}`);
+  if (notif.type === 'REGISTRATION') window.location.href = siteUrl(`/community-tournament/${notif.registration.seasonId}`); // the manage page of the event (its Registrácie tab)
   if (notif.type === 'PLAY_REQUEST') window.location.href = siteUrl('/looking-to-play');
   if (notif.type === 'RANKING') window.location.href = siteUrl('/rankings');
 });

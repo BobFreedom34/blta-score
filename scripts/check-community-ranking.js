@@ -1,5 +1,5 @@
-// Checks of the own ranking of a community or club (the tab Rebríček of its page): GET / PUT / DELETE /api/communities/:id/ranking[/:playerId], who may set the
-// points (an admin of the organisation and the super admin, nobody else), the rank with ties, and the tab on the page.
+// Checks of the own ranking of a community or club (the tab Rebríček of its page): GET / PUT /api/communities/:id/ranking[/:playerId]. Every ACTIVE member is in it by
+// himself (with 0 points, no rank), the admin sets the points by hand, nobody else may, players with equal points share a rank, and the tab is on the page.
 // Run: node scripts/check-community-ranking.js   (starts its own server on a temporary data directory; touches nothing else)
 const fs = require('fs');
 const os = require('os');
@@ -43,9 +43,10 @@ async function makePlayer(name) {
 
 const setup = {};
 const rank = (who, id, points) => call('PUT', `/api/communities/${setup.org.id}/ranking/${id}`, { cookie: who.cookie, body: { points } });
-const names = (r) => r.json.items.map((i) => `${i.rank}:${i.name}:${i.points}`);
+const names = (r) => r.json.items.map((i) => `${i.rank === null ? '-' : i.rank}:${i.name}:${i.points}`);
+const get = () => call('GET', `/api/communities/${setup.org.id}/ranking`);
 
-test('setup: a club with an admin, two members and a player outside it', async () => {
+test('setup: a club with an admin and three members, and a player outside it', async () => {
   setup.owner = await makePlayer('Rk Owner');
   setup.a = await makePlayer('Rk Alfa');
   setup.b = await makePlayer('Rk Beta');
@@ -61,37 +62,49 @@ test('setup: a club with an admin, two members and a player outside it', async (
   }
 });
 
-test('a new ranking is empty and public', async () => {
-  const r = await call('GET', `/api/communities/${setup.org.id}/ranking`);
+test('the ranking holds every member by himself, nobody added: 0 points, no rank, public', async () => {
+  const r = await get();
   assert.strictEqual(r.status, 200, JSON.stringify(r.json));
-  assert.deepStrictEqual(r.json.items, []);
-});
-
-test('the admin of the club sets the points: sorted by points, equal points share a rank (1, 2, 2, 4)', async () => {
-  assert.strictEqual((await rank(setup.owner, setup.a.id, 30)).status, 200);
-  assert.strictEqual((await rank(setup.owner, setup.b.id, 50)).status, 200);
-  assert.strictEqual((await rank(setup.owner, setup.c.id, 30)).status, 200);
-  assert.strictEqual((await rank(setup.owner, setup.owner.id, 10)).status, 200);
-  const r = await call('GET', `/api/communities/${setup.org.id}/ranking`);
-  assert.deepStrictEqual(names(r), ['1:Rk Beta:50', '2:Rk Alfa:30', '2:Rk Gama:30', '4:Rk Owner:10']);
+  assert.deepStrictEqual(names(r), ['-:Rk Alfa:0', '-:Rk Beta:0', '-:Rk Gama:0', '-:Rk Owner:0'], 'by name while nobody has points');
   assert.ok(r.json.items.every((i) => i.slug && i.playerId), 'each row links to the profile');
 });
 
-test('setting the points again changes them (no second row)', async () => {
-  const r = await rank(setup.owner, setup.a.id, 70);
-  assert.deepStrictEqual(names(r), ['1:Rk Alfa:70', '2:Rk Beta:50', '3:Rk Gama:30', '4:Rk Owner:10']);
+test('the admin of the club sets the points: sorted by points, equal points share a rank (1, 2, 2, 4), a member with none has no rank', async () => {
+  assert.strictEqual((await rank(setup.owner, setup.a.id, 30)).status, 200);
+  assert.strictEqual((await rank(setup.owner, setup.b.id, 50)).status, 200);
+  assert.strictEqual((await rank(setup.owner, setup.c.id, 30)).status, 200);
+  const r = await get();
+  assert.deepStrictEqual(names(r), ['1:Rk Beta:50', '2:Rk Alfa:30', '2:Rk Gama:30', '-:Rk Owner:0']);
+  assert.strictEqual((await rank(setup.owner, setup.owner.id, 10)).status, 200, 'the admin is a member too');
+  assert.deepStrictEqual(names(await get()), ['1:Rk Beta:50', '2:Rk Alfa:30', '2:Rk Gama:30', '4:Rk Owner:10']);
+});
+
+test('setting the points again changes them (no second row); 0 takes a member back to no rank', async () => {
+  assert.deepStrictEqual(names(await rank(setup.owner, setup.a.id, 70)), ['1:Rk Alfa:70', '2:Rk Beta:50', '3:Rk Gama:30', '4:Rk Owner:10']);
   assert.strictEqual(withDb((f) => f.prepare('SELECT COUNT(*) AS n FROM organisation_ranking WHERE organisation_id = ?').get(setup.org.id).n), 4);
+  assert.deepStrictEqual(names(await rank(setup.owner, setup.owner.id, 0)), ['1:Rk Alfa:70', '2:Rk Beta:50', '3:Rk Gama:30', '-:Rk Owner:0']);
+});
+
+test('a member who joins later is in the ranking at once; one who leaves is out of it (his points are kept for when he comes back)', async () => {
+  const late = await makePlayer('Rk Pozdny');
+  assert.ok([200, 201].includes((await call('POST', `/api/communities/${setup.org.id}/join`, { cookie: late.cookie })).status));
+  assert.ok(names(await get()).includes('-:Rk Pozdny:0'), 'new member: 0 points');
+  assert.strictEqual((await rank(setup.owner, late.id, 5)).status, 200);
+  assert.strictEqual((await call('POST', `/api/communities/${setup.org.id}/leave`, { cookie: late.cookie })).status, 200);
+  assert.ok(!names(await get()).some((n) => n.includes('Rk Pozdny')), 'left: not in the ranking');
+  assert.strictEqual((await rank(setup.owner, late.id, 6)).status, 404, 'and cannot be given points');
+  assert.ok([200, 201].includes((await call('POST', `/api/communities/${setup.org.id}/join`, { cookie: late.cookie })).status));
+  assert.ok(names(await get()).includes('4:Rk Pozdny:5'), 'back again with the points he had: ' + names(await get()));
 });
 
 test('a plain member and a visitor cannot set points; the ranking stays as it was', async () => {
+  const before = names(await get());
   assert.strictEqual((await rank(setup.b, setup.b.id, 999)).status, 403);
   assert.strictEqual((await rank({ cookie: '' }, setup.b.id, 999)).status, 401);
-  assert.strictEqual((await call('DELETE', `/api/communities/${setup.org.id}/ranking/${setup.a.id}`, { cookie: setup.b.cookie })).status, 403);
-  assert.strictEqual((await call('DELETE', `/api/communities/${setup.org.id}/ranking/${setup.a.id}`)).status, 401);
-  assert.deepStrictEqual(names(await call('GET', `/api/communities/${setup.org.id}/ranking`)), ['1:Rk Alfa:70', '2:Rk Beta:50', '3:Rk Gama:30', '4:Rk Owner:10']);
+  assert.deepStrictEqual(names(await get()), before);
 });
 
-test('the points are a whole number from 0 to 1 000 000, and only a member can be in the ranking', async () => {
+test('the points are a whole number from 0 to 1 000 000, and only a member is in the ranking', async () => {
   for (const bad of [-1, 1.5, 'abc', null, 1000001, undefined]) assert.strictEqual((await rank(setup.owner, setup.a.id, bad)).status, 400, `points ${bad}`);
   assert.strictEqual((await rank(setup.owner, setup.outsider.id, 5)).status, 404, 'a player who is not a member');
   assert.strictEqual((await rank(setup.owner, 999999, 5)).status, 404);
@@ -105,29 +118,22 @@ test('the super admin of the site can set the points of any club too', async () 
   assert.strictEqual(r.json.items[0].name, 'Rk Beta');
 });
 
-test('a player can be taken out of the ranking; taking out one who is not there is a 404', async () => {
-  const r = await call('DELETE', `/api/communities/${setup.org.id}/ranking/${setup.owner.id}`, { cookie: setup.owner.cookie });
-  assert.strictEqual(r.status, 200, JSON.stringify(r.json));
-  assert.deepStrictEqual(names(r), ['1:Rk Beta:80', '2:Rk Alfa:70', '3:Rk Gama:30']);
-  assert.strictEqual((await call('DELETE', `/api/communities/${setup.org.id}/ranking/${setup.owner.id}`, { cookie: setup.owner.cookie })).status, 404);
-});
-
-test('a member who left keeps the points they have, and an admin can still change them; deleting the club deletes its ranking', async () => {
-  assert.strictEqual((await call('POST', `/api/communities/${setup.org.id}/leave`, { cookie: setup.c.cookie })).status, 200);
-  assert.strictEqual((await rank(setup.owner, setup.c.id, 35)).status, 200);
+test('deleting the club deletes its ranking', async () => {
   assert.strictEqual((await call('DELETE', `/api/communities/${setup.org.id}`, { cookie: setup.owner.cookie })).status, 200);
   assert.strictEqual(withDb((f) => f.prepare('SELECT COUNT(*) AS n FROM organisation_ranking WHERE organisation_id = ?').get(setup.org.id).n), 0);
 });
 
-test('the page has the tab Rebríček in the 3rd place (after Udalosti, before Info), in both languages, with the points edited only for who manages', () => {
+test('the page has the tab Rebríček in the 3rd place (after Udalosti, before Info), in both languages, with no "add a player" form and the points edited only for who manages', () => {
   const js = fs.readFileSync(path.join(ROOT, 'public/js/community.js'), 'utf8');
+  new (require('vm').Script)(js, { filename: 'community.js' });
   const order = ["['news', 'com.tabNews']", "['events', 'com.tabEvents']", "['ranking', 'com.tabRanking']", "['info', 'com.tabInfo']"].map((s) => js.indexOf(s));
   assert.ok(order.every((n) => n >= 0) && order.every((n, i) => !i || order[i - 1] < n), 'tab order: ' + order);
   assert.ok(js.includes("['news', 'events', 'ranking', 'info'].includes(hash)"), '#ranking opens the tab');
   const fn = /function rankingHtml\(\) \{[\s\S]*?\n  \}/.exec(js)[0];
   assert.ok(fn.includes('const manage = isActing() && org.approved;') && fn.includes('${manage ? `<span class="com-rank-edit">'), 'the inputs only for who manages');
+  assert.ok(!fn.includes('rank-add') && !fn.includes('candidates'), 'nobody is added by hand');
   const i18n = fs.readFileSync(path.join(ROOT, 'public/js/i18n.js'), 'utf8');
-  for (const key of ['tabRanking', 'rankEmpty', 'rankPlayer', 'rankPoints', 'rankAddTitle', 'rankPick', 'rankAdd', 'rankSave', 'rankSaved', 'rankRemove', 'rankRemoved', 'rankHint', 'rankNoCandidates', 'rankInvalid']) {
+  for (const key of ['tabRanking', 'rankEmpty', 'rankPlayer', 'rankPoints', 'rankSave', 'rankSaved', 'rankHint', 'rankInvalid']) {
     assert.strictEqual((i18n.match(new RegExp(`'com\\.${key}':`, 'g')) || []).length, 2, `com.${key} in Slovak and English`);
     assert.ok(js.includes(`'com.${key}'`), `com.${key} is used`);
   }

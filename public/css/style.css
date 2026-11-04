@@ -5731,16 +5731,13 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .com-rank-row { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); color: var(--white); }
 .com-rank-head { color: var(--gray-dim); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .com-rank-pos { flex: 0 0 34px; font-weight: 800; color: var(--gray-dim); }
-.com-rank-row:nth-child(2) .com-rank-pos, .com-rank-row:nth-child(3) .com-rank-pos, .com-rank-row:nth-child(4) .com-rank-pos { color: var(--orange); }
+.com-rank-pos.top { color: var(--orange); }
 .com-rank-name { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--white); font-weight: 700; text-decoration: none; }
 a.com-rank-name:hover { color: var(--orange); }
 .com-rank-pts { flex: 0 0 auto; min-width: 60px; text-align: right; font-weight: 800; }
 .com-rank-edit { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
-.com-rank-edit input, .com-rank-form input, .com-rank-form select { padding: 7px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: #fff; color: #0a0a0a; font: inherit; font-size: 14px; }
-.com-rank-edit input, .com-rank-form input { width: 90px; }
-.com-rank-add { margin-top: 18px; }
-.com-rank-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.com-rank-form select { flex: 1 1 200px; min-width: 0; }
+.com-rank-edit input { padding: 7px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: #fff; color: #0a0a0a; font: inherit; font-size: 14px; }
+.com-rank-edit input { width: 90px; }
 @media (max-width: 700px) { .com-rank-row { flex-wrap: wrap; } .com-rank-edit { width: 100%; justify-content: flex-end; } }
 
 /* Komunity a kluby: the profile switcher in the account menu and the chip of the club the player acts as (public/js/common.js) */
