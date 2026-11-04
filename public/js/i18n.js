@@ -879,7 +879,8 @@ const TRANSLATIONS = {
     'notify.pushInstead': '🔔 Radšej push notifikácia',
     'notify.subscribed': 'Ste prihlásený na odber!',
 
-    'login.title': 'Zaregistrujte sa ako hráč',
+    'login.title': 'Prihlásiť sa ako hráč',
+    'login.titleRegister': 'Zaregistrujte sa ako hráč',
     'login.headline': 'Zadajte svoje <span style="color:var(--green-light)">telefónne číslo</span>',
     'login.phoneIntro': 'Napr. 0903111222. Ešte nemáte účet? Zaregistrujte sa tlačidlom nižšie.',
     'login.registerBtn': 'Registrovať sa',
@@ -1280,6 +1281,7 @@ const TRANSLATIONS = {
     'player.showLess': 'Zobraziť menej',
     'player.showMoreH2H': 'Zobraziť všetky (ešte {count})',
     'player.noMatchesFilter': 'Žiadne zápasy nezodpovedajú vašim filtrom.',
+    'match.notPublic': 'Nie je verejné: tento zápas vidíte len vy, keď ste prihlásený.',
     'player.couldNotLoadMatches': 'Zápasy sa nepodarilo načítať: {error}',
 
     'player.bioModalTitle': 'Upraviť profilové údaje',
@@ -2400,7 +2402,8 @@ const TRANSLATIONS = {
     'notify.pushInstead': '🔔 Push notification instead',
     'notify.subscribed': "You're subscribed!",
 
-    'login.title': 'Register as a player',
+    'login.title': 'Log in as a player',
+    'login.titleRegister': 'Register as a player',
     'login.headline': 'Enter your <span style="color:var(--green-light)">phone number</span>',
     'login.phoneIntro': "e.g. 0903111222. Don't have an account yet? Register with the button below.",
     'login.registerBtn': 'Register',
@@ -2797,6 +2800,7 @@ const TRANSLATIONS = {
     'player.showLess': 'Show less',
     'player.showMoreH2H': 'Show all ({count} more)',
     'player.noMatchesFilter': 'No matches match your filters.',
+    'match.notPublic': 'Not public: only you can see this match, when you are logged in.',
     'player.couldNotLoadMatches': 'Could not load matches: {error}',
 
     'player.bioModalTitle': 'Edit profile info',

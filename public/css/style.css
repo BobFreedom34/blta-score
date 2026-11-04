@@ -4074,6 +4074,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-gear { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; margin-left: 10px; vertical-align: middle; border-radius: 50%; background: rgba(255, 255, 255, 0.12); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2); text-shadow: none; transition: background 0.15s, color 0.15s; }
 .sv-gear:hover { background: var(--orange); border-color: var(--orange); color: #fff; }
 .sv-reg-full { margin: 0 0 12px; padding: 10px 12px; border-radius: 8px; background: rgba(255, 85, 0, 0.14); border: 1px solid var(--orange); font-size: 13px; font-weight: 700; }
+.club-private { display: inline-flex; align-items: center; margin-left: 2px; color: var(--gray-dim); }
 .badge-club { background: var(--fill-grey); border: 1px solid var(--border-grey); color: var(--white); }
 .sv-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 14px 0; }
 .sv-photo { padding: 0; border: 0; border-radius: var(--radius-sm); background: var(--fill-grey); overflow: hidden; aspect-ratio: 4 / 3; cursor: pointer; }

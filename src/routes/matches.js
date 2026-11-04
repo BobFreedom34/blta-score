@@ -476,8 +476,9 @@ function matchFilters(query) {
   if (Number.isInteger(seasonId)) {
     clauses.push('m.season_id = @seasonId');
     params.seasonId = seasonId;
-  } else if (query.withClub === '1' && playerId) {
-    // a player's profile (player.js) also lists the matches this player played in the tournaments of communities and clubs - and only the profile does
+  } else if (query.withClub === '1' && playerId && String(query._viewer || '') === String(playerId)) {
+    // The profile of a player (player.js) also lists the matches this player played in the tournaments of communities and clubs - to this player only, when he is
+    // logged in (the route sets _viewer): for everybody else, the public, the profile has the league's matches alone. Nothing else lists them (see leagueOnlySql).
     clauses.push(clubTournaments.leagueAndPublicClubSql('m'));
   } else {
     // the league's lists do not hold the matches of the tournaments of communities and clubs: those are on the page of their tournament (and on the profile of the players)
@@ -561,7 +562,7 @@ function countMatchRows(query) {
 
 router.get('/', (req, res) => {
   const limit = Math.max(0, Math.min(500, parseInt(req.query.limit, 10) || 0));
-  let rows = selectMatchRows({ ...req.query, _league: leagues.actingIdOf(req) });
+  let rows = selectMatchRows({ ...req.query, _league: leagues.actingIdOf(req), _viewer: getPlayerId(req) || '' });
   // Optional cap (the home page and the embeds only need the latest few); no limit = everything, as before.
   if (limit) rows = rows.slice(0, limit);
   res.json(rows.map(serialize));

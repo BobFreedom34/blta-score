@@ -2419,10 +2419,13 @@ function bracketPhaseLabel(b) {
 }
 
 // the badge of a match played in a tournament of a club or a community: "Klub" / "Komunita" (the card's line under it has the name)
+// followed by a grey crossed eye: such a match is not public, it is on the profile of the player who is logged in and nowhere else
 function clubBadge(m) {
   const org = m && m.season && m.season.organisation;
   if (!org) return '';
-  return `<span class="badge badge-club" title="${escapeHtml(org.name)}">${escapeHtml(t(org.type === 'CLUB' ? 'com.typeClub' : 'com.typeCommunity'))}</span>`;
+  const note = escapeHtml(t('match.notPublic'));
+  const eyeOff = `<span class="club-private" role="img" aria-label="${note}" title="${note}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/></svg></span>`;
+  return `<span class="badge badge-club" title="${escapeHtml(org.name)}">${escapeHtml(t(org.type === 'CLUB' ? 'com.typeClub' : 'com.typeCommunity'))}</span>${eyeOff}`;
 }
 
 // the line under a match card; a match of a community or club starts with its name ("COURTCREW · Turnaj 1 · Elite · Semifinále")

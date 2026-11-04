@@ -89,26 +89,34 @@ test('the league lists of matches do not hold the matches of a community tournam
   assert.strictEqual(counts.FINISHED, finished);
 });
 
-test('a player\'s profile also lists the matches the player played in a community tournament (withClub=1 together with the player); nothing else adds them', async () => {
-  const tokensIn = async (query) => (await call('GET', `/api/matches${query}`, { cookie: '' })).json.map((m) => m.token);
-  // the profile of c: the match in the community tournament is there
-  assert.ok((await tokensIn(`?playerId=${c.id}&withClub=1&status=FINISHED`)).includes(tokens.clubDone));
-  assert.ok((await tokensIn(`?playerId=${a.id}&withClub=1&status=PLANNED`)).includes(tokens.clubPlanned));
-  // and only the matches of THAT player
-  assert.ok(!(await tokensIn(`?playerId=${a.id}&withClub=1&status=FINISHED`)).includes(tokens.clubDone));
-  // without the switch (the matches page, "my matches") they are not there, and the switch without a player (a list of everybody's matches) adds nothing
-  assert.ok(!(await tokensIn(`?playerId=${c.id}&status=FINISHED`)).includes(tokens.clubDone));
-  assert.ok(!(await tokensIn('?withClub=1&status=FINISHED')).includes(tokens.clubDone));
-  assert.ok(!(await tokensIn('?withClub=1')).includes(tokens.clubPlanned));
+test('the profile of a player lists the matches he played in a community tournament - to him only, when he is logged in; nothing else adds them', async () => {
+  // asked as a player (his cookie), as a visitor (none) or as the admin
+  const tokensIn = async (query, who) => (await call('GET', `/api/matches${query}`, { cookie: who === undefined ? '' : (who ? who.cookie : '') })).json.map((m) => m.token);
+  // the profile of c, c logged in: the match in the community tournament is there (finished and planned ones)
+  assert.ok((await tokensIn(`?playerId=${c.id}&withClub=1&status=FINISHED`, c)).includes(tokens.clubDone));
+  assert.ok((await tokensIn(`?playerId=${a.id}&withClub=1&status=PLANNED`, a)).includes(tokens.clubPlanned), 'a planned one too');
+  // only the matches of THAT player
+  assert.ok(!(await tokensIn(`?playerId=${a.id}&withClub=1&status=FINISHED`, a)).includes(tokens.clubDone));
+  // the same profile for the public, for another player and for the admin has none of them
+  for (const [who, label] of [[undefined, 'a visitor'], [b, 'another player'], [{ cookie: adminCookie }, 'the admin']]) {
+    assert.ok(!(await tokensIn(`?playerId=${c.id}&withClub=1&status=FINISHED`, who)).includes(tokens.clubDone), label);
+    assert.ok(!(await tokensIn(`?playerId=${a.id}&withClub=1&status=PLANNED`, who)).includes(tokens.clubPlanned), label);
+  }
+  // a visitor cannot make himself the viewer
+  assert.ok(!(await tokensIn(`?playerId=${c.id}&withClub=1&_viewer=${c.id}&status=FINISHED`)).includes(tokens.clubDone), 'the viewer is the one the server sees, not the one asked for');
+  // without the switch (the matches page, "my matches") they are not there even for him, and the switch without a player (everybody's matches) adds nothing
+  assert.ok(!(await tokensIn(`?playerId=${c.id}&status=FINISHED`, c)).includes(tokens.clubDone));
+  assert.ok(!(await tokensIn('?withClub=1&status=FINISHED', c)).includes(tokens.clubDone));
+  assert.ok(!(await tokensIn('?withClub=1', a)).includes(tokens.clubPlanned));
   // the card knows which community the match belongs to; a match of the Backend tournament has none
-  const mine = (await call('GET', `/api/matches?playerId=${a.id}&withClub=1&status=PLANNED`, { cookie: '' })).json;
+  const mine = (await call('GET', `/api/matches?playerId=${a.id}&withClub=1&status=PLANNED`, { cookie: a.cookie })).json;
   assert.deepStrictEqual([mine.find((m) => m.token === tokens.clubPlanned).season.organisation.name, mine.find((m) => m.token === tokens.clubPlanned).season.organisation.type], ['Oddelena komunita', 'COMMUNITY']);
   assert.strictEqual(mine.find((m) => m.token === tokens.ownPlanned).season.organisation, null);
   // a community that is hidden (moderation) is on no profile
   assert.strictEqual((await call('PATCH', `/api/communities/${org.id}/moderation`, { body: { hidden: true } })).status, 200);
-  assert.ok(!(await tokensIn(`?playerId=${a.id}&withClub=1&status=PLANNED`)).includes(tokens.clubPlanned), 'hidden: not on the profile');
+  assert.ok(!(await tokensIn(`?playerId=${a.id}&withClub=1&status=PLANNED`, a)).includes(tokens.clubPlanned), 'hidden: not on the profile');
   assert.strictEqual((await call('PATCH', `/api/communities/${org.id}/moderation`, { body: { hidden: false } })).status, 200);
-  assert.ok((await tokensIn(`?playerId=${a.id}&withClub=1&status=PLANNED`)).includes(tokens.clubPlanned));
+  assert.ok((await tokensIn(`?playerId=${a.id}&withClub=1&status=PLANNED`, a)).includes(tokens.clubPlanned));
 });
 
 test('the profile page asks for them, lists them with the name of the community, and keeps them out of the league statistics', () => {
@@ -117,7 +125,7 @@ test('the profile page asks for them, lists them with the name of the community,
   assert.ok(player.includes("withClub: '1'"), 'the profile asks for the matches of communities');
   assert.ok(player.includes('rawGroups = allGroups.map((list) => list.filter((m) => !(m.season && m.season.organisation)))'), 'the statistics, badges and rivals are counted from the league matches only');
   assert.ok(/allGroups\.forEach\(\(matches, i\) =>/.test(player), 'the list shows all of them');
-  assert.ok(pub('js/common.js').includes("m.season && m.season.organisation ? m.season.organisation.name : ''") && pub('js/common.js').includes('function clubBadge(m)') && pub('js/player.js').includes('clubBadge(m)'), 'the card says which community, and has the badge Klub / Komunita');
+  assert.ok(pub('js/common.js').includes("m.season && m.season.organisation ? m.season.organisation.name : ''") && pub('js/common.js').includes('function clubBadge(m)') && pub('js/player.js').includes('clubBadge(m)') && pub('js/common.js').includes('class="club-private"') && pub('js/i18n.js').split("'match.notPublic':").length === 3, 'the card says which community, has the badge Klub / Komunita and the grey crossed eye (not public), in both languages');
   for (const f of ['js/player.js', 'js/common.js']) new (require('vm').Script)(pub(f), { filename: f });
 });
 
