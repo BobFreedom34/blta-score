@@ -348,6 +348,21 @@ test('SIX_ROUNDS: exactly 6 players drawn by lot (never by the seeding), one tab
   void five;
 });
 
+test('the court planner fits three 40-minute rounds into a 2-hour day (no 5 minutes lost after each match): 6 players, 3 courts, rest 0 → all 9 matches placed', async () => {
+  const t = await newTournament('Six Planner');
+  assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}`, { courtCount: 4, matchMinutes: 40, restMinutes: 0, dayStart: '10:00', dayEnd: '12:00', autoSchedule: true })).status, 200);
+  await register(t, 'ELITE', 6);
+  const made = await draw(t, { category: 'ELITE', format: 'SIX_ROUNDS', groupFormat: 'BO3' });
+  assert.strictEqual(made.status, 201, made.text);
+  const ms = (await call('GET', `/api/matches?seasonId=${t.id}`)).json;
+  assert.strictEqual(ms.length, 9);
+  assert.ok(ms.every((m) => m.scheduledAt), 'every match has a time: ' + ms.filter((m) => !m.scheduledAt).length + ' without');
+  const starts = [...new Set(ms.map((m) => m.scheduledAt))].sort();
+  assert.strictEqual(starts.length, 3, 'three rounds one after another: ' + starts.join(' '));
+  assert.strictEqual((new Date(starts[1]) - new Date(starts[0])) / 60000, 40, 'the second round starts when the first ends');
+  assert.strictEqual((new Date(starts[2]) - new Date(starts[1])) / 60000, 40);
+});
+
 test('seeds of a tournament without categories can be set and cleared again (empty seeds + save removes them)', async () => {
   const t = await newTournament('Open Seeds');
   assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}`, { categories: ['OPEN'] })).status, 200);

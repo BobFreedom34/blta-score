@@ -311,7 +311,13 @@ function findSlot(entries, settings, windows, players, duration, notBefore, igno
     const [ws, we] = windows[w];
     if (we <= notBefore) continue;
     const first = Math.max(ws, notBefore);
-    for (let t = ws + Math.ceil((first - ws) / (GRID_MIN * MIN)) * GRID_MIN * MIN; t + duration <= we; t += GRID_MIN * MIN) {
+    // the starts to try: the 15-minute grid, and the moments something ends (a court is free, a player is free after his rest), so a match can follow another at once
+    // (matches of 40 minutes fit three into 2 hours instead of leaving 5 minutes after each)
+    const rest = settings.restMinutes * MIN;
+    const starts = new Set();
+    for (let t = ws + Math.ceil((first - ws) / (GRID_MIN * MIN)) * GRID_MIN * MIN; t + duration <= we; t += GRID_MIN * MIN) starts.add(t);
+    entries.forEach((e) => [e.interval[1], e.interval[1] + rest].forEach((t) => { if (t >= first && t + duration <= we) starts.add(t); }));
+    for (const t of [...starts].sort((a, b) => a - b)) {
       if (before !== undefined && t >= before) return null;
       const slot = [t, t + duration];
       if (slotProblem(entries, settings, players, null, slot, ignoreId)) continue;
