@@ -1312,6 +1312,49 @@ router.post('/groups/:groupId/members/:playerId/withdraw', clubTournaments.requi
   res.json({ group: serializeGroup(group), walkovers, skipped });
 });
 
+// Takes a withdrawal back (it was a mistake, or the player is playing again): the player is an active member again and the walkovers that the
+// withdrawal made (the matches finished as WALKOVER at the very moment of the withdrawal) are unplayed again, so the ranking points they gave
+// to the opponents are taken back and the log shows it. A walkover that was recorded by hand, at another time, is left as it is.
+router.post('/groups/:groupId/members/:playerId/reinstate', clubTournaments.requireSeasonManager(clubTournaments.byGroupId), (req, res) => {
+  const group = groupOr404(req, res);
+  if (!group) return;
+  const playerId = Number(req.params.playerId);
+  const member = db.prepare('SELECT * FROM season_group_members WHERE group_id = ? AND player_id = ?').get(group.id, playerId);
+  if (!member) return res.status(404).json({ error: 'That player is not in this group' });
+  if (!member.withdrawn_at) return res.status(400).json({ error: 'This player has not withdrawn' });
+  const undone = [];
+  db.exec('BEGIN');
+  try {
+    db.prepare('UPDATE season_group_members SET withdrawn_at = NULL WHERE id = ?').run(member.id);
+    const walkovers = db.prepare(`
+      SELECT * FROM matches
+      WHERE group_id = ? AND COALESCE(stage, 'GROUP') = 'GROUP' AND status = 'FINISHED' AND end_reason = 'WALKOVER' AND end_time = ?
+        AND (player1_id = ? OR player2_id = ?)
+    `).all(group.id, member.withdrawn_at, playerId, playerId);
+    const now = new Date().toISOString();
+    walkovers.forEach((m) => {
+      db.prepare("UPDATE matches SET status = 'PLANNED', winner_id = NULL, end_reason = NULL, end_time = NULL, updated_at = ? WHERE id = ?").run(now, m.id);
+      undone.push(m);
+    });
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  undone.forEach((before) => {
+    try {
+      const after = db.prepare('SELECT * FROM matches WHERE id = ?').get(before.id);
+      const ranking = rankingPoints.reconcile(before, after);
+      try { changeLog.logMatchChange(before, after, ranking); } catch (err) { console.error('[change log]', err.message); }
+    } catch (err) {
+      console.error('[seasons] failed to take back the ranking points of a walkover:', err.message);
+    }
+  });
+  const io = req.app.get('io');
+  if (io) io.emit('matches:changed', { status: 'PLANNED' });
+  res.json({ group: serializeGroup(group), restored: undone.length });
+});
+
 // For a group that already has matches (a season made before the maker existed): take its players from the matches.
 router.post('/groups/:groupId/members/import', clubTournaments.requireSeasonManager(clubTournaments.byGroupId), (req, res) => {
   const group = groupOr404(req, res);

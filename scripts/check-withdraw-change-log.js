@@ -79,6 +79,40 @@ test('the ranking points of the opponents are really in the tables', async () =>
   assert.strictEqual(points(setup.a), 0);
 });
 
+test('undoing the withdrawal puts the player back and the walkovers back to unplayed: the opponents lose the points, the log shows it, nothing else is touched', async () => {
+  const points = (id) => db.prepare('SELECT COALESCE(SUM(points), 0) AS p FROM ranking_entries WHERE player_id = ?').get(id).p;
+  const status = (m) => ({ ...db.prepare('SELECT status, winner_id, end_reason, end_time FROM matches WHERE share_token = ?').get(m.token) });
+  assert.strictEqual((await call('POST', `/api/seasons/groups/${setup.group}/members/${setup.b}/reinstate`, {})).status, 400, 'Bravo did not withdraw');
+  assert.strictEqual((await call('POST', `/api/seasons/groups/${setup.group}/members/999999/reinstate`, {})).status, 404);
+  const logBefore = (await log()).items.length;
+  const r = await call('POST', `/api/seasons/groups/${setup.group}/members/${setup.a}/reinstate`, {});
+  assert.strictEqual(r.status, 200, JSON.stringify(r.json));
+  assert.strictEqual(r.json.restored, 2);
+  assert.strictEqual(r.json.group.members.find((m) => m.id === setup.a).withdrawn, false);
+  [setup.ab, setup.ac].forEach((m) => assert.deepStrictEqual(status(m), { status: 'PLANNED', winner_id: null, end_reason: null, end_time: null }));
+  assert.strictEqual(points(setup.b), 0, 'the points of the walkover are taken back');
+  assert.strictEqual(points(setup.c), 0);
+  const items = (await log()).items;
+  assert.strictEqual(items.length, logBefore + 2);
+  assert.strictEqual(items.filter((e) => e.kind === 'REOPENED').length, 2, 'the log shows the matches reopened');
+  assert.strictEqual((await call('POST', `/api/seasons/groups/${setup.group}/members/${setup.a}/reinstate`, {})).status, 400, 'twice is refused');
+  // he can withdraw again, with the same result
+  assert.strictEqual((await call('POST', `/api/seasons/groups/${setup.group}/members/${setup.a}/withdraw`, {})).json.walkovers, 2);
+});
+
+test('a walkover recorded by hand (at another time) is left as it is when the withdrawal is undone', async () => {
+  const d = newPlayer('Wd Delta');
+  const e = newPlayer('Wd Echo');
+  db.prepare('INSERT INTO season_group_members (group_id, player_id, sort_order) VALUES (?, ?, 5)').run(setup.group, d);
+  db.prepare('INSERT INTO season_group_members (group_id, player_id, sort_order) VALUES (?, ?, 6)').run(setup.group, e);
+  const de = await newMatch('ELITE', d, e, setup.group, setup.season);
+  db.prepare("UPDATE matches SET status = 'FINISHED', winner_id = ?, end_reason = 'WALKOVER', end_time = '2026-01-02T10:00:00.000Z' WHERE share_token = ?").run(e, de.token);
+  assert.strictEqual((await call('POST', `/api/seasons/groups/${setup.group}/members/${d}/withdraw`, {})).status, 200);
+  const r = await call('POST', `/api/seasons/groups/${setup.group}/members/${d}/reinstate`, {});
+  assert.strictEqual(r.json.restored, 0);
+  assert.strictEqual(db.prepare('SELECT status FROM matches WHERE share_token = ?').get(de.token).status, 'FINISHED');
+});
+
 test('the one-off catch-up gives the walkovers of an old withdrawal (made before the fix) their points once: 21 each in Next Gen, a log row each, nothing twice', async () => {
   const x = newPlayer('Slz Out');
   const y = newPlayer('Slz Yankee');

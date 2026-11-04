@@ -203,7 +203,7 @@ function playersPanelHtml(g) {
   const chips = g.members.map((m) => `
     <span class="sg-chip${m.withdrawn ? ' out' : ''}">${escapeHtml(m.name)}${m.withdrawn ? ` <em>${tl('odstúpil', 'withdrawn')}</em>` : ''}
       <button type="button" class="sg-link" data-action="toggle-paid" data-player="${m.id}" title="${escapeHtml(tl('Štartovné zaplatené? (ukáže sa na stránke)', 'Entry fee paid? (shown on the page)'))}">${m.paid ? tl('Zaplatené ✓', 'Paid ✓') : tl('Nezaplatené', 'Not paid')}</button>
-      ${m.withdrawn ? '' : `<button type="button" class="sg-link" data-action="withdraw" data-player="${m.id}" title="${escapeHtml(tl('Odstúpiť: jeho neodohrané zápasy sa kontumujú', 'Withdraw: their unplayed matches become walkovers'))}">${tl('Odstúpiť', 'Withdraw')}</button>`}
+      ${m.withdrawn ? `<button type="button" class="sg-link" data-action="reinstate" data-player="${m.id}" title="${escapeHtml(tl('Zrušiť odstúpenie: hráč je opäť v skupine a jeho kontumácie z odstúpenia sa vrátia na neodohrané', 'Undo the withdrawal: the player is back in the group and the walkovers of the withdrawal become unplayed again'))}">${tl('Zrušiť odstúpenie', 'Undo withdrawal')}</button>` : `<button type="button" class="sg-link" data-action="withdraw" data-player="${m.id}" title="${escapeHtml(tl('Odstúpiť: jeho neodohrané zápasy sa kontumujú', 'Withdraw: their unplayed matches become walkovers'))}">${tl('Odstúpiť', 'Withdraw')}</button>`}
       <button type="button" class="sg-x" data-action="remove-member" data-player="${m.id}" title="${escapeHtml(tl('Odstrániť (len kým hráč nemá zápasy)', 'Remove (only before the player has matches)'))}">&times;</button>
     </span>`).join('');
   return `
@@ -1081,6 +1081,20 @@ function wireGroupPanel(wrap, group, fail) {
     try {
       const res = await api(`/seasons/groups/${group.id}/members/${member.id}/withdraw`, { method: 'POST' });
       toast(tl(`${member.name} odstúpil — kontumácií: ${res.walkovers}`, `${member.name} withdrew — ${res.walkovers} walkover${res.walkovers === 1 ? '' : 's'} recorded`));
+      openPanels.add(group.id);
+      await load();
+    } catch (err) { fail(err); }
+  }));
+  panel.querySelectorAll('[data-action="reinstate"]').forEach((b) => b.addEventListener('click', async () => {
+    const member = group.members.find((m) => m.id === Number(b.dataset.player));
+    if (!confirm(tl(`Zrušiť odstúpenie hráča ${member.name} zo skupiny ${group.name}?
+
+Kontumácie, ktoré vznikli jeho odstúpením, sa vrátia na neodohrané zápasy a body, ktoré za ne dostali súperi, sa odoberú.`, `Undo the withdrawal of ${member.name} from ${group.name}?
+
+The walkovers made by the withdrawal become unplayed matches again and the points the opponents got for them are taken back.`))) return;
+    try {
+      const res = await api(`/seasons/groups/${group.id}/members/${member.id}/reinstate`, { method: 'POST' });
+      toast(tl(`${member.name} je opäť v skupine — vrátených zápasov: ${res.restored}`, `${member.name} is back in the group — ${res.restored} match${res.restored === 1 ? '' : 'es'} restored`));
       openPanels.add(group.id);
       await load();
     } catch (err) { fail(err); }
