@@ -874,7 +874,7 @@ const TRANSLATIONS = {
     'notify.subscribed': 'Ste prihlásený na odber!',
 
     'login.title': 'Prihlásiť sa ako hráč',
-    'login.titleRegister': 'Zaregistrujte sa ako hráč',
+    'login.titleRegister': 'Prihlásiť sa ako hráč',
     'login.headline': 'Zadajte svoje <span style="color:var(--green-light)">telefónne číslo</span>',
     'login.phoneIntro': 'Napr. 0903111222. Ešte nemáte účet? Zaregistrujte sa tlačidlom nižšie.',
     'login.registerBtn': 'Registrovať sa',
@@ -2393,7 +2393,7 @@ const TRANSLATIONS = {
     'notify.subscribed': "You're subscribed!",
 
     'login.title': 'Log in as a player',
-    'login.titleRegister': 'Register as a player',
+    'login.titleRegister': 'Log in as a player',
     'login.headline': 'Enter your <span style="color:var(--green-light)">phone number</span>',
     'login.phoneIntro': "e.g. 0903111222. Don't have an account yet? Register with the button below.",
     'login.registerBtn': 'Register',
