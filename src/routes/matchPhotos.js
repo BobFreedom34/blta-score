@@ -216,3 +216,4 @@ function removeAllForMatch(matchId) {
 
 module.exports = router;
 module.exports.removeAllForMatch = removeAllForMatch;
+module.exports.SIGNATURES = SIGNATURES; // (the gallery of an event takes the same pictures, see seasonPhotos.js)

@@ -379,7 +379,7 @@ function findPlayerByPhone(raw) {
   return candidates.find((p) => samePhone(p.phone, raw));
 }
 
-const PHONE_NOT_FOUND_ERROR = "That phone number isn't on file — ask an admin to add it on your Players page entry";
+const PHONE_NOT_FOUND_ERROR = 'This phone number is not in the system. Register.';
 
 // error is always plain English (matches this app's existing convention —
 // every server error string always has been, regardless of UI language).

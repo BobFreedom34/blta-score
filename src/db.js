@@ -723,6 +723,16 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_match_photos_match ON match_photos(match_id);
 
+  -- the gallery of a tournament or a season (its tab Galéria): photos of the event itself, in the same Drive folder as the match photos (src/routes/seasonPhotos.js)
+  CREATE TABLE IF NOT EXISTS season_photos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id INTEGER NOT NULL,
+    drive_file_id TEXT NOT NULL,
+    uploaded_by_player_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_season_photos_season ON season_photos(season_id);
+
   CREATE TABLE IF NOT EXISTS photo_notifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     player_id INTEGER NOT NULL,
@@ -1499,6 +1509,10 @@ if (!seasonInfoColumns.includes('court_count')) db.exec('ALTER TABLE seasons ADD
   ['auto_schedule', 'INTEGER NOT NULL DEFAULT 1'],
   // the most matches one player may play in one day of the tournament, 0 = no limit
   ['max_matches_per_day', 'INTEGER NOT NULL DEFAULT 0'],
+  // the most players that can register (NULL = no maximum set: events made before it existed) and, for a season where the player chooses a category, the most for
+  // each category as JSON { "ELITE": 16 }; the ones after it are substitutes (src/registrationCapacity.js)
+  ['max_players', 'INTEGER'],
+  ['category_max', "TEXT NOT NULL DEFAULT ''"],
 ].forEach(([col, type]) => {
   if (!seasonInfoColumns.includes(col)) db.exec(`ALTER TABLE seasons ADD COLUMN ${col} ${type}`);
 });
@@ -1756,6 +1770,11 @@ db.exec(`
     PRIMARY KEY (organisation_id, player_id)
   );
   CREATE INDEX IF NOT EXISTS idx_organisation_members_player ON organisation_members(player_id);
+  -- the earlier addresses of an organisation that was renamed (its address follows its name): they still lead to it, see src/communities.js
+  CREATE TABLE IF NOT EXISTS organisation_old_slugs (
+    slug TEXT PRIMARY KEY,
+    organisation_id INTEGER NOT NULL REFERENCES organisations(id) ON DELETE CASCADE
+  );
   -- the own ranking of a community or club (its tab Rebríček): the points of a player, set by hand by an admin of the organisation
   CREATE TABLE IF NOT EXISTS organisation_ranking (
     organisation_id INTEGER NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,

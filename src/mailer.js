@@ -464,6 +464,7 @@ async function sendSeasonRegistrationEmail(season, registration, total) {
     `Telefón: ${registration.phone}`,
     `E-mail: ${registration.email}`,
     ...(registration.note ? [`Poznámka: ${registration.note}`] : []),
+    ...(registration.substitute ? ['', 'POZOR: kapacita je naplnená, hráč je zaradený ako NÁHRADNÍK (nastúpi, keď sa niekto odhlási alebo zvýšite maximum).'] : []),
     '',
     `Prihlásených ${season.kind === 'TOURNAMENT' ? 'v turnaji' : 'v sérii'}: ${total}`,
     `Zoznam a úhrady: ${process.env.PUBLIC_URL || ''}${season.kind === 'TOURNAMENT' ? '/tournaments-admin' : '/seasons-admin'}`,
@@ -472,7 +473,7 @@ async function sendSeasonRegistrationEmail(season, registration, total) {
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
     replyTo: registration.email,
-    subject: `Registrácia ${season.kind === 'TOURNAMENT' ? 'na turnaj' : 'do série'}: ${registration.name}${registration.category ? ` (${categoryLabel(registration.category)})` : ''}`,
+    subject: `Registrácia ${season.kind === 'TOURNAMENT' ? 'na turnaj' : 'do série'}${registration.substitute ? ' (náhradník)' : ''}: ${registration.name}${registration.category ? ` (${categoryLabel(registration.category)})` : ''}`,
     text,
   });
   return true;
@@ -585,6 +586,27 @@ async function sendPaymentReminderEmail({ to, name, seasonName, fee, paymentUrl,
   return true;
 }
 
+// A substitute who got in because somebody dropped out (or the maximum was raised): he is in the tournament now.
+async function sendSubstituteInEmail({ to, name, seasonName, pageUrl, organiser }) {
+  const t = getTransporter();
+  if (!t) return false;
+  const lines = [
+    `Dobrý deň ${name},`,
+    '',
+    `dobrá správa: uvoľnilo sa miesto a ste teraz v zozname hráčov "${seasonName}" (už nie ste náhradník).`,
+    pageUrl ? `\nStránka: ${pageUrl}` : '',
+    organiser ? `\nOtázky? ${organiser}` : '',
+  ];
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to,
+    replyTo: process.env.NOTIFY_EMAIL || undefined,
+    subject: `Ste v turnaji: ${seasonName}`,
+    text: lines.join('\n'),
+  });
+  return true;
+}
+
 async function sendCourtReservationEmails(r) {
   const t = getTransporter();
   if (!t) {
@@ -672,7 +694,7 @@ async function sendCourtCancellationEmails(r) {
 
 module.exports = {
   sendContactRequestEmail, sendPaymentReminderEmail, courtReservationTexts, sendCourtReservationEmails, courtCancellationTexts, sendCourtCancellationEmails,
-  sendSeasonRegistrationEmail,
+  sendSeasonRegistrationEmail, sendSubstituteInEmail,
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendProposalReceivedEmail,
   sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendClubWaitingEmail, sendPlayRequestEmail,

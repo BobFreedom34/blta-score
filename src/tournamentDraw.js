@@ -9,6 +9,7 @@
 // draw (seeds placed by the standard seed order, the others by lot; groups suggested) or make it by hand.
 const db = require('./db');
 const engine = require('./matchEngine');
+const capacity = require('./registrationCapacity');
 const bracketEngine = require('./bracketEngine');
 const groups = require('./tournamentGroups');
 const nameMatch = require('./nameMatch');
@@ -38,8 +39,13 @@ const DEFAULT_CONSOLATION_FORMAT = 'BO3_G4_STB';
 
 function registrationsOf(seasonId, category) {
   if (category === 'DOUBLES') return pairRegistrations(seasonId);
-  if (category === 'OPEN') return db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(seasonId); // everybody who registered
-  return db.prepare('SELECT * FROM season_registrations WHERE season_id = ? AND category = ? ORDER BY created_at, id').all(seasonId, category);
+  // the substitutes (the ones after the maximum of players) are not in the draw: they come in when somebody drops out, see registrationCapacity.js
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(seasonId);
+  const waiting = season ? capacity.substituteIds(season) : new Set();
+  const rows = category === 'OPEN'
+    ? db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(seasonId) // everybody who registered
+    : db.prepare('SELECT * FROM season_registrations WHERE season_id = ? AND category = ? ORDER BY created_at, id').all(seasonId, category);
+  return rows.filter((r) => !waiting.has(r.id));
 }
 
 // The pairs of a tournament shaped like registrations (what the seeds, the groups and the draw work with).
@@ -513,7 +519,8 @@ function addPair(season, { player, partner }) {
 function addPairsFromRegistrations(season) {
   if (!isDoublesTournament(season)) return { status: 400, error: NOT_DOUBLES };
   if (drawExists(season.id)) return { status: 409, error: DRAW_EXISTS };
-  const regs = db.prepare("SELECT * FROM season_registrations WHERE season_id = ? AND partner_name != '' ORDER BY created_at, id").all(season.id);
+  const waiting = capacity.substituteIds(season); // a pair of substitutes is made when they come in
+  const regs = db.prepare("SELECT * FROM season_registrations WHERE season_id = ? AND partner_name != '' ORDER BY created_at, id").all(season.id).filter((r) => !waiting.has(r.id));
   let created = 0;
   const skipped = [];
   regs.forEach((r) => {

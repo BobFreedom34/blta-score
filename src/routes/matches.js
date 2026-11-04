@@ -192,10 +192,12 @@ function bracketInfo(row) {
 }
 
 function seasonAndGroup(row) {
-  const season = row.season_id ? db.prepare('SELECT id, name, slug, kind FROM seasons WHERE id = ?').get(row.season_id) : null;
+  const season = row.season_id ? db.prepare('SELECT id, name, slug, kind, organisation_id FROM seasons WHERE id = ?').get(row.season_id) : null;
   const group = row.group_id ? db.prepare('SELECT id, name, category FROM season_groups WHERE id = ?').get(row.group_id) : null;
+  // the community or club that runs the tournament (null for the league's own): the profile of a player marks its matches with it
+  const org = season && season.organisation_id ? db.prepare('SELECT id, slug, name, type FROM organisations WHERE id = ?').get(season.organisation_id) : null;
   return {
-    season: season ? { id: season.id, name: season.name, slug: season.slug, kind: season.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE' } : null,
+    season: season ? { id: season.id, name: season.name, slug: season.slug, kind: season.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE', organisation: org ? { id: org.id, slug: org.slug, name: org.name, type: org.type === 'CLUB' ? 'CLUB' : 'COMMUNITY' } : null } : null,
     bracket: bracketInfo(row),
     group: group ? { id: group.id, name: group.name, category: group.category } : null,
   };
@@ -474,8 +476,11 @@ function matchFilters(query) {
   if (Number.isInteger(seasonId)) {
     clauses.push('m.season_id = @seasonId');
     params.seasonId = seasonId;
+  } else if (query.withClub === '1' && playerId) {
+    // a player's profile (player.js) also lists the matches this player played in the tournaments of communities and clubs - and only the profile does
+    clauses.push(clubTournaments.leagueAndPublicClubSql('m'));
   } else {
-    // the league's lists do not hold the matches of the tournaments of communities and clubs: those are on the page of their tournament
+    // the league's lists do not hold the matches of the tournaments of communities and clubs: those are on the page of their tournament (and on the profile of the players)
     clauses.push(clubTournaments.leagueOnlySql('m'));
   }
   if (Number.isInteger(round)) {

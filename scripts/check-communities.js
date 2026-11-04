@@ -120,13 +120,14 @@ test('the list shows organisations, the detail answers by slug, an unknown slug 
   assert.strictEqual(mine.json.me.role, 'ADMIN', 'the creator sees his own role');
 });
 
-test('only an organisation admin changes it; type and slug never change; join policy is OPEN or APPROVAL', async () => {
+test('only an organisation admin changes it; the type never changes and the address is never chosen (it follows the name); join policy is OPEN or APPROVAL', async () => {
   const one = (await call('GET', '/api/communities/tk-slovan-bratislava', { cookie: '' })).json;
   assert.strictEqual((await call('PATCH', `/api/communities/${one.id}`, { cookie: '', body: { name: 'Hacked' } })).status, 401);
   assert.strictEqual((await call('PATCH', `/api/communities/${one.id}`, { cookie: boris.cookie, body: { name: 'Hacked' } })).status, 403);
   const ok = await call('PATCH', `/api/communities/${one.id}`, { cookie: ana.cookie, body: { name: 'TK Slovan', description: 'Nový popis', contact: 'x@y.sk', joinPolicy: 'APPROVAL', type: 'COMMUNITY', slug: 'iny-slug' } });
   assert.strictEqual(ok.status, 200, JSON.stringify(ok.json));
-  assert.deepStrictEqual([ok.json.name, ok.json.joinPolicy, ok.json.type, ok.json.slug], ['TK Slovan', 'APPROVAL', 'CLUB', 'tk-slovan-bratislava']);
+  assert.deepStrictEqual([ok.json.name, ok.json.joinPolicy, ok.json.type, ok.json.slug], ['TK Slovan', 'APPROVAL', 'CLUB', 'tk-slovan'], 'the address of the new name, not the one that was asked for');
+  assert.strictEqual((await call('GET', '/api/communities/tk-slovan-bratislava', { cookie: '' })).json.id, one.id, 'the old address still leads to it');
   assert.strictEqual((await call('PATCH', `/api/communities/${one.id}`, { cookie: ana.cookie, body: { joinPolicy: 'NOBODY' } })).status, 400);
   assert.strictEqual((await call('PATCH', `/api/communities/${one.id}`, { cookie: ana.cookie, body: { name: ' ' } })).status, 400);
   await call('PATCH', `/api/communities/${one.id}`, { cookie: ana.cookie, body: { joinPolicy: 'OPEN' } });

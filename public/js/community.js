@@ -6,7 +6,7 @@
   const root = document.getElementById('com-page');
   if (!root) return;
 
-  const slug = decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '');
+  let slug = decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || ''); // (changes when the community is renamed: its address follows its name)
   setClubManifest(slug); // the app that can be installed from this page is this club (see clubApp.js); done now, before the browser decides what to offer
   let org = null;
   let acting = null;
@@ -758,6 +758,15 @@
       const session = await loadSession();
       loggedIn = !!session.isPlayer && !!session.playerId;
       org = await api(`/communities/${encodeURIComponent(slug)}`);
+      // an old address (the community was renamed since the link was made, or just now in the settings): the address bar shows the new one, so a link that is copied
+      // from the page (the invitation) has the new name in it
+      if (org.slug && org.slug !== slug) {
+        const parts = window.location.pathname.replace(/\/+$/, '').split('/');
+        parts[parts.length - 1] = encodeURIComponent(org.slug);
+        window.history.replaceState(null, '', parts.join('/') + window.location.search + window.location.hash);
+        slug = org.slug;
+        setClubManifest(slug);
+      }
       // a community that decides on every request shows its header only until the player is approved: the server refuses the rest
       if (org.locked) {
         const mine = loggedIn ? await api('/communities/mine') : { acting: null };

@@ -22,6 +22,7 @@ const matchPhotos = require('./matchPhotos');
 const rankingPoints = require('../rankingPoints');
 const clubTournaments = require('../clubTournaments');
 const changeLog = require('../changeLog');
+const capacity = require('../registrationCapacity');
 
 const router = express.Router();
 
@@ -161,6 +162,10 @@ function serializeSeason(s) {
     heroUrl: s.hero_url || '',
     heroMobileUrl: s.hero_mobile_url || '',
     registrationOpen: !!s.registration_open,
+    // the most players that can register (null = none set) and, for a season where the player chooses a category, the most for each category; the ones after it are
+    // substitutes (src/registrationCapacity.js)
+    maxPlayers: s.max_players || null,
+    categoryMax: capacity.categoryMaxOf(s),
     // the community or club that runs this tournament (null for the league and for the tournaments of the Backend)
     organisationId: s.organisation_id || null,
     courtCount: s.court_count || 0,
@@ -263,14 +268,18 @@ router.get('/by-slug/:slug', (req, res) => {
     GROUP BY round ORDER BY round
   `).all(season.id).map((r) => ({ round: r.round, total: r.total, finished: r.finished }));
   const doublesTournament = tournamentDraw.isDoublesTournament(season);
+  const standingOf = capacity.standing(season);
   const registrations = db.prepare(`
-    SELECT r.name, r.category, r.paid, r.partner_name, p.slug AS player_slug
+    SELECT r.id, r.name, r.category, r.paid, r.partner_name, p.slug AS player_slug
     FROM season_registrations r LEFT JOIN players p ON p.id = r.player_id
     WHERE r.season_id = ? ORDER BY r.created_at, r.id
-  `).all(season.id).map((r) => (doublesTournament
-    ? { name: r.partner_name ? `${r.name} / ${r.partner_name}` : r.name, category: r.category, paid: !!r.paid, slug: null } // a pair: no profile link
-    : { name: r.name, category: r.category, paid: !!r.paid, slug: r.player_slug || null }));
-  res.json({ ...serializeSeason(season), organisation: face.organisation, canManage: clubTournaments.canManageSeason(req, season), rounds, registrations });
+  `).all(season.id).map((r) => {
+    const waiting = standingOf.get(r.id) || { substitute: false, position: null };
+    return (doublesTournament
+      ? { name: r.partner_name ? `${r.name} / ${r.partner_name}` : r.name, category: r.category, paid: !!r.paid, slug: null, substitute: waiting.substitute, substitutePosition: waiting.position } // a pair: no profile link
+      : { name: r.name, category: r.category, paid: !!r.paid, slug: r.player_slug || null, substitute: waiting.substitute, substitutePosition: waiting.position });
+  });
+  res.json({ ...serializeSeason(season), organisation: face.organisation, canManage: clubTournaments.canManageSeason(req, season), rounds, registrations, capacity: capacity.counts(season) });
 });
 
 // the manager of a season (an admin, or the admin of the club that runs it) reads it by id: the manage page of a club tournament starts from this
@@ -348,16 +357,18 @@ router.post('/:id/registrations', async (req, res) => {
   const account = openAccount(req, res, player, { name, phone, email, leagueId: season.league_id });
   if (account.player) player = account.player;
 
+  // the maximum of players is reached: this one is a substitute (in when somebody drops out), see registrationCapacity.js
+  const substitute = capacity.wouldWait(season, entryCategory, doublesTournament ? { name, partner } : undefined);
   // (the partner of a doubles tournament was checked above, before anything is made)
   db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, note, partner_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
     .run(season.id, player ? player.id : null, name, phone, email, entryCategory, note, partner);
-  // the pair is made at once when both players are known; otherwise the organiser makes it (draw tab: "Páry z registrácií")
-  if (doublesTournament && player) { try { tournamentDraw.addPair(season, { player: player.id, partner }); } catch { /* the organiser makes it */ } }
+  // the pair is made at once when both players are known; otherwise the organiser makes it (draw tab: "Páry z registrácií"); a pair of substitutes is made when they come in
+  if (doublesTournament && player && !substitute) { try { tournamentDraw.addPair(season, { player: player.id, partner }); } catch { /* the organiser makes it */ } }
   const total = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?').get(season.id).n;
   // the e-mail to the admin must never make the registration fail
-  sendSeasonRegistrationEmail(season, { name, phone, email, category: entryCategory, note, isNew: !player, account: account.status, phoneHolder: account.holder }, total)
+  sendSeasonRegistrationEmail(season, { name, phone, email, category: entryCategory, note, isNew: !player, account: account.status, phoneHolder: account.holder, substitute }, total)
     .catch((err) => console.error('[season registration] admin e-mail failed:', err.message));
-  res.status(201).json({ ok: true, name, category: entryCategory, paymentUrl: season.payment_url || '', account: account.status, pinSetupRequired: account.status === 'created' || account.status === 'claimed' });
+  res.status(201).json({ ok: true, name, category: entryCategory, substitute, paymentUrl: season.payment_url || '', account: account.status, pinSetupRequired: account.status === 'created' || account.status === 'claimed' });
 });
 
 // -> { status, player?, holder? }
@@ -400,6 +411,36 @@ function serializeRegistration(r) {
   return { id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', partnerName: r.partner_name || '', seed: r.seed || null, createdAt: r.created_at, playerId: r.player_id, remindedAt: r.reminded_at || null };
 }
 
+// the same with who is a substitute (waits after the maximum of players): substitute + substitutePosition (1, 2, ... among the substitutes of its category)
+function serializeRegistrationsOf(season, rows) {
+  const state = capacity.standing(season);
+  return rows.map((r) => {
+    const s = state.get(r.id) || { substitute: false, position: null };
+    return { ...serializeRegistration(r), substitute: s.substitute, substitutePosition: s.position };
+  });
+}
+
+// What a change did to the substitutes: the ones who were waiting before (ids) and are in now come into the tournament - a pair of a doubles tournament is made for
+// them - and get an e-mail (when they gave one). Never makes the change fail.
+function announceNewlyIn(season, waitingBefore) {
+  try {
+    const waitingNow = capacity.substituteIds(season);
+    const contact = require('./contact').read();
+    const organiser = [contact.email, contact.phone].filter(Boolean).join(' · ');
+    [...waitingBefore].filter((id) => !waitingNow.has(id)).forEach((id) => {
+      const r = db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(id);
+      if (!r) return; // the one who dropped out was himself a substitute
+      if (tournamentDraw.isDoublesTournament(season) && r.player_id) { try { tournamentDraw.addPair(season, { player: r.player_id, partner: r.partner_name }); } catch { /* the organiser makes the pair */ } }
+      if (r.email) {
+        const pageUrl = process.env.PUBLIC_URL ? `${process.env.PUBLIC_URL}/${season.kind === 'TOURNAMENT' ? 'tournament' : 'season'}/${season.slug}` : '';
+        mailer.sendSubstituteInEmail({ to: r.email, name: r.name, seasonName: season.name, pageUrl, organiser }).catch((err) => console.error('[substitute] e-mail failed:', err.message));
+      }
+    });
+  } catch (err) {
+    console.error('[substitute] could not announce:', err.message);
+  }
+}
+
 // The registrations as a spreadsheet (CSV with a byte-order mark so Excel reads the letters right).
 router.get('/:id/registrations.csv', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
@@ -409,8 +450,9 @@ router.get('/:id/registrations.csv', clubTournaments.requireSeasonManager(clubTo
     const text = String(v == null ? '' : v);
     return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
-  const lines = [['Meno', 'Kategória', 'Telefón', 'Email', 'Zaplatené', 'Poznámka', 'Registrovaný'].join(',')];
-  rows.forEach((r) => lines.push([r.name, r.category || '', r.phone || '', r.email || '', r.paid ? 'áno' : 'nie', r.note || '', String(r.created_at || '').slice(0, 10)].map(cell).join(',')));
+  const state = capacity.standing(season);
+  const lines = [['Meno', 'Kategória', 'Telefón', 'Email', 'Zaplatené', 'Poznámka', 'Registrovaný', 'Stav'].join(',')];
+  rows.forEach((r) => { const s = state.get(r.id) || {}; lines.push([r.name, r.category || '', r.phone || '', r.email || '', r.paid ? 'áno' : 'nie', r.note || '', String(r.created_at || '').slice(0, 10), s.substitute ? `náhradník ${s.position}` : 'v turnaji'].map(cell).join(',')); });
   res.set('Content-Type', 'text/csv; charset=utf-8');
   res.set('Content-Disposition', `attachment; filename="registracie-${(season.slug || 'sezona').replace(/[^a-z0-9-]/gi, '')}.csv"`);
   res.send('\uFEFF' + lines.join('\r\n'));
@@ -451,8 +493,9 @@ function profileCategory(raw) {
 
 // The admin's list: with the contact details (never sent to the public page).
 router.get('/:id/registrations', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   const rows = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(Number(req.params.id));
-  res.json(rows.map(serializeRegistration));
+  res.json(season ? serializeRegistrationsOf(season, rows) : rows.map(serializeRegistration));
 });
 
 // The admin sorts many players into categories at once (the "Zaradenie do kategórií" screen): { assignments: [{ id, category }] }, category
@@ -690,10 +733,11 @@ router.post('/:id/registrations/admin', clubTournaments.requireSeasonManager(clu
     .some((r) => r.player_id === player.id || nameMatch.key(r.name) === nameMatch.key(player.name));
   if (already) return res.status(409).json({ code: 'ALREADY_REGISTERED', error: `${player.name} is already registered for this season` });
 
+  const substitute = capacity.wouldWait(season, category, doublesTournament ? { name: player.name, partner: partnerName } : undefined); // the maximum is reached: he is a substitute (raise the maximum to let him in)
   const info = db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, paid, partner_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
     .run(season.id, player.id, player.name, phone, email, category, body.paid ? 1 : 0, partnerName);
-  if (doublesTournament) { try { tournamentDraw.addPair(season, { player: player.id, partner: partnerName }); } catch { /* the organiser makes the pair */ } }
-  res.status(201).json(serializeRegistration(db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(info.lastInsertRowid)));
+  if (doublesTournament && !substitute) { try { tournamentDraw.addPair(season, { player: player.id, partner: partnerName }); } catch { /* the organiser makes the pair */ } }
+  res.status(201).json(serializeRegistrationsOf(season, [db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(info.lastInsertRowid)])[0]);
 });
 
 // The admin changes a registration: what is sent is changed, the rest stays — paid, category ('' = no category, tournaments only),
@@ -732,14 +776,23 @@ router.patch('/registrations/:rid', clubTournaments.requireSeasonManager(clubTou
     if (partner.length < 3 || partner.length > 80) return res.status(400).json({ error: 'Enter the name of the partner' });
     next.partner = partner;
   }
+  const regSeason = db.prepare('SELECT * FROM seasons WHERE id = ?').get(row.season_id);
+  const waitingBefore = regSeason ? capacity.substituteIds(regSeason) : new Set();
   db.prepare('UPDATE season_registrations SET paid = ?, category = ?, phone = ?, email = ?, note = ?, partner_name = ? WHERE id = ?')
     .run(next.paid, next.category, next.phone, next.email, next.note, next.partner !== undefined ? next.partner : (row.partner_name || ''), row.id);
-  res.json({ ok: true, ...serializeRegistration(db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(row.id)) });
+  if (regSeason) announceNewlyIn(regSeason, waitingBefore); // (a category change can free a place in another category)
+  const savedRow = db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(row.id);
+  res.json({ ok: true, ...(regSeason ? serializeRegistrationsOf(regSeason, [savedRow])[0] : serializeRegistration(savedRow)) });
 });
 
 router.delete('/registrations/:rid', clubTournaments.requireSeasonManager(clubTournaments.byRegistrationId), (req, res) => {
+  const row = db.prepare('SELECT season_id FROM season_registrations WHERE id = ?').get(Number(req.params.rid));
+  const regSeason = row ? db.prepare('SELECT * FROM seasons WHERE id = ?').get(row.season_id) : null;
+  const waitingBefore = regSeason ? capacity.substituteIds(regSeason) : new Set();
   const info = db.prepare('DELETE FROM season_registrations WHERE id = ?').run(Number(req.params.rid));
   if (!info.changes) return res.status(404).json({ error: 'Registration not found' });
+  // somebody dropped out: the first substitute of that category (or of the tournament) is in now
+  if (regSeason) announceNewlyIn(regSeason, waitingBefore);
   res.json({ ok: true });
 });
 
@@ -929,6 +982,35 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
   if (logo.value && !/^(https?:\/\/|\/)/i.test(logo.value)) return res.status(400).json({ error: 'The logo must be a link starting with http://, https:// or /' });
   if (logo.value && logo.value !== season.logo_url && !auth.isAdmin(req) && !/^https:\/\//i.test(logo.value)) return res.status(400).json({ error: 'The logo must be a link starting with https:// (or uploaded)' });
   const open = req.body.registrationOpen === undefined ? season.registration_open : (req.body.registrationOpen ? 1 : 0);
+  // the most players that can register: one for the event, or one for each category when the player chooses a category (see registrationCapacity.js)
+  const readMax = (value) => {
+    if (value === null || value === '' || Number(value) === 0) return { value: null };
+    const n = Number(value);
+    return Number.isInteger(n) && n >= 1 && n <= 2000 ? { value: n } : { error: 'The maximum number of players is a whole number from 1 to 2000' };
+  };
+  let maxPlayers = season.max_players || null;
+  if (req.body.maxPlayers !== undefined) {
+    const m = readMax(req.body.maxPlayers);
+    if (m.error) return res.status(400).json({ error: m.error });
+    maxPlayers = m.value;
+  }
+  const categoryMax = capacity.categoryMaxOf(season);
+  if (req.body.categoryMax !== undefined) {
+    if (!req.body.categoryMax || typeof req.body.categoryMax !== 'object' || Array.isArray(req.body.categoryMax)) return res.status(400).json({ error: 'categoryMax must be an object like { "ELITE": 16 }' });
+    for (const key of capacity.CATEGORY_KEYS) {
+      if (req.body.categoryMax[key] === undefined) continue;
+      const m = readMax(req.body.categoryMax[key]);
+      if (m.error) return res.status(400).json({ error: m.error });
+      if (m.value === null) delete categoryMax[key]; else categoryMax[key] = m.value;
+    }
+  }
+  const nextSeason = { ...season, kind, categories, max_players: maxPlayers, category_max: JSON.stringify(categoryMax) };
+  // "always enter the maximum": a save that touches the registration (or opens it) is refused while the maximum is missing (for every category of a season with categories)
+  const touchesRegistration = ['registrationOpen', 'maxPlayers', 'categoryMax'].some((k) => req.body[k] !== undefined);
+  if (open && touchesRegistration && !capacity.limitsComplete(nextSeason, parseCategories(categories))) {
+    return res.status(400).json({ code: 'MAX_PLAYERS_REQUIRED', error: capacity.choosesCategory(nextSeason) ? 'Enter the maximum number of players for every category' : 'Enter the maximum number of players' });
+  }
+  const waitingBefore = capacity.substituteIds(season);
   let courts = season.court_count || 0;
   if (req.body.courtCount !== undefined) {
     courts = Number(req.body.courtCount);
@@ -947,10 +1029,12 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     if (planned.error) return res.status(400).json({ error: planned.error });
     planning = planned.next;
   }
-  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ?, court_count = ?, max_matches_per_day = ?, scoring = ?, tiebreakers = ? WHERE id = ?')
-    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, scoring, tiebreakers, season.id);
+  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ?, court_count = ?, max_matches_per_day = ?, scoring = ?, tiebreakers = ?, max_players = ?, category_max = ? WHERE id = ?')
+    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, scoring, tiebreakers, maxPlayers, nextSeason.category_max, season.id);
   if (planning) tournamentSchedule.storeSettings(season.id, planning);
-  res.json(serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
+  const saved = db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id);
+  announceNewlyIn(saved, waitingBefore); // a raised maximum lets the first substitutes in
+  res.json(serializeSeason(saved));
 });
 
 // Deleting a season deletes its groups and clears the season/group on the matches that had them
@@ -986,6 +1070,7 @@ function deleteTournamentWithMatches(req, res, season) {
     db.exec('ROLLBACK');
     throw err;
   }
+  require('./seasonPhotos').removeAllForSeason(season.id); // the gallery goes too (the files leave Drive in the background)
   matches.forEach((m) => {
     try {
       const ranking = rankingPoints.reverseForMatchWithChanges(m.id);
@@ -1015,6 +1100,7 @@ router.delete('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPar
   db.prepare('DELETE FROM season_registrations WHERE season_id = ?').run(season.id);
   db.prepare('DELETE FROM tournament_pairs WHERE season_id = ?').run(season.id);
   db.prepare('DELETE FROM seasons WHERE id = ?').run(season.id);
+  require('./seasonPhotos').removeAllForSeason(season.id); // the gallery goes too (the files leave Drive in the background)
   res.json({ ok: true });
 });
 

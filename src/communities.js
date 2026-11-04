@@ -23,10 +23,44 @@ function slugFor(name, exceptId) {
   let n = 2;
   while (true) {
     const row = db.prepare('SELECT id FROM organisations WHERE slug = ?').get(slug);
-    if (!RESERVED_SLUGS.has(slug) && (!row || row.id === exceptId)) return slug;
+    // an earlier address of another organisation is taken too (it still leads to that one)
+    const old = db.prepare('SELECT organisation_id FROM organisation_old_slugs WHERE slug = ?').get(slug);
+    if (!RESERVED_SLUGS.has(slug) && (!row || row.id === exceptId) && (!old || old.organisation_id === exceptId)) return slug;
     slug = `${base}-${n}`;
     n += 1;
   }
+}
+
+// The organisation behind an address: its current one, else the one that was renamed from it (renamedFrom: true) - an old link or an invitation keeps working.
+// leagueId (optional): only an organisation of that city.
+function bySlug(slug, leagueId) {
+  const where = leagueId === undefined ? '' : ' AND o.league_id = ?';
+  const args = leagueId === undefined ? [slug] : [slug, leagueId];
+  const now = db.prepare(`SELECT o.* FROM organisations o WHERE o.slug = ?${where}`).get(...args);
+  if (now) return now;
+  const old = db.prepare(`SELECT o.* FROM organisation_old_slugs a JOIN organisations o ON o.id = a.organisation_id WHERE a.slug = ?${where}`).get(...args);
+  return old ? { ...old, renamedFrom: true } : null;
+}
+
+// One-off (flag in app_flags): a community or club that was renamed before its address followed its name keeps the address of its first name (Next Gen Boys ->
+// COURTCREW, still /next-gen-boys). Every one whose address is not its name (or its name and a number) gets the address of its name now, the old one staying as a
+// way in, like in a rename (routes/communities.js). Returns how many were changed.
+function slugsFollowNames() {
+  if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'org_slugs_follow_names'").get()) return 0;
+  let changed = 0;
+  db.prepare('SELECT id, name, slug FROM organisations ORDER BY id').all().forEach((o) => {
+    const base = slugify(o.name);
+    const numbered = o.slug.startsWith(`${base}-`) && /^\d+$/.test(o.slug.slice(base.length + 1)); // (a twin: name-2, name-3)
+    if (o.slug === base || numbered) return;
+    const slug = slugFor(o.name, o.id);
+    if (slug === o.slug) return;
+    db.prepare('INSERT OR REPLACE INTO organisation_old_slugs (slug, organisation_id) VALUES (?, ?)').run(o.slug, o.id);
+    db.prepare('DELETE FROM organisation_old_slugs WHERE slug = ?').run(slug);
+    db.prepare('UPDATE organisations SET slug = ? WHERE id = ?').run(slug, o.id);
+    changed += 1;
+  });
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('org_slugs_follow_names')").run();
+  return changed;
 }
 
 const cityName = (leagueId) => (db.prepare('SELECT name FROM leagues WHERE id = ?').get(leagueId) || {}).name || '';
@@ -143,4 +177,4 @@ function actingOrganisation(req) {
   return org && isOrgAdmin(org.id, playerId) ? org : null;
 }
 
-module.exports = { isLockedFor, previewPhotos, isSuperAdmin, siteAdminFor, canRead, actingOrganisation, REREQUEST_DAYS, slugify, slugFor, memberOf, isOrgAdmin, memberCount, canRequestAgainAt, serialize };
+module.exports = { slugsFollowNames, bySlug, isLockedFor, previewPhotos, isSuperAdmin, siteAdminFor, canRead, actingOrganisation, REREQUEST_DAYS, slugify, slugFor, memberOf, isOrgAdmin, memberCount, canRequestAgainAt, serialize };

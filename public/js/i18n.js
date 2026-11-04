@@ -371,6 +371,12 @@ const TRANSLATIONS = {
     'season.regTitleTournament': 'Registrácia na turnaj',
     'season.regName': 'Meno a priezvisko',
     'season.regNameHint': 'Začnite písať a vyberte sa zo zoznamu. Ak tam nie ste, napíšte nové meno presne tak ako sa voláte aj s diakritikou.',
+    'season.galleryAdd': 'Pridať fotky',
+    'season.substitutes': 'Náhradníci',
+    'season.substitutesNote': 'Maximálny počet hráčov je obsadený. Náhradník nastúpi, keď sa niekto odhlási, v poradí podľa registrácie.',
+    'season.regFull': 'Maximálny počet hráčov je obsadený. Môžete sa prihlásiť ako náhradník: nastúpite, ak sa niekto odhlási.',
+    'season.regSendSub': 'Prihlásiť sa ako náhradník',
+    'season.regDoneSub': 'Maximálny počet hráčov je obsadený, boli ste zaradený ako náhradník. Ak sa uvoľní miesto, nastúpite do turnaja a dáme vám vedieť e-mailom.',
     'season.settings': 'Nastavenia',
     'season.regPhone': 'Telefón',
     'season.regEmail': 'E-mail',
@@ -873,7 +879,7 @@ const TRANSLATIONS = {
     'notify.pushInstead': '🔔 Radšej push notifikácia',
     'notify.subscribed': 'Ste prihlásený na odber!',
 
-    'login.title': 'Prihlásiť sa ako hráč BLTA',
+    'login.title': 'Zaregistrujte sa ako hráč',
     'login.headline': 'Zadajte svoje <span style="color:var(--green-light)">telefónne číslo</span>',
     'login.phoneIntro': 'Napr. 0903111222. Ešte nemáte účet? Zaregistrujte sa tlačidlom nižšie.',
     'login.registerBtn': 'Registrovať sa',
@@ -906,7 +912,7 @@ const TRANSLATIONS = {
     // — error text itself always comes back in plain English (this app's
     // long-standing convention for server error strings generally); these
     // are what actually shows in the UI instead, in the current language.
-    'login.error.phoneNotFound': 'Toto telefónne číslo nie je v systéme — požiadajte admina, aby ho pridal na stránke Hráči.',
+    'login.error.phoneNotFound': 'Toto telefónne číslo nie je v systéme. Zaregistrujte sa.',
     'login.error.enterCode': 'Zadajte svoj 5-miestny kód.',
     'login.error.incorrectCode': 'Nesprávny kód (zostáva {count} {word})',
     'login.error.locked': 'Príliš veľa nesprávnych pokusov — obnovte si kód nižšie, alebo požiadajte admina o jeho resetovanie.',
@@ -1886,6 +1892,12 @@ const TRANSLATIONS = {
     'season.regTitleTournament': 'Tournament registration',
     'season.regName': 'Name and surname',
     'season.regNameHint': 'Start typing and pick yourself from the list. If you are not there, type your name exactly as it is spelled, including any diacritics.',
+    'season.galleryAdd': 'Add photos',
+    'season.substitutes': 'Substitutes',
+    'season.substitutesNote': 'The maximum number of players is reached. A substitute comes in when somebody drops out, in the order of registration.',
+    'season.regFull': 'The maximum number of players is reached. You can register as a substitute: you come in if somebody drops out.',
+    'season.regSendSub': 'Register as a substitute',
+    'season.regDoneSub': 'The maximum number of players is reached, so you are on the list of substitutes. If a place is freed, you come into the tournament and we let you know by e-mail.',
     'season.settings': 'Settings',
     'season.regPhone': 'Phone',
     'season.regEmail': 'E-mail',
@@ -2388,7 +2400,7 @@ const TRANSLATIONS = {
     'notify.pushInstead': '🔔 Push notification instead',
     'notify.subscribed': "You're subscribed!",
 
-    'login.title': 'Log in as a BLTA player',
+    'login.title': 'Register as a player',
     'login.headline': 'Enter your <span style="color:var(--green-light)">phone number</span>',
     'login.phoneIntro': "e.g. 0903111222. Don't have an account yet? Register with the button below.",
     'login.registerBtn': 'Register',
@@ -2417,7 +2429,7 @@ const TRANSLATIONS = {
     'login.registerNameLabel': 'Your name',
     'login.registerEmailLabel': 'Your email',
 
-    'login.error.phoneNotFound': "That phone number isn't on file — ask an admin to add it on your Players page entry.",
+    'login.error.phoneNotFound': "This phone number is not in the system. Register.",
     'login.error.enterCode': 'Enter your 5-digit code.',
     'login.error.incorrectCode': 'Incorrect code ({count} {word} left)',
     'login.error.locked': 'Too many incorrect attempts — reset your code below, or ask an admin to reset it.',

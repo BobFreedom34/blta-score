@@ -130,13 +130,15 @@ function playersModel() {
     else ((tables.get(g.id) || { rows: [] }).rows).forEach((r) => add(r.player.name, r.player.slug, g.category === 'OPEN' ? 'NONE' : g.category, regs.has(nameKey(r.player.name)) ? regs.get(nameKey(r.player.name)).paid : null));
   });
   // a tournament entry may have no category: those players are listed last, under "Bez kategórie"
-  (season.registrations || []).forEach((r) => add(r.name, r.slug, r.category || 'NONE', r.paid));
+  // the substitutes (after the maximum of players) are listed apart: they are not in until somebody drops out
+  (season.registrations || []).filter((r) => !r.substitute).forEach((r) => add(r.name, r.slug, r.category || 'NONE', r.paid));
+  const substitutes = (season.registrations || []).filter((r) => r.substitute).sort((a, b) => (a.substitutePosition || 0) - (b.substitutePosition || 0));
   const loc = currentLang === 'en' ? 'en' : 'sk';
   const cats = [...CATEGORY_ORDER, 'NONE'].map((category) => ({
     category,
     players: [...people.values()].filter((p) => p.category === category).sort((a, b) => a.name.localeCompare(b.name, loc)),
   })).filter((c) => c.players.length);
-  return { cats, total: people.size };
+  return { cats, total: people.size, substitutes };
 }
 
 
@@ -477,7 +479,15 @@ function playersHtml() {
         ${rows}
       </div>`;
   }).join('');
-  return `<section class="sv-sec" id="sv-players">${filter}<div class="sv-pt">${tables}</div></section>`;
+  // the substitutes of the categories shown: after the tables, in the order they will come in
+  const waiting = model.substitutes.filter((r) => playersCat === 'ALL' || (r.category || 'NONE') === playersCat);
+  const subs = waiting.length ? `
+      <div class="sv-ptable">
+        <div class="sv-ptable-t">${escapeHtml(t('season.substitutes'))}<em>${waiting.length}</em></div>
+        ${waiting.map((r, i) => `<div class="sv-pr"><span class="n">${i + 1}</span><span class="nm">${escapeHtml(r.name)}${r.category ? ` <small>(${escapeHtml(CATEGORY_NAMES[r.category] || r.category)})</small>` : ''}</span></div>`).join('')}
+        <p class="sv-sub-note">${escapeHtml(t('season.substitutesNote'))}</p>
+      </div>` : '';
+  return `<section class="sv-sec" id="sv-players">${filter}<div class="sv-pt">${tables}${subs}</div></section>`;
 }
 
 // The Play-off tab: a category filter, then the brackets of the season (a bracket whose name already says the category is
@@ -517,6 +527,14 @@ async function fillBrackets() {
 }
 
 function galleryHtml() {
+  // the photos of the event (kept in Google Drive like the photos of the matches): a grid, and the button to add more for who organises it
+  const { canAdd, photos } = photoState;
+  const grid = photos.length ? `<div class="sv-photos">${photos.map((p, i) => `<button type="button" class="sv-photo" data-photo="${i}" aria-label="${escapeHtml(t('match.photoOpen'))}">${photoImgFailed(p.thumbUrl) ? '' : photoImgTag(p.thumbUrl)}</button>`).join('')}</div>` : '';
+  const add = (canAdd || photoUploading) ? `<button type="button" class="btn btn-dark sv-photo-add" id="sv-photo-add"${photoUploading ? ' disabled' : ''}>${escapeHtml(photoUploading ? t('match.photoUploading') : t('season.galleryAdd'))}</button>` : '';
+  if (add || grid) {
+    const link = season.galleryUrl ? `<a class="sv-gallery-btn" href="${escapeHtml(season.galleryUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.galleryOpen'))}</a>` : '';
+    return `<section class="sv-sec" id="sv-gallery">${secHead('gallery', '')}${add}${grid}${link}</section>`;
+  }
   if (!season.galleryUrl) return '';
   return `<section class="sv-sec" id="sv-gallery">${secHead('gallery', '')}<a class="sv-gallery-btn" href="${escapeHtml(season.galleryUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.galleryOpen'))}</a></section>`;
 }
@@ -554,6 +572,7 @@ async function openRegisterModal() {
         </div>
         <div class="field"><label for="sv-reg-phone">${escapeHtml(t('season.regPhone'))}</label><input type="tel" id="sv-reg-phone" autocomplete="tel" maxlength="20" placeholder="0903 111 222"></div>
         <div class="field"><label for="sv-reg-email">${escapeHtml(t('season.regEmail'))}</label><input type="email" id="sv-reg-email" autocomplete="email" maxlength="120"></div>
+        <div class="sv-reg-full" id="sv-reg-full" hidden>${escapeHtml(t('season.regFull'))}</div>
         ${noCategoryChoice() ? '' : `<div class="field"><label for="sv-reg-cat">${escapeHtml(t('season.regCategory'))}</label>
           <select id="sv-reg-cat"><option value="">${escapeHtml(t('season.regChoose'))}</option>${CATEGORY_ORDER.filter((c) => (season.categories || []).includes(c)).map((c) => `<option value="${c}">${escapeHtml(CATEGORY_NAMES[c])}</option>`).join('')}</select>
         </div>`}
@@ -580,6 +599,19 @@ async function openRegisterModal() {
   if (playerAuthed && currentPlayerName) $('name').value = currentPlayerName;
   if (typeof currentPlayerEmail === 'string' && currentPlayerEmail) $('email').value = currentPlayerEmail;
   $('name').focus();
+
+  // the maximum of players is reached (for the chosen category, or for the whole event): the registration is a substitute one - the form says so before it is sent
+  const isFull = () => {
+    const cap = (season.capacity || {})[noCategoryChoice() ? '' : ($('cat') ? $('cat').value : '')];
+    return !!(cap && cap.limit && cap.in >= cap.limit);
+  };
+  const showFull = () => {
+    const full = isFull();
+    $('full').hidden = !full;
+    $('send').textContent = t(full ? 'season.regSendSub' : 'season.regSend');
+  };
+  if ($('cat')) $('cat').addEventListener('change', showFull);
+  showFull();
 
   let chosenId = null; // a player picked from the "did you mean" list
   const fail = (msg) => { $('error').textContent = msg; $('similar').innerHTML = ''; };
@@ -609,11 +641,12 @@ async function openRegisterModal() {
         : '';
       // a tournament also offers a bank transfer: the IBAN of the contact page, the entry fee and a reminder to put the tournament's name in the note
       const contact = isTournament() ? await api('/contact').catch(() => null) : null;
-      const pay = stripe + bankTransferHtml(contact, !!stripe);
+      // a substitute pays nothing yet: the payment is asked when he comes in
+      const pay = res && res.substitute ? '' : stripe + bankTransferHtml(contact, !!stripe);
       wrap.querySelector('.modal').innerHTML = `
         <button type="button" class="close" data-close aria-label="${escapeHtml(t('season.regClose'))}">&times;</button>
         <h3>${escapeHtml(t('season.regThanks', { name: (res && res.name) || typed }))}</h3>
-        <p>${escapeHtml(t('season.regDone'))}</p>${res && res.pinSetupRequired ? `<p><b>${escapeHtml(t('season.regAccount'))}</b></p>` : ''}${pay}
+        <p>${escapeHtml(t(res && res.substitute ? 'season.regDoneSub' : 'season.regDone'))}</p>${res && res.pinSetupRequired ? `<p><b>${escapeHtml(t('season.regAccount'))}</b></p>` : ''}${pay}
         <button type="button" class="btn btn-outline btn-block" data-close style="margin-top:10px">${escapeHtml(t('season.regClose'))}</button>`;
       wrap.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => {
         const done = () => { b.textContent = t('season.copied'); };
@@ -623,7 +656,7 @@ async function openRegisterModal() {
       refresh(); // the new name appears in the players tab
     } catch (err) {
       button.disabled = false;
-      button.textContent = t('season.regSend');
+      showFull();
       const d = err.data || {};
       if (d.code === 'SIMILAR_PLAYERS') {
         $('similar').innerHTML = `<div class="sv-reg-similar-title">${escapeHtml(t('season.regSimilar'))}</div>`
@@ -701,6 +734,18 @@ function panelHtml() {
   return html || `<div class="sv-empty">${escapeHtml(t(emptyKey))}</div>`;
 }
 
+// The gallery tab: the button that adds photos (a phone asks: take one or choose), a tap on a picture opens the full-screen viewer (all of it is match-photos.js)
+function bindGallery(panel) {
+  const add = panel.querySelector('#sv-photo-add');
+  if (add) add.addEventListener('click', () => { if (!photoUploading) askPhotoSource(); });
+  panel.querySelectorAll('[data-photo]').forEach((b) => b.addEventListener('click', () => openPhotoViewer(Number(b.dataset.photo) || 0)));
+  watchPhotoImages(panel);
+}
+// the photos of the event are loaded with the page; a change of them draws the gallery tab again
+async function loadGallery() {
+  await loadSeasonPhotos(season.id, () => { if (tab === 'gallery') renderPanel(); });
+}
+
 // Loads what the open tab needs the first time it is opened (the header and the tables are loaded with the page).
 async function ensureLoaded() {
   if (loaded.has(tab)) return;
@@ -732,6 +777,7 @@ async function renderPanel() {
   panel.innerHTML = panelHtml();
   if (!panel.querySelector('h2')) { const open = availableTabs().find((x) => x.key === tab); if (open) panel.insertAdjacentHTML('afterbegin', `<h2 class="sr-only">${escapeHtml(open.label)}</h2>`); }
   if (key === 'playoff') fillBrackets();
+  if (key === 'gallery') bindGallery(panel);
   if (key === 'courts') initCourtSchedule(document.getElementById('sv-courts'), season).catch(() => { document.getElementById('sv-courts').innerHTML = `<div class="sv-empty">${escapeHtml(t('season.empty.courts'))}</div>`; });
 }
 
@@ -796,6 +842,7 @@ async function refresh() {
   if (!document.title.includes(season.name)) document.title = `${season.name} — BLTA`; // the server already put the title from Backend > SEO
   await loadStandings();
   await findMyGroup();
+  await loadGallery();
   const wantsRegister = window.location.hash === '#register'; // the green "Registrácia" button of a schedule row (slta.sk) leads here
   tab = (wantsRegister ? '' : window.location.hash.slice(1)) || null; // renderTabs picks the first tab with content when there is none
   await render();

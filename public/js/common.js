@@ -2418,14 +2418,27 @@ function bracketPhaseLabel(b) {
   return b.kind === 'CONSOLATION' ? `${t('courts.consolation')} · ${name}` : name;
 }
 
+// the badge of a match played in a tournament of a club or a community: "Klub" / "Komunita" (the card's line under it has the name)
+function clubBadge(m) {
+  const org = m && m.season && m.season.organisation;
+  if (!org) return '';
+  return `<span class="badge badge-club" title="${escapeHtml(org.name)}">${escapeHtml(t(org.type === 'CLUB' ? 'com.typeClub' : 'com.typeCommunity'))}</span>`;
+}
+
+// the line under a match card; a match of a community or club starts with its name ("COURTCREW · Turnaj 1 · Elite · Semifinále")
 function matchRoundLabel(m) {
+  const label = matchRoundLabelOf(m);
+  const club = m.season && m.season.organisation ? m.season.organisation.name : '';
+  return club ? [club, label].filter(Boolean).join(' · ') : label;
+}
+function matchRoundLabelOf(m) {
   // a tournament match: the name of the tournament, the category and the phase ("Demo Open · Elite · Semifinále")
   if (m.season && m.season.kind === 'TOURNAMENT') {
     const category = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[m.category] || categoryLabel(m.category);
     const phase = bracketPhaseLabel(m.bracket) || (m.group ? [groupShortName(m.group.name), m.round ? t('season.roundN', { n: m.round }) : ''].filter(Boolean).join(' · ') : '');
     return [m.season.name, category, phase].filter(Boolean).join(' · ');
   }
-  const parts = [];
+  const parts = m.season && m.season.organisation ? [m.season.name] : []; // (a season of a club: its name, then the round and the group)
   if (m.stage === 'PLAYOFF') parts.push(t('season.playoff'));
   else if (m.round) parts.push(t('season.roundN', { n: m.round }));
   if (m.group && m.group.name) parts.push(m.group.name);

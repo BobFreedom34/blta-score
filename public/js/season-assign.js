@@ -53,7 +53,7 @@ async function openAssignPanel(host, seasonId, onSaved, categories) {
   host.innerHTML = `<div style="color:var(--gray)">${tl('Načítavam…', 'Loading…')}</div>`;
   const soft = (promise, fallback) => promise.catch(() => fallback);
   const [regs, courtiq, rankings, profiles] = await Promise.all([
-    api(`/seasons/${seasonId}/registrations`),
+    api(`/seasons/${seasonId}/registrations`).then((rows) => rows.filter((r) => !r.substitute)), // (the substitutes wait outside: they are sorted when they come in)
     soft(api('/courtiq'), { rows: [] }),
     soft(api('/rankings'), { tables: [] }),
     soft(api('/players'), []),

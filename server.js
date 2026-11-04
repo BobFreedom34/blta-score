@@ -30,6 +30,7 @@ const courtIQRouter = require('./src/routes/courtiq');
 const bracketsRouter = require('./src/routes/brackets');
 const venuesRouter = require('./src/routes/venues');
 const communitiesRouter = require('./src/routes/communities');
+const communities = require('./src/communities');
 const messagesRouter = require('./src/routes/messages');
 const leaguesRouter = require('./src/routes/leagues');
 const cityAdminsRouter = require('./src/routes/cityAdmins');
@@ -188,6 +189,12 @@ try {
   require('./src/rankingsSeed').seedRankings(db);
 } catch (err) {
   console.error('Rankings seed failed (will retry on next start):', err);
+}
+try {
+  const renamed = communities.slugsFollowNames();
+  if (renamed) console.log('Communities whose address now follows their name: ' + renamed);
+} catch (err) {
+  console.error('Community address catch-up failed (will retry on next start):', err);
 }
 try {
   const done = require('./src/withdrawCatchUp').catchUp(db);
@@ -522,6 +529,16 @@ app.use((req, res, next) => {
       return res.redirect(301, seo.pageUrl(own, hit.lang));
     }
   }
+  // a club that was renamed has a new address: the old one (a link, an invitation) is sent to it, with the rest of the address (?invite=...) kept
+  if (hit.key === 'community') {
+    let param = hit.param;
+    try { param = decodeURIComponent(param); } catch { /* keep it as it is */ }
+    const org = communities.bySlug(param, req.league.id);
+    if (org && org.renamedFrom) {
+      const tail = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+      return res.redirect(301, `${req.cityBase || ''}${seo.pageUrl(`/community/${encodeURIComponent(org.slug)}`, hit.lang)}${tail}`);
+    }
+  }
   if (page.template) {
     try {
       let param = hit.param;
@@ -633,6 +650,7 @@ app.use('/api/tracking', trackingRouter);
 app.use('/api/footer', footerRouter);
 app.use('/api/media', mediaRouter);
 app.use('/api/seasons', seasonsRouter);
+app.use('/api/seasons', require('./src/routes/seasonPhotos')); // the gallery of an event (photos in the same Drive folder as the match photos)
 app.use('/api/invites', invitesRouter);
 app.use('/api/highlights', highlightsRouter);
 app.use('/api/schedule', scheduleRouter);

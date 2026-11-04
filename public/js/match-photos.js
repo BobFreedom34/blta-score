@@ -5,6 +5,10 @@ let photoState = { enabled: false, max: 5, canAdd: false, photos: [] };
 let photoToken = null;
 let photoOnChange = () => {};
 let photoUploading = false;
+// The same box, button and viewer also serve the gallery of a tournament or a season (season.js): then photoBase is the address of its photos (/seasons/<id>/photos)
+// and photoToken is null; for a match photoBase is null and the address is the one of the match.
+let photoBase = null;
+const photoPath = () => photoBase || `/matches/${photoToken}/photos`;
 let photoLoadSeq = 0; // a slow answer must not overwrite a newer one
 let photoViewerId = null; // id of the photo the viewer shows; null while it is closed
 let photoViewerIndex = 0;
@@ -69,17 +73,30 @@ function photosWord(n) {
 }
 
 // Fills the module state from the server. Never throws: when the photos cannot be loaded the page simply shows nothing new.
-async function loadMatchPhotos(token) {
-  photoToken = token;
+async function loadPhotos() {
   const seq = ++photoLoadSeq;
   let next = { enabled: false, max: 5, canAdd: false, photos: [] };
   try {
-    const data = await api(`/matches/${token}/photos`);
+    const data = await api(photoPath());
     if (data && data.enabled) next = { enabled: true, max: data.max || 5, canAdd: !!data.canAdd, photos: data.photos || [] };
   } catch { /* photos are best-effort */ }
   if (seq !== photoLoadSeq) return;
   photoState = next;
   syncPhotoViewer();
+}
+
+async function loadMatchPhotos(token) {
+  photoToken = token;
+  photoBase = null;
+  await loadPhotos();
+}
+
+// The gallery of a tournament or a season: onChange draws the gallery again after a photo was added or removed.
+async function loadSeasonPhotos(seasonId, onChange) {
+  photoToken = null;
+  photoBase = `/seasons/${seasonId}/photos`;
+  photoOnChange = onChange || (() => {});
+  await loadPhotos();
 }
 
 function matchPhotosHtml() {
@@ -149,7 +166,8 @@ function askPhotoSource() {
 const photoInputs = {};
 function ensurePhotoFileInput(camera) {
   const key = camera ? 'camera' : 'gallery';
-  if (photoInputs[key]) return photoInputs[key];
+  // a gallery takes many photos at once; a match has room for a few and takes them one at a time
+  if (photoInputs[key]) { if (!camera) photoInputs[key].multiple = !!photoBase; return photoInputs[key]; }
   const input = document.createElement('input');
   input.type = 'file';
   if (camera) {
@@ -157,13 +175,14 @@ function ensurePhotoFileInput(camera) {
     input.setAttribute('capture', 'environment'); // the back camera of the phone
   } else {
     input.accept = PHOTO_TYPES.join(','); // so a phone that keeps its photos as HEIC hands over a JPEG
+    input.multiple = !!photoBase;
   }
   input.dataset.noLibrary = '1';
   input.hidden = true;
   input.addEventListener('change', () => {
-    const file = input.files && input.files[0];
+    const files = [...(input.files || [])];
     input.value = ''; // so choosing the same photo again still fires "change"
-    if (file) uploadMatchPhoto(file);
+    (async () => { for (const file of files) await uploadMatchPhoto(file); })();
   });
   document.body.appendChild(input);
   photoInputs[key] = input;
@@ -213,7 +232,7 @@ async function resizeImageForUpload(file, maxSide = 1800, quality = 0.85) {
 
 async function uploadMatchPhoto(file) {
   if (photoUploading) return;
-  const token = photoToken;
+  const path = photoPath();
   photoUploading = true;
   photoOnChange();
   try {
@@ -222,7 +241,7 @@ async function uploadMatchPhoto(file) {
     if (blob === file && !PHOTO_TYPES.includes(file.type)) throw new Error(t('match.photoUnsupported'));
     const form = new FormData();
     form.append('photo', blob, 'photo.jpg');
-    const res = await fetch(`/api/matches/${token}/photos`, { method: 'POST', body: form });
+    const res = await fetch(`/api${path}`, { method: 'POST', body: form });
     let data = null;
     try { data = await res.json(); } catch { /* no body */ }
     if (!res.ok) throw new Error((data && data.error) || `Request failed (${res.status})`);
@@ -230,20 +249,19 @@ async function uploadMatchPhoto(file) {
     toast(err.message);
   }
   photoUploading = false;
-  await loadMatchPhotos(token);
+  await loadPhotos();
   photoOnChange();
 }
 
 async function removeMatchPhoto(photo) {
   if (!confirm(t('match.photoRemoveConfirm'))) return;
-  const token = photoToken;
   try {
-    await api(`/matches/${token}/photos/${photo.id}`, { method: 'DELETE' });
+    await api(`${photoPath()}/${photo.id}`, { method: 'DELETE' });
   } catch (err) {
     toast(err.message);
   }
   // reload either way: after a failure (e.g. somebody else already removed it) the list still has to be right
-  await loadMatchPhotos(token);
+  await loadPhotos();
   photoOnChange();
 }
 

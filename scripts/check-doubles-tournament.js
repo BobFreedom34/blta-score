@@ -65,7 +65,7 @@ test('a doubles tournament is entered as a pair: the partner is required, and th
   const s = await call('POST', '/api/seasons', { body: { name: 'Letný turnaj', kind: 'TOURNAMENT', playType: 'DOUBLES', startDate: '2099-06-01', endDate: '2099-06-02' } });
   assert.strictEqual(s.status, 201, JSON.stringify(s.json));
   season = s.json;
-  assert.strictEqual((await call('PATCH', `/api/seasons/${season.id}`, { body: { registrationOpen: true } })).status, 200);
+  assert.strictEqual((await call('PATCH', `/api/seasons/${season.id}`, { body: { registrationOpen: true, maxPlayers: 50 } })).status, 200);
   const reg = (name, partner, phone, email) => call('POST', `/api/seasons/${season.id}/registrations`, { cookie: '', body: { name, partner, phone, email } });
   assert.strictEqual((await reg('Adam A', 'Boris B', '0903000001', 'a@example.com')).status, 201);
   assert.strictEqual((await reg('Boris B', 'Adam A', '0903000002', 'b@example.com')).status, 201, 'the partner may name him back');
@@ -247,7 +247,7 @@ test('singles or doubles is chosen when a tournament is made and never mixed', a
   assert.strictEqual(single.status, 201, JSON.stringify(single.json));
   assert.strictEqual(single.json.playType, 'SINGLES');
   const sid = single.json.id;
-  await call('PATCH', `/api/seasons/${sid}`, { body: { registrationOpen: true } });
+  await call('PATCH', `/api/seasons/${sid}`, { body: { registrationOpen: true, maxPlayers: 50 } });
   await players(['Solo S', 'Duo D']);
   // (the public form is limited to a few entries an hour from one address, so the organiser's route is used here)
   const reg = await call('POST', `/api/seasons/${sid}/registrations/admin`, { body: { playerId: P['Solo S'], partner: 'Duo D', category: '' } });

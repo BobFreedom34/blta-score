@@ -17,7 +17,8 @@ let currentOpponent = '';
 let currentResult = '';
 let currentCategory = '';
 let currentYear = '';
-let rawGroups = []; // last-fetched matches per GROUPS entry, unfiltered
+let rawGroups = []; // last-fetched matches per GROUPS entry, unfiltered: the league's own (what the statistics, the badges and the rivals are counted from)
+let allGroups = []; // the same plus the matches this player played in tournaments of communities and clubs: what the list of matches shows (they are only here, never in the league's lists)
 let lastBltaFinished = []; // set by renderStats(), reused when the "All matches" tab
 let lastAllFinished = []; // is switched to, since its trend chart can't be measured
 // accurately (see renderTrendChart) while its panel is still display:none.
@@ -43,7 +44,7 @@ function matchCardHtml(m) {
   return `
     <a class="match-card status-${m.status}${m.status === 'PLANNED' && m.scheduledAt ? ' has-date' : ''}${resultClass}" href="/match/${m.token}">
       <div class="match-card-top">
-        ${categoryBadge(m.category)}
+        ${categoryBadge(m.category)}${clubBadge(m)}
         ${statusBadge(m, { splitTime: true })}${videoBadge(m)}${photoBadge(m)}
         <div class="match-card-meta" style="margin-left:auto">
           ${m.location ? `<span>${courtIcon('pin')}${escapeHtml(m.location)}</span>` : ''}
@@ -115,7 +116,7 @@ function passesFilters(m) {
 // an upcoming/live opponent can be filtered to too.
 function populateOpponentOptions() {
   const byId = new Map();
-  rawGroups.flat().forEach((m) => {
+  allGroups.flat().forEach((m) => {
     const opp = opponentOf(m);
     if (!byId.has(opp.id)) byId.set(opp.id, opp.name);
   });
@@ -128,7 +129,7 @@ function populateOpponentOptions() {
 }
 
 function populateYearOptions() {
-  const years = [...new Set(rawGroups.flat().filter((m) => m.scheduledAt).map(matchYear))].sort((a, b) => b - a);
+  const years = [...new Set(allGroups.flat().filter((m) => m.scheduledAt).map(matchYear))].sort((a, b) => b - a);
   const keep = yearFilterEl.value;
   yearFilterEl.innerHTML = `<option value="">${t('player.allYears')}</option>` + years.map((y) => `<option value="${y}">${y}</option>`).join('');
   yearFilterEl.value = years.some((y) => String(y) === keep) ? keep : '';
@@ -953,7 +954,7 @@ document.getElementById('quick-schedule-form').addEventListener('submit', async 
 
 function render() {
   const parts = [];
-  rawGroups.forEach((matches, i) => {
+  allGroups.forEach((matches, i) => {
     const filtered = matches.filter(passesFilters);
     if (!filtered.length) return;
     parts.push(`<h2 class="match-list-heading">${GROUPS[i].heading}</h2>`);
@@ -965,13 +966,15 @@ function render() {
 async function load() {
   await RANKS_READY;
   try {
-    rawGroups = await Promise.all(GROUPS.map((g) => {
-      const qs = new URLSearchParams({ playerId, ...g.params });
+    allGroups = await Promise.all(GROUPS.map((g) => {
+      const qs = new URLSearchParams({ playerId, withClub: '1', ...g.params });
       return api(`/matches?${qs.toString()}`);
     }));
+    // a match of a community or club is listed on the profile but not counted in the league's statistics, badges and rivals
+    rawGroups = allGroups.map((list) => list.filter((m) => !(m.season && m.season.organisation)));
     populateOpponentOptions();
     populateYearOptions();
-    document.getElementById('player-upcoming-count').textContent = rawGroups[1].length + rawGroups[2].length;
+    document.getElementById('player-upcoming-count').textContent = allGroups[1].length + allGroups[2].length;
     renderStats();
     await renderBadges();
     renderRankTrend();

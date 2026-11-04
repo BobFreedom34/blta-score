@@ -321,7 +321,7 @@ router.post('/act-as', (req, res) => {
 });
 
 router.get('/:slug', (req, res) => {
-  const org = db.prepare('SELECT * FROM organisations WHERE slug = ? AND league_id = ?').get(String(req.params.slug), leagues.actingIdOf(req));
+  const org = communities.bySlug(String(req.params.slug), leagues.actingIdOf(req));
   if (!org || !communities.canRead(req, org)) return res.status(404).json({ error: 'Community not found' });
   const out = serialize(org, req);
   if (out.locked) out.previewPhotos = communities.previewPhotos(org.id);
@@ -331,7 +331,7 @@ router.get('/:slug', (req, res) => {
 // The app of a club: a web manifest named after it that opens on its page, and its icons drawn from the logo (the BLTA icons when it has none).
 // Public like the page itself: a hidden club, an unknown one or one the visitor may not read has neither.
 function readableClub(req, res) {
-  const org = db.prepare('SELECT * FROM organisations WHERE slug = ? AND league_id = ?').get(String(req.params.slug), leagues.actingIdOf(req));
+  const org = communities.bySlug(String(req.params.slug), leagues.actingIdOf(req));
   if (!org || !communities.canRead(req, org)) { res.status(404).json({ error: 'Community not found' }); return null; }
   return org;
 }
@@ -387,6 +387,15 @@ router.patch('/:id', (req, res) => {
   const read = readFields(req.body, ctx.org);
   if (read.error) return res.status(400).json({ error: read.error });
   const f = read.fields;
+  // The address follows the name: a renamed organisation gets the address of its new name, and the old address stays as a way in (a link or an invitation that
+  // was already sent still opens it, see communities.bySlug and the redirect in server.js).
+  let slug = ctx.org.slug;
+  if (f.name !== undefined && f.name !== ctx.org.name) slug = slugFor(f.name, ctx.org.id);
+  if (slug !== ctx.org.slug) {
+    db.prepare('INSERT OR REPLACE INTO organisation_old_slugs (slug, organisation_id) VALUES (?, ?)').run(ctx.org.slug, ctx.org.id);
+    db.prepare('DELETE FROM organisation_old_slugs WHERE slug = ?').run(slug);
+    db.prepare('UPDATE organisations SET slug = ? WHERE id = ?').run(slug, ctx.org.id);
+  }
   db.prepare('UPDATE organisations SET name = ?, description = ?, contact = ?, join_policy = ?, website_url = ?, facebook_url = ?, instagram_url = ? WHERE id = ?')
     .run(f.name !== undefined ? f.name : ctx.org.name, f.description !== undefined ? f.description : ctx.org.description,
       f.contact !== undefined ? f.contact : ctx.org.contact, f.joinPolicy !== undefined ? f.joinPolicy : ctx.org.join_policy,
@@ -411,6 +420,7 @@ router.delete('/:id', (req, res) => {
     db.prepare('DELETE FROM organisation_posts WHERE organisation_id = ?').run(org.id);
     db.prepare('DELETE FROM organisation_invites WHERE organisation_id = ?').run(org.id);
     db.prepare('DELETE FROM organisation_ranking WHERE organisation_id = ?').run(org.id);
+    db.prepare('DELETE FROM organisation_old_slugs WHERE organisation_id = ?').run(org.id);
     db.prepare('DELETE FROM organisation_members WHERE organisation_id = ?').run(org.id);
     db.prepare('DELETE FROM organisations WHERE id = ?').run(org.id);
     db.exec('COMMIT');

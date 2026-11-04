@@ -169,7 +169,7 @@ test('a group of a club season can be without a category: its members play the c
 });
 
 test('a club season is run like a league season: public registration (listed for its admin only) and play-off brackets made by its admin', async () => {
-  assert.strictEqual((await call('PATCH', `/api/seasons/${season.id}`, { cookie: owner.cookie, body: { registrationOpen: true } })).status, 200);
+  assert.strictEqual((await call('PATCH', `/api/seasons/${season.id}`, { cookie: owner.cookie, body: { registrationOpen: true, categoryMax: { ELITE: 50, NEXT_GEN: 50, NOVICE: 50 } } })).status, 200);
   const reg = await call('POST', `/api/seasons/${season.id}/registrations`, { cookie: '', body: { name: 'Novy Zaujemca', email: 'zaujemca@example.com', phone: '0905123456', category: 'ELITE' } });
   assert.strictEqual(reg.status, 201, JSON.stringify(reg.json));
   const list = await call('GET', `/api/seasons/${season.id}/registrations`, { cookie: owner.cookie });

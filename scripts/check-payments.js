@@ -54,9 +54,10 @@ test('the CSV: with the byte-order mark, a header and every registration; only f
   const bytes = Buffer.from(await csv.res.arrayBuffer());
   assert.deepStrictEqual([...bytes.subarray(0, 3)], [0xEF, 0xBB, 0xBF], 'the byte-order mark');
   const lines = bytes.subarray(3).toString('utf8').split('\r\n');
-  assert.strictEqual(lines[0], 'Meno,Kategória,Telefón,Email,Zaplatené,Poznámka,Registrovaný');
+  assert.strictEqual(lines[0], 'Meno,Kategória,Telefón,Email,Zaplatené,Poznámka,Registrovaný,Stav');
   assert.strictEqual(lines.length, 4);
   assert.ok(lines[1].startsWith('Anna Testova,ELITE,') && lines[1].includes(',áno,'), lines[1]);
+  assert.ok(lines[1].endsWith(',v turnaji'), 'the last column says who is in (the substitutes of a full event say náhradník and their place)');
   assert.ok(lines[2].includes('boris@example.com') && lines[2].includes(',nie,'), lines[2]);
   assert.strictEqual((await call('GET', `/api/seasons/${seasonId}/registrations.csv`, { cookie: '' })).status, 401);
 });

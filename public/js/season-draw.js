@@ -34,7 +34,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
   const withPairs = (list) => [...list, ...doubles.pairs.map((p) => ({
     id: p.registrationId, pairId: p.id, name: `${p.player.name} / ${p.partner.name}`, category: 'DOUBLES', seed: p.seed, paid: null, partner: true,
   }))];
-  let regs = withPairs(await api(`/seasons/${seasonId}/registrations`));
+  let regs = withPairs((await api(`/seasons/${seasonId}/registrations`)).filter((r) => !r.substitute)); // (the substitutes wait outside the draw)
   const playerNames = (await api('/players').catch(() => [])).map((p) => p.name).sort((a, b) => a.localeCompare(b, 'sk'));
   const drafts = new Map(); // registration id -> seed text typed but not saved yet
   const choice = {}; // category -> the settings being edited
@@ -252,7 +252,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
     let real;
     [overview, real] = await Promise.all([api(`/seasons/${seasonId}/draw`), api(`/seasons/${seasonId}/registrations`)]);
     doubles = isDoubles ? await api(`/seasons/${seasonId}/doubles`) : noPairs;
-    regs = withPairs(real);
+    regs = withPairs(real.filter((r) => !r.substitute));
     drafts.clear();
     Object.keys(choice).forEach((k) => delete choice[k]);
     Object.keys(groupDraft).forEach((k) => delete groupDraft[k]);
