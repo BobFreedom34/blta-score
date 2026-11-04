@@ -70,8 +70,8 @@ async function openDrawPanel(host, seasonId, onChanged) {
     if (!rows.length) return '';
     const sorted = [...rows].sort((a, b) => (Number(draftOf(a)) || 1e9) - (Number(draftOf(b)) || 1e9) || a.name.localeCompare(b.name));
     const locked = c.stage !== 'NONE';
-    return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(210px,100%),1fr));gap:6px 14px;margin:8px 0">${sorted.map((r) => `
-      <label style="display:flex;gap:8px;align-items:center;font-size:13px">
+    return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(210px,100%),1fr));gap:14px 28px;margin:16px 0 20px">${sorted.map((r) => `
+      <label style="display:flex;gap:12px;align-items:center;font-size:14px">
         <input type="number" min="1" max="${c.players}" inputmode="numeric" class="sd-seed" data-reg="${r.id}" value="${escapeHtml(draftOf(r))}" placeholder="–" style="width:54px;${inputStyle}"${locked ? ' disabled' : ''}>
         <span>${escapeHtml(r.name)}</span>
       </label>`).join('')}</div>`;
@@ -104,17 +104,17 @@ async function openDrawPanel(host, seasonId, onChanged) {
   function setupHtml(c) {
     const s = settingsFor(c);
     const formatBtns = Object.keys(DRAW_FORMAT_INFO).map((f) => `<button type="button" class="btn btn-sm ${s.format === f ? 'btn-primary' : 'btn-outline'}" data-act="format" data-cat="${c.category}" data-fmt="${f}">${escapeHtml(DRAW_FORMAT_INFO[f][0])}</button>`).join(' ');
-    const sel = (cls, label, options, extra = '') => `<label style="font-size:12px;color:var(--gray)">${label}<select class="${cls}" data-cat="${c.category}" style="${inputStyle};display:block;width:100%;margin-top:3px">${options}</select></label>${extra}`;
+    const sel = (cls, label, options, extra = '') => `<label style="font-size:12px;color:var(--gray)">${label}<select class="${cls}" data-cat="${c.category}" style="${inputStyle};display:block;width:100%;margin-top:8px">${options}</select></label>${extra}`;
     const hasLosers = s.format === 'GROUPS_BRACKET' ? s.bracketType !== 'ELIMINATION' : ['PRINCE', 'MONRAD'].includes(s.format);
     const modeLabel = isGroups(s.format) ? [tl('Skupiny navrhne systém', 'The system suggests the groups'), tl('Skupiny zostavím ručne', 'I put the groups together by hand')] : [tl('Vytvoriť automaticky', 'Create automatically'), tl('Zostaviť ručne', 'Set up by hand')];
     let body = `
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${formatBtns}</div>
-      <div style="font-size:12px;color:var(--gray);margin-bottom:10px">${escapeHtml(DRAW_FORMAT_INFO[s.format][1])}</div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin:6px 0 10px;font-size:13px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">${formatBtns}</div>
+      <div style="font-size:13px;line-height:1.5;color:var(--gray);margin-bottom:20px">${escapeHtml(DRAW_FORMAT_INFO[s.format][1])}</div>
+      <div style="display:flex;gap:28px;row-gap:12px;flex-wrap:wrap;margin:0 0 22px;font-size:14px">
         <label><input type="radio" name="sd-mode-${c.category}" value="AUTO" data-cat="${c.category}"${s.mode === 'AUTO' ? ' checked' : ''}> ${modeLabel[0]}</label>
         <label><input type="radio" name="sd-mode-${c.category}" value="MANUAL" data-cat="${c.category}"${s.mode === 'MANUAL' ? ' checked' : ''}> ${modeLabel[1]}</label>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:10px;margin-bottom:10px">`;
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:18px 20px;margin-bottom:22px">`;
     if (isGroups(s.format)) {
       body += `
         <label style="font-size:12px;color:var(--gray)">${tl('Hráčov v skupine (najviac)', 'Players per group (at most)')}<input type="number" min="2" max="12" class="sd-gsize" data-cat="${c.category}" value="${s.groupSize}" style="${inputStyle};display:block;width:100%;margin-top:3px"></label>
@@ -174,16 +174,16 @@ async function openDrawPanel(host, seasonId, onChanged) {
   function blockHtml(c) {
     const noDraw = c.stage === 'NONE';
     return `
-      <div class="sd-block" data-cat="${c.category}" style="background:#232329;border-radius:12px;padding:12px 14px;min-width:0">
-        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">
+      <div class="sd-block" data-cat="${c.category}" style="background:#232329;border-radius:14px;padding:22px 24px;min-width:0">
+        <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
           <span style="font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--orange)">${drawCategoryLabel(c)}</span>
           <span style="color:var(--gray);font-size:13px">${escapeHtml(summaryText(c))}</span>
         </div>
-        ${c.players ? `<div style="font-weight:700;font-size:13px;margin-top:8px">${tl('Nasadenie', 'Seeding')} ${noDraw ? `<span style="font-weight:400;color:var(--gray)">${tl('— číslo 1 je najlepší; nenasadení nechajte prázdni', '— number 1 is the best; leave the unseeded empty')}</span>` : `<span style="font-weight:400;color:var(--gray)">${tl('(žrebovanie je už vytvorené)', '(the draw has been made already)')}</span>`}</div>` : ''}
+        ${c.players ? `<div style="font-weight:700;font-size:14px;margin-top:22px;line-height:1.5">${tl('Nasadenie', 'Seeding')} ${noDraw ? `<span style="font-weight:400;color:var(--gray)">${tl('— číslo 1 je najlepší; nenasadení nechajte prázdni', '— number 1 is the best; leave the unseeded empty')}</span>` : `<span style="font-weight:400;color:var(--gray)">${tl('(žrebovanie je už vytvorené)', '(the draw has been made already)')}</span>`}</div>` : ''}
         ${seedRowsHtml(c)}
         ${c.players && noDraw ? `<button type="button" class="btn btn-sm btn-outline" data-act="seeds" data-cat="${c.category}" ${dirty(c.category) ? '' : 'disabled'}>${tl('Uložiť nasadenie', 'Save seeding')}${dirty(c.category) ? ` (${dirty(c.category)})` : ''}</button>` : ''}
-        <div style="border-top:1px solid #eee;margin-top:12px;padding-top:10px">${noDraw ? setupHtml(c) : stateHtml(c)}</div>
-        <div class="sd-error" data-cat="${c.category}" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
+        <div style="border-top:1px solid #eee;margin-top:26px;padding-top:24px">${noDraw ? setupHtml(c) : stateHtml(c)}</div>
+        <div class="sd-error" data-cat="${c.category}" style="color:var(--danger);font-weight:600;margin-top:12px"></div>
       </div>`;
   }
 
@@ -198,9 +198,9 @@ async function openDrawPanel(host, seasonId, onChanged) {
         ${locked ? '' : `<button type="button" class="btn btn-sm btn-outline" data-act="dbl-remove" data-id="${p.id}" title="${escapeHtml(tl('Zrušiť pár', 'Remove the pair'))}">✕</button>`}
       </div>`).join('');
     return `
-      <div style="background:#232329;border-radius:12px;padding:14px;margin-top:12px">
+      <div style="background:#232329;border-radius:14px;padding:22px 24px;margin-top:22px">
         <strong style="font-size:15px">${tl('Páry na štvorhru', 'Doubles pairs')}</strong>
-        <div style="font-size:12px;color:var(--gray);margin:2px 0 8px">${tl('Hráči sa môžu pri registrácii prihlásiť s partnerom. Z párov sa žrebuje kategória <b>Štvorhra</b> vyššie, rovnako ako ostatné (nasadenie, formát, skupiny, útecha, ručne). Zápasy sa nepočítajú do ligy ani do CourtIQ.', 'Players can register with a partner. The category <b>Doubles</b> above is drawn from the pairs like the others (seeding, format, groups, consolation, by hand). The matches do not count for the league or for CourtIQ.')}</div>
+        <div style="font-size:12px;line-height:1.5;color:var(--gray);margin:6px 0 16px">${tl('Hráči sa môžu pri registrácii prihlásiť s partnerom. Z párov sa žrebuje kategória <b>Štvorhra</b> vyššie, rovnako ako ostatné (nasadenie, formát, skupiny, útecha, ručne). Zápasy sa nepočítajú do ligy ani do CourtIQ.', 'Players can register with a partner. The category <b>Doubles</b> above is drawn from the pairs like the others (seeding, format, groups, consolation, by hand). The matches do not count for the league or for CourtIQ.')}</div>
         ${rows || `<div style="font-size:13px;color:var(--gray);margin:6px 0">${tl('Zatiaľ nie sú žiadne páry.', 'There are no pairs yet.')}</div>`}
         ${locked ? `<div style="font-size:12px;color:var(--gray);margin-top:6px">${tl('Žrebovanie štvorhry už existuje — páry sa dajú meniť po jeho zmazaní.', 'The doubles draw already exists — the pairs can be changed after it is deleted.')}</div>` : `
         <datalist id="sd-dplayers">${playerNames.map((n) => `<option value="${escapeHtml(n)}"></option>`).join('')}</datalist>
@@ -232,8 +232,8 @@ async function openDrawPanel(host, seasonId, onChanged) {
 
   function render() {
     host.innerHTML = `
-      <div style="background:var(--gray-light);border-radius:12px;padding:14px">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <div style="background:var(--gray-light);border-radius:14px;padding:24px">
+        <div style="display:flex;gap:16px;row-gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:24px">
           <strong style="font-size:15px">${tl('Formát turnaja', 'Tournament format')}</strong>
           <span style="flex:1"></span>
           <label style="font-size:13px">${tl('Počet kurtov', 'Number of courts')}
@@ -243,7 +243,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
           <a data-public href="/tournament/${encodeURIComponent(overview.slug)}#courts" target="_blank" rel="noopener" style="font-size:13px;font-weight:700">${tl('Harmonogram', 'Schedule')} ›</a>
           <span class="sd-courts-note" style="font-size:12px;color:var(--gray)">${overview.courtCount ? Array.from({ length: Math.min(overview.courtCount, 6) }, (_, i) => `${tl('Kurt', 'Court')} ${i + 1}`).join(', ') + (overview.courtCount > 6 ? ` … ${tl('Kurt', 'Court')} ${overview.courtCount}` : '') : tl('Kurty zatiaľ nie sú nastavené', 'The courts are not set yet')}</span>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:12px">${overview.categories.map(blockHtml).join('')}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:22px">${overview.categories.map(blockHtml).join('')}</div>
         ${isDoubles ? pairsBlockHtml() : ''}
       </div>`;
   }

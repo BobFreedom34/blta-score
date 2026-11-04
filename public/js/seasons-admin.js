@@ -724,7 +724,7 @@ function wireSeason(card) {
     addableNames = players.filter((p) => !taken.has(p.id)).map((p) => p.name);
     const box = `display:block;margin-top:4px;${inputStyle}`;
     return `
-      <form class="reg-add" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;padding:2px 0 6px">
+      <form class="reg-add" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;padding:22px 0 8px;margin-top:4px;border-top:1px solid #eee">
         <label style="flex:2;min-width:220px;font-size:12px;font-weight:700">${isDoubles ? tl('Pridať pár — hráč', 'Add a pair — player') : tl('Pridať hráča', 'Add a player')}
           <div class="autocomplete"><input type="text" data-ra="player" id="reg-player-${id}" placeholder="${escapeHtml(tl('Začni písať meno alebo priezvisko…', 'Start typing a name or surname…'))}" autocomplete="off" style="${box};width:100%"><div class="autocomplete-list" id="reg-player-list-${id}"></div></div>
         </label>
@@ -742,7 +742,7 @@ function wireSeason(card) {
         </label>
         <button type="submit" class="btn btn-sm btn-primary">${isDoubles ? tl('Pridať pár', 'Add pair') : tl('Pridať hráča', 'Add player')}</button>
       </form>
-      <div class="reg-add-hint" style="font-size:12px;color:var(--gray);min-height:16px;margin-bottom:8px"></div>`;
+      <div class="reg-add-hint" style="font-size:12px;color:var(--gray);min-height:16px;margin-bottom:18px"></div>`;
   }
 
   function wireAddPlayerForm(players) {
@@ -792,7 +792,7 @@ function wireSeason(card) {
   function payBarHtml(rows) {
     const paid = rows.filter((r) => r.paid).length;
     const unpaid = rows.length - paid;
-    const tile = (label, value, tone) => `<div style="flex:1;min-width:110px;background:#232329;border-radius:10px;padding:10px 12px"><div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.04em">${label}</div><div style="font-size:20px;font-weight:800;${tone ? `color:${tone}` : ''}">${value}</div></div>`;
+    const tile = (label, value, tone) => `<div style="flex:1;min-width:120px;background:#232329;border-radius:12px;padding:16px 18px"><div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">${label}</div><div style="font-size:22px;font-weight:800;line-height:1.2;${tone ? `color:${tone}` : ''}">${value}</div></div>`;
     const chip = (key, label, n) => `<button type="button" class="sg-link" data-reg-filter="${key}" style="${regFilter === key ? 'font-weight:800;text-decoration:underline' : ''}">${label} (${n})</button>`;
     const withMail = rows.filter((r) => !r.paid && r.email).length;
     // how full the event is: the maximum, who is in and who waits (substitutes)
@@ -811,13 +811,13 @@ function wireSeason(card) {
       return `${tl('Obsadené', 'Filled')}: ${rows.length - waiting}${season.maxPlayers ? ` / ${season.maxPlayers}` : ''}${waiting ? ` · ${waiting} ${subNoun(waiting)}` : ''}`;
     })();
     return `
-      <div style="margin:0 0 14px">
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="margin:0 0 26px">
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
           ${tile(tl('Registrovaní', 'Registered'), rows.length)}${tile(tl('Zaplatili', 'Paid'), paid, 'var(--green-light)')}${tile(tl('Nezaplatili', 'Unpaid'), unpaid, unpaid ? '#ff8a7a' : '')}
           ${feeAmount !== null ? tile(tl('Vybrané', 'Collected'), money(feeAmount * paid), 'var(--green-light)') + tile(tl('Chýba', 'Missing'), money(feeAmount * unpaid), unpaid ? '#ff8a7a' : '') : ''}
         </div>
-        ${capLine ? `<div style="margin-top:10px;font-size:13px;font-weight:700">${escapeHtml(capLine)}</div>` : ''}
-        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:10px">
+        ${capLine ? `<div style="margin-top:20px;font-size:14px;font-weight:700">${escapeHtml(capLine)}</div>` : ''}
+        <div style="display:flex;gap:20px;row-gap:14px;flex-wrap:wrap;align-items:center;margin-top:20px">
           ${chip('all', tl('Všetci', 'All'), rows.length)}${chip('unpaid', tl('Nezaplatili', 'Unpaid'), unpaid)}${chip('paid', tl('Zaplatili', 'Paid'), paid)}${waiting ? chip('sub', tl('Náhradníci', 'Substitutes'), waiting) : ''}
           <span style="flex:1"></span>
           <button type="button" class="btn btn-sm btn-primary" data-remind-all${withMail ? '' : ' disabled'} title="${escapeHtml(tl('Pošle e-mail s pripomienkou platby všetkým, ktorí nezaplatili a majú e-mail', 'Sends an e-mail reminding about the payment to everybody who has not paid and has an e-mail'))}">${tl('Pripomenúť nezaplateným', 'Remind the unpaid')} (${withMail})</button>
@@ -829,9 +829,9 @@ function wireSeason(card) {
   function regEditHtml(r) {
     const box = `display:block;margin-top:4px;${inputStyle}`;
     return `
-        <div style="padding:10px 0;border-top:1px solid #eee" data-reg="${r.id}">
+        <div style="padding:18px 0;border-top:1px solid #eee" data-reg="${r.id}">
           <strong>${escapeHtml(r.name)}</strong>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:6px">
+          <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px">
             ${isDoubles ? `<label style="flex:1;min-width:170px;font-size:12px;font-weight:700">${tl('Partner', 'Partner')}
               <input type="text" data-re="partner" maxlength="80" value="${escapeHtml(r.partnerName || '')}" style="${box};width:100%">
             </label>` : `<label style="font-size:12px;font-weight:700">${tl('Kategória', 'Category')}
@@ -844,10 +844,10 @@ function wireSeason(card) {
               <input type="text" data-re="email" maxlength="120" value="${escapeHtml(r.email || '')}" style="${box};width:100%">
             </label>
           </div>
-          <label style="display:block;font-size:12px;font-weight:700;margin-top:8px">${tl('Poznámka', 'Note')}
+          <label style="display:block;font-size:12px;font-weight:700;margin-top:14px">${tl('Poznámka', 'Note')}
             <textarea data-re="note" rows="2" maxlength="500" style="${box};width:100%">${escapeHtml(r.note || '')}</textarea>
           </label>
-          <div style="display:flex;gap:8px;margin-top:8px">
+          <div style="display:flex;gap:12px;margin-top:14px">
             <button type="button" class="btn btn-sm btn-primary" data-reg-save>${tl('Uložiť', 'Save')}</button>
             <button type="button" class="btn btn-sm btn-outline" data-reg-cancel>${tl('Zrušiť', 'Cancel')}</button>
           </div>
@@ -862,10 +862,10 @@ function wireSeason(card) {
       const players = await loadAdminPlayers();
       const shown = rows.filter((r) => regFilter === 'all' || (regFilter === 'sub' ? r.substitute : regFilter === 'paid' ? r.paid : !r.paid));
       regsList.innerHTML = payBarHtml(rows) + addPlayerFormHtml(players, rows) + (shown.length ? shown.map((r) => (r.id === editingReg ? regEditHtml(r) : `
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #eee" data-reg="${r.id}">
+        <div style="display:flex;gap:16px;row-gap:10px;align-items:center;flex-wrap:wrap;padding:18px 0;border-top:1px solid #eee" data-reg="${r.id}">
           <div style="flex:1;min-width:220px">
             <strong>${escapeHtml(r.name)}${isDoubles && r.partnerName ? ` / ${escapeHtml(r.partnerName)}` : ''}</strong> ${isDoubles ? '' : `<span class="sa-chip future">${escapeHtml(r.category ? catLabel(r.category) : tl('Bez kategórie', 'No category'))}</span>`}${r.playerId ? '' : ` <span style="font-size:11px;color:var(--gray)">${tl('nové meno', 'new name')}</span>`}${r.substitute ? ` <span class="sa-chip now" title="${escapeHtml(tl('Maximum je naplnené: nastúpi, keď sa niekto odhlási', 'The maximum is reached: comes in when somebody drops out'))}">${tl('Náhradník č.', 'Substitute #')}${r.substitutePosition}</span>` : ''}
-            <div style="font-size:12px;color:var(--gray)">${r.phone || r.email ? `${escapeHtml(r.phone)} · <a href="mailto:${escapeHtml(r.email)}" style="color:var(--orange)">${escapeHtml(r.email)}</a>` : tl('bez kontaktných údajov', 'no contact details')} · ${escapeHtml(fmtDate(r.createdAt.slice(0, 10)))}</div>
+            <div style="font-size:12px;color:var(--gray);margin-top:6px">${r.phone || r.email ? `${escapeHtml(r.phone)} · <a href="mailto:${escapeHtml(r.email)}" style="color:var(--orange)">${escapeHtml(r.email)}</a>` : tl('bez kontaktných údajov', 'no contact details')} · ${escapeHtml(fmtDate(r.createdAt.slice(0, 10)))}</div>
             ${r.note ? `<div style="font-size:13px;margin-top:4px;white-space:pre-wrap"><strong>${tl('Poznámka', 'Note')}:</strong> ${escapeHtml(r.note)}</div>` : ''}
           </div>
           ${r.remindedAt ? `<span style="font-size:11px;color:var(--gray)">${tl('pripomenuté', 'reminded')} ${escapeHtml(fmtDate(r.remindedAt))}</span>` : ''}
