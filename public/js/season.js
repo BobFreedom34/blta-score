@@ -282,7 +282,10 @@ function publishClubView() {
 }
 
 function tilesHtml() {
-  const players = playersModel().total;
+  const model = playersModel();
+  const players = model.total;
+  // registered / maximum (the one limit of the event, or the limits of its categories added up); the ones over it are substitutes
+  const maxPlayers = season.maxPlayers || Object.values(season.categoryMax || {}).reduce((a, b) => a + b, 0) || 0;
   const groupCount = (season.groups || []).length || (standings ? standings.groups.length : 0);
   const tile = (key, value, sub) => `<div class="sv-tile"><div class="k">${escapeHtml(t(key))}</div><div class="v">${value}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</div></div>`;
   const cats = CATEGORY_ORDER_ALL.filter((c) => (isTournament() && (season.categories || []).includes(c)) || (season.groups || []).some((g) => g.category === c) || (standings && standings.groups.some((g) => g.category === c)));
@@ -290,7 +293,7 @@ function tilesHtml() {
     cats.length ? tile('season.tileCats', String(cats.length), cats.map((c) => CATEGORY_NAMES[c]).join(' · ')) : '',
     season.venue ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileVenue'))}</div><div class="v sm">${escapeHtml(season.venue)}</div></div>` : '',
     termText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileTerm'))}</div><div class="v sm">${escapeHtml(termText())}</div></div>` : '',
-    players ? tile('season.tilePlayers', String(players), groupCount ? t('season.groupsN', { n: groupCount }) : '') : '',
+    players || maxPlayers ? tile('season.tilePlayers', maxPlayers ? `${players}/${maxPlayers}` : String(players), groupCount ? t('season.groupsN', { n: groupCount }) : (model.substitutes.length ? `+${model.substitutes.length} ${t('season.substitutes').toLowerCase()}` : '')) : '',
     season.entryFee ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div></div>` : '',
     season.drawDate ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileDraw'))}</div><div class="v sm">${escapeHtml(formatDate(season.drawDate))}</div></div>` : '',
     season.prizeMoney ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tilePrize'))}</div><div class="v sm">${escapeHtml(season.prizeMoney)}</div></div>` : '',
@@ -463,7 +466,9 @@ function scheduleHtml() {
 function playersHtml() {
   const model = playersModel();
   if (!model.total) return '';
-  const showPaid = !!(season.entryFee || season.paymentUrl || (season.registrations || []).some((r) => r.paid));
+  // no payment column when the entry fee is 0 (or "free"): there is nothing to pay, so nobody "waits" or "has paid"
+  const freeEntry = (() => { const f = String(season.entryFee || '').trim(); const n = f.replace(',', '.').match(/\d+(?:\.\d+)?/); return n ? Number(n[0]) === 0 : /^(zadarmo|free)\b/i.test(f); })();
+  const showPaid = !freeEntry && !!(season.entryFee || season.paymentUrl || (season.registrations || []).some((r) => r.paid));
   if (playersCat !== 'ALL' && !model.cats.some((c) => c.category === playersCat)) playersCat = 'ALL';
   const filter = `<div class="tabs sv-line" id="sv-pcats"><button type="button" class="tab${playersCat === 'ALL' ? ' active' : ''}" data-pc="ALL">${escapeHtml(t('season.schedAll'))}<small>${model.total}</small></button>${model.cats.map((c) => `<button type="button" class="tab${playersCat === c.category ? ' active' : ''}" data-pc="${c.category}">${escapeHtml(playerCatName(c.category))}<small>${c.players.length}</small></button>`).join('')}</div>`;
   const tables = model.cats.filter((c) => playersCat === 'ALL' || c.category === playersCat).map((c) => {

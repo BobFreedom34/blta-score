@@ -2148,8 +2148,8 @@ document.addEventListener('click', (e) => {
   window.addEventListener('hashchange', () => { eventTab = null; setActive(); });
 })();
 
-// The top menu in the club view: "← blta.sk" (or "← slta.sk", the site the visitor came from) leaves the club view; "My profile" and "Communities and clubs"
-// stay inside it, like the phone's bottom bar (the club, with its logo in the header, stays around the page they open). The rest of the menu is hidden by CSS,
+// The top menu in the club view: "← blta.sk" (or "← slta.sk", the site the visitor came from) leaves the club view; "Community home page" (the page of the club),
+// "My profile" and "Communities and clubs" stay inside it, like the phone's bottom bar (the club, with its logo in the header, stays around the page they open). The rest of the menu is hidden by CSS,
 // see body.club-view; in the installed app the whole menu is hidden: the app is the club.
 function clubBackLabel(href) {
   let host = '';
@@ -2181,6 +2181,8 @@ function clubBackLabel(href) {
       a.textContent = `← ${clubBackLabel(back)}`;
       const me = links.querySelector('.club-nav-profile');
       if (me) me.href = profileHref();
+      const home = links.querySelector('.club-nav-home'); // the club the visitor is in can change (club to club)
+      if (home) home.href = siteUrl(getClubContext().path);
       return;
     }
     a = document.createElement('a');
@@ -2194,7 +2196,7 @@ function clubBackLabel(href) {
       e.preventDefault();
       requirePlayerAuth(() => { window.location.href = siteUrl(`/player/${currentPlayerSlug || currentPlayerId}`); });
     });
-    links.append(a, me, item('club-nav-communities', 'group', t('com.heading'), siteUrl('/communities')));
+    links.append(a, item('club-nav-home', 'home', t('club.homeLink'), siteUrl(getClubContext().path)), me, item('club-nav-communities', 'group', t('com.heading'), siteUrl('/communities')));
   };
   sync();
   window.addEventListener('blta:club-context', sync);

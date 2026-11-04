@@ -79,7 +79,7 @@ test('the editor calls only endpoints the organiser of a club may call, or ones 
     /^\/seasons\/registrations\/:x$/, /^\/brackets\/:x\/(consolation|nodes\/:x\/result|slots\/:x)$/, /^\/matches\/:x\/manual-result$/, /^\/(courtiq|rankings|players)$/,
     /^:x\/pairs(\/:x)?$/, /^:x\/(settings|auto)$/, /^\/seasons\/:x\/schedule\/matches\/:x$/];
   // the league card, the add-a-tournament form and the old admin pages (the bracket admin page is not part of club mode)
-  const clubModeNever = [/^\/seasons$/, /^\/seasons\/:x\/groups$/, /^\/seasons\/groups\/:x(\/members(\/:x(\/withdraw)?|\/import)?)?$/, /^\/seasons\/:x\/schedule(-preview)?$/, /^\/brackets$/, /^\/brackets\/:x$/, /^:x$/];
+  const clubModeNever = [/^\/seasons$/, /^\/seasons\/:x\/groups$/, /^\/seasons\/groups\/:x(\/members(\/:x(\/(withdraw|reinstate))?|\/import)?)?$/, /^\/seasons\/:x\/schedule(-preview)?$/, /^\/brackets$/, /^\/brackets\/:x$/, /^:x$/];
   const unknown = calls.filter((c) => ![...allowed, ...clubModeNever].some((re) => re.test(c.path)));
   assert.deepStrictEqual(unknown.map((c) => `${c.file}: ${c.path}`), [], 'classify the new endpoint in the tables of this test');
 });
