@@ -9,20 +9,22 @@ const DRAW_FORMATS = ['BO1', 'BO3', 'BO3_STB', 'BO5', 'BO5_STB', 'BO3_G4_STB'];
 const DRAW_MAIN_DEFAULT = 'BO3_STB';
 const DRAW_CONSOLATION_DEFAULT = 'BO3_G4_STB';
 const DRAW_FORMAT_INFO = {
-  PRINCE: ['PRINCE', 'Pavúk + útecha pre porazených v 1. kole. Kto prehrá neskôr, končí.'],
-  MONRAD: ['Monrad', 'Pavúk + útecha pre porazených v každom kole (a v nich zasa útechy): hrá sa, kým nie sú určené všetky miesta. Veľa zápasov.'],
-  ELIMINATION: ['Eliminácia', 'Obyčajný pavúk, porazený končí.'],
-  GROUPS: ['Skupiny', 'Skupiny každý s každým, tabuľky podľa bodov (3 body za 2:0, 2 za 2:1, 1 za prehru 1:2).'],
-  GROUPS_BRACKET: ['Skupiny + pavúk', 'Skupiny každý s každým a potom pavúk z najlepších hráčov každej skupiny.'],
+  PRINCE: ['PRINCE', tl('Pavúk + útecha pre porazených v 1. kole. Kto prehrá neskôr, končí.', 'A bracket + a consolation bracket for those who lose in round 1. Whoever loses later is out.')],
+  MONRAD: ['Monrad', tl('Pavúk + útecha pre porazených v každom kole (a v nich zasa útechy): hrá sa, kým nie sú určené všetky miesta. Veľa zápasov.', 'A bracket + a consolation bracket for the losers of every round (and consolations again within those): play goes on until every place is decided. Many matches.')],
+  ELIMINATION: [tl('Eliminácia', 'Elimination'), tl('Obyčajný pavúk, porazený končí.', 'A plain bracket, the loser is out.')],
+  GROUPS: [tl('Skupiny', 'Groups'), tl('Skupiny každý s každým, tabuľky podľa bodov (3 body za 2:0, 2 za 2:1, 1 za prehru 1:2).', 'Round-robin groups, tables by points (3 points for 2:0, 2 for 2:1, 1 for a 1:2 loss).')],
+  GROUPS_BRACKET: [tl('Skupiny + pavúk', 'Groups + bracket'), tl('Skupiny každý s každým a potom pavúk z najlepších hráčov každej skupiny.', 'Round-robin groups and then a bracket of the best players of every group.')],
 };
-const DRAW_BRACKET_TYPES = { ELIMINATION: 'Eliminácia', PRINCE: 'PRINCE', MONRAD: 'Monrad' };
+const DRAW_BRACKET_TYPES = { ELIMINATION: tl('Eliminácia', 'Elimination'), PRINCE: 'PRINCE', MONRAD: 'Monrad' };
+// the server names the categories in Slovak; the two that are words (not Elite / Next Gen / Novice) follow the language of the page
+const drawCategoryLabel = (c) => (c.category === 'DOUBLES' ? tl('Štvorhra', 'Doubles') : (c.category === 'OPEN' ? tl('Bez kategórie', 'No category') : c.label));
 
 function drawFormatOptions(selected) {
   return DRAW_FORMATS.map((k) => `<option value="${k}"${k === selected ? ' selected' : ''}>${escapeHtml(t(`format.${k}.label`))}</option>`).join('');
 }
 
 async function openDrawPanel(host, seasonId, onChanged) {
-  host.innerHTML = '<div style="color:var(--gray)">Loading…</div>';
+  host.innerHTML = `<div style="color:var(--gray)">${tl('Načítavam…', 'Loading…')}</div>`;
   let overview = await api(`/seasons/${seasonId}/draw`);
   // a doubles tournament has the category Štvorhra only (its pairs are made below); a singles tournament has no pairs at all
   const isDoubles = overview.playType === 'DOUBLES';
@@ -50,17 +52,17 @@ async function openDrawPanel(host, seasonId, onChanged) {
   // how the draw would look: its size and who skips round 1 (the byes go to the highest seeds)
   function summaryText(c) {
     const pairs = c.category === 'DOUBLES';
-    if (c.players < 2) return c.players ? (pairs ? 'Treba aspoň 2 páry.' : 'Treba aspoň 2 hráčov.') : (pairs ? 'Zatiaľ nie sú žiadne páry.' : 'Zatiaľ nikto nie je zaradený.');
-    const head = pairs ? `Párov: ${c.players}` : `${c.players} hráčov`;
+    if (c.players < 2) return c.players ? (pairs ? tl('Treba aspoň 2 páry.', 'At least 2 pairs are needed.') : tl('Treba aspoň 2 hráčov.', 'At least 2 players are needed.')) : (pairs ? tl('Zatiaľ nie sú žiadne páry.', 'There are no pairs yet.') : tl('Zatiaľ nikto nie je zaradený.', 'Nobody is assigned yet.'));
+    const head = pairs ? `${tl('Párov', 'Pairs')}: ${c.players}` : `${c.players} ${nounFor(c.players, 'hráč', 'hráči', 'hráčov', 'player', 'players')}`;
     // the format being chosen (or the one of the draw that exists)
     const format = c.stage === 'NONE' ? settingsFor(c).format : c.settings.format;
     if (isGroups(format) && c.stage === 'NONE') return head;
-    if (!c.byes) return `${head} → pavúk na ${c.size}, všetci hrajú 1. kolo.`;
+    if (!c.byes) return tl(`${head} → pavúk na ${c.size}, všetci hrajú 1. kolo.`, `${head} → a bracket of ${c.size}, everybody plays round 1.`);
     const byBye = Math.min(c.byes, c.seeded);
     const random = c.byes - byBye;
-    const skip = byBye ? `nasadení 1–${byBye}` : '';
-    const lot = random ? `${random} ${random === 1 ? 'hráč vyžrebovaný' : 'hráčov vyžrebovaných'} náhodou (nasaď viac hráčov, ak to nechceš)` : '';
-    return `${head} → pavúk na ${c.size}, voľných miest (bye): ${c.byes}. 1. kolo preskočia ${[skip, lot].filter(Boolean).join(' a ')}.`;
+    const skip = byBye ? tl(`nasadení 1–${byBye}`, `seeds 1–${byBye}`) : '';
+    const lot = random ? tl(`${random} ${random === 1 ? 'hráč vyžrebovaný' : 'hráčov vyžrebovaných'} náhodou (nasaď viac hráčov, ak to nechceš)`, `${random} ${random === 1 ? 'player' : 'players'} drawn at random (seed more players if you do not want that)`) : '';
+    return tl(`${head} → pavúk na ${c.size}, voľných miest (bye): ${c.byes}. 1. kolo preskočia ${[skip, lot].filter(Boolean).join(' a ')}.`, `${head} → a bracket of ${c.size}, byes: ${c.byes}. Round 1 is skipped by ${[skip, lot].filter(Boolean).join(' and ')}.`);
   }
 
   function seedRowsHtml(c) {
@@ -79,16 +81,16 @@ async function openDrawPanel(host, seasonId, onChanged) {
 
   function groupEditorHtml(c, s) {
     const d = groupDraft[c.category];
-    if (!d) return '<div style="font-size:12px;color:var(--gray)">Načítavam návrh skupín…</div>';
+    if (!d) return `<div style="font-size:12px;color:var(--gray)">${tl('Načítavam návrh skupín…', 'Loading the suggested groups…')}</div>`;
     const rows = rowsOf(c.category);
     const opts = (cur) => Array.from({ length: d.count }, (_, i) => `<option value="${i}"${i === cur ? ' selected' : ''}>${groupLetter(i)}</option>`).join('');
     const sizes = Array.from({ length: d.count }, (_, i) => rows.filter((r) => d.assign.get(r.id) === i).length);
     return `
       <div style="margin:8px 0">
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
-          <strong style="font-size:13px">Rozdelenie do skupín</strong>
-          <label style="font-size:12px;color:var(--gray)">Počet skupín <input type="number" min="1" max="26" class="sd-gcount" data-cat="${c.category}" value="${d.count}" style="width:60px;${inputStyle}"></label>
-          <button type="button" class="btn btn-sm btn-outline" data-act="suggest" data-cat="${c.category}">Navrhnúť rozdelenie</button>
+          <strong style="font-size:13px">${tl('Rozdelenie do skupín', 'Division into groups')}</strong>
+          <label style="font-size:12px;color:var(--gray)">${tl('Počet skupín', 'Number of groups')} <input type="number" min="1" max="26" class="sd-gcount" data-cat="${c.category}" value="${d.count}" style="width:60px;${inputStyle}"></label>
+          <button type="button" class="btn btn-sm btn-outline" data-act="suggest" data-cat="${c.category}">${tl('Navrhnúť rozdelenie', 'Suggest a division')}</button>
           <span style="font-size:12px;color:var(--gray)">${sizes.map((n, i) => `${groupLetter(i)}: ${n}`).join(' · ')}</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(210px,100%),1fr));gap:6px 14px">${rows.map((r) => `
@@ -104,7 +106,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
     const formatBtns = Object.keys(DRAW_FORMAT_INFO).map((f) => `<button type="button" class="btn btn-sm ${s.format === f ? 'btn-primary' : 'btn-outline'}" data-act="format" data-cat="${c.category}" data-fmt="${f}">${escapeHtml(DRAW_FORMAT_INFO[f][0])}</button>`).join(' ');
     const sel = (cls, label, options, extra = '') => `<label style="font-size:12px;color:var(--gray)">${label}<select class="${cls}" data-cat="${c.category}" style="${inputStyle};display:block;width:100%;margin-top:3px;color:var(--charcoal)">${options}</select></label>${extra}`;
     const hasLosers = s.format === 'GROUPS_BRACKET' ? s.bracketType !== 'ELIMINATION' : ['PRINCE', 'MONRAD'].includes(s.format);
-    const modeLabel = isGroups(s.format) ? ['Skupiny navrhne systém', 'Skupiny zostavím ručne'] : ['Vytvoriť automaticky', 'Zostaviť ručne'];
+    const modeLabel = isGroups(s.format) ? [tl('Skupiny navrhne systém', 'The system suggests the groups'), tl('Skupiny zostavím ručne', 'I put the groups together by hand')] : [tl('Vytvoriť automaticky', 'Create automatically'), tl('Zostaviť ručne', 'Set up by hand')];
     let body = `
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${formatBtns}</div>
       <div style="font-size:12px;color:var(--gray);margin-bottom:10px">${escapeHtml(DRAW_FORMAT_INFO[s.format][1])}</div>
@@ -115,28 +117,28 @@ async function openDrawPanel(host, seasonId, onChanged) {
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:10px;margin-bottom:10px">`;
     if (isGroups(s.format)) {
       body += `
-        <label style="font-size:12px;color:var(--gray)">Hráčov v skupine (najviac)<input type="number" min="2" max="12" class="sd-gsize" data-cat="${c.category}" value="${s.groupSize}" style="${inputStyle};display:block;width:100%;margin-top:3px"></label>
-        ${sel('sd-group-format', 'Formát zápasu — skupiny', drawFormatOptions(s.groupFormat))}`;
+        <label style="font-size:12px;color:var(--gray)">${tl('Hráčov v skupine (najviac)', 'Players per group (at most)')}<input type="number" min="2" max="12" class="sd-gsize" data-cat="${c.category}" value="${s.groupSize}" style="${inputStyle};display:block;width:100%;margin-top:3px"></label>
+        ${sel('sd-group-format', tl('Formát zápasu — skupiny', 'Match format — groups'), drawFormatOptions(s.groupFormat))}`;
     }
     if (s.format === 'GROUPS_BRACKET') {
       body += `
-        <label style="font-size:12px;color:var(--gray)">Z každej skupiny postupuje<input type="number" min="1" max="8" class="sd-qual" data-cat="${c.category}" value="${s.qualifiers}" style="${inputStyle};display:block;width:100%;margin-top:3px"></label>
-        ${sel('sd-bracket-type', 'Typ pavúka po skupinách', Object.entries(DRAW_BRACKET_TYPES).map(([k, l]) => `<option value="${k}"${k === s.bracketType ? ' selected' : ''}>${l}</option>`).join(''))}`;
+        <label style="font-size:12px;color:var(--gray)">${tl('Z každej skupiny postupuje', 'Advancing from each group')}<input type="number" min="1" max="8" class="sd-qual" data-cat="${c.category}" value="${s.qualifiers}" style="${inputStyle};display:block;width:100%;margin-top:3px"></label>
+        ${sel('sd-bracket-type', tl('Typ pavúka po skupinách', 'Type of the bracket after the groups'), Object.entries(DRAW_BRACKET_TYPES).map(([k, l]) => `<option value="${k}"${k === s.bracketType ? ' selected' : ''}>${l}</option>`).join(''))}`;
     }
     if (!isGroups(s.format) || s.format === 'GROUPS_BRACKET') {
-      body += sel('sd-main-format', 'Formát zápasu — hlavný pavúk', drawFormatOptions(s.mainFormat));
-      if (hasLosers) body += sel('sd-cons-format', 'Formát zápasu — útecha', drawFormatOptions(s.consolationFormat));
+      body += sel('sd-main-format', tl('Formát zápasu — hlavný pavúk', 'Match format — main bracket'), drawFormatOptions(s.mainFormat));
+      if (hasLosers) body += sel('sd-cons-format', tl('Formát zápasu — útecha', 'Match format — consolation'), drawFormatOptions(s.consolationFormat));
     }
     body += '</div>';
     if (s.format === 'GROUPS_BRACKET') {
-      body += `<label style="display:block;font-size:13px;margin-bottom:8px"><input type="checkbox" class="sd-auto-bracket" data-cat="${c.category}"${s.autoBracket ? ' checked' : ''}> Pavúk vytvoriť sám, keď sa odohrá posledný zápas skupín (inak ho vytvoríš tlačidlom)</label>`;
+      body += `<label style="display:block;font-size:13px;margin-bottom:8px"><input type="checkbox" class="sd-auto-bracket" data-cat="${c.category}"${s.autoBracket ? ' checked' : ''}> ${tl('Pavúk vytvoriť sám, keď sa odohrá posledný zápas skupín (inak ho vytvoríš tlačidlom)', 'Create the bracket by itself when the last group match is played (otherwise you create it with the button)')}</label>`;
     }
     if (isGroups(s.format) && s.mode === 'MANUAL') body += groupEditorHtml(c, s);
     const ready = c.players >= 2 && !c.withoutProfile.length && !dirty(c.category);
     body += `
-      <button type="button" class="btn btn-sm btn-primary" data-act="draw" data-cat="${c.category}" ${ready ? '' : 'disabled'}>${isGroups(s.format) ? 'Vytvoriť skupiny a zápasy' : (s.mode === 'AUTO' ? 'Vytvoriť pavúk' : 'Vytvoriť prázdny pavúk')}</button>
-      ${dirty(c.category) ? '<span style="font-size:12px;color:var(--gray);margin-left:8px">Najprv ulož nasadenie.</span>' : ''}
-      ${c.withoutProfile.length ? `<div style="color:var(--danger);font-size:12px;margin-top:6px">Bez profilu hráča: ${escapeHtml(c.withoutProfile.join(', '))}</div>` : ''}`;
+      <button type="button" class="btn btn-sm btn-primary" data-act="draw" data-cat="${c.category}" ${ready ? '' : 'disabled'}>${isGroups(s.format) ? tl('Vytvoriť skupiny a zápasy', 'Create groups and matches') : (s.mode === 'AUTO' ? tl('Vytvoriť pavúk', 'Create bracket') : tl('Vytvoriť prázdny pavúk', 'Create an empty bracket'))}</button>
+      ${dirty(c.category) ? `<span style="font-size:12px;color:var(--gray);margin-left:8px">${tl('Najprv ulož nasadenie.', 'Save the seeding first.')}</span>` : ''}
+      ${c.withoutProfile.length ? `<div style="color:var(--danger);font-size:12px;margin-top:6px">${tl('Bez profilu hráča', 'Without a player profile')}: ${escapeHtml(c.withoutProfile.join(', '))}</div>` : ''}`;
     return body;
   }
 
@@ -144,27 +146,27 @@ async function openDrawPanel(host, seasonId, onChanged) {
 
   function stateHtml(c) {
     const s = c.settings;
-    const parts = [`<div style="font-size:13px;margin-bottom:6px"><b>${escapeHtml(DRAW_FORMAT_INFO[s.format] ? DRAW_FORMAT_INFO[s.format][0] : s.format)}</b>${s.format === 'GROUPS_BRACKET' ? ` <span style="color:var(--gray)">— z každej skupiny postupuje ${s.qualifiers}, pavúk: ${escapeHtml(DRAW_BRACKET_TYPES[s.bracketType] || s.bracketType)}${s.autoBracket && s.mode === 'AUTO' ? ', vytvorí sa sám' : ''}</span>` : ''}</div>`];
+    const parts = [`<div style="font-size:13px;margin-bottom:6px"><b>${escapeHtml(DRAW_FORMAT_INFO[s.format] ? DRAW_FORMAT_INFO[s.format][0] : s.format)}</b>${s.format === 'GROUPS_BRACKET' ? ` <span style="color:var(--gray)">— ${tl(`z každej skupiny postupuje ${s.qualifiers}, pavúk`, `${s.qualifiers} advance from each group, bracket`)}: ${escapeHtml(DRAW_BRACKET_TYPES[s.bracketType] || s.bracketType)}${s.autoBracket && s.mode === 'AUTO' ? tl(', vytvorí sa sám', ', it is created by itself') : ''}</span>` : ''}</div>`];
     if (c.groups) {
-      parts.push(`<div style="margin:6px 0"><div style="font-weight:700;font-size:13px">Skupiny <span style="font-weight:400;color:var(--gray)">${c.groups.finished}/${c.groups.matches} zápasov odohraných</span></div>${c.groups.groups.map((g) => `
-        <div style="font-size:13px;padding:2px 0"><b>${escapeHtml(groupShortName(g.name))}</b> <span style="color:var(--gray);font-size:12px">${escapeHtml(g.players.map((p) => p.name).join(', '))} · ${g.finished}/${g.matches} zápasov</span></div>`).join('')}</div>`);
+      parts.push(`<div style="margin:6px 0"><div style="font-weight:700;font-size:13px">${tl('Skupiny', 'Groups')} <span style="font-weight:400;color:var(--gray)">${c.groups.finished}/${c.groups.matches} ${tl('zápasov odohraných', 'matches played')}</span></div>${c.groups.groups.map((g) => `
+        <div style="font-size:13px;padding:2px 0"><b>${escapeHtml(groupShortName(g.name))}</b> <span style="color:var(--gray);font-size:12px">${escapeHtml(g.players.map((p) => p.name).join(', '))} · ${g.finished}/${g.matches} ${tl('zápasov', 'matches')}</span></div>`).join('')}</div>`);
     }
     if (c.brackets.length) {
-      parts.push(`<div style="margin:6px 0"><div style="font-weight:700;font-size:13px">Pavúky <span style="font-weight:400;color:var(--gray)">${c.brackets.length}</span></div>${c.brackets.map((b) => `
-        <div style="font-size:13px;padding:2px 0"><a data-public href="/bracket/${b.id}" target="_blank" rel="noopener" style="font-weight:700">${escapeHtml(b.name.replace(/^.*? — (Elite|Next Gen|Novice) — /, ''))}</a> <span style="color:var(--gray);font-size:12px">${b.size}-pavúk · ${b.finished}/${b.matches} zápasov odohraných · ${escapeHtml(t(`format.${b.format}.label`))}</span></div>`).join('')}</div>`);
+      parts.push(`<div style="margin:6px 0"><div style="font-weight:700;font-size:13px">${tl('Pavúky', 'Brackets')} <span style="font-weight:400;color:var(--gray)">${c.brackets.length}</span></div>${c.brackets.map((b) => `
+        <div style="font-size:13px;padding:2px 0"><a data-public href="/bracket/${b.id}" target="_blank" rel="noopener" style="font-weight:700">${escapeHtml(b.name.replace(/^.*? — (Elite|Next Gen|Novice) — /, ''))}</a> <span style="color:var(--gray);font-size:12px">${b.size}-${tl('pavúk', 'bracket')} · ${b.finished}/${b.matches} ${tl('zápasov odohraných', 'matches played')} · ${escapeHtml(t(`format.${b.format}.label`))}</span></div>`).join('')}</div>`);
     } else if (s.format === 'GROUPS_BRACKET') {
-      parts.push('<div style="font-size:13px;color:var(--gray);margin:6px 0">Pavúk ešte nie je vytvorený — vznikne z najlepších hráčov skupín.</div>');
+      parts.push(`<div style="font-size:13px;color:var(--gray);margin:6px 0">${tl('Pavúk ešte nie je vytvorený — vznikne z najlepších hráčov skupín.', 'The bracket is not made yet — it will be made from the best players of the groups.')}</div>`);
     }
     const buttons = [];
     if (c.canMakeBracket) {
-      buttons.push(`<select class="sd-bracket-mode" data-cat="${c.category}" style="${inputStyle}"><option value="AUTO">Vložiť postupujúcich automaticky</option><option value="MANUAL">Prázdny pavúk (posadím ručne)</option></select><button type="button" class="btn btn-sm btn-primary" data-act="bracket" data-cat="${c.category}">Vytvoriť pavúk zo skupín</button>`);
+      buttons.push(`<select class="sd-bracket-mode" data-cat="${c.category}" style="${inputStyle}"><option value="AUTO">${tl('Vložiť postupujúcich automaticky', 'Seat the qualifiers automatically')}</option><option value="MANUAL">${tl('Prázdny pavúk (posadím ručne)', 'An empty bracket (I seat them by hand)')}</option></select><button type="button" class="btn btn-sm btn-primary" data-act="bracket" data-cat="${c.category}">${tl('Vytvoriť pavúk zo skupín', 'Create the bracket from the groups')}</button>`);
     }
     if (c.canMakeConsolation) {
       const cf = settingsFor(c).consolationFormat;
-      buttons.push(`<select class="sd-cons-format" data-cat="${c.category}" style="${inputStyle}">${drawFormatOptions(cf)}</select><button type="button" class="btn btn-sm btn-primary" data-act="consolation" data-cat="${c.category}">Vytvoriť útechu</button>`);
+      buttons.push(`<select class="sd-cons-format" data-cat="${c.category}" style="${inputStyle}">${drawFormatOptions(cf)}</select><button type="button" class="btn btn-sm btn-primary" data-act="consolation" data-cat="${c.category}">${tl('Vytvoriť útechu', 'Create the consolation')}</button>`);
     }
-    if (c.main && !document.querySelector('[data-club]')) buttons.push('<a class="btn btn-sm btn-outline" href="/bracket-admin" target="_blank" rel="noopener">Upraviť pavúk</a>');
-    buttons.push(`<button type="button" class="btn btn-sm btn-outline" data-act="delete" data-cat="${c.category}" style="color:var(--danger)">Zmazať ${c.groups && !c.main ? 'skupiny' : 'pavúk'}</button>`);
+    if (c.main && !document.querySelector('[data-club]')) buttons.push(`<a class="btn btn-sm btn-outline" href="/bracket-admin" target="_blank" rel="noopener">${tl('Upraviť pavúk', 'Edit the bracket')}</a>`);
+    buttons.push(`<button type="button" class="btn btn-sm btn-outline" data-act="delete" data-cat="${c.category}" style="color:var(--danger)">${c.groups && !c.main ? tl('Zmazať skupiny', 'Delete the groups') : tl('Zmazať pavúk', 'Delete the bracket')}</button>`);
     parts.push(`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">${buttons.join('')}</div>`);
     return parts.join('');
   }
@@ -174,12 +176,12 @@ async function openDrawPanel(host, seasonId, onChanged) {
     return `
       <div class="sd-block" data-cat="${c.category}" style="background:#232329;border-radius:12px;padding:12px 14px;min-width:0">
         <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">
-          <span style="font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--orange)">${c.label}</span>
+          <span style="font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--orange)">${drawCategoryLabel(c)}</span>
           <span style="color:var(--gray);font-size:13px">${escapeHtml(summaryText(c))}</span>
         </div>
-        ${c.players ? `<div style="font-weight:700;font-size:13px;margin-top:8px">Nasadenie ${noDraw ? '<span style="font-weight:400;color:var(--gray)">— číslo 1 je najlepší; nenasadení nechajte prázdni</span>' : '<span style="font-weight:400;color:var(--gray)">(žrebovanie je už vytvorené)</span>'}</div>` : ''}
+        ${c.players ? `<div style="font-weight:700;font-size:13px;margin-top:8px">${tl('Nasadenie', 'Seeding')} ${noDraw ? `<span style="font-weight:400;color:var(--gray)">${tl('— číslo 1 je najlepší; nenasadení nechajte prázdni', '— number 1 is the best; leave the unseeded empty')}</span>` : `<span style="font-weight:400;color:var(--gray)">${tl('(žrebovanie je už vytvorené)', '(the draw has been made already)')}</span>`}</div>` : ''}
         ${seedRowsHtml(c)}
-        ${c.players && noDraw ? `<button type="button" class="btn btn-sm btn-outline" data-act="seeds" data-cat="${c.category}" ${dirty(c.category) ? '' : 'disabled'}>Uložiť nasadenie${dirty(c.category) ? ` (${dirty(c.category)})` : ''}</button>` : ''}
+        ${c.players && noDraw ? `<button type="button" class="btn btn-sm btn-outline" data-act="seeds" data-cat="${c.category}" ${dirty(c.category) ? '' : 'disabled'}>${tl('Uložiť nasadenie', 'Save seeding')}${dirty(c.category) ? ` (${dirty(c.category)})` : ''}</button>` : ''}
         <div style="border-top:1px solid #eee;margin-top:12px;padding-top:10px">${noDraw ? setupHtml(c) : stateHtml(c)}</div>
         <div class="sd-error" data-cat="${c.category}" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
       </div>`;
@@ -193,20 +195,20 @@ async function openDrawPanel(host, seasonId, onChanged) {
     const rows = d.pairs.map((p) => `
       <div style="display:flex;gap:8px;align-items:center;margin:4px 0;font-size:13px">
         <span style="flex:1"><b>${escapeHtml(p.player.name)}</b> / <b>${escapeHtml(p.partner.name)}</b></span>
-        ${locked ? '' : `<button type="button" class="btn btn-sm btn-outline" data-act="dbl-remove" data-id="${p.id}" title="Zrušiť pár">✕</button>`}
+        ${locked ? '' : `<button type="button" class="btn btn-sm btn-outline" data-act="dbl-remove" data-id="${p.id}" title="${escapeHtml(tl('Zrušiť pár', 'Remove the pair'))}">✕</button>`}
       </div>`).join('');
     return `
       <div style="background:#232329;border-radius:12px;padding:14px;margin-top:12px">
-        <strong style="font-size:15px">Páry na štvorhru</strong>
-        <div style="font-size:12px;color:var(--gray);margin:2px 0 8px">Hráči sa môžu pri registrácii prihlásiť s partnerom. Z párov sa žrebuje kategória <b>Štvorhra</b> vyššie, rovnako ako ostatné (nasadenie, formát, skupiny, útecha, ručne). Zápasy sa nepočítajú do ligy ani do CourtIQ.</div>
-        ${rows || '<div style="font-size:13px;color:var(--gray);margin:6px 0">Zatiaľ nie sú žiadne páry.</div>'}
-        ${locked ? '<div style="font-size:12px;color:var(--gray);margin-top:6px">Žrebovanie štvorhry už existuje — páry sa dajú meniť po jeho zmazaní.</div>' : `
+        <strong style="font-size:15px">${tl('Páry na štvorhru', 'Doubles pairs')}</strong>
+        <div style="font-size:12px;color:var(--gray);margin:2px 0 8px">${tl('Hráči sa môžu pri registrácii prihlásiť s partnerom. Z párov sa žrebuje kategória <b>Štvorhra</b> vyššie, rovnako ako ostatné (nasadenie, formát, skupiny, útecha, ručne). Zápasy sa nepočítajú do ligy ani do CourtIQ.', 'Players can register with a partner. The category <b>Doubles</b> above is drawn from the pairs like the others (seeding, format, groups, consolation, by hand). The matches do not count for the league or for CourtIQ.')}</div>
+        ${rows || `<div style="font-size:13px;color:var(--gray);margin:6px 0">${tl('Zatiaľ nie sú žiadne páry.', 'There are no pairs yet.')}</div>`}
+        ${locked ? `<div style="font-size:12px;color:var(--gray);margin-top:6px">${tl('Žrebovanie štvorhry už existuje — páry sa dajú meniť po jeho zmazaní.', 'The doubles draw already exists — the pairs can be changed after it is deleted.')}</div>` : `
         <datalist id="sd-dplayers">${playerNames.map((n) => `<option value="${escapeHtml(n)}"></option>`).join('')}</datalist>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px">
-          <input type="text" class="sd-dplayer" list="sd-dplayers" placeholder="Hráč" autocomplete="off" style="${inputStyle}">
-          <input type="text" class="sd-dpartner" list="sd-dplayers" placeholder="Partner" autocomplete="off" style="${inputStyle}">
-          <button type="button" class="btn btn-sm btn-outline" data-act="dbl-add">Pridať pár</button>
-          ${d.registrationsWithPartner ? `<button type="button" class="btn btn-sm btn-outline" data-act="dbl-from-regs">Páry z registrácií (${d.registrationsWithPartner})</button>` : ''}
+          <input type="text" class="sd-dplayer" list="sd-dplayers" placeholder="${escapeHtml(tl('Hráč', 'Player'))}" autocomplete="off" style="${inputStyle}">
+          <input type="text" class="sd-dpartner" list="sd-dplayers" placeholder="${escapeHtml(tl('Partner', 'Partner'))}" autocomplete="off" style="${inputStyle}">
+          <button type="button" class="btn btn-sm btn-outline" data-act="dbl-add">${tl('Pridať pár', 'Add a pair')}</button>
+          ${d.registrationsWithPartner ? `<button type="button" class="btn btn-sm btn-outline" data-act="dbl-from-regs">${tl('Páry z registrácií', 'Pairs from the registrations')} (${d.registrationsWithPartner})</button>` : ''}
         </div>`}
       </div>`;
   }
@@ -216,12 +218,12 @@ async function openDrawPanel(host, seasonId, onChanged) {
     if (act === 'dbl-add') {
       const player = host.querySelector('.sd-dplayer').value.trim();
       const partner = host.querySelector('.sd-dpartner').value.trim();
-      if (!player || !partner) throw new Error('Zadaj oboch hráčov páru');
+      if (!player || !partner) throw new Error(tl('Zadaj oboch hráčov páru', 'Enter both players of the pair'));
       await api(`${base}/pairs`, { method: 'POST', body: { player, partner } });
-      toast('Pár pridaný');
+      toast(tl('Pár pridaný', 'Pair added'));
     } else if (act === 'dbl-from-regs') {
       const made = await api(`${base}/pairs`, { method: 'POST', body: { fromRegistrations: true } });
-      toast(`Vytvorených párov: ${made.created}${made.skipped.length ? ` · preskočené: ${made.skipped.map((x) => `${x.name} + ${x.partner} (${x.reason})`).join('; ')}` : ''}`);
+      toast(`${tl('Vytvorených párov', 'Pairs created')}: ${made.created}${made.skipped.length ? ` · ${tl('preskočené', 'skipped')}: ${made.skipped.map((x) => `${x.name} + ${x.partner} (${x.reason})`).join('; ')}` : ''}`);
     } else if (act === 'dbl-remove') {
       await api(`${base}/pairs/${btn.dataset.id}`, { method: 'DELETE' });
     }
@@ -232,14 +234,14 @@ async function openDrawPanel(host, seasonId, onChanged) {
     host.innerHTML = `
       <div style="background:var(--gray-light);border-radius:12px;padding:14px">
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-          <strong style="font-size:15px">Formát turnaja</strong>
+          <strong style="font-size:15px">${tl('Formát turnaja', 'Tournament format')}</strong>
           <span style="flex:1"></span>
-          <label style="font-size:13px">Počet kurtov
+          <label style="font-size:13px">${tl('Počet kurtov', 'Number of courts')}
             <input type="number" min="0" max="50" inputmode="numeric" class="sd-courts" value="${overview.courtCount || ''}" placeholder="0" style="width:64px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px;margin:0 6px">
           </label>
-          <button type="button" class="btn btn-sm btn-outline" data-act="courts">Uložiť kurty</button>
-          <a data-public href="/tournament/${encodeURIComponent(overview.slug)}#courts" target="_blank" rel="noopener" style="font-size:13px;font-weight:700">Harmonogram ›</a>
-          <span class="sd-courts-note" style="font-size:12px;color:var(--gray)">${overview.courtCount ? Array.from({ length: Math.min(overview.courtCount, 6) }, (_, i) => `Kurt ${i + 1}`).join(', ') + (overview.courtCount > 6 ? ` … Kurt ${overview.courtCount}` : '') : 'Kurty zatiaľ nie sú nastavené'}</span>
+          <button type="button" class="btn btn-sm btn-outline" data-act="courts">${tl('Uložiť kurty', 'Save courts')}</button>
+          <a data-public href="/tournament/${encodeURIComponent(overview.slug)}#courts" target="_blank" rel="noopener" style="font-size:13px;font-weight:700">${tl('Harmonogram', 'Schedule')} ›</a>
+          <span class="sd-courts-note" style="font-size:12px;color:var(--gray)">${overview.courtCount ? Array.from({ length: Math.min(overview.courtCount, 6) }, (_, i) => `${tl('Kurt', 'Court')} ${i + 1}`).join(', ') + (overview.courtCount > 6 ? ` … ${tl('Kurt', 'Court')} ${overview.courtCount}` : '') : tl('Kurty zatiaľ nie sú nastavené', 'The courts are not set yet')}</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:12px">${overview.categories.map(blockHtml).join('')}</div>
         ${isDoubles ? pairsBlockHtml() : ''}
@@ -284,7 +286,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
       const cat = block.dataset.cat;
       const btn = block.querySelector('[data-act="seeds"]');
       const n = dirty(cat);
-      if (btn) { btn.disabled = !n; btn.textContent = n ? `Uložiť nasadenie (${n})` : 'Uložiť nasadenie'; }
+      if (btn) { btn.disabled = !n; btn.textContent = n ? `${tl('Uložiť nasadenie', 'Save seeding')} (${n})` : tl('Uložiť nasadenie', 'Save seeding'); }
       const draw = block.querySelector('[data-act="draw"]');
       if (draw) draw.disabled = !!n || catOf(cat).players < 2;
       return;
@@ -335,7 +337,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
       } else if (act === 'courts') {
         const raw = host.querySelector('.sd-courts').value.trim();
         await api(`/seasons/${seasonId}`, { method: 'PATCH', body: { courtCount: raw === '' ? 0 : Number(raw) } });
-        toast('Kurty uložené');
+        toast(tl('Kurty uložené', 'Courts saved'));
         await refresh();
       } else if (act === 'seeds') {
         const seeds = rowsOf(cat).map((r) => ({ id: r.id, seed: draftOf(r) === '' ? null : Number(draftOf(r)) }));
@@ -343,7 +345,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
         if (cat === 'DOUBLES') doubles = await api(`/seasons/${seasonId}/doubles`); // the seeds of the pairs are kept with the pairs
         regs = withPairs(savedList);
         drafts.clear();
-        toast('Nasadenie uložené');
+        toast(tl('Nasadenie uložené', 'Seeding saved'));
         render();
       } else if (act === 'format') {
         const s = settingsFor(catOf(cat));
@@ -361,7 +363,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
           body.groups = Array.from({ length: d.count }, (_, i) => ({ name: `Skupina ${groupLetter(i)}`, registrationIds: rows.filter((r) => d.assign.get(r.id) === i).map((r) => r.id) })).filter((g) => g.registrationIds.length);
         }
         const made = await api(`/seasons/${seasonId}/draw`, { method: 'POST', body });
-        toast(isGroups(s.format) ? `Skupiny vytvorené (${made.matches} zápasov)` : (made.consolationNote ? `Pavúk vytvorený (bez útechy: ${made.consolationNote})` : 'Pavúk vytvorený'));
+        toast(isGroups(s.format) ? tl(`Skupiny vytvorené (${made.matches} zápasov)`, `Groups created (${made.matches} matches)`) : (made.consolationNote ? tl(`Pavúk vytvorený (bez útechy: ${made.consolationNote})`, `Bracket created (no consolation: ${made.consolationNote})`) : tl('Pavúk vytvorený', 'Bracket created')));
         await refresh();
         if (made.warnings && made.warnings.length) showError(cat, made.warnings.join(' '));
       } else if (act === 'bracket') {
@@ -369,21 +371,21 @@ async function openDrawPanel(host, seasonId, onChanged) {
         let force = false;
         const c = catOf(cat);
         if (c.groups && !c.groups.allFinished) {
-          if (!confirm(`Skupinové zápasy ešte nie sú všetky odohrané (${c.groups.finished} z ${c.groups.matches}). Pavúk sa vytvorí z aktuálnych tabuliek. Pokračovať?`)) { btn.disabled = false; return; }
+          if (!confirm(tl(`Skupinové zápasy ešte nie sú všetky odohrané (${c.groups.finished} z ${c.groups.matches}). Pavúk sa vytvorí z aktuálnych tabuliek. Pokračovať?`, `Not all group matches have been played yet (${c.groups.finished} of ${c.groups.matches}). The bracket will be made from the current tables. Continue?`))) { btn.disabled = false; return; }
           force = true;
         }
         await api(`/seasons/${seasonId}/draw/bracket`, { method: 'POST', body: { category: cat, mode, force } });
-        toast('Pavúk vytvorený');
+        toast(tl('Pavúk vytvorený', 'Bracket created'));
         await refresh();
       } else if (act === 'consolation') {
         const c = catOf(cat);
         await api(`/brackets/${c.main.id}/consolation`, { method: 'POST', body: { format: settingsFor(c).consolationFormat } });
-        toast('Útecha vytvorená');
+        toast(tl('Útecha vytvorená', 'Consolation created'));
         await refresh();
       } else if (act === 'delete') {
-        if (!confirm('Zmazať žrebovanie tejto kategórie (skupiny, pavúky aj útechy)? Naplánované zápasy sa zmažú.')) { btn.disabled = false; return; }
+        if (!confirm(tl('Zmazať žrebovanie tejto kategórie (skupiny, pavúky aj útechy)? Naplánované zápasy sa zmažú.', 'Delete the draw of this category (groups, brackets and consolations)? Planned matches will be deleted.'))) { btn.disabled = false; return; }
         await api(`/seasons/${seasonId}/draw/${cat}`, { method: 'DELETE' });
-        toast('Žrebovanie zmazané');
+        toast(tl('Žrebovanie zmazané', 'Draw deleted'));
         await refresh();
       }
     } catch (err) {

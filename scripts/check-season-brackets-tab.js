@@ -11,7 +11,7 @@ const test = (name, fn) => tests.push({ name, fn });
 
 test('a league season has the tab Pavúk after Rozpis, with a panel that mounts the bracket admin for the season', () => {
   const js = read('js/seasons-admin.js');
-  assert.ok(js.includes("['schedule', 'Rozpis'], ['brackets', 'Pavúk']"), 'the tab comes after Rozpis');
+  assert.ok(js.includes("['schedule', tl('Rozpis', 'Schedule')], ['brackets', tl('Pavúk', 'Bracket')]"), 'the tab comes after Rozpis');
   assert.ok(js.includes('data-panel="brackets"') && js.includes('season-brackets'));
   assert.ok(js.includes('window.mountBracketAdmin(bracketsHost, id)'));
   assert.ok(read('seasons-admin.html').includes('/js/bracket-admin.js'), 'the season page loads the script of the brackets');

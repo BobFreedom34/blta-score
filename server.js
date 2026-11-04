@@ -189,6 +189,12 @@ try {
 } catch (err) {
   console.error('Rankings seed failed (will retry on next start):', err);
 }
+try {
+  const done = require('./src/withdrawCatchUp').catchUp(db);
+  if (done.fixed) console.log('Withdrawal walkovers in the Slazenger group got their ranking points: ' + done.fixed);
+} catch (err) {
+  console.error('Withdrawal catch-up failed (will retry on next start):', err);
+}
 badgeEngine.backfillIfNeeded();
 badgeEngine.startScheduledReminders();
 backup.startScheduledBackups();

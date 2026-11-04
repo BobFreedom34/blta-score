@@ -58,7 +58,7 @@ test('seasons-admin.js club mode: it reads the one tournament, has no list and n
   const js = read('js/seasons-admin.js');
   assert.ok(js.includes('const CLUB = !!(root && root.dataset.club)'));
   assert.ok(js.includes('api(`/seasons/${CLUB_SEASON_ID}`)'), 'it starts from GET /api/seasons/:id');
-  assert.ok(/if \(CLUB\) \{\s*root\.innerHTML = '<div id="season-list">/.test(js), 'no add form in club mode');
+  assert.ok(/if \(CLUB\) \{\s*root\.innerHTML = `<div id="season-list">/.test(js), 'no add form in club mode');
   assert.ok(js.includes('if (CLUB) { window.location.href'), 'after a delete he goes back to the club');
   // a redirect to a code address (/community/..) is a 404 unless it goes through siteUrl(): only <a> links are rewritten by localize.js
   assert.ok(/window\.location\.href = siteUrl\(/.test(js) && !/window\.location\.href = [`'"]\//.test(js), 'redirects of the editor go through siteUrl()');

@@ -84,11 +84,11 @@ function csBlockHtml(m, day, startMin) {
   const classes = ['cs-m', csStatusClass(m), `cs-st-${m.status.toLowerCase()}`, movable ? 'cs-drag' : '', m.locked ? 'cs-locked' : '', short ? 'cs-short' : ''].filter(Boolean).join(' ');
   return `<a class="${classes}" href="/match/${m.token}" draggable="false" data-token="${m.token}" ${movable ? 'data-drag="1"' : ''}
       style="top:${top}px;height:${minutes * CS_PX - 3}px" data-minutes="${real}" title="${escapeHtml(`${csTime(csStartOf(m))}–${csTime(m.endsAt)} · ${m.player1.name} – ${m.player2.name}`)}">
-    <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? `–${csTime(m.endsAt)}` : ''}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš."></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
+    <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? `–${csTime(m.endsAt)}` : ''}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="${escapeHtml(tl('Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš.', 'Locked — the planner does not move it. Click to unlock it.'))}"></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
     <span class="cs-m-pl">${csPlayersHtml(m)}</span>
     <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
     ${(m.status === 'FINISHED' || m.status === 'LIVE') && m.scoreSummary ? `<span class="cs-m-score">${escapeHtml(m.scoreSummary)}</span>` : ''}
-    ${resizable ? `<span class="cs-resize" data-resize="1" title="Potiahni na zmenu dĺžky zápasu${m.durationMinutes ? ` (nastavených ${m.durationMinutes} min) — dvojklik vráti pôvodnú dĺžku` : ''}"></span>` : ''}
+    ${resizable ? `<span class="cs-resize" data-resize="1" title="${escapeHtml(tl('Potiahni na zmenu dĺžky zápasu', 'Drag to change the length of the match'))}${m.durationMinutes ? escapeHtml(tl(` (nastavených ${m.durationMinutes} min) — dvojklik vráti pôvodnú dĺžku`, ` (set to ${m.durationMinutes} min) — double-click restores the original length`)) : ''}"></span>` : ''}
   </a>`;
 }
 
@@ -163,21 +163,21 @@ function csAdminHtml() {
   return `
     <div class="cs-admin">
       <div class="cs-admin-row">
-        ${field('minutes', 'Dĺžka zápasu (min)', s.matchMinutes, 'type="number" min="15" max="300" step="5"')}
-        ${field('start', 'Začiatok dňa', s.dayStart, 'type="time"')}
-        ${field('end', 'Koniec dňa', s.dayEnd, 'type="time"')}
-        ${field('rest', 'Oddych hráča (min)', s.restMinutes, 'type="number" min="0" max="240" step="5"')}
-        ${field('maxday', 'Max. zápasov hráča za deň (0 = bez limitu)', s.maxPerDay, 'type="number" min="0" max="10"')}
-        <label class="cs-check"><input type="checkbox" id="cs-auto" ${s.autoSchedule ? 'checked' : ''}> Rozvrh skladá systém sám</label>
-        <button type="button" class="btn btn-sm btn-outline" data-cs="settings">Uložiť nastavenia</button>
+        ${field('minutes', tl('Dĺžka zápasu (min)', 'Match length (min)'), s.matchMinutes, 'type="number" min="15" max="300" step="5"')}
+        ${field('start', tl('Začiatok dňa', 'Start of the day'), s.dayStart, 'type="time"')}
+        ${field('end', tl('Koniec dňa', 'End of the day'), s.dayEnd, 'type="time"')}
+        ${field('rest', tl('Oddych hráča (min)', 'Player rest (min)'), s.restMinutes, 'type="number" min="0" max="240" step="5"')}
+        ${field('maxday', tl('Max. zápasov hráča za deň (0 = bez limitu)', 'Max. matches per player per day (0 = no limit)'), s.maxPerDay, 'type="number" min="0" max="10"')}
+        <label class="cs-check"><input type="checkbox" id="cs-auto" ${s.autoSchedule ? 'checked' : ''}> ${tl('Rozvrh skladá systém sám', 'The system builds the schedule itself')}</label>
+        <button type="button" class="btn btn-sm btn-outline" data-cs="settings">${tl('Uložiť nastavenia', 'Save settings')}</button>
       </div>
       <div class="cs-admin-row">
-        <button type="button" class="btn btn-sm btn-primary" data-cs="fill">Poskladať rozvrh</button>
-        <button type="button" class="btn btn-sm btn-outline" data-cs="compact" title="Posunie nezamknuté zápasy dopredu tam, kde sa uvoľnil čas (zápas skončil skôr, bol skrátený)">Zhustiť rozvrh</button>
-        <button type="button" class="btn btn-sm btn-outline" data-cs="rebuild">Prepočítať odznova</button>
-        <button type="button" class="btn btn-sm btn-outline" data-cs="unlock">Odomknúť všetky zápasy</button>
-        <button type="button" class="btn btn-sm btn-outline" data-cs="clear">Vyčistiť rozvrh</button>
-        <span class="cs-hint">Potiahni zápas na kurt a čas, spodnú hranu bloku na zmenu dĺžky zápasu (zámok = ručne umiestnený, plánovač ho nepresúva; kliknutím na zámok ho odomkneš). Späť do „Nerozvrhnuté“ ho zrušíš. Počet kurtov: Formát turnaja.</span>
+        <button type="button" class="btn btn-sm btn-primary" data-cs="fill">${tl('Poskladať rozvrh', 'Build the schedule')}</button>
+        <button type="button" class="btn btn-sm btn-outline" data-cs="compact" title="${escapeHtml(tl('Posunie nezamknuté zápasy dopredu tam, kde sa uvoľnil čas (zápas skončil skôr, bol skrátený)', 'Moves the unlocked matches earlier where time was freed (a match ended early or was shortened)'))}">${tl('Zhustiť rozvrh', 'Compact the schedule')}</button>
+        <button type="button" class="btn btn-sm btn-outline" data-cs="rebuild">${tl('Prepočítať odznova', 'Rebuild from scratch')}</button>
+        <button type="button" class="btn btn-sm btn-outline" data-cs="unlock">${tl('Odomknúť všetky zápasy', 'Unlock all matches')}</button>
+        <button type="button" class="btn btn-sm btn-outline" data-cs="clear">${tl('Vyčistiť rozvrh', 'Clear the schedule')}</button>
+        <span class="cs-hint">${tl('Potiahni zápas na kurt a čas, spodnú hranu bloku na zmenu dĺžky zápasu (zámok = ručne umiestnený, plánovač ho nepresúva; kliknutím na zámok ho odomkneš). Späť do „Nerozvrhnuté“ ho zrušíš. Počet kurtov: Formát turnaja.', 'Drag a match to a court and a time, the bottom edge of a block to change the length of the match (lock = placed by hand, the planner does not move it; click the lock to unlock it). Drag it back to "Unscheduled" to take it off. Number of courts: Tournament format.')}</span>
       </div>
     </div>`;
 }
@@ -362,7 +362,7 @@ async function initCourtSchedule(host, season) {
     const handle = e.target.closest('[data-resize]');
     if (!handle || !csState.admin) return;
     e.preventDefault();
-    csApply(api(`/seasons/${season.id}/schedule/matches/${handle.closest('.cs-m').dataset.token}`, { method: 'PUT', body: { durationMinutes: null } }), 'Dĺžka zápasu vrátená na pôvodnú');
+    csApply(api(`/seasons/${season.id}/schedule/matches/${handle.closest('.cs-m').dataset.token}`, { method: 'PUT', body: { durationMinutes: null } }), tl('Dĺžka zápasu vrátená na pôvodnú', 'The length of the match is back to the original'));
   };
   host.onclick = async (e) => {
     const handle = e.target.closest('[data-resize]');
@@ -370,7 +370,7 @@ async function initCourtSchedule(host, season) {
     const lock = e.target.closest('[data-unlock]');
     if (lock) {
       e.preventDefault();
-      csApply(api(`/seasons/${season.id}/schedule/matches/${lock.dataset.unlock}`, { method: 'PUT', body: { locked: false } }), 'Zápas odomknutý — plánovač ho môže pri prepočte presunúť');
+      csApply(api(`/seasons/${season.id}/schedule/matches/${lock.dataset.unlock}`, { method: 'PUT', body: { locked: false } }), tl('Zápas odomknutý — plánovač ho môže pri prepočte presunúť', 'Match unlocked — the planner may move it when it recalculates'));
       return;
     }
     const day = e.target.closest('[data-cs-day]');
@@ -390,17 +390,17 @@ async function initCourtSchedule(host, season) {
         maxPerDay: Number(document.getElementById('cs-maxday').value) || 0,
         autoSchedule: document.getElementById('cs-auto').checked,
       };
-      csApply(api(`${base}/settings`, { method: 'PATCH', body }), 'Nastavenia uložené');
+      csApply(api(`${base}/settings`, { method: 'PATCH', body }), tl('Nastavenia uložené', 'Settings saved'));
     } else if (kind === 'fill') {
-      csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'fill' } }), 'Rozvrh poskladaný');
+      csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'fill' } }), tl('Rozvrh poskladaný', 'Schedule built'));
     } else if (kind === 'compact') {
-      csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'compact' } }), 'Zápasy posunuté dopredu');
+      csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'compact' } }), tl('Zápasy posunuté dopredu', 'Matches moved earlier'));
     } else if (kind === 'rebuild') {
-      if (confirm('Prepočítať rozvrh odznova? Ručne umiestnené (zamknuté) zápasy ostanú, ostatné naplánované zápasy sa rozložia nanovo.')) csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'rebuild' } }), 'Rozvrh prepočítaný');
+      if (confirm(tl('Prepočítať rozvrh odznova? Ručne umiestnené (zamknuté) zápasy ostanú, ostatné naplánované zápasy sa rozložia nanovo.', 'Rebuild the schedule from scratch? Matches placed by hand (locked) stay, the other planned matches are laid out again.'))) csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'rebuild' } }), tl('Rozvrh prepočítaný', 'Schedule rebuilt'));
     } else if (kind === 'unlock') {
-      csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'unlock' } }), 'Všetky zápasy odomknuté');
+      csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'unlock' } }), tl('Všetky zápasy odomknuté', 'All matches unlocked'));
     } else if (kind === 'clear') {
-      if (confirm('Vyčistiť rozvrh? Všetky nezačaté zápasy sa vrátia do „Nerozvrhnuté“, aj ručne umiestnené.')) csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'clear' } }), 'Rozvrh vyčistený');
+      if (confirm(tl('Vyčistiť rozvrh? Všetky nezačaté zápasy sa vrátia do „Nerozvrhnuté“, aj ručne umiestnené.', 'Clear the schedule? All matches that have not started go back to "Unscheduled", also the ones placed by hand.'))) csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'clear' } }), tl('Rozvrh vyčistený', 'Schedule cleared'));
     }
   };
   csRender();

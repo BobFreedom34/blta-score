@@ -1166,6 +1166,7 @@ router.post('/groups/:groupId/members/:playerId/withdraw', clubTournaments.requi
   const now = new Date().toISOString();
   let walkovers = 0;
   let skipped = 0;
+  const forfeited = []; // the ids of the matches that became walkovers (they go to the ranking points and the change log below)
   db.exec('BEGIN');
   try {
     db.prepare('UPDATE season_group_members SET withdrawn_at = ? WHERE id = ?').run(now, member.id);
@@ -1179,6 +1180,7 @@ router.post('/groups/:groupId/members/:playerId/withdraw', clubTournaments.requi
       if (opponentOut && opponentOut.withdrawn_at) { skipped += 1; return; }
       db.prepare("UPDATE matches SET status = 'FINISHED', winner_id = ?, end_reason = 'WALKOVER', end_time = ?, updated_at = ? WHERE id = ?")
         .run(opponent, now, now, m.id);
+      forfeited.push(m);
       walkovers += 1;
     });
     db.exec('COMMIT');
@@ -1186,6 +1188,17 @@ router.post('/groups/:groupId/members/:playerId/withdraw', clubTournaments.requi
     db.exec('ROLLBACK');
     throw err;
   }
+  // The walkovers are results like any other: they add the ranking points and show up in Backend > Points log (the group table
+  // change of the player and of the opponents), one row per match.
+  forfeited.forEach((before) => {
+    try {
+      const after = db.prepare('SELECT * FROM matches WHERE id = ?').get(before.id);
+      const ranking = rankingPoints.reconcile(before, after);
+      try { changeLog.logMatchChange(before, after, ranking); } catch (err) { console.error('[change log]', err.message); }
+    } catch (err) {
+      console.error('[seasons] failed to update ranking points for a walkover:', err.message);
+    }
+  });
   const io = req.app.get('io');
   if (io) io.emit('matches:changed', { status: 'WALKOVER' });
   res.json({ group: serializeGroup(group), walkovers, skipped });

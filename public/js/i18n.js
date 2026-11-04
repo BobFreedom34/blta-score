@@ -3044,6 +3044,18 @@ function t(key, vars) {
   return s;
 }
 
+// A text written in both languages next to the code that shows it, for the screens whose texts a script builds (the tournament / season manage page):
+// tl('Slovenský text', 'English text'). The whole page is in one language (the address, or the saved choice), so nothing is left in the other one.
+function tl(sk, en) {
+  return currentLang === 'en' ? en : sk;
+}
+
+// a number with its noun in the right form: Slovak 1 zápas / 2 zápasy / 5 zápasov, English 1 match / 2 matches
+function nounFor(n, sk1, sk2to4, sk5, en1, en2) {
+  if (currentLang === 'en') return n === 1 ? en1 : en2;
+  return n === 1 ? sk1 : (n >= 2 && n <= 4 ? sk2to4 : sk5);
+}
+
 function setLang(lang) {
   currentLang = lang;
   try { localStorage.setItem(LANG_STORAGE_KEY, lang); } catch { /* ignore */ }

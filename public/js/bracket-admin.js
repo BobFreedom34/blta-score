@@ -19,14 +19,14 @@ function formatLabel(key) {
 }
 
 const CATEGORY_OPTIONS = [
-  ['', 'None (freestanding)'],
+  ['', tl('Žiadna (samostatný)', 'None (freestanding)')],
   ['ELITE', 'BLTA ELITE'],
   ['NEXT_GEN', 'BLTA NEXT GEN'],
   ['NOVICE', 'BLTA NOVICE'],
-  ['FRIENDLY', 'FRIENDLY'],
+  ['FRIENDLY', tl('PRIATEĽSKÝ', 'FRIENDLY')],
   ['VIP_CUP', 'VIP CUP'],
   ['ATA_TENNIS', 'ATA TENNIS'],
-  ['OTHER', 'OTHER'],
+  ['OTHER', tl('INÉ', 'OTHER')],
 ];
 
 function categoryOptionsHtml(selected) {
@@ -34,7 +34,7 @@ function categoryOptionsHtml(selected) {
 }
 
 function seasonOptionsHtml(selectedId) {
-  return `<option value="">— none —</option>` + seasonsList.map((x) => `<option value="${x.id}" ${Number(selectedId) === x.id ? 'selected' : ''}>${escapeHtml(x.name)}</option>`).join('');
+  return `<option value="">${tl('— žiadna —', '— none —')}</option>` + seasonsList.map((x) => `<option value="${x.id}" ${Number(selectedId) === x.id ? 'selected' : ''}>${escapeHtml(x.name)}</option>`).join('');
 }
 
 // A season only goes with a BLTA category: the season picker is switched off (and cleared) for any other category.
@@ -62,15 +62,15 @@ function entryRowHtml(rowId, seedDefault) {
   return `
     <div class="bracket-entry-row" data-row-id="${rowId}" style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
       <div class="autocomplete" style="flex:1;position:relative">
-        <input type="text" id="entry-${rowId}-name" placeholder="Player name" autocomplete="off" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
+        <input type="text" id="entry-${rowId}-name" placeholder="${escapeHtml(tl('Meno hráča', 'Player name'))}" autocomplete="off" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
         <div class="autocomplete-list" id="entry-${rowId}-list"></div>
       </div>
       <div class="autocomplete entry-partner" style="flex:1;position:relative;display:none">
-        <input type="text" id="entry-${rowId}-partner" placeholder="Partner" autocomplete="off" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
+        <input type="text" id="entry-${rowId}-partner" placeholder="${escapeHtml(tl('Partner', 'Partner'))}" autocomplete="off" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
         <div class="autocomplete-list" id="entry-${rowId}-partner-list"></div>
       </div>
-      <input type="number" id="entry-${rowId}-seed" min="1" value="${seedDefault}" style="width:70px;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px" title="Seed">
-      <button type="button" class="btn btn-sm btn-outline" data-action="remove-entry" title="Remove">✕</button>
+      <input type="number" id="entry-${rowId}-seed" min="1" value="${seedDefault}" style="width:70px;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px" title="${escapeHtml(tl('Nasadenie', 'Seed'))}">
+      <button type="button" class="btn btn-sm btn-outline" data-action="remove-entry" title="${escapeHtml(tl('Odstrániť', 'Remove'))}">✕</button>
     </div>
   `;
 }
@@ -110,60 +110,60 @@ function addEntryRow() {
 function createFormHtml() {
   return `
     <div class="card" style="margin-bottom:20px">
-      <h3 style="margin-top:0">Create a bracket</h3>
+      <h3 style="margin-top:0">${tl('Vytvoriť pavúk', 'Create a bracket')}</h3>
       <form id="create-bracket-form">
         <div class="field">
-          <label>Name</label>
-          <input type="text" id="bracket-name" maxlength="120" placeholder="e.g. Summer Rally Series 2026 — Elite" required style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
+          <label>${tl('Názov', 'Name')}</label>
+          <input type="text" id="bracket-name" maxlength="120" placeholder="${escapeHtml(tl('napr. Letná séria 2026 — Elite', 'e.g. Summer Rally Series 2026 — Elite'))}" required style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
         </div>
         <div class="field">
           <label style="display:flex;align-items:center;gap:6px;font-weight:400">
             <input type="checkbox" id="bracket-doubles" style="width:auto;flex-shrink:0;margin:0">
-            Doubles draw (štvorhra) — every entrant is a pair
+            ${tl('Štvorhra — každý účastník je pár', 'Doubles draw — every entrant is a pair')}
           </label>
-          <p style="font-size:12px;color:var(--gray-dim);margin:2px 0 0">The matches are doubles matches: they count in the doubles ranking, never in the league, CourtIQ or badges. No league category.</p>
+          <p style="font-size:12px;color:var(--gray-dim);margin:2px 0 0">${tl('Zápasy sú štvorhry: počítajú sa do rebríčka štvorhry, nikdy do ligy, CourtIQ ani odznakov. Bez ligovej kategórie.', 'The matches are doubles matches: they count in the doubles ranking, never in the league, CourtIQ or badges. No league category.')}</p>
         </div>
         <div class="field">
-          <label>Match format</label>
+          <label>${tl('Formát zápasu', 'Match format')}</label>
           <div id="bracket-format-options"></div>
         </div>
         <div class="field">
-          <label for="bracket-category">Category <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional — tags the matches this bracket creates)</span></label>
+          <label for="bracket-category">${tl('Kategória', 'Category')} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${tl('(nepovinné — označí zápasy, ktoré pavúk vytvorí)', '(optional — tags the matches this bracket creates)')}</span></label>
           <select id="bracket-category" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
             ${categoryOptionsHtml('')}
           </select>
         </div>
         <div class="field">
-          <label for="bracket-season">Season <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(optional — needs a BLTA category; the matches it creates get this season and count as play-off matches)</span></label>
+          <label for="bracket-season">${tl('Sezóna', 'Season')} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${tl('(nepovinné — vyžaduje kategóriu BLTA; zápasy, ktoré vytvorí, dostanú túto sezónu a počítajú sa ako zápasy play-off)', '(optional — needs a BLTA category; the matches it creates get this season and count as play-off matches)')}</span></label>
           <select id="bracket-season" disabled style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
             ${seasonOptionsHtml('')}
           </select>
         </div>
         <div class="field">
-          <label>How should the draw be filled?</label>
+          <label>${tl('Ako sa má žrebovanie naplniť?', 'How should the draw be filled?')}</label>
           <div style="display:flex;gap:16px;margin-top:4px">
-            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="bracket-mode" value="seeded" checked> Auto-generate from seeds</label>
-            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="bracket-mode" value="manual"> Manual (empty draw)</label>
+            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="bracket-mode" value="seeded" checked> ${tl('Vytvoriť automaticky podľa nasadenia', 'Auto-generate from seeds')}</label>
+            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="bracket-mode" value="manual"> ${tl('Ručne (prázdny pavúk)', 'Manual (empty draw)')}</label>
           </div>
         </div>
         <div id="bracket-seeded-section" style="margin-bottom:16px">
-          <label style="font-weight:700;display:block;margin-bottom:6px">Players <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(seed 1 = best — byes go to the top seeds if the count isn't a power of two)</span></label>
+          <label style="font-weight:700;display:block;margin-bottom:6px">${tl('Hráči', 'Players')} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${tl('(nasadenie 1 = najlepší — voľné miesta (bye) dostanú najlepšie nasadení, ak počet nie je mocnina dvojky)', "(seed 1 = best — byes go to the top seeds if the count isn't a power of two)")}</span></label>
           <div id="bracket-entries-list"></div>
-          <button type="button" class="btn btn-sm btn-outline" id="add-entry-row-btn" style="margin-top:4px">+ Add player</button>
+          <button type="button" class="btn btn-sm btn-outline" id="add-entry-row-btn" style="margin-top:4px">${tl('+ Pridať hráča', '+ Add player')}</button>
         </div>
         <div id="bracket-manual-section" class="field" style="display:none">
-          <label>Draw size <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(rounds up to the next power of two)</span></label>
+          <label>${tl('Veľkosť pavúka', 'Draw size')} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${tl('(zaokrúhli sa na najbližšiu mocninu dvojky)', '(rounds up to the next power of two)')}</span></label>
           <input type="number" id="bracket-manual-size" min="2" max="256" value="8" style="width:100px;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px">
         </div>
         <div class="field">
           <label style="display:flex;align-items:center;gap:6px;font-weight:400">
             <input type="checkbox" id="bracket-auto-create-matches" checked style="width:auto;flex-shrink:0;margin:0">
-            Automatically create a match for each pairing
+            ${tl('Automaticky vytvoriť zápas pre každú dvojicu', 'Automatically create a match for each pairing')}
           </label>
-          <p style="font-size:12px;color:var(--gray-dim);margin:2px 0 0">Uncheck this for a past/historical bracket — the games already happened outside the app, so you'll enter each result directly instead of playing a match through it.</p>
+          <p style="font-size:12px;color:var(--gray-dim);margin:2px 0 0">${tl('Odškrtni pre minulý (historický) pavúk — zápasy sa odohrali mimo aplikácie, takže každý výsledok zadáš priamo namiesto hrania zápasu.', "Uncheck this for a past/historical bracket — the games already happened outside the app, so you'll enter each result directly instead of playing a match through it.")}</p>
         </div>
         <div id="create-bracket-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
-        <button type="submit" class="btn btn-primary" style="margin-top:6px">Create bracket</button>
+        <button type="submit" class="btn btn-primary" style="margin-top:6px">${tl('Vytvoriť pavúk', 'Create bracket')}</button>
       </form>
     </div>
   `;
@@ -219,7 +219,7 @@ function wireCreateForm() {
       if (category) body.category = category;
       const seasonId = scopeSeasonId || document.getElementById('bracket-season').value;
       if (seasonId) body.seasonId = Number(seasonId);
-      if (scopeSeasonId && !category) throw new Error('Choose the category of the bracket');
+      if (scopeSeasonId && !category) throw new Error(tl('Vyber kategóriu pavúka', 'Choose the category of the bracket'));
 
       if (seeded) {
         const rows = Array.from(document.querySelectorAll('.bracket-entry-row'));
@@ -229,29 +229,29 @@ function wireCreateForm() {
           const rawName = document.getElementById(`entry-${rowId}-name`).value.trim();
           if (!rawName) continue;
           const player = findPlayerByTypedName(rawName);
-          if (!player) throw new Error(`"${rawName}" isn't a known player — pick one from the suggestions`);
+          if (!player) throw new Error(tl(`„${rawName}“ nie je známy hráč — vyber ho z návrhov`, `"${rawName}" isn't a known player — pick one from the suggestions`));
           const seed = Number(document.getElementById(`entry-${rowId}-seed`).value);
-          if (!Number.isInteger(seed) || seed < 1) throw new Error(`Give "${rawName}" a whole-number seed`);
+          if (!Number.isInteger(seed) || seed < 1) throw new Error(tl(`Daj „${rawName}“ nasadenie — celé číslo`, `Give "${rawName}" a whole-number seed`));
           const entry = { playerId: player.id, seed };
           if (doubles) {
             const rawPartner = document.getElementById(`entry-${rowId}-partner`).value.trim();
-            if (!rawPartner) throw new Error(`"${rawName}" needs a partner`);
+            if (!rawPartner) throw new Error(tl(`„${rawName}“ potrebuje partnera`, `"${rawName}" needs a partner`));
             const partner = findPlayerByTypedName(rawPartner);
-            if (!partner) throw new Error(`"${rawPartner}" isn't a known player — pick one from the suggestions`);
+            if (!partner) throw new Error(tl(`„${rawPartner}“ nie je známy hráč — vyber ho z návrhov`, `"${rawPartner}" isn't a known player — pick one from the suggestions`));
             entry.partnerId = partner.id;
           }
           entries.push(entry);
         }
-        if (entries.length < 2) throw new Error(doubles ? 'Add at least 2 pairs' : 'Add at least 2 players');
+        if (entries.length < 2) throw new Error(doubles ? tl('Pridaj aspoň 2 páry', 'Add at least 2 pairs') : tl('Pridaj aspoň 2 hráčov', 'Add at least 2 players'));
         body.entries = entries;
       } else {
         const size = Number(document.getElementById('bracket-manual-size').value);
-        if (!Number.isInteger(size) || size < 2) throw new Error('Draw size must be at least 2');
+        if (!Number.isInteger(size) || size < 2) throw new Error(tl('Veľkosť pavúka musí byť aspoň 2', 'Draw size must be at least 2'));
         body.size = size;
       }
 
       await api('/brackets', { method: 'POST', body });
-      toast('Bracket created');
+      toast(tl('Pavúk vytvorený', 'Bracket created'));
       resetCreateForm();
       await loadBrackets();
     } catch (err) {
@@ -280,14 +280,14 @@ function bracketRowHtml(b) {
       <div class="bracket-admin-row" data-id="${b.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div class="bracket-name-cell" style="flex:1;min-width:160px">
-            <div class="bracket-name-display" style="font-weight:700">${escapeHtml(displayName(b))}${b.category ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.category)}</span>` : ''}${b.seasonName && b.seasonKind !== 'TOURNAMENT' ? ` <span style="font-size:11px;font-weight:700;color:var(--charcoal);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.seasonName)}</span>` : ''}${b.autoCreateMatches === false ? ' <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">Historical</span>' : ''}${b.isDoubles ? ' <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">Doubles</span>' : ''}</div>
-            <div style="font-size:12px;color:var(--gray)">${b.size}-draw · ${escapeHtml(formatLabel(b.format))}</div>
+            <div class="bracket-name-display" style="font-weight:700">${escapeHtml(displayName(b))}${b.category ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.category)}</span>` : ''}${b.seasonName && b.seasonKind !== 'TOURNAMENT' ? ` <span style="font-size:11px;font-weight:700;color:var(--charcoal);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.seasonName)}</span>` : ''}${b.autoCreateMatches === false ? ` <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">${tl('Historický', 'Historical')}</span>` : ''}${b.isDoubles ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${tl('Štvorhra', 'Doubles')}</span>` : ''}</div>
+            <div style="font-size:12px;color:var(--gray)">${b.size}-${tl('pavúk', 'draw')} · ${escapeHtml(formatLabel(b.format))}</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
-            <a data-public href="/bracket/${b.id}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
-            <button type="button" class="btn btn-sm btn-outline" data-action="rename">Edit</button>
-            <button type="button" class="btn btn-sm btn-outline" data-action="manage">${openManagePanels.has(b.id) ? 'Hide slots' : 'Manage slots'}</button>
-            <button type="button" class="btn btn-sm btn-danger" data-action="delete">Delete</button>
+            <a data-public href="/bracket/${b.id}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">${tl('Zobraziť', 'View')}</a>
+            <button type="button" class="btn btn-sm btn-outline" data-action="rename">${tl('Upraviť', 'Edit')}</button>
+            <button type="button" class="btn btn-sm btn-outline" data-action="manage">${openManagePanels.has(b.id) ? tl('Skryť miesta', 'Hide slots') : tl('Spravovať miesta', 'Manage slots')}</button>
+            <button type="button" class="btn btn-sm btn-danger" data-action="delete">${tl('Zmazať', 'Delete')}</button>
           </div>
         </div>
         <div class="bracket-manage-slot" data-manage-id="${b.id}"></div>
@@ -299,9 +299,9 @@ function bracketRowHtml(b) {
 function groupedHtml() {
   if (scopeSeasonId) return brackets.map(bracketRowHtml).join('');
   const groups = [
-    ['Leagues', brackets.filter((b) => b.seasonId && b.seasonKind !== 'TOURNAMENT'), (b) => b.seasonName],
-    ['Tournaments', brackets.filter((b) => b.seasonId && b.seasonKind === 'TOURNAMENT').sort((x, y) => String(x.seasonName).localeCompare(String(y.seasonName)) || x.id - y.id), (b) => b.seasonName],
-    ['Without a season', brackets.filter((b) => !b.seasonId), () => ''],
+    [tl('Ligy', 'Leagues'), brackets.filter((b) => b.seasonId && b.seasonKind !== 'TOURNAMENT'), (b) => b.seasonName],
+    [tl('Turnaje', 'Tournaments'), brackets.filter((b) => b.seasonId && b.seasonKind === 'TOURNAMENT').sort((x, y) => String(x.seasonName).localeCompare(String(y.seasonName)) || x.id - y.id), (b) => b.seasonName],
+    [tl('Bez sezóny', 'Without a season'), brackets.filter((b) => !b.seasonId), () => ''],
   ].filter(([, list]) => list.length);
   const head = (text) => `<div style="font-size:12px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--orange);margin:18px 4px 4px">${escapeHtml(text)}</div>`;
   const sub = (text) => `<div style="font-size:13px;font-weight:800;margin:10px 4px 0">${escapeHtml(text)}</div>`;
@@ -319,7 +319,7 @@ function groupedHtml() {
 
 function renderList() {
   const listEl = document.getElementById('bracket-list');
-  listEl.innerHTML = brackets.length ? groupedHtml() : '<div class="empty-state">No brackets yet.</div>';
+  listEl.innerHTML = brackets.length ? groupedHtml() : `<div class="empty-state">${tl('Zatiaľ žiadne pavúky.', 'No brackets yet.')}</div>`;
 
   document.querySelectorAll('.bracket-admin-row').forEach((rowEl) => {
     const id = Number(rowEl.dataset.id);
@@ -333,7 +333,7 @@ function renderList() {
         return;
       }
       openManagePanels.add(id);
-      slot.innerHTML = '<p style="color:var(--gray-dim);margin:10px 4px">Loading…</p>';
+      slot.innerHTML = `<p style="color:var(--gray-dim);margin:10px 4px">${tl('Načítavam…', 'Loading…')}</p>`;
       await renderManagePanel(id, slot);
       renderList();
     });
@@ -347,11 +347,11 @@ function renderList() {
           <select class="bracket-rename-category" style="padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
             ${categoryOptionsHtml(b.category)}
           </select>
-          <select class="bracket-rename-season" ${BLTA_CATEGORY_KEYS.includes(b.category) ? '' : 'disabled'} title="Season (needs a BLTA category)" style="padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+          <select class="bracket-rename-season" ${BLTA_CATEGORY_KEYS.includes(b.category) ? '' : 'disabled'} title="${escapeHtml(tl('Sezóna (vyžaduje kategóriu BLTA)', 'Season (needs a BLTA category)'))}" style="padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
             ${seasonOptionsHtml(b.seasonId)}
           </select>
-          <button type="submit" class="btn btn-sm btn-primary">Save</button>
-          <button type="button" class="btn btn-sm btn-outline" data-action="cancel-rename">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-primary">${tl('Uložiť', 'Save')}</button>
+          <button type="button" class="btn btn-sm btn-outline" data-action="cancel-rename">${tl('Zrušiť', 'Cancel')}</button>
           <span class="bracket-rename-error" style="color:var(--danger);font-weight:600;font-size:12px;width:100%"></span>
         </form>
       `;
@@ -367,10 +367,10 @@ function renderList() {
         const errorEl = form.querySelector('.bracket-rename-error');
         errorEl.textContent = '';
         const name = input.value.trim();
-        if (!name) { errorEl.textContent = 'Name cannot be empty'; return; }
+        if (!name) { errorEl.textContent = tl('Názov nemôže byť prázdny', 'Name cannot be empty'); return; }
         try {
           await api(`/brackets/${id}`, { method: 'PATCH', body: { name, category: categorySelect.value, seasonId: seasonSelect.value ? Number(seasonSelect.value) : null } });
-          toast('Bracket updated');
+          toast(tl('Pavúk upravený', 'Bracket updated'));
           await loadBrackets();
         } catch (err) {
           errorEl.textContent = err.message;
@@ -380,10 +380,10 @@ function renderList() {
 
     rowEl.querySelector('[data-action="delete"]').addEventListener('click', async () => {
       const b = brackets.find((x) => x.id === id);
-      if (!confirm(`Delete "${b.name}"? Any matches it already created stay as ordinary matches — only the draw structure itself is removed.`)) return;
+      if (!confirm(tl(`Zmazať „${b.name}“? Zápasy, ktoré už vytvoril, ostanú ako obyčajné zápasy — odstráni sa len samotná štruktúra pavúka.`, `Delete "${b.name}"? Any matches it already created stay as ordinary matches — only the draw structure itself is removed.`))) return;
       try {
         await api(`/brackets/${id}`, { method: 'DELETE' });
-        toast('Bracket deleted');
+        toast(tl('Pavúk zmazaný', 'Bracket deleted'));
         openManagePanels.delete(id);
         await loadBrackets();
       } catch (err) {
@@ -398,20 +398,20 @@ function renderList() {
 }
 
 function nodeStatusText(node) {
-  const p1 = node.player1 ? escapeHtml(node.player1.name) : (node.round === 1 ? '—' : 'TBD');
-  const p2 = node.player2 ? escapeHtml(node.player2.name) : (node.round === 1 ? '—' : 'TBD');
+  const p1 = node.player1 ? escapeHtml(node.player1.name) : (node.round === 1 ? '—' : tl('bude určené', 'TBD'));
+  const p2 = node.player2 ? escapeHtml(node.player2.name) : (node.round === 1 ? '—' : tl('bude určené', 'TBD'));
   if (node.isBye) {
     const winner = node.player1 || node.player2;
-    return `${escapeHtml(winner ? winner.name : '—')} <span style="color:var(--gray-dim)">(bye, advances automatically)</span>`;
+    return `${escapeHtml(winner ? winner.name : '—')} <span style="color:var(--gray-dim)">${tl('(voľný žreb, postupuje automaticky)', '(bye, advances automatically)')}</span>`;
   }
   if (node.match) {
     const scoreText = node.match.scoreSummary ? ` — ${escapeHtml(node.match.scoreSummary)}` : '';
-    return `${p1} vs ${p2} <span style="color:var(--gray-dim)">(${escapeHtml(node.match.status)}${scoreText})</span> <a data-public href="/match/${node.match.token}" target="_blank" rel="noopener" style="text-decoration:underline">Open match</a>`;
+    return `${p1} vs ${p2} <span style="color:var(--gray-dim)">(${escapeHtml(node.match.status)}${scoreText})</span> <a data-public href="/match/${node.match.token}" target="_blank" rel="noopener" style="text-decoration:underline">${tl('Otvoriť zápas', 'Open match')}</a>`;
   }
   if (node.isManualResult) {
     const winnerName = node.winnerId === (node.player1 && node.player1.id) ? p1 : p2;
     const scoreText = node.scoreSummary ? ` — ${escapeHtml(node.scoreSummary)}` : '';
-    return `${p1} vs ${p2} <span style="color:var(--green-light)">(winner: ${winnerName}${scoreText})</span> <button type="button" class="bracket-reset-result-btn" data-node-id="${node.id}" style="background:none;border:none;color:var(--danger);text-decoration:underline;cursor:pointer;font-size:12px;padding:0;margin-left:4px">Reset</button> <button type="button" class="bracket-edit-result-btn" data-node-id="${node.id}" style="background:none;border:none;color:var(--orange);text-decoration:underline;cursor:pointer;font-size:12px;padding:0;margin-left:4px">Edit</button>`;
+    return `${p1} vs ${p2} <span style="color:var(--green-light)">(${tl('víťaz', 'winner')}: ${winnerName}${scoreText})</span> <button type="button" class="bracket-reset-result-btn" data-node-id="${node.id}" style="background:none;border:none;color:var(--danger);text-decoration:underline;cursor:pointer;font-size:12px;padding:0;margin-left:4px">${tl('Zrušiť výsledok', 'Reset')}</button> <button type="button" class="bracket-edit-result-btn" data-node-id="${node.id}" style="background:none;border:none;color:var(--orange);text-decoration:underline;cursor:pointer;font-size:12px;padding:0;margin-left:4px">${tl('Upraviť', 'Edit')}</button>`;
   }
   return `${p1} vs ${p2}`;
 }
@@ -430,25 +430,25 @@ function slotAssignFormHtml(node) {
     <form class="bracket-slot-form" data-node-id="${node.id}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap">
       ${needP1 ? `
         <div class="autocomplete" style="position:relative">
-          <input type="text" id="slot-${node.id}-p1" placeholder="${manageIsDoubles ? 'Pair 1 — player' : 'Player 1'}" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+          <input type="text" id="slot-${node.id}-p1" placeholder="${manageIsDoubles ? tl('Pár 1 — hráč', 'Pair 1 — player') : tl('Hráč 1', 'Player 1')}" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
           <div class="autocomplete-list" id="slot-${node.id}-p1-list"></div>
         </div>
         ${manageIsDoubles ? `<div class="autocomplete" style="position:relative">
-          <input type="text" id="slot-${node.id}-p1b" placeholder="Pair 1 — partner" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+          <input type="text" id="slot-${node.id}-p1b" placeholder="${tl('Pár 1 — partner', 'Pair 1 — partner')}" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
           <div class="autocomplete-list" id="slot-${node.id}-p1b-list"></div>
         </div>` : ''}
       ` : ''}
       ${needP2 ? `
         <div class="autocomplete" style="position:relative">
-          <input type="text" id="slot-${node.id}-p2" placeholder="${manageIsDoubles ? 'Pair 2 — player' : 'Player 2'}" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+          <input type="text" id="slot-${node.id}-p2" placeholder="${manageIsDoubles ? tl('Pár 2 — hráč', 'Pair 2 — player') : tl('Hráč 2', 'Player 2')}" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
           <div class="autocomplete-list" id="slot-${node.id}-p2-list"></div>
         </div>
         ${manageIsDoubles ? `<div class="autocomplete" style="position:relative">
-          <input type="text" id="slot-${node.id}-p2b" placeholder="Pair 2 — partner" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+          <input type="text" id="slot-${node.id}-p2b" placeholder="${tl('Pár 2 — partner', 'Pair 2 — partner')}" autocomplete="off" style="width:150px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
           <div class="autocomplete-list" id="slot-${node.id}-p2b-list"></div>
         </div>` : ''}
       ` : ''}
-      <button type="submit" class="btn btn-sm btn-primary">Assign</button>
+      <button type="submit" class="btn btn-sm btn-primary">${tl('Priradiť', 'Assign')}</button>
       <span class="bracket-slot-error" style="color:var(--danger);font-weight:600;font-size:12px"></span>
     </form>
   `;
@@ -470,12 +470,12 @@ function recordResultFormHtml(node, isEdit) {
   if (node.isManualResult && !isEdit) return '';
   return `
     <form class="bracket-result-form" data-node-id="${node.id}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap">
-      <span style="font-size:12px;color:var(--gray-dim)">Winner:</span>
+      <span style="font-size:12px;color:var(--gray-dim)">${tl('Víťaz', 'Winner')}:</span>
       <label style="display:flex;align-items:center;gap:4px;font-weight:400;font-size:13px"><input type="radio" name="winner-${node.id}" value="${node.player1.id}" ${node.winnerId === node.player1.id ? 'checked' : ''} required>${escapeHtml(node.player1.name)}</label>
       <label style="display:flex;align-items:center;gap:4px;font-weight:400;font-size:13px"><input type="radio" name="winner-${node.id}" value="${node.player2.id}" ${node.winnerId === node.player2.id ? 'checked' : ''}>${escapeHtml(node.player2.name)}</label>
-      <input type="text" id="result-${node.id}-score" value="${escapeHtml(node.scoreSummary || '')}" placeholder="Score (optional, e.g. 6-2, 6-4)" style="width:190px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
-      <button type="submit" class="btn btn-sm btn-primary">${isEdit ? 'Update result' : 'Record result'}</button>
-      ${isEdit ? '<button type="button" class="btn btn-sm btn-outline" data-action="cancel-edit-result">Cancel</button>' : ''}
+      <input type="text" id="result-${node.id}-score" value="${escapeHtml(node.scoreSummary || '')}" placeholder="${escapeHtml(tl('Skóre (nepovinné, napr. 6-2, 6-4)', 'Score (optional, e.g. 6-2, 6-4)'))}" style="width:190px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px">
+      <button type="submit" class="btn btn-sm btn-primary">${isEdit ? tl('Upraviť výsledok', 'Update result') : tl('Zapísať výsledok', 'Record result')}</button>
+      ${isEdit ? `<button type="button" class="btn btn-sm btn-outline" data-action="cancel-edit-result">${tl('Zrušiť', 'Cancel')}</button>` : ''}
       <span class="bracket-result-error" style="color:var(--danger);font-weight:600;font-size:12px"></span>
     </form>
   `;
@@ -491,7 +491,7 @@ function wireResultForm(form, bracketId, nodeId, slotEl) {
     errorEl.textContent = '';
     const picked = form.querySelector(`input[name="winner-${nodeId}"]:checked`);
     if (!picked) {
-      errorEl.textContent = 'Pick a winner';
+      errorEl.textContent = tl('Vyber víťaza', 'Pick a winner');
       return;
     }
     const score = document.getElementById(`result-${nodeId}-score`).value.trim();
@@ -500,7 +500,7 @@ function wireResultForm(form, bracketId, nodeId, slotEl) {
         method: 'PATCH',
         body: { winnerId: Number(picked.value), score: score || undefined },
       });
-      toast('Result recorded');
+      toast(tl('Výsledok zapísaný', 'Result recorded'));
       await renderManagePanel(bracketId, slotEl);
     } catch (err) {
       errorEl.textContent = err.message;
@@ -556,7 +556,7 @@ async function renderManagePanel(bracketId, slotEl) {
           const raw = el.value.trim();
           if (!raw) return null;
           const player = findPlayerByTypedName(raw);
-          if (!player) throw new Error(`"${raw}" isn't a known player`);
+          if (!player) throw new Error(tl(`„${raw}“ nie je známy hráč`, `"${raw}" isn't a known player`));
           return player.id;
         };
         try {
@@ -572,7 +572,7 @@ async function renderManagePanel(bracketId, slotEl) {
             if (p2b) body.player2PartnerId = p2b;
           }
           await api(`/brackets/${bracketId}/slots/${n.id}`, { method: 'PATCH', body });
-          toast('Slot updated');
+          toast(tl('Miesto upravené', 'Slot updated'));
           await renderManagePanel(bracketId, slotEl);
         } catch (err) {
           errorEl.textContent = err.message;
@@ -593,10 +593,10 @@ async function renderManagePanel(bracketId, slotEl) {
             await api(url, { method: 'DELETE' });
           } catch (err) {
             if (!err.data || err.data.code !== 'HAS_DEPENDENTS') throw err;
-            if (!confirm(`${err.data.error}. Reset them all?`)) return;
+            if (!confirm(tl(`${err.data.error}. Zrušiť ich všetky?`, `${err.data.error}. Reset them all?`))) return;
             await api(`${url}?cascade=1`, { method: 'DELETE' });
           }
-          toast('Result reset');
+          toast(tl('Výsledok zrušený', 'Result reset'));
           await loadBrackets();
         } catch (err) {
           toast(err.message);
@@ -623,8 +623,8 @@ function renderAdmin() {
   root.innerHTML = `
     ${createFormHtml()}
     <div class="card">
-      <h3 style="margin-top:0">Existing brackets</h3>
-      <div id="bracket-list">Loading…</div>
+      <h3 style="margin-top:0">${tl('Existujúce pavúky', 'Existing brackets')}</h3>
+      <div id="bracket-list">${tl('Načítavam…', 'Loading…')}</div>
     </div>
   `;
   wireCreateForm();
@@ -642,17 +642,17 @@ function scopeCreateForm() {
   category.required = true;
   category.value = '';
   const label = document.querySelector('label[for="bracket-category"]');
-  if (label) label.innerHTML = 'Category <span style="font-weight:400;color:var(--gray-dim);font-size:12px">(the matches of the bracket get it and this season, and count as play-off matches)</span>';
+  if (label) label.innerHTML = `${tl('Kategória', 'Category')} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${tl('(zápasy pavúka ju dostanú spolu s touto sezónou a počítajú sa ako zápasy play-off)', '(the matches of the bracket get it and this season, and count as play-off matches)')}</span>`;
   const title = document.querySelector('#create-bracket-form').closest('.card').querySelector('h3');
-  if (title) title.textContent = 'Create a play-off bracket of this season';
+  if (title) title.textContent = tl('Vytvoriť play-off pavúk tejto sezóny', 'Create a play-off bracket of this season');
 }
 
 function renderLoggedOut() {
   root.innerHTML = `
     <div class="card">
       <p style="margin:0;color:var(--gray)">
-        Managing brackets requires an admin login.
-        <a href="/admin" style="text-decoration:underline;color:var(--orange)">Log in as admin</a>.
+        ${tl('Na správu pavúkov je potrebné prihlásenie správcu.', 'Managing brackets requires an admin login.')}
+        <a href="/admin" style="text-decoration:underline;color:var(--orange)">${tl('Prihlásiť sa ako správca', 'Log in as admin')}</a>.
       </p>
     </div>
   `;
@@ -666,7 +666,7 @@ window.mountBracketAdmin = async function mountBracketAdmin(host, seasonId) {
   entryRowCounter = 0;
   openManagePanels.clear();
   wireRootListeners();
-  root.innerHTML = '<p style="color:var(--gray-dim);margin:6px 0">Loading…</p>';
+  root.innerHTML = `<p style="color:var(--gray-dim);margin:6px 0">${tl('Načítavam…', 'Loading…')}</p>`;
   await loadPlayers();
   try { seasonsList = await api('/seasons'); } catch { seasonsList = []; }
   renderAdmin();

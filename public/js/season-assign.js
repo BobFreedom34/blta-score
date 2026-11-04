@@ -50,7 +50,7 @@ function assignSuggestByStrength(todo, all, keys = ['ELITE', 'NEXT_GEN', 'NOVICE
 async function openAssignPanel(host, seasonId, onSaved, categories) {
   const cats = ASSIGN_CATEGORIES.filter(([k]) => !Array.isArray(categories) || !categories.length || categories.includes(k));
   const catKeys = cats.map(([k]) => k);
-  host.innerHTML = '<div style="color:var(--gray)">Loading…</div>';
+  host.innerHTML = `<div style="color:var(--gray)">${tl('Načítavam…', 'Loading…')}</div>`;
   const soft = (promise, fallback) => promise.catch(() => fallback);
   const [regs, courtiq, rankings, profiles] = await Promise.all([
     api(`/seasons/${seasonId}/registrations`),
@@ -85,13 +85,13 @@ async function openAssignPanel(host, seasonId, onSaved, categories) {
 
   function rowHtml(p) {
     const chips = [
-      p.rank ? `<span class="sa-chip future" title="BLTA rank">#${p.rank}</span>` : '',
-      p.band != null ? `<span class="sa-chip future" title="CourtIQ">courtIQ ${Number(p.band).toFixed(1)}</span>` : '<span style="font-size:11px;color:var(--gray)">no courtIQ</span>',
-      p.profile ? `<span style="font-size:11px;color:var(--gray)">profile: ${escapeHtml(label(p.profile))}</span>` : '',
-      p.suggested ? '<span style="font-size:11px;color:var(--orange);font-weight:700">suggested</span>' : '',
+      p.rank ? `<span class="sa-chip future" title="${tl('BLTA poradie', 'BLTA rank')}">#${p.rank}</span>` : '',
+      p.band != null ? `<span class="sa-chip future" title="CourtIQ">courtIQ ${Number(p.band).toFixed(1)}</span>` : `<span style="font-size:11px;color:var(--gray)">${tl('bez courtIQ', 'no courtIQ')}</span>`,
+      p.profile ? `<span style="font-size:11px;color:var(--gray)">${tl('profil', 'profile')}: ${escapeHtml(label(p.profile))}</span>` : '',
+      p.suggested ? `<span style="font-size:11px;color:var(--orange);font-weight:700">${tl('navrhnuté', 'suggested')}</span>` : '',
     ].filter(Boolean).join(' ');
     const buttons = cats.map(([key, name, short]) => `<button type="button" class="btn btn-sm ${p.draft === key ? 'btn-primary' : 'btn-outline'}" data-assign="${key}" title="${name}" style="min-width:34px;padding:4px 8px">${short}</button>`).join('')
-      + (p.draft ? '<button type="button" class="sg-x" data-assign="" title="Not sorted yet">&times;</button>' : '');
+      + (p.draft ? `<button type="button" class="sg-x" data-assign="" title="${tl('Zatiaľ nezaradený', 'Not sorted yet')}">&times;</button>` : '');
     return `
       <div class="as-row" data-id="${p.id}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:7px 0;border-top:1px solid #eee">
         <div style="flex:1;min-width:170px"><strong>${escapeHtml(p.name)}</strong><div style="margin-top:2px">${chips}</div></div>
@@ -113,16 +113,16 @@ async function openAssignPanel(host, seasonId, onSaved, categories) {
     host.innerHTML = `
       <div style="background:var(--gray-light);border-radius:12px;padding:14px">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-          <strong style="font-size:15px">Zaradenie do kategórií</strong>
-          <span style="color:var(--gray);font-size:13px">${players.length} players · not sorted ${unsorted.length}${cats.map(([k, name]) => ` · ${name} ${players.filter((p) => p.draft === k).length}`).join('')}</span>
+          <strong style="font-size:15px">${tl('Zaradenie do kategórií', 'Category assignment')}</strong>
+          <span style="color:var(--gray);font-size:13px">${players.length} ${nounFor(players.length, 'hráč', 'hráči', 'hráčov', 'player', 'players')} · ${tl('nezaradení', 'not sorted')} ${unsorted.length}${cats.map(([k, name]) => ` · ${name} ${players.filter((p) => p.draft === k).length}`).join('')}</span>
           <span style="flex:1"></span>
-          <button type="button" class="btn btn-sm btn-outline" data-act="suggest" ${unsorted.length ? '' : 'disabled'}>Navrhnúť automaticky</button>
-          <button type="button" class="btn btn-sm btn-outline" data-act="reset" ${changed ? '' : 'disabled'}>Zahodiť zmeny</button>
-          <button type="button" class="btn btn-sm btn-primary" data-act="save" ${changed ? '' : 'disabled'}>Uložiť zaradenie${changed ? ` (${changed})` : ''}</button>
+          <button type="button" class="btn btn-sm btn-outline" data-act="suggest" ${unsorted.length ? '' : 'disabled'}>${tl('Navrhnúť automaticky', 'Suggest automatically')}</button>
+          <button type="button" class="btn btn-sm btn-outline" data-act="reset" ${changed ? '' : 'disabled'}>${tl('Zahodiť zmeny', 'Discard changes')}</button>
+          <button type="button" class="btn btn-sm btn-primary" data-act="save" ${changed ? '' : 'disabled'}>${tl('Uložiť zaradenie', 'Save assignment')}${changed ? ` (${changed})` : ''}</button>
         </div>
         <div class="as-error" style="color:var(--danger);font-weight:600;margin-bottom:8px"></div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px">
-          ${sectionHtml('Nezaradení', unsorted)}
+          ${sectionHtml(tl('Nezaradení', 'Not sorted'), unsorted)}
           ${cats.map(([key, name]) => sectionHtml(name, players.filter((p) => p.draft === key))).join('')}
         </div>
       </div>`;
@@ -153,7 +153,7 @@ async function openAssignPanel(host, seasonId, onSaved, categories) {
       try {
         await api(`/seasons/${seasonId}/registrations/categories`, { method: 'POST', body: { assignments } });
         players.forEach((p) => { p.saved = p.draft; p.suggested = false; });
-        toast(`${assignments.length} saved`);
+        toast(tl(`Uložené: ${assignments.length}`, `${assignments.length} saved`));
         render();
         if (onSaved) onSaved();
       } catch (err) {

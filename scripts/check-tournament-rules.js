@@ -148,7 +148,7 @@ test('the page side: the shared form is on the Backend card and the club manage 
   }
   assert.ok(!pub('community.html').includes('/js/tournament-rules.js'), 'the community page has no rules form: its create windows ask only for the basics');
   const card = pub('js/seasons-admin.js');
-  const order = ['Základné údaje', 'Štartovné a registrácia', 'Kurty a pravidlá hrania', 'Bodovanie a podmienky', 'Vzhľad stránky'].map((h) => card.indexOf(`<h4>${h}</h4>`));
+  const order = ['Základné údaje', 'Štartovné a registrácia', 'Kurty a pravidlá hrania', 'Bodovanie a podmienky', 'Vzhľad stránky'].map((h) => card.indexOf(`<h4>\${tl('${h}',`));
   assert.ok(order.every((i) => i > 0) && order.every((i, n) => n === 0 || order[n - 1] < i), 'the sections of the card: the basics, then Štartovné a registrácia second, then the courts, the rules, the look');
   assert.ok(card.includes('Bodovanie a podmienky') && card.includes('TournamentRules.read(') && card.includes('TournamentRules.mount('), 'the card shows, wires and saves the rules');
   const club = pub('js/community.js');
@@ -176,7 +176,7 @@ test('the create window of a club tournament asks only for the basics (name, pla
   const i18n = pub('js/i18n.js');
   assert.ok(i18n.includes("'com.tournamentTitle': 'Nový turnaj klubu alebo komunity'") && i18n.includes("'com.seasonTitle': 'Nová sezóna klubu alebo komunity'"), 'the headings of the two windows');
   const card = pub('js/seasons-admin.js');
-  const courts = card.slice(card.indexOf('<h4>Kurty a pravidlá hrania</h4>'), card.indexOf('<h4>Bodovanie a podmienky</h4>'));
+  const courts = card.slice(card.indexOf("<h4>${tl('Kurty a pravidlá hrania',"), card.indexOf("<h4>${tl('Bodovanie a podmienky',"));
   for (const text of ['Počet kurtov (Kurt 1 … Kurt n)', 'Max. zápasov hráča za deň', 'Plánovanie turnaja', 'Dĺžka zápasu (min)', 'Oddych hráča (min)', 'Začiatok dňa', 'Koniec dňa', 'Rozvrh skladá systém sám']) assert.ok(courts.includes(text), `${text} is in the section "Kurty a pravidlá hrania" of the page`);
   assert.ok(/matchMinutes: Number\(f\('matchMinutes'\)\), restMinutes: Number\(f\('restMinutes'\)\), dayStart: f\('dayStart'\), dayEnd: f\('dayEnd'\), autoSchedule:/.test(card), 'the planning fields are sent with the Save of the page');
 });
