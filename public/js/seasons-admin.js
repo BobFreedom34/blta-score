@@ -158,7 +158,20 @@ function renderAdmin() {
   load();
 }
 
+// the tabs of a card stay under the top bar while the page scrolls: the height of the bar goes to the stylesheet as --topbar-h, and follows it when it changes
+// (its links are filled in after the page loads and wrap into more rows on a narrower screen)
+let topbarWatched = false;
+function syncTopbarHeight() {
+  const bar = document.querySelector('.topbar');
+  if (!bar) return;
+  if (bar.offsetHeight) document.documentElement.style.setProperty('--topbar-h', `${bar.offsetHeight}px`);
+  if (!topbarWatched && window.ResizeObserver) { topbarWatched = true; new ResizeObserver(syncTopbarHeight).observe(bar); }
+}
+window.addEventListener('resize', syncTopbarHeight);
+window.addEventListener('load', syncTopbarHeight);
+
 async function load() {
+  syncTopbarHeight();
   if (CLUB) {
     try {
       seasons = [await api(`/seasons/${CLUB_SEASON_ID}`)];
@@ -343,12 +356,14 @@ function seasonCardHtml(s) {
                 ${IS_TOURNAMENT && s.playType === 'DOUBLES' ? `<div class="sa-field sa-wide">Typ turnaja
                   <div style="padding-top:6px">Štvorhra — turnaj dvojíc (typ sa po vytvorení nedá zmeniť)</div>
                 </div>` : ''}
-                ${s.playType !== 'DOUBLES' ? `<div class="sa-field sa-wide">Kategórie
-                  <div class="sa-checks">${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}${s.categories.includes('OPEN') ? ' disabled' : ''}> ${label}</label>`).join('')}
-                    <label><input type="checkbox" data-cat="OPEN"${s.categories.includes('OPEN') ? ' checked' : ''}> Bez kategórie</label></div>
-                  <span class="sa-hint">${IS_TOURNAMENT
-                    ? 'Turnaj sa hrá len v zaškrtnutých kategóriách (len tie sa ukážu v „Zaradenie do kategórií“ a v „Formát turnaja“). „Bez kategórie“: hráči sa nezaraďujú, hrá sa jeden pavúk pre všetkých prihlásených.'
-                    : 'Sezóna sa hrá len v zaškrtnutých kategóriách: tie sa ukážu pri registrácii hráčov a v harmonograme. „Bez kategórie“: hráči sa pri registrácii kategóriu nevyberajú a skupiny sezóny sú bez kategórie (hrajú sa ako zápasy kategórie Iné).'}</span>
+                ${s.playType !== 'DOUBLES' ? `<div class="sa-field sa-full">Kategórie
+                  <div class="sa-cats-row">
+                    <div class="sa-checks">${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}${s.categories.includes('OPEN') ? ' disabled' : ''}> ${label}</label>`).join('')}
+                      <label><input type="checkbox" data-cat="OPEN"${s.categories.includes('OPEN') ? ' checked' : ''}> Bez kategórie</label></div>
+                    <span class="sa-hint">${IS_TOURNAMENT
+                      ? 'Turnaj sa hrá len v zaškrtnutých kategóriách (len tie sa ukážu v „Zaradenie do kategórií“ a v „Formát turnaja“). „Bez kategórie“: hráči sa nezaraďujú, hrá sa jeden pavúk pre všetkých prihlásených.'
+                      : 'Sezóna sa hrá len v zaškrtnutých kategóriách: tie sa ukážu pri registrácii hráčov a v harmonograme. „Bez kategórie“: hráči sa pri registrácii kategóriu nevyberajú a skupiny sezóny sú bez kategórie (hrajú sa ako zápasy kategórie Iné).'}</span>
+                  </div>
                 </div>` : ''}
               </div>
             </section>
@@ -721,7 +736,7 @@ function wireSeason(card) {
   function payBarHtml(rows) {
     const paid = rows.filter((r) => r.paid).length;
     const unpaid = rows.length - paid;
-    const tile = (label, value, tone) => `<div style="flex:1;min-width:110px;background:#f4f4f6;border-radius:10px;padding:10px 12px"><div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.04em">${label}</div><div style="font-size:20px;font-weight:800;${tone ? `color:${tone}` : ''}">${value}</div></div>`;
+    const tile = (label, value, tone) => `<div style="flex:1;min-width:110px;background:#232329;border-radius:10px;padding:10px 12px"><div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.04em">${label}</div><div style="font-size:20px;font-weight:800;${tone ? `color:${tone}` : ''}">${value}</div></div>`;
     const chip = (key, label, n) => `<button type="button" class="sg-link" data-reg-filter="${key}" style="${regFilter === key ? 'font-weight:800;text-decoration:underline' : ''}">${label} (${n})</button>`;
     const withMail = rows.filter((r) => !r.paid && r.email).length;
     return `

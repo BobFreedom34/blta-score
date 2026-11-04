@@ -3940,7 +3940,7 @@ a.home-tl.future:hover .home-tl-body { border-color: var(--orange); }
 .sa-dates { color: var(--gray); font-size: 13px; font-weight: 600; }
 .sa-chip { padding: 3px 9px; border-radius: var(--radius-sm); font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; background: var(--gray-light); color: var(--gray); }
 .sa-chip.now { background: var(--orange); color: var(--white); }
-.sa-chip.future { background: transparent; border: 1px solid var(--gray-dim); color: var(--charcoal); }
+.sa-chip.future { background: transparent; border: 1px solid var(--gray-dim); color: #d6d8dd; }
 .sa-count { margin-left: auto; color: var(--gray); font-size: 12px; font-weight: 600; }
 .sa-body { padding: 16px 18px 18px; }
 .sa-bar { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; font-size: 12px; font-weight: 700; color: var(--gray-dim); }
@@ -4250,6 +4250,9 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .rte-toolbar button:hover { border-color: var(--orange); }
 .rte { min-height: 140px; max-height: 420px; overflow-y: auto; margin-top: 6px; padding: 10px 12px; border: 1.5px solid #ddd; border-radius: var(--radius-sm); background: #fff; color: #111; font-size: 14px; font-weight: 500; line-height: 1.6; }
 .rte:focus { outline: none; border-color: var(--orange); }
+/* the description editor inside the dark card of a tournament or a season */
+.sa-card .rte, .sa-card .rte-toolbar button { background: var(--fill-grey); color: #fff; border-color: rgba(255, 255, 255, 0.14); }
+.sa-card .rte-toolbar button:hover { border-color: var(--orange); }
 .rte p { margin: 0 0 8px; } .rte h3 { margin: 10px 0 4px; font-size: 15px; } .rte ul, .rte ol { margin: 4px 0 8px 22px; } .rte a { color: var(--orange); }
 
 /* Rozpis, all rounds: a heading per round */
@@ -5137,25 +5140,39 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .venue-admin-row.vn-drop-before { box-shadow: inset 0 3px 0 var(--orange); }
 .venue-admin-row.vn-drop-after { box-shadow: inset 0 -3px 0 var(--orange); }
 
-/* the card of a tournament or a season (Backend): black tabs under the name, the form in sections */
-.sa-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 18px; border-bottom: 1px solid var(--gray-light); }
-.sa-tab { background: var(--ink); color: var(--white); border: 2px solid var(--ink); border-radius: var(--radius-sm); padding: 8px 16px; font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; cursor: pointer; }
-.sa-tab:hover { background: #2c2c31; border-color: #2c2c31; }
-.sa-tab.active { background: var(--ink); border-color: var(--orange); color: var(--white); box-shadow: inset 0 -3px 0 var(--orange); }
+/* the card of a tournament or a season (Backend, club manage page): dark like the windows (the ink and the greys are re-pointed inside it, as in .modal), the tabs
+   under the name stay under the top bar while the page scrolls (--topbar-h is set by seasons-admin.js), the form in sections */
+.sa-card { background: #1b1b1f; color: var(--white); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: none; color-scheme: dark; --ink: #fff; --gray: #c3c7cf; --gray-dim: #8b8f98; --gray-light: rgba(255, 255, 255, 0.1); }
+.sa-tabs { position: sticky; top: var(--topbar-h, 56px); z-index: 20; background: #1b1b1f; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.sa-tab { background: var(--green-light); color: #0a0a0a; border: 2px solid var(--green-light); border-radius: var(--radius-sm); padding: 8px 16px; font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; cursor: pointer; }
+.sa-tab:hover { background: #c6ff3a; border-color: #c6ff3a; }
+.sa-tab.active { background: var(--orange); border-color: var(--orange); color: #fff; }
 .sa-tab-link { margin-left: auto; padding: 8px 0; font-size: 12px; font-weight: 800; color: var(--orange); text-decoration: none; }
 .sa-tab-link:hover { text-decoration: underline; }
 .sa-card .sa-body { padding-top: 18px; }
-.sa-section { background: var(--gray-light); border-radius: var(--radius-md); padding: 14px 16px 16px; margin-bottom: 14px; }
-.sa-section h4 { margin: 0 0 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--orange); }
+/* what the tabs of the card embed (the bracket editor of the Pavúk tab: its cards, fields and format choices) follows the dark card */
+.sa-card .card { background: #232329; box-shadow: none; }
+.sa-card :is(input, select, textarea):not([type=checkbox], [type=radio], [type=file], [type=range], [type=color], [type=button], [type=submit]) { background: var(--fill-grey); color: #fff; border-color: rgba(255, 255, 255, 0.14); }
+.sa-card .format-option { background: var(--fill-grey); color: #fff; border-color: rgba(255, 255, 255, 0.14); }
+.sa-card .format-option:has(input:checked) { border-color: var(--orange); background: rgba(255, 85, 0, 0.14); }
+.sa-card .format-option > span > div:last-child { color: #a9adb6 !important; }
+.sa-card .format-option span span { color: #8b8f98 !important; }
+.sa-section { background: #232329; border: 1px solid #fff; border-radius: var(--radius-md); padding: 14px 16px 16px; margin-bottom: 14px; }
+.sa-section h4 { margin: 0 0 14px; font-size: 16px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--green-light); }
 .sa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px 14px; align-items: end; }
-.sa-field { display: grid; gap: 5px; font-size: 12px; font-weight: 700; color: var(--charcoal); min-width: 0; }
-.sa-field input[type=text], .sa-field input[type=number], .sa-field input[type=date] { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1.5px solid #ddd; background: var(--white); font-family: inherit; font-size: 14px; }
+.sa-field { display: grid; gap: 5px; font-size: 12px; font-weight: 700; color: #c3c7cf; min-width: 0; }
+.sa-field input[type=text], .sa-field input[type=number], .sa-field input[type=date], .sa-field input[type=time] { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1.5px solid rgba(255, 255, 255, 0.14); background: var(--fill-grey); color: #fff; font-family: inherit; font-size: 14px; }
+.sa-field input::placeholder { color: #6f737c; font-weight: 500; }
 .sa-field input:focus { outline: none; border-color: var(--orange); }
 .sa-wide { grid-column: span 2; }
 .sa-full { grid-column: 1 / -1; }
 .sa-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; padding-bottom: 10px; }
 .sa-checks { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; font-weight: 600; padding: 8px 0; }
 .sa-checks label { display: flex; align-items: center; gap: 6px; }
+/* the categories of a tournament or a season: the options at the left edge, the explanation next to them (under them on a narrow screen) */
+.sa-cats-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 32px; }
+.sa-cats-row .sa-checks { flex: 0 0 auto; width: 280px; max-width: 100%; }
+.sa-cats-row .sa-hint { flex: 1 1 280px; min-width: 0; padding-top: 8px; font-size: 12px; line-height: 1.5; }
 .sa-hint { font-weight: 600; color: var(--gray); }
 /* Bodovanie a podmienky of a tournament (public/js/tournament-rules.js) */
 .tr-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px 28px; }
@@ -5166,15 +5183,15 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .tr-opt b { display: block; font-size: 14px; color: var(--ink); }
 .tr-opt small { display: block; font-size: 12.5px; line-height: 1.4; color: var(--gray); font-weight: 600; }
 .tr-order { list-style: none; margin: 0; padding: 0; counter-reset: tr; }
-.tr-order li { counter-increment: tr; display: flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 6px 8px; background: var(--white); border: 1px solid var(--gray-light); border-radius: var(--radius-sm); }
+.tr-order li { counter-increment: tr; display: flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 6px 8px; background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius-sm); }
 .tr-order li::before { content: counter(tr) '.'; flex: 0 0 auto; width: 20px; font-weight: 800; color: var(--orange); }
 .tr-name { flex: 1 1 auto; min-width: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
 .tr-name small { font-weight: 600; color: var(--gray); font-size: 11.5px; }
-.tr-move { flex: 0 0 auto; width: 30px; height: 28px; padding: 0; border: 1px solid var(--gray-light); border-radius: var(--radius-sm); background: var(--white); color: var(--ink); font-size: 12px; cursor: pointer; }
+.tr-move { flex: 0 0 auto; width: 30px; height: 28px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius-sm); background: var(--fill-grey); color: #fff; font-size: 12px; cursor: pointer; }
 .tr-move:hover:not(:disabled) { border-color: var(--orange); color: var(--orange); }
 .tr-move:disabled { opacity: 0.3; cursor: default; }
 .sa-actions { display: flex; align-items: center; gap: 8px; padding-top: 4px; }
-@media (max-width: 600px) { .sa-wide { grid-column: 1 / -1; } .sa-tabs { padding: 10px; } .sa-tab { padding: 8px 11px; } }
+@media (max-width: 600px) { .sa-wide { grid-column: 1 / -1; } .sa-tabs { padding: 8px 10px; gap: 6px; align-items: stretch; } .sa-tab { flex: 1 1 calc(50% - 3px); min-width: 0; padding: 6px 6px; font-size: 12px; line-height: 1.2; text-align: center; overflow-wrap: anywhere; } .sa-tabs:has(.sa-tab:nth-of-type(5)) .sa-tab { flex-basis: calc(33.333% - 4px); } .sa-tab-link { flex: 0 0 100%; margin-left: 0; padding: 0; text-align: right; font-size: 11px; } }
 
 /* the hero photo of a season / tournament page: 3:1 on wide screens (2400 x 800), 4:3 on phones (1200 x 900), the title over its lower left */
 .sv-head.has-hero { position: relative; display: flex; align-items: flex-end; gap: 22px; aspect-ratio: 3 / 1; min-height: 240px; margin-top: 18px; padding: 26px 30px; border-radius: var(--radius); overflow: hidden; background: #1b1b1f; }
@@ -5189,8 +5206,8 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 
 /* the hero photo blocks in the card of a season / tournament */
 .sa-hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 14px; margin-top: 10px; }
-.sa-hero { background: var(--white); border-radius: var(--radius-md); padding: 12px; display: grid; gap: 10px; align-content: start; }
-.sa-hero-pic { width: 100%; border-radius: 8px; overflow: hidden; background: #d9d9d9; display: flex; align-items: center; justify-content: center; color: var(--gray); font-size: 13px; font-weight: 600; }
+.sa-hero { background: #232329; border-radius: var(--radius-md); padding: 12px; display: grid; gap: 10px; align-content: start; }
+.sa-hero-pic { width: 100%; border-radius: 8px; overflow: hidden; background: var(--fill-grey); display: flex; align-items: center; justify-content: center; color: var(--gray); font-size: 13px; font-weight: 600; }
 .sa-hero-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .sa-hero-info { display: grid; gap: 4px; font-size: 12px; color: var(--gray); font-weight: 500; line-height: 1.45; }
 .sa-hero-info strong { color: var(--ink); font-size: 13px; }
@@ -6139,9 +6156,6 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .modal .autocomplete-item:hover, .modal .autocomplete-item.active { background: var(--fill-grey); }
 .modal .sv-reg-opt { background: var(--fill-grey); color: #fff; border-color: rgba(255, 255, 255, 0.14); }
 .modal .sv-reg-opt:hover { border-color: var(--orange); }
-/* the tie-break order of the rules form: the rows and the arrows were white boxes, and the ink is white in a window, so the names and the arrows could not be read */
-.modal .tr-order li, .modal .tr-move { background: var(--fill-grey); border-color: rgba(255, 255, 255, 0.12); }
-.modal .tr-move { color: #fff; }
 .modal .mc-search { background: var(--fill-grey); color: #fff; border: 1px solid rgba(255, 255, 255, 0.14); }
 /* the hero photo of the registration window runs to the edges of the (now roomier) window */
 .modal .sv-reg-cover { margin: -28px -26px 18px; }

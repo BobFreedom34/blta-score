@@ -101,7 +101,7 @@ async function openAssignPanel(host, seasonId, onSaved, categories) {
 
   function sectionHtml(title, list) {
     return `
-      <div class="as-col" style="background:#fff;border-radius:12px;padding:12px 14px;min-width:0">
+      <div class="as-col" style="background:#232329;border-radius:12px;padding:12px 14px;min-width:0">
         <div style="font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--orange)">${title} <span style="color:var(--gray)">(${list.length})</span></div>
         ${list.length ? list.sort((a, b) => strength(b) - strength(a) || a.name.localeCompare(b.name)).map(rowHtml).join('') : '<div class="sg-empty" style="margin-top:6px">—</div>'}
       </div>`;

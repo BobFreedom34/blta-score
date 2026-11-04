@@ -172,7 +172,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
   function blockHtml(c) {
     const noDraw = c.stage === 'NONE';
     return `
-      <div class="sd-block" data-cat="${c.category}" style="background:#fff;border-radius:12px;padding:12px 14px;min-width:0">
+      <div class="sd-block" data-cat="${c.category}" style="background:#232329;border-radius:12px;padding:12px 14px;min-width:0">
         <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">
           <span style="font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--orange)">${c.label}</span>
           <span style="color:var(--gray);font-size:13px">${escapeHtml(summaryText(c))}</span>
@@ -196,7 +196,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
         ${locked ? '' : `<button type="button" class="btn btn-sm btn-outline" data-act="dbl-remove" data-id="${p.id}" title="Zrušiť pár">✕</button>`}
       </div>`).join('');
     return `
-      <div style="background:#fff;border-radius:12px;padding:14px;margin-top:12px">
+      <div style="background:#232329;border-radius:12px;padding:14px;margin-top:12px">
         <strong style="font-size:15px">Páry na štvorhru</strong>
         <div style="font-size:12px;color:var(--gray);margin:2px 0 8px">Hráči sa môžu pri registrácii prihlásiť s partnerom. Z párov sa žrebuje kategória <b>Štvorhra</b> vyššie, rovnako ako ostatné (nasadenie, formát, skupiny, útecha, ručne). Zápasy sa nepočítajú do ligy ani do CourtIQ.</div>
         ${rows || '<div style="font-size:13px;color:var(--gray);margin:6px 0">Zatiaľ nie sú žiadne páry.</div>'}

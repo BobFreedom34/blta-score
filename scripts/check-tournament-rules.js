@@ -181,11 +181,20 @@ test('the create window of a club tournament asks only for the basics (name, pla
   assert.ok(/matchMinutes: Number\(f\('matchMinutes'\)\), restMinutes: Number\(f\('restMinutes'\)\), dayStart: f\('dayStart'\), dayEnd: f\('dayEnd'\), autoSchedule:/.test(card), 'the planning fields are sent with the Save of the page');
 });
 
-test('in a window (.modal) the ink is white, so the rows and the arrows of the tie-break order are dark, not white boxes with white text (they could not be read)', () => {
+test('the card of a tournament or a season is dark like the windows, its tabs stay under the top bar while the page scrolls, and nothing in it is a white box any more (the tie-break rows, the stat tiles, the blocks of the draw and the assignment, the editor)', () => {
   const css = fs.readFileSync(path.join(ROOT, 'public', 'css', 'style.css'), 'utf8');
-  assert.ok(/\.modal \{ --ink: #fff;/.test(css), 'the ink is white inside a window');
-  assert.ok(/\.modal \.tr-order li, \.modal \.tr-move \{ background: var\(--fill-grey\);/.test(css), 'the rows and the arrows have the dark fill inside a window');
-  assert.ok(/\.modal \.tr-move \{ color: #fff; \}/.test(css), 'and the arrows are white on it');
+  const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
+  assert.ok(/\.sa-card \{ background: #1b1b1f;[^}]*--ink: #fff;/.test(css), 'the card is dark and the ink is white inside it');
+  assert.ok(/\.sa-tabs \{ position: sticky; top: var\(--topbar-h, 56px\); z-index: 20; background: #1b1b1f;/.test(css), 'the tabs are sticky under the top bar, on a card-coloured background');
+  assert.ok(/\.sa-section \{ background: #232329; border: 1px solid #fff;/.test(css), 'the sections are dark with a white border');
+  assert.ok(/\.sa-tab \{ background: var\(--green-light\); color: #0a0a0a;/.test(css) && /\.sa-tab\.active \{ background: var\(--orange\);[^}]*color: #fff;/.test(css), 'the tabs are green, the chosen one orange');
+  assert.ok(/@media \(max-width: 600px\) \{[^\n]*\.sa-tab \{ flex: 1 1 calc\(50% - 3px\); min-width: 0;[^\n]*\.sa-tabs:has\(\.sa-tab:nth-of-type\(5\)\) \.sa-tab \{ flex-basis: calc\(33\.333% - 4px\); \}/.test(css) && !/\.sa-tabs \{[^}]*overflow-x: auto/.test(css), 'on a phone the tabs wrap into two lines (3 + 2 for five tabs, 2 + 2 for four) and all stay visible, they do not scroll');
+  assert.ok(/\.sa-section h4 \{[^}]*font-size: 16px;[^}]*color: var\(--green-light\);/.test(css), 'the names of the sections are big and green');
+  assert.ok(/\.tr-order li \{[^}]*background: var\(--fill-grey\);/.test(css) && /\.tr-move \{[^}]*background: var\(--fill-grey\); color: #fff;/.test(css), 'the tie-break rows and the arrows are dark: the ink is white inside the card, so white boxes would hide their text');
+  const admin = pub('js/seasons-admin.js');
+  assert.ok(admin.includes('ResizeObserver') && admin.includes("'--topbar-h'"), 'the height of the top bar follows its size (its links wrap on a narrower screen)');
+  for (const [file, light] of [['js/seasons-admin.js', '#f4f4f6'], ['js/season-draw.js', 'background:#fff'], ['js/season-assign.js', 'background:#fff']]) assert.ok(!pub(file).includes(light), `${file} has no white box inside the dark card`);
+  assert.ok(/\.sa-card \.rte, \.sa-card \.rte-toolbar button \{ background: var\(--fill-grey\)/.test(css), 'the description editor is dark inside the card');
 });
 
 async function main() {
