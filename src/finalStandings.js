@@ -1,6 +1,6 @@
 // The final standings of a tournament or a season (the tab "Konečné poradie" of its page): who finished where.
 //   - a bracket: 1st the winner, 2nd the finalist, then by the round a player lost in (semi-finalists share 3rd-4th, quarter-finalists 5th-8th …); a player still in play is
-//     listed first as "still playing" and the order is provisional until the final is decided; the consolation brackets of a PRINCE / MONRAD draw are not ranked;
+//     listed first as "still playing" and the order is provisional until the final is decided; the losers brackets rank the losers they hold: MONRAD decides every place, PRINCE only the round-1 losers (the others of a round share their places);
 //   - the matches for the places after two groups (see tournamentDraw.createPlacementMatches): the final gives 1st-2nd, the match for the 3rd place 3rd-4th …;
 //   - groups: the players that did not go on to a bracket follow the bracket players, by their place in the group; groups without a bracket are listed one by one;
 //   - a league season: one table per group (its places), and a section per play-off bracket.
@@ -29,8 +29,10 @@ function slotPlayer(bracket, id) {
 }
 const byName = (a, b) => String(a.player.name).localeCompare(String(b.player.name), 'sk');
 
-// The rows of one elimination bracket. -> { rows, complete, players: Set of ids }
-function bracketRows(bracket) {
+// The tiers of one bracket, best first: [{ ids, stage, round }] — the players of a tier share its places. The winner, then the finalist, then the players who lost in each
+// round, the latest round first. The losers of a round that have a bracket of their own (the losers brackets of PRINCE: the round-1 losers; of MONRAD: the losers of
+// every round, each again a Monrad) are ranked by how that bracket went, so MONRAD decides every place and PRINCE only the first ones among the round-1 losers.
+function bracketTiers(bracket, all) {
   const nodes = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? ORDER BY round, position').all(bracket.id);
   const rounds = bracketEngine.roundCount(bracket.size);
   const lostIn = new Map(); // player id -> the round he lost in
@@ -44,26 +46,49 @@ function bracketRows(bracket) {
     lostIn.set(winner === n.player1_id ? n.player2_id : n.player1_id, n.round);
     if (n.round === rounds) champion = winner;
   });
-  const rows = [];
-  const add = (ids, from, to, extra) => ids.map((id) => ({ player: slotPlayer(bracket, id), ...extra, from, to })).filter((r) => r.player).sort(byName).forEach((r) => rows.push(r));
-  let offset = 0;
-  if (champion) {
-    add([champion], 1, 1, { stage: 'WINNER' });
-    offset = 1;
-  } else {
+  const tiers = [];
+  let complete = !!champion;
+  if (champion) tiers.push({ ids: [champion], stage: 'WINNER' });
+  else {
     const playing = [...seen].filter((id) => !lostIn.has(id));
-    add(playing, 1, playing.length, { stage: 'PLAYING' });
-    offset = playing.length;
+    if (playing.length) tiers.push({ ids: playing, stage: 'PLAYING' });
   }
   for (let round = rounds; round >= 1; round -= 1) {
     const ids = [...lostIn.entries()].filter(([, r]) => r === round).map(([id]) => id);
     if (!ids.length) continue;
     const away = rounds - round; // 0: lost the final, 1: a semi-final, 2: a quarter-final …
     const stage = away === 0 ? 'FINALIST' : away === 1 ? 'SEMI' : away === 2 ? 'QUARTER' : away === 3 ? 'LAST16' : 'ROUND';
-    add(ids, offset + 1, offset + ids.length, { stage, round });
-    offset += ids.length;
+    const child = all.find((b) => b.parent_bracket_id === bracket.id && b.kind === 'CONSOLATION' && (b.feeds_round || 1) === round);
+    if (child && ids.length > 1) {
+      const sub = bracketTiers(child, all);
+      complete = complete && sub.complete;
+      const inSet = new Set(ids);
+      const placed = new Set();
+      sub.tiers.forEach((t) => {
+        const mine = t.ids.filter((id) => inSet.has(id));
+        mine.forEach((id) => placed.add(id));
+        if (mine.length) tiers.push({ ids: mine, stage: t.stage === 'PLAYING' ? 'PLAYING' : 'PLACE' });
+      });
+      const left = ids.filter((id) => !placed.has(id));
+      if (left.length) tiers.push({ ids: left, stage, round });
+    } else {
+      tiers.push({ ids, stage, round });
+    }
   }
-  return { rows, complete: !!champion, players: new Set(seen) };
+  return { tiers, complete, seen };
+}
+
+// The rows of one bracket (with the brackets of the losers under it). -> { rows, complete, players: Set of ids }
+function bracketRows(bracket, all = []) {
+  const made = bracketTiers(bracket, all);
+  const rows = [];
+  let offset = 0;
+  made.tiers.forEach((tier) => {
+    const part = tier.ids.map((id) => ({ player: slotPlayer(bracket, id), stage: tier.stage, round: tier.round })).filter((r) => r.player).sort(byName);
+    part.forEach((r) => rows.push({ ...r, from: offset + 1, to: offset + part.length }));
+    offset += part.length;
+  });
+  return { rows, complete: made.complete, players: made.seen };
 }
 
 // The matches for the places: each bracket of two is a place pair (the first one the 1st-2nd, the next the 3rd-4th …).
@@ -136,7 +161,7 @@ function compute(season) {
     // a league season: a table per group, then its play-off brackets
     allGroups.forEach((g) => sections.push(tableSection(season, g, frozen)));
     brackets.filter((b) => (b.kind || 'MAIN') === 'MAIN').forEach((b) => {
-      const made = bracketRows(b);
+      const made = bracketRows(b, brackets);
       if (made.rows.length) sections.push({ key: `bracket-${b.id}`, title: b.name, category: catOf(b), complete: made.complete, rows: made.rows });
     });
   } else {
@@ -151,7 +176,7 @@ function compute(season) {
         const rest = groupRemainder(season.id, category, made.players, made.players.size);
         sections.push({ key: `category-${category}`, title, category, complete: made.complete && groupsFinished(season.id, category), rows: [...made.rows, ...rest] });
       } else if (mains.length) {
-        const made = bracketRows(mains[0]);
+        const made = bracketRows(mains[0], brackets);
         const rest = groupRemainder(season.id, category, made.players, made.players.size);
         sections.push({ key: `category-${category}`, title, category, complete: made.complete && groupsFinished(season.id, category), rows: [...made.rows, ...rest] });
       } else if (categoryGroups.length === 1) {

@@ -101,6 +101,33 @@ test('an elimination bracket of 6 (byes): the players who skipped round 1 are ra
   assert.deepStrictEqual(s.rows.map((r) => [r.from, r.to]), [[1, 1], [2, 2], [3, 4], [3, 4], [5, 6], [5, 6]]);
 });
 
+test('MONRAD of 8 (the sheet "Fantastic 8"): every place 1-8 is decided by its own match (3rd place, 5th place, 7th place)', async () => {
+  const t = await newTournament('Final Monrad');
+  await register(t, 'ELITE', 8);
+  assert.strictEqual((await draw(t, { category: 'ELITE', format: 'MONRAD', mode: 'AUTO', mainFormat: 'BO3', consolationFormat: 'BO3' })).status, 201);
+  let data = await standingsOf(t);
+  assert.strictEqual(data.complete, false);
+  await playAll(t);
+  data = await standingsOf(t);
+  assert.strictEqual(data.complete, true, 'every bracket decided');
+  const s = section(data, 'category-ELITE');
+  assert.deepStrictEqual(s.rows.map((r) => [r.from, r.to]), [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6], [7, 7], [8, 8]], 'eight different places');
+  assert.deepStrictEqual(s.rows.slice(0, 2).map((r) => r.stage), ['WINNER', 'FINALIST']);
+  assert.strictEqual(new Set(idOf(s.rows)).size, 8);
+  assert.ok(s.rows.slice(2).every((r) => r.stage === 'PLACE'));
+});
+
+test('PRINCE of 8: the round-1 losers are ranked by the consolation (5th, 6th, 7th-8th shared), the round-2 losers share 3rd-4th (no match decides it)', async () => {
+  const t = await newTournament('Final Prince');
+  await register(t, 'ELITE', 8);
+  assert.strictEqual((await draw(t, { category: 'ELITE', format: 'PRINCE', mode: 'AUTO', mainFormat: 'BO3', consolationFormat: 'BO3' })).status, 201);
+  await playAll(t);
+  const data = await standingsOf(t);
+  assert.strictEqual(data.complete, true);
+  const s = section(data, 'category-ELITE');
+  assert.deepStrictEqual(s.rows.map((r) => [r.from, r.to, r.stage]), [[1, 1, 'WINNER'], [2, 2, 'FINALIST'], [3, 4, 'SEMI'], [3, 4, 'SEMI'], [5, 5, 'PLACE'], [6, 6, 'PLACE'], [7, 8, 'PLACE'], [7, 8, 'PLACE']]);
+});
+
 test('the matches for the places: 6 players, 2 groups → 1st-2nd from the final, 3rd-4th from the match for the 3rd place, 5th-6th from the match for the 5th place', async () => {
   const t = await newTournament('Final Placement');
   await register(t, 'ELITE', 6);

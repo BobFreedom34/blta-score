@@ -700,6 +700,7 @@ async function loadFinal() {
 function finalRowText(r) {
   const range = r.from === r.to ? `${r.from}.` : `${r.from}.–${r.to}.`;
   const result = r.stage === 'WINNER' || r.stage === 'FINALIST' || r.stage === 'TABLE' || (r.stage === 'PLACE' && r.from === r.to) ? t('season.final.place', { n: r.from })
+    : r.stage === 'PLACE' ? t('season.final.placeRange', { from: r.from, to: r.to })
     : r.stage === 'SEMI' ? t('season.final.semi')
     : r.stage === 'QUARTER' ? t('season.final.quarter')
     : r.stage === 'LAST16' ? t('season.final.last16')
