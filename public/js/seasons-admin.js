@@ -479,10 +479,15 @@ function seasonCardHtml(s) {
         <div class="sa-panel" data-panel="regs"${active === 'regs' ? '' : ' hidden'}><div class="season-regs-list"></div></div>
         ${IS_TOURNAMENT ? `<div class="sa-panel" data-panel="assign"${active === 'assign' ? '' : ' hidden'}><div class="season-assign"></div></div>
         <div class="sa-panel" data-panel="draw"${active === 'draw' ? '' : ' hidden'}><div class="season-draw"></div></div>` : `<div class="sa-panel" data-panel="groups"${active === 'groups' ? '' : ' hidden'}>
-          <div style="font-size:12px;color:var(--gray);margin:0 0 12px">${s.matchCount} ${tl('označených', 'tagged')} ${nounFor(s.matchCount, 'zápas', 'zápasy', 'zápasov', 'match', 'matches')} · ${s.groups.length} ${nounFor(s.groups.length, 'skupina', 'skupiny', 'skupín', 'group', 'groups')}
+          <section class="sa-section">
+          <h4>${tl('Skupiny', 'Groups')}</h4>
+          <div class="sa-hint" style="margin:0 0 14px">${s.matchCount} ${tl('označených', 'tagged')} ${nounFor(s.matchCount, 'zápas', 'zápasy', 'zápasov', 'match', 'matches')} · ${s.groups.length} ${nounFor(s.groups.length, 'skupina', 'skupiny', 'skupín', 'group', 'groups')}
             (${byCategory[0]} Elite, ${byCategory[1]} Next Gen, ${byCategory[2]} Novice) — ${tl('každá skupina je jedna tabuľka', 'each group is one standings table')}</div>
           <div class="season-groups">${s.groups.length ? s.groups.map((g) => groupRowHtml(g, s)).join('') : `<div class="empty-state" style="padding:12px 0">${tl('Zatiaľ žiadne skupiny.', 'No groups yet.')}</div>`}</div>
-          <form class="add-group-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+          </section>
+          <section class="sa-section">
+          <h4>${tl('Pridať skupinu', 'Add a group')}</h4>
+          <form class="add-group-form" style="display:flex;gap:12px;flex-wrap:wrap">
             <input type="text" data-field="name" maxlength="80" placeholder="${escapeHtml(tl('Nová skupina, napr. Babolat', 'New group, e.g. Babolat'))}" required style="flex:1;min-width:160px;${inputStyle}">
             <select data-field="category" required style="${inputStyle}">
               <option value="">${tl('Kategória…', 'Category…')}</option>
@@ -490,6 +495,7 @@ function seasonCardHtml(s) {
             </select>
             <button type="submit" class="btn btn-sm btn-primary">${tl('Pridať skupinu', 'Add group')}</button>
           </form>
+          </section>
         </div>
         <div class="sa-panel" data-panel="schedule"${active === 'schedule' ? '' : ' hidden'}>${scheduleSectionHtml()}</div>
         <div class="sa-panel" data-panel="brackets"${active === 'brackets' ? '' : ' hidden'}><div class="season-brackets"></div></div>`}
@@ -722,27 +728,29 @@ function wireSeason(card) {
   function addPlayerFormHtml(players, rows) {
     const taken = new Set(rows.map((r) => r.playerId).filter(Boolean));
     addableNames = players.filter((p) => !taken.has(p.id)).map((p) => p.name);
-    const box = `display:block;margin-top:4px;${inputStyle}`;
     return `
-      <form class="reg-add" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;padding:22px 0 8px;margin-top:4px;border-top:1px solid #eee">
-        <label style="flex:2;min-width:220px;font-size:12px;font-weight:700">${isDoubles ? tl('Pridať pár — hráč', 'Add a pair — player') : tl('Pridať hráča', 'Add a player')}
-          <div class="autocomplete"><input type="text" data-ra="player" id="reg-player-${id}" placeholder="${escapeHtml(tl('Začni písať meno alebo priezvisko…', 'Start typing a name or surname…'))}" autocomplete="off" style="${box};width:100%"><div class="autocomplete-list" id="reg-player-list-${id}"></div></div>
-        </label>
-        ${isDoubles ? `<label style="flex:2;min-width:220px;font-size:12px;font-weight:700">${tl('Partner', 'Partner')}
-          <input type="text" data-ra="partner" list="reg-partner-names-${id}" maxlength="80" placeholder="${escapeHtml(tl('Meno partnera', 'Name of the partner'))}" autocomplete="off" style="${box};width:100%">
-          <datalist id="reg-partner-names-${id}">${players.map((p) => `<option value="${escapeHtml(p.name)}"></option>`).join('')}</datalist>
-        </label>` : `<label style="font-size:12px;font-weight:700">${tl('Kategória', 'Category')}
-          <select data-ra="category" style="${box}"><option value="">${IS_TOURNAMENT || seasonWithoutCategories(seasons.find((x) => x.id === id)) ? tl('Bez kategórie', 'No category') : tl('Kategória…', 'Category…')}</option>${categoryOptions('')}</select>
-        </label>`}
-        <label style="flex:1;min-width:130px;font-size:12px;font-weight:700">${tl('Telefón', 'Phone')}
-          <input type="text" data-ra="phone" maxlength="20" placeholder="${escapeHtml(tl('z profilu', 'from the profile'))}" style="${box};width:100%">
-        </label>
-        <label style="flex:1;min-width:170px;font-size:12px;font-weight:700">${tl('E-mail', 'Email')}
-          <input type="text" data-ra="email" maxlength="120" placeholder="${escapeHtml(tl('z profilu', 'from the profile'))}" style="${box};width:100%">
-        </label>
-        <button type="submit" class="btn btn-sm btn-primary">${isDoubles ? tl('Pridať pár', 'Add pair') : tl('Pridať hráča', 'Add player')}</button>
-      </form>
-      <div class="reg-add-hint" style="font-size:12px;color:var(--gray);min-height:16px;margin-bottom:18px"></div>`;
+      <section class="sa-section">
+        <h4>${isDoubles ? tl('Pridať pár', 'Add a pair') : tl('Pridať hráča', 'Add a player')}</h4>
+        <form class="reg-add sa-grid">
+          <label class="sa-field sa-wide">${isDoubles ? tl('Hráč', 'Player') : tl('Meno hráča', 'Name of the player')}
+            <div class="autocomplete"><input type="text" data-ra="player" id="reg-player-${id}" placeholder="${escapeHtml(tl('Začni písať meno alebo priezvisko…', 'Start typing a name or surname…'))}" autocomplete="off"><div class="autocomplete-list" id="reg-player-list-${id}"></div></div>
+          </label>
+          ${isDoubles ? `<label class="sa-field sa-wide">${tl('Partner', 'Partner')}
+            <input type="text" data-ra="partner" list="reg-partner-names-${id}" maxlength="80" placeholder="${escapeHtml(tl('Meno partnera', 'Name of the partner'))}" autocomplete="off">
+            <datalist id="reg-partner-names-${id}">${players.map((p) => `<option value="${escapeHtml(p.name)}"></option>`).join('')}</datalist>
+          </label>` : `<label class="sa-field">${tl('Kategória', 'Category')}
+            <select data-ra="category"><option value="">${IS_TOURNAMENT || seasonWithoutCategories(seasons.find((x) => x.id === id)) ? tl('Bez kategórie', 'No category') : tl('Kategória…', 'Category…')}</option>${categoryOptions('')}</select>
+          </label>`}
+          <label class="sa-field">${tl('Telefón', 'Phone')}
+            <input type="text" data-ra="phone" maxlength="20" placeholder="${escapeHtml(tl('z profilu', 'from the profile'))}">
+          </label>
+          <label class="sa-field sa-wide">${tl('E-mail', 'Email')}
+            <input type="text" data-ra="email" maxlength="120" placeholder="${escapeHtml(tl('z profilu', 'from the profile'))}">
+          </label>
+          <div><button type="submit" class="btn btn-sm btn-primary">${isDoubles ? tl('Pridať pár', 'Add pair') : tl('Pridať hráča', 'Add player')}</button></div>
+        </form>
+        <div class="reg-add-hint sa-hint" style="min-height:18px;margin-top:14px"></div>
+      </section>`;
   }
 
   function wireAddPlayerForm(players) {
@@ -792,7 +800,7 @@ function wireSeason(card) {
   function payBarHtml(rows) {
     const paid = rows.filter((r) => r.paid).length;
     const unpaid = rows.length - paid;
-    const tile = (label, value, tone) => `<div style="flex:1;min-width:120px;background:#232329;border-radius:12px;padding:16px 18px"><div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">${label}</div><div style="font-size:22px;font-weight:800;line-height:1.2;${tone ? `color:${tone}` : ''}">${value}</div></div>`;
+    const tile = (label, value, tone) => `<div class="sa-tile"><div class="sa-tile-l">${label}</div><div class="sa-tile-v"${tone ? ` style="color:${tone}"` : ''}>${value}</div></div>`;
     const chip = (key, label, n) => `<button type="button" class="sg-link" data-reg-filter="${key}" style="${regFilter === key ? 'font-weight:800;text-decoration:underline' : ''}">${label} (${n})</button>`;
     const withMail = rows.filter((r) => !r.paid && r.email).length;
     // how full the event is: the maximum, who is in and who waits (substitutes)
@@ -811,43 +819,43 @@ function wireSeason(card) {
       return `${tl('Obsadené', 'Filled')}: ${rows.length - waiting}${season.maxPlayers ? ` / ${season.maxPlayers}` : ''}${waiting ? ` · ${waiting} ${subNoun(waiting)}` : ''}`;
     })();
     return `
-      <div style="margin:0 0 26px">
-        <div style="display:flex;gap:14px;flex-wrap:wrap">
+      <section class="sa-section">
+        <h4>${tl('Prehľad registrácií', 'Registrations overview')}</h4>
+        <div class="sa-tiles">
           ${tile(tl('Registrovaní', 'Registered'), rows.length)}${tile(tl('Zaplatili', 'Paid'), paid, 'var(--green-light)')}${tile(tl('Nezaplatili', 'Unpaid'), unpaid, unpaid ? '#ff8a7a' : '')}
           ${feeAmount !== null ? tile(tl('Vybrané', 'Collected'), money(feeAmount * paid), 'var(--green-light)') + tile(tl('Chýba', 'Missing'), money(feeAmount * unpaid), unpaid ? '#ff8a7a' : '') : ''}
         </div>
-        ${capLine ? `<div style="margin-top:20px;font-size:14px;font-weight:700">${escapeHtml(capLine)}</div>` : ''}
-        <div style="display:flex;gap:20px;row-gap:14px;flex-wrap:wrap;align-items:center;margin-top:20px">
+        ${capLine ? `<div class="sa-capline">${escapeHtml(capLine)}</div>` : ''}
+        <div class="sa-filters">
           ${chip('all', tl('Všetci', 'All'), rows.length)}${chip('unpaid', tl('Nezaplatili', 'Unpaid'), unpaid)}${chip('paid', tl('Zaplatili', 'Paid'), paid)}${waiting ? chip('sub', tl('Náhradníci', 'Substitutes'), waiting) : ''}
           <span style="flex:1"></span>
           <button type="button" class="btn btn-sm btn-primary" data-remind-all${withMail ? '' : ' disabled'} title="${escapeHtml(tl('Pošle e-mail s pripomienkou platby všetkým, ktorí nezaplatili a majú e-mail', 'Sends an e-mail reminding about the payment to everybody who has not paid and has an e-mail'))}">${tl('Pripomenúť nezaplateným', 'Remind the unpaid')} (${withMail})</button>
           <a class="btn btn-sm btn-outline" href="/api/seasons/${id}/registrations.csv">${tl('Stiahnuť CSV', 'Download CSV')}</a>
         </div>
-      </div>`;
+      </section>`;
   }
   const remindText = (r) => tl(`Odoslané: ${r.sent}${r.noEmail ? `, bez e-mailu: ${r.noEmail}` : ''}${r.recent ? `, nedávno pripomenuté: ${r.recent}` : ''}${r.failed ? `, zlyhalo: ${r.failed}` : ''}`, `Sent: ${r.sent}${r.noEmail ? `, no e-mail: ${r.noEmail}` : ''}${r.recent ? `, reminded recently: ${r.recent}` : ''}${r.failed ? `, failed: ${r.failed}` : ''}`);
   function regEditHtml(r) {
-    const box = `display:block;margin-top:4px;${inputStyle}`;
     return `
-        <div style="padding:18px 0;border-top:1px solid #eee" data-reg="${r.id}">
+        <div class="sa-reg-edit" data-reg="${r.id}">
           <strong>${escapeHtml(r.name)}</strong>
-          <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px">
-            ${isDoubles ? `<label style="flex:1;min-width:170px;font-size:12px;font-weight:700">${tl('Partner', 'Partner')}
-              <input type="text" data-re="partner" maxlength="80" value="${escapeHtml(r.partnerName || '')}" style="${box};width:100%">
-            </label>` : `<label style="font-size:12px;font-weight:700">${tl('Kategória', 'Category')}
-              <select data-re="category" style="${box}">${IS_TOURNAMENT || seasonWithoutCategories(seasons.find((x) => x.id === id)) ? `<option value="">${tl('Bez kategórie', 'No category')}</option>` : ''}${categoryOptions(r.category)}</select>
+          <div class="sa-grid" style="margin-top:14px">
+            ${isDoubles ? `<label class="sa-field sa-wide">${tl('Partner', 'Partner')}
+              <input type="text" data-re="partner" maxlength="80" value="${escapeHtml(r.partnerName || '')}">
+            </label>` : `<label class="sa-field">${tl('Kategória', 'Category')}
+              <select data-re="category">${IS_TOURNAMENT || seasonWithoutCategories(seasons.find((x) => x.id === id)) ? `<option value="">${tl('Bez kategórie', 'No category')}</option>` : ''}${categoryOptions(r.category)}</select>
             </label>`}
-            <label style="flex:1;min-width:130px;font-size:12px;font-weight:700">${tl('Telefón', 'Phone')}
-              <input type="text" data-re="phone" maxlength="20" value="${escapeHtml(r.phone || '')}" style="${box};width:100%">
+            <label class="sa-field">${tl('Telefón', 'Phone')}
+              <input type="text" data-re="phone" maxlength="20" value="${escapeHtml(r.phone || '')}">
             </label>
-            <label style="flex:1;min-width:170px;font-size:12px;font-weight:700">${tl('E-mail', 'Email')}
-              <input type="text" data-re="email" maxlength="120" value="${escapeHtml(r.email || '')}" style="${box};width:100%">
+            <label class="sa-field sa-wide">${tl('E-mail', 'Email')}
+              <input type="text" data-re="email" maxlength="120" value="${escapeHtml(r.email || '')}">
+            </label>
+            <label class="sa-field sa-full">${tl('Poznámka', 'Note')}
+              <textarea data-re="note" rows="2" maxlength="500">${escapeHtml(r.note || '')}</textarea>
             </label>
           </div>
-          <label style="display:block;font-size:12px;font-weight:700;margin-top:14px">${tl('Poznámka', 'Note')}
-            <textarea data-re="note" rows="2" maxlength="500" style="${box};width:100%">${escapeHtml(r.note || '')}</textarea>
-          </label>
-          <div style="display:flex;gap:12px;margin-top:14px">
+          <div class="sa-actions" style="margin-top:16px">
             <button type="button" class="btn btn-sm btn-primary" data-reg-save>${tl('Uložiť', 'Save')}</button>
             <button type="button" class="btn btn-sm btn-outline" data-reg-cancel>${tl('Zrušiť', 'Cancel')}</button>
           </div>
@@ -861,19 +869,24 @@ function wireSeason(card) {
       regsBtn.textContent = `${tl('Registrácie', 'Registrations')} (${rows.length}${unpaidCount ? ` · ${unpaidCount} ${tl('nezapl.', 'unpaid')}` : ''})`;
       const players = await loadAdminPlayers();
       const shown = rows.filter((r) => regFilter === 'all' || (regFilter === 'sub' ? r.substitute : regFilter === 'paid' ? r.paid : !r.paid));
-      regsList.innerHTML = payBarHtml(rows) + addPlayerFormHtml(players, rows) + (shown.length ? shown.map((r) => (r.id === editingReg ? regEditHtml(r) : `
-        <div style="display:flex;gap:16px;row-gap:10px;align-items:center;flex-wrap:wrap;padding:18px 0;border-top:1px solid #eee" data-reg="${r.id}">
+      const regRow = (r) => (r.id === editingReg ? regEditHtml(r) : `
+        <div class="sa-reg-row" data-reg="${r.id}">
           <div style="flex:1;min-width:220px">
             <strong>${escapeHtml(r.name)}${isDoubles && r.partnerName ? ` / ${escapeHtml(r.partnerName)}` : ''}</strong> ${isDoubles ? '' : `<span class="sa-chip future">${escapeHtml(r.category ? catLabel(r.category) : tl('Bez kategórie', 'No category'))}</span>`}${r.playerId ? '' : ` <span style="font-size:11px;color:var(--gray)">${tl('nové meno', 'new name')}</span>`}${r.substitute ? ` <span class="sa-chip now" title="${escapeHtml(tl('Maximum je naplnené: nastúpi, keď sa niekto odhlási', 'The maximum is reached: comes in when somebody drops out'))}">${tl('Náhradník č.', 'Substitute #')}${r.substitutePosition}</span>` : ''}
             <div style="font-size:12px;color:var(--gray);margin-top:6px">${r.phone || r.email ? `${escapeHtml(r.phone)} · <a href="mailto:${escapeHtml(r.email)}" style="color:var(--orange)">${escapeHtml(r.email)}</a>` : tl('bez kontaktných údajov', 'no contact details')} · ${escapeHtml(fmtDate(r.createdAt.slice(0, 10)))}</div>
-            ${r.note ? `<div style="font-size:13px;margin-top:4px;white-space:pre-wrap"><strong>${tl('Poznámka', 'Note')}:</strong> ${escapeHtml(r.note)}</div>` : ''}
+            ${r.note ? `<div style="font-size:13px;margin-top:6px;white-space:pre-wrap"><strong>${tl('Poznámka', 'Note')}:</strong> ${escapeHtml(r.note)}</div>` : ''}
           </div>
           ${r.remindedAt ? `<span style="font-size:11px;color:var(--gray)">${tl('pripomenuté', 'reminded')} ${escapeHtml(fmtDate(r.remindedAt))}</span>` : ''}
           ${!r.paid && r.email ? `<button type="button" class="sg-link" data-reg-remind title="${escapeHtml(tl('Pošle e-mail s pripomienkou platby', 'Sends an e-mail reminding about the payment'))}">✉ ${tl('Pripomenúť', 'Remind')}</button>` : ''}
           <button type="button" class="sg-link" data-reg-edit title="${escapeHtml(tl('Zmeniť kategóriu, telefón, e-mail alebo poznámku', 'Change the category, phone, e-mail or note'))}">${tl('Upraviť', 'Edit')}</button>
           <button type="button" class="sg-link" data-reg-paid="${r.paid ? 0 : 1}">${r.paid ? tl('Zaplatené ✓', 'Paid ✓') : tl('Nezaplatené', 'Not paid')}</button>
           <button type="button" class="sg-x" data-reg-del title="${escapeHtml(tl('Zmazať túto registráciu', 'Delete this registration'))}">&times;</button>
-        </div>`)).join('') : `<div class="sg-empty">${rows.length ? tl('Nikto v tomto filtri.', 'Nobody in this filter.') : tl('Zatiaľ žiadne registrácie.', 'No registrations yet.')}</div>`);
+        </div>`);
+      regsList.innerHTML = payBarHtml(rows) + addPlayerFormHtml(players, rows) + `
+        <section class="sa-section">
+          <h4>${tl('Prihlásení', 'Registered')} (${shown.length})</h4>
+          ${shown.length ? shown.map(regRow).join('') : `<div class="sg-empty">${rows.length ? tl('Nikto v tomto filtri.', 'Nobody in this filter.') : tl('Zatiaľ žiadne registrácie.', 'No registrations yet.')}</div>`}
+        </section>`;
       wireAddPlayerForm(players);
     } catch (err) { fail(err); }
   }

@@ -93,7 +93,7 @@ async function openAssignPanel(host, seasonId, onSaved, categories) {
     const buttons = cats.map(([key, name, short]) => `<button type="button" class="btn btn-sm ${p.draft === key ? 'btn-primary' : 'btn-outline'}" data-assign="${key}" title="${name}" style="min-width:34px;padding:4px 8px">${short}</button>`).join('')
       + (p.draft ? `<button type="button" class="sg-x" data-assign="" title="${tl('Zatiaľ nezaradený', 'Not sorted yet')}">&times;</button>` : '');
     return `
-      <div class="as-row" data-id="${p.id}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:7px 0;border-top:1px solid #eee">
+      <div class="as-row" data-id="${p.id}">
         <div style="flex:1;min-width:170px"><strong>${escapeHtml(p.name)}</strong><div style="margin-top:2px">${chips}</div></div>
         <div style="display:flex;gap:4px;align-items:center">${buttons}</div>
       </div>`;
@@ -101,30 +101,30 @@ async function openAssignPanel(host, seasonId, onSaved, categories) {
 
   function sectionHtml(title, list) {
     return `
-      <div class="as-col" style="background:#232329;border-radius:12px;padding:12px 14px;min-width:0">
-        <div style="font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--orange)">${title} <span style="color:var(--gray)">(${list.length})</span></div>
-        ${list.length ? list.sort((a, b) => strength(b) - strength(a) || a.name.localeCompare(b.name)).map(rowHtml).join('') : '<div class="sg-empty" style="margin-top:6px">—</div>'}
-      </div>`;
+      <section class="sa-section as-col">
+        <h4>${title} <span class="as-count">(${list.length})</span></h4>
+        ${list.length ? list.sort((a, b) => strength(b) - strength(a) || a.name.localeCompare(b.name)).map(rowHtml).join('') : '<div class="sg-empty">—</div>'}
+      </section>`;
   }
 
   function render() {
     const changed = dirty().length;
     const unsorted = players.filter((p) => !p.draft);
     host.innerHTML = `
-      <div style="background:var(--gray-light);border-radius:12px;padding:14px">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-          <strong style="font-size:15px">${tl('Zaradenie do kategórií', 'Category assignment')}</strong>
-          <span style="color:var(--gray);font-size:13px">${players.length} ${nounFor(players.length, 'hráč', 'hráči', 'hráčov', 'player', 'players')} · ${tl('nezaradení', 'not sorted')} ${unsorted.length}${cats.map(([k, name]) => ` · ${name} ${players.filter((p) => p.draft === k).length}`).join('')}</span>
+      <section class="sa-section">
+        <h4>${tl('Zaradenie do kategórií', 'Category assignment')}</h4>
+        <div class="as-bar">
+          <span class="as-sum">${players.length} ${nounFor(players.length, 'hráč', 'hráči', 'hráčov', 'player', 'players')} · ${tl('nezaradení', 'not sorted')} ${unsorted.length}${cats.map(([k, name]) => ` · ${name} ${players.filter((p) => p.draft === k).length}`).join('')}</span>
           <span style="flex:1"></span>
           <button type="button" class="btn btn-sm btn-outline" data-act="suggest" ${unsorted.length ? '' : 'disabled'}>${tl('Navrhnúť automaticky', 'Suggest automatically')}</button>
           <button type="button" class="btn btn-sm btn-outline" data-act="reset" ${changed ? '' : 'disabled'}>${tl('Zahodiť zmeny', 'Discard changes')}</button>
           <button type="button" class="btn btn-sm btn-primary" data-act="save" ${changed ? '' : 'disabled'}>${tl('Uložiť zaradenie', 'Save assignment')}${changed ? ` (${changed})` : ''}</button>
         </div>
-        <div class="as-error" style="color:var(--danger);font-weight:600;margin-bottom:8px"></div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px">
-          ${sectionHtml(tl('Nezaradení', 'Not sorted'), unsorted)}
-          ${cats.map(([key, name]) => sectionHtml(name, players.filter((p) => p.draft === key))).join('')}
-        </div>
+        <div class="as-error"></div>
+      </section>
+      <div class="as-grid">
+        ${sectionHtml(tl('Nezaradení', 'Not sorted'), unsorted)}
+        ${cats.map(([key, name]) => sectionHtml(name, players.filter((p) => p.draft === key))).join('')}
       </div>`;
   }
 

@@ -5184,7 +5184,35 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sa-cats-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 32px; }
 .sa-cats-row .sa-checks { flex: 0 0 auto; width: 280px; max-width: 100%; }
 .sa-cats-row .sa-hint { flex: 1 1 280px; min-width: 0; padding-top: 8px; font-size: 12px; line-height: 1.5; }
-.sa-hint { font-weight: 600; color: var(--gray); }
+.sa-hint { font-size: 12px; line-height: 1.5; font-weight: 600; color: var(--gray); }
+/* the other tabs of the card use the same sections, labelled fields and greens as Základné info */
+.sa-field select, .sa-field textarea { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1.5px solid rgba(255, 255, 255, 0.14); background: var(--fill-grey); color: #fff; font-family: inherit; font-size: 14px; }
+.sa-field textarea { resize: vertical; }
+.sa-field select:focus, .sa-field textarea:focus { outline: none; border-color: var(--orange); }
+.sa-section .sa-grid { gap: 16px 18px; }
+.sa-tiles { display: flex; flex-wrap: wrap; gap: 12px; }
+.sa-tile { flex: 1; min-width: 120px; background: var(--fill-grey); border-radius: 10px; padding: 14px 16px; }
+.sa-tile-l { font-size: 11px; font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.sa-tile-v { font-size: 22px; font-weight: 800; line-height: 1.2; }
+.sa-capline { margin-top: 16px; font-size: 14px; font-weight: 700; }
+.sa-filters { display: flex; flex-wrap: wrap; gap: 14px 20px; align-items: center; margin-top: 16px; }
+.sa-reg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 16px 0; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.sa-reg-edit { padding: 16px 0; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.sa-section h4 + .sa-reg-row, .sa-section h4 + .sa-reg-edit, .sa-section h4 + .as-row { border-top: 0; padding-top: 0; }
+.as-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.as-sum { font-size: 13px; color: var(--gray); }
+.as-error { color: var(--danger); font-weight: 600; margin-top: 12px; }
+.as-error:empty { display: none; }
+.as-grid, .sd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 0 16px; align-items: start; }
+.sd-grid { grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); }
+.as-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 0; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.as-count { color: var(--gray); font-weight: 700; }
+.sd-courts-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 18px; }
+.sd-courts-field { width: 150px; }
+.sa-card .sg-schedule { margin-top: 0; padding: 14px 16px 16px; border: 1px solid #fff; border-radius: var(--radius-md); background: #232329; }
+.sa-card .sg-sched-title { margin: 0 0 14px; font-size: 16px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--green-light); }
+.sa-card .season-brackets .card { border: 1px solid #fff; border-radius: var(--radius-md); padding: 14px 16px 16px; margin-bottom: 14px !important; }
+.sa-card .season-brackets .card > h3 { margin: 0 0 14px !important; font-size: 16px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--green-light); }
 /* Bodovanie a podmienky of a tournament (public/js/tournament-rules.js) */
 .tr-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px 28px; }
 .tr-title { font-size: 14px; font-weight: 800; color: var(--ink); margin-bottom: 6px; }

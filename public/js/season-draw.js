@@ -114,7 +114,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
         <label><input type="radio" name="sd-mode-${c.category}" value="AUTO" data-cat="${c.category}"${s.mode === 'AUTO' ? ' checked' : ''}> ${modeLabel[0]}</label>
         <label><input type="radio" name="sd-mode-${c.category}" value="MANUAL" data-cat="${c.category}"${s.mode === 'MANUAL' ? ' checked' : ''}> ${modeLabel[1]}</label>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:18px 20px;margin-bottom:22px">`;
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:18px 20px;margin-bottom:22px">`;
     if (isGroups(s.format)) {
       body += `
         <label style="font-size:12px;color:var(--gray)">${tl('Hráčov v skupine (najviac)', 'Players per group (at most)')}<input type="number" min="2" max="12" class="sd-gsize" data-cat="${c.category}" value="${s.groupSize}" style="${inputStyle};display:block;width:100%;margin-top:3px"></label>
@@ -174,17 +174,15 @@ async function openDrawPanel(host, seasonId, onChanged) {
   function blockHtml(c) {
     const noDraw = c.stage === 'NONE';
     return `
-      <div class="sd-block" data-cat="${c.category}" style="background:#232329;border-radius:14px;padding:22px 24px;min-width:0">
-        <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
-          <span style="font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--orange)">${drawCategoryLabel(c)}</span>
-          <span style="color:var(--gray);font-size:13px">${escapeHtml(summaryText(c))}</span>
-        </div>
-        ${c.players ? `<div style="font-weight:700;font-size:14px;margin-top:22px;line-height:1.5">${tl('Nasadenie', 'Seeding')} ${noDraw ? `<span style="font-weight:400;color:var(--gray)">${tl('— číslo 1 je najlepší; nenasadení nechajte prázdni', '— number 1 is the best; leave the unseeded empty')}</span>` : `<span style="font-weight:400;color:var(--gray)">${tl('(žrebovanie je už vytvorené)', '(the draw has been made already)')}</span>`}</div>` : ''}
+      <section class="sa-section sd-block" data-cat="${c.category}">
+        <h4>${drawCategoryLabel(c)}</h4>
+        <div class="sa-hint" style="margin:-6px 0 6px">${escapeHtml(summaryText(c))}</div>
+        ${c.players ? `<div style="font-weight:700;font-size:14px;margin-top:20px;line-height:1.5">${tl('Nasadenie', 'Seeding')} ${noDraw ? `<span style="font-weight:400;color:var(--gray)">${tl('— číslo 1 je najlepší; nenasadení nechajte prázdni', '— number 1 is the best; leave the unseeded empty')}</span>` : `<span style="font-weight:400;color:var(--gray)">${tl('(žrebovanie je už vytvorené)', '(the draw has been made already)')}</span>`}</div>` : ''}
         ${seedRowsHtml(c)}
         ${c.players && noDraw ? `<button type="button" class="btn btn-sm btn-outline" data-act="seeds" data-cat="${c.category}" ${dirty(c.category) ? '' : 'disabled'}>${tl('Uložiť nasadenie', 'Save seeding')}${dirty(c.category) ? ` (${dirty(c.category)})` : ''}</button>` : ''}
-        <div style="border-top:1px solid #eee;margin-top:26px;padding-top:24px">${noDraw ? setupHtml(c) : stateHtml(c)}</div>
+        <div style="border-top:1px solid rgba(255,255,255,0.12);margin-top:22px;padding-top:22px">${noDraw ? setupHtml(c) : stateHtml(c)}</div>
         <div class="sd-error" data-cat="${c.category}" style="color:var(--danger);font-weight:600;margin-top:12px"></div>
-      </div>`;
+      </section>`;
   }
 
   // The pairs of the tournament (the "Štvorhra" category below is drawn like the others, with the pairs as its players): made here by hand or
@@ -198,9 +196,9 @@ async function openDrawPanel(host, seasonId, onChanged) {
         ${locked ? '' : `<button type="button" class="btn btn-sm btn-outline" data-act="dbl-remove" data-id="${p.id}" title="${escapeHtml(tl('Zrušiť pár', 'Remove the pair'))}">✕</button>`}
       </div>`).join('');
     return `
-      <div style="background:#232329;border-radius:14px;padding:22px 24px;margin-top:22px">
-        <strong style="font-size:15px">${tl('Páry na štvorhru', 'Doubles pairs')}</strong>
-        <div style="font-size:12px;line-height:1.5;color:var(--gray);margin:6px 0 16px">${tl('Hráči sa môžu pri registrácii prihlásiť s partnerom. Z párov sa žrebuje kategória <b>Štvorhra</b> vyššie, rovnako ako ostatné (nasadenie, formát, skupiny, útecha, ručne). Zápasy sa nepočítajú do ligy ani do CourtIQ.', 'Players can register with a partner. The category <b>Doubles</b> above is drawn from the pairs like the others (seeding, format, groups, consolation, by hand). The matches do not count for the league or for CourtIQ.')}</div>
+      <section class="sa-section">
+        <h4>${tl('Páry na štvorhru', 'Doubles pairs')}</h4>
+        <div style="font-size:12px;line-height:1.5;color:var(--gray);margin:0 0 16px">${tl('Hráči sa môžu pri registrácii prihlásiť s partnerom. Z párov sa žrebuje kategória <b>Štvorhra</b> vyššie, rovnako ako ostatné (nasadenie, formát, skupiny, útecha, ručne). Zápasy sa nepočítajú do ligy ani do CourtIQ.', 'Players can register with a partner. The category <b>Doubles</b> above is drawn from the pairs like the others (seeding, format, groups, consolation, by hand). The matches do not count for the league or for CourtIQ.')}</div>
         ${rows || `<div style="font-size:13px;color:var(--gray);margin:6px 0">${tl('Zatiaľ nie sú žiadne páry.', 'There are no pairs yet.')}</div>`}
         ${locked ? `<div style="font-size:12px;color:var(--gray);margin-top:6px">${tl('Žrebovanie štvorhry už existuje — páry sa dajú meniť po jeho zmazaní.', 'The doubles draw already exists — the pairs can be changed after it is deleted.')}</div>` : `
         <datalist id="sd-dplayers">${playerNames.map((n) => `<option value="${escapeHtml(n)}"></option>`).join('')}</datalist>
@@ -210,7 +208,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
           <button type="button" class="btn btn-sm btn-outline" data-act="dbl-add">${tl('Pridať pár', 'Add a pair')}</button>
           ${d.registrationsWithPartner ? `<button type="button" class="btn btn-sm btn-outline" data-act="dbl-from-regs">${tl('Páry z registrácií', 'Pairs from the registrations')} (${d.registrationsWithPartner})</button>` : ''}
         </div>`}
-      </div>`;
+      </section>`;
   }
 
   async function doublesAction(act, btn) {
@@ -232,20 +230,19 @@ async function openDrawPanel(host, seasonId, onChanged) {
 
   function render() {
     host.innerHTML = `
-      <div style="background:var(--gray-light);border-radius:14px;padding:24px">
-        <div style="display:flex;gap:16px;row-gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:24px">
-          <strong style="font-size:15px">${tl('Formát turnaja', 'Tournament format')}</strong>
-          <span style="flex:1"></span>
-          <label style="font-size:13px">${tl('Počet kurtov', 'Number of courts')}
-            <input type="number" min="0" max="50" inputmode="numeric" class="sd-courts" value="${overview.courtCount || ''}" placeholder="0" style="width:64px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px;margin:0 6px">
+      <section class="sa-section">
+        <h4>${tl('Kurty', 'Courts')}</h4>
+        <div class="sd-courts-row">
+          <label class="sa-field sd-courts-field">${tl('Počet kurtov', 'Number of courts')}
+            <input type="number" min="0" max="50" inputmode="numeric" class="sd-courts" value="${overview.courtCount || ''}" placeholder="0">
           </label>
           <button type="button" class="btn btn-sm btn-outline" data-act="courts">${tl('Uložiť kurty', 'Save courts')}</button>
           <a data-public href="/tournament/${encodeURIComponent(overview.slug)}#courts" target="_blank" rel="noopener" style="font-size:13px;font-weight:700">${tl('Harmonogram', 'Schedule')} ›</a>
-          <span class="sd-courts-note" style="font-size:12px;color:var(--gray)">${overview.courtCount ? Array.from({ length: Math.min(overview.courtCount, 6) }, (_, i) => `${tl('Kurt', 'Court')} ${i + 1}`).join(', ') + (overview.courtCount > 6 ? ` … ${tl('Kurt', 'Court')} ${overview.courtCount}` : '') : tl('Kurty zatiaľ nie sú nastavené', 'The courts are not set yet')}</span>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:22px">${overview.categories.map(blockHtml).join('')}</div>
-        ${isDoubles ? pairsBlockHtml() : ''}
-      </div>`;
+        <div class="sd-courts-note sa-hint" style="margin-top:12px">${overview.courtCount ? Array.from({ length: Math.min(overview.courtCount, 6) }, (_, i) => `${tl('Kurt', 'Court')} ${i + 1}`).join(', ') + (overview.courtCount > 6 ? ` … ${tl('Kurt', 'Court')} ${overview.courtCount}` : '') : tl('Kurty zatiaľ nie sú nastavené', 'The courts are not set yet')}</div>
+      </section>
+      <div class="sd-grid">${overview.categories.map(blockHtml).join('')}</div>
+      ${isDoubles ? pairsBlockHtml() : ''}`;
   }
 
   async function refresh() {
