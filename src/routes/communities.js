@@ -238,17 +238,18 @@ router.get('/mine', (req, res) => {
 // The events of a player: the tournaments of the communities and clubs he is an ACTIVE member of (public ones only): the running and coming ones first (soonest
 // first), then the finished ones (latest first). Each carries its community, like the tournaments of the feed.
 router.get('/my-events', (req, res) => {
-  const playerId = needPlayer(req, res);
-  if (!playerId) return;
+  const everywhere = communities.isSuperAdmin(req); // the super admin is a hidden member of every community and club (see the feed)
+  const playerId = everywhere ? auth.getPlayerId(req) : needPlayer(req, res);
+  if (!playerId && !everywhere) return;
   const today = new Date().toISOString().slice(0, 10);
   const rows = db.prepare(`
     SELECT s.id, s.name, s.slug, s.kind, s.start_date, s.end_date, s.venue, s.play_type, s.categories, s.registration_open, s.created_at,
            o.id AS org_id, o.slug AS org_slug, o.name AS org_name, o.type AS org_type, o.logo_url AS org_logo
     FROM seasons s
     JOIN organisations o ON o.id = s.organisation_id
-    JOIN organisation_members m ON m.organisation_id = o.id AND m.player_id = ? AND m.status = 'ACTIVE'
+    ${everywhere ? '' : "JOIN organisation_members m ON m.organisation_id = o.id AND m.player_id = ? AND m.status = 'ACTIVE'"}
     WHERE o.hidden = 0 AND o.approved = 1
-  `).all(playerId).map((r) => ({
+  `).all(...(everywhere ? [] : [playerId])).map((r) => ({
     type: 'TOURNAMENT', kind: eventKind(r), id: r.id, name: r.name, slug: r.slug, startDate: r.start_date || null, endDate: r.end_date || null, venue: r.venue || '',
     playType: r.play_type || 'SINGLES', categories: tournamentCategories(r), registrationOpen: !!r.registration_open, createdAt: r.created_at,
     organisation: { id: r.org_id, slug: r.org_slug, name: r.org_name, type: r.org_type, logoUrl: r.org_logo || '' },
@@ -259,13 +260,17 @@ router.get('/my-events', (req, res) => {
   res.json({ items: [...coming, ...past].slice(0, 100) });
 });
 
+// The super admin of the site is a hidden member of every community and club: his feed has the news and the tournaments of all of them (nothing is stored: he is
+// not in any member list or count, and a community made tomorrow is in his feed too). The hidden and the not yet approved ones stay out, as for everybody.
 router.get('/feed', (req, res) => {
-  const playerId = needPlayer(req, res);
-  if (!playerId) return;
+  const everywhere = communities.isSuperAdmin(req);
+  const playerId = everywhere ? auth.getPlayerId(req) : needPlayer(req, res);
+  if (!playerId && !everywhere) return;
   // the cursor is a time (the createdAt of the last item); anything else is ignored. (Two items made in the very same millisecond could hide each other at a page
   // border - the stamps have millisecond precision, so it does not happen in practice.)
   const cursor = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(String(req.query.before || '')) ? String(req.query.before) : null;
-  const member = "JOIN organisation_members m ON m.organisation_id = o.id AND m.player_id = ? AND m.status = 'ACTIVE'";
+  const member = everywhere ? '' : "JOIN organisation_members m ON m.organisation_id = o.id AND m.player_id = ? AND m.status = 'ACTIVE'";
+  const args = (...rest) => (everywhere ? rest : [playerId, ...rest]); // (the member join is the only place that asks for the player)
   const orgOf = (r) => ({ id: r.org_id, slug: r.org_slug, name: r.org_name, type: r.org_type, logoUrl: r.org_logo || '' });
   const orgColumns = 'o.id AS org_id, o.slug AS org_slug, o.name AS org_name, o.type AS org_type, o.logo_url AS org_logo';
   const posts = db.prepare(`
@@ -276,10 +281,10 @@ router.get('/feed', (req, res) => {
     LEFT JOIN players p ON p.id = po.author_player_id
     WHERE po.hidden = 0 AND o.hidden = 0 AND o.approved = 1 ${cursor ? 'AND po.created_at < ?' : ''}
     ORDER BY po.created_at DESC, po.id DESC LIMIT ${POSTS_PAGE + 1}
-  `).all(...(cursor ? [playerId, cursor] : [playerId])).map((r) => ({
+  `).all(...args(...(cursor ? [cursor] : []))).map((r) => ({
     type: 'POST', id: r.id, body: r.body, imageUrl: r.image_url || '', authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at, editedAt: r.edited_at || null, organisation: orgOf(r),
   }));
-  const postReactions = reactionsOf(posts.map((p) => p.id), playerId);
+  const postReactions = reactionsOf(posts.map((p) => p.id), playerId || 0);
   const postComments = commentCountsOf(posts.map((p) => p.id));
   posts.forEach((p) => { p.reactions = postReactions.get(p.id); p.commentCount = postComments.get(p.id); });
   const tournaments = db.prepare(`
@@ -289,7 +294,7 @@ router.get('/feed', (req, res) => {
     ${member}
     WHERE o.hidden = 0 AND o.approved = 1 ${cursor ? 'AND s.created_at < ?' : ''}
     ORDER BY s.created_at DESC, s.id DESC LIMIT ${POSTS_PAGE + 1}
-  `).all(...(cursor ? [playerId, cursor] : [playerId])).map((r) => ({
+  `).all(...args(...(cursor ? [cursor] : []))).map((r) => ({
     type: 'TOURNAMENT', kind: eventKind(r), id: r.id, name: r.name, slug: r.slug, startDate: r.start_date || null, endDate: r.end_date || null, venue: r.venue || '',
     playType: r.play_type || 'SINGLES', categories: tournamentCategories(r), registrationOpen: !!r.registration_open, createdAt: r.created_at, organisation: orgOf(r),
   }));
@@ -405,6 +410,7 @@ router.delete('/:id', (req, res) => {
     db.prepare('DELETE FROM organisation_post_comments WHERE organisation_id = ?').run(org.id);
     db.prepare('DELETE FROM organisation_posts WHERE organisation_id = ?').run(org.id);
     db.prepare('DELETE FROM organisation_invites WHERE organisation_id = ?').run(org.id);
+    db.prepare('DELETE FROM organisation_ranking WHERE organisation_id = ?').run(org.id);
     db.prepare('DELETE FROM organisation_members WHERE organisation_id = ?').run(org.id);
     db.prepare('DELETE FROM organisations WHERE id = ?').run(org.id);
     db.exec('COMMIT');
@@ -783,6 +789,59 @@ router.delete('/:id/members/:playerId', (req, res) => {
   // not a plain delete: a removed member waits like a declined request, so a troublemaker cannot walk straight back in
   db.prepare("UPDATE organisation_members SET status = 'REJECTED', role = 'MEMBER', decided_at = ? WHERE organisation_id = ? AND player_id = ?").run(nowIso(), ctx.org.id, Number(req.params.playerId));
   res.json({ ok: true });
+});
+
+// ---------------- the ranking of an organisation (its tab Rebríček) ----------------
+// The points are set by hand by an admin of the organisation (or the super admin): for the moment nothing adds them by itself. The ranking is public like the
+// member list; players with equal points share a rank (1, 2, 2, 4).
+
+const MAX_RANKING_POINTS = 1000000;
+
+function rankingOf(orgId) {
+  const rows = db.prepare(`
+    SELECT r.player_id, r.points, p.name, p.slug FROM organisation_ranking r JOIN players p ON p.id = r.player_id
+    WHERE r.organisation_id = ? ORDER BY r.points DESC, p.name COLLATE NOCASE
+  `).all(orgId);
+  let rank = 0;
+  let last;
+  return rows.map((r, i) => {
+    if (i === 0 || r.points !== last) { rank = i + 1; last = r.points; }
+    return { rank, playerId: r.player_id, name: r.name, slug: r.slug, points: r.points };
+  });
+}
+
+router.get('/:id/ranking', (req, res) => {
+  const org = orgOr404(req, res, 'read');
+  if (!org) return;
+  if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
+  res.json({ items: rankingOf(org.id) });
+});
+
+// sets the points of one player (a new row when the player has none yet); the player has to be an active member of the organisation
+router.put('/:id/ranking/:playerId', (req, res) => {
+  const ctx = needOrgAdmin(req, res);
+  if (!ctx) return;
+  const playerId = Number(req.params.playerId) || 0;
+  const rawPoints = req.body && req.body.points;
+  // (not null, true or '': Number() would make a 0 of them)
+  const points = typeof rawPoints === 'number' || (typeof rawPoints === 'string' && rawPoints.trim() !== '') ? Number(rawPoints) : NaN;
+  if (!Number.isInteger(points) || points < 0 || points > MAX_RANKING_POINTS) return res.status(400).json({ error: `The points are a whole number from 0 to ${MAX_RANKING_POINTS}` });
+  const member = communities.memberOf(ctx.org.id, playerId);
+  const hasRow = db.prepare('SELECT 1 FROM organisation_ranking WHERE organisation_id = ? AND player_id = ?').get(ctx.org.id, playerId);
+  if (!hasRow && !(member && member.status === 'ACTIVE')) return res.status(404).json({ error: 'Only a member of this community or club can be in its ranking' });
+  db.prepare(`
+    INSERT INTO organisation_ranking (organisation_id, player_id, points) VALUES (?, ?, ?)
+    ON CONFLICT(organisation_id, player_id) DO UPDATE SET points = excluded.points, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+  `).run(ctx.org.id, playerId, points);
+  res.json({ items: rankingOf(ctx.org.id) });
+});
+
+router.delete('/:id/ranking/:playerId', (req, res) => {
+  const ctx = needOrgAdmin(req, res);
+  if (!ctx) return;
+  const info = db.prepare('DELETE FROM organisation_ranking WHERE organisation_id = ? AND player_id = ?').run(ctx.org.id, Number(req.params.playerId) || 0);
+  if (!info.changes) return res.status(404).json({ error: 'This player is not in the ranking' });
+  res.json({ items: rankingOf(ctx.org.id) });
 });
 
 // ---------------- the news of an organisation ----------------

@@ -479,6 +479,15 @@ function renderList() {
   }
   listEl.innerHTML = `<div class="sa-bar"><button type="button" data-fold="open">${tl('Rozbaliť všetko', 'Expand all')}</button><span>·</span><button type="button" data-fold="close">${tl('Zbaliť všetko', 'Collapse all')}</button></div>` + seasons.map(seasonHtml).join('');
   listEl.querySelectorAll('.season-admin-card').forEach(wireSeason);
+  // a link from the public page of an event (#season-<id>): that card is open and in view
+  const wanted = /^#season-(\d+)$/.exec(window.location.hash || '');
+  const wantedCard = wanted && listEl.querySelector(`.season-admin-card[data-season="${wanted[1]}"]`);
+  if (wantedCard) {
+    wantedCard.open = true;
+    wantedCard.style.scrollMarginTop = 'calc(var(--topbar-h, 56px) + 8px)';
+    wantedCard.scrollIntoView({ block: 'start' });
+    setTimeout(() => wantedCard.scrollIntoView({ block: 'start' }), 600); // (its tabs fill in a moment later and move the page)
+  }
   listEl.querySelectorAll('[data-fold]').forEach((btn) => {
     btn.addEventListener('click', () => {
       listEl.querySelectorAll('.season-admin-card').forEach((c) => { c.open = btn.dataset.fold === 'open'; });
@@ -743,8 +752,8 @@ function wireSeason(card) {
     return `
       <div style="margin:0 0 14px">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${tile(tl('Registrovaní', 'Registered'), rows.length)}${tile(tl('Zaplatili', 'Paid'), paid, '#2d7a1f')}${tile(tl('Nezaplatili', 'Unpaid'), unpaid, unpaid ? '#c0392b' : '')}
-          ${feeAmount !== null ? tile(tl('Vybrané', 'Collected'), money(feeAmount * paid), '#2d7a1f') + tile(tl('Chýba', 'Missing'), money(feeAmount * unpaid), unpaid ? '#c0392b' : '') : ''}
+          ${tile(tl('Registrovaní', 'Registered'), rows.length)}${tile(tl('Zaplatili', 'Paid'), paid, 'var(--green-light)')}${tile(tl('Nezaplatili', 'Unpaid'), unpaid, unpaid ? '#ff8a7a' : '')}
+          ${feeAmount !== null ? tile(tl('Vybrané', 'Collected'), money(feeAmount * paid), 'var(--green-light)') + tile(tl('Chýba', 'Missing'), money(feeAmount * unpaid), unpaid ? '#ff8a7a' : '') : ''}
         </div>
         <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:10px">
           ${chip('all', tl('Všetci', 'All'), rows.length)}${chip('unpaid', tl('Nezaplatili', 'Unpaid'), unpaid)}${chip('paid', tl('Zaplatili', 'Paid'), paid)}

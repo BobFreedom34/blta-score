@@ -98,6 +98,21 @@ test('the manage page is served at both addresses, is noindex, and is listed in 
   assert.ok(!(await (await fetch(`${base}/sitemap.xml`)).text()).includes('community-tournament'), 'it is not in the sitemap');
 });
 
+test('the public page of an event shows a settings gear next to the title only to who manages it (canManage), to the manage page of the club or to its card in the Backend', () => {
+  const src = read('js/season.js');
+  const fn = /function settingsLinkHtml\(\) \{[\s\S]*?\n\}/.exec(src);
+  assert.ok(fn, 'settingsLinkHtml()');
+  assert.ok(fn[0].includes("if (!season.canManage) return ''"), 'nothing for a visitor or a player who does not manage it');
+  assert.ok(fn[0].includes('`/community-tournament/${season.id}`'), 'a club event: the manage page of the club');
+  assert.ok(fn[0].includes("'/tournaments-admin' : '/seasons-admin'") && fn[0].includes('#season-${season.id}'), 'an event of the league: its card in the Backend');
+  assert.ok(src.includes('${escapeHtml(season.name)}${settingsLinkHtml()}</h1>'), 'it sits next to the title');
+  const admin = read('js/seasons-admin.js');
+  assert.ok(admin.includes('#season-(\\d+)$') && admin.includes('wantedCard.open = true'), 'the Backend opens the card the link points to');
+  const i18n = read('js/i18n.js');
+  assert.strictEqual((i18n.match(/'season\.settings':/g) || []).length, 2, 'the label exists in Slovak and in English');
+  assert.ok(read('css/style.css').includes('.sv-gear {'), 'the gear is styled');
+});
+
 test('the public pages draw the organiser\'s controls from canManage: the result buttons and the court planner', () => {
   assert.ok(read('js/bracket-result.js').includes('data.canManage'), 'result buttons');
   assert.ok(read('js/court-schedule.js').includes('season.canManage'), 'court planner');

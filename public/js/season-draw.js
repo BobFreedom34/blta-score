@@ -12,7 +12,7 @@ const DRAW_FORMAT_INFO = {
   PRINCE: ['PRINCE', tl('Pavúk + útecha pre porazených v 1. kole. Kto prehrá neskôr, končí.', 'A bracket + a consolation bracket for those who lose in round 1. Whoever loses later is out.')],
   MONRAD: ['Monrad', tl('Pavúk + útecha pre porazených v každom kole (a v nich zasa útechy): hrá sa, kým nie sú určené všetky miesta. Veľa zápasov.', 'A bracket + a consolation bracket for the losers of every round (and consolations again within those): play goes on until every place is decided. Many matches.')],
   ELIMINATION: [tl('Eliminácia', 'Elimination'), tl('Obyčajný pavúk, porazený končí.', 'A plain bracket, the loser is out.')],
-  GROUPS: [tl('Skupiny', 'Groups'), tl('Skupiny každý s každým, tabuľky podľa bodov (3 body za 2:0, 2 za 2:1, 1 za prehru 1:2).', 'Round-robin groups, tables by points (3 points for 2:0, 2 for 2:1, 1 for a 1:2 loss).')],
+  GROUPS: [tl('Skupiny', 'Groups'), tl('Skupiny každý s každým, tabuľky podľa bodov.', 'Round-robin groups, tables by points.')],
   GROUPS_BRACKET: [tl('Skupiny + pavúk', 'Groups + bracket'), tl('Skupiny každý s každým a potom pavúk z najlepších hráčov každej skupiny.', 'Round-robin groups and then a bracket of the best players of every group.')],
 };
 const DRAW_BRACKET_TYPES = { ELIMINATION: tl('Eliminácia', 'Elimination'), PRINCE: 'PRINCE', MONRAD: 'Monrad' };
@@ -104,7 +104,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
   function setupHtml(c) {
     const s = settingsFor(c);
     const formatBtns = Object.keys(DRAW_FORMAT_INFO).map((f) => `<button type="button" class="btn btn-sm ${s.format === f ? 'btn-primary' : 'btn-outline'}" data-act="format" data-cat="${c.category}" data-fmt="${f}">${escapeHtml(DRAW_FORMAT_INFO[f][0])}</button>`).join(' ');
-    const sel = (cls, label, options, extra = '') => `<label style="font-size:12px;color:var(--gray)">${label}<select class="${cls}" data-cat="${c.category}" style="${inputStyle};display:block;width:100%;margin-top:3px;color:var(--charcoal)">${options}</select></label>${extra}`;
+    const sel = (cls, label, options, extra = '') => `<label style="font-size:12px;color:var(--gray)">${label}<select class="${cls}" data-cat="${c.category}" style="${inputStyle};display:block;width:100%;margin-top:3px">${options}</select></label>${extra}`;
     const hasLosers = s.format === 'GROUPS_BRACKET' ? s.bracketType !== 'ELIMINATION' : ['PRINCE', 'MONRAD'].includes(s.format);
     const modeLabel = isGroups(s.format) ? [tl('Skupiny navrhne systém', 'The system suggests the groups'), tl('Skupiny zostavím ručne', 'I put the groups together by hand')] : [tl('Vytvoriť automaticky', 'Create automatically'), tl('Zostaviť ručne', 'Set up by hand')];
     let body = `

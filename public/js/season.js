@@ -216,6 +216,15 @@ function bankTransferHtml(contact, alongsideOnline) {
     </div>`;
 }
 
+// The gear next to the title, only for who manages this event (the server says so: season.canManage = an admin of the site, or an admin of the club that
+// owns it). A club event opens its manage page; an event of the league itself opens its card in the Backend.
+function settingsLinkHtml() {
+  if (!season.canManage) return '';
+  const href = season.organisation ? `/community-tournament/${season.id}` : `${isTournament() ? '/tournaments-admin' : '/seasons-admin'}#season-${season.id}`;
+  const label = escapeHtml(t('season.settings'));
+  return `<a class="sv-gear" href="${href}" title="${label}" aria-label="${label}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></a>`;
+}
+
 function headerHtml() {
   const status = statusOf();
   const today = todayIso();
@@ -242,7 +251,7 @@ function headerHtml() {
       <div class="sv-head-main">
         <div class="sv-head-text">
           <div class="sv-crumb">${isClubSeason() ? `<a href="/community/${encodeURIComponent(season.organisation.slug)}#events">${escapeHtml(season.organisation.name)}</a>` : `<a href="/harmonogram">${escapeHtml(t('schedule.heading'))}</a>`} › ${escapeHtml(termText())}</div>
-          <h1 class="sv-title">${escapeHtml(season.name)}</h1>
+          <h1 class="sv-title">${escapeHtml(season.name)}${settingsLinkHtml()}</h1>
         </div>
         <div class="sv-chips"><span class="sv-chip ${isTournament() ? 't' : 'l'}">${escapeHtml(isClubSeason() ? t('com.seasonTag') : t(isTournament() ? 'schedule.tournament' : 'schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
       </div>

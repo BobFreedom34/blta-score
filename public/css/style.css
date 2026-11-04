@@ -4071,6 +4071,8 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv { color: var(--white); padding-bottom: 60px; }
 .sv-crumb { margin: 22px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #8b8f98; }
 .sv-crumb a { color: #8b8f98; text-decoration: none; }
+.sv-gear { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; margin-left: 10px; vertical-align: middle; border-radius: 50%; background: rgba(255, 255, 255, 0.12); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2); text-shadow: none; transition: background 0.15s, color 0.15s; }
+.sv-gear:hover { background: var(--orange); border-color: var(--orange); color: #fff; }
 .sv-title { margin: 0; font-size: 34px; font-weight: 800; line-height: 1.1; text-transform: none; letter-spacing: -0.01em; }
 .sv-chips { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0 0; }
 .sv-chip { padding: 4px 10px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid transparent; }
@@ -5715,6 +5717,22 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .com-member a { overflow-wrap: anywhere; color: var(--white); font-weight: 700; text-decoration: none; }
 .com-member a:hover { color: var(--orange); }
 .com-member-acts { display: inline-flex; gap: 8px; margin-left: auto; }
+/* the Ranking tab of a community or club: rank, player, points (an admin edits the points in place) */
+.com-rank { display: flex; flex-direction: column; }
+.com-rank-row { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); color: var(--white); }
+.com-rank-head { color: var(--gray-dim); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.com-rank-pos { flex: 0 0 34px; font-weight: 800; color: var(--gray-dim); }
+.com-rank-row:nth-child(2) .com-rank-pos, .com-rank-row:nth-child(3) .com-rank-pos, .com-rank-row:nth-child(4) .com-rank-pos { color: var(--orange); }
+.com-rank-name { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--white); font-weight: 700; text-decoration: none; }
+a.com-rank-name:hover { color: var(--orange); }
+.com-rank-pts { flex: 0 0 auto; min-width: 60px; text-align: right; font-weight: 800; }
+.com-rank-edit { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.com-rank-edit input, .com-rank-form input, .com-rank-form select { padding: 7px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: #fff; color: #0a0a0a; font: inherit; font-size: 14px; }
+.com-rank-edit input, .com-rank-form input { width: 90px; }
+.com-rank-add { margin-top: 18px; }
+.com-rank-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.com-rank-form select { flex: 1 1 200px; min-width: 0; }
+@media (max-width: 700px) { .com-rank-row { flex-wrap: wrap; } .com-rank-edit { width: 100%; justify-content: flex-end; } }
 
 /* Komunity a kluby: the profile switcher in the account menu and the chip of the club the player acts as (public/js/common.js) */
 .com-switch { padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.14); }

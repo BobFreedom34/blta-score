@@ -14,11 +14,12 @@
   let members = { members: [], pending: [] };
   let posts = { items: [], more: false };
   let tournaments = [];
+  let ranking = { items: [] }; // the own ranking of the community or club (GET /api/communities/:id/ranking), its points set by hand by an admin
   // a page opened from an invitation link (?invite=...): joining with it needs no approval
   const inviteToken = new URLSearchParams(window.location.search).get('invite') || '';
   let draftImage = ''; // the picture chosen for the post that is being written (an address the server gave)
-  // the tabs: News, Events, Info (the members are in Info; the old #members link of the club menu opens it)
-  const tabFromHash = (hash) => (hash === 'members' ? 'info' : ['news', 'events', 'info'].includes(hash) ? hash : null);
+  // the tabs: News, Events, Ranking, Info (the members are in Info; the old #members link of the club menu opens it)
+  const tabFromHash = (hash) => (hash === 'members' ? 'info' : ['news', 'events', 'ranking', 'info'].includes(hash) ? hash : null);
   let tab = tabFromHash(window.location.hash.slice(1)) || 'news';
 
   const locale = () => (currentLang === 'en' ? 'en-GB' : 'sk-SK');
@@ -164,6 +165,39 @@
   function eventsHtml() {
     const make = isActing() && org.approved ? `<button type="button" class="btn btn-primary com-new-tournament" data-act="new-tournament">+ ${escapeHtml(t('com.newTournament'))}</button> <button type="button" class="btn btn-outline com-new-tournament" data-act="new-season">+ ${escapeHtml(t('com.newSeason'))}</button>` : '';
     return `${make}${tournaments.length ? `<div class="com-events">${tournaments.map(tournamentHtml).join('')}</div>` : `<p class="com-empty">${escapeHtml(t('com.noEvents'))}</p>`}`;
+  }
+
+  // ---- the Ranking tab: the points of the players of the club, set by hand by its admin (a player of the ranking has to be a member)
+  function rankingHtml() {
+    const manage = isActing() && org.approved;
+    const rows = ranking.items;
+    const inRanking = new Set(rows.map((r) => r.playerId));
+    const candidates = members.members.filter((m) => !inRanking.has(m.playerId));
+    const add = manage ? `
+      <div class="com-rank-add">
+        <div class="com-lab">${escapeHtml(t('com.rankAddTitle'))}</div>
+        ${candidates.length ? `<div class="com-rank-form">
+          <select id="com-rank-player" aria-label="${escapeHtml(t('com.rankPick'))}"><option value="">${escapeHtml(t('com.rankPick'))}</option>${candidates.map((m) => `<option value="${m.playerId}">${escapeHtml(m.name)}</option>`).join('')}</select>
+          <input type="number" id="com-rank-points" min="0" max="1000000" step="1" inputmode="numeric" placeholder="${escapeHtml(t('com.rankPoints'))}" aria-label="${escapeHtml(t('com.rankPoints'))}">
+          <button type="button" class="btn btn-primary com-small" data-act="rank-add">${escapeHtml(t('com.rankAdd'))}</button>
+        </div>` : `<p class="com-hint">${escapeHtml(t('com.rankNoCandidates'))}</p>`}
+        <p class="com-hint">${escapeHtml(t('com.rankHint'))}</p>
+      </div>` : '';
+    const list = rows.length ? `
+      <div class="com-rank">
+        <div class="com-rank-row com-rank-head"><span class="com-rank-pos">#</span><span class="com-rank-name">${escapeHtml(t('com.rankPlayer'))}</span><span class="com-rank-pts">${escapeHtml(t('com.rankPoints'))}</span></div>
+        ${rows.map((r) => `
+          <div class="com-rank-row">
+            <span class="com-rank-pos">${r.rank}</span>
+            <a class="com-rank-name" href="${escapeHtml(playerLink(r))}">${escapeHtml(r.name)}</a>
+            ${manage ? `<span class="com-rank-edit">
+              <input type="number" min="0" max="1000000" step="1" inputmode="numeric" value="${r.points}" data-rank-input="${r.playerId}" aria-label="${escapeHtml(t('com.rankPoints'))}">
+              <button type="button" class="btn btn-outline com-small" data-rank-save="${r.playerId}">${escapeHtml(t('com.rankSave'))}</button>
+              <button type="button" class="com-link" data-rank-remove="${r.playerId}">${escapeHtml(t('com.rankRemove'))}</button>
+            </span>` : `<span class="com-rank-pts">${r.points}</span>`}
+          </div>`).join('')}
+      </div>` : `<p class="com-empty">${escapeHtml(t('com.rankEmpty'))}</p>`;
+    return `${list}${add}`;
   }
 
   // the dialog that makes a tournament of the club: only what the tournament is (name, place, dates, type, categories, fee, description); it opens the manage page
@@ -506,6 +540,7 @@
 
   function tabBody() {
     if (tab === 'events') return eventsHtml();
+    if (tab === 'ranking') return rankingHtml();
     if (tab === 'info') return infoHtml();
     const news = newsItems();
     return `${news.length ? news.join('') : `<p class="com-empty">${escapeHtml(t('com.noNews'))}</p>`}
@@ -535,7 +570,7 @@
       ${org.locked ? `<p class="com-locked">${escapeHtml(t('com.lockedNote'))}</p>` : ''}
       ${isActing() && !org.locked ? panelHtml() : ''}
       ${org.locked ? '' : `<div class="com-tabs" role="tablist">
-        ${[['news', 'com.tabNews'], ['events', 'com.tabEvents'], ['info', 'com.tabInfo']]
+        ${[['news', 'com.tabNews'], ['events', 'com.tabEvents'], ['ranking', 'com.tabRanking'], ['info', 'com.tabInfo']]
           .map(([id, key]) => `<button type="button" class="com-tab${tab === id ? ' on' : ''}" data-tab="${id}" role="tab">${escapeHtml(t(key))}</button>`).join('')}
       </div>
       <div id="com-body">${tabBody()}</div>`}`;
@@ -584,8 +619,33 @@
       if (act === 'new-tournament') openTournamentDialog();
       if (act === 'new-season') openSeasonDialog();
       if (act === 'settings') openSettingsDialog();
+      if (act === 'rank-add') {
+        guard(b, async () => {
+          const playerId = Number((document.getElementById('com-rank-player') || {}).value);
+          const raw = (document.getElementById('com-rank-points') || {}).value;
+          const points = raw === '' || raw === undefined ? NaN : Number(raw);
+          if (!playerId || !Number.isInteger(points) || points < 0) { toast(t('com.rankInvalid')); return; }
+          ranking = await api(`/communities/${org.id}/ranking/${playerId}`, { method: 'PUT', body: { points } });
+          toast(t('com.rankSaved'));
+          render();
+        });
+      }
       if (act === 'switch') guard(b, async () => { await api('/communities/act-as', { method: 'POST', body: { organisationId: org.id } }); window.location.reload(); });
     }));
+    root.querySelectorAll('[data-rank-save]').forEach((b) => b.addEventListener('click', () => guard(b, async () => {
+      const id = b.dataset.rankSave;
+      const raw = (root.querySelector(`[data-rank-input="${id}"]`) || {}).value;
+      const points = raw === '' || raw === undefined ? NaN : Number(raw);
+      if (!Number.isInteger(points) || points < 0) { toast(t('com.rankInvalid')); return; }
+      ranking = await api(`/communities/${org.id}/ranking/${id}`, { method: 'PUT', body: { points } });
+      toast(t('com.rankSaved'));
+      render();
+    })));
+    root.querySelectorAll('[data-rank-remove]').forEach((b) => b.addEventListener('click', () => guard(b, async () => {
+      ranking = await api(`/communities/${org.id}/ranking/${b.dataset.rankRemove}`, { method: 'DELETE' });
+      toast(t('com.rankRemoved'));
+      render();
+    })));
     root.querySelectorAll('[data-edit-post]').forEach((b) => b.addEventListener('click', () => {
       editingPost = Number(b.dataset.editPost);
       render();
@@ -705,19 +765,22 @@
         members = { members: [], pending: [] };
         posts = { items: [], more: false };
         tournaments = [];
+        ranking = { items: [] };
         acting = mine.acting;
         publishClubView();
         render();
         return;
       }
-      const [m, p, mineRes, ts, ss] = await Promise.all([
+      const [m, p, mineRes, ts, ss, rk] = await Promise.all([
         api(`/communities/${org.id}/members`),
         api(`/communities/${org.id}/posts`),
         loggedIn ? api('/communities/mine') : Promise.resolve({ acting: null }),
         api(`/communities/${org.id}/tournaments`).catch(() => ({ items: [] })),
         api(`/communities/${org.id}/seasons`).catch(() => ({ items: [] })),
+        api(`/communities/${org.id}/ranking`).catch(() => ({ items: [] })),
       ]);
       if (run !== loadRun) return; // a newer load is on its way
+      ranking = rk;
       members = m;
       posts = p;
       // the events of the club: its tournaments and its seasons together, the latest start first
