@@ -4,7 +4,9 @@
 //                all places are decided;
 //   ELIMINATION  a plain main bracket;
 //   GROUPS       round-robin groups only;
-//   GROUPS_BRACKET  round-robin groups, then a bracket (ELIMINATION, PRINCE or MONRAD) of the best of every group.
+//   SIX_ROUNDS   exactly 6 players in one table, 3 rounds of 3 matches (every player plays 3 of the other 5; see SIX_ROUNDS_PLAN);
+//   GROUPS_BRACKET  round-robin groups, then a bracket (ELIMINATION, PRINCE or MONRAD) of the best of every group, or — with exactly two groups — the
+//                   matches for the places (PLACEMENT): the 1st of one group plays the 1st of the other (the final), the 2nd the 2nd (for the 3rd place) …
 // A tournament has up to three categories (Elite, Next Gen, Novice), each with its own format. The organiser can let the app make the
 // draw (seeds placed by the standard seed order, the others by lot; groups suggested) or make it by hand.
 const db = require('./db');
@@ -32,8 +34,15 @@ function categoriesFor(season) {
 }
 // a pair is listed like a registration for the seeds and the groups: its id is this plus the id of the pair (so it never meets a registration id)
 const PAIR_ID_OFFSET = 1000000;
-const FORMATS = ['PRINCE', 'MONRAD', 'ELIMINATION', 'GROUPS', 'GROUPS_BRACKET'];
-const BRACKET_TYPES = ['ELIMINATION', 'PRINCE', 'MONRAD'];
+const FORMATS = ['PRINCE', 'MONRAD', 'ELIMINATION', 'GROUPS', 'GROUPS_BRACKET', 'SIX_ROUNDS'];
+// 6 players, 3 rounds, 3 matches a round (all at once on 3 courts): the player numbers are drawn by lot, always (the seeding is not used).
+// Everybody plays 3 matches; the table is one group of 6.
+const SIX_ROUNDS_PLAN = [
+  [[1, 6], [2, 5], [3, 4]],
+  [[1, 4], [5, 3], [6, 2]],
+  [[1, 2], [3, 6], [4, 5]],
+];
+const BRACKET_TYPES = ['ELIMINATION', 'PRINCE', 'MONRAD', 'PLACEMENT'];
 const DEFAULT_MAIN_FORMAT = 'BO3_STB';
 const DEFAULT_CONSOLATION_FORMAT = 'BO3_G4_STB';
 
@@ -125,7 +134,7 @@ function overview(seasonId) {
     const readiness = main ? bracketEngine.consolationReadiness(main.id) : null;
     const state = groups.groupsState(seasonId, category);
     const brackets = main ? [main.id, ...bracketEngine.descendants(main.id)].map((id) => bracketSummary(db.prepare('SELECT * FROM brackets WHERE id = ?').get(id))) : [];
-    const hasLosers = settings.format === 'GROUPS_BRACKET' ? settings.bracketType !== 'ELIMINATION' : ['PRINCE', 'MONRAD'].includes(settings.format);
+    const hasLosers = settings.format === 'GROUPS_BRACKET' ? !['ELIMINATION', 'PLACEMENT'].includes(settings.bracketType) : ['PRINCE', 'MONRAD'].includes(settings.format);
     return {
       category,
       label: CATEGORY_LABELS[category],
@@ -302,6 +311,26 @@ function createDraw(season, category, opts = {}) {
   const random = opts.random || Math.random;
   const warnings = [];
 
+  // ----- 6 players, 3 rounds (SIX_ROUNDS) -----
+  if (s.format === 'SIX_ROUNDS') {
+    if (regs.length !== 6) return { status: 400, error: `This format is for exactly 6 players (${CATEGORY_LABELS[category]} has ${regs.length})` };
+    const order = shuffled(regs.map((r) => r.player_id), random); // always by lot, whatever the seeds say
+    const plan = [];
+    SIX_ROUNDS_PLAN.forEach((pairs, i) => pairs.forEach(([a, b]) => plan.push({ round: i + 1, p1: order[a - 1], p2: order[b - 1] })));
+    let made;
+    db.exec('BEGIN');
+    try {
+      made = groups.createGroups(season, category, [{ name: groups.groupName(0), playerIds: order, plan }], s.groupFormat);
+      saveSettings(season.id, category, s);
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+    bracketEngine.planCourtsForSeason(season.id);
+    return { format: s.format, main: null, consolation: null, consolationNote: null, groups: made.groups, matches: made.matches, warnings };
+  }
+
   // ----- groups (GROUPS, GROUPS_BRACKET) -----
   if (s.format === 'GROUPS' || s.format === 'GROUPS_BRACKET') {
     if (regs.length < 4 && s.format === 'GROUPS_BRACKET') return { status: 400, error: 'Groups with a bracket need at least 4 players' };
@@ -328,6 +357,9 @@ function createDraw(season, category, opts = {}) {
     } else {
       assignments = groups.suggestGroups(regs.map((r) => ({ playerId: r.player_id, seed: r.seed })), s, random);
       if (assignments.some((a) => a.playerIds.length < 2)) return { status: 400, error: 'There are too few players for that number of groups' };
+    }
+    if (s.format === 'GROUPS_BRACKET' && s.bracketType === 'PLACEMENT' && assignments.length !== 2) {
+      return { status: 400, error: `Matches for the places need exactly 2 groups (these are ${assignments.length}): set the players per group so that 2 groups are made` };
     }
     let made;
     db.exec('BEGIN');
@@ -365,6 +397,47 @@ function createDraw(season, category, opts = {}) {
   return { format: s.format, main: set.mainId, consolation: set.consolationId, consolationNote: set.consolationNote, warnings };
 }
 
+// The matches for the places after two groups: the 1st of one group plays the 1st of the other (the final), the 2nd the 2nd ("for the 3rd place"), the 3rd the 3rd
+// ("for the 5th place") … Each is a bracket of two players of its own (so the matches, the courts, the results and the page work like any other bracket);
+// the first one is the main bracket of the category, the others hang under it. A player with nobody of the same place in the other group (the groups differ
+// in size) plays no further match. AUTO seats the players, MANUAL makes the empty brackets. -> { main, others, matches, players, unpaired }
+function placementName(place) { return place === 1 ? 'Finále' : `O ${2 * place - 1}. miesto`; }
+function createPlacementMatches(season, category, s, mode) {
+  const list = groups.groupsOf(season.id, category);
+  if (list.length !== 2) return { status: 400, error: `Matches for the places need exactly 2 groups (this category has ${list.length})` };
+  const tables = list.map((g) => groups.groupRows(g));
+  const places = Math.max(tables[0].length, tables[1].length);
+  const base = `${season.name} — ${CATEGORY_LABELS[category]}`;
+  const doubles = category === 'DOUBLES';
+  let mainId = null;
+  const others = [];
+  let matches = 0;
+  let unpaired = 0;
+  db.exec('BEGIN');
+  try {
+    for (let i = 0; i < places; i += 1) {
+      const a = tables[0][i];
+      const b = tables[1][i];
+      if (!a || !b) { unpaired += 1; continue; }
+      const entries = mode === 'AUTO' ? [a, b].map((r, k) => ({ playerId: r.player.id, seed: k + 1, partnerId: doubles ? groups.partnerIn(season.id, r.player.id) : null })) : null;
+      const id = bracketEngine.createBracket({
+        name: `${base} — ${placementName(i + 1)}`, format: s.mainFormat, entries, size: 2, autoCreateMatches: true, category, seasonId: season.id, doubles,
+        kind: mainId ? 'PLACEMENT' : 'MAIN', parentBracketId: mainId,
+      });
+      if (doubles) db.prepare('UPDATE brackets SET league_id = ? WHERE id = ?').run(season.league_id || 1, id);
+      if (!mainId) mainId = id; else others.push(id);
+      matches += 1;
+    }
+    if (!mainId) { db.exec('ROLLBACK'); return { status: 400, error: 'There is nobody to pair: the groups need at least one player each' }; }
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  bracketEngine.planCourts(mainId);
+  return { main: mainId, consolation: null, consolationNote: null, others, matches, players: matches * 2, unpaired };
+}
+
 // The bracket after the groups of a GROUPS_BRACKET category: the best `qualifiers` of every group are seeded (all the winners first, then
 // the runners-up …, players of one group kept apart in round 1), AUTO places them, MANUAL makes the empty bracket for the organiser to
 // fill. Needs finished groups unless opts.force. -> { error, status } | { main, consolation, consolationNote, players }
@@ -378,6 +451,7 @@ function createBracketFromGroups(season, category, opts = {}) {
   if (mainBracketOf(season.id, category)) return { status: 409, error: 'The bracket of this category already exists' };
   if (!state.allFinished && !opts.force) return { status: 409, code: 'GROUPS_NOT_FINISHED', error: `The group matches are not all played yet (${state.finished} of ${state.matches})` };
   const mode = opts.mode === 'MANUAL' ? 'MANUAL' : 'AUTO';
+  if (s.bracketType === 'PLACEMENT') return createPlacementMatches(season, category, s, mode);
   const list = groups.qualifiers(season.id, category, s.qualifiers);
   if (list.length < 2) return { status: 400, error: 'Fewer than two players go on from the groups' };
   const groupOf = new Map(list.map((q) => [q.playerId, q.groupId]));

@@ -690,6 +690,43 @@ async function openRegisterModal() {
   wrap.querySelector('#sv-reg-form').addEventListener('submit', (e) => { e.preventDefault(); send(false); });
 }
 
+// ---------- the final standings ----------
+
+let finalData = null;
+async function loadFinal() {
+  try { finalData = await api(`/seasons/${season.id}/final-standings`); } catch { finalData = { sections: [], complete: false }; }
+}
+// the place and what the player did, in words: "1. miesto", "Semifinalista" …
+function finalRowText(r) {
+  const range = r.from === r.to ? `${r.from}.` : `${r.from}.–${r.to}.`;
+  const result = r.stage === 'WINNER' || r.stage === 'FINALIST' || r.stage === 'TABLE' || (r.stage === 'PLACE' && r.from === r.to) ? t('season.final.place', { n: r.from })
+    : r.stage === 'SEMI' ? t('season.final.semi')
+    : r.stage === 'QUARTER' ? t('season.final.quarter')
+    : r.stage === 'LAST16' ? t('season.final.last16')
+    : r.stage === 'ROUND' ? t('season.final.round', { n: r.round })
+    : r.stage === 'GROUP' ? `${t('season.final.group', { n: r.place })}${r.group ? ` · ${r.group}` : ''}`
+    : r.stage === 'PLAYING' ? t('season.final.playing')
+    : t('season.final.place', { n: r.from });
+  return { range, result };
+}
+function finalHtml() {
+  if (!finalData || !finalData.sections.length) return '';
+  const note = finalData.complete ? '' : `<p class="sv-final-note">${escapeHtml(t('season.final.provisional'))}</p>`;
+  const sections = finalData.sections.map((s) => `
+    <div class="sv-final-one">
+      <div class="sv-ptable">
+        <div class="sv-ptable-t">${escapeHtml(s.title)}<em>${s.rows.length}</em></div>
+        <div class="sv-pr head"><span class="n">#</span><span class="nm">${escapeHtml(t('season.final.colName'))}</span><span class="fee">${escapeHtml(t('season.final.colResult'))}</span></div>
+        ${s.rows.map((r) => {
+          const text = finalRowText(r);
+          const name = r.player.slug ? `<a href="/player/${encodeURIComponent(r.player.slug)}">${escapeHtml(r.player.name)}</a>` : escapeHtml(r.player.name);
+          return `<div class="sv-pr"><span class="n">${text.range}</span><span class="nm">${name}</span><span class="fee">${escapeHtml(text.result)}</span></div>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+  return `<section class="sv-sec" id="sv-final">${note}<div class="sv-pt">${sections}</div><p class="sv-sub-note">${escapeHtml(t('season.final.hint'))}</p></section>`;
+}
+
 // ---------- tabs ----------
 
 // The tabs, always all of them in the same order; `has` says whether the season has anything for that tab yet (an empty tab
@@ -706,11 +743,12 @@ function availableTabs() {
     { key: 'schedule', label: t('season.navSchedule'), has: (season.rounds || []).length > 0 },
     { key: 'results', label: t('season.navResults'), has: season.matchCount > 0 },
     { key: 'playoff', label: t(isTournament() ? 'season.navBrackets' : 'season.navPlayoff'), has: brackets.length > 0 || (hasGroups && statusOf() !== 'past') },
+    { key: 'final', label: t('season.navFinal'), has: !!(finalData && finalData.sections.length) },
     { key: 'matches', label: t('season.navMatches'), has: season.matchCount > 0 },
     { key: 'gallery', label: t('season.navGallery'), has: !!season.galleryUrl },
   ];
   // a tournament has only the tabs Základné info, Harmonogram (court timetable with live scores), Skupiny (the group tables), Pavúky and Galéria (Rozpis is for league seasons); its players are shown below the Základné info tab (see fixedPlayersHtml)
-  return isTournament() ? tabs.filter((x) => ['info', 'courts', 'tables', 'playoff', 'matches', 'gallery'].includes(x.key)) : tabs.filter((x) => x.key !== 'courts');
+  return isTournament() ? tabs.filter((x) => ['info', 'courts', 'tables', 'playoff', 'final', 'matches', 'gallery'].includes(x.key)) : tabs.filter((x) => x.key !== 'courts');
 }
 
 // the players of a tournament are shown on the Základné info tab only
@@ -732,6 +770,7 @@ function panelHtml() {
       : tab === 'schedule' ? scheduleHtml()
         : tab === 'players' ? playersHtml()
           : tab === 'playoff' ? playoffHtml()
+            : tab === 'final' ? finalHtml()
             : tab === 'gallery' ? galleryHtml()
               : tab === 'courts' ? '<div id="sv-courts"></div>'
                 : infoHtml();
@@ -828,6 +867,7 @@ async function refresh() {
     season = await api(`/seasons/by-slug/${encodeURIComponent(slug)}`);
     await loadStandings();
     await findMyGroup();
+    await loadFinal();
   } catch { return; }
   loaded.clear();
   const y = window.scrollY;
@@ -847,6 +887,7 @@ async function refresh() {
   if (!document.title.includes(season.name)) document.title = `${season.name} — BLTA`; // the server already put the title from Backend > SEO
   await loadStandings();
   await findMyGroup();
+  await loadFinal();
   await loadGallery();
   const wantsRegister = window.location.hash === '#register'; // the green "Registrácia" button of a schedule row (slta.sk) leads here
   tab = (wantsRegister ? '' : window.location.hash.slice(1)) || null; // renderTabs picks the first tab with content when there is none

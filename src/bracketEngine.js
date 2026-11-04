@@ -219,7 +219,7 @@ function createBracket({
     ? nextPowerOfTwo(entries.length)
     : nextPowerOfTwo(Math.max(size || 2, 2));
   const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category, season_id, kind, parent_bracket_id, is_doubles) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    .run(name, format, drawSize, autoCreateMatches === false ? 0 : 1, category || null, seasonId || null, kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN', parentBracketId || null, doubles ? 1 : 0);
+    .run(name, format, drawSize, autoCreateMatches === false ? 0 : 1, category || null, seasonId || null, kind === 'CONSOLATION' ? 'CONSOLATION' : kind === 'PLACEMENT' ? 'PLACEMENT' : 'MAIN', parentBracketId || null, doubles ? 1 : 0);
   const bracketId = info.lastInsertRowid;
   // the pairs are known before the first match is made
   if (doubles && entries) entries.forEach((e) => { if (e.partnerId) { setPartner(bracketId, e.playerId, e.partnerId); } });
@@ -519,4 +519,5 @@ module.exports = {
   dropLoser,
   getBracketTree,
   syncBracketMatches,
+  nodeWinner,
 };

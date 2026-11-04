@@ -24,6 +24,7 @@ const clubTournaments = require('../clubTournaments');
 const changeLog = require('../changeLog');
 const capacity = require('../registrationCapacity');
 const playerPush = require('../playerPush');
+const finalStandings = require('../finalStandings');
 
 const router = express.Router();
 
@@ -820,6 +821,14 @@ router.get('/:id/brackets', (req, res) => {
   const season = db.prepare('SELECT id FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
   res.json(db.prepare("SELECT id, name, category, COALESCE(kind, 'MAIN') AS kind, parent_bracket_id AS parentBracketId, is_doubles AS isDoubles FROM brackets WHERE season_id = ? ORDER BY id").all(season.id).map((b) => ({ ...b, isDoubles: !!b.isDoubles })));
+});
+
+// Public: the final standings of a tournament or a season (the tab "Konečné poradie"): who finished where, from the brackets and the groups (see finalStandings.js).
+router.get('/:id/final-standings', (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season || season.league_id !== leagues.actingIdOf(req)) return res.status(404).json({ error: 'Season not found' });
+  if (clubTournaments.publicFace(season).hidden) return res.status(404).json({ error: 'Season not found' });
+  res.json(finalStandings.compute(season));
 });
 
 // Public: the group tables of one season, calculated from the matches tagged with each group (see standings.js).

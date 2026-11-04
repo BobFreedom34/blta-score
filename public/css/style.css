@@ -6294,3 +6294,9 @@ a.com-rank-name:hover { color: var(--orange); }
 @media (max-width: 700px) {
   .home-head-actions { gap: 26px; }
 }
+
+/* the tab Konečné poradie: the place (a range such as 3.–4. needs more room than a number), the note of a provisional order */
+#sv-final .sv-pr { grid-template-columns: 64px minmax(0, 1fr) auto; }
+#sv-final .sv-pr .fee { min-width: 130px; }
+.sv-final-note { margin: 0 4px 14px; font-size: 13px; font-weight: 700; color: var(--orange); }
+.sv-final-one + .sv-final-one { margin-top: 18px; }
