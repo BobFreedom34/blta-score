@@ -348,6 +348,31 @@ test('SIX_ROUNDS: exactly 6 players drawn by lot (never by the seeding), one tab
   void five;
 });
 
+test('seeds of a tournament without categories can be set and cleared again (empty seeds + save removes them)', async () => {
+  const t = await newTournament('Open Seeds');
+  assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}`, { categories: ['OPEN'] })).status, 200);
+  const list = [];
+  for (let i = 0; i < 4; i += 1) {
+    counter += 1;
+    const p = (await call('POST', '/api/players', { name: `Open Seed ${counter}` })).json;
+    const reg = await call('POST', `/api/seasons/${t.id}/registrations/admin`, { playerId: p.id, category: '', phone: `0908${String(200000 + counter)}`, email: `os${counter}@example.com` });
+    assert.strictEqual(reg.status, 201, reg.text);
+    list.push(reg.json);
+  }
+  const seedsOf = async () => (await call('GET', `/api/seasons/${t.id}/registrations`)).json.map((r) => r.seed || null);
+  const set = await call('POST', `/api/seasons/${t.id}/seeds`, { category: 'OPEN', seeds: list.map((r, i) => ({ id: r.id, seed: i + 1 })) });
+  assert.strictEqual(set.status, 200, set.text);
+  assert.deepStrictEqual((await seedsOf()).sort(), [1, 2, 3, 4]);
+  // clearing: every seed left empty, then saved
+  const cleared = await call('POST', `/api/seasons/${t.id}/seeds`, { category: 'OPEN', seeds: list.map((r) => ({ id: r.id, seed: null })) });
+  assert.strictEqual(cleared.status, 200, cleared.text);
+  assert.deepStrictEqual(await seedsOf(), [null, null, null, null], 'the seeds are gone');
+  // one seed removed, the others kept (closed up)
+  await call('POST', `/api/seasons/${t.id}/seeds`, { category: 'OPEN', seeds: list.map((r, i) => ({ id: r.id, seed: i + 1 })) });
+  await call('POST', `/api/seasons/${t.id}/seeds`, { category: 'OPEN', seeds: list.map((r, i) => ({ id: r.id, seed: i === 0 ? null : i + 1 })) });
+  assert.deepStrictEqual((await seedsOf()).filter(Boolean).sort(), [1, 2, 3]);
+});
+
 test('placement matches need exactly two groups', async () => {
   const t = await newTournament('Placement Three Groups');
   await register(t, 'ELITE', 9);

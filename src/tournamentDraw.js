@@ -191,7 +191,9 @@ function setSeeds(seasonId, category, items) {
       const setPair = db.prepare('UPDATE tournament_pairs SET seed = ? WHERE id = ?');
       seeded.forEach((s, i) => setPair.run(i + 1, s.id - PAIR_ID_OFFSET));
     } else {
-      db.prepare('UPDATE season_registrations SET seed = NULL WHERE season_id = ? AND category = ?').run(seasonId, category);
+      // (a tournament without categories, 'OPEN': its registrations carry no category, the draw takes everybody who registered)
+      if (category === 'OPEN') db.prepare('UPDATE season_registrations SET seed = NULL WHERE season_id = ?').run(seasonId);
+      else db.prepare('UPDATE season_registrations SET seed = NULL WHERE season_id = ? AND category = ?').run(seasonId, category);
       const set = db.prepare('UPDATE season_registrations SET seed = ? WHERE id = ?');
       seeded.forEach((s, i) => set.run(i + 1, s.id));
     }
