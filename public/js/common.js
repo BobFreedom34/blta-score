@@ -2812,6 +2812,7 @@ async function refreshPlayerAuth() {
 // know who's logged in and they're not eligible for THIS match.
 function canManageMatch(m, isAdminUser) {
   if (isAdminUser) return true;
+  if (m.viewerManagesClub) return true; // the admin of the club that runs its tournament (the match page asks the server and sets this)
   if (playerAuthed && currentPlayerId) {
     const playsInMatch = currentPlayerId === m.player1.id || currentPlayerId === m.player2.id;
     if (m.createdByAdmin && playsInMatch) return true;
@@ -2837,6 +2838,7 @@ function canManageMatch(m, isAdminUser) {
 // wherever this is used (see requireLiveScoreAuth/refereeAuthed), not here.
 function canManageLiveScore(m, isAdminUser) {
   if (isAdminUser) return true;
+  if (m.viewerManagesClub) return true;
   if (playerAuthed && currentPlayerId) {
     return currentPlayerId === m.player1.id || currentPlayerId === m.player2.id;
   }

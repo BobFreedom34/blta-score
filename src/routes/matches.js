@@ -299,6 +299,15 @@ function seasonAskedBy(body) {
   return null;
 }
 
+// A match of a community or club (of a season or tournament it runs): both players of it can also enter its result by hand, whoever set the match up (the live
+// score is theirs already, see checkLiveScoreAccess). The match of another player in the league is not covered: there only its creator may.
+function playsInClubMatch(req, row) {
+  const playerId = getPlayerId(req);
+  if (!playerId || !row || !row.season_id || !playerIdsOf(row).includes(playerId)) return false;
+  const season = db.prepare('SELECT organisation_id FROM seasons WHERE id = ?').get(row.season_id);
+  return !!(season && season.organisation_id);
+}
+
 function checkMatchAccess(req, res, row) {
   if (isAdmin(req) || managesMatchSeason(req, row)) return true;
   const playerId = getPlayerId(req);
@@ -603,6 +612,14 @@ router.get('/:token', (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   res.json(serialize(row));
+});
+
+// Whether the visitor is the admin of the club or community that runs the tournament this match belongs to (or an admin of the site): the match page asks, to show
+// him the score controls and the result entry (the server lets him do them: checkLiveScoreAccess / checkMatchAccess). Not an admin: false, also for a match of no club.
+router.get('/:token/can-manage', (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  res.json({ canManage: isAdmin(req) || managesMatchSeason(req, row) });
 });
 
 // What a finished match did to the level (CourtIQ, or the doubles rating) of each of its players - the card "Zmeny úrovne" of the match page
@@ -1939,7 +1956,7 @@ router.post('/:token/finish', requireLoggedInOrReferee, async (req, res) => {
 router.post('/:token/manual-result', requireLoggedIn, async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!checkMatchAccess(req, res, row)) return;
+  if (!playsInClubMatch(req, row) && !checkMatchAccess(req, res, row)) return;
   if (row.status !== 'PLANNED') {
     return res.status(400).json({ error: 'Only a planned match can have its result entered manually' });
   }

@@ -3,6 +3,7 @@ const root = document.getElementById('match-root');
 let current = null;
 let timerInterval = null;
 let isAdminUser = false;
+let clubManager = false; // the admin of the club that runs the tournament of this match: may score it, enter its result and edit it (asked from the server)
 let messages = [];
 let chatDraftBody = '';
 let editSetIndex = null;
@@ -678,6 +679,7 @@ function attachInteractiveProposalPicker(m, which, idPrefix, proposedBy, propose
 }
 
 function render(m) {
+  m.viewerManagesClub = clubManager;
   current = m;
   // The static <title> in match.html is just a generic placeholder — every
   // real visit lands here via JS, so the actual per-match tab title (and
@@ -959,7 +961,9 @@ function attachHandlers(m) {
 
   const manualResultBtn = document.getElementById('manual-result-btn');
   if (manualResultBtn) manualResultBtn.addEventListener('click', () => requirePlayerAuth(() => {
-    if (!canManageMatch(m, isAdminUser)) {
+    // (a player of a match of a club or community may enter its result whoever set the match up: POST /:token/manual-result)
+    const clubPlayer = !!(m.season && m.season.organisation && playerAuthed && currentPlayerId && (currentPlayerId === m.player1.id || currentPlayerId === m.player2.id));
+    if (!clubPlayer && !canManageMatch(m, isAdminUser)) {
       showAccessDeniedModal(t('accessDenied.message'));
       return;
     }
@@ -1774,6 +1778,13 @@ function openManualResultModal(m) {
   document.getElementById('manual-result-modal').style.display = 'flex';
 }
 
+// Only a match of a club or community can have such an admin; the others are never asked.
+async function loadClubManager(m) {
+  clubManager = false;
+  if (!m || !m.season || !m.season.organisation || isAdminUser || !playerAuthed) return;
+  try { clubManager = !!(await api(`/matches/${matchToken}/can-manage`)).canManage; } catch { clubManager = false; }
+}
+
 async function init() {
   // Both awaited before the first render() — canManageMatch (used for the
   // Location/Date/Category/Notes Edit links and the proposal card's Edit
@@ -1785,6 +1796,7 @@ async function init() {
   await refreshPlayerAuth();
   try {
     const m = await api(`/matches/${matchToken}`);
+    await loadClubManager(m);
     const photosLoaded = loadMatchPhotos(matchToken); // best-effort, never throws
     try { messages = await api(`/matches/${matchToken}/messages`); } catch { /* chat is best-effort */ }
     await photosLoaded;
@@ -1799,6 +1811,7 @@ async function init() {
   // trigger a redundant extra render right after this one.
   // (who may add or remove photos depends on who is logged in, so the photo list is fetched again too)
   window.addEventListener('blta:auth-changed', async () => {
+    if (current) await loadClubManager(current);
     await loadMatchPhotos(matchToken);
     if (current) render(current);
   });
