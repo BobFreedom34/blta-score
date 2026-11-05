@@ -1,5 +1,5 @@
-// Schedule page (/harmonogram): a year-at-a-glance timeline (every league season and tournament of the chosen year as a
-// bar across the twelve months) with the list of the same events underneath, grouped by the month they start in.
+// Schedule page (/harmonogram): the list of the league seasons and tournaments of the chosen year, grouped by the month they start in (shown first), and a year-at-a-glance
+// timeline of the same events (every one as a bar across the twelve months). Two buttons switch between them; the choice is remembered in the browser.
 // Data: GET /api/schedule (seasons come from the seasons table, tournaments from the backend's event list).
 // Year pills choose the year, two selects filter by category and by event type. Language changes reload the page.
 
@@ -13,6 +13,9 @@ let events = [];
 let year = null;
 let cat = 'ALL';
 let type = 'ALL';
+let view = 'list'; // 'list' (the first look) | 'timeline'
+try { if (localStorage.getItem('blta_schedule_view') === 'timeline') view = 'timeline'; } catch { /* the list stays */ }
+const viewEl = document.getElementById('sch-view');
 
 const CATEGORY_ORDER = ['ELITE', 'NEXT_GEN', 'NOVICE', 'DOUBLES'];
 const CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice', get DOUBLES() { return t('season.catDoubles'); } }; // DOUBLES: the doubles tournaments
@@ -182,6 +185,10 @@ function render() {
     .filter((e) => e.startDate <= to && e.endDate >= from)
     .filter((e) => cat === 'ALL' || e.categories.includes(cat))
     .filter((e) => type === 'ALL' || e.type === type);
+  // only the chosen view is shown (with nothing to show, the note is in the list place whatever the view)
+  viewEl.querySelectorAll('[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
+  timelineEl.hidden = view !== 'timeline' || !shown.length;
+  rootEl.hidden = view !== 'list' && !!shown.length;
   if (!shown.length) {
     timelineEl.innerHTML = '';
     rootEl.innerHTML = `<div class="empty-state">${escapeHtml(t('schedule.empty'))}</div>`;
@@ -204,6 +211,13 @@ function render() {
   }).join('');
 }
 
+viewEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-view]');
+  if (!btn || btn.dataset.view === view) return;
+  view = btn.dataset.view;
+  try { localStorage.setItem('blta_schedule_view', view); } catch { /* it is just not remembered */ }
+  render();
+});
 yearsEl.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-year]');
   if (!btn) return;

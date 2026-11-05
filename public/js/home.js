@@ -311,8 +311,8 @@ function timelineHtml(d) {
     // the running season: the elapsed part of the line is a light beam (see .home-tl-beam)
     const beam = state === 'now' && elapsed > 0 ? '<span class="home-tl-beam"><i></i></span>' : '';
     return href
-      ? `<a class="home-tl ${state}" style="--p:${elapsed.toFixed(1)}%" href="${href}"${state === 'now' ? ' data-current="1"' : ''}>${beam}${inner}</a>`
-      : `<div class="home-tl ${state}" style="--p:${elapsed.toFixed(1)}%">${beam}${inner}</div>`;
+      ? `<a class="home-tl ${state} ${s.kind === 'TOURNAMENT' ? 'tour' : 'league'}" style="--p:${elapsed.toFixed(1)}%" href="${href}"${state === 'now' ? ' data-current="1"' : ''}>${beam}${inner}</a>`
+      : `<div class="home-tl ${state} ${s.kind === 'TOURNAMENT' ? 'tour' : 'league'}" style="--p:${elapsed.toFixed(1)}%">${beam}${inner}</div>`;
   }).join('');
   return `${filterHtml}<div class="home-tl-wrap" id="home-tl-wrap">
     <button type="button" class="home-tl-nav prev" aria-label="←">‹</button>
