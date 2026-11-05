@@ -1,4 +1,4 @@
-// Checks of the home carousel's mobile picture (Backend > Carousel): POST/DELETE /api/carousel/:id/mobile-image.
+// Checks of the home carousel's pictures (Backend > Carousel): the mobile one (POST/DELETE /api/carousel/:id/mobile-image) and the replacing of the desktop one (POST /api/carousel/:id/image).
 // Run: node scripts/check-carousel.js   (starts its own server on a temporary data directory; touches nothing else)
 const fs = require('fs');
 const os = require('os');
@@ -98,6 +98,39 @@ test('only an admin can set it, and an unknown slide gives 404 without leaving a
   const before = files().length;
   assert.strictEqual((await call('POST', '/api/carousel/999999/mobile-image', { form: form(PNG, 'image/png') })).status, 404);
   assert.strictEqual(files().length, before);
+});
+
+test('the desktop picture of a slide can be replaced: the new file is served, the old one deleted, the heading and the mobile picture stay', async () => {
+  const s = await newSlide();
+  const mobile = (await call('POST', `/api/carousel/${s.id}/mobile-image`, { form: form(PNG, 'image/png') })).json;
+  assert.strictEqual((await call('PATCH', `/api/carousel/${s.id}`, { body: { captionSk: 'Finále ELITE' } })).status, 200);
+  const r = await call('POST', `/api/carousel/${s.id}/image`, { form: form(PNG, 'image/png') });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.json));
+  assert.match(r.json.imageUrl, /^\/carousel-images\/slide-\d/);
+  assert.notStrictEqual(r.json.imageUrl, s.imageUrl);
+  assert.ok(files().includes(base(r.json.imageUrl)));
+  assert.ok(!files().includes(base(s.imageUrl)), 'the old desktop picture is deleted');
+  assert.strictEqual((await fetch(BASE + r.json.imageUrl)).status, 200);
+  assert.strictEqual(r.json.captionSk, 'Finále ELITE');
+  assert.strictEqual(r.json.mobileImageUrl, mobile.mobileImageUrl);
+  assert.ok(files().includes(base(mobile.mobileImageUrl)));
+  assert.strictEqual((await call('GET', '/api/carousel', { withCookie: false })).json.find((x) => x.id === s.id).imageUrl, r.json.imageUrl);
+});
+
+test('replacing the desktop picture: a wrong file is refused and changes nothing, only an admin may, an unknown slide is 404', async () => {
+  const s = await newSlide();
+  const before = files().length;
+  assert.strictEqual((await call('POST', `/api/carousel/${s.id}/image`, { form: form(Buffer.from('hello'), 'text/plain', 'a.txt') })).status, 400);
+  assert.strictEqual((await call('POST', `/api/carousel/${s.id}/image`, { form: form(PNG, 'image/png'), withCookie: false })).status, 401);
+  assert.strictEqual((await call('POST', '/api/carousel/999999/image', { form: form(PNG, 'image/png') })).status, 404);
+  assert.strictEqual(files().length, before);
+  assert.ok(files().includes(base(s.imageUrl)));
+});
+
+test('the Backend page has a Replace button under the desktop picture, as under the mobile one', () => {
+  const js = fs.readFileSync(path.join(ROOT, 'public/js/carousel-admin.js'), 'utf8');
+  new (require('vm').Script)(js, { filename: 'carousel-admin.js' });
+  assert.ok(js.includes('data-act="desktop-upload"') && js.includes("'desktop-upload'") && js.includes("desktop ? 'image' : 'mobile-image'"));
 });
 
 async function main() {

@@ -109,6 +109,24 @@ router.patch('/:id', requireAdmin, (req, res) => {
   res.json(serialize(db.prepare('SELECT * FROM carousel_slides WHERE id = ?').get(row.id)));
 });
 
+// Replaces the main (desktop) picture of a slide by another one; the heading, the link and the mobile picture stay. The old file is deleted.
+router.post('/:id/image', requireAdmin, (req, res) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) {
+      const message = err.code === 'LIMIT_FILE_SIZE' ? 'The picture must be under 6 MB' : 'Could not process the uploaded file';
+      return res.status(400).json({ error: message });
+    }
+    if (!req.file) return res.status(400).json({ error: 'Upload a PNG, JPG or WebP picture' });
+    const row = db.prepare('SELECT * FROM carousel_slides WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Slide not found' });
+    const filename = `slide-${Date.now()}-${crypto.randomBytes(5).toString('hex')}${MIME_EXT[req.file.mimetype]}`;
+    fs.writeFileSync(path.join(DIR, filename), req.file.buffer);
+    db.prepare('UPDATE carousel_slides SET image_url = ? WHERE id = ?').run(`/carousel-images/${filename}`, row.id);
+    deleteFile(row.image_url);
+    res.json(serialize(db.prepare('SELECT * FROM carousel_slides WHERE id = ?').get(row.id)));
+  });
+});
+
 // The picture phones get instead of the main one (16:9). Optional: without it phones get the main picture, cut to 16:9.
 router.post('/:id/mobile-image', requireAdmin, (req, res) => {
   upload.single('image')(req, res, (err) => {

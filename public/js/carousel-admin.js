@@ -14,6 +14,9 @@
           <div>
             <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:4px">Desktop · 16:6</div>
             <img src="${escapeHtml(s.imageUrl)}" alt="" style="display:block;width:200px;height:75px;object-fit:cover;border-radius:10px;background:#eee">
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <button type="button" class="btn btn-sm btn-outline" data-act="desktop-upload">Replace</button>
+            </div>
           </div>
           <div>
             <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:4px">Mobile · 16:9</div>
@@ -122,12 +125,13 @@
     document.getElementById('ca-upload-msg').style.color = 'var(--green, #2e9e4f)';
   }
 
-  // the mobile picture of a slide: choose a file, it goes up at once and replaces the previous one
+  // the desktop or the mobile picture of a slide: choose a file, it goes up at once and replaces the previous one
   host.addEventListener('change', async (e) => {
     const input = e.target.closest('.ca-mobile-input');
     if (!input) return;
     const file = input.files && input.files[0];
     const id = Number(input.dataset.id);
+    const desktop = input.dataset.kind === 'desktop';
     input.remove();
     if (!file) return;
     const row = host.querySelector(`.ca-row[data-id="${id}"]`);
@@ -135,10 +139,10 @@
     try {
       const form = new FormData();
       form.append('image', file);
-      const res = await fetch(`/api/carousel/${id}/mobile-image`, { method: 'POST', body: form, credentials: 'same-origin' });
+      const res = await fetch(`/api/carousel/${id}/${desktop ? 'image' : 'mobile-image'}`, { method: 'POST', body: form, credentials: 'same-origin' });
       if (!res.ok) throw new Error(((await res.json().catch(() => ({}))).error) || 'upload failed');
       await load();
-      say(host.querySelector(`.ca-row[data-id="${id}"]`), 'Mobile picture saved ✓');
+      say(host.querySelector(`.ca-row[data-id="${id}"]`), desktop ? 'Desktop picture replaced ✓' : 'Mobile picture saved ✓');
     } catch (err) {
       say(row, err.message, true);
     }
@@ -178,8 +182,9 @@
         [order[i], order[j]] = [order[j], order[i]];
         await Promise.all(order.map((sid, n) => api(`/carousel/${sid}`, { method: 'PATCH', body: { sortOrder: n } })));
         await load();
-      } else if (btn.dataset.act === 'mobile-upload') {
+      } else if (btn.dataset.act === 'mobile-upload' || btn.dataset.act === 'desktop-upload') {
         const input = document.createElement('input');
+        input.dataset.kind = btn.dataset.act === 'desktop-upload' ? 'desktop' : 'mobile';
         input.type = 'file';
         input.accept = 'image/png,image/jpeg,image/webp';
         input.className = 'ca-mobile-input';

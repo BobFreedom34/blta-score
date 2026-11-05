@@ -112,8 +112,10 @@ function csTimelineHtml(day) {
   const nowLine = today.day === day && today.minutes >= startMin && today.minutes <= endMin ? `<div class="cs-now" style="top:${(today.minutes - startMin) * CS_PX}px"></div>` : '';
   const cols = Array.from({ length: settings.courtCount }, (_, i) => {
     const court = i + 1;
-    const blocks = matches.filter((m) => m.courtNo === court && m.scheduledAt && csParts(csStartOf(m)).day === day).map((m) => csBlockHtml(m, day, startMin)).join('');
-    return `<div class="cs-colwrap"><div class="cs-court-h">${escapeHtml(t('courts.court', { n: court }))}</div><div class="cs-col" data-court="${court}" style="height:${height}px">${lines.join('')}${nowLine}${blocks}</div></div>`;
+    const ofCourt = matches.filter((m) => m.courtNo === court && m.scheduledAt && csParts(csStartOf(m)).day === day);
+    const count = ofCourt.length; // the matches of the day on this court (the little number in the heading, as in the list)
+    const blocks = ofCourt.map((m) => csBlockHtml(m, day, startMin)).join('');
+    return `<div class="cs-colwrap"><div class="cs-court-h"><span>${escapeHtml(t('courts.court', { n: court }))}</span><em>${count}</em></div><div class="cs-col" data-court="${court}" style="height:${height}px">${lines.join('')}${nowLine}${blocks}</div></div>`;
   });
   const per = csPerRow();
   const width = Math.min(per, settings.courtCount); // every row has the same columns, so the courts of the last row are as wide as the others
