@@ -184,13 +184,13 @@ test('a season of the league: a table per group (its places)', async () => {
   assert.strictEqual((await call('GET', '/api/seasons/999999/final-standings', undefined, { admin: false })).status, 404);
 });
 
-test('the page has the tab Konečné poradie after the play-off and before the matches, in both languages, and draws the places', () => {
+test('the page has the tab Konečné poradie after the matches, in both languages, and draws the places', () => {
   const read = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
   const js = read('js/season.js');
   new (require('vm').Script)(js, { filename: 'season.js' });
-  const order = ["key: 'playoff'", "key: 'final'", "key: 'matches'"].map((s) => js.indexOf(s));
+  const order = ["key: 'playoff'", "key: 'matches'", "key: 'final'"].map((s) => js.indexOf(s));
   assert.ok(order.every((n) => n >= 0) && order[0] < order[1] && order[1] < order[2], 'tab order: ' + order);
-  assert.ok(js.includes("'playoff', 'final', 'matches'") && js.includes('/final-standings') && js.includes('function finalHtml()'));
+  assert.ok(js.includes("'playoff', 'matches', 'final'") && js.includes('/final-standings') && js.includes('function finalHtml()'));
   const i18n = read('js/i18n.js');
   for (const key of ['navFinal', 'empty.final', 'final.provisional', 'final.hint', 'final.colName', 'final.colResult', 'final.place', 'final.semi', 'final.quarter', 'final.last16', 'final.round', 'final.group', 'final.playing']) {
     assert.strictEqual((i18n.match(new RegExp(`'season\\.${key.replace('.', '\\.')}':`, 'g')) || []).length, 2, `season.${key} in both languages`);

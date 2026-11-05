@@ -5063,12 +5063,13 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-seg button:hover { color: var(--white); }
 .cs-seg button.active { background: var(--orange); color: var(--white); }
 .cs-scroll { overflow-x: auto; padding-bottom: 6px; }
-.cs-grid { display: grid; grid-template-columns: 46px repeat(var(--cs-cols), minmax(150px, 1fr)); gap: 8px; min-width: min-content; }
+.cs-grid { display: grid; grid-template-columns: 38px repeat(var(--cs-cols), minmax(0, 1fr)); gap: 8px; }
+.cs-grid + .cs-grid { margin-top: 26px; }
 .cs-court-h { height: 30px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
 .cs-hours { position: relative; }
-.cs-hour { position: absolute; right: 4px; transform: translateY(-7px); font-size: 11px; font-weight: 700; color: #8b8f98; }
+.cs-hour { position: absolute; left: 0; transform: translateY(-7px); font-size: 11px; font-weight: 700; color: #8b8f98; }
 .cs-col { position: relative; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius-md); overflow: hidden; }
-.cs-line { position: absolute; left: 0; right: 0; height: 1px; background: rgba(255, 255, 255, 0.08); }
+.cs-line { position: absolute; left: 0; right: 0; height: 1px; background: rgba(255, 255, 255, 0.2); }
 .cs-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--orange); z-index: 3; }
 .cs-m { position: absolute; left: 4px; right: 4px; z-index: 2; overflow: hidden; display: flex; flex-direction: column; gap: 1px; padding: 5px 8px 4px; border-radius: var(--radius-sm); background: #26282e; border-left: 4px solid var(--gray-dim); color: var(--white); text-decoration: none; font-size: 12px; line-height: 1.25; }
 .cs-m:hover { background: #30333b; }

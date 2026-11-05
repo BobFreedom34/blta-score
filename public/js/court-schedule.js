@@ -92,6 +92,11 @@ function csBlockHtml(m, day, startMin) {
   </a>`;
 }
 
+// at most 3 courts side by side on a computer, 2 on a phone; more courts go on to the next row (each row has the hours at its left edge)
+const csNarrow = window.matchMedia ? window.matchMedia('(max-width: 700px)') : null;
+if (csNarrow && csNarrow.addEventListener) csNarrow.addEventListener('change', () => { if (typeof csState !== 'undefined' && csState && csState.host && csState.host.isConnected) csRender(); });
+const csPerRow = () => (csNarrow && csNarrow.matches ? 2 : 3);
+
 function csTimelineHtml(day) {
   const { settings, matches } = csState.data;
   const startMin = csMinutesOf(settings.dayStart);
@@ -109,8 +114,13 @@ function csTimelineHtml(day) {
     const court = i + 1;
     const blocks = matches.filter((m) => m.courtNo === court && m.scheduledAt && csParts(csStartOf(m)).day === day).map((m) => csBlockHtml(m, day, startMin)).join('');
     return `<div class="cs-colwrap"><div class="cs-court-h">${escapeHtml(t('courts.court', { n: court }))}</div><div class="cs-col" data-court="${court}" style="height:${height}px">${lines.join('')}${nowLine}${blocks}</div></div>`;
-  }).join('');
-  return `<div class="cs-scroll"><div class="cs-grid" style="--cs-cols:${settings.courtCount}"><div class="cs-gutter"><div class="cs-court-h">&nbsp;</div><div class="cs-hours" style="height:${height}px">${hours.join('')}</div></div>${cols}</div></div>`;
+  });
+  const per = csPerRow();
+  const width = Math.min(per, settings.courtCount); // every row has the same columns, so the courts of the last row are as wide as the others
+  const gutter = `<div class="cs-gutter"><div class="cs-court-h">&nbsp;</div><div class="cs-hours" style="height:${height}px">${hours.join('')}</div></div>`;
+  const rows = [];
+  for (let i = 0; i < cols.length; i += per) rows.push(`<div class="cs-grid" style="--cs-cols:${width}">${gutter}${cols.slice(i, i + per).join('')}</div>`);
+  return `<div class="cs-scroll">${rows.join('')}</div>`;
 }
 
 // the matches being played right now, with the score so far — at the top of the tab, whether or not they are on a court
