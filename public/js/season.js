@@ -204,6 +204,14 @@ async function findMyGroup() {
   } catch { /* a visitor: no button */ }
 }
 
+// Does the event ask for money? An entry fee that is more than 0 (the words "zadarmo" / "free" or a 0 mean none); with nothing written, only when there is an online payment link.
+function hasEntryFee() {
+  const fee = String(season.entryFee || '').trim();
+  if (!fee) return !!season.paymentUrl;
+  const n = fee.replace(',', '.').match(/\d+(?:\.\d+)?/);
+  return n ? Number(n[0]) > 0 : !/^(zadarmo|free)\b/i.test(fee);
+}
+
 // "Payment by transfer" in the window after a tournament registration. contact = GET /api/contact (the IBAN is edited in Backend > Contact).
 function bankTransferHtml(contact, alongsideOnline) {
   if (!contact || !contact.iban) return '';
@@ -646,8 +654,8 @@ async function openRegisterModal() {
         : '';
       // a tournament also offers a bank transfer: the IBAN of the contact page, the entry fee and a reminder to put the tournament's name in the note
       const contact = isTournament() ? await api('/contact').catch(() => null) : null;
-      // a substitute pays nothing yet: the payment is asked when he comes in
-      const pay = res && res.substitute ? '' : stripe + bankTransferHtml(contact, !!stripe);
+      // a substitute pays nothing yet (the payment is asked when he comes in), and an event with no entry fee asks for no payment at all
+      const pay = (res && res.substitute) || !hasEntryFee() ? '' : stripe + bankTransferHtml(contact, !!stripe);
       wrap.querySelector('.modal').innerHTML = `
         <button type="button" class="close" data-close aria-label="${escapeHtml(t('season.regClose'))}">&times;</button>
         <h3>${escapeHtml(t('season.regThanks', { name: (res && res.name) || typed }))}</h3>

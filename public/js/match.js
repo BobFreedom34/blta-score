@@ -13,21 +13,7 @@ let h2hHtml = '';
 let levelKey = null;
 let levelChanges = null; // what the finished match did to the level of its players (GET /api/matches/:token/rating-changes)
 
-// Mirrors src/matchEngine.js FORMATS — only the bits needed to build the
-// manual-result-entry form (how many sets, and whether the last one is a
-// match tiebreak instead of a normal set).
-const FORMAT_META = {
-  BO1: { setsToWin: 1, finalSetSuperTiebreak: false },
-  BO3: { setsToWin: 2, finalSetSuperTiebreak: false },
-  BO3_STB: { setsToWin: 2, finalSetSuperTiebreak: true },
-  BO5: { setsToWin: 3, finalSetSuperTiebreak: false },
-  BO5_STB: { setsToWin: 3, finalSetSuperTiebreak: true },
-  // the consolation draw of a tournament: sets to 4 games, a tie-break at 3-3
-  BO3_G4_STB: { setsToWin: 2, finalSetSuperTiebreak: true, setGames: 4, tiebreakAt: 3 },
-  // Free Play is open-ended in real play — 6 is just a generous cap on how
-  // many set rows the manual-result-entry form offers.
-  FREE_PLAY: { setsToWin: 6, finalSetSuperTiebreak: false },
-};
+// (FORMAT_META and the manual-result window are in manual-result.js, shared with the drawn brackets)
 
 // Standard tiebreak serve rotation: the player whose turn it is serves point 1
 // only, then serve alternates every 2 points for the rest of the tiebreak.
@@ -226,7 +212,7 @@ function controlsHtml(m, canControlLive) {
       ${reasonLabel ? `<div class="result-card-reason">${escapeHtml(reasonLabel)}</div>` : ''}
     </div>
   `;
-  if (!isAdminUser) return winnerCard;
+  if (!isAdminUser && !clubManager) return winnerCard; // (the admin of the club that runs the tournament may correct and restart too)
   return `
     ${winnerCard}
     <div style="text-align:center;font-size:12px;color:var(--gray-dim);margin:14px 0 -6px">${t('match.adminCorrectNote')}</div>
@@ -1578,204 +1564,16 @@ function openEmbedModal(m) {
   document.getElementById('embed-modal').style.display = 'flex';
 }
 
-function manualResultRowsHtml(m) {
-  const meta = FORMAT_META[m.format] || { setsToWin: 2, finalSetSuperTiebreak: false };
-  const maxSets = meta.setsToWin * 2 - 1;
-  const deciderIndex = meta.setsToWin * 2 - 2;
-  let rows = '';
-  for (let i = 0; i < maxSets; i += 1) {
-    const isDeciderTB = i === deciderIndex && meta.finalSetSuperTiebreak;
-    rows += `
-      <div class="manual-set-row" data-tb-at="${meta.tiebreakAt || 6}">
-        <div class="manual-set-label">${isDeciderTB ? t('match.matchTiebreakLabel') : t('match.setLabel', { n: i + 1 })}</div>
-        <div class="manual-set-fields">
-          <div class="manual-set-field">
-            <label>${escapeHtml(m.player1.name)}</label>
-            <input type="number" min="0" max="99" inputmode="numeric" class="manual-set-input" data-player="1">
-          </div>
-          <div class="manual-set-dash">–</div>
-          <div class="manual-set-field">
-            <label>${escapeHtml(m.player2.name)}</label>
-            <input type="number" min="0" max="99" inputmode="numeric" class="manual-set-input" data-player="2">
-          </div>
-        </div>
-        ${isDeciderTB ? '' : `
-        <div class="manual-tiebreak-row" style="display:none">
-          <div class="manual-tiebreak-field">
-            <label>${t('match.tiebreakScoreLabel')} <span style="font-weight:400;color:var(--gray-dim);font-size:11px">${t('common.optional')}</span></label>
-            <input type="number" min="0" max="99" inputmode="numeric" class="manual-tiebreak-input" data-tb-player="1">
-          </div>
-          <div class="manual-set-dash">–</div>
-          <div class="manual-tiebreak-field">
-            <label>&nbsp;</label>
-            <input type="number" min="0" max="99" inputmode="numeric" class="manual-tiebreak-input" data-tb-player="2">
-          </div>
-        </div>
-        `}
-      </div>
-    `;
-  }
-  return rows;
-}
-
-// A regular (non-decider) set's own real tiebreak point score — e.g.
-// "7-6(4)" instead of a bare "7-6" — only ever makes sense once its game
-// score actually IS a 7-6/6-7 tiebreak set, so the little sub-fields for
-// it (see manualResultRowsHtml) stay hidden the rest of the time instead
-// of cluttering every row with an input that's normally irrelevant. Wired
-// once per row here rather than per-keystroke reformatting, since a
-// row's own two game-score inputs are what decide whether its sibling
-// tiebreak row applies.
-function wireManualTiebreakToggle(row) {
-  const tbRow = row.querySelector('.manual-tiebreak-row');
-  if (!tbRow) return; // the decider (super-tiebreak) row has no sibling tiebreak fields
-  const p1Input = row.querySelector('.manual-set-input[data-player="1"]');
-  const p2Input = row.querySelector('.manual-set-input[data-player="2"]');
-  const update = () => {
-    const p1 = Number(p1Input.value);
-    const p2 = Number(p2Input.value);
-    const tbAt = Number(row.dataset.tbAt) || 6;
-    const isTiebreakSet = (p1 === tbAt + 1 && p2 === tbAt) || (p1 === tbAt && p2 === tbAt + 1);
-    tbRow.style.display = isTiebreakSet ? 'flex' : 'none';
-    if (!isTiebreakSet) {
-      tbRow.querySelectorAll('.manual-tiebreak-input').forEach((inp) => { inp.value = ''; });
-    }
-  };
-  p1Input.addEventListener('input', update);
-  p2Input.addEventListener('input', update);
-}
-
+// The window "Zadať výsledok manuálne" is shared with the drawn brackets (manual-result.js); here it saves the match of this page and draws it again.
 function openManualResultModal(m) {
-  document.getElementById('manual-result-sets').innerHTML = manualResultRowsHtml(m);
-  document.querySelectorAll('#manual-result-sets .manual-set-row').forEach(wireManualTiebreakToggle);
-  document.getElementById('manual-result-location').value = m.location || '';
-  document.getElementById('manual-result-date').value = toDateValue(m.scheduledAt);
-  document.getElementById('manual-result-time').value = toTimeValue(m.scheduledAt);
-  const errorEl = document.getElementById('manual-result-error');
-  errorEl.textContent = '';
-  const form = document.getElementById('manual-result-form');
-
-  const retiredCheckbox = document.getElementById('manual-result-retired-checkbox');
-  const retiredFields = document.getElementById('manual-result-retired-fields');
-  const unfinishedCheckbox = document.getElementById('manual-result-unfinished-checkbox');
-  retiredCheckbox.checked = false;
-  unfinishedCheckbox.checked = false;
-  retiredFields.style.display = 'none';
-  // Mutually exclusive — a walkover/retirement claims a winner+reason, while
-  // Unfinished explicitly declines to claim anything, so only one can apply.
-  retiredCheckbox.onchange = () => {
-    retiredFields.style.display = retiredCheckbox.checked ? 'block' : 'none';
-    if (retiredCheckbox.checked) unfinishedCheckbox.checked = false;
-  };
-  unfinishedCheckbox.onchange = () => {
-    if (unfinishedCheckbox.checked) {
-      retiredCheckbox.checked = false;
-      retiredFields.style.display = 'none';
-    }
-  };
-
-  let winner = null;
-  let reason = null;
-  const winnerBtns = Array.from(document.querySelectorAll('#manual-result-winner-row button'));
-  const reasonBtns = Array.from(document.querySelectorAll('#manual-result-reason-row button'));
-  winnerBtns[0].textContent = m.player1.name;
-  winnerBtns[0].dataset.winner = '1';
-  winnerBtns[1].textContent = m.player2.name;
-  winnerBtns[1].dataset.winner = '2';
-  winnerBtns.forEach((btn) => {
-    btn.classList.remove('active');
-    btn.onclick = () => {
-      winner = Number(btn.dataset.winner);
-      winnerBtns.forEach((b) => b.classList.toggle('active', b === btn));
-    };
-  });
-  reasonBtns.forEach((btn) => {
-    btn.classList.remove('active');
-    btn.onclick = () => {
-      reason = btn.dataset.reason;
-      reasonBtns.forEach((b) => b.classList.toggle('active', b === btn));
-    };
-  });
-
-  form.onsubmit = async (e) => {
-    e.preventDefault();
-    errorEl.textContent = '';
-
-    const location = document.getElementById('manual-result-location').value.trim();
-    const dateVal = document.getElementById('manual-result-date').value;
-    const timeVal = document.getElementById('manual-result-time').value;
-    if (!location || !dateVal) {
-      errorEl.textContent = t('match.locationDateRequired');
-      return;
-    }
-    const scheduledAt = new Date(`${dateVal}T${timeVal || '00:00'}`).toISOString();
-
-    const rows = Array.from(document.querySelectorAll('.manual-set-row'));
-    const sets = [];
-    for (const row of rows) {
-      const p1raw = row.querySelector('[data-player="1"]').value.trim();
-      const p2raw = row.querySelector('[data-player="2"]').value.trim();
-      if (p1raw === '' && p2raw === '') break;
-      if (p1raw === '' || p2raw === '') {
-        errorEl.textContent = t('match.fillBothScores');
-        return;
-      }
-      const set = { p1: Number(p1raw), p2: Number(p2raw) };
-      // The real tiebreak score (see manualResultRowsHtml/wireManualTiebreakToggle)
-      // only actually exists in the DOM — and is only ever visible — for a
-      // 7-6/6-7 set; harmless to look for on every row regardless; only
-      // sent along when at least one of the two boxes has something in it,
-      // same "fully optional, never fabricated" spirit as the server side.
-      const tbRow = row.querySelector('.manual-tiebreak-row');
-      if (tbRow) {
-        const tb1raw = tbRow.querySelector('[data-tb-player="1"]').value.trim();
-        const tb2raw = tbRow.querySelector('[data-tb-player="2"]').value.trim();
-        if (tb1raw !== '' || tb2raw !== '') {
-          if (tb1raw === '' || tb2raw === '') {
-            errorEl.textContent = t('match.fillBothTiebreakScores');
-            return;
-          }
-          set.tbP1 = Number(tb1raw);
-          set.tbP2 = Number(tb2raw);
-        }
-      }
-      sets.push(set);
-    }
-
-    const body = { sets, location, scheduledAt };
-    if (retiredCheckbox.checked) {
-      if (!winner || !reason) {
-        errorEl.textContent = t('match.pickWhoWonWhy');
-        return;
-      }
-      body.winner = winner;
-      body.reason = reason;
-    } else if (unfinishedCheckbox.checked) {
-      if (sets.length === 0) {
-        errorEl.textContent = t('match.enterAtLeastOneSetScore');
-        return;
-      }
-      body.unfinished = true;
-    } else if (sets.length === 0) {
-      errorEl.textContent = t('match.enterAtLeastOneSetScore');
-      return;
-    }
-
-    const submitBtn = form.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    try {
-      const finished = await api(`/matches/${matchToken}/manual-result`, { method: 'POST', body });
-      document.getElementById('manual-result-modal').style.display = 'none';
+  openManualResult(m, {
+    token: matchToken,
+    onSaved: (finished) => {
       render(finished);
-      // An unfinished result has no result to share — only pop the
-      // WhatsApp-share modal when the match actually finished.
+      // An unfinished result has no result to share — only pop the WhatsApp-share modal when the match actually finished.
       if (finished.status === 'FINISHED') openWhatsAppResultModal(finished);
-    } catch (err) {
-      errorEl.textContent = err.message;
-    }
-    submitBtn.disabled = false;
-  };
-  document.getElementById('manual-result-modal').style.display = 'flex';
+    },
+  });
 }
 
 // Only a match of a club or community can have such an admin; the others are never asked.

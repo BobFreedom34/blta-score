@@ -85,6 +85,32 @@ test('the live score: both players and the club admin may start it, a stranger m
   assert.strictEqual((await start(third, setup.b)).status, 200, 'the other player');
 });
 
+test('the club admin restarts a match (live, and a finished one too), the site admin as well; the players of a finished match and a stranger cannot', async () => {
+  const restart = (token, who) => call('POST', `/api/matches/${token}/restart`, { cookie: who.cookie || who, body: {} });
+  // a live match: the club admin restarts it
+  const live = await newMatch(setup.a, setup.b);
+  assert.strictEqual((await start(live, setup.a)).status, 200);
+  assert.strictEqual((await restart(live, setup.stranger)).status, 403, 'a stranger');
+  assert.strictEqual((await restart(live, setup.owner)).status, 200, 'the club admin restarts a live match');
+  // a finished match
+  const done = await newMatch(setup.a, setup.b);
+  assert.strictEqual((await manual(done, setup.a)).status, 200);
+  assert.strictEqual((await restart(done, setup.a)).status, 403, 'a player of a finished match cannot restart it');
+  assert.strictEqual((await restart(done, setup.stranger)).status, 403, 'a stranger');
+  const back = await restart(done, setup.owner);
+  assert.strictEqual(back.status, 200, JSON.stringify(back.json));
+  assert.strictEqual(back.json.status, 'PLANNED', 'the club admin restarted a finished match');
+  // and the site admin
+  assert.strictEqual((await manual(done, setup.b)).status, 200);
+  assert.strictEqual((await restart(done, adminCookie)).status, 200);
+  // the score of a finished match: the club admin may correct it, a player may not
+  const fin = await newMatch(setup.a, setup.b);
+  assert.strictEqual((await manual(fin, setup.owner)).status, 200);
+  const score = (who) => call('POST', `/api/matches/${fin}/score`, { cookie: who.cookie, body: { player: 1, delta: -1 } });
+  assert.strictEqual((await score(setup.a)).status, 403, 'a player');
+  assert.notStrictEqual((await score(setup.owner)).status, 403, 'the club admin is allowed to correct (whatever the score says)');
+});
+
 test('the match page asks whether the visitor is the admin of the club: the club admin and the site admin yes, a player, a stranger and a visitor no', async () => {
   const token = await newMatch(setup.a, setup.b);
   const ask = async (cookie) => (await call('GET', `/api/matches/${token}/can-manage`, { cookie })).json.canManage;
@@ -106,6 +132,7 @@ test('the match page uses it: the controls and the result entry stay open to the
   assert.ok(/function canManageMatch\(m, isAdminUser\) \{\s*if \(isAdminUser\) return true;\s*if \(m\.viewerManagesClub\) return true;/.test(common), 'canManageMatch knows the club admin');
   assert.ok(/function canManageLiveScore\(m, isAdminUser\) \{\s*if \(isAdminUser\) return true;\s*if \(m\.viewerManagesClub\) return true;/.test(common), 'canManageLiveScore knows the club admin');
   assert.ok(match.includes('const clubPlayer = '), 'a player of a club match may enter the result by hand');
+  assert.ok(match.includes('if (!isAdminUser && !clubManager) return winnerCard;'), 'the club admin sees the restart and the corrections of a finished match');
 });
 
 // ---------------------------------------------------------------- run

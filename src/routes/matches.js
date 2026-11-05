@@ -344,6 +344,11 @@ function checkMatchAccess(req, res, row) {
 // check, any logged-in player could create a match naming two other
 // people as player1/player2 and then start/control its live score purely
 // by virtue of being its creator.
+// Who may correct or restart a FINISHED match: an admin of the site, or the admin of the club that runs its tournament (the players of it and a referee may not).
+function mayCorrectFinished(req, row) {
+  return isAdmin(req) || managesMatchSeason(req, row);
+}
+
 function checkLiveScoreAccess(req, res, row) {
   if (isAdmin(req) || isReferee(req) || managesMatchSeason(req, row)) return true;
   const playerId = getPlayerId(req);
@@ -1736,7 +1741,7 @@ router.post('/:token/restart', requireLoggedInOrReferee, (req, res) => {
   if (!row) return;
   if (!checkLiveScoreAccess(req, res, row)) return;
   if (row.status === 'FINISHED') {
-    if (!isAdmin(req)) {
+    if (!mayCorrectFinished(req, row)) {
       return res.status(403).json({ error: 'Only an admin can restart a finished match' });
     }
   } else if (row.status !== 'LIVE' && row.status !== 'UNFINISHED') {
@@ -1771,7 +1776,7 @@ router.post('/:token/score', requireLoggedInOrReferee, (req, res) => {
   if (row.status === 'PLANNED') {
     return res.status(400).json({ error: 'Match must be live to update the score' });
   }
-  if (row.status === 'FINISHED' && !isAdmin(req)) {
+  if (row.status === 'FINISHED' && !mayCorrectFinished(req, row)) {
     return res.status(403).json({ error: 'Only an admin can edit the score of a finished match' });
   }
   const player = Number(req.body.player);
@@ -1854,7 +1859,7 @@ router.post('/:token/undo', requireLoggedInOrReferee, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
   if (!checkLiveScoreAccess(req, res, row)) return;
-  if (row.status === 'FINISHED' && !isAdmin(req)) {
+  if (row.status === 'FINISHED' && !mayCorrectFinished(req, row)) {
     return res.status(403).json({ error: 'Only an admin can edit a finished match' });
   }
   const history = JSON.parse(row.history);

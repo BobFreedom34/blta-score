@@ -5062,7 +5062,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-seg button { border: 0; background: transparent; color: #c3c7cf; font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
 .cs-seg button:hover { color: var(--white); }
 .cs-seg button.active { background: var(--orange); color: var(--white); }
-.cs-scroll { overflow-x: auto; padding-bottom: 6px; }
+.cs-scroll { padding-bottom: 6px; } /* (no scrolling box: the courts share the width, and a box with overflow-x also made a useless vertical scroll bar next to the timeline) */
 .cs-grid { display: grid; grid-template-columns: 38px repeat(var(--cs-cols), minmax(0, 1fr)); gap: 8px; }
 .cs-grid + .cs-grid { margin-top: 26px; }
 .cs-court-h { height: 30px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }

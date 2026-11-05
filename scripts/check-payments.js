@@ -77,6 +77,23 @@ test('only an admin, only a season that exists', async () => {
   assert.strictEqual((await call('POST', '/api/seasons/999999/registrations/remind', { body: {} })).status, 404);
 });
 
+test('the window after a registration asks for a payment only when the event has an entry fee (0, "zadarmo" or nothing written: no IBAN, no payment link)', () => {
+  const js = fs.readFileSync(path.join(ROOT, 'public/js/season.js'), 'utf8');
+  const fn = /function hasEntryFee\(\) \{[\s\S]*?\n\}/.exec(js);
+  assert.ok(fn, 'hasEntryFee exists');
+  const check = (entryFee, paymentUrl) => new Function('season', `${fn[0]}; return hasEntryFee();`)({ entryFee, paymentUrl });
+  assert.strictEqual(check('20 €', ''), true);
+  assert.strictEqual(check('20,50', ''), true);
+  assert.strictEqual(check('0', ''), false);
+  assert.strictEqual(check('0 €', 'https://pay.example'), false, 'a fee of 0 asks for nothing, even with a payment link');
+  assert.strictEqual(check('0,00', ''), false);
+  assert.strictEqual(check('zadarmo', ''), false);
+  assert.strictEqual(check('Free', ''), false);
+  assert.strictEqual(check('', ''), false, 'nothing written, no link');
+  assert.strictEqual(check('', 'https://pay.example'), true, 'nothing written but a payment link: it is paid online');
+  assert.ok(js.includes('|| !hasEntryFee() ? \'\' : stripe + bankTransferHtml(contact, !!stripe)'), 'the window uses it');
+});
+
 async function main() {
   let failed = 0;
   try {

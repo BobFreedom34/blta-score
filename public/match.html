@@ -257,55 +257,7 @@
   </div>
 </div>
 
-<!-- Manual result modal (admin: record a result for a match played outside the app) -->
-<div class="modal-backdrop" id="manual-result-modal" style="display:none">
-  <div class="modal">
-    <button type="button" class="close" data-close="manual-result-modal" aria-label="Close">&times;</button>
-    <h3 data-i18n="match.manualResultTitle">Zadať výsledok manuálne</h3>
-    <p style="font-size:13px;color:var(--gray)" data-i18n="match.manualResultDesc">Pre zápas, ktorý sa už odohral inde. Vyplňte odohrané sety v poradí a zvyšok nechajte prázdny.</p>
-    <form id="manual-result-form">
-      <div class="grid-2">
-        <div class="field">
-          <label for="manual-result-location" data-i18n="quickSchedule.place">Miesto</label>
-          <input type="text" id="manual-result-location" placeholder="napr. NTC Bratislava, kurt 3" data-i18n-placeholder="quickSchedule.placePlaceholder" required>
-        </div>
-        <div class="field">
-          <label for="manual-result-date" data-i18n="quickSchedule.dateTime">Dátum a čas</label>
-          <div style="display:flex;gap:8px">
-            <input type="date" id="manual-result-date" style="flex:1" required>
-            <input type="text" inputmode="numeric" class="time-input" placeholder="HH:MM" maxlength="5" autocomplete="off" id="manual-result-time" style="flex:1">
-          </div>
-        </div>
-      </div>
-      <div id="manual-result-sets"></div>
-
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:6px">
-        <input type="checkbox" id="manual-result-retired-checkbox">
-        <span style="font-size:13px;font-weight:600" data-i18n="match.retiredCheckboxLabel">Skončilo kontumáciou alebo skrečom (nedohralo sa do konca)</span>
-      </label>
-      <div id="manual-result-retired-fields" style="display:none;margin-top:10px">
-        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em" data-i18n="match.winner">Víťaz</div>
-        <div class="server-choice-row" id="manual-result-winner-row">
-          <button type="button" class="btn btn-outline btn-block" data-winner="1"></button>
-          <button type="button" class="btn btn-outline btn-block" data-winner="2"></button>
-        </div>
-        <div class="label" style="font-size:11px;text-transform:uppercase;color:var(--gray);font-weight:700;letter-spacing:0.03em;margin-top:12px" data-i18n="match.reasonLabel">Dôvod</div>
-        <div class="server-choice-row" id="manual-result-reason-row">
-          <button type="button" class="btn btn-outline btn-block" data-reason="RETIREMENT" data-i18n="common.endReason.RETIREMENT">Skreč</button>
-          <button type="button" class="btn btn-outline btn-block" data-reason="WALKOVER" data-i18n="common.endReason.WALKOVER">Kontumácia</button>
-        </div>
-      </div>
-
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:10px">
-        <input type="checkbox" id="manual-result-unfinished-checkbox">
-        <span style="font-size:13px;font-weight:600" data-i18n="match.unfinishedCheckboxLabel">Nedokončené — vypršal čas (nezapočíta sa do štatistík)</span>
-      </label>
-
-      <div id="manual-result-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px" data-i18n="match.saveResult">Uložiť výsledok</button>
-    </form>
-  </div>
-</div>
+<!-- (the manual result window is made by manual-result.js when it is needed) -->
 
 <!-- Edit match modal — the same initial-settings fields as the "New match"
      form, pre-filled and editable for a match that already exists. Opened
@@ -546,6 +498,7 @@
 <script src="/js/common.js"></script>
 <script src="/js/h2h.js"></script>
 <script src="/js/match-photos.js"></script>
+<script src="/js/manual-result.js"></script>
 <script src="/js/match.js"></script>
 </body>
 </html>
