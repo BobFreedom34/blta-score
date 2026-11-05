@@ -52,4 +52,27 @@ function seedWinners(db) {
   return { editions: EDITIONS.length };
 }
 
-module.exports = { seedWinners };
+// One-off: the two lists the seed made are linked to the seasons they are about (by the name of the season, since the title of the list differs). Runs once
+// (flag in app_flags); a list is linked only when it is still linked to nothing, exactly one season has that name and no other list is linked to it.
+// The winners are then edited in the last tab of that season (and shown at the end of its page). Returns what it linked.
+const LINKS = [
+  { edition: 'BLTA Winter Series 2026', season: 'Winter Opening Series 2026' },
+  { edition: 'BLTA nultý ročník 2025', season: 'BLTA Nultý Ročník' },
+];
+const LINK_FLAG = 'winners_linked_to_seasons';
+function linkOlderEditions(db) {
+  if (db.prepare('SELECT 1 FROM app_flags WHERE key = ?').get(LINK_FLAG)) return { skipped: true };
+  const linked = [];
+  LINKS.forEach((link) => {
+    const editions = db.prepare('SELECT id, season_id FROM winner_editions WHERE LOWER(title) = LOWER(?)').all(link.edition);
+    const seasons = db.prepare('SELECT id FROM seasons WHERE LOWER(name) = LOWER(?)').all(link.season);
+    if (editions.length !== 1 || editions[0].season_id || seasons.length !== 1) return;
+    if (db.prepare('SELECT 1 FROM winner_editions WHERE season_id = ?').get(seasons[0].id)) return;
+    db.prepare('UPDATE winner_editions SET season_id = ? WHERE id = ?').run(seasons[0].id, editions[0].id);
+    linked.push(link.edition);
+  });
+  db.prepare('INSERT OR IGNORE INTO app_flags (key) VALUES (?)').run(LINK_FLAG);
+  return { linked };
+}
+
+module.exports = { seedWinners, linkOlderEditions };

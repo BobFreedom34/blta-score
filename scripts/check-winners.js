@@ -354,6 +354,28 @@ test('seed runs only once, even after the data was deleted', async () => {
   assert.strictEqual(seedCount('winner_editions'), 0);
 });
 
+test('the one-off link attaches the two lists to their seasons by the name of the season, once, and never over another list', async () => {
+  resetSeed();
+  seedDb.prepare("DELETE FROM app_flags WHERE key = 'winners_linked_to_seasons'").run();
+  const winter = Number(seedDb.prepare("INSERT INTO seasons (name, slug) VALUES ('Winter Opening Series 2026', 'winter-opening-2026')").run().lastInsertRowid);
+  const zero = Number(seedDb.prepare("INSERT INTO seasons (name, slug) VALUES ('BLTA Nultý Ročník', 'blta-nulty-rocnik')").run().lastInsertRowid);
+  seed.seedWinners(seedDb);
+  const seasonOf = (title) => seedDb.prepare('SELECT season_id FROM winner_editions WHERE title = ?').get(title).season_id;
+  assert.strictEqual(seasonOf('BLTA Winter Series 2026'), null, 'the seed does not link them');
+  assert.deepStrictEqual(seed.linkOlderEditions(seedDb).linked, ['BLTA Winter Series 2026', 'BLTA nultý ročník 2025']);
+  assert.strictEqual(seasonOf('BLTA Winter Series 2026'), winter);
+  assert.strictEqual(seasonOf('BLTA nultý ročník 2025'), zero);
+  assert.deepStrictEqual(seed.linkOlderEditions(seedDb), { skipped: true }, 'it runs once');
+  // a season that has a list already, or a name that is not there, is left alone
+  resetSeed();
+  seedDb.prepare("DELETE FROM app_flags WHERE key = 'winners_linked_to_seasons'").run();
+  const taken = Number(seedDb.prepare("INSERT INTO seasons (name, slug) VALUES ('Winter Opening Series 2026', 'winter-opening-2026')").run().lastInsertRowid);
+  seedDb.prepare("INSERT INTO winner_editions (title, season_id, sort_order) VALUES ('Own list', ?, 5)").run(taken);
+  seed.seedWinners(seedDb);
+  assert.deepStrictEqual(seed.linkOlderEditions(seedDb).linked, [], 'nothing linked over an existing list, no season with the other name');
+  assert.strictEqual(seasonOf('BLTA Winter Series 2026'), null);
+});
+
 test('seed links a season only on an exact name', async () => {
   resetSeed();
   const sid = Number(seedDb.prepare("INSERT INTO seasons (name, slug) VALUES ('BLTA Winter Series 2026', 'winter-series-2026')").run().lastInsertRowid);

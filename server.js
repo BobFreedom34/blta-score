@@ -174,6 +174,12 @@ try {
   console.error('Winners seed failed (will retry on next start):', err);
 }
 try {
+  const done = require('./src/winnersSeed').linkOlderEditions(db);
+  if (done.linked && done.linked.length) console.log('Winners lists linked to their seasons:', done.linked.join(', '));
+} catch (err) {
+  console.error('Linking the winners lists failed (will retry on next start):', err);
+}
+try {
   const seeded = require('./src/winter2026PlayoffSeed').seedWinter2026Playoffs(db);
   if (seeded.created) console.log('Winter 2026 play-off brackets added: ' + (seeded.created.join(', ') || 'none (already there)'));
 } catch (err) {
