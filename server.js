@@ -593,6 +593,9 @@ function homeHtml(html, lang, req) {
 // Backend > Schedule is gone: the events outside the app are on the Tournaments tab now
 app.get(['/schedule-admin', '/schedule-admin.html'], (req, res) => res.redirect(302, '/tournaments-admin'));
 const IMAGE_FILE = /\.(png|jpe?g|gif|svg|webp|avif|ico)$/i;
+// the page Backend > Winners is gone (the winners are the last tab of every season and tournament): an old bookmark goes to the seasons
+app.get('/winners-admin', (req, res) => res.redirect(301, '/seasons-admin'));
+
 const staticFiles = express.static(PUBLIC_DIR, {
   extensions: ['html'],
   etag: true,

@@ -397,6 +397,37 @@ async function startServer() {
   fixtureDb.exec('PRAGMA busy_timeout = 5000');
 }
 
+test('the winners are edited in the last tab of a season and of a tournament (not on a page of their own): the page and its menu item are gone, an old address redirects', async () => {
+  const pub = (f) => path.join(ROOT, 'public', f);
+  assert.ok(!fs.existsSync(pub('winners-admin.html')) && !fs.existsSync(pub('js/winners-admin.js')), 'the page of its own is deleted');
+  for (const f of fs.readdirSync(path.join(ROOT, 'public')).filter((x) => x.endsWith('.html'))) assert.ok(!fs.readFileSync(pub(f), 'utf8').includes('/winners-admin'), `${f} no longer links to Backend > Winners`);
+  const js = fs.readFileSync(pub('js/seasons-admin.js'), 'utf8');
+  new (require('vm').Script)(js, { filename: 'seasons-admin.js' });
+  assert.ok(js.includes(".concat(CLUB ? [] : [['winners', tl('Víťazi', 'Winners')]])") && js.includes('data-panel="winners"') && js.includes('mountWinnersPanel'), 'the last tab of a card');
+  const panel = fs.readFileSync(pub('js/winners-panel.js'), 'utf8');
+  new (require('vm').Script)(panel, { filename: 'winners-panel.js' });
+  for (const page of ['seasons-admin.html', 'tournaments-admin.html']) assert.ok(fs.readFileSync(pub(page), 'utf8').includes('/js/winners-panel.js'), `${page} loads the panel`);
+  const res = await fetch(`${BASE}/winners-admin`, { redirect: 'manual' });
+  assert.strictEqual(res.status, 301);
+  assert.strictEqual(res.headers.get('location'), '/seasons-admin');
+});
+
+test('a winners list is linked to a season from its tab: made for it, or an older list linked to it; the season page then shows it', async () => {
+  const season = fixtures.insertSeason('Tab Season', 'tab-season');
+  const created = await call('POST', '/api/winners/editions', { body: { title: 'Tab Season', seasonId: season } });
+  assert.strictEqual(created.status, 201, JSON.stringify(created.json));
+  assert.strictEqual(created.json.seasonId, season);
+  const older = (await call('POST', '/api/winners/editions', { body: { title: 'Older list' } })).json;
+  assert.strictEqual(older.seasonId, null);
+  const other = fixtures.insertSeason('Other Season', 'other-season');
+  const linked = await call('PATCH', `/api/winners/editions/${older.id}`, { body: { seasonId: other } });
+  assert.strictEqual(linked.status, 200);
+  assert.strictEqual(linked.json.seasonId, other);
+  const all = (await call('GET', '/api/winners/all')).json;
+  assert.strictEqual(all.filter((e) => e.seasonId === season).length, 1);
+  assert.strictEqual(all.filter((e) => e.seasonId === other).length, 1);
+});
+
 async function main() {
   let failed = 0;
   try {

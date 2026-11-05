@@ -59,7 +59,7 @@ function renderCityAdmin(info) {
       <li><a href="/seasons-admin" style="color:var(--orange)">Seasons</a> and <a href="/tournaments-admin" style="color:var(--orange)">tournaments</a>, the groups, the draw and the schedule</li>
       <li><a href="/players" style="color:var(--orange)">Players</a> and the registrations</li>
       <li><a href="/venues-admin" style="color:var(--orange)">Venues</a> (courts)</li>
-      <li><a href="/bracket-admin" style="color:var(--orange)">Brackets</a> and results, <a href="/winners-admin" style="color:var(--orange)">winners</a></li>
+      <li><a href="/bracket-admin" style="color:var(--orange)">Brackets</a> and results, and the winners in the last tab of each season and tournament</li>
       <li>The <a href="/blog-admin" style="color:var(--orange)">blog</a> and the <a href="/rules-admin" style="color:var(--orange)">rules</a> (Propozície) of the city</li>
       <li>The look of the home page: <a href="/carousel-admin" style="color:var(--orange)">pictures</a> and the <a href="/header-admin" style="color:var(--orange)">menu</a></li>
     </ul>

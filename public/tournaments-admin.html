@@ -35,7 +35,6 @@
     <a href="/seasons-admin" class="tab">Seasons</a>
     <a href="/tournaments-admin" class="tab active">Tournaments</a>
     <a href="/communities-admin" class="tab">Communities</a>
-    <a href="/winners-admin" class="tab">Winners</a>
     <a href="/reservations-admin" class="tab">Reservations</a>
     <a href="/blog-admin" class="tab">Blog</a>
     <a href="/seo-admin" class="tab">SEO</a>
@@ -45,7 +44,7 @@
     <a href="/login-history" class="tab">Login History</a>
   </div>
   <h2 style="margin:18px 0 4px">Tournaments</h2>
-  <p style="color:var(--gray-dim)">Tournaments — each has its own public page (info, description, registration, brackets, matches and winners; set the winners in <a href="/winners-admin" style="text-decoration:underline;color:var(--orange)">Winners</a>) and shows on the schedule with the venue and the categories it is played in. Groups are optional for a tournament; matches get the tournament like they get a season. League seasons are in <a href="/seasons-admin" style="text-decoration:underline;color:var(--orange)">Seasons</a>.</p>
+  <p style="color:var(--gray-dim)">Tournaments — each has its own public page (info, description, registration, brackets, matches and winners; the winners are set in the last tab of the tournament, Winners) and shows on the schedule with the venue and the categories it is played in. Groups are optional for a tournament; matches get the tournament like they get a season. League seasons are in <a href="/seasons-admin" style="text-decoration:underline;color:var(--orange)">Seasons</a>.</p>
 
   <div id="seasons-admin-root" data-kind="TOURNAMENT">Loading…</div>
 
@@ -68,6 +67,7 @@
 <script src="/js/season-assign.js"></script>
 <script src="/js/season-draw.js"></script>
 <script src="/js/tournament-rules.js"></script>
+<script src="/js/winners-panel.js"></script>
 <script src="/js/seasons-admin.js"></script>
 <script src="/js/events-admin.js"></script>
 </body>

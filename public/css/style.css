@@ -5164,6 +5164,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 /* the card of a tournament or a season (Backend, club manage page): dark like the windows (the ink and the greys are re-pointed inside it, as in .modal), the tabs
    under the name stay under the top bar while the page scrolls (--topbar-h is set by seasons-admin.js), the form in sections */
 .sa-card { background: #1b1b1f; color: var(--white); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: none; color-scheme: dark; --ink: #fff; --gray: #c3c7cf; --gray-dim: #8b8f98; --gray-light: rgba(255, 255, 255, 0.1); }
+.sa-card { border-color: #fff; } /* a season or a tournament has a white frame, folded or open, like the sections inside it */
 .sa-tabs { position: sticky; top: var(--topbar-h, 56px); z-index: 20; background: #1b1b1f; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .sa-tab { background: var(--green-light); color: #0a0a0a; border: 2px solid var(--green-light); border-radius: var(--radius-sm); padding: 8px 16px; font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; cursor: pointer; }
 .sa-tab:hover { background: #c6ff3a; border-color: #c6ff3a; }

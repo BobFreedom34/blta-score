@@ -702,6 +702,7 @@ async function openRegisterModal() {
 
 let finalData = null;
 async function loadFinal() {
+  if (!isTournament()) { finalData = { sections: [], complete: false }; return; } // only a tournament has the tab
   try { finalData = await api(`/seasons/${season.id}/final-standings`); } catch { finalData = { sections: [], complete: false }; }
 }
 // the place and what the player did, in words: "1. miesto", "Semifinalista" …
@@ -758,7 +759,7 @@ function availableTabs() {
   ];
   // a tournament has only the tabs Základné info, Harmonogram (court timetable with live scores), Skupiny (the group tables), Pavúky and Galéria (Rozpis is for league seasons); its players are shown below the Základné info tab (see fixedPlayersHtml)
   // (and the tabs that have nothing for this tournament are left out: no Skupiny tab for a bracket, no Pavúky before there is one, no Konečné poradie before something is played)
-  return isTournament() ? tabs.filter((x) => ['info', 'courts', 'tables', 'playoff', 'matches', 'final', 'gallery'].includes(x.key) && (!['tables', 'playoff', 'final'].includes(x.key) || x.has)) : tabs.filter((x) => x.key !== 'courts');
+  return isTournament() ? tabs.filter((x) => ['info', 'courts', 'tables', 'playoff', 'matches', 'final', 'gallery'].includes(x.key) && (!['tables', 'playoff', 'final'].includes(x.key) || x.has)) : tabs.filter((x) => x.key !== 'courts' && x.key !== 'final'); // (a league season has its tables: the final standings are for tournaments only)
 }
 
 // the players of a tournament are shown on the Základné info tab only
