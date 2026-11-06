@@ -1513,6 +1513,8 @@ if (!seasonInfoColumns.includes('court_count')) db.exec('ALTER TABLE seasons ADD
   // each category as JSON { "ELITE": 16 }; the ones after it are substitutes (src/registrationCapacity.js)
   ['max_players', 'INTEGER'],
   ['category_max', "TEXT NOT NULL DEFAULT ''"],
+  // how many hours before the start a registered player can drop out himself (NULL = he cannot; 0 = until the start), see src/unregister.js
+  ['unregister_hours', 'INTEGER'],
 ].forEach(([col, type]) => {
   if (!seasonInfoColumns.includes(col)) db.exec(`ALTER TABLE seasons ADD COLUMN ${col} ${type}`);
 });
@@ -1942,3 +1944,8 @@ if (!db.prepare('PRAGMA table_info(organisations)').all().some((c) => c.name ===
 db.exec('CREATE INDEX IF NOT EXISTS idx_seasons_organisation ON seasons(organisation_id)');
 
 module.exports = db;
+
+// the bell row of an admin about a registration: 'REGISTER' (somebody registered) or 'UNREGISTER' (somebody dropped out), see src/routes/seasons.js
+if (!db.prepare('PRAGMA table_info(registration_notifications)').all().some((c) => c.name === 'kind')) {
+  db.exec("ALTER TABLE registration_notifications ADD COLUMN kind TEXT NOT NULL DEFAULT 'REGISTER'");
+}

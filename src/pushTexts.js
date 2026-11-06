@@ -20,6 +20,7 @@ const WORDING = {
   POST: { sk: '📢 {org}: nová novinka od {name}', en: '📢 {org}: a new post from {name}' },
   REACTION: { sk: '{emoji} {name} reagoval na tvoju novinku v {org}', en: '{emoji} {name} reacted to your post in {org}' },
   REGISTRATION: { sk: '🎾 {name} sa prihlásil do {season}', en: '🎾 {name} registered for {season}' },
+  UNREGISTRATION: { sk: '🎾 {name} sa odhlásil z {season}', en: '🎾 {name} withdrew from {season}' },
   REGISTRATION_SUB: { sk: '🎾 {name} sa prihlásil ako náhradník do {season}', en: '🎾 {name} registered as a substitute for {season}' },
   COMMENT: { sk: '💬 {name} komentoval tvoju novinku v {org}', en: '💬 {name} commented on your post in {org}' },
   APPROVAL: { sk: '🏟️ Nový klub čaká na schválenie: {org}', en: '🏟️ A new club waits for your approval: {org}' },
@@ -53,6 +54,7 @@ function build(kind, data = {}, lang = 'sk') {
     case 'COMMENT': return { title: fill(WORDING.COMMENT[l], { name, org: data.orgName || '' }), body: clip(data.body), url: data.orgSlug ? `/community/${encodeURIComponent(data.orgSlug)}` : '/communities', tag: `comment-${data.postId || 'x'}` };
     // an organiser: somebody registered for a tournament of his club (the manage page of that tournament)
     case 'REGISTRATION': return { title: fill(WORDING[data.substitute ? 'REGISTRATION_SUB' : 'REGISTRATION'][l], { name, season: data.seasonName || '' }), body: data.orgName || '', url: data.seasonId ? `/community-tournament/${data.seasonId}` : '/communities', tag: `registration-${data.seasonId || 'x'}` };
+    case 'UNREGISTRATION': return { title: fill(WORDING.UNREGISTRATION[l], { name, season: data.seasonName || '' }), body: data.orgName || '', url: data.seasonId ? `/community-tournament/${data.seasonId}` : '/communities', tag: `registration-${data.seasonId || 'x'}` };
     case 'APPROVAL': return { title: fill(WORDING.APPROVAL[l], { org: data.orgName || '' }), body: data.fromName ? `${data.fromName}` : '', url: '/messages', tag: 'approval' };
     case 'INVITE': return { title: fill(WORDING.INVITE[l], { name, org: data.orgName || '' }), body: '', url: '/messages', tag: 'invite' };
     case 'PHOTO': return { title: fill(WORDING.PHOTO[l], { name }), body: '', url: matchUrl, tag: `photo-${data.matchToken || 'x'}` };

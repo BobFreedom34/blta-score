@@ -5094,7 +5094,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-m.cs-st-live, .cs-row.cs-st-live, .cs-livecard { border-left-color: var(--orange); }
 .cs-m.cs-st-finished, .cs-row.cs-st-finished { border-left-color: #8b8f98; }
 .cs-done { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #c3c7cf; background: rgba(255, 255, 255, 0.1); border-radius: 4px; padding: 1px 6px; margin-left: 4px; }
-.cs-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: -6px 0 16px; font-size: 12px; font-weight: 700; color: #c3c7cf; }
+.cs-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: -4px 0 32px; font-size: 12px; font-weight: 700; color: #c3c7cf; }
 .cs-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .cs-legend span::before { content: ''; width: 4px; height: 14px; border-radius: 2px; background: var(--status-green); }
 .cs-legend .cs-st-live::before { background: var(--orange); }

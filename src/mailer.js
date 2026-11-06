@@ -586,6 +586,35 @@ async function sendPaymentReminderEmail({ to, name, seasonName, fee, paymentUrl,
   return true;
 }
 
+// The owner of the site is told when a registered player drops out (like for a registration above); never makes the drop-out fail.
+async function sendSeasonUnregistrationEmail(season, registration, total) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping season-unregistration email.');
+    return false;
+  }
+  const kind = season.kind === 'TOURNAMENT' ? 'turnaja' : 'série';
+  const text = [
+    `Odhlásenie z ${kind} ${season.name}:`,
+    '',
+    `Meno: ${registration.name}`,
+    ...(registration.phone ? [`Telefón: ${registration.phone}`] : []),
+    ...(registration.email ? [`E-mail: ${registration.email}`] : []),
+    ...(registration.substitute ? ['', 'Bol to náhradník (nebol v turnaji).'] : []),
+    '',
+    `Prihlásených ${season.kind === 'TOURNAMENT' ? 'v turnaji' : 'v sérii'}: ${total}`,
+    `Zoznam a úhrady: ${process.env.PUBLIC_URL || ''}${season.kind === 'TOURNAMENT' ? '/tournaments-admin' : '/seasons-admin'}`,
+  ].join('\n');
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
+    replyTo: registration.email || undefined,
+    subject: `Odhlásenie ${season.kind === 'TOURNAMENT' ? 'z turnaja' : 'zo série'}: ${registration.name}`,
+    text,
+  });
+  return true;
+}
+
 // A substitute who got in because somebody dropped out (or the maximum was raised): he is in the tournament now.
 async function sendSubstituteInEmail({ to, name, seasonName, pageUrl, organiser }) {
   const t = getTransporter();
@@ -694,7 +723,7 @@ async function sendCourtCancellationEmails(r) {
 
 module.exports = {
   sendContactRequestEmail, sendPaymentReminderEmail, courtReservationTexts, sendCourtReservationEmails, courtCancellationTexts, sendCourtCancellationEmails,
-  sendSeasonRegistrationEmail, sendSubstituteInEmail,
+  sendSeasonRegistrationEmail, sendSeasonUnregistrationEmail, sendSubstituteInEmail,
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendProposalReceivedEmail,
   sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendClubWaitingEmail, sendPlayRequestEmail,

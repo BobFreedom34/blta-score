@@ -332,7 +332,7 @@ router.get('/notifications', (req, res) => {
 
   // somebody registered for an event of a club the player runs
   const registrationRows = db.prepare(`
-    SELECT n.id, n.seen, n.created_at, n.name, n.substitute, s.id AS season_id, s.name AS season_name, s.kind AS season_kind, o.name AS org_name, o.slug AS org_slug
+    SELECT n.id, n.seen, n.created_at, n.name, n.substitute, n.kind, s.id AS season_id, s.name AS season_name, s.kind AS season_kind, o.name AS org_name, o.slug AS org_slug
     FROM registration_notifications n
     JOIN seasons s ON s.id = n.season_id
     JOIN organisations o ON o.id = s.organisation_id AND o.hidden = 0
@@ -342,7 +342,7 @@ router.get('/notifications', (req, res) => {
     id: r.id,
     seen: !!r.seen,
     createdAt: r.created_at,
-    registration: { name: r.name, substitute: !!r.substitute, seasonId: r.season_id, seasonName: r.season_name, seasonKind: r.season_kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE', orgName: r.org_name, orgSlug: r.org_slug },
+    registration: { name: r.name, substitute: !!r.substitute, kind: r.kind === 'UNREGISTER' ? 'UNREGISTER' : 'REGISTER', seasonId: r.season_id, seasonName: r.season_name, seasonKind: r.season_kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE', orgName: r.org_name, orgSlug: r.org_slug },
   }));
 
   const merged = [...newsRows, ...registrationRows, ...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows, ...rankingRows, ...badgeReminderRows, ...photoRows, ...commentRows]

@@ -3531,7 +3531,7 @@ function renderBadgeNotifList() {
     } else if (n.type === 'REGISTRATION') {
       // an organiser of a club: somebody registered for one of its tournaments
       icon = '🎾';
-      title = t(n.registration.substitute ? 'notif.registrationSubTitle' : 'notif.registrationTitle', { name: escapeHtml(n.registration.name), season: escapeHtml(n.registration.seasonName) });
+      title = t(n.registration.kind === 'UNREGISTER' ? 'notif.unregistrationTitle' : (n.registration.substitute ? 'notif.registrationSubTitle' : 'notif.registrationTitle'), { name: escapeHtml(n.registration.name), season: escapeHtml(n.registration.seasonName) });
       subtitle = `${escapeHtml(n.registration.orgName)} · ${fmtDateShort(n.createdAt)}`;
     } else if (n.type === 'COMMENT') {
       icon = '💬';

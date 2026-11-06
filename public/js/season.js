@@ -152,10 +152,19 @@ function actionsHtml(status) {
   const buttons = [];
   // a member of a group of a club season can arrange a match in it (the registration below is the same as for the league)
   if (isClubSeason() && myGroup && status !== 'past') buttons.push(`<a class="sv-btn primary" href="/new-match?season=${encodeURIComponent(season.slug)}&group=${myGroup.id}">${escapeHtml(t('season.arrangeMatch'))}</a>`);
+  const mine = season.myRegistration; // the viewer is registered here (the server knows who is logged in)
   if (status !== 'past') {
-    buttons.push(season.registrationOpen
-      ? `<button type="button" class="sv-btn primary" id="sv-register">${escapeHtml(t('season.register'))}</button>`
-      : `<span class="sv-btn off">${escapeHtml(t('season.registerClosed'))}</span>`);
+    if (mine) {
+      // a registered player gets "Odhlásiť sa" instead of the registration, while the organiser allows it; later only a note
+      const when = mine.deadline ? new Date(mine.deadline).toLocaleString(currentLang === 'en' ? 'en-GB' : 'sk-SK', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      buttons.push(mine.allowed
+        ? `<button type="button" class="sv-btn primary" id="sv-unregister" title="${escapeHtml(t('season.unregisterUntil', { date: when }))}">${escapeHtml(t('season.unregister'))}</button>`
+        : `<span class="sv-btn off" title="${escapeHtml(t('season.unregister' + (mine.reason || 'OFF')))}">${escapeHtml(t(mine.substitute ? 'season.registeredSub' : 'season.registeredNote'))}</span>`);
+    } else {
+      buttons.push(season.registrationOpen
+        ? `<button type="button" class="sv-btn primary" id="sv-register">${escapeHtml(t('season.register'))}</button>`
+        : `<span class="sv-btn off">${escapeHtml(t('season.registerClosed'))}</span>`);
+    }
   }
   if (season.paymentUrl) buttons.push(`<a class="sv-btn pay" href="${escapeHtml(season.paymentUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.payOnline'))}</a>`);
   return buttons.length ? `<span class="sv-actions">${buttons.join('')}</span>` : '';
@@ -852,6 +861,18 @@ function openTab(key) {
 
 rootEl.addEventListener('click', async (e) => {
   if (e.target.closest('#sv-register')) { openRegisterModal(); return; }
+  if (e.target.closest('#sv-unregister')) {
+    if (!window.confirm(t('season.unregisterConfirm', { name: season.name }))) return;
+    try {
+      await api(`/seasons/${season.id}/registrations/mine`, { method: 'DELETE' });
+      toast(t('season.unregistered'));
+    } catch (err) {
+      const code = err.data && err.data.code;
+      toast(code && /^UNREGISTER_/.test(code) ? t(`season.unregister${code.slice(11)}`) : (err.message || t('season.unregisterFailed')));
+    }
+    await refresh(); // the button is the registration again; the list of players no longer has him
+    return;
+  }
   const tabBtn = e.target.closest('#sv-tabs [data-tab]');
   if (tabBtn) { openTab(tabBtn.dataset.tab); return; }
   const cat = e.target.closest('#sv-panel [data-cat]');

@@ -8,13 +8,14 @@
 const DRAW_FORMATS = ['BO1', 'BO3', 'BO3_STB', 'BO5', 'BO5_STB', 'BO3_G4_STB'];
 const DRAW_MAIN_DEFAULT = 'BO3_STB';
 const DRAW_CONSOLATION_DEFAULT = 'BO3_G4_STB';
+// the order of the buttons: the special format for exactly 6 players is always the last one
 const DRAW_FORMAT_INFO = {
   PRINCE: ['PRINCE', tl('Pavúk + útecha pre porazených v 1. kole. Kto prehrá neskôr, končí.', 'A bracket + a consolation bracket for those who lose in round 1. Whoever loses later is out.')],
   MONRAD: ['Monrad', tl('Pavúk + útecha pre porazených v každom kole (a v nich zasa útechy): hrá sa, kým nie sú určené všetky miesta. Veľa zápasov.', 'A bracket + a consolation bracket for the losers of every round (and consolations again within those): play goes on until every place is decided. Many matches.')],
   ELIMINATION: [tl('Eliminácia', 'Elimination'), tl('Obyčajný pavúk, porazený končí.', 'A plain bracket, the loser is out.')],
   GROUPS: [tl('Skupiny', 'Groups'), tl('Skupiny každý s každým, tabuľky podľa bodov.', 'Round-robin groups, tables by points.')],
-  SIX_ROUNDS: [tl('6 hráčov, 3 kolá', '6 players, 3 rounds'), tl('Presne 6 hráčov v jednej tabuľke: 3 kolá po 3 zápasy (všetky naraz na 3 kurtoch), každý hráč odohrá 3 zápasy. Hráči sa vždy vyžrebujú náhodne (nasadenie sa nepoužije).', 'Exactly 6 players in one table: 3 rounds of 3 matches (all at once on 3 courts), every player plays 3 matches. The players are always drawn by lot (the seeding is not used).')],
   GROUPS_BRACKET: [tl('Skupiny + pavúk', 'Groups + bracket'), tl('Skupiny každý s každým a potom pavúk z najlepších hráčov každej skupiny, alebo (pri 2 skupinách) zápasy o umiestnenie: 1. s 1., 2. s 2. …', 'Round-robin groups and then a bracket of the best players of every group, or (with 2 groups) matches for the places: 1st with 1st, 2nd with 2nd …')],
+  SIX_ROUNDS: [tl('6 hráčov, 3 kolá', '6 players, 3 rounds'), tl('Presne 6 hráčov v jednej tabuľke: 3 kolá po 3 zápasy (všetky naraz na 3 kurtoch), každý hráč odohrá 3 zápasy. Hráči sa vždy vyžrebujú náhodne (nasadenie sa nepoužije).', 'Exactly 6 players in one table: 3 rounds of 3 matches (all at once on 3 courts), every player plays 3 matches. The players are always drawn by lot (the seeding is not used).')],
 };
 const DRAW_BRACKET_TYPES = { ELIMINATION: tl('Eliminácia', 'Elimination'), PRINCE: 'PRINCE', MONRAD: 'Monrad', PLACEMENT: tl('Zápasy o umiestnenie (1. s 1., 2. s 2. …) — pri 2 skupinách', 'Placement matches (1st with 1st, 2nd with 2nd …) — with 2 groups') };
 // the server names the categories in Slovak; the two that are words (not Elite / Next Gen / Novice) follow the language of the page
