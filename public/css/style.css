@@ -5256,10 +5256,11 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 @media (max-width: 600px) { .sa-wide { grid-column: 1 / -1; } .sa-tabs { padding: 8px 10px; gap: 6px; align-items: stretch; } .sa-tab { flex: 1 1 calc(50% - 3px); min-width: 0; padding: 6px 6px; font-size: 12px; line-height: 1.2; text-align: center; overflow-wrap: anywhere; } .sa-tabs:has(.sa-tab:nth-of-type(5)) .sa-tab { flex-basis: calc(33.333% - 4px); } .sa-tab-link { flex: 0 0 100%; margin-left: 0; padding: 0; text-align: right; font-size: 11px; } }
 
 /* the hero photo of a season / tournament page: 3:1 on wide screens (2400 x 800), 4:3 on phones (1200 x 900), the title over its lower left */
-.sv-head.has-hero { position: relative; display: flex; align-items: flex-end; gap: 22px; aspect-ratio: 3 / 1; min-height: 240px; margin-top: 18px; padding: 26px 30px; border-radius: var(--radius); overflow: hidden; background: #1b1b1f; }
+.sv-head.has-hero { position: relative; display: flex; align-items: flex-end; gap: 22px; aspect-ratio: 3 / 1; min-height: 240px; margin-top: 18px; padding: 26px 30px; border-radius: var(--radius); background: #1b1b1f; }
 .sv-hero-pic, .sv-hero-pic img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sv-hero-pic { overflow: hidden; border-radius: var(--radius); }
 .sv-hero-pic img { object-fit: cover; }
-.sv-hero-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(10, 10, 10, 0.88) 0%, rgba(10, 10, 10, 0.5) 38%, rgba(10, 10, 10, 0) 70%); }
+.sv-hero-shade { position: absolute; inset: 0; border-radius: var(--radius); background: linear-gradient(to top, rgba(10, 10, 10, 0.88) 0%, rgba(10, 10, 10, 0.5) 38%, rgba(10, 10, 10, 0) 70%); }
 .sv-head.has-hero > .sv-logo, .sv-head.has-hero > .sv-head-main { position: relative; z-index: 1; }
 .sv-head.has-hero .sv-crumb { margin-top: 0; color: #d3d6dc; }
 .sv-head.has-hero .sv-crumb a { color: #d3d6dc; }
