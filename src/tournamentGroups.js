@@ -59,16 +59,31 @@ function suggestGroups(players, options, random = Math.random) {
   return groups;
 }
 
+// One planned match of a group (stage GROUP, tagged with its round); the pair of a doubles tournament plays with its partners.
+function insertGroupMatch(season, category, groupId, round, p1, p2, format) {
+  const doubles = category === 'DOUBLES';
+  db.prepare(`
+    INSERT INTO matches (share_token, category, season_id, group_id, stage, round, player1_id, player2_id, is_doubles, player1b_id, player2b_id, location, scheduled_at, format, status, state, history, created_by_admin, notes)
+    VALUES (?, ?, ?, ?, 'GROUP', ?, ?, ?, ?, ?, ?, '', NULL, ?, 'PLANNED', ?, '[]', 1, '')
+  `).run(
+    crypto.randomUUID(), doubles || category === 'OPEN' ? 'OTHER' : category, season.id, groupId, round, p1, p2,
+    doubles ? 1 : 0, doubles ? partnerIn(season.id, p1) : null, doubles ? partnerIn(season.id, p2) : null,
+    format, JSON.stringify(engine.initState(format)),
+  );
+}
+
+// The options of the table of a group of a Swiss draw (the byes, Buchholz first), see standings.computeGroupStandings; undefined for any other group.
+function swissOptions(group) {
+  const tc = db.prepare('SELECT format FROM tournament_categories WHERE season_id = ? AND category = ?').get(group.season_id, group.category);
+  if (!tc || tc.format !== 'SWISS') return undefined;
+  return { swiss: true, byes: db.prepare('SELECT player_id FROM season_group_byes WHERE group_id = ?').all(group.id).map((r) => r.player_id) };
+}
+
 // Makes the groups and all their round-robin matches. assignments: [{ name, playerIds }]. Returns { groups: [{ id, name, playerIds, matches }], matches }.
 function createGroups(season, category, assignments, format) {
   if (!engine.FORMATS[format] || format === 'FREE_PLAY') throw new Error('Invalid match format of the group matches');
   const insertGroup = db.prepare('INSERT INTO season_groups (season_id, name, category, sort_order) VALUES (?, ?, ?, ?)');
   const insertMember = db.prepare('INSERT INTO season_group_members (group_id, player_id, sort_order) VALUES (?, ?, ?)');
-  const doubles = category === 'DOUBLES';
-  const insertMatch = db.prepare(`
-    INSERT INTO matches (share_token, category, season_id, group_id, stage, round, player1_id, player2_id, is_doubles, player1b_id, player2b_id, location, scheduled_at, format, status, state, history, created_by_admin, notes)
-    VALUES (?, ?, ?, ?, 'GROUP', ?, ?, ?, ?, ?, ?, '', NULL, ?, 'PLANNED', ?, '[]', 1, '')
-  `);
   const order = db.prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM season_groups WHERE season_id = ?').get(season.id).n;
   const made = [];
   let total = 0;
@@ -78,11 +93,7 @@ function createGroups(season, category, assignments, format) {
     const id = Number(info.lastInsertRowid);
     a.playerIds.forEach((pid, k) => insertMember.run(id, pid, k));
     const plan = a.plan || roundRobin.planMissingMatches(a.playerIds, []); // (a fixed schedule: [{ round, p1, p2 }], see tournamentDraw SIX_ROUNDS_PLAN)
-    plan.forEach((m) => insertMatch.run(
-      crypto.randomUUID(), doubles || category === 'OPEN' ? 'OTHER' : category, season.id, id, m.round, m.p1, m.p2,
-      doubles ? 1 : 0, doubles ? partnerIn(season.id, m.p1) : null, doubles ? partnerIn(season.id, m.p2) : null,
-      format, JSON.stringify(engine.initState(format)),
-    ));
+    plan.forEach((m) => insertGroupMatch(season, category, id, m.round, m.p1, m.p2, format));
     made.push({ id, name, playerIds: a.playerIds, matches: plan.length });
     total += plan.length;
   });
@@ -103,7 +114,7 @@ function groupRows(group) {
   });
   // a member without a match yet still has a row
   db.prepare('SELECT player_id FROM season_group_members WHERE group_id = ?').all(group.id).forEach((m) => { if (!players.has(m.player_id)) players.set(m.player_id, playerStmt.get(m.player_id)); });
-  return computeGroupStandings(records, players, rulesOfSeason(db.prepare('SELECT kind, scoring, tiebreakers FROM seasons WHERE id = ?').get(group.season_id)));
+  return computeGroupStandings(records, players, rulesOfSeason(db.prepare('SELECT kind, scoring, tiebreakers FROM seasons WHERE id = ?').get(group.season_id)), swissOptions(group));
 }
 
 // How far the groups of a category are: { groups: [{ id, name, players, matches, finished }], matches, finished, allFinished }; null without groups.
@@ -132,5 +143,5 @@ function qualifiers(seasonId, category, perGroup) {
 }
 
 module.exports = {
-  groupName, groupCountFor, suggestGroups, createGroups, groupsOf, groupRows, groupsState, qualifiers, partnerIn, pairPlayer,
+  groupName, groupCountFor, suggestGroups, createGroups, insertGroupMatch, swissOptions, groupsOf, groupRows, groupsState, qualifiers, partnerIn, pairPlayer,
 };

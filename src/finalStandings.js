@@ -180,7 +180,11 @@ function compute(season) {
         const rest = groupRemainder(season.id, category, made.players, made.players.size);
         sections.push({ key: `category-${category}`, title, category, complete: made.complete && groupsFinished(season.id, category), rows: [...made.rows, ...rest] });
       } else if (categoryGroups.length === 1) {
-        sections.push({ ...tableSection(season, categoryGroups[0], null), key: `category-${category}`, title });
+        const section = { ...tableSection(season, categoryGroups[0], null), key: `category-${category}`, title };
+        // a Swiss draw is decided only after its last round (the matches of the rounds made so far being played is not enough)
+        const swissState = require('./swiss').state(season.id, category);
+        if (swissState) section.complete = section.complete && swissState.finished;
+        sections.push(section);
       } else {
         categoryGroups.forEach((g) => sections.push({ ...tableSection(season, g, null), title: `${title} — ${g.name}` }));
       }

@@ -419,7 +419,7 @@ test('the groups suggestion for the organiser, and deleting a draw with groups (
 test('invalid settings are refused', async () => {
   const t = await newTournament('Bad Settings Open');
   await register(t, 'ELITE', 6);
-  assert.strictEqual((await draw(t, { category: 'ELITE', format: 'SWISS' })).status, 400);
+  assert.strictEqual((await draw(t, { category: 'ELITE', format: 'LADDER' })).status, 400);
   assert.strictEqual((await draw(t, { category: 'ELITE', format: 'GROUPS', groupSize: 1 })).status, 400);
   assert.strictEqual((await draw(t, { category: 'ELITE', format: 'GROUPS_BRACKET', bracketType: 'ROUND' })).status, 400);
   assert.strictEqual((await draw(t, { category: 'ELITE', format: 'GROUPS_BRACKET', qualifiers: 0 })).status, 400);

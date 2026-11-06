@@ -75,7 +75,7 @@ test('the editor calls only endpoints the organiser of a club may call, or ones 
     for (const m of read(f).matchAll(/api\(\s*(?:`([^`]*)`|'([^']*)'|"([^"]*)")/g)) calls.push({ file: f, path: (m[1] || m[2] || m[3]).replace(/\$\{[^}]*\}/g, ':x').replace(/(:x)+/g, ':x').replace(/\?.*$/, '') });
   }
   assert.ok(calls.length > 25, `found ${calls.length} calls`);
-  const allowed = [/^\/seasons\/:x$/, /^\/seasons\/:x\/(hero|logo|registrations|registrations\/(admin|remind|categories)|draw|seeds|draw\/groups-suggestion|draw\/bracket|doubles|doubles\/pairs|doubles\/pairs\/:x|draw\/:x|schedule|schedule\/matches\/:x\/?:x?|schedule\/settings|schedule\/auto)$/,
+  const allowed = [/^\/seasons\/:x$/, /^\/seasons\/:x\/(hero|logo|registrations|registrations\/(admin|remind|categories)|draw|seeds|draw\/groups-suggestion|draw\/bracket|draw\/swiss-round|doubles|doubles\/pairs|doubles\/pairs\/:x|draw\/:x|schedule|schedule\/matches\/:x\/?:x?|schedule\/settings|schedule\/auto)$/,
     /^\/seasons\/registrations\/:x$/, /^\/brackets\/:x\/(consolation|nodes\/:x\/result|slots\/:x)$/, /^\/matches\/:x\/manual-result$/, /^\/(courtiq|rankings|players)$/,
     /^:x\/pairs(\/:x)?$/, /^:x\/(settings|auto)$/, /^\/seasons\/:x\/schedule\/matches\/:x$/];
   // the league card, the add-a-tournament form and the old admin pages (the bracket admin page is not part of club mode)

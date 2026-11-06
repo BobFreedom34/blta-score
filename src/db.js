@@ -1374,7 +1374,19 @@ db.exec(`
     auto_bracket INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (season_id, category)
   );
+  -- the Swiss system (src/swiss.js): the player of a group who had no opponent in a round (an odd number of players) gets the points of a win
+  CREATE TABLE IF NOT EXISTS season_group_byes (
+    group_id INTEGER NOT NULL,
+    round INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    PRIMARY KEY (group_id, round)
+  );
 `);
+// the number of rounds of a Swiss draw (0 = not a Swiss draw / worked out when the draw is made)
+{
+  const tcColumns = db.prepare('PRAGMA table_info(tournament_categories)').all().map((c) => c.name);
+  if (!tcColumns.includes('rounds')) db.exec('ALTER TABLE tournament_categories ADD COLUMN rounds INTEGER NOT NULL DEFAULT 0');
+}
 
 // League seasons ("Autumn Finals Series 2026") and their groups ("Babolat", "Technifibre"…). Every group belongs
 // to one BLTA category, and a match (BLTA categories only) can be tagged with a season and a group — set by an

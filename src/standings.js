@@ -86,8 +86,10 @@ function scoreRecord(record, scoring = 'BLTA') {
 // matches: every match tagged with ONE group (any status) — the scheduled ones put their players on the
 // table with zeros. players: Map or object id -> { id, name, slug }. rules: a tournament's { scoring, tiebreakers } (see normalizeRules);
 // without it the table is calculated the league's way.
-function computeGroupStandings(matches, players, rules) {
-  const chosen = rules ? normalizeRules(rules) : null;
+// options (the Swiss system, see src/swiss.js): { swiss: true, byes: [player ids] } - a player with a bye gets the points of a win (and a win, and a match) without a
+// match; the table is ranked by points, then by Buchholz (the sum of the points of the opponents played), then by the conditions of the tournament.
+function computeGroupStandings(matches, players, rules, options = {}) {
+  const chosen = rules ? normalizeRules(rules) : (options.swiss ? normalizeRules({}) : null);
   const rows = new Map();
   const row = (id) => {
     if (!rows.has(id)) {
@@ -96,6 +98,7 @@ function computeGroupStandings(matches, players, rules) {
     return rows.get(id);
   };
   const h2h = new Map(); // `${a}|${b}` -> points a took off b
+  const opponents = new Map(); // player id -> the players he played (finished matches only)
 
   matches.forEach((m) => { row(m.player1Id); row(m.player2Id); });
   const byDate = [...matches].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
@@ -108,6 +111,12 @@ function computeGroupStandings(matches, players, rules) {
     counted.add(pair);
     const a = row(m.player1Id);
     const b = row(m.player2Id);
+    if (options.swiss) {
+      if (!opponents.has(m.player1Id)) opponents.set(m.player1Id, []);
+      if (!opponents.has(m.player2Id)) opponents.set(m.player2Id, []);
+      opponents.get(m.player1Id).push(m.player2Id);
+      opponents.get(m.player2Id).push(m.player1Id);
+    }
     a.played += 1;
     b.played += 1;
     a.points += r.pts1;
@@ -121,6 +130,9 @@ function computeGroupStandings(matches, players, rules) {
     h2h.set(`${m.player2Id}|${m.player1Id}`, (h2h.get(`${m.player2Id}|${m.player1Id}`) || 0) + r.pts2);
   }
 
+  const byePoints = (chosen ? chosen.scoring : 'BLTA') === 'WIN1' ? 1 : (chosen ? chosen.scoring : 'BLTA') === 'WIN2' ? 2 : 3;
+  (options.byes || []).forEach((id) => { const x = row(id); x.points += byePoints; x.played += 1; x.wins += 1; });
+
   const list = [...rows.values()].map((x) => ({
     ...x,
     setDiff: x.setsFor - x.setsAgainst,
@@ -128,6 +140,11 @@ function computeGroupStandings(matches, players, rules) {
     player: (players instanceof Map ? players.get(x.playerId) : players[x.playerId]) || { id: x.playerId, name: `#${x.playerId}`, slug: null },
   }));
 
+  if (options.swiss) {
+    const pointsOf = new Map(list.map((x) => [x.playerId, x.points]));
+    list.forEach((x) => { x.buchholz = (opponents.get(x.playerId) || []).reduce((sum, id) => sum + (pointsOf.get(id) || 0), 0); });
+    return rankByRules(list, ['BUCHHOLZ', ...chosen.tiebreakers], h2h);
+  }
   if (chosen) return rankByRules(list, chosen.tiebreakers, h2h);
 
   // Head-to-head only decides a tie between exactly two players: the points they took off each other.
@@ -158,7 +175,7 @@ function computeGroupStandings(matches, players, rules) {
 // The table of a tournament: points first, then the conditions in the chosen order. Each condition splits the players still level into
 // smaller blocks; what no condition separates stays one block and shares a position (listed by name, which is only for the eye).
 function rankByRules(list, conditions, h2h) {
-  const keyOf = { SETS: (x) => x.setDiff, WINS: (x) => x.wins, GAMES: (x) => x.gameDiff };
+  const keyOf = { SETS: (x) => x.setDiff, WINS: (x) => x.wins, GAMES: (x) => x.gameDiff, BUCHHOLZ: (x) => x.buchholz };
   const split = (block, remaining) => {
     if (block.length === 1 || !remaining.length) return [block];
     const [condition, ...rest] = remaining;

@@ -632,7 +632,7 @@ router.post('/:id/draw', clubTournaments.requireSeasonManager(clubTournaments.by
   const made = tournamentDraw.createDraw(season, body.category, {
     format: body.format, mode: body.mode, mainFormat: body.mainFormat, consolationFormat: body.consolationFormat, groupFormat: body.groupFormat,
     groupSize: body.groupSize, groupCount: body.groupCount, qualifiers: body.qualifiers, bracketType: body.bracketType, autoBracket: body.autoBracket,
-    groups: body.groups,
+    groups: body.groups, rounds: body.rounds,
   });
   if (made.error) return res.status(made.status || 400).json({ error: made.error });
   const io = req.app.get('io');
@@ -642,6 +642,17 @@ router.post('/:id/draw', clubTournaments.requireSeasonManager(clubTournaments.by
 
 // The suggested split of a category into groups (what an automatic draw would do), for the organiser to look at and change before making
 // the groups: ?category=ELITE&groupSize=4&groupCount=0
+// The next round of a Swiss draw (it is made by itself once a round is played, when the draw was made to go on by itself; this is the organiser's button): { category }
+router.post('/:id/draw/swiss-round', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const made = require('../swiss').nextRound(season, (req.body || {}).category);
+  if (made.error) return res.status(made.status || 400).json({ error: made.error });
+  const io = req.app.get('io');
+  if (io) io.emit('matches:changed', { seasonId: season.id, status: 'CREATED' });
+  res.status(201).json({ ...made, categories: tournamentDraw.overview(season.id) });
+});
+
 router.get('/:id/draw/groups-suggestion', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
@@ -917,7 +928,9 @@ router.get('/:id/standings', (req, res) => {
       [r.player1_id, r.player2_id].forEach((pid) => { if (!known.has(pid)) known.set(pid, pairGroup ? require('../tournamentGroups').pairPlayer(season.id, pid) : playerStmt.get(pid)); });
       return { player1Id: r.player1_id, player2Id: r.player2_id, winnerId: r.winner_id, status: r.status, endReason: r.end_reason, date: r.d, state: JSON.parse(r.state) };
     });
-    const table = computeGroupStandings(records, known, rulesOfSeason(season));
+    const swissOptions = pairGroup ? undefined : require('../tournamentGroups').swissOptions(g);
+    const table = computeGroupStandings(records, known, rulesOfSeason(season), swissOptions);
+    const swissState = swissOptions ? require('../swiss').state(season.id, g.category) : null;
     // a season of a community or club lists every member of the group from the start, with nothing played yet (the members arrange their matches themselves)
     if (season.organisation_id && !pairGroup) {
       const listed = new Set(table.map((x) => x.player.id));
@@ -934,6 +947,7 @@ router.get('/:id/standings', (req, res) => {
       category: g.category,
       matchesCounted: table.reduce((sum, x) => sum + x.played, 0) / 2,
       matchesTotal: records.length,
+      swiss: swissState ? { round: swissState.round, rounds: swissState.rounds, finished: swissState.finished } : null,
       rows: table.map((x) => ({
         position: x.position,
         player: { id: x.player.id, name: x.player.name, slug: x.player.slug },
@@ -942,6 +956,7 @@ router.get('/:id/standings', (req, res) => {
         wins: x.wins,
         losses: x.losses,
         setDiff: x.setDiff,
+        ...(swissOptions ? { buchholz: x.buchholz } : {}),
       })),
     };
   });

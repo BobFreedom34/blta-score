@@ -5,6 +5,7 @@
 //   ELIMINATION  a plain main bracket;
 //   GROUPS       round-robin groups only;
 //   SIX_ROUNDS   exactly 6 players in one table, 3 rounds of 3 matches (every player plays 3 of the other 5; see SIX_ROUNDS_PLAN);
+//   SWISS        the Swiss system: everybody plays the same number of rounds against opponents of about the same strength, no rematch, nobody is out (see src/swiss.js)
 //   GROUPS_BRACKET  round-robin groups, then a bracket (ELIMINATION, PRINCE or MONRAD) of the best of every group, or — with exactly two groups — the
 //                   matches for the places (PLACEMENT): the 1st of one group plays the 1st of the other (the final), the 2nd the 2nd (for the 3rd place) …
 // A tournament has up to three categories (Elite, Next Gen, Novice), each with its own format. The organiser can let the app make the
@@ -14,6 +15,7 @@ const engine = require('./matchEngine');
 const capacity = require('./registrationCapacity');
 const bracketEngine = require('./bracketEngine');
 const groups = require('./tournamentGroups');
+const swiss = require('./swiss');
 const nameMatch = require('./nameMatch');
 
 // DOUBLES (štvorhra) is a category like the three league ones, with the same formats: its entrants are the PAIRS of the tournament
@@ -34,7 +36,7 @@ function categoriesFor(season) {
 }
 // a pair is listed like a registration for the seeds and the groups: its id is this plus the id of the pair (so it never meets a registration id)
 const PAIR_ID_OFFSET = 1000000;
-const FORMATS = ['PRINCE', 'MONRAD', 'ELIMINATION', 'GROUPS', 'GROUPS_BRACKET', 'SIX_ROUNDS'];
+const FORMATS = ['PRINCE', 'MONRAD', 'ELIMINATION', 'GROUPS', 'GROUPS_BRACKET', 'SWISS', 'SIX_ROUNDS'];
 // 6 players, 3 rounds, 3 matches a round (all at once on 3 courts): the player numbers are drawn by lot, always (the seeding is not used).
 // Everybody plays 3 matches; the table is one group of 6.
 const SIX_ROUNDS_PLAN = [
@@ -73,7 +75,7 @@ function mainBracketOf(seasonId, category) {
 
 const DEFAULTS = {
   format: 'PRINCE', mode: 'AUTO', mainFormat: DEFAULT_MAIN_FORMAT, consolationFormat: DEFAULT_CONSOLATION_FORMAT, groupFormat: DEFAULT_MAIN_FORMAT,
-  groupSize: 4, groupCount: 0, qualifiers: 2, bracketType: 'PRINCE', autoBracket: true,
+  groupSize: 4, groupCount: 0, qualifiers: 2, bracketType: 'PRINCE', autoBracket: true, rounds: 0,
 };
 
 function settingsOf(seasonId, category) {
@@ -81,18 +83,18 @@ function settingsOf(seasonId, category) {
   if (!r) return { ...DEFAULTS };
   return {
     format: r.format, mode: r.mode, mainFormat: r.main_format, consolationFormat: r.consolation_format, groupFormat: r.group_format,
-    groupSize: r.group_size, groupCount: r.group_count, qualifiers: r.qualifiers, bracketType: r.bracket_type, autoBracket: !!r.auto_bracket,
+    groupSize: r.group_size, groupCount: r.group_count, qualifiers: r.qualifiers, bracketType: r.bracket_type, autoBracket: !!r.auto_bracket, rounds: r.rounds || 0,
   };
 }
 
 function saveSettings(seasonId, category, s) {
   db.prepare(`
-    INSERT INTO tournament_categories (season_id, category, format, mode, main_format, consolation_format, group_format, group_size, group_count, qualifiers, bracket_type, auto_bracket)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO tournament_categories (season_id, category, format, mode, main_format, consolation_format, group_format, group_size, group_count, qualifiers, bracket_type, auto_bracket, rounds)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(season_id, category) DO UPDATE SET format = excluded.format, mode = excluded.mode, main_format = excluded.main_format,
       consolation_format = excluded.consolation_format, group_format = excluded.group_format, group_size = excluded.group_size,
-      group_count = excluded.group_count, qualifiers = excluded.qualifiers, bracket_type = excluded.bracket_type, auto_bracket = excluded.auto_bracket
-  `).run(seasonId, category, s.format, s.mode, s.mainFormat, s.consolationFormat, s.groupFormat, s.groupSize, s.groupCount, s.qualifiers, s.bracketType, s.autoBracket ? 1 : 0);
+      group_count = excluded.group_count, qualifiers = excluded.qualifiers, bracket_type = excluded.bracket_type, auto_bracket = excluded.auto_bracket, rounds = excluded.rounds
+  `).run(seasonId, category, s.format, s.mode, s.mainFormat, s.consolationFormat, s.groupFormat, s.groupSize, s.groupCount, s.qualifiers, s.bracketType, s.autoBracket ? 1 : 0, s.rounds || 0);
 }
 
 // The type of the losers brackets of a category: what its format (or, for groups + bracket, its bracket type) says.
@@ -149,6 +151,8 @@ function overview(seasonId) {
       consolation: bracketSummary(consolation),
       brackets,
       groups: state,
+      // the Swiss system: which round it is, how many there are, whether the next one can be made (null for any other format)
+      swiss: swiss.state(seasonId, category),
       // the losers brackets can be made once every round-1 match of the main draw is seated
       canMakeConsolation: !!main && hasLosers && !consolation && readiness.empty === 0 && readiness.real >= 2,
       // the bracket after the groups can be made once the groups exist
@@ -296,6 +300,7 @@ function createDraw(season, category, opts = {}) {
     qualifiers: opts.qualifiers !== undefined ? Number(opts.qualifiers) : prev.qualifiers,
     bracketType: opts.bracketType || prev.bracketType,
     autoBracket: opts.autoBracket !== undefined ? !!opts.autoBracket : prev.autoBracket,
+    rounds: opts.rounds !== undefined && opts.rounds !== null && opts.rounds !== '' ? Number(opts.rounds) : (opts.format === 'SWISS' ? 0 : prev.rounds || 0),
   };
   if (!FORMATS.includes(s.format)) return { status: 400, error: 'Invalid format of the draw' };
   if (!validFormat(s.mainFormat)) return { status: 400, error: 'Invalid match format of the main draw' };
@@ -304,6 +309,7 @@ function createDraw(season, category, opts = {}) {
   if (!BRACKET_TYPES.includes(s.bracketType)) return { status: 400, error: 'Invalid type of the bracket after the groups' };
   if (!Number.isInteger(s.groupSize) || s.groupSize < 2 || s.groupSize > 12) return { status: 400, error: 'A group has 2 to 12 players' };
   if (!Number.isInteger(s.groupCount) || s.groupCount < 0 || s.groupCount > 26) return { status: 400, error: 'The number of groups must be 0 (automatic) to 26' };
+  if (!Number.isInteger(s.rounds) || s.rounds < 0 || s.rounds > 50) return { status: 400, error: 'The number of rounds must be 0 (suggested) to 50' };
   if (!Number.isInteger(s.qualifiers) || s.qualifiers < 1 || s.qualifiers > 8) return { status: 400, error: 'The number of players going on from a group must be 1 to 8' };
   if (mainBracketOf(season.id, category) || groups.groupsOf(season.id, category).length) return { status: 409, error: `The ${CATEGORY_LABELS[category]} draw already exists — delete it first to make a new one` };
   const regs = registrationsOf(season.id, category);
@@ -331,6 +337,32 @@ function createDraw(season, category, opts = {}) {
     }
     bracketEngine.planCourtsForSeason(season.id);
     return { format: s.format, main: null, consolation: null, consolationNote: null, groups: made.groups, matches: made.matches, warnings };
+  }
+
+  // ----- the Swiss system: one table of everybody, round 1 made now, the others as the rounds are played -----
+  if (s.format === 'SWISS') {
+    if (regs.length < swiss.MIN_PLAYERS) return { status: 400, error: `The Swiss system needs at least ${swiss.MIN_PLAYERS} players (${CATEGORY_LABELS[category]} has ${regs.length})` };
+    const rounds = s.rounds || swiss.roundsFor(regs.length);
+    if (rounds < 1 || rounds > regs.length - 1) return { status: 400, error: `With ${regs.length} players the Swiss system can have 1 to ${regs.length - 1} rounds (nobody plays the same opponent twice)` };
+    s.rounds = rounds;
+    s.mode = 'AUTO'; // (a Swiss draw is always made by the system: the seeded players first, the others by lot)
+    const seeded = regs.filter((r) => r.seed).sort((a, b) => a.seed - b.seed);
+    const unseeded = regs.filter((r) => !r.seed).map((r) => ({ r, k: random() })).sort((a, b) => a.k - b.k).map((x) => x.r);
+    const order = [...seeded, ...unseeded].map((r) => r.player_id);
+    const first = swiss.firstRound(order);
+    let made;
+    db.exec('BEGIN');
+    try {
+      made = groups.createGroups(season, category, [{ name: groups.groupName(0), playerIds: order, plan: first.pairs.map(([p1, p2]) => ({ round: 1, p1, p2 })) }], s.groupFormat);
+      if (first.bye !== null) db.prepare('INSERT INTO season_group_byes (group_id, round, player_id) VALUES (?, 1, ?)').run(made.groups[0].id, first.bye);
+      saveSettings(season.id, category, s);
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+    bracketEngine.planCourtsForSeason(season.id);
+    return { format: 'SWISS', main: null, consolation: null, consolationNote: null, groups: made.groups, matches: made.matches, rounds, warnings };
   }
 
   // ----- groups (GROUPS, GROUPS_BRACKET) -----
@@ -485,6 +517,7 @@ function onMatchFinished(row) {
     const category = group ? group.category : row.category;
     if (!season || season.kind !== 'TOURNAMENT' || !CATEGORIES.includes(category)) return;
     const s = settingsOf(season.id, category);
+    if (s.format === 'SWISS') { swiss.afterMatch(season, category); return; } // (the next round, once every match of the round is played)
     if (s.format !== 'GROUPS_BRACKET' || !s.autoBracket || s.mode !== 'AUTO' || mainBracketOf(season.id, category)) return;
     const state = groups.groupsState(season.id, category);
     if (state && state.allFinished) createBracketFromGroups(season, category, { mode: 'AUTO' });
@@ -519,6 +552,7 @@ function deleteDraw(season, category) {
       db.prepare(`DELETE FROM brackets WHERE id IN (${marks})`).run(...bracketIds);
     }
     if (groupIds.length) {
+      db.prepare(`DELETE FROM season_group_byes WHERE group_id IN (${gMarks})`).run(...groupIds);
       db.prepare(`DELETE FROM season_group_members WHERE group_id IN (${gMarks})`).run(...groupIds);
       db.prepare(`DELETE FROM season_groups WHERE id IN (${gMarks})`).run(...groupIds);
     }
