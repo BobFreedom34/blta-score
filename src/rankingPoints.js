@@ -152,6 +152,17 @@ function inTransaction(fn) {
 // Returns what changed in the tables: [{ tableKey, tableLabel, name, before, after, delta }] — the net change per player and table
 // (a corrected result that is worth the same again changes nothing and returns nothing). The change log (src/changeLog.js) shows it.
 function reconcile(previousRow, updatedRow) {
+  const changes = reconcileLeague(previousRow, updatedRow);
+  communityAfter((c) => c.afterMatch(updatedRow.id));
+  return changes;
+}
+
+// what the events of a community put into ITS ranking (src/communityPoints.js) follows the same writes; it never fails the caller and never touches the league's tables
+function communityAfter(fn) {
+  try { fn(require('./communityPoints')); } catch (err) { console.error('[community points]', err.message); }
+}
+
+function reconcileLeague(previousRow, updatedRow) {
   return inTransaction(() => {
     const moves = [];
     reverseRows(updatedRow.id, moves);
@@ -166,11 +177,13 @@ function reconcile(previousRow, updatedRow) {
 
 // For a match that is being deleted.
 function reverseForMatch(matchId) {
+  communityAfter((c) => c.beforeMatchDeleted(matchId));
   return inTransaction(() => reverseRows(matchId));
 }
 
 // Same, and says what the tables lost (see reconcile).
 function reverseForMatchWithChanges(matchId) {
+  communityAfter((c) => c.beforeMatchDeleted(matchId));
   return inTransaction(() => {
     const moves = [];
     reverseRows(matchId, moves);

@@ -11,8 +11,17 @@ const leagues = require('../leagues');
 const auth = require('../auth');
 const engine = require('../matchEngine');
 const bracketEngine = require('../bracketEngine');
+const communityPoints = require('../communityPoints');
 
 const router = express.Router();
+
+// a tournament of a community pays the places of its final standings into the ranking of the community (src/communityPoints.js): a result typed into a bracket, a
+// bracket made or deleted changes them. The season is the one of the bracket in the path, or the one a new bracket names.
+router.use(communityPoints.afterChanges((req) => {
+  const m = /^\/(\d+)(?:\/|$)/.exec(req.path);
+  if (m) { const b = db.prepare('SELECT season_id FROM brackets WHERE id = ?').get(Number(m[1])); return b ? b.season_id : null; }
+  return req.body && req.body.seasonId ? Number(req.body.seasonId) : null;
+}));
 
 // Same list matches.js validates category against — duplicated locally
 // rather than imported since matches.js doesn't export it either (each

@@ -20,6 +20,7 @@ const { creditInviter } = require('./invites');
 const tournamentDraw = require('../tournamentDraw');
 const matchPhotos = require('./matchPhotos');
 const rankingPoints = require('../rankingPoints');
+const communityPoints = require('../communityPoints');
 const clubTournaments = require('../clubTournaments');
 const changeLog = require('../changeLog');
 const capacity = require('../registrationCapacity');
@@ -28,6 +29,10 @@ const finalStandings = require('../finalStandings');
 const unregister = require('../unregister');
 
 const router = express.Router();
+
+// a tournament of a community pays the places of its final standings into the ranking of the community (src/communityPoints.js): after any change that reaches a tournament
+// (a draw, a group, a result) the places are paid again. The first number of the path is the season.
+router.use(communityPoints.afterChanges((req) => { const m = /^\/(\d+)(?:\/|$)/.exec(req.path); return m ? Number(m[1]) : null; }));
 
 const BLTA_CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 
@@ -153,6 +158,9 @@ function serializeSeason(s) {
     scoring: s.kind === 'TOURNAMENT' || s.scoring ? normalizeRules({ scoring: s.scoring, tiebreakers: s.tiebreakers }).scoring : null,
     tiebreakers: s.kind === 'TOURNAMENT' || s.scoring ? normalizeRules({ scoring: s.scoring, tiebreakers: s.tiebreakers }).tiebreakers : null,
     categories: s.kind === 'TOURNAMENT' && s.play_type === 'DOUBLES' ? ['DOUBLES'] : parseCategories(s.categories),
+    // the points the event is to put into the ranking of its community (only an event of a community has it): a season { coefficient: { ELITE: 10 } }, a tournament
+    // { places: { ELITE: [100, 80, ...] } }; null for the league's own events
+    communityPoints: s.organisation_id ? communityPoints.settingsOf(s) : null,
     startDate: s.start_date,
     endDate: s.end_date,
     entryFee: s.entry_fee || '',
@@ -1035,6 +1043,14 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
   const categories = req.body.categories === undefined || tournamentDraw.isDoublesTournament(season) ? season.categories : categoriesToStore(req.body.categories);
   const askedRules = readRules(req.body);
   if (askedRules.error) return res.status(400).json({ error: askedRules.error });
+  // the points the event is to put into the ranking of its community (undefined = not named, null = none)
+  let communityPts;
+  if (req.body.communityPoints !== undefined) {
+    if (!season.organisation_id) return res.status(400).json({ error: 'Only an event of a community or club has ranking points' });
+    const read = communityPoints.readSettings(req.body.communityPoints, { ...season, categories });
+    if (read.error) return res.status(400).json({ error: read.error });
+    communityPts = read.value;
+  }
   // unchanged unless the request names them
   let scoring = season.scoring;
   let tiebreakers = season.tiebreakers;
@@ -1111,6 +1127,12 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, scoring, tiebreakers, maxPlayers, nextSeason.category_max, season.id);
   if (planning) tournamentSchedule.storeSettings(season.id, planning);
   db.prepare('UPDATE seasons SET unregister_hours = ? WHERE id = ?').run(unregisterHours, season.id);
+  // the points of a community follow the new settings, and the scoring of the season (what a match is worth in its table)
+  const pointsChanged = communityPts !== undefined && communityPts !== (season.community_points || null);
+  if (pointsChanged) db.prepare('UPDATE seasons SET community_points = ? WHERE id = ?').run(communityPts, season.id);
+  if (season.organisation_id && (pointsChanged || scoring !== season.scoring)) {
+    try { communityPoints.resync(season.id); } catch (err) { console.error('[community points]', err.message); }
+  }
   const saved = db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id);
   announceNewlyIn(saved, waitingBefore); // a raised maximum lets the first substitutes in
   res.json(serializeSeason(saved));
@@ -1144,6 +1166,7 @@ function deleteTournamentWithMatches(req, res, season) {
     db.prepare('DELETE FROM season_registrations WHERE season_id = ?').run(season.id);
     db.prepare('DELETE FROM tournament_pairs WHERE season_id = ?').run(season.id);
     db.prepare('DELETE FROM seasons WHERE id = ?').run(season.id);
+    communityPoints.removeSeason(season.id); // what it paid into the ranking of its community goes back
     db.exec('COMMIT');
   } catch (err) {
     db.exec('ROLLBACK');
@@ -1179,6 +1202,7 @@ router.delete('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPar
   db.prepare('DELETE FROM season_group_members WHERE group_id IN (SELECT id FROM season_groups WHERE season_id = ?)').run(season.id);
   db.prepare('DELETE FROM season_registrations WHERE season_id = ?').run(season.id);
   db.prepare('DELETE FROM tournament_pairs WHERE season_id = ?').run(season.id);
+  communityPoints.removeSeason(season.id); // what it paid into the ranking of its community goes back
   db.prepare('DELETE FROM seasons WHERE id = ?').run(season.id);
   require('./seasonPhotos').removeAllForSeason(season.id); // the gallery goes too (the files leave Drive in the background)
   db.prepare('DELETE FROM registration_notifications WHERE season_id = ?').run(season.id);

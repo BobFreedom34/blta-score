@@ -803,7 +803,7 @@ router.delete('/:id/members/:playerId', (req, res) => {
 
 // ---------------- the ranking of an organisation (its tab Rebríček) ----------------
 // Every ACTIVE member is in the ranking by himself (nobody is added): a member who joins is in it with 0 points, one who leaves is out of it (his points are kept,
-// should he come back). The points are set by hand by an admin of the organisation (or the super admin): for the moment nothing adds them by itself. The ranking
+// should he come back). The points are added by the seasons and tournaments of the organisation (src/communityPoints.js) and can be set by hand by an admin of the organisation (or the super admin). The ranking
 // is public like the member list; players with equal points share a rank (1, 2, 2, 4); one with no points yet has no rank (null).
 
 const MAX_RANKING_POINTS = 1000000;

@@ -1515,6 +1515,8 @@ if (!seasonInfoColumns.includes('court_count')) db.exec('ALTER TABLE seasons ADD
   ['category_max', "TEXT NOT NULL DEFAULT ''"],
   // how many hours before the start a registered player can drop out himself (NULL = he cannot; 0 = until the start), see src/unregister.js
   ['unregister_hours', 'INTEGER'],
+  // the points the event of a community or club puts into the ranking of the community (JSON settings, see src/communityPoints.js); NULL = nothing set
+  ['community_points', 'TEXT'],
 ].forEach(([col, type]) => {
   if (!seasonInfoColumns.includes(col)) db.exec(`ALTER TABLE seasons ADD COLUMN ${col} ${type}`);
 });
@@ -1785,6 +1787,18 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     PRIMARY KEY (organisation_id, player_id)
   );
+  -- what the events of a community paid into its ranking (src/communityPoints.js): one row per award, so a corrected or deleted result takes back exactly that
+  CREATE TABLE IF NOT EXISTS organisation_ranking_awards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    organisation_id INTEGER NOT NULL,
+    season_id INTEGER NOT NULL,
+    match_id INTEGER,
+    player_id INTEGER NOT NULL,
+    points INTEGER NOT NULL,
+    kind TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_org_ranking_awards_match ON organisation_ranking_awards(match_id);
+  CREATE INDEX IF NOT EXISTS idx_org_ranking_awards_season ON organisation_ranking_awards(season_id);
   CREATE TABLE IF NOT EXISTS organisation_posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     organisation_id INTEGER NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,

@@ -325,6 +325,42 @@ const cardTabs = () => (IS_TOURNAMENT
 ).concat([['winners', tl('Víťazi', 'Winners')]]);
 const cardTab = new Map(); // season id -> the tab last opened (kept when the list is drawn again)
 
+// Body do rebríčka — what the event puts into the ranking of its community or club (the points are added by themselves, see src/communityPoints.js).
+// A season: a coefficient for each category (a match is worth 3 / 2 / 1 / 0 times it); a tournament: the points of the places 1 to 10 for each category. Empty = nothing.
+const CP_PLACES = 10;
+function communityPointsSection(s) {
+  const own = s.communityPoints || {};
+  const cats = CATEGORIES.filter(([c]) => (s.categories || []).includes(c)).concat((s.categories || []).includes('OPEN') ? [['OPEN', tl('Bez kategórie', 'No category')]] : []);
+  const note = IS_TOURNAMENT
+    ? tl('Body sa pripíšu samé, keď je konečné poradie kategórie hotové; keď sa výsledok opraví, presunú sa. Hráči na rovnakom mieste dostanú body lepšieho miesta.', 'The points are added by themselves when the final standings of the category are complete; a corrected result moves them. Players who share a place get the points of the better one.')
+    : tl('Body sa pripíšu samé po skončení zápasu (obom hráčom); keď sa výsledok opraví, upravia sa.', 'The points are added by themselves when a match is finished (to both players); a corrected result adjusts them.');
+  let body;
+  if (!cats.length) {
+    body = `<p class="tr-hint">${tl('Pri štvorhre sa body do rebríčka nenastavujú.', 'A doubles event has no ranking points.')}</p>`;
+  } else if (IS_TOURNAMENT) {
+    const places = own.places || {};
+    body = `<p class="tr-hint">${tl('Koľko bodov do rebríčka komunity dostane hráč za umiestnenie v turnaji (prvých 10 miest). Prázdne políčko = žiadne body.', 'How many points a player gets into the ranking of the community for the place in the tournament (the first 10 places). An empty box = no points.')} ${note}</p>` + cats.map(([key, label]) => `
+      <div class="sa-cp-cat"><div class="sa-cp-name">${escapeHtml(label)}</div>
+        <div class="sa-places">${Array.from({ length: CP_PLACES }, (_, i) => `<label class="sa-field">${i + 1}. ${tl('miesto', 'place')}<input type="number" min="0" max="100000" step="1" inputmode="numeric" data-cp-place="${key}:${i}" value="${(places[key] || [])[i] || ''}"></label>`).join('')}</div>
+      </div>`).join('');
+  } else {
+    const coefficient = own.coefficient || {};
+    body = `<p class="tr-hint">${tl('Zápas sa do rebríčka komunity oceňuje bodmi, ktoré za neho hráč dostane v tabuľke sezóny podľa bodovania zvoleného vyššie (BLTA 3 / 2 / 1 / 0, 2 body za výhru alebo 1 bod za výhru), krát koeficient kategórie. Prázdne políčko = žiadne body.', 'A match is worth the points the player gets for it in the table of the season by the scoring chosen above (BLTA 3 / 2 / 1 / 0, 2 points for a win or 1 point for a win), times the coefficient of the category. An empty box = no points.')} ${note}</p>
+      <div class="sa-grid">${cats.map(([key, label]) => `<label class="sa-field">${tl('Koeficient', 'Coefficient')} — ${escapeHtml(label)}<input type="number" min="0" max="1000" step="1" inputmode="numeric" data-cp-coef="${key}" value="${coefficient[key] || ''}"></label>`).join('')}</div>`;
+  }
+  return `<section class="sa-section" data-cp-section><h4>${tl('Body do rebríčka', 'Ranking points')}</h4>${body}</section>`;
+}
+// the form's numbers as the server takes them: { coefficient: { ELITE: 10 } } for a season, { places: { ELITE: [100, 80, ...] } } for a tournament
+function readCommunityPoints(form) {
+  const out = IS_TOURNAMENT ? { places: {} } : { coefficient: {} };
+  form.querySelectorAll('[data-cp-coef]').forEach((el) => { if (el.value !== '') out.coefficient[el.dataset.cpCoef] = Number(el.value); });
+  form.querySelectorAll('[data-cp-place]').forEach((el) => {
+    const [key, i] = el.dataset.cpPlace.split(':');
+    (out.places[key] = out.places[key] || [])[Number(i)] = el.value === '' ? 0 : Number(el.value);
+  });
+  return out;
+}
+
 // The most players that can register (see src/registrationCapacity.js): one for a tournament or a season without categories, one for each category of a season
 // where the player chooses a category when registering. maxBody(form) is what the form says, in the shape the server takes; maxMissing(form) is true while
 // something that has to be entered is empty (the maximum has to be there whenever the registration is open).
@@ -437,6 +473,8 @@ function seasonCardHtml(s) {
               ${IS_TOURNAMENT || s.scoring ? '' : `<p class="tr-hint">${tl('Kým tu nič nezmeníte, platí štandardné bodovanie a poradie ligy BLTA.', 'Until you change something here, the standard scoring and order of the BLTA league apply.')}</p>`}
               ${TournamentRules.html(`season-${s.id}`, { scoring: s.scoring, tiebreakers: s.tiebreakers })}
             </section>
+
+            ${CLUB ? communityPointsSection(s) : ''}
 
             <section class="sa-section">
               <h4>${tl('Vzhľad stránky', 'Look of the page')}</h4>
@@ -600,7 +638,7 @@ function wireSeason(card) {
       // a season is played in at least one category (an empty choice would mean "all" to the server)
       if (!IS_TOURNAMENT && e.target.querySelectorAll('[data-cat]').length && ![...e.target.querySelectorAll('[data-cat]')].some((b) => b.checked)) throw new Error(tl('Vyber aspoň jednu kategóriu.', 'Choose at least one category.'));
       if (e.target.querySelector('[data-field="registrationOpen"]').checked && maxMissing(e.target)) throw new Error(MAX_MISSING_TEXT());
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, ...maxBody(e.target), unregisterHours: f('unregisterHours') === '' ? null : Number(f('unregisterHours')), drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(IS_TOURNAMENT ? { venue: f('venue'), courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), matchMinutes: Number(f('matchMinutes')), restMinutes: Number(f('restMinutes')), dayStart: f('dayStart'), dayEnd: f('dayEnd'), autoSchedule: e.target.querySelector('[data-field="autoSchedule"]').checked } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, ...maxBody(e.target), unregisterHours: f('unregisterHours') === '' ? null : Number(f('unregisterHours')), drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(CLUB ? { communityPoints: readCommunityPoints(e.target) } : {}), ...(IS_TOURNAMENT ? { venue: f('venue'), courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), matchMinutes: Number(f('matchMinutes')), restMinutes: Number(f('restMinutes')), dayStart: f('dayStart'), dayEnd: f('dayEnd'), autoSchedule: e.target.querySelector('[data-field="autoSchedule"]').checked } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
       toast(tl('Uložené', 'Saved'));
       await load();
     } catch (err) { fail(err); }
