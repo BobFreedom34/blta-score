@@ -9,9 +9,32 @@ const express = require('express');
 const multer = require('multer');
 const db = require('../db');
 const leagues = require('../leagues');
-const { requireAdmin } = require('../auth');
+const { isAdmin } = require('../auth');
+const clubTournaments = require('../clubTournaments');
 
 const router = express.Router();
+
+// The winners of a tournament of a community or club are kept here too, but they are the organiser's: the ACTIVE admin of the community may edit the list that
+// is linked to a tournament of the community (clubTournaments.canManageSeason, checked on every request), nothing else. A club admin is never a site admin: the routes below that change
+// anything take a site admin or the organiser of the season the edition is linked to (editorOf), nobody else.
+const seasonRow = (id) => (Number.isInteger(id) && id > 0 ? db.prepare('SELECT * FROM seasons WHERE id = ?').get(id) : undefined);
+const editionSeason = (editionId) => {
+  const e = db.prepare('SELECT season_id FROM winner_editions WHERE id = ?').get(editionId);
+  return e && e.season_id ? seasonRow(e.season_id) : undefined;
+};
+// resolve(req) -> the season the request is about (an edition that is not linked to a season has none: only a site admin may touch it)
+function editorOf(resolve) {
+  return (req, res, next) => {
+    if (isAdmin(req)) return next();
+    if (!clubTournaments.canManageSeason(req, resolve(req))) return res.status(401).json({ error: 'Admin login required for this action' });
+    next();
+  };
+}
+const seasonOfBody = (r) => seasonRow(Number(r.body && r.body.seasonId)); // (a new list names its season in the body)
+const blockSeason = (blockId) => {
+  const b = db.prepare('SELECT edition_id FROM winner_blocks WHERE id = ?').get(blockId);
+  return b ? editionSeason(b.edition_id) : undefined;
+};
 
 const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 const MAX_TEXT = 120;
@@ -35,7 +58,7 @@ function deletePhotoFile(url) {
 
 // ---------------------------------------------------------------- reading
 
-const EDITION_SQL = 'SELECT e.*, s.slug AS season_slug FROM winner_editions e LEFT JOIN seasons s ON s.id = e.season_id';
+const EDITION_SQL = 'SELECT e.*, s.slug AS season_slug, s.name AS season_name, s.organisation_id AS season_org FROM winner_editions e LEFT JOIN seasons s ON s.id = e.season_id';
 
 function placeRows(blockId) {
   return db.prepare(`
@@ -72,7 +95,7 @@ function serializeEdition(row, admin) {
       places: placeRows(b.id).map((p) => serializePlace(p, admin)),
     }))
     .filter((b) => admin || b.places.length);
-  const out = { id: row.id, title: row.title, seasonSlug: row.season_slug || null, blocks };
+  const out = { id: row.id, title: row.title, seasonSlug: row.season_slug || null, seasonName: row.season_name || null, blocks };
   if (admin) { out.seasonId = row.season_id || null; out.sortOrder = row.sort_order; out.visible = !!row.visible; }
   return out;
 }
@@ -82,13 +105,33 @@ function loadEdition(id) {
   return row ? serializeEdition(row, true) : null;
 }
 
-// Public: the visible editions that have something to show, newest first (the order set in the backend).
+// Public: the visible editions that have something to show, newest first (the order set in the backend). The winners page of the league (no query) leaves out
+// the lists of the tournaments of communities and clubs: those are asked for by the season (?seasonId=, the end of its page) or by the community (?organisation=
+// <slug>, its page) and only while the community is public.
 router.get('/', (req, res) => {
-  const rows = db.prepare(`${EDITION_SQL} WHERE e.visible = 1 AND e.league_id = ? ORDER BY e.sort_order, e.id`).all(leagues.actingIdOf(req));
+  let rows;
+  if (req.query.seasonId !== undefined) {
+    const season = seasonRow(Number(req.query.seasonId));
+    if (!season || (season.organisation_id && clubTournaments.publicFace(season).hidden)) return res.json([]);
+    rows = db.prepare(`${EDITION_SQL} WHERE e.visible = 1 AND e.season_id = ? ORDER BY e.sort_order, e.id`).all(season.id);
+  } else if (req.query.organisation !== undefined) {
+    const org = db.prepare('SELECT * FROM organisations WHERE slug = ?').get(String(req.query.organisation));
+    if (!clubTournaments.isPublicOrg(org)) return res.json([]);
+    rows = db.prepare(`${EDITION_SQL} WHERE e.visible = 1 AND s.organisation_id = ? ORDER BY COALESCE(s.start_date, '') DESC, e.id DESC`).all(org.id);
+  } else {
+    rows = db.prepare(`${EDITION_SQL} WHERE e.visible = 1 AND e.league_id = ? AND s.organisation_id IS NULL ORDER BY e.sort_order, e.id`).all(leagues.actingIdOf(req));
+  }
   res.json(rows.map((r) => serializeEdition(r, false)).filter((e) => e.blocks.length));
 });
 
-router.get('/all', requireAdmin, (req, res) => {
+// The editions for the backend: every one of the league for a site admin, or (?seasonId=) the one of a season, for the organiser of that season too
+router.get('/all', (req, res) => {
+  if (req.query.seasonId !== undefined) {
+    const season = seasonRow(Number(req.query.seasonId));
+    if (!clubTournaments.canManageSeason(req, season)) return res.status(401).json({ error: 'Admin login required for this action' });
+    return res.json(db.prepare(`${EDITION_SQL} WHERE e.season_id = ? ORDER BY e.sort_order, e.id`).all(season.id).map((r) => serializeEdition(r, true)));
+  }
+  if (!isAdmin(req)) return res.status(401).json({ error: 'Admin login required for this action' });
   res.json(db.prepare(`${EDITION_SQL} WHERE e.league_id = ? ORDER BY e.sort_order, e.id`).all(leagues.actingIdOf(req)).map((r) => serializeEdition(r, true)));
 });
 
@@ -141,22 +184,27 @@ function deleteBlocks(blockIds) {
 
 // ---------------------------------------------------------------- editions
 
-router.post('/editions', requireAdmin, (req, res) => {
+router.post('/editions', editorOf(seasonOfBody), (req, res) => {
   const body = req.body || {};
   const title = cleanTitle(body.title, { required: true });
   if (title.error) return res.status(400).json({ error: title.error });
   const season = checkSeason(body.seasonId);
   if (season.error) return res.status(400).json({ error: season.error });
-  const leagueId = leagues.actingIdOf(req);
+  const linked = seasonRow(season.v);
+  // one list per season of a community (its organiser has no way to pick another one)
+  if (linked && linked.organisation_id && !isAdmin(req) && db.prepare('SELECT 1 FROM winner_editions WHERE season_id = ?').get(linked.id)) return res.status(409).json({ error: 'This tournament has its list of winners already' });
+  const leagueId = linked && linked.organisation_id ? linked.league_id : leagues.actingIdOf(req);
   const first = (db.prepare('SELECT MIN(sort_order) AS m FROM winner_editions WHERE league_id = ?').get(leagueId).m ?? 1) - 1;
   const info = db.prepare('INSERT INTO winner_editions (title, season_id, sort_order, league_id) VALUES (?, ?, ?, ?)').run(title.v, season.v, first, leagueId);
   res.status(201).json(loadEdition(info.lastInsertRowid));
 });
 
-router.patch('/editions/:id', requireAdmin, (req, res) => {
+router.patch('/editions/:id', editorOf((r) => editionSeason(r.params.id)), (req, res) => {
   const row = db.prepare('SELECT * FROM winner_editions WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Edition not found' });
   const body = req.body || {};
+  // the organiser of a community tournament edits the list, he does not move it to another season or reorder the lists of the site
+  if (!isAdmin(req) && (body.seasonId !== undefined || body.sortOrder !== undefined)) return res.status(401).json({ error: 'Admin login required for this action' });
   const next = { title: row.title, season_id: row.season_id, sort_order: row.sort_order, visible: row.visible };
   if (body.title !== undefined) {
     const t = cleanTitle(body.title, { required: true });
@@ -178,7 +226,7 @@ router.patch('/editions/:id', requireAdmin, (req, res) => {
   res.json(loadEdition(row.id));
 });
 
-router.delete('/editions/:id', requireAdmin, (req, res) => {
+router.delete('/editions/:id', editorOf((r) => editionSeason(r.params.id)), (req, res) => {
   const row = db.prepare('SELECT id FROM winner_editions WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Edition not found' });
   deleteBlocks(db.prepare('SELECT id FROM winner_blocks WHERE edition_id = ?').all(row.id).map((b) => b.id));
@@ -194,7 +242,7 @@ function checkBlockValues(category, title) {
   return null;
 }
 
-router.post('/editions/:id/blocks', requireAdmin, (req, res) => {
+router.post('/editions/:id/blocks', editorOf((r) => editionSeason(r.params.id)), (req, res) => {
   const edition = db.prepare('SELECT id FROM winner_editions WHERE id = ?').get(req.params.id);
   if (!edition) return res.status(404).json({ error: 'Edition not found' });
   const body = req.body || {};
@@ -209,7 +257,7 @@ router.post('/editions/:id/blocks', requireAdmin, (req, res) => {
   res.status(201).json(loadEdition(edition.id));
 });
 
-router.patch('/blocks/:id', requireAdmin, (req, res) => {
+router.patch('/blocks/:id', editorOf((r) => blockSeason(r.params.id)), (req, res) => {
   const row = db.prepare('SELECT * FROM winner_blocks WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Block not found' });
   const body = req.body || {};
@@ -234,7 +282,7 @@ router.patch('/blocks/:id', requireAdmin, (req, res) => {
   res.json(loadEdition(row.edition_id));
 });
 
-router.delete('/blocks/:id', requireAdmin, (req, res) => {
+router.delete('/blocks/:id', editorOf((r) => blockSeason(r.params.id)), (req, res) => {
   const row = db.prepare('SELECT id FROM winner_blocks WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Block not found' });
   deleteBlocks([row.id]);
@@ -245,7 +293,7 @@ router.delete('/blocks/:id', requireAdmin, (req, res) => {
 
 // Saves the places of one block at once: the slots in the body are kept or updated, the others are removed. A listed slot
 // with neither a player nor a name is removed too. Photos stay as they are (a removed slot loses its photo file).
-router.put('/blocks/:id/places', requireAdmin, (req, res) => {
+router.put('/blocks/:id/places', editorOf((r) => blockSeason(r.params.id)), (req, res) => {
   const block = db.prepare('SELECT * FROM winner_blocks WHERE id = ?').get(req.params.id);
   if (!block) return res.status(404).json({ error: 'Block not found' });
   const list = req.body && req.body.places;
@@ -296,7 +344,7 @@ function editionOfPlace(placeId) {
   return r ? r.edition_id : null;
 }
 
-router.post('/places/:id/photo', requireAdmin, (req, res) => {
+router.post('/places/:id/photo', editorOf((r) => { const e = editionOfPlace(r.params.id); return e ? editionSeason(e) : undefined; }), (req, res) => {
   upload.single('photo')(req, res, (err) => {
     if (err) {
       const message = err.code === 'LIMIT_FILE_SIZE' ? 'The picture must be under 6 MB' : 'Could not process the uploaded file';
@@ -313,7 +361,7 @@ router.post('/places/:id/photo', requireAdmin, (req, res) => {
   });
 });
 
-router.delete('/places/:id/photo', requireAdmin, (req, res) => {
+router.delete('/places/:id/photo', editorOf((r) => { const e = editionOfPlace(r.params.id); return e ? editionSeason(e) : undefined; }), (req, res) => {
   const place = db.prepare('SELECT * FROM winner_places WHERE id = ?').get(req.params.id);
   if (!place) return res.status(404).json({ error: 'Place not found' });
   db.prepare('UPDATE winner_places SET photo_url = NULL WHERE id = ?').run(place.id);

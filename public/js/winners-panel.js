@@ -17,6 +17,8 @@
     let message = '';
     const openBlocks = new Set(); // which blocks are unfolded, kept while the tab redraws
 
+    const club = !!season.club; // a tournament of a community: its organiser edits the list (the editions of THIS season only), it shows on the page of the tournament and of the community
+    const allUrl = club ? `/winners/all?seasonId=${season.id}` : '/winners/all';
     const mine = () => editions.filter((e) => e.seasonId === season.id);
     const unlinked = () => editions.filter((e) => !e.seasonId);
 
@@ -76,10 +78,10 @@
         <section class="sa-section wa-ed" data-id="${e.id}">
           <h4>${escapeHtml(tl('Víťazi', 'Winners'))} <span style="${muted};text-transform:none;letter-spacing:0">${e.blocks.length} ${escapeHtml(tl('kategórií', 'categories'))} · ${places} ${escapeHtml(tl('víťazov', 'winners'))}</span></h4>
           <div style="display:flex;gap:12px 14px;flex-wrap:wrap;align-items:flex-end">
-            <label class="sa-field" style="flex:2;min-width:220px">${escapeHtml(tl('Názov zoznamu na stránke Víťazi', 'Title of the list on the Winners page'))}
+            <label class="sa-field" style="flex:2;min-width:220px">${escapeHtml(club ? tl('Názov zoznamu', 'Title of the list') : tl('Názov zoznamu na stránke Víťazi', 'Title of the list on the Winners page'))}
               <input type="text" class="wa-ed-title" maxlength="120" value="${escapeHtml(e.title)}">
             </label>
-            <label class="sa-check" style="padding-bottom:10px"><input type="checkbox" class="wa-ed-visible"${e.visible ? ' checked' : ''}> ${escapeHtml(tl('Zobraziť na /vitazi', 'Shown on /vitazi'))}</label>
+            <label class="sa-check" style="padding-bottom:10px"><input type="checkbox" class="wa-ed-visible"${e.visible ? ' checked' : ''}> ${escapeHtml(club ? tl('Zobraziť verejne', 'Show publicly') : tl('Zobraziť na /vitazi', 'Shown on /vitazi'))}</label>
             <button type="button" class="btn btn-sm btn-primary" data-act="save-edition">${escapeHtml(tl('Uložiť', 'Save'))}</button>
             <button type="button" class="btn btn-sm btn-danger" data-act="delete-edition">${escapeHtml(tl('Zmazať víťazov', 'Delete the winners'))}</button>
           </div>
@@ -93,7 +95,7 @@
       return `
         <section class="sa-section">
           <h4>${escapeHtml(tl('Víťazi', 'Winners'))}</h4>
-          <p class="sa-hint" style="margin:0 0 14px">${escapeHtml(tl('Zoznam víťazov tejto súťaže: pre každú kategóriu víťaz, finalista a dvaja semifinalisti. Ukáže sa na stránke Víťazi a na konci stránky súťaže.', 'The winners of this competition: for every category the winner, the finalist and two semifinalists. It shows on the Winners page and at the end of the page of the competition.'))}</p>
+          <p class="sa-hint" style="margin:0 0 14px">${escapeHtml(club ? tl('Zoznam víťazov turnaja: pre každú kategóriu víťaz, finalista a dvaja semifinalisti. Ukáže sa na konci stránky turnaja a na stránke komunity.', 'The winners of the tournament: for every category the winner, the finalist and two semifinalists. It shows at the end of the page of the tournament and on the page of the community.') : tl('Zoznam víťazov tejto súťaže: pre každú kategóriu víťaz, finalista a dvaja semifinalisti. Ukáže sa na stránke Víťazi a na konci stránky súťaže.', 'The winners of this competition: for every category the winner, the finalist and two semifinalists. It shows on the Winners page and at the end of the page of the competition.'))}</p>
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
             <button type="button" class="btn btn-primary" data-act="create">${escapeHtml(tl('Vytvoriť zoznam víťazov', 'Create the winners list'))}</button>
             ${old.length ? `<select id="wp-link" style="min-width:280px;${field}"><option value="">${escapeHtml(tl('…alebo pripojiť existujúci zoznam', '…or link a list that exists'))}</option>${old.map((e) => `<option value="${e.id}">${escapeHtml(e.title)}</option>`).join('')}</select>` : ''}
@@ -204,7 +206,7 @@
       } else if (act === 'delete-block') {
         if (!window.confirm(tl('Zmazať tento blok kategórie aj s víťazmi a fotkami?', 'Delete this category block with its winners and photos?'))) return;
         const blockId = Number(blockEl(btn).dataset.id);
-        await run(async () => { await api(`/winners/blocks/${blockId}`, { method: 'DELETE' }); editions = await api('/winners/all'); });
+        await run(async () => { await api(`/winners/blocks/${blockId}`, { method: 'DELETE' }); editions = await api(allUrl); });
       } else if (act === 'upload') {
         const input = document.createElement('input');
         input.type = 'file';
@@ -220,7 +222,7 @@
     };
 
     host.innerHTML = `<div style="color:var(--gray)">${escapeHtml(tl('Načítavam…', 'Loading…'))}</div>`;
-    [editions, players] = await Promise.all([api('/winners/all'), api('/players')]);
+    [editions, players] = await Promise.all([api(allUrl), api('/players')]);
     render();
   }
 

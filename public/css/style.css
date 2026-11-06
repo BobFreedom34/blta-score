@@ -5676,6 +5676,11 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 /* the tournaments of a club (the Events tab) */
 .com-new-tournament { margin: 4px 0 12px; }
 .com-events { display: grid; gap: 10px; }
+.com-winners { margin-top: 28px; }
+.com-winners-ed { margin-top: 14px; }
+.com-winners-title { margin: 0 0 10px; font-size: 17px; font-weight: 800; }
+.com-winners-title a { color: var(--white); text-decoration: none; }
+.com-winners-title a:hover { color: var(--green); }
 .com-event { display: grid; grid-template-columns: 150px 1fr auto; gap: 14px; align-items: center; padding: 14px 16px; background: var(--ink); border: 1px solid var(--border-grey); border-radius: var(--radius-md); color: var(--white); }
 .com-event.over { opacity: .65; }
 .com-event-date { font-weight: 800; font-size: 13px; color: #0a0a0a; background: var(--green); border-radius: var(--radius-sm); padding: 6px 10px; text-align: center; }

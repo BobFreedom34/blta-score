@@ -318,11 +318,11 @@ async function cropHero(file, w, h) {
 // The card of a tournament or a season: under the name the tabs — a tournament: Základné info · Registrácie · Zaradenie do kategórií ·
 // Formát turnaja; a season: Základné info · Registrácie · Skupiny · Rozpis · Pavúk (its play-off brackets) — and only the chosen one is shown (what is in a tab is loaded
 // when it is opened). The form of the basic info is in sections.
-// the last tab of a card of the Backend is the winners list of the season or the tournament (a club has no such tab: the winners are the site's)
+// the last tab of a card is the winners list of the season or the tournament (also in the card of a community: its organiser fills it in, it shows on the page of the tournament and of the community)
 const cardTabs = () => (IS_TOURNAMENT
   ? [['info', tl('Základné info', 'Basic info')], ['regs', tl('Registrácie', 'Registrations')], ['assign', tl('Zaradenie do kategórií', 'Category assignment')], ['draw', tl('Formát turnaja', 'Tournament format')]]
   : [['info', tl('Základné info', 'Basic info')], ['regs', tl('Registrácie', 'Registrations')], ['groups', tl('Skupiny', 'Groups')], ['schedule', tl('Rozpis', 'Schedule')], ['brackets', tl('Pavúk', 'Bracket')]]
-).concat(CLUB ? [] : [['winners', tl('Víťazi', 'Winners')]]);
+).concat([['winners', tl('Víťazi', 'Winners')]]);
 const cardTab = new Map(); // season id -> the tab last opened (kept when the list is drawn again)
 
 // The most players that can register (see src/registrationCapacity.js): one for a tournament or a season without categories, one for each category of a season
@@ -503,7 +503,7 @@ function seasonCardHtml(s) {
         </div>
         <div class="sa-panel" data-panel="schedule"${active === 'schedule' ? '' : ' hidden'}>${scheduleSectionHtml()}</div>
         <div class="sa-panel" data-panel="brackets"${active === 'brackets' ? '' : ' hidden'}><div class="season-brackets"></div></div>`}
-        ${CLUB ? '' : `<div class="sa-panel" data-panel="winners"${active === 'winners' ? '' : ' hidden'}><div class="season-winners"></div></div>`}
+        <div class="sa-panel" data-panel="winners"${active === 'winners' ? '' : ' hidden'}><div class="season-winners"></div></div>
       </div>
     </details>
   `;
@@ -901,7 +901,7 @@ function wireSeason(card) {
     const drawHost = card.querySelector('.season-draw');
     const bracketsHost = card.querySelector('.season-brackets');
     const winnersHost = card.querySelector('.season-winners');
-    const winners = () => (window.mountWinnersPanel && winnersHost ? window.mountWinnersPanel(winnersHost, { id, name: season.name }) : null);
+    const winners = () => (window.mountWinnersPanel && winnersHost ? window.mountWinnersPanel(winnersHost, { id, name: season.name, club: CLUB }) : null);
     const openers = IS_TOURNAMENT ? {
       regs: () => loadRegs(),
       assign: () => openAssignPanel(assignHost, id, () => {}, season.categories),

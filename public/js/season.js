@@ -76,7 +76,7 @@ async function loadStandings() {
   bracketData.clear();
   try { standings = await api(`/seasons/${season.id}/standings`); } catch { standings = null; }
   try { brackets = await api(`/seasons/${season.id}/brackets`); } catch { brackets = []; }
-  try { winnersEdition = (await api('/winners')).find((e) => e.seasonSlug === season.slug) || null; } catch { winnersEdition = null; }
+  try { winnersEdition = (await api(`/winners?seasonId=${season.id}`)).find((e) => e.seasonSlug === season.slug) || null; } catch { winnersEdition = null; }
 }
 
 async function loadBlocks() {
@@ -195,7 +195,7 @@ function seriesWinnersHtml() {
       return `<div class="sw-card"><h3 class="sw-cat">${escapeHtml(b.category ? categoryLabel(b.category) : b.title)}</h3><div class="sw-pair${isTournament() ? ' sw-quad' : ''}">${tiles}</div></div>`;
     }).join('');
   if (!cards) return '';
-  return `<section class="sw-sec">${secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle'), '/vitazi', t('season.winnersAll'))}<div class="sw-row${isTournament() ? ' sw-row-quad' : ''}">${cards}</div></section>`;
+  return `<section class="sw-sec">${season.organisation ? secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle')) : secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle'), '/vitazi', t('season.winnersAll'))}<div class="sw-row${isTournament() ? ' sw-row-quad' : ''}">${cards}</div></section>`;
 }
 
 // a tournament is a season of its own kind: same page, with a "Turnaj" chip, a venue and its own categories

@@ -66,7 +66,7 @@ function scanRoutes() {
       if (guard.length > 400) kind = 'unparsed';
       else if (/requireSeasonManager/.test(guard)) kind = 'manager';
       else if (/requireSuperAdmin/.test(guard)) kind = 'admin';
-      else if (/requireAdmin|requireCityAdmin/.test(guard)) kind = 'admin';
+      else if (/requireAdmin|requireCityAdmin|editorOf/.test(guard)) kind = 'admin'; // (editorOf: the winners routes, a site admin or the organiser of the season the list is linked to: with the ids walked here - nothing of his - it is shut)
       routes.push({ ...mount, method: m[1].toUpperCase(), path: m[2].replace(/\(\\\\d\+\)/g, ''), kind });
     }
   }

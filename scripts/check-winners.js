@@ -425,7 +425,7 @@ test('the winners are edited in the last tab of a season and of a tournament (no
   for (const f of fs.readdirSync(path.join(ROOT, 'public')).filter((x) => x.endsWith('.html'))) assert.ok(!fs.readFileSync(pub(f), 'utf8').includes('/winners-admin'), `${f} no longer links to Backend > Winners`);
   const js = fs.readFileSync(pub('js/seasons-admin.js'), 'utf8');
   new (require('vm').Script)(js, { filename: 'seasons-admin.js' });
-  assert.ok(js.includes(".concat(CLUB ? [] : [['winners', tl('Víťazi', 'Winners')]])") && js.includes('data-panel="winners"') && js.includes('mountWinnersPanel'), 'the last tab of a card');
+  assert.ok(js.includes(".concat([['winners', tl('Víťazi', 'Winners')]])") && js.includes('data-panel="winners"') && js.includes('mountWinnersPanel'), 'the last tab of a card');
   const panel = fs.readFileSync(pub('js/winners-panel.js'), 'utf8');
   new (require('vm').Script)(panel, { filename: 'winners-panel.js' });
   for (const page of ['seasons-admin.html', 'tournaments-admin.html']) assert.ok(fs.readFileSync(pub(page), 'utf8').includes('/js/winners-panel.js'), `${page} loads the panel`);
