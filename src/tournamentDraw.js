@@ -4,8 +4,7 @@
 //                all places are decided;
 //   ELIMINATION  a plain main bracket;
 //   GROUPS       round-robin groups only;
-//   SIX_ROUNDS   exactly 6 players: a shortcut for GROUPS_BRACKET with the placement matches — the players are drawn by lot (never by the seeding) into 2 groups of 3,
-//                the winners of the groups play for the 1st place, the second ones for the 3rd, the third ones for the 5th (see createPlacementMatches)
+//   SIX_ROUNDS   exactly 6 players in one table, 3 rounds of 3 matches (every player plays 3 of the other 5; see SIX_ROUNDS_PLAN);
 //   GROUPS_BRACKET  round-robin groups, then a bracket (ELIMINATION, PRINCE or MONRAD) of the best of every group, or — with exactly two groups — the
 //                   matches for the places (PLACEMENT): the 1st of one group plays the 1st of the other (the final), the 2nd the 2nd (for the 3rd place) …
 // A tournament has up to three categories (Elite, Next Gen, Novice), each with its own format. The organiser can let the app make the
@@ -36,6 +35,13 @@ function categoriesFor(season) {
 // a pair is listed like a registration for the seeds and the groups: its id is this plus the id of the pair (so it never meets a registration id)
 const PAIR_ID_OFFSET = 1000000;
 const FORMATS = ['PRINCE', 'MONRAD', 'ELIMINATION', 'GROUPS', 'GROUPS_BRACKET', 'SIX_ROUNDS'];
+// 6 players, 3 rounds, 3 matches a round (all at once on 3 courts): the player numbers are drawn by lot, always (the seeding is not used).
+// Everybody plays 3 matches; the table is one group of 6.
+const SIX_ROUNDS_PLAN = [
+  [[1, 6], [2, 5], [3, 4]],
+  [[1, 4], [5, 3], [6, 2]],
+  [[1, 2], [3, 6], [4, 5]],
+];
 const BRACKET_TYPES = ['ELIMINATION', 'PRINCE', 'MONRAD', 'PLACEMENT'];
 const DEFAULT_MAIN_FORMAT = 'BO3_STB';
 const DEFAULT_CONSOLATION_FORMAT = 'BO3_G4_STB';
@@ -307,12 +313,24 @@ function createDraw(season, category, opts = {}) {
   const random = opts.random || Math.random;
   const warnings = [];
 
-  // ----- 6 players (SIX_ROUNDS): 2 groups of 3 drawn by lot, then the matches for the places; the same as groups + bracket (placement) -----
-  let byLot = false;
+  // ----- 6 players, 3 rounds (SIX_ROUNDS) -----
   if (s.format === 'SIX_ROUNDS') {
     if (regs.length !== 6) return { status: 400, error: `This format is for exactly 6 players (${CATEGORY_LABELS[category]} has ${regs.length})` };
-    Object.assign(s, { format: 'GROUPS_BRACKET', bracketType: 'PLACEMENT', groupSize: 3, groupCount: 2, autoBracket: true, mode: 'AUTO' });
-    byLot = true; // the seeding is not used
+    const order = shuffled(regs.map((r) => r.player_id), random); // always by lot, whatever the seeds say
+    const plan = [];
+    SIX_ROUNDS_PLAN.forEach((pairs, i) => pairs.forEach(([a, b]) => plan.push({ round: i + 1, p1: order[a - 1], p2: order[b - 1] })));
+    let made;
+    db.exec('BEGIN');
+    try {
+      made = groups.createGroups(season, category, [{ name: groups.groupName(0), playerIds: order, plan }], s.groupFormat);
+      saveSettings(season.id, category, s);
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+    bracketEngine.planCourtsForSeason(season.id);
+    return { format: s.format, main: null, consolation: null, consolationNote: null, groups: made.groups, matches: made.matches, warnings };
   }
 
   // ----- groups (GROUPS, GROUPS_BRACKET) -----
@@ -339,7 +357,7 @@ function createDraw(season, category, opts = {}) {
       const left = regs.filter((r) => !used.has(r.id));
       if (left.length) return { status: 400, error: `Put every player into a group (left out: ${left.map((r) => r.name).join(', ')})` };
     } else {
-      assignments = groups.suggestGroups(regs.map((r) => ({ playerId: r.player_id, seed: byLot ? null : r.seed })), s, random);
+      assignments = groups.suggestGroups(regs.map((r) => ({ playerId: r.player_id, seed: r.seed })), s, random);
       if (assignments.some((a) => a.playerIds.length < 2)) return { status: 400, error: 'There are too few players for that number of groups' };
     }
     if (s.format === 'GROUPS_BRACKET' && s.bracketType === 'PLACEMENT' && assignments.length !== 2) {

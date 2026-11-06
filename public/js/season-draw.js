@@ -15,7 +15,7 @@ const DRAW_FORMAT_INFO = {
   ELIMINATION: [tl('Eliminácia', 'Elimination'), tl('Obyčajný pavúk, porazený končí.', 'A plain bracket, the loser is out.')],
   GROUPS: [tl('Skupiny', 'Groups'), tl('Skupiny každý s každým, tabuľky podľa bodov.', 'Round-robin groups, tables by points.')],
   GROUPS_BRACKET: [tl('Skupiny + pavúk', 'Groups + bracket'), tl('Skupiny každý s každým a potom pavúk z najlepších hráčov každej skupiny, alebo (pri 2 skupinách) zápasy o umiestnenie: 1. s 1., 2. s 2. …', 'Round-robin groups and then a bracket of the best players of every group, or (with 2 groups) matches for the places: 1st with 1st, 2nd with 2nd …')],
-  SIX_ROUNDS: [tl('6 hráčov: 2 skupiny + o miesta', '6 players: 2 groups + places'), tl('Presne 6 hráčov: žreb do 2 skupín po 3 (každý odohrá 2 zápasy), potom hrajú víťazi skupín o 1. a 2. miesto, druhí o 3. a 4. a tretí o 5. a 6. Hráči sa vždy vyžrebujú náhodne (nasadenie sa nepoužije).', 'Exactly 6 players: drawn into 2 groups of 3 (everybody plays 2 matches), then the winners of the groups play for the 1st and 2nd place, the second ones for the 3rd and 4th, the third ones for the 5th and 6th. The players are always drawn by lot (the seeding is not used).')],
+  SIX_ROUNDS: [tl('6 hráčov, 3 kolá', '6 players, 3 rounds'), tl('Presne 6 hráčov v jednej tabuľke: 3 kolá po 3 zápasy (všetky naraz na 3 kurtoch), každý hráč odohrá 3 zápasy. Hráči sa vždy vyžrebujú náhodne (nasadenie sa nepoužije).', 'Exactly 6 players in one table: 3 rounds of 3 matches (all at once on 3 courts), every player plays 3 matches. The players are always drawn by lot (the seeding is not used).')],
 };
 const DRAW_BRACKET_TYPES = { ELIMINATION: tl('Eliminácia', 'Elimination'), PRINCE: 'PRINCE', MONRAD: 'Monrad', PLACEMENT: tl('Zápasy o umiestnenie (1. s 1., 2. s 2. …) — pri 2 skupinách', 'Placement matches (1st with 1st, 2nd with 2nd …) — with 2 groups') };
 // the server names the categories in Slovak; the two that are words (not Elite / Next Gen / Novice) follow the language of the page
@@ -48,7 +48,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
   const rowsOf = (category) => (category === 'OPEN' ? regs : regs.filter((r) => r.category === category));
   const dirty = (category) => rowsOf(category).filter((r) => draftOf(r) !== (r.seed ? String(r.seed) : '')).length;
   const isGroups = (f) => f === 'GROUPS' || f === 'GROUPS_BRACKET';
-  const isSix = (f) => f === 'SIX_ROUNDS'; // 6 players: 2 groups of 3 drawn by lot, then the matches for the places (the server makes groups + placement matches of it)
+  const isSix = (f) => f === 'SIX_ROUNDS'; // one table of 6 with a fixed schedule (the matches are made at once, no groups to suggest or bracket after)
   const inputStyle = 'padding:7px 9px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:13px;max-width:100%';
   const groupLetter = (i) => (i < 26 ? String.fromCharCode(65 + i) : String(i + 1));
 
@@ -120,7 +120,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
         <label><input type="radio" name="sd-mode-${c.category}" value="MANUAL" data-cat="${c.category}"${s.mode === 'MANUAL' ? ' checked' : ''}> ${modeLabel[1]}</label>
       </div>`}
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:18px 20px;margin-bottom:22px">`;
-    if (isSix(s.format)) body += sel('sd-group-format', tl('Formát zápasu — skupiny', 'Match format — groups'), drawFormatOptions(s.groupFormat)) + sel('sd-main-format', tl('Formát zápasu — zápasy o umiestnenie', 'Match format — placement matches'), drawFormatOptions(s.mainFormat));
+    if (isSix(s.format)) body += sel('sd-group-format', tl('Formát zápasu', 'Match format'), drawFormatOptions(s.groupFormat));
     if (isGroups(s.format)) {
       body += `
         <label style="font-size:12px;color:var(--gray)">${tl('Hráčov v skupine (najviac)', 'Players per group (at most)')}<input type="number" min="2" max="12" class="sd-gsize" data-cat="${c.category}" value="${s.groupSize}" style="${inputStyle};display:block;width:100%;margin-top:3px"></label>
@@ -142,7 +142,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
     if (isGroups(s.format) && s.mode === 'MANUAL') body += groupEditorHtml(c, s);
     const ready = (isSix(s.format) ? c.players === 6 : c.players >= 2) && !c.withoutProfile.length && !dirty(c.category);
     body += `
-      <button type="button" class="btn btn-sm btn-primary" data-act="draw" data-cat="${c.category}" ${ready ? '' : 'disabled'}>${(isSix(s.format) || isGroups(s.format)) ? tl('Vytvoriť skupiny a zápasy', 'Create groups and matches') : (s.mode === 'AUTO' ? tl('Vytvoriť pavúk', 'Create bracket') : tl('Vytvoriť prázdny pavúk', 'Create an empty bracket'))}</button>
+      <button type="button" class="btn btn-sm btn-primary" data-act="draw" data-cat="${c.category}" ${ready ? '' : 'disabled'}>${isSix(s.format) ? tl('Vytvoriť tabuľku a zápasy', 'Create the table and matches') : isGroups(s.format) ? tl('Vytvoriť skupiny a zápasy', 'Create groups and matches') : (s.mode === 'AUTO' ? tl('Vytvoriť pavúk', 'Create bracket') : tl('Vytvoriť prázdny pavúk', 'Create an empty bracket'))}</button>
       ${dirty(c.category) ? `<span style="font-size:12px;color:var(--gray);margin-left:8px">${tl('Najprv ulož nasadenie.', 'Save the seeding first.')}</span>` : ''}
       ${c.withoutProfile.length ? `<div style="color:var(--danger);font-size:12px;margin-top:6px">${tl('Bez profilu hráča', 'Without a player profile')}: ${escapeHtml(c.withoutProfile.join(', '))}</div>` : ''}`;
     return body;
