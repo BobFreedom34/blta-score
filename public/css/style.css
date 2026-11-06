@@ -4132,7 +4132,15 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 @media (max-width: 700px) { .sv-title { font-size: 26px; } .sv-gl { grid-template-columns: 1fr; } }
 
 /* season page: registration + payment buttons and the registration form */
-.sv-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.sv-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+/* the green button of a player who is registered, with the "i" of the home page that explains (see the end of season.js) */
+.sv-reg-wrap { align-items: stretch; }
+.sv-btn.reg-on { background: var(--green); color: #0a0a0a; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.sv-btn.reg-on:hover:not(.static) { background: #c6ff3a; }
+.sv-btn.reg-on.static { cursor: default; }
+.sv-btn.reg-info { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; border-left: 1px solid rgba(10, 10, 10, 0.35); padding: 9px 11px; }
+.sv-btn.reg-info:hover { background: #c6ff3a; }
+.sv-btn.reg-info i { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid #0a0a0a; font-family: Georgia, 'Times New Roman', serif; font-size: 11px; font-weight: 700; font-style: italic; line-height: 1; text-transform: none; }
 /* a club's season or tournament: Install as app + Share, right-aligned under the hero (inside the gap above the progress card / the numbers) */
 .sv-club-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin: -28px 0 40px; position: relative; z-index: 1; }
 .sv-club-actions .sv-btn { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: #000; border: 0; font-weight: 800; }

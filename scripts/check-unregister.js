@@ -177,6 +177,9 @@ test('the page: the button "Odhlásiť sa" replaces the registration of a regist
   new (require('vm').Script)(common, { filename: 'common.js' });
   assert.ok(common.includes("n.registration.kind === 'UNREGISTER' ? 'notif.unregistrationTitle'"), 'the bell');
   const i18n = read('js/i18n.js');
+  assert.ok(season.includes("t('season.unregisterNote' + (mine.reason || 'OFF')") && season.includes('id="sv-info"') && season.includes('class="home-tip" id="sv-tip"'), 'the reason is in the popover of the "i" next to the green button, like on the home page');
+  assert.ok(read('css/style.css').includes('.sv-btn.reg-on { background: var(--green)'), 'the button of a registered player is green');
+  for (const key of ['season.unregisterNoteLATE', 'season.unregisterNoteOFF', 'season.unregisterNoteDRAW']) assert.strictEqual(read('js/i18n.js').split(`'${key}':`).length - 1, 2, `${key} in both languages`);
   for (const key of ['season.unregister', 'season.unregisterConfirm', 'season.unregisterUntil', 'season.unregistered', 'season.registeredNote', 'season.registeredSub', 'season.unregisterOFF', 'season.unregisterLATE', 'season.unregisterDRAW', 'season.unregisterFailed', 'notif.unregistrationTitle']) {
     assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
   }

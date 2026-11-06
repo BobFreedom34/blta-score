@@ -155,11 +155,14 @@ function actionsHtml(status) {
   const mine = season.myRegistration; // the viewer is registered here (the server knows who is logged in)
   if (status !== 'past') {
     if (mine) {
-      // a registered player gets "Odhlásiť sa" instead of the registration, while the organiser allows it; later only a note
+      // a registered player has a green button instead of the registration, with an "i" that explains (like the "i" of the home page): "Odhlásiť sa" while the organiser
+      // allows it (the "i" says until when), later a button that does nothing ("Si prihlásený") and the "i" says why
       const when = mine.deadline ? new Date(mine.deadline).toLocaleString(currentLang === 'en' ? 'en-GB' : 'sk-SK', { dateStyle: 'short', timeStyle: 'short' }) : '';
-      buttons.push(mine.allowed
-        ? `<button type="button" class="sv-btn primary" id="sv-unregister" title="${escapeHtml(t('season.unregisterUntil', { date: when }))}">${escapeHtml(t('season.unregister'))}</button>`
-        : `<span class="sv-btn off" title="${escapeHtml(t('season.unregister' + (mine.reason || 'OFF')))}">${escapeHtml(t(mine.substitute ? 'season.registeredSub' : 'season.registeredNote'))}</span>`);
+      const tip = mine.allowed ? t('season.unregisterUntil', { date: when }) : t('season.unregisterNote' + (mine.reason || 'OFF'), { date: when });
+      const main = mine.allowed
+        ? `<button type="button" class="sv-btn reg-on" id="sv-unregister">${escapeHtml(t('season.unregister'))}</button>`
+        : `<span class="sv-btn reg-on static">${escapeHtml(t(mine.substitute ? 'season.registeredSub' : 'season.registeredNote'))}</span>`;
+      buttons.push(`<span class="home-reg-wrap sv-reg-wrap" id="sv-reg-wrap">${main}<button type="button" class="sv-btn reg-on reg-info" id="sv-info" aria-label="${escapeHtml(t('home.infoLabel'))}" aria-describedby="sv-tip" aria-expanded="false"><i>i</i></button><span class="home-tip" id="sv-tip" role="tooltip">${escapeHtml(tip)}</span></span>`);
     } else {
       buttons.push(season.registrationOpen
         ? `<button type="button" class="sv-btn primary" id="sv-register">${escapeHtml(t('season.register'))}</button>`
@@ -857,6 +860,23 @@ function openTab(key) {
   try { history.replaceState(null, '', `#${key}`); } catch { /* the address just stays as it is */ }
   window.dispatchEvent(new CustomEvent('blta:season-tab', { detail: { tab } })); // the club bar highlights it
   renderPanel();
+}
+
+// The "i" next to the green button of a registered player: hover or keyboard focus shows the text, a click pins it (a tap on a phone), another click closes it
+{
+  const wrap = () => document.getElementById('sv-reg-wrap');
+  const setTip = (open) => { const w = wrap(); const info = document.getElementById('sv-info'); if (!w || !info) return; w.classList.toggle('tip-open', open); info.setAttribute('aria-expanded', String(open)); };
+  const isInfo = (el) => !!(el && el.closest && el.closest('#sv-info'));
+  rootEl.addEventListener('mouseover', (e) => { if (isInfo(e.target)) setTip(true); });
+  rootEl.addEventListener('mouseout', (e) => { const w = wrap(); if (isInfo(e.target) && w && !w.dataset.pinned) setTip(false); });
+  rootEl.addEventListener('focusin', (e) => { if (isInfo(e.target)) setTip(true); });
+  rootEl.addEventListener('focusout', (e) => { const w = wrap(); if (isInfo(e.target) && w && !w.dataset.pinned) setTip(false); });
+  rootEl.addEventListener('click', (e) => {
+    const w = wrap();
+    if (!w) return;
+    if (isInfo(e.target)) { e.stopPropagation(); if (w.dataset.pinned) { delete w.dataset.pinned; setTip(false); } else { w.dataset.pinned = '1'; setTip(true); } }
+  });
+  document.addEventListener('click', (e) => { const w = wrap(); if (w && w.dataset.pinned && !isInfo(e.target)) { delete w.dataset.pinned; setTip(false); } });
 }
 
 rootEl.addEventListener('click', async (e) => {
