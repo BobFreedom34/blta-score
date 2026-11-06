@@ -77,7 +77,7 @@ function createGroups(season, category, assignments, format) {
     const info = insertGroup.run(season.id, name, category, order + i);
     const id = Number(info.lastInsertRowid);
     a.playerIds.forEach((pid, k) => insertMember.run(id, pid, k));
-    const plan = a.plan || roundRobin.planMissingMatches(a.playerIds, []); // (a fixed schedule: [{ round, p1, p2 }], see tournamentDraw SIX_ROUNDS_PLAN)
+    const plan = roundRobin.planMissingMatches(a.playerIds, []);
     plan.forEach((m) => insertMatch.run(
       crypto.randomUUID(), doubles || category === 'OPEN' ? 'OTHER' : category, season.id, id, m.round, m.p1, m.p2,
       doubles ? 1 : 0, doubles ? partnerIn(season.id, m.p1) : null, doubles ? partnerIn(season.id, m.p2) : null,

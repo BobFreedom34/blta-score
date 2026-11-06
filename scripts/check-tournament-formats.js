@@ -306,60 +306,72 @@ test('the placement matches: groups of 3 and 2 (5 players) pair the first two pl
   for (const x of brackets) assert.ok((await bracketOf(x.id)).nodes.every((n) => !n.player1 && !n.player2), 'empty');
 });
 
-test('SIX_ROUNDS: exactly 6 players drawn by lot (never by the seeding), one table, 9 matches in 3 rounds of 3 as in the template (1–6, 2–5, 3–4 | 1–4, 5–3, 6–2 | 1–2, 3–6, 4–5), everybody plays 3', async () => {
+test('SIX_ROUNDS: exactly 6 players are drawn by lot (never by the seeding) into 2 groups of 3, 6 group matches, then the matches for the places are made by themselves', async () => {
   const t = await newTournament('Six Rounds');
-  const five = await register(t, 'ELITE', 5);
+  await register(t, 'ELITE', 5);
   const refused = await draw(t, { category: 'ELITE', format: 'SIX_ROUNDS', groupFormat: 'BO3' });
   assert.strictEqual(refused.status, 400, refused.text);
   assert.ok(/exactly 6 players/.test(refused.json.error), refused.json.error);
   await register(t, 'ELITE', 1);
-  // the seeding is not used: the numbers of the template are drawn by lot, always
+  // the seeding is not used: the groups are drawn by lot, always
   const regs = (await call('GET', `/api/seasons/${t.id}/registrations`)).json.filter((r) => r.category === 'ELITE');
   assert.strictEqual(regs.length, 6);
   assert.strictEqual((await call('POST', `/api/seasons/${t.id}/seeds`, { category: 'ELITE', seeds: regs.map((r, i) => ({ id: r.id, seed: i + 1 })) })).status, 200);
   const made = await draw(t, { category: 'ELITE', format: 'SIX_ROUNDS', groupFormat: 'BO3' });
   assert.strictEqual(made.status, 201, made.text);
-  assert.strictEqual(made.json.groups.length, 1);
-  assert.strictEqual(made.json.matches, 9);
-  const order = made.json.groups[0].playerIds; // player 1 … 6
-  assert.strictEqual(order.length, 6);
-  assert.strictEqual(new Set(order).size, 6);
-  // …so with every player seeded in the order of the registrations, player 1 is not always the first registered (6 draws: all the same has a chance of 1 in 7776)
-  const firsts = new Set([order[0] === regs[0].playerId]);
-  for (let i = 0; i < 6; i += 1) {
-    const u = await newTournament(`Six Random ${i}`);
+  assert.strictEqual(made.json.groups.length, 2, '2 groups');
+  assert.deepStrictEqual(made.json.groups.map((g) => g.playerIds.length), [3, 3], 'of 3 players');
+  assert.strictEqual(made.json.matches, 6, 'everybody plays 2 matches: 3 in each group');
+  assert.strictEqual(new Set(made.json.groups.flatMap((g) => g.playerIds)).size, 6);
+  // the seeds 1 and 2 would be apart in the seeded draw; by lot they sit together in a group sometimes (12 draws: never together has a chance of (2/5)^12)
+  const seedOf = new Map(regs.map((r, i) => [r.playerId, i + 1]));
+  const together = [made.json.groups.some((g) => g.playerIds.includes(regs[0].playerId) && g.playerIds.includes(regs[1].playerId))];
+  for (let k = 0; k < 11; k += 1) {
+    const u = await newTournament(`Six Random ${k}`);
     const rs = await register(u, 'ELITE', 6);
-    await call('POST', `/api/seasons/${u.id}/seeds`, { category: 'ELITE', seeds: rs.map((r, k) => ({ id: r.reg.id, seed: k + 1 })) });
+    await call('POST', `/api/seasons/${u.id}/seeds`, { category: 'ELITE', seeds: rs.map((r, n) => ({ id: r.reg.id, seed: n + 1 })) });
     const m = await draw(u, { category: 'ELITE', format: 'SIX_ROUNDS', groupFormat: 'BO3' });
     assert.strictEqual(m.status, 201, m.text);
-    firsts.add(m.json.groups[0].playerIds[0] === rs[0].player.id);
+    together.push(m.json.groups.some((g) => g.playerIds.includes(rs[0].player.id) && g.playerIds.includes(rs[1].player.id)));
   }
-  assert.ok(firsts.has(false), 'the order is random, not the seeding');
+  assert.ok(together.includes(true), 'the draw is random, not the seeding (seeds 1 and 2 are sometimes together)');
+  void seedOf;
   const ms = (await call('GET', `/api/matches?seasonId=${t.id}`)).json;
-  assert.strictEqual(ms.length, 9);
-  const number = (p) => order.indexOf(p.id) + 1;
-  const byRound = [1, 2, 3].map((r) => ms.filter((m) => m.round === r).map((m) => `${number(m.player1)}-${number(m.player2)}`).sort());
-  assert.deepStrictEqual(byRound, [['1-6', '2-5', '3-4'].sort(), ['1-4', '5-3', '6-2'].sort(), ['1-2', '3-6', '4-5'].sort()]);
-  order.forEach((id) => assert.strictEqual(ms.filter((m) => m.player1.id === id || m.player2.id === id).length, 3, 'everybody plays 3'));
-  const ov = await overview(t, 'ELITE');
+  assert.strictEqual(ms.length, 6);
+  made.json.groups.forEach((g) => g.playerIds.forEach((id) => assert.strictEqual(ms.filter((m) => m.player1.id === id || m.player2.id === id).length, 2, 'everybody plays 2')));
+  let ov = await overview(t, 'ELITE');
   assert.strictEqual(ov.stage, 'GROUPS');
-  assert.strictEqual(ov.canMakeBracket, false);
+  assert.strictEqual(ov.settings.format, 'GROUPS_BRACKET', 'stored as groups + the matches for the places');
+  assert.strictEqual(ov.settings.bracketType, 'PLACEMENT');
   assert.strictEqual((await draw(t, { category: 'ELITE', format: 'SIX_ROUNDS', groupFormat: 'BO3' })).status, 409, 'a second draw is refused');
-  void five;
+  assert.strictEqual((await call('POST', `/api/seasons/${t.id}/draw/bracket`, { category: 'ELITE', mode: 'AUTO' })).status, 409, 'not before the groups are played');
+  // after the groups the winners play for the 1st place, the second ones for the 3rd, the third ones for the 5th
+  for (const m of ms) await playMatch(m.token, Math.max(m.player1.id, m.player2.id), 'BO3');
+  ov = await overview(t, 'ELITE');
+  assert.strictEqual(ov.brackets.length, 3, 'final, 3rd place, 5th place made by themselves');
+  const st = (await call('GET', `/api/seasons/${t.id}/standings`, undefined, { admin: false })).json;
+  const places = st.groups.map((g) => g.rows.map((r) => r.player.id));
+  const brackets = [];
+  for (const b of ov.brackets) brackets.push(await bracketOf(b.id));
+  assert.deepStrictEqual(brackets.map((b) => b.name.replace(/^.* — /, '')), ['Finále', 'O 3. miesto', 'O 5. miesto']);
+  brackets.forEach((b, n) => {
+    const node = b.nodes[0];
+    assert.deepStrictEqual([node.player1.id, node.player2.id].sort((x, y) => x - y), [places[0][n], places[1][n]].sort((x, y) => x - y), `place ${n + 1} plays place ${n + 1} of the other group`);
+  });
 });
 
-test('the court planner fits three 40-minute rounds into a 2-hour day (no 5 minutes lost after each match): 6 players, 3 courts, rest 0 → all 9 matches placed', async () => {
+test('the court planner fits two 40-minute rounds of the 6-player groups into a 2-hour day: 6 matches, 3 courts, rest 0 → three at a time', async () => {
   const t = await newTournament('Six Planner');
   assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}`, { courtCount: 4, matchMinutes: 40, restMinutes: 0, dayStart: '10:00', dayEnd: '12:00', autoSchedule: true })).status, 200);
   await register(t, 'ELITE', 6);
   const made = await draw(t, { category: 'ELITE', format: 'SIX_ROUNDS', groupFormat: 'BO3' });
   assert.strictEqual(made.status, 201, made.text);
   const ms = (await call('GET', `/api/matches?seasonId=${t.id}`)).json;
-  assert.strictEqual(ms.length, 9);
+  assert.strictEqual(ms.length, 6);
   assert.ok(ms.every((m) => m.scheduledAt), 'every match has a time: ' + ms.filter((m) => !m.scheduledAt).length + ' without');
   const starts = [...new Set(ms.map((m) => m.scheduledAt))].sort();
-  assert.strictEqual(starts.length, 3, 'three rounds one after another: ' + starts.join(' '));
-  assert.strictEqual((new Date(starts[1]) - new Date(starts[0])) / 60000, 40, 'the second round starts when the first ends');
+  assert.strictEqual(starts.length, 3, 'a group of three has three rounds (one player rests), the two groups play together: ' + starts.join(' '));
+  assert.strictEqual((new Date(starts[1]) - new Date(starts[0])) / 60000, 40, 'the next round starts when the first ends');
   assert.strictEqual((new Date(starts[2]) - new Date(starts[1])) / 60000, 40);
 });
 
