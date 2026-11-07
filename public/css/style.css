@@ -3672,7 +3672,8 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
 }
 #tables-cats, #tables-phase, #tables-groups { margin: 0 0 14px; }
 #tables-cats:empty, #tables-phase:empty, #tables-groups:empty { display: none; }
-#tables-cats .tab.active, #tables-phase .tab.active, #tables-groups .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
+#tables-cats .tab.active { background: var(--green); color: var(--ink); border-color: var(--green); } /* only the category is green; the stage and the group stay orange */
+#tables-phase .tab.active, #tables-groups .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
 .grp-title { font-weight: 800; font-size: 17px; letter-spacing: 0.06em; color: var(--green); text-transform: uppercase; margin: 0 0 12px; }
 .grp-section + .grp-section .grp-title { margin-top: 56px; }
 /* The gap under the pills equals the gap between two groups (the 14px pill margin collapses into it). */
@@ -6314,6 +6315,9 @@ a.com-rank-name:hover { color: var(--orange); }
 .section-label-line .section-label { margin: 0; }
 /* the card of the current season: the poster of the series (4:3, the picture made for a phone) and under or beside it the state, the name and the dates; the logo only when there is no poster */
 .home-season-card { width: min(460px, 100%); }
+/* on a wide screen the season card starts at the top of the white heading (under the orange line above it), not in the middle of the block: the line has a fixed height (16px + its 10px gap) */
+.home-eyebrow { line-height: 16px; }
+@media (min-width: 901px) { .home-head { align-items: flex-start; } .home-head .home-season-card { margin-top: 26px; } }
 .home-season-card .home-head-logo.is-poster { width: 176px; height: 132px; object-fit: cover; border-radius: var(--radius-md); }
 .home-season-card .home-head-logo.is-logo { width: auto; height: 84px; }
 @media (max-width: 700px) { .home-season-card .home-head-logo.is-poster { width: 112px; height: 84px; } .home-season-card .home-head-logo.is-logo { height: 64px; } }

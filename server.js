@@ -568,7 +568,7 @@ app.use((req, res, next) => {
     const html = seo.render(hit.key, { origin: publicOrigin(req), canonical: hit.canonical, lang: hit.lang, entity, siteName: req.cityBase ? (req.league.brand_name || req.league.name) : undefined, leagueId: req.league.id, leagueName: req.league.name });
     // the propozície text comes from Backend > Rules; the text of "Info o lige" is the one of the info window of the home page (Backend > Info)
     let out = html;
-    if (hit.key === 'propozicie') out = rules.injectInto(html, req.league.id);
+    if (hit.key === 'propozicie') out = rules.injectInto(html, req.league.id, { lang: hit.lang, pageUrl: seo.pageUrl, base: req.cityBase || '' });
     else if (hit.key === 'about-league') out = aboutPage.injectInto(html, { lang: hit.lang, leagueId: req.league.id, brand: req.league.brand_name || req.league.name, pageUrl: seo.pageUrl, base: req.cityBase || '' });
     // the home page: the H1, the line above it and the intro are written in the language of the page (and with the name of the city) in the HTML a crawler reads, and the
     // button "O nás – info o lige" is a link to the page "Info o lige" at its address in that language

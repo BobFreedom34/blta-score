@@ -173,7 +173,7 @@
           const inner = `<div class="sw-ph">${photo}</div><div class="sw-l"><small>${escapeHtml(t(labelKey))}</small><b>${escapeHtml(p.name)}</b></div>`;
           return p.playerId ? `<a class="sw-tile ${tone}" href="/player/${encodeURIComponent(p.playerSlug || p.playerId)}">${inner}</a>` : `<div class="sw-tile ${tone}">${inner}</div>`;
         }).join('');
-        const label = b.category ? ({ ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[b.category] || b.category) : b.title;
+        const label = b.category ? ({ ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[b.category] || b.category) : (b.title === 'Konečné poradie' ? t('season.navFinal') : b.title);
         return `<div class="sw-card"><h3 class="sw-cat">${escapeHtml(label)}</h3><div class="sw-pair sw-quad">${tiles}</div></div>`;
       }).join('');
       return `<div class="com-winners-ed"><h3 class="com-winners-title">${e.seasonSlug ? `<a href="/tournament/${encodeURIComponent(e.seasonSlug)}">${escapeHtml(e.seasonName || e.title)}</a>` : escapeHtml(e.title)}</h3><div class="sw-row sw-row-quad">${cards}</div></div>`;

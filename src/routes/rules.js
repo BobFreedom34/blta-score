@@ -14,7 +14,15 @@ function parseBody(body) {
   if (navLabel.length > 40) return { error: 'The menu label is too long (max 40 characters)' };
   const raw = typeof body.html === 'string' ? body.html : '';
   if (raw.length > 80000) return { error: 'The text is too long' };
-  return { title, navLabel, html: rules.sanitize(raw).trim() };
+  // the English text (all three optional: empty = the page shows the Slovak text in English too)
+  const titleEn = typeof body.titleEn === 'string' ? body.titleEn.replace(/\s+/g, ' ').trim() : '';
+  const navLabelEn = typeof body.navLabelEn === 'string' ? body.navLabelEn.replace(/\s+/g, ' ').trim() : '';
+  if (titleEn.length > 120) return { error: 'The English title is too long (max 120 characters)' };
+  if (navLabelEn.length > 40) return { error: 'The English menu label is too long (max 40 characters)' };
+  const rawEn = typeof body.htmlEn === 'string' ? body.htmlEn : '';
+  if (rawEn.length > 80000) return { error: 'The English text is too long' };
+  const htmlEn = rules.sanitize(rawEn).trim();
+  return { title, navLabel, html: rules.sanitize(raw).trim(), titleEn, navLabelEn, htmlEn: /^(<p>\s*<\/p>)?$/.test(htmlEn) ? '' : htmlEn };
 }
 
 // the rules of the city the admin works on; a section of another city is not found
@@ -34,8 +42,8 @@ router.post('/copy', requireAdmin, (req, res) => {
   db.exec('BEGIN');
   try {
     db.prepare('DELETE FROM rules_sections WHERE league_id = ?').run(leagueId);
-    const insert = db.prepare('INSERT INTO rules_sections (slug, nav_label, title, body_html, sort_order, league_id) VALUES (?, ?, ?, ?, ?, ?)');
-    source.forEach((row, n) => insert.run(rules.uniqueSlug(rules.slugify(row.slug)), row.nav_label, row.title, row.body_html, n, leagueId));
+    const insert = db.prepare('INSERT INTO rules_sections (slug, nav_label, title, body_html, nav_label_en, title_en, body_en, sort_order, league_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    source.forEach((row, n) => insert.run(rules.uniqueSlug(rules.slugify(row.slug)), row.nav_label, row.title, row.body_html, row.nav_label_en, row.title_en, row.body_en, n, leagueId));
     db.exec('COMMIT');
   } catch (err) {
     db.exec('ROLLBACK');
@@ -50,8 +58,8 @@ router.post('/', requireAdmin, (req, res) => {
   const leagueId = leagues.actingIdOf(req);
   const next = (db.prepare('SELECT MAX(sort_order) AS m FROM rules_sections WHERE league_id = ?').get(leagueId).m ?? -1) + 1;
   const slug = rules.uniqueSlug(rules.slugify(parsed.navLabel || parsed.title));
-  const info = db.prepare('INSERT INTO rules_sections (slug, nav_label, title, body_html, sort_order, league_id) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(slug, parsed.navLabel, parsed.title, parsed.html, next, leagueId);
+  const info = db.prepare('INSERT INTO rules_sections (slug, nav_label, title, body_html, nav_label_en, title_en, body_en, sort_order, league_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(slug, parsed.navLabel, parsed.title, parsed.html, parsed.navLabelEn, parsed.titleEn, parsed.htmlEn, next, leagueId);
   res.status(201).json(rules.serialize(db.prepare('SELECT * FROM rules_sections WHERE id = ?').get(info.lastInsertRowid)));
 });
 
@@ -60,7 +68,8 @@ router.put('/:id', requireAdmin, (req, res) => {
   if (!mine(req, row)) return res.status(404).json({ error: 'Section not found' });
   const parsed = parseBody(req.body || {});
   if (parsed.error) return res.status(400).json({ error: parsed.error });
-  db.prepare('UPDATE rules_sections SET title = ?, nav_label = ?, body_html = ? WHERE id = ?').run(parsed.title, parsed.navLabel, parsed.html, row.id);
+  db.prepare('UPDATE rules_sections SET title = ?, nav_label = ?, body_html = ?, title_en = ?, nav_label_en = ?, body_en = ? WHERE id = ?')
+    .run(parsed.title, parsed.navLabel, parsed.html, parsed.titleEn, parsed.navLabelEn, parsed.htmlEn, row.id);
   res.json(rules.serialize(db.prepare('SELECT * FROM rules_sections WHERE id = ?').get(row.id)));
 });
 
@@ -84,7 +93,8 @@ router.post('/:id/reset', requireAdmin, (req, res) => {
   if (!mine(req, row)) return res.status(404).json({ error: 'Section not found' });
   const first = rules.seed.find((s) => s.slug === row.slug);
   if (!first) return res.status(400).json({ error: 'This section has no first text' });
-  db.prepare('UPDATE rules_sections SET title = ?, nav_label = ?, body_html = ? WHERE id = ?').run(first.title, first.navLabel, first.body, row.id);
+  const en = rules.seedEn[row.slug] || { title: '', navLabel: '', body: '' };
+  db.prepare('UPDATE rules_sections SET title = ?, nav_label = ?, body_html = ?, title_en = ?, nav_label_en = ?, body_en = ? WHERE id = ?').run(first.title, first.navLabel, first.body, en.title, en.navLabel, en.body, row.id);
   res.json(rules.serialize(db.prepare('SELECT * FROM rules_sections WHERE id = ?').get(row.id)));
 });
 

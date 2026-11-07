@@ -5,7 +5,7 @@
 // The cards are drawn by each tab's own script, so this works on the finished page: it watches for cards and puts a bar before
 // each one (the card itself is not touched, so the script that drew it keeps working with it). A card with no title (an error, a
 // note, "Loading...") is not a section and is left as it is. Marks on a card:
-//   data-sec-title="…"   the title for a card with no heading (else the text of its first heading)
+//   data-sec-title="…"   the title for a card with no heading (else the text of its first heading); data-sec-title-en="…" is the one of the English pages
 //   data-sec-open="1"    opened when drawn (a form that was just filled for editing)
 //   data-sec="fold"      on a page marked below: this card is folded
 // Only the cards straight inside the page (.container or a …-root box) count; a card inside another card or a list is left.
@@ -27,7 +27,7 @@
 
   const heading = (card) => card.querySelector('h2, h3, h4');
   const titleOf = (card, head) => {
-    if (card.dataset.secTitle) return card.dataset.secTitle;
+    if (card.dataset.secTitle) return (typeof currentLang !== 'undefined' && currentLang === 'en' && card.dataset.secTitleEn) || card.dataset.secTitle;
     const h = heading(card);
     const text = h ? h.textContent.replace(/\s+/g, ' ').trim().split(/ [—·] /)[0] : '';
     return text || (head && head.dataset.last) || '';

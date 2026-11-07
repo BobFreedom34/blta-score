@@ -24,7 +24,7 @@ function cardHtml(p) {
 }
 
 function blockHtml(b) {
-  const head = `<h3 class="win-cat">${escapeHtml(b.category ? categoryLabel(b.category) : b.title)}</h3>`;
+  const head = `<h3 class="win-cat">${escapeHtml(b.category ? categoryLabel(b.category) : (b.title === 'Konečné poradie' ? t('season.navFinal') : b.title))}</h3>`;
   return `<div class="win-block"><div class="win-block-head">${head}</div><div class="win-grid">${b.places.map(cardHtml).join('')}</div></div>`;
 }
 

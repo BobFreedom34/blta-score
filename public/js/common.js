@@ -4282,6 +4282,18 @@ function highlightMyName() {
 })();
 
 // On the page of a city under the national address (slta.sk/kosice, see public/js/localize.js) the brand is the city's: SLTA Košice, not BLTA.
+// The credit line at the bottom of the match list and the courts page carries the name of the league: the English pages get the English name of it.
+(function creditLine() {
+  const fix = () => {
+    if (typeof currentLang === 'undefined' || currentLang !== 'en') return;
+    document.querySelectorAll('footer.credit').forEach((f) => {
+      const n = [...f.childNodes].find((x) => x.nodeType === 3 && x.textContent.includes('Bratislavská Liga Tenisových Amatérov'));
+      if (n) n.textContent = n.textContent.replace('Bratislavská Liga Tenisových Amatérov', 'Bratislava Amateur Tennis League');
+    });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fix); else fix();
+})();
+
 (function cityBrand() {
   const city = window.CITY;
   if (!city || document.body.classList.contains('embed')) return;

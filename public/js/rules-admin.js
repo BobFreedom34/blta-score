@@ -1,6 +1,7 @@
 // Backend > Rules (/rules-admin): the text of the public Propozície page, section by section — a title, a short label for the
 // buttons at the top of the page, and a formatted text (bold, lists, links; the tiles and tables of the page can be edited in
-// place, and "HTML" shows the code for adding or removing one).
+// place, and "HTML" shows the code for adding or removing one). Every section has a Slovak and an English version (the English page shows the Slovak
+// text of a section until its English text is written).
 (function rulesAdmin() {
   const host = document.getElementById('rules-admin-root');
   if (!host) return;
@@ -41,26 +42,40 @@
       </div>`;
   }
 
+  // the title, the button at the top and the text of a section in one language (lang: 'sk' | 'en')
+  function paneHtml(lang, s) {
+    const en = lang === 'en';
+    const title = en ? s.titleEn : s.title;
+    const nav = en ? s.navLabelEn : s.navLabel;
+    const html = en ? s.htmlEn : s.html;
+    return `
+          <div class="rl-pane" data-lang="${lang}" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border, #ddd)">
+            <div style="font-size:12px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--orange)">${en ? 'English version' : 'Slovak version'}${en ? ' <span style="font-weight:600;color:var(--gray);text-transform:none;letter-spacing:0">(empty = the English page shows the Slovak text)</span>' : ''}</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+              <label style="flex:2;min-width:240px;font-size:12px;font-weight:700">Title
+                <input type="text" class="rl-title" maxlength="120" value="${escapeHtml(title)}" style="${field}">
+              </label>
+              <label style="flex:1;min-width:180px;font-size:12px;font-weight:700">Button at the top <span style="font-weight:600;color:var(--gray)">(empty = none)</span>
+                <input type="text" class="rl-nav" maxlength="40" value="${escapeHtml(nav)}" style="${field}">
+              </label>
+            </div>
+            <div style="font-size:12px;font-weight:700;margin-top:12px">Text</div>
+            ${toolbarHtml()}
+            <div class="rl-editor pr-card pr-edit" contenteditable="true">${html}</div>
+            <textarea class="rl-source" rows="14" spellcheck="false" style="${field};font-family:Consolas,monospace;font-size:13px;display:none"></textarea>
+          </div>`;
+  }
+
   function cardHtml(s, i) {
     return `
       <details class="card rl-card" data-id="${s.id}" style="margin-bottom:12px"${openIds.has(s.id) ? ' open' : ''}>
         <summary style="cursor:pointer;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;list-style:none">
           <strong>${escapeHtml(s.title)}</strong>
-          <span style="color:var(--gray);font-size:13px">#${escapeHtml(s.slug)}${s.navLabel ? '' : ' · not in the buttons at the top'}</span>
+          <span style="color:var(--gray);font-size:13px">#${escapeHtml(s.slug)}${s.navLabel ? '' : ' · not in the buttons at the top'}${s.titleEn && s.htmlEn ? '' : ' · English text missing'}</span>
         </summary>
         <div class="rl-form">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-            <label style="flex:2;min-width:240px;font-size:12px;font-weight:700">Title
-              <input type="text" class="rl-title" maxlength="120" value="${escapeHtml(s.title)}" style="${field}">
-            </label>
-            <label style="flex:1;min-width:180px;font-size:12px;font-weight:700">Button at the top <span style="font-weight:600;color:var(--gray)">(empty = none)</span>
-              <input type="text" class="rl-nav" maxlength="40" value="${escapeHtml(s.navLabel)}" style="${field}">
-            </label>
-          </div>
-          <div style="font-size:12px;font-weight:700;margin-top:12px">Text</div>
-          ${toolbarHtml()}
-          <div class="rl-editor pr-card pr-edit" contenteditable="true">${s.html}</div>
-          <textarea class="rl-source" rows="14" spellcheck="false" style="${field};font-family:Consolas,monospace;font-size:13px;display:none"></textarea>
+          ${paneHtml('sk', s)}
+          ${paneHtml('en', s)}
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px">
             <button type="button" class="btn btn-primary" data-act="save">Save</button>
             <button type="button" class="btn btn-sm btn-outline" data-act="up"${i === 0 ? ' disabled' : ''}>↑ Move up</button>
@@ -151,9 +166,10 @@
     m.textContent = text;
     m.style.color = bad ? 'var(--danger)' : 'var(--green, #2e9e4f)';
   };
-  const bodyOf = (card) => {
-    const src = card.querySelector('.rl-source');
-    return src.style.display !== 'none' ? tidy(src.value) : card.querySelector('.rl-editor').innerHTML;
+  const paneOf = (card, lang) => card.querySelector(`.rl-pane[data-lang="${lang}"]`);
+  const bodyOf = (pane) => {
+    const src = pane.querySelector('.rl-source');
+    return src.style.display !== 'none' ? tidy(src.value) : pane.querySelector('.rl-editor').innerHTML;
   };
 
   host.addEventListener('toggle', (e) => {
@@ -167,9 +183,9 @@
     if (e.target.closest('#rl-copy-go')) { copyFromCity(); return; }
     const tb = e.target.closest('.rte-toolbar [data-cmd]');
     if (tb) {
-      const card = cardOf(tb);
-      const rte = card.querySelector('.rl-editor');
-      const src = card.querySelector('.rl-source');
+      const pane = tb.closest('.rl-pane');
+      const rte = pane.querySelector('.rl-editor');
+      const src = pane.querySelector('.rl-source');
       const cmd = tb.dataset.cmd;
       if (cmd === 'source') {
         if (src.style.display === 'none') { src.value = rte.innerHTML; src.style.display = 'block'; rte.style.display = 'none'; tb.style.borderColor = 'var(--orange)'; }
@@ -207,7 +223,12 @@
     const id = Number(card.dataset.id);
     try {
       if (btn.dataset.act === 'save') {
-        const saved = await api(`/rules/${id}`, { method: 'PUT', body: { title: card.querySelector('.rl-title').value, navLabel: card.querySelector('.rl-nav').value, html: bodyOf(card) } });
+        const sk = paneOf(card, 'sk');
+        const en = paneOf(card, 'en');
+        const saved = await api(`/rules/${id}`, { method: 'PUT', body: {
+          title: sk.querySelector('.rl-title').value, navLabel: sk.querySelector('.rl-nav').value, html: bodyOf(sk),
+          titleEn: en.querySelector('.rl-title').value, navLabelEn: en.querySelector('.rl-nav').value, htmlEn: bodyOf(en),
+        } });
         sections = sections.map((s) => (s.id === id ? saved : s));
         openIds.add(id);
         render();

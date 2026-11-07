@@ -5,6 +5,7 @@
 // the category cards) as plain HTML with the page's classes; saving keeps only a small set of tags and classes.
 const db = require('./db');
 const seed = require('./rulesSeed');
+const seedEn = require('./rulesSeedEn');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS rules_sections (
@@ -20,6 +21,10 @@ db.exec(`
 // every section belongs to one city (the rules of Bratislava are the first; see src/leagues.js)
 if (!db.prepare('PRAGMA table_info(rules_sections)').all().some((c) => c.name === 'league_id')) db.exec('ALTER TABLE rules_sections ADD COLUMN league_id INTEGER NOT NULL DEFAULT 1');
 db.exec('CREATE INDEX IF NOT EXISTS idx_rules_sections_league ON rules_sections(league_id)');
+// the English text of a section (empty = the page shows the Slovak one in English too)
+['title_en', 'nav_label_en', 'body_en'].forEach((col) => {
+  if (!db.prepare('PRAGMA table_info(rules_sections)').all().some((c) => c.name === col)) db.exec(`ALTER TABLE rules_sections ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`);
+});
 
 // Once: the first sections (after that the backend owns them, even when all are deleted).
 if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'rules_seeded'").get()) {
@@ -86,7 +91,10 @@ function sanitize(input) {
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function serialize(r) {
-  return { id: r.id, slug: r.slug, navLabel: r.nav_label, title: r.title, html: r.body_html, original: seed.some((s) => s.slug === r.slug) };
+  return {
+    id: r.id, slug: r.slug, navLabel: r.nav_label, title: r.title, html: r.body_html, navLabelEn: r.nav_label_en || '', titleEn: r.title_en || '', htmlEn: r.body_en || '',
+    original: seed.some((s) => s.slug === r.slug),
+  };
 }
 
 function list(leagueId = 1) {
@@ -105,22 +113,54 @@ function uniqueSlug(base) {
   return slug;
 }
 
-// The pills at the top and a card per section, ready to go into the page.
-function renderHtml(leagueId = 1) {
-  const rows = db.prepare('SELECT * FROM rules_sections WHERE league_id = ? ORDER BY sort_order, id').all(leagueId);
+// The first English text for the sections that still have the first Slovak text (a section the backend changed keeps what it has: the page then shows its Slovak text in
+// English too, until the English one is written in Backend > Rules). Never replaces an English text that is written.
+function fillEnglish() {
+  const set = {
+    title: db.prepare("UPDATE rules_sections SET title_en = ? WHERE id = ? AND title_en = ''"),
+    nav: db.prepare("UPDATE rules_sections SET nav_label_en = ? WHERE id = ? AND nav_label_en = ''"),
+    body: db.prepare("UPDATE rules_sections SET body_en = ? WHERE id = ? AND body_en = ''"),
+  };
+  db.prepare('SELECT id, slug, title, nav_label, body_html FROM rules_sections').all().forEach((r) => {
+    const first = seed.find((s) => s.slug === r.slug);
+    const en = seedEn[r.slug];
+    if (!first || !en) return;
+    if (r.title === first.title) set.title.run(en.title, r.id);
+    if (r.nav_label === first.navLabel && en.navLabel) set.nav.run(en.navLabel, r.id);
+    if (r.body_html === first.body || r.body_html === sanitize(first.body)) set.body.run(en.body, r.id);
+  });
+}
+fillEnglish();
+
+// the addresses inside a text (href="/harmonogram") go to the page in the language of the text (and the city's base address)
+function localizeLinks(html, lang, pageUrl, base) {
+  if (typeof pageUrl !== 'function') return html;
+  return html.replace(/href="(\/[^"#?]*)([^"]*)"/g, (whole, p, tail) => `href="${base}${pageUrl(p, lang)}${tail}"`);
+}
+
+// The pills at the top and a card per section, ready to go into the page, in the language of the page (English: the English text of a section, the Slovak one where it has none).
+function renderHtml(leagueId = 1, { lang = 'sk', pageUrl, base = '' } = {}) {
+  const en = lang === 'en';
+  const rows = db.prepare('SELECT * FROM rules_sections WHERE league_id = ? ORDER BY sort_order, id').all(leagueId).map((r) => ({
+    slug: r.slug,
+    // (a section with no button in Slovak has none in English either)
+    nav: !r.nav_label ? '' : (en && r.nav_label_en) || r.nav_label,
+    title: (en && r.title_en) || r.title,
+    body: localizeLinks((en && r.body_en) || r.body_html, lang, pageUrl, base),
+  }));
   if (!rows.length) return '';
-  const pills = rows.filter((r) => r.nav_label).map((r) => `<a class="tab" href="#${esc(r.slug)}">${esc(r.nav_label)}</a>`).join('\n    ');
-  const nav = pills ? `<div class="tabs pr-nav" role="navigation" aria-label="Sekcie">\n    ${pills}\n  </div>\n` : '';
+  const pills = rows.filter((r) => r.nav).map((r) => `<a class="tab" href="#${esc(r.slug)}">${esc(r.nav)}</a>`).join('\n    ');
+  const nav = pills ? `<div class="tabs pr-nav" role="navigation" aria-label="${en ? 'Sections' : 'Sekcie'}">\n    ${pills}\n  </div>\n` : '';
   const sections = rows.map((r) => `
   <section class="pr-sec" id="${esc(r.slug)}">
     <h2 class="pr-title">${esc(r.title)}</h2>
-    <div class="pr-card">${r.body_html}</div>
+    <div class="pr-card">${r.body}</div>
   </section>`).join('');
   return nav + sections;
 }
 
-function injectInto(html, leagueId = 1) {
-  return html.replace('<!--RULES-->', () => renderHtml(leagueId));
+function injectInto(html, leagueId = 1, options = {}) {
+  return html.replace('<!--RULES-->', () => renderHtml(leagueId, options));
 }
 
-module.exports = { list, leagueOf, sanitize, serialize, slugify, uniqueSlug, injectInto, seed };
+module.exports = { list, leagueOf, sanitize, serialize, slugify, uniqueSlug, injectInto, renderHtml, seed, seedEn };
