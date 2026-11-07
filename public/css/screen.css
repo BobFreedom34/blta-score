@@ -1,0 +1,77 @@
+/* The live screen of a match (/screen/<token>): a full-page scoreboard for a TV or a projector at the court. Everything is sized by the screen (vw / vh) so it reads from afar. */
+/* (the background is the one of the home page: the grey aura of style.css behind everything) */
+html.screen, body.screen-page { height: 100%; margin: 0; overflow: hidden; color: #fff; }
+body.screen-page { cursor: default; }
+body.screen-page.idle { cursor: none; }
+.scr { position: relative; z-index: 1; height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding: clamp(14px, 2.4vh, 34px) clamp(18px, 2.6vw, 56px); box-sizing: border-box; }
+.scr-loading { grid-row: 2; align-self: center; justify-self: center; font-size: 5vh; color: #c3c7cf; }
+
+/* head: the competition, the phase and the place on the left, the clock and the logo on the right */
+.scr-head { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: clamp(10px, 1.8vh, 24px); border-bottom: 1px solid rgba(255, 255, 255, 0.16); }
+.scr-head-main { min-width: 0; }
+.scr-comp { margin: 0; font-size: clamp(20px, 4.4vh, 64px); font-weight: 800; line-height: 1.1; letter-spacing: 0.02em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; margin-top: clamp(6px, 1vh, 14px); font-size: clamp(13px, 2.4vh, 32px); font-weight: 600; color: #c3c7cf; }
+.scr-phase { padding: 0.15em 0.7em; border-radius: var(--radius-sm); background: var(--green); color: #0a0a0a; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; }
+.scr-head-side { display: flex; align-items: center; gap: clamp(14px, 2vw, 36px); flex: none; }
+.scr-clock { font-size: clamp(18px, 4vh, 58px); font-weight: 700; font-variant-numeric: tabular-nums; color: #c3c7cf; }
+.scr-logo { height: clamp(34px, 8vh, 110px); width: auto; display: block; }
+
+/* stage: player | score | player */
+.scr-stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); align-items: center; gap: clamp(10px, 2vw, 40px); min-height: 0; }
+.scr-player { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: clamp(8px, 2vh, 28px); min-width: 0; }
+.scr-avatar { width: clamp(70px, 24vh, 280px); height: clamp(70px, 24vh, 280px); border-radius: 50%; object-fit: cover; background: var(--fill-grey); border: 3px solid rgba(255, 255, 255, 0.18); display: flex; align-items: center; justify-content: center; font-size: clamp(26px, 9vh, 100px); font-weight: 800; color: #fff; }
+.scr-name { margin: 0; font-size: clamp(22px, 6.4vh, 96px); font-weight: 800; line-height: 1.08; text-transform: uppercase; overflow-wrap: anywhere; hyphens: auto; }
+.scr-player.won .scr-name { color: var(--green); }
+.scr-player.won .scr-avatar { border-color: var(--green); }
+.scr-winner { padding: 0.2em 0.9em; border-radius: var(--radius-sm); background: var(--green); color: #0a0a0a; font-size: clamp(12px, 2.6vh, 34px); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+
+.scr-mid { container-type: inline-size; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: clamp(6px, 1.6vh, 22px); min-width: 0; }
+.scr-pill { display: inline-flex; align-items: center; gap: 0.6em; padding: 0.25em 0.9em; border-radius: var(--radius-sm); border: 2px solid rgba(255, 255, 255, 0.5); font-size: clamp(14px, 3.2vh, 44px); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #fff; }
+.scr-pill i { width: 0.6em; height: 0.6em; border-radius: 50%; background: currentColor; }
+.scr-pill.live { background: var(--orange); border-color: var(--orange); }
+.scr-pill.live i { background: #fff; animation: scr-pulse 1.4s ease-in-out infinite; }
+.scr-pill.paused { border-color: var(--yellow, #f5c518); color: var(--yellow, #f5c518); }
+.scr-pill.done { border-color: rgba(255, 255, 255, 0.35); color: #c3c7cf; }
+.scr-label { font-size: clamp(12px, 2.8vh, 38px); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #a9adb6; }
+.scr-big { font-size: clamp(48px, min(26vh, 11vw), 380px); font-size: min(26vh, 29cqw); font-weight: 800; line-height: 1; color: var(--green); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.scr-big.time { font-size: clamp(48px, min(24vh, 10vw), 360px); font-size: min(24vh, 27cqw); }
+.scr-big .sep { padding: 0 0.12em; color: #fff; }
+.scr-sub { font-size: clamp(14px, min(4vh, 2.6vw), 56px); font-weight: 800; text-transform: uppercase; color: #fff; }
+.scr-sets { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(8px, 1.4vh, 18px) clamp(10px, 1.4vw, 26px); }
+.scr-set { padding: 0.15em 0.6em; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.1); font-size: clamp(14px, min(4.2vh, 2.8vw), 58px); font-weight: 800; font-variant-numeric: tabular-nums; }
+.scr-set small { display: block; font-size: 0.4em; font-weight: 700; letter-spacing: 0.1em; color: #a9adb6; }
+.scr-timer { font-size: clamp(18px, 4.4vh, 62px); font-weight: 700; font-variant-numeric: tabular-nums; color: #c3c7cf; }
+
+/* foot: what refreshes it, the buttons and the address of the match */
+.scr-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 18px; padding-top: clamp(8px, 1.4vh, 20px); font-size: clamp(11px, 2vh, 26px); color: #a9adb6; transition: opacity 0.4s ease; }
+.scr-foot .left { justify-self: start; display: flex; align-items: center; gap: 8px; }
+.scr-foot .right { justify-self: end; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr-controls { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: var(--radius); background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); }
+.scr-btn { display: inline-flex; align-items: center; gap: 8px; padding: 0.55em 1.1em; border: 0; border-radius: var(--radius-sm); background: var(--fill-grey); color: #fff; font: inherit; font-size: clamp(11px, 1.9vh, 22px); font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; text-decoration: none; cursor: pointer; }
+.scr-btn:hover { background: #4a4a52; }
+.scr-btn.green { background: var(--green); color: #0a0a0a; }
+.scr-btn.green:hover { background: #c6ff3a; }
+.scr-hint { padding: 0 6px; font-size: clamp(10px, 1.7vh, 20px); color: #a9adb6; }
+body.screen-page.idle.is-full .scr-foot { opacity: 0; }
+
+@keyframes scr-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* a small window: the address of the match and the hint make room for the buttons */
+@media (max-width: 1100px) { .scr-foot { grid-template-columns: minmax(0, 1fr) auto; } .scr-foot .right, .scr-hint { display: none; } }
+/* a narrow window (a phone held upright): the two players stack above and under the score */
+@media (max-width: 760px) {
+  html.screen, body.screen-page { overflow: auto; }
+  .scr { height: auto; min-height: 100dvh; }
+  .scr-stage { grid-template-columns: 1fr; gap: 22px; padding: 18px 0; }
+  .scr-mid { order: 2; }
+  .scr-player.p1 { order: 1; }
+  .scr-player.p2 { order: 3; }
+  .scr-avatar { width: 84px; height: 84px; font-size: 30px; }
+  .scr-name { font-size: 26px; }
+  .scr-big { font-size: 96px; }
+  .scr-big.time { font-size: 84px; }
+  .scr-foot { grid-template-columns: 1fr; justify-items: center; }
+  .scr-foot .left, .scr-foot .right { justify-self: center; }
+  .scr-hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .scr-pill.live i { animation: none; } }

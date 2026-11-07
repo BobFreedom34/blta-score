@@ -100,6 +100,12 @@ const PAGES = [
     description: 'Súkromné správy medzi hráčmi BLTA.',
   },
   {
+    // the full-page scoreboard of a match for a TV or a projector at the court (the button "Live obrazovka" of the match page); a utility page, not one to find in a search
+    key: 'screen', label: 'Live screen of a match (template)', path: '/screen/:token', file: 'screen.html', template: true, blta: null, slugSk: 'obrazovka', noindex: true,
+    title: `Live obrazovka zápasu${SUFFIX}`,
+    description: 'Celoobrazovkové živé skóre zápasu BLTA pre televízor alebo projektor pri kurte.',
+  },
+  {
     key: 'communities', label: 'Communities and clubs (list)', path: '/communities', file: 'communities.html', blta: null, slugSk: 'komunity-a-kluby',
     title: `Komunity a kluby${SUFFIX}`,
     description: 'Komunity a kluby BLTA - skupiny hráčov, ktoré si organizujú vlastné turnaje a akcie. Pridaj sa do klubu alebo si vytvor vlastnú komunitu.',
@@ -272,6 +278,11 @@ const ENGLISH = {
     slug: 'chat',
     title: `Messages${SUFFIX_EN}`,
     description: 'Private messages between BLTA players.',
+  },
+  screen: {
+    slug: 'screen',
+    title: `Live screen of a match${SUFFIX_EN}`,
+    description: 'The full-screen live score of a BLTA match for a TV or a projector at the court.',
   },
   communities: {
     slug: 'communities',

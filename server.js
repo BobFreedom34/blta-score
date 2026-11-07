@@ -441,6 +441,8 @@ const TEMPLATE_ENTITY = {
   },
   // a private conversation: the page has no name of its own (and is noindex), the chat is loaded by the script
   conversation: () => ({ name: 'Messages' }),
+  // the live screen of a match (noindex): the page has no name of its own, the match is loaded by the script
+  screen: () => ({ name: 'Live screen' }),
   // the manage page of a club tournament: noindex, the editor is loaded by the script
   clubtournament: () => ({ name: 'Club tournament' }),
   community: (slug, lang, leagueId) => {

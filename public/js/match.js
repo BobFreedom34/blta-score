@@ -811,6 +811,7 @@ function render(m) {
     ${chatHtml()}
 
     <div class="match-actions">
+      <a class="btn btn-primary" id="screen-btn" href="${escapeHtml(siteUrl(`/screen/${encodeURIComponent(m.token)}`))}">${iconLabel('monitor', t('match.screenBtn'))}</a>
       <button class="btn btn-green" id="share-btn">${iconLabel('link', t('match.shareBtn'))}</button>
       <button class="btn" id="embed-btn">${iconLabel('code', t('match.embedBtn'))}</button>
       <button class="btn btn-dark" id="referee-btn">${iconLabel('userCheck', t('referee.btn'))}</button>
