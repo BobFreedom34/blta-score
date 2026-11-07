@@ -4092,12 +4092,19 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-chip.t { border-color: var(--orange); color: var(--orange); }
 .sv-chip.now { background: var(--orange); color: var(--white); }
 .sv-chip.w { border-color: rgba(255, 255, 255, 0.35); color: var(--white); }
-.sv-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 14px 0 0; }
-.sv-tile { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius); padding: 14px 16px; }
+/* the info tiles of an event: every value is 20px on one line, and a tile is as wide as its text needs (a very long text is cut with ... at the edge of the page, never put on a second line) */
+.sv-tiles { display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0 0; }
+.sv-tile { flex: 0 0 auto; min-width: 150px; max-width: 100%; box-sizing: border-box; background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius); padding: 14px 16px; }
 .sv-tile .k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-.sv-tile .v { font-size: 26px; font-weight: 800; line-height: 1.1; margin-top: 6px; }
-.sv-tile .v.sm { font-size: 20px; padding-top: 4px; }
-.sv-tile .v small { display: block; font-size: 12px; font-weight: 700; color: #c3c7cf; margin-top: 4px; }
+.sv-tile .v { font-size: 20px; font-weight: 800; line-height: 1.2; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sv-tile .v.sm { font-size: 20px; }
+.sv-tile .v small { display: block; font-size: 20px; font-weight: 600; color: #c3c7cf; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a phone: always two tiles side by side; a text that does not fit the half of the screen goes on a second line there (a date or an address is never cut) */
+@media (max-width: 700px) {
+  .sv-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .sv-tile { min-width: 0; padding: 12px 14px; }
+  .sv-tile .v, .sv-tile .v small { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+}
 .sv-sec { margin: 0; }
 #sv-tabs { margin: 48px 0 48px; }
 /* the tabs of the season / tournament page: black with white letters and an orange border, the open one filled orange */
@@ -4171,10 +4178,15 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-about-lead { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius); padding: 22px 26px; }
 .sv-about-lead p { margin: 0; color: #e6e8ec; font-size: 15px; font-weight: 500; line-height: 1.7; }
 .sv-about-lead p + p { margin-top: 12px; }
-.sv-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
-.sv-fact { background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius); padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; }
+.sv-facts { display: flex; flex-wrap: wrap; gap: 12px; }
+.sv-fact { flex: 0 0 auto; min-width: 190px; max-width: 100%; box-sizing: border-box; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius); padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; }
 .sv-fact span { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-.sv-fact b { color: var(--white); font-size: 20px; font-weight: 800; line-height: 1.15; }
+.sv-fact b { color: var(--white); font-size: 20px; font-weight: 800; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 700px) {
+  .sv-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .sv-fact { min-width: 0; padding: 12px 14px; }
+  .sv-fact b { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+}
 .sv-round { position: relative; overflow: hidden; display: flex; align-items: baseline; gap: 8px; padding: 9px 14px 11px; }
 .sv-round b { font-size: 13px; font-weight: 800; }
 .sv-round small { display: inline; margin: 0; color: #a9adb6; font-weight: 700; font-size: 11px; }
