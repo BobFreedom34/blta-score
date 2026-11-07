@@ -5072,6 +5072,8 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-seg button { border: 0; background: transparent; color: #c3c7cf; font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
 .cs-seg button:hover { color: var(--white); }
 .cs-seg button.active { background: var(--orange); color: var(--white); }
+/* the list / timeline switch of the schedule page: the picked button is green like the rest of the "selected" states of the site */
+.sch-view button.active { background: var(--green); color: var(--ink); }
 .cs-scroll { padding-bottom: 6px; } /* (no scrolling box: the courts share the width, and a box with overflow-x also made a useless vertical scroll bar next to the timeline) */
 /* every court is a card like a court of the list: a grey heading bar (the court, and the number of its matches) over the dark timetable, in a thin frame */
 .cs-colwrap { min-width: 0; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius-md); overflow: hidden; }
@@ -6048,6 +6050,12 @@ a.com-rank-name:hover { color: var(--orange); }
 #new-match-form .format-option > span > div:first-child { color: #fff; }
 #new-match-form .format-option > span > div:last-child { color: #a9adb6 !important; }
 #new-match-form .format-option span span { color: #8b8f98 !important; }
+/* the edit-match modal (match, matches and player pages): the picked format must stay readable on the dark modal - the light default (#fff6f2) made the white text vanish */
+#edit-match-modal .format-option { border-color: rgba(255, 255, 255, 0.14); background: var(--fill-grey); }
+#edit-match-modal .format-option:has(input:checked) { border-color: var(--orange); background: rgba(255, 85, 0, 0.14); }
+#edit-match-modal .format-option > span > div:first-child { color: #fff; }
+#edit-match-modal .format-option > span > div:last-child { color: #a9adb6 !important; }
+#edit-match-modal .format-option span span { color: #8b8f98 !important; }
 #new-match-form .server-choice-row .btn { background: transparent; border-color: rgba(255, 255, 255, 0.3); color: #fff; }
 #new-match-form .server-choice-row .btn:hover { border-color: var(--orange); color: var(--orange); }
 #new-match-form .server-choice-row button.active { border-color: var(--orange); background: rgba(255, 85, 0, 0.14); color: var(--orange); }
