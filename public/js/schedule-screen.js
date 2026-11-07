@@ -147,8 +147,8 @@ function stcRender() {
   const dayPills = days.length > 1
     ? `<div class="scr-controls">${days.map((d) => `<button type="button" class="scr-btn${d === day ? ' green' : ''}" data-stc-day="${d}">${escapeHtml(csDayLabel(d))}</button>`).join('')}</div>` : '';
   const views = `<div class="scr-controls">
-      <button type="button" class="scr-btn${stcView === 'timeline' ? ' green' : ''}" data-stc-view="timeline">${escapeHtml(t('courts.timeline'))}</button>
       <button type="button" class="scr-btn${stcView === 'list' ? ' green' : ''}" data-stc-view="list">${escapeHtml(t('courts.list'))}</button>
+      <button type="button" class="scr-btn${stcView === 'timeline' ? ' green' : ''}" data-stc-view="timeline">${escapeHtml(t('courts.timeline'))}</button>
     </div>`;
   const body = settings.courtCount
     ? (stcView === 'timeline' ? stcTimelineHtml(day) : stcListHtml(day))

@@ -72,6 +72,19 @@ function csPlayersHtml(m) {
   return `<span${won(m.player1)}>${escapeHtml(m.player1.name || '?')}</span><span${won(m.player2)}>${escapeHtml(m.player2.name || '?')}</span>`;
 }
 
+// The two players, and when the match is being played or has been played their sets in the format of the match page (the same as the schedule on the whole screen): the
+// name on the left, a column per set (S1, S2, MTB) on the right with the games of that player, the winner of a set green, the tie-break points small.
+function csScoredPlayersHtml(m) {
+  const st = m.state || { sets: [] };
+  const started = (s, i) => s.winner || s.p1 || s.p2 || (s.tiebreak && (s.tiebreak.p1 || s.tiebreak.p2)) || (m.status === 'LIVE' && i === st.currentSet);
+  const shown = m.status === 'LIVE' || m.status === 'FINISHED' || m.status === 'UNFINISHED' ? (st.sets || []).filter(started) : [];
+  const won = (p) => (m.winnerId && m.winnerId === p.id ? ' cs-win' : '');
+  const head = shown.length
+    ? `<span class="cs-pl-line cs-pl-head"><span class="cs-nm"></span><span class="cs-sc">${shown.map((s, i) => `<span>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</span>`).join('')}</span></span>` : '';
+  const line = (p, num) => `<span class="cs-pl-line"><span class="cs-nm${won(p)}">${escapeHtml(p.name || '?')}</span>${shown.length ? `<span class="cs-sc">${shown.map((s) => `<span>${setCell(s, num, { highlightWinner: true })}</span>`).join('')}</span>` : ''}</span>`;
+  return `<span class="cs-pl">${head}${line(m.player1, 1)}${line(m.player2, 2)}</span>`;
+}
+
 function csBlockHtml(m, day, startMin) {
   const parts = csParts(csStartOf(m));
   // the real length: a match that ended early is drawn only up to its end (a short block shows one line only)
@@ -85,9 +98,9 @@ function csBlockHtml(m, day, startMin) {
   return `<a class="${classes}" href="/match/${m.token}" draggable="false" data-token="${m.token}" ${movable ? 'data-drag="1"' : ''}
       style="top:${top}px;height:${minutes * CS_PX - 3}px" data-minutes="${real}" title="${escapeHtml(`${csTime(csStartOf(m))}–${csTime(m.endsAt)} · ${m.player1.name} – ${m.player2.name}`)}">
     <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? `–${csTime(m.endsAt)}` : ''}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="${escapeHtml(tl('Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš.', 'Locked — the planner does not move it. Click to unlock it.'))}"></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
-    <span class="cs-m-pl">${csPlayersHtml(m)}</span>
+    <span class="cs-m-pl">${short ? csPlayersHtml(m) : csScoredPlayersHtml(m)}</span>
     <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
-    ${(m.status === 'FINISHED' || m.status === 'LIVE') && m.scoreSummary ? `<span class="cs-m-score">${escapeHtml(m.scoreSummary)}</span>` : ''}
+    ${short && (m.status === 'FINISHED' || m.status === 'LIVE') && m.scoreSummary ? `<span class="cs-m-score">${escapeHtml(m.scoreSummary)}</span>` : ''}
     ${resizable ? `<span class="cs-resize" data-resize="1" title="${escapeHtml(tl('Potiahni na zmenu dĺžky zápasu', 'Drag to change the length of the match'))}${m.durationMinutes ? escapeHtml(tl(` (nastavených ${m.durationMinutes} min) — dvojklik vráti pôvodnú dĺžku`, ` (set to ${m.durationMinutes} min) — double-click restores the original length`)) : ''}"></span>` : ''}
   </a>`;
 }
@@ -132,8 +145,7 @@ function csLiveHtml() {
   const cards = live.map((m) => `
     <a class="cs-livecard ${csStatusClass(m)}" href="/match/${m.token}">
       <span class="cs-live-h"><b class="cs-live">${escapeHtml(t('home.live'))}</b>${m.courtNo ? ` ${escapeHtml(t('courts.court', { n: m.courtNo }))}` : ''}</span>
-      <span class="cs-m-pl">${csPlayersHtml(m)}</span>
-      <span class="cs-live-score">${escapeHtml(m.scoreSummary || '0-0')}</span>
+      <span class="cs-live-pl">${csScoredPlayersHtml(m)}</span>
       <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
     </a>`).join('');
   return `<div class="cs-livestrip"><div class="cs-tray-h">${escapeHtml(t('courts.liveNow'))}<em>${live.length}</em></div><div class="cs-tray-body">${cards}</div></div>`;
@@ -159,9 +171,8 @@ function csListHtml(day) {
     const body = rows.map((m) => `
       <a class="cs-row ${csStatusClass(m)}" href="/match/${m.token}">
         <span class="cs-row-time">${csTime(csStartOf(m))}–${csTime(m.endsAt)}</span>
-        <span class="cs-row-pl">${csPlayersHtml(m)}</span>
+        <span class="cs-row-pl">${csScoredPlayersHtml(m)}</span>
         <span class="cs-row-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
-        <span class="cs-row-st">${m.status === 'LIVE' ? `<b class="cs-live">${escapeHtml(t('home.live'))}</b> ${escapeHtml(m.scoreSummary || '')}` : m.status === 'FINISHED' ? `<b class="cs-done">${escapeHtml(t('courts.finished'))}</b> ${escapeHtml(m.scoreSummary || '')}` : ''}</span>
       </a>`).join('');
     return `<div class="cs-list-court"><div class="cs-list-h">${escapeHtml(t('courts.court', { n: court }))}<em>${rows.length}</em></div>${body || `<div class="cs-row-empty">${escapeHtml(t('courts.courtFree'))}</div>`}</div>`;
   }).join('');

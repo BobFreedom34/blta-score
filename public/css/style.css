@@ -5152,6 +5152,25 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-row-meta { grid-area: meta; color: #8b8f98; font-size: 12px; }
 .cs-row-st { grid-area: st; text-align: right; font-size: 12px; font-weight: 700; color: #c3c7cf; }
 .cs-row-empty { color: #6e727c; font-size: 13px; padding: 14px 16px; }
+/* the two players with their sets (the schedule of a tournament, list and timeline): the name on the left, a column per set (S1, S2, MTB) on the right, the winner of a set green */
+.cs-pl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cs-pl-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; }
+.cs-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-nm.cs-win { color: var(--green); }
+.cs-sc { display: flex; flex: none; }
+.cs-sc > span { width: 30px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cs-sc .set-win { color: var(--green); }
+.cs-sc sup { margin-left: 1px; font-size: 10px; font-weight: 700; color: #a9adb6; }
+.cs-pl-head { margin-bottom: -2px; }
+.cs-pl-head .cs-sc > span { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: #8b8f98; }
+.cs-row-pl .cs-pl { gap: 5px; }
+.cs-m-pl .cs-sc > span { width: 26px; }
+/* in a block of the timeline the labels sit in the line of the time (a block is only as high as its match is long) */
+.cs-m-pl .cs-pl-head { position: absolute; top: 5px; right: 8px; margin: 0; }
+/* the strip of the matches being played: the same columns of sets, in a card that is wide enough for them */
+.cs-live-pl { display: block; font-weight: 700; font-size: 14px; }
+.cs-live-pl .cs-pl { gap: 5px; }
+.cs-livecard { min-width: 250px; }
 .cs-admin { margin-top: 22px; padding: 14px 16px; border-radius: var(--radius-md); background: var(--fill-grey); display: grid; gap: 12px; }
 .cs-admin-row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
 .cs-admin label { display: grid; gap: 4px; font-size: 11px; font-weight: 700; color: #c3c7cf; }
