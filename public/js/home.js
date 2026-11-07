@@ -592,6 +592,7 @@ function renderHome() {
   document.getElementById('home-sub').innerHTML = sub(d);
   document.getElementById('home-live-top').innerHTML = liveHtml(d);
   const stateEl = document.getElementById('home-state');
+  const kindEl = document.getElementById('home-kind');
   document.getElementById('home-season-card').hidden = !d.season; // the card of the current season: nothing to show without one
   if (d.season) {
     const state = seasonState(d.season, new Date().toISOString().slice(0, 10));
@@ -600,8 +601,14 @@ function renderHome() {
     stateEl.className = `home-head-state ${regOpen ? 'reg' : state}`;
     stateEl.innerHTML = `${state === 'now' ? '<i></i>' : ''}${escapeHtml(t(regOpen ? 'home.tlRegOpen' : { past: 'home.tlPast', now: 'home.tlNow', future: 'home.tlFuture' }[state]))}`;
     stateEl.hidden = false;
+    // League or Tournament, the same tag (and colours) as on the cards of the strip below
+    const kind = kindOf(d.season);
+    kindEl.className = `home-head-kind ${kind.cls}`;
+    kindEl.textContent = kind.label;
+    kindEl.hidden = false;
   } else {
     stateEl.hidden = true;
+    kindEl.hidden = true;
   }
   const headLogo = document.getElementById('home-head-logo');
   const headLogoLink = document.getElementById('home-head-logo-link');

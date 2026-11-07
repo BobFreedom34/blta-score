@@ -5571,7 +5571,8 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 
 /* the home page strip: the type of a card (league / tournament) in white bold letters on the timeline, right of the card's dot */
 /* the kind of the event (League / Tournament) sits above the line of the timeline, a league in green and a tournament in orange */
-.home-tl-type { position: absolute; top: 0; left: 0; z-index: 3; padding: 2px 8px; border-radius: var(--radius-sm); font-weight: 800; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; max-width: calc(100% - 12px); overflow: hidden; text-overflow: ellipsis; color: var(--green); background: rgba(178, 250, 6, 0.12); border: 1px solid var(--green); }
+/* the kind tag starts where the dot of the line ends (the dot is 14px + a 3px ring), not above the dot */
+.home-tl-type { position: absolute; top: 0; left: 17px; z-index: 3; padding: 2px 8px; border-radius: var(--radius-sm); font-weight: 800; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; max-width: calc(100% - 29px); overflow: hidden; text-overflow: ellipsis; color: var(--green); background: rgba(178, 250, 6, 0.12); border: 1px solid var(--green); }
 .home-tl.tour .home-tl-type { color: var(--orange); background: rgba(255, 85, 0, 0.12); border-color: var(--orange); }
 
 /* the chips above the home page strip are the site's own tabs (.tabs .tab): the gap to the strip and the selected state are set like #home-cats */
@@ -6292,6 +6293,11 @@ a.com-rank-name:hover { color: var(--orange); }
 .home-season-card .home-head-logo { height: 84px; }
 .home-season-info { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .home-season-info .home-head-state { margin: 0; }
+/* the state (In progress ...) and the kind (League / Tournament) of the season side by side; the kind has the colours of the tag on the cards of the strip below: green League, orange Tournament */
+.home-season-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.home-head-kind { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: var(--green); background: rgba(178, 250, 6, 0.12); border: 1px solid var(--green); }
+.home-head-kind.tour { color: var(--orange); background: rgba(255, 85, 0, 0.12); border-color: var(--orange); }
+.home-head-kind[hidden] { display: none; }
 .home-season-info .home-sub { display: grid; gap: 3px; font-size: 17px; line-height: 1.25; }
 .home-season-info .home-sub span { color: #aeb2ba; font-size: 13px; font-weight: 600; }
 @media (max-width: 900px) {
@@ -6315,6 +6321,8 @@ a.com-rank-name:hover { color: var(--orange); }
 .section-label-line .section-label { margin: 0; }
 /* the card of the current season: the poster of the series (4:3, the picture made for a phone) and under or beside it the state, the name and the dates; the logo only when there is no poster */
 .home-season-card { width: min(460px, 100%); }
+/* on a phone / tablet the heading block is one column: the season card is as wide as the button above it (the 460px above is for the side-by-side layout) */
+@media (max-width: 900px) { .home-head .home-season-card { width: 100%; } }
 /* on a wide screen the season card starts at the top of the white heading (under the orange line above it), not in the middle of the block: the line has a fixed height (16px + its 10px gap) */
 .home-eyebrow { line-height: 16px; }
 @media (min-width: 901px) { .home-head { align-items: flex-start; } .home-head .home-season-card { margin-top: 26px; } }
