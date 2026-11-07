@@ -128,7 +128,7 @@ function csTimelineHtml(day) {
     const ofCourt = matches.filter((m) => m.courtNo === court && m.scheduledAt && csParts(csStartOf(m)).day === day);
     const count = ofCourt.length; // the matches of the day on this court (the little number in the heading, as in the list)
     const blocks = ofCourt.map((m) => csBlockHtml(m, day, startMin)).join('');
-    return `<div class="cs-colwrap"><div class="cs-court-h"><span>${escapeHtml(t('courts.court', { n: court }))}</span><em>${count}</em></div><div class="cs-col" data-court="${court}" style="height:${height}px">${lines.join('')}${nowLine}${blocks}</div></div>`;
+    return `<div class="cs-colwrap"><div class="cs-court-h"><span>${escapeHtml(t('courts.court', { n: court }))}</span>${csLiveButtonHtml(court)}<em>${count}</em></div><div class="cs-col" data-court="${court}" style="height:${height}px">${lines.join('')}${nowLine}${blocks}</div></div>`;
   });
   const per = csPerRow();
   const width = Math.min(per, settings.courtCount); // every row has the same columns, so the courts of the last row are as wide as the others
@@ -162,6 +162,13 @@ function csTrayHtml() {
   return `<div class="cs-tray"><div class="cs-tray-h">${escapeHtml(t('courts.unscheduled'))}<em>${waiting.length}</em></div><div class="cs-tray-body">${chips || `<span class="cs-tray-empty">${escapeHtml(t('courts.trayEmpty'))}</span>`}</div></div>`;
 }
 
+// the "Live video" button in the heading of a court that has a YouTube link (the organiser enters it per court): opens the stream on YouTube in a new tab
+function csLiveButtonHtml(court) {
+  const stream = (csState.data.courtStreams || [])[court - 1];
+  if (!stream || !stream.url) return '';
+  return `<a class="cs-live-btn" href="${escapeHtml(stream.url)}" target="_blank" rel="noopener">▶ <span class="cs-live-long">${escapeHtml(t('courts.liveVideo'))}</span><span class="cs-live-short">${escapeHtml(t('courts.liveShort'))}</span></a>`;
+}
+
 function csListHtml(day) {
   const { settings, matches } = csState.data;
   const sections = Array.from({ length: settings.courtCount }, (_, i) => {
@@ -174,7 +181,7 @@ function csListHtml(day) {
         <span class="cs-row-pl">${csScoredPlayersHtml(m)}</span>
         <span class="cs-row-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
       </a>`).join('');
-    return `<div class="cs-list-court"><div class="cs-list-h">${escapeHtml(t('courts.court', { n: court }))}<em>${rows.length}</em></div>${body || `<div class="cs-row-empty">${escapeHtml(t('courts.courtFree'))}</div>`}</div>`;
+    return `<div class="cs-list-court"><div class="cs-list-h">${escapeHtml(t('courts.court', { n: court }))}${csLiveButtonHtml(court)}<em>${rows.length}</em></div>${body || `<div class="cs-row-empty">${escapeHtml(t('courts.courtFree'))}</div>`}</div>`;
   }).join('');
   return `<div class="cs-list">${sections}</div>`;
 }

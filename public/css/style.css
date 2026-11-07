@@ -3010,6 +3010,8 @@ body:not(.embed-light) .match-card .scoreboard {
   border-radius: var(--radius-md);
   box-shadow: none;
 }
+/* a finished match: the result box has the grey outline (--border-grey) */
+body:not(.embed-light) .match-card.status-FINISHED .scoreboard { border-color: var(--border-grey); }
 body:not(.embed-light) .match-players-box { padding: 16px 18px; }
 body:not(.embed-light) .match-players .name { color: var(--white); }
 body:not(.embed-light) .match-players .vs { color: #8b8f98; }
@@ -6507,3 +6509,20 @@ a.com-rank-name:hover { color: var(--orange); }
     }
   }
 }
+
+/* the live video links of the courts (public/js/court-streams.js): one input per court under the number of courts, in two columns on a wide screen */
+.court-streams { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 12px 16px; }
+.court-streams:empty { display: none; }
+
+/* the "Live video" button in the heading of a court of the Harmonogram (public/js/court-schedule.js) */
+.cs-live-btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 8px; background: var(--orange); color: var(--white); font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; text-decoration: none; white-space: nowrap; }
+.cs-live-btn:hover { filter: brightness(1.1); }
+.cs-live-short { display: none; }
+/* a phone: the court columns are narrow, so the button says just "Live" and the heading keeps one line */
+@media (max-width: 700px) { .cs-live-btn { padding: 3px 7px; font-size: 10px; } .cs-live-long { display: none; } .cs-live-short { display: inline; } .cs-colwrap .cs-court-h span:first-child { white-space: nowrap; } }
+
+/* the "Live video" tab of a tournament (public/js/season.js): the videos of the courts under each other */
+.sv-live-court { margin-bottom: 28px; }
+.sv-live-court h3 { margin: 0 0 12px; font-size: 14px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
+.sv-live-frame { position: relative; width: 100%; max-width: 960px; aspect-ratio: 16 / 9; border-radius: var(--radius-md); overflow: hidden; background: #000; }
+.sv-live-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }

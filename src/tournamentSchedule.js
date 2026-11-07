@@ -7,6 +7,7 @@
 // (day_start–day_end) is Bratislava time.
 const db = require('./db');
 const engine = require('./matchEngine');
+const courtStreams = require('./courtStreams');
 
 const TZ = 'Europe/Bratislava';
 const GRID_MIN = 15; // start times are on a 15-minute grid from the start of the playing day
@@ -229,6 +230,8 @@ function getSchedule(season, now = Date.now()) {
     seasonSlug: season.slug,
     seasonKind: season.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE',
     settings,
+    // the live video of each court: [{ videoId, url } or null] for Court 1 … n
+    courtStreams: courtStreams.streamsOf(season),
     matches,
     // planned matches with no time yet: waiting for the planner or for the organiser to drag them onto a court
     unscheduledCount: matches.filter((m) => m.status === 'PLANNED' && !m.scheduledAt).length,

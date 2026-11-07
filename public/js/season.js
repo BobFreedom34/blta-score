@@ -564,6 +564,16 @@ function galleryHtml() {
   return `<section class="sv-sec" id="sv-gallery">${secHead('gallery', '')}<a class="sv-gallery-btn" href="${escapeHtml(season.galleryUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.galleryOpen'))}</a></section>`;
 }
 
+// The Live video tab: the YouTube video of every court that has one, stacked under each other in court order, each under its court heading
+function liveVideoHtml() {
+  const courts = (season.courtStreams || []).map((stream, i) => (stream && stream.videoId ? `
+    <section class="sv-live-court">
+      <h3>${escapeHtml(t('courts.court', { n: i + 1 }))}</h3>
+      <div class="sv-live-frame"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(stream.videoId)}?rel=0" title="${escapeHtml(t('courts.court', { n: i + 1 }))} — ${escapeHtml(t('courts.liveVideo'))}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+    </section>` : '')).join('');
+  return courts ? `<section class="sv-sec" id="sv-live">${courts}</section>` : '';
+}
+
 // ---------- registration ----------
 
 // The form: one name field that suggests the existing players (a new name can just be typed), phone, e-mail and category.
@@ -768,10 +778,12 @@ function availableTabs() {
     { key: 'matches', label: t('season.navMatches'), has: season.matchCount > 0 },
     { key: 'final', label: t('season.navFinal'), has: !!(finalData && finalData.sections.length) },
     { key: 'gallery', label: t('season.navGallery'), has: !!season.galleryUrl },
+    // the live video of the courts (a tournament, only when the organiser entered at least one link)
+    { key: 'live', label: t('season.navLive'), has: (season.courtStreams || []).some(Boolean) },
   ];
   // a tournament has only the tabs Základné info, Harmonogram (court timetable with live scores), Skupiny (the group tables), Pavúky and Galéria (Rozpis is for league seasons); its players are shown below the Základné info tab (see fixedPlayersHtml)
   // (and the tabs that have nothing for this tournament are left out: no Skupiny tab for a bracket, no Pavúky before there is one, no Konečné poradie before something is played)
-  return isTournament() ? tabs.filter((x) => ['info', 'courts', 'tables', 'playoff', 'matches', 'final', 'gallery'].includes(x.key) && (!['tables', 'playoff', 'final'].includes(x.key) || x.has)) : tabs.filter((x) => x.key !== 'courts' && x.key !== 'final'); // (a league season has its tables: the final standings are for tournaments only)
+  return isTournament() ? tabs.filter((x) => ['info', 'courts', 'tables', 'playoff', 'matches', 'final', 'gallery', 'live'].includes(x.key) && (!['tables', 'playoff', 'final', 'live'].includes(x.key) || x.has)) : tabs.filter((x) => x.key !== 'courts' && x.key !== 'final' && x.key !== 'live'); // (a league season has its tables: the final standings are for tournaments only)
 }
 
 // the players of a tournament are shown on the Základné info tab only
@@ -795,6 +807,7 @@ function panelHtml() {
           : tab === 'playoff' ? playoffHtml()
             : tab === 'final' ? finalHtml()
             : tab === 'gallery' ? galleryHtml()
+              : tab === 'live' ? liveVideoHtml()
               : tab === 'courts' ? '<div id="sv-courts"></div>'
                 : infoHtml();
   const emptyKey = tab === 'playoff' && isTournament() ? 'season.empty.brackets' : `season.empty.${tab}`;
@@ -951,6 +964,7 @@ async function refresh() {
       clearTimeout(refreshTimer);
       // the timetable tab only reloads its own data (a live score changes often); the other tabs load again when opened
       refreshTimer = setTimeout(() => {
+        if (tab === 'live') return; // nothing on the Live video tab changes with a score, and a redraw would reload every video
         if (tab === 'courts' && typeof reloadCourtSchedule === 'function') { loaded.clear(); reloadCourtSchedule(); } else refresh();
       }, tab === 'courts' ? 600 : 1500);
     });

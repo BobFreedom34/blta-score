@@ -1510,6 +1510,8 @@ if (!seasonInfoColumns.includes('kind')) db.exec("ALTER TABLE seasons ADD COLUMN
 if (!seasonInfoColumns.includes('play_type')) db.exec("ALTER TABLE seasons ADD COLUMN play_type TEXT NOT NULL DEFAULT 'SINGLES'");
 // the number of courts of a tournament ("Kurt 1" … "Kurt n"), 0 = not set; used by the schedule
 if (!seasonInfoColumns.includes('court_count')) db.exec('ALTER TABLE seasons ADD COLUMN court_count INTEGER NOT NULL DEFAULT 0');
+// the live video of each court: a JSON list of YouTube video ids, index 0 = court 1, '' = none (see src/courtStreams.js)
+if (!seasonInfoColumns.includes('court_streams')) db.exec("ALTER TABLE seasons ADD COLUMN court_streams TEXT NOT NULL DEFAULT '[]'");
 // the tournament's court schedule (see tournamentSchedule.js): length of a match, the playing day, the minimum rest of a player between two
 // matches and whether the app places new matches on the courts by itself; matches.court_no is the court (1..court_count) of a scheduled
 // match, slot_locked = 1 when the organiser put it there by hand (the automatic planner never moves it)

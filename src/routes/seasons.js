@@ -24,6 +24,7 @@ const communityPoints = require('../communityPoints');
 const clubTournaments = require('../clubTournaments');
 const changeLog = require('../changeLog');
 const capacity = require('../registrationCapacity');
+const courtStreams = require('../courtStreams');
 const playerPush = require('../playerPush');
 const finalStandings = require('../finalStandings');
 const unregister = require('../unregister');
@@ -182,6 +183,8 @@ function serializeSeason(s) {
     // the community or club that runs this tournament (null for the league and for the tournaments of the Backend)
     organisationId: s.organisation_id || null,
     courtCount: s.court_count || 0,
+    // the live video of each court: [{ videoId, url } or null] for Court 1 … n (src/courtStreams.js)
+    courtStreams: courtStreams.streamsOf(s),
     maxMatchesPerDay: s.max_matches_per_day || 0,
     // the settings of the court planner (a tournament only): what the edit page shows under "Plánovanie turnaja"
     planning: s.kind === 'TOURNAMENT' ? (({ matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule }) => ({ matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule }))(tournamentSchedule.settingsOf(s)) : null,
@@ -609,7 +612,7 @@ function tournamentOr404(req, res) {
 router.get('/:id/draw', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
-  res.json({ slug: season.slug, courtCount: season.court_count || 0, playType: tournamentDraw.isDoublesTournament(season) ? 'DOUBLES' : 'SINGLES', categories: tournamentDraw.overview(season.id) });
+  res.json({ slug: season.slug, courtCount: season.court_count || 0, courtStreams: courtStreams.streamsOf(season), playType: tournamentDraw.isDoublesTournament(season) ? 'DOUBLES' : 'SINGLES', categories: tournamentDraw.overview(season.id) });
 });
 
 // { category, seeds: [{ id: registrationId, seed }] } — replaces the seeds of that category; players left out are not seeded.
@@ -1125,6 +1128,13 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     courts = Number(req.body.courtCount);
     if (!Number.isInteger(courts) || courts < 0 || courts > 50) return res.status(400).json({ error: 'The number of courts must be a whole number from 0 to 50' });
   }
+  // the live video of each court: the list sent by the admin page (one link or '' per court), else the saved ones cut or padded to the number of courts
+  let streamIds = courtStreams.fitToCount(season, courts);
+  if (req.body.courtStreams !== undefined) {
+    const parsed = courtStreams.parseCourtStreams(req.body.courtStreams, courts);
+    if (parsed.error) return res.status(400).json({ error: parsed.error });
+    streamIds = parsed.ids;
+  }
   let maxPerDay = season.max_matches_per_day || 0;
   if (req.body.maxMatchesPerDay !== undefined) {
     maxPerDay = Number(req.body.maxMatchesPerDay);
@@ -1142,6 +1152,7 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, scoring, tiebreakers, maxPlayers, nextSeason.category_max, season.id);
   if (planning) tournamentSchedule.storeSettings(season.id, planning);
   db.prepare('UPDATE seasons SET unregister_hours = ? WHERE id = ?').run(unregisterHours, season.id);
+  db.prepare('UPDATE seasons SET court_streams = ? WHERE id = ?').run(JSON.stringify(streamIds), season.id);
   // the points of a community follow the new settings, and the scoring of the season (what a match is worth in its table)
   const pointsChanged = communityPts !== undefined && communityPts !== (season.community_points || null);
   if (pointsChanged) db.prepare('UPDATE seasons SET community_points = ? WHERE id = ?').run(communityPts, season.id);

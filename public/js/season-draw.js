@@ -262,6 +262,9 @@ async function openDrawPanel(host, seasonId, onChanged) {
           <label class="sa-field sd-courts-field">${tl('Počet kurtov', 'Number of courts')}
             <input type="number" min="0" max="50" inputmode="numeric" class="sd-courts" value="${overview.courtCount || ''}" placeholder="0">
           </label>
+        </div>
+        ${courtStreamFieldsHtml(overview.courtCount, overview.courtStreams)}
+        <div class="sd-courts-row" style="margin-top:14px">
           <button type="button" class="btn btn-sm btn-outline" data-act="courts">${tl('Uložiť kurty', 'Save courts')}</button>
           <a data-public href="/tournament/${encodeURIComponent(overview.slug)}#courts" target="_blank" rel="noopener" style="font-size:13px;font-weight:700">${tl('Harmonogram', 'Schedule')} ›</a>
         </div>
@@ -348,6 +351,9 @@ async function openDrawPanel(host, seasonId, onChanged) {
     }
   };
 
+  // the live video links of the courts follow the number of courts (host.oninput above handles the draw controls only)
+  host.addEventListener('input', (e) => { if (e.target.matches('.sd-courts')) syncCourtStreamFields(host, e.target.value); });
+
   host.onclick = async (e) => {
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
@@ -360,7 +366,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
         await doublesAction(act, btn);
       } else if (act === 'courts') {
         const raw = host.querySelector('.sd-courts').value.trim();
-        await api(`/seasons/${seasonId}`, { method: 'PATCH', body: { courtCount: raw === '' ? 0 : Number(raw) } });
+        await api(`/seasons/${seasonId}`, { method: 'PATCH', body: { courtCount: raw === '' ? 0 : Number(raw), courtStreams: readCourtStreams(host) } });
         toast(tl('Kurty uložené', 'Courts saved'));
         await refresh();
       } else if (act === 'seeds') {

@@ -455,6 +455,7 @@ function seasonCardHtml(s) {
               <h4>${tl('Kurty a pravidlá hrania', 'Courts and playing rules')}</h4>
               <div class="sa-grid">
                 ${field(tl('Počet kurtov (Kurt 1 … Kurt n)', 'Number of courts (Court 1 … Court n)'), input('courtCount', s.courtCount || '', `type="number" min="0" max="50" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 4', 'e.g. 4'))}"`))}
+                ${courtStreamFieldsHtml(s.courtCount, s.courtStreams)}
                 ${field(tl('Max. zápasov hráča za deň', 'Max. matches per player per day'), input('maxMatchesPerDay', s.maxMatchesPerDay || '', `type="number" min="0" max="10" inputmode="numeric" placeholder="${escapeHtml(tl('bez limitu', 'no limit'))}"`))}
               </div>
               <div class="tr-title" style="margin-top:14px">${tl('Plánovanie turnaja', 'Tournament planning')}</div>
@@ -601,6 +602,12 @@ function wireSeason(card) {
 
   // "Bez kategórie" switches the three categories off (and back on when it is unticked): a tournament is played in some of the categories or in none
   const editForm = card.querySelector('.season-edit-form'); // (only the boxes of this form: the draw tab has controls with a data-cat of their own)
+  // a tournament: the live video links follow the number of courts
+  const courtCountInput = editForm.querySelector('[data-field="courtCount"]');
+  if (courtCountInput) courtCountInput.addEventListener('input', () => syncCourtStreamFields(editForm, courtCountInput.value));
+  // the courts and their links are sent only when edited in this form: the draw tab saves them too, and an older copy in this form must not undo that
+  let courtsTouched = false;
+  editForm.addEventListener('input', (e) => { if (e.target.matches('[data-field="courtCount"], [data-court-stream]')) courtsTouched = true; });
   const rulesSection = editForm.querySelector('[data-rules-section]');
   if (rulesSection) {
     TournamentRules.mount(rulesSection);
@@ -638,7 +645,7 @@ function wireSeason(card) {
       // a season is played in at least one category (an empty choice would mean "all" to the server)
       if (!IS_TOURNAMENT && e.target.querySelectorAll('[data-cat]').length && ![...e.target.querySelectorAll('[data-cat]')].some((b) => b.checked)) throw new Error(tl('Vyber aspoň jednu kategóriu.', 'Choose at least one category.'));
       if (e.target.querySelector('[data-field="registrationOpen"]').checked && maxMissing(e.target)) throw new Error(MAX_MISSING_TEXT());
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, ...maxBody(e.target), unregisterHours: f('unregisterHours') === '' ? null : Number(f('unregisterHours')), drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(CLUB ? { communityPoints: readCommunityPoints(e.target) } : {}), ...(IS_TOURNAMENT ? { venue: f('venue'), courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), matchMinutes: Number(f('matchMinutes')), restMinutes: Number(f('restMinutes')), dayStart: f('dayStart'), dayEnd: f('dayEnd'), autoSchedule: e.target.querySelector('[data-field="autoSchedule"]').checked } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, ...maxBody(e.target), unregisterHours: f('unregisterHours') === '' ? null : Number(f('unregisterHours')), drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(CLUB ? { communityPoints: readCommunityPoints(e.target) } : {}), ...(IS_TOURNAMENT ? { venue: f('venue'), ...(courtsTouched ? { courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), courtStreams: readCourtStreams(e.target) } : {}), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), matchMinutes: Number(f('matchMinutes')), restMinutes: Number(f('restMinutes')), dayStart: f('dayStart'), dayEnd: f('dayEnd'), autoSchedule: e.target.querySelector('[data-field="autoSchedule"]').checked } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
       toast(tl('Uložené', 'Saved'));
       await load();
     } catch (err) { fail(err); }
