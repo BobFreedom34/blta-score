@@ -213,10 +213,13 @@ function csRender() {
   const pills = settings.days.length > 1
     ? `<div class="tabs cs-days">${settings.days.map((d) => `<button type="button" class="tab${d === day ? ' active' : ''}" data-cs-day="${d}">${escapeHtml(csDayLabel(d))}</button>`).join('')}</div>` : '';
   const views = `<div class="cs-seg" role="group"><button type="button" class="${csChoice.view === 'timeline' ? 'active' : ''}" data-cs-view="timeline">${escapeHtml(t('courts.timeline'))}</button><button type="button" class="${csChoice.view === 'list' ? 'active' : ''}" data-cs-view="list">${escapeHtml(t('courts.list'))}</button></div>`;
+  // the whole-screen page of this schedule (every court and match of the day for a TV): it opens in the view and on the day that are shown here
+  const fullHref = siteUrl(`/schedule-screen/${csState.season.id}?view=${csChoice.view}&day=${day}`);
+  const fullLink = `<a class="btn btn-sm btn-primary cs-fullscreen" href="${escapeHtml(fullHref)}">${courtIcon('monitor')}<span>${escapeHtml(tl('Celá obrazovka', 'Full screen'))}</span></a>`;
   csState.host.innerHTML = `
     <section class="sv-sec cs-sec">
       ${csLiveHtml()}
-      <div class="cs-bar">${pills}${views}</div>
+      <div class="cs-bar">${pills}<div class="cs-bar-row">${views}${settings.courtCount ? fullLink : ''}</div></div>
       <div class="cs-legend"><span class="cs-st-planned">${escapeHtml(t('courts.legendPlanned'))}</span><span class="cs-st-live">${escapeHtml(t('courts.legendLive'))}</span><span class="cs-st-finished">${escapeHtml(t('courts.legendFinished'))}</span></div>
       ${settings.courtCount ? '' : `<div class="sv-empty">${escapeHtml(t('courts.noCourts'))}</div>`}
       ${settings.courtCount ? (csChoice.view === 'timeline' ? csTimelineHtml(day) : csListHtml(day)) : ''}

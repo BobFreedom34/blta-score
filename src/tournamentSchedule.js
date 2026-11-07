@@ -180,8 +180,16 @@ function intervalOf(row, settings, now) {
 function serializeMatch(row, settings, now) {
   const interval = intervalOf(row, settings, now);
   let scoreSummary = null;
-  if (row.status === 'FINISHED' || row.status === 'LIVE') {
-    try { scoreSummary = engine.describeMatch(JSON.parse(row.state)); } catch { scoreSummary = null; }
+  let state = null; // the sets of a match that has been played or is being played (for the schedule on the whole screen: a column per set)
+  if (row.status === 'FINISHED' || row.status === 'LIVE' || row.status === 'UNFINISHED') {
+    try {
+      const full = JSON.parse(row.state);
+      if (row.status !== 'UNFINISHED') scoreSummary = engine.describeMatch(full);
+      state = {
+        currentSet: full.currentSet,
+        sets: (full.sets || []).map((x) => ({ p1: x.p1, p2: x.p2, tiebreak: x.tiebreak || null, isSuperTiebreak: !!x.isSuperTiebreak, winner: x.winner || null })),
+      };
+    } catch { scoreSummary = null; state = null; }
   }
   return {
     token: row.share_token,
@@ -196,6 +204,7 @@ function serializeMatch(row, settings, now) {
     player2: { id: row.player2_id, name: row.p2_name, slug: row.p2_slug },
     winnerId: row.winner_id || null,
     scoreSummary,
+    state,
     scheduledAt: row.scheduled_at || null,
     // where the block of the match is drawn: a finished match from its real start to its real end
     blockStart: interval ? new Date(interval[0]).toISOString() : null,
@@ -215,6 +224,10 @@ function getSchedule(season, now = Date.now()) {
   const matches = rows.map((r) => serializeMatch(r, settings, now));
   return {
     seasonId: season.id,
+    // (for the page of the schedule on the whole screen: its heading and the way back)
+    seasonName: season.name,
+    seasonSlug: season.slug,
+    seasonKind: season.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE',
     settings,
     matches,
     // planned matches with no time yet: waiting for the planner or for the organiser to drag them onto a court

@@ -5081,6 +5081,8 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 /* Rozvrh kurtov: the court schedule tab of a tournament (court-schedule.js) */
 .cs-bar { display: grid; gap: 14px; justify-items: start; margin-bottom: 18px; }
 .cs-bar .tabs { margin: 0; }
+.cs-bar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.cs-fullscreen { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
 .cs-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-sm); background: var(--fill-grey); }
 .cs-seg button { border: 0; background: transparent; color: #c3c7cf; font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
 .cs-seg button:hover { color: var(--white); }

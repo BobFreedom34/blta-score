@@ -443,6 +443,7 @@ const TEMPLATE_ENTITY = {
   conversation: () => ({ name: 'Messages' }),
   // the live screen of a match (noindex): the page has no name of its own, the match is loaded by the script
   screen: () => ({ name: 'Live screen' }),
+  schedulescreen: () => ({ name: 'Schedule screen' }),
   // the manage page of a club tournament: noindex, the editor is loaded by the script
   clubtournament: () => ({ name: 'Club tournament' }),
   community: (slug, lang, leagueId) => {

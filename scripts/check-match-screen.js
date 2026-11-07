@@ -63,6 +63,32 @@ test('the match page has the "Live obrazovka" button that leads to the screen', 
   assert.strictEqual((i18n.match(/'match\.screenBtn':/g) || []).length, 2, 'both languages');
 });
 
+test('the schedule of a tournament on the whole screen: /obrazovka-harmonogramu/<id> (English /en/schedule-screen/<id>) is served, noindex, with its files', async () => {
+  for (const url of ['/obrazovka-harmonogramu/1', '/en/schedule-screen/1']) {
+    const r = await call('GET', url);
+    assert.strictEqual(r.status, 200, url);
+    assert.ok(r.text.includes('/js/schedule-screen.js') && r.text.includes('/js/court-schedule.js'), url);
+    assert.ok(/<meta name="robots" content="[^"]*noindex/.test(r.text), `${url}: robots meta`);
+  }
+  assert.strictEqual((await call('GET', '/js/schedule-screen.js')).status, 200);
+});
+
+test('the schedule API tells the name, the address and the kind of the tournament (the heading and the way back of that page)', async () => {
+  const made = await call('POST', '/api/seasons', { cookie: admin, body: { name: 'Screen Open 2099', kind: 'TOURNAMENT', startDate: '2099-05-01', endDate: '2099-05-02' } });
+  assert.strictEqual(made.status, 201, made.text);
+  const sch = await call('GET', `/api/seasons/${made.json.id}/schedule`);
+  assert.strictEqual(sch.status, 200);
+  assert.strictEqual(sch.json.seasonName, 'Screen Open 2099');
+  assert.strictEqual(sch.json.seasonSlug, made.json.slug);
+  assert.strictEqual(sch.json.seasonKind, 'TOURNAMENT');
+});
+
+test('the Harmonogram tab has the link "Celá obrazovka" in the timeline and in the list (it keeps the view and the day)', () => {
+  const src = read('js/court-schedule.js');
+  assert.ok(src.includes('/schedule-screen/${csState.season.id}?view=${csChoice.view}&day=${day}'));
+  assert.ok(src.includes('${views}${settings.courtCount ? fullLink'), 'next to the switch of the two views, whichever is open');
+});
+
 async function main() {
   let failed = 0;
   try {

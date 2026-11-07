@@ -3,7 +3,7 @@
 html.screen, body.screen-page { height: 100%; margin: 0; overflow: hidden; color: #fff; }
 body.screen-page { cursor: default; }
 body.screen-page.idle { cursor: none; }
-.scr { position: relative; z-index: 1; height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding: clamp(14px, 2.4vh, 34px) clamp(18px, 2.6vw, 56px); box-sizing: border-box; }
+.scr { position: relative; z-index: 1; height: 100vh; height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; padding: clamp(14px, 2.4vh, 34px) clamp(18px, 2.6vw, 56px); box-sizing: border-box; }
 .scr-loading { grid-row: 2; align-self: center; justify-self: center; font-size: 5vh; color: #c3c7cf; }
 
 /* head: the competition, the phase and the place on the left, the clock and the logo on the right */
@@ -75,3 +75,135 @@ body.screen-page.idle.is-full .scr-foot { opacity: 0; }
   .scr-hint { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .scr-pill.live i { animation: none; } }
+
+/* ---------- the schedule of a tournament on the whole screen (/obrazovka-harmonogramu/<id>) ----------
+   Compact on purpose: small type, little space around, a match is one line "Player - Player" with the category under it, so that all the courts and as many matches
+   as possible fit on a TV at once. */
+.scr.stc { padding: clamp(6px, 1.2vh, 16px) clamp(10px, 1.4vw, 28px); }
+.stc-head { padding-bottom: clamp(4px, 0.8vh, 10px); }
+.stc-head .scr-comp { font-size: clamp(16px, 3.2vh, 42px); }
+.stc-head .scr-meta { margin-top: 2px; gap: 4px 14px; font-size: clamp(11px, 1.8vh, 22px); }
+.stc-head .scr-clock { font-size: clamp(16px, 3vh, 38px); }
+.stc-head .scr-logo { height: clamp(26px, 5.4vh, 64px); }
+.stc-main { min-height: 0; display: flex; padding: clamp(4px, 0.8vh, 10px) 0; }
+.stc-foot { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); padding-top: clamp(4px, 0.7vh, 10px); font-size: clamp(10px, 1.5vh, 18px); }
+.stc-foot .scr-btn { font-size: clamp(10px, 1.5vh, 17px); padding: 0.4em 0.9em; }
+.stc-foot > .scr-controls { justify-self: end; }
+.stc-foot-mid { display: flex; align-items: center; gap: 10px; justify-self: center; flex-wrap: wrap; justify-content: center; }
+.stc-live { color: var(--orange); font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* the court headings (both views) */
+.stc-h { display: flex; align-items: center; justify-content: center; gap: 0.5em; height: 1.9em; flex: none; border-radius: 6px; background: rgba(255, 255, 255, 0.1); font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+.stc-h em { font-style: normal; font-size: 0.8em; padding: 0 0.5em; border-radius: 999px; background: rgba(255, 255, 255, 0.16); color: #c3c7cf; }
+.stc-colwrap { display: flex; flex-direction: column; min-height: 0; min-width: 0; gap: 4px; }
+
+/* a pair of players on one line: each name shrinks with an ellipsis before the line breaks, the winner is green */
+.stc-pair { display: flex; align-items: baseline; min-width: 0; font-weight: 800; white-space: nowrap; }
+.stc-pair span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.stc-pair i { flex: none; font-style: normal; font-weight: 600; color: #a9adb6; white-space: pre; }
+.stc-pair .stc-win { color: var(--green); }
+
+/* the timeline: the courts side by side, the hours down the side */
+.stc-tl { flex: 1; min-width: 0; display: grid; grid-template-columns: 2.8em repeat(var(--n), minmax(0, 1fr)); column-gap: clamp(4px, 0.6vw, 10px); font-size: clamp(9px, min(calc(12.5vh / var(--hrs, 8)), 2.2vh), 22px); }
+.stc-col { position: relative; flex: 1; min-height: 0; border-radius: 6px; background: rgba(255, 255, 255, 0.04); }
+.stc-axis { background: none; }
+.stc-hour { position: absolute; left: 0; right: 0; transform: translateY(-50%); font-weight: 700; font-variant-numeric: tabular-nums; color: #a9adb6; text-align: right; font-size: 0.85em; }
+.stc-hour:first-child { transform: none; }
+.stc-line { position: absolute; left: 0; right: 0; height: 1px; background: rgba(255, 255, 255, 0.09); }
+.stc-nowline { position: absolute; left: 0; right: 0; height: 2px; background: var(--orange); z-index: 3; }
+.stc-m { position: absolute; left: 2px; right: 2px; box-sizing: border-box; overflow: hidden; padding: 0.12em 0.45em; border-radius: 5px; border-left: 3px solid var(--green); background: rgba(255, 255, 255, 0.11); z-index: 2; line-height: 1.15; }
+.stc-m.stc-st-live { border-left-color: var(--orange); background: rgba(255, 85, 0, 0.2); }
+.stc-m.stc-st-finished, .stc-m.stc-st-unfinished { border-left-color: #6b6f78; background: rgba(255, 255, 255, 0.06); color: #c3c7cf; }
+.stc-m-l1 { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5em; min-width: 0; }
+.stc-m-time { flex: none; font-size: 0.9em; font-weight: 700; font-variant-numeric: tabular-nums; color: #a9adb6; }
+.stc-m-state { flex: none; font-size: 0.85em; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stc-m-pl { min-width: 0; font-weight: 800; }
+.stc-m-score { font-size: 0.9em; font-weight: 800; font-variant-numeric: tabular-nums; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stc-m-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78em; color: #a9adb6; }
+
+/* the list: the courts side by side (two rows of courts when there are many), one compact line per match */
+.stc-list { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: clamp(6px, 1vh, 12px) clamp(6px, 0.8vw, 14px); font-size: clamp(9px, min(calc(76vh / var(--lrows, 1) / (2.2 + 5.9 * var(--rows, 6))), 2.3vh), 22px); }
+.stc-lcol { display: flex; flex-direction: column; min-height: 0; min-width: 0; gap: 3px; border-radius: 6px; background: rgba(255, 255, 255, 0.04); overflow: hidden; }
+.stc-lrows { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3px; padding: 0 3px 3px; overflow: hidden; }
+.stc-row { display: grid; grid-template-columns: 3.6em minmax(0, 1fr) auto; grid-template-areas: "time pl st" "time meta st"; align-items: center; column-gap: 0.5em; row-gap: 0.45em; padding: 0.15em 0.5em; border-radius: 5px; border-left: 3px solid var(--green); background: rgba(255, 255, 255, 0.11); line-height: 1.15; flex: none; }
+.stc-row.stc-st-live { border-left-color: var(--orange); background: rgba(255, 85, 0, 0.2); }
+.stc-row.stc-st-finished, .stc-row.stc-st-unfinished { border-left-color: #6b6f78; background: rgba(255, 255, 255, 0.06); color: #c3c7cf; }
+.stc-row-time { grid-area: time; font-weight: 700; font-variant-numeric: tabular-nums; color: #a9adb6; font-size: 0.95em; white-space: nowrap; }
+.stc-row-pl { grid-area: pl; min-width: 0; }
+.stc-row-meta { grid-area: meta; font-size: 0.75em; color: #a9adb6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stc-row-state { grid-area: st; font-size: 0.85em; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stc-empty { padding: 0.8em; text-align: center; color: #a9adb6; font-size: 0.9em; }
+
+@media (max-width: 1100px) { .stc-foot { grid-template-columns: 1fr; justify-items: center; } .stc-foot > .scr-controls, .stc-foot .left { justify-self: center; } }
+@media (max-width: 760px) {
+  .stc-list { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; font-size: 12px; }
+  .stc-tl { font-size: 11px; }
+  .stc-main { overflow-x: auto; min-height: 70vh; }
+  .stc-tl { min-width: 560px; }
+}
+
+/* ---------- the design of the schedule of the tournament page, on the whole screen too ----------
+   The court is a card in a thin frame with a grey heading bar (the court on the left, the number of its matches as a pill on the right) over the dark timetable; a match has a
+   coloured left edge (green = not started, orange = being played, grey = finished), the time in bold grey, the players in bold white, the category in grey. The layout
+   above (compact, the courts side by side) stays. */
+.stc-live { color: var(--green); font-weight: 800; letter-spacing: 0.04em; }
+.stc-lcol, .stc-colwrap:not(.stc-gutter) { gap: 0; background: rgba(10, 10, 10, 0.6); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius-md); overflow: hidden; }
+.stc-colwrap:not(.stc-gutter) .stc-h, .stc-lcol .stc-h { justify-content: space-between; height: auto; padding: 0.55em 0.9em; border-radius: 0; background: var(--fill-grey); color: var(--white); letter-spacing: 0.06em; }
+.stc-h em { padding: 0 0.7em; background: rgba(255, 255, 255, 0.12); color: #c3c7cf; letter-spacing: 0; font-size: 0.85em; }
+.stc-gutter { background: none; border: 0; }
+.stc-gutter .stc-h { background: none; }
+.stc-col { border-radius: 0; background: transparent; }
+.stc-line { background: rgba(255, 255, 255, 0.14); }
+.stc-hour { color: #8b8f98; }
+
+/* the list */
+.stc-lrows { gap: 0; padding: 0; }
+.stc-row { border-radius: 0; background: transparent; border-bottom: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid var(--green); padding: 0.4em 0.7em 0.4em 0.6em; color: var(--white); }
+.stc-row:last-child { border-bottom: 0; }
+.stc-row.stc-st-live { background: transparent; border-left-color: var(--orange); }
+.stc-row.stc-st-finished, .stc-row.stc-st-unfinished { background: transparent; border-left-color: #8b8f98; color: var(--white); }
+.stc-row-time { font-weight: 800; color: #c3c7cf; }
+.stc-row .stc-pair { font-weight: 700; }
+.stc-row-meta { color: #8b8f98; }
+.stc-row-state { color: #c3c7cf; font-weight: 700; }
+
+/* the timeline */
+.stc-m { background: #26282e; border-radius: var(--radius-sm); border-left: 4px solid var(--green); color: var(--white); }
+.stc-m.stc-st-live { background: #3a2a1d; border-left-color: var(--orange); }
+.stc-m.stc-st-finished, .stc-m.stc-st-unfinished { background: #202227; border-left-color: #8b8f98; color: var(--white); }
+.stc-m-time { font-weight: 800; color: #c3c7cf; }
+.stc-m-pl { font-weight: 700; }
+.stc-m-meta { color: #8b8f98; }
+.stc-m-state { color: #c3c7cf; font-weight: 700; }
+
+/* the two players with their sets, in the format of the match page: the name on the left, a column per set (S1, S2, MTB) on the right, the winner of a set in green, the
+   tie-break points small */
+.stc-pl { display: flex; flex-direction: column; gap: 0.5em; min-width: 0; font-weight: 700; }
+.stc-pl-line { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6em; min-width: 0; }
+.stc-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stc-nm.stc-win { color: var(--green); }
+.stc-sc { display: flex; flex: none; }
+.stc-sc > span { width: 2.4em; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stc-sc .set-win { color: var(--green); }
+.stc-sc sup { margin-left: 0.1em; font-size: 0.62em; font-weight: 700; color: #a9adb6; }
+.stc-pl-head { margin-bottom: -0.35em; }
+.stc-pl-head .stc-sc > span { font-size: 0.7em; font-weight: 700; letter-spacing: 0.06em; color: #8b8f98; }
+.stc-m .stc-sc > span { width: 1.9em; }
+.stc-m .stc-pl-line { gap: 0.3em; }
+
+/* the timeline: at most 3 courts in a row, the rows (when there are more courts) share the height */
+.stc-tls { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: clamp(6px, 1vh, 12px); }
+.stc-tls > .stc-tl { flex: 1 1 0; min-height: 0; }
+
+/* a block of the timeline shows what fits: the category goes first, then the S1 / S2 labels */
+.stc-m { container-type: size; }
+@container (max-height: 5.6em) { .stc-m-meta { display: none; } }
+@container (max-height: 4.6em) { .stc-pl-head { display: none; } .stc-m-pl .stc-pl { gap: 0.2em; } }
+
+/* the same type size in the list and in the timeline (it follows the number of rows of courts of the list and the most matches of a court) */
+.stc-main { --stc-fs: clamp(9px, min(calc(76vh / var(--lrows, 1) / (2.2 + 5.9 * var(--rows, 6))), 2.3vh), 22px); }
+.stc-list, .stc-tl { font-size: var(--stc-fs); }
+@media (max-width: 760px) { .stc-list { font-size: 12px; } .stc-tl { font-size: 11px; } }
+/* the S1 / S2 labels are smaller than the games under them: their cells are as wide as the cells of the games (the width is in em of the smaller type, so it is divided by its size) */
+.stc-pl-head .stc-sc > span { width: calc(2.4em / 0.7); }
+.stc-m .stc-pl-head .stc-sc > span { width: calc(1.9em / 0.7); }

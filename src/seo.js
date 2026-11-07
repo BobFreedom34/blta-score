@@ -106,6 +106,12 @@ const PAGES = [
     description: 'Celoobrazovkové živé skóre zápasu BLTA pre televízor alebo projektor pri kurte.',
   },
   {
+    // the schedule of a tournament (every court and match of a day) on the whole screen for a TV; opened from the "Celá obrazovka" link of the Harmonogram tab; noindex
+    key: 'schedulescreen', label: 'Schedule of a tournament on the whole screen (template)', path: '/schedule-screen/:id', file: 'schedule-screen.html', template: true, blta: null, slugSk: 'obrazovka-harmonogramu', noindex: true,
+    title: `Harmonogram turnaja na celú obrazovku${SUFFIX}`,
+    description: 'Všetky kurty a zápasy turnaja BLTA na jednej obrazovke pre televízor alebo projektor.',
+  },
+  {
     key: 'communities', label: 'Communities and clubs (list)', path: '/communities', file: 'communities.html', blta: null, slugSk: 'komunity-a-kluby',
     title: `Komunity a kluby${SUFFIX}`,
     description: 'Komunity a kluby BLTA - skupiny hráčov, ktoré si organizujú vlastné turnaje a akcie. Pridaj sa do klubu alebo si vytvor vlastnú komunitu.',
@@ -278,6 +284,11 @@ const ENGLISH = {
     slug: 'chat',
     title: `Messages${SUFFIX_EN}`,
     description: 'Private messages between BLTA players.',
+  },
+  schedulescreen: {
+    slug: 'schedule-screen',
+    title: `Tournament schedule on the whole screen${SUFFIX_EN}`,
+    description: 'Every court and match of a BLTA tournament on one screen for a TV or a projector.',
   },
   screen: {
     slug: 'screen',
