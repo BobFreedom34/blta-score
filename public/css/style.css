@@ -6352,9 +6352,11 @@ a.com-rank-name:hover { color: var(--orange); }
 .sv-final-one + .sv-final-one { margin-top: 18px; }
 
 /* ---------- Glass cards ----------
-   The black cards of the site are smoked glass: still black, but a little see-through (55%) with a soft blur of what is behind them (the grey aura of the page),
-   so they read as glass and not as a flat block. Only where the browser can blur what is behind (else they stay solid black); not on the WordPress embeds (light page);
-   not on the pop-up windows, the menu, the buttons and the tabs (they stay solid so that they read well over the page). The border and the glow of every card are not touched. */
+   The black cards of the site are smoked glass: still black, but a little see-through (55%) so the grey aura of the page shows through. The single cards and frames also blur
+   what is behind them (a soft blur); the cards that a list repeats (matches, court matches, posts, winners) are only see-through, because dozens of blurs make the scrolling
+   heavy and on this smooth background the blur shows nothing. Only where the browser can blur what is behind (else they stay solid black); not on the WordPress embeds
+   (light page); not on the pop-up windows, the menu, the buttons and the tabs (they stay solid so that they read well over the page). The border and the glow of every
+   card are not touched. */
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   body:not(.embed-light):not(.embed) :is(
     .pom-card,
@@ -6372,8 +6374,6 @@ a.com-rank-name:hover { color: var(--orange); }
     .sv-ptable,
     .sv-rl-g,
     .pr-card,
-    .win-card,
-    .sw-tile,
     .inv-card,
     .h2hc,
     .h2h-card,
@@ -6382,21 +6382,40 @@ a.com-rank-name:hover { color: var(--orange); }
     .cs-list-court,
     .about-page-sec,
     .court-card,
-    .court-match,
     .court-info,
     .compact-card,
     .card-dark,
-    .com-card,
-    .com-event,
     .com-panel,
-    .com-post,
     .com-info,
     .msg-side,
     .msg-main,
-    .msg-login
+    .msg-login,
+    .player-bio-card,
+    .player-avatar-fallback,
+    .statistics-card,
+    .scoreboard,
+    .sl-org
   ),
   body.match-page:not(.embed-light):not(.embed) #match-root .card {
     background: rgba(10, 10, 10, 0.55);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
+  }
+  body:not(.embed-light):not(.embed) :is(
+    .match-card,
+    .court-match,
+    .com-card,
+    .com-event,
+    .com-post,
+    .sw-tile,
+    .win-card
+  ),
+  body.match-page:not(.embed-light):not(.embed) .info-item {
+    background: rgba(10, 10, 10, 0.55);
+  }
+  /* the dark grey panels (the new-match form, the "log in first" card, the cards of the event pages): the same glass, in their own dark grey */
+  body:not(.embed-light):not(.embed) :is(#new-match-form, #login-required-card, .sa-card) {
+    background: rgba(27, 27, 31, 0.6);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
     backdrop-filter: blur(14px) saturate(140%);
   }
@@ -6419,8 +6438,6 @@ a.com-rank-name:hover { color: var(--orange); }
       .sv-ptable,
       .sv-rl-g,
       .pr-card,
-      .win-card,
-      .sw-tile,
       .inv-card,
       .h2hc,
       .h2h-card,
@@ -6429,18 +6446,19 @@ a.com-rank-name:hover { color: var(--orange); }
       .cs-list-court,
       .about-page-sec,
       .court-card,
-      .court-match,
       .court-info,
       .compact-card,
       .card-dark,
-      .com-card,
-      .com-event,
       .com-panel,
-      .com-post,
       .com-info,
       .msg-side,
       .msg-main,
-      .msg-login
+      .msg-login,
+      .player-bio-card,
+      .player-avatar-fallback,
+      .statistics-card,
+      .scoreboard,
+      .sl-org
     ),
     body.match-page:not(.embed-light):not(.embed) #match-root .card {
       -webkit-backdrop-filter: blur(8px) saturate(130%);
