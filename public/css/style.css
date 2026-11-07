@@ -6350,3 +6350,101 @@ a.com-rank-name:hover { color: var(--orange); }
 #sv-final .sv-pr .fee { min-width: 130px; }
 .sv-final-note { margin: 0 4px 14px; font-size: 13px; font-weight: 700; color: var(--orange); }
 .sv-final-one + .sv-final-one { margin-top: 18px; }
+
+/* ---------- Glass cards ----------
+   The black cards of the site are smoked glass: still black, but a little see-through (55%) with a soft blur of what is behind them (the grey aura of the page),
+   so they read as glass and not as a flat block. Only where the browser can blur what is behind (else they stay solid black); not on the WordPress embeds (light page);
+   not on the pop-up windows, the menu, the buttons and the tabs (they stay solid so that they read well over the page). The border and the glow of every card are not touched. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body:not(.embed-light):not(.embed) :is(
+    .pom-card,
+    .grp-card,
+    .home-card,
+    .home-live,
+    .home-mine-cell.next,
+    .home-tl.now .home-tl-body,
+    .home-tl.future .home-tl-body,
+    .sch-tl-wrap,
+    .sch-card,
+    .sv-fact,
+    .sv-rg-card,
+    .sv-pcard,
+    .sv-ptable,
+    .sv-rl-g,
+    .pr-card,
+    .win-card,
+    .sw-tile,
+    .inv-card,
+    .h2hc,
+    .h2h-card,
+    .rivals-card,
+    .cs-colwrap,
+    .cs-list-court,
+    .about-page-sec,
+    .court-card,
+    .court-match,
+    .court-info,
+    .compact-card,
+    .card-dark,
+    .com-card,
+    .com-event,
+    .com-panel,
+    .com-post,
+    .com-info,
+    .msg-side,
+    .msg-main,
+    .msg-login
+  ),
+  body.match-page:not(.embed-light):not(.embed) #match-root .card {
+    background: rgba(10, 10, 10, 0.55);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
+  }
+  /* the columns of a court timeline sit on the glass of their frame: they have no black of their own */
+  body:not(.embed-light):not(.embed) .cs-colwrap .cs-col { background: transparent; }
+  @media (max-width: 700px) {
+    body:not(.embed-light):not(.embed) :is(
+      .pom-card,
+      .grp-card,
+      .home-card,
+      .home-live,
+      .home-mine-cell.next,
+      .home-tl.now .home-tl-body,
+      .home-tl.future .home-tl-body,
+      .sch-tl-wrap,
+      .sch-card,
+      .sv-fact,
+      .sv-rg-card,
+      .sv-pcard,
+      .sv-ptable,
+      .sv-rl-g,
+      .pr-card,
+      .win-card,
+      .sw-tile,
+      .inv-card,
+      .h2hc,
+      .h2h-card,
+      .rivals-card,
+      .cs-colwrap,
+      .cs-list-court,
+      .about-page-sec,
+      .court-card,
+      .court-match,
+      .court-info,
+      .compact-card,
+      .card-dark,
+      .com-card,
+      .com-event,
+      .com-panel,
+      .com-post,
+      .com-info,
+      .msg-side,
+      .msg-main,
+      .msg-login
+    ),
+    body.match-page:not(.embed-light):not(.embed) #match-root .card {
+      -webkit-backdrop-filter: blur(8px) saturate(130%);
+      backdrop-filter: blur(8px) saturate(130%);
+    }
+  }
+}
