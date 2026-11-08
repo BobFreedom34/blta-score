@@ -6538,3 +6538,8 @@ a.com-rank-name:hover { color: var(--orange); }
 .court-overlay-url > span { font-size: 12px; font-weight: 600; color: var(--gray); }
 .court-overlay-url > div { display: flex; gap: 8px; align-items: stretch; }
 .court-overlay-url input { flex: 1; min-width: 0; font-size: 12px; }
+
+/* in the narrow info tile of the match page (the YouTube link tile of an admin) the overlay link and its Copy button are stacked */
+.info-item .court-overlay-url { margin-top: 10px; }
+.info-item .court-overlay-url > div { flex-direction: column; }
+.info-item .court-overlay-url input { width: 100%; box-sizing: border-box; }

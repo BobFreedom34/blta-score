@@ -313,7 +313,7 @@ function tilesHtml() {
     cats.length ? tile('season.tileCats', cats.map((c) => CATEGORY_NAMES[c]).join(' · ')) : '',
     season.venue ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileVenue'))}</div><div class="v sm">${escapeHtml(season.venue)}</div></div>` : '',
     termText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileTerm'))}</div><div class="v sm">${escapeHtml(termText())}</div></div>` : '',
-    players || maxPlayers ? tile('season.tilePlayers', maxPlayers ? `${players}/${maxPlayers}` : String(players), groupCount ? t('season.groupsN', { n: groupCount }) : (model.substitutes.length ? `+${model.substitutes.length} ${t('season.substitutes').toLowerCase()}` : '')) : '',
+    players || maxPlayers ? tile('season.tilePlayers', maxPlayers ? `${players}/${maxPlayers}` : String(players), groupCount && !isTournament() ? t('season.groupsN', { n: groupCount }) : (model.substitutes.length ? `+${model.substitutes.length} ${t('season.substitutes').toLowerCase()}` : '')) : '',
     season.entryFee ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div></div>` : '',
     season.drawDate ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileDraw'))}</div><div class="v sm">${escapeHtml(formatDate(season.drawDate))}</div></div>` : '',
     season.prizeMoney ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tilePrize'))}</div><div class="v sm">${escapeHtml(season.prizeMoney)}</div></div>` : '',

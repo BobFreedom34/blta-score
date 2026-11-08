@@ -83,9 +83,9 @@ test('the schedule API tells the name, the address and the kind of the tournamen
   assert.strictEqual(sch.json.seasonKind, 'TOURNAMENT');
 });
 
-test('the Harmonogram tab has the link "Celá obrazovka" in the timeline and in the list (it keeps the view and the day)', () => {
+test('the Harmonogram tab has the link "Celá obrazovka" in the timeline and in the list (it opens the list first, on the day that is shown)', () => {
   const src = read('js/court-schedule.js');
-  assert.ok(src.includes('/schedule-screen/${csState.season.id}?view=${csChoice.view}&day=${day}'));
+  assert.ok(src.includes('/schedule-screen/${csState.season.id}?view=list&day=${day}'));
   assert.ok(src.includes('${views}${settings.courtCount ? fullLink'), 'next to the switch of the two views, whichever is open');
 });
 

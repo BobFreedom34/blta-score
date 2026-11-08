@@ -147,15 +147,15 @@ test('the overlay is not a page of the site: not in the sitemap, no bare /overla
 
 // ---- review findings ----
 // overlay.js run on its own with a fake page: what it draws for a given answer of the endpoint
-async function drawn(answer, { cityBase = '', path: pathname = '/overlay/some-slug/1' } = {}) {
+async function drawn(answer, { cityBase = '', path: pathname = '/overlay/some-slug/1', status = 200, serverDate = new Date().toUTCString() } = {}) {
   const vm = require('vm');
   const stage = { innerHTML: '', style: {} };
   const urls = [];
   const sandbox = {
     document: { getElementById: () => stage },
     window: { location: { pathname, search: '' }, innerWidth: 1920, addEventListener() {}, CITY_BASE: cityBase },
-    fetch: async (url) => { urls.push(url); return { ok: true, json: async () => answer }; },
-    setInterval() {}, setTimeout, clearTimeout, URLSearchParams, encodeURIComponent, decodeURIComponent, String, Number, Math, JSON,
+    fetch: async (url) => { urls.push(url); return { ok: status >= 200 && status < 300, status, headers: { get: (k) => (String(k).toLowerCase() === 'date' ? serverDate : null) }, json: async () => answer }; },
+    setInterval() {}, setTimeout, clearTimeout, URLSearchParams, encodeURIComponent, decodeURIComponent, String, Number, Math, JSON, Date, Promise,
   };
   vm.runInNewContext(fs.readFileSync(path.join(ROOT, 'public', 'js', 'overlay.js'), 'utf8'), sandbox);
   await new Promise((r) => setTimeout(r, 20));
@@ -212,6 +212,68 @@ test('a city site: the overlay finds its tournament under the city address (slta
   const helper = fs.readFileSync(path.join(ROOT, 'public', 'js', 'court-streams.js'), 'utf8');
   assert.ok(helper.includes("window.CITY_BASE || ''}/overlay/"), 'the link of the admin page has the city in it');
   assert.ok(/NO_TAG = [^\n]*overlay/.test(fs.readFileSync(path.join(ROOT, 'src', 'tracking.js'), 'utf8')), 'no analytics or consent banner on the overlay');
+});
+
+// ---- league matches: the overlay of ONE match (/overlay/match/<token>), for a match that has a YouTube link ----
+const leagueMatch = (over = {}) => ({
+  token: 'tok-1', videoId: 'dQw4w9WgXcQ', status: 'LIVE', endTime: null, winnerId: null, location: 'Tennis ONE', category: 'ELITE', league: null,
+  season: { name: 'Autumn Finals Series 2026' }, player1: { name: 'Anna Alpha' }, player2: { name: 'Berta Beta' },
+  state: { currentSet: 0, sets: [{ p1: 3, p2: 1, winner: null }] }, ...over,
+});
+const MATCH_PATH = '/overlay/match/tok-1';
+
+test('league match overlay: a live match with a YouTube link is drawn (place + competition in the tab); no link or not started: nothing', async () => {
+  const live = await drawn(leagueMatch(), { path: MATCH_PATH });
+  assert.deepStrictEqual(live.urls, ['/api/matches/tok-1']);
+  assert.ok(live.html.includes('Tennis ONE') && live.html.includes('Autumn Finals Series 2026') && live.html.includes('Anna Alpha') && live.html.includes('Berta Beta'), live.html);
+  assert.ok(live.html.includes('ov-now'), 'the set in progress');
+  assert.strictEqual((await drawn(leagueMatch({ videoId: null }), { path: MATCH_PATH })).html, '', 'no YouTube link, no overlay');
+  assert.strictEqual((await drawn(leagueMatch({ status: 'PLANNED' }), { path: MATCH_PATH })).html, '', 'not started');
+  const noSeason = await drawn(leagueMatch({ season: null, league: 'Winter Cup' }), { path: MATCH_PATH });
+  assert.ok(noSeason.html.includes('Winter Cup'), 'the league text when there is no season');
+  const bare = await drawn(leagueMatch({ season: null, league: null, location: '' }), { path: MATCH_PATH });
+  assert.ok(bare.html.includes('>BLTA<') && bare.html.includes('Elite'), 'no place: BLTA; the category when there is nothing else');
+});
+
+test('doubles: a side called "A / B" shows the surnames so that it fits the row (a court overlay and a match overlay); a long place name cannot stretch the tab', async () => {
+  const names = { player1: { name: 'Róbert Sloboda / Peter Pálenek' }, player2: { name: 'Anna Alpha-Beta / Katarína Nováková' } };
+  const league = (await drawn(leagueMatch(names), { path: MATCH_PATH })).html;
+  assert.ok(league.includes('Sloboda / Pálenek') && league.includes('Alpha-Beta / Nováková'), league);
+  assert.ok(!league.includes('Róbert') && !league.includes('Katarína'), 'first names are left out of a doubles side');
+  const court = (await drawn({ court: 1, tournament: 'T', match: { status: 'LIVE', winnerId: null, ...names, state: { currentSet: 0, sets: [{ p1: 1, p2: 0, winner: null }] } } })).html;
+  assert.ok(court.includes('Sloboda / Pálenek') && !court.includes('Róbert'), 'a court overlay too');
+  const single = (await drawn(leagueMatch(), { path: MATCH_PATH })).html;
+  assert.ok(single.includes('Anna Alpha') && single.includes('Berta Beta'), 'a single player keeps the full name');
+  const css = (await call('GET', '/css/overlay.css')).text;
+  assert.ok(/\.ov-tag b \{[^}]*max-width: \d+px[^}]*white-space: nowrap[^}]*text-overflow: ellipsis/.test(css) || /\.ov-tag b \{[^}]*text-overflow: ellipsis[^}]*max-width/.test(css), 'the orange tab is cut with an ellipsis, not stretched');
+});
+
+test('league match overlay: a finished match stays 3 minutes by the SERVER clock, a not-answering server keeps the picture, a missing match clears it', async () => {
+  const serverNow = Date.now() + 3600000; // this computer is an hour behind the server: the overlay must go by the server
+  const at = (minAgo) => new Date(serverNow - minAgo * 60000).toISOString();
+  const done = (minAgo) => leagueMatch({ status: 'FINISHED', winnerId: 1, endTime: at(minAgo), state: { currentSet: 1, sets: [{ p1: 6, p2: 3, winner: 1 }, { p1: 6, p2: 4, winner: 1 }] } });
+  assert.ok((await drawn(done(1), { path: MATCH_PATH, serverDate: new Date(serverNow).toUTCString() })).html.includes('Anna Alpha'), 'one minute after the end');
+  assert.strictEqual((await drawn(done(4), { path: MATCH_PATH, serverDate: new Date(serverNow).toUTCString() })).html, '', 'four minutes after the end');
+  assert.strictEqual((await drawn({ error: 'Match not found' }, { path: MATCH_PATH, status: 404 })).html, '', 'no such match');
+});
+
+test('league match overlay: on a city site the API of the city is used; a tournament called "match" still has its court overlay', async () => {
+  const city = await drawn(leagueMatch(), { path: '/kosice/overlay/match/tok-1', cityBase: '/kosice' });
+  assert.deepStrictEqual(city.urls, ['/kosice/api/matches/tok-1']);
+  const court = await drawn({ court: 1, tournament: 'M', match: null }, { path: '/overlay/match/1' });
+  assert.deepStrictEqual(court.urls, ['/api/seasons/by-slug/match/court/1/live']);
+  assert.strictEqual((await call('GET', '/overlay/match/some-token')).status, 200, 'the page for a match');
+  assert.ok((await call('GET', '/overlay/match/some-token')).text.includes('/js/overlay.js'));
+  assert.ok((await call('GET', '/overlay/match/some-token')).headers.get('x-robots-tag').includes('noindex'));
+});
+
+test('league match overlay: the admin tile of the match page shows the overlay link with a Copy button, only for a match with a YouTube link', async () => {
+  const js = (await call('GET', '/js/match.js')).text;
+  for (const piece of ['/overlay/match/', 'window.CITY_BASE', 'data-copy-overlay', 'match.overlayLink']) assert.ok(js.includes(piece), piece);
+  assert.ok(js.includes('${m.videoId ? overlayLinkHtml(m) :'), 'the link is only shown for a match that has a YouTube link');
+  const i18n = (await call('GET', '/js/i18n.js')).text;
+  assert.strictEqual(i18n.split("'match.overlayLink'").length - 1, 2, 'SK and EN');
+  assert.ok(/\.info-item \.court-overlay-url > div \{[^}]*flex-direction: column/.test((await call('GET', '/css/style.css')).text), 'in the narrow info tile the link and the button are stacked, not side by side');
 });
 
 async function startServer() {

@@ -225,6 +225,20 @@ test('events of an existing database move once; later events stay plain events',
   void dbFile;
 });
 
+// ---------------------------------------------------------------- the players tile
+test('the "Počet hráčov" tile of a tournament shows registered/maximum only: no "N skupín" line under it (a league season keeps it)', async () => {
+  const js = await (await fetch(`${BASE}/js/season.js`)).text();
+  assert.ok(js.includes("groupCount && !isTournament() ? t('season.groupsN'"), 'the number of groups is shown for a league season only');
+});
+
+test('"Celá obrazovka" of the Harmonogram tab always opens the list (Zoznam) first, whichever view the tab shows; the day stays', async () => {
+  const js = await (await fetch(`${BASE}/js/court-schedule.js`)).text();
+  assert.ok(js.includes('/schedule-screen/${csState.season.id}?view=list&day=${day}'), 'the link asks for the list');
+  assert.ok(!js.includes('?view=${csChoice.view}'), 'it does not hand over the view of the tab (the timeline)');
+  const screen = await (await fetch(`${BASE}/js/schedule-screen.js`)).text();
+  assert.ok(screen.includes("stcQuery.get('view') === 'timeline' ? 'timeline' : 'list'"), 'and without an address choice the page itself starts on the list');
+});
+
 // ---------------------------------------------------------------- run
 async function startServer() {
   child = spawn(process.execPath, ['server.js'], {

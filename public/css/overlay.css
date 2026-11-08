@@ -21,7 +21,7 @@ html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; h
 .ov { position: fixed; left: 0; bottom: 0; width: 1920px; height: 1080px; transform-origin: left bottom; font-family: 'Montserrat', system-ui, sans-serif; color: #fff; font-variant-numeric: tabular-nums; pointer-events: none; }
 .ov-panel { position: absolute; left: 56px; bottom: 50px; }
 .ov-tag { display: inline-flex; align-items: stretch; height: 35px; border-radius: 6px 6px 0 0; overflow: hidden; font-size: 18px; font-weight: 700; }
-.ov-tag b { background: #ff5500; padding: 0 14px; display: flex; align-items: center; font-weight: 800; }
+.ov-tag b { background: #ff5500; padding: 0 14px; display: flex; align-items: center; font-weight: 800; max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ov-tag span { background: rgba(10, 10, 10, 0.84); padding: 0 14px; display: flex; align-items: center; color: rgba(255, 255, 255, 0.82); max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ov-board { background: rgba(10, 10, 10, 0.84); border-radius: 0 8px 8px 8px; display: grid; grid-template-columns: auto repeat(var(--sets, 1), 67px); min-width: 512px; overflow: hidden; }
 .ov-name { padding: 0 22px; height: 59px; display: flex; align-items: center; font-size: 29px; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; max-width: 440px; overflow: hidden; }

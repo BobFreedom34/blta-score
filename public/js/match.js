@@ -894,7 +894,19 @@ function videoItemHtml(m) {
           </div>
           <div class="video-error" id="video-error"></div>
         </form>
+        ${m.videoId ? overlayLinkHtml(m) : ''}
       </div>`;
+}
+
+// The link of the scoreboard overlay of this match (/overlay/match/<token>, public/js/overlay.js) to put into PRISM or OBS over the YouTube stream: only for a match
+// that has a YouTube link (the overlay draws nothing without one). A city site has its city in the address (window.CITY_BASE).
+function overlayLinkHtml(m) {
+  const url = `${window.location.origin}${window.CITY_BASE || ''}/overlay/match/${encodeURIComponent(m.token)}`;
+  return `
+        <div class="court-overlay-url">
+          <span>${escapeHtml(t('match.overlayLink'))}</span>
+          <div><input type="text" readonly value="${escapeHtml(url)}" aria-label="${escapeHtml(t('match.overlayLink'))}"><button type="button" class="btn btn-sm btn-outline" data-copy-overlay="${escapeHtml(url)}">${escapeHtml(t('match.overlayCopy'))}</button></div>
+        </div>`;
 }
 
 function attachHandlers(m) {
@@ -918,6 +930,14 @@ function attachHandlers(m) {
     if (remove) remove.addEventListener('click', () => send(''));
     videoForm.querySelector('[data-action="cancel-video"]').addEventListener('click', () => { videoForm.hidden = true; });
   }
+  document.querySelectorAll('[data-copy-overlay]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      copyToClipboard(btn.dataset.copyOverlay).then(() => toast(t('share.linkCopied'))).catch(() => {
+        const input = btn.parentElement.querySelector('input');
+        if (input) input.select();
+      });
+    });
+  });
   document.querySelectorAll('[data-action="edit-season"]').forEach((btn) => {
     btn.addEventListener('click', () => openSeasonModal(m));
   });
