@@ -186,6 +186,10 @@ async function openEditMatchModal(m, isAdminUser, onSaved) {
   if (!modal) return;
   const errorEl = document.getElementById('edit-match-error');
   errorEl.textContent = '';
+  // A save disables the button while it runs and only a failed save enables it again, while this one modal (one piece of markup on the page) opens again and again:
+  // without this, after one successful save every next opening showed "Uložiť zmeny" greyed out.
+  const saveBtn = document.querySelector('#edit-match-form button[type="submit"]');
+  if (saveBtn) saveBtn.disabled = false;
 
   // Reassigning who's actually in the match is admin-only (see the doc
   // comment on the modal's markup) — everyone else never sees the field,
