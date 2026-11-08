@@ -96,8 +96,8 @@ function csBlockHtml(m, day, startMin) {
   const movable = csState.admin && m.status === 'PLANNED';
   const classes = ['cs-m', csStatusClass(m), `cs-st-${m.status.toLowerCase()}`, movable ? 'cs-drag' : '', m.locked ? 'cs-locked' : '', short ? 'cs-short' : ''].filter(Boolean).join(' ');
   return `<a class="${classes}" href="/match/${m.token}" draggable="false" data-token="${m.token}" ${movable ? 'data-drag="1"' : ''}
-      style="top:${top}px;height:${minutes * CS_PX - 3}px" data-minutes="${real}" title="${escapeHtml(`${csTime(csStartOf(m))}–${csTime(m.endsAt)} · ${m.player1.name} – ${m.player2.name}`)}">
-    <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? `–${csTime(m.endsAt)}` : ''}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="${escapeHtml(tl('Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš.', 'Locked — the planner does not move it. Click to unlock it.'))}"></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
+      style="top:${top}px;height:${minutes * CS_PX - 3}px" data-minutes="${real}" title="${escapeHtml(`${csTime(csStartOf(m))} · ${m.player1.name} – ${m.player2.name}`)}">
+    <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="${escapeHtml(tl('Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš.', 'Locked — the planner does not move it. Click to unlock it.'))}"></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
     <span class="cs-m-pl">${short ? csPlayersHtml(m) : csScoredPlayersHtml(m)}</span>
     <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
     ${short && (m.status === 'FINISHED' || m.status === 'LIVE') && m.scoreSummary ? `<span class="cs-m-score">${escapeHtml(m.scoreSummary)}</span>` : ''}
@@ -183,7 +183,7 @@ function csListHtml(day) {
       .sort((a, b) => Date.parse(csStartOf(a)) - Date.parse(csStartOf(b)));
     const body = rows.map((m) => `
       <a class="cs-row ${csStatusClass(m)}" href="/match/${m.token}">
-        <span class="cs-row-time">${csTime(csStartOf(m))}–${csTime(m.endsAt)}</span>
+        <span class="cs-row-time">${csTime(csStartOf(m))}</span>
         <span class="cs-row-pl">${csScoredPlayersHtml(m)}</span>
         <span class="cs-row-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
       </a>`).join('');
