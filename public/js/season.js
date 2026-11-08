@@ -107,6 +107,7 @@ function statusOf() {
   const today = todayIso();
   if (standings && standings.frozen) return 'past';
   if (season.endDate && season.endDate < today) return 'past';
+  if (season.tournamentEnded) return 'past'; // the playing window of the last day of a tournament is over
   if (season.startDate && season.startDate > today) return 'future';
   return 'now';
 }

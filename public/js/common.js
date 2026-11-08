@@ -1360,7 +1360,7 @@ async function openContactModal() {
 // dates counts as coming. Used by the home page's timeline and by the pills in the menu.
 function seasonState(s, today) {
   if (s.startDate && s.endDate) {
-    if (s.endDate < today) return 'past';
+    if (s.endDate < today || s.tournamentEnded) return 'past'; // (tournamentEnded: the playing window of the last day of a tournament is over)
     if (s.startDate > today) return 'future';
     return 'now';
   }

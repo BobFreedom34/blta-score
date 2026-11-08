@@ -178,6 +178,8 @@ function serializeSeason(s) {
     // what a visitor can really do: the switch is on AND the event has not ended AND a tournament has not started (its first day's start time has passed)
     registrationAvailable: registrationOpen(s),
     registrationStarted: tournamentStarted(s),
+    // a tournament is over once the playing window of its last day has ended (the pages show "finished" by it, not only by the date)
+    tournamentEnded: tournamentSchedule.tournamentEnded(s),
     // the most players that can register (null = none set) and, for a season where the player chooses a category, the most for each category; the ones after it are
     // substitutes (src/registrationCapacity.js)
     maxPlayers: s.max_players || null,

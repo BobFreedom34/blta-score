@@ -194,7 +194,8 @@ function comTournamentRow(s) {
   const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const start = s.startDate || '';
   const end = s.endDate || s.startDate || '';
-  const status = !start ? 'future' : end < today ? 'past' : start > today ? 'future' : 'now';
+  // (a tournament whose playing window of the last day is over is finished, even on its own date: tournamentEnded comes from the server)
+  const status = !start ? 'future' : (end < today || s.tournamentEnded) ? 'past' : start > today ? 'future' : 'now';
   let extra = '';
   if (status === 'now') extra = t('schedule.daysLeft', { n: Math.max(0, comDaysBetween(today, end)), d: comDayWord(Math.max(0, comDaysBetween(today, end))) });
   else if (status === 'future' && start) extra = t('schedule.startsIn', { n: comDaysBetween(today, start), d: comDayWord(comDaysBetween(today, start)) });

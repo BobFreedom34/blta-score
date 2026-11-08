@@ -146,7 +146,7 @@
   // ---- the Events tab: the tournaments of the club (and, for its admin acting as the club, the way to make one and to manage it)
   function tournamentHtml(s) {
     const today = new Date().toISOString().slice(0, 10);
-    const over = !!s.endDate && s.endDate < today;
+    const over = (!!s.endDate && s.endDate < today) || !!s.tournamentEnded;
     const season = s.kind === 'LEAGUE'; // a season (groups and a table) or a tournament
     // what a visitor can do (the page of the tournament goes by the same): the switch of the Backend is not enough, a tournament that has started takes no registration
     const regAvailable = s.registrationAvailable !== undefined ? s.registrationAvailable : s.registrationOpen;

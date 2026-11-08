@@ -87,7 +87,7 @@ function yearText(e) {
 }
 
 function statusOf(e, today) {
-  if (e.endDate < today) return 'past';
+  if (e.endDate < today || e.tournamentEnded) return 'past'; // (tournamentEnded: the playing window of its last day is over)
   if (e.startDate > today) return 'future';
   return 'now';
 }

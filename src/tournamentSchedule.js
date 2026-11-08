@@ -294,6 +294,23 @@ function tournamentStarted(season, now = Date.now()) {
   return start !== null && now >= start;
 }
 
+// The moment a tournament ends: the end of the playing window of its LAST day (that day's own end time, else the general one, 20:00 unless set) — UTC ms, or null
+// without a start date. After it the tournament counts as finished on the public pages (the date alone only says so the day after).
+function tournamentEndMs(season) {
+  if (!season || !season.start_date) return null;
+  const last = season.end_date && season.end_date >= season.start_date ? season.end_date : season.start_date;
+  const own = ownDayTimesOf(season)[last];
+  const time = own ? own.end : (validTime(season.day_end) ? season.day_end : '20:00');
+  return localToUtcMs(last, time);
+}
+
+// has this tournament ended (the end of the playing window of its last day has passed)? Anything else (a league season, no start date) never counts as ended.
+function tournamentEnded(season, now = Date.now()) {
+  if (!season || season.kind !== 'TOURNAMENT') return false;
+  const end = tournamentEndMs(season);
+  return end !== null && now >= end;
+}
+
 // everything the schedule tab shows
 function getSchedule(season, now = Date.now()) {
   const settings = settingsOf(season);
@@ -527,6 +544,8 @@ module.exports = {
   getCourtLive,
   tournamentStartMs,
   tournamentStarted,
+  tournamentEndMs,
+  tournamentEnded,
   placeMatch,
   setLocked,
   setDuration,

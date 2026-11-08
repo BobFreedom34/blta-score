@@ -43,6 +43,7 @@ function scheduleOf(leagueId) {
       link: `/${tournament ? 'tournament' : 'season'}/${s.slug}`,
       logoUrl: s.logo_url || '',
       registrationOpen: !!s.registration_open && !require('../tournamentSchedule').tournamentStarted(s), // a tournament that has started takes no registration
+      tournamentEnded: require('../tournamentSchedule').tournamentEnded(s), // the playing window of its last day is over
       // a doubles tournament is played in the one category Štvorhra, not in the three league ones
       // (a tournament without categories has no category chips)
       categories: tournament && s.play_type === 'DOUBLES' ? ['DOUBLES'] : (s.categories === 'OPEN' ? [] : (own.length ? own : CATEGORIES)),

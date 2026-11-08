@@ -150,6 +150,30 @@ test('the public lists follow it: the Harmonogram does not offer registration fo
   assert.strictEqual(of(future).registrationOpen, true, 'not started: registration');
 });
 
+test('a tournament is over once the playing window of its LAST day has ended (not only the day after): the season, the Harmonogram and the pages follow it', async () => {
+  const hm = nowHM();
+  if (hm < '00:40' || hm >= '23:20') { console.log('      (skipped: too close to midnight for a test that goes by the time of day)'); return; }
+  const today = todayLocal();
+  const over = await makeTournament({ startDate: today, endDate: today });
+  assert.strictEqual((await patch(over, { maxPlayers: 10, matchMinutes: 15, dayTimes: { [today]: { start: '00:00', end: '00:30' } } })).status, 200);
+  const running = await makeTournament({ startDate: today, endDate: today });
+  assert.strictEqual((await patch(running, { maxPlayers: 10, matchMinutes: 15, dayTimes: { [today]: { start: '00:00', end: '23:59' } } })).status, 200);
+  const later = await makeTournament({ startDate: '2099-05-01', endDate: '2099-05-02' });
+  const flag = async (t) => (await call('GET', `/api/seasons/by-slug/${t.slug}`, { cookie: '' })).json.tournamentEnded;
+  assert.strictEqual(await flag(over), true, 'the last window ended this morning: over');
+  assert.strictEqual(await flag(running), false, 'the window runs until 23:59: not over');
+  assert.strictEqual(await flag(later), false, 'a tournament in the future is not over');
+  const rows = (await call('GET', '/api/schedule', { cookie: '' })).json;
+  const of = (t) => rows.find((r) => r.seasonId === t.id);
+  assert.deepStrictEqual([of(over).tournamentEnded, of(running).tournamentEnded], [true, false], 'the Harmonogram carries it too');
+  // a tournament with its own end time on the LAST day only: the last day decides, not the first
+  const two = await makeTournament({ startDate: '2020-01-01', endDate: today });
+  assert.strictEqual((await patch(two, { maxPlayers: 10, matchMinutes: 15, dayTimes: { [today]: { start: '00:00', end: '23:59' } } })).status, 200);
+  assert.strictEqual(await flag(two), false, 'its last day is still going');
+  const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
+  for (const [file, piece] of [['js/community-post.js', 's.tournamentEnded'], ['js/community.js', 's.tournamentEnded'], ['js/season.js', 'season.tournamentEnded'], ['js/harmonogram.js', 'e.tournamentEnded'], ['js/common.js', 's.tournamentEnded']]) assert.ok(pub(file).includes(piece), `${file} goes by tournamentEnded`);
+});
+
 // ---------------------------------------------------------------- review findings
 test('a typed day that is no longer a day of the tournament is dropped and blocks nothing; a day that is too short for the match says where to change it', async () => {
   const t = await makeTournament({ startDate: '2099-05-01', endDate: '2099-05-02' });
