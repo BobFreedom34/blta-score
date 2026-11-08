@@ -4100,6 +4100,8 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-tile .k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .sv-tile .v { font-size: 20px; font-weight: 800; line-height: 1.2; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sv-tile .v.sm { font-size: 20px; }
+/* the maximum of the players tile ("6/8"): smaller and thinner than the number of registered players */
+.sv-tile .v .sv-max { font-size: 0.7em; font-weight: 500; color: #c3c7cf; }
 .sv-tile .v small { display: block; font-size: 20px; font-weight: 600; color: #c3c7cf; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* a phone: always two tiles side by side; a text that does not fit the half of the screen goes on a second line there (a date or an address is never cut) */
 @media (max-width: 700px) {

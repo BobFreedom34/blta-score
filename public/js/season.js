@@ -306,14 +306,13 @@ function tilesHtml() {
   const players = model.total;
   // registered / maximum (the one limit of the event, or the limits of its categories added up); the ones over it are substitutes
   const maxPlayers = season.maxPlayers || Object.values(season.categoryMax || {}).reduce((a, b) => a + b, 0) || 0;
-  const groupCount = (season.groups || []).length || (standings ? standings.groups.length : 0);
   const tile = (key, value, sub) => `<div class="sv-tile"><div class="k">${escapeHtml(t(key))}</div><div class="v">${value}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</div></div>`;
   const cats = CATEGORY_ORDER_ALL.filter((c) => (isTournament() && (season.categories || []).includes(c)) || (season.groups || []).some((g) => g.category === c) || (standings && standings.groups.some((g) => g.category === c)));
   const tiles = [
     cats.length ? tile('season.tileCats', cats.map((c) => CATEGORY_NAMES[c]).join(' · ')) : '',
     season.venue ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileVenue'))}</div><div class="v sm">${escapeHtml(season.venue)}</div></div>` : '',
     termText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileTerm'))}</div><div class="v sm">${escapeHtml(termText())}</div></div>` : '',
-    players || maxPlayers ? tile('season.tilePlayers', maxPlayers ? `${players}/${maxPlayers}` : String(players), groupCount && !isTournament() ? t('season.groupsN', { n: groupCount }) : (model.substitutes.length ? `+${model.substitutes.length} ${t('season.substitutes').toLowerCase()}` : '')) : '',
+    players || maxPlayers ? tile('season.tilePlayers', maxPlayers ? `${players}<span class="sv-max">/${maxPlayers}</span>` : String(players), (model.substitutes.length ? `+${model.substitutes.length} ${t('season.substitutes').toLowerCase()}` : '')) : '',
     season.entryFee ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div></div>` : '',
     season.drawDate ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileDraw'))}</div><div class="v sm">${escapeHtml(formatDate(season.drawDate))}</div></div>` : '',
     season.prizeMoney ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tilePrize'))}</div><div class="v sm">${escapeHtml(season.prizeMoney)}</div></div>` : '',
@@ -637,7 +636,9 @@ async function openRegisterModal() {
 
   // the maximum of players is reached (for the chosen category, or for the whole event): the registration is a substitute one - the form says so before it is sent
   const isFull = () => {
-    const cap = (season.capacity || {})[noCategoryChoice() ? '' : ($('cat') ? $('cat').value : '')];
+    const capacity = season.capacity || {};
+    // one maximum for the whole event (the key ''), or — a season made before it — one for each category
+    const cap = capacity[Object.prototype.hasOwnProperty.call(capacity, '') || noCategoryChoice() ? '' : ($('cat') ? $('cat').value : '')];
     return !!(cap && cap.limit && cap.in >= cap.limit);
   };
   const showFull = () => {

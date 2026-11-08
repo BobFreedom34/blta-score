@@ -1118,11 +1118,13 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
       if (m.value === null) delete categoryMax[key]; else categoryMax[key] = m.value;
     }
   }
+  // one maximum for the whole season replaces the maximums of the categories a season made before it may still have
+  if (req.body.maxPlayers !== undefined && maxPlayers) Object.keys(categoryMax).forEach((k) => delete categoryMax[k]);
   const nextSeason = { ...season, kind, categories, max_players: maxPlayers, category_max: JSON.stringify(categoryMax) };
   // "always enter the maximum": a save that touches the registration (or opens it) is refused while the maximum is missing (for every category of a season with categories)
   const touchesRegistration = ['registrationOpen', 'maxPlayers', 'categoryMax'].some((k) => req.body[k] !== undefined);
   if (open && touchesRegistration && !capacity.limitsComplete(nextSeason, parseCategories(categories))) {
-    return res.status(400).json({ code: 'MAX_PLAYERS_REQUIRED', error: capacity.choosesCategory(nextSeason) ? 'Enter the maximum number of players for every category' : 'Enter the maximum number of players' });
+    return res.status(400).json({ code: 'MAX_PLAYERS_REQUIRED', error: capacity.perCategory(nextSeason) ? 'Enter the maximum number of players for every category' : 'Enter the maximum number of players' });
   }
   const waitingBefore = capacity.substituteIds(season);
   // how many hours before the start a registered player may drop out himself (empty = he may not; 0 = until the start)

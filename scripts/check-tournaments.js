@@ -228,7 +228,15 @@ test('events of an existing database move once; later events stay plain events',
 // ---------------------------------------------------------------- the players tile
 test('the "Počet hráčov" tile of a tournament shows registered/maximum only: no "N skupín" line under it (a league season keeps it)', async () => {
   const js = await (await fetch(`${BASE}/js/season.js`)).text();
-  assert.ok(js.includes("groupCount && !isTournament() ? t('season.groupsN'"), 'the number of groups is shown for a league season only');
+  assert.ok(!js.includes("t('season.groupsN'"), 'no "N skupín" line under the number of players, for a tournament or a season');
+});
+
+test('the maximum in the players tile ("6/8") is smaller and thinner than the number of registered players', async () => {
+  const js = await (await fetch(`${BASE}/js/season.js`)).text();
+  assert.ok(js.includes('${players}<span class="sv-max">/${maxPlayers}</span>'), 'the maximum has its own element');
+  const css = await (await fetch(`${BASE}/css/style.css`)).text();
+  const rule = (css.match(/\.sv-tile \.v \.sv-max \{([^}]*)\}/) || [])[1] || '';
+  assert.ok(/font-size: 0\.\d+em/.test(rule) && /font-weight: [3-6]00/.test(rule), `smaller and thinner: ${rule}`);
 });
 
 test('"Celá obrazovka" of the Harmonogram tab always opens the list (Zoznam) first, whichever view the tab shows; the day stays', async () => {

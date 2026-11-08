@@ -118,7 +118,7 @@ test('a player the admin adds when the maximum is reached is a substitute too', 
   assert.strictEqual(added.json.substitutePosition, 1);
 });
 
-test('a season where the player chooses the category: a maximum for each category, all needed to open; the categories do not use each other\'s places', async () => {
+test('a season made before the common maximum, with a maximum for each category (and none for the whole season): it keeps working as it did, the categories do not use each other\'s places', async () => {
   const season = await makeSeason({ kind: 'LEAGUE', categories: ['ELITE', 'NOVICE'] });
   assert.strictEqual((await patch(season, { registrationOpen: true })).status, 400);
   assert.strictEqual((await patch(season, { registrationOpen: true, categoryMax: { ELITE: 1 } })).status, 400, 'Novice has none yet');
@@ -135,6 +135,28 @@ test('a season where the player chooses the category: a maximum for each categor
   const rows = await list(season);
   assert.strictEqual((await call('DELETE', `/api/seasons/registrations/${rows[0].id}`)).status, 200);
   assert.deepStrictEqual(flags(await list(season)), ['Marek Silny', 'Pavol Novak', 'Juraj Mlady', 'Karol Stary:S1']);
+});
+
+test('a league season where the player chooses the category has ONE maximum for the whole season: all categories share the places; saving it replaces the maximums of the categories', async () => {
+  const season = await makeSeason({ kind: 'LEAGUE', categories: ['ELITE', 'NEXT_GEN', 'NOVICE'] });
+  const none = await patch(season, { registrationOpen: true });
+  assert.strictEqual(none.status, 400, 'the registration cannot open without the maximum');
+  assert.ok(/maximum number of players/i.test(none.json.error) && !/every category/i.test(none.json.error), none.json.error);
+  const ok = await patch(season, { registrationOpen: true, maxPlayers: 3 });
+  assert.strictEqual(ok.status, 200, JSON.stringify(ok.json));
+  assert.strictEqual(ok.json.maxPlayers, 3);
+  const r = [];
+  for (const [name, category] of [['Alfa Elitny', 'ELITE'], ['Beta Novy', 'NOVICE'], ['Gama Nasledny', 'NEXT_GEN'], ['Delta Pozdny', 'NOVICE']]) { const made = await register(season, name, { category }); assert.strictEqual(made.status, 201, JSON.stringify(made.json)); r.push(!!made.json.substitute); }
+  assert.deepStrictEqual(r, [false, false, false, true], 'three places for everybody, whatever the category; the fourth is a substitute');
+  const page = (await call('GET', `/api/seasons/by-slug/${season.slug}`, { cookie: '' })).json;
+  assert.deepStrictEqual(page.capacity[''], { limit: 3, in: 3, waiting: 1 }, 'one group for the whole season');
+  assert.strictEqual(page.capacity.ELITE, undefined, 'no group per category');
+  assert.strictEqual(page.maxPlayers, 3);
+  // a season that had a maximum for each category: saving the common one replaces them
+  const old = await makeSeason({ kind: 'LEAGUE', categories: ['ELITE', 'NOVICE'] });
+  assert.strictEqual((await patch(old, { categoryMax: { ELITE: 1, NOVICE: 1 } })).status, 200);
+  const replaced = await patch(old, { maxPlayers: 5 });
+  assert.deepStrictEqual([replaced.status, replaced.json.maxPlayers, replaced.json.categoryMax], [200, 5, {}]);
 });
 
 test('a doubles tournament counts pairs: both partners registering the same pair is one place; a pair of substitutes gets its pair when it comes in', async () => {
@@ -159,7 +181,7 @@ test('a doubles tournament counts pairs: both partners registering the same pair
 test('the pages: the maximum field is in the form, the registration list shows the substitutes, the public page lists them apart and says it on the form', () => {
   const read = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
   const admin = read('js/seasons-admin.js');
-  assert.ok(admin.includes("input('maxPlayers'") && admin.includes('data-catmax="${k}"'), 'the fields of the maximum');
+  assert.ok(admin.includes("input('maxPlayers'") && !admin.includes('data-catmax="${k}"'), 'ONE maximum field for every kind of event, none per category');
   assert.ok(admin.includes('MAX_MISSING_TEXT()') && admin.includes('...maxBody(e.target)'), 'the form asks for it and sends it');
   assert.ok(admin.includes("Náhradník č.") && admin.includes("chip('sub'"), 'the list shows the substitutes');
   const pub = read('js/season.js');

@@ -361,29 +361,18 @@ function readCommunityPoints(form) {
   return out;
 }
 
-// The most players that can register (see src/registrationCapacity.js): one for a tournament or a season without categories, one for each category of a season
-// where the player chooses a category when registering. maxBody(form) is what the form says, in the shape the server takes; maxMissing(form) is true while
-// something that has to be entered is empty (the maximum has to be there whenever the registration is open).
-function maxByCategory(form) {
-  const open = form.querySelector('[data-cat="OPEN"]');
-  return !IS_TOURNAMENT && !(open && open.checked) && !!form.querySelector('[data-catmax]');
-}
+// The most players that can register (see src/registrationCapacity.js): ONE maximum for the whole event (a tournament or a season; the categories of a season share
+// the places). maxBody(form) is what the form says, in the shape the server takes; maxMissing(form) is true while it is empty (it has to be there whenever the
+// registration is open).
 function maxBody(form) {
   const one = form.querySelector('[data-field="maxPlayers"]');
-  if (!maxByCategory(form)) return one ? { maxPlayers: one.value === '' ? null : Number(one.value) } : {};
-  const categoryMax = {};
-  form.querySelectorAll('[data-catmax]').forEach((el) => {
-    const box = form.querySelector(`[data-cat="${el.dataset.catmax}"]`);
-    if (box && box.checked) categoryMax[el.dataset.catmax] = el.value === '' ? null : Number(el.value);
-  });
-  return Object.keys(categoryMax).length ? { categoryMax } : {};
+  return one ? { maxPlayers: one.value === '' ? null : Number(one.value) } : {};
 }
 function maxMissing(form) {
-  const empty = (el) => !el || el.value === '' || !(Number(el.value) >= 1);
-  if (!maxByCategory(form)) return empty(form.querySelector('[data-field="maxPlayers"]'));
-  return [...form.querySelectorAll('[data-catmax]')].some((el) => { const box = form.querySelector(`[data-cat="${el.dataset.catmax}"]`); return box && box.checked && empty(el); });
+  const one = form.querySelector('[data-field="maxPlayers"]');
+  return !one || one.value === '' || !(Number(one.value) >= 1);
 }
-const MAX_MISSING_TEXT = () => tl('Zadaj maximálny počet hráčov (pre každú kategóriu).', 'Enter the maximum number of players (for every category).');
+const MAX_MISSING_TEXT = () => tl('Zadaj maximálny počet hráčov.', 'Enter the maximum number of players.');
 
 function seasonCardHtml(s) {
   const byCategory = CATEGORIES.map(([key]) => s.groups.filter((g) => g.category === key).length);
@@ -438,12 +427,9 @@ function seasonCardHtml(s) {
                 ${field(tl('Ceny pre víťazov', 'Prizes for the winners'), input('prizeMoney', s.prizeMoney || '', 'maxlength="120"'))}
                 ${field(tl('Dátum žrebovania', 'Draw date'), input('drawDate', s.drawDate || '', 'type="date"'))}
                 <label class="sa-field sa-check"><input type="checkbox" data-field="registrationOpen"${s.registrationOpen ? ' checked' : ''}> ${tl('Registrácia je otvorená', 'Registration is open')}</label>
-                <div class="sa-field sa-full" data-max-single${!IS_TOURNAMENT && !s.categories.includes('OPEN') ? ' hidden' : ''}>
+                <div class="sa-field sa-full">
                   <label class="sa-field">${s.playType === 'DOUBLES' ? tl('Maximálny počet párov *', 'Maximum number of pairs *') : tl('Maximálny počet hráčov *', 'Maximum number of players *')}${input('maxPlayers', s.maxPlayers || '', `type="number" min="1" max="2000" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 16', 'e.g. 16'))}"`)}</label>
                 </div>
-                ${!IS_TOURNAMENT ? `<div class="sa-field sa-full" data-max-cats${s.categories.includes('OPEN') ? ' hidden' : ''}>${tl('Maximálny počet hráčov v každej kategórii *', 'Maximum number of players in each category *')}
-                  <div class="sa-cats-row">${CATEGORIES.map(([k, label]) => `<label class="sa-field" data-catmax-wrap="${k}"${s.categories.includes(k) ? '' : ' hidden'}>${label}${input('catMax', (s.categoryMax || {})[k] || '', `data-catmax="${k}" type="number" min="1" max="2000" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 16', 'e.g. 16'))}"`)}</label>`).join('')}</div>
-                </div>` : ''}
                 <span class="sa-hint sa-full">${tl('Maximum zadaj vždy. Keď sa dosiahne, ďalší hráči sa môžu prihlásiť už len ako náhradníci. Ak sa niekto odhlási (alebo ho zmažeš), prvý náhradník automaticky nastúpi do turnaja.', 'Always enter the maximum. When it is reached, the next players can only register as substitutes. If somebody drops out (or you delete them), the first substitute automatically comes into the tournament.')}</span>
                 ${field(tl('Odhlásenie hráča: najneskôr (hodín pred začiatkom)', 'Player may withdraw until (hours before the start)'), input('unregisterHours', s.unregisterHours === null || s.unregisterHours === undefined ? '' : s.unregisterHours, `type="number" min="0" max="720" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 48', 'e.g. 48'))}"`))}
                 <span class="sa-hint sa-full">${tl('Prihlásený hráč sa môže sám odhlásiť (tlačidlo „Odhlásiť sa“) najneskôr tento počet hodín pred začiatkom, a len kým nie je vytvorené žrebovanie. Prázdne = hráč sa sám odhlásiť nemôže, odhlási ho organizátor. Odhlásenie príde adminovi do zvončeka aj e-mailom.', 'A registered player can withdraw himself (the button "Withdraw") up to this many hours before the start, and only before the draw is made. Empty = he cannot withdraw alone, the organiser removes him. A withdrawal reaches the admin in the bell and by e-mail.')}</span>
@@ -615,18 +601,6 @@ function wireSeason(card) {
     rulesSection.addEventListener('click', (e) => { if (e.target.closest('.tr-move')) rulesSection.dataset.touched = '1'; });
     rulesSection.addEventListener('change', () => { rulesSection.dataset.touched = '1'; });
   }
-  // the maximum for each category is asked for the ticked categories; "No category" asks for one maximum for everybody
-  const syncMaxFields = () => {
-    const none = editForm.querySelector('[data-cat="OPEN"]');
-    const single = editForm.querySelector('[data-max-single]');
-    const cats = editForm.querySelector('[data-max-cats]');
-    if (single && cats) { single.hidden = !(none && none.checked); cats.hidden = !!(none && none.checked); }
-    editForm.querySelectorAll('[data-catmax-wrap]').forEach((wrap) => {
-      const box = editForm.querySelector(`[data-cat="${wrap.dataset.catmaxWrap}"]`);
-      wrap.hidden = !(box && box.checked);
-    });
-  };
-  editForm.querySelectorAll('[data-cat]').forEach((box) => box.addEventListener('change', syncMaxFields));
   const noCategoryBox = editForm.querySelector('[data-cat="OPEN"]');
   if (noCategoryBox) {
     noCategoryBox.addEventListener('change', () => {
@@ -857,7 +831,7 @@ function wireSeason(card) {
     const waiting = rows.filter((r) => r.substitute).length;
     const subNoun = (n) => nounFor(n, 'náhradník', 'náhradníci', 'náhradníkov', 'substitute', 'substitutes');
     const capLine = (() => {
-      if (!IS_TOURNAMENT && !season.categories.includes('OPEN')) {
+      if (!IS_TOURNAMENT && !season.categories.includes('OPEN') && !season.maxPlayers && Object.keys(season.categoryMax || {}).length) {
         return CATEGORIES.filter(([k]) => season.categories.includes(k)).map(([k, label]) => {
           const mine = rows.filter((r) => r.category === k);
           const w = mine.filter((r) => r.substitute).length;

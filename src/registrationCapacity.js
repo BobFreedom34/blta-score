@@ -2,9 +2,10 @@
 // the order of the registrations decides (who registered first is in), so the moment somebody drops out - or the maximum is raised - the first substitute is in,
 // whatever way it came about.
 //
-//   - a tournament, or a season played without categories: one maximum for everybody (max_players; for a doubles tournament it counts PAIRS: both partners may
-//     register the same pair, that is one place)
-//   - a season where the player chooses a category when registering: a maximum for each category (category_max, JSON { ELITE: 16, ... })
+//   - one maximum for everybody (max_players): a tournament, a season played without categories, and a season where the player chooses a category when registering
+//     (the categories share the places; for a doubles tournament it counts PAIRS: both partners may register the same pair, that is one place)
+//   - a season made before the common maximum existed, that has a maximum for each category (category_max, JSON { ELITE: 16, ... }) and none for the whole season, keeps them
+//     (the categories do not use each other's places) until a common maximum is saved (which replaces them, see PATCH /api/seasons/:id)
 //   - no maximum (NULL / not set): everybody is in (events made before the maximum existed)
 const db = require('./db');
 const nameMatch = require('./nameMatch');
@@ -13,6 +14,8 @@ const CATEGORY_KEYS = ['ELITE', 'NEXT_GEN', 'NOVICE'];
 
 // a season where the registration form asks for the category (a tournament never does: the organiser sorts the players afterwards)
 const choosesCategory = (season) => season.kind !== 'TOURNAMENT' && season.categories !== 'OPEN';
+// the old way: a maximum for each category, kept while a season has those and no maximum for the whole season
+const perCategory = (season) => choosesCategory(season) && !season.max_players && Object.keys(categoryMaxOf(season)).length > 0;
 const isDoubles = (season) => season.kind === 'TOURNAMENT' && season.play_type === 'DOUBLES';
 
 // the maximums of a season's categories as { ELITE: 16, ... } (only the set ones)
@@ -26,13 +29,13 @@ function categoryMaxOf(season) {
 
 // the maximum for a registration in this category (null = none set)
 function limitFor(season, category) {
-  if (choosesCategory(season)) return categoryMaxOf(season)[category] || null;
+  if (perCategory(season)) return categoryMaxOf(season)[category] || null;
   return season.max_players || null;
 }
 
 // is a maximum set for everything the season is played in (what "always enter it" asks for)? A season with categories needs one for each of its categories.
 function limitsComplete(season, categoryList) {
-  if (choosesCategory(season)) {
+  if (perCategory(season)) {
     const max = categoryMaxOf(season);
     return (categoryList || []).length > 0 && categoryList.every((c) => max[c] > 0);
   }
@@ -57,7 +60,7 @@ function slotsOf(season) {
   return slots;
 }
 
-const groupOf = (season, category) => (choosesCategory(season) ? category : '');
+const groupOf = (season, category) => (perCategory(season) ? category : '');
 
 // every registration of the season -> { substitute, position }: position 1, 2, 3 ... among the substitutes of its group (null for a player who is in)
 function standing(season) {
@@ -102,7 +105,7 @@ function counts(season) {
   const state = standing(season);
   const slots = slotsOf(season);
   const out = {};
-  const keys = choosesCategory(season) ? CATEGORY_KEYS : [''];
+  const keys = perCategory(season) ? CATEGORY_KEYS : [''];
   keys.forEach((k) => {
     const mine = slots.filter((s) => groupOf(season, s.category) === k);
     const waiting = mine.filter((s) => state.get(s.ids[0]).substitute).length;
@@ -111,4 +114,4 @@ function counts(season) {
   return out;
 }
 
-module.exports = { CATEGORY_KEYS, choosesCategory, isDoubles, categoryMaxOf, limitFor, limitsComplete, standing, substituteIds, wouldWait, counts };
+module.exports = { CATEGORY_KEYS, choosesCategory, perCategory, isDoubles, categoryMaxOf, limitFor, limitsComplete, standing, substituteIds, wouldWait, counts };
