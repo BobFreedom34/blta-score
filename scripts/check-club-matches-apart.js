@@ -158,7 +158,7 @@ test('the page side: the tournament page has a Zápasy tab with the matches as c
   const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
   const season = pub('js/season.js');
   assert.ok(season.includes("key: 'matches'") && season.includes('function matchesHtml') && season.includes('match-card'), 'the Zápasy tab');
-  assert.ok(/\['info', 'courts', 'tables', 'playoff', 'matches', 'final', 'gallery'\]/.test(season), 'a tournament has the tab');
+  assert.ok(/\['info', 'courts', 'tables', 'playoff', 'matches', 'final', 'gallery', 'live'\]/.test(season), 'a tournament has the tab (the Live video tab is the last one)');
   assert.ok(season.includes('loadAllMatches') && season.includes('/matches?seasonId='), 'it loads the matches of the tournament');
   const i18n = pub('js/i18n.js');
   for (const key of ['season.navMatches', 'season.empty.matches']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);

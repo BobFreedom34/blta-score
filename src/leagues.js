@@ -7,6 +7,7 @@
 const db = require('./db');
 const auth = require('./auth');
 const nameMatch = require('./nameMatch');
+const tournamentSchedule = require('./tournamentSchedule'); // (a tournament that has started takes no registration)
 
 const DEFAULT_LEAGUE_ID = 1;
 // ACTIVE_SEEKING is both at once: the league is running (open to search engines, counted as running) and still looks for an organiser (the card shows the
@@ -114,7 +115,8 @@ function withPaths(season, tournament = false) {
 // The season a visitor can register to now: the one of the city whose registration is open (not ended) that starts soonest from today on,
 // else the one that is running. null when no registration is open anywhere in the city.
 function registrationSeasonOf(leagueId, today) {
-  const open = db.prepare("SELECT name, slug, kind, start_date FROM seasons WHERE league_id = ? AND organisation_id IS NULL AND registration_open = 1 AND slug IS NOT NULL AND (end_date IS NULL OR end_date = '' OR end_date >= ?)").all(leagueId, today);
+  const open = db.prepare("SELECT name, slug, kind, start_date, day_start, day_times FROM seasons WHERE league_id = ? AND organisation_id IS NULL AND registration_open = 1 AND slug IS NOT NULL AND (end_date IS NULL OR end_date = '' OR end_date >= ?)").all(leagueId, today)
+    .filter((s) => !tournamentSchedule.tournamentStarted(s)); // a tournament that has started takes no registration
   if (!open.length) return null;
   const coming = open.filter((s) => s.start_date && s.start_date > today).sort((a, b) => (a.start_date < b.start_date ? -1 : 1));
   const pick = coming[0] || open.sort((a, b) => ((a.start_date || '') < (b.start_date || '') ? 1 : -1))[0];
@@ -198,7 +200,7 @@ function serialize(row, { admin = false } = {}) {
     ...playedOf(row.id, today),
     seasons: counts.seasons,
     venues: counts.venues,
-    registrationOpen: !!db.prepare('SELECT 1 FROM seasons WHERE league_id = ? AND organisation_id IS NULL AND registration_open = 1 AND (end_date IS NULL OR end_date >= ?) LIMIT 1').get(row.id, today),
+    registrationOpen: db.prepare('SELECT kind, start_date, day_start, day_times FROM seasons WHERE league_id = ? AND organisation_id IS NULL AND registration_open = 1 AND (end_date IS NULL OR end_date >= ?)').all(row.id, today).some((s) => !tournamentSchedule.tournamentStarted(s)),
     // where the Registration button of the national page leads: the season that really takes registrations
     registrationSeason: registrationSeasonOf(row.id, today),
     currentSeason: currentSeasonOf(row.id, today),

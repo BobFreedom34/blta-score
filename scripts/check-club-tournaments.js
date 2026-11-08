@@ -89,7 +89,7 @@ test('a club tournament is made with the basics only (the window has no planning
   const saved = await patch({ matchMinutes: 60, dayStart: '08:30', dayEnd: '18:00', restMinutes: 5, maxMatchesPerDay: 3, autoSchedule: false, courtCount: 4 });
   assert.strictEqual(saved.status, 200, JSON.stringify(saved.json));
   assert.deepStrictEqual({ ...planningOf(made.json.id) }, { m: 60, s: '08:30', e: '18:00', r: 5, x: 3, a: 0, c: 4 });
-  assert.deepStrictEqual(saved.json.planning, { matchMinutes: 60, dayStart: '08:30', dayEnd: '18:00', restMinutes: 5, autoSchedule: false });
+  assert.deepStrictEqual(saved.json.planning, { matchMinutes: 60, dayStart: '08:30', dayEnd: '18:00', dayTimes: {}, restMinutes: 5, autoSchedule: false });
   for (const bad of [{ matchMinutes: 10 }, { restMinutes: 999 }, { dayStart: '9' }, { dayStart: '20:00', dayEnd: '08:00' }]) {
     const r = await patch({ entryFee: '99 €', ...bad });
     assert.strictEqual(r.status, 400, `${JSON.stringify(bad)}: ${JSON.stringify(r.json)}`);

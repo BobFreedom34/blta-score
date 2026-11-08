@@ -110,10 +110,16 @@ const csNarrow = window.matchMedia ? window.matchMedia('(max-width: 700px)') : n
 if (csNarrow && csNarrow.addEventListener) csNarrow.addEventListener('change', () => { if (typeof csState !== 'undefined' && csState && csState.host && csState.host.isConnected) csRender(); });
 const csPerRow = () => (csNarrow && csNarrow.matches ? 2 : 3);
 
+// the playing window of one day of the tournament { start, end }: its own times (set in the Backend) or the general ones
+function csDayWindow(settings, day) {
+  return (settings.dayTimes && settings.dayTimes[day]) || { start: settings.dayStart, end: settings.dayEnd };
+}
+
 function csTimelineHtml(day) {
   const { settings, matches } = csState.data;
-  const startMin = csMinutesOf(settings.dayStart);
-  const endMin = csMinutesOf(settings.dayEnd);
+  const window = csDayWindow(settings, day);
+  const startMin = csMinutesOf(window.start);
+  const endMin = csMinutesOf(window.end);
   const height = (endMin - startMin) * CS_PX;
   const hours = [];
   const lines = [];
@@ -202,6 +208,7 @@ function csAdminHtml() {
         <button type="button" class="btn btn-sm btn-outline" data-cs="settings">${tl('Uložiť nastavenia', 'Save settings')}</button>
       </div>
       <div class="cs-admin-row">
+        <button type="button" class="btn btn-sm btn-primary" data-cs="addmatch">+ ${tl('Pridať zápas', 'Add a match')}</button>
         <button type="button" class="btn btn-sm btn-primary" data-cs="fill">${tl('Poskladať rozvrh', 'Build the schedule')}</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="compact" title="${escapeHtml(tl('Posunie nezamknuté zápasy dopredu tam, kde sa uvoľnil čas (zápas skončil skôr, bol skrátený)', 'Moves the unlocked matches earlier where time was freed (a match ended early or was shortened)'))}">${tl('Zhustiť rozvrh', 'Compact the schedule')}</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="rebuild">${tl('Prepočítať odznova', 'Rebuild from scratch')}</button>
@@ -289,8 +296,9 @@ function csDropTarget(e) {
   const col = under.closest('.cs-col');
   if (col) {
     const colRect = col.getBoundingClientRect();
-    const startMin = csMinutesOf(settings.dayStart);
-    const endMin = csMinutesOf(settings.dayEnd);
+    const dayWindow = csDayWindow(settings, csChoice.day);
+    const startMin = csMinutesOf(dayWindow.start);
+    const endMin = csMinutesOf(dayWindow.end);
     const length = settings.matchMinutes;
     let minutes = startMin + Math.round(((e.clientY - csDrag.offY - colRect.top) / CS_PX) / CS_SNAP) * CS_SNAP;
     minutes = Math.max(startMin, Math.min(minutes, endMin - length));
@@ -328,7 +336,7 @@ function csOnPointerMove(e) {
   if (csDrag.preview) { csDrag.preview.remove(); csDrag.preview = null; }
   csState.host.querySelectorAll('.cs-tray').forEach((el) => el.classList.toggle('cs-tray-over', !!target && target.type === 'tray'));
   if (target && target.type === 'court') {
-    const startMin = csMinutesOf(csState.data.settings.dayStart);
+    const startMin = csMinutesOf(csDayWindow(csState.data.settings, csChoice.day).start);
     const preview = document.createElement('div');
     preview.className = 'cs-drop';
     preview.style.top = `${(target.minutes - startMin) * CS_PX}px`;
@@ -381,6 +389,96 @@ async function reloadCourtSchedule() {
   csRender();
 }
 
+// "+ Pridať zápas": a match added by hand to a group (or Swiss round) of the tournament, for the organiser (src/tournamentMatches.js). A court and a time are optional: without
+// them the planner places it. A rematch or a second match of a player in the same round is refused by the server until "aj keď už hrali" is ticked.
+async function csOpenAddMatch() {
+  let opts;
+  try { opts = await api(`/seasons/${csState.season.id}/match-options`); } catch (err) { toast(err.message); return; }
+  if (!opts.groups.length) { toast(tl('Turnaj nemá skupinu ani švajčiarske kolo, do ktorého by sa dal pridať zápas.', 'The tournament has no group or Swiss round to add a match to.')); return; }
+  const old = document.getElementById('cs-addmatch-modal');
+  if (old) old.remove();
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.id = 'cs-addmatch-modal';
+  modal.style.display = 'flex';
+  const dayLabel = (d) => { const [y, m, dd] = d.split('-'); return `${Number(dd)}. ${Number(m)}. ${y}`; };
+  modal.innerHTML = `
+    <div class="modal cs-addmatch">
+      <button type="button" class="close" data-am="close" aria-label="Close">&times;</button>
+      <h3 style="margin-top:0">${escapeHtml(tl('Pridať zápas do turnaja', 'Add a match to the tournament'))}</h3>
+      <form id="cs-am-form">
+        <div class="field"${opts.groups.length > 1 ? '' : ' hidden'}>
+          <label for="cs-am-group">${escapeHtml(tl('Skupina', 'Group'))}</label>
+          <select id="cs-am-group">${opts.groups.map((g) => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('')}</select>
+        </div>
+        <div class="field">
+          <label for="cs-am-round">${escapeHtml(tl('Kolo', 'Round'))}</label>
+          <input type="number" id="cs-am-round" min="1" max="99" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label for="cs-am-p1">${escapeHtml(tl('Hráči', 'Players'))}</label>
+          <div style="display:flex;gap:8px">
+            <select id="cs-am-p1" style="flex:1" aria-label="${escapeHtml(tl('Hráč 1', 'Player 1'))}"></select>
+            <select id="cs-am-p2" style="flex:1" aria-label="${escapeHtml(tl('Hráč 2', 'Player 2'))}"></select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="cs-am-court">${escapeHtml(tl('Kurt', 'Court'))} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${escapeHtml(tl('(voliteľné)', '(optional)'))}</span></label>
+          <select id="cs-am-court"><option value="">${escapeHtml(tl('Nechať na plánovač', 'Let the planner place it'))}</option>${Array.from({ length: opts.courtCount }, (_, i) => `<option value="${i + 1}">${escapeHtml(tl('Kurt', 'Court'))} ${i + 1}</option>`).join('')}</select>
+        </div>
+        <div class="field" id="cs-am-when" hidden>
+          <label for="cs-am-day">${escapeHtml(tl('Deň a čas', 'Day and time'))}</label>
+          <div style="display:flex;gap:8px">
+            <select id="cs-am-day" style="flex:1">${opts.days.map((d) => `<option value="${d}">${escapeHtml(dayLabel(d))}</option>`).join('')}</select>
+            <input type="text" inputmode="numeric" class="time-input" placeholder="HH:MM" maxlength="5" autocomplete="off" id="cs-am-time" value="09:00" style="flex:1">
+          </div>
+        </div>
+        <div class="field" id="cs-am-force-row" hidden>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:600"><input type="checkbox" id="cs-am-force" style="width:auto"> ${escapeHtml(tl('aj keď už hrali (pridať napriek upozorneniu)', 'even if they have played (add it despite the warning)'))}</label>
+        </div>
+        <div id="cs-am-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">${escapeHtml(tl('Pridať zápas', 'Add the match'))}</button>
+      </form>
+    </div>`;
+  document.body.appendChild(modal);
+  const $ = (id) => document.getElementById(id);
+  const groupOf = () => opts.groups.find((g) => g.id === Number($('cs-am-group').value)) || opts.groups[0];
+  const fillPlayers = () => {
+    const g = groupOf();
+    const list = g.players.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+    $('cs-am-p1').innerHTML = `<option value="">—</option>${list}`;
+    $('cs-am-p2').innerHTML = `<option value="">—</option>${list}`;
+    $('cs-am-round').value = g.currentRound;
+  };
+  fillPlayers();
+  $('cs-am-group').addEventListener('change', fillPlayers);
+  $('cs-am-court').addEventListener('change', () => { $('cs-am-when').hidden = !$('cs-am-court').value; });
+  const close = () => modal.remove();
+  modal.addEventListener('click', (e) => { if (e.target === modal || e.target.closest('[data-am="close"]')) close(); });
+  $('cs-am-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('cs-am-error').textContent = '';
+    const court = $('cs-am-court').value;
+    const body = { groupId: groupOf().id, round: Number($('cs-am-round').value), player1Id: Number($('cs-am-p1').value) || null, player2Id: Number($('cs-am-p2').value) || null, force: $('cs-am-force').checked };
+    if (court) {
+      body.courtNo = Number(court);
+      const time = $('cs-am-time').value.trim();
+      if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(time)) { $('cs-am-error').textContent = tl('Čas zadaj ako HH:MM, napr. 14:30.', 'Enter the time as HH:MM, for example 14:30.'); return; }
+      body.scheduledAt = new Date(`${$('cs-am-day').value}T${time.padStart(5, '0')}:00`).toISOString();
+    }
+    try {
+      const done = await api(`/seasons/${csState.season.id}/matches`, { method: 'POST', body });
+      close();
+      toast(done.warnings && done.warnings.length ? done.warnings.join(' ') : (done.placed ? tl('Zápas pridaný', 'Match added') : tl('Zápas pridaný — je v „Nerozvrhnuté“', 'Match added — it is in "Unscheduled"')));
+      await reloadCourtSchedule();
+    } catch (err) {
+      $('cs-am-error').textContent = err.message;
+      // a rematch, or a second match of a player in this round: the organiser may add it anyway
+      $('cs-am-force-row').hidden = !(err.data && (err.data.code === 'REMATCH' || err.data.code === 'SAME_ROUND'));
+    }
+  });
+}
+
 async function initCourtSchedule(host, season) {
   host.innerHTML = `<div class="sv-empty">${escapeHtml(t('common.loading'))}</div>`;
   const [data, admin] = await Promise.all([api(`/seasons/${season.id}/schedule`), checkAdmin()]);
@@ -424,6 +522,8 @@ async function initCourtSchedule(host, season) {
         autoSchedule: document.getElementById('cs-auto').checked,
       };
       csApply(api(`${base}/settings`, { method: 'PATCH', body }), tl('Nastavenia uložené', 'Settings saved'));
+    } else if (kind === 'addmatch') {
+      csOpenAddMatch();
     } else if (kind === 'fill') {
       csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'fill' } }), tl('Rozvrh poskladaný', 'Schedule built'));
     } else if (kind === 'compact') {

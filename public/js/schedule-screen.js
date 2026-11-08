@@ -58,8 +58,9 @@ function stcTimelineHtml(day) {
   const { settings } = stcData;
   const matches = stcMatchesOfDay(day);
   // the time that is shown: from the first match to the last one of the day (in half hours), not the whole opening time of the courts
-  let startMin = csMinutesOf(settings.dayStart);
-  let endMin = csMinutesOf(settings.dayEnd);
+  const dayWindow = csDayWindow(settings, day);
+  let startMin = csMinutesOf(dayWindow.start);
+  let endMin = csMinutesOf(dayWindow.end);
   if (matches.length) {
     const starts = matches.map((m) => csParts(csStartOf(m)).minutes);
     const ends = matches.map((m) => csParts(m.endsAt).minutes);

@@ -364,6 +364,61 @@ function readCommunityPoints(form) {
 // The most players that can register (see src/registrationCapacity.js): ONE maximum for the whole event (a tournament or a season; the categories of a season share
 // the places). maxBody(form) is what the form says, in the shape the server takes; maxMissing(form) is true while it is empty (it has to be there whenever the
 // registration is open).
+// The playing times of each day of a tournament (from its start date to its end date, at most 14 days): a day with both times typed has its own playing window, an empty
+// day uses the general times above (src/tournamentSchedule.js). dayTimesHtml draws the rows, readDayTimes(form) -> { "2027-05-02": { start, end } } of the filled rows (a row
+// with only one time is an error), syncDayTimes(form) redraws the rows when the dates change and keeps what was typed.
+function tournamentDays(start, end) {
+  const isDay = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
+  if (!isDay(start)) return [];
+  const last = isDay(end) && end >= start ? end : start;
+  const out = [];
+  const d = new Date(`${start}T00:00:00Z`);
+  while (out.length < 14) {
+    const day = d.toISOString().slice(0, 10);
+    if (day > last) break;
+    out.push(day);
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return out;
+}
+function dayTimesHtml(start, end, values, generalStart, generalEnd) {
+  const days = tournamentDays(start, end);
+  if (!days.length) return '';
+  const label = (day) => new Date(`${day}T12:00:00Z`).toLocaleDateString(tl('sk-SK', 'en-GB'), { weekday: 'short', day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  const rows = days.map((day) => {
+    const v = values[day] || {};
+    return `<div class="day-time-row" data-day-row="${day}">
+      <b>${escapeHtml(label(day))}</b>
+      <label>${tl('Začiatok', 'Start')}<input type="time" data-day-time="start" value="${escapeHtml(v.start || '')}"></label>
+      <label>${tl('Koniec', 'End')}<input type="time" data-day-time="end" value="${escapeHtml(v.end || '')}"></label>
+    </div>`;
+  }).join('');
+  return `<div class="day-times-title">${tl('Čas hrania pre jednotlivé dni', 'Playing times of each day')}</div>
+    <p class="sa-hint" style="margin:4px 0 8px">${tl('Prázdny deň používa všeobecný čas hore', 'An empty day uses the general times above')} (${escapeHtml(generalStart)}–${escapeHtml(generalEnd)}).</p>${rows}`;
+}
+function readDayTimes(form) {
+  const out = {};
+  form.querySelectorAll('[data-day-row]').forEach((row) => {
+    const start = row.querySelector('[data-day-time="start"]').value;
+    const end = row.querySelector('[data-day-time="end"]').value;
+    if (!start && !end) return;
+    if (!start || !end) throw new Error(tl('Dni ' + row.dataset.dayRow + ' zadaj začiatok aj koniec (alebo oboje nechaj prázdne).', 'For ' + row.dataset.dayRow + ' enter both the start and the end (or leave both empty).'));
+    out[row.dataset.dayRow] = { start, end };
+  });
+  return out;
+}
+function syncDayTimes(form) {
+  const box = form.querySelector('[data-day-times]');
+  if (!box) return;
+  const kept = box._kept || {};
+  box.querySelectorAll('[data-day-row]').forEach((row) => {
+    kept[row.dataset.dayRow] = { start: row.querySelector('[data-day-time="start"]').value, end: row.querySelector('[data-day-time="end"]').value };
+  });
+  box._kept = kept;
+  const field = (name) => (form.querySelector(`[data-field="${name}"]`) || {}).value;
+  box.innerHTML = dayTimesHtml(field('startDate'), field('endDate'), kept, field('dayStart') || '09:00', field('dayEnd') || '20:00');
+}
+
 function maxBody(form) {
   const one = form.querySelector('[data-field="maxPlayers"]');
   return one ? { maxPlayers: one.value === '' ? null : Number(one.value) } : {};
@@ -427,6 +482,7 @@ function seasonCardHtml(s) {
                 ${field(tl('Ceny pre víťazov', 'Prizes for the winners'), input('prizeMoney', s.prizeMoney || '', 'maxlength="120"'))}
                 ${field(tl('Dátum žrebovania', 'Draw date'), input('drawDate', s.drawDate || '', 'type="date"'))}
                 <label class="sa-field sa-check"><input type="checkbox" data-field="registrationOpen"${s.registrationOpen ? ' checked' : ''}> ${tl('Registrácia je otvorená', 'Registration is open')}</label>
+                ${s.registrationStarted ? `<span class="sa-hint sa-full">${tl('Turnaj sa už začal, preto sa verejne nedá registrovať, aj keď je registrácia zapnutá. Hráča môžeš pridať ručne.', 'The tournament has already started, so nobody can register publicly even though the registration is on. You can still add a player by hand.')}</span>` : ''}
                 <div class="sa-field sa-full">
                   <label class="sa-field">${s.playType === 'DOUBLES' ? tl('Maximálny počet párov *', 'Maximum number of pairs *') : tl('Maximálny počet hráčov *', 'Maximum number of players *')}${input('maxPlayers', s.maxPlayers || '', `type="number" min="1" max="2000" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 16', 'e.g. 16'))}"`)}</label>
                 </div>
@@ -451,6 +507,7 @@ function seasonCardHtml(s) {
                 ${field(tl('Oddych hráča (min)', 'Player rest (min)'), input('restMinutes', s.planning.restMinutes, 'type="number" min="0" max="240" step="5" inputmode="numeric"'))}
                 ${field(tl('Začiatok dňa', 'Start of the day'), input('dayStart', s.planning.dayStart, 'type="time"'))}
                 ${field(tl('Koniec dňa', 'End of the day'), input('dayEnd', s.planning.dayEnd, 'type="time"'))}
+                <div class="sa-field sa-full" data-day-times>${dayTimesHtml(s.startDate, s.endDate, s.planning.dayTimes || {}, s.planning.dayStart, s.planning.dayEnd)}</div>
                 <label class="sa-field sa-check"><input type="checkbox" data-field="autoSchedule"${s.planning.autoSchedule ? ' checked' : ''}> ${tl('Rozvrh skladá systém sám', 'The system builds the schedule itself')}</label>
               </div>
             </section>` : ''}
@@ -588,6 +645,11 @@ function wireSeason(card) {
 
   // "Bez kategórie" switches the three categories off (and back on when it is unticked): a tournament is played in some of the categories or in none
   const editForm = card.querySelector('.season-edit-form'); // (only the boxes of this form: the draw tab has controls with a data-cat of their own)
+  // the rows of the playing times follow the dates of the tournament
+  ['startDate', 'endDate', 'dayStart', 'dayEnd'].forEach((name) => {
+    const input = editForm.querySelector(`[data-field="${name}"]`);
+    if (input && editForm.querySelector('[data-day-times]')) input.addEventListener('change', () => syncDayTimes(editForm));
+  });
   // a tournament: the live video links follow the number of courts
   const courtCountInput = editForm.querySelector('[data-field="courtCount"]');
   if (courtCountInput) courtCountInput.addEventListener('input', () => syncCourtStreamFields(editForm, courtCountInput.value));
@@ -619,7 +681,7 @@ function wireSeason(card) {
       // a season is played in at least one category (an empty choice would mean "all" to the server)
       if (!IS_TOURNAMENT && e.target.querySelectorAll('[data-cat]').length && ![...e.target.querySelectorAll('[data-cat]')].some((b) => b.checked)) throw new Error(tl('Vyber aspoň jednu kategóriu.', 'Choose at least one category.'));
       if (e.target.querySelector('[data-field="registrationOpen"]').checked && maxMissing(e.target)) throw new Error(MAX_MISSING_TEXT());
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, ...maxBody(e.target), unregisterHours: f('unregisterHours') === '' ? null : Number(f('unregisterHours')), drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(CLUB ? { communityPoints: readCommunityPoints(e.target) } : {}), ...(IS_TOURNAMENT ? { venue: f('venue'), ...(courtsTouched ? { courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), courtStreams: readCourtStreams(e.target) } : {}), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), matchMinutes: Number(f('matchMinutes')), restMinutes: Number(f('restMinutes')), dayStart: f('dayStart'), dayEnd: f('dayEnd'), autoSchedule: e.target.querySelector('[data-field="autoSchedule"]').checked } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, ...maxBody(e.target), unregisterHours: f('unregisterHours') === '' ? null : Number(f('unregisterHours')), drawDate: f('drawDate') || null, galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(CLUB ? { communityPoints: readCommunityPoints(e.target) } : {}), ...(IS_TOURNAMENT ? { venue: f('venue'), ...(courtsTouched ? { courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), courtStreams: readCourtStreams(e.target) } : {}), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), matchMinutes: Number(f('matchMinutes')), restMinutes: Number(f('restMinutes')), dayStart: f('dayStart'), dayEnd: f('dayEnd'), dayTimes: readDayTimes(e.target), autoSchedule: e.target.querySelector('[data-field="autoSchedule"]').checked } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
       toast(tl('Uložené', 'Saved'));
       await load();
     } catch (err) { fail(err); }

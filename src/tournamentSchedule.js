@@ -54,16 +54,40 @@ function dayOf(utcMs) {
 
 const validTime = (v) => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 
+// the playing times a tournament typed for single days: { "2027-05-02": { start, end } } (only valid ones; the other days use the general times)
+function ownDayTimesOf(season) {
+  let raw = {};
+  try { raw = JSON.parse(season.day_times || '{}') || {}; } catch { raw = {}; }
+  const out = {};
+  Object.keys(raw).forEach((day) => {
+    const t = raw[day];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day) && t && validTime(t.start) && validTime(t.end) && t.start < t.end) out[day] = { start: t.start, end: t.end };
+  });
+  return out;
+}
+
 function settingsOf(season) {
+  const dayStart = validTime(season.day_start) ? season.day_start : '09:00';
+  const dayEnd = validTime(season.day_end) ? season.day_end : '20:00';
+  const days = daysOf(season);
+  // only the days the tournament has now: times typed for a day before the dates were moved are not served, not checked and not stored again
+  const ownAll = ownDayTimesOf(season);
+  const ownDayTimes = {};
+  Object.keys(ownAll).forEach((day) => { if (!days.length || days.includes(day)) ownDayTimes[day] = ownAll[day]; });
+  // the playing window of EVERY day of the tournament: its own times when it has some, else the general ones
+  const dayTimes = {};
+  days.forEach((day) => { dayTimes[day] = ownDayTimes[day] || { start: dayStart, end: dayEnd }; });
   return {
     courtCount: season.court_count || 0,
     matchMinutes: season.match_minutes || 90,
-    dayStart: validTime(season.day_start) ? season.day_start : '09:00',
-    dayEnd: validTime(season.day_end) ? season.day_end : '20:00',
+    dayStart,
+    dayEnd,
+    dayTimes,
+    ownDayTimes,
     restMinutes: season.rest_minutes === null || season.rest_minutes === undefined ? 30 : season.rest_minutes,
     autoSchedule: season.auto_schedule === 0 ? false : true,
     maxPerDay: season.max_matches_per_day || 0,
-    days: daysOf(season),
+    days,
     timezone: TZ,
   };
 }
@@ -86,6 +110,19 @@ function readSettings(season, body) {
     next.dayEnd = body.dayEnd;
   }
   if (next.dayStart >= next.dayEnd) return { error: 'The playing day must end after it starts' };
+  // the times of single days: { "2027-05-02": { start, end } } — a day has both or none, the end is after the start (the whole object replaces the typed ones)
+  if (body.dayTimes !== undefined) {
+    if (!body.dayTimes || typeof body.dayTimes !== 'object' || Array.isArray(body.dayTimes)) return { error: 'dayTimes must be an object like { "2027-05-02": { "start": "14:00", "end": "18:00" } }' };
+    const own = {};
+    for (const [day, t] of Object.entries(body.dayTimes)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: 'A day must look like 2027-05-02' };
+      if (!t || typeof t !== 'object' || !validTime(t.start) || !validTime(t.end)) return { error: `${day}: enter both the start and the end of the playing day, like 09:00` };
+      if (t.start >= t.end) return { error: `${day}: the playing day must end after it starts` };
+      own[day] = { start: t.start, end: t.end };
+    }
+    next.ownDayTimes = {};
+    Object.keys(own).forEach((day) => { if (!s.days.length || s.days.includes(day)) next.ownDayTimes[day] = own[day]; });
+  }
   if (body.restMinutes !== undefined) {
     next.restMinutes = Number(body.restMinutes);
     if (!Number.isInteger(next.restMinutes) || next.restMinutes < 0 || next.restMinutes > 240) return { error: 'The rest between matches must be 0 to 240 minutes' };
@@ -96,13 +133,16 @@ function readSettings(season, body) {
     if (!Number.isInteger(next.maxPerDay) || next.maxPerDay < 0 || next.maxPerDay > 10) return { error: 'The most matches a player may play in a day must be 0 (no limit) to 10' };
   }
   if ((toMinutes(next.dayEnd) - toMinutes(next.dayStart)) < next.matchMinutes) return { error: 'The playing day is shorter than one match' };
+  const tooShort = Object.keys(next.ownDayTimes || {}).find((day) => (toMinutes(next.ownDayTimes[day].end) - toMinutes(next.ownDayTimes[day].start)) < next.matchMinutes);
+  if (tooShort) return { error: `${tooShort}: the playing day is shorter than one match (change the playing times of that day in the tournament form in the Backend)` };
   return { next };
 }
 
 // writes checked settings (the `next` of readSettings) to a tournament
 function storeSettings(seasonId, next) {
-  db.prepare('UPDATE seasons SET match_minutes = ?, day_start = ?, day_end = ?, rest_minutes = ?, auto_schedule = ?, max_matches_per_day = ? WHERE id = ?')
-    .run(next.matchMinutes, next.dayStart, next.dayEnd, next.restMinutes, next.autoSchedule ? 1 : 0, next.maxPerDay, seasonId);
+  const own = next.ownDayTimes || {};
+  db.prepare('UPDATE seasons SET match_minutes = ?, day_start = ?, day_end = ?, day_times = ?, rest_minutes = ?, auto_schedule = ?, max_matches_per_day = ? WHERE id = ?')
+    .run(next.matchMinutes, next.dayStart, next.dayEnd, Object.keys(own).length ? JSON.stringify(own) : '', next.restMinutes, next.autoSchedule ? 1 : 0, next.maxPerDay, seasonId);
 }
 
 // validates and stores { matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule, maxPerDay }; returns { error } or { ok }
@@ -114,7 +154,7 @@ function saveSettings(season, body) {
 }
 
 // the keys of a request that are planning settings (a new tournament may bring them)
-const SETTING_KEYS = ['matchMinutes', 'dayStart', 'dayEnd', 'restMinutes', 'autoSchedule', 'maxPerDay'];
+const SETTING_KEYS = ['matchMinutes', 'dayStart', 'dayEnd', 'dayTimes', 'restMinutes', 'autoSchedule', 'maxPerDay'];
 
 function toMinutes(hhmm) {
   const [h, m] = hhmm.split(':').map(Number);
@@ -236,6 +276,22 @@ function getCourtLive(season, court, now = Date.now()) {
     match = { token: m.token, status: m.status, player1: { name: m.player1.name }, player2: { name: m.player2.name }, winnerId: m.winnerId, state: m.state };
   }
   return { court, tournament: season.name, match };
+}
+
+// The moment a tournament starts: the start of its first day's playing window (that day's own start time, else the general one, 09:00 unless set) — UTC ms, or null
+// without a start date. After it the public registration is closed (routes/seasons.js) and a player can no longer drop out by the deadline (unregister.js).
+function tournamentStartMs(season) {
+  if (!season || !season.start_date) return null;
+  const own = ownDayTimesOf(season)[season.start_date];
+  const time = own ? own.start : (validTime(season.day_start) ? season.day_start : '09:00');
+  return localToUtcMs(season.start_date, time);
+}
+
+// has this tournament started (the start of its first day has passed)? Anything else (a league season, no start date) never counts as started.
+function tournamentStarted(season, now = Date.now()) {
+  if (!season || season.kind !== 'TOURNAMENT') return false;
+  const start = tournamentStartMs(season);
+  return start !== null && now >= start;
 }
 
 // everything the schedule tab shows
@@ -390,7 +446,7 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
 
   const rows = loadMatches(seasonId).filter((r) => r.player1_id && r.player2_id);
   const entries = planningEntries(rows, settings, now);
-  const windows = settings.days.map((day) => [localToUtcMs(day, settings.dayStart), localToUtcMs(day, settings.dayEnd)]);
+  const windows = settings.days.map((day) => [localToUtcMs(day, settings.dayTimes[day].start), localToUtcMs(day, settings.dayTimes[day].end)]);
   const notBefore = Math.ceil(now / (GRID_MIN * MIN)) * GRID_MIN * MIN;
   const lengthOf = (r) => durationOf(r, settings);
   const update = db.prepare("UPDATE matches SET scheduled_at = ?, court_no = ?, slot_locked = ?, location = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?");
@@ -469,6 +525,8 @@ module.exports = {
   SETTING_KEYS,
   getSchedule,
   getCourtLive,
+  tournamentStartMs,
+  tournamentStarted,
   placeMatch,
   setLocked,
   setDuration,

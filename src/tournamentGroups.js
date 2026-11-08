@@ -62,14 +62,16 @@ function suggestGroups(players, options, random = Math.random) {
 // One planned match of a group (stage GROUP, tagged with its round); the pair of a doubles tournament plays with its partners.
 function insertGroupMatch(season, category, groupId, round, p1, p2, format) {
   const doubles = category === 'DOUBLES';
+  const token = crypto.randomUUID();
   db.prepare(`
     INSERT INTO matches (share_token, category, season_id, group_id, stage, round, player1_id, player2_id, is_doubles, player1b_id, player2b_id, location, scheduled_at, format, status, state, history, created_by_admin, notes)
     VALUES (?, ?, ?, ?, 'GROUP', ?, ?, ?, ?, ?, ?, '', NULL, ?, 'PLANNED', ?, '[]', 1, '')
   `).run(
-    crypto.randomUUID(), doubles || category === 'OPEN' ? 'OTHER' : category, season.id, groupId, round, p1, p2,
+    token, doubles || category === 'OPEN' ? 'OTHER' : category, season.id, groupId, round, p1, p2,
     doubles ? 1 : 0, doubles ? partnerIn(season.id, p1) : null, doubles ? partnerIn(season.id, p2) : null,
     format, JSON.stringify(engine.initState(format)),
   );
+  return token;
 }
 
 // The options of the table of a group of a Swiss draw (the byes, Buchholz first), see standings.computeGroupStandings; undefined for any other group.

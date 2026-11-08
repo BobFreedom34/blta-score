@@ -12,6 +12,7 @@ const leagues = require('../leagues');
 const communities = require('../communities');
 const clubTournaments = require('../clubTournaments');
 const clubApp = require('../clubApp');
+const tournamentSchedule = require('../tournamentSchedule');
 const seo = require('../seo');
 const seasonsRoutes = require('./seasons');
 const messagesRoutes = require('./messages');
@@ -243,7 +244,7 @@ router.get('/my-events', (req, res) => {
   if (!playerId && !everywhere) return;
   const today = new Date().toISOString().slice(0, 10);
   const rows = db.prepare(`
-    SELECT s.id, s.name, s.slug, s.kind, s.start_date, s.end_date, s.venue, s.play_type, s.categories, s.registration_open, s.created_at,
+    SELECT s.id, s.name, s.slug, s.kind, s.start_date, s.end_date, s.venue, s.play_type, s.categories, s.registration_open, s.day_start, s.day_times, s.created_at,
            o.id AS org_id, o.slug AS org_slug, o.name AS org_name, o.type AS org_type, o.logo_url AS org_logo
     FROM seasons s
     JOIN organisations o ON o.id = s.organisation_id
@@ -251,7 +252,7 @@ router.get('/my-events', (req, res) => {
     WHERE o.hidden = 0 AND o.approved = 1
   `).all(...(everywhere ? [] : [playerId])).map((r) => ({
     type: 'TOURNAMENT', kind: eventKind(r), id: r.id, name: r.name, slug: r.slug, startDate: r.start_date || null, endDate: r.end_date || null, venue: r.venue || '',
-    playType: r.play_type || 'SINGLES', categories: tournamentCategories(r), registrationOpen: !!r.registration_open, createdAt: r.created_at,
+    playType: r.play_type || 'SINGLES', categories: tournamentCategories(r), registrationOpen: !!r.registration_open && !tournamentSchedule.tournamentStarted(r), createdAt: r.created_at,
     organisation: { id: r.org_id, slug: r.org_slug, name: r.org_name, type: r.org_type, logoUrl: r.org_logo || '' },
   }));
   const over = (s) => !!(s.endDate || s.startDate) && (s.endDate || s.startDate) < today;
@@ -288,7 +289,7 @@ router.get('/feed', (req, res) => {
   const postComments = commentCountsOf(posts.map((p) => p.id));
   posts.forEach((p) => { p.reactions = postReactions.get(p.id); p.commentCount = postComments.get(p.id); });
   const tournaments = db.prepare(`
-    SELECT s.id, s.name, s.slug, s.kind, s.start_date, s.end_date, s.venue, s.play_type, s.categories, s.registration_open, s.created_at, ${orgColumns}
+    SELECT s.id, s.name, s.slug, s.kind, s.start_date, s.end_date, s.venue, s.play_type, s.categories, s.registration_open, s.day_start, s.day_times, s.created_at, ${orgColumns}
     FROM seasons s
     JOIN organisations o ON o.id = s.organisation_id
     ${member}
@@ -296,7 +297,7 @@ router.get('/feed', (req, res) => {
     ORDER BY s.created_at DESC, s.id DESC LIMIT ${POSTS_PAGE + 1}
   `).all(...args(...(cursor ? [cursor] : []))).map((r) => ({
     type: 'TOURNAMENT', kind: eventKind(r), id: r.id, name: r.name, slug: r.slug, startDate: r.start_date || null, endDate: r.end_date || null, venue: r.venue || '',
-    playType: r.play_type || 'SINGLES', categories: tournamentCategories(r), registrationOpen: !!r.registration_open, createdAt: r.created_at, organisation: orgOf(r),
+    playType: r.play_type || 'SINGLES', categories: tournamentCategories(r), registrationOpen: !!r.registration_open && !tournamentSchedule.tournamentStarted(r), createdAt: r.created_at, organisation: orgOf(r),
   }));
   const merged = [...posts, ...tournaments].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || (a.type === b.type ? b.id - a.id : (a.type === 'TOURNAMENT' ? -1 : 1)));
   const items = merged.slice(0, POSTS_PAGE);

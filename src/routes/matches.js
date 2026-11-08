@@ -991,7 +991,12 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
   if (typeof req.body.scheduledAt === 'string' || req.body.scheduledAt === null) {
     fields.scheduled_at = req.body.scheduledAt;
   }
-  if (req.body.category && CATEGORIES.includes(req.body.category)) {
+  // Only a CHANGE of the category does anything here: the edit window sends the category of the match every time, and a match of a tournament (category "Iné") must not be taken
+  // out of its tournament and group just because something else of it (the place, the time, a player) was saved.
+  if (req.body.category && CATEGORIES.includes(req.body.category) && req.body.category !== row.category) {
+    // a match of a tournament stays in it: its category is the tournament's own (Iné) and a different one would leave it without its tournament and group
+    const inTournament = row.season_id && db.prepare("SELECT 1 FROM seasons WHERE id = ? AND kind = 'TOURNAMENT'").get(row.season_id);
+    if (inTournament) return res.status(400).json({ error: 'A match of a tournament keeps its tournament: its category cannot be changed' });
     if (BLTA_CATEGORIES.includes(req.body.category) && req.body.category !== row.category && !isAdmin(req)) {
       return res.status(403).json({ error: 'Only an admin can move a match to the ELITE, NEXT GEN or NOVICE category' });
     }

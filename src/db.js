@@ -1519,6 +1519,8 @@ if (!seasonInfoColumns.includes('court_streams')) db.exec("ALTER TABLE seasons A
   ['match_minutes', 'INTEGER NOT NULL DEFAULT 90'],
   ['day_start', "TEXT NOT NULL DEFAULT '09:00'"],
   ['day_end', "TEXT NOT NULL DEFAULT '20:00'"],
+  // the playing times of single days that differ from day_start / day_end: JSON { "2027-05-02": { "start": "14:00", "end": "18:00" } } (only those days; '' = none)
+  ['day_times', "TEXT NOT NULL DEFAULT ''"],
   ['rest_minutes', 'INTEGER NOT NULL DEFAULT 30'],
   ['auto_schedule', 'INTEGER NOT NULL DEFAULT 1'],
   // the most matches one player may play in one day of the tournament, 0 = no limit

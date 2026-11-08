@@ -9,8 +9,8 @@ const HOUR = 3600 * 1000;
 
 function startMs(season) {
   if (!season || !season.start_date) return null;
-  const time = season.kind === 'TOURNAMENT' && /^([01]\d|2[0-3]):[0-5]\d$/.test(season.day_start || '') ? season.day_start : '00:00';
-  return tournamentSchedule.localToUtcMs(season.start_date, time);
+  if (season.kind === 'TOURNAMENT') return tournamentSchedule.tournamentStartMs(season); // the first day's playing window: its own start time, else the general one
+  return tournamentSchedule.localToUtcMs(season.start_date, '00:00');
 }
 
 // the moment after which he cannot drop out any more (UTC milliseconds), or null when the player cannot drop out at all

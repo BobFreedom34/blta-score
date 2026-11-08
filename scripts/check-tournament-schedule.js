@@ -308,10 +308,10 @@ test('the planning of a tournament is saved with its page (PATCH): stored as sen
   const made = await call('POST', '/api/seasons', { name: 'Planned Cup 2099', kind: 'TOURNAMENT', startDate: '2099-07-01', endDate: '2099-07-01' });
   assert.strictEqual(made.status, 201, made.text);
   const seasonNow = async () => (await call('GET', `/api/seasons/${made.json.id}`)).json;
-  assert.deepStrictEqual((await seasonNow()).planning, { matchMinutes: 90, dayStart: '09:00', dayEnd: '20:00', restMinutes: 30, autoSchedule: true }, 'a new tournament has the defaults');
+  assert.deepStrictEqual((await seasonNow()).planning, { matchMinutes: 90, dayStart: '09:00', dayEnd: '20:00', dayTimes: {}, restMinutes: 30, autoSchedule: true }, 'a new tournament has the defaults (and no times typed for single days)');
   const saved = await call('PATCH', `/api/seasons/${made.json.id}`, { matchMinutes: 75, dayStart: '10:00', dayEnd: '19:30', restMinutes: 5, autoSchedule: false, maxMatchesPerDay: 2, courtCount: 3 });
   assert.strictEqual(saved.status, 200, saved.text);
-  assert.deepStrictEqual(saved.json.planning, { matchMinutes: 75, dayStart: '10:00', dayEnd: '19:30', restMinutes: 5, autoSchedule: false });
+  assert.deepStrictEqual(saved.json.planning, { matchMinutes: 75, dayStart: '10:00', dayEnd: '19:30', dayTimes: {}, restMinutes: 5, autoSchedule: false });
   assert.deepStrictEqual([saved.json.courtCount, saved.json.maxMatchesPerDay], [3, 2], 'the courts and the daily limit are saved beside it, the limit is not written over');
   const s = (await call('GET', `/api/seasons/${made.json.id}/schedule`, undefined, { admin: false })).json.settings;
   assert.deepStrictEqual([s.matchMinutes, s.dayStart, s.dayEnd, s.restMinutes, s.maxPerDay, s.autoSchedule, s.courtCount], [75, '10:00', '19:30', 5, 2, false, 3], 'the court schedule works with the same numbers');

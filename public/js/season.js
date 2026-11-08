@@ -164,7 +164,7 @@ function actionsHtml(status) {
         : `<span class="sv-btn reg-on static">${escapeHtml(t(mine.substitute ? 'season.registeredSub' : 'season.registeredNote'))}</span>`;
       buttons.push(`<span class="home-reg-wrap sv-reg-wrap" id="sv-reg-wrap">${main}<button type="button" class="sv-btn reg-on reg-info" id="sv-info" aria-label="${escapeHtml(t('home.infoLabel'))}" aria-describedby="sv-tip" aria-expanded="false"><i>i</i></button><span class="home-tip" id="sv-tip" role="tooltip">${escapeHtml(tip)}</span></span>`);
     } else {
-      buttons.push(season.registrationOpen
+      buttons.push(season.registrationAvailable
         ? `<button type="button" class="sv-btn primary" id="sv-register">${escapeHtml(t('season.register'))}</button>`
         : `<span class="sv-btn off">${escapeHtml(t('season.registerClosed'))}</span>`);
     }
@@ -959,7 +959,7 @@ async function refresh() {
   tab = (wantsRegister ? '' : window.location.hash.slice(1)) || null; // renderTabs picks the first tab with content when there is none
   await render();
   window.dispatchEvent(new CustomEvent('blta:season-tab', { detail: { tab } }));
-  if (wantsRegister && season.registrationOpen && document.getElementById('sv-register')) openRegisterModal();
+  if (wantsRegister && season.registrationAvailable && document.getElementById('sv-register')) openRegisterModal();
   if (typeof io === 'function') {
     io().on('matches:changed', () => {
       clearTimeout(refreshTimer);

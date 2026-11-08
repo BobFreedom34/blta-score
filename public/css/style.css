@@ -6545,3 +6545,12 @@ a.com-rank-name:hover { color: var(--orange); }
 .info-item .court-overlay-url { margin-top: 10px; }
 .info-item .court-overlay-url > div { flex-direction: column; }
 .info-item .court-overlay-url input { width: 100%; box-sizing: border-box; }
+
+/* the playing times of each day of a tournament in the Backend form (public/js/seasons-admin.js): one row per day, a start and an end */
+/* the window "Pridať zápas" of the Harmonogram (public/js/court-schedule.js): the fields are the ones of the other windows (.field) */
+.cs-addmatch { max-width: 520px; }
+.day-times-title { font-weight: 800; font-size: 13px; letter-spacing: 0.03em; margin-top: 4px; }
+.day-time-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 14px; padding: 8px 0; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.day-time-row b { min-width: 150px; font-size: 14px; align-self: center; }
+.day-time-row label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--gray); }
+.day-time-row input[type="time"] { width: 130px; }

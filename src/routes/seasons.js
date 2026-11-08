@@ -25,6 +25,7 @@ const clubTournaments = require('../clubTournaments');
 const changeLog = require('../changeLog');
 const capacity = require('../registrationCapacity');
 const courtStreams = require('../courtStreams');
+const tournamentMatches = require('../tournamentMatches');
 const playerPush = require('../playerPush');
 const finalStandings = require('../finalStandings');
 const unregister = require('../unregister');
@@ -173,7 +174,10 @@ function serializeSeason(s) {
     logoUrl: s.logo_url || '',
     heroUrl: s.hero_url || '',
     heroMobileUrl: s.hero_mobile_url || '',
-    registrationOpen: !!s.registration_open,
+    registrationOpen: !!s.registration_open, // the switch of the Backend
+    // what a visitor can really do: the switch is on AND the event has not ended AND a tournament has not started (its first day's start time has passed)
+    registrationAvailable: registrationOpen(s),
+    registrationStarted: tournamentStarted(s),
     // the most players that can register (null = none set) and, for a season where the player chooses a category, the most for each category; the ones after it are
     // substitutes (src/registrationCapacity.js)
     maxPlayers: s.max_players || null,
@@ -187,7 +191,7 @@ function serializeSeason(s) {
     courtStreams: courtStreams.streamsOf(s),
     maxMatchesPerDay: s.max_matches_per_day || 0,
     // the settings of the court planner (a tournament only): what the edit page shows under "Plánovanie turnaja"
-    planning: s.kind === 'TOURNAMENT' ? (({ matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule }) => ({ matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule }))(tournamentSchedule.settingsOf(s)) : null,
+    planning: s.kind === 'TOURNAMENT' ? (({ matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule, ownDayTimes }) => ({ matchMinutes, dayStart, dayEnd, dayTimes: ownDayTimes, restMinutes, autoSchedule }))(tournamentSchedule.settingsOf(s)) : null,
     matchCount: db.prepare('SELECT COUNT(*) AS n FROM matches WHERE season_id = ?').get(s.id).n,
     groups: groups.map(serializeGroup),
   };
@@ -330,9 +334,14 @@ function tooManyRegistrations(ip) {
   return recent.length > 6;
 }
 
+// a tournament has started when the start time of its first day has passed: from then on nobody can register on the public page (the admin still can add a player)
+function tournamentStarted(season, now = Date.now()) {
+  return tournamentSchedule.tournamentStarted(season, now);
+}
+
 function registrationOpen(season) {
   const today = new Date().toISOString().slice(0, 10);
-  return !!season.registration_open && !(season.end_date && season.end_date < today);
+  return !!season.registration_open && !(season.end_date && season.end_date < today) && !tournamentStarted(season);
 }
 
 router.post('/:id/registrations', async (req, res) => {
@@ -340,7 +349,7 @@ router.post('/:id/registrations', async (req, res) => {
   if (!season || clubTournaments.publicFace(season).hidden) return res.status(404).json({ error: 'Season not found' });
   const body = req.body || {};
   if (body.website) return res.status(201).json({ ok: true }); // the hidden field was filled in: a bot, pretend it worked
-  if (!registrationOpen(season)) return res.status(403).json({ code: 'REGISTRATION_CLOSED', error: 'Registration for this season is closed' });
+  if (!registrationOpen(season)) return res.status(403).json({ code: 'REGISTRATION_CLOSED', error: tournamentStarted(season) ? 'Registration is closed: the tournament has already started' : 'Registration for this season is closed' });
   if (tooManyRegistrations((String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()) || req.ip)) return res.status(429).json({ error: 'Too many registrations from this address — try again later' });
 
   const typed = typeof body.name === 'string' ? body.name.replace(/\s+/g, ' ').trim() : '';
@@ -742,6 +751,23 @@ router.get('/:id/schedule', (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
   res.json(tournamentSchedule.getSchedule(season));
+});
+
+// The form "Pridať zápas" of the Harmonogram (organiser): the groups of the tournament with their players and rounds, and the courts.
+router.get('/:id/match-options', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  res.json(tournamentMatches.matchOptions(season));
+});
+
+// Adds a match to a group of the tournament by hand: { groupId, round, player1Id, player2Id, courtNo?, scheduledAt?, force? } (src/tournamentMatches.js)
+router.post('/:id/matches', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const done = tournamentMatches.addMatch(season, req.body || {});
+  if (done.error) return res.status(done.status || 400).json({ error: done.error, code: done.code });
+  scheduleChanged(req, season);
+  res.status(201).json({ token: done.token, warnings: done.warnings, placed: done.placed });
 });
 
 // { matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule }
@@ -1157,7 +1183,7 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
   // (the most matches a day is the field above, so the value just checked goes along and is not written over)
   let planning = null;
   if (season.kind === 'TOURNAMENT' && tournamentSchedule.SETTING_KEYS.some((k) => k !== 'maxPerDay' && req.body[k] !== undefined)) {
-    const planned = tournamentSchedule.readSettings(season, { ...req.body, maxPerDay });
+    const planned = tournamentSchedule.readSettings({ ...season, start_date: start.value, end_date: end.value }, { ...req.body, maxPerDay }); // (with the dates of THIS save: the days of the tournament may change with it)
     if (planned.error) return res.status(400).json({ error: planned.error });
     planning = planned.next;
   }

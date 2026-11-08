@@ -304,8 +304,8 @@ function timelineHtml(d) {
         <span class="home-tl-chip">${state === 'now' ? '<i></i>' : ''}${escapeHtml(label[state])}</span>
         <div class="home-tl-name">${escapeHtml(s.name)}</div>
         <div class="home-tl-range">${escapeHtml(range)}</div>
-        ${state === 'now' && !s.registrationOpen ? `<span class="home-tl-reg" role="img" title="${escapeHtml(t('home.seasonInfo'))}" aria-label="${escapeHtml(t('home.seasonInfo'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span>` : ''}
-        ${s.registrationOpen && state !== 'past' ? `<span class="home-tl-reg" role="img" title="${escapeHtml(t('home.tlRegOpen'))}" aria-label="${escapeHtml(t('home.tlRegOpen'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M19 5v6M16 8h6"/></svg></span>` : ''}
+        ${state === 'now' && !s.registrationAvailable ? `<span class="home-tl-reg" role="img" title="${escapeHtml(t('home.seasonInfo'))}" aria-label="${escapeHtml(t('home.seasonInfo'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span>` : ''}
+        ${s.registrationAvailable && state !== 'past' ? `<span class="home-tl-reg" role="img" title="${escapeHtml(t('home.tlRegOpen'))}" aria-label="${escapeHtml(t('home.tlRegOpen'))}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M19 5v6M16 8h6"/></svg></span>` : ''}
       </div>
       <div class="home-tl-type">${escapeHtml(kindOf(s).label)}</div>`;
     // the running season: the elapsed part of the line is a light beam (see .home-tl-beam)
@@ -597,7 +597,7 @@ function renderHome() {
   if (d.season) {
     const state = seasonState(d.season, new Date().toISOString().slice(0, 10));
     // a season that has not started yet but takes registrations says so (the same as the national page), not just "in preparation"
-    const regOpen = state === 'future' && d.season.registrationOpen;
+    const regOpen = state === 'future' && d.season.registrationAvailable;
     stateEl.className = `home-head-state ${regOpen ? 'reg' : state}`;
     stateEl.innerHTML = `${state === 'now' ? '<i></i>' : ''}${escapeHtml(t(regOpen ? 'home.tlRegOpen' : { past: 'home.tlPast', now: 'home.tlNow', future: 'home.tlFuture' }[state]))}`;
     stateEl.hidden = false;
