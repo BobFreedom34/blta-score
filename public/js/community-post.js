@@ -208,7 +208,13 @@ function comTournamentRow(s) {
     + '</span>';
   const chips = (s.categories || []).map((c) => `<span class="sch-chip">${escapeHtml(comCategoryName(c))}</span>`).join('');
   const sub = `${s.venue ? `<span class="sch-venue">${escapeHtml(s.venue)} · </span>` : ''}<b class="sch-cats">${chips}</b><span class="sch-extra">${extra ? escapeHtml(` · ${extra}`) : ''}</span>`;
-  const reg = !season && s.registrationOpen && status !== 'past' ? `<span class="sch-reg" role="link" tabindex="0" data-href="${escapeHtml(link)}#register">${escapeHtml(t('schedule.register'))}</span>` : '';
+  // what a visitor can do (registrationAvailable of the page of the tournament; the feeds only carry registrationOpen, which already leaves out a started tournament)
+  const regAvailable = s.registrationAvailable !== undefined ? s.registrationAvailable : s.registrationOpen;
+  const reg = !season && status !== 'past'
+    ? (regAvailable
+      ? `<span class="sch-reg" role="link" tabindex="0" data-href="${escapeHtml(link)}#register">${escapeHtml(t('schedule.register'))}</span>`
+      : `<span class="sch-reg off">${escapeHtml(t('season.registerClosed'))}</span>`)
+    : '';
   const go = `<span class="sch-go">${escapeHtml(t('schedule.more'))} ›</span>`;
   return `<a class="sch-row link ${status}" href="${escapeHtml(link)}">
       <div class="sch-date">${escapeHtml(comDateRange(start, end) || t('com.eventNoDate'))}<small>${start ? escapeHtml(String(comDay(start).getFullYear())) : ''}</small></div>

@@ -127,6 +127,19 @@ test('the page side: every item of the news is a bordered card with the header o
   for (const key of ['com.postedBy', 'com.postMenu']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
 });
 
+test('the page side: a tournament that takes no registration (started, or switched off) says "Registrácia uzavretá" in the Udalosti tab and in the news cards, by what a visitor can do', () => {
+  const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
+  const shared = pub('js/community-post.js');
+  const club = pub('js/community.js');
+  for (const [name, js] of [['community-post.js', shared], ['community.js', club]]) {
+    assert.ok(js.includes('s.registrationAvailable !== undefined ? s.registrationAvailable : s.registrationOpen'), `${name} goes by registrationAvailable (the raw switch alone offers a started tournament)`);
+    assert.ok(js.includes("t('season.registerClosed')"), `${name} says it is closed, like the page of the tournament`);
+  }
+  assert.ok(shared.includes('sch-reg off') && club.includes('com-reg-closed'), 'the closed marks');
+  const css = pub('css/style.css');
+  assert.ok(/\.sch-reg\.off[^{]*{[^}]*animation: none/.test(css) && /\.com-reg-closed {[^}]*pointer-events: none/.test(css), 'the closed marks are grey and do nothing');
+});
+
 async function main() {
   let failed = 0;
   try {

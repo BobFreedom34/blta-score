@@ -148,7 +148,10 @@
     const today = new Date().toISOString().slice(0, 10);
     const over = !!s.endDate && s.endDate < today;
     const season = s.kind === 'LEAGUE'; // a season (groups and a table) or a tournament
-    const open = !season && s.registrationOpen && !over;
+    // what a visitor can do (the page of the tournament goes by the same): the switch of the Backend is not enough, a tournament that has started takes no registration
+    const regAvailable = s.registrationAvailable !== undefined ? s.registrationAvailable : s.registrationOpen;
+    const open = !season && regAvailable && !over;
+    const closed = !season && !regAvailable && !over;
     const link = `/${season ? 'season' : 'tournament'}/${encodeURIComponent(s.slug)}`;
     const facts = (season ? [t('com.seasonTag'), s.venue, t('com.seasonMatches', { n: s.matchCount || 0 })] : [s.venue, t(s.playType === 'DOUBLES' ? 'com.tDoubles' : 'com.tSingles'), t('com.eventRegistered', { n: s.registrationCount || 0 })]).filter(Boolean).map(escapeHtml).join(' · ');
     return `
@@ -157,6 +160,7 @@
         <div class="com-event-main"><a class="com-event-name" href="${escapeHtml(link)}">${escapeHtml(s.name)}</a><div class="com-event-sub">${facts}</div></div>
         <div class="com-event-acts">
           ${open ? `<a class="btn btn-primary com-small" href="${escapeHtml(link)}#register">${escapeHtml(t('com.eventRegister'))}</a>` : ''}
+          ${closed ? `<span class="btn com-small com-reg-closed">${escapeHtml(t('season.registerClosed'))}</span>` : ''}
           <a class="btn btn-outline com-small" href="${escapeHtml(link)}">${escapeHtml(t('com.eventView'))}</a>
           ${isActing() ? `<a class="btn btn-outline com-small" href="/community-tournament/${s.id}">${escapeHtml(t('com.eventManage'))}</a>` : ''}
         </div>

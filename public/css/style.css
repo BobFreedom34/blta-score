@@ -5646,6 +5646,8 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .sch-reg { display: inline-flex; align-items: center; padding: 9px 16px; border-radius: var(--radius-sm); border: 1px solid var(--green); background: var(--green); color: #0a0a0a; font-weight: 800; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; cursor: pointer; }
 .sch-reg:hover { background: #c6ff3a; border-color: #c6ff3a; }
 @media (prefers-reduced-motion: no-preference) { .sch-reg { animation: sv-register-glow 1.8s ease-out infinite; } }
+/* registration closed (a tournament that has started, or one that takes none): the same size as the button, grey, does nothing (like .sv-btn.off on the page of the tournament) */
+.sch-reg.off, .sch-reg.off:hover { background: var(--fill-grey); border-color: rgba(255, 255, 255, 0.1); color: #8b8f98; cursor: default; animation: none; pointer-events: none; }
 /* the pieces of a schedule row: on a computer they read as before (the countdown after the categories); on a phone the row is a card
    of its own: date and countdown on top, the name, the tags and the categories as chips, then the buttons across the width */
 /* on a tablet the two buttons stand under each other */
@@ -5739,6 +5741,7 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .com-event-name:hover { color: var(--green); }
 .com-event-sub { margin-top: 3px; font-size: 13px; color: var(--gray-dim); }
 .com-event-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.com-reg-closed { background: var(--fill-grey); color: #8b8f98; border: 1px solid rgba(255, 255, 255, 0.1); cursor: default; pointer-events: none; font-weight: 700; }
 .com-tdialog { max-width: 520px; width: calc(100% - 24px); max-height: calc(100vh - 32px); overflow-y: auto; }
 .com-t-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .com-tdialog [hidden] { display: none; }
