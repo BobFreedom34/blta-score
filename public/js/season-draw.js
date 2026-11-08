@@ -263,7 +263,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
             <input type="number" min="0" max="50" inputmode="numeric" class="sd-courts" value="${overview.courtCount || ''}" placeholder="0">
           </label>
         </div>
-        ${courtStreamFieldsHtml(overview.courtCount, overview.courtStreams)}
+        ${courtStreamFieldsHtml(overview.courtCount, overview.courtStreams, overview.slug)}
         <div class="sd-courts-row" style="margin-top:14px">
           <button type="button" class="btn btn-sm btn-outline" data-act="courts">${tl('Uložiť kurty', 'Save courts')}</button>
           <a data-public href="/tournament/${encodeURIComponent(overview.slug)}#courts" target="_blank" rel="noopener" style="font-size:13px;font-weight:700">${tl('Harmonogram', 'Schedule')} ›</a>

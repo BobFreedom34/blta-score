@@ -6531,3 +6531,10 @@ a.com-rank-name:hover { color: var(--orange); }
 .sv-live-court h3 { margin: 0 0 12px; font-size: 14px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
 .sv-live-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-md); overflow: hidden; background: #000; }
 .sv-live-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+/* the overlay link of a court that has a saved YouTube link (public/js/court-streams.js): the link of the scoreboard to put into PRISM or OBS, with a Copy button */
+.court-stream-item { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.court-overlay-url { display: flex; flex-direction: column; gap: 4px; }
+.court-overlay-url > span { font-size: 12px; font-weight: 600; color: var(--gray); }
+.court-overlay-url > div { display: flex; gap: 8px; align-items: stretch; }
+.court-overlay-url input { flex: 1; min-width: 0; font-size: 12px; }

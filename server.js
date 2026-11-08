@@ -444,6 +444,7 @@ const TEMPLATE_ENTITY = {
   // the live screen of a match (noindex): the page has no name of its own, the match is loaded by the script
   screen: () => ({ name: 'Live screen' }),
   schedulescreen: () => ({ name: 'Schedule screen' }),
+  overlay: () => ({ name: 'Scoreboard overlay' }),
   // the manage page of a club tournament: noindex, the editor is loaded by the script
   clubtournament: () => ({ name: 'Club tournament' }),
   community: (slug, lang, leagueId) => {
@@ -517,6 +518,12 @@ app.use((req, res, next) => {
   const city = national.cityOrigin();
   if (read && city && !req.path.startsWith('/api/')) return res.redirect(302, city + req.originalUrl);
   return res.status(404).json({ error: 'Not found' });
+});
+// The scoreboard overlay of a court, shown over the YouTube stream of the court (a web page source in PRISM or OBS, see public/js/overlay.js): a plain page with its own
+// files and no menus, noindex; the data comes from /api/seasons/by-slug/:slug/court/:court/live (only a court with a YouTube link has one).
+app.get('/overlay/:slug/:court', (req, res) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.sendFile(path.join(PUBLIC_DIR, 'overlay.html'));
 });
 app.use((req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();

@@ -49,7 +49,7 @@ function snippet(settings) {
 }
 
 // Where the tag does not belong: the backend, the pages other websites put in a frame, the pages of the login and the history of logins.
-const NO_TAG = /^\/(admin|login-history|reset-code|embed\/|compact)|-admin(\/|$)|\/(embed\/|compact)/;
+const NO_TAG = /^\/(admin|login-history|reset-code|embed\/|compact)|-admin(\/|$)|\/(embed\/|compact|overlay\/)/; // (overlay: the scoreboard over a live stream, no analytics or consent banner on it)
 const HEAD = /<head(\s[^>]*)?>/i;
 // The tag is the first thing in the <head>: before the Google Analytics tag the pages already have by hand, so that the consent defaults are set before it
 // starts measuring (the page's charset comes from the Content-Type header, so it does not matter that the tag is ahead of the <meta charset>).

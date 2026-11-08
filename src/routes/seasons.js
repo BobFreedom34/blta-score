@@ -269,6 +269,17 @@ router.get('/', (req, res) => {
 });
 
 // Public: the brackets (play-off draws) tied to a season — the league tables page shows them under "Play-off".
+// Public: the scoreboard overlay of a court (the page /overlay/<slug>/<court>, shown over the YouTube stream of the court): the match live on it. Only a court
+// that has a YouTube link has an overlay; any other court, a hidden club tournament and another city's tournament are 404, like the season page itself.
+router.get('/by-slug/:slug/court/:court/live', (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE slug = ?').get(req.params.slug);
+  if (!season || season.league_id !== leagues.actingIdOf(req) || clubTournaments.publicFace(season).hidden) return res.status(404).json({ error: 'Not found' });
+  const court = /^\d{1,3}$/.test(req.params.court) ? Number(req.params.court) : 0;
+  const stream = court >= 1 && court <= (season.court_count || 0) ? courtStreams.streamsOf(season)[court - 1] : null;
+  if (!stream) return res.status(404).json({ error: 'Not found' });
+  res.json(tournamentSchedule.getCourtLive(season, court));
+});
+
 // The season page: one season by its slug, with its rounds (the group-stage rounds the season maker numbered, with how many
 // of their matches are finished).
 router.get('/by-slug/:slug', (req, res) => {

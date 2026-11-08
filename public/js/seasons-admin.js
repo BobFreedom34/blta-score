@@ -455,7 +455,7 @@ function seasonCardHtml(s) {
               <h4>${tl('Kurty a pravidlá hrania', 'Courts and playing rules')}</h4>
               <div class="sa-grid">
                 ${field(tl('Počet kurtov (Kurt 1 … Kurt n)', 'Number of courts (Court 1 … Court n)'), input('courtCount', s.courtCount || '', `type="number" min="0" max="50" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 4', 'e.g. 4'))}"`))}
-                ${courtStreamFieldsHtml(s.courtCount, s.courtStreams)}
+                ${courtStreamFieldsHtml(s.courtCount, s.courtStreams, s.slug)}
                 ${field(tl('Max. zápasov hráča za deň', 'Max. matches per player per day'), input('maxMatchesPerDay', s.maxMatchesPerDay || '', `type="number" min="0" max="10" inputmode="numeric" placeholder="${escapeHtml(tl('bez limitu', 'no limit'))}"`))}
               </div>
               <div class="tr-title" style="margin-top:14px">${tl('Plánovanie turnaja', 'Tournament planning')}</div>

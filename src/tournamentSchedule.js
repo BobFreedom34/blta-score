@@ -218,6 +218,26 @@ function serializeMatch(row, settings, now) {
   };
 }
 
+// The scoreboard overlay of a court (the page /overlay/<slug>/<court>, drawn over the YouTube stream of the court): the match that is LIVE on the court
+// (two of them by mistake: the one that started last), else the one that finished on it in the last FINISHED_SHOW_MS (its final score stays on screen for a
+// while), else none. Only what the scoreboard needs: no contact details, no ids of players.
+const FINISHED_SHOW_MS = 3 * MIN;
+function getCourtLive(season, court, now = Date.now()) {
+  const settings = settingsOf(season);
+  const rows = loadMatches(season.id).filter((r) => r.player1_id && r.player2_id && r.court_no === court);
+  const startOf = (r) => ms(r.start_time) ?? ms(r.scheduled_at) ?? 0;
+  const endOf = (r) => ms(r.end_time) ?? ms(r.result_at) ?? 0;
+  const liveRow = rows.filter((r) => r.status === 'LIVE').sort((a, b) => startOf(b) - startOf(a))[0];
+  const finishedRow = rows.filter((r) => r.status === 'FINISHED' && endOf(r) > 0 && now - endOf(r) <= FINISHED_SHOW_MS).sort((a, b) => endOf(b) - endOf(a))[0];
+  const row = liveRow || finishedRow;
+  let match = null;
+  if (row) {
+    const m = serializeMatch(row, settings, now);
+    match = { token: m.token, status: m.status, player1: { name: m.player1.name }, player2: { name: m.player2.name }, winnerId: m.winnerId, state: m.state };
+  }
+  return { court, tournament: season.name, match };
+}
+
 // everything the schedule tab shows
 function getSchedule(season, now = Date.now()) {
   const settings = settingsOf(season);
@@ -448,6 +468,7 @@ module.exports = {
   saveSettings,
   SETTING_KEYS,
   getSchedule,
+  getCourtLive,
   placeMatch,
   setLocked,
   setDuration,

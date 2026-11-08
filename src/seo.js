@@ -112,6 +112,14 @@ const PAGES = [
     description: 'Všetky kurty a zápasy turnaja BLTA na jednej obrazovke pre televízor alebo projektor.',
   },
   {
+    // the scoreboard of a court drawn over the YouTube stream of the court (a web page source in PRISM or OBS, public/js/overlay.js); a utility page, noindex. Its address
+    // /overlay/<slug>/<court> is a plain route of server.js (two parts, which a template page of this list cannot have); it is listed here so that the file is not
+    // picked up as a page of its own (discoverPages)
+    key: 'overlay', label: 'Scoreboard overlay of a court (template)', path: '/overlay/:slug/:court', file: 'overlay.html', template: true, blta: null, slugSk: 'prenos-skore', noindex: true,
+    title: `Skóre kurtu pre živý prenos${SUFFIX}`,
+    description: 'Priehľadné živé skóre kurtu turnaja BLTA, ktoré sa kladie na obraz živého prenosu.',
+  },
+  {
     key: 'communities', label: 'Communities and clubs (list)', path: '/communities', file: 'communities.html', blta: null, slugSk: 'komunity-a-kluby',
     title: `Komunity a kluby${SUFFIX}`,
     description: 'Komunity a kluby BLTA - skupiny hráčov, ktoré si organizujú vlastné turnaje a akcie. Pridaj sa do klubu alebo si vytvor vlastnú komunitu.',
@@ -289,6 +297,11 @@ const ENGLISH = {
     slug: 'schedule-screen',
     title: `Tournament schedule on the whole screen${SUFFIX_EN}`,
     description: 'Every court and match of a BLTA tournament on one screen for a TV or a projector.',
+  },
+  overlay: {
+    slug: 'overlay',
+    title: `Scoreboard of a court for the live stream${SUFFIX_EN}`,
+    description: 'The transparent live score of a BLTA tournament court, laid over the picture of the live stream.',
   },
   screen: {
     slug: 'screen',
