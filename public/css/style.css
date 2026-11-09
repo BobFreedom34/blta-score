@@ -4098,11 +4098,11 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-tiles { display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0 0; }
 .sv-tile { flex: 0 0 auto; min-width: 150px; max-width: 100%; box-sizing: border-box; background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius); padding: 14px 16px; }
 .sv-tile .k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-.sv-tile .v { font-size: 20px; font-weight: 800; line-height: 1.2; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sv-tile .v.sm { font-size: 20px; }
+.sv-tile .v { font-size: 16px; font-weight: 800; line-height: 1.2; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sv-tile .v.sm { font-size: 16px; }
 /* the maximum of the players tile ("6/8"): smaller and thinner than the number of registered players */
 .sv-tile .v .sv-max { font-size: 0.7em; font-weight: 500; color: #c3c7cf; }
-.sv-tile .v small { display: block; font-size: 20px; font-weight: 600; color: #c3c7cf; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sv-tile .v small { display: block; font-size: 16px; font-weight: 600; color: #c3c7cf; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* a phone: always two tiles side by side; a text that does not fit the half of the screen goes on a second line there (a date or an address is never cut) */
 @media (max-width: 700px) {
   .sv-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }

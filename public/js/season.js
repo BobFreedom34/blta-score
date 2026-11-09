@@ -52,6 +52,17 @@ function formatDate(iso) {
 }
 
 // "Sep – Dec 2026" / "Dec 2025 – Apr 2026"; a tournament shows its exact days: "27. – 28. 9. 2025"
+// when the playing starts and ends (a tournament): the start of the first day to the end of the last day (a day of its own times, else the general ones)
+function playingTimeText() {
+  const p = season.kind === 'TOURNAMENT' && season.startDate ? season.planning : null;
+  if (!p || !p.dayStart || !p.dayEnd) return '';
+  const own = p.dayTimes || {};
+  const last = season.endDate && season.endDate >= season.startDate ? season.endDate : season.startDate;
+  const start = (own[season.startDate] || p).start || p.dayStart;
+  const end = (own[last] || p).end || p.dayEnd;
+  return `${start} – ${end}`;
+}
+
 function termText() {
   if (!season.startDate) return '';
   if (season.kind === 'TOURNAMENT') {
@@ -310,9 +321,10 @@ function tilesHtml() {
   const tile = (key, value, sub) => `<div class="sv-tile"><div class="k">${escapeHtml(t(key))}</div><div class="v">${value}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</div></div>`;
   const cats = CATEGORY_ORDER_ALL.filter((c) => (isTournament() && (season.categories || []).includes(c)) || (season.groups || []).some((g) => g.category === c) || (standings && standings.groups.some((g) => g.category === c)));
   const tiles = [
+    termText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileTerm'))}</div><div class="v sm">${escapeHtml(termText())}</div></div>` : '',
+    playingTimeText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileTime'))}</div><div class="v sm">${escapeHtml(playingTimeText())}</div></div>` : '',
     cats.length ? tile('season.tileCats', cats.map((c) => CATEGORY_NAMES[c]).join(' · ')) : '',
     season.venue ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileVenue'))}</div><div class="v sm">${escapeHtml(season.venue)}</div></div>` : '',
-    termText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileTerm'))}</div><div class="v sm">${escapeHtml(termText())}</div></div>` : '',
     players || maxPlayers ? tile('season.tilePlayers', maxPlayers ? `${players}<span class="sv-max">/${maxPlayers}</span>` : String(players), (model.substitutes.length ? `+${model.substitutes.length} ${t('season.substitutes').toLowerCase()}` : '')) : '',
     season.entryFee ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div></div>` : '',
     season.drawDate ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileDraw'))}</div><div class="v sm">${escapeHtml(formatDate(season.drawDate))}</div></div>` : '',
