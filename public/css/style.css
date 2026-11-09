@@ -5715,6 +5715,22 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .sch-lists .sch-row.link:last-child:hover { background-image: none; }
 .sch-lists .sch-row:first-child { padding-top: calc(var(--sch-rpv) + 4px); }
 .sch-lists .sch-row:last-child { padding-bottom: calc(var(--sch-rpv) + 4px); }
+/* the Harmonogram of the league: the same cards as the tournaments of a club. The poster of the event behind its row (the left third of the row, darker, fading out to the right;
+   on a phone a band at the top of the card, flush with its edges), a bigger date, and the two buttons under each other on a computer and a tablet */
+.sch-lists .sch-row.has-poster { overflow: hidden; isolation: isolate; }
+.sch-lists .sch-row.has-poster::before { content: ''; position: absolute; inset: 0 auto 0 0; width: max(270px, 32%); z-index: 0; background: var(--poster) left center / cover no-repeat; opacity: 0.7; -webkit-mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); }
+.sch-lists .sch-row.has-poster::after { content: ''; position: absolute; inset: 0 auto 0 0; width: max(270px, 32%); z-index: 0; background: linear-gradient(to right, rgba(10, 10, 10, 0.5), transparent); }
+#sch-root .sch-date { font-size: 25px; }
+#sch-root .sch-date small { font-size: 14px; }
+@media (min-width: 701px) {
+  #sch-root .sch-date small { margin-top: 6px; }
+  #sch-root .sch-acts { flex-direction: column; align-items: stretch; gap: 8px; }
+  #sch-root .sch-acts .sch-reg, #sch-root .sch-acts .sch-go { width: 100%; }
+}
+@media (max-width: 700px) {
+  .sch-lists .sch-row.has-poster::before { inset: 0 0 auto 0; width: auto; height: 160px; background: var(--poster-m) right top / cover no-repeat; -webkit-mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.45) 60%, rgba(0, 0, 0, 0.15) 85%, transparent 100%), linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.85) 25%, rgba(0, 0, 0, 0.5) 55%, rgba(0, 0, 0, 0.2) 80%, transparent 100%); mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.45) 60%, rgba(0, 0, 0, 0.15) 85%, transparent 100%), linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.85) 25%, rgba(0, 0, 0, 0.5) 55%, rgba(0, 0, 0, 0.2) 80%, transparent 100%); -webkit-mask-composite: source-in; mask-composite: intersect; }
+  .sch-lists .sch-row.has-poster::after { inset: 0 0 auto 0; width: auto; height: 160px; background: linear-gradient(to bottom, rgba(10, 10, 10, 0.5), rgba(10, 10, 10, 0.35) 60%, transparent); }
+}
 
 /* Backend > Media on the dark page: headings, picture names and the outline buttons of the tiles are white (they were dark on dark) */
 #media-admin-root h3, #media-admin-root summary { color: var(--white); }
@@ -5982,6 +5998,9 @@ a.com-rank-name:hover { color: var(--orange); }
 .com-news-tournament .sch-row.has-poster::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 270px; z-index: 0; background: linear-gradient(to right, rgba(10, 10, 10, 0.5), transparent); }
 /* (the picture is about a third of the card and fades out slowly; under the name it is only a faint trace) and the tags stay under the name */
 .com-news-tournament .sch-name { flex-direction: column; align-items: flex-start; }
+/* a bigger date (on every screen) */
+.com-news-tournament .sch-date { font-size: 25px; }
+.com-news-tournament .sch-date small { font-size: 14px; margin-top: 6px; }
 /* the buttons of the card, in the design of the Harmonogram: Viac info black with an orange frame and orange words (white when hovered), both buttons the same size.
    On a computer and a tablet Registrácia stands above Viac info; on a phone they stand side by side */
 .com-news-tournament .sch-go { background: #000; border-color: var(--orange); color: var(--orange); }

@@ -164,9 +164,15 @@ function rowHtml(e, today) {
   const reg = registerTo ? `<span class="sch-reg" role="link" tabindex="0" data-href="${escapeHtml(registerTo)}">${escapeHtml(t('schedule.register'))}</span>` : '';
   const go = e.link ? `<span class="sch-go">${escapeHtml(t('schedule.more'))} ›</span>` : '';
   const more = reg ? `<span class="sch-acts">${reg}${go}</span>` : (go || '<span></span>');
+  // the poster of the event behind the date (the wide picture on a computer, the tall one on a phone; each falls back to the other)
+  const safe = (u) => (/^\/[\w\/.-]+$/.test(u || '') ? u : '');
+  const wide = safe(e.heroUrl) || safe(e.heroMobileUrl);
+  const tall = safe(e.heroMobileUrl) || safe(e.heroUrl);
+  const posterClass = wide ? ' has-poster' : '';
+  const posterStyle = wide ? ` style="--poster:url('${wide}');--poster-m:url('${tall}')"` : '';
   const open = e.link
-    ? `<a class="sch-row link ${status}" href="${escapeHtml(e.link)}"${/^https?:/i.test(e.link) ? ' target="_blank" rel="noopener"' : ''}>`
-    : `<div class="sch-row ${status}">`;
+    ? `<a class="sch-row link ${status}${posterClass}"${posterStyle} href="${escapeHtml(e.link)}"${/^https?:/i.test(e.link) ? ' target="_blank" rel="noopener"' : ''}>`
+    : `<div class="sch-row ${status}${posterClass}"${posterStyle}>`;
   return `
     ${open}
       <div class="sch-date">${escapeHtml(dateRange(e))}<small>${escapeHtml(yearText(e))}</small></div>

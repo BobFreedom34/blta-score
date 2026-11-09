@@ -42,6 +42,9 @@ function scheduleOf(leagueId) {
       venue: tournament ? (s.venue || '') : '',
       link: `/${tournament ? 'tournament' : 'season'}/${s.slug}`,
       logoUrl: s.logo_url || '',
+      // the poster of the event (the wide and the tall picture of its page): the row of the list shows it behind the date
+      heroUrl: s.hero_url || '',
+      heroMobileUrl: s.hero_mobile_url || '',
       registrationOpen: !!s.registration_open && !require('../tournamentSchedule').tournamentStarted(s), // a tournament that has started takes no registration
       tournamentEnded: require('../tournamentSchedule').tournamentEnded(s), // the playing window of its last day is over
       // a doubles tournament is played in the one category Štvorhra, not in the three league ones
