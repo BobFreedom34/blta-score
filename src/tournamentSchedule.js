@@ -202,6 +202,8 @@ function intervalOf(row, settings, now) {
   const scheduled = ms(row.scheduled_at);
   const realStart = ms(row.start_time);
   if (row.status === 'FINISHED') {
+    // moved / resized by the organiser after the match: the block is where he put it
+    if (row.manual_block && scheduled !== null) return [scheduled, scheduled + duration];
     const start = realStart ?? scheduled;
     if (start === null) return null;
     const end = ms(row.end_time);
@@ -252,7 +254,8 @@ function serializeMatch(row, settings, now) {
     endsAt: interval ? new Date(interval[1]).toISOString() : null,
     durationMinutes: row.duration_minutes || null,
     // a finished match whose real end is known cannot be given another length
-    endKnown: row.status === 'FINISHED' && ms(row.end_time) !== null && ms(row.end_time) > (ms(row.start_time) ?? ms(row.scheduled_at) ?? Infinity),
+    manual: !!row.manual_block,
+    endKnown: row.status === 'FINISHED' && !row.manual_block && ms(row.end_time) !== null && ms(row.end_time) > (ms(row.start_time) ?? ms(row.scheduled_at) ?? Infinity),
     courtNo: row.court_no || null,
     locked: !!row.slot_locked,
   };
@@ -340,7 +343,10 @@ function placeMatch(season, token, courtNo, scheduledAt, now = Date.now()) {
   const settings = settingsOf(season);
   const match = db.prepare('SELECT * FROM matches WHERE share_token = ? AND season_id = ?').get(token, season.id);
   if (!match) return { status: 404, error: 'Match not found in this tournament' };
-  if (match.status !== 'PLANNED') return { status: 409, error: 'Only a match that has not started can be moved' };
+  // a finished match is locked on the schedule by itself; the organiser unlocks it in the page and may then move it (it keeps its length)
+  const finished = match.status === 'FINISHED';
+  if (match.status !== 'PLANNED' && !finished) return { status: 409, error: 'Only a match that is not being played can be moved' };
+  if (finished && courtNo === null) return { status: 409, error: 'A finished match stays on the schedule' };
   if (courtNo === null) {
     db.prepare("UPDATE matches SET scheduled_at = NULL, court_no = NULL, slot_locked = 0, location = CASE WHEN location LIKE 'Kurt %' THEN '' ELSE location END, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(match.id);
     return { warnings: [] };
@@ -348,12 +354,23 @@ function placeMatch(season, token, courtNo, scheduledAt, now = Date.now()) {
   if (!Number.isInteger(courtNo) || courtNo < 1 || courtNo > settings.courtCount) return { status: 400, error: `Choose a court from 1 to ${settings.courtCount || 0}` };
   const start = ms(scheduledAt);
   if (start === null) return { status: 400, error: 'Invalid time' };
-  const slot = [start, start + durationOf(match, settings)];
+  // a finished match keeps the length its block has now (rounded up to 5 minutes) unless the organiser has set one
+  let length = durationOf(match, settings);
+  if (finished && !match.duration_minutes) {
+    const current = intervalOf(match, settings, now);
+    if (current) length = Math.max(15 * MIN, Math.ceil((current[1] - current[0]) / (5 * MIN)) * 5 * MIN);
+  }
+  const slot = [start, start + length];
   const others = loadMatches(season.id).filter((r) => r.id !== match.id);
   const clash = others.find((r) => r.court_no === courtNo && r.status !== 'FINISHED' && (() => { const i = intervalOf(r, settings, now); return i && overlaps(i, slot); })());
   if (clash) return { status: 409, error: `Kurt ${courtNo} is taken at that time (${clash.p1_name} – ${clash.p2_name})` };
   const warnings = [];
   const rest = settings.restMinutes * MIN;
+  // (a finished match that is moved over another finished one is only a warning: that is history, the organiser is tidying it)
+  if (finished) {
+    const over = others.find((r) => r.court_no === courtNo && r.status === 'FINISHED' && (() => { const i = intervalOf(r, settings, now); return i && overlaps(i, slot); })());
+    if (over) warnings.push(`It overlaps another finished match on Kurt ${courtNo} (${over.p1_name} – ${over.p2_name})`);
+  }
   others.forEach((r) => {
     const sharesPlayer = playersOf(r).some((id) => id && playersOf(match).includes(id));
     const i = intervalOf(r, settings, now);
@@ -368,6 +385,12 @@ function placeMatch(season, token, courtNo, scheduledAt, now = Date.now()) {
         + others.filter((r) => playersOf(r).includes(id) && r.status === 'FINISHED' && (r.start_time || r.scheduled_at) && dayOf(ms(r.start_time || r.scheduled_at)) === day).length;
       if (same >= settings.maxPerDay) warnings.push(`A player would play more than ${settings.maxPerDay} ${settings.maxPerDay === 1 ? 'match' : 'matches'} that day`);
     });
+  }
+  if (finished) {
+    db.prepare("UPDATE matches SET scheduled_at = ?, court_no = ?, duration_minutes = ?, manual_block = 1, location = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?")
+      .run(new Date(start).toISOString(), courtNo, length / MIN, `Kurt ${courtNo}`, match.id);
+    autoPlanIfEnabled(season.id);
+    return { warnings };
   }
   db.prepare("UPDATE matches SET scheduled_at = ?, court_no = ?, slot_locked = 1, location = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?")
     .run(new Date(start).toISOString(), courtNo, `Kurt ${courtNo}`, match.id);
@@ -529,6 +552,22 @@ function setDuration(season, token, minutes) {
   if (!match) return { status: 404, error: 'Match not found in this tournament' };
   if (match.status === 'LIVE') return { status: 409, error: 'A match that is being played cannot be given another length' };
   if (minutes !== null && (!Number.isInteger(minutes) || minutes < 15 || minutes > 300 || minutes % 5 !== 0)) return { status: 400, error: 'The length of a match must be 15 to 300 minutes, a multiple of 5' };
+  if (match.status === 'FINISHED') {
+    // a finished match is drawn from its real start to its real end; once the organiser sets a length (or moves it) it is drawn from scheduled_at + length instead
+    // (the real times stay in the match). null = back to the real times.
+    if (minutes === null) {
+      db.prepare("UPDATE matches SET duration_minutes = NULL, manual_block = 0, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(match.id);
+    } else {
+      let scheduledAt = match.scheduled_at;
+      if (!match.manual_block) {
+        const current = intervalOf(match, settingsOf(season), Date.now());
+        if (current) scheduledAt = new Date(current[0]).toISOString();
+      }
+      db.prepare("UPDATE matches SET duration_minutes = ?, manual_block = 1, scheduled_at = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(minutes, scheduledAt, match.id);
+    }
+    autoPlanIfEnabled(season.id);
+    return { ok: true };
+  }
   db.prepare("UPDATE matches SET duration_minutes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(minutes, match.id);
   autoPlanIfEnabled(season.id);
   return { ok: true };

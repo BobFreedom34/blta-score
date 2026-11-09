@@ -6,12 +6,13 @@
 // Used by season.js: initCourtSchedule(hostElement, season).
 
 const CS_TZ = 'Europe/Bratislava';
-const CS_PX = 1.5; // pixels per minute of the timeline
+const CS_PX = 2.8; // pixels per minute of the timeline (a 30-minute match is high enough for the whole card: time, two players, category)
 const CS_SNAP = 15; // minutes
 const CS_MS = 60 * 1000;
 
 let csState = null; // { host, season, admin, data, day, view } — day and view are kept when the tab is drawn again
 let csDrag = null;
+const csUnlocked = new Set(); // tokens of FINISHED matches the organiser unlocked on this page (a finished match is locked by itself until then)
 let csChoice = { day: null, view: 'timeline' };
 
 // ---------- time (Bratislava) ----------
@@ -90,17 +91,18 @@ function csBlockHtml(m, day, startMin) {
   // the real length: a match that ended early is drawn only up to its end (a short block shows one line only)
   const real = Math.round((Date.parse(m.endsAt) - Date.parse(csStartOf(m))) / CS_MS);
   const minutes = Math.max(20, real);
-  const short = real < 40;
+  const short = real < 25; // (the card is always whole, two lines of players; only a very short block drops the category line)
   const top = (parts.minutes - startMin) * CS_PX;
-  const resizable = csState.admin && (m.status === 'PLANNED' || (m.status === 'FINISHED' && !m.endKnown));
-  const movable = csState.admin && m.status === 'PLANNED';
+  const finished = m.status === 'FINISHED';
+  const unlocked = finished && csUnlocked.has(m.token); // a finished match is locked by itself; the organiser unlocks it to move or resize it
+  const resizable = csState.admin && (m.status === 'PLANNED' || unlocked);
+  const movable = resizable;
   const classes = ['cs-m', csStatusClass(m), `cs-st-${m.status.toLowerCase()}`, movable ? 'cs-drag' : '', m.locked ? 'cs-locked' : '', short ? 'cs-short' : ''].filter(Boolean).join(' ');
   return `<a class="${classes}" href="/match/${m.token}" draggable="false" data-token="${m.token}" ${movable ? 'data-drag="1"' : ''}
       style="top:${top}px;height:${minutes * CS_PX - 3}px" data-minutes="${real}" title="${escapeHtml(`${csTime(csStartOf(m))} · ${m.player1.name} – ${m.player2.name}`)}">
-    <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="${escapeHtml(tl('Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš.', 'Locked — the planner does not move it. Click to unlock it.'))}"></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
-    <span class="cs-m-pl">${short ? csPlayersHtml(m) : csScoredPlayersHtml(m)}</span>
+    <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${finished && csState.admin ? ` <i class="cs-lock fin${unlocked ? ' open' : ''}" data-fin-lock="${m.token}" title="${escapeHtml(unlocked ? tl('Odomknutý — zápas môžeš posúvať a meniť mu dĺžku. Kliknutím ho zamkneš.', 'Unlocked — you can move the match and change its length. Click to lock it.') : tl('Skončený zápas je zamknutý. Kliknutím ho odomkneš, potom ho môžeš posúvať a meniť mu dĺžku.', 'A finished match is locked. Click to unlock it, then you can move it and change its length.'))}"></i>` : ''}${m.status === 'PLANNED' && m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="${escapeHtml(tl('Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš.', 'Locked — the planner does not move it. Click to unlock it.'))}"></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
+    <span class="cs-m-pl">${csScoredPlayersHtml(m)}</span>
     <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
-    ${short && (m.status === 'FINISHED' || m.status === 'LIVE') && m.scoreSummary ? `<span class="cs-m-score">${escapeHtml(m.scoreSummary)}</span>` : ''}
     ${resizable ? `<span class="cs-resize" data-resize="1" title="${escapeHtml(tl('Potiahni na zmenu dĺžky zápasu', 'Drag to change the length of the match'))}${m.durationMinutes ? escapeHtml(tl(` (nastavených ${m.durationMinutes} min) — dvojklik vráti pôvodnú dĺžku`, ` (set to ${m.durationMinutes} min) — double-click restores the original length`)) : ''}"></span>` : ''}
   </a>`;
 }
@@ -214,7 +216,7 @@ function csAdminHtml() {
         <button type="button" class="btn btn-sm btn-outline" data-cs="rebuild">${tl('Prepočítať odznova', 'Rebuild from scratch')}</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="unlock">${tl('Odomknúť všetky zápasy', 'Unlock all matches')}</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="clear">${tl('Vyčistiť rozvrh', 'Clear the schedule')}</button>
-        <span class="cs-hint">${tl('Potiahni zápas na kurt a čas, spodnú hranu bloku na zmenu dĺžky zápasu (zámok = ručne umiestnený, plánovač ho nepresúva; kliknutím na zámok ho odomkneš). Späť do „Nerozvrhnuté“ ho zrušíš. Počet kurtov: Formát turnaja.', 'Drag a match to a court and a time, the bottom edge of a block to change the length of the match (lock = placed by hand, the planner does not move it; click the lock to unlock it). Drag it back to "Unscheduled" to take it off. Number of courts: Tournament format.')}</span>
+        <span class="cs-hint">${tl('Potiahni zápas na kurt a čas, spodnú hranu bloku na zmenu dĺžky zápasu (zámok = ručne umiestnený, plánovač ho nepresúva; kliknutím na zámok ho odomkneš). Späť do „Nerozvrhnuté“ ho zrušíš. Skončený zápas je zamknutý sám; kliknutím na jeho zámok ho odomkneš a môžeš ho posúvať aj meniť jeho dĺžku. Počet kurtov: Formát turnaja.', 'Drag a match to a court and a time, the bottom edge of a block to change the length of the match (lock = placed by hand, the planner does not move it; click the lock to unlock it). Drag it back to "Unscheduled" to take it off. A finished match is locked by itself; click its lock to unlock it, then you can move it and change its length. Number of courts: Tournament format.')}</span>
       </div>
     </div>`;
 }
@@ -283,7 +285,7 @@ function csOnPointerDown(e) {
   const el = e.target.closest('[data-drag]');
   if (!el || !csState.host.contains(el)) return;
   const rect = el.getBoundingClientRect();
-  csDrag = { el, token: el.dataset.token, startX: e.clientX, startY: e.clientY, offY: e.clientY - rect.top, offX: e.clientX - rect.left, width: rect.width, height: rect.height, ghost: null, target: null, preview: null };
+  csDrag = { el, length: Number(el.dataset.minutes) || 0, token: el.dataset.token, startX: e.clientX, startY: e.clientY, offY: e.clientY - rect.top, offX: e.clientX - rect.left, width: rect.width, height: rect.height, ghost: null, target: null, preview: null };
   window.addEventListener('pointermove', csOnPointerMove);
   window.addEventListener('pointerup', csOnPointerUp);
   window.addEventListener('pointercancel', csOnPointerUp);
@@ -299,7 +301,7 @@ function csDropTarget(e) {
     const dayWindow = csDayWindow(settings, csChoice.day);
     const startMin = csMinutesOf(dayWindow.start);
     const endMin = csMinutesOf(dayWindow.end);
-    const length = settings.matchMinutes;
+    const length = csDrag.length || settings.matchMinutes;
     let minutes = startMin + Math.round(((e.clientY - csDrag.offY - colRect.top) / CS_PX) / CS_SNAP) * CS_SNAP;
     minutes = Math.max(startMin, Math.min(minutes, endMin - length));
     return { type: 'court', col, court: Number(col.dataset.court), minutes, length };
@@ -375,7 +377,7 @@ function csOnPointerUp() {
   const base = `/seasons/${csState.season.id}/schedule/matches/${drag.token}`;
   if (target.type === 'court') {
     csApply(api(base, { method: 'PUT', body: { courtNo: target.court, scheduledAt: csLocalToIso(csChoice.day, target.minutes) } }));
-  } else if (drag.el.classList.contains('cs-m')) {
+  } else if (drag.el.classList.contains('cs-m') && !drag.el.classList.contains('cs-st-finished')) { // (a finished match stays on the schedule)
     csApply(api(base, { method: 'PUT', body: { courtNo: null } }));
   }
 }
@@ -498,6 +500,14 @@ async function initCourtSchedule(host, season) {
   host.onclick = async (e) => {
     const handle = e.target.closest('[data-resize]');
     if (handle) { e.preventDefault(); return; }
+    const finLock = e.target.closest('[data-fin-lock]');
+    if (finLock) {
+      e.preventDefault();
+      const token = finLock.dataset.finLock;
+      if (csUnlocked.has(token)) csUnlocked.delete(token); else csUnlocked.add(token);
+      csRender();
+      return;
+    }
     const lock = e.target.closest('[data-unlock]');
     if (lock) {
       e.preventDefault();

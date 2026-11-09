@@ -22,12 +22,33 @@
     const mine = () => editions.filter((e) => e.seasonId === season.id);
     const unlinked = () => editions.filter((e) => !e.seasonId);
 
-    const playerOptions = (selectedPlayerId) => `<option value="">${escapeHtml(tl('— napísané meno —', '— typed name —'))}</option>${players.map((p) => `<option value="${p.id}"${p.id === selectedPlayerId ? ' selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}`;
+    // One search box for a place: type "rob" and the players whose name has a word starting so (without regard to accents) are offered; pick one and the place is
+    // linked to that player (green frame); leave what was typed and it is a typed name (for someone who is not a player of the app)
+    const suggestions = (query) => {
+      const q = query.trim();
+      if (!q) return [];
+      const first = searchTokens(q)[0] || '';
+      const rank = (name) => {
+        const words = searchTokens(name);
+        if (words.join(' ').startsWith(searchTokens(q).join(' '))) return 0;
+        return words.some((w) => w.startsWith(first)) ? 1 : 2;
+      };
+      return players.filter((p) => matchesQuery(p.name, q)).map((p, i) => ({ p, i, r: rank(p.name) })).sort((a, b) => a.r - b.r || a.i - b.i).slice(0, 8).map((x) => x.p);
+    };
+    const closeSuggestions = (root) => root.querySelectorAll('.wa-sug.open').forEach((el) => { el.classList.remove('open'); el.innerHTML = ''; });
+    function showSuggestions(input) {
+      const list = input.parentElement.querySelector('.wa-sug');
+      const found = suggestions(input.value);
+      list.innerHTML = found.map((p) => `<div class="autocomplete-item" data-pick="${p.id}">${highlightMatch(p.name, input.value)}</div>`).join('');
+      list.classList.toggle('open', found.length > 0);
+    }
 
     function placeRowHtml(block, slot, label) {
       const place = block.places.find((p) => p.slot === slot) || null;
       const playerId = place ? place.own.playerId : null;
-      const typed = place && !playerId ? place.own.name : '';
+      const found = playerId ? players.find((p) => p.id === playerId) : null;
+      const shown = found ? found.name : (place && (playerId ? place.name : place.own.name || place.name)) || '';
+      const linked = playerId ? { id: playerId, name: shown } : null; // (also when the player is not in the list any more: the link is kept until the name is changed)
       const photo = place ? place.photoUrl : null;
       const own = place && place.own.photoUrl;
       const thumb = photo
@@ -35,10 +56,12 @@
         : '<span style="width:40px;height:40px;border-radius:50%;background:#eee;display:inline-block"></span>';
       const canUpload = !!(place && place.placeId);
       return `
-        <div class="wa-place" data-slot="${slot}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid rgba(255,255,255,0.12)">
+        <div class="wa-place" data-slot="${slot}" data-pid="${linked ? linked.id : ''}" data-pname="${linked ? escapeHtml(linked.name) : ''}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid rgba(255,255,255,0.12)">
           <strong style="width:110px;font-size:13px">${escapeHtml(label())}</strong>
-          <select class="wa-player" style="min-width:200px;${field}">${playerOptions(playerId)}</select>
-          <input type="text" class="wa-name" maxlength="120" placeholder="${escapeHtml(tl('Meno', 'Name'))}" value="${escapeHtml(typed)}" style="flex:1;min-width:150px;${field};${playerId ? 'display:none' : ''}">
+          <div class="autocomplete" style="flex:1;min-width:220px">
+            <input type="text" class="wa-name" maxlength="120" autocomplete="off" placeholder="${escapeHtml(tl('Hľadaj hráča alebo napíš meno…', 'Search a player or type a name…'))}" value="${escapeHtml(shown)}" style="width:100%;box-sizing:border-box;${field};${linked ? 'border-color:var(--green)' : ''}" title="${escapeHtml(linked ? tl('Hráč z aplikácie', 'A player of the app') : tl('Napísané meno', 'A typed name'))}">
+            <div class="autocomplete-list wa-sug"></div>
+          </div>
           ${thumb}
           <button type="button" class="btn btn-sm btn-outline" data-act="upload" data-place="${canUpload ? place.placeId : ''}"${canUpload ? '' : ` disabled title="${escapeHtml(tl('Najprv ulož blok', 'Save the block first'))}"`}>${escapeHtml(tl('Nahrať fotku', 'Upload photo'))}</button>
           ${own ? `<button type="button" class="btn btn-sm btn-outline" data-act="remove-photo" data-place="${place.placeId}">${escapeHtml(tl('Odstrániť fotku', 'Remove photo'))}</button>` : ''}
@@ -159,8 +182,50 @@
         return;
       }
       if (t.classList.contains('wa-cat')) blockEl(t).querySelector('.wa-title').style.display = t.value ? 'none' : '';
-      if (t.classList.contains('wa-player')) t.closest('.wa-place').querySelector('.wa-name').style.display = t.value ? 'none' : '';
       if (t.classList.contains('wa-photo-input')) uploadPhoto(t);
+    };
+
+    // the search box of a place: typing offers players, and a name that is changed after a player was picked is a typed name again
+    host.oninput = (ev) => {
+      const t = ev.target;
+      if (!t.classList || !t.classList.contains('wa-name')) return;
+      const row = t.closest('.wa-place');
+      if (row.dataset.pid && row.dataset.pname !== t.value) { row.dataset.pid = ''; t.style.borderColor = ''; t.title = tl('Napísané meno', 'A typed name'); }
+      showSuggestions(t);
+    };
+    host.onfocusin = (ev) => { if (ev.target.classList && ev.target.classList.contains('wa-name') && !ev.target.closest('.wa-place').dataset.pid) showSuggestions(ev.target); };
+    host.onfocusout = (ev) => { if (ev.target.classList && ev.target.classList.contains('wa-name')) setTimeout(() => closeSuggestions(ev.target.closest('.wa-place') || host), 150); };
+    host.onkeydown = (ev) => {
+      const t = ev.target;
+      if (!t.classList || !t.classList.contains('wa-name')) return;
+      const list = t.parentElement.querySelector('.wa-sug');
+      if (ev.key === 'Escape') { closeSuggestions(t.closest('.wa-place')); return; }
+      if (!list.classList.contains('open')) return;
+      const items = [...list.querySelectorAll('.autocomplete-item')];
+      const at = items.findIndex((el) => el.classList.contains('active'));
+      if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        const next = ev.key === 'ArrowDown' ? Math.min(at + 1, items.length - 1) : Math.max(at - 1, 0);
+        items.forEach((el, i) => el.classList.toggle('active', i === next));
+      } else if (ev.key === 'Enter' && at >= 0) {
+        ev.preventDefault();
+        items[at].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      }
+    };
+    host.onmousedown = (ev) => {
+      const item = ev.target.closest && ev.target.closest('[data-pick]');
+      if (!item) return;
+      ev.preventDefault(); // (the box keeps its focus until the pick is done)
+      const row = item.closest('.wa-place');
+      const player = players.find((p) => String(p.id) === item.dataset.pick);
+      if (!player) return;
+      const input = row.querySelector('.wa-name');
+      input.value = player.name;
+      input.style.borderColor = 'var(--green)';
+      input.title = tl('Hráč z aplikácie', 'A player of the app');
+      row.dataset.pid = String(player.id);
+      row.dataset.pname = player.name;
+      closeSuggestions(row);
     };
 
     host.onclick = async (ev) => {
@@ -197,7 +262,7 @@
           const category = el.querySelector('.wa-cat').value || null;
           await api(`/winners/blocks/${blockId}`, { method: 'PATCH', body: { category, title: el.querySelector('.wa-title').value.trim() } });
           const places = [...el.querySelectorAll('.wa-place')].map((row) => {
-            const playerId = row.querySelector('.wa-player').value;
+            const playerId = row.dataset.pid;
             return { slot: Number(row.dataset.slot), playerId: playerId ? Number(playerId) : null, name: playerId ? '' : row.querySelector('.wa-name').value.trim() };
           });
           setEdition(await api(`/winners/blocks/${blockId}/places`, { method: 'PUT', body: { places } }));

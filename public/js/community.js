@@ -22,6 +22,7 @@
   // the tabs: News, Events, Ranking, Info (the members are in Info; the old #members link of the club menu opens it)
   const tabFromHash = (hash) => (hash === 'members' ? 'info' : ['news', 'events', 'ranking', 'info'].includes(hash) ? hash : null);
   let tab = tabFromHash(window.location.hash.slice(1)) || 'news';
+  let eventYear = null; // the year picked in the Events tab ('all' = every year; null until the tab is first drawn, then the current year or the newest)
 
   const locale = () => (currentLang === 'en' ? 'en-GB' : 'sk-SK');
   const dateText = (iso) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'numeric', year: 'numeric' });
@@ -159,10 +160,11 @@
         <div class="com-event-date">${escapeHtml(rangeText(s.startDate, s.endDate) || t('com.eventNoDate'))}</div>
         <div class="com-event-main"><a class="com-event-name" href="${escapeHtml(link)}">${escapeHtml(s.name)}</a><div class="com-event-sub">${facts}</div></div>
         <div class="com-event-acts">
-          ${open ? `<a class="btn btn-primary com-small" href="${escapeHtml(link)}#register">${escapeHtml(t('com.eventRegister'))}</a>` : ''}
+          ${open ? `<a class="btn com-small com-reg" href="${escapeHtml(link)}#register">${escapeHtml(t('com.eventRegister'))}</a>` : ''}
           ${closed ? `<span class="btn com-small com-reg-closed">${escapeHtml(t('season.registerClosed'))}</span>` : ''}
           <a class="btn btn-outline com-small" href="${escapeHtml(link)}">${escapeHtml(t('com.eventView'))}</a>
           ${isActing() ? `<a class="btn btn-outline com-small" href="/community-tournament/${s.id}">${escapeHtml(t('com.eventManage'))}</a>` : ''}
+          ${isActing() && !season && org.approved ? `<button type="button" class="btn btn-outline com-small" data-copy-tournament="${s.id}" title="${escapeHtml(tl('Vytvorí nový turnaj s rovnakými nastaveniami (bez hráčov a zápasov)', 'Makes a new tournament with the same settings (without players and matches)'))}">${escapeHtml(tl('Kopírovať', 'Copy'))}</button>` : ''}
         </div>
       </div>`;
   }
@@ -187,7 +189,52 @@
 
   function eventsHtml() {
     const make = isActing() && org.approved ? `<button type="button" class="btn btn-primary com-new-tournament" data-act="new-tournament">+ ${escapeHtml(t('com.newTournament'))}</button> <button type="button" class="btn btn-outline com-new-tournament" data-act="new-season">+ ${escapeHtml(t('com.newSeason'))}</button>` : '';
-    return `${make}${tournaments.length ? `<div class="com-events">${tournaments.map(tournamentHtml).join('')}</div>` : `<p class="com-empty">${escapeHtml(t('com.noEvents'))}</p>`}${winnersHtml()}`;
+    // the filter of years (the year of the start date; the one with today's date first when it has events, else the newest): "All" shows everything
+    const yearOf = (s) => (s.startDate || '').slice(0, 4) || '—';
+    const years = [...new Set(tournaments.map(yearOf))].sort().reverse();
+    const thisYear = String(new Date().getFullYear());
+    if (eventYear !== 'all' && !years.includes(eventYear)) eventYear = years.includes(thisYear) ? thisYear : (years[0] || 'all');
+    const shown = eventYear === 'all' ? tournaments : tournaments.filter((s) => yearOf(s) === eventYear);
+    const pills = years.length ? `<div class="tabs com-years">${['all', ...years].map((y) => `<button type="button" class="tab${y === eventYear ? ' active' : ''}" data-event-year="${y}">${escapeHtml(y === 'all' ? tl('Všetky', 'All') : y)}</button>`).join('')}</div>` : '';
+    return `${make}${pills}${shown.length ? `<div class="com-events">${shown.map(tournamentHtml).join('')}</div>` : `<p class="com-empty">${escapeHtml(t('com.noEvents'))}</p>`}${winnersHtml()}`;
+  }
+
+  // "Kopírovať" on a tournament: asks for the name and the dates of the new one (the settings come from the old one on the server), then opens its manage page
+  function openCopyDialog(source) {
+    const back = document.createElement('div');
+    back.className = 'modal-backdrop';
+    back.style.display = 'flex';
+    back.innerHTML = `<div class="modal com-tdialog" role="dialog" aria-modal="true"><button type="button" class="close" aria-label="Close">&times;</button>
+      <h3 style="margin-top:0">${escapeHtml(tl('Kopírovať turnaj', 'Copy the tournament'))}</h3>
+      <p style="font-size:13.5px;line-height:1.5;margin:0 0 10px">${escapeHtml(tl('Nový turnaj dostane miesto, typ, kategórie, poplatok, popis, obrázky a nastavenia kurtov z turnaja „' + source.name + '“. Hráči, zápasy a víťazi sa nekopírujú; formát turnaja nastavíš v jeho správe.', 'The new tournament gets the place, type, categories, fee, description, pictures and court settings of "' + source.name + '". Players, matches and winners are not copied; you set its format on its manage page.'))}</p>
+      <form id="com-c-form">
+        <div class="field"><label>${escapeHtml(t('com.tFieldName'))}</label><input type="text" id="com-c-name" maxlength="120" required value="${escapeHtml(source.name)}"></div>
+        <div class="com-t-row">
+          <div class="field"><label>${escapeHtml(t('com.tFieldStart'))}</label><input type="date" id="com-c-start" required></div>
+          <div class="field"><label>${escapeHtml(t('com.tFieldEnd'))}</label><input type="date" id="com-c-end"></div>
+        </div>
+        <div id="com-c-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+        <button type="submit" class="btn btn-primary">${escapeHtml(tl('Vytvoriť kópiu', 'Make the copy'))}</button>
+        <button type="button" class="btn btn-outline" id="com-c-cancel">${escapeHtml(t('com.tCancel'))}</button>
+      </form></div>`;
+    const close = () => back.remove();
+    back.querySelector('.close').addEventListener('click', close);
+    back.querySelector('#com-c-cancel').addEventListener('click', close);
+    back.addEventListener('click', (e) => { if (e.target === back) close(); });
+    document.body.appendChild(back);
+    back.querySelector('#com-c-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submit = e.target.querySelector('button[type="submit"]');
+      if (submit.dataset.busy) return;
+      submit.dataset.busy = '1';
+      const errorEl = back.querySelector('#com-c-error');
+      errorEl.textContent = '';
+      try {
+        const made = await api(`/communities/${org.id}/tournaments/${source.id}/copy`, { method: 'POST', body: { name: back.querySelector('#com-c-name').value.trim(), startDate: back.querySelector('#com-c-start').value || null, endDate: back.querySelector('#com-c-end').value || null } });
+        window.location.href = siteUrl(`/community-tournament/${made.id}`);
+      } catch (err) { errorEl.textContent = err.message; delete submit.dataset.busy; }
+    });
+    back.querySelector('#com-c-start').focus();
   }
 
   // ---- the Ranking tab: every member of the club is in it by himself (nobody is added); the admin sets the points by hand, a member with none has no rank yet
@@ -611,6 +658,11 @@
       // the hash follows the tab, so a link of the club menu to that very tab still counts as a change
       window.history.replaceState(null, '', `#${tab}`);
       render();
+    }));
+    root.querySelectorAll('[data-event-year]').forEach((b) => b.addEventListener('click', () => { eventYear = b.dataset.eventYear; render(); }));
+    root.querySelectorAll('[data-copy-tournament]').forEach((b) => b.addEventListener('click', () => {
+      const source = tournaments.find((x) => String(x.id) === b.dataset.copyTournament);
+      if (source) openCopyDialog(source);
     }));
     root.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
       const act = b.dataset.act;

@@ -1543,6 +1543,8 @@ if (!matchScheduleColumns.includes('slot_locked')) db.exec('ALTER TABLE matches 
 if (!matchScheduleColumns.includes('duration_minutes')) db.exec('ALTER TABLE matches ADD COLUMN duration_minutes INTEGER');
 // when the result of a match was entered by hand (the moment the match counts as finished on the court schedule; end_time stays empty for those)
 if (!matchScheduleColumns.includes('result_at')) db.exec('ALTER TABLE matches ADD COLUMN result_at TEXT');
+// 1 = the organiser moved or resized this FINISHED match on the court schedule by hand: its block is then scheduled_at + duration_minutes instead of its real start/end
+if (!matchScheduleColumns.includes('manual_block')) db.exec('ALTER TABLE matches ADD COLUMN manual_block INTEGER NOT NULL DEFAULT 0');
 if (!db.prepare('PRAGMA table_info(season_group_members)').all().some((c) => c.name === 'paid')) {
   db.exec('ALTER TABLE season_group_members ADD COLUMN paid INTEGER NOT NULL DEFAULT 0');
 }

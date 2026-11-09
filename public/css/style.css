@@ -5147,7 +5147,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-list-court { background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius-md); overflow: hidden; }
 .cs-list-h { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--fill-grey); font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
 .cs-list-h em { font-style: normal; font-size: 12px; letter-spacing: 0; color: #c3c7cf; background: rgba(255, 255, 255, 0.12); border-radius: 999px; padding: 1px 9px; }
-.cs-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; grid-template-areas: "time pl st" "time meta st"; column-gap: 12px; row-gap: 2px; align-items: center; padding: 10px 14px 10px 12px; margin: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid var(--gray-dim); color: var(--white); text-decoration: none; font-size: 14px; }
+.cs-row { display: grid; grid-template-columns: 78px minmax(0, 1fr) auto; grid-template-areas: "time pl st" "time meta st"; column-gap: 12px; row-gap: 2px; align-items: center; padding: 10px 14px 10px 12px; margin: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid var(--gray-dim); color: var(--white); text-decoration: none; font-size: 14px; }
 .cs-row:last-child { border-bottom: none; }
 .cs-row:hover { background: rgba(255, 255, 255, 0.04); }
 .cs-row-time { grid-area: time; font-weight: 800; color: #c3c7cf; font-size: 13px; }
@@ -5201,17 +5201,15 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-resize::after { content: ''; position: absolute; left: 50%; bottom: 3px; width: 26px; height: 3px; margin-left: -13px; border-radius: 2px; background: rgba(255, 255, 255, 0.28); }
 .cs-resize:hover::after { background: var(--orange); }
 /* a short block (a match that ended early, or a very short one): one line */
-.cs-m.cs-short { flex-direction: row; align-items: center; gap: 6px; padding-top: 0; padding-bottom: 0; white-space: nowrap; }
-.cs-m.cs-short .cs-m-pl { flex-direction: row; gap: 4px; font-size: 12px; }
-.cs-m.cs-short .cs-m-pl span + span::before { content: '–'; margin-right: 4px; font-weight: 400; color: #8b8f98; }
+.cs-m.cs-short { padding-top: 3px; padding-bottom: 2px; }
 .cs-m.cs-short .cs-m-meta { display: none; }
-/* phones: the two names of a short block would not both fit in a row - the second one is put under the first */
-@media (max-width: 700px) {
-  .cs-m.cs-short .cs-m-pl { flex-direction: column; gap: 0; font-size: 11px; line-height: 1.2; }
-  .cs-m.cs-short .cs-m-pl span + span::before { content: none; margin: 0; }
-}
+.cs-m.cs-short .cs-m-pl .cs-pl { gap: 1px; }
 .cs-m.cs-short .cs-resize::after { display: none; }
-.venue-admin-row.vn-drop-before { box-shadow: inset 0 3px 0 var(--orange); }
+/* the lock of a FINISHED match (organiser only): closed grey = locked by itself, open green = unlocked, the match can be moved and resized */
+.cs-lock.fin { background: #8b8f98; }
+.cs-lock.fin::before { border-color: #8b8f98; }
+.cs-lock.fin.open { background: var(--green); }
+.cs-lock.fin.open::before { border-color: var(--green); top: -6px; left: 3px; }.venue-admin-row.vn-drop-before { box-shadow: inset 0 3px 0 var(--orange); }
 .venue-admin-row.vn-drop-after { box-shadow: inset 0 -3px 0 var(--orange); }
 
 /* the card of a tournament or a season (Backend, club manage page): dark like the windows (the ink and the greys are re-pointed inside it, as in .modal), the tabs
@@ -5741,6 +5739,11 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .com-event-name:hover { color: var(--green); }
 .com-event-sub { margin-top: 3px; font-size: 13px; color: var(--gray-dim); }
 .com-event-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+/* the REGISTRÁCIA button of an event: green with a ring that pulses, like the one on the page of the tournament (sv-register-glow) */
+.com-reg { background: var(--green); border: 1px solid var(--green); color: #0a0a0a; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.com-reg:hover { background: #c6ff3a; border-color: #c6ff3a; color: #0a0a0a; }
+@media (prefers-reduced-motion: no-preference) { .com-reg { animation: sv-register-glow 1.8s ease-out infinite; } }
+.com-years { margin: 4px 0 14px; }
 .com-reg-closed { background: var(--fill-grey); color: #8b8f98; border: 1px solid rgba(255, 255, 255, 0.1); cursor: default; pointer-events: none; font-weight: 700; }
 .com-tdialog { max-width: 520px; width: calc(100% - 24px); max-height: calc(100vh - 32px); overflow-y: auto; }
 .com-t-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

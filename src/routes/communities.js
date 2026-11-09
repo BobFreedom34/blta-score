@@ -484,6 +484,34 @@ router.post('/:id/tournaments', (req, res) => {
   res.status(201).json(seasonsRoutes.serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
 });
 
+// An admin of a club copies one of its tournaments for a new date ({ name, startDate, endDate }): the new tournament gets the place, the type, the categories,
+// the fee, the description, the pictures, the number of players, the scoring and the settings of the courts; the players, the draw, the matches, the winners and the
+// dates / live links of the old one are not copied (the format is set again on its manage page).
+const COPIED_COLUMNS = ['entry_fee', 'prize_money', 'info', 'payment_url', 'logo_url', 'hero_url', 'hero_mobile_url', 'court_count', 'match_minutes', 'day_start', 'day_end',
+  'rest_minutes', 'auto_schedule', 'max_matches_per_day', 'court_order', 'max_players', 'category_max', 'unregister_hours', 'community_points'];
+router.post('/:id/tournaments/:sourceId/copy', (req, res) => {
+  const ctx = needOrgAdmin(req, res);
+  if (!ctx) return;
+  if (!clubTournaments.isPublicOrg(ctx.org)) return res.status(404).json({ error: 'Community not found' });
+  const source = db.prepare("SELECT * FROM seasons WHERE id = ? AND organisation_id = ? AND kind = 'TOURNAMENT'").get(Number(req.params.sourceId), ctx.org.id);
+  if (!source) return res.status(404).json({ error: 'Tournament not found' });
+  const read = seasonsRoutes.readNewSeason({ name: req.body.name, startDate: req.body.startDate, endDate: req.body.endDate, venue: source.venue || '', playType: source.play_type || 'SINGLES', kind: 'TOURNAMENT' });
+  if (read.error) return res.status(400).json({ error: read.error });
+  if (!read.values.start) return res.status(400).json({ error: 'Choose the start date of the new tournament' });
+  if (clubTournaments.openTournamentCount(ctx.org.id) >= ctx.org.max_open_tournaments) {
+    return res.status(409).json({ error: `This community or club already has ${ctx.org.max_open_tournaments} open tournaments or seasons` });
+  }
+  // (the categories and the scoring are taken as they are stored in the old one)
+  read.values.categories = source.categories;
+  read.values.scoring = source.scoring;
+  read.values.tiebreakers = source.tiebreakers;
+  const season = seasonsRoutes.insertSeason(read.values, ctx.org.league_id, ctx.org.id);
+  // (only the columns the old tournament row has: some are added to the table later, when first needed)
+  const copied = COPIED_COLUMNS.filter((c) => source[c] !== undefined);
+  db.prepare(`UPDATE seasons SET ${copied.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`).run(...copied.map((c) => source[c]), season.id);
+  res.status(201).json(seasonsRoutes.serializeSeason(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
+});
+
 // An admin of a public community or club makes a SEASON of it: a league-style competition over a period, with groups of its members and a table that builds up
 // from the matches the members arrange between themselves. An ordinary league season with organisation_id (the league, the Backend and the ratings leave it
 // out, like a club tournament); it counts towards the same limit of open events as the tournaments.

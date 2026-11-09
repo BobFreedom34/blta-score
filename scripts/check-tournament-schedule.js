@@ -148,7 +148,28 @@ test('by hand: a planned match goes to a court at a time (and is locked); a take
   assert.ok(clashing.json.warnings.length >= 1);
   assert.deepStrictEqual((await call('PUT', `/api/seasons/${tournament.id}/schedule/matches/${a.token}`, { courtNo: 2, scheduledAt: '2099-05-02T08:00:00.000Z' })).json.warnings, []);
   const finished = sch.matches.find((m) => m.status === 'FINISHED');
-  assert.strictEqual((await call('PUT', `/api/seasons/${tournament.id}/schedule/matches/${finished.token}`, { courtNo: 1, scheduledAt: '2099-05-02T12:00:00.000Z' })).status, 409);
+  // a finished match can be taken off the schedule never, but the organiser may move it (the page unlocks it first): it keeps the length its block had
+  assert.strictEqual((await call('PUT', `/api/seasons/${tournament.id}/schedule/matches/${finished.token}`, { courtNo: null })).status, 409);
+  const length = Date.parse(finished.endsAt) - Date.parse(finished.blockStart);
+  const moved = await call('PUT', `/api/seasons/${tournament.id}/schedule/matches/${finished.token}`, { courtNo: 1, scheduledAt: '2099-05-02T12:00:00.000Z' });
+  assert.strictEqual(moved.status, 200, moved.text);
+  const movedMatch = moved.json.schedule.matches.find((m) => m.token === finished.token);
+  assert.strictEqual(movedMatch.status, 'FINISHED');
+  assert.strictEqual(movedMatch.manual, true);
+  assert.strictEqual(movedMatch.blockStart, '2099-05-02T12:00:00.000Z');
+  assert.ok(Math.abs((Date.parse(movedMatch.endsAt) - Date.parse(movedMatch.blockStart)) - length) <= 5 * 60 * 1000, 'the length is kept (to 5 minutes)');
+  assert.strictEqual(movedMatch.winnerId, finished.winnerId, 'the result is untouched');
+  // its length can be changed too, and null brings the real times back
+  const longer = await call('PUT', `/api/seasons/${tournament.id}/schedule/matches/${finished.token}`, { durationMinutes: 75 });
+  assert.strictEqual(longer.status, 200, longer.text);
+  const longerMatch = longer.json.schedule.matches.find((m) => m.token === finished.token);
+  assert.strictEqual(Date.parse(longerMatch.endsAt) - Date.parse(longerMatch.blockStart), 75 * 60 * 1000);
+  // (put it back where it was, so the next tests see the schedule as before)
+  await call('PUT', `/api/seasons/${tournament.id}/schedule/matches/${finished.token}`, { courtNo: finished.courtNo, scheduledAt: finished.scheduledAt });
+  const reset = await call('PUT', `/api/seasons/${tournament.id}/schedule/matches/${finished.token}`, { durationMinutes: null });
+  const back = reset.json.schedule.matches.find((m) => m.token === finished.token);
+  assert.strictEqual(back.manual, false);
+  assert.strictEqual(back.scheduledAt, finished.scheduledAt);
 });
 
 test('the planner never moves a locked match; "rebuild" re-places the others; "clear" takes everything planned off the courts', async () => {
@@ -227,7 +248,12 @@ test('the length of one match: set by the organiser (15–300, steps of 5), the 
   const after = (await schedule()).matches.find((m) => m.token === finished.token);
   assert.strictEqual(Date.parse(after.endsAt) - Date.parse(after.blockStart), 40 * MIN, 'the block is the real 40 minutes');
   assert.strictEqual(after.endKnown, true);
-  assert.strictEqual((await put(finished.token, { durationMinutes: 60 })).status, 200, 'a length can be set, but the real end wins');
+  // the organiser (who unlocked it in the page) may give a finished match another length: the block is drawn so, the real start and end stay in the match; null = the real times again
+  assert.strictEqual((await put(finished.token, { durationMinutes: 60 })).status, 200);
+  const stretched = (await schedule()).matches.find((m) => m.token === finished.token);
+  assert.strictEqual(Date.parse(stretched.endsAt), realStart + 60 * MIN);
+  assert.strictEqual(stretched.manual, true);
+  assert.strictEqual((await put(finished.token, { durationMinutes: null })).status, 200);
   assert.strictEqual(Date.parse((await schedule()).matches.find((m) => m.token === finished.token).endsAt), realStart + 40 * MIN);
   // a result entered by hand: the match ended when the result was entered (but not later than its length allows)
   const byHand = (await schedule()).matches.filter((m) => m.status === 'FINISHED' && m.courtNo && m.token !== finished.token);

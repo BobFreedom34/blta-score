@@ -207,6 +207,32 @@ test('the page side: the club page offers a new season, lists seasons and links 
   for (const key of ['com.newSeason', 'com.seasonTitle']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
 });
 
+test('copying a tournament of a club: the settings come along, nothing else; only an admin of the club may; a bad request changes nothing', async () => {
+  const fresh = (await call('POST', '/api/communities', { cookie: owner.cookie, body: { type: 'COMMUNITY', name: 'Kopia komunita', description: 'x' } })).json;
+  const src = (await call('POST', `/api/communities/${fresh.id}/tournaments`, { cookie: owner.cookie, body: { name: 'Zdroj turnaj', startDate: day(3), endDate: day(3), playType: 'SINGLES', venue: 'Kurty Zdroj', entryFee: '12 EUR', categories: ['ELITE', 'NOVICE'], info: '<p>Popis</p>' } })).json;
+  assert.ok(src.id, 'the source tournament was made');
+  await call('PATCH', `/api/seasons/${src.id}`, { cookie: owner.cookie, body: { courtCount: 3 } });
+  const copy = await call('POST', `/api/communities/${fresh.id}/tournaments/${src.id}/copy`, { cookie: owner.cookie, body: { name: 'Kopia turnaj', startDate: day(10), endDate: day(11) } });
+  assert.strictEqual(copy.status, 201, JSON.stringify(copy.json));
+  assert.notStrictEqual(copy.json.id, src.id);
+  assert.strictEqual(copy.json.name, 'Kopia turnaj');
+  assert.strictEqual(copy.json.startDate, day(10));
+  assert.strictEqual(copy.json.endDate, day(11));
+  assert.strictEqual(copy.json.venue, 'Kurty Zdroj');
+  assert.strictEqual(copy.json.entryFee, '12 EUR');
+  assert.strictEqual(copy.json.courtCount, 3);
+  assert.deepStrictEqual(copy.json.categories, src.categories);
+  assert.strictEqual(copy.json.organisationId, fresh.id);
+  assert.ok(String(copy.json.info || '').includes('Popis'));
+  assert.notStrictEqual(copy.json.slug, src.slug, 'its own address');
+  assert.strictEqual((await call('POST', `/api/communities/${fresh.id}/tournaments/${src.id}/copy`, { cookie: outsider.cookie, body: { name: 'Cudzia', startDate: day(10) } })).status, 403);
+  assert.strictEqual((await call('POST', `/api/communities/${fresh.id}/tournaments/${src.id}/copy`, { cookie: owner.cookie, body: { name: 'Bez datumu' } })).status, 400);
+  assert.strictEqual((await call('POST', `/api/communities/${fresh.id}/tournaments/${src.id}/copy`, { cookie: owner.cookie, body: { name: '', startDate: day(10) } })).status, 400);
+  assert.strictEqual((await call('POST', `/api/communities/${fresh.id}/tournaments/999999/copy`, { cookie: owner.cookie, body: { name: 'X', startDate: day(10) } })).status, 404);
+  const list = (await call('GET', `/api/communities/${fresh.id}/tournaments`, { cookie: '' })).json.items;
+  assert.strictEqual(list.length, 2, 'only the one copy was made');
+});
+
 async function main() {
   let failed = 0;
   try {
