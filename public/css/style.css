@@ -5975,6 +5975,20 @@ a.com-rank-name:hover { color: var(--orange); }
 .com-dots-menu button:hover { background: rgba(255, 255, 255, 0.08); }
 .com-news-tournament .sch-row { padding: 18px 22px; border: 1px solid var(--orange); border-radius: var(--radius); background: var(--ink); box-shadow: 0 0 18px rgba(255, 85, 0, 0.18); }
 .com-news-tournament .sch-row:last-child { border-bottom: 1px solid var(--orange); }
+/* the poster of the tournament behind the card: the left part of the picture, fading out to the right; the date sits on it (a dark veil under it keeps it readable) */
+.com-news-tournament .sch-row.has-poster { position: relative; overflow: hidden; isolation: isolate; }
+.com-news-tournament .sch-row.has-poster > * { position: relative; z-index: 1; }
+.com-news-tournament .sch-row.has-poster::before { content: ''; position: absolute; inset: 0 auto 0 0; width: max(270px, 58%); z-index: 0; background: var(--poster) left center / cover no-repeat; opacity: 0.95; -webkit-mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); }
+.com-news-tournament .sch-row.has-poster::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 270px; z-index: 0; background: linear-gradient(to right, rgba(10, 10, 10, 0.5), transparent); }
+/* (the picture is over half of the card and fades out slowly; under the name it is only a faint trace) and the tags stay under the name */
+.com-news-tournament .sch-name { flex-direction: column; align-items: flex-start; }
+.com-news-tournament .sch-row.has-poster .sch-date { text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9); }
+.com-news-tournament .sch-row.has-poster .sch-date small { color: #fff; }
+/* phones: the card is tall, the picture (the tall one) covers it and fades out downwards, so the date and the name stand on it and the buttons on the dark */
+@media (max-width: 700px) {
+  .com-news-tournament .sch-row.has-poster::before { inset: 0; width: auto; background: var(--poster-m) center top / cover no-repeat; -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.7) 20%, rgba(0, 0, 0, 0.45) 40%, rgba(0, 0, 0, 0.25) 60%, rgba(0, 0, 0, 0.1) 80%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.7) 20%, rgba(0, 0, 0, 0.45) 40%, rgba(0, 0, 0, 0.25) 60%, rgba(0, 0, 0, 0.1) 80%, transparent 100%); }
+  .com-news-tournament .sch-row.has-poster::after { inset: 0; width: auto; background: linear-gradient(to bottom, rgba(10, 10, 10, 0.5), transparent 70%); }
+}
 /* hovering the card lights it like a row of the schedule page */
 .com-news-tournament .sch-row.link:hover { background: #1a1c21; }
 .com-event-item { margin-bottom: 24px; }

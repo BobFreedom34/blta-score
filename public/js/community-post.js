@@ -217,7 +217,13 @@ function comTournamentRow(s) {
       : `<span class="sch-reg off">${escapeHtml(t('season.registerClosed'))}</span>`)
     : '';
   const go = `<span class="sch-go">${escapeHtml(t('schedule.more'))} ›</span>`;
-  return `<a class="sch-row link ${status}" href="${escapeHtml(link)}">
+  // the poster of the tournament behind the card, fading out to the right (the wide picture on a computer, the tall one on a phone; each falls back to the other)
+  const safe = (u) => (/^\/[\w\/.-]+$/.test(u || '') ? u : '');
+  const wide = safe(s.heroUrl) || safe(s.heroMobileUrl);
+  const tall = safe(s.heroMobileUrl) || safe(s.heroUrl);
+  const poster = wide ? ` has-poster` : '';
+  const posterStyle = wide ? ` style="--poster:url('${wide}');--poster-m:url('${tall}')"` : '';
+  return `<a class="sch-row link ${status}${poster}"${posterStyle} href="${escapeHtml(link)}">
       <div class="sch-date">${escapeHtml(comDateRange(start, end) || t('com.eventNoDate'))}<small>${start ? escapeHtml(String(comDay(start).getFullYear())) : ''}</small></div>
       <span class="sch-eta"></span>
       <div class="sch-info"><div class="sch-text"><div class="sch-name"><span class="sch-title">${escapeHtml(s.name)}</span>${tags}</div><div class="sch-sub">${sub}</div></div></div>
