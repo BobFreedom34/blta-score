@@ -12,7 +12,7 @@ const test = (name, fn) => tests.push({ name, fn });
 
 test('the card rules live once, in style.css, and both lists carry the class sch-lists', () => {
   const css = read('css/style.css');
-  ['.sch-lists .sch-row', '.sch-reg {', '.sch-lists .sch-eta', '.sch-lists .sch-chip'].forEach((rule) => assert.ok(css.includes(rule), `style.css has ${rule}`));
+  ['.sch-lists .sch-row', '.sch-reg {', ':is(.sch-lists, .com-news-tournament) .sch-eta', ':is(.sch-lists, .com-news-tournament) .sch-chip'].forEach((rule) => assert.ok(css.includes(rule), `style.css has ${rule}`));
   assert.ok(!/\.sl-sched \.sch-(card|row|go|reg|acts|eta|chip|tags|title|sub|date|info|text|name)/.test(read('slta.html')), 'slta.html no longer carries its own copy of the card rules');
   assert.ok(read('slta.html').includes('class="sl-sched sch-lists"'), 'the national schedule carries sch-lists');
   assert.ok(/id="sch-root" class="sch-lists"/.test(read('harmonogram.html')), 'the schedule page carries sch-lists');
@@ -20,10 +20,22 @@ test('the card rules live once, in style.css, and both lists carry the class sch
 
 test('the schedule page builds the same row: countdown, tags, chips, Registrácia next to Viac info, no logo; all events in the order of time', () => {
   const js = read('js/harmonogram.js');
-  ['sch-eta', 'sch-tags', 'sch-chip', 'sch-extra', 'sch-acts', 'sch-reg', 'registrationOpen'].forEach((s) => assert.ok(js.includes(s), `harmonogram.js has ${s}`));
-  assert.ok(!js.includes('sch-logo'), 'the row has no logo');
+  const row = read('js/schedule-row.js'); // (the row itself is drawn by the one template that the cards of the clubs use too)
+  ['sch-eta', 'sch-tags', 'sch-chip', 'sch-extra', 'sch-acts', 'sch-reg'].forEach((s) => assert.ok(row.includes(s), `schedule-row.js has ${s}`));
+  assert.ok(js.includes('schRow.html') && js.includes('registrationOpen'), 'the schedule page draws its rows with the shared template');
+  assert.ok(!js.includes('sch-logo') && !row.includes('sch-logo'), 'the row has no logo');
   assert.ok(!js.includes('runningHtml'), 'the running events are not pulled out of the order of time: past, running and coming stand by their dates');
   assert.ok(js.includes('BLTA_LOCALIZE'), 'the registration button goes to the address of the page language');
+});
+
+test('ONE template: the Harmonogram and the tournament cards of the clubs draw the row with schRow.html and share the rules in style.css', () => {
+  const club = read('js/community-post.js');
+  assert.ok(club.includes('schRow.html') && !club.includes('class="sch-row'), 'the club card has no markup of its own');
+  assert.ok(read('js/harmonogram.js').includes('schRow.html') && !read('js/harmonogram.js').includes('class="sch-row'), 'the Harmonogram has no markup of its own');
+  for (const page of ['harmonogram.html', 'community.html', 'communities.html']) assert.ok(read(page).includes('/js/schedule-row.js'), `${page} loads the template`);
+  const css = read('css/style.css');
+  assert.ok(css.includes(':is(.sch-lists, .com-news-tournament) .sch-row.has-poster'), 'the poster rules are written once for both');
+  assert.ok(!/.com-news-tournament .sch-(date|go|acts|name)/.test(css), 'the club card has no copy of the row rules');
 });
 
 test('the words exist in both languages', () => {

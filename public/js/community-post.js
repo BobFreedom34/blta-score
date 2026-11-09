@@ -166,69 +166,27 @@ function comBindComments(root, orgIdOf) {
   });
 }
 
-// ---- a tournament of the community as a piece of news: the card of a Harmonogram row (the same markup and styles, src/css .sch-*) under a line with the day it
-// was posted. s: { name, slug, startDate, endDate, venue, categories, registrationOpen, organisation: { name, slug } }
-const COM_CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
-const comCategoryName = (c) => (c === 'DOUBLES' ? t('season.catDoubles') : COM_CATEGORY_NAMES[c] || c);
-const comDay = (iso) => new Date(`${iso}T12:00:00`);
-const comDaysBetween = (a, b) => Math.round((comDay(b) - comDay(a)) / 864e5);
-function comDayWord(n) {
-  if (n === 1) return t('schedule.dayOne');
-  if (currentLang === 'en') return t('schedule.dayMany');
-  return n >= 2 && n <= 4 ? t('schedule.dayFew') : t('schedule.dayMany');
-}
-// "01.05. – 31.08.", "14. – 15.11.", "13.12."
-function comDateRange(a, b) {
-  if (!a) return '';
-  const x = comDay(a);
-  const y = comDay(b || a);
-  const two = (n) => String(n).padStart(2, '0');
-  const dm = (d) => `${two(d.getDate())}.${two(d.getMonth() + 1)}.`;
-  if (!b || a === b) return dm(x);
-  if (x.getMonth() === y.getMonth() && x.getFullYear() === y.getFullYear()) return `${two(x.getDate())}. – ${dm(y)}`;
-  return `${dm(x)} – ${dm(y)}`;
-}
-
+// ---- a tournament of the community as a piece of news: the card of a Harmonogram row, drawn by THE SAME template (public/js/schedule-row.js, the rules in style.css), under a line with the day
+// it was posted. s: { name, slug, kind, startDate, endDate, venue, categories, registrationOpen / registrationAvailable, tournamentEnded, heroUrl, heroMobileUrl, organisation: { name, slug } }
 function comTournamentRow(s) {
-  const d = new Date();
-  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const start = s.startDate || '';
-  const end = s.endDate || s.startDate || '';
-  // (a tournament whose playing window of the last day is over is finished, even on its own date: tournamentEnded comes from the server)
-  const status = !start ? 'future' : (end < today || s.tournamentEnded) ? 'past' : start > today ? 'future' : 'now';
-  let extra = '';
-  if (status === 'now') extra = t('schedule.daysLeft', { n: Math.max(0, comDaysBetween(today, end)), d: comDayWord(Math.max(0, comDaysBetween(today, end))) });
-  else if (status === 'future' && start) extra = t('schedule.startsIn', { n: comDaysBetween(today, start), d: comDayWord(comDaysBetween(today, start)) });
   const season = s.kind === 'LEAGUE'; // a season of the community (groups and a table) or a tournament
-  const link = `/${season ? 'season' : 'tournament'}/${encodeURIComponent(s.slug)}`;
-  const org = s.organisation;
-  const tags = `<span class="sch-tags"><span class="sch-tag ${season ? 'league' : 'tour'}">${escapeHtml(season ? t('com.seasonTag') : t('schedule.tournament'))}</span>`
-    + (status === 'now' ? `<span class="sch-tag now">${escapeHtml(t('schedule.running'))}</span>` : '')
-    + (status === 'past' ? `<span class="sch-tag past">${escapeHtml(t('schedule.finishedTag'))}</span>` : '')
-    + (org ? `<span class="sch-tag sch-club" role="link" tabindex="0" title="${escapeHtml(t('schedule.organiser', { name: org.name }))}" data-href="/community/${encodeURIComponent(org.slug)}">${escapeHtml(org.name)}</span>` : '')
-    + '</span>';
-  const chips = (s.categories || []).map((c) => `<span class="sch-chip">${escapeHtml(comCategoryName(c))}</span>`).join('');
-  const sub = `${s.venue ? `<span class="sch-venue">${escapeHtml(s.venue)} · </span>` : ''}<b class="sch-cats">${chips}</b><span class="sch-extra">${extra ? escapeHtml(` · ${extra}`) : ''}</span>`;
   // what a visitor can do (registrationAvailable of the page of the tournament; the feeds only carry registrationOpen, which already leaves out a started tournament)
   const regAvailable = s.registrationAvailable !== undefined ? s.registrationAvailable : s.registrationOpen;
-  const reg = !season && status !== 'past'
-    ? (regAvailable
-      ? `<span class="sch-reg" role="link" tabindex="0" data-href="${escapeHtml(link)}#register">${escapeHtml(t('schedule.register'))}</span>`
-      : `<span class="sch-reg off">${escapeHtml(t('season.registerClosed'))}</span>`)
-    : '';
-  const go = `<span class="sch-go">${escapeHtml(t('schedule.more'))} ›</span>`;
-  // the poster of the tournament behind the card, fading out to the right (the wide picture on a computer, the tall one on a phone; each falls back to the other)
-  const safe = (u) => (/^\/[\w\/.-]+$/.test(u || '') ? u : '');
-  const wide = safe(s.heroUrl) || safe(s.heroMobileUrl);
-  const tall = safe(s.heroMobileUrl) || safe(s.heroUrl);
-  const poster = wide ? ` has-poster` : '';
-  const posterStyle = wide ? ` style="--poster:url('${wide}');--poster-m:url('${tall}')"` : '';
-  return `<a class="sch-row link ${status}${poster}"${posterStyle} href="${escapeHtml(link)}">
-      <div class="sch-date">${escapeHtml(comDateRange(start, end) || t('com.eventNoDate'))}<small>${start ? escapeHtml(String(comDay(start).getFullYear())) : ''}</small></div>
-      <span class="sch-eta"></span>
-      <div class="sch-info"><div class="sch-text"><div class="sch-name"><span class="sch-title">${escapeHtml(s.name)}</span>${tags}</div><div class="sch-sub">${sub}</div></div></div>
-      ${reg ? `<span class="sch-acts">${reg}${go}</span>` : go}
-    </a>`;
+  return schRow.html({
+    name: s.name,
+    startDate: s.startDate || '',
+    endDate: s.endDate || s.startDate || '',
+    kind: season ? 'LEAGUE' : 'TOURNAMENT',
+    kindLabel: season ? t('com.seasonTag') : undefined,
+    link: `/${season ? 'season' : 'tournament'}/${encodeURIComponent(s.slug)}`,
+    venue: s.venue || '',
+    categories: s.categories || [],
+    ended: !!s.tournamentEnded, // (a tournament whose playing window of the last day is over is finished, even on its own date: tournamentEnded comes from the server)
+    registration: season ? 'none' : (regAvailable ? 'open' : 'closed'),
+    organisation: s.organisation || null,
+    heroUrl: s.heroUrl,
+    heroMobileUrl: s.heroMobileUrl,
+  }, schRow.todayIso());
 }
 
 // the whole item: headHtml (who and when it was posted) and the card

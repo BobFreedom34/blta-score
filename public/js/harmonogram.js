@@ -24,25 +24,11 @@ function locale() {
   return currentLang === 'en' ? 'en-GB' : 'sk-SK';
 }
 
-// "2026-05-04" as a local date at noon, so no timezone can move it to the neighbouring day.
-function parseDay(iso) {
-  return new Date(`${iso}T12:00:00`);
-}
-
-function todayIso() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function daysBetween(fromIso, toIso) {
-  return Math.round((parseDay(toIso) - parseDay(fromIso)) / 864e5);
-}
-
-function dayWord(n) {
-  if (n === 1) return t('schedule.dayOne');
-  if (currentLang === 'en') return t('schedule.dayMany');
-  return n >= 2 && n <= 4 ? t('schedule.dayFew') : t('schedule.dayMany');
-}
+// the dates, the status and the progress come from the shared row template (public/js/schedule-row.js), the same one the tournament cards of the clubs use
+const parseDay = schRow.parseDay;
+const todayIso = schRow.todayIso;
+const daysBetween = schRow.daysBetween;
+const dayWord = schRow.dayWord;
 
 // The years an event touches (a season that runs from December to April belongs to both).
 function eventYears(e) {
@@ -69,34 +55,11 @@ function renderFilters() {
     .map(([key, label]) => `<option value="${key}"${key === type ? ' selected' : ''}>${escapeHtml(t(label))}</option>`).join('');
 }
 
-// "01.05. – 31.08.", "14. – 15.11.", "13.12."
-function dateRange(e) {
-  const a = parseDay(e.startDate);
-  const b = parseDay(e.endDate);
-  const two = (n) => String(n).padStart(2, '0');
-  const dm = (d) => `${two(d.getDate())}.${two(d.getMonth() + 1)}.`;
-  if (e.startDate === e.endDate) return dm(a);
-  if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) return `${two(a.getDate())}. – ${dm(b)}`;
-  return `${dm(a)} – ${dm(b)}`;
-}
-
-function yearText(e) {
-  const a = parseDay(e.startDate).getFullYear();
-  const b = parseDay(e.endDate).getFullYear();
-  return a === b ? String(a) : `${a} – ${b}`;
-}
-
-function statusOf(e, today) {
-  if (e.endDate < today || e.tournamentEnded) return 'past'; // (tournamentEnded: the playing window of its last day is over)
-  if (e.startDate > today) return 'future';
-  return 'now';
-}
-
-// How far through a running event we are, in percent.
-function progressOf(e, today) {
-  const total = Math.max(1, daysBetween(e.startDate, e.endDate));
-  return Math.min(100, Math.max(0, Math.round((daysBetween(e.startDate, today) / total) * 100)));
-}
+const dateRange = (e) => schRow.dateRange(e.startDate, e.endDate);
+const yearText = (e) => schRow.yearText(e.startDate, e.endDate);
+// (tournamentEnded: the playing window of its last day is over)
+const statusOf = (e, today) => schRow.statusOf({ ...e, ended: e.tournamentEnded }, today);
+const progressOf = (e, today) => schRow.progressOf(e, today);
 
 function categoriesText(e) {
   return e.categories.map((c) => CATEGORY_NAMES[c] || c).join(' · ');
@@ -138,48 +101,13 @@ function timelineHtml(shown, today) {
 // ---------- the list ----------
 
 function rowHtml(e, today) {
-  const status = statusOf(e, today);
-  const isLeague = e.type === 'LEAGUE';
-  let extra = '';
-  let eta = '';
-  let bar = '';
-  if (status === 'now') {
-    const left = Math.max(0, daysBetween(today, e.endDate));
-    eta = t('schedule.daysLeft', { n: left, d: dayWord(left) });
-    bar = `<div class="home-bar mini"><i style="width:${progressOf(e, today)}%"></i></div>`;
-  } else if (status === 'future') {
-    const n = daysBetween(today, e.startDate);
-    eta = t('schedule.startsIn', { n, d: dayWord(n) });
-  }
-  if (eta) extra = ` · ${eta}`;
-  const tags = `<span class="sch-tags"><span class="sch-tag${isLeague ? '' : ' tour'}">${escapeHtml(t(isLeague ? 'schedule.league' : 'schedule.tournament'))}</span>`
-    + (status === 'now' ? `<span class="sch-tag now">${escapeHtml(t('schedule.running'))}</span>` : '')
-    + (status === 'past' ? `<span class="sch-tag past">${escapeHtml(t('schedule.finishedTag'))}</span>` : '')
-    + (e.organisation ? `<span class="sch-tag sch-club" role="link" tabindex="0" title="${escapeHtml(t('schedule.organiser', { name: e.organisation.name }))}" data-href="/community/${encodeURIComponent(e.organisation.slug)}">${escapeHtml(e.organisation.name)}</span>` : '')
-    + '</span>';
-  const chips = e.categories.map((c) => `<span class="sch-chip">${escapeHtml(CATEGORY_NAMES[c] || c)}</span>`).join('');
-  const sub = `${e.venue ? `<span class="sch-venue">${escapeHtml(e.venue)} · </span>` : ''}<b class="sch-cats">${chips}</b><span class="sch-extra">${escapeHtml(extra)}</span>`;
-  // a season with an open registration has a green button of its own (it sits inside the link of the row, so it is a link by role: see the click handler below)
-  const registerTo = status !== 'past' && e.registrationOpen && e.link ? `${e.link}#register` : '';
-  const reg = registerTo ? `<span class="sch-reg" role="link" tabindex="0" data-href="${escapeHtml(registerTo)}">${escapeHtml(t('schedule.register'))}</span>` : '';
-  const go = e.link ? `<span class="sch-go">${escapeHtml(t('schedule.more'))} ›</span>` : '';
-  const more = reg ? `<span class="sch-acts">${reg}${go}</span>` : (go || '<span></span>');
-  // the poster of the event behind the date (the wide picture on a computer, the tall one on a phone; each falls back to the other)
-  const safe = (u) => (/^\/[\w\/.-]+$/.test(u || '') ? u : '');
-  const wide = safe(e.heroUrl) || safe(e.heroMobileUrl);
-  const tall = safe(e.heroMobileUrl) || safe(e.heroUrl);
-  const posterClass = wide ? ' has-poster' : '';
-  const posterStyle = wide ? ` style="--poster:url('${wide}');--poster-m:url('${tall}')"` : '';
-  const open = e.link
-    ? `<a class="sch-row link ${status}${posterClass}"${posterStyle} href="${escapeHtml(e.link)}"${/^https?:/i.test(e.link) ? ' target="_blank" rel="noopener"' : ''}>`
-    : `<div class="sch-row ${status}${posterClass}"${posterStyle}>`;
-  return `
-    ${open}
-      <div class="sch-date">${escapeHtml(dateRange(e))}<small>${escapeHtml(yearText(e))}</small></div>
-      <span class="sch-eta">${escapeHtml(eta)}</span>
-      <div class="sch-info"><div class="sch-text"><div class="sch-name"><span class="sch-title">${escapeHtml(e.name)}</span>${tags}</div><div class="sch-sub">${sub}</div>${bar}</div></div>
-      ${more}
-    ${e.link ? '</a>' : '</div>'}`;
+  const link = e.link || '';
+  return schRow.html({
+    ...e,
+    kind: e.type,
+    ended: e.tournamentEnded,
+    registration: e.registrationOpen && link ? 'open' : 'none', // (the league shows no grey "closed" button)
+  }, today);
 }
 
 function render() {

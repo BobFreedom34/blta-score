@@ -5653,15 +5653,15 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 @media (max-width: 560px) { .lc-grid { grid-template-columns: 1fr; } }
 
 /* the lists of the schedule (the schedule page of every city, the schedule of a city on slta.sk): the cards with the countdown, the green "Registrácia"
-   next to "Viac info", the categories as chips on a phone. A list carries the class sch-lists. */
+   next to "Viac info", the categories as chips on a phone. A list carries the class sch-lists; the tournament cards of a club (.com-news-tournament) are the SAME row: every rule below that says :is(.sch-lists, .com-news-tournament) is one template for both (public/js/schedule-row.js makes the markup). */
 .sch-lists .sch-card { overflow: hidden; }
-.sch-lists .sch-row { position: relative; }
-.sch-lists .sch-row > * { position: relative; z-index: 1; }
-.sch-lists .sch-go { background: #000; border-color: var(--orange); color: var(--orange); }
-.sch-lists .sch-row.link:hover .sch-go, .sch-lists .sch-go:hover { border-color: var(--white); color: var(--white); }/* a season with an open registration: a second, green button that blinks like the one on the season page */
+:is(.sch-lists, .com-news-tournament) .sch-row { position: relative; }
+:is(.sch-lists, .com-news-tournament) .sch-row > * { position: relative; z-index: 1; }
+:is(.sch-lists, .com-news-tournament) .sch-go { background: #000; border-color: var(--orange); color: var(--orange); }
+:is(.sch-lists, .com-news-tournament) .sch-row.link:hover .sch-go, :is(.sch-lists, .com-news-tournament) .sch-go:hover { border-color: var(--white); color: var(--white); }/* a season with an open registration: a second, green button that blinks like the one on the season page */
 .sch-acts { display: inline-flex; align-items: center; gap: 10px; }
 /* both buttons of a row have the same size */
-.sch-lists .sch-go, .sch-reg { box-sizing: border-box; min-width: 132px; height: 34px; justify-content: center; text-align: center; }
+:is(.sch-lists, .com-news-tournament) .sch-go, .sch-reg { box-sizing: border-box; min-width: 132px; height: 34px; justify-content: center; text-align: center; }
 .sch-reg { display: inline-flex; align-items: center; padding: 9px 16px; border-radius: var(--radius-sm); border: 1px solid var(--green); background: var(--green); color: #0a0a0a; font-weight: 800; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; cursor: pointer; }
 .sch-reg:hover { background: #c6ff3a; border-color: #c6ff3a; }
 @media (prefers-reduced-motion: no-preference) { .sch-reg { animation: sv-register-glow 1.8s ease-out infinite; } }
@@ -5676,27 +5676,28 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .sch-cats { font-weight: 700; }
 .sch-chip + .sch-chip::before { content: ' · '; }
 @media (max-width: 700px) {
-  .sch-lists .sch-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "date date eta" "name name name" "tags tags tags" "sub sub sub" "bar bar bar" "acts acts acts"; gap: 10px 10px; padding: 18px 0; align-items: center; }
-  .sch-lists .sch-info, .sch-lists .sch-text, .sch-lists .sch-name { display: contents; }
-  .sch-lists .sch-date { grid-area: date; display: flex; align-items: baseline; gap: 8px; font-size: 18px; }
-  .sch-lists .sch-date small { margin-top: 0; }
-  .sch-lists .sch-eta { display: block; grid-area: eta; align-self: baseline; color: var(--orange); font-size: 12px; font-weight: 800; white-space: nowrap; }
-  .sch-lists .sch-title { grid-area: name; font-size: 19px; font-weight: 800; line-height: 1.2; color: var(--white); }
-  .sch-lists .sch-tags { grid-area: tags; }
-  .sch-lists .sch-sub { grid-area: sub; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-  .sch-lists .sch-extra { display: none; }
-  .sch-lists .sch-cats { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-  .sch-lists .sch-chip { background: #2a2a30; color: #e6e8ec; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
-  .sch-lists .sch-chip + .sch-chip::before { content: none; }
-  .sch-lists .home-bar.mini { grid-area: bar; margin-top: 2px; max-width: none; }
-  .sch-lists .sch-acts { grid-area: acts; margin-top: 4px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12); }
+  :is(.sch-lists, .com-news-tournament) .sch-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "date date eta" "name name name" "tags tags tags" "sub sub sub" "bar bar bar" "acts acts acts"; gap: 10px 10px; padding: 18px 0; align-items: center; }
+  :is(.sch-lists, .com-news-tournament) .sch-info, :is(.sch-lists, .com-news-tournament) .sch-text, :is(.sch-lists, .com-news-tournament) .sch-name { display: contents; }
+  :is(.sch-lists, .com-news-tournament) .sch-date { grid-area: date; display: flex; align-items: baseline; gap: 8px; font-size: 18px; }
+  :is(.sch-lists, .com-news-tournament) .sch-date small { margin-top: 0; }
+  :is(.sch-lists, .com-news-tournament) .sch-eta { display: block; grid-area: eta; align-self: baseline; color: var(--orange); font-size: 12px; font-weight: 800; white-space: nowrap; }
+  :is(.sch-lists, .com-news-tournament) .sch-title { grid-area: name; font-size: 19px; font-weight: 800; line-height: 1.2; color: var(--white); }
+  :is(.sch-lists, .com-news-tournament) .sch-tags { grid-area: tags; }
+  :is(.sch-lists, .com-news-tournament) .sch-sub { grid-area: sub; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  :is(.sch-lists, .com-news-tournament) .sch-extra { display: none; }
+  :is(.sch-lists, .com-news-tournament) .sch-dot { display: none; } /* (the dot after the venue: the chips stand on their own line on a phone) */
+  :is(.sch-lists, .com-news-tournament) .sch-cats { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+  :is(.sch-lists, .com-news-tournament) .sch-chip { background: #2a2a30; color: #e6e8ec; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
+  :is(.sch-lists, .com-news-tournament) .sch-chip + .sch-chip::before { content: none; }
+  :is(.sch-lists, .com-news-tournament) .home-bar.mini { grid-area: bar; margin-top: 2px; max-width: none; }
+  :is(.sch-lists, .com-news-tournament) .sch-acts { grid-area: acts; margin-top: 4px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12); }
   /* a button on its own (no registration beside it) keeps its whole orange frame: the line above is only for the pair of buttons, and the gap comes from the margin */
-  .sch-lists .sch-row > .sch-go { grid-area: acts; margin-top: 8px; }
-  .sch-lists .sch-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; justify-self: stretch; }
-  .sch-lists .sch-row > .sch-go { width: 100%; justify-self: stretch; }
-  .sch-lists .sch-acts .sch-reg, .sch-lists .sch-acts .sch-go { min-width: 0; height: 44px; width: 100%; }
-  .sch-lists .sch-row > .sch-go { height: 44px; box-sizing: border-box; }
-  .sch-lists .sch-row.past .sch-go { opacity: 1; } /* a finished season keeps its button at full strength: faded to half it looks cut off on the card */
+  :is(.sch-lists, .com-news-tournament) .sch-row > .sch-go { grid-area: acts; margin-top: 8px; }
+  :is(.sch-lists, .com-news-tournament) .sch-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; justify-self: stretch; }
+  :is(.sch-lists, .com-news-tournament) .sch-row > .sch-go { width: 100%; justify-self: stretch; }
+  :is(.sch-lists, .com-news-tournament) .sch-acts .sch-reg, :is(.sch-lists, .com-news-tournament) .sch-acts .sch-go { min-width: 0; height: 44px; width: 100%; }
+  :is(.sch-lists, .com-news-tournament) .sch-row > .sch-go { height: 44px; box-sizing: border-box; }
+  :is(.sch-lists, .com-news-tournament) .sch-row.past .sch-go { opacity: 1; } /* a finished season keeps its button at full strength: faded to half it looks cut off on the card */
 }
 
 /* the highlight of a row under the mouse reaches the edges of its card (no dark strip left and right): the rows run out to the border of the card and
@@ -5715,21 +5716,25 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .sch-lists .sch-row.link:last-child:hover { background-image: none; }
 .sch-lists .sch-row:first-child { padding-top: calc(var(--sch-rpv) + 4px); }
 .sch-lists .sch-row:last-child { padding-bottom: calc(var(--sch-rpv) + 4px); }
-/* the Harmonogram of the league: the same cards as the tournaments of a club. The poster of the event behind its row (the left third of the row, darker, fading out to the right;
-   on a phone a band at the top of the card, flush with its edges), a bigger date, and the two buttons under each other on a computer and a tablet */
-.sch-lists .sch-row.has-poster { overflow: hidden; isolation: isolate; }
-.sch-lists .sch-row.has-poster::before { content: ''; position: absolute; inset: 0 auto 0 0; width: max(270px, 32%); z-index: 0; background: var(--poster) left center / cover no-repeat; opacity: 0.7; -webkit-mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); }
-.sch-lists .sch-row.has-poster::after { content: ''; position: absolute; inset: 0 auto 0 0; width: max(270px, 32%); z-index: 0; background: linear-gradient(to right, rgba(10, 10, 10, 0.5), transparent); }
-#sch-root .sch-date { font-size: 25px; }
-#sch-root .sch-date small { font-size: 14px; }
+/* THE ONE TEMPLATE of a schedule row (the Harmonogram of the league and the tournament cards of a club; the markup is made by public/js/schedule-row.js): the poster of the event behind the row
+   (on a computer the left third, darker, fading out to the right; on a phone a band at the top, flush with the card), a bigger date, the tags always under the name, the two buttons under each other
+   on a computer and a tablet and side by side on a phone. Change it here and it changes in both places. */
+:is(.sch-lists, .com-news-tournament) .sch-row.has-poster { overflow: hidden; isolation: isolate; }
+:is(.sch-lists, .com-news-tournament) .sch-row.has-poster .sch-title, :is(.sch-lists, .com-news-tournament) .sch-row.has-poster .sch-tags, :is(.sch-lists, .com-news-tournament) .sch-row.has-poster .sch-sub, :is(.sch-lists, .com-news-tournament) .sch-row.has-poster .sch-eta, :is(.sch-lists, .com-news-tournament) .sch-row.has-poster .home-bar { position: relative; z-index: 1; } /* (on a phone the info is display: contents: its pieces must stand over the veil themselves) */
+:is(.sch-lists, .com-news-tournament) .sch-row.has-poster::before { content: ''; position: absolute; inset: 0 auto 0 0; width: max(270px, 32%); z-index: 0; background: var(--poster) left center / cover no-repeat; opacity: 0.7; -webkit-mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); }
+:is(.sch-lists, .com-news-tournament) .sch-row.has-poster::after { content: ''; position: absolute; inset: 0 auto 0 0; width: max(270px, 32%); z-index: 0; background: linear-gradient(to right, rgba(10, 10, 10, 0.5), transparent); }
+:is(.sch-lists, .com-news-tournament) .sch-date { font-size: 25px; }
+:is(.sch-lists, .com-news-tournament) .sch-date small { font-size: 14px; }
+:is(.sch-lists, .com-news-tournament) .sch-row.has-poster .sch-date { text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9); }
 @media (min-width: 701px) {
-  #sch-root .sch-date small { margin-top: 6px; }
-  #sch-root .sch-acts { flex-direction: column; align-items: stretch; gap: 8px; }
-  #sch-root .sch-acts .sch-reg, #sch-root .sch-acts .sch-go { width: 100%; }
+  :is(.sch-lists, .com-news-tournament) .sch-date small { margin-top: 6px; }
+  :is(.sch-lists, .com-news-tournament) .sch-name { flex-direction: column; align-items: flex-start; }
+  :is(.sch-lists, .com-news-tournament) .sch-acts { flex-direction: column; align-items: stretch; gap: 8px; }
+  :is(.sch-lists, .com-news-tournament) .sch-acts .sch-reg, :is(.sch-lists, .com-news-tournament) .sch-acts .sch-go { width: 100%; }
 }
 @media (max-width: 700px) {
-  .sch-lists .sch-row.has-poster::before { inset: 0 0 auto 0; width: auto; height: 160px; background: var(--poster-m) right top / cover no-repeat; -webkit-mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.45) 60%, rgba(0, 0, 0, 0.15) 85%, transparent 100%), linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.85) 25%, rgba(0, 0, 0, 0.5) 55%, rgba(0, 0, 0, 0.2) 80%, transparent 100%); mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.45) 60%, rgba(0, 0, 0, 0.15) 85%, transparent 100%), linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.85) 25%, rgba(0, 0, 0, 0.5) 55%, rgba(0, 0, 0, 0.2) 80%, transparent 100%); -webkit-mask-composite: source-in; mask-composite: intersect; }
-  .sch-lists .sch-row.has-poster::after { inset: 0 0 auto 0; width: auto; height: 160px; background: linear-gradient(to bottom, rgba(10, 10, 10, 0.5), rgba(10, 10, 10, 0.35) 60%, transparent); }
+  :is(.sch-lists, .com-news-tournament) .sch-row.has-poster::before { inset: 0 0 auto 0; width: auto; height: 160px; background: var(--poster-m) right top / cover no-repeat; -webkit-mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.45) 60%, rgba(0, 0, 0, 0.15) 85%, transparent 100%), linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.85) 25%, rgba(0, 0, 0, 0.5) 55%, rgba(0, 0, 0, 0.2) 80%, transparent 100%); mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.45) 60%, rgba(0, 0, 0, 0.15) 85%, transparent 100%), linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.85) 25%, rgba(0, 0, 0, 0.5) 55%, rgba(0, 0, 0, 0.2) 80%, transparent 100%); -webkit-mask-composite: source-in; mask-composite: intersect; }
+  :is(.sch-lists, .com-news-tournament) .sch-row.has-poster::after { inset: 0 0 auto 0; width: auto; height: 160px; background: linear-gradient(to bottom, rgba(10, 10, 10, 0.5), rgba(10, 10, 10, 0.35) 60%, transparent); }
 }
 
 /* Backend > Media on the dark page: headings, picture names and the outline buttons of the tiles are white (they were dark on dark) */
@@ -5991,40 +5996,6 @@ a.com-rank-name:hover { color: var(--orange); }
 .com-dots-menu button:hover { background: rgba(255, 255, 255, 0.08); }
 .com-news-tournament .sch-row { padding: 18px 22px; border: 1px solid var(--orange); border-radius: var(--radius); background: var(--ink); box-shadow: 0 0 18px rgba(255, 85, 0, 0.18); }
 .com-news-tournament .sch-row:last-child { border-bottom: 1px solid var(--orange); }
-/* the poster of the tournament behind the card: the left part of the picture, fading out to the right; the date sits on it (a dark veil under it keeps it readable) */
-.com-news-tournament .sch-row.has-poster { position: relative; overflow: hidden; isolation: isolate; }
-.com-news-tournament .sch-row.has-poster > * { position: relative; z-index: 1; }
-.com-news-tournament .sch-row.has-poster::before { content: ''; position: absolute; inset: 0 auto 0 0; width: max(270px, 32%); z-index: 0; background: var(--poster) left center / cover no-repeat; opacity: 0.7; -webkit-mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); }
-.com-news-tournament .sch-row.has-poster::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 270px; z-index: 0; background: linear-gradient(to right, rgba(10, 10, 10, 0.5), transparent); }
-/* (the picture is about a third of the card and fades out slowly; under the name it is only a faint trace) and the tags stay under the name */
-.com-news-tournament .sch-name { flex-direction: column; align-items: flex-start; }
-/* a bigger date (on every screen) */
-.com-news-tournament .sch-date { font-size: 25px; }
-.com-news-tournament .sch-date small { font-size: 14px; margin-top: 6px; }
-/* the buttons of the card, in the design of the Harmonogram: Viac info black with an orange frame and orange words (white when hovered), both buttons the same size.
-   On a computer and a tablet Registrácia stands above Viac info; on a phone they stand side by side */
-.com-news-tournament .sch-go { background: #000; border-color: var(--orange); color: var(--orange); }
-.com-news-tournament .sch-row.link:hover .sch-go, .com-news-tournament .sch-go:hover { border-color: var(--white); color: var(--white); }
-.com-news-tournament .sch-go, .com-news-tournament .sch-reg { box-sizing: border-box; min-width: 132px; height: 34px; justify-content: center; text-align: center; }
-.com-news-tournament .sch-row.past .sch-go { opacity: 1; }
-.com-news-tournament .sch-acts { display: flex; flex-direction: row; align-items: stretch; gap: 8px; }
-@media (min-width: 701px) {
-  .com-news-tournament .sch-acts { flex-direction: column; }
-  .com-news-tournament .sch-acts .sch-reg, .com-news-tournament .sch-acts .sch-go { width: 100%; }
-}
-@media (max-width: 700px) {
-  .com-news-tournament .sch-acts { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
-  .com-news-tournament .sch-acts .sch-reg, .com-news-tournament .sch-acts .sch-go { min-width: 0; height: 44px; width: 100%; }
-  .com-news-tournament .sch-row > .sch-go { width: 100%; height: 44px; justify-self: stretch; }
-}
-.com-news-tournament .sch-row.has-poster .sch-date { text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9); }
-.com-news-tournament .sch-row.has-poster .sch-date small { color: #fff; }
-/* phone: the picture is the FIRST thing of the card: a band flush with its top edge (and its sides), the picture itself aligned to the top; the band fades out slowly over its whole height, to the left and downwards (the tall picture; a tablet has the card of a computer) */
-@media (max-width: 700px) {
-  .com-news-tournament .sch-row.has-poster { padding-top: 96px; }
-  .com-news-tournament .sch-row.has-poster::before { inset: 0 0 auto 0; width: auto; height: 160px; background: var(--poster-m) right top / cover no-repeat; -webkit-mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.45) 60%, rgba(0, 0, 0, 0.15) 85%, transparent 100%), linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.85) 25%, rgba(0, 0, 0, 0.5) 55%, rgba(0, 0, 0, 0.2) 80%, transparent 100%); mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.45) 60%, rgba(0, 0, 0, 0.15) 85%, transparent 100%), linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.85) 25%, rgba(0, 0, 0, 0.5) 55%, rgba(0, 0, 0, 0.2) 80%, transparent 100%); -webkit-mask-composite: source-in; mask-composite: intersect; }
-  .com-news-tournament .sch-row.has-poster::after { inset: 0 0 auto 0; width: auto; height: 160px; background: linear-gradient(to bottom, rgba(10, 10, 10, 0.5), rgba(10, 10, 10, 0.35) 60%, transparent); } /* the same dark veil as on a computer */
-}
 /* hovering the card lights it like a row of the schedule page */
 .com-news-tournament .sch-row.link:hover { background: #1a1c21; }
 .com-event-item { margin-bottom: 24px; }

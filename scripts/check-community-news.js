@@ -97,7 +97,7 @@ test('the Udalosti tab: the tournaments of the communities the player is a membe
 test('the page side: one card like a Harmonogram row, with the day it was posted, in the Novinky tab (merged with the posts by date) and in the Feed', () => {
   const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
   const shared = pub('js/community-post.js');
-  assert.ok(shared.includes('function comTournamentRow') && shared.includes('class="sch-row link') && shared.includes('sch-date') && shared.includes('sch-reg') && shared.includes('sch-go') && shared.includes('sch-tag sch-club'), 'the same markup as the Harmonogram row');
+  assert.ok(shared.includes('function comTournamentRow') && shared.includes('schRow.html') && ['class="sch-row link', 'sch-date', 'sch-reg', 'sch-go', 'sch-tag sch-club'].every((p) => pub('js/schedule-row.js').includes(p)), 'the same markup as the Harmonogram row');
   assert.ok(shared.includes('function comTournamentNewsHtml') && shared.includes('function comBindTournaments'));
   const club = pub('js/community.js');
   assert.ok(club.includes('comTournamentNewsHtml(') && club.includes('function newsItems') && club.includes('comBindTournaments('), 'the Novinky tab shows the tournaments among the posts');
@@ -133,9 +133,9 @@ test('the page side: a tournament that takes no registration (started, or switch
   const club = pub('js/community.js');
   for (const [name, js] of [['community-post.js', shared], ['community.js', club]]) {
     assert.ok(js.includes('s.registrationAvailable !== undefined ? s.registrationAvailable : s.registrationOpen'), `${name} goes by registrationAvailable (the raw switch alone offers a started tournament)`);
-    assert.ok(js.includes("t('season.registerClosed')"), `${name} says it is closed, like the page of the tournament`);
+    assert.ok(js.includes("t('season.registerClosed')") || (name === 'community-post.js' && js.includes("'closed'") && pub('js/schedule-row.js').includes("t('season.registerClosed')")), `${name} says it is closed, like the page of the tournament`);
   }
-  assert.ok(shared.includes('sch-reg off') && club.includes('com-reg-closed'), 'the closed marks');
+  assert.ok(pub('js/schedule-row.js').includes('sch-reg off') && club.includes('com-reg-closed'), 'the closed marks');
   const css = pub('css/style.css');
   assert.ok(/\.sch-reg\.off[^{]*{[^}]*animation: none/.test(css) && /\.com-reg-closed {[^}]*pointer-events: none/.test(css), 'the closed marks are grey and do nothing');
 });

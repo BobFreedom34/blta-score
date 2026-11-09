@@ -119,9 +119,9 @@ test('the public pages draw the organiser\'s controls from canManage: the result
 });
 
 test('the Harmonogram labels a club tournament with its club and every club label is escaped', () => {
-  const js = read('js/harmonogram.js');
-  assert.ok(js.includes('sch-club') && js.includes('e.organisation.name') && js.includes('encodeURIComponent(e.organisation.slug)'));
-  assert.ok(!/\$\{\s*e\.organisation\.(?:name|slug)\s*\}/.test(js), 'unescaped club name');
+  const js = read('js/schedule-row.js'); // (the one template of the row: the Harmonogram and the cards of the clubs)
+  assert.ok(js.includes('sch-club') && js.includes('org.name') && js.includes('encodeURIComponent(org.slug)'));
+  assert.ok(!/\$\{\s*org\.(?:name|slug)\s*\}/.test(js), 'unescaped club name');
   ['schedule.organiser'].forEach(inBothLanguages);
 });
 

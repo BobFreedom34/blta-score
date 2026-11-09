@@ -310,7 +310,7 @@ test('the list page has a Feed tab first (and open by default) with the news of 
   // a tournament made by one of his communities is a card of the feed too; the older pages start at the time the answer names
   assert.ok(js.includes("p.type === 'TOURNAMENT'") && js.includes("'com.feedNewTournament'"), 'the feed draws tournaments');
   const card = read('js/community-post.js');
-  assert.ok(js.includes('comTournamentNewsHtml(p') && card.includes('escapeHtml(s.name)') && card.includes("/${season ? 'season' : 'tournament'}/${encodeURIComponent(s.slug)}"), 'a tournament (or a season) is escaped and links to its page');
+  assert.ok(js.includes('comTournamentNewsHtml(p') && read('js/schedule-row.js').includes('escapeHtml(ev.name)') && card.includes("/${season ? 'season' : 'tournament'}/${encodeURIComponent(s.slug)}"), 'a tournament (or a season) is escaped and links to its page');
   assert.ok(js.includes('encodeURIComponent(feed.next)'), 'the older pages follow the cursor of the answer');
   const i18n = read('js/i18n.js');
   ['com.tabFeed', 'com.feedEmptyTitle', 'com.feedEmptyText', 'com.feedExplore', 'com.feedSuggested', 'com.feedLogin', 'com.feedNewTournament'].forEach((k) => assert.strictEqual(i18n.split(`'${k}':`).length, 3, `${k} in both languages`));
