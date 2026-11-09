@@ -167,7 +167,8 @@ test('a tournament is over once the playing window of its LAST day has ended (no
   const of = (t) => rows.find((r) => r.seasonId === t.id);
   assert.deepStrictEqual([of(over).tournamentEnded, of(running).tournamentEnded], [true, false], 'the Harmonogram carries it too');
   // a tournament with its own end time on the LAST day only: the last day decides, not the first
-  const two = await makeTournament({ startDate: '2020-01-01', endDate: today });
+  // (it started yesterday: a tournament of years has more days than the planner lists, and then the typed time of today would not be kept)
+  const two = await makeTournament({ startDate: localDay(new Date(Date.now() - 36 * 3600 * 1000).toISOString()), endDate: today });
   assert.strictEqual((await patch(two, { maxPlayers: 10, matchMinutes: 15, dayTimes: { [today]: { start: '00:00', end: '23:59' } } })).status, 200);
   assert.strictEqual(await flag(two), false, 'its last day is still going');
   const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
