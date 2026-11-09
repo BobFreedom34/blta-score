@@ -86,7 +86,30 @@ function csScoredPlayersHtml(m) {
   return `<span class="cs-pl">${head}${line(m.player1, 1)}${line(m.player2, 2)}</span>`;
 }
 
-function csBlockHtml(m, day, startMin) {
+// Blocks of one court that overlap in time (two finished matches whose real times overlap, a long match over a later one) are drawn side by side, like a calendar,
+// so none hides another: returns a Map token -> { lane, lanes } for the matches of one court
+function csLanes(matches) {
+  const span = (m) => { const s = Date.parse(csStartOf(m)); return [s, Math.max(s + 20 * CS_MS, Date.parse(m.endsAt))]; };
+  const sorted = [...matches].sort((a, b) => span(a)[0] - span(b)[0] || span(a)[1] - span(b)[1]);
+  const out = new Map();
+  let cluster = [];
+  let laneEnds = [];
+  let clusterEnd = -Infinity;
+  const flush = () => { cluster.forEach((m) => { out.get(m.token).lanes = laneEnds.length; }); cluster = []; laneEnds = []; };
+  sorted.forEach((m) => {
+    const [s, e] = span(m);
+    if (s >= clusterEnd) flush();
+    let lane = laneEnds.findIndex((end) => end <= s);
+    if (lane < 0) { lane = laneEnds.length; laneEnds.push(e); } else laneEnds[lane] = e;
+    out.set(m.token, { lane, lanes: 1 });
+    cluster.push(m);
+    clusterEnd = Math.max(s >= clusterEnd ? -Infinity : clusterEnd, e);
+  });
+  flush();
+  return out;
+}
+
+function csBlockHtml(m, day, startMin, laneInfo) {
   const parts = csParts(csStartOf(m));
   // the real length: a match that ended early is drawn only up to its end (a short block shows one line only)
   const real = Math.round((Date.parse(m.endsAt) - Date.parse(csStartOf(m))) / CS_MS);
@@ -97,9 +120,11 @@ function csBlockHtml(m, day, startMin) {
   const unlocked = finished && csUnlocked.has(m.token); // a finished match is locked by itself; the organiser unlocks it to move or resize it
   const resizable = csState.admin && (m.status === 'PLANNED' || unlocked);
   const movable = resizable;
-  const classes = ['cs-m', csStatusClass(m), `cs-st-${m.status.toLowerCase()}`, movable ? 'cs-drag' : '', m.locked ? 'cs-locked' : '', short ? 'cs-short' : ''].filter(Boolean).join(' ');
+  const lanes = laneInfo && laneInfo.lanes > 1 ? laneInfo : null;
+  const classes = ['cs-m', csStatusClass(m), `cs-st-${m.status.toLowerCase()}`, movable ? 'cs-drag' : '', m.locked ? 'cs-locked' : '', short ? 'cs-short' : '', lanes ? 'cs-lane' : ''].filter(Boolean).join(' ');
+  const across = lanes ? `;left:calc(4px + (100% - 8px) * ${lanes.lane} / ${lanes.lanes});right:auto;width:calc((100% - 8px) / ${lanes.lanes} - 2px)` : '';
   return `<a class="${classes}" href="/match/${m.token}" draggable="false" data-token="${m.token}" ${movable ? 'data-drag="1"' : ''}
-      style="top:${top}px;height:${minutes * CS_PX - 3}px" data-minutes="${real}" title="${escapeHtml(`${csTime(csStartOf(m))} · ${m.player1.name} – ${m.player2.name}`)}">
+      style="top:${top}px;height:${minutes * CS_PX - 3}px${across}" data-minutes="${real}" title="${escapeHtml(`${csTime(csStartOf(m))} · ${m.player1.name} – ${m.player2.name}`)}">
     <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${finished && csState.admin ? ` <i class="cs-lock fin${unlocked ? ' open' : ''}" data-fin-lock="${m.token}" title="${escapeHtml(unlocked ? tl('Odomknutý — zápas môžeš posúvať a meniť mu dĺžku. Kliknutím ho zamkneš.', 'Unlocked — you can move the match and change its length. Click to lock it.') : tl('Skončený zápas je zamknutý. Kliknutím ho odomkneš, potom ho môžeš posúvať a meniť mu dĺžku.', 'A finished match is locked. Click to unlock it, then you can move it and change its length.'))}"></i>` : ''}${m.status === 'PLANNED' && m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="${escapeHtml(tl('Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš.', 'Locked — the planner does not move it. Click to unlock it.'))}"></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
     <span class="cs-m-pl">${csScoredPlayersHtml(m)}</span>
     <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
@@ -135,7 +160,8 @@ function csTimelineHtml(day) {
     const court = i + 1;
     const ofCourt = matches.filter((m) => m.courtNo === court && m.scheduledAt && csParts(csStartOf(m)).day === day);
     const count = ofCourt.length; // the matches of the day on this court (the little number in the heading, as in the list)
-    const blocks = ofCourt.map((m) => csBlockHtml(m, day, startMin)).join('');
+    const lanes = csLanes(ofCourt);
+    const blocks = ofCourt.map((m) => csBlockHtml(m, day, startMin, lanes.get(m.token))).join('');
     return `<div class="cs-colwrap"><div class="cs-court-h"><span>${escapeHtml(t('courts.court', { n: court }))}</span>${csLiveButtonHtml(court)}<em>${count}</em></div><div class="cs-col" data-court="${court}" style="height:${height}px">${lines.join('')}${nowLine}${blocks}</div></div>`;
   });
   const per = csPerRow();
