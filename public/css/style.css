@@ -5697,7 +5697,8 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
   :is(.sch-lists, .com-news-tournament) .sch-row > .sch-go { width: 100%; justify-self: stretch; }
   :is(.sch-lists, .com-news-tournament) .sch-acts .sch-reg, :is(.sch-lists, .com-news-tournament) .sch-acts .sch-go { min-width: 0; height: 44px; width: 100%; }
   :is(.sch-lists, .com-news-tournament) .sch-row > .sch-go { height: 44px; box-sizing: border-box; }
-  :is(.sch-lists, .com-news-tournament) .sch-row.past .sch-go { opacity: 1; } /* a finished season keeps its button at full strength: faded to half it looks cut off on the card */
+  /* a finished event looks the same as on a computer: the name, the tags, the categories and the button are dimmed (here the info is display: contents, so each piece is dimmed itself) */
+  :is(.sch-lists, .com-news-tournament) .sch-row.past :is(.sch-title, .sch-tags, .sch-sub, .home-bar, .sch-go) { opacity: 0.55; }
 }
 
 /* the highlight of a row under the mouse reaches the edges of its card (no dark strip left and right): the rows run out to the border of the card and
