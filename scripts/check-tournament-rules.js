@@ -178,7 +178,7 @@ test('the create window of a club tournament asks only for the basics (name, pla
   const card = pub('js/seasons-admin.js');
   const courts = card.slice(card.indexOf("<h4>${tl('Kurty a pravidlá hrania',"), card.indexOf("<h4>${tl('Bodovanie a podmienky',"));
   for (const text of ['Počet kurtov (Kurt 1 … Kurt n)', 'Max. zápasov hráča za deň', 'Plánovanie turnaja', 'Dĺžka zápasu (min)', 'Oddych hráča (min)', 'Začiatok dňa', 'Koniec dňa', 'Rozvrh skladá systém sám']) assert.ok(courts.includes(text), `${text} is in the section "Kurty a pravidlá hrania" of the page`);
-  assert.ok(/matchMinutes: Number\(f\('matchMinutes'\)\), restMinutes: Number\(f\('restMinutes'\)\), dayStart: f\('dayStart'\), dayEnd: f\('dayEnd'\), autoSchedule:/.test(card), 'the planning fields are sent with the Save of the page');
+  assert.ok(/matchMinutes: Number\(f\('matchMinutes'\)\), restMinutes: Number\(f\('restMinutes'\)\), dayStart: f\('dayStart'\), dayEnd: f\('dayEnd'\), (dayTimes: readDayTimes\(e\.target\), )?autoSchedule:/.test(card), 'the planning fields are sent with the Save of the page');
 });
 
 test('the card of a tournament or a season is dark like the windows, its tabs stay under the top bar while the page scrolls, and nothing in it is a white box any more (the tie-break rows, the stat tiles, the blocks of the draw and the assignment, the editor)', () => {

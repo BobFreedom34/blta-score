@@ -99,7 +99,7 @@ function csLanes(matches) {
   sorted.forEach((m) => {
     const [s, e] = span(m);
     if (s >= clusterEnd) flush();
-    let lane = laneEnds.findIndex((end) => end <= s);
+    let lane = laneEnds.findIndex((freeAt) => s >= freeAt);
     if (lane < 0) { lane = laneEnds.length; laneEnds.push(e); } else laneEnds[lane] = e;
     out.set(m.token, { lane, lanes: 1 });
     cluster.push(m);
@@ -434,7 +434,7 @@ async function csOpenAddMatch() {
   const dayLabel = (d) => { const [y, m, dd] = d.split('-'); return `${Number(dd)}. ${Number(m)}. ${y}`; };
   modal.innerHTML = `
     <div class="modal cs-addmatch">
-      <button type="button" class="close" data-am="close" aria-label="Close">&times;</button>
+      <button type="button" class="close" data-am="close" aria-label="${escapeHtml(tl('Zavrieť', 'Close'))}">&times;</button>
       <h3 style="margin-top:0">${escapeHtml(tl('Pridať zápas do turnaja', 'Add a match to the tournament'))}</h3>
       <form id="cs-am-form">
         <div class="field"${opts.groups.length > 1 ? '' : ' hidden'}>
