@@ -134,10 +134,10 @@ function csBlockHtml(m, day, startMin, laneInfo, endMin) {
   </a>`;
 }
 
-// at most 3 courts side by side on a computer, 2 on a phone; more courts go on to the next row (each row has the hours at its left edge)
+// at most 3 courts side by side on a computer; on a phone all of them in one row that scrolls to the right; more courts go on to the next row (each row has the hours at its left edge)
 const csNarrow = window.matchMedia ? window.matchMedia('(max-width: 700px)') : null;
 if (csNarrow && csNarrow.addEventListener) csNarrow.addEventListener('change', () => { if (typeof csState !== 'undefined' && csState && csState.host && csState.host.isConnected) csRender(); });
-const csPerRow = () => (csNarrow && csNarrow.matches ? 2 : 3);
+const csPerRow = () => (csNarrow && csNarrow.matches ? 99 : 3);
 
 // the playing window of one day of the tournament { start, end }: its own times (set in the Backend) or the general ones
 function csDayWindow(settings, day) {
@@ -171,7 +171,9 @@ function csTimelineHtml(day) {
   const gutter = `<div class="cs-gutter"><div class="cs-court-h">&nbsp;</div><div class="cs-hours" style="height:${height}px">${hours.join('')}</div></div>`;
   const rows = [];
   for (let i = 0; i < cols.length; i += per) rows.push(`<div class="cs-grid" style="--cs-cols:${width}">${gutter}${cols.slice(i, i + per).join('')}</div>`);
-  return `<div class="cs-scroll">${rows.join('')}</div>`;
+  // phones: a bar of the courts above the timeline (it stays at the top while the page scrolls; the row of courts scrolls sideways at the very bottom, out of sight on a tall timeline)
+  const nav = settings.courtCount > 1 ? `<div class="cs-courtnav">${Array.from({ length: settings.courtCount }, (_, i) => `<button type="button" data-cs-court="${i + 1}"${i === 0 ? ' class="on"' : ''}>${escapeHtml(t('courts.court', { n: i + 1 }))}</button>`).join('')}</div>` : '';
+  return `${nav}<div class="cs-scroll">${rows.join('')}</div>`;
 }
 
 // the matches being played right now, with the score so far — at the top of the tab, whether or not they are on a court
@@ -267,7 +269,7 @@ function csRender() {
   csChoice.day = day;
   const pills = settings.days.length > 1
     ? `<div class="tabs cs-days">${settings.days.map((d) => `<button type="button" class="tab${d === day ? ' active' : ''}" data-cs-day="${d}">${escapeHtml(csDayLabel(d))}</button>`).join('')}</div>` : '';
-  const views = `<div class="cs-seg" role="group"><button type="button" class="${csChoice.view === 'timeline' ? 'active' : ''}" data-cs-view="timeline">${escapeHtml(t('courts.timeline'))}</button><button type="button" class="${csChoice.view === 'list' ? 'active' : ''}" data-cs-view="list">${escapeHtml(t('courts.list'))}</button></div>`;
+  const views = `<div class="cs-seg" role="group"><button type="button" class="${csChoice.view === 'list' ? 'active' : ''}" data-cs-view="list">${escapeHtml(t('courts.list'))}</button><button type="button" class="${csChoice.view === 'timeline' ? 'active' : ''}" data-cs-view="timeline">${escapeHtml(t('courts.timeline'))}</button></div>`;
   // the whole-screen page of this schedule (every court and match of the day for a TV): it opens on the list first (Zoznam), on the day that is shown here
   const fullHref = siteUrl(`/schedule-screen/${csState.season.id}?view=list&day=${day}`);
   const fullLink = `<a class="btn btn-sm btn-primary cs-fullscreen" href="${escapeHtml(fullHref)}">${courtIcon('monitor')}<span>${escapeHtml(tl('Celá obrazovka', 'Full screen'))}</span></a>`;
@@ -281,6 +283,21 @@ function csRender() {
       ${csChoice.view === 'timeline' || csState.admin ? csTrayHtml() : ''}
       ${csAdminHtml()}
     </section>`;
+  csWireCourtNav();
+}
+
+// the bar of courts on a phone: the court at the left edge of the row is lit, a tap brings a court to the left edge
+function csWireCourtNav() {
+  const scroll = csState.host.querySelector('.cs-scroll');
+  const nav = csState.host.querySelector('.cs-courtnav');
+  if (!scroll || !nav) return;
+  scroll.addEventListener('scroll', () => {
+    const wraps = [...scroll.querySelectorAll('.cs-colwrap')];
+    const edge = scroll.scrollLeft + 46;
+    let at = 0;
+    wraps.forEach((w, i) => { if (w.offsetLeft <= edge + 40) at = i; });
+    nav.querySelectorAll('button').forEach((b, i) => b.classList.toggle('on', i === at));
+  }, { passive: true });
 }
 
 async function csApply(promise, okMessage) {
@@ -528,6 +545,13 @@ async function initCourtSchedule(host, season) {
   host.onclick = async (e) => {
     const handle = e.target.closest('[data-resize]');
     if (handle) { e.preventDefault(); return; }
+    const courtBtn = e.target.closest('[data-cs-court]');
+    if (courtBtn) {
+      const scroll = csState.host.querySelector('.cs-scroll');
+      const wrap = scroll && scroll.querySelectorAll('.cs-colwrap')[Number(courtBtn.dataset.csCourt) - 1];
+      if (wrap) scroll.scrollTo({ left: wrap.offsetLeft - 46, behavior: 'smooth' });
+      return;
+    }
     const finLock = e.target.closest('[data-fin-lock]');
     if (finLock) {
       e.preventDefault();

@@ -5090,7 +5090,10 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-sm); background: var(--fill-grey); }
 .cs-seg button { border: 0; background: transparent; color: #c3c7cf; font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
 .cs-seg button:hover { color: var(--white); }
-.cs-seg button.active { background: var(--orange); color: var(--white); }
+.cs-seg button.active { background: var(--green); color: var(--ink); }
+/* "Celá obrazovka": an orange frame and orange words, no fill */
+.cs-fullscreen.btn { background: transparent; border: 2px solid var(--orange); color: var(--orange); box-shadow: none; }
+.cs-fullscreen.btn:hover { background: rgba(255, 85, 0, 0.12); color: var(--orange); border-color: var(--orange); }
 /* the list / timeline switch of the schedule page: the picked button is green like the rest of the "selected" states of the site */
 .sch-view button.active { background: var(--green); color: var(--ink); }
 .cs-scroll { padding-bottom: 6px; } /* (no scrolling box: the courts share the width, and a box with overflow-x also made a useless vertical scroll bar next to the timeline) */
@@ -5103,6 +5106,20 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 @media (max-width: 700px) { .cs-grid .cs-court-h { padding: 0 10px; font-size: 12px; } }
 .cs-grid { display: grid; grid-template-columns: 38px repeat(var(--cs-cols), minmax(0, 1fr)); gap: 8px; }
 .cs-grid + .cs-grid { margin-top: 26px; }
+.cs-courtnav { display: none; }
+@media (max-width: 700px) {
+  .cs-courtnav { display: flex; gap: 6px; position: sticky; top: 56px; z-index: 30; padding: 8px 0; margin: 0 0 6px; background: #0f0f10; }
+  .cs-courtnav button { flex: 1; padding: 8px 4px; border: 0; border-radius: var(--radius-sm); background: var(--fill-grey); color: #c3c7cf; font: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; }
+  .cs-courtnav button.on { background: var(--green); color: var(--ink); }
+}
+/* phones: the courts stand side by side in one row that scrolls to the right; the hours stay at the left edge */
+@media (max-width: 700px) {
+  .cs-scroll { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+  .cs-grid { width: max-content; grid-template-columns: 38px repeat(var(--cs-cols), min(78vw, 300px)); }
+  .cs-colwrap { scroll-snap-align: start; scroll-margin-left: 46px; }
+  .cs-gutter { position: sticky; left: 0; z-index: 6; background: #0a0a0a; border-radius: var(--radius-md); overflow: hidden; }
+  .cs-gutter .cs-hour { left: 0; right: 0; text-align: center; }
+}
 .cs-court-h { height: 30px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
 .cs-hours { position: relative; }
 .cs-hour { position: absolute; left: 0; transform: translateY(-7px); font-size: 11px; font-weight: 700; color: #8b8f98; }
