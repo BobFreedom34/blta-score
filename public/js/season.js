@@ -377,7 +377,7 @@ function leagueMatchCardHtml(m) {
           ${m.location ? `<span>${courtIcon('pin')}${escapeHtml(m.location)}</span>` : ''}
           ${m.status === 'PLANNED' && m.scheduledAt ? '' : `<span>${courtIcon('calendar')}${fmtDateShort(m.scheduledAt)}</span>`}
         </div>
-        ${matchRoundHtml(m)}
+        ${matchRoundHtml(m, true)}
       </div>
       ${scoreboard || `
         <div class="match-players-box">

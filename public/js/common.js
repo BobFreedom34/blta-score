@@ -2436,26 +2436,27 @@ function clubBadge(m) {
 }
 
 // the line under a match card; a match of a community or club starts with its name ("COURTCREW · Turnaj 1 · Elite · Semifinále")
-function matchRoundLabel(m) {
-  const label = matchRoundLabelOf(m);
-  const club = m.season && m.season.organisation ? m.season.organisation.name : '';
+// short = on the page of the tournament itself, where its name (and the club's) is already above: only what the schedule list shows ("INÉ · Bez kategórie — Skupina A · 3. kolo")
+function matchRoundLabel(m, short) {
+  const label = matchRoundLabelOf(m, short);
+  const club = !short && m.season && m.season.organisation ? m.season.organisation.name : '';
   return club ? [club, label].filter(Boolean).join(' · ') : label;
 }
-function matchRoundLabelOf(m) {
+function matchRoundLabelOf(m, short) {
   // a tournament match: the name of the tournament, the category and the phase ("Demo Open · Elite · Semifinále")
   if (m.season && m.season.kind === 'TOURNAMENT') {
     const category = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[m.category] || categoryLabel(m.category);
     const phase = bracketPhaseLabel(m.bracket) || (m.group ? [groupShortName(m.group.name), m.round ? t('season.roundN', { n: m.round }) : ''].filter(Boolean).join(' · ') : '');
-    return [m.season.name, category, phase].filter(Boolean).join(' · ');
+    return [short ? '' : m.season.name, category, phase].filter(Boolean).join(' · ');
   }
-  const parts = m.season && m.season.organisation ? [m.season.name] : []; // (a season of a club: its name, then the round and the group)
+  const parts = !short && m.season && m.season.organisation ? [m.season.name] : []; // (a season of a club: its name, then the round and the group)
   if (m.stage === 'PLAYOFF') parts.push(t('season.playoff'));
   else if (m.round) parts.push(t('season.roundN', { n: m.round }));
   if (m.group && m.group.name) parts.push(m.group.name);
   return parts.join(' - ');
 }
-function matchRoundHtml(m) {
-  const label = matchRoundLabel(m);
+function matchRoundHtml(m, short) {
+  const label = matchRoundLabel(m, short);
   return label ? `<div class="match-card-notes">${escapeHtml(label)}</div>` : '';
 }
 
