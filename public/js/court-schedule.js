@@ -109,10 +109,12 @@ function csLanes(matches) {
   return out;
 }
 
-function csBlockHtml(m, day, startMin, laneInfo) {
+function csBlockHtml(m, day, startMin, laneInfo, endMin) {
   const parts = csParts(csStartOf(m));
-  // the real length: a match that ended early is drawn only up to its end (a short block shows one line only)
-  const real = Math.round((Date.parse(m.endsAt) - Date.parse(csStartOf(m))) / CS_MS);
+  // the real length: a match that ended early is drawn only up to its end (a short block shows one line only);
+  // a block that runs past the end of the playing day is drawn only to that end, so its bottom edge (the handle that shortens it) can be reached
+  const realFull = Math.round((Date.parse(m.endsAt) - Date.parse(csStartOf(m))) / CS_MS);
+  const real = endMin ? Math.min(realFull, Math.max(15, endMin - parts.minutes)) : realFull;
   const minutes = Math.max(20, real);
   const short = real < 25; // (the card is always whole, two lines of players; only a very short block drops the category line)
   const top = (parts.minutes - startMin) * CS_PX;
@@ -161,7 +163,7 @@ function csTimelineHtml(day) {
     const ofCourt = matches.filter((m) => m.courtNo === court && m.scheduledAt && csParts(csStartOf(m)).day === day);
     const count = ofCourt.length; // the matches of the day on this court (the little number in the heading, as in the list)
     const lanes = csLanes(ofCourt);
-    const blocks = ofCourt.map((m) => csBlockHtml(m, day, startMin, lanes.get(m.token))).join('');
+    const blocks = ofCourt.map((m) => csBlockHtml(m, day, startMin, lanes.get(m.token), endMin)).join('');
     return `<div class="cs-colwrap"><div class="cs-court-h"><span>${escapeHtml(t('courts.court', { n: court }))}</span>${csLiveButtonHtml(court)}<em>${count}</em></div><div class="cs-col" data-court="${court}" style="height:${height}px">${lines.join('')}${nowLine}${blocks}</div></div>`;
   });
   const per = csPerRow();
