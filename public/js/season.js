@@ -340,7 +340,8 @@ function tilesHtml() {
     season.drawDate ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileDraw'))}</div><div class="v sm">${escapeHtml(formatDate(season.drawDate))}</div></div>` : '',
     season.prizeMoney ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tilePrize'))}</div><div class="v sm">${escapeHtml(season.prizeMoney)}</div></div>` : '',
   ].join('');
-  return `<div class="sv-tiles">${tiles}</div>`;
+  // the tiles sit in a card of their own, with a small heading
+  return `<div class="sv-tiles-panel"><h3>${escapeHtml(t(isTournament() ? 'season.tilesTitleTournament' : 'season.tilesTitle'))}</h3><div class="sv-tiles">${tiles}</div></div>`;
 }
 
 // The description: "Label: value" lines become fact tiles (shown first), the rest is the text card. Rich text from the backend

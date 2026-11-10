@@ -4102,7 +4102,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-tile .v.sm { font-size: 16px; }
 /* the maximum of the players tile ("6/8"): smaller and thinner than the number of registered players */
 .sv-tile .v .sv-max { font-size: 0.7em; font-weight: 500; color: #c3c7cf; }
-.sv-tile .v small { display: block; font-size: 16px; font-weight: 600; color: #c3c7cf; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sv-tile .v small { display: inline; font-size: 0.7em; font-weight: 500; color: #c3c7cf; margin: 0 0 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* a phone: always two tiles side by side; a text that does not fit the half of the screen goes on a second line there (a date or an address is never cut) */
 @media (max-width: 700px) {
   .sv-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -6717,3 +6717,12 @@ body:not(.embed-light):not(.embed) .match-card.availability-post .scoreboard { b
 .sv-pr-line { display: flex; align-items: center; gap: 12px; margin: 6px 0 0; padding: 8px 0 4px; border-top: 2px solid rgba(255, 255, 255, 0.35); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #8b8f98; }
 .sv-pr-wait { color: #b9bcc4; }
 .sv-pr-wait .n { color: #8b8f98; }
+
+/* the tiles (Termín, Čas hrania …) sit closer to the head with the hero photo above them */
+.sv-head:has(+ .sv-tiles-panel) { margin-bottom: 22px; }
+/* the tiles in one dark card with a small heading, apart from the hero above and the tabs below */
+.sv-tiles-panel { margin: 0 0 28px; padding: 16px; background: #1b1b1f; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 16px; }
+.sv-tiles-panel h3 { margin: 0 0 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8f98; }
+.sv-tiles-panel .sv-tiles { margin: 0; }
+.sv-tiles-panel .sv-tile { background: #2a2a30; }
+@media (max-width: 700px) { .sv-tiles-panel { padding: 12px; border-radius: 14px; } }
