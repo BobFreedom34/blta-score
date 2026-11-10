@@ -20,6 +20,7 @@ const messagesLib = require('../messages');
 const courtIQ = require('../courtIQEngine');
 const { sendClubWaitingEmail } = require('../mailer');
 const playerPush = require('../playerPush');
+const seasonActivity = require('../seasonActivity');
 
 const router = express.Router();
 const { serialize, slugFor, isOrgAdmin } = communities;
@@ -59,6 +60,36 @@ function commentCountsOf(postIds) {
   if (!postIds.length) return out;
   db.prepare(`SELECT post_id, COUNT(*) AS n FROM organisation_post_comments WHERE post_id IN (${postIds.map(() => '?').join(',')}) GROUP BY post_id`).all(...postIds).forEach((r) => out.set(r.post_id, r.n));
   return out;
+}
+
+// The reactions and the comments under a tournament (or a season) in the news hang on a hidden post of its own: the address of a thread is "e<season id>" in place of a post id.
+// The row is made the first time somebody asks for it (it never shows in the lists of posts: hidden = 1, author 0 = nobody to be told about a comment).
+function eventThread(org, seasonId, create) {
+  const season = db.prepare('SELECT id FROM seasons WHERE id = ? AND organisation_id = ?').get(seasonId, org.id);
+  if (!season) return null;
+  let row = db.prepare('SELECT id, author_player_id FROM organisation_posts WHERE season_id = ?').get(season.id);
+  if (!row && create) {
+    db.prepare("INSERT OR IGNORE INTO organisation_posts (organisation_id, author_player_id, body, hidden, season_id) VALUES (?, 0, '', 1, ?)").run(org.id, season.id);
+    row = db.prepare('SELECT id, author_player_id FROM organisation_posts WHERE season_id = ?').get(season.id);
+  }
+  return row || null;
+}
+// a post of the address ("12", or "e7" for the thread of a tournament) in this organisation
+function threadPost(org, raw) {
+  const ev = /^e(\d+)$/.exec(String(raw));
+  if (ev) return eventThread(org, Number(ev[1]), true);
+  return /^\d+$/.test(String(raw)) ? db.prepare('SELECT id, author_player_id FROM organisation_posts WHERE id = ? AND organisation_id = ? AND hidden = 0').get(Number(raw), org.id) : null;
+}
+// puts the reactions and the number of comments on events (items with an id of a season): they show under the card
+function attachEventThreads(items, viewer) {
+  if (!items.length) return items;
+  const rows = db.prepare(`SELECT id, season_id FROM organisation_posts WHERE season_id IN (${items.map(() => '?').join(',')})`).all(...items.map((i) => i.id));
+  const bySeason = new Map(rows.map((r) => [r.season_id, r.id]));
+  const ids = rows.map((r) => r.id);
+  const reactions = reactionsOf(ids, viewer || 0);
+  const counts = commentCountsOf(ids);
+  items.forEach((i) => { const pid = bySeason.get(i.id); i.reactions = pid ? reactions.get(pid) : []; i.commentCount = pid ? counts.get(pid) : 0; });
+  return items;
 }
 
 const tidy = (value) => String(value === undefined || value === null ? '' : value).replace(/\s+/g, ' ').trim();
@@ -299,6 +330,7 @@ router.get('/feed', (req, res) => {
     type: 'TOURNAMENT', kind: eventKind(r), id: r.id, name: r.name, slug: r.slug, startDate: r.start_date || null, endDate: r.end_date || null, venue: r.venue || '',
     heroUrl: r.hero_url || '', heroMobileUrl: r.hero_mobile_url || '', playType: r.play_type || 'SINGLES', categories: tournamentCategories(r), registrationOpen: !!r.registration_open && !tournamentSchedule.tournamentStarted(r), tournamentEnded: tournamentSchedule.tournamentEnded(r), createdAt: r.created_at, organisation: orgOf(r),
   }));
+  attachEventThreads(tournaments, playerId);
   const merged = [...posts, ...tournaments].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || (a.type === b.type ? b.id - a.id : (a.type === 'TOURNAMENT' ? -1 : 1)));
   const items = merged.slice(0, POSTS_PAGE);
   res.json({ items, more: merged.length > POSTS_PAGE, next: items.length ? items[items.length - 1].createdAt : null });
@@ -541,7 +573,19 @@ router.get('/:id/seasons', (req, res) => {
   if (!org) return;
   if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
   const rows = db.prepare("SELECT * FROM seasons WHERE organisation_id = ? AND kind = 'LEAGUE' ORDER BY COALESCE(start_date, '') DESC, id DESC").all(org.id);
-  res.json({ items: rows.map((s) => ({ ...seasonsRoutes.serializeSeason(s), createdAt: s.created_at, organisation: { id: org.id, slug: org.slug, name: org.name } })) });
+  res.json({ items: attachEventThreads(rows.map((s) => ({ ...seasonsRoutes.serializeSeason(s), createdAt: s.created_at, organisation: { id: org.id, slug: org.slug, name: org.name } })), auth.getPlayerId(req)) });
+});
+
+// the reactions and the number of comments under an event of the organisation (the page of the event draws them)
+router.get('/:id/events/:seasonId/thread', (req, res) => {
+  const org = orgOr404(req, res, 'read');
+  if (!org) return;
+  if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
+  if (!/^\d+$/.test(req.params.seasonId)) return res.status(404).json({ error: 'Event not found' });
+  const season = db.prepare('SELECT id FROM seasons WHERE id = ? AND organisation_id = ?').get(Number(req.params.seasonId), org.id);
+  if (!season) return res.status(404).json({ error: 'Event not found' });
+  const [item] = attachEventThreads([{ id: season.id }], auth.getPlayerId(req));
+  res.json({ reactions: item.reactions, commentCount: item.commentCount });
 });
 
 // the tournaments of an organisation, newest first (public, like the page of the organisation itself)
@@ -551,7 +595,7 @@ router.get('/:id/tournaments', (req, res) => {
   if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
   const rows = db.prepare("SELECT * FROM seasons WHERE organisation_id = ? AND kind = 'TOURNAMENT' ORDER BY COALESCE(start_date, '') DESC, id DESC").all(org.id);
   const registered = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?');
-  res.json({ items: rows.map((s) => ({ ...seasonsRoutes.serializeSeason(s), createdAt: s.created_at, registrationCount: registered.get(s.id).n, organisation: { id: org.id, slug: org.slug, name: org.name } })) });
+  res.json({ items: attachEventThreads(rows.map((s) => ({ ...seasonsRoutes.serializeSeason(s), createdAt: s.created_at, registrationCount: registered.get(s.id).n, organisation: { id: org.id, slug: org.slug, name: org.name } })), auth.getPlayerId(req)) });
 });
 
 // The super admin decides whether the results of the tournaments of a club move ratings (CourtIQ, the doubles rating, ranking points, badges) and how many
@@ -979,7 +1023,7 @@ function commentRateOk(playerId) {
 
 // the post of the address, in the organisation of the address (or a 404)
 function postOf(req, res, org) {
-  const post = /^\d+$/.test(req.params.postId) ? db.prepare('SELECT id, author_player_id FROM organisation_posts WHERE id = ? AND organisation_id = ? AND hidden = 0').get(Number(req.params.postId), org.id) : null;
+  const post = threadPost(org, req.params.postId);
   if (!post) res.status(404).json({ error: 'Post not found' });
   return post;
 }
@@ -1003,8 +1047,18 @@ router.get('/:id/posts/:postId/comments', (req, res) => {
     WHERE c.post_id = ? ${before ? 'AND c.id < ?' : ''} ORDER BY c.id DESC LIMIT ${COMMENTS_PAGE + 1}
   `).all(...(before ? [post.id, before] : [post.id]));
   const viewer = auth.getPlayerId(req);
+  let items = rows.slice(0, COMMENTS_PAGE).reverse().map((r) => commentJson(r, req, org, viewer));
+  // the thread of an event also shows what happened around it (somebody registered, dropped out, came in from the waiting list), in time among the comments
+  const ev = /^e(\d+)$/.exec(String(req.params.postId));
+  if (ev && !before) {
+    const since = rows.length > COMMENTS_PAGE && items.length ? items[0].createdAt : '';
+    const lines = seasonActivity.latest(Number(ev[1]), 40).filter((a) => !since || a.created_at >= since).map((a) => ({
+      id: 'a' + a.id, kind: 'ACTIVITY', activity: a.kind, authorName: a.name, authorSlug: a.slug || '', createdAt: a.created_at, canDelete: false, body: '',
+    }));
+    items = [...items, ...lines].sort((x, y) => String(x.createdAt).localeCompare(String(y.createdAt)));
+  }
   res.json({
-    items: rows.slice(0, COMMENTS_PAGE).reverse().map((r) => commentJson(r, req, org, viewer)),
+    items,
     more: rows.length > COMMENTS_PAGE,
     canComment: isActiveMember(org, viewer),
   });
@@ -1053,7 +1107,7 @@ router.post('/:id/posts/:postId/reactions', (req, res) => {
   const org = orgOr404(req, res, 'read');
   if (!org) return;
   if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
-  const post = /^\d+$/.test(req.params.postId) ? db.prepare('SELECT id, author_player_id FROM organisation_posts WHERE id = ? AND organisation_id = ? AND hidden = 0').get(Number(req.params.postId), org.id) : null;
+  const post = threadPost(org, req.params.postId);
   if (!post) return res.status(404).json({ error: 'Post not found' });
   const emoji = req.body && req.body.emoji;
   if (!REACTION_EMOJI.includes(emoji)) return res.status(400).json({ error: 'Pick one of the offered emoji' });

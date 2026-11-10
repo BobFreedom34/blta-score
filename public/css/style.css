@@ -6478,6 +6478,8 @@ a.com-rank-name:hover { color: var(--orange); }
     .sv-rg-card,
     .sv-pcard,
     .sv-ptable,
+    .sv-tiles-panel,
+    .sv-thread,
     .sv-rl-g,
     .pr-card,
     .inv-card,
@@ -6542,6 +6544,8 @@ a.com-rank-name:hover { color: var(--orange); }
       .sv-rg-card,
       .sv-pcard,
       .sv-ptable,
+    .sv-tiles-panel,
+    .sv-thread,
       .sv-rl-g,
       .pr-card,
       .inv-card,
@@ -6721,8 +6725,32 @@ body:not(.embed-light):not(.embed) .match-card.availability-post .scoreboard { b
 /* the tiles (Termín, Čas hrania …) sit closer to the head with the hero photo above them */
 .sv-head:has(+ .sv-tiles-panel) { margin-bottom: 22px; }
 /* the tiles in one dark card with a small heading, apart from the hero above and the tabs below */
-.sv-tiles-panel { margin: 0 0 28px; padding: 16px; background: #1b1b1f; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 16px; }
+.sv-tiles-panel { margin: 0 0 28px; padding: 16px; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius); }
 .sv-tiles-panel h3 { margin: 0 0 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8f98; }
 .sv-tiles-panel .sv-tiles { margin: 0; }
 .sv-tiles-panel .sv-tile { background: #2a2a30; }
 @media (max-width: 700px) { .sv-tiles-panel { padding: 12px; border-radius: 14px; } }
+
+/* the comments of an event of a club: at the end of Základné info, under the players - one dark card with the reactions, the comments and, under a line, the box to write in */
+.sv-thread { margin: 36px 0 24px; padding: 16px 16px 0; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius); overflow: hidden; }
+.sv-thread .com-reactions { margin: 0 0 14px; }
+.sv-thread .sv-sec-h { margin-bottom: 12px; }
+.sv-thread .sv-sec-h h2 { font-size: 16px; letter-spacing: 0.02em; text-transform: none; }
+.sv-thread .com-comments { border-top: none; padding-top: 0; margin-top: 0; }
+.sv-thread [data-comments-toggle] { display: none; }
+.sv-thread .com-comments-body { display: block; }
+/* the box to write in: a dark field and a round grey button with an arrow, set off by a line across the card */
+.sv-thread .com-comment-new { align-items: center; margin: 14px -16px 0; padding: 14px 16px; border-top: 1px solid rgba(255, 255, 255, 0.14); }
+.sv-thread .com-comment-new textarea { background: #1b1b1f; color: var(--white); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 12px; min-height: 46px; padding: 12px 14px; font: inherit; font-size: 15px; resize: none; }
+.sv-thread .com-comment-new textarea::placeholder { color: #8b8f98; }
+.sv-thread .com-comment-new [data-comment-emoji] { background: transparent; border: 0; padding: 0 4px; font-size: 20px; }
+.sv-thread .com-comment-new [data-comment-send] { flex: none; width: 46px; height: 46px; padding: 0; border: 0; border-radius: 50%; background: #37373e; font-size: 0; position: relative; }
+.sv-thread .com-comment-new [data-comment-send]::after { content: ''; position: absolute; inset: 0; margin: auto; width: 20px; height: 20px; background: var(--white); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 11.5 21 3l-7.5 18-2.6-7.4z' fill='black'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 11.5 21 3l-7.5 18-2.6-7.4z' fill='black'/%3E%3C/svg%3E") center / contain no-repeat; }
+.sv-thread .com-comment-new [data-comment-send]:hover { background: #4a4a52; }
+.sv-thread .com-comment-hint { margin: 10px 0 14px; }
+
+/* a line of activity among the comments of an event ("Alan sa prihlásil · pred 20 min") */
+.com-activity { display: flex; align-items: center; gap: 10px; margin: 10px 0; font-size: 12px; color: #b9bcc4; }
+.com-activity .com-comment-face { width: 24px; height: 24px; font-size: 10px; flex: none; }
+.com-activity a, .com-activity b { color: #d3d6dc; font-weight: 600; text-decoration: none; }
+.com-activity em { font-style: normal; color: #8b8f98; font-size: 11px; white-space: nowrap; }

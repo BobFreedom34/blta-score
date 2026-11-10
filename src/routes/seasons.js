@@ -25,6 +25,7 @@ const communityPoints = require('../communityPoints');
 const clubTournaments = require('../clubTournaments');
 const changeLog = require('../changeLog');
 const capacity = require('../registrationCapacity');
+const seasonActivity = require('../seasonActivity');
 const courtStreams = require('../courtStreams');
 const tournamentMatches = require('../tournamentMatches');
 const playerPush = require('../playerPush');
@@ -408,6 +409,7 @@ router.post('/:id/registrations', async (req, res) => {
     .run(season.id, player ? player.id : null, name, phone, email, entryCategory, note, partner);
   // the pair is made at once when both players are known; otherwise the organiser makes it (draw tab: "Páry z registrácií"); a pair of substitutes is made when they come in
   if (doublesTournament && player && !substitute) { try { tournamentDraw.addPair(season, { player: player.id, partner }); } catch { /* the organiser makes it */ } }
+  seasonActivity.log(season.id, substitute ? 'REGISTER_WAIT' : 'REGISTER', name, player ? player.id : null);
   const total = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?').get(season.id).n;
   notifyOrganisationAdmins(season, { name, substitute, playerId: player ? player.id : null }); // the bell of the admins of the club that runs it
   // the e-mail to the admin must never make the registration fail
@@ -442,6 +444,7 @@ router.delete('/:id/registrations/mine', async (req, res) => {
     db.exec('ROLLBACK');
     throw err;
   }
+  seasonActivity.log(season.id, 'UNREGISTER', row.name, playerId);
   announceNewlyIn(season, waitingBefore); // somebody dropped out: the first substitute is in now
   notifyOrganisationAdmins(season, { name: row.name, substitute: wasSubstitute, playerId, kind: 'UNREGISTER' });
   const total = db.prepare('SELECT COUNT(*) AS n FROM season_registrations WHERE season_id = ?').get(season.id).n;
@@ -527,6 +530,7 @@ function announceNewlyIn(season, waitingBefore) {
     [...waitingBefore].filter((id) => !waitingNow.has(id)).forEach((id) => {
       const r = db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(id);
       if (!r) return; // the one who dropped out was himself a substitute
+      seasonActivity.log(season.id, 'PROMOTED', r.name, r.player_id);
       if (tournamentDraw.isDoublesTournament(season) && r.player_id) { try { tournamentDraw.addPair(season, { player: r.player_id, partner: r.partner_name }); } catch { /* the organiser makes the pair */ } }
       if (r.email) {
         const pageUrl = process.env.PUBLIC_URL ? `${process.env.PUBLIC_URL}/${season.kind === 'TOURNAMENT' ? 'tournament' : 'season'}/${season.slug}` : '';
@@ -861,6 +865,7 @@ router.post('/:id/registrations/admin', clubTournaments.requireSeasonManager(clu
   const substitute = capacity.wouldWait(season, category, doublesTournament ? { name: player.name, partner: partnerName } : undefined); // the maximum is reached: he is a substitute (raise the maximum to let him in)
   const info = db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, paid, partner_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
     .run(season.id, player.id, player.name, phone, email, category, body.paid ? 1 : 0, partnerName);
+  seasonActivity.log(season.id, substitute ? 'REGISTER_WAIT' : 'REGISTER', player.name, player.id);
   if (doublesTournament && !substitute) { try { tournamentDraw.addPair(season, { player: player.id, partner: partnerName }); } catch { /* the organiser makes the pair */ } }
   res.status(201).json(serializeRegistrationsOf(season, [db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(info.lastInsertRowid)])[0]);
 });
@@ -911,11 +916,12 @@ router.patch('/registrations/:rid', clubTournaments.requireSeasonManager(clubTou
 });
 
 router.delete('/registrations/:rid', clubTournaments.requireSeasonManager(clubTournaments.byRegistrationId), (req, res) => {
-  const row = db.prepare('SELECT season_id FROM season_registrations WHERE id = ?').get(Number(req.params.rid));
+  const row = db.prepare('SELECT season_id, name, player_id FROM season_registrations WHERE id = ?').get(Number(req.params.rid));
   const regSeason = row ? db.prepare('SELECT * FROM seasons WHERE id = ?').get(row.season_id) : null;
   const waitingBefore = regSeason ? capacity.substituteIds(regSeason) : new Set();
   const info = db.prepare('DELETE FROM season_registrations WHERE id = ?').run(Number(req.params.rid));
   if (!info.changes) return res.status(404).json({ error: 'Registration not found' });
+  if (row) seasonActivity.log(row.season_id, 'UNREGISTER', row.name, row.player_id);
   // somebody dropped out: the first substitute of that category (or of the tournament) is in now
   if (regSeason) announceNewlyIn(regSeason, waitingBefore);
   res.json({ ok: true });

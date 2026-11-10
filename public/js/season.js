@@ -878,6 +878,8 @@ function renderTabs() {
 async function renderPanel() {
   renderTabs();
   renderFixedPlayers();
+  const thread = document.getElementById('sv-thread');
+  if (thread) thread.hidden = !isTournament() || tab !== 'info';
   const panel = document.getElementById('sv-panel');
   const key = tab;
   if (!loaded.has(key)) {
@@ -892,9 +894,31 @@ async function renderPanel() {
   if (key === 'courts') initCourtSchedule(document.getElementById('sv-courts'), season).catch(() => { document.getElementById('sv-courts').innerHTML = `<div class="sv-empty">${escapeHtml(t('season.empty.courts'))}</div>`; });
 }
 
+// ---------- the discussion of an event of a club (reactions under the head, comments under the players, the box to write in sticks to the bottom of the screen) ----------
+let eventThread = null; // { reactions, commentCount } of this event; null = none (a league event has no community to talk in)
+async function loadEventThread() {
+  eventThread = null;
+  if (!season.organisation || typeof comReactionsHtml !== 'function') return;
+  try { eventThread = await api(`/communities/${season.organisation.id}/events/${season.id}/thread`); } catch { eventThread = null; }
+}
+const threadAttrs = () => `data-post="e${season.id}" data-org="${season.organisation.id}"`;
+function threadCommentsHtml() {
+  if (!eventThread) return '';
+  return `<section class="sv-thread" id="sv-thread" ${threadAttrs()}>${comReactionsHtml({ id: `e${season.id}`, reactions: eventThread.reactions })}<div class="sv-sec-h"><h2>💬 ${escapeHtml(t('season.discussion'))}</h2></div>${comCommentsHtml({ id: `e${season.id}`, commentCount: eventThread.commentCount })}</section>`;
+}
+function bindThread() {
+  if (!eventThread) return;
+  const org = season.organisation.id;
+  comBindReactions(rootEl, () => org);
+  comBindComments(rootEl, () => org);
+  const box = rootEl.querySelector('#sv-thread [data-comments-toggle]');
+  if (box) box.click(); // the comments are open from the start
+}
+
 function render() {
-  rootEl.innerHTML = `${headerHtml()}${tilesHtml()}${seriesWinnersHtml()}<div class="tabs" id="sv-tabs" role="tablist"></div><div id="sv-panel" class="sv-panel"></div><div id="sv-players-fixed"></div><section class="sv-partners" id="sv-partners" hidden></section>`;
+  rootEl.innerHTML = `${headerHtml()}${tilesHtml()}${seriesWinnersHtml()}<div class="tabs" id="sv-tabs" role="tablist"></div><div id="sv-panel" class="sv-panel"></div><div id="sv-players-fixed"></div>${threadCommentsHtml()}<section class="sv-partners" id="sv-partners" hidden></section>`;
   renderFixedPlayers();
+  bindThread();
   loadSponsorStrip(document.getElementById('sv-partners'), `?seasonId=${season.id}`);
   return renderPanel();
 }
@@ -985,6 +1009,7 @@ async function refresh() {
   await findMyGroup();
   await loadFinal();
   await loadGallery();
+  await loadEventThread();
   const wantsRegister = window.location.hash === '#register'; // the green "Registrácia" button of a schedule row (slta.sk) leads here
   tab = (wantsRegister ? '' : window.location.hash.slice(1)) || null; // renderTabs picks the first tab with content when there is none
   await render();

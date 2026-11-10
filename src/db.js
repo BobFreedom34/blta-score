@@ -1898,6 +1898,9 @@ db.exec(`
 // the time a post was last edited (null = never): the page says "upravené" beside the date
 if (!db.prepare('PRAGMA table_info(organisation_posts)').all().some((c) => c.name === 'edited_at')) db.exec('ALTER TABLE organisation_posts ADD COLUMN edited_at TEXT');
 if (!db.prepare('PRAGMA table_info(organisation_posts)').all().some((c) => c.name === 'image_url')) db.exec('ALTER TABLE organisation_posts ADD COLUMN image_url TEXT');
+// the reactions and comments under a tournament in the news hang on a hidden post of its own (season_id), made the first time somebody reacts or comments
+if (!db.prepare('PRAGMA table_info(organisation_posts)').all().some((c) => c.name === 'season_id')) db.exec('ALTER TABLE organisation_posts ADD COLUMN season_id INTEGER');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_organisation_posts_season ON organisation_posts(season_id) WHERE season_id IS NOT NULL');
 // An invitation an admin sent to a player (a message with a Join button, see src/routes/communities.js): the player joins from it without the approval.
 db.exec(`
   CREATE TABLE IF NOT EXISTS organisation_invites (

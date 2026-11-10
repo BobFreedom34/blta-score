@@ -85,7 +85,21 @@ function comCommentsHtml(post) {
     <div class="com-comments-body" hidden></div></div>`;
 }
 
+// "20 min ago" for the lines of activity
+function comAgo(iso) {
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (min < 1) return t('com.agoNow');
+  if (min < 60) return t('com.agoMin', { n: min });
+  if (min < 1440) return t('com.agoHour', { n: Math.round(min / 60) });
+  return comWhen(iso);
+}
+
 function comCommentHtml(c) {
+  if (c.kind === 'ACTIVITY') {
+    const who = c.authorSlug ? `<a href="/player/${encodeURIComponent(c.authorSlug)}">${escapeHtml(c.authorName)}</a>` : `<b>${escapeHtml(c.authorName)}</b>`;
+    const ini = String(c.authorName || '?').trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('');
+    return `<div class="com-activity" data-comment="${c.id}"><span class="com-comment-face">${escapeHtml(ini)}</span><span class="com-activity-text">${who} ${escapeHtml(t('com.act.' + c.activity))}</span><em>${escapeHtml(comAgo(c.createdAt))}</em></div>`;
+  }
   const face = c.authorPhotoUrl ? `<img src="${escapeHtml(c.authorPhotoUrl)}" alt="">` : escapeHtml(String(c.authorName || '?').trim().charAt(0).toUpperCase());
   const name = c.authorSlug ? `<a href="/player/${encodeURIComponent(c.authorSlug)}">${escapeHtml(c.authorName)}</a>` : escapeHtml(c.authorName);
   return `<div class="com-comment" data-comment="${c.id}"><span class="com-comment-face">${face}</span>
@@ -115,7 +129,7 @@ function comBindComments(root, orgIdOf) {
       if (older) older.addEventListener('click', async () => {
         older.disabled = true;
         try {
-          const more = await api(url(`?before=${state.items[0].id}`));
+          const more = await api(url(`?before=${(state.items.find((c) => c.kind !== 'ACTIVITY') || state.items[0]).id}`));
           state.items = more.items.concat(state.items);
           state.more = more.more;
           paint();
@@ -191,7 +205,9 @@ function comTournamentRow(s) {
 
 // the whole item: headHtml (who and when it was posted) and the card
 function comTournamentNewsHtml(s, headHtml) {
-  return `<div class="com-post com-news-tournament">${headHtml}${comTournamentRow(s)}</div>`;
+  // reactions and comments hang on the thread of the event (the address "e<season id>", see eventThread in src/routes/communities.js); the wrapper says whose it is
+  const thread = s.organisation && s.organisation.id ? { id: `e${s.id}`, reactions: s.reactions || [], commentCount: s.commentCount || 0 } : null;
+  return `<div class="com-post com-news-tournament"${thread ? ` data-post="${thread.id}" data-org="${s.organisation.id}"` : ''}>${headHtml}${comTournamentRow(s)}${thread ? `${comReactionsHtml(thread)}${comCommentsHtml(thread)}` : ''}</div>`;
 }
 
 // the buttons and the club tag inside the card are links by role: they lead somewhere of their own, not to the page of the card
