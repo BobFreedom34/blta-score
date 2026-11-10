@@ -554,19 +554,21 @@ function boardPostHtml(post) {
     ? `<img src="${escapeHtml(post.player.photoUrl)}" alt="" class="ltp-photo">`
     : `<span class="ltp-photo ltp-photo-empty">${escapeHtml(initials)}</span>`;
   const levels = post.mode === 'DOUBLES' ? `<span class="badge dbl-badge">${t('lookingToPlay.partnerBadge')}</span>` : post.categories.map(levelBadge).join('');
-  const joinInfo = statusBadge || (post.joinCount > 0 ? `<span class="ltp-wave">${post.joinCount} 👋</span>` : '');
+  const joinInfo = post.joinCount > 0 ? `<span class="ltp-wave" title="${escapeHtml(t('lookingToPlay.joinCountTitle'))}">👋 ${post.joinCount}</span>` : '';
+  const iq = post.player.courtiq;
+  const iqChip = iq ? `<span class="ltp-iq" title="${escapeHtml(t('lookingToPlay.courtiqTitle', { band: iq.band.toFixed(1), rating: iq.rating }))}"><small>IQ</small>${iq.band.toFixed(1)}${iq.provisional ? '<em>?</em>' : ''}</span>` : '';
   return `
     <div class="match-card availability-post ltp-tile" data-id="${post.id}">
       <div class="ltp-head">
         <button type="button" class="ltp-share" data-share="${post.id}" title="${escapeHtml(t('lookingToPlay.shareBtnTitle'))}">🔗</button>
-        <div class="ltp-photo-wrap">${photoHtml}<div class="ltp-levels">${levels}</div></div>
+        <div class="ltp-photo-wrap"><div class="ltp-photo-box">${photoHtml}${iqChip}</div><div class="ltp-levels">${levels}</div></div>
         <a href="/player/${post.player.slug || post.player.id}" class="ltp-name">${escapeHtml(post.player.name)}</a>
         <div class="ltp-loc">${post.location ? `${courtIcon('pin')}${escapeHtml(post.location)}` : '&nbsp;'}</div>
         ${post.note ? `<div class="ltp-note">${escapeHtml(post.note)}</div>` : ''}
       </div>
       <div class="ltp-foot">
         <div class="ltp-foot-row"><span class="ltp-slots">${escapeHtml(t('lookingToPlay.slotsFree', { count: freeSlotCount }))}</span>${joinInfo}</div>
-        ${calendarBtn}
+        ${calendarBtn || `<div class="ltp-status">${statusBadge}</div>`}
       </div>
     </div>
   `;

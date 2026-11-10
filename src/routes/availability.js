@@ -4,6 +4,7 @@ const db = require('../db');
 const leagues = require('../leagues');
 const playerPush = require('../playerPush');
 const engine = require('../matchEngine');
+const courtIQ = require('../courtIQEngine');
 const {
   isAdmin, getPlayerId, stripPrivateFields, requireLoggedIn,
 } = require('../auth');
@@ -127,6 +128,17 @@ function getBlockedSlots(postId) {
 // (PENDING requests only — accepted/denied ones are already resolved) and
 // blockedSlots (see getBlockedSlots above, public since the match it
 // represents already is).
+// The CourtIQ level of the player shown on the tile (null while he has no rated match yet)
+function courtiqOf(playerId) {
+  const r = db.prepare('SELECT rating, deviation, games_played FROM courtiq_ratings WHERE player_id = ?').get(playerId);
+  if (!r || !r.games_played) return null;
+  return {
+    band: Number(courtIQ.ratingToBand(r.rating).toFixed(1)),
+    rating: Math.round(r.rating),
+    provisional: courtIQ.isProvisional(r.deviation, r.games_played),
+  };
+}
+
 function serializePost(row, req) {
   const player = getPlayer(row.player_id);
   const viewerPlayerId = getPlayerId(req);
@@ -140,6 +152,7 @@ function serializePost(row, req) {
     id: row.id,
     player: player ? {
       id: player.id, name: player.name, slug: player.slug, photoUrl: player.photo_url,
+      courtiq: courtiqOf(player.id),
     } : null,
     mode: modeOf(row),
     slots: JSON.parse(row.days),
