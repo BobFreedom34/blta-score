@@ -119,7 +119,11 @@ async function main() {
       child.stdout.on('data', (d) => { output += d; if (String(d).includes('listening')) { clearTimeout(timer); resolve(); } });
       child.on('exit', (code) => { clearTimeout(timer); reject(new Error(`server exited (${code}):\n${output}`)); });
     });
-    const login = await fetch(`${base}/api/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: 'test' }) });
+    // (the first request can meet a server that is not accepting yet on a busy runner: try again a few times)
+    let login;
+    for (let i = 0; i < 10; i += 1) {
+      try { login = await fetch(`${base}/api/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: 'test' }) }); break; } catch (err) { if (i === 9) throw err; await new Promise((r) => setTimeout(r, 300)); }
+    }
     adminCookie = login.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
     assert.ok(adminCookie, 'admin login gave no cookie');
     for (const { name, fn } of tests) {

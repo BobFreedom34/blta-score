@@ -169,7 +169,7 @@ test('the page: the button "Odhlásiť sa" replaces the registration of a regist
   const season = read('js/season.js');
   new (require('vm').Script)(season, { filename: 'season.js' });
   assert.ok(season.includes('id="sv-unregister"') && season.includes('/registrations/mine') && season.includes('season.myRegistration'), 'the button and its call');
-  assert.ok(season.includes("t('season.register')"), 'the registration button keeps its name');
+  assert.ok(season.includes("'season.register'") && season.includes("'season.registerWaiting'"), 'the registration button keeps its name (and says "na čakačku" when the event is full)');
   const admin = read('js/seasons-admin.js');
   new (require('vm').Script)(admin, { filename: 'seasons-admin.js' });
   assert.ok(admin.includes("input('unregisterHours'") && admin.includes("unregisterHours: f('unregisterHours')"), 'the field in the section Štartovné a registrácia, and its save');
