@@ -6830,3 +6830,25 @@ body:not(.embed-light):not(.embed) .ct-card {
 /* the "Kopírovať" button of the bank transfer in the registration window: readable on the dark glass */
 .sv-pay-copy { background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.35); color: #fff; }
 .sv-pay-copy:hover { background: rgba(178, 250, 6, 0.14); border-color: var(--green); color: var(--green); }
+
+/* the dropdowns of the top strip (account / profile switch, notification bell): the dark glass panel of the menu dropdown */
+.auth-menu-panel, .badge-notif-panel {
+  background: rgba(10, 10, 10, 0.88);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  color-scheme: dark;
+}
+.badge-notif-panel-header { background: transparent; }
+.auth-menu-item { color: #fff; border-bottom-color: rgba(255, 255, 255, 0.1); }
+.auth-menu-item:not(:last-child) { border-bottom-color: rgba(255, 255, 255, 0.1); }
+.auth-menu-item:hover { background: rgba(255, 255, 255, 0.08); }
+.auth-menu-item .nav-icon svg { fill: #fff; }
+.auth-menu-item.nav-register-link { color: var(--orange); }
+.com-switch { border-bottom-color: rgba(255, 255, 255, 0.14); }
+.com-switch-title { color: #a9adb6; }
+.auth-lang-seg { border-color: rgba(255, 255, 255, 0.3); }
+.auth-lang-seg button { color: #fff; }
+.auth-lang-seg button.on { color: #fff; }
+.auth-lang-row { border-bottom-color: rgba(255, 255, 255, 0.1); color: #fff; }
