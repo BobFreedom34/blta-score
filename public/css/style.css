@@ -6480,6 +6480,9 @@ a.com-rank-name:hover { color: var(--orange); }
     .sv-ptable,
     .sv-tiles-panel,
     .sv-thread,
+    #my-post-card,
+    .modal,
+    #new-match-form,
     .sv-rl-g,
     .pr-card,
     .inv-card,
@@ -6522,7 +6525,7 @@ a.com-rank-name:hover { color: var(--orange); }
     background: rgba(10, 10, 10, 0.55);
   }
   /* the dark grey panels (the new-match form, the "log in first" card, the cards of the event pages): the same glass, in their own dark grey */
-  body:not(.embed-light):not(.embed) :is(#new-match-form, #login-required-card, .sa-card) {
+  body:not(.embed-light):not(.embed) :is(#login-required-card, .sa-card) {
     background: rgba(27, 27, 31, 0.6);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
     backdrop-filter: blur(14px) saturate(140%);
@@ -6546,6 +6549,9 @@ a.com-rank-name:hover { color: var(--orange); }
       .sv-ptable,
     .sv-tiles-panel,
     .sv-thread,
+    #my-post-card,
+    .modal,
+    #new-match-form,
       .sv-rl-g,
       .pr-card,
       .inv-card,
@@ -6754,3 +6760,18 @@ body:not(.embed-light):not(.embed) .match-card.availability-post .scoreboard { b
 .com-activity .com-comment-face { width: 24px; height: 24px; font-size: 10px; flex: none; }
 .com-activity a, .com-activity b { color: #d3d6dc; font-weight: 600; text-decoration: none; }
 .com-activity em { font-style: normal; color: #8b8f98; font-size: 11px; white-space: nowrap; }
+
+/* "Vaša dostupnosť" (Hľadám súpera) is a glass panel too: the same grey outline as the players table */
+#my-post-card { border: 1px solid rgba(255, 255, 255, 0.18); }
+
+/* the contact window ("Kontakt") is a glass panel too: the same translucent dark, blur and grey outline as the players table */
+body:not(.embed-light):not(.embed) .ct-card {
+  background: rgba(10, 10, 10, 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+/* the windows (login, the 5-digit code, the profile, the registration …) are glass panels too */
+.modal { border: 1px solid rgba(255, 255, 255, 0.18); }
+/* the new-match form is a glass panel too */
+#new-match-form { border: 1px solid rgba(255, 255, 255, 0.18); }
