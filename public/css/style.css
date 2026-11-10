@@ -6615,3 +6615,28 @@ a.com-rank-name:hover { color: var(--orange); }
 .day-time-row b { min-width: 150px; font-size: 14px; align-self: center; }
 .day-time-row label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--gray); }
 .day-time-row input[type="time"] { width: 130px; }
+
+/* Computer menu: every button is exactly the same height (the icon or a frame can't make one taller), the spacing between them is the same everywhere, and the arrow of a dropdown button sits inside the button as a part of it */
+@media (min-width: 1025px) {
+  .nav-links { gap: 4px; }
+  .nav-links a:not(.nav-submenu a), .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle > a, .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle { box-sizing: border-box; }
+  .nav-links a:not(.nav-submenu a), .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle > a {
+    display: inline-flex; align-items: center; height: 30px; padding-top: 0; padding-bottom: 0; line-height: 1;
+  }
+  .nav-links a:not(.nav-submenu a)::before, .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle > a::before { vertical-align: 0; flex: none; }
+  .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle { position: relative; }
+  .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle > a { padding-right: 24px; }
+  .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle > .nav-caret {
+    position: absolute; right: 0; top: 0; bottom: 0; width: 24px; padding: 0 2px 0 0;
+    display: flex; align-items: center; justify-content: center; font-size: 0; background: none;
+  }
+  .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle > .nav-caret::after {
+    content: ''; width: 6px; height: 6px; border: solid currentColor; border-width: 0 2px 2px 0; transform: translateY(-2px) rotate(45deg);
+  }
+  .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle:hover > a { background: rgba(255,255,255,0.08); color: var(--white); }
+  .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle:hover > a.nav-btn-green { background: #c9ff3d; color: #0a0a0a; }
+  .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle:hover > a.nav-btn-green-outline { background: rgba(178, 250, 6, 0.14); color: var(--green); }
+  .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle > a.active ~ .nav-caret { color: var(--white); }
+  .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle > a.nav-btn-green ~ .nav-caret { color: #0a0a0a; }
+  .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle > a.nav-btn-green-outline ~ .nav-caret { color: var(--green); }
+}
