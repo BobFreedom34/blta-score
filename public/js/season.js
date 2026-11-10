@@ -385,6 +385,12 @@ function infoHtml() {
     </div>`;
 }
 
+// The rules of the event: one line "+ Pravidlá" that opens into the text written in the backend (cleaned HTML, like the description)
+function rulesHtml() {
+  if (!season.rules) return '';
+  return `<details class="sv-rules"><summary><span class="sv-rules-sign" aria-hidden="true"></span>${escapeHtml(t('season.rules'))}</summary><div class="sv-rules-body">${season.rules}</div></details>`;
+}
+
 // The same two cards as the home page (rows from match-rows.js): the latest results and the next matches.
 function resultsHtml() {
   const col = (title, href, rows, empty) => `
@@ -815,7 +821,7 @@ function availableTabs() {
   const players = playersModel().total;
   // the order of a season's tabs: Základné info · Hráči · Tabuľky · Rozpis · Výsledky · Play-off · Galéria (a tournament: Základné info · Harmonogram · Skupiny · Pavúky · Galéria)
   const tabs = [
-    { key: 'info', label: t('season.navInfo'), has: !!season.info },
+    { key: 'info', label: t('season.navInfo'), has: !!(season.info || season.rules) },
     { key: 'players', label: t(isDoublesTournament() ? 'season.pairsTitle' : 'season.navPlayers'), has: players > 0, count: players },
     { key: 'courts', label: t('season.navCourts'), has: (season.courtCount || 0) > 0 },
     { key: 'tables', label: t(isTournament() ? 'season.navGroups' : 'season.navTables'), has: hasGroups },
@@ -856,7 +862,7 @@ function panelHtml() {
             : tab === 'gallery' ? galleryHtml()
               : tab === 'live' ? liveVideoHtml()
               : tab === 'courts' ? '<div id="sv-courts"></div>'
-                : infoHtml();
+                : infoHtml() + rulesHtml();
   const emptyKey = tab === 'playoff' && isTournament() ? 'season.empty.brackets' : `season.empty.${tab}`;
   return html || `<div class="sv-empty">${escapeHtml(t(emptyKey))}</div>`;
 }

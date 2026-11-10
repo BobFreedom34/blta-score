@@ -6852,3 +6852,19 @@ body:not(.embed-light):not(.embed) .ct-card {
 .auth-lang-seg button { color: #fff; }
 .auth-lang-seg button.on { color: #fff; }
 .auth-lang-row { border-bottom-color: rgba(255, 255, 255, 0.1); color: #fff; }
+
+/* the rules of an event on its page: one line "+ Pravidlá" that opens (season.js, rulesHtml) */
+.sv-rules { margin: 18px 0 0; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius); background: rgba(10, 10, 10, 0.55); -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); overflow: hidden; }
+.sv-rules > summary { display: flex; align-items: center; gap: 12px; padding: 16px 22px; cursor: pointer; list-style: none; user-select: none; font-size: 18px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #fff; }
+.sv-rules > summary::-webkit-details-marker { display: none; }
+.sv-rules > summary:hover { background: rgba(255, 255, 255, 0.06); }
+.sv-rules-sign { position: relative; flex: none; width: 26px; height: 26px; border-radius: 8px; background: rgba(178, 250, 6, 0.14); border: 1px solid var(--green); }
+.sv-rules-sign::before, .sv-rules-sign::after { content: ''; position: absolute; left: 50%; top: 50%; width: 12px; height: 2px; margin: -1px 0 0 -6px; background: var(--green); border-radius: 2px; transition: transform 0.18s; }
+.sv-rules-sign::after { transform: rotate(90deg); }
+.sv-rules[open] .sv-rules-sign::after { transform: rotate(0); }
+.sv-rules-body { padding: 4px 22px 20px; color: #e4e6ea; font-size: 15.5px; line-height: 1.55; }
+.sv-rules-body > :first-child { margin-top: 0; }
+.sv-rules-body > :last-child { margin-bottom: 0; }
+.sv-rules-body h3 { margin: 18px 0 6px; font-size: 16px; font-weight: 800; color: #fff; }
+.sv-rules-body ul, .sv-rules-body ol { padding-left: 22px; }
+.sv-rules-body a { color: var(--green); }

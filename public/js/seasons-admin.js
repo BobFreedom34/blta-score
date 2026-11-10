@@ -429,6 +429,19 @@ function maxMissing(form) {
 }
 const MAX_MISSING_TEXT = () => tl('Zadaj maximálny počet hráčov.', 'Enter the maximum number of players.');
 
+function rteToolbarHtml() {
+  return `<div class="rte-toolbar">
+                  <button type="button" data-cmd="bold" title="${escapeHtml(tl('Tučné', 'Bold'))}"><b>B</b></button>
+                  <button type="button" data-cmd="italic" title="${escapeHtml(tl('Kurzíva', 'Italic'))}"><i>I</i></button>
+                  <button type="button" data-cmd="underline" title="${escapeHtml(tl('Podčiarknuté', 'Underline'))}"><u>U</u></button>
+                  <button type="button" data-cmd="heading" title="${escapeHtml(tl('Nadpis', 'Heading'))}">H</button>
+                  <button type="button" data-cmd="insertUnorderedList" title="${escapeHtml(tl('Odrážky', 'Bulleted list'))}">• ${tl('Zoznam', 'List')}</button>
+                  <button type="button" data-cmd="insertOrderedList" title="${escapeHtml(tl('Číslovanie', 'Numbered list'))}">1. ${tl('Zoznam', 'List')}</button>
+                  <button type="button" data-cmd="link" title="${escapeHtml(tl('Odkaz', 'Link'))}">${tl('Odkaz', 'Link')}</button>
+                  <button type="button" data-cmd="removeFormat" title="${escapeHtml(tl('Zrušiť formátovanie', 'Remove formatting'))}">${tl('Vyčistiť', 'Clear')}</button>
+  </div>`;
+}
+
 function seasonCardHtml(s) {
   const byCategory = CATEGORIES.map(([key]) => s.groups.filter((g) => g.category === key).length);
   const field = (label, control, cls = '') => `<label class="sa-field ${cls}">${label}${control}</label>`;
@@ -522,6 +535,14 @@ function seasonCardHtml(s) {
             ${CLUB ? communityPointsSection(s) : ''}
 
             <section class="sa-section">
+              <h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4zM5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>${tl('Pravidlá', 'Rules')}</h4>
+              <div class="sa-field sa-full"><span class="sa-hint">${tl('Na stránke sa ukážu pod popisom ako otvárateľný riadok „+ Pravidlá“. Nechaj prázdne, ak ich nechceš ukazovať.', 'Shown on the page under the description as an expandable line "+ Rules". Leave empty to show nothing.')}</span>
+                ${rteToolbarHtml()}
+                <div class="rte" contenteditable="true" data-rte="rules">${richText(s.rules)}</div>
+              </div>
+            </section>
+
+            <section class="sa-section">
               <h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>${tl('Vzhľad stránky', 'Look of the page')}</h4>
               <div class="sa-grid">
                 ${field(tl('Odkaz na galériu', 'Gallery link'), input('galleryUrl', s.galleryUrl || '', 'maxlength="500" placeholder="https://…"'), 'sa-wide')}
@@ -541,17 +562,8 @@ function seasonCardHtml(s) {
                 <div class="sa-hero-grid">${heroBlockHtml(s, 'desktop')}${heroBlockHtml(s, 'mobile')}</div>
               </div>
               <div class="sa-field sa-full" style="margin-top:12px">${tl('Popis', 'Description')} <span class="sa-hint">— ${tl('riadok „Názov: hodnota“ sa na stránke zobrazí ako dlaždica', 'a line "Name: value" is shown on the page as a tile')}</span>
-                <div class="rte-toolbar">
-                  <button type="button" data-cmd="bold" title="${escapeHtml(tl('Tučné', 'Bold'))}"><b>B</b></button>
-                  <button type="button" data-cmd="italic" title="${escapeHtml(tl('Kurzíva', 'Italic'))}"><i>I</i></button>
-                  <button type="button" data-cmd="underline" title="${escapeHtml(tl('Podčiarknuté', 'Underline'))}"><u>U</u></button>
-                  <button type="button" data-cmd="heading" title="${escapeHtml(tl('Nadpis', 'Heading'))}">H</button>
-                  <button type="button" data-cmd="insertUnorderedList" title="${escapeHtml(tl('Odrážky', 'Bulleted list'))}">• ${tl('Zoznam', 'List')}</button>
-                  <button type="button" data-cmd="insertOrderedList" title="${escapeHtml(tl('Číslovanie', 'Numbered list'))}">1. ${tl('Zoznam', 'List')}</button>
-                  <button type="button" data-cmd="link" title="${escapeHtml(tl('Odkaz', 'Link'))}">${tl('Odkaz', 'Link')}</button>
-                  <button type="button" data-cmd="removeFormat" title="${escapeHtml(tl('Zrušiť formátovanie', 'Remove formatting'))}">${tl('Vyčistiť', 'Clear')}</button>
-                </div>
-                <div class="rte" contenteditable="true" data-rte>${richText(s.info)}</div>
+                ${rteToolbarHtml()}
+                <div class="rte" contenteditable="true" data-rte="info">${richText(s.info)}</div>
               </div>
             </section>
 
@@ -682,7 +694,7 @@ function wireSeason(card) {
       // a season is played in at least one category (an empty choice would mean "all" to the server)
       if (!IS_TOURNAMENT && e.target.querySelectorAll('[data-cat]').length && ![...e.target.querySelectorAll('[data-cat]')].some((b) => b.checked)) throw new Error(tl('Vyber aspoň jednu kategóriu.', 'Choose at least one category.'));
       if (e.target.querySelector('[data-field="registrationOpen"]').checked && maxMissing(e.target)) throw new Error(MAX_MISSING_TEXT());
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, ...maxBody(e.target), unregisterHours: f('unregisterHours') === '' ? null : Number(f('unregisterHours')), drawDate: f('drawDate') || null, ...(IS_TOURNAMENT ? { plannedFormat: f('plannedFormat') || '' } : {}), galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(CLUB ? { communityPoints: readCommunityPoints(e.target) } : {}), ...(IS_TOURNAMENT ? { venue: f('venue'), ...(courtsTouched ? { courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), courtStreams: readCourtStreams(e.target) } : {}), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), matchMinutes: Number(f('matchMinutes')), restMinutes: Number(f('restMinutes')), dayStart: f('dayStart'), dayEnd: f('dayEnd'), dayTimes: readDayTimes(e.target), autoSchedule: e.target.querySelector('[data-field="autoSchedule"]').checked } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, ...maxBody(e.target), unregisterHours: f('unregisterHours') === '' ? null : Number(f('unregisterHours')), drawDate: f('drawDate') || null, ...(IS_TOURNAMENT ? { plannedFormat: f('plannedFormat') || '' } : {}), galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte="info"]').innerHTML, rules: e.target.querySelector('[data-rte="rules"]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(CLUB ? { communityPoints: readCommunityPoints(e.target) } : {}), ...(IS_TOURNAMENT ? { venue: f('venue'), ...(courtsTouched ? { courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), courtStreams: readCourtStreams(e.target) } : {}), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), matchMinutes: Number(f('matchMinutes')), restMinutes: Number(f('restMinutes')), dayStart: f('dayStart'), dayEnd: f('dayEnd'), dayTimes: readDayTimes(e.target), autoSchedule: e.target.querySelector('[data-field="autoSchedule"]').checked } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
       toast(tl('Uložené', 'Saved'));
       await load();
     } catch (err) { fail(err); }
@@ -766,28 +778,30 @@ function wireSeason(card) {
     });
   }
 
-  const rte = card.querySelector('[data-rte]');
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch { /* not supported: the server turns divs into paragraphs */ }
-  card.querySelectorAll('.rte-toolbar [data-cmd]').forEach((btn) => {
-    btn.addEventListener('mousedown', (e) => e.preventDefault()); // keep the selection in the editor
-    btn.addEventListener('click', () => {
-      rte.focus();
-      const cmd = btn.dataset.cmd;
-      if (cmd === 'link') {
-        const url = prompt(tl('Adresa odkazu (https://…)', 'Link address (https://…)'));
-        if (url) document.execCommand('createLink', false, url);
-      } else if (cmd === 'heading') {
-        const inHeading = document.queryCommandValue('formatBlock').toLowerCase() === 'h3';
-        document.execCommand('formatBlock', false, inHeading ? 'p' : 'h3');
-      } else {
-        document.execCommand(cmd, false, null);
-      }
+  card.querySelectorAll('[data-rte]').forEach((rte) => {
+    const bar = rte.previousElementSibling; // (its toolbar)
+    if (bar) bar.querySelectorAll('[data-cmd]').forEach((btn) => {
+      btn.addEventListener('mousedown', (e) => e.preventDefault()); // keep the selection in the editor
+      btn.addEventListener('click', () => {
+        rte.focus();
+        const cmd = btn.dataset.cmd;
+        if (cmd === 'link') {
+          const url = prompt(tl('Adresa odkazu (https://…)', 'Link address (https://…)'));
+          if (url) document.execCommand('createLink', false, url);
+        } else if (cmd === 'heading') {
+          const inHeading = document.queryCommandValue('formatBlock').toLowerCase() === 'h3';
+          document.execCommand('formatBlock', false, inHeading ? 'p' : 'h3');
+        } else {
+          document.execCommand(cmd, false, null);
+        }
+      });
     });
-  });
-  rte.addEventListener('paste', (e) => {
-    e.preventDefault();
-    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-    document.execCommand('insertHTML', false, richText(text));
+    rte.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertHTML', false, richText(text));
+    });
   });
 
   // "Registration open" takes effect the moment it is ticked or unticked, without waiting for "Save"

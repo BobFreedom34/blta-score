@@ -175,6 +175,7 @@ function serializeSeason(s) {
     // the format the organiser plans to play (chosen in Backend > Základné info before the draw; once a category is drawn its own format counts): '' = not said yet
     plannedFormat: s.planned_format || '',
     info: s.info || '',
+    rules: s.rules || '', // the rules of the event: cleaned HTML, shown on its page as an expandable "+ Pravidlá"
     galleryUrl: s.gallery_url || '',
     paymentUrl: s.payment_url || '',
     logoUrl: s.logo_url || '',
@@ -1116,6 +1117,13 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     const empty = !clean.replace(/<[^>]*>|&nbsp;|\s/g, '');
     info = clean.length > 8000 ? { error: 'The description is too long' } : { value: empty ? null : clean };
   }
+  // the rules: cleaned HTML like the description (nothing left but empty tags = none)
+  let rules = { value: season.rules };
+  if (req.body.rules !== undefined) {
+    const clean = sanitizeHtml(req.body.rules).trim();
+    const empty = !clean.replace(/<[^>]*>|&nbsp;|\s/g, '');
+    rules = clean.length > 20000 ? { error: 'The rules are too long' } : { value: empty ? null : clean };
+  }
   const gallery = text('galleryUrl', season.gallery_url, 500);
   const payment = text('paymentUrl', season.payment_url, 500);
   const logo = text('logoUrl', season.logo_url, 300);
@@ -1144,7 +1152,7 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     scoring = next.scoring;
     tiebreakers = next.tiebreakers.join(',');
   }
-  const bad = fee.error || prize.error || info.error || gallery.error || payment.error || logo.error || draw.error || venue.error;
+  const bad = fee.error || prize.error || info.error || rules.error || gallery.error || payment.error || logo.error || draw.error || venue.error;
   if (bad) return res.status(400).json({ error: bad });
   if (gallery.value && !/^https?:\/\//i.test(gallery.value)) return res.status(400).json({ error: 'The gallery link must start with http:// or https://' });
   if (payment.value && !/^https?:\/\//i.test(payment.value)) return res.status(400).json({ error: 'The payment link must start with http:// or https://' });
@@ -1220,6 +1228,7 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, scoring, tiebreakers, maxPlayers, nextSeason.category_max, season.id);
   if (planning) tournamentSchedule.storeSettings(season.id, planning);
   db.prepare('UPDATE seasons SET unregister_hours = ? WHERE id = ?').run(unregisterHours, season.id);
+  if (req.body.rules !== undefined) db.prepare('UPDATE seasons SET rules = ? WHERE id = ?').run(rules.value, season.id);
   if (req.body.plannedFormat !== undefined) db.prepare('UPDATE seasons SET planned_format = ? WHERE id = ?').run(PLANNED_FORMATS.includes(req.body.plannedFormat) ? req.body.plannedFormat : null, season.id);
   db.prepare('UPDATE seasons SET court_streams = ? WHERE id = ?').run(JSON.stringify(streamIds), season.id);
   // the points of a community follow the new settings, and the scoring of the season (what a match is worth in its table)
