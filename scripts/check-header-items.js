@@ -56,6 +56,23 @@ test('only an admin can change the menu', async () => {
   assert.strictEqual((await call('POST', '/api/header-items', { labelSk: 'x', link: '/x' }, false)).status, 401);
 });
 
+test('an item can be shown with a green frame and green words (outline); the Turnaje item and the filtered Harmonogram it opens', async () => {
+  const made1 = await call('POST', '/api/header-items', { labelSk: 'Turnaje test', link: '/harmonogram?type=TOURNAMENT', outline: true });
+  assert.strictEqual(made1.status, 201);
+  assert.strictEqual(made1.json.outline, true);
+  assert.strictEqual(made1.json.highlight, false);
+  const kept = await call('PATCH', `/api/header-items/${made1.json.id}`, { labelSk: 'Turnaje test', link: '/harmonogram?type=TOURNAMENT', outline: true });
+  assert.strictEqual(kept.json.outline, true);
+  const off = await call('PATCH', `/api/header-items/${made1.json.id}`, { labelSk: 'Turnaje test', link: '/harmonogram?type=TOURNAMENT' });
+  assert.strictEqual(off.json.outline, false, 'a request without the switch turns it off');
+  await call('DELETE', `/api/header-items/${made1.json.id}`);
+  const seed = fs.readFileSync(path.join(ROOT, 'src', 'seasonSeed.js'), 'utf8');
+  assert.ok(seed.includes('ensureTournamentsMenuItem') && seed.includes("'/harmonogram?type=TOURNAMENT'") && seed.includes('menu_tournaments_'), 'the menu item is added once per city');
+  const page = fs.readFileSync(path.join(ROOT, 'public', 'js', 'harmonogram.js'), 'utf8');
+  assert.ok(page.includes("asked.get('type')") && page.includes("'TOURNAMENT'"), 'the Harmonogram reads ?type= from the address');
+  assert.ok(fs.readFileSync(path.join(ROOT, 'public', 'js', 'common.js'), 'utf8').includes('nav-btn-green-outline'), 'the menu draws the frame');
+});
+
 test('a sub-item can have its own sub-items (three levels)', async () => {
   const a = await made('A1');
   const b = await made('B1', a.id);

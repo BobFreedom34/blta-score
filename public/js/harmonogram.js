@@ -13,6 +13,12 @@ let events = [];
 let year = null;
 let cat = 'ALL';
 let type = 'ALL';
+// the address can open the page already filtered: /harmonogram?type=TOURNAMENT (the menu item "Turnaje") or ?type=LEAGUE; the year is the current one unless ?year= says another
+try {
+  const asked = new URLSearchParams(window.location.search);
+  if (['TOURNAMENT', 'LEAGUE'].includes(asked.get('type'))) type = asked.get('type');
+  if (/^d{4}$/.test(asked.get('year') || '')) year = Number(asked.get('year'));
+} catch { /* no filter */ }
 let view = 'list'; // 'list' (the first look) | 'timeline'
 try { if (localStorage.getItem('blta_schedule_view') === 'timeline') view = 'timeline'; } catch { /* the list stays */ }
 const viewEl = document.getElementById('sch-view');
@@ -183,7 +189,7 @@ typeEl.addEventListener('change', () => { type = typeEl.value; render(); });
     rootEl.innerHTML = `<div class="empty-state">${escapeHtml(t('schedule.loadError'))}</div>`;
     return;
   }
-  year = pickDefaultYear();
+  if (year === null || !allYears().includes(year)) year = pickDefaultYear(); // (?year= in the address, else the current year)
   if (year === null) {
     rootEl.innerHTML = `<div class="empty-state">${escapeHtml(t('schedule.empty'))}</div>`;
     return;

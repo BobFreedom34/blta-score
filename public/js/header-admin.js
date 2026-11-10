@@ -137,6 +137,9 @@ function headerItemFormHtml(prefix, item, opts) {
     <div class="field">
       <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="${prefix}-highlight"${it.highlight ? ' checked' : ''}> Show as a green button</label>
     </div>
+    <div class="field">
+      <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="${prefix}-outline"${it.outline ? ' checked' : ''}> Show with a green frame and green words</label>
+    </div>
     ${item ? '' : '<div style="font-size:12px;color:var(--gray-dim)">A new item goes to the end of its list — move it with the arrows or by dragging the ⋮⋮ handle.</div>'}
   `;
 }
@@ -147,6 +150,7 @@ function readHeaderItemForm(prefix) {
     labelEn: document.getElementById(`${prefix}-labelEn`).value.trim(),
     link: document.getElementById(`${prefix}-link`).value.trim(),
     highlight: document.getElementById(`${prefix}-highlight`).checked,
+    outline: document.getElementById(`${prefix}-outline`).checked,
   };
 }
 
@@ -188,7 +192,7 @@ function headerItemRowHtml(item) {
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         ${moveControlsHtml(item)}
         <div style="flex:1;min-width:160px">
-          <div style="font-weight:700">${isSub ? '↳ ' : ''}${escapeHtml(label)}${item.highlight ? ' <span style="font-size:11px;font-weight:800;background:var(--green);color:#0a0a0a;border-radius:6px;padding:1px 7px;margin-left:6px">GREEN</span>' : ''}</div>
+          <div style="font-weight:700">${isSub ? '↳ ' : ''}${escapeHtml(label)}${item.highlight ? ' <span style="font-size:11px;font-weight:800;background:var(--green);color:#0a0a0a;border-radius:6px;padding:1px 7px;margin-left:6px">GREEN</span>' : ''}${item.outline ? ' <span style="font-size:11px;font-weight:800;border:1.5px solid var(--green);color:var(--green);border-radius:6px;padding:0 6px;margin-left:6px">GREEN FRAME</span>' : ''}</div>
           <div style="font-size:12px;color:var(--gray)">${isContact(item.link) ? 'opens the contact window' : (isHeading(item.link) ? 'heading — opens its sub-items' : escapeHtml(item.link))}</div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
@@ -367,7 +371,7 @@ function attachHandlers() {
             if (!moving) { errorEl.textContent = 'Choose the item to move first'; return; }
             try {
               await api(`/header-items/${moving.id}`, { method: 'PATCH', body: {
-                labelSk: moving.labelSk, labelEn: moving.labelEn || '', link: moving.link, highlight: moving.highlight, parentId: id,
+                labelSk: moving.labelSk, labelEn: moving.labelEn || '', link: moving.link, highlight: moving.highlight, outline: moving.outline, parentId: id,
               } });
               toast(`"${moving.labelSk}" moved under "${item.labelSk}"`);
               await loadItems();

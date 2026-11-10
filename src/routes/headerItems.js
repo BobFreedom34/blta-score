@@ -15,6 +15,7 @@ function serialize(row) {
     sortOrder: row.sort_order,
     isMyProfile: !!row.is_my_profile,
     highlight: !!row.highlight,
+    outline: !!row.outline,
   };
 }
 
@@ -70,7 +71,7 @@ function validateBody(body, self) {
     const below = self ? heightOf(self.id) : 1; // the levels the moved item brings with it
     if (depthOf(parent.id) + below > MAX_DEPTH) return { error: 'The menu has three levels at most (item, sub-item, sub-sub-item)' };
   }
-  return { labelSk, labelEn: labelEn || null, link, sortOrder, parentId, highlight: body.highlight ? 1 : 0 };
+  return { labelSk, labelEn: labelEn || null, link, sortOrder, parentId, highlight: body.highlight ? 1 : 0, outline: body.outline ? 1 : 0 };
 }
 
 // the position after the last item of a list (the main items OF ONE CITY, or the sub-items of a parent)
@@ -94,8 +95,8 @@ router.post('/', requireAdmin, (req, res) => {
   const parsed = validateBody(req.body);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const info = db.prepare(
-    'INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, highlight, league_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, parsed.sortOrder === null ? nextOrder(parsed.parentId, leagues.actingIdOf(req)) : parsed.sortOrder, parsed.highlight, leagues.actingIdOf(req));
+    'INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, highlight, outline, league_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, parsed.sortOrder === null ? nextOrder(parsed.parentId, leagues.actingIdOf(req)) : parsed.sortOrder, parsed.highlight, parsed.outline, leagues.actingIdOf(req));
   res.status(201).json(serialize(db.prepare('SELECT * FROM header_items WHERE id = ?').get(info.lastInsertRowid)));
 });
 
@@ -109,14 +110,14 @@ router.post('/copy', requireAdmin, (req, res) => {
   if (from.id === targetId) return res.status(400).json({ error: 'That is the menu of this city already' });
   const rows = db.prepare('SELECT * FROM header_items WHERE league_id = ? ORDER BY sort_order, id').all(from.id);
   if (!rows.length) return res.status(400).json({ error: `${from.name} has no menu to copy` });
-  const insert = db.prepare('INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, is_my_profile, highlight, league_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+  const insert = db.prepare('INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, is_my_profile, highlight, outline, league_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
   db.exec('BEGIN');
   try {
     db.prepare('DELETE FROM header_items WHERE league_id = ?').run(targetId);
     const idMap = new Map(); // old id -> new id
     // parents before their children: walk the tree from the top
     const copy = (parentOld, parentNew) => rows.filter((r) => (parentOld === null ? !r.parent_id : r.parent_id === parentOld)).forEach((r) => {
-      const info = insert.run(parentNew, r.label_sk, r.label_en, r.link, r.sort_order, r.is_my_profile, r.highlight || 0, targetId);
+      const info = insert.run(parentNew, r.label_sk, r.label_en, r.link, r.sort_order, r.is_my_profile, r.highlight || 0, r.outline || 0, targetId);
       idMap.set(r.id, Number(info.lastInsertRowid));
       copy(r.id, Number(info.lastInsertRowid));
     });
@@ -174,8 +175,8 @@ router.patch('/:id', requireAdmin, (req, res) => {
   const moved = (parsed.parentId || null) !== (item.parent_id || null);
   const sortOrder = parsed.sortOrder !== null ? parsed.sortOrder : (moved ? nextOrder(parsed.parentId, item.league_id) : item.sort_order);
   db.prepare(
-    'UPDATE header_items SET parent_id = ?, label_sk = ?, label_en = ?, link = ?, sort_order = ?, highlight = ? WHERE id = ?'
-  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, sortOrder, parsed.highlight, item.id);
+    'UPDATE header_items SET parent_id = ?, label_sk = ?, label_en = ?, link = ?, sort_order = ?, highlight = ?, outline = ? WHERE id = ?'
+  ).run(parsed.parentId, parsed.labelSk, parsed.labelEn, parsed.link, sortOrder, parsed.highlight, parsed.outline, item.id);
   res.json(serialize(db.prepare('SELECT * FROM header_items WHERE id = ?').get(item.id)));
 });
 

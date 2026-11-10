@@ -1137,6 +1137,10 @@ if (!headerItemColumns.includes('is_my_profile')) {
 if (!headerItemColumns.includes('highlight')) {
   db.exec('ALTER TABLE header_items ADD COLUMN highlight INTEGER NOT NULL DEFAULT 0');
 }
+// An item shown as a button with a green frame and green words (the "Turnaje" item; a switch on the item in /header-admin).
+if (!headerItemColumns.includes('outline')) {
+  db.exec('ALTER TABLE header_items ADD COLUMN outline INTEGER NOT NULL DEFAULT 0');
+}
 // Róbert Sloboda (who runs the league) is left out of "Hráči mesiaca" on the home page for good, once; the switch on the player in the Players page can
 // change it later (an app_flags row stops this from running again)
 if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'owner_no_highlights'").get()) {

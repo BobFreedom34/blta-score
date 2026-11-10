@@ -1446,6 +1446,7 @@ async function renderHeaderNav() {
     if (heading) a.classList.add('nav-heading'); // opens its sub-items on a tap (the click handler below), goes nowhere
     else if (isActive(item.link)) a.className = 'active';
     if (item.highlight) a.classList.add('nav-btn-green'); // a button of its own colour (a switch on the item in /header-admin)
+    if (item.outline) a.classList.add('nav-btn-green-outline'); // a green frame and green words (the same place)
     // an item that is only a heading for a dropdown has no page of its own: its icon follows its name
     if (isHeadingLink(item.link) || (item.children && item.children.length)) {
       const name = `${item.labelSk} ${item.labelEn || ''}`;

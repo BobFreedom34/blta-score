@@ -4394,6 +4394,10 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .nav-links a.nav-btn-green:hover, .nav-links .nav-item-dropdown-toggle a.nav-btn-green:hover { background: #c9ff3d; color: #0a0a0a; }
 .nav-links a.nav-btn-green.active { background: var(--green); color: #0a0a0a; }
 .nav-links a.nav-btn-green::before, .nav-links a.nav-btn-green:hover::before, .nav-links a.nav-btn-green.active::before { background: #0a0a0a; }
+/* A menu item with a green frame and green words, no fill (Backend > Menu: "Show with a green frame and green words"): the "Turnaje" item */
+.nav-links a.nav-btn-green-outline, .nav-links .nav-item-dropdown-toggle a.nav-btn-green-outline { color: var(--green); background: transparent; border: 1.5px solid var(--green); padding: 5.5px 8.5px; font-weight: 800; }
+.nav-links a.nav-btn-green-outline:hover, .nav-links a.nav-btn-green-outline.active, .nav-links .nav-item-dropdown-toggle a.nav-btn-green-outline:hover { background: rgba(178, 250, 6, 0.14); color: var(--green); border-color: var(--green); }
+.nav-links a.nav-btn-green-outline::before, .nav-links a.nav-btn-green-outline:hover::before, .nav-links a.nav-btn-green-outline.active::before { background: var(--green); }
 
 /* Phone menu: icons for the items that had only the arrow (Zápasy, Tabuľky, Harmonogram, a season, and the dropdown parents such as Liga and VIAC) */
 @media (max-width: 1024px) {

@@ -319,7 +319,8 @@ function tilesHtml() {
   // registered / maximum (the one limit of the event, or the limits of its categories added up); the ones over it are substitutes
   const maxPlayers = season.maxPlayers || Object.values(season.categoryMax || {}).reduce((a, b) => a + b, 0) || 0;
   const tile = (key, value, sub) => `<div class="sv-tile"><div class="k">${escapeHtml(t(key))}</div><div class="v">${value}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</div></div>`;
-  const cats = CATEGORY_ORDER_ALL.filter((c) => (isTournament() && (season.categories || []).includes(c)) || (season.groups || []).some((g) => g.category === c) || (standings && standings.groups.some((g) => g.category === c)));
+  // the categories ticked in the Backend (a season or a tournament), and any a group is in
+  const cats = CATEGORY_ORDER_ALL.filter((c) => (season.categories || []).includes(c) || (season.groups || []).some((g) => g.category === c) || (standings && standings.groups.some((g) => g.category === c)));
   const tiles = [
     termText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileTerm'))}</div><div class="v sm">${escapeHtml(termText())}</div></div>` : '',
     playingTimeText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileTime'))}</div><div class="v sm">${escapeHtml(playingTimeText())}</div></div>` : '',

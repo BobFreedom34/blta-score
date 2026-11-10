@@ -149,6 +149,11 @@ try {
   console.error('Winners menu item failed:', err);
 }
 try {
+  require('./src/seasonSeed').ensureTournamentsMenuItem(db);
+} catch (err) {
+  console.error('Tournaments menu item failed:', err);
+}
+try {
   require('./src/seasonSeed').ensureCommunityMenuItems(db);
 } catch (err) {
   console.error('Communities menu items failed:', err);

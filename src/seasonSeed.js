@@ -331,6 +331,29 @@ function ensureCommunityMenuItems(db) {
   });
 }
 
+// The "Turnaje" menu item: the Harmonogram of the current year with only the tournaments (/harmonogram?type=TOURNAMENT), a green frame and green words. One time per city,
+// right after its "Harmonogram" item (else at the end); an admin can rename, move, restyle or delete it afterwards - the flag per city keeps a deleted one from coming back.
+function ensureTournamentsMenuItem(db) {
+  const link = '/harmonogram?type=TOURNAMENT';
+  db.prepare('SELECT id FROM leagues').all().forEach(({ id }) => {
+    const flag = `menu_tournaments_${id}`;
+    if (db.prepare('SELECT 1 FROM app_flags WHERE key = ?').get(flag)) return;
+    if (db.prepare('SELECT 1 FROM header_items WHERE league_id = ? AND parent_id IS NULL').get(id) && !db.prepare('SELECT 1 FROM header_items WHERE league_id = ? AND link = ?').get(id, link)) {
+      const after = db.prepare("SELECT sort_order FROM header_items WHERE league_id = ? AND link = '/harmonogram' AND parent_id IS NULL").get(id);
+      let sortOrder;
+      if (after) {
+        sortOrder = after.sort_order + 1;
+        db.prepare('UPDATE header_items SET sort_order = sort_order + 1 WHERE league_id = ? AND parent_id IS NULL AND sort_order >= ?').run(id, sortOrder);
+      } else {
+        const max = db.prepare('SELECT MAX(sort_order) AS m FROM header_items WHERE league_id = ? AND parent_id IS NULL').get(id).m;
+        sortOrder = (max == null ? 0 : max) + 1;
+      }
+      db.prepare('INSERT INTO header_items (parent_id, label_sk, label_en, link, sort_order, outline, league_id) VALUES (NULL, ?, ?, ?, ?, 1, ?)').run('Turnaje', 'Tournaments', link, sortOrder, id);
+    }
+    db.prepare('INSERT OR IGNORE INTO app_flags (key) VALUES (?)').run(flag);
+  });
+}
+
 // "Info o lige" (the page with the text of the info window of the home page, /about-league) as the LAST sub-item of the "Liga" menu item of a city. One time per
 // city (the flag per city stops a second add; an admin can rename, move or delete it afterwards). The first city always gets it; another city only once it has written
 // its info texts (Backend > Info), because the page has nothing to show before: it is added on the first start after that. A city with no "Liga" item is left alone.
@@ -350,4 +373,4 @@ function ensureInfoMenuItems(db) {
   });
 }
 
-module.exports = { ensureInfoMenuItems, ensureCommunityMenuItems, removeDescriptionSignOff, ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, ensureWinnersMenuItem, ensureCommunitiesMenuItem, ensureMessagesMenuItem, ensureContactMenuItem, fixWinterStart };
+module.exports = { ensureTournamentsMenuItem, ensureInfoMenuItems, ensureCommunityMenuItems, removeDescriptionSignOff, ensureSeasonLogos, run, assign, indexSeasons, fold, BLTA_CATEGORIES, ensureTablesMenuItem, ensureHomeMenuItem, ensureScheduleMenuItem, ensureWinnersMenuItem, ensureCommunitiesMenuItem, ensureMessagesMenuItem, ensureContactMenuItem, fixWinterStart };
