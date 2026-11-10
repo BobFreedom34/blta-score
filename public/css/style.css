@@ -6807,3 +6807,9 @@ body:not(.embed-light):not(.embed) .ct-card {
 
 /* the head of a "Hľadám súpera" tile (photo, level, name, place; it was grey) is a glass panel: translucent dark with blur */
 .ltp-head { background: rgba(10, 10, 10, 0.55); -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+
+/* the players who dropped out: muted, struck through, with the day they left */
+.sv-pr-out { color: #8b8f98; }
+.sv-pr-out .nm, .sv-pr-out .nm a { text-decoration: line-through; color: #8b8f98; }
+.sv-pr-out .n { color: #6f737c; }
+.sv-pr-out .fee { font-size: 12px; color: #6f737c; }

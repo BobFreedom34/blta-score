@@ -326,6 +326,12 @@ function drawFormatText() {
   return names.join(' · ');
 }
 
+// "10. 11." for a line of the withdrawn
+function comAgoShort(iso) {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : `${d.getDate()}. ${d.getMonth() + 1}.`;
+}
+
 function tilesHtml() {
   const model = playersModel();
   const players = model.total;
@@ -520,6 +526,10 @@ function playersHtml() {
   const showPaid = !freeEntry && !!(season.entryFee || season.paymentUrl || (season.registrations || []).some((r) => r.paid));
   if (playersCat !== 'ALL' && !model.cats.some((c) => c.category === playersCat)) playersCat = 'ALL';
   const filter = `<div class="tabs sv-line" id="sv-pcats"><button type="button" class="tab${playersCat === 'ALL' ? ' active' : ''}" data-pc="ALL">${escapeHtml(t('season.schedAll'))}<small>${model.total}</small></button>${model.cats.map((c) => `<button type="button" class="tab${playersCat === c.category ? ' active' : ''}" data-pc="${c.category}">${escapeHtml(playerCatName(c.category))}<small>${c.players.length}</small></button>`).join('')}</div>`;
+  // the ones who dropped out (and are not registered again): in the table of the players, under a line of their own
+  const outRows = (season.withdrawn || []).map((w) => `<div class="sv-pr sv-pr-out"><span class="n">–</span><span class="nm">${w.slug ? `<a href="/player/${encodeURIComponent(w.slug)}">${escapeHtml(w.name)}</a>` : escapeHtml(w.name)}</span><span class="fee">${escapeHtml(comAgoShort(w.at))}</span></div>`).join('');
+  const outBlock = outRows ? `<div class="sv-pr-line"><span>${escapeHtml(t('season.withdrawnList'))}</span></div>${outRows}` : '';
+  const outHost = (model.cats.find((c) => c.category === 'NONE') || model.cats[model.cats.length - 1] || {}).category;
   const subRow = (r, i) => `<div class="sv-pr sv-pr-wait"><span class="n">${i + 1}</span><span class="nm">${escapeHtml(r.name)}</span></div>`;
   const placed = new Set();
   const tables = model.cats.filter((c) => playersCat === 'ALL' || c.category === playersCat).map((c) => {
@@ -531,7 +541,7 @@ function playersHtml() {
       const name = p.slug ? `<a href="/player/${encodeURIComponent(p.slug)}">${escapeHtml(p.name)}</a>` : escapeHtml(p.name);
       const paid = p.paid === null || p.paid === undefined ? '<span class="no">–</span>' : (p.paid ? `<span class="ok">✓ ${escapeHtml(t('season.paid'))}</span>` : `<span class="no">${escapeHtml(t('season.unpaid'))}</span>`);
       return `<div class="sv-pr"><span class="n">${i + 1}</span><span class="nm">${name}</span>${showPaid ? `<span class="fee">${paid}</span>` : ''}</div>`;
-    }).join('') + line;
+    }).join('') + line + (c.category === outHost ? outBlock : '');
     return `
       <div class="sv-ptable">
         <div class="sv-ptable-t">${escapeHtml(playerCatName(c.category))}<em>${c.players.length}</em></div>

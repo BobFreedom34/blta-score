@@ -34,4 +34,19 @@ function latest(seasonId, limit = 40) {
   `).all(seasonId, limit).reverse();
 }
 
-module.exports = { log, latest };
+// the players who dropped out and are not registered again: their last line is UNREGISTER ([{ name, slug, at }], oldest first)
+function withdrawn(seasonId, registered) {
+  const rows = db.prepare(`
+    SELECT a.player_id, a.name, a.created_at, p.slug FROM season_activity a LEFT JOIN players p ON p.id = a.player_id
+    WHERE a.season_id = ? AND a.kind = 'UNREGISTER' AND a.id = (
+      SELECT MAX(b.id) FROM season_activity b WHERE b.season_id = a.season_id
+        AND ((a.player_id IS NOT NULL AND b.player_id = a.player_id) OR (a.player_id IS NULL AND b.player_id IS NULL AND b.name = a.name)))
+    ORDER BY a.id
+  `).all(seasonId);
+  const ids = new Set(registered.map((r) => r.player_id).filter(Boolean));
+  const names = new Set(registered.map((r) => String(r.name || '').toLowerCase()));
+  return rows.filter((r) => !(r.player_id && ids.has(r.player_id)) && !names.has(String(r.name).toLowerCase()))
+    .map((r) => ({ name: r.name, slug: r.slug || null, at: r.created_at }));
+}
+
+module.exports = { log, latest, withdrawn };

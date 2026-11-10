@@ -323,7 +323,7 @@ router.get('/by-slug/:slug', (req, res) => {
       ? { name: r.partner_name ? `${r.name} / ${r.partner_name}` : r.name, category: r.category, paid: !!r.paid, slug: null, substitute: waiting.substitute, substitutePosition: waiting.position } // a pair: no profile link
       : { name: r.name, category: r.category, paid: !!r.paid, slug: r.player_slug || null, substitute: waiting.substitute, substitutePosition: waiting.position });
   });
-  res.json({ ...serializeSeason(season), organisation: face.organisation, canManage: clubTournaments.canManageSeason(req, season), rounds, registrations, capacity: capacity.counts(season), myRegistration });
+  res.json({ ...serializeSeason(season), organisation: face.organisation, canManage: clubTournaments.canManageSeason(req, season), rounds, registrations, capacity: capacity.counts(season), myRegistration, withdrawn: seasonActivity.withdrawn(season.id, db.prepare('SELECT player_id, name FROM season_registrations WHERE season_id = ?').all(season.id)) });
 });
 
 // the manager of a season (an admin, or the admin of the club that runs it) reads it by id: the manage page of a club tournament starts from this
