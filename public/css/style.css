@@ -6653,3 +6653,39 @@ a.com-rank-name:hover { color: var(--orange); }
   .nav-links a[href="/"]:hover, .nav-links a[data-code="/"]:hover, .nav-links a[href="/"].active, .nav-links a[data-code="/"].active { background: none; color: var(--white); }
   .nav-links a[href="/"]:hover::before, .nav-links a[data-code="/"]:hover::before { background: var(--orange); }
 }
+
+/* "Hráči hľadajúci súpera": the box with the player is grey like the result box of a match card (not the dark glass) */
+body:not(.embed-light):not(.embed) .match-card.availability-post .scoreboard { background: var(--fill-grey); -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* "Hráči hľadajúci súpera": the post of a player is a tile — three in a row on a computer, two on a tablet and on a phone.
+   (the grey box rule above is replaced by this tile design) */
+.ltp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.ltp-grid + .ltp-grid, .tabs + .ltp-grid { margin-top: 12px; }
+@media (max-width: 1024px) { .ltp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .ltp-grid { gap: 10px; } }
+.match-card.availability-post.ltp-tile { padding: 0; overflow: hidden; display: flex; flex-direction: column; border-left-width: 1px; border-left-color: inherit; }
+.ltp-head { flex: 1; justify-content: flex-start; position: relative; display: flex; flex-direction: column; align-items: center; padding: 16px 12px 14px; background: linear-gradient(160deg, #2c2c33, #1b1b1f); text-align: center; }
+.ltp-photo-wrap { display: flex; flex-direction: column; align-items: center; }
+.ltp-photo { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 3px #1b1b1f, 0 0 0 5px var(--green); }
+.ltp-photo-empty { background: linear-gradient(135deg, #555, #2a2a30); color: #ddd; font-size: 28px; font-weight: 800; }
+.ltp-levels { margin-top: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.ltp-levels .badge { background: #0a0a0a; }
+.ltp-name { margin-top: 10px; font-size: 16px; font-weight: 800; line-height: 1.15; color: var(--white); text-decoration: none; overflow-wrap: anywhere; }
+.ltp-name:hover { color: var(--orange); }
+.ltp-loc { min-height: 18px; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; color: #8b8f98; font-size: 12px; }
+.ltp-share { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 50%; border: none; background: var(--fill-grey); color: var(--white); font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.ltp-share:hover { background: #4a4a52; }
+.ltp-foot { padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+.ltp-foot-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ltp-slots { font-size: 12px; font-weight: 800; color: var(--green); }
+.ltp-wave { font-size: 12px; color: #8b8f98; }
+.ltp-foot .availability-calendar-btn { width: 100%; justify-content: center; text-align: center; padding: 10px; font-size: 12px; font-weight: 800; background: var(--fill-grey); border-radius: 9px; margin-top: auto; }
+.ltp-foot .availability-calendar-btn:hover { background: #4a4a52; }
+.ltp-note { margin-top: 8px; font-size: 12px; color: #b9bcc4; line-height: 1.4; }
+@media (max-width: 520px) {
+  .ltp-head { padding: 14px 8px 12px; }
+  .ltp-photo { width: 68px; height: 68px; }
+  .ltp-name { font-size: 14px; }
+  .ltp-foot { padding: 8px 10px 12px; }
+  .ltp-levels .badge { font-size: 9px; padding: 2px 5px; }
+}

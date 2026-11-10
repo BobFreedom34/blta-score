@@ -522,9 +522,6 @@ function fmtSlot(iso) {
 }
 
 function boardPostHtml(post) {
-  const photo = post.player.photoUrl
-    ? `<img src="${escapeHtml(post.player.photoUrl)}" alt="" class="availability-post-photo">`
-    : '';
   // A slot that's now part of an accepted match is booked, not free —
   // doesn't count toward "how many free times" even though it's still
   // technically in the post's own marked-free set (see the block comment
@@ -541,37 +538,36 @@ function boardPostHtml(post) {
   let calendarBtn = '';
   let statusBadge = '';
   if (post.mine) {
-    statusBadge = `<span class="badge" style="background:var(--orange);color:var(--white);margin-left:auto">${t('lookingToPlay.ownPostBadge')}</span>`;
+    statusBadge = `<span class="badge" style="background:var(--orange);color:var(--white)">${t('lookingToPlay.ownPostBadge')}</span>`;
   } else if (post.joinedByMe) {
-    statusBadge = `<span class="badge" style="background:var(--gray-light);color:var(--gray);margin-left:auto">${t('lookingToPlay.joined')}</span>`;
+    statusBadge = `<span class="badge" style="background:var(--gray-light);color:var(--gray)">${t('lookingToPlay.joined')}</span>`;
   } else if (currentPlayerId) {
-    calendarBtn = `<button type="button" class="availability-calendar-btn" data-pick="${post.id}">${escapeHtml(t('lookingToPlay.seeFreeTimesBtn', { name: post.player.name }))}</button>`;
+    calendarBtn = `<button type="button" class="availability-calendar-btn" data-pick="${post.id}">${escapeHtml(t('lookingToPlay.seeTimesShort'))}</button>`;
   } else {
-    calendarBtn = `<button type="button" class="availability-calendar-btn" data-pick-login="${post.id}">${escapeHtml(t('lookingToPlay.seeFreeTimesLoginBtn'))}</button>`;
+    calendarBtn = `<button type="button" class="availability-calendar-btn" data-pick-login="${post.id}">${escapeHtml(t('lookingToPlay.seeTimesLoginShort'))}</button>`;
   }
-  const shareBtn = `<button type="button" class="availability-share-btn" data-share="${post.id}" title="${escapeHtml(t('lookingToPlay.shareBtnTitle'))}">🔗</button>`;
 
-  // Same card chrome as a match card (see .match-card.availability-post in
-  // style.css): a top row of "badges" (here, just how many free times are
-  // on offer) plus location on the right, then the same dark .scoreboard
-  // box a finished match card shows its result in — here it's the player,
-  // the calendar button that opens their times, and their join state.
+  // A tile (three in a row on a computer, two on a tablet and a phone): the dark head with the round photo (ring in green) and the level
+  // badges sitting on it, the name and the place, then a footer with the number of free times, the join state and the button.
+  const initials = post.player.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  const photoHtml = post.player.photoUrl
+    ? `<img src="${escapeHtml(post.player.photoUrl)}" alt="" class="ltp-photo">`
+    : `<span class="ltp-photo ltp-photo-empty">${escapeHtml(initials)}</span>`;
+  const levels = post.mode === 'DOUBLES' ? `<span class="badge dbl-badge">${t('lookingToPlay.partnerBadge')}</span>` : post.categories.map(levelBadge).join('');
+  const joinInfo = statusBadge || (post.joinCount > 0 ? `<span class="ltp-wave">${post.joinCount} 👋</span>` : '');
   return `
-    <div class="match-card availability-post" data-id="${post.id}">
-      <div class="match-card-top">
-        <div class="availability-post-days">${post.mode === 'DOUBLES' ? `<span class="badge dbl-badge">${t('lookingToPlay.partnerBadge')}</span>` : post.categories.map(levelBadge).join('')}<span class="availability-day-pill">${escapeHtml(t('lookingToPlay.slotsCount', { count: freeSlotCount }))}</span></div>
-        ${post.location ? `<div class="match-card-meta" style="margin-left:auto"><span>${courtIcon('pin')}${escapeHtml(post.location)}</span></div>` : ''}
+    <div class="match-card availability-post ltp-tile" data-id="${post.id}">
+      <div class="ltp-head">
+        <button type="button" class="ltp-share" data-share="${post.id}" title="${escapeHtml(t('lookingToPlay.shareBtnTitle'))}">🔗</button>
+        <div class="ltp-photo-wrap">${photoHtml}<div class="ltp-levels">${levels}</div></div>
+        <a href="/player/${post.player.slug || post.player.id}" class="ltp-name">${escapeHtml(post.player.name)}</a>
+        <div class="ltp-loc">${post.location ? `${courtIcon('pin')}${escapeHtml(post.location)}` : '&nbsp;'}</div>
+        ${post.note ? `<div class="ltp-note">${escapeHtml(post.note)}</div>` : ''}
       </div>
-      <div class="scoreboard">
-        <div class="availability-player-row">
-          <a href="/player/${post.player.slug || post.player.id}" class="availability-player-name">${photo}${escapeHtml(post.player.name)}</a>
-          ${calendarBtn}
-          ${shareBtn}
-          ${statusBadge}
-        </div>
+      <div class="ltp-foot">
+        <div class="ltp-foot-row"><span class="ltp-slots">${escapeHtml(t('lookingToPlay.slotsFree', { count: freeSlotCount }))}</span>${joinInfo}</div>
+        ${calendarBtn}
       </div>
-      ${post.note ? `<div class="match-card-notes">${escapeHtml(post.note)}</div>` : ''}
-      ${post.joinCount > 0 ? `<div class="availability-join-count">${post.joinCount} 👋</div>` : ''}
     </div>
   `;
 }
@@ -597,7 +593,7 @@ function renderBoard() {
     <div class="tabs dbl-views" id="board-filter">
       ${['ALL', 'SINGLES', 'DOUBLES'].map((f) => `<button type="button" class="tab${f === boardFilter ? ' active' : ''}" data-filter="${f}">${t('lookingToPlay.filter.' + f)}</button>`).join('')}
     </div>` : '';
-  listEl.innerHTML = filterHtml + shown.map(boardPostHtml).join('');
+  listEl.innerHTML = filterHtml + `<div class="ltp-grid">${shown.map(boardPostHtml).join('')}</div>`;
   listEl.querySelectorAll('#board-filter .tab').forEach((btn) => {
     btn.addEventListener('click', () => { boardFilter = btn.dataset.filter; renderBoard(); });
   });
