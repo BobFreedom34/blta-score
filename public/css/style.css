@@ -6707,3 +6707,13 @@ body:not(.embed-light):not(.embed) .match-card.availability-post .scoreboard { b
 /* the button and the "Vaša dostupnosť" / "Žiadosť odoslaná" box of a tile are exactly the same size, and the line above them has a fixed height */
 .ltp-foot-row { height: 24px; min-height: 0; flex-wrap: nowrap; }
 .ltp-foot .availability-calendar-btn, .ltp-foot .ltp-status .badge, body:not(.embed-light) .match-card .ltp-status .badge { box-sizing: border-box; height: 36px; padding-top: 0; padding-bottom: 0; }
+
+/* a club tournament / season: "Zdieľať" is the white button right next to the registration, and on a phone the buttons start at the left, under the chips, like on a league season */
+.sv-actions .sv-share { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: #000; border: 0; font-weight: 800; }
+.sv-actions .sv-share:hover { background: #e9e9e9; color: #000; }
+@media (max-width: 700px) { .sv-actions { justify-content: flex-start; } }
+
+/* a full event: the players on the waiting list are in the table of their category, under a line */
+.sv-pr-line { display: flex; align-items: center; gap: 12px; margin: 6px 0 0; padding: 8px 0 4px; border-top: 2px solid rgba(255, 255, 255, 0.35); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #8b8f98; }
+.sv-pr-wait { color: #b9bcc4; }
+.sv-pr-wait .n { color: #8b8f98; }

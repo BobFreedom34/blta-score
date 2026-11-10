@@ -190,6 +190,8 @@ function serializeSeason(s) {
     // the community or club that runs this tournament (null for the league and for the tournaments of the Backend)
     organisationId: s.organisation_id || null,
     courtCount: s.court_count || 0,
+    // how each category of a tournament is played (chosen in Backend > Formát turnaja): [{ category, format: PRINCE | MONRAD | ELIMINATION | GROUPS | GROUPS_BRACKET | SWISS | SIX_ROUNDS }]
+    drawFormats: s.kind === 'TOURNAMENT' ? db.prepare('SELECT category, format FROM tournament_categories WHERE season_id = ? ORDER BY category').all(s.id) : [],
     // the live video of each court: [{ videoId, url } or null] for Court 1 … n (src/courtStreams.js)
     courtStreams: courtStreams.streamsOf(s),
     maxMatchesPerDay: s.max_matches_per_day || 0,

@@ -159,6 +159,12 @@ function secHead(id, title, linkHref, linkText) {
   return `<div class="sv-sec-h">${title ? `<h2>${escapeHtml(title)}</h2>` : '<span></span>'}${linkHref ? `<a href="${linkHref}">${escapeHtml(linkText)} ›</a>` : ''}</div>`;
 }
 
+// every place of the event is taken: a registration now goes on the waiting list
+function eventIsFull() {
+  const caps = Object.values(season.capacity || {}).filter((c) => c && c.limit);
+  return caps.length > 0 && caps.every((c) => c.in >= c.limit);
+}
+
 // "Registrácia" (opens the form) and "Úhrada štartovného online" (the Stripe payment link set in the backend).
 function actionsHtml(status) {
   const buttons = [];
@@ -177,10 +183,12 @@ function actionsHtml(status) {
       buttons.push(`<span class="home-reg-wrap sv-reg-wrap" id="sv-reg-wrap">${main}<button type="button" class="sv-btn reg-on reg-info" id="sv-info" aria-label="${escapeHtml(t('home.infoLabel'))}" aria-describedby="sv-tip" aria-expanded="false"><i>i</i></button><span class="home-tip" id="sv-tip" role="tooltip">${escapeHtml(tip)}</span></span>`);
     } else {
       buttons.push(season.registrationAvailable
-        ? `<button type="button" class="sv-btn primary" id="sv-register">${escapeHtml(t('season.register'))}</button>`
+        ? `<button type="button" class="sv-btn primary" id="sv-register">${escapeHtml(t(eventIsFull() ? 'season.registerWaiting' : 'season.register'))}</button>`
         : `<span class="sv-btn off">${escapeHtml(t('season.registerClosed'))}</span>`);
     }
   }
+  // the club's "Zdieľať" sits right next to the registration (not on a row of its own)
+  if (season.organisation) buttons.push(clubAppButtonsHtml('sv-btn sv-share', season.name));
   if (season.paymentUrl) buttons.push(`<a class="sv-btn pay" href="${escapeHtml(season.paymentUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.payOnline'))}</a>`);
   return buttons.length ? `<span class="sv-actions">${buttons.join('')}</span>` : '';
 }
@@ -290,14 +298,7 @@ function headerHtml() {
         <div class="sv-chips"><span class="sv-chip ${isTournament() ? 't' : 'l'}">${escapeHtml(isClubSeason() ? t('com.seasonTag') : t(isTournament() ? 'schedule.tournament' : 'schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
       </div>
     </div>
-    ${clubActionsHtml()}
     ${isTournament() ? '' : `<div class="sv-progress">${seasonProgressHtml(season, standings)}</div>`}`;
-}
-
-// A season or tournament of a community or club: "Install as app" (installs the club) and "Share" in a row under the hero, on the right.
-function clubActionsHtml() {
-  if (!season.organisation) return '';
-  return `<div class="sv-club-actions">${clubAppButtonsHtml('sv-btn', season.name)}</div>`;
 }
 
 // The club view (bottom bar and top menu of the club, see getClubContext in common.js) starts here, with this event as the one the bar points to; a league
@@ -313,6 +314,12 @@ function publishClubView() {
   setClubManifest(org.slug);
 }
 
+// how the tournament is played (the format chosen in the Backend for its categories; several different ones are listed once each)
+function drawFormatText() {
+  const names = [...new Set((season.drawFormats || []).map((d) => d.format))].map((f) => t('season.drawFormat.' + f)).filter((n) => n && !n.startsWith('season.drawFormat.'));
+  return names.join(' · ');
+}
+
 function tilesHtml() {
   const model = playersModel();
   const players = model.total;
@@ -326,7 +333,9 @@ function tilesHtml() {
     playingTimeText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileTime'))}</div><div class="v sm">${escapeHtml(playingTimeText())}</div></div>` : '',
     cats.length ? tile('season.tileCats', cats.map((c) => CATEGORY_NAMES[c]).join(' · ')) : '',
     season.venue ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileVenue'))}</div><div class="v sm">${escapeHtml(season.venue)}</div></div>` : '',
-    players || maxPlayers ? tile('season.tilePlayers', maxPlayers ? `${players}<span class="sv-max">/${maxPlayers}</span>` : String(players), (model.substitutes.length ? `+${model.substitutes.length} ${t('season.substitutes').toLowerCase()}` : '')) : '',
+    players || maxPlayers ? tile('season.tilePlayers', maxPlayers ? `${players}<span class="sv-max">/${maxPlayers}</span>` : String(players), (model.substitutes.length ? `+${model.substitutes.length} ${t('season.onWaiting')}` : '')) : '',
+    season.courtCount > 0 ? tile('season.tileCourts', String(season.courtCount)) : '',
+    drawFormatText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileFormat'))}</div><div class="v sm">${escapeHtml(drawFormatText())}</div></div>` : '',
     season.entryFee ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div></div>` : '',
     season.drawDate ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileDraw'))}</div><div class="v sm">${escapeHtml(formatDate(season.drawDate))}</div></div>` : '',
     season.prizeMoney ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tilePrize'))}</div><div class="v sm">${escapeHtml(season.prizeMoney)}</div></div>` : '',
@@ -504,12 +513,18 @@ function playersHtml() {
   const showPaid = !freeEntry && !!(season.entryFee || season.paymentUrl || (season.registrations || []).some((r) => r.paid));
   if (playersCat !== 'ALL' && !model.cats.some((c) => c.category === playersCat)) playersCat = 'ALL';
   const filter = `<div class="tabs sv-line" id="sv-pcats"><button type="button" class="tab${playersCat === 'ALL' ? ' active' : ''}" data-pc="ALL">${escapeHtml(t('season.schedAll'))}<small>${model.total}</small></button>${model.cats.map((c) => `<button type="button" class="tab${playersCat === c.category ? ' active' : ''}" data-pc="${c.category}">${escapeHtml(playerCatName(c.category))}<small>${c.players.length}</small></button>`).join('')}</div>`;
+  const subRow = (r, i) => `<div class="sv-pr sv-pr-wait"><span class="n">${i + 1}</span><span class="nm">${escapeHtml(r.name)}</span></div>`;
+  const placed = new Set();
   const tables = model.cats.filter((c) => playersCat === 'ALL' || c.category === playersCat).map((c) => {
+    // the ones on the waiting list of this category: in the same table, under a line
+    const mineWaiting = model.substitutes.filter((r) => (r.category || 'NONE') === c.category);
+    mineWaiting.forEach((r) => placed.add(r));
+    const line = mineWaiting.length ? `<div class="sv-pr-line"><span>${escapeHtml(t('season.waitingList'))}</span></div>${mineWaiting.map(subRow).join('')}` : '';
     const rows = c.players.map((p, i) => {
       const name = p.slug ? `<a href="/player/${encodeURIComponent(p.slug)}">${escapeHtml(p.name)}</a>` : escapeHtml(p.name);
       const paid = p.paid === null || p.paid === undefined ? '<span class="no">–</span>' : (p.paid ? `<span class="ok">✓ ${escapeHtml(t('season.paid'))}</span>` : `<span class="no">${escapeHtml(t('season.unpaid'))}</span>`);
       return `<div class="sv-pr"><span class="n">${i + 1}</span><span class="nm">${name}</span>${showPaid ? `<span class="fee">${paid}</span>` : ''}</div>`;
-    }).join('');
+    }).join('') + line;
     return `
       <div class="sv-ptable">
         <div class="sv-ptable-t">${escapeHtml(playerCatName(c.category))}<em>${c.players.length}</em></div>
@@ -518,7 +533,7 @@ function playersHtml() {
       </div>`;
   }).join('');
   // the substitutes of the categories shown: after the tables, in the order they will come in
-  const waiting = model.substitutes.filter((r) => playersCat === 'ALL' || (r.category || 'NONE') === playersCat);
+  const waiting = model.substitutes.filter((r) => !placed.has(r) && (playersCat === 'ALL' || (r.category || 'NONE') === playersCat));
   const subs = waiting.length ? `
       <div class="sv-ptable">
         <div class="sv-ptable-t">${escapeHtml(t('season.substitutes'))}<em>${waiting.length}</em></div>
