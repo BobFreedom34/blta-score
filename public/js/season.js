@@ -297,8 +297,12 @@ function headerHtml() {
         </div>
         <div class="sv-chips"><span class="sv-chip ${isTournament() ? 't' : 'l'}">${escapeHtml(isClubSeason() ? t('com.seasonTag') : t(isTournament() ? 'schedule.tournament' : 'schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
       </div>
-    </div>
-    ${isTournament() ? '' : `<div class="sv-progress">${seasonProgressHtml(season, standings)}</div>`}`;
+    </div>`;
+}
+
+// the progress of a league season: under the "O sérii" tiles
+function progressBlockHtml() {
+  return isTournament() ? '' : `<div class="sv-progress">${seasonProgressHtml(season, standings)}</div>`;
 }
 
 // The club view (bottom bar and top menu of the club, see getClubContext in common.js) starts here, with this event as the one the bar points to; a league
@@ -918,7 +922,7 @@ function bindThread() {
 }
 
 function render() {
-  rootEl.innerHTML = `${headerHtml()}${tilesHtml()}${seriesWinnersHtml()}<div class="tabs" id="sv-tabs" role="tablist"></div><div id="sv-panel" class="sv-panel"></div><div id="sv-players-fixed"></div>${threadCommentsHtml()}<section class="sv-partners" id="sv-partners" hidden></section>`;
+  rootEl.innerHTML = `${headerHtml()}${tilesHtml()}${progressBlockHtml()}${seriesWinnersHtml()}<div class="tabs" id="sv-tabs" role="tablist"></div><div id="sv-panel" class="sv-panel"></div><div id="sv-players-fixed"></div>${threadCommentsHtml()}<section class="sv-partners" id="sv-partners" hidden></section>`;
   renderFixedPlayers();
   bindThread();
   loadSponsorStrip(document.getElementById('sv-partners'), `?seasonId=${season.id}`);
