@@ -65,7 +65,7 @@ function commentCountsOf(postIds) {
 // The reactions and the comments under a tournament (or a season) in the news hang on a hidden post of its own: the address of a thread is "e<season id>" in place of a post id.
 // The row is made the first time somebody asks for it (it never shows in the lists of posts: hidden = 1, author 0 = nobody to be told about a comment).
 function eventThread(org, seasonId, create) {
-  const season = db.prepare('SELECT id FROM seasons WHERE id = ? AND organisation_id = ?').get(seasonId, org.id);
+  const season = org.league ? db.prepare('SELECT id FROM seasons WHERE id = ? AND organisation_id IS NULL').get(seasonId) : db.prepare('SELECT id FROM seasons WHERE id = ? AND organisation_id = ?').get(seasonId, org.id);
   if (!season) return null;
   let row = db.prepare('SELECT id, author_player_id FROM organisation_posts WHERE season_id = ?').get(season.id);
   if (!row && create) {
@@ -142,7 +142,11 @@ function readFields(body, current) {
   return { fields: out };
 }
 
+// The tournaments and seasons of the league itself have no community, but they talk like the ones of a club: their threads use the address "league" in place of the id of a community
+// (organisation_id 0 in the tables). Everybody who is logged in as a player may react and comment there.
+const LEAGUE_ORG = { id: 0, league: true, name: 'BLTA', slug: '', join_policy: 'OPEN', hidden: 0, approved: 1, league_id: null };
 function orgById(id) {
+  if (id === 'league') return LEAGUE_ORG;
   return /^\d+$/.test(String(id)) ? db.prepare('SELECT * FROM organisations WHERE id = ?').get(Number(id)) : undefined;
 }
 
@@ -152,6 +156,7 @@ function orgById(id) {
 //   'join'   - a player joining: only a public one (not hidden, and a club only once approved).
 function orgOr404(req, res, mode) {
   const org = orgById(req.params.id);
+  if (org && org.league) return mode === 'join' ? (res.status(404).json({ error: 'Community not found' }), null) : org;
   const ok = org && (mode === 'join' ? !org.hidden && !!org.approved : mode === 'manage' ? !org.hidden && communities.canRead(req, org) : communities.canRead(req, org));
   if (!ok) {
     res.status(404).json({ error: 'Community not found' });
@@ -582,7 +587,7 @@ router.get('/:id/events/:seasonId/thread', (req, res) => {
   if (!org) return;
   if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
   if (!/^\d+$/.test(req.params.seasonId)) return res.status(404).json({ error: 'Event not found' });
-  const season = db.prepare('SELECT id FROM seasons WHERE id = ? AND organisation_id = ?').get(Number(req.params.seasonId), org.id);
+  const season = org.league ? db.prepare('SELECT id FROM seasons WHERE id = ? AND organisation_id IS NULL').get(Number(req.params.seasonId)) : db.prepare('SELECT id FROM seasons WHERE id = ? AND organisation_id = ?').get(Number(req.params.seasonId), org.id);
   if (!season) return res.status(404).json({ error: 'Event not found' });
   const [item] = attachEventThreads([{ id: season.id }], auth.getPlayerId(req));
   res.json({ reactions: item.reactions, commentCount: item.commentCount });
@@ -1027,7 +1032,7 @@ function postOf(req, res, org) {
   if (!post) res.status(404).json({ error: 'Post not found' });
   return post;
 }
-const isActiveMember = (org, playerId) => { const m = playerId ? communities.memberOf(org.id, playerId) : null; return !!m && m.status === 'ACTIVE'; };
+const isActiveMember = (org, playerId) => { if (org.league) return !!playerId; const m =playerId ? communities.memberOf(org.id, playerId) : null; return !!m && m.status === 'ACTIVE'; };
 
 const commentJson = (r, req, org, viewer) => ({
   id: r.id, body: r.body, createdAt: r.created_at, authorName: r.name || '', authorSlug: r.slug || '', authorPhotoUrl: /^(https:\/\/|\/)/.test(r.photo_url || '') ? r.photo_url : '',
@@ -1061,6 +1066,7 @@ router.get('/:id/posts/:postId/comments', (req, res) => {
     items,
     more: rows.length > COMMENTS_PAGE,
     canComment: isActiveMember(org, viewer),
+    ...(org.league ? { loginOnly: true } : {}),
   });
 });
 
@@ -1092,8 +1098,9 @@ router.delete('/:id/posts/:postId/comments/:commentId', (req, res) => {
   if (!org) return;
   const viewer = auth.getPlayerId(req);
   if (!viewer && !communities.siteAdminFor(req, org)) return res.status(401).json({ error: 'Please log in to do this' });
-  const comment = /^\d+$/.test(req.params.commentId) && /^\d+$/.test(req.params.postId)
-    ? db.prepare('SELECT * FROM organisation_post_comments WHERE id = ? AND post_id = ? AND organisation_id = ?').get(Number(req.params.commentId), Number(req.params.postId), org.id) : null;
+  const thread = /^\d+$/.test(req.params.commentId) ? threadPost(org, req.params.postId) : null; // (the address of a thread of an event is "e<id>")
+  const comment = thread
+    ? db.prepare('SELECT * FROM organisation_post_comments WHERE id = ? AND post_id = ? AND organisation_id = ?').get(Number(req.params.commentId), thread.id, org.id) : null;
   if (!comment) return res.status(404).json({ error: 'Comment not found' });
   if (!communities.siteAdminFor(req, org) && !isOrgAdmin(org.id, viewer) && comment.author_player_id !== viewer) return res.status(403).json({ error: 'Only the author or an admin of this community can delete a comment' });
   db.prepare('DELETE FROM organisation_post_comments WHERE id = ?').run(comment.id);

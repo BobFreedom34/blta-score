@@ -910,21 +910,23 @@ async function renderPanel() {
   if (key === 'courts') initCourtSchedule(document.getElementById('sv-courts'), season).catch(() => { document.getElementById('sv-courts').innerHTML = `<div class="sv-empty">${escapeHtml(t('season.empty.courts'))}</div>`; });
 }
 
-// ---------- the discussion of an event of a club (reactions under the head, comments under the players, the box to write in sticks to the bottom of the screen) ----------
-let eventThread = null; // { reactions, commentCount } of this event; null = none (a league event has no community to talk in)
+// ---------- the discussion of an event (reactions under the head, comments under the players, the box to write in sticks to the bottom of the screen) ----------
+let eventThread = null; // { reactions, commentCount } of this event; null = it could not be loaded
 async function loadEventThread() {
   eventThread = null;
-  if (!season.organisation || typeof comReactionsHtml !== 'function') return;
-  try { eventThread = await api(`/communities/${season.organisation.id}/events/${season.id}/thread`); } catch { eventThread = null; }
+  if (typeof comReactionsHtml !== 'function') return;
+  try { eventThread = await api(`/communities/${threadOrg()}/events/${season.id}/thread`); } catch { eventThread = null; }
 }
-const threadAttrs = () => `data-post="e${season.id}" data-org="${season.organisation.id}"`;
+// the community of a club event, "league" for an event of the league itself (the server answers both the same way)
+const threadOrg = () => (season.organisation ? season.organisation.id : 'league');
+const threadAttrs = () => `data-post="e${season.id}" data-org="${threadOrg()}"`;
 function threadCommentsHtml() {
   if (!eventThread) return '';
   return `<section class="sv-thread" id="sv-thread" ${threadAttrs()}>${comReactionsHtml({ id: `e${season.id}`, reactions: eventThread.reactions })}<div class="sv-sec-h"><h2>💬 ${escapeHtml(t('season.discussion'))}</h2></div>${comCommentsHtml({ id: `e${season.id}`, commentCount: eventThread.commentCount })}</section>`;
 }
 function bindThread() {
   if (!eventThread) return;
-  const org = season.organisation.id;
+  const org = threadOrg();
   comBindReactions(rootEl, () => org);
   comBindComments(rootEl, () => org);
   const box = rootEl.querySelector('#sv-thread [data-comments-toggle]');

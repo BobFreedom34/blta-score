@@ -348,7 +348,7 @@ function communityPointsSection(s) {
     body = `<p class="tr-hint">${tl('Zápas sa do rebríčka komunity oceňuje bodmi, ktoré za neho hráč dostane v tabuľke sezóny podľa bodovania zvoleného vyššie (BLTA 3 / 2 / 1 / 0, 2 body za výhru alebo 1 bod za výhru), krát koeficient kategórie. Prázdne políčko = žiadne body.', 'A match is worth the points the player gets for it in the table of the season by the scoring chosen above (BLTA 3 / 2 / 1 / 0, 2 points for a win or 1 point for a win), times the coefficient of the category. An empty box = no points.')} ${note}</p>
       <div class="sa-grid">${cats.map(([key, label]) => `<label class="sa-field">${tl('Koeficient', 'Coefficient')} — ${escapeHtml(label)}<input type="number" min="0" max="1000" step="1" inputmode="numeric" data-cp-coef="${key}" value="${coefficient[key] || ''}"></label>`).join('')}</div>`;
   }
-  return `<section class="sa-section" data-cp-section><h4>${tl('Body do rebríčka', 'Ranking points')}</h4>${body}</section>`;
+  return `<section class="sa-section" data-cp-section><h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>${tl('Body do rebríčka', 'Ranking points')}</h4>${body}</section>`;
 }
 // the form's numbers as the server takes them: { coefficient: { ELITE: 10 } } for a season, { places: { ELITE: [100, 80, ...] } } for a tournament
 function readCommunityPoints(form) {
@@ -454,7 +454,7 @@ function seasonCardHtml(s) {
         <div class="sa-panel" data-panel="info"${active === 'info' ? '' : ' hidden'}>
           <form class="season-edit-form">
             <section class="sa-section">
-              <h4>${tl('Základné údaje', 'Basic details')}</h4>
+              <h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>${tl('Základné údaje', 'Basic details')}</h4>
               <div class="sa-grid">
                 ${field(tl('Názov', 'Name'), input('name', s.name, 'maxlength="120" required'), 'sa-wide')}
                 ${field(tl('Začiatok', 'Starts'), input('startDate', s.startDate || '', 'type="date"'))}
@@ -476,7 +476,7 @@ function seasonCardHtml(s) {
             </section>
 
             <section class="sa-section">
-              <h4>${tl('Štartovné a registrácia', 'Entry fee and registration')}</h4>
+              <h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/></svg>${tl('Štartovné a registrácia', 'Entry fee and registration')}</h4>
               <div class="sa-grid">
                 ${field(tl('Štartovné', 'Entry fee'), input('entryFee', s.entryFee || '', `maxlength="40" placeholder="${escapeHtml(tl('napr. 20 €', 'e.g. €20'))}"`))}
                 ${field(tl('Ceny pre víťazov', 'Prizes for the winners'), input('prizeMoney', s.prizeMoney || '', 'maxlength="120"'))}
@@ -495,7 +495,7 @@ function seasonCardHtml(s) {
             </section>
 
             ${IS_TOURNAMENT ? `<section class="sa-section">
-              <h4>${tl('Kurty a pravidlá hrania', 'Courts and playing rules')}</h4>
+              <h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14M3 12h18"/></svg>${tl('Kurty a pravidlá hrania', 'Courts and playing rules')}</h4>
               <div class="sa-grid">
                 ${field(tl('Počet kurtov (Kurt 1 … Kurt n)', 'Number of courts (Court 1 … Court n)'), input('courtCount', s.courtCount || '', `type="number" min="0" max="50" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 4', 'e.g. 4'))}"`))}
                 ${courtStreamFieldsHtml(s.courtCount, s.courtStreams, s.slug)}
@@ -514,7 +514,7 @@ function seasonCardHtml(s) {
             </section>` : ''}
 
             <section class="sa-section" data-rules-section${IS_TOURNAMENT || s.scoring ? '' : ' data-rules-default'}>
-              <h4>${tl('Bodovanie a podmienky', 'Scoring and tie-breaks')}</h4>
+              <h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>${tl('Bodovanie a podmienky', 'Scoring and tie-breaks')}</h4>
               ${IS_TOURNAMENT || s.scoring ? '' : `<p class="tr-hint">${tl('Kým tu nič nezmeníte, platí štandardné bodovanie a poradie ligy BLTA.', 'Until you change something here, the standard scoring and order of the BLTA league apply.')}</p>`}
               ${TournamentRules.html(`season-${s.id}`, { scoring: s.scoring, tiebreakers: s.tiebreakers })}
             </section>
@@ -522,7 +522,7 @@ function seasonCardHtml(s) {
             ${CLUB ? communityPointsSection(s) : ''}
 
             <section class="sa-section">
-              <h4>${tl('Vzhľad stránky', 'Look of the page')}</h4>
+              <h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>${tl('Vzhľad stránky', 'Look of the page')}</h4>
               <div class="sa-grid">
                 ${field(tl('Odkaz na galériu', 'Gallery link'), input('galleryUrl', s.galleryUrl || '', 'maxlength="500" placeholder="https://…"'), 'sa-wide')}
                 ${field(tl('Logo (odkaz na obrázok, napr. /img/seasons/autumn.png)', 'Logo (link to a picture, e.g. /img/seasons/autumn.png)'), input('logoUrl', s.logoUrl || '', 'maxlength="300"'), 'sa-wide')}

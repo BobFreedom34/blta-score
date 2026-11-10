@@ -5265,6 +5265,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sa-card .format-option span span { color: #8b8f98 !important; }
 .sa-section { background: #232329; border: 1px solid #fff; border-radius: var(--radius-md); padding: 14px 16px 16px; margin-bottom: 14px; }
 .sa-section h4 { margin: 0 0 14px; font-size: 16px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--green-light); }
+.sa-section h4 .sa-ico { width: 20px; height: 20px; margin: -3px 9px -3px 0; vertical-align: middle; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .sa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px 14px; align-items: end; }
 .sa-cp-cat { margin-top: 14px; }
 .sa-cp-name { font-weight: 800; font-size: 14px; margin-bottom: 8px; }
@@ -6478,6 +6479,7 @@ a.com-rank-name:hover { color: var(--orange); }
     .sv-rg-card,
     .sv-pcard,
     .sv-ptable,
+    .sa-section,
     .sv-tiles-panel,
     .sv-thread,
     #my-post-card,
@@ -6547,6 +6549,7 @@ a.com-rank-name:hover { color: var(--orange); }
       .sv-rg-card,
       .sv-pcard,
       .sv-ptable,
+    .sa-section,
     .sv-tiles-panel,
     .sv-thread,
     #my-post-card,
@@ -6791,7 +6794,7 @@ body:not(.embed-light):not(.embed) .ct-card {
 /* the dropdown of the computer menu is a glass panel too (no notch: the translucent notch would show through the panel) */
 @media (min-width: 1025px) {
   .nav-submenu {
-    background: rgba(10, 10, 10, 0.55);
+    background: rgba(10, 10, 10, 0.88);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
     backdrop-filter: blur(14px) saturate(140%);
     border-color: rgba(255, 255, 255, 0.18);
@@ -6813,3 +6816,17 @@ body:not(.embed-light):not(.embed) .ct-card {
 .sv-pr-out .nm, .sv-pr-out .nm a { text-decoration: line-through; color: #8b8f98; }
 .sv-pr-out .n { color: #6f737c; }
 .sv-pr-out .fee { font-size: 12px; color: #6f737c; }
+
+/* the folded head of a tournament / season: the soft green of the green buttons */
+.sa-card > .sa-sum { background: rgba(178, 250, 6, 0.12); border-radius: calc(var(--radius) - 1px); transition: background 0.15s; }
+.sa-card[open] > .sa-sum { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px solid rgba(178, 250, 6, 0.3); }
+.sa-card > .sa-sum:hover { background: rgba(178, 250, 6, 0.18); }
+
+/* the head of every section inside a tournament / season: the same soft green strip, across the top of its glass panel */
+.sa-section { overflow: hidden; }
+.sa-section > h4 { margin: -14px -16px 16px; padding: 13px 16px; background: rgba(178, 250, 6, 0.12); border-bottom: 1px solid rgba(178, 250, 6, 0.3); }
+.sa-section > h4 + .sa-hint, .sa-section > h4 + p { margin-top: 0; }
+
+/* the "Kopírovať" button of the bank transfer in the registration window: readable on the dark glass */
+.sv-pay-copy { background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.35); color: #fff; }
+.sv-pay-copy:hover { background: rgba(178, 250, 6, 0.14); border-color: var(--green); color: var(--green); }

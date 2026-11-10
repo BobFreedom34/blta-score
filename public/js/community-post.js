@@ -122,7 +122,7 @@ function comBindComments(root, orgIdOf) {
         ? `<div class="com-comment-new"><textarea rows="1" maxlength="1000" placeholder="${escapeHtml(t('com.commentWrite'))}"></textarea>
             <button type="button" class="btn btn-outline com-small com-tool" data-comment-emoji aria-label="${escapeHtml(t('com.emoji'))}">😊</button>
             <button type="button" class="btn btn-primary com-small" data-comment-send>${escapeHtml(t('com.commentSend'))}</button></div>`
-        : `<p class="com-comment-hint">${escapeHtml(t('com.commentMembersOnly'))}</p>`;
+        : `<p class="com-comment-hint">${escapeHtml(t(state.loginOnly ? 'com.commentLoginOnly' : 'com.commentMembersOnly'))}</p>`;
       body.innerHTML = `${state.more ? `<button type="button" class="com-link" data-comments-older>${escapeHtml(t('com.commentsOlder'))}</button>` : ''}
         <div class="com-comment-list">${state.items.map(comCommentHtml).join('')}</div>${composer}`;
       const older = body.querySelector('[data-comments-older]');
