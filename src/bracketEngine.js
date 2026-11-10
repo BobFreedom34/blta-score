@@ -7,6 +7,7 @@
 // winner goes next, never how a match itself is played or scored.
 const crypto = require('crypto');
 const db = require('./db');
+const { placeLabel } = require('./bracketPlaces'); // (what a losers bracket plays for, in words)
 const engine = require('./matchEngine');
 const tournamentSchedule = require('./tournamentSchedule');
 
@@ -409,7 +410,9 @@ function buildLosers(mainBracketId, { name, format, type = 'PRINCE' }) {
   if (ready.empty > 0) return { error: 'Seat every round-1 match of the main draw first' };
   const created = [];
   const mark = db.prepare('UPDATE bracket_matches SET consolation_seed = ?, loser_bracket_id = ? WHERE id = ?');
-  const makeChildren = (parent, isMain) => {
+  // placeStart: the best place the players of this bracket can still get (1 for the main bracket); the losers of its round r are left with the places after the 2^(rounds - r)
+  // players who got through that round
+  const makeChildren = (parent, isMain, placeStart = 1) => {
     const nodes = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? ORDER BY round, position').all(parent.id);
     const rounds = roundCount(parent.size);
     const lastRound = type === 'MONRAD' ? rounds - 1 : (isMain ? 1 : 0);
@@ -420,7 +423,8 @@ function buildLosers(mainBracketId, { name, format, type = 'PRINCE' }) {
       if (real.length < 2) continue;
       const size = nextPowerOfTwo(real.length);
       let childName = name;
-      if (type === 'MONRAD') childName = isMain ? (/Útecha$/.test(name) ? name.replace(/Útecha$/, `Útecha po ${round}. kole`) : `${name} po ${round}. kole`) : `${parent.name} › po ${round}. kole`;
+      const childStart = placeStart + 2 ** (rounds - round);
+      if (type === 'MONRAD') childName = `${name.replace(/\s+—\s+Útecha$/, '')} — ${placeLabel(childStart, real.length)}`;
       const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category, season_id, kind, parent_bracket_id, feeds_round, is_doubles) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         .run(childName, format, size, main.auto_create_matches, main.category, main.season_id, 'CONSOLATION', parent.id, round, main.is_doubles ? 1 : 0);
       const childId = Number(info.lastInsertRowid);
@@ -435,7 +439,7 @@ function buildLosers(mainBracketId, { name, format, type = 'PRINCE' }) {
       }
       real.forEach((node, i) => mark.run(i + 1, childId, node.id));
       created.push(childId);
-      if (type === 'MONRAD') makeChildren(db.prepare('SELECT * FROM brackets WHERE id = ?').get(childId), false);
+      if (type === 'MONRAD') makeChildren(db.prepare('SELECT * FROM brackets WHERE id = ?').get(childId), false, childStart);
     }
   };
   makeChildren(main, true);
@@ -496,6 +500,7 @@ function syncBracketMatches(bracketId) {
 }
 
 module.exports = {
+  placeLabel,
   nextPowerOfTwo,
   standardSeedOrder,
   roundCount,

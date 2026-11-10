@@ -138,6 +138,12 @@ try {
   console.error('Tournaments migration failed (will retry on next start):', err);
 }
 try {
+  const renamed = require('./src/monradNames').run(db); // (the losers brackets of a Monrad draw are named by the places they play for)
+  if (renamed) console.log(`Renamed ${renamed} losers brackets by the places they decide`);
+} catch (err) {
+  console.error('Losers bracket names failed (will retry on next start):', err);
+}
+try {
   require('./src/seasonSeed').ensureWinnersMenuItem(db);
 } catch (err) {
   console.error('Winners menu item failed:', err);

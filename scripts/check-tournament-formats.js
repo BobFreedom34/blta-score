@@ -98,10 +98,37 @@ test('MONRAD with 16 players: a main bracket of 16 and 7 losers brackets (8, 4, 
   assert.strictEqual(main.kind, 'MAIN');
   const children = brackets.filter((b) => b.parentBracketId === monrad);
   assert.strictEqual(children.length, 3, 'one losers bracket for round 1, 2 and 3');
-  assert.ok(brackets.every((b) => b.kind === 'MAIN' || b.name.includes('Útecha')));
+  // the losers brackets are named by the places they play for (not by the round they are fed from): the losers of round 2 fight for 5th–8th, of round 3 for 3rd–4th, of
+  // round 1 for 9th–16th, and inside that one again for 13th–16th, 11th–12th, 15th–16th …
+  const places = brackets.filter((b) => b.kind !== 'MAIN').map((b) => b.name.split(' — ').pop()).sort();
+  assert.deepStrictEqual(places, ['O 11. miesto', 'O 13. – 16. miesto', 'O 15. miesto', 'O 3. miesto', 'O 5. – 8. miesto', 'O 7. miesto', 'O 9. – 16. miesto']);
+  assert.ok(brackets.every((b) => !/Útecha po|› po/.test(b.name)), 'no name says "Útecha po 1. kole" any more');
+  // the order of the list: the main bracket first, then by the best place they play for, from the highest to the lowest
+  assert.strictEqual(brackets[0].kind, 'MAIN');
+  assert.deepStrictEqual(brackets.slice(1).map((b) => b.name.split(' — ').pop()), ['O 3. miesto', 'O 5. – 8. miesto', 'O 7. miesto', 'O 9. – 16. miesto', 'O 11. miesto', 'O 13. – 16. miesto', 'O 15. miesto']);
   const ov = await overview(t1, 'ELITE');
   assert.strictEqual(ov.settings.format, 'MONRAD');
   assert.strictEqual(ov.brackets.length, 8);
+});
+
+test('MONRAD: losers brackets made before (named "Útecha po 1. kole", "Útecha po 1. kole › po 1. kole") are renamed by the places they play for, from the structure alone', () => {
+  const { DatabaseSync } = require('node:sqlite');
+  const sql = new DatabaseSync(path.join(dir, 'blta-score.db'));
+  const rows = () => sql.prepare("SELECT id, name, parent_bracket_id AS parent, feeds_round AS round FROM brackets WHERE kind = 'CONSOLATION' AND season_id = ? ORDER BY id").all(t1.id);
+  const expected = rows().map((r) => [r.id, r.name]);
+  assert.strictEqual(expected.length, 7);
+  // the old way of naming: by the round that feeds the bracket (and the parent's name in front for the deeper ones)
+  const prefix = expected[0][1].split(' — ').slice(0, -1).join(' — ');
+  const named = new Map();
+  rows().forEach((r) => named.set(r.id, r.parent && named.has(r.parent) ? `${named.get(r.parent)} › po ${r.round}. kole` : `${prefix} — Útecha po ${r.round}. kole`));
+  named.forEach((name, id) => sql.prepare('UPDATE brackets SET name = ? WHERE id = ?').run(name, id));
+  assert.ok(rows().every((r) => /Útecha po|› po/.test(r.name)));
+  process.env.DATA_DIR = dir; // (the engine opens the database of this run, not the real one)
+  const renamed = require('../src/monradNames').run(sql);
+  assert.strictEqual(renamed, 7);
+  assert.deepStrictEqual(rows().map((r) => [r.id, r.name]), expected, 'the same names as a draw made now gives');
+  assert.strictEqual(require('../src/monradNames').run(sql), 0, 'a second run changes nothing');
+  sql.close();
 });
 
 test('MONRAD played through: 32 matches in all (everybody keeps playing), every bracket decided', async () => {

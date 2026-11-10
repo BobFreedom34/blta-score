@@ -3,6 +3,7 @@ const db = require('../db');
 const leagues = require('../leagues');
 const { requireAdmin } = require('../auth');
 const standings = require('../standings');
+const { roundsOf } = require('../bracketPlaces');
 const { computeGroupStandings, rulesOfSeason, normalizeRules } = standings;
 const { FROZEN } = require('../frozenStandings');
 const crypto = require('crypto');
@@ -921,7 +922,21 @@ router.delete('/registrations/:rid', clubTournaments.requireSeasonManager(clubTo
 router.get('/:id/brackets', (req, res) => {
   const season = db.prepare('SELECT id FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
-  res.json(db.prepare("SELECT id, name, category, COALESCE(kind, 'MAIN') AS kind, parent_bracket_id AS parentBracketId, is_doubles AS isDoubles FROM brackets WHERE season_id = ? ORDER BY id").all(season.id).map((b) => ({ ...b, isDoubles: !!b.isDoubles })));
+  const rows = db.prepare("SELECT id, name, category, COALESCE(kind, 'MAIN') AS kind, parent_bracket_id AS parentBracketId, is_doubles AS isDoubles, feeds_round AS feedsRound, size FROM brackets WHERE season_id = ? ORDER BY id").all(season.id);
+  // the order the tabs show: a category after the other as they were made; inside one the main bracket first, then the losers brackets by the best place they play for
+  // (3rd–4th, 5th–8th, 7th–8th …; see bracketPlaces), the ones whose place is not known (made long ago) last, each group by the order they were made
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const startOf = (b) => {
+    if (b.kind === 'MAIN') return 1;
+    const parent = byId.get(b.parentBracketId);
+    if (!parent || !b.feedsRound) return 1000;
+    const start = startOf(parent);
+    return start >= 1000 ? 1000 : start + 2 ** (roundsOf(parent.size) - b.feedsRound);
+  };
+  const firstOfCategory = new Map();
+  rows.forEach((r) => { if (!firstOfCategory.has(r.category)) firstOfCategory.set(r.category, r.id); });
+  rows.sort((x, y) => firstOfCategory.get(x.category) - firstOfCategory.get(y.category) || startOf(x) - startOf(y) || x.id - y.id);
+  res.json(rows.map(({ feedsRound, size, ...b }) => ({ ...b, isDoubles: !!b.isDoubles })));
 });
 
 // Public: the final standings of a tournament or a season (the tab "Konečné poradie"): who finished where, from the brackets and the groups (see finalStandings.js).
