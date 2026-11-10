@@ -5336,7 +5336,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sv-hero-pic, .sv-hero-pic img { position: absolute; inset: 0; width: 100%; height: 100%; }
 .sv-hero-pic { overflow: hidden; border-radius: var(--radius); }
 .sv-hero-pic img { object-fit: cover; }
-.sv-hero-shade { position: absolute; inset: 0; border-radius: var(--radius); background: linear-gradient(to top, rgba(10, 10, 10, 0.88) 0%, rgba(10, 10, 10, 0.5) 38%, rgba(10, 10, 10, 0) 70%); }
+.sv-hero-shade { position: absolute; inset: 0; border-radius: var(--radius); background: linear-gradient(to top, rgba(10, 10, 10, 0.96) 0%, rgba(10, 10, 10, 0.78) 34%, rgba(10, 10, 10, 0.4) 58%, rgba(10, 10, 10, 0) 80%); }
 .sv-head.has-hero > .sv-logo, .sv-head.has-hero > .sv-head-main { position: relative; z-index: 1; }
 .sv-head.has-hero .sv-crumb { margin-top: 0; color: #d3d6dc; }
 .sv-head.has-hero .sv-crumb a { color: #d3d6dc; }
