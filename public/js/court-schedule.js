@@ -378,6 +378,13 @@ function csOnPointerMove(e) {
     csDrag.el.classList.add('cs-dragging');
   }
   csDrag.ghost.style.transform = `translate(${e.clientX - csDrag.offX}px, ${e.clientY - csDrag.offY}px)`;
+  csDrag.last = { clientX: e.clientX, clientY: e.clientY };
+  csUpdateTarget(e);
+  csStartAutoScroll();
+}
+
+// where the dragged match would land (the court and the time under the finger) and the frame that shows it
+function csUpdateTarget(e) {
   const target = csDropTarget(e);
   csDrag.target = target;
   if (csDrag.preview) { csDrag.preview.remove(); csDrag.preview = null; }
@@ -394,11 +401,43 @@ function csOnPointerMove(e) {
   }
 }
 
+// While a match is dragged and the finger rests near an edge, the page moves by itself: the row of courts sideways (a phone shows one court and a bit of the next, the
+// other courts are out of sight) and the page up and down (a tall timeline, the tray of unscheduled matches below it). Without it a match could only be dropped on what is on screen.
+function csStartAutoScroll() {
+  if (!csDrag || csDrag.raf) return;
+  const snapRow = csState.host.querySelector('.cs-scroll');
+  if (snapRow) snapRow.style.scrollSnapType = 'none'; // (the snapping to a court would pull the small steps back)
+  const step = () => {
+    if (!csDrag || !csDrag.ghost) return;
+    const { clientX: x, clientY: y } = csDrag.last;
+    let moved = false;
+    const row = csState.host.querySelector('.cs-scroll');
+    if (row && row.scrollWidth > row.clientWidth + 1) {
+      const r = row.getBoundingClientRect();
+      const edge = 70;
+      const gutter = 46; // (the hours stand over the left edge)
+      let dx = 0;
+      if (x > r.right - edge) dx = Math.min(16, (x - (r.right - edge)) / 4 + 3);
+      else if (x < r.left + gutter + edge) dx = -Math.min(16, ((r.left + gutter + edge) - x) / 4 + 3);
+      if (dx && y > r.top - 40 && y < r.bottom + 40) { const before = row.scrollLeft; row.scrollLeft += dx; moved = moved || row.scrollLeft !== before; }
+    }
+    const top = 120; // (under the bars at the top of the page)
+    const bottom = window.innerHeight - 90; // (over the menu at the bottom of a phone)
+    if (y < top) { window.scrollBy(0, -Math.min(18, (top - y) / 4 + 4)); moved = true; }
+    else if (y > bottom) { window.scrollBy(0, Math.min(18, (y - bottom) / 4 + 4)); moved = true; }
+    if (moved) csUpdateTarget(csDrag.last);
+  };
+  csDrag.raf = setInterval(step, 16); // (a timer, not an animation frame: it also runs in a page that is not in front)
+}
+
 function csOnPointerUp() {
   window.removeEventListener('pointermove', csOnPointerMove);
   window.removeEventListener('pointerup', csOnPointerUp);
   window.removeEventListener('pointercancel', csOnPointerUp);
   const drag = csDrag;
+  if (drag && drag.raf) clearInterval(drag.raf);
+  const snapRow = csState.host.querySelector('.cs-scroll');
+  if (snapRow) snapRow.style.scrollSnapType = '';
   csDrag = null;
   if (drag && drag.resize) {
     if (!drag.moved) return;
