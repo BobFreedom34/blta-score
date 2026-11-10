@@ -203,6 +203,10 @@ body.screen-page.idle.is-full .scr-foot { opacity: 0; }
 /* the same type size in the list and in the timeline (it follows the number of rows of courts of the list and the most matches of a court) */
 .stc-main { --stc-fs: clamp(9px, min(calc(76vh / var(--lrows, 1) / (2.2 + 5.9 * var(--rows, 6))), 2.3vh), 22px); }
 .stc-list, .stc-tl { font-size: var(--stc-fs); }
+/* the pill of a finished / live match (the same as on the tournament page: grey, or orange with white words); it is in em, so it grows with the screen */
+.stc-pill { display: inline-block; margin-left: 0.5em; padding: 0.1em 0.55em; border-radius: 0.35em; background: rgba(255, 255, 255, 0.12); color: #c3c7cf; font-size: 0.72em; font-weight: 800; letter-spacing: 0.06em; line-height: 1.35; text-transform: uppercase; vertical-align: middle; white-space: nowrap; }
+.stc-pill.live { background: var(--orange); color: #fff; }
+.stc-nm .stc-pill, .stc-row-pl > .stc-pill, .stc-pl > .stc-pill { margin-left: 0; font-size: 0.82em; }
 @media (max-width: 760px) { .stc-list { font-size: 12px; } .stc-tl { font-size: 11px; } }
 /* the S1 / S2 labels are smaller than the games under them: their cells are as wide as the cells of the games (the width is in em of the smaller type, so it is divided by its size) */
 .stc-pl-head .stc-sc > span { width: calc(2.4em / 0.7); }

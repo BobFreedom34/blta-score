@@ -13,7 +13,7 @@ const CS_MS = 60 * 1000;
 let csState = null; // { host, season, admin, data, day, view } — day and view are kept when the tab is drawn again
 let csDrag = null;
 const csUnlocked = new Set(); // tokens of FINISHED matches the organiser unlocked on this page (a finished match is locked by itself until then)
-let csChoice = { day: null, view: 'timeline' };
+let csChoice = { day: null, view: 'list' }; // (the list is what the tab shows first; the timeline is one tap away)
 
 // ---------- time (Bratislava) ----------
 
@@ -75,15 +75,16 @@ function csPlayersHtml(m) {
 
 // The two players, and when the match is being played or has been played their sets in the format of the match page (the same as the schedule on the whole screen): the
 // name on the left, a column per set (S1, S2, MTB) on the right with the games of that player, the winner of a set green, the tie-break points small.
-function csScoredPlayersHtml(m) {
+// pill: the "finished" / "live" pill of a row of the list; it stands in the line of the set labels (S1) when there is one, so it takes no line of its own
+function csScoredPlayersHtml(m, pill) {
   const st = m.state || { sets: [] };
   const started = (s, i) => s.winner || s.p1 || s.p2 || (s.tiebreak && (s.tiebreak.p1 || s.tiebreak.p2)) || (m.status === 'LIVE' && i === st.currentSet);
   const shown = m.status === 'LIVE' || m.status === 'FINISHED' || m.status === 'UNFINISHED' ? (st.sets || []).filter(started) : [];
   const won = (p) => (m.winnerId && m.winnerId === p.id ? ' cs-win' : '');
   const head = shown.length
-    ? `<span class="cs-pl-line cs-pl-head"><span class="cs-nm"></span><span class="cs-sc">${shown.map((s, i) => `<span>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</span>`).join('')}</span></span>` : '';
+    ? `<span class="cs-pl-line cs-pl-head"><span class="cs-nm">${pill || ''}</span><span class="cs-sc">${shown.map((s, i) => `<span>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</span>`).join('')}</span></span>` : '';
   const line = (p, num) => `<span class="cs-pl-line"><span class="cs-nm${won(p)}">${escapeHtml(p.name || '?')}</span>${shown.length ? `<span class="cs-sc">${shown.map((s) => `<span>${setCell(s, num, { highlightWinner: true })}</span>`).join('')}</span>` : ''}</span>`;
-  return `<span class="cs-pl">${head}${line(m.player1, 1)}${line(m.player2, 2)}</span>`;
+  return `<span class="cs-pl">${head ? '' : (pill || '')}${head}${line(m.player1, 1)}${line(m.player2, 2)}</span>`;
 }
 
 // Blocks of one court that overlap in time (two finished matches whose real times overlap, a long match over a later one) are drawn side by side, like a calendar,
@@ -127,7 +128,7 @@ function csBlockHtml(m, day, startMin, laneInfo, endMin) {
   const across = lanes ? `;left:calc(4px + (100% - 8px) * ${lanes.lane} / ${lanes.lanes});right:auto;width:calc((100% - 8px) / ${lanes.lanes} - 2px)` : '';
   return `<a class="${classes}" href="/match/${m.token}" draggable="false" data-token="${m.token}" ${movable ? 'data-drag="1"' : ''}
       style="top:${top}px;height:${minutes * CS_PX - 3}px${across}" data-minutes="${real}" title="${escapeHtml(`${csTime(csStartOf(m))} · ${m.player1.name} – ${m.player2.name}`)}">
-    <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${finished && csState.admin ? ` <i class="cs-lock fin${unlocked ? ' open' : ''}" data-fin-lock="${m.token}" title="${escapeHtml(unlocked ? tl('Odomknutý — zápas môžeš posúvať a meniť mu dĺžku. Kliknutím ho zamkneš.', 'Unlocked — you can move the match and change its length. Click to lock it.') : tl('Skončený zápas je zamknutý. Kliknutím ho odomkneš, potom ho môžeš posúvať a meniť mu dĺžku.', 'A finished match is locked. Click to unlock it, then you can move it and change its length.'))}"></i>` : ''}${m.status === 'PLANNED' && m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="${escapeHtml(tl('Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš.', 'Locked — the planner does not move it. Click to unlock it.'))}"></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-live">${escapeHtml(t('home.live'))}</b>` : ''}</span>
+    <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${finished && csState.admin ? ` <i class="cs-lock fin${unlocked ? ' open' : ''}" data-fin-lock="${m.token}" title="${escapeHtml(unlocked ? tl('Odomknutý — zápas môžeš posúvať a meniť mu dĺžku. Kliknutím ho zamkneš.', 'Unlocked — you can move the match and change its length. Click to lock it.') : tl('Skončený zápas je zamknutý. Kliknutím ho odomkneš, potom ho môžeš posúvať a meniť mu dĺžku.', 'A finished match is locked. Click to unlock it, then you can move it and change its length.'))}"></i>` : ''}${m.status === 'PLANNED' && m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="${escapeHtml(tl('Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš.', 'Locked — the planner does not move it. Click to unlock it.'))}"></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-done cs-live-pill">${escapeHtml(t('home.live'))}</b>` : ''}</span>
     <span class="cs-m-pl">${csScoredPlayersHtml(m)}</span>
     <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
     ${resizable ? `<span class="cs-resize" data-resize="1" title="${escapeHtml(tl('Potiahni na zmenu dĺžky zápasu', 'Drag to change the length of the match'))}${m.durationMinutes ? escapeHtml(tl(` (nastavených ${m.durationMinutes} min) — dvojklik vráti pôvodnú dĺžku`, ` (set to ${m.durationMinutes} min) — double-click restores the original length`)) : ''}"></span>` : ''}
@@ -216,7 +217,7 @@ function csListHtml(day) {
     const body = rows.map((m) => `
       <a class="cs-row ${csStatusClass(m)}" href="/match/${m.token}">
         <span class="cs-row-time">${csTime(csStartOf(m))}</span>
-        <span class="cs-row-pl">${csScoredPlayersHtml(m)}</span>
+        <span class="cs-row-pl">${csScoredPlayersHtml(m, m.status === 'FINISHED' ? `<b class="cs-done cs-row-pill">${escapeHtml(t('courts.finished'))}</b>` : (m.status === 'LIVE' ? `<b class="cs-done cs-live-pill cs-row-pill">${escapeHtml(t('home.live'))}</b>` : ''))}</span>
         <span class="cs-row-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
       </a>`).join('');
     return `<div class="cs-list-court"><div class="cs-list-h">${escapeHtml(t('courts.court', { n: court }))}${csLiveButtonHtml(court)}<em>${rows.length}</em></div>${body || `<div class="cs-row-empty">${escapeHtml(t('courts.courtFree'))}</div>`}</div>`;
@@ -273,6 +274,9 @@ function csRender() {
   // the whole-screen page of this schedule (every court and match of the day for a TV): it opens on the list first (Zoznam), on the day that is shown here
   const fullHref = siteUrl(`/schedule-screen/${csState.season.id}?view=list&day=${day}`);
   const fullLink = `<a class="btn btn-sm btn-primary cs-fullscreen" href="${escapeHtml(fullHref)}">${courtIcon('monitor')}<span>${escapeHtml(tl('Celá obrazovka', 'Full screen'))}</span></a>`;
+  // (a redraw - unlocking a finished match, a result coming in - keeps the row of courts where it was: on a phone it would jump back to Court 1)
+  const keepRow = csState.host.querySelector('.cs-scroll');
+  const keepLeft = keepRow ? keepRow.scrollLeft : 0;
   csState.host.innerHTML = `
     <section class="sv-sec cs-sec">
       ${csLiveHtml()}
@@ -284,6 +288,15 @@ function csRender() {
       ${csAdminHtml()}
     </section>`;
   csWireCourtNav();
+  if (keepLeft) {
+    const row = csState.host.querySelector('.cs-scroll');
+    if (row) {
+      row.style.scrollSnapType = 'none'; // (the snapping would pull it to the nearest court)
+      row.scrollLeft = keepLeft;
+      row.dispatchEvent(new Event('scroll')); // (lights the court of the bar)
+      setTimeout(() => { row.style.scrollSnapType = ''; }, 60);
+    }
+  }
 }
 
 // the bar of courts on a phone: the court at the left edge of the row is lit, a tap brings a court to the left edge

@@ -39,15 +39,23 @@ function stcPair(m) {
 
 // the two players one under the other, and when the match is being played or has been played their sets in the format of the match page: a column per set (S1, S2, MTB),
 // the games of each player in his line, the winner of a set in green, the tie-break points small (the finished match keeps the winner's name green)
-function stcPlayers(m) {
+// the pill "finished" / "live" (the same as on the tournament page: grey, or orange with white words); null for a match that has not started
+function stcPill(m) {
+  if (m.status === 'FINISHED') return `<b class="stc-pill">${escapeHtml(t('courts.finished'))}</b>`;
+  if (m.status === 'LIVE') return `<b class="stc-pill live">${escapeHtml(t('home.live'))}</b>`;
+  return '';
+}
+
+// pill: in a row of the list the pill stands in the line of the set labels (S1) when there is one, else over the names
+function stcPlayers(m, pill) {
   const st = m.state || { sets: [] };
   const started = (s, i) => s.winner || s.p1 || s.p2 || (s.tiebreak && (s.tiebreak.p1 || s.tiebreak.p2)) || (m.status === 'LIVE' && i === st.currentSet);
   const shown = m.status === 'LIVE' || m.status === 'FINISHED' || m.status === 'UNFINISHED' ? (st.sets || []).filter(started) : [];
   const name = (p) => (m.winnerId && m.winnerId === p.id ? ' stc-win' : '');
   const head = shown.length
-    ? `<span class="stc-pl-line stc-pl-head"><span class="stc-nm"></span><span class="stc-sc">${shown.map((s, i) => `<span>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</span>`).join('')}</span></span>` : '';
+    ? `<span class="stc-pl-line stc-pl-head"><span class="stc-nm">${pill || ''}</span><span class="stc-sc">${shown.map((s, i) => `<span>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</span>`).join('')}</span></span>` : '';
   const line = (p, num) => `<span class="stc-pl-line"><span class="stc-nm${name(p)}">${escapeHtml(p.name || '?')}</span>${shown.length ? `<span class="stc-sc">${shown.map((s) => `<span>${setCell(s, num, { highlightWinner: true })}</span>`).join('')}</span>` : ''}</span>`;
-  return `<span class="stc-pl">${head}${line(m.player1, 1)}${line(m.player2, 2)}</span>`;
+  return `<span class="stc-pl">${head ? '' : (pill || '')}${head}${line(m.player1, 1)}${line(m.player2, 2)}</span>`;
 }
 
 const stcMeta = (m) => escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '));
@@ -85,7 +93,7 @@ function stcTimelineHtml(day) {
       const real = Math.max(20, Math.round((Date.parse(m.endsAt) - Date.parse(csStartOf(m))) / 60000));
       const classes = ['stc-m', `stc-st-${String(m.status || 'PLANNED').toLowerCase()}`].join(' ');
       return `<div class="${classes}" style="top:${pct(parts.minutes)};height:calc(${(real / span) * 100}% - 2px)">
-        <div class="stc-m-l1"><span class="stc-m-time">${csTime(csStartOf(m))}</span></div>
+        <div class="stc-m-l1"><span class="stc-m-time">${csTime(csStartOf(m))}${stcPill(m)}</span></div>
         <div class="stc-m-pl">${stcPlayers(m)}</div>
         <div class="stc-m-meta">${stcMeta(m)}</div>
       </div>`;
@@ -119,7 +127,7 @@ function stcListHtml(day) {
       return `
       <div class="stc-row stc-st-${String(m.status || 'PLANNED').toLowerCase()}">
         <span class="stc-row-time">${csTime(csStartOf(m))}</span>
-        <span class="stc-row-pl">${stcPlayers(m)}</span>
+        <span class="stc-row-pl">${stcPlayers(m, stcPill(m))}</span>
         <span class="stc-row-meta">${stcMeta(m)}</span>
       </div>`;
     }).join('');

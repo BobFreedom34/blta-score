@@ -5136,6 +5136,9 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .cs-m.cs-st-live { background: #3a2a1d; }
 .cs-m.cs-st-finished { background: #202227; }
 .cs-live { color: var(--green); font-size: 10px; letter-spacing: 0.06em; }
+/* the pill of a match being played: the same pill as "finished" (.cs-done), orange with white words; in the list it stands over the names */
+.cs-done.cs-live-pill { background: var(--orange); color: var(--white); }
+.cs-done.cs-row-pill { align-self: flex-start; margin: 0; vertical-align: middle; }
 .cs-m, .cs-chip, .cs-row, .cs-livecard { border-left-color: var(--status-green); }
 .cs-m.cs-st-live, .cs-row.cs-st-live, .cs-livecard { border-left-color: var(--orange); }
 .cs-m.cs-st-finished, .cs-row.cs-st-finished { border-left-color: #8b8f98; }
