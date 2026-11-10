@@ -6640,3 +6640,16 @@ a.com-rank-name:hover { color: var(--orange); }
   .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle > a.nav-btn-green ~ .nav-caret { color: #0a0a0a; }
   .nav-links .nav-item-dropdown:not(.nav-item-nested) > .nav-item-dropdown-toggle > a.nav-btn-green-outline ~ .nav-caret { color: var(--green); }
 }
+
+/* phone menu: the green-framed item ("Turnaje") is as tall as the other items (the frame sits inside the same height) */
+@media (max-width: 1024px) {
+  .nav-links a.nav-btn-green-outline, .nav-links .nav-item-dropdown-toggle a.nav-btn-green-outline { padding: 12.66px 14.5px; }
+}
+
+/* Computer menu: "Domov" is only a white house, no words and no background (also when it is the open page) */
+@media (min-width: 1025px) {
+  .nav-links a[href="/"], .nav-links a[data-code="/"] { font-size: 0; gap: 0; padding-left: 8px; padding-right: 8px; background: none; color: var(--white); }
+  .nav-links a[href="/"]::before, .nav-links a[data-code="/"]::before { margin-right: 0; width: 20px; height: 20px; background: var(--white); }
+  .nav-links a[href="/"]:hover, .nav-links a[data-code="/"]:hover, .nav-links a[href="/"].active, .nav-links a[data-code="/"].active { background: none; color: var(--white); }
+  .nav-links a[href="/"]:hover::before, .nav-links a[data-code="/"]:hover::before { background: var(--orange); }
+}
