@@ -148,6 +148,8 @@ function categoriesToStore(list) {
   return picked.length && picked.length < CATEGORY_KEYS.length ? CATEGORY_KEYS.filter((c) => picked.includes(c)).join(',') : null;
 }
 
+const PLANNED_FORMATS = ['PRINCE', 'MONRAD', 'ELIMINATION', 'GROUPS', 'GROUPS_BRACKET', 'SWISS'];
+
 function serializeSeason(s) {
   const groups = db.prepare('SELECT * FROM season_groups WHERE season_id = ? ORDER BY sort_order, name COLLATE NOCASE').all(s.id);
   return {
@@ -170,6 +172,8 @@ function serializeSeason(s) {
     entryFee: s.entry_fee || '',
     prizeMoney: s.prize_money || '',
     drawDate: s.draw_date || null,
+    // the format the organiser plans to play (chosen in Backend > Základné info before the draw; once a category is drawn its own format counts): '' = not said yet
+    plannedFormat: s.planned_format || '',
     info: s.info || '',
     galleryUrl: s.gallery_url || '',
     paymentUrl: s.payment_url || '',
@@ -1216,6 +1220,7 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, scoring, tiebreakers, maxPlayers, nextSeason.category_max, season.id);
   if (planning) tournamentSchedule.storeSettings(season.id, planning);
   db.prepare('UPDATE seasons SET unregister_hours = ? WHERE id = ?').run(unregisterHours, season.id);
+  if (req.body.plannedFormat !== undefined) db.prepare('UPDATE seasons SET planned_format = ? WHERE id = ?').run(PLANNED_FORMATS.includes(req.body.plannedFormat) ? req.body.plannedFormat : null, season.id);
   db.prepare('UPDATE seasons SET court_streams = ? WHERE id = ?').run(JSON.stringify(streamIds), season.id);
   // the points of a community follow the new settings, and the scoring of the season (what a match is worth in its table)
   const pointsChanged = communityPts !== undefined && communityPts !== (season.community_points || null);

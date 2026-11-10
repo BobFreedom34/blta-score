@@ -6775,3 +6775,13 @@ body:not(.embed-light):not(.embed) .ct-card {
 .modal { border: 1px solid rgba(255, 255, 255, 0.18); }
 /* the new-match form is a glass panel too */
 #new-match-form { border: 1px solid rgba(255, 255, 255, 0.18); }
+
+/* the opponent filter of the player page: a search box with a list that narrows down while typing */
+#player-filters .opp-combo { flex: 1 1 160px; min-width: 0; }
+#player-filters .opp-input { width: 100%; box-sizing: border-box; background: var(--fill-grey); color: var(--white); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--radius-sm); padding: 11px 12px; font-family: inherit; font-size: 14px; }
+#player-filters .opp-input::placeholder { color: var(--white); opacity: 1; }
+#player-filters .opp-input:focus { outline: none; border-color: var(--orange); }
+#player-filters .opp-list { background: #26262c; border: 1px solid rgba(255, 255, 255, 0.14); }
+#player-filters .opp-list .autocomplete-item { color: #fff; font-size: 14px; padding: 9px 12px; }
+#player-filters .opp-list .autocomplete-item:hover, #player-filters .opp-list .autocomplete-item.active { background: var(--fill-grey); color: var(--orange); }
+#player-filters .opp-list .opp-none { color: #8b8f98; cursor: default; }

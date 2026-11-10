@@ -187,8 +187,8 @@ function actionsHtml(status) {
         : `<span class="sv-btn off">${escapeHtml(t('season.registerClosed'))}</span>`);
     }
   }
-  // the club's "Zdieľať" sits right next to the registration (not on a row of its own)
-  if (season.organisation) buttons.push(clubAppButtonsHtml('sv-btn sv-share', season.name));
+  // "Zdieľať" sits right next to the registration, on every season and tournament (of a club or of the league)
+  buttons.push(clubAppButtonsHtml('sv-btn sv-share', season.name));
   if (season.paymentUrl) buttons.push(`<a class="sv-btn pay" href="${escapeHtml(season.paymentUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.payOnline'))}</a>`);
   return buttons.length ? `<span class="sv-actions">${buttons.join('')}</span>` : '';
 }
@@ -316,7 +316,9 @@ function publishClubView() {
 
 // how the tournament is played (the format chosen in the Backend for its categories; several different ones are listed once each)
 function drawFormatText() {
-  const names = [...new Set((season.drawFormats || []).map((d) => d.format))].map((f) => t('season.drawFormat.' + f)).filter((n) => n && !n.startsWith('season.drawFormat.'));
+  // the format of the drawn categories; before any draw, the one the organiser plans
+  const formats = (season.drawFormats || []).length ? season.drawFormats.map((d) => d.format) : (season.plannedFormat ? [season.plannedFormat] : []);
+  const names = [...new Set(formats)].map((f) => t('season.drawFormat.' + f)).filter((n) => n && !n.startsWith('season.drawFormat.'));
   return names.join(' · ');
 }
 

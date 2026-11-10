@@ -126,6 +126,71 @@ function populateOpponentOptions() {
     + opponents.map(([id, name]) => `<option value="${id}">${escapeHtml(name)}</option>`).join('');
   opponentFilterEl.value = opponents.some(([id]) => String(id) === keep) ? keep : '';
   currentOpponent = opponentFilterEl.value;
+  syncOpponentCombo();
+}
+
+// The opponent filter is a search box: start typing a name and the list narrows down (the select stays underneath, hidden, and keeps the value
+// the rest of this file reads; the box and the list only choose in it).
+const oppPlain = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+let oppInput = null;
+let oppList = null;
+function buildOpponentCombo() {
+  const wrap = document.createElement('div');
+  wrap.className = 'opp-combo autocomplete';
+  wrap.innerHTML = '<input type="text" class="opp-input" autocomplete="off" role="combobox" aria-expanded="false"><div class="autocomplete-list opp-list" role="listbox"></div>';
+  opponentFilterEl.insertAdjacentElement('afterend', wrap);
+  opponentFilterEl.hidden = true;
+  oppInput = wrap.querySelector('input');
+  oppList = wrap.querySelector('.opp-list');
+  let active = -1;
+  const items = () => [...oppList.querySelectorAll('.autocomplete-item')];
+  const open = (query) => {
+    const q = oppPlain(query);
+    const opts = [...opponentFilterEl.options].filter((o) => o.value === '' || !q || oppPlain(o.textContent).includes(q));
+    oppList.innerHTML = opts.map((o) => `<div class="autocomplete-item" role="option" data-value="${escapeHtml(o.value)}">${escapeHtml(o.textContent)}</div>`).join('') || `<div class="autocomplete-item opp-none">${escapeHtml(t('common.noResults') === 'common.noResults' ? '—' : t('common.noResults'))}</div>`;
+    oppList.classList.add('open');
+    oppInput.setAttribute('aria-expanded', 'true');
+    active = -1;
+  };
+  const close = () => { oppList.classList.remove('open'); oppInput.setAttribute('aria-expanded', 'false'); };
+  const choose = (value) => {
+    opponentFilterEl.value = value;
+    opponentFilterEl.dispatchEvent(new Event('change', { bubbles: true }));
+    syncOpponentCombo();
+    close();
+    oppInput.blur();
+  };
+  oppInput.addEventListener('focus', () => { oppInput.select(); open(''); });
+  oppInput.addEventListener('input', () => open(oppInput.value));
+  oppList.addEventListener('mousedown', (e) => {
+    const it = e.target.closest('.autocomplete-item[data-value]');
+    if (!it) return;
+    e.preventDefault();
+    choose(it.dataset.value);
+  });
+  oppInput.addEventListener('keydown', (e) => {
+    const list = items();
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!oppList.classList.contains('open')) open('');
+      const n = items();
+      active = (active + (e.key === 'ArrowDown' ? 1 : -1) + n.length) % n.length;
+      n.forEach((el, i) => el.classList.toggle('active', i === active));
+      if (n[active]) n[active].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const pick = list[active] || list.find((el) => el.dataset.value !== '' && el.dataset.value !== undefined) || null;
+      if (pick && pick.dataset.value !== undefined) choose(pick.dataset.value);
+    } else if (e.key === 'Escape') { close(); syncOpponentCombo(); oppInput.blur(); }
+  });
+  oppInput.addEventListener('blur', () => { close(); syncOpponentCombo(); });
+}
+// the text of the box follows the select (the chosen opponent, or the "all" label as a hint)
+function syncOpponentCombo() {
+  if (!oppInput) return;
+  const opt = opponentFilterEl.selectedOptions[0];
+  oppInput.value = opponentFilterEl.value ? (opt ? opt.textContent : '') : '';
+  oppInput.placeholder = t('player.allOpponents');
 }
 
 function populateYearOptions() {
@@ -1042,6 +1107,7 @@ if (messageBtn) messageBtn.addEventListener('click', () => requireRealPlayer(asy
 document.getElementById('badges-toggle').addEventListener('click', openBadgesModal);
 window.addEventListener('resize', applyBadgesClip);
 
+buildOpponentCombo();
 opponentFilterEl.addEventListener('change', (e) => {
   currentOpponent = e.target.value;
   render();
@@ -1064,6 +1130,7 @@ document.getElementById('reset-filters-btn').addEventListener('click', () => {
   currentCategory = '';
   currentYear = '';
   opponentFilterEl.value = '';
+  syncOpponentCombo();
   resultFilterEl.value = '';
   categoryFilterEl.value = '';
   yearFilterEl.value = '';
