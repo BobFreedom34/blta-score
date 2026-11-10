@@ -6785,3 +6785,25 @@ body:not(.embed-light):not(.embed) .ct-card {
 #player-filters .opp-list .autocomplete-item { color: #fff; font-size: 14px; padding: 9px 12px; }
 #player-filters .opp-list .autocomplete-item:hover, #player-filters .opp-list .autocomplete-item.active { background: var(--fill-grey); color: var(--orange); }
 #player-filters .opp-list .opp-none { color: #8b8f98; cursor: default; }
+/* "Si prihlásený ✓" keeps its own width on a phone (the home page makes its twin grow), so "Zdieľať" sits right beside it, like on the page of a club */
+.sv-actions .home-reg-wrap { flex: 0 0 auto; }
+
+/* the dropdown of the computer menu is a glass panel too (no notch: the translucent notch would show through the panel) */
+@media (min-width: 1025px) {
+  .nav-submenu {
+    background: rgba(10, 10, 10, 0.55);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+  .nav-submenu::after { display: none; }
+}
+
+/* the dropdown of the computer menu slides in already centred under its item (the old slide ended without the centring and the panel jumped from the left) */
+@keyframes nav-drop-in-centred { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (min-width: 1025px) {
+  .nav-item-dropdown:not(.nav-item-nested).open > .nav-submenu, .nav-item-dropdown:not(.nav-item-nested):hover > .nav-submenu { animation: nav-drop-in-centred 0.16s ease-out; }
+}
+
+/* the head of a "Hľadám súpera" tile (photo, level, name, place; it was grey) is a glass panel: translucent dark with blur */
+.ltp-head { background: rgba(10, 10, 10, 0.55); -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
