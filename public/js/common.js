@@ -2141,6 +2141,13 @@ document.addEventListener('click', (e) => {
   };
   const render = () => {
     nav.innerHTML = itemsFor(getClubContext()).map((i) => `<a class="bottom-nav-item" data-nav="${i.key}" href="${i.href}">${courtIcon(i.icon)}<span>${escapeHtml(i.label)}</span></a>`).join('');
+    // on the page of the event itself (a tournament or a season of the club) the bar does not load the page again: the page opens the tab and scrolls down to it
+    nav.querySelectorAll('[data-nav="matches"], [data-nav="tables"], [data-nav="playoff"]').forEach((a) => a.addEventListener('click', (e) => {
+      const ctx = getClubContext();
+      if (!ctx || !ctx.event || path !== ctx.event.path) return;
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('blta:open-season-tab', { detail: { tab: a.dataset.nav } }));
+    }));
     el('profile').addEventListener('click', (e) => {
       if (playerAuthed && currentPlayerId) return; // real href already set
       e.preventDefault();

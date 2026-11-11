@@ -497,7 +497,7 @@ function tablesHtml() {
     : '';
   return `
     <section class="sv-sec" id="sv-tables">
-      <div class="tabs" id="sv-cats">${pills}<a class="sv-more" href="/tables?season=${season.id}">${escapeHtml(t('season.fullTables'))} ›</a></div>
+      <div class="tabs" id="sv-cats">${pills}${season.organisation ? '' : `<a class="sv-more" href="/tables?season=${season.id}">${escapeHtml(t('season.fullTables'))} ›</a>`}</div>
       <div class="sv-gl">${groups.filter((g) => g.category === category).map(groupTableHtml).join('')}</div>
       ${frozen}${rules}
     </section>`;
@@ -1038,6 +1038,14 @@ rootEl.addEventListener('click', async (e) => {
 window.addEventListener('hashchange', () => {
   const key = window.location.hash.slice(1);
   if (key && availableTabs().some((x) => x.key === key) && key !== tab) openTab(key);
+});
+
+// The bottom bar of the phone (Zápasy, Tabuľky, Play off) asks this page for a tab: it opens it and scrolls down to it (also when that tab is already the open one)
+window.addEventListener('blta:open-season-tab', (e) => {
+  const key = e.detail && e.detail.tab;
+  if (key && availableTabs().some((x) => x.key === key) && key !== tab) openTab(key);
+  const bar = document.getElementById('sv-tabs');
+  if (bar) { bar.style.scrollMarginTop = '72px'; bar.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 });
 
 // A match changed somewhere: the numbers, tables and the open tab are loaded again (the other tabs when they are opened).

@@ -3809,7 +3809,7 @@ a.home-mine-cell:hover::after, .home-mine-cell.linked:hover::after { color: var(
 a.home-tl:hover .home-tl-body { border-color: var(--border-grey); }
 a.home-tl.now:hover .home-tl-body { border-color: var(--green); }
 a.home-tl.future:hover .home-tl-body { border-color: var(--orange); }
-.home-tl-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: var(--radius-sm); font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; background: rgba(255, 255, 255, 0.1); color: #c3c7cf; }
+.home-tl-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; background: rgba(255, 255, 255, 0.1); color: #c3c7cf; }
 .home-tl.now .home-tl-chip { background: var(--orange); color: var(--white); }
 .home-tl.future .home-tl-chip { background: transparent; border: 1px solid var(--border-grey); color: var(--white); }
 .home-tl-chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--white); animation: pulse 1.6s infinite; }
@@ -5660,7 +5660,7 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 /* the home page strip: the type of a card (league / tournament) in white bold letters on the timeline, right of the card's dot */
 /* the kind of the event (League / Tournament) sits above the line of the timeline, a league in green and a tournament in orange */
 /* the kind tag starts where the dot of the line ends (the dot is 14px + a 3px ring), not above the dot */
-.home-tl-type { position: absolute; top: 0; left: 17px; z-index: 3; padding: 2px 8px; border-radius: var(--radius-sm); font-weight: 800; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; max-width: calc(100% - 29px); overflow: hidden; text-overflow: ellipsis; color: var(--green); background: rgba(178, 250, 6, 0.12); border: 1px solid var(--green); }
+.home-tl-type { position: absolute; top: 0; left: 17px; z-index: 3; padding: 5px 12px; border-radius: var(--radius-sm); font-weight: 800; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; max-width: calc(100% - 29px); overflow: hidden; text-overflow: ellipsis; color: var(--green); background: rgba(178, 250, 6, 0.12); border: 1px solid var(--green); }
 .home-tl.tour .home-tl-type { color: var(--orange); background: rgba(255, 85, 0, 0.12); border-color: var(--orange); }
 
 /* the chips above the home page strip are the site's own tabs (.tabs .tab): the gap to the strip and the selected state are set like #home-cats */
