@@ -3906,7 +3906,7 @@ a.home-tl.future:hover .home-tl-body { border-color: var(--orange); }
 .home-m-row .r { font-weight: 800; font-size: 15px; text-align: right; white-space: nowrap; }
 .home-m-row .r small { display: block; color: #c3c7cf; font-size: 11px; font-weight: 700; }
 .home-chip { display: inline-block; padding: 5px 11px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; }
-.home-chip.date { border: 1px solid var(--status-green); color: var(--status-green); }
+.home-chip.date { background: rgba(178, 250, 6, 0.12); border: 1px solid var(--status-green); color: var(--status-green); }
 .home-chip.btn { background: var(--fill-grey); color: var(--white); }
 
 /* live line */
@@ -4207,7 +4207,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-rg-m .pl span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sv-rg-m .pl .w { color: var(--green); }
 .sv-rg-m .rs { font-size: 15px; font-weight: 800; white-space: nowrap; }
-.sv-rg-m .rs.date { font-size: 11px; font-weight: 800; color: var(--green); border: 1px solid var(--green); border-radius: var(--radius-sm); padding: 3px 8px; }
+.sv-rg-m .rs.date { font-size: 11px; font-weight: 800; color: var(--green); background: rgba(178, 250, 6, 0.12); border: 1px solid var(--green); border-radius: var(--radius-sm); padding: 3px 8px; }
 .sv-rg-m .rs.live { font-size: 11px; background: var(--orange); border-radius: var(--radius-sm); padding: 3px 8px; }
 .sv-rg-m .rs.tbd { color: #6e727c; }
 .sv-rg-m:hover .pl span:first-child { color: var(--orange); }
@@ -4258,7 +4258,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-rl-m .a, .sv-rl-m .b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sv-rl-m .w { color: var(--green); }
 .sv-rl-m .rs { justify-self: center; font-size: 15px; font-weight: 800; white-space: nowrap; }
-.sv-rl-m .rs.date { font-size: 11px; color: var(--green); border: 1px solid var(--green); border-radius: var(--radius-sm); padding: 3px 8px; }
+.sv-rl-m .rs.date { font-size: 11px; color: var(--green); background: rgba(178, 250, 6, 0.12); border: 1px solid var(--green); border-radius: var(--radius-sm); padding: 3px 8px; }
 .sv-rl-m .rs.live { font-size: 11px; background: var(--orange); border-radius: var(--radius-sm); padding: 3px 8px; }
 .sv-rl-m .rs.tbd { color: #6e727c; }
 .sv-rl-m:hover .a, .sv-rl-m:hover .b { color: var(--orange); }
@@ -4395,8 +4395,8 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .nav-links a.nav-btn-green.active { background: var(--green); color: #0a0a0a; }
 .nav-links a.nav-btn-green::before, .nav-links a.nav-btn-green:hover::before, .nav-links a.nav-btn-green.active::before { background: #0a0a0a; }
 /* A menu item with a green frame and green words, no fill (Backend > Menu: "Show with a green frame and green words"): the "Turnaje" item */
-.nav-links a.nav-btn-green-outline, .nav-links .nav-item-dropdown-toggle a.nav-btn-green-outline { color: var(--green); background: transparent; border: 1.5px solid var(--green); padding: 5.5px 8.5px; font-weight: 800; }
-.nav-links a.nav-btn-green-outline:hover, .nav-links a.nav-btn-green-outline.active, .nav-links .nav-item-dropdown-toggle a.nav-btn-green-outline:hover { background: rgba(178, 250, 6, 0.14); color: var(--green); border-color: var(--green); }
+.nav-links a.nav-btn-green-outline, .nav-links .nav-item-dropdown-toggle a.nav-btn-green-outline { color: var(--green); background: rgba(178, 250, 6, 0.12); border: 1.5px solid var(--green); padding: 5.5px 8.5px; font-weight: 800; }
+.nav-links a.nav-btn-green-outline:hover, .nav-links a.nav-btn-green-outline.active, .nav-links .nav-item-dropdown-toggle a.nav-btn-green-outline:hover { background: rgba(178, 250, 6, 0.2); color: var(--green); border-color: var(--green); }
 .nav-links a.nav-btn-green-outline::before, .nav-links a.nav-btn-green-outline:hover::before, .nav-links a.nav-btn-green-outline.active::before { background: var(--green); }
 
 /* Phone menu: icons for the items that had only the arrow (Zápasy, Tabuľky, Harmonogram, a season, and the dropdown parents such as Liga and VIAC) */

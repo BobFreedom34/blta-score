@@ -486,6 +486,10 @@ function seasonCardHtml(s) {
                   </div>
                 </div>` : ''}
               </div>
+              <div class="sa-field sa-full" style="margin-top:12px">${tl('Popis', 'Description')} <span class="sa-hint">— ${tl('riadok „Názov: hodnota“ sa na stránke zobrazí ako dlaždica', 'a line "Name: value" is shown on the page as a tile')}</span>
+                ${rteToolbarHtml()}
+                <div class="rte" contenteditable="true" data-rte="info">${richText(s.info)}</div>
+              </div>
             </section>
 
             <section class="sa-section">
@@ -508,7 +512,7 @@ function seasonCardHtml(s) {
             </section>
 
             ${IS_TOURNAMENT ? `<section class="sa-section">
-              <h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14M3 12h18"/></svg>${tl('Kurty a pravidlá hrania', 'Courts and playing rules')}</h4>
+              <h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14M3 12h18"/></svg>${tl('Kurty a plánovanie', 'Courts and planning')}</h4>
               <div class="sa-grid">
                 ${field(tl('Počet kurtov (Kurt 1 … Kurt n)', 'Number of courts (Court 1 … Court n)'), input('courtCount', s.courtCount || '', `type="number" min="0" max="50" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 4', 'e.g. 4'))}"`))}
                 ${courtStreamFieldsHtml(s.courtCount, s.courtStreams, s.slug)}
@@ -560,10 +564,6 @@ function seasonCardHtml(s) {
               </div>
               <div class="sa-field sa-full" style="margin-top:12px">${tl('Hero fotka stránky', 'Hero photo of the page')} <span class="sa-hint">— ${IS_TOURNAMENT ? tl('veľká fotka hore na stránke, názov turnaja je cez jej dolnú časť. Nahrá sa hneď, netreba Uložiť. JPG, PNG alebo WebP do 8 MB.', 'a big photo at the top of the page, the name of the tournament runs over its lower part. It uploads at once, no need to Save. JPG, PNG or WebP up to 8 MB.') : tl('veľká fotka hore na stránke, názov sezóny je cez jej dolnú časť. Nahrá sa hneď, netreba Uložiť. JPG, PNG alebo WebP do 8 MB.', 'a big photo at the top of the page, the name of the season runs over its lower part. It uploads at once, no need to Save. JPG, PNG or WebP up to 8 MB.')}</span>
                 <div class="sa-hero-grid">${heroBlockHtml(s, 'desktop')}${heroBlockHtml(s, 'mobile')}</div>
-              </div>
-              <div class="sa-field sa-full" style="margin-top:12px">${tl('Popis', 'Description')} <span class="sa-hint">— ${tl('riadok „Názov: hodnota“ sa na stránke zobrazí ako dlaždica', 'a line "Name: value" is shown on the page as a tile')}</span>
-                ${rteToolbarHtml()}
-                <div class="rte" contenteditable="true" data-rte="info">${richText(s.info)}</div>
               </div>
             </section>
 
@@ -981,7 +981,7 @@ function wireSeason(card) {
           ${!r.paid && r.email ? `<button type="button" class="sg-link" data-reg-remind title="${escapeHtml(tl('Pošle e-mail s pripomienkou platby', 'Sends an e-mail reminding about the payment'))}">✉ ${tl('Pripomenúť', 'Remind')}</button>` : ''}
           <button type="button" class="sg-link" data-reg-edit title="${escapeHtml(tl('Zmeniť kategóriu, telefón, e-mail alebo poznámku', 'Change the category, phone, e-mail or note'))}">${tl('Upraviť', 'Edit')}</button>
           <button type="button" class="sg-link" data-reg-paid="${r.paid ? 0 : 1}">${r.paid ? tl('Zaplatené ✓', 'Paid ✓') : tl('Nezaplatené', 'Not paid')}</button>
-          <button type="button" class="sg-x" data-reg-del title="${escapeHtml(tl('Zmazať túto registráciu', 'Delete this registration'))}">&times;</button>
+          <button type="button" class="sg-link sg-unreg" data-reg-del data-name="${escapeHtml(r.name)}" title="${escapeHtml(tl('Odhlási hráča z turnaja (ak je plno, nastúpi prvý náhradník)', 'Withdraws the player from the tournament (when it is full, the first substitute comes in)'))}">${tl('Odhlásiť', 'Withdraw')}</button>
         </div>`);
       regsList.innerHTML = payBarHtml(rows) + addPlayerFormHtml(players, rows) + `
         <section class="sa-section">
@@ -1061,8 +1061,10 @@ function wireSeason(card) {
         toast(res.sent ? tl('Pripomienka odoslaná', 'Reminder sent') : (res.recent ? tl('Dnes už bola pripomenutá', 'Already reminded today') : (res.failed ? tl('E-mail sa nepodarilo odoslať', 'The e-mail could not be sent') : tl('Bez e-mailu', 'No e-mail'))));
         await loadRegs();
       } else if (e.target.closest('[data-reg-del]')) {
-        if (!confirm(tl('Zmazať túto registráciu?', 'Delete this registration?'))) return;
+        const who = e.target.closest('[data-reg-del]').dataset.name || '';
+        if (!confirm(tl(`Odhlásiť hráča ${who} z ${IS_TOURNAMENT ? 'turnaja' : 'sezóny'}? Ak je turnaj plný a čaká náhradník, nastúpi prvý z nich.`, `Withdraw ${who} from the ${IS_TOURNAMENT ? 'tournament' : 'season'}? If it is full and somebody waits, the first substitute comes in.`))) return;
         await api(`/seasons/registrations/${rid}`, { method: 'DELETE' });
+        toast(tl('Hráč odhlásený', 'Player withdrawn'));
         await loadRegs();
       }
     } catch (err) { fail(err); }
