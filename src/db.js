@@ -1865,6 +1865,8 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_post_comment_notifications_player ON post_comment_notifications(player_id, seen);
 `);
+// A post of a community that shows the winners of one of its tournaments (the organiser shares them from the page of the tournament): the id of that season.
+if (!db.prepare('PRAGMA table_info(organisation_posts)').all().some((c) => c.name === 'winners_season_id')) db.exec('ALTER TABLE organisation_posts ADD COLUMN winners_season_id INTEGER');
 // The bell notification for a player who was tagged with @Name in a comment (src/mentions.js finds the names, src/routes/player.js lists them).
 db.exec(`
   CREATE TABLE IF NOT EXISTS mention_notifications (

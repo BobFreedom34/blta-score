@@ -74,6 +74,35 @@ function comPostImage(url) {
   return /^\/community-images\/[\w.-]+$/.test(url || '') ? `<a class="com-post-img" href="${escapeHtml(url)}" target="_blank" rel="noopener"><img src="${escapeHtml(url)}" alt="" loading="lazy"></a>` : '';
 }
 
+// ---- the winners of a tournament inside a post (the organiser shares them from the page of the tournament; the post only carries the id of the tournament) ----
+// edition: one winners list of GET /api/winners?seasonId=…: per category the winner, the finalist and the semifinalists, the same tiles as on the page of the tournament
+function comWinnersTilesHtml(edition) {
+  const cards = (edition.blocks || []).map((b) => {
+    const tiles = b.places.map((p) => {
+      const [tone, labelKey] = p.slot === 1 ? ['win-gold', 'winners.winner'] : p.slot === 2 ? ['win-silver', 'winners.finalist'] : ['win-bronze', 'winners.semifinalist'];
+      const photo = p.photoUrl ? `<img class="sw-img" src="${escapeHtml(p.photoUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">` : `<div class="sw-av">${escapeHtml(String(p.name || '').split(/s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase())}</div>`;
+      const inner = `<div class="sw-ph">${photo}</div><div class="sw-l"><small>${escapeHtml(t(labelKey))}</small><b>${escapeHtml(p.name)}</b></div>`;
+      return p.playerId ? `<a class="sw-tile ${tone}" href="/player/${encodeURIComponent(p.playerSlug || p.playerId)}">${inner}</a>` : `<div class="sw-tile ${tone}">${inner}</div>`;
+    }).join('');
+    const label = b.category ? ({ ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[b.category] || b.category) : (b.title === 'Konečné poradie' ? t('season.navFinal') : b.title);
+    return `<div class="sw-card"><h3 class="sw-cat">${escapeHtml(label)}</h3><div class="sw-pair sw-quad">${tiles}</div></div>`;
+  }).join('');
+  if (!cards) return '';
+  return `<div class="com-winners-ed"><h3 class="com-winners-title">${edition.seasonSlug ? `<a href="/tournament/${encodeURIComponent(edition.seasonSlug)}">${escapeHtml(edition.seasonName || edition.title)}</a>` : escapeHtml(edition.title)}</h3><div class="sw-row sw-row-quad">${cards}</div></div>`;
+}
+// the place of the winners in a post (filled by comBindWinners)
+const comWinnersSlot = (post) => (post.winnersSeasonId ? `<div class="com-post-winners" data-winners-season="${post.winnersSeasonId}"></div>` : '');
+function comBindWinners(root) {
+  root.querySelectorAll('[data-winners-season]:not([data-done])').forEach(async (slot) => {
+    slot.dataset.done = '1';
+    try {
+      const editions = await api(`/winners?seasonId=${encodeURIComponent(slot.dataset.winnersSeason)}`);
+      const html = (Array.isArray(editions) ? editions : []).map(comWinnersTilesHtml).join('');
+      if (html) slot.innerHTML = html; else slot.remove();
+    } catch { slot.remove(); }
+  });
+}
+
 function comReactionsHtml(post) {
   const chips = (post.reactions || []).map((r) => `<button type="button" class="com-react${r.mine ? ' on' : ''}" data-react="${escapeHtml(r.emoji)}"><span class="com-react-emoji">${escapeHtml(r.emoji)}</span><span class="com-react-count">${r.count}</span></button>`).join('');
   return `<div class="com-reactions" data-reactions="${post.id}">${chips}<button type="button" class="com-react com-react-add" data-react-add aria-label="${escapeHtml(t('com.react'))}" title="${escapeHtml(t('com.react'))}">☺<small>+</small></button></div>`;

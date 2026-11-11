@@ -69,6 +69,7 @@
         ${comPostHeadHtml({ logo: logoHtml(p.organisation), name: p.organisation.name, href: `/community/${encodeURIComponent(p.organisation.slug)}`, by: t('com.postedBy', { name: p.authorName }), date: dateText(p.createdAt) + (p.editedAt ? ` · ${t('com.edited')}` : '') })}
         ${p.body ? `<div class="com-post-body">${comPostText(p.body)}</div>` : ''}
         ${comPostImage(p.imageUrl)}
+        ${comWinnersSlot(p)}
         ${comReactionsHtml(p)}
         ${comCommentsHtml(p)}
       </div>`;
@@ -149,6 +150,7 @@
     root.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; render(); }));
     comBindReactions(root, (el) => el.dataset.org);
     comBindComments(root, (el) => el.dataset.org);
+    comBindWinners(root);
     comBindTournaments(root);
     // the Discover filters change the list only (the search box keeps the focus)
     const refilter = () => { document.getElementById('com-discover-list').innerHTML = listHtml(filtered(), items.length ? 'com.filterNone' : 'com.empty'); };

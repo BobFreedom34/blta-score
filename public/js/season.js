@@ -215,7 +215,42 @@ function seriesWinnersHtml() {
       return `<div class="sw-card"><h3 class="sw-cat">${escapeHtml(b.category ? categoryLabel(b.category) : b.title)}</h3><div class="sw-pair${isTournament() ? ' sw-quad' : ''}">${tiles}</div></div>`;
     }).join('');
   if (!cards) return '';
-  return `<section class="sw-sec">${season.organisation ? secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle')) : secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle'), '/vitazi', t('season.winnersAll'))}<div class="sw-row${isTournament() ? ' sw-row-quad' : ''}">${cards}</div></section>`;
+  return `<section class="sw-sec">${season.organisation ? secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle')) : secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle'), '/vitazi', t('season.winnersAll'))}<div class="sw-row${isTournament() ? ' sw-row-quad' : ''}">${cards}</div>${shareWinnersHtml()}</section>`;
+}
+
+// the organiser of a club tournament shares its winners as a post in the news of the community (he may add a text to it)
+function shareWinnersHtml() {
+  if (!season.canManage || !season.organisation || !season.organisation.id || !isTournament()) return '';
+  return `<div class="sw-share"><button type="button" class="btn btn-outline" data-share-winners>${escapeHtml(t('season.shareWinners'))}</button></div>`;
+}
+function openShareWinners() {
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.style.display = 'flex';
+  back.innerHTML = `<div class="modal com-tdialog" role="dialog" aria-modal="true"><button type="button" class="close" aria-label="Close">&times;</button>
+    <h3 style="margin-top:0">${escapeHtml(t('season.shareWinnersTitle'))}</h3>
+    <p style="font-size:13.5px;line-height:1.5;margin:0 0 10px">${escapeHtml(t('season.shareWinnersHint', { name: season.organisation.name }))}</p>
+    <form id="sw-share-form">
+      <div class="field"><label for="sw-share-text">${escapeHtml(t('season.shareWinnersText'))}</label><textarea id="sw-share-text" rows="4" maxlength="2000" placeholder="${escapeHtml(t('season.shareWinnersPlaceholder'))}"></textarea></div>
+      <div id="sw-share-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
+      <button type="submit" class="btn btn-primary">${escapeHtml(t('season.shareWinnersSend'))}</button>
+    </form></div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.close').addEventListener('click', close);
+  back.addEventListener('click', (e) => { if (e.target === back) close(); });
+  back.querySelector('#sw-share-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true;
+    try {
+      await api(`/communities/${season.organisation.id}/posts`, { method: 'POST', body: { body: back.querySelector('#sw-share-text').value.trim(), winnersSeasonId: season.id } });
+      close();
+      if (typeof toast === 'function') toast(t('season.shareWinnersDone'));
+      if (season.organisation.slug) window.location.href = siteUrl(`/community/${encodeURIComponent(season.organisation.slug)}`);
+    } catch (err) { btn.disabled = false; back.querySelector('#sw-share-error').textContent = err.message; }
+  });
+  setTimeout(() => back.querySelector('#sw-share-text').focus(), 0);
 }
 
 // a tournament is a season of its own kind: same page, with a "Turnaj" chip, a venue and its own categories
@@ -942,6 +977,8 @@ function render() {
   rootEl.innerHTML = `${headerHtml()}${tilesHtml()}${progressBlockHtml()}${seriesWinnersHtml()}<div class="tabs" id="sv-tabs" role="tablist"></div><div id="sv-panel" class="sv-panel"></div><div id="sv-players-fixed"></div>${threadCommentsHtml()}<section class="sv-partners" id="sv-partners" hidden></section>`;
   renderFixedPlayers();
   bindThread();
+  const shareBtn = rootEl.querySelector('[data-share-winners]');
+  if (shareBtn) shareBtn.addEventListener('click', openShareWinners);
   loadSponsorStrip(document.getElementById('sv-partners'), `?seasonId=${season.id}`);
   return renderPanel();
 }

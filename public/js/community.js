@@ -14,7 +14,6 @@
   let members = { members: [], pending: [] };
   let posts = { items: [], more: false };
   let tournaments = [];
-  let winners = []; // the winners lists of its tournaments (GET /api/winners?organisation=<slug>), newest tournament first
   let ranking = { items: [] }; // the own ranking of the community or club (GET /api/communities/:id/ranking), its points set by hand by an admin
   // a page opened from an invitation link (?invite=...): joining with it needs no approval
   const inviteToken = new URLSearchParams(window.location.search).get('invite') || '';
@@ -77,6 +76,7 @@
         ${comPostHeadHtml({ logo: orgLogoHtml(), name: org.name, by: t('com.postedBy', { name: p.authorName }), date: dateText(p.createdAt) + (p.editedAt ? ` · ${t('com.edited')}` : ''), postId: p.id, canDelete: p.canDelete, canEdit: p.canEdit })}
         ${editingPost === p.id ? postEditHtml(p) : p.body ? `<div class="com-post-body">${comPostText(p.body)}</div>` : ''}
         ${comPostImage(p.imageUrl)}
+        ${comWinnersSlot(p)}
         ${comReactionsHtml(p)}
         ${comCommentsHtml(p)}
       </div>`;
@@ -154,24 +154,6 @@
     return `<div class="com-event-card com-news-tournament">${comTournamentRow({ ...s, organisation: null })}${admin}</div>`;
   }
 
-  // the winners of the tournaments of the club: per tournament its categories with the winner, the finalist and the semifinalists (the tiles of the page of a tournament)
-  function winnersHtml() {
-    const blocks = winners.map((e) => {
-      const cards = e.blocks.map((b) => {
-        const tiles = b.places.map((p) => {
-          const [tone, labelKey] = p.slot === 1 ? ['win-gold', 'winners.winner'] : p.slot === 2 ? ['win-silver', 'winners.finalist'] : ['win-bronze', 'winners.semifinalist'];
-          const photo = p.photoUrl ? `<img class="sw-img" src="${escapeHtml(p.photoUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">` : `<div class="sw-av">${escapeHtml(String(p.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase())}</div>`;
-          const inner = `<div class="sw-ph">${photo}</div><div class="sw-l"><small>${escapeHtml(t(labelKey))}</small><b>${escapeHtml(p.name)}</b></div>`;
-          return p.playerId ? `<a class="sw-tile ${tone}" href="/player/${encodeURIComponent(p.playerSlug || p.playerId)}">${inner}</a>` : `<div class="sw-tile ${tone}">${inner}</div>`;
-        }).join('');
-        const label = b.category ? ({ ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' }[b.category] || b.category) : (b.title === 'Konečné poradie' ? t('season.navFinal') : b.title);
-        return `<div class="sw-card"><h3 class="sw-cat">${escapeHtml(label)}</h3><div class="sw-pair sw-quad">${tiles}</div></div>`;
-      }).join('');
-      return `<div class="com-winners-ed"><h3 class="com-winners-title">${e.seasonSlug ? `<a href="/tournament/${encodeURIComponent(e.seasonSlug)}">${escapeHtml(e.seasonName || e.title)}</a>` : escapeHtml(e.title)}</h3><div class="sw-row sw-row-quad">${cards}</div></div>`;
-    }).join('');
-    return blocks ? `<section class="com-winners"><div class="com-lab">${escapeHtml(t('com.winners'))}</div>${blocks}</section>` : '';
-  }
-
   function eventsHtml() {
     const make = isActing() && org.approved ? `<button type="button" class="btn btn-primary com-new-tournament" data-act="new-tournament">+ ${escapeHtml(t('com.newTournament'))}</button> <button type="button" class="btn btn-outline com-new-tournament" data-act="new-season">+ ${escapeHtml(t('com.newSeason'))}</button>` : '';
     // the filter of years (the year of the start date; the one with today's date first when it has events, else the newest): "All" shows everything
@@ -181,7 +163,7 @@
     if (eventYear !== 'all' && !years.includes(eventYear)) eventYear = years.includes(thisYear) ? thisYear : (years[0] || 'all');
     const shown = eventYear === 'all' ? tournaments : tournaments.filter((s) => yearOf(s) === eventYear);
     const pills = years.length ? `<div class="tabs com-years">${['all', ...years].map((y) => `<button type="button" class="tab${y === eventYear ? ' active' : ''}" data-event-year="${y}">${escapeHtml(y === 'all' ? tl('Všetky', 'All') : y)}</button>`).join('')}</div>` : '';
-    return `${make}${pills}${shown.length ? `<div class="com-events">${shown.map(tournamentHtml).join('')}</div>` : `<p class="com-empty">${escapeHtml(t('com.noEvents'))}</p>`}${winnersHtml()}`;
+    return `${make}${pills}${shown.length ? `<div class="com-events">${shown.map(tournamentHtml).join('')}</div>` : `<p class="com-empty">${escapeHtml(t('com.noEvents'))}</p>`}`;
   }
 
   // "Kopírovať" on a tournament: asks for the name and the dates of the new one (the settings come from the old one on the server), then opens its manage page
@@ -722,6 +704,7 @@
     if (all) all.addEventListener('click', () => guard(all, async () => { await api(`/communities/${org.id}/approve-all`, { method: 'POST' }); await load(); }));
     comBindReactions(root, () => org.id);
     comBindComments(root, () => org.id);
+    comBindWinners(root);
     comBindTournaments(root);
     comBindPostMenus(root);
     const post = document.getElementById('com-post-btn');
@@ -812,18 +795,16 @@
         render();
         return;
       }
-      const [m, p, mineRes, ts, ss, rk, wn] = await Promise.all([
+      const [m, p, mineRes, ts, ss, rk] = await Promise.all([
         api(`/communities/${org.id}/members`),
         api(`/communities/${org.id}/posts`),
         loggedIn ? api('/communities/mine') : Promise.resolve({ acting: null }),
         api(`/communities/${org.id}/tournaments`).catch(() => ({ items: [] })),
         api(`/communities/${org.id}/seasons`).catch(() => ({ items: [] })),
         api(`/communities/${org.id}/ranking`).catch(() => ({ items: [] })),
-        api(`/winners?organisation=${encodeURIComponent(org.slug)}`).catch(() => []),
       ]);
       if (run !== loadRun) return; // a newer load is on its way
       ranking = rk;
-      winners = Array.isArray(wn) ? wn : [];
       members = m;
       posts = p;
       // the events of the club: its tournaments and its seasons together, the latest start first

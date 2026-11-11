@@ -312,7 +312,7 @@ router.get('/feed', (req, res) => {
   const orgOf = (r) => ({ id: r.org_id, slug: r.org_slug, name: r.org_name, type: r.org_type, logoUrl: r.org_logo || '' });
   const orgColumns = 'o.id AS org_id, o.slug AS org_slug, o.name AS org_name, o.type AS org_type, o.logo_url AS org_logo';
   const posts = db.prepare(`
-    SELECT po.id, po.body, po.image_url, po.created_at, po.edited_at, p.name, p.slug, ${orgColumns}
+    SELECT po.id, po.body, po.image_url, po.winners_season_id, po.created_at, po.edited_at, p.name, p.slug, ${orgColumns}
     FROM organisation_posts po
     JOIN organisations o ON o.id = po.organisation_id
     ${member}
@@ -320,7 +320,7 @@ router.get('/feed', (req, res) => {
     WHERE po.hidden = 0 AND o.hidden = 0 AND o.approved = 1 ${cursor ? 'AND po.created_at < ?' : ''}
     ORDER BY po.created_at DESC, po.id DESC LIMIT ${POSTS_PAGE + 1}
   `).all(...args(...(cursor ? [cursor] : []))).map((r) => ({
-    type: 'POST', id: r.id, body: r.body, imageUrl: r.image_url || '', authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at, editedAt: r.edited_at || null, organisation: orgOf(r),
+    type: 'POST', id: r.id, body: r.body, imageUrl: r.image_url || '', winnersSeasonId: r.winners_season_id || null, authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at, editedAt: r.edited_at || null, organisation: orgOf(r),
   }));
   const postReactions = reactionsOf(posts.map((p) => p.id), playerId || 0);
   const postComments = commentCountsOf(posts.map((p) => p.id));
@@ -940,7 +940,7 @@ router.get('/:id/posts', (req, res) => {
   if (communities.isLockedFor(req, org)) return res.status(403).json({ error: 'Members only', locked: true });
   const before = /^\d+$/.test(String(req.query.before || '')) ? Number(req.query.before) : null;
   const rows = db.prepare(`
-    SELECT po.id, po.body, po.image_url, po.author_player_id, po.created_at, po.edited_at, p.name, p.slug FROM organisation_posts po LEFT JOIN players p ON p.id = po.author_player_id
+    SELECT po.id, po.body, po.image_url, po.winners_season_id, po.author_player_id, po.created_at, po.edited_at, p.name, p.slug FROM organisation_posts po LEFT JOIN players p ON p.id = po.author_player_id
     WHERE po.organisation_id = ? AND po.hidden = 0 ${before ? 'AND po.id < ?' : ''} ORDER BY po.id DESC LIMIT ${POSTS_PAGE + 1}
   `).all(...(before ? [org.id, before] : [org.id]));
   const viewer = auth.getPlayerId(req);
@@ -949,7 +949,7 @@ router.get('/:id/posts', (req, res) => {
   const postReactions = reactionsOf(page.map((r) => r.id), viewer);
   const postComments = commentCountsOf(page.map((r) => r.id));
   const items = page.map((r) => ({
-    id: r.id, body: r.body, imageUrl: r.image_url || '', reactions: postReactions.get(r.id), commentCount: postComments.get(r.id), authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at, editedAt: r.edited_at || null,
+    id: r.id, body: r.body, imageUrl: r.image_url || '', winnersSeasonId: r.winners_season_id || null, reactions: postReactions.get(r.id), commentCount: postComments.get(r.id), authorName: r.name || '', authorSlug: r.slug || '', createdAt: r.created_at, editedAt: r.edited_at || null,
     canDelete: communities.siteAdminFor(req, org) || viewerAdmin || (!!viewer && r.author_player_id === viewer),
   }));
   items.forEach((i) => { i.canEdit = i.canDelete; }); // who may delete a post may edit it
@@ -966,9 +966,16 @@ router.post('/:id/posts', (req, res) => {
   if (imageUrl !== '' && !(typeof imageUrl === 'string' && new RegExp(`^/community-images/${ctx.org.id}-post-[\\w.-]+$`).test(imageUrl) && !imageUrl.includes('..'))) {
     return res.status(400).json({ error: 'The picture must be one uploaded for this community' });
   }
-  if (!body && !imageUrl) return res.status(400).json({ error: 'Write something first' });
+  // the winners of one of the tournaments of this community can be shared as a post (the post shows them under its text, which may be empty)
+  let winnersSeasonId = null;
+  if (req.body.winnersSeasonId !== undefined && req.body.winnersSeasonId !== null && req.body.winnersSeasonId !== '') {
+    const season = db.prepare("SELECT id FROM seasons WHERE id = ? AND organisation_id = ? AND kind = 'TOURNAMENT'").get(Number(req.body.winnersSeasonId) || 0, ctx.org.id);
+    if (!season) return res.status(400).json({ error: 'The winners must be those of a tournament of this community' });
+    winnersSeasonId = season.id;
+  }
+  if (!body && !imageUrl && !winnersSeasonId) return res.status(400).json({ error: 'Write something first' });
   if (body.length > 2000) return res.status(400).json({ error: 'The text is too long (max 2000 characters)' });
-  const info = db.prepare('INSERT INTO organisation_posts (organisation_id, author_player_id, body, image_url) VALUES (?, ?, ?, ?)').run(ctx.org.id, ctx.playerId, body, imageUrl || null);
+  const info = db.prepare('INSERT INTO organisation_posts (organisation_id, author_player_id, body, image_url, winners_season_id) VALUES (?, ?, ?, ?, ?)').run(ctx.org.id, ctx.playerId, body, imageUrl || null, winnersSeasonId);
   const row = db.prepare('SELECT po.id, po.body, po.image_url, po.created_at, p.name, p.slug FROM organisation_posts po LEFT JOIN players p ON p.id = po.author_player_id WHERE po.id = ?').get(Number(info.lastInsertRowid));
   // every other active member is told (bell and push); a push never blocks or fails the post
   const insertNote = db.prepare("INSERT INTO community_notifications (player_id, kind, post_id, actor_player_id) VALUES (?, 'POST', ?, ?)");
@@ -976,7 +983,7 @@ router.post('/:id/posts', (req, res) => {
     insertNote.run(m.player_id, row.id, ctx.playerId);
     playerPush.notifyPlayer(m.player_id, 'POST', { name: row.name, body: row.body, orgName: ctx.org.name, orgSlug: ctx.org.slug, postId: row.id });
   });
-  res.status(201).json({ id: row.id, body: row.body, imageUrl: row.image_url || '', reactions: [], commentCount: 0, authorName: row.name || '', authorSlug: row.slug || '', createdAt: row.created_at, editedAt: null, canDelete: true, canEdit: true });
+  res.status(201).json({ id: row.id, body: row.body, imageUrl: row.image_url || '', winnersSeasonId, reactions: [], commentCount: 0, authorName: row.name || '', authorSlug: row.slug || '', createdAt: row.created_at, editedAt: null, canDelete: true, canEdit: true });
 });
 
 // Edit the text of a post: who may delete it may edit it (the author, an admin of the organisation, an admin of the site). The picture stays; the members are not
