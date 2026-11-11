@@ -5775,7 +5775,8 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .com-card:hover { border-color: var(--orange); }
 .com-card-cover { display: block; height: 110px; background: linear-gradient(135deg, #1d3a0a, #3f7a0c 55%, #14230a); }
 .com-card-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.com-logo { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 62px; height: 62px; margin: -31px 0 0 18px; position: relative; overflow: hidden; border: 3px solid var(--status-green); border-radius: 50%; background: var(--fill-grey); color: var(--white); font-weight: 800; font-size: 20px; }
+.com-logo { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; overflow: hidden; border: 2px solid var(--status-green); border-radius: 50%; background: var(--fill-grey); color: var(--white); font-weight: 800; }
+.com-card > .com-logo { width: 62px; height: 62px; margin: -31px 0 0 18px; position: relative; border-width: 3px; font-size: 20px; }
 .com-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .com-card-body { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px 18px 18px; flex: 1; min-width: 0; }
 .com-card-name { font-weight: 800; font-size: 19px; line-height: 1.2; }
