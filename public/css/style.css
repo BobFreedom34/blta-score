@@ -5248,14 +5248,14 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 /* the card of a tournament or a season (Backend, club manage page): dark like the windows (the ink and the greys are re-pointed inside it, as in .modal), the tabs
    under the name stay under the top bar while the page scrolls (--topbar-h is set by seasons-admin.js), the form in sections */
 .sa-card { background: #1b1b1f; color: var(--white); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: none; color-scheme: dark; --ink: #fff; --gray: #c3c7cf; --gray-dim: #8b8f98; --gray-light: rgba(255, 255, 255, 0.1); }
-.sa-card { border-color: #fff; } /* a season or a tournament has a white frame, folded or open, like the sections inside it */
+.sa-card { border: 1px solid var(--orange); background: #1b1b1f; } /* a season or a tournament: orange frame and an orange veil (oranžový závoj) on its head only; below it the card has no colour */
 .sa-tabs { position: sticky; top: var(--topbar-h, 56px); z-index: 20; background: #1b1b1f; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .sa-tab { background: var(--green-light); color: #0a0a0a; border: 2px solid var(--green-light); border-radius: var(--radius-sm); padding: 8px 16px; font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; cursor: pointer; }
 .sa-tab:hover { background: #c6ff3a; border-color: #c6ff3a; }
 .sa-tab.active { background: var(--orange); border-color: var(--orange); color: #fff; }
 .sa-tab-link { margin-left: auto; padding: 8px 0; font-size: 12px; font-weight: 800; color: var(--orange); text-decoration: none; }
 .sa-tab-link:hover { text-decoration: underline; }
-.sa-card .sa-body { padding-top: 18px; }
+.sa-card .sa-body { padding: 18px 12px 12px; }
 /* what the tabs of the card embed (the bracket editor of the Pavúk tab: its cards, fields and format choices) follows the dark card */
 .sa-card .card { background: #232329; box-shadow: none; }
 .sa-card :is(input, select, textarea):not([type=checkbox], [type=radio], [type=file], [type=range], [type=color], [type=button], [type=submit]) { background: var(--fill-grey); color: #fff; border-color: rgba(255, 255, 255, 0.14); }
@@ -5295,8 +5295,9 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 /* a ticked box in the forms of the Backend is green (not the browser's blue) */
 .sa-section input[type=checkbox], .sa-section input[type=radio] { accent-color: var(--green); }
 /* the categories of a tournament or a season: the options at the left edge, the explanation next to them (under them on a narrow screen) */
-.sa-cats-row { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
-.sa-cats-row .sa-checks { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; white-space: nowrap; }
+.sa-cats-row { display: flex; flex-direction: column; align-items: stretch; gap: 0; min-width: 0; }
+.sa-cats-row .sa-checks { flex-wrap: nowrap; min-width: 0; white-space: nowrap; }
+@media (max-width: 600px) { .sa-cats-row .sa-checks { flex-wrap: wrap; white-space: normal; } } /* on a phone the four boxes do not fit one line: they wrap instead of running out of the screen */
 .sa-cats-row .sa-hint { padding-top: 0; font-size: 12px; line-height: 1.5; }
 .sa-hint { font-size: 12px; line-height: 1.5; font-weight: 600; color: var(--gray); }
 /* the other tabs of the card use the same sections, labelled fields and greens as Základné info */
@@ -6846,9 +6847,9 @@ body:not(.embed-light):not(.embed) .ct-card {
 .sv-pr-out .fee { font-size: 12px; color: #6f737c; }
 
 /* the folded head of a tournament / season: the soft green of the green buttons */
-.sa-card > .sa-sum { background: rgba(178, 250, 6, 0.12); border-radius: calc(var(--radius) - 1px); transition: background 0.15s; }
-.sa-card[open] > .sa-sum { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px solid rgba(178, 250, 6, 0.3); }
-.sa-card > .sa-sum:hover { background: rgba(178, 250, 6, 0.18); }
+.sa-card > .sa-sum { background: rgba(255, 85, 0, 0.12); border-radius: calc(var(--radius) - 1px); transition: background 0.15s; }
+.sa-card[open] > .sa-sum { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px solid var(--orange); }
+.sa-card > .sa-sum:hover { background: rgba(255, 85, 0, 0.18); }
 
 /* the head of every section inside a tournament / season: the same soft green strip, across the top of its glass panel */
 .sa-section { overflow: hidden; }
