@@ -215,13 +215,13 @@ function seriesWinnersHtml() {
       return `<div class="sw-card"><h3 class="sw-cat">${escapeHtml(b.category ? categoryLabel(b.category) : b.title)}</h3><div class="sw-pair${isTournament() ? ' sw-quad' : ''}">${tiles}</div></div>`;
     }).join('');
   if (!cards) return '';
-  return `<section class="sw-sec">${season.organisation ? secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle')) : secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle'), '/vitazi', t('season.winnersAll'))}<div class="sw-row${isTournament() ? ' sw-row-quad' : ''}">${cards}</div>${shareWinnersHtml()}</section>`;
+  return `<section class="sw-sec">${season.organisation ? secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle')) : secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle'), '/vitazi', t('season.winnersAll'))}<div class="sw-row${isTournament() ? ' sw-row-quad' : ''}">${cards.replace('<div class="sw-card">', `<div class="sw-card">${shareWinnersHtml()}`)}</div></section>`;
 }
 
 // the organiser of a club tournament shares its winners as a post in the news of the community (he may add a text to it)
 function shareWinnersHtml() {
   if (!season.canManage || !season.organisation || !season.organisation.id || !isTournament()) return '';
-  return `<div class="sw-share"><button type="button" class="btn btn-outline" data-share-winners>${escapeHtml(t('season.shareWinners'))}</button></div>`;
+  return `<button type="button" class="sw-share" data-share-winners title="${escapeHtml(t('season.shareWinners'))}" aria-label="${escapeHtml(t('season.shareWinners'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg><span class="sw-share-label">${escapeHtml(t('season.shareWinners'))}</span></button>`;
 }
 function openShareWinners() {
   const back = document.createElement('div');

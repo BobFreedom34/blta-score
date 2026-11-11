@@ -6944,5 +6944,11 @@ body:has(.admin-tabs) details.card:not(.sa-card) .btn-outline { color: #fff; bor
 :is(.sec-card, body:has(.admin-tabs) details.card:not(.sa-card)) .format-option span span { color: #8b8f98 !important; }
 
 /* the button under the winners of a tournament that shares them to the news of the community, and the winners inside a post */
-.sw-share { margin-top: 14px; }
+.sw-card { position: relative; }
+/* the share button sits in the top right corner of the panel of the winners (the first one): small, light on the dark panel, with a share icon */
+.sw-card:has(> .sw-share) > .sw-cat { display: flex; align-items: center; min-height: 36px; margin-bottom: 12px; }
+.sw-share { position: absolute; top: 16px; right: 16px; z-index: 2; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--orange); border-radius: var(--radius-sm); background: rgba(255, 85, 0, 0.12); color: #fff; font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; } /* the look of the other buttons of the page (VIAC INFO ›): capitals, orange frame, orange veil */
+.sw-share svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sw-share:hover { background: var(--orange); color: #fff; }
+@media (max-width: 600px) { .sw-share-label { display: none; } .sw-share { padding: 7px 9px; } }
 .com-post-winners { margin-top: 12px; }
