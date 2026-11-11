@@ -297,6 +297,7 @@
 <footer class="sl-foot"><span data-i="footer">SLTA - Slovenská liga tenisových amatérov</span></footer>
 
 <script src="/js/slovakia-map.js"></script>
+<script src="/js/schedule-row.js"></script>
 <script src="/js/sponsor-carousel.js"></script>
 <script>
 const TEXT = {
@@ -500,48 +501,17 @@ function draw() {
 const schEl = document.getElementById('sch');
 const schCache = {};
 let schSlug = '';
-const dayD = (iso) => new Date(iso + 'T12:00:00');
-const daysBetween = (a, b) => Math.round((dayD(b) - dayD(a)) / 864e5);
-const dayWord = (n) => (n === 1 ? T.dayOne : (LANG === 'en' ? T.dayMany : (n >= 2 && n <= 4 ? T.dayFew : T.dayMany)));
-const two = (n) => String(n).padStart(2, '0');
-const dateRange = (e) => {
-  const a = dayD(e.startDate); const b = dayD(e.endDate);
-  const dm = (d) => two(d.getDate()) + '.' + two(d.getMonth() + 1) + '.';
-  if (e.startDate === e.endDate) return dm(a);
-  if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) return two(a.getDate()) + '. – ' + dm(b);
-  return dm(a) + ' – ' + dm(b);
-};
-const yearText = (e) => { const a = dayD(e.startDate).getFullYear(); const b = dayD(e.endDate).getFullYear(); return a === b ? String(a) : a + ' – ' + b; };
-const catName = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
-
-function schRow(e, today) {
-  const now = e.state === 'now';
-  const lg = e.type === 'LEAGUE';
-  let extra = ''; let eta = ''; let bar = '';
-  if (now) {
-    const left = Math.max(0, daysBetween(today, e.endDate));
-    eta = T.schDaysLeft.replace('{n}', left).replace('{d}', dayWord(left));
-    extra = ' · ' + eta;
-    const total = Math.max(1, daysBetween(e.startDate, e.endDate));
-    bar = '<div class="home-bar mini"><i style="width:' + Math.min(100, Math.max(0, Math.round(daysBetween(e.startDate, today) / total * 100))) + '%"></i></div>';
-  } else {
-    const n = daysBetween(today, e.startDate);
-    eta = T.schStartsIn.replace('{n}', n).replace('{d}', dayWord(n));
-    extra = ' · ' + eta;
-  }
-  const tags = '<span class="sch-tags"><span class="sch-tag' + (lg ? '' : ' tour') + '">' + (lg ? T.schLeague : T.schTour) + '</span>' + (now ? '<span class="sch-tag now">' + T.running + '</span>' : '') + '</span>';
-  const chips = (e.categories || []).map((c) => '<span class="sch-chip">' + esc(catName[c] || c) + '</span>').join('');
-  const sub = (e.venue ? '<span class="sch-venue">' + esc(e.venue) + ' · </span>' : '') + '<b class="sch-cats">' + chips + '</b><span class="sch-extra">' + esc(extra) + '</span>';
-  const reg = e.registerLink ? '<span class="sch-reg" role="link" tabindex="0" data-href="' + esc(e.registerLink) + '">' + T.register + '</span>' : '';
-  const go = e.link ? '<span class="sch-go">' + T.schMore + ' ›</span>' : '';
-  const more = reg ? '<span class="sch-acts">' + reg + go + '</span>' : (go || '<span></span>');
-  const open = e.link ? '<a class="sch-row link ' + (now ? 'now' : 'future') + '" href="' + esc(e.link) + '"' + (/^https?:/i.test(e.link) && !e.link.startsWith(location.origin) ? ' target="_blank" rel="noopener"' : '') + '>' : '<div class="sch-row ' + (now ? 'now' : 'future') + '">';
-  return open +
-    '<div class="sch-date">' + esc(dateRange(e)) + '<small>' + esc(yearText(e)) + '</small></div>' +
-    '<span class="sch-eta">' + esc(eta) + '</span>' +
-    '<div class="sch-info"><div class="sch-text"><div class="sch-name"><span class="sch-title">' + esc(e.name) + '</span>' + tags + '</div><div class="sch-sub">' + sub + '</div>' + bar + '</div></div>' +
-    more + (e.link ? '</a>' : '</div>');
+// the rows are drawn by the one shared template (js/schedule-row.js), the same one the Harmonogram of blta.sk uses; it asks for t(), escapeHtml and currentLang,
+// which this page answers from its own texts
+const SCH_TEXT_KEYS = { 'schedule.daysLeft': 'schDaysLeft', 'schedule.startsIn': 'schStartsIn', 'schedule.league': 'schLeague', 'schedule.tournament': 'schTour', 'schedule.running': 'running', 'schedule.register': 'register', 'schedule.more': 'schMore', 'schedule.dayOne': 'dayOne', 'schedule.dayFew': 'dayFew', 'schedule.dayMany': 'dayMany' };
+const currentLang = LANG;
+const escapeHtml = esc;
+function t(key, vars) {
+  let s = T[SCH_TEXT_KEYS[key]] || key;
+  Object.keys(vars || {}).forEach((k) => { s = s.split('{' + k + '}').join(vars[k]); });
+  return s;
 }
+const schRowHtml = (e, today) => schRow.html({ ...e, kind: e.type, registration: e.registerLink ? 'open' : 'none' }, today);
 
 const schHead = (c) => '<div class="sl-sched-head"><h3>' + T.schTitle + '</h3><div class="sl-sched-city">' + esc(c.brandName || c.name) + '</div><p>' + T.schSub + '</p></div>';
 
@@ -552,14 +522,14 @@ function schHtml(data) {
   const running = items.filter((e) => e.state === 'now');
   const future = items.filter((e) => e.state !== 'now');
   const out = [];
-  if (running.length) out.push('<div class="sch-month-title">' + esc(T.running) + '</div><div class="sch-card now">' + running.map((e) => schRow(e, today)).join('') + '</div>');
+  if (running.length) out.push('<div class="sch-month-title">' + esc(T.running) + '</div><div class="sch-card now">' + running.map((e) => schRowHtml(e, today)).join('') + '</div>');
   // the coming events, grouped by the month they start in (the year is named when it is not this one)
   const byMonth = new Map();
   future.forEach((e) => { const k = e.startDate.slice(0, 7); if (!byMonth.has(k)) byMonth.set(k, []); byMonth.get(k).push(e); });
   [...byMonth.keys()].sort().forEach((k) => {
     const d = new Date(k + '-01T12:00:00');
     const name = d.toLocaleDateString(LANG === 'en' ? 'en-GB' : 'sk-SK', { month: 'long' }) + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : '');
-    out.push('<div class="sch-month-title">' + esc(name) + '</div><div class="sch-card">' + byMonth.get(k).map((e) => schRow(e, today)).join('') + '</div>');
+    out.push('<div class="sch-month-title">' + esc(name) + '</div><div class="sch-card">' + byMonth.get(k).map((e) => schRowHtml(e, today)).join('') + '</div>');
   });
   return out.join('');
 }

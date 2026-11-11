@@ -33,6 +33,7 @@ test('ONE template: the Harmonogram and the tournament cards of the clubs draw t
   assert.ok(club.includes('schRow.html') && !club.includes('class="sch-row'), 'the club card has no markup of its own');
   assert.ok(read('js/harmonogram.js').includes('schRow.html') && !read('js/harmonogram.js').includes('class="sch-row'), 'the Harmonogram has no markup of its own');
   for (const page of ['harmonogram.html', 'community.html', 'communities.html']) assert.ok(read(page).includes('/js/schedule-row.js'), `${page} loads the template`);
+  assert.ok(read('slta.html').includes('/js/schedule-row.js') && read('slta.html').includes('schRow.html') && !read('slta.html').includes('class="sch-row'), 'the national page draws its rows with the template too');
   const css = read('css/style.css');
   assert.ok(css.includes(':is(.sch-lists, .com-news-tournament) .sch-row.has-poster'), 'the poster rules are written once for both');
   assert.ok(!/.com-news-tournament .sch-(date|go|acts|name)/.test(css), 'the club card has no copy of the row rules');
