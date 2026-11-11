@@ -256,20 +256,6 @@ async function openDrawPanel(host, seasonId, onChanged) {
 
   function render() {
     host.innerHTML = `
-      <section class="sa-section">
-        <h4>${tl('Kurty', 'Courts')}</h4>
-        <div class="sd-courts-row">
-          <label class="sa-field sd-courts-field">${tl('Počet kurtov', 'Number of courts')}
-            <input type="number" min="0" max="50" inputmode="numeric" class="sd-courts" value="${overview.courtCount || ''}" placeholder="0">
-          </label>
-        </div>
-        ${courtStreamFieldsHtml(overview.courtCount, overview.courtStreams, overview.slug, overview.courtNames)}
-        <div class="sd-courts-row" style="margin-top:14px">
-          <button type="button" class="btn btn-sm btn-outline" data-act="courts">${tl('Uložiť kurty', 'Save courts')}</button>
-          <a data-public href="/tournament/${encodeURIComponent(overview.slug)}#courts" target="_blank" rel="noopener" style="font-size:13px;font-weight:700">${tl('Harmonogram', 'Schedule')} ›</a>
-        </div>
-        <div class="sd-courts-note sa-hint" style="margin-top:12px">${overview.courtCount ? Array.from({ length: Math.min(overview.courtCount, 6) }, (_, i) => (overview.courtNames || [])[i] || `${tl('Kurt', 'Court')} ${i + 1}`).join(', ') + (overview.courtCount > 6 ? ` … ${(overview.courtNames || [])[overview.courtCount - 1] || `${tl('Kurt', 'Court')} ${overview.courtCount}`}` : '') : tl('Kurty zatiaľ nie sú nastavené', 'The courts are not set yet')}</div>
-      </section>
       <div class="sd-grid">${overview.categories.map(blockHtml).join('')}</div>
       ${isDoubles ? pairsBlockHtml() : ''}`;
   }
@@ -352,7 +338,6 @@ async function openDrawPanel(host, seasonId, onChanged) {
   };
 
   // the live video links of the courts follow the number of courts (host.oninput above handles the draw controls only)
-  host.addEventListener('input', (e) => { if (e.target.matches('.sd-courts')) syncCourtStreamFields(host, e.target.value); });
 
   host.onclick = async (e) => {
     const btn = e.target.closest('[data-act]');
@@ -364,11 +349,6 @@ async function openDrawPanel(host, seasonId, onChanged) {
     try {
       if (act.startsWith('dbl-')) {
         await doublesAction(act, btn);
-      } else if (act === 'courts') {
-        const raw = host.querySelector('.sd-courts').value.trim();
-        await api(`/seasons/${seasonId}`, { method: 'PATCH', body: { courtCount: raw === '' ? 0 : Number(raw), courtStreams: readCourtStreams(host), courtNames: readCourtNames(host) } });
-        toast(tl('Kurty uložené', 'Courts saved'));
-        await refresh();
       } else if (act === 'seeds') {
         const seeds = rowsOf(cat).map((r) => ({ id: r.id, seed: draftOf(r) === '' ? null : Number(draftOf(r)) }));
         const savedList = await api(`/seasons/${seasonId}/seeds`, { method: 'POST', body: { category: cat, seeds } });

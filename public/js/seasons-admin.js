@@ -341,12 +341,12 @@ function communityPointsSection(s) {
     const places = own.places || {};
     body = `<p class="tr-hint">${tl('Koľko bodov do rebríčka komunity dostane hráč za umiestnenie v turnaji (prvých 10 miest). Prázdne políčko = žiadne body.', 'How many points a player gets into the ranking of the community for the place in the tournament (the first 10 places). An empty box = no points.')} ${note}</p>` + cats.map(([key, label]) => `
       <div class="sa-cp-cat"><div class="sa-cp-name">${escapeHtml(label)}</div>
-        <div class="sa-places">${Array.from({ length: CP_PLACES }, (_, i) => `<label class="sa-field">${i + 1}. ${tl('miesto', 'place')}<input type="number" min="0" max="100000" step="1" inputmode="numeric" data-cp-place="${key}:${i}" value="${(places[key] || [])[i] || ''}"></label>`).join('')}</div>
+        <div class="sa-places">${Array.from({ length: CP_PLACES }, (_, i) => `<label class="sa-field"><span class="sa-label">${i + 1}. ${tl('miesto', 'place')}</span><input type="number" min="0" max="100000" step="1" inputmode="numeric" data-cp-place="${key}:${i}" value="${(places[key] || [])[i] || ''}"></label>`).join('')}</div>
       </div>`).join('');
   } else {
     const coefficient = own.coefficient || {};
     body = `<p class="tr-hint">${tl('Zápas sa do rebríčka komunity oceňuje bodmi, ktoré za neho hráč dostane v tabuľke sezóny podľa bodovania zvoleného vyššie (BLTA 3 / 2 / 1 / 0, 2 body za výhru alebo 1 bod za výhru), krát koeficient kategórie. Prázdne políčko = žiadne body.', 'A match is worth the points the player gets for it in the table of the season by the scoring chosen above (BLTA 3 / 2 / 1 / 0, 2 points for a win or 1 point for a win), times the coefficient of the category. An empty box = no points.')} ${note}</p>
-      <div class="sa-grid">${cats.map(([key, label]) => `<label class="sa-field">${tl('Koeficient', 'Coefficient')} — ${escapeHtml(label)}<input type="number" min="0" max="1000" step="1" inputmode="numeric" data-cp-coef="${key}" value="${coefficient[key] || ''}"></label>`).join('')}</div>`;
+      <div class="sa-grid">${cats.map(([key, label]) => `<label class="sa-field"><span class="sa-label">${tl('Koeficient', 'Coefficient')} — ${escapeHtml(label)}</span><input type="number" min="0" max="1000" step="1" inputmode="numeric" data-cp-coef="${key}" value="${coefficient[key] || ''}"></label>`).join('')}</div>`;
   }
   return `<section class="sa-section" data-cp-section><h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>${tl('Body do rebríčka', 'Ranking points')}</h4>${body}</section>`;
 }
@@ -445,7 +445,7 @@ function rteToolbarHtml() {
 function seasonCardHtml(s) {
   const byCategory = CATEGORIES.map(([key]) => s.groups.filter((g) => g.category === key).length);
   // a field is as wide as its name needs: the name sits on the border of the field and is never cut (about 16 letters fit a column, 36 two of them)
-  const field = (label, control, cls = '') => `<label class="sa-field ${/sa-wide|sa-full/.test(cls) ? '' : (String(label).length > 36 ? 'sa-full' : String(label).length > 16 ? 'sa-wide' : '')} ${cls}"><span class="sa-label">${label}</span>${control}</label>`;
+  const field = (label, control, cls = '') => `<label class="sa-field ${/sa-wide|sa-full/.test(cls) ? '' : (String(label).length > 52 ? 'sa-full' : String(label).length > 22 ? 'sa-wide' : '')} ${cls}"><span class="sa-label">${label}</span>${control}</label>`;
   const input = (name, value, attrs = '') => '<input ' + (/type=/.test(attrs) ? '' : 'type="text" ') + 'data-field="' + name + '" value="' + escapeHtml(value == null ? '' : String(value)) + '" ' + attrs + '>';
   const active = cardTab.get(s.id) || 'info';
   return `
@@ -502,7 +502,7 @@ function seasonCardHtml(s) {
                 ${IS_TOURNAMENT ? field(tl('Plánovaný formát turnaja', 'Planned tournament format'), `<select data-field="plannedFormat" style="${inputStyle}"><option value="">${escapeHtml(tl('— určí sa pri žrebovaní —', '— decided at the draw —'))}</option>${[['PRINCE', 'PRINCE'], ['MONRAD', 'Monrad'], ['ELIMINATION', tl('Eliminácia', 'Elimination')], ['GROUPS', tl('Skupiny', 'Groups')], ['GROUPS_BRACKET', tl('Skupiny + pavúk', 'Groups + bracket')], ['SWISS', tl('Švajčiarsky systém', 'Swiss system')]].map(([k, label]) => `<option value="${k}"${s.plannedFormat === k ? ' selected' : ''}>${escapeHtml(label)}</option>`).join('')}</select>`) : ''}
                 <label class="sa-field sa-check"><input type="checkbox" data-field="registrationOpen"${s.registrationOpen ? ' checked' : ''}> ${tl('Registrácia je otvorená', 'Registration is open')}</label>
                 ${s.registrationStarted ? `<span class="sa-hint sa-full">${tl('Turnaj sa už začal, preto sa verejne nedá registrovať, aj keď je registrácia zapnutá. Hráča môžeš pridať ručne.', 'The tournament has already started, so nobody can register publicly even though the registration is on. You can still add a player by hand.')}</span>` : ''}
-                <div class="sa-field sa-full">
+                <div class="sa-field sa-wide">
                   <label class="sa-field"><span class="sa-label">${s.playType === 'DOUBLES' ? tl('Maximálny počet párov *', 'Maximum number of pairs *') : tl('Maximálny počet hráčov *', 'Maximum number of players *')}</span>${input('maxPlayers', s.maxPlayers || '', `type="number" min="1" max="2000" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 16', 'e.g. 16'))}"`)}</label>
                 </div>
                 <span class="sa-hint sa-full">${tl('Maximum zadaj vždy. Keď sa dosiahne, ďalší hráči sa môžu prihlásiť už len ako náhradníci. Ak sa niekto odhlási (alebo ho zmažeš), prvý náhradník automaticky nastúpi do turnaja.', 'Always enter the maximum. When it is reached, the next players can only register as substitutes. If somebody drops out (or you delete them), the first substitute automatically comes into the tournament.')}</span>
@@ -519,7 +519,7 @@ function seasonCardHtml(s) {
                 ${courtStreamFieldsHtml(s.courtCount, s.courtStreams, s.slug, s.courtNames)}
                 ${field(tl('Max. zápasov hráča za deň', 'Max. matches per player per day'), input('maxMatchesPerDay', s.maxMatchesPerDay || '', `type="number" min="0" max="10" inputmode="numeric" placeholder="${escapeHtml(tl('bez limitu', 'no limit'))}"`))}
               </div>
-              <div class="tr-title" style="margin-top:14px">${tl('Plánovanie turnaja', 'Tournament planning')}</div>
+              <div class="tr-title">${tl('Plánovanie turnaja', 'Tournament planning')}</div>
               <p class="tr-hint">${tl('Podľa týchto údajov systém skladá rozvrh zápasov na kurty. Rozvrh sa dá ďalej upravovať v časti Rozpis.', 'The system builds the schedule of the matches on the courts from these. The schedule can be edited further in the Schedule part.')}</p>
               <div class="sa-grid">
                 ${field(tl('Dĺžka zápasu (min)', 'Match length (min)'), input('matchMinutes', s.planning.matchMinutes, 'type="number" min="15" max="300" step="5" inputmode="numeric"'))}
@@ -831,19 +831,19 @@ function wireSeason(card) {
       <section class="sa-section">
         <h4>${isDoubles ? tl('Pridať pár', 'Add a pair') : tl('Pridať hráča', 'Add a player')}</h4>
         <form class="reg-add sa-grid">
-          <label class="sa-field sa-wide">${isDoubles ? tl('Hráč', 'Player') : tl('Meno hráča', 'Name of the player')}
+          <label class="sa-field sa-wide"><span class="sa-label">${isDoubles ? tl('Hráč', 'Player') : tl('Meno hráča', 'Name of the player')}</span>
             <div class="autocomplete"><input type="text" data-ra="player" id="reg-player-${id}" placeholder="${escapeHtml(tl('Začni písať meno alebo priezvisko…', 'Start typing a name or surname…'))}" autocomplete="off"><div class="autocomplete-list" id="reg-player-list-${id}"></div></div>
           </label>
-          ${isDoubles ? `<label class="sa-field sa-wide">${tl('Partner', 'Partner')}
+          ${isDoubles ? `<label class="sa-field sa-wide"><span class="sa-label">${tl('Partner', 'Partner')}</span>
             <input type="text" data-ra="partner" list="reg-partner-names-${id}" maxlength="80" placeholder="${escapeHtml(tl('Meno partnera', 'Name of the partner'))}" autocomplete="off">
             <datalist id="reg-partner-names-${id}">${players.map((p) => `<option value="${escapeHtml(p.name)}"></option>`).join('')}</datalist>
-          </label>` : `<label class="sa-field">${tl('Kategória', 'Category')}
+          </label>` : `<label class="sa-field"><span class="sa-label">${tl('Kategória', 'Category')}</span>
             <select data-ra="category"><option value="">${IS_TOURNAMENT || seasonWithoutCategories(seasons.find((x) => x.id === id)) ? tl('Bez kategórie', 'No category') : tl('Kategória…', 'Category…')}</option>${categoryOptions('')}</select>
           </label>`}
-          <label class="sa-field">${tl('Telefón', 'Phone')}
+          <label class="sa-field"><span class="sa-label">${tl('Telefón', 'Phone')}</span>
             <input type="text" data-ra="phone" maxlength="20" placeholder="${escapeHtml(tl('z profilu', 'from the profile'))}">
           </label>
-          <label class="sa-field sa-wide">${tl('E-mail', 'Email')}
+          <label class="sa-field sa-wide"><span class="sa-label">${tl('E-mail', 'Email')}</span>
             <input type="text" data-ra="email" maxlength="120" placeholder="${escapeHtml(tl('z profilu', 'from the profile'))}">
           </label>
           <div><button type="submit" class="btn btn-sm btn-primary">${isDoubles ? tl('Pridať pár', 'Add pair') : tl('Pridať hráča', 'Add player')}</button></div>
@@ -939,18 +939,18 @@ function wireSeason(card) {
         <div class="sa-reg-edit" data-reg="${r.id}">
           <strong>${escapeHtml(r.name)}</strong>
           <div class="sa-grid" style="margin-top:14px">
-            ${isDoubles ? `<label class="sa-field sa-wide">${tl('Partner', 'Partner')}
+            ${isDoubles ? `<label class="sa-field sa-wide"><span class="sa-label">${tl('Partner', 'Partner')}</span>
               <input type="text" data-re="partner" maxlength="80" value="${escapeHtml(r.partnerName || '')}">
-            </label>` : `<label class="sa-field">${tl('Kategória', 'Category')}
+            </label>` : `<label class="sa-field"><span class="sa-label">${tl('Kategória', 'Category')}</span>
               <select data-re="category">${IS_TOURNAMENT || seasonWithoutCategories(seasons.find((x) => x.id === id)) ? `<option value="">${tl('Bez kategórie', 'No category')}</option>` : ''}${categoryOptions(r.category)}</select>
             </label>`}
-            <label class="sa-field">${tl('Telefón', 'Phone')}
+            <label class="sa-field"><span class="sa-label">${tl('Telefón', 'Phone')}</span>
               <input type="text" data-re="phone" maxlength="20" value="${escapeHtml(r.phone || '')}">
             </label>
-            <label class="sa-field sa-wide">${tl('E-mail', 'Email')}
+            <label class="sa-field sa-wide"><span class="sa-label">${tl('E-mail', 'Email')}</span>
               <input type="text" data-re="email" maxlength="120" value="${escapeHtml(r.email || '')}">
             </label>
-            <label class="sa-field sa-full">${tl('Poznámka', 'Note')}
+            <label class="sa-field sa-full"><span class="sa-label">${tl('Poznámka', 'Note')}</span>
               <textarea data-re="note" rows="2" maxlength="500">${escapeHtml(r.note || '')}</textarea>
             </label>
           </div>

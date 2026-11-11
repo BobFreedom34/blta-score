@@ -80,14 +80,39 @@
     });
   }
 
+  // the name of a field in a section sits on the border of the field (the green tag of the forms of the tournaments): a label that is plain text and then one
+  // input / select / textarea gets it, so every form of the Backend looks the same without each tab's script being rewritten
+  const TEXTISH = /^(text|search|email|url|tel|number|date|time|datetime-local|password|)$/;
+  function enhanceLabels() {
+    document.querySelectorAll(':is(.sec-card, details.card) label:not(.sa-field):not(.sa-check)').forEach((lab) => {
+      if (lab.dataset.saDone) return;
+      lab.dataset.saDone = '1';
+      const nodes = [...lab.childNodes];
+      const at = nodes.findIndex((n) => n.nodeType === 1 && /^(INPUT|SELECT|TEXTAREA)$/.test(n.tagName));
+      if (at <= 0) return;
+      const control = nodes[at];
+      if (control.tagName === 'INPUT' && !TEXTISH.test(control.type || '')) return;
+      const before = nodes.slice(0, at);
+      if (!before.every((n) => n.nodeType === 3 || (n.nodeType === 1 && /^(SPAN|B|STRONG|EM|SMALL|I)$/.test(n.tagName)))) return;
+      const text = before.map((n) => n.textContent).join('').replace(/s+/g, ' ').trim();
+      if (!text || text.length > 60) return;
+      const tag = document.createElement('span');
+      tag.className = text.length > 22 ? 'sa-label sa-label-long' : 'sa-label';
+      before.forEach((n) => tag.appendChild(n));
+      lab.insertBefore(tag, control);
+      lab.classList.add('sa-field');
+    });
+  }
+
   let busy = false;
   const obs = new MutationObserver(() => {
     if (busy) return;
     busy = true;
-    try { pass(); } finally { obs.takeRecords(); busy = false; }
+    try { pass(); enhanceLabels(); } finally { obs.takeRecords(); busy = false; }
   });
   const start = () => {
     pass();
+    enhanceLabels();
     obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'data-sec', 'data-sec-title', 'data-sec-open'] });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();

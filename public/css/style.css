@@ -5266,7 +5266,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sa-section { background: #232329; border: 1px solid #fff; border-radius: var(--radius-md); padding: 14px 16px 16px; margin-bottom: 14px; }
 .sa-section h4 { margin: 0 0 14px; font-size: 16px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--green-light); }
 .sa-section h4 .sa-ico { width: 20px; height: 20px; margin: -3px 9px -3px 0; vertical-align: middle; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.sa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px 14px; align-items: end; }
+.sa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px 16px; align-items: end; }
 .sa-cp-cat { margin-top: 14px; }
 .sa-cp-name { font-weight: 800; font-size: 14px; margin-bottom: 8px; }
 .sa-places { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 12px; }
@@ -5289,7 +5289,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sa-tag, .tr-title, .day-times-title { display: inline-block; justify-self: start; align-self: start; margin: 0 0 10px; padding: 3px 12px; border: 1px solid var(--green); border-radius: 8px; background: #121213; color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: .05em; line-height: 16px; text-transform: uppercase; }
 .sa-wide { grid-column: span 2; }
 .sa-full { grid-column: 1 / -1; }
-.sa-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; padding-bottom: 10px; }
+.sa-check { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 12px; border: 1.5px solid rgba(255, 255, 255, 0.22); border-radius: 8px; background: var(--fill-grey); font-size: 14px; font-weight: 700; cursor: pointer; } /* a switch looks like a field: same frame, same height */
 .sa-checks { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; font-weight: 600; padding: 8px 0; }
 .sa-checks label { display: flex; align-items: center; gap: 6px; }
 /* a ticked box in the forms of the Backend is green (not the browser's blue) */
@@ -5299,7 +5299,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sa-cats-row .sa-checks { flex-wrap: nowrap; min-width: 0; white-space: nowrap; }
 @media (max-width: 600px) { .sa-cats-row .sa-checks { flex-wrap: wrap; white-space: normal; } } /* on a phone the four boxes do not fit one line: they wrap instead of running out of the screen */
 .sa-cats-row .sa-hint { padding-top: 0; font-size: 12px; line-height: 1.5; }
-.sa-hint { font-size: 12px; line-height: 1.5; font-weight: 600; color: var(--gray); }
+.sa-hint { font-size: 12.5px; line-height: 1.55; font-weight: 500; color: #a9adb6; }
 /* the other tabs of the card use the same sections, labelled fields and greens as Základné info */
 .sa-field select, .sa-field textarea { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1.5px solid rgba(255, 255, 255, 0.14); background: var(--fill-grey); color: #fff; font-family: inherit; font-size: 14px; }
 .sa-field textarea { resize: vertical; }
@@ -5343,7 +5343,10 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .tr-move { flex: 0 0 auto; width: 30px; height: 28px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius-sm); background: var(--fill-grey); color: #fff; font-size: 12px; cursor: pointer; }
 .tr-move:hover:not(:disabled) { border-color: var(--orange); color: var(--orange); }
 .tr-move:disabled { opacity: 0.3; cursor: default; }
-.sa-section-save { margin-top: 16px; }
+.sa-section-save { margin-top: 22px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.sa-section > .tr-title, .sa-section > .day-times-title { margin-top: 24px; }
+/* the Uložiť buttons are as big as the buttons of the tabs above (same padding, size and border) */
+.sa-card .sa-section .btn-sm:not(:is(li, tr, td, .sa-reg-row) *), .sa-section-save .btn, .sa-actions .btn { box-sizing: border-box; min-height: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; border-width: 2px; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; border-radius: var(--radius-sm); }
 .sa-actions { display: flex; align-items: center; gap: 8px; padding-top: 4px; }
 @media (max-width: 600px) { .sa-wide { grid-column: 1 / -1; } .sa-tabs { padding: 8px 10px; gap: 6px; align-items: stretch; } .sa-tab { flex: 1 1 calc(50% - 3px); min-width: 0; padding: 6px 6px; font-size: 12px; line-height: 1.2; text-align: center; overflow-wrap: anywhere; } .sa-tabs:has(.sa-tab:nth-of-type(5)) .sa-tab { flex-basis: calc(33.333% - 4px); } .sa-tab-link { flex: 0 0 100%; margin-left: 0; padding: 0; text-align: right; font-size: 11px; } }
 
@@ -6897,3 +6900,44 @@ body:not(.embed-light):not(.embed) .ct-card {
 .sv-rules-body h3 { margin: 18px 0 6px; font-size: 16px; font-weight: 800; color: #fff; }
 .sv-rules-body ul, .sv-rules-body ol { padding-left: 22px; }
 .sv-rules-body a { color: var(--green); }
+
+/* ---- every tab of the Backend (the folding sections of js/admin-sections.js) looks like the card of a tournament ---- */
+.sec-head { background: rgba(255, 85, 0, 0.12); color: var(--white); border: 1px solid var(--orange); box-shadow: none; transition: background 0.15s; }
+.sec-head .sec-chev { color: var(--orange); }
+.sec-head:hover { background: rgba(255, 85, 0, 0.18); }
+.sec-head:hover .sec-title { color: var(--white); }
+.sec-head.open { border-bottom-color: var(--orange); }
+.sec-head.add { background: var(--green); color: #0a0a0a; border-color: var(--green); }
+.sec-head.add .sec-chev { color: #0a0a0a; }
+.sec-head.add.open + .sec-card { border-color: var(--green); }
+.sec-card { background: #1b1b1f; color: var(--white); border: 1px solid var(--orange); border-top: 0; box-shadow: none; color-scheme: dark; --ink: #fff; --gray: #c3c7cf; --gray-dim: #8b8f98; --gray-light: rgba(255, 255, 255, 0.1); }
+.sec-card :is(input, select, textarea):not([type=checkbox], [type=radio], [type=file], [type=range], [type=color], [type=button], [type=submit]) { background: var(--fill-grey); color: #fff; border: 1.5px solid rgba(255, 255, 255, 0.22); border-radius: 8px; }
+.sec-card :is(input, select, textarea):focus { outline: none; border-color: var(--green); }
+.sec-card input[type=checkbox], .sec-card input[type=radio] { accent-color: var(--green); }
+.sec-card .card { background: #232329; box-shadow: none; }
+.sec-card .btn:not(.btn-sm), .sec-card .btn-sm:not(:is(li, tr, td, [class*="row"], [class*="item"]) *) { box-sizing: border-box; min-height: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; border-width: 2px; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; border-radius: var(--radius-sm); }
+.sec-card .btn-outline { color: #fff; border-color: rgba(255, 255, 255, 0.5); background: transparent; }
+.sec-card .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+/* a card of a Backend page that is not a folding section (a choice, a note, a list) is dark with the same frame */
+body:has(.admin-tabs) .container > .card:not(.sec-card) { background: #1b1b1f; color: var(--white); border: 1px solid var(--orange); box-shadow: none; color-scheme: dark; --ink: #fff; --gray: #c3c7cf; --gray-dim: #8b8f98; --gray-light: rgba(255, 255, 255, 0.1); }
+body:has(.admin-tabs) .container > .card:not(.sec-card) :is(input, select, textarea):not([type=checkbox], [type=radio], [type=file], [type=range], [type=color], [type=button], [type=submit]) { background: var(--fill-grey); color: #fff; border: 1.5px solid rgba(255, 255, 255, 0.22); border-radius: 8px; }
+/* the folding cards (<details class="card">) of the Backend tabs: an orange-veil bar and a dark body, like the card of a tournament */
+body:has(.admin-tabs) details.card { padding: 0; overflow: hidden; background: #1b1b1f; color: var(--white); border: 1px solid var(--orange); box-shadow: none; color-scheme: dark; --ink: #fff; --gray: #c3c7cf; --gray-dim: #8b8f98; --gray-light: rgba(255, 255, 255, 0.1); --border: rgba(255, 255, 255, 0.14); }
+body:has(.admin-tabs) details.card > summary { padding: 14px 18px; background: rgba(255, 85, 0, 0.12); transition: background 0.15s; }
+body:has(.admin-tabs) details.card > summary:hover { background: rgba(255, 85, 0, 0.18); }
+body:has(.admin-tabs) details.card[open] > summary { border-bottom: 1px solid var(--orange); }
+body:has(.admin-tabs) details.card > :not(summary) { margin-left: 18px; margin-right: 18px; }
+body:has(.admin-tabs) details.card > :not(summary):last-child { margin-bottom: 18px; }
+body:has(.admin-tabs) details.card > summary + * { margin-top: 16px; }
+body:has(.admin-tabs) details.card :is(input, select, textarea):not([type=checkbox], [type=radio], [type=file], [type=range], [type=color], [type=button], [type=submit]) { background: var(--fill-grey); color: #fff; border: 1.5px solid rgba(255, 255, 255, 0.22); border-radius: 8px; }
+body:has(.admin-tabs) details.card input[type=checkbox], body:has(.admin-tabs) details.card input[type=radio] { accent-color: var(--green); }
+body:has(.admin-tabs) details.card .btn:not(.btn-sm) { box-sizing: border-box; min-height: 36px; padding: 8px 16px; border-width: 2px; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; border-radius: var(--radius-sm); }
+body:has(.admin-tabs) details.card .btn-outline { color: #fff; border-color: rgba(255, 255, 255, 0.5); background: transparent; }
+/* a long name of a field (the forms of the other Backend tabs): it wraps and stands above the field instead of running out of its width */
+.sa-field:has(> .sa-label.sa-label-long) { padding-top: 0; }
+.sa-label.sa-label-long { position: relative; top: auto; left: auto; justify-self: start; max-width: calc(100% - 20px); margin: 0 0 -12px 10px; white-space: normal; padding: 3px 12px; line-height: 15px; }
+.sa-label small, .sa-label .sa-label-sub { text-transform: none; letter-spacing: 0; font-weight: 600; }
+:is(.sec-card, body:has(.admin-tabs) details.card) .format-option { background: var(--fill-grey); color: #fff; border-color: rgba(255, 255, 255, 0.14); }
+:is(.sec-card, body:has(.admin-tabs) details.card) .format-option:has(input:checked) { border-color: var(--orange); background: rgba(255, 85, 0, 0.14); }
+:is(.sec-card, body:has(.admin-tabs) details.card) .format-option > span > div:last-child { color: #a9adb6 !important; }
+:is(.sec-card, body:has(.admin-tabs) details.card) .format-option span span { color: #8b8f98 !important; }
