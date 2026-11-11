@@ -16,10 +16,10 @@ function courtStreamInputsHtml(count, values, saved, slug, names = []) {
     const url = saved[i] && slug ? courtOverlayUrl(slug, i + 1) : '';
     return `
     <div class="court-stream-item">
-      <label class="sa-field court-name-field">${escapeHtml(tl('Názov kurtu', 'Court name'))} ${i + 1}
+      <label class="sa-field court-name-field"><span class="sa-label">${escapeHtml(tl('Názov kurtu', 'Court name'))} ${i + 1}</span>
         <input type="text" maxlength="40" data-court-name="${i + 1}" value="${escapeHtml(names[i] || '')}" placeholder="${escapeHtml(tl('Kurt', 'Court'))} ${i + 1}">
       </label>
-      <label class="sa-field court-stream-field">${escapeHtml(tl('odkaz na live video (YouTube)', 'live video link (YouTube)'))}
+      <label class="sa-field court-stream-field"><span class="sa-label">${escapeHtml(tl('Odkaz na live video (YouTube)', 'Live video link (YouTube)'))}</span>
         <input type="text" inputmode="url" maxlength="300" data-court-stream="${i + 1}" value="${escapeHtml(values[i] || '')}" placeholder="https://youtube.com/…">
       </label>
       ${url ? `<div class="court-overlay-url">

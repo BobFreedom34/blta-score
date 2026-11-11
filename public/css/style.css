@@ -5285,6 +5285,8 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
   .sa-field:has(> .sa-label) { padding-top: 0; }
   .sa-label { position: relative; top: auto; left: auto; justify-self: start; max-width: calc(100% - 20px); margin: 0 0 -12px 10px; white-space: normal; padding: 3px 12px; line-height: 15px; }
 }
+/* the title of a block of options or of a field made of several parts: the same green-edged tag as the name of a field, standing above it */
+.sa-tag, .tr-title, .day-times-title { display: inline-block; justify-self: start; align-self: start; margin: 0 0 10px; padding: 3px 12px; border: 1px solid var(--green); border-radius: 8px; background: #121213; color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: .05em; line-height: 16px; text-transform: uppercase; }
 .sa-wide { grid-column: span 2; }
 .sa-full { grid-column: 1 / -1; }
 .sa-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; padding-bottom: 10px; }
@@ -5327,7 +5329,6 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sa-card .season-brackets .card > h3 { margin: 0 0 14px !important; font-size: 16px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--green-light); }
 /* Bodovanie a podmienky of a tournament (public/js/tournament-rules.js) */
 .tr-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px 28px; }
-.tr-title { font-size: 14px; font-weight: 800; color: var(--ink); margin-bottom: 6px; }
 .tr-hint { margin: 0 0 8px; font-size: 12.5px; line-height: 1.4; color: var(--gray); font-weight: 600; }
 .tr-opt { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 8px; cursor: pointer; font-weight: 600; }
 .tr-opt input { width: auto; margin: 3px 0 0; flex: 0 0 auto; }
@@ -6636,7 +6637,8 @@ a.com-rank-name:hover { color: var(--orange); }
 .sv-live-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
 /* the overlay link of a court that has a saved YouTube link (public/js/court-streams.js): the link of the scoreboard to put into PRISM or OBS, with a Copy button */
-.court-stream-item { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* each court is a box of its own (its name, its live video and its overlay link), so it is clear what belongs together */
+.court-stream-item { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 14px 14px 16px; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
 .court-overlay-url { display: flex; flex-direction: column; gap: 4px; }
 .court-overlay-url > span { font-size: 12px; font-weight: 600; color: var(--gray); }
 .court-overlay-url > div { display: flex; gap: 8px; align-items: stretch; }
@@ -6650,10 +6652,9 @@ a.com-rank-name:hover { color: var(--orange); }
 /* the playing times of each day of a tournament in the Backend form (public/js/seasons-admin.js): one row per day, a start and an end */
 /* the window "Pridať zápas" of the Harmonogram (public/js/court-schedule.js): the fields are the ones of the other windows (.field) */
 .cs-addmatch { max-width: 520px; }
-.day-times-title { font-weight: 800; font-size: 13px; letter-spacing: 0.03em; margin-top: 4px; }
 .day-time-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 14px; padding: 8px 0; border-top: 1px solid rgba(255, 255, 255, 0.12); }
 .day-time-row b { min-width: 150px; font-size: 14px; align-self: center; }
-.day-time-row label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--gray); }
+.day-time-row label.sa-field { padding-top: 12px; }
 .day-time-row input[type="time"] { width: 130px; }
 
 /* Computer menu: every button is exactly the same height (the icon or a frame can't make one taller), the spacing between them is the same everywhere, and the arrow of a dropdown button sits inside the button as a part of it */

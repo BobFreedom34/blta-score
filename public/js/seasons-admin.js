@@ -389,8 +389,8 @@ function dayTimesHtml(start, end, values, generalStart, generalEnd) {
     const v = values[day] || {};
     return `<div class="day-time-row" data-day-row="${day}">
       <b>${escapeHtml(label(day))}</b>
-      <label>${tl('Začiatok', 'Start')}<input type="time" data-day-time="start" value="${escapeHtml(v.start || '')}"></label>
-      <label>${tl('Koniec', 'End')}<input type="time" data-day-time="end" value="${escapeHtml(v.end || '')}"></label>
+      <label class="sa-field"><span class="sa-label">${tl('Začiatok', 'Start')}</span><input type="time" data-day-time="start" value="${escapeHtml(v.start || '')}"></label>
+      <label class="sa-field"><span class="sa-label">${tl('Koniec', 'End')}</span><input type="time" data-day-time="end" value="${escapeHtml(v.end || '')}"></label>
     </div>`;
   }).join('');
   return `<div class="day-times-title">${tl('Čas hrania pre jednotlivé dni', 'Playing times of each day')}</div>
@@ -477,7 +477,7 @@ function seasonCardHtml(s) {
                 ${IS_TOURNAMENT && s.playType === 'DOUBLES' ? `<div class="sa-field sa-wide">${tl('Typ turnaja', 'Tournament type')}
                   <div style="padding-top:6px">${tl('Štvorhra — turnaj dvojíc (typ sa po vytvorení nedá zmeniť)', 'Doubles — a tournament of pairs (the type cannot be changed after it is made)')}</div>
                 </div>` : ''}
-                ${s.playType !== 'DOUBLES' ? `<div class="sa-field sa-full">${tl('Kategórie', 'Categories')}
+                ${s.playType !== 'DOUBLES' ? `<div class="sa-field sa-full"><span class="sa-tag">${tl('Kategórie', 'Categories')}</span>
                   <div class="sa-cats-row">
                     <div class="sa-checks">${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}${s.categories.includes('OPEN') ? ' disabled' : ''}> ${label}</label>`).join('')}
                       <label><input type="checkbox" data-cat="OPEN"${s.categories.includes('OPEN') ? ' checked' : ''}> ${tl('Bez kategórie', 'No category')}</label></div>
@@ -487,7 +487,7 @@ function seasonCardHtml(s) {
                   </div>
                 </div>` : ''}
               </div>
-              <div class="sa-field sa-full" style="margin-top:12px">${tl('Popis', 'Description')} <span class="sa-hint">— ${tl('riadok „Názov: hodnota“ sa na stránke zobrazí ako dlaždica', 'a line "Name: value" is shown on the page as a tile')}</span>
+              <div class="sa-field sa-full" style="margin-top:12px"><span class="sa-tag">${tl('Popis', 'Description')}</span> <span class="sa-hint">— ${tl('riadok „Názov: hodnota“ sa na stránke zobrazí ako dlaždica', 'a line "Name: value" is shown on the page as a tile')}</span>
                 ${rteToolbarHtml()}
                 <div class="rte" contenteditable="true" data-rte="info">${richText(s.info)}</div>
               </div>
@@ -549,7 +549,7 @@ function seasonCardHtml(s) {
 
             <section class="sa-section">
               <h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>${tl('Vzhľad stránky', 'Look of the page')}</h4>
-              <div class="sa-field sa-full" data-logo-block>${tl('Logo — nahranie', 'Logo — upload')} <span class="sa-hint">— ${tl('vyber logo z počítača alebo z knižnice (Backend → Média). Nahrá sa hneď, netreba Uložiť. PNG, JPG alebo WebP do 8 MB.', 'pick a logo from your computer or from the library (Backend → Media). It uploads at once, no need to Save. PNG, JPG or WebP up to 8 MB.')}</span>
+              <div class="sa-field sa-full" data-logo-block><span class="sa-tag">${tl('Logo — nahranie', 'Logo — upload')}</span> <span class="sa-hint">— ${tl('vyber logo z počítača alebo z knižnice (Backend → Média). Nahrá sa hneď, netreba Uložiť. PNG, JPG alebo WebP do 8 MB.', 'pick a logo from your computer or from the library (Backend → Media). It uploads at once, no need to Save. PNG, JPG or WebP up to 8 MB.')}</span>
                 <div class="sa-logo-row">
                   <div class="sa-logo-pic" data-logo-pic>${s.logoUrl ? `<img src="${escapeHtml(s.logoUrl)}" alt="">` : `<span>${tl('Zatiaľ bez loga', 'No logo yet')}</span>`}</div>
                   <div class="sa-hero-actions">
@@ -559,7 +559,7 @@ function seasonCardHtml(s) {
                   </div>
                 </div>
               </div>
-              <div class="sa-field sa-full" style="margin-top:12px">${tl('Hero fotka stránky', 'Hero photo of the page')} <span class="sa-hint">— ${IS_TOURNAMENT ? tl('veľká fotka hore na stránke, názov turnaja je cez jej dolnú časť. Nahrá sa hneď, netreba Uložiť. JPG, PNG alebo WebP do 8 MB.', 'a big photo at the top of the page, the name of the tournament runs over its lower part. It uploads at once, no need to Save. JPG, PNG or WebP up to 8 MB.') : tl('veľká fotka hore na stránke, názov sezóny je cez jej dolnú časť. Nahrá sa hneď, netreba Uložiť. JPG, PNG alebo WebP do 8 MB.', 'a big photo at the top of the page, the name of the season runs over its lower part. It uploads at once, no need to Save. JPG, PNG or WebP up to 8 MB.')}</span>
+              <div class="sa-field sa-full" style="margin-top:12px"><span class="sa-tag">${tl('Hero fotka stránky', 'Hero photo of the page')}</span> <span class="sa-hint">— ${IS_TOURNAMENT ? tl('veľká fotka hore na stránke, názov turnaja je cez jej dolnú časť. Nahrá sa hneď, netreba Uložiť. JPG, PNG alebo WebP do 8 MB.', 'a big photo at the top of the page, the name of the tournament runs over its lower part. It uploads at once, no need to Save. JPG, PNG or WebP up to 8 MB.') : tl('veľká fotka hore na stránke, názov sezóny je cez jej dolnú časť. Nahrá sa hneď, netreba Uložiť. JPG, PNG alebo WebP do 8 MB.', 'a big photo at the top of the page, the name of the season runs over its lower part. It uploads at once, no need to Save. JPG, PNG or WebP up to 8 MB.')}</span>
                 <div class="sa-hero-grid">${heroBlockHtml(s, 'desktop')}${heroBlockHtml(s, 'mobile')}</div>
               </div>
             </section>
