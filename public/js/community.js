@@ -145,28 +145,13 @@
   }
 
   // ---- the Events tab: the tournaments of the club (and, for its admin acting as the club, the way to make one and to manage it)
+  // the card is THE row of the Harmonogram (comTournamentRow, community-post.js: schedule-row.js and its rules); under it, for the admin acting as the club, the buttons that only he has
   function tournamentHtml(s) {
-    const today = new Date().toISOString().slice(0, 10);
-    const over = (!!s.endDate && s.endDate < today) || !!s.tournamentEnded;
     const season = s.kind === 'LEAGUE'; // a season (groups and a table) or a tournament
-    // what a visitor can do (the page of the tournament goes by the same): the switch of the Backend is not enough, a tournament that has started takes no registration
-    const regAvailable = s.registrationAvailable !== undefined ? s.registrationAvailable : s.registrationOpen;
-    const open = !season && regAvailable && !over;
-    const closed = !season && !regAvailable && !over;
-    const link = `/${season ? 'season' : 'tournament'}/${encodeURIComponent(s.slug)}`;
-    const facts = (season ? [t('com.seasonTag'), s.venue, t('com.seasonMatches', { n: s.matchCount || 0 })] : [s.venue, t(s.playType === 'DOUBLES' ? 'com.tDoubles' : 'com.tSingles'), t('com.eventRegistered', { n: s.registrationCount || 0 })]).filter(Boolean).map(escapeHtml).join(' · ');
-    return `
-      <div class="com-event${over ? ' over' : ''}">
-        <div class="com-event-date">${escapeHtml(rangeText(s.startDate, s.endDate) || t('com.eventNoDate'))}</div>
-        <div class="com-event-main"><a class="com-event-name" href="${escapeHtml(link)}">${escapeHtml(s.name)}</a><div class="com-event-sub">${facts}</div></div>
-        <div class="com-event-acts">
-          ${open ? `<a class="btn com-small com-reg" href="${escapeHtml(link)}#register">${escapeHtml(t('com.eventRegister'))}</a>` : ''}
-          ${closed ? `<span class="btn com-small com-reg-closed">${escapeHtml(t('season.registerClosed'))}</span>` : ''}
-          <a class="btn btn-outline com-small" href="${escapeHtml(link)}">${escapeHtml(t('com.eventView'))}</a>
-          ${isActing() ? `<a class="btn btn-outline com-small" href="/community-tournament/${s.id}">${escapeHtml(t('com.eventManage'))}</a>` : ''}
-          ${isActing() && !season && org.approved ? `<button type="button" class="btn btn-outline com-small" data-copy-tournament="${s.id}" title="${escapeHtml(tl('Vytvorí nový turnaj s rovnakými nastaveniami (bez hráčov a zápasov)', 'Makes a new tournament with the same settings (without players and matches)'))}">${escapeHtml(tl('Kopírovať', 'Copy'))}</button>` : ''}
-        </div>
-      </div>`;
+    const admin = isActing()
+      ? `<div class="com-event-admin"><a class="btn btn-outline com-small" href="/community-tournament/${s.id}">${escapeHtml(t('com.eventManage'))}</a>${!season && org.approved ? `<button type="button" class="btn btn-outline com-small" data-copy-tournament="${s.id}" title="${escapeHtml(tl('Vytvorí nový turnaj s rovnakými nastaveniami (bez hráčov a zápasov)', 'Makes a new tournament with the same settings (without players and matches)'))}">${escapeHtml(tl('Kopírovať', 'Copy'))}</button>` : ''}</div>`
+      : '';
+    return `<div class="com-event-card com-news-tournament">${comTournamentRow({ ...s, organisation: null })}${admin}</div>`;
   }
 
   // the winners of the tournaments of the club: per tournament its categories with the winner, the finalist and the semifinalists (the tiles of the page of a tournament)
