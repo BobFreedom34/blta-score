@@ -343,14 +343,14 @@ router.get('/notifications', (req, res) => {
 
   // a new post of a community he is in, and an emoji somebody put on his post
   const newsRows = db.prepare(`
-    SELECT n.id, n.seen, n.created_at, n.kind, n.emoji, po.id AS post_id, po.body, o.name AS org_name, o.slug AS org_slug, a.name AS actor_name
+    SELECT n.id, n.seen, n.created_at, n.kind, n.emoji, po.id AS post_id, po.body, po.by_admin, o.name AS org_name, o.slug AS org_slug, a.name AS actor_name
     FROM community_notifications n
     JOIN organisation_posts po ON po.id = n.post_id AND po.hidden = 0
     JOIN organisations o ON o.id = po.organisation_id AND o.hidden = 0
     LEFT JOIN players a ON a.id = n.actor_player_id
     WHERE n.player_id = ?
   `).all(playerId).map((r) => (r.kind === 'POST'
-    ? { type: 'POST', id: r.id, seen: !!r.seen, createdAt: r.created_at, post: { authorName: r.actor_name || '', body: r.body, postId: r.post_id, orgName: r.org_name, orgSlug: r.org_slug } }
+    ? { type: 'POST', id: r.id, seen: !!r.seen, createdAt: r.created_at, post: { authorName: r.by_admin ? 'Admin' : (r.actor_name || ''), body: r.body, postId: r.post_id, orgName: r.org_name, orgSlug: r.org_slug } }
     : { type: 'REACTION', id: r.id, seen: !!r.seen, createdAt: r.created_at, reaction: { actorName: r.actor_name || '', emoji: r.emoji, postId: r.post_id, orgName: r.org_name, orgSlug: r.org_slug } }));
 
   // somebody registered for an event of a club the player runs

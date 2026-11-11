@@ -975,13 +975,13 @@ router.post('/:id/posts', (req, res) => {
   }
   if (!body && !imageUrl && !winnersSeasonId) return res.status(400).json({ error: 'Write something first' });
   if (body.length > 2000) return res.status(400).json({ error: 'The text is too long (max 2000 characters)' });
-  const info = db.prepare('INSERT INTO organisation_posts (organisation_id, author_player_id, body, image_url, winners_season_id) VALUES (?, ?, ?, ?, ?)').run(ctx.org.id, ctx.playerId, body, imageUrl || null, winnersSeasonId);
+  const info = db.prepare('INSERT INTO organisation_posts (organisation_id, author_player_id, body, image_url, winners_season_id, by_admin) VALUES (?, ?, ?, ?, ?, ?)').run(ctx.org.id, ctx.playerId, body, imageUrl || null, winnersSeasonId, ctx.superAdmin ? 1 : 0);
   const row = db.prepare('SELECT po.id, po.body, po.image_url, po.created_at, p.name, p.slug FROM organisation_posts po LEFT JOIN players p ON p.id = po.author_player_id WHERE po.id = ?').get(Number(info.lastInsertRowid));
   // every other active member is told (bell and push); a push never blocks or fails the post
   const insertNote = db.prepare("INSERT INTO community_notifications (player_id, kind, post_id, actor_player_id) VALUES (?, 'POST', ?, ?)");
   db.prepare("SELECT player_id FROM organisation_members WHERE organisation_id = ? AND status = 'ACTIVE' AND player_id != ?").all(ctx.org.id, ctx.playerId).forEach((m) => {
     insertNote.run(m.player_id, row.id, ctx.playerId);
-    playerPush.notifyPlayer(m.player_id, 'POST', { name: row.name, body: row.body, orgName: ctx.org.name, orgSlug: ctx.org.slug, postId: row.id });
+    playerPush.notifyPlayer(m.player_id, 'POST', { name: ctx.superAdmin ? 'Admin' : row.name, body: row.body, orgName: ctx.org.name, orgSlug: ctx.org.slug, postId: row.id });
   });
   res.status(201).json({ id: row.id, body: row.body, imageUrl: row.image_url || '', winnersSeasonId, reactions: [], commentCount: 0, authorName: row.name || '', authorSlug: row.slug || '', createdAt: row.created_at, editedAt: null, canDelete: true, canEdit: true });
 });
