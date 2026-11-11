@@ -29,15 +29,20 @@
       : `<span class="com-logo">${escapeHtml(initials(o.name))}</span>`;
   }
 
+  // the card: a cover strip, the logo over its edge, the name, the city, the tags, the members and the way to the page
   function cardHtml(o) {
+    const cover = o.coverUrl ? `<img src="${escapeHtml(o.coverUrl)}" alt="" loading="lazy">` : '';
     return `
       <a class="com-card" href="/community/${encodeURIComponent(o.slug)}">
+        <span class="com-card-cover">${cover}</span>
         ${logoHtml(o)}
         <span class="com-card-body">
           <span class="com-card-name">${escapeHtml(o.name)}</span>
-          <span class="com-card-meta"><span class="com-badge">${escapeHtml(typeText(o))}</span><span class="com-badge ${o.joinPolicy === 'OPEN' ? 'com-badge-open' : 'com-badge-approval'}">${escapeHtml(t(o.joinPolicy === 'OPEN' ? 'com.cardOpen' : 'com.cardApproval'))}</span>${o.approved ? '' : `<span class="com-badge com-badge-wait">${escapeHtml(t('com.pendingApproval'))}</span>`}${o.city ? escapeHtml(o.city) : ''}</span>
+          ${o.city ? `<span class="com-card-city">${escapeHtml(o.city)}</span>` : ''}
+          <span class="com-card-meta"><span class="com-badge">${escapeHtml(typeText(o))}</span><span class="com-badge ${o.joinPolicy === 'OPEN' ? 'com-badge-open' : 'com-badge-approval'}">${escapeHtml(t(o.joinPolicy === 'OPEN' ? 'com.cardOpen' : 'com.cardApproval'))}</span>${o.approved ? '' : `<span class="com-badge com-badge-wait">${escapeHtml(t('com.pendingApproval'))}</span>`}</span>
+          <span class="com-card-count">${escapeHtml(membersText(o.memberCount))}</span>
+          <span class="com-card-go">${escapeHtml(t('schedule.more'))} ›</span>
         </span>
-        <span class="com-card-count">${escapeHtml(membersText(o.memberCount))}</span>
       </a>`;
   }
 
