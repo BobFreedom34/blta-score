@@ -8,6 +8,7 @@
 const db = require('./db');
 const engine = require('./matchEngine');
 const courtStreams = require('./courtStreams');
+const courtNames = require('./courtNames');
 
 const TZ = 'Europe/Bratislava';
 const GRID_MIN = 15; // start times are on a 15-minute grid from the start of the playing day
@@ -79,6 +80,7 @@ function settingsOf(season) {
   days.forEach((day) => { dayTimes[day] = ownDayTimes[day] || { start: dayStart, end: dayEnd }; });
   return {
     courtCount: season.court_count || 0,
+    courtNames: courtNames.namesOf(season),
     matchMinutes: season.match_minutes || 90,
     dayStart,
     dayEnd,
@@ -265,6 +267,9 @@ function serializeMatch(row, settings, now) {
 // (two of them by mistake: the one that started last), else the one that finished on it in the last FINISHED_SHOW_MS (its final score stays on screen for a
 // while), else none. Only what the scoreboard needs: no contact details, no ids of players.
 const FINISHED_SHOW_MS = 3 * MIN;
+// the name of a court on the schedule (its own name, or "Kurt <number>")
+const courtLabel = (settings, n) => courtNames.label(settings.courtNames, n);
+
 function getCourtLive(season, court, now = Date.now()) {
   const settings = settingsOf(season);
   const rows = loadMatches(season.id).filter((r) => r.player1_id && r.player2_id && r.court_no === court);
@@ -278,7 +283,7 @@ function getCourtLive(season, court, now = Date.now()) {
     const m = serializeMatch(row, settings, now);
     match = { token: m.token, status: m.status, player1: { name: m.player1.name }, player2: { name: m.player2.name }, winnerId: m.winnerId, state: m.state };
   }
-  return { court, tournament: season.name, match };
+  return { court, label: courtLabel(settings, court), tournament: season.name, match };
 }
 
 // The moment a tournament starts: the start of its first day's playing window (that day's own start time, else the general one, 09:00 unless set) — UTC ms, or null
@@ -348,7 +353,7 @@ function placeMatch(season, token, courtNo, scheduledAt, now = Date.now()) {
   if (match.status !== 'PLANNED' && !finished) return { status: 409, error: 'Only a match that is not being played can be moved' };
   if (finished && courtNo === null) return { status: 409, error: 'A finished match stays on the schedule' };
   if (courtNo === null) {
-    db.prepare("UPDATE matches SET scheduled_at = NULL, court_no = NULL, slot_locked = 0, location = CASE WHEN location LIKE 'Kurt %' THEN '' ELSE location END, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(match.id);
+    db.prepare("UPDATE matches SET scheduled_at = NULL, court_no = NULL, slot_locked = 0, location = CASE WHEN court_no IS NOT NULL THEN '' ELSE location END, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(match.id);
     return { warnings: [] };
   }
   if (!Number.isInteger(courtNo) || courtNo < 1 || courtNo > settings.courtCount) return { status: 400, error: `Choose a court from 1 to ${settings.courtCount || 0}` };
@@ -388,12 +393,12 @@ function placeMatch(season, token, courtNo, scheduledAt, now = Date.now()) {
   }
   if (finished) {
     db.prepare("UPDATE matches SET scheduled_at = ?, court_no = ?, duration_minutes = ?, manual_block = 1, location = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?")
-      .run(new Date(start).toISOString(), courtNo, length / MIN, `Kurt ${courtNo}`, match.id);
+      .run(new Date(start).toISOString(), courtNo, length / MIN, courtLabel(settings, courtNo), match.id);
     autoPlanIfEnabled(season.id);
     return { warnings };
   }
   db.prepare("UPDATE matches SET scheduled_at = ?, court_no = ?, slot_locked = 1, location = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?")
-    .run(new Date(start).toISOString(), courtNo, `Kurt ${courtNo}`, match.id);
+    .run(new Date(start).toISOString(), courtNo, courtLabel(settings, courtNo), match.id);
   return { warnings };
 }
 
@@ -475,13 +480,13 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
     return { placed: 0, skipped: 0, unlocked: Number(unlocked.changes) };
   }
   if (mode === 'clear') {
-    const cleared = db.prepare("UPDATE matches SET scheduled_at = NULL, court_no = NULL, slot_locked = 0, location = CASE WHEN location LIKE 'Kurt %' THEN '' ELSE location END, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE season_id = ? AND status = 'PLANNED' AND court_no IS NOT NULL").run(seasonId);
+    const cleared = db.prepare("UPDATE matches SET scheduled_at = NULL, court_no = NULL, slot_locked = 0, location = CASE WHEN court_no IS NOT NULL THEN '' ELSE location END, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE season_id = ? AND status = 'PLANNED' AND court_no IS NOT NULL").run(seasonId);
     return { placed: 0, skipped: 0, cleared: Number(cleared.changes) };
   }
   if (!settings.courtCount) return { error: 'Set the number of courts first' };
   if (!settings.days.length) return { error: 'Set the dates of the tournament first' };
   if (mode === 'rebuild') {
-    db.prepare("UPDATE matches SET scheduled_at = NULL, court_no = NULL, location = CASE WHEN location LIKE 'Kurt %' THEN '' ELSE location END WHERE season_id = ? AND status = 'PLANNED' AND court_no IS NOT NULL AND slot_locked = 0").run(seasonId);
+    db.prepare("UPDATE matches SET scheduled_at = NULL, court_no = NULL, location = CASE WHEN court_no IS NOT NULL THEN '' ELSE location END WHERE season_id = ? AND status = 'PLANNED' AND court_no IS NOT NULL AND slot_locked = 0").run(seasonId);
   }
 
   const rows = loadMatches(seasonId).filter((r) => r.player1_id && r.player2_id);
@@ -508,7 +513,7 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
       if (!(found.slot[0] < current[0] || (clash && found.slot[0] !== current[0]))) return;
       entry.court = found.court;
       entry.interval = found.slot;
-      update.run(new Date(found.slot[0]).toISOString(), found.court, 0, `Kurt ${found.court}`, r.id);
+      update.run(new Date(found.slot[0]).toISOString(), found.court, 0, courtLabel(settings, found.court), r.id);
       moved += 1;
     });
     return { placed: 0, skipped: 0, moved };
@@ -523,7 +528,7 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
     const found = findSlot(entries, settings, windows, players, lengthOf(r), notBefore, r.id);
     if (!found) { skipped += 1; return; }
     entries.push({ id: r.id, players, court: found.court, interval: found.slot });
-    update.run(new Date(found.slot[0]).toISOString(), found.court, 0, `Kurt ${found.court}`, r.id);
+    update.run(new Date(found.slot[0]).toISOString(), found.court, 0, courtLabel(settings, found.court), r.id);
     placed += 1;
   });
   return { placed, skipped, moved };
@@ -579,6 +584,7 @@ module.exports = {
   storeSettings,
   saveSettings,
   SETTING_KEYS,
+  courtLabel,
   getSchedule,
   getCourtLive,
   tournamentStartMs,

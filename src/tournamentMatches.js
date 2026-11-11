@@ -18,6 +18,7 @@ function matchOptions(season) {
   const rows = db.prepare("SELECT * FROM season_groups WHERE season_id = ? AND category != 'DOUBLES' ORDER BY sort_order, id").all(season.id);
   return {
     courtCount: season.court_count || 0,
+    courtNames: require('./courtNames').fit(season, season.court_count || 0),
     days: tournamentSchedule.settingsOf(season).days,
     groups: rows.map((g) => {
       const players = db.prepare('SELECT p.id, p.name FROM season_group_members m JOIN players p ON p.id = m.player_id WHERE m.group_id = ? AND m.withdrawn_at IS NULL ORDER BY m.sort_order, p.name').all(g.id);

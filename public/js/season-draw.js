@@ -6,7 +6,7 @@
 // Everything can be made automatically or by hand (groups put together by the organiser, an empty bracket to seat). Loaded by
 // seasons-admin.html / tournaments-admin.html, used by seasons-admin.js (needs api, toast, escapeHtml).
 
-const DRAW_FORMATS = ['BO1', 'BO3', 'BO3_STB', 'BO5', 'BO5_STB', 'BO3_G4_STB'];
+const DRAW_FORMATS = ['BO1', 'BO3', 'BO3_STB', 'BO5', 'BO5_STB', 'BO3_G4_STB', 'BO1_G5_TB'];
 const DRAW_MAIN_DEFAULT = 'BO3_STB';
 const DRAW_CONSOLATION_DEFAULT = 'BO3_G4_STB';
 // the order of the buttons: the special format for exactly 6 players is always the last one
@@ -263,12 +263,12 @@ async function openDrawPanel(host, seasonId, onChanged) {
             <input type="number" min="0" max="50" inputmode="numeric" class="sd-courts" value="${overview.courtCount || ''}" placeholder="0">
           </label>
         </div>
-        ${courtStreamFieldsHtml(overview.courtCount, overview.courtStreams, overview.slug)}
+        ${courtStreamFieldsHtml(overview.courtCount, overview.courtStreams, overview.slug, overview.courtNames)}
         <div class="sd-courts-row" style="margin-top:14px">
           <button type="button" class="btn btn-sm btn-outline" data-act="courts">${tl('Uložiť kurty', 'Save courts')}</button>
           <a data-public href="/tournament/${encodeURIComponent(overview.slug)}#courts" target="_blank" rel="noopener" style="font-size:13px;font-weight:700">${tl('Harmonogram', 'Schedule')} ›</a>
         </div>
-        <div class="sd-courts-note sa-hint" style="margin-top:12px">${overview.courtCount ? Array.from({ length: Math.min(overview.courtCount, 6) }, (_, i) => `${tl('Kurt', 'Court')} ${i + 1}`).join(', ') + (overview.courtCount > 6 ? ` … ${tl('Kurt', 'Court')} ${overview.courtCount}` : '') : tl('Kurty zatiaľ nie sú nastavené', 'The courts are not set yet')}</div>
+        <div class="sd-courts-note sa-hint" style="margin-top:12px">${overview.courtCount ? Array.from({ length: Math.min(overview.courtCount, 6) }, (_, i) => (overview.courtNames || [])[i] || `${tl('Kurt', 'Court')} ${i + 1}`).join(', ') + (overview.courtCount > 6 ? ` … ${(overview.courtNames || [])[overview.courtCount - 1] || `${tl('Kurt', 'Court')} ${overview.courtCount}`}` : '') : tl('Kurty zatiaľ nie sú nastavené', 'The courts are not set yet')}</div>
       </section>
       <div class="sd-grid">${overview.categories.map(blockHtml).join('')}</div>
       ${isDoubles ? pairsBlockHtml() : ''}`;
@@ -366,7 +366,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
         await doublesAction(act, btn);
       } else if (act === 'courts') {
         const raw = host.querySelector('.sd-courts').value.trim();
-        await api(`/seasons/${seasonId}`, { method: 'PATCH', body: { courtCount: raw === '' ? 0 : Number(raw), courtStreams: readCourtStreams(host) } });
+        await api(`/seasons/${seasonId}`, { method: 'PATCH', body: { courtCount: raw === '' ? 0 : Number(raw), courtStreams: readCourtStreams(host), courtNames: readCourtNames(host) } });
         toast(tl('Kurty uložené', 'Courts saved'));
         await refresh();
       } else if (act === 'seeds') {

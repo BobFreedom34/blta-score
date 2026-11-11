@@ -73,7 +73,7 @@
     const current = m.state.currentSet;
     const shown = (m.state.sets || []).map((s, i) => ({ s, i })).filter(({ s, i }) => (live && i === current) || started(s));
     const cells = (player) => shown.map(({ s, i }) => cellHtml(s, player, live && i === current)).join('');
-    const tag = data.tag != null ? data.tag : `Kurt ${data.court}`;
+    const tag = data.tag != null ? data.tag : (data.label || `Kurt ${data.court}`);
     const subtitle = data.subtitle != null ? data.subtitle : data.tournament;
     stage.innerHTML = `
       <div class="ov-panel">

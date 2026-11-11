@@ -10,6 +10,11 @@ const CS_PX = 2.8; // pixels per minute of the timeline (a 30-minute match is hi
 const CS_SNAP = 15; // minutes
 const CS_MS = 60 * 1000;
 
+// the name of a court (the organiser may name them as the club marks them: Kurt 6, Kurt 1 …); the courts are 1 … n inside
+const csCourtName = (n) => {
+  const names = (csState && csState.data && csState.data.settings && csState.data.settings.courtNames) || [];
+  return names[n - 1] || t('courts.court', { n });
+};
 let csState = null; // { host, season, admin, data, day, view } — day and view are kept when the tab is drawn again
 let csDrag = null;
 const csUnlocked = new Set(); // tokens of FINISHED matches the organiser unlocked on this page (a finished match is locked by itself until then)
@@ -165,7 +170,7 @@ function csTimelineHtml(day) {
     const count = ofCourt.length; // the matches of the day on this court (the little number in the heading, as in the list)
     const lanes = csLanes(ofCourt);
     const blocks = ofCourt.map((m) => csBlockHtml(m, day, startMin, lanes.get(m.token), endMin)).join('');
-    return `<div class="cs-colwrap"><div class="cs-court-h"><span>${escapeHtml(t('courts.court', { n: court }))}</span>${csLiveButtonHtml(court)}<em>${count}</em></div><div class="cs-col" data-court="${court}" style="height:${height}px">${lines.join('')}${nowLine}${blocks}</div></div>`;
+    return `<div class="cs-colwrap"><div class="cs-court-h"><span>${escapeHtml(csCourtName(court))}</span>${csLiveButtonHtml(court)}<em>${count}</em></div><div class="cs-col" data-court="${court}" style="height:${height}px">${lines.join('')}${nowLine}${blocks}</div></div>`;
   });
   const per = csPerRow();
   const width = Math.min(per, settings.courtCount); // every row has the same columns, so the courts of the last row are as wide as the others
@@ -173,7 +178,7 @@ function csTimelineHtml(day) {
   const rows = [];
   for (let i = 0; i < cols.length; i += per) rows.push(`<div class="cs-grid" style="--cs-cols:${width}">${gutter}${cols.slice(i, i + per).join('')}</div>`);
   // phones: a bar of the courts above the timeline (it stays at the top while the page scrolls; the row of courts scrolls sideways at the very bottom, out of sight on a tall timeline)
-  const nav = settings.courtCount > 1 ? `<div class="cs-courtnav">${Array.from({ length: settings.courtCount }, (_, i) => `<button type="button" data-cs-court="${i + 1}"${i === 0 ? ' class="on"' : ''}>${escapeHtml(t('courts.court', { n: i + 1 }))}</button>`).join('')}</div>` : '';
+  const nav = settings.courtCount > 1 ? `<div class="cs-courtnav">${Array.from({ length: settings.courtCount }, (_, i) => `<button type="button" data-cs-court="${i + 1}"${i === 0 ? ' class="on"' : ''}>${escapeHtml(csCourtName(i + 1))}</button>`).join('')}</div>` : '';
   return `${nav}<div class="cs-scroll">${rows.join('')}</div>`;
 }
 
@@ -183,7 +188,7 @@ function csLiveHtml() {
   if (!live.length) return '';
   const cards = live.map((m) => `
     <a class="cs-livecard ${csStatusClass(m)}" href="/match/${m.token}">
-      <span class="cs-live-h"><b class="cs-live">${escapeHtml(t('home.live'))}</b>${m.courtNo ? ` ${escapeHtml(t('courts.court', { n: m.courtNo }))}` : ''}</span>
+      <span class="cs-live-h"><b class="cs-live">${escapeHtml(t('home.live'))}</b>${m.courtNo ? ` ${escapeHtml(csCourtName(m.courtNo))}` : ''}</span>
       <span class="cs-live-pl">${csScoredPlayersHtml(m)}</span>
       <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
     </a>`).join('');
@@ -220,7 +225,7 @@ function csListHtml(day) {
         <span class="cs-row-pl">${csScoredPlayersHtml(m, m.status === 'FINISHED' ? `<b class="cs-done cs-row-pill">${escapeHtml(t('courts.finished'))}</b>` : (m.status === 'LIVE' ? `<b class="cs-done cs-live-pill cs-row-pill">${escapeHtml(t('home.live'))}</b>` : ''))}</span>
         <span class="cs-row-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
       </a>`).join('');
-    return `<div class="cs-list-court"><div class="cs-list-h">${escapeHtml(t('courts.court', { n: court }))}${csLiveButtonHtml(court)}<em>${rows.length}</em></div>${body || `<div class="cs-row-empty">${escapeHtml(t('courts.courtFree'))}</div>`}</div>`;
+    return `<div class="cs-list-court"><div class="cs-list-h">${escapeHtml(csCourtName(court))}${csLiveButtonHtml(court)}<em>${rows.length}</em></div>${body || `<div class="cs-row-empty">${escapeHtml(t('courts.courtFree'))}</div>`}</div>`;
   }).join('');
   return `<div class="cs-list">${sections}</div>`;
 }
@@ -523,7 +528,7 @@ async function csOpenAddMatch() {
         </div>
         <div class="field">
           <label for="cs-am-court">${escapeHtml(tl('Kurt', 'Court'))} <span style="font-weight:400;color:var(--gray-dim);font-size:12px">${escapeHtml(tl('(voliteľné)', '(optional)'))}</span></label>
-          <select id="cs-am-court"><option value="">${escapeHtml(tl('Nechať na plánovač', 'Let the planner place it'))}</option>${Array.from({ length: opts.courtCount }, (_, i) => `<option value="${i + 1}">${escapeHtml(tl('Kurt', 'Court'))} ${i + 1}</option>`).join('')}</select>
+          <select id="cs-am-court"><option value="">${escapeHtml(tl('Nechať na plánovač', 'Let the planner place it'))}</option>${Array.from({ length: opts.courtCount }, (_, i) => `<option value="${i + 1}">${escapeHtml((opts.courtNames || [])[i] || `${tl('Kurt', 'Court')} ${i + 1}`)}</option>`).join('')}</select>
         </div>
         <div class="field" id="cs-am-when" hidden>
           <label for="cs-am-day">${escapeHtml(tl('Deň a čas', 'Day and time'))}</label>

@@ -619,8 +619,8 @@ function galleryHtml() {
 function liveVideoHtml() {
   const courts = (season.courtStreams || []).map((stream, i) => (stream && stream.videoId ? `
     <section class="sv-live-court">
-      <h3>${escapeHtml(t('courts.court', { n: i + 1 }))}</h3>
-      <div class="sv-live-frame"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(stream.videoId)}?rel=0" title="${escapeHtml(t('courts.court', { n: i + 1 }))} — ${escapeHtml(t('courts.liveVideo'))}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+      <h3>${escapeHtml((season.courtNames || [])[i] || t('courts.court', { n: i + 1 }))}</h3>
+      <div class="sv-live-frame"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(stream.videoId)}?rel=0" title="${escapeHtml((season.courtNames || [])[i] || t('courts.court', { n: i + 1 }))} — ${escapeHtml(t('courts.liveVideo'))}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
     </section>` : '')).join('');
   return courts ? `<section class="sv-sec" id="sv-live">${courts}</section>` : '';
 }

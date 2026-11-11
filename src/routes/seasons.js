@@ -27,6 +27,7 @@ const changeLog = require('../changeLog');
 const capacity = require('../registrationCapacity');
 const seasonActivity = require('../seasonActivity');
 const courtStreams = require('../courtStreams');
+const courtNames = require('../courtNames');
 const tournamentMatches = require('../tournamentMatches');
 const playerPush = require('../playerPush');
 const finalStandings = require('../finalStandings');
@@ -196,6 +197,7 @@ function serializeSeason(s) {
     // the community or club that runs this tournament (null for the league and for the tournaments of the Backend)
     organisationId: s.organisation_id || null,
     courtCount: s.court_count || 0,
+    courtNames: courtNames.fit(s, s.court_count || 0),
     // how each category of a tournament is played (chosen in Backend > Formát turnaja): [{ category, format: PRINCE | MONRAD | ELIMINATION | GROUPS | GROUPS_BRACKET | SWISS | SIX_ROUNDS }]
     drawFormats: s.kind === 'TOURNAMENT' ? db.prepare('SELECT category, format FROM tournament_categories WHERE season_id = ? ORDER BY category').all(s.id) : [],
     // the live video of each court: [{ videoId, url } or null] for Court 1 … n (src/courtStreams.js)
@@ -646,7 +648,7 @@ function tournamentOr404(req, res) {
 router.get('/:id/draw', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
-  res.json({ slug: season.slug, courtCount: season.court_count || 0, courtStreams: courtStreams.streamsOf(season), playType: tournamentDraw.isDoublesTournament(season) ? 'DOUBLES' : 'SINGLES', categories: tournamentDraw.overview(season.id) });
+  res.json({ slug: season.slug, courtCount: season.court_count || 0, courtNames: courtNames.fit(season, season.court_count || 0), courtStreams: courtStreams.streamsOf(season), playType: tournamentDraw.isDoublesTournament(season) ? 'DOUBLES' : 'SINGLES', categories: tournamentDraw.overview(season.id) });
 });
 
 // { category, seeds: [{ id: registrationId, seed }] } — replaces the seeds of that category; players left out are not seeded.
@@ -1211,6 +1213,13 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     if (parsed.error) return res.status(400).json({ error: parsed.error });
     streamIds = parsed.ids;
   }
+  // the names of the courts (one per court, '' = "Kurt <number>"): the list sent by the admin page, else the saved ones cut or padded to the number of courts
+  let namesList = courtNames.fit(season, courts);
+  if (req.body.courtNames !== undefined) {
+    const parsedNames = courtNames.parse(req.body.courtNames, courts);
+    if (parsedNames.error) return res.status(400).json({ error: parsedNames.error });
+    namesList = parsedNames.names;
+  }
   let maxPerDay = season.max_matches_per_day || 0;
   if (req.body.maxMatchesPerDay !== undefined) {
     maxPerDay = Number(req.body.maxMatchesPerDay);
@@ -1231,6 +1240,15 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
   if (req.body.rules !== undefined) db.prepare('UPDATE seasons SET rules = ? WHERE id = ?').run(rules.value, season.id);
   if (req.body.plannedFormat !== undefined) db.prepare('UPDATE seasons SET planned_format = ? WHERE id = ?').run(PLANNED_FORMATS.includes(req.body.plannedFormat) ? req.body.plannedFormat : null, season.id);
   db.prepare('UPDATE seasons SET court_streams = ? WHERE id = ?').run(JSON.stringify(streamIds), season.id);
+  // a court that got another name: the matches already placed on it show the new one
+  const oldNames = courtNames.namesOf(season);
+  const renameCourt = db.prepare('UPDATE matches SET location = ? WHERE season_id = ? AND court_no = ? AND location = ?');
+  for (let n = 1; n <= Math.max(oldNames.length, namesList.length, season.court_count || 0); n += 1) {
+    const before = courtNames.label(oldNames, n);
+    const after = courtNames.label(namesList, n);
+    if (before !== after) renameCourt.run(after, season.id, n, before);
+  }
+  db.prepare('UPDATE seasons SET court_names = ? WHERE id = ?').run(JSON.stringify(namesList), season.id);
   // the points of a community follow the new settings, and the scoring of the season (what a match is worth in its table)
   const pointsChanged = communityPts !== undefined && communityPts !== (season.community_points || null);
   if (pointsChanged) db.prepare('UPDATE seasons SET community_points = ? WHERE id = ?').run(communityPts, season.id);

@@ -1514,6 +1514,8 @@ if (!seasonInfoColumns.includes('kind')) db.exec("ALTER TABLE seasons ADD COLUMN
 if (!seasonInfoColumns.includes('play_type')) db.exec("ALTER TABLE seasons ADD COLUMN play_type TEXT NOT NULL DEFAULT 'SINGLES'");
 // the number of courts of a tournament ("Kurt 1" … "Kurt n"), 0 = not set; used by the schedule
 if (!seasonInfoColumns.includes('court_count')) db.exec('ALTER TABLE seasons ADD COLUMN court_count INTEGER NOT NULL DEFAULT 0');
+// the names of the courts: a JSON list, index 0 = court 1, '' = the usual "Kurt <number>" (see src/courtNames.js)
+if (!seasonInfoColumns.includes('court_names')) db.exec("ALTER TABLE seasons ADD COLUMN court_names TEXT NOT NULL DEFAULT '[]'");
 // the live video of each court: a JSON list of YouTube video ids, index 0 = court 1, '' = none (see src/courtStreams.js)
 if (!seasonInfoColumns.includes('court_streams')) db.exec("ALTER TABLE seasons ADD COLUMN court_streams TEXT NOT NULL DEFAULT '[]'");
 // the tournament's court schedule (see tournamentSchedule.js): length of a match, the playing day, the minimum rest of a player between two

@@ -525,7 +525,7 @@ router.post('/:id/tournaments', (req, res) => {
 // An admin of a club copies one of its tournaments for a new date ({ name, startDate, endDate }): the new tournament gets the place, the type, the categories,
 // the fee, the description, the pictures, the number of players, the scoring and the settings of the courts; the players, the draw, the matches, the winners and the
 // dates / live links of the old one are not copied (the format is set again on its manage page).
-const COPIED_COLUMNS = ['entry_fee', 'prize_money', 'info', 'payment_url', 'logo_url', 'hero_url', 'hero_mobile_url', 'court_count', 'match_minutes', 'day_start', 'day_end',
+const COPIED_COLUMNS = ['entry_fee', 'prize_money', 'info', 'payment_url', 'logo_url', 'hero_url', 'hero_mobile_url', 'court_count', 'court_names', 'match_minutes', 'day_start', 'day_end',
   'rest_minutes', 'auto_schedule', 'max_matches_per_day', 'court_order', 'max_players', 'category_max', 'unregister_hours', 'community_points'];
 router.post('/:id/tournaments/:sourceId/copy', (req, res) => {
   const ctx = needOrgAdmin(req, res);

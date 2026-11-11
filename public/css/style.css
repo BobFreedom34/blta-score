@@ -5275,13 +5275,23 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sa-field input[type=text], .sa-field input[type=number], .sa-field input[type=date], .sa-field input[type=time] { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1.5px solid rgba(255, 255, 255, 0.14); background: var(--fill-grey); color: #fff; font-family: inherit; font-size: 14px; }
 .sa-field input::placeholder { color: #6f737c; font-weight: 500; }
 .sa-field input:focus { outline: none; border-color: var(--orange); }
-/* the name of a field: the small green tag (zelený závoj) */
-.sa-label { justify-self: start; padding: 3px 10px; border: 1px solid var(--green); border-radius: 8px; background: rgba(178, 250, 6, 0.12); color: var(--green); font-size: 12px; font-weight: 700; letter-spacing: .03em; line-height: 1.3; }
+/* the name of a field sits on the top border of the field (small green capitals) */
+.sa-field:has(> .sa-label) { position: relative; padding-top: 12px; }
+.sa-label { position: absolute; top: -6px; left: 10px; z-index: 1; padding: 3px 12px; white-space: nowrap; border: 1px solid var(--green); border-radius: 8px; background: #121213; color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: .05em; line-height: 16px; text-transform: uppercase; pointer-events: none; }
+.sa-field:has(> .sa-label) > :is(input, select) { padding-top: 12px; padding-bottom: 11px; border-color: rgba(255, 255, 255, 0.22); }
+.sa-field:has(> .sa-label):focus-within > :is(input, select) { border-color: var(--green); }
+/* on a phone a long name does not fit one line: it wraps, sits in the flow above the field and still overlaps its border */
+@media (max-width: 600px) {
+  .sa-field:has(> .sa-label) { padding-top: 0; }
+  .sa-label { position: relative; top: auto; left: auto; justify-self: start; max-width: calc(100% - 20px); margin: 0 0 -12px 10px; white-space: normal; padding: 3px 12px; line-height: 15px; }
+}
 .sa-wide { grid-column: span 2; }
 .sa-full { grid-column: 1 / -1; }
 .sa-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; padding-bottom: 10px; }
 .sa-checks { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; font-weight: 600; padding: 8px 0; }
 .sa-checks label { display: flex; align-items: center; gap: 6px; }
+/* a ticked box in the forms of the Backend is green (not the browser's blue) */
+.sa-section input[type=checkbox], .sa-section input[type=radio] { accent-color: var(--green); }
 /* the categories of a tournament or a season: the options at the left edge, the explanation next to them (under them on a narrow screen) */
 .sa-cats-row { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
 .sa-cats-row .sa-checks { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; white-space: nowrap; }
