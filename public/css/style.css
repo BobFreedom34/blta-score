@@ -5275,15 +5275,17 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .sa-field input[type=text], .sa-field input[type=number], .sa-field input[type=date], .sa-field input[type=time] { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1.5px solid rgba(255, 255, 255, 0.14); background: var(--fill-grey); color: #fff; font-family: inherit; font-size: 14px; }
 .sa-field input::placeholder { color: #6f737c; font-weight: 500; }
 .sa-field input:focus { outline: none; border-color: var(--orange); }
+/* the name of a field: the small green tag (zelený závoj) */
+.sa-label { justify-self: start; padding: 3px 10px; border: 1px solid var(--green); border-radius: 8px; background: rgba(178, 250, 6, 0.12); color: var(--green); font-size: 12px; font-weight: 700; letter-spacing: .03em; line-height: 1.3; }
 .sa-wide { grid-column: span 2; }
 .sa-full { grid-column: 1 / -1; }
 .sa-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; padding-bottom: 10px; }
 .sa-checks { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; font-weight: 600; padding: 8px 0; }
 .sa-checks label { display: flex; align-items: center; gap: 6px; }
 /* the categories of a tournament or a season: the options at the left edge, the explanation next to them (under them on a narrow screen) */
-.sa-cats-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 32px; }
-.sa-cats-row .sa-checks { flex: 0 0 auto; width: 280px; max-width: 100%; }
-.sa-cats-row .sa-hint { flex: 1 1 280px; min-width: 0; padding-top: 8px; font-size: 12px; line-height: 1.5; }
+.sa-cats-row { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+.sa-cats-row .sa-checks { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; white-space: nowrap; }
+.sa-cats-row .sa-hint { padding-top: 0; font-size: 12px; line-height: 1.5; }
 .sa-hint { font-size: 12px; line-height: 1.5; font-weight: 600; color: var(--gray); }
 /* the other tabs of the card use the same sections, labelled fields and greens as Základné info */
 .sa-field select, .sa-field textarea { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1.5px solid rgba(255, 255, 255, 0.14); background: var(--fill-grey); color: #fff; font-family: inherit; font-size: 14px; }
@@ -5329,6 +5331,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .tr-move { flex: 0 0 auto; width: 30px; height: 28px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius-sm); background: var(--fill-grey); color: #fff; font-size: 12px; cursor: pointer; }
 .tr-move:hover:not(:disabled) { border-color: var(--orange); color: var(--orange); }
 .tr-move:disabled { opacity: 0.3; cursor: default; }
+.sa-section-save { margin-top: 16px; }
 .sa-actions { display: flex; align-items: center; gap: 8px; padding-top: 4px; }
 @media (max-width: 600px) { .sa-wide { grid-column: 1 / -1; } .sa-tabs { padding: 8px 10px; gap: 6px; align-items: stretch; } .sa-tab { flex: 1 1 calc(50% - 3px); min-width: 0; padding: 6px 6px; font-size: 12px; line-height: 1.2; text-align: center; overflow-wrap: anywhere; } .sa-tabs:has(.sa-tab:nth-of-type(5)) .sa-tab { flex-basis: calc(33.333% - 4px); } .sa-tab-link { flex: 0 0 100%; margin-left: 0; padding: 0; text-align: right; font-size: 11px; } }
 
@@ -5808,7 +5811,7 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 .com-reg { background: var(--green); border: 1px solid var(--green); color: #0a0a0a; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .com-reg:hover { background: #c6ff3a; border-color: #c6ff3a; color: #0a0a0a; }
 @media (prefers-reduced-motion: no-preference) { .com-reg { animation: sv-register-glow 1.8s ease-out infinite; } }
-.com-years { margin: 4px 0 14px; }
+.com-years { margin: 4px 0 28px; }
 .com-reg-closed { background: var(--fill-grey); color: #8b8f98; border: 1px solid rgba(255, 255, 255, 0.1); cursor: default; pointer-events: none; font-weight: 700; }
 .com-tdialog { max-width: 520px; width: calc(100% - 24px); max-height: calc(100vh - 32px); overflow-y: auto; }
 .com-t-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -6039,6 +6042,11 @@ a.com-rank-name:hover { color: var(--orange); }
 .com-comment-new { position: relative; display: flex; align-items: flex-end; gap: 8px; margin-top: 8px; }
 .com-comment-new textarea { flex: 1 1 auto; min-width: 0; resize: vertical; min-height: 38px; padding: 8px 12px; border-radius: 18px; }
 .com-comment-new .com-tool { margin: 0; }
+/* @mentions: the tag inside a comment and the list of members that opens above the box while one is typed */
+.com-mention { color: var(--green); background: rgba(178, 250, 6, 0.12); border-radius: 4px; padding: 0 3px; font-weight: 700; }
+.com-mention-list { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 60; width: min(320px, 100%); max-height: 240px; overflow-y: auto; margin: 0; padding: 6px; list-style: none; background: #1a1d24; border: 1px solid var(--border-grey); border-radius: var(--radius); box-shadow: var(--shadow-lg); }
+.com-mention-list li { padding: 9px 12px; border-radius: var(--radius-sm); color: var(--white); font-weight: 700; cursor: pointer; }
+.com-mention-list li.on, .com-mention-list li:hover { background: rgba(178, 250, 6, 0.14); color: var(--green); }
 .com-comment-hint { margin: 8px 0 0; font-size: 13px; color: var(--gray-dim); }
 .com-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 .com-link-chip { color: var(--white); }

@@ -444,7 +444,7 @@ function rteToolbarHtml() {
 
 function seasonCardHtml(s) {
   const byCategory = CATEGORIES.map(([key]) => s.groups.filter((g) => g.category === key).length);
-  const field = (label, control, cls = '') => `<label class="sa-field ${cls}">${label}${control}</label>`;
+  const field = (label, control, cls = '') => `<label class="sa-field ${cls}"><span class="sa-label">${label}</span>${control}</label>`;
   const input = (name, value, attrs = '') => '<input ' + (/type=/.test(attrs) ? '' : 'type="text" ') + 'data-field="' + name + '" value="' + escapeHtml(value == null ? '' : String(value)) + '" ' + attrs + '>';
   const active = cardTab.get(s.id) || 'info';
   return `
@@ -502,7 +502,7 @@ function seasonCardHtml(s) {
                 <label class="sa-field sa-check"><input type="checkbox" data-field="registrationOpen"${s.registrationOpen ? ' checked' : ''}> ${tl('Registrácia je otvorená', 'Registration is open')}</label>
                 ${s.registrationStarted ? `<span class="sa-hint sa-full">${tl('Turnaj sa už začal, preto sa verejne nedá registrovať, aj keď je registrácia zapnutá. Hráča môžeš pridať ručne.', 'The tournament has already started, so nobody can register publicly even though the registration is on. You can still add a player by hand.')}</span>` : ''}
                 <div class="sa-field sa-full">
-                  <label class="sa-field">${s.playType === 'DOUBLES' ? tl('Maximálny počet párov *', 'Maximum number of pairs *') : tl('Maximálny počet hráčov *', 'Maximum number of players *')}${input('maxPlayers', s.maxPlayers || '', `type="number" min="1" max="2000" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 16', 'e.g. 16'))}"`)}</label>
+                  <label class="sa-field"><span class="sa-label">${s.playType === 'DOUBLES' ? tl('Maximálny počet párov *', 'Maximum number of pairs *') : tl('Maximálny počet hráčov *', 'Maximum number of players *')}</span>${input('maxPlayers', s.maxPlayers || '', `type="number" min="1" max="2000" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 16', 'e.g. 16'))}"`)}</label>
                 </div>
                 <span class="sa-hint sa-full">${tl('Maximum zadaj vždy. Keď sa dosiahne, ďalší hráči sa môžu prihlásiť už len ako náhradníci. Ak sa niekto odhlási (alebo ho zmažeš), prvý náhradník automaticky nastúpi do turnaja.', 'Always enter the maximum. When it is reached, the next players can only register as substitutes. If somebody drops out (or you delete them), the first substitute automatically comes into the tournament.')}</span>
                 ${field(tl('Odhlásenie hráča: najneskôr (hodín pred začiatkom)', 'Player may withdraw until (hours before the start)'), input('unregisterHours', s.unregisterHours === null || s.unregisterHours === undefined ? '' : s.unregisterHours, `type="number" min="0" max="720" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 48', 'e.g. 48'))}"`))}
@@ -548,11 +548,7 @@ function seasonCardHtml(s) {
 
             <section class="sa-section">
               <h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>${tl('Vzhľad stránky', 'Look of the page')}</h4>
-              <div class="sa-grid">
-                ${field(tl('Odkaz na galériu', 'Gallery link'), input('galleryUrl', s.galleryUrl || '', 'maxlength="500" placeholder="https://…"'), 'sa-wide')}
-                ${field(tl('Logo (odkaz na obrázok, napr. /img/seasons/autumn.png)', 'Logo (link to a picture, e.g. /img/seasons/autumn.png)'), input('logoUrl', s.logoUrl || '', 'maxlength="300"'), 'sa-wide')}
-              </div>
-              <div class="sa-field sa-full" style="margin-top:12px" data-logo-block>${tl('Logo — nahranie', 'Logo — upload')} <span class="sa-hint">— ${tl('vyber logo z počítača alebo z knižnice (Backend → Média). Nahrá sa hneď, netreba Uložiť. PNG, JPG alebo WebP do 8 MB.', 'pick a logo from your computer or from the library (Backend → Media). It uploads at once, no need to Save. PNG, JPG or WebP up to 8 MB.')}</span>
+              <div class="sa-field sa-full" data-logo-block>${tl('Logo — nahranie', 'Logo — upload')} <span class="sa-hint">— ${tl('vyber logo z počítača alebo z knižnice (Backend → Média). Nahrá sa hneď, netreba Uložiť. PNG, JPG alebo WebP do 8 MB.', 'pick a logo from your computer or from the library (Backend → Media). It uploads at once, no need to Save. PNG, JPG or WebP up to 8 MB.')}</span>
                 <div class="sa-logo-row">
                   <div class="sa-logo-pic" data-logo-pic>${s.logoUrl ? `<img src="${escapeHtml(s.logoUrl)}" alt="">` : `<span>${tl('Zatiaľ bez loga', 'No logo yet')}</span>`}</div>
                   <div class="sa-hero-actions">
@@ -686,6 +682,10 @@ function wireSeason(card) {
     });
   }
 
+  // every section of the form ends with the same Uložiť button (it is ONE form, so any of them saves all of it)
+  card.querySelectorAll('.season-edit-form > .sa-section').forEach((sec) => {
+    sec.insertAdjacentHTML('beforeend', `<div class="sa-section-save"><button type="submit" class="btn btn-sm btn-primary">${tl('Uložiť', 'Save')}</button></div>`);
+  });
   card.querySelector('.season-edit-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     errorEl.textContent = '';
@@ -694,7 +694,7 @@ function wireSeason(card) {
       // a season is played in at least one category (an empty choice would mean "all" to the server)
       if (!IS_TOURNAMENT && e.target.querySelectorAll('[data-cat]').length && ![...e.target.querySelectorAll('[data-cat]')].some((b) => b.checked)) throw new Error(tl('Vyber aspoň jednu kategóriu.', 'Choose at least one category.'));
       if (e.target.querySelector('[data-field="registrationOpen"]').checked && maxMissing(e.target)) throw new Error(MAX_MISSING_TEXT());
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), logoUrl: f('logoUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, ...maxBody(e.target), unregisterHours: f('unregisterHours') === '' ? null : Number(f('unregisterHours')), drawDate: f('drawDate') || null, ...(IS_TOURNAMENT ? { plannedFormat: f('plannedFormat') || '' } : {}), galleryUrl: f('galleryUrl'), info: e.target.querySelector('[data-rte="info"]').innerHTML, rules: e.target.querySelector('[data-rte="rules"]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(CLUB ? { communityPoints: readCommunityPoints(e.target) } : {}), ...(IS_TOURNAMENT ? { venue: f('venue'), ...(courtsTouched ? { courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), courtStreams: readCourtStreams(e.target) } : {}), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), matchMinutes: Number(f('matchMinutes')), restMinutes: Number(f('restMinutes')), dayStart: f('dayStart'), dayEnd: f('dayEnd'), dayTimes: readDayTimes(e.target), autoSchedule: e.target.querySelector('[data-field="autoSchedule"]').checked } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, ...maxBody(e.target), unregisterHours: f('unregisterHours') === '' ? null : Number(f('unregisterHours')), drawDate: f('drawDate') || null, ...(IS_TOURNAMENT ? { plannedFormat: f('plannedFormat') || '' } : {}), info: e.target.querySelector('[data-rte="info"]').innerHTML, rules: e.target.querySelector('[data-rte="rules"]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(CLUB ? { communityPoints: readCommunityPoints(e.target) } : {}), ...(IS_TOURNAMENT ? { venue: f('venue'), ...(courtsTouched ? { courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), courtStreams: readCourtStreams(e.target) } : {}), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), matchMinutes: Number(f('matchMinutes')), restMinutes: Number(f('restMinutes')), dayStart: f('dayStart'), dayEnd: f('dayEnd'), dayTimes: readDayTimes(e.target), autoSchedule: e.target.querySelector('[data-field="autoSchedule"]').checked } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
       toast(tl('Uložené', 'Saved'));
       await load();
     } catch (err) { fail(err); }
@@ -742,21 +742,18 @@ function wireSeason(card) {
   // the logo: a picture from the computer or the library, sent at once; the address goes into the field above
   const logoBlock = card.querySelector('[data-logo-block]');
   if (logoBlock) {
-    const urlField = card.querySelector('[data-field="logoUrl"]');
     const pic = logoBlock.querySelector('[data-logo-pic]');
     const msg = logoBlock.querySelector('[data-logo-msg]');
     const removeBtn = logoBlock.querySelector('[data-logo-remove]');
     const fileInput = logoBlock.querySelector('input[type=file]');
     const show = (url) => {
       pic.innerHTML = url ? `<img src="${escapeHtml(url)}" alt="">` : `<span>${tl('Zatiaľ bez loga', 'No logo yet')}</span>`;
-      urlField.value = url || '';
       removeBtn.hidden = !url;
       logoBlock.querySelector('[data-logo-label]').textContent = url ? tl('Nahradiť logo', 'Replace logo') : tl('Nahrať logo', 'Upload logo');
       const i = seasons.findIndex((x) => x.id === id);
       if (i >= 0) seasons[i] = { ...seasons[i], logoUrl: url || '' };
       season.logoUrl = url || '';
     };
-    urlField.addEventListener('input', () => { pic.innerHTML = urlField.value.trim() ? `<img src="${escapeHtml(urlField.value.trim())}" alt="">` : `<span>${tl('Zatiaľ bez loga', 'No logo yet')}</span>`; });
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files[0];
       if (!file) return;

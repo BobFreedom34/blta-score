@@ -20,6 +20,7 @@ const messagesLib = require('../messages');
 const courtIQ = require('../courtIQEngine');
 const { sendClubWaitingEmail } = require('../mailer');
 const playerPush = require('../playerPush');
+const { findMentioned } = require('../mentions');
 const seasonActivity = require('../seasonActivity');
 
 const router = express.Router();
@@ -1089,6 +1090,12 @@ router.post('/:id/posts/:postId/comments', (req, res) => {
     db.prepare('INSERT INTO post_comment_notifications (player_id, post_id, comment_id) VALUES (?, ?, ?)').run(post.author_player_id, post.id, row.id);
     playerPush.notifyPlayer(post.author_player_id, 'COMMENT', { name: row.name, body, orgName: org.name, orgSlug: org.slug, postId: post.id });
   }
+  // the members tagged with @Name are told in the bell and by push (the author of the post already got the note above)
+  const members = db.prepare("SELECT p.id, p.name FROM organisation_members m JOIN players p ON p.id = m.player_id WHERE m.organisation_id = ? AND m.status = 'ACTIVE' AND p.id != ?").all(org.id, playerId);
+  findMentioned(body, members).forEach((m) => {
+    db.prepare('INSERT INTO mention_notifications (player_id, comment_id, actor_player_id) VALUES (?, ?, ?)').run(m.id, row.id, playerId);
+    playerPush.notifyPlayer(m.id, 'MENTION', { name: row.name, body, orgName: org.name, orgSlug: org.slug, postId: post.id });
+  });
   res.status(201).json(commentJson(row, req, org, playerId));
 });
 

@@ -928,12 +928,11 @@ const threadOrg = () => (season.organisation ? season.organisation.id : 'league'
 const threadAttrs = () => `data-post="e${season.id}" data-org="${threadOrg()}"`;
 function threadCommentsHtml() {
   if (!eventThread) return '';
-  return `<section class="sv-thread" id="sv-thread" ${threadAttrs()}>${comReactionsHtml({ id: `e${season.id}`, reactions: eventThread.reactions })}<div class="sv-sec-h"><h2>💬 ${escapeHtml(t('season.discussion'))}</h2></div>${comCommentsHtml({ id: `e${season.id}`, commentCount: eventThread.commentCount })}</section>`;
+  return `<section class="sv-thread" id="sv-thread" ${threadAttrs()}><div class="sv-sec-h"><h2>💬 ${escapeHtml(t('season.discussion'))}</h2></div>${comCommentsHtml({ id: `e${season.id}`, commentCount: eventThread.commentCount })}</section>`;
 }
 function bindThread() {
   if (!eventThread) return;
   const org = threadOrg();
-  comBindReactions(rootEl, () => org);
   comBindComments(rootEl, () => org);
   const box = rootEl.querySelector('#sv-thread [data-comments-toggle]');
   if (box) box.click(); // the comments are open from the start

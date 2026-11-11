@@ -23,6 +23,7 @@ const WORDING = {
   UNREGISTRATION: { sk: '🎾 {name} sa odhlásil z {season}', en: '🎾 {name} withdrew from {season}' },
   REGISTRATION_SUB: { sk: '🎾 {name} sa prihlásil ako náhradník do {season}', en: '🎾 {name} registered as a substitute for {season}' },
   COMMENT: { sk: '💬 {name} komentoval tvoju novinku v {org}', en: '💬 {name} commented on your post in {org}' },
+  MENTION: { sk: '@ {name} ťa označil v {org}', en: '@ {name} mentioned you in {org}' },
   APPROVAL: { sk: '🏟️ Nový klub čaká na schválenie: {org}', en: '🏟️ A new club waits for your approval: {org}' },
   INVITE: { sk: '👥 {name} ťa pozýva: {org}', en: '👥 {name} invites you to {org}' },
   BADGE: { sk: '🏅 Získal si odznak: {badge}', en: '🏅 You earned a badge: {badge}' },
@@ -52,6 +53,7 @@ function build(kind, data = {}, lang = 'sk') {
     case 'POST': return { title: fill(WORDING.POST[l], { name, org: data.orgName || '' }), body: clip(data.body), url: data.orgSlug ? `/community/${encodeURIComponent(data.orgSlug)}` : '/communities', tag: `post-${data.postId || 'x'}` };
     case 'REACTION': return { title: fill(WORDING.REACTION[l], { name, org: data.orgName || '', emoji: data.emoji || '' }), body: '', url: data.orgSlug ? `/community/${encodeURIComponent(data.orgSlug)}` : '/communities', tag: `reaction-${data.postId || 'x'}` };
     case 'COMMENT': return { title: fill(WORDING.COMMENT[l], { name, org: data.orgName || '' }), body: clip(data.body), url: data.orgSlug ? `/community/${encodeURIComponent(data.orgSlug)}` : '/communities', tag: `comment-${data.postId || 'x'}` };
+    case 'MENTION': return { title: fill(WORDING.MENTION[l], { name, org: data.orgName || '' }), body: clip(data.body), url: data.orgSlug ? `/community/${encodeURIComponent(data.orgSlug)}` : '/communities', tag: `mention-${data.postId || 'x'}` };
     // an organiser: somebody registered for a tournament of his club (the manage page of that tournament)
     case 'REGISTRATION': return { title: fill(WORDING[data.substitute ? 'REGISTRATION_SUB' : 'REGISTRATION'][l], { name, season: data.seasonName || '' }), body: data.orgName || '', url: data.seasonId ? `/community-tournament/${data.seasonId}` : '/communities', tag: `registration-${data.seasonId || 'x'}` };
     case 'UNREGISTRATION': return { title: fill(WORDING.UNREGISTRATION[l], { name, season: data.seasonName || '' }), body: data.orgName || '', url: data.seasonId ? `/community-tournament/${data.seasonId}` : '/communities', tag: `registration-${data.seasonId || 'x'}` };

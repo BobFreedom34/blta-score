@@ -105,7 +105,14 @@ function countUnreadNotifications(playerId) {
     JOIN organisations o ON o.id = s.organisation_id AND o.hidden = 0
     WHERE n.player_id = ? AND n.seen = 0
   `).get(playerId).c;
-  return badges + chats + playRequests + proposals + rankings + badgeReminders + photos + postComments + communityNews + registrations;
+  // tagged with @Name in a comment (the comment and the community can be deleted since)
+  const mentions = db.prepare(`
+    SELECT COUNT(*) AS c FROM mention_notifications n
+    JOIN organisation_post_comments c ON c.id = n.comment_id
+    JOIN organisations o ON o.id = c.organisation_id AND o.hidden = 0
+    WHERE n.player_id = ? AND n.seen = 0
+  `).get(playerId).c;
+  return badges + chats + playRequests + proposals + rankings + badgeReminders + photos + postComments + communityNews + registrations + mentions;
 }
 
 router.get('/session', (req, res) => {
@@ -318,6 +325,22 @@ router.get('/notifications', (req, res) => {
     comment: { authorName: r.author_name || '', body: r.body, postId: r.post_id, orgName: r.org_name, orgSlug: r.org_slug },
   }));
 
+  // "Somebody tagged you with @Name in a comment"
+  const mentionRows = db.prepare(`
+    SELECT n.id, n.seen, n.created_at, c.body, p.name AS author_name, c.post_id, o.name AS org_name, o.slug AS org_slug
+    FROM mention_notifications n
+    JOIN organisation_post_comments c ON c.id = n.comment_id
+    JOIN organisations o ON o.id = c.organisation_id AND o.hidden = 0
+    LEFT JOIN players p ON p.id = n.actor_player_id
+    WHERE n.player_id = ?
+  `).all(playerId).map((r) => ({
+    type: 'MENTION',
+    id: r.id,
+    seen: !!r.seen,
+    createdAt: r.created_at,
+    comment: { authorName: r.author_name || '', body: r.body, postId: r.post_id, orgName: r.org_name, orgSlug: r.org_slug },
+  }));
+
   // a new post of a community he is in, and an emoji somebody put on his post
   const newsRows = db.prepare(`
     SELECT n.id, n.seen, n.created_at, n.kind, n.emoji, po.id AS post_id, po.body, o.name AS org_name, o.slug AS org_slug, a.name AS actor_name
@@ -345,7 +368,7 @@ router.get('/notifications', (req, res) => {
     registration: { name: r.name, substitute: !!r.substitute, kind: r.kind === 'UNREGISTER' ? 'UNREGISTER' : 'REGISTER', seasonId: r.season_id, seasonName: r.season_name, seasonKind: r.season_kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE', orgName: r.org_name, orgSlug: r.org_slug },
   }));
 
-  const merged = [...newsRows, ...registrationRows, ...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows, ...rankingRows, ...badgeReminderRows, ...photoRows, ...commentRows]
+  const merged = [...newsRows, ...registrationRows, ...badgeRows, ...chatRows, ...playRequestRows, ...proposalRows, ...rankingRows, ...badgeReminderRows, ...photoRows, ...commentRows, ...mentionRows]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json(merged);
 });
@@ -369,6 +392,7 @@ router.post('/notifications/:type/:id/read', (req, res) => {
     : type === 'badge_reminder' ? 'badge_reminder_notifications'
     : type === 'photo' ? 'photo_notifications'
     : type === 'comment' ? 'post_comment_notifications'
+    : type === 'mention' ? 'mention_notifications'
     : (type === 'post' || type === 'reaction') ? 'community_notifications'
     : type === 'registration' ? 'registration_notifications'
     : null;

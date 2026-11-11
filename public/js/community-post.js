@@ -11,12 +11,63 @@ const COM_EMOJI = ['😀', '😄', '😁', '😂', '🤣', '😊', '😉', '😍
   '🎾', '🏆', '🥇', '🥈', '🥉', '🏅', '🎉', '🎊', '🚀', '💯', '✅', '❌', '⚡', '☀️', '🌧️', '📅', '📍', '⏰', '🍻', '🥤'];
 
 // text -> html: escaped, then every http(s) link is clickable (opens in a new tab, never passes the page on to it)
-function comPostText(text) {
-  return escapeHtml(text).replace(/https?:\/\/[^\s<]+/g, (raw) => {
+// names: the people who can be tagged ("@Name" of one of them is highlighted); a link is checked first, so an address is never cut by a tag
+function comPostText(text, names) {
+  const html = escapeHtml(text).replace(/https?:\/\/[^\s<]+/g, (raw) => {
     const trail = (raw.match(/(?:[.,;:!?)]|&quot;|&#39;|&gt;)+$/) || [''])[0];
     const url = trail ? raw.slice(0, -trail.length) : raw;
     return `<a href="${url}" target="_blank" rel="noopener noreferrer nofollow ugc">${url}</a>${trail}`;
   });
+  if (!names || !names.length || !html.includes('@')) return html;
+  const alt = names.map((n) => escapeHtml(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).sort((a, b) => b.length - a.length).join('|');
+  return html.replace(new RegExp(`(^|[^\\p{L}\\p{N}])(@(?:${alt}))(?![\\p{L}\\p{N}])`, 'giu'), '$1<span class="com-mention">$2</span>');
+}
+
+// the box of a comment: typing @ opens the members of the community, a pick puts "@Full Name " in the text
+function comBindMentions(area, people) {
+  if (!people.length) return;
+  const list = document.createElement('ul');
+  list.className = 'com-mention-list';
+  list.hidden = true;
+  area.parentElement.appendChild(list);
+  let at = -1; // where the @ that is being typed stands
+  let shown = [];
+  let on = 0;
+  const close = () => { list.hidden = true; at = -1; };
+  const choose = (p) => {
+    const end = area.selectionStart;
+    area.value = `${area.value.slice(0, at)}@${p.name} ${area.value.slice(end)}`;
+    const pos = at + p.name.length + 2;
+    close();
+    area.focus();
+    area.setSelectionRange(pos, pos);
+  };
+  const paintList = () => {
+    list.innerHTML = shown.map((p, i) => `<li data-i="${i}" class="${i === on ? 'on' : ''}">${escapeHtml(p.name)}</li>`).join('');
+    list.hidden = !shown.length;
+  };
+  const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  area.addEventListener('input', () => {
+    const upto = area.value.slice(0, area.selectionStart);
+    const m = upto.match(/(?:^|\s)@([^\s@]*(?: [^\s@]*)?)$/u); // a word, or two while the surname is being typed
+    if (!m) { close(); return; }
+    at = upto.length - m[1].length - 1;
+    const q = fold(m[1]);
+    shown = people.filter((p) => fold(p.name).includes(q)).slice(0, 6);
+    on = 0;
+    paintList();
+  });
+  area.addEventListener('keydown', (e) => {
+    if (list.hidden) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); on = (on + (e.key === 'ArrowDown' ? 1 : shown.length - 1)) % shown.length; paintList(); }
+    else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); e.stopImmediatePropagation(); choose(shown[on]); }
+    else if (e.key === 'Escape') close();
+  }, true);
+  list.addEventListener('mousedown', (e) => { // (mousedown: the box must not lose its place before the pick)
+    const li = e.target.closest('li[data-i]');
+    if (li) { e.preventDefault(); choose(shown[Number(li.dataset.i)]); }
+  });
+  area.addEventListener('blur', () => setTimeout(close, 150));
 }
 
 function comPostImage(url) {
@@ -94,7 +145,7 @@ function comAgo(iso) {
   return comWhen(iso);
 }
 
-function comCommentHtml(c) {
+function comCommentHtml(c, names) {
   if (c.kind === 'ACTIVITY') {
     const who = c.authorSlug ? `<a href="/player/${encodeURIComponent(c.authorSlug)}">${escapeHtml(c.authorName)}</a>` : `<b>${escapeHtml(c.authorName)}</b>`;
     const ini = String(c.authorName || '?').trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('');
@@ -103,7 +154,7 @@ function comCommentHtml(c) {
   const face = c.authorPhotoUrl ? `<img src="${escapeHtml(c.authorPhotoUrl)}" alt="">` : escapeHtml(String(c.authorName || '?').trim().charAt(0).toUpperCase());
   const name = c.authorSlug ? `<a href="/player/${encodeURIComponent(c.authorSlug)}">${escapeHtml(c.authorName)}</a>` : escapeHtml(c.authorName);
   return `<div class="com-comment" data-comment="${c.id}"><span class="com-comment-face">${face}</span>
-    <div class="com-comment-main"><div class="com-comment-bubble"><b>${name}</b><span class="com-comment-text">${comPostText(c.body)}</span></div>
+    <div class="com-comment-main"><div class="com-comment-bubble"><b>${name}</b><span class="com-comment-text">${comPostText(c.body, names)}</span></div>
     <div class="com-comment-meta">${escapeHtml(comWhen(c.createdAt))}${c.canDelete ? ` · <button type="button" class="com-link" data-comment-delete="${c.id}">${escapeHtml(t('com.commentDelete'))}</button>` : ''}</div></div></div>`;
 }
 
@@ -115,6 +166,7 @@ function comBindComments(root, orgIdOf) {
     const label = box.querySelector('.com-comments-label');
     const url = (suffix = '') => `/communities/${orgIdOf(postEl)}/posts/${postId}/comments${suffix}`;
     let state = null; // { items, more, canComment }
+    let people = []; // the members who can be tagged with @
     const setCount = (n) => { box.dataset.count = String(n); label.textContent = comCountText(n); };
 
     function paint() {
@@ -124,7 +176,7 @@ function comBindComments(root, orgIdOf) {
             <button type="button" class="btn btn-primary com-small" data-comment-send>${escapeHtml(t('com.commentSend'))}</button></div>`
         : `<p class="com-comment-hint">${escapeHtml(t(state.loginOnly ? 'com.commentLoginOnly' : 'com.commentMembersOnly'))}</p>`;
       body.innerHTML = `${state.more ? `<button type="button" class="com-link" data-comments-older>${escapeHtml(t('com.commentsOlder'))}</button>` : ''}
-        <div class="com-comment-list">${state.items.map(comCommentHtml).join('')}</div>${composer}`;
+        <div class="com-comment-list">${state.items.map((c) => comCommentHtml(c, people.map((p) => p.name))).join('')}</div>${composer}`;
       const older = body.querySelector('[data-comments-older]');
       if (older) older.addEventListener('click', async () => {
         older.disabled = true;
@@ -146,6 +198,7 @@ function comBindComments(root, orgIdOf) {
       }));
       const area = body.querySelector('textarea');
       if (area) {
+        comBindMentions(area, people);
         const send = async () => {
           const text = area.value.trim();
           if (!text) return;
@@ -172,6 +225,9 @@ function comBindComments(root, orgIdOf) {
       if (state) return;
       try {
         state = await api(url());
+        if (state.canComment) {
+          try { people = (await api(`/communities/${orgIdOf(postEl)}/members`)).members.filter((m) => m.name); } catch { people = []; }
+        }
         paint();
         const area = body.querySelector('textarea');
         if (area && !state.items.length) area.focus();

@@ -3544,6 +3544,10 @@ function renderBadgeNotifList() {
       icon = '💬';
       title = t('notif.commentTitle', { name: escapeHtml(n.comment.authorName), org: escapeHtml(n.comment.orgName) });
       subtitle = escapeHtml(truncateForNotif(n.comment.body, 80));
+    } else if (n.type === 'MENTION') {
+      icon = '@';
+      title = t('notif.mentionTitle', { name: escapeHtml(n.comment.authorName), org: escapeHtml(n.comment.orgName) });
+      subtitle = escapeHtml(truncateForNotif(n.comment.body, 80));
     } else { // BADGE_REMINDER
       icon = badgeIconMarkup(n.badge.icon);
       title = t('notif.reminderListTitle', { badge: escapeHtml(n.badge.name) });
@@ -3667,6 +3671,7 @@ document.addEventListener('click', async (e) => {
         : notif.type === 'BADGE_REMINDER' ? 'badge_reminder'
         : notif.type === 'PHOTO' ? 'photo'
         : notif.type === 'COMMENT' ? 'comment'
+        : notif.type === 'MENTION' ? 'mention'
         : notif.type === 'POST' ? 'post'
         : notif.type === 'REACTION' ? 'reaction'
         : notif.type === 'REGISTRATION' ? 'registration'
@@ -3679,6 +3684,7 @@ document.addEventListener('click', async (e) => {
   if (notif.type === 'PROPOSAL') window.location.href = siteUrl(`/match/${notif.proposal.matchToken}`);
   if (notif.type === 'PHOTO') window.location.href = siteUrl(`/match/${notif.photo.matchToken}`);
   if (notif.type === 'COMMENT') window.location.href = siteUrl(`/community/${encodeURIComponent(notif.comment.orgSlug)}`);
+  if (notif.type === 'MENTION') window.location.href = siteUrl(`/community/${encodeURIComponent(notif.comment.orgSlug)}`);
   if (notif.type === 'POST') window.location.href = siteUrl(`/community/${encodeURIComponent(notif.post.orgSlug)}`);
   if (notif.type === 'REACTION') window.location.href = siteUrl(`/community/${encodeURIComponent(notif.reaction.orgSlug)}`);
   if (notif.type === 'REGISTRATION') window.location.href = siteUrl(`/community-tournament/${notif.registration.seasonId}`); // the manage page of the event (its Registrácie tab)

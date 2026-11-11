@@ -1863,6 +1863,18 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_post_comment_notifications_player ON post_comment_notifications(player_id, seen);
 `);
+// The bell notification for a player who was tagged with @Name in a comment (src/mentions.js finds the names, src/routes/player.js lists them).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS mention_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    comment_id INTEGER NOT NULL,
+    actor_player_id INTEGER,
+    seen INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_mention_notifications_player ON mention_notifications(player_id, seen);
+`);
 // The bell notifications of the news of a community or club: POST = a new post (to every member but its author; actor = the author), REACTION = somebody
 // put an emoji on a post (to its author; actor = who, one per person and emoji). src/routes/player.js lists them, src/routes/communities.js writes them.
 db.exec(`
