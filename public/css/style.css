@@ -4887,7 +4887,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .slot-hint { margin: 2px 0 10px; font-size: 13px; line-height: 1.4; color: var(--gray-dim, #8a8f98); }
 
 /* home page: invite a friend (last section) */
-.inv-card { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: 0 0 18px rgba(255, 85, 0, 0.25); border-radius: var(--radius); padding: 20px 22px; color: var(--white); display: grid; grid-template-columns: 1.1fr 1fr; gap: 22px; align-items: center; }
+.inv-card { background: #0a0a0a; border: 1px solid var(--green); border-radius: var(--radius); padding: 20px 22px; color: var(--white); display: grid; grid-template-columns: 1.1fr 1fr; gap: 22px; align-items: center; }
 .inv-card h3 { margin: 0 0 6px; font-size: 22px; color: var(--white); }
 .inv-card p { margin: 0; color: #c3c7cf; font-weight: 600; font-size: 14px; line-height: 1.45; }
 .inv-link { display: flex; align-items: center; gap: 10px; background: #161618; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: var(--radius-md); padding: 8px 8px 8px 12px; margin-bottom: 12px; font-weight: 700; font-size: 14px; overflow: hidden; }
@@ -4910,7 +4910,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .pill-green { display: inline-block; padding: 3px 10px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; background: var(--green); color: #0a0a0a; }
 
 /* home page: player of the month (slim card under the stats tiles) */
-.pom-card { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: 0 0 18px rgba(255, 85, 0, 0.25); border-radius: var(--radius); color: var(--white); overflow: hidden; }
+.pom-card { background: #0a0a0a; border: 1px solid var(--border-grey); border-radius: var(--radius); color: var(--white); overflow: hidden; }
 .pom-row { display: grid; grid-template-columns: 46px minmax(0, 1fr) 112px 80px 70px; column-gap: 16px; align-items: center; padding: 14px 20px; }
 .pom-row + .pom-row { border-top: 1px solid rgba(255, 255, 255, 0.12); }
 .pom-photo { width: 46px; height: 46px; border-radius: var(--radius-md); object-fit: cover; background: var(--orange); }
@@ -6986,3 +6986,5 @@ body:has(.admin-tabs) details.card:not(.sa-card) .btn-outline { color: #fff; bor
 .badge-notif-readall { flex: none; margin-left: auto; white-space: nowrap; padding: 5px 10px; border: 1px solid var(--green); border-radius: var(--radius-sm); background: rgba(178, 250, 6, 0.12); color: var(--green); font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.02em; text-transform: none; cursor: pointer; }
 .badge-notif-readall:hover { background: rgba(178, 250, 6, 0.2); }
 .badge-notif-readall[hidden] { display: none; }
+/* "Čierna dlaždica" (black tile): the black twin of the grey tile - a soft diagonal gradient that starts lighter in the bottom right corner and fades into black towards the top left, plus a 1px light line along the bottom edge. Add the class black-tile to a black block; its own border, radius and padding stay as they are. !important on the image because the glass lists carry an #id */
+.black-tile { background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(21, 21, 24, 0.9), rgba(10, 10, 10, 0.6) 75%) !important; }

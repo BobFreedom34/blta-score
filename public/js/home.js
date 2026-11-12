@@ -109,14 +109,14 @@ function mineHtml(d) {
       ? `<span class="home-chip live">${escapeHtml(t('home.live'))}</span>`
       : (next.scheduledAt ? `<span class="home-chip date">${escapeHtml(chipDate(next.scheduledAt))}</span>` : `<span class="home-mine-dim">${escapeHtml(t('home.mineNoDate'))}</span>`);
     nextCell = `
-      <a class="home-mine-cell next" href="/match/${next.token}">
+      <a class="home-mine-cell next black-tile" href="/match/${next.token}">
         <div class="k">${escapeHtml(t('home.mineNext'))}</div>
         <div class="v">${escapeHtml(opp.name)}</div>
         <div class="s">${sub}${next.location ? `<span class="home-mine-dim">${escapeHtml(next.location)}</span>` : ''}</div>
       </a>`;
   } else {
     nextCell = `
-      <div class="home-mine-cell next">
+      <div class="home-mine-cell next black-tile">
         <div class="k">${escapeHtml(t('home.mineNext'))}</div>
         <div class="v dim">${escapeHtml(t('home.mineNoNext'))}</div>
       </div>`;
@@ -299,7 +299,7 @@ function timelineHtml(d) {
     // the cover photo of the season (its wide hero picture), when it has one
     const cover = s.heroUrl || s.heroMobileUrl;
     const inner = `
-      <div class="home-tl-body${cover ? ' has-cover' : ''}">
+      <div class="home-tl-body${cover ? ' has-cover' : ''}${state === 'now' || state === 'future' ? ' black-tile' : ''}">
         ${cover ? `<img class="home-tl-cover" src="${escapeHtml(cover)}" alt="" loading="lazy">` : ''}
         <span class="home-tl-chip">${state === 'now' ? '<i></i>' : ''}${escapeHtml(label[state])}</span>
         <div class="home-tl-name">${escapeHtml(s.name)}</div>
@@ -411,7 +411,7 @@ function leadersHtml(d) {
     return `
     <div class="home-col">
       <h3 class="home-grp-t">${escapeHtml(g.name)}</h3>
-      <div class="home-card">
+      <div class="home-card black-tile">
         ${started ? `
         <div class="home-t-head"><span>#</span><span>${escapeHtml(t('tables.player'))}</span><span>${escapeHtml(t('tables.points'))}</span></div>
         ${top.map((r) => `
@@ -445,11 +445,11 @@ function matchesBlockHtml(d) {
     <div class="home-cols">
       <div class="home-col">
         ${secTitle(t('home.latestResults'), '', '/matches', t('home.allResults'))}
-        <div class="home-card">${d.finished.length ? d.finished.map(resultRow).join('') : `<div class="home-empty">${escapeHtml(t('home.noResults'))}</div>`}</div>
+        <div class="home-card black-tile">${d.finished.length ? d.finished.map(resultRow).join('') : `<div class="home-empty">${escapeHtml(t('home.noResults'))}</div>`}</div>
       </div>
       <div class="home-col">
         ${secTitle(t('home.upcoming'), '', '/matches', t('home.allUpcoming'))}
-        <div class="home-card">${upcomingRows(d)}</div>
+        <div class="home-card black-tile">${upcomingRows(d)}</div>
       </div>
     </div>
   </section>`;
@@ -476,7 +476,7 @@ function rankingHtml(rows) {
   return `
   <div class="home-col">
     ${colTitle(t('home.ranking'), t('home.top5'), '/rankings', t('home.wholeRanking'))}
-    <div class="home-card">
+    <div class="home-card black-tile">
       <div class="home-t-head rank"><span>#</span><span>${escapeHtml(t('tables.player'))}</span><span>${escapeHtml(t('home.change'))}</span><span>${escapeHtml(t('tables.points'))}</span></div>
       ${rows.slice(0, 5).map((r) => `
       <div class="home-t-row rank${r.rank === 1 ? ' lead' : ''}">
@@ -499,7 +499,7 @@ function lookingHtml(posts) {
   return `
   <div class="home-col">
     ${colTitle(t('home.looking'), '', '/looking-to-play', t('home.allLooking'))}
-    <div class="home-card">
+    <div class="home-card black-tile">
       ${posts.length ? posts.slice(0, 4).map((p) => {
         const cats = (p.categories || []).map((c) => categoryLabel(c)).join(' · ');
         const sub = [cats, nextSlot(p), p.location || t('home.anywhere')].filter(Boolean).join(' · ');
@@ -532,7 +532,7 @@ function freeCourtsHtml(free) {
   return `
   <div class="home-col">
     ${colTitle(t('home.freeCourts'), t('home.freeCourtsNote'), '/reservations', t('home.bookAll'))}
-    <div class="home-card">
+    <div class="home-card black-tile">
       ${days.length ? days.slice(0, 4).map(row).join('') : `<div class="home-empty">${escapeHtml(t('home.noFreeCourts'))}</div>`}
     </div>
   </div>`;
@@ -563,7 +563,7 @@ function moversHtml(d) {
 function liveHtml(d) {
   if (!d.live.length) return '';
   const items = d.live.slice(0, 2).map((m) => `<a class="item" href="/match/${m.token}"><b>${escapeHtml(m.player1.name)}</b> ${escapeHtml(m.scoreSummary || '–')} <b>${escapeHtml(m.player2.name)}</b></a>`).join('<span class="sep">·</span>');
-  return `<div class="home-live"><span class="p"><i></i>${escapeHtml(t('home.live'))} · ${d.live.length}</span>${items}<a class="go" href="/matches">${escapeHtml(t('home.watch'))}</a></div>`;
+  return `<div class="home-live black-tile"><span class="p"><i></i>${escapeHtml(t('home.live'))} · ${d.live.length}</span>${items}<a class="go" href="/matches">${escapeHtml(t('home.watch'))}</a></div>`;
 }
 
 // ---------- render ----------
@@ -692,7 +692,7 @@ function pomCardHtml(d) {
     ? row(i, t('pom.improved'), [num('courtIQ', `${i.from.toFixed(1)} → ${i.to.toFixed(1)}`), num(t('pom.progress'), `+${i.delta.toFixed(1)}`, true), num(t('pom.games'), String(i.played))])
     : '';
   // the heading is plural when there are two awards on the card
-  return `${secTitle(t(i ? 'pom.heading' : 'pom.title'), '', '', '')}<div class="pom-card">${best}${improved}</div>`;
+  return `${secTitle(t(i ? 'pom.heading' : 'pom.title'), '', '', '')}<div class="pom-card black-tile">${best}${improved}</div>`;
 }
 
 async function loadPom() {
@@ -719,7 +719,7 @@ const inviteLink = () => `${window.location.origin}/pozvanka/${encodeURIComponen
 function inviteCardHtml() {
   const stat = (label, value, green) => `<div><small>${escapeHtml(label)}</small><b${green ? ' class="green"' : ''}>${value}</b></div>`;
   return `
-    <div class="inv-card">
+    <div class="inv-card black-tile">
       <div>
         <h3>${escapeHtml(t('invite.heading'))}</h3>
         <p>${escapeHtml(t('invite.text'))}</p>
