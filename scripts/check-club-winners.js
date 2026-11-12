@@ -173,7 +173,7 @@ test('the pages: the tab in the card of a community tournament, the end of the p
   assert.ok(read('js/winners-panel.js').includes('/winners/all?seasonId=${season.id}'), 'the panel asks for the lists of its season');
   assert.ok(read('js/season.js').includes('`/winners?seasonId=${season.id}`'), 'the page of the tournament asks for the list of its season');
   const community = read('js/community.js');
-  assert.ok(community.includes('/winners?organisation=') && community.includes('winnersHtml()'), 'the community page shows the winners under its events');
+  assert.ok(!community.includes('winnersHtml()'), 'the community page has no winners block under its events any more (the winners are shared as a news post, comBindWinners)');
   const i18n = read('js/i18n.js');
   assert.strictEqual(i18n.split("'com.winners':").length - 1, 2, 'the heading in both languages');
 });

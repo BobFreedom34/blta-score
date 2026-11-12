@@ -129,8 +129,8 @@ test('the admin pages show the overlay link (with a Copy button) under the link 
   const helper = await get('/js/court-streams.js');
   for (const piece of ['data-copy-overlay', '/overlay/', 'data-saved', 'court-overlay-url', 'copyToClipboard']) assert.ok(helper.includes(piece), piece);
   assert.ok(/if \(saved\[i\][^)]*\)/.test(helper) || helper.includes('saved[i]'), 'the link is only for a court with a saved YouTube link');
-  assert.ok((await get('/js/seasons-admin.js')).includes('courtStreamFieldsHtml(s.courtCount, s.courtStreams, s.slug)'), 'the tournament form passes the slug');
-  assert.ok((await get('/js/season-draw.js')).includes('courtStreamFieldsHtml(overview.courtCount, overview.courtStreams, overview.slug)'), 'the Kurty box passes the slug');
+  assert.ok((await get('/js/seasons-admin.js')).includes('courtStreamFieldsHtml(s.courtCount, s.courtStreams, s.slug'), 'the tournament form passes the slug');
+  // (the draw page's own Kurty box is gone: the courts and their links are in the tournament form only)
   assert.ok((await get('/css/style.css')).includes('.court-overlay-url'));
 });
 

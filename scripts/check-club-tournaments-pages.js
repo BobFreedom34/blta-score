@@ -34,11 +34,12 @@ const inBothLanguages = (key) => assert.strictEqual(i18n.split(`'${key}':`).leng
 test('the Events tab and the create dialog: every text exists in both languages, every field written by a player is escaped, the dialog posts to the club', () => {
   const src = read('js/community.js');
   const keys = new Set([...src.matchAll(/t\('((?:com|ct)\.[a-zA-Z]+)'/g)].map((m) => m[1]));
-  ['com.newTournament', 'com.tournamentTitle', 'com.eventRegister', 'com.eventView', 'com.eventManage', 'com.eventRegistered', 'com.tCreate', 'com.tFieldInfo'].forEach((k) => assert.ok(keys.has(k), `${k} is used`));
+  ['com.newTournament', 'com.tournamentTitle', 'com.eventManage', 'com.tCreate', 'com.tFieldInfo'].forEach((k) => assert.ok(keys.has(k), `${k} is used`));
   keys.forEach(inBothLanguages);
   const raw = src.match(/\$\{\s*s\.(?:name|venue|slug)\s*\}/g);
   assert.ok(!raw, `a field of a tournament reaches a template unescaped: ${raw}`);
-  assert.ok(src.includes('escapeHtml(s.name)') && src.includes('encodeURIComponent(s.slug)'), 'name and slug are escaped');
+  // (the cards of the Events tab are drawn by the shared comTournamentRow -> schRow.html, which escapes the name; the slug goes through encodeURIComponent there)
+  assert.ok(src.includes('comTournamentRow(') && read('js/community-post.js').includes('encodeURIComponent(s.slug)') && read('js/schedule-row.js').includes('escapeHtml(ev.name'), 'name and slug are escaped');
   assert.ok(src.includes('/tournaments`, { method: \'POST\'') && src.includes("data-act=\"new-tournament\""), 'the dialog posts to /communities/:id/tournaments');
   // only the admin of the club that has switched to it sees the button, and only an approved club can make one
   assert.ok(/isActing\(\) && org\.approved \?/.test(src), 'the create button is for the acting admin of an approved club');

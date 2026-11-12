@@ -74,7 +74,7 @@ test('own groups of links: pages (their public address, in the language of the p
   const f = footerOf((await blta('/')).body);
   assert.deepStrictEqual([...f.matchAll(/<p class="sf-h">([^<]*)</g)].map((m) => m[1]), ['Hrať', 'Partneri']);
   assert.ok(f.includes(`<a href="/${seo.slugs.sk}">Zápasy</a>`));
-  assert.ok(f.includes('<a href="/registracia">Registrácia</a>') && f.includes('<a href="#kontakt">Kontakt</a>'));
+  assert.ok(f.includes('<a href="/registracia">Registrácia</a>') && !f.includes('<li><a href="#kontakt">Kontakt</a></li>') && f.includes('class="sf-contact" href="#kontakt"'));
   assert.ok(f.includes('<a href="https://skola.example/tenis" target="_blank" rel="noopener">Tenisová škola</a>'));
   const en = footerOf((await blta('/en')).body);
   assert.ok(en.includes('<p class="sf-h">Partners</p>') && en.includes('>Tennis school<'));

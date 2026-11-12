@@ -112,7 +112,7 @@ test('the admin pages carry the inputs: helper file, tournament form, draw page'
   const form = await js('seasons-admin.js');
   assert.ok(form.includes('courtStreamFieldsHtml(') && form.includes('courtStreams: readCourtStreams(') && form.includes('syncCourtStreamFields('), 'the tournament form');
   const draw = await js('season-draw.js');
-  assert.ok(draw.includes('courtStreamFieldsHtml(') && draw.includes('courtStreams: readCourtStreams(') && draw.includes('syncCourtStreamFields('), 'the draw page');
+  assert.ok(!draw.includes('courtStreamFieldsHtml(') && !draw.includes('readCourtStreams('), 'the draw page has no courts section any more (the courts and their video links live in one place: the tournament form)');
   for (const page of ['seasons-admin.html', 'tournaments-admin.html', 'club-tournament.html']) {
     const src = fs.readFileSync(path.join(ROOT, 'public', page), 'utf8');
     const at = src.indexOf('/js/court-streams.js');
