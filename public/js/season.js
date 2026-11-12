@@ -212,10 +212,10 @@ function seriesWinnersHtml() {
           ? `<a class="sw-tile ${tone}" href="/player/${encodeURIComponent(p.playerSlug || p.playerId)}">${inner}</a>`
           : `<div class="sw-tile ${tone}">${inner}</div>`;
       }).join('');
-      return `<div class="sw-card"><h3 class="sw-cat">${escapeHtml(b.category ? categoryLabel(b.category) : b.title)}</h3><div class="sw-pair${isTournament() ? ' sw-quad' : ''}">${tiles}</div></div>`;
+      return `<div class="sw-card grey-tile"><h3 class="sw-cat">${escapeHtml(b.category ? categoryLabel(b.category) : b.title)}</h3><div class="sw-pair${isTournament() ? ' sw-quad' : ''}">${tiles}</div></div>`;
     }).join('');
   if (!cards) return '';
-  return `<section class="sw-sec">${season.organisation ? secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle')) : secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle'), '/vitazi', t('season.winnersAll'))}<div class="sw-row${isTournament() ? ' sw-row-quad' : ''}">${cards.replace('<div class="sw-card">', `<div class="sw-card">${shareWinnersHtml()}`)}</div></section>`;
+  return `<section class="sw-sec">${season.organisation ? secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle')) : secHead('', t(isTournament() ? 'season.winnersTitleTournament' : 'season.winnersTitle'), '/vitazi', t('season.winnersAll'))}<div class="sw-row${isTournament() ? ' sw-row-quad' : ''}">${cards.replace('<div class="sw-card grey-tile">', `<div class="sw-card">${shareWinnersHtml()}`)}</div></section>`;
 }
 
 // the organiser of a club tournament shares its winners as a post in the news of the community (he may add a text to it)
@@ -372,20 +372,20 @@ function tilesHtml() {
   const players = model.total;
   // registered / maximum (the one limit of the event, or the limits of its categories added up); the ones over it are substitutes
   const maxPlayers = season.maxPlayers || Object.values(season.categoryMax || {}).reduce((a, b) => a + b, 0) || 0;
-  const tile = (key, value, sub) => `<div class="sv-tile"><div class="k">${escapeHtml(t(key))}</div><div class="v">${value}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</div></div>`;
+  const tile = (key, value, sub) => `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t(key))}</div><div class="v">${value}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</div></div>`;
   // the categories ticked in the Backend (a season or a tournament), and any a group is in
   const cats = CATEGORY_ORDER_ALL.filter((c) => (season.categories || []).includes(c) || (season.groups || []).some((g) => g.category === c) || (standings && standings.groups.some((g) => g.category === c)));
   const tiles = [
-    termText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileTerm'))}</div><div class="v sm">${escapeHtml(termText())}</div></div>` : '',
-    playingTimeText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileTime'))}</div><div class="v sm">${escapeHtml(playingTimeText())}</div></div>` : '',
+    termText() ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileTerm'))}</div><div class="v sm">${escapeHtml(termText())}</div></div>` : '',
+    playingTimeText() ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileTime'))}</div><div class="v sm">${escapeHtml(playingTimeText())}</div></div>` : '',
     cats.length ? tile('season.tileCats', cats.map((c) => CATEGORY_NAMES[c]).join(' · ')) : '',
-    season.venue ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileVenue'))}</div><div class="v sm">${escapeHtml(season.venue)}</div></div>` : '',
+    season.venue ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileVenue'))}</div><div class="v sm">${escapeHtml(season.venue)}</div></div>` : '',
     players || maxPlayers ? tile('season.tilePlayers', maxPlayers ? `${players}<span class="sv-max">/${maxPlayers}</span>` : String(players), (model.substitutes.length ? `+${model.substitutes.length} ${t('season.onWaiting')}` : '')) : '',
     season.courtCount > 0 ? tile('season.tileCourts', String(season.courtCount)) : '',
-    drawFormatText() ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileFormat'))}</div><div class="v sm">${escapeHtml(drawFormatText())}</div></div>` : '',
-    season.entryFee ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div></div>` : '',
-    season.drawDate ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tileDraw'))}</div><div class="v sm">${escapeHtml(formatDate(season.drawDate))}</div></div>` : '',
-    season.prizeMoney ? `<div class="sv-tile"><div class="k">${escapeHtml(t('season.tilePrize'))}</div><div class="v sm">${escapeHtml(season.prizeMoney)}</div></div>` : '',
+    drawFormatText() ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileFormat'))}</div><div class="v sm">${escapeHtml(drawFormatText())}</div></div>` : '',
+    season.entryFee ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div></div>` : '',
+    season.drawDate ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileDraw'))}</div><div class="v sm">${escapeHtml(formatDate(season.drawDate))}</div></div>` : '',
+    season.prizeMoney ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tilePrize'))}</div><div class="v sm">${escapeHtml(season.prizeMoney)}</div></div>` : '',
   ].join('');
   // the tiles sit in a card of their own, with a small heading
   return `<div class="sv-tiles-panel"><h3>${escapeHtml(t(isTournament() ? 'season.tilesTitleTournament' : 'season.tilesTitle'))}</h3><div class="sv-tiles">${tiles}</div></div>`;
@@ -416,7 +416,7 @@ function infoHtml() {
   return `
     <div class="sv-about">
       ${facts.length ? `<div class="sv-facts">${facts.map(([k, v]) => `<div class="sv-fact"><span>${escapeHtml(k)}</span><b>${escapeHtml(v)}</b></div>`).join('')}</div>` : ''}
-      ${lead.length ? `<div class="sv-about-lead">${lead.join('')}</div>` : ''}
+      ${lead.length ? `<div class="sv-about-lead grey-tile">${lead.join('')}</div>` : ''}
     </div>`;
 }
 
@@ -543,7 +543,7 @@ function scheduleHtml() {
       </div>`).join('');
   };
   // every round is a block of its own (a heading bar flush with the top, then its groups)
-  const roundBlock = (heading, matches) => `<div class="sv-rl-block">${heading ? `<div class="sv-rl-round"><b>${escapeHtml(heading.label)}</b><small>${escapeHtml(heading.progress)}</small></div>` : ''}<div class="sv-rl-groups">${groupBlocks(matches)}</div></div>`;
+  const roundBlock = (heading, matches) => `<div class="sv-rl-block">${heading ? `<div class="sv-rl-round grey-tile"><b>${escapeHtml(heading.label)}</b><small>${escapeHtml(heading.progress)}</small></div>` : ''}<div class="sv-rl-groups">${groupBlocks(matches)}</div></div>`;
   const body = rounds.map((r) => {
     const ms = shown.filter((m) => m.round === r.round);
     return ms.length ? roundBlock({ label: t('season.roundN', { n: r.round }), progress: `${r.finished}/${r.total}` }, ms) : '';

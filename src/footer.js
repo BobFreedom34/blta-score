@@ -105,7 +105,7 @@ function render(req) {
   return `<footer class="site-footer sf">
   <div class="sf-wrap">
     <div class="sf-main">
-      <div class="sf-brand">
+      <div class="sf-brand grey-tile">
         <a class="sf-logo" href="${esc(homeHref)}" aria-label="${esc(brand)} – ${esc(T.home)}">${logo}${nameHtml}</a>
         <p class="sf-desc">${esc(desc)}</p>
         ${address}

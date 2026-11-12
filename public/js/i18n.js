@@ -1398,6 +1398,7 @@ const TRANSLATIONS = {
 
     'notif.bellLabel': 'Upozornenia',
     'notif.heading': 'Upozornenia',
+    'notif.markAll': 'Označiť všetko ako prečítané',
     'notif.loading': 'Načítavam…',
     'notif.loadError': 'Upozornenia sa nepodarilo načítať',
     'notif.empty': 'Zatiaľ žiadne upozornenia',
@@ -2991,6 +2992,7 @@ const TRANSLATIONS = {
 
     'notif.bellLabel': 'Notifications',
     'notif.heading': 'Notifications',
+    'notif.markAll': 'Mark all as read',
     'notif.loading': 'Loading…',
     'notif.loadError': "Couldn't load notifications",
     'notif.empty': 'No notifications yet',

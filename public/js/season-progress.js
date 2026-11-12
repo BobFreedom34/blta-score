@@ -57,7 +57,7 @@ function seasonProgressHtml(season, standings) {
   }
 
   return `
-    <div class="home-season${over ? ' done' : ''}">
+    <div class="home-season grey-tile${over ? ' done' : ''}">
       <div class="home-season-top"><b>${escapeHtml(t('home.seasonProgress'))}${showPct ? `<em class="pct">${pct} %</em>` : ''}</b><span>${escapeHtml(right)}</span></div>
       ${bar}
     </div>`;

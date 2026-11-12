@@ -6770,7 +6770,6 @@ body:not(.embed-light):not(.embed) .match-card.availability-post .scoreboard { b
 .sv-tiles-panel { margin: 0 0 28px; padding: 16px; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius); }
 .sv-tiles-panel h3 { margin: 0 0 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8f98; }
 .sv-tiles-panel .sv-tiles { margin: 0; }
-.sv-tiles-panel .sv-tile { background: #2a2a30; }
 @media (max-width: 700px) { .sv-tiles-panel { padding: 12px; border-radius: 14px; } }
 
 /* the comments of an event of a club: at the end of Základné info, under the players - one dark card with the reactions, the comments and, under a line, the box to write in */
@@ -6873,7 +6872,7 @@ body:not(.embed-light):not(.embed) .ct-card {
   color: #fff;
   color-scheme: dark;
 }
-.badge-notif-panel-header { background: transparent; }
+.badge-notif-panel-header { background: #0d0d0d; } /* solid: the list scrolls under the sticky head, and a see-through head showed the rows through the title */
 .auth-menu-item { color: #fff; border-bottom-color: rgba(255, 255, 255, 0.1); }
 .auth-menu-item:not(:last-child) { border-bottom-color: rgba(255, 255, 255, 0.1); }
 .auth-menu-item:hover { background: rgba(255, 255, 255, 0.08); }
@@ -6967,7 +6966,7 @@ body:has(.admin-tabs) details.card:not(.sa-card) .btn-outline { color: #fff; bor
 .fn-sh p { margin: 2px 0 0; color: #a8a8b3; }
 .fn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
 /* "Sivá dlaždica" (grey tile): the grey gradient tile of the Funkcie page; add the class grey-tile to any block that should look like it (no hover effect of its own; a block adds one itself) */
-.grey-tile { border-radius: var(--radius); background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); transition: border-color 0.2s; }
+.grey-tile, body:not(.match-page):not(.embed-light) .info-item.grey-tile { border-radius: var(--radius); background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); transition: border-color 0.2s; }
 .fn-card { display: flex; flex-direction: column; padding: 18px 20px; }
 .fn-card:hover { border-color: var(--green); }
 .fn-card h3 { margin: 0; font-size: 15px; font-weight: 800; text-transform: none; color: #fff; }
@@ -6981,3 +6980,9 @@ body:has(.admin-tabs) details.card:not(.sa-card) .btn-outline { color: #fff; bor
 .fn-foot em { color: #a8a8b3; transition: transform 0.2s, color 0.2s; }
 .fn-foot em svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
 .fn-card:hover .fn-foot em { color: var(--green); transform: translate(2px, -2px); }
+
+/* the bell's panel head: the title on the left, "mark all as read" on the right (a small green-veil button, shown only while something is unread) */
+.badge-notif-panel-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; }
+.badge-notif-readall { flex: none; margin-left: auto; white-space: nowrap; padding: 5px 10px; border: 1px solid var(--green); border-radius: var(--radius-sm); background: rgba(178, 250, 6, 0.12); color: var(--green); font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.02em; text-transform: none; cursor: pointer; }
+.badge-notif-readall:hover { background: rgba(178, 250, 6, 0.2); }
+.badge-notif-readall[hidden] { display: none; }

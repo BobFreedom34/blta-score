@@ -403,6 +403,23 @@ router.post('/notifications/:type/:id/read', (req, res) => {
   res.json({ ok: true, unreadNotificationCount: countUnreadNotifications(playerId) });
 });
 
+// "Mark all as read" of the bell: every unseen notification of this player in every notification table (the same ones /read above knows)
+const NOTIFICATION_TABLES = ['player_badges', 'chat_notifications', 'play_request_notifications', 'proposal_notifications', 'ranking_notifications', 'badge_reminder_notifications',
+  'photo_notifications', 'post_comment_notifications', 'mention_notifications', 'community_notifications', 'registration_notifications'];
+router.post('/notifications/read-all', (req, res) => {
+  const playerId = auth.getPlayerId(req);
+  if (!playerId) return res.status(401).json({ error: 'Please log in to do this' });
+  db.exec('BEGIN');
+  try {
+    NOTIFICATION_TABLES.forEach((table) => db.prepare(`UPDATE ${table} SET seen = 1 WHERE player_id = ? AND seen = 0`).run(playerId));
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  res.json({ ok: true, unreadNotificationCount: countUnreadNotifications(playerId) });
+});
+
 // Digits only — everything else (spaces, dashes, a leading +, a country
 // code) is irrelevant once samePhone below only looks at the last 6.
 function normalizePhone(raw) {

@@ -3409,7 +3409,7 @@ function ensureBadgeBellUI() {
   panel.id = 'badge-notif-panel';
   panel.hidden = true;
   panel.innerHTML = `
-    <div class="badge-notif-panel-header">${t('notif.heading')}</div>
+    <div class="badge-notif-panel-header"><span>${t('notif.heading')}</span><button type="button" class="badge-notif-readall" id="badge-notif-readall" hidden>${t('notif.markAll')}</button></div>
     <div class="badge-notif-push" id="badge-notif-push" hidden></div>
     <div class="badge-notif-list" id="badge-notif-list"></div>
   `;
@@ -3492,6 +3492,8 @@ function truncateForNotif(text, max) {
 function renderBadgeNotifList() {
   const list = document.getElementById('badge-notif-list');
   if (!list) return;
+  const readAllBtn = document.getElementById('badge-notif-readall');
+  if (readAllBtn) readAllBtn.hidden = !(badgeNotifCache && badgeNotifCache.some((n) => !n.seen));
   if (!badgeNotifCache || !badgeNotifCache.length) {
     list.innerHTML = `<div class="badge-notif-empty">${t('notif.empty')}</div>`;
     return;
@@ -3647,6 +3649,20 @@ document.addEventListener('click', (e) => {
 // sequence (separate DB tables — see GET /player/notifications in
 // routes/player.js), so the two together are what actually identify one
 // row here; a bare id alone could match either.
+// "Označiť všetko ako prečítané" in the head of the bell's panel
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('#badge-notif-readall');
+  if (!btn) return;
+  btn.disabled = true;
+  try {
+    const res = await api('/player/notifications/read-all', { method: 'POST' });
+    if (badgeNotifCache) badgeNotifCache.forEach((n) => { n.seen = true; });
+    renderBadgeNotifList();
+    updateBadgeBellUI(res.unreadNotificationCount);
+  } catch { /* the list stays as it is; the button works again */ }
+  btn.disabled = false;
+});
+
 function findNotif(type, id) {
   return badgeNotifCache && badgeNotifCache.find((n) => n.type === type && n.id === id);
 }
