@@ -6,7 +6,7 @@
 // Everything can be made automatically or by hand (groups put together by the organiser, an empty bracket to seat). Loaded by
 // seasons-admin.html / tournaments-admin.html, used by seasons-admin.js (needs api, toast, escapeHtml).
 
-const DRAW_FORMATS = ['BO1', 'BO3', 'BO3_STB', 'BO5', 'BO5_STB', 'BO3_G4_STB', 'BO1_G5_TB'];
+const DRAW_FORMATS = ['BO1', 'BO3', 'BO3_STB', 'BO5', 'BO5_STB', 'BO3_G4_STB', 'BO1_G6_TB5'];
 const DRAW_MAIN_DEFAULT = 'BO3_STB';
 const DRAW_CONSOLATION_DEFAULT = 'BO3_G4_STB';
 // the order of the buttons: the special format for exactly 6 players is always the last one

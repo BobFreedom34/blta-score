@@ -13,8 +13,8 @@ const FORMAT_META = {
   BO5_STB: { setsToWin: 3, finalSetSuperTiebreak: true },
   // the consolation draw of a tournament: sets to 4 games, a tie-break at 3-3
   BO3_G4_STB: { setsToWin: 2, finalSetSuperTiebreak: true, setGames: 4, tiebreakAt: 3 },
-  // one set to 5 games, a tie-break at 5-5
-  BO1_G5_TB: { setsToWin: 1, finalSetSuperTiebreak: false, setGames: 5, tiebreakAt: 5 },
+  // one set to 6 games, a tie-break at 5-5
+  BO1_G6_TB5: { setsToWin: 1, finalSetSuperTiebreak: false, setGames: 6, tiebreakAt: 5 },
   // Free Play is open-ended in real play — 6 is just a generous cap on how many set rows the manual-result-entry form offers.
   FREE_PLAY: { setsToWin: 6, finalSetSuperTiebreak: false },
 };

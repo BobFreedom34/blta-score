@@ -18,7 +18,7 @@ const openKey = () => (IS_TOURNAMENT ? 'blta_tournaments_admin_open' : 'blta_sea
 let openIds = null;
 const openPanels = new Set(); // groups whose players panel is unfolded
 const previewOpen = new Set(); // seasons whose schedule preview is shown
-const FORMAT_KEYS = ['BO1', 'BO3', 'BO3_STB', 'BO5', 'BO5_STB', 'BO1_G5_TB'];
+const FORMAT_KEYS = ['BO1', 'BO3', 'BO3_STB', 'BO5', 'BO5_STB', 'BO1_G6_TB5'];
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);

@@ -118,7 +118,7 @@ const MATCH_FORMATS = [
   { key: 'BO5_STB' },
   { key: 'BO1' },
   { key: 'FREE_PLAY' },
-  { key: 'BO1_G5_TB' },
+  { key: 'BO1_G6_TB5' },
 ];
 
 function setupFormatOptions(containerId) {

@@ -27,13 +27,13 @@ const FORMATS = {
     setGames: 4,
     tiebreakAt: 3,
   },
-  // One set to 5 games (two games ahead, 5-0 … 5-3 or 6-4), a tie-break at 5-5 (so a set can also end 6-5).
-  BO1_G5_TB: {
-    key: 'BO1_G5_TB',
-    label: 'One set to 5 games (tie-break at 5-5)',
+  // One set to 6 games (6-0 … 6-4), a tie-break at 5-5 (so a set can also end 6-5): no set goes beyond 6 games.
+  BO1_G6_TB5: {
+    key: 'BO1_G6_TB5',
+    label: 'One set to 6 games (tie-break at 5-5)',
     setsToWin: 1,
     finalSetSuperTiebreak: false,
-    setGames: 5,
+    setGames: 6,
     tiebreakAt: 5,
   },
   // Open-ended practice/training match: sets keep getting added for as long
