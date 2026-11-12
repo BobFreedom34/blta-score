@@ -6966,7 +6966,7 @@ body:has(.admin-tabs) details.card:not(.sa-card) .btn-outline { color: #fff; bor
 .fn-sh p { margin: 2px 0 0; color: #a8a8b3; }
 .fn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
 /* "Sivá dlaždica" (grey tile): the grey gradient tile of the Funkcie page; add the class grey-tile to any block that should look like it (no hover effect of its own; a block adds one itself) */
-.grey-tile, body:not(.match-page):not(.embed-light) .info-item.grey-tile { border-radius: var(--radius); background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); transition: border-color 0.2s; }
+.grey-tile, body:not(.match-page):not(.embed-light) .info-item.grey-tile, body:has(#player-bio-card) .rival-tile { border-radius: var(--radius); background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); transition: border-color 0.2s; }
 .fn-card { display: flex; flex-direction: column; padding: 18px 20px; }
 .fn-card:hover { border-color: var(--green); }
 .fn-card h3 { margin: 0; font-size: 15px; font-weight: 800; text-transform: none; color: #fff; }
@@ -6987,4 +6987,7 @@ body:has(.admin-tabs) details.card:not(.sa-card) .btn-outline { color: #fff; bor
 .badge-notif-readall:hover { background: rgba(178, 250, 6, 0.2); }
 .badge-notif-readall[hidden] { display: none; }
 /* "Čierna dlaždica" (black tile): the black twin of the grey tile - a soft diagonal gradient that starts lighter in the bottom right corner and fades into black towards the top left, plus a 1px light line along the bottom edge. Add the class black-tile to a black block; its own border, radius and padding stay as they are. !important on the image because the glass lists carry an #id */
-.black-tile { background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(21, 21, 24, 0.9), rgba(10, 10, 10, 0.6) 75%) !important; }
+.black-tile,
+body:has(#player-bio-card) :is(.player-bio-card, .statistics-card, .rivals-card, .h2h-card, .match-card, .match-card .scoreboard-compact, .player-avatar-fallback) { background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(21, 21, 24, 0.9), rgba(10, 10, 10, 0.6) 75%) !important; }
+/* the border of the black tiles that have a plain grey one: darker than the old --border-grey (not the green/orange frames of the season timeline and the invite card, and not the orange hover of a link tile) */
+:is(.home-card, .home-live, .home-mine-cell.next, .pom-card).black-tile:not(:hover) { border-color: #3b3d44; }
