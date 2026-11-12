@@ -6952,3 +6952,32 @@ body:has(.admin-tabs) details.card:not(.sa-card) .btn-outline { color: #fff; bor
 .sw-share:hover { border-color: #fff; background: rgba(255, 255, 255, 0.16); }
 @media (max-width: 600px) { .sw-share-label { display: none; } .sw-share { padding: 7px 9px; } }
 .com-post-winners { margin-top: 12px; }
+
+/* Funkcie page (/funkcie): hero title, category chips, a section per category with a green-veil icon square and glass tiles */
+.fn-h1 { margin: 22px 0 10px; font-size: clamp(44px, 8vw, 80px); font-weight: 900; text-transform: uppercase; letter-spacing: 0.01em; line-height: 1; }
+.fn-chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 8px; }
+.fn-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 999px; background: #1b1b1f; color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
+.fn-chip:hover { border-color: var(--green); }
+.fn-chip svg { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--green); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fn-sec { margin-top: 54px; scroll-margin-top: 84px; }
+.fn-sh { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.fn-hex { width: 56px; height: 56px; flex: none; display: grid; place-items: center; background: rgba(178, 250, 6, 0.12); border: 1px solid var(--green); color: var(--green); border-radius: var(--radius); }
+.fn-hex svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fn-sh h2 { margin: 0; font-size: clamp(22px, 3.4vw, 30px); text-transform: uppercase; font-weight: 800; }
+.fn-sh p { margin: 2px 0 0; color: #a8a8b3; }
+.fn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+/* "Sivá dlaždica" (grey tile): the grey gradient tile of the Funkcie page; add the class grey-tile to any block that should look like it (no hover effect of its own; a block adds one itself) */
+.grey-tile { border-radius: var(--radius); background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); transition: border-color 0.2s; }
+.fn-card { display: flex; flex-direction: column; padding: 18px 20px; }
+.fn-card:hover { border-color: var(--green); }
+.fn-card h3 { margin: 0; font-size: 15px; font-weight: 800; text-transform: none; color: #fff; }
+.fn-card p { margin: 0 0 14px; color: #c4c4cc; font-size: 13.5px; }
+.fn-card code { background: #2a2a2e; padding: 1px 5px; border-radius: 6px; font-size: 12px; }
+.fn-top { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+.fn-ico { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 10px; background: rgba(178, 250, 6, 0.12); border: 1px solid var(--green); color: var(--green); }
+.fn-ico svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fn-foot { margin-top: auto; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.fn-foot span { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--green); background: rgba(178, 250, 6, 0.12); border: 1px solid rgba(178, 250, 6, 0.5); border-radius: var(--radius-sm); padding: 3px 9px; }
+.fn-foot em { color: #a8a8b3; transition: transform 0.2s, color 0.2s; }
+.fn-foot em svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+.fn-card:hover .fn-foot em { color: var(--green); transform: translate(2px, -2px); }

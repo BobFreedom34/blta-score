@@ -16,7 +16,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':
 const GROUPS = [
   { sk: 'Liga', en: 'League', links: [['/matches', 'Zápasy', 'Matches'], ['/tables', 'Tabuľky', 'Tables'], ['/rankings', 'Rebríčky', 'Rankings'], ['/players', 'Hráči', 'Players'], ['/harmonogram', 'Harmonogram', 'Schedule'], ['/vitazi', 'Víťazi', 'Winners']] },
   { sk: 'Hrať', en: 'Play', links: [['/looking-to-play', 'Hľadám súpera', 'Find an opponent'], ['/new-match', 'Nový zápas', 'New match'], ['/reservations', 'Rezervácie kurtov', 'Court booking'], ['/courts', 'Tenisové kurty', 'Tennis courts'], ['/courtiq', 'CourtIQ', 'CourtIQ']] },
-  { sk: 'Komunita', en: 'Community', links: [['/communities', 'Komunity a kluby', 'Communities and clubs'], ['/blog', 'Blog', 'Blog'], ['/propozicie', 'Propozície', 'Rules'], ['#kontakt', 'Kontakt', 'Contact']] },
+  { sk: 'Komunita', en: 'Community', links: [['/communities', 'Komunity a kluby', 'Communities and clubs'], ['/blog', 'Blog', 'Blog'], ['/propozicie', 'Propozície', 'Rules'], ['/funkcie', 'Funkcie', 'Features'], ['#kontakt', 'Kontakt', 'Contact']] },
 ];
 const NATIONAL_GROUPS = [
   { sk: 'SLTA', en: 'SLTA', links: [['#mesta', 'Mestá', 'Cities'], ['/slta-rankings', 'Rebríčky miest', 'City rankings'], ['#ako', 'Ako to funguje', 'How it works'], ['#funkcie', 'Funkcie', 'Features']] },

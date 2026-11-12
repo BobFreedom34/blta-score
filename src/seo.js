@@ -74,6 +74,11 @@ const PAGES = [
     description: 'Ako funguje CourtIQ - automatický rating sily hráča v škále 1.0 až 7.0, ktorý sa počíta zo skutočne odohraných zápasov: čo ho mení a čo znamená otáznik.',
   },
   {
+    key: 'funkcie', label: 'Features (Funkcie)', path: '/funkcie', file: 'funkcie.html', blta: null,
+    title: `Funkcie${SUFFIX}`,
+    description: 'Všetky funkcie aplikácie BLTA Score: živé skórovanie, rebríčky, turnaje, komunity, rezervácie kurtov, prenos a správa ligy v jednom prehľade.',
+  },
+  {
     // the national site (slta.sk) only: the rankings of the cities side by side (never served on a city's own site)
     key: 'slta-rankings', label: 'National: rankings of the cities', path: '/slta-rankings', file: 'slta-rankings.html', blta: null, slugSk: 'rebricky-miest',
     title: 'Rebríčky miest - SLTA - Slovenská liga tenisových amatérov',
@@ -267,6 +272,11 @@ const ENGLISH = {
     slug: 'city-rankings',
     title: 'City rankings - SLTA - Slovak Amateur Tennis League',
     description: 'SLTA city rankings - the main ranking, CourtIQ and the tournaments ranking of the amateur tennis players of each city in Slovakia, side by side.',
+  },
+  funkcie: {
+    slug: 'features',
+    title: `Features${SUFFIX_EN}`,
+    description: 'All the features of the BLTA Score app: live scoring, rankings, tournaments, communities, court booking, broadcasting and league management in one overview.',
   },
   courtiq: {
     slug: 'courtiq',

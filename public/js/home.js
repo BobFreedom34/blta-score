@@ -125,7 +125,7 @@ function mineHtml(d) {
   // Every number tile has the same build: the big number on the left, at most two lines beside it behind a thin divider.
     // `cover` makes the whole tile a link without being an <a> itself (it holds links of its own, the form squares)
     const tile = ({ href, cover, label, num, sup, lines, below, cls }) => `
-      <${href ? `a class="home-mine-cell${cls ? ` ${cls}` : ''}" href="${href}"` : `div class="home-mine-cell${cover ? ' linked' : ''}"`}>
+      <${href ? `a class="home-mine-cell grey-tile${cls ? ` ${cls}` : ''}" href="${href}"` : `div class="home-mine-cell grey-tile${cover ? ' linked' : ''}"`}>
         ${cover ? `<a class="home-mine-cover" href="${cover}" aria-label="${escapeHtml(label)}"></a>` : ''}
         <div class="k">${escapeHtml(label)}</div>
         <div class="home-mine-body">
@@ -171,7 +171,7 @@ function mineHtml(d) {
       below: `<div class="home-mine-form">${squares}</div>`,
     })
     : `
-      <a class="home-mine-cell" href="/player/${encodeURIComponent(currentPlayerSlug || pid)}">
+      <a class="home-mine-cell grey-tile" href="/player/${encodeURIComponent(currentPlayerSlug || pid)}">
         <div class="k">${escapeHtml(t('home.mineForm'))}</div>
         <div class="v dim">${escapeHtml(t('home.mineNoForm'))}</div>
       </a>`;
@@ -187,7 +187,7 @@ function mineHtml(d) {
           + together(pts(t('home.minePts', { n: ranked.points })), ranked.move ? `<span class="home-mine-move ${ranked.move.direction === 'up' ? 'up' : 'down'}">${ranked.move.direction === 'up' ? '▲' : '▼'} ${ranked.move.amount}</span>` : ''),
       })
       : `
-      <a class="home-mine-cell" href="/rankings">
+      <a class="home-mine-cell grey-tile" href="/rankings">
         <div class="k">${escapeHtml(t('home.mineRank'))}</div>
         <div class="v dim">${escapeHtml(t('home.mineNotRanked'))}</div>
       </a>`;
@@ -206,7 +206,7 @@ function mineHtml(d) {
         lines: of(`${t('courtiq.ratingCol')} ${iq.rating}`) + pts(t('courtiq.gamesPlayed', { count: iq.gamesPlayed })),
       })
       : `
-      <a class="home-mine-cell iq-tile" href="${profile}">
+      <a class="home-mine-cell grey-tile iq-tile" href="${profile}">
         <div class="k">${escapeHtml(t('home.mineIq'))}</div>
         <div class="v dim">${escapeHtml(t('home.mineNotRated'))}</div>
       </a>`;
@@ -390,7 +390,7 @@ function statsHtml(d) {
   const counted = groups.reduce((s, g) => s + (g.matchesCounted || 0), 0);
   const players = groups.reduce((s, g) => s + g.rows.length, 0);
   const weekLive = d.weekMatches.filter((m) => m.status === 'LIVE').length;
-  const tile = (k, v, s) => `<div class="home-stat"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(String(v))}</div><div class="s">${escapeHtml(s)}</div></div>`;
+  const tile = (k, v, s) => `<div class="home-stat grey-tile"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(String(v))}</div><div class="s">${escapeHtml(s)}</div></div>`;
   return `<div class="home-stats">
     ${tile(t('home.statPlayed'), frozen ? '–' : counted, t('home.statPlayedSub'))}
     ${tile(t('home.statPlayers'), players, t('home.statPlayersSub', { n: groups.length }))}
@@ -552,7 +552,7 @@ function moversHtml(d) {
   if (!rows) return '';
   const ups = rows.filter((r) => r.move && r.move.direction === 'up').sort((a, b) => b.move.amount - a.move.amount);
   const downs = rows.filter((r) => r.move && r.move.direction === 'down').sort((a, b) => b.move.amount - a.move.amount);
-  const tile = (k, r, text, cls) => `<div class="home-mv"><div class="k">${escapeHtml(k)}</div><div class="nm">${escapeHtml(r.name)}</div><div class="d ${cls}">${escapeHtml(text)}</div></div>`;
+  const tile = (k, r, text, cls) => `<div class="home-mv grey-tile"><div class="k">${escapeHtml(k)}</div><div class="nm">${escapeHtml(r.name)}</div><div class="d ${cls}">${escapeHtml(text)}</div></div>`;
   const tiles = [tile(t('home.moverLeader'), rows[0], `#1 · ${rows[0].points}`, '')];
   if (ups[0]) tiles.push(tile(t('home.moverUp'), ups[0], `▲ ${ups[0].move.amount} · #${ups[0].rank}`, 'up'));
   if (downs[0]) tiles.push(tile(t('home.moverDown'), downs[0], `▼ ${downs[0].move.amount} · #${downs[0].rank}`, 'down'));
