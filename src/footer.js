@@ -14,10 +14,12 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':
 
 // [code address of the page, Slovak, English]; the public address of each comes from Backend > SEO (seo.pageUrl), so a changed slug follows
 const GROUPS = [
-  { sk: 'Liga', en: 'League', links: [['/matches', 'Zápasy', 'Matches'], ['/tables', 'Tabuľky', 'Tables'], ['/rankings', 'Rebríčky', 'Rankings'], ['/players', 'Hráči', 'Players'], ['/harmonogram', 'Harmonogram', 'Schedule'], ['/vitazi', 'Víťazi', 'Winners']] },
-  { sk: 'Hrať', en: 'Play', links: [['/looking-to-play', 'Hľadám súpera', 'Find an opponent'], ['/new-match', 'Nový zápas', 'New match'], ['/reservations', 'Rezervácie kurtov', 'Court booking'], ['/courts', 'Tenisové kurty', 'Tennis courts'], ['/courtiq', 'CourtIQ', 'CourtIQ']] },
-  { sk: 'Komunita', en: 'Community', links: [['/communities', 'Komunity a kluby', 'Communities and clubs'], ['/blog', 'Blog', 'Blog'], ['/propozicie', 'Propozície', 'Rules'], ['/funkcie', 'Funkcie', 'Features'], ['#kontakt', 'Kontakt', 'Contact']] },
+  { sk: 'Liga', en: 'League', links: [['/matches', 'Zápasy', 'Matches'], ['/tables', 'Tabuľky', 'Tables'], ['/rankings', 'Rebríčky', 'Rankings'], ['/players', 'Hráči', 'Players'], ['/harmonogram', 'Harmonogram', 'Schedule'], ['/vitazi', 'Víťazi', 'Winners'], ['/propozicie', 'Propozície', 'Rules']] },
+  { sk: 'Hrať', en: 'Play', links: [['/looking-to-play', 'Hľadám súpera', 'Find an opponent'], ['/new-match', 'Nový zápas', 'New match'], ['/reservations', 'Rezervácie kurtov', 'Court booking'], ['/courts', 'Tenisové kurty', 'Tennis courts']] },
+  { sk: 'Komunita', en: 'Community', links: [['/communities', 'Komunity a kluby', 'Communities and clubs'], ['/blog', 'Blog', 'Blog']] },
 ];
+// the two highlighted links, always shown together in the right corner of the link area (whatever groups Backend > Footer saved: a link to one of them inside a group is left out there)
+const PINNED = [['/funkcie', 'Funkcie', 'Features'], ['/courtiq', 'courtIQ', 'courtIQ']];
 const NATIONAL_GROUPS = [
   { sk: 'SLTA', en: 'SLTA', links: [['#mesta', 'Mestá', 'Cities'], ['/slta-rankings', 'Rebríčky miest', 'City rankings'], ['#ako', 'Ako to funguje', 'How it works'], ['#funkcie', 'Funkcie', 'Features']] },
   { sk: 'Organizátori', en: 'Organisers', links: [['#organizator', 'Staň sa organizátorom', 'Become the organiser'], ['#otazky', 'Otázky a odpovede', 'Questions and answers']] },
@@ -29,13 +31,13 @@ const defaultGroups = (isNational) => toModel(isNational ? NATIONAL_GROUPS : GRO
 
 const TEXT = {
   sk: {
-    nav: 'Pätička stránky', cities: 'Mestá SLTA', admin: 'Admin', sitemap: 'Mapa stránok', home: 'Domov',
+    nav: 'Pätička stránky', contact: 'Kontakt', cities: 'Mestá SLTA', admin: 'Admin', sitemap: 'Mapa stránok', home: 'Domov',
     descBlta: 'Liga pre rekreačných a amatérskych tenistov v Bratislave. Živé skóre, tabuľky, rebríčky, turnaje a kurty na jednom mieste.',
     descCity: (brand) => `Liga pre rekreačných a amatérskych tenistov – ${brand}. Živé skóre, tabuľky, rebríčky a turnaje na jednom mieste.`,
     descNational: 'Slovenská liga tenisových amatérov. Vyber si svoje mesto, zaregistruj sa a hraj ligu na svojej úrovni.',
   },
   en: {
-    nav: 'Site footer', cities: 'SLTA cities', admin: 'Admin', sitemap: 'Sitemap', home: 'Home',
+    nav: 'Site footer', contact: 'Contact', cities: 'SLTA cities', admin: 'Admin', sitemap: 'Sitemap', home: 'Home',
     descBlta: 'A league for recreational and amateur tennis players in Bratislava. Live scores, tables, rankings, tournaments and courts in one place.',
     descCity: (brand) => `A league for recreational and amateur tennis players – ${brand}. Live scores, tables, rankings and tournaments in one place.`,
     descNational: 'The Slovak Amateur Tennis League. Pick your city, sign up and play a league at your level.',
@@ -76,11 +78,15 @@ function render(req) {
   // the national page); a path of its own gets the city's prefix; an address of another website opens in a new tab
   const hrefOf = (l) => (l.page ? `${base}${seo.pageUrl(l.page, lang)}` : (l.url.charAt(0) === '/' && base && l.url !== base && !l.url.startsWith(`${base}/`) ? `${base}${l.url}` : l.url));
   const outside = (l) => /^https?:\/\//i.test(l.url || '');
-  const groups = (S.groups || defaultGroups(isNational)).filter((g) => g.links.length).map((g) => `
+  const isPinned = (l) => PINNED.some(([code]) => l.page === code) || String(l.url || '').trim().toLowerCase() === '#kontakt'; // Kontakt has its own button in the grey card
+  const groups = (S.groups || defaultGroups(isNational)).map((g) => ({ ...g, links: g.links.filter((l) => isNational || !isPinned(l)) })).filter((g) => g.links.length).map((g) => `
         <div class="sf-group">
           <p class="sf-h">${esc(lang === 'en' ? g.en : g.sk)}</p>
           <ul>${g.links.map((l) => `<li><a href="${esc(hrefOf(l))}"${outside(l) ? ' target="_blank" rel="noopener"' : ''}>${esc(lang === 'en' ? l.en : l.sk)}</a></li>`).join('')}</ul>
         </div>`).join('');
+
+  const pinned = isNational ? '' : `
+        <div class="sf-pinned">${PINNED.map(([code, sk, en]) => `<a class="sf-hl" href="${esc(`${base}${seo.pageUrl(code, lang)}`)}">${esc(lang === 'en' ? en : sk)}</a>`).join('')}</div>`;
 
   // the contact of the card: what Backend > Footer has for this city, else (Bratislava) the contact window of Backend > Menu
   const ownContact = Object.fromEntries(Object.entries(S.contact).filter(([, v]) => v));
@@ -110,8 +116,9 @@ function render(req) {
         <p class="sf-desc">${esc(desc)}</p>
         ${address}
         ${social ? `<ul class="sf-social">${social}</ul>` : ''}
+        <a class="sf-contact" href="#kontakt">${esc(T.contact)}</a>
       </div>
-      <nav class="sf-nav" aria-label="${esc(T.nav)}">${groups}
+      <nav class="sf-nav" aria-label="${esc(T.nav)}">${groups}${pinned}
       </nav>
     </div>
     ${pills.length ? `<div class="sf-cities"><span>${esc(T.cities)}:</span>${pills.map((p) => `<a class="sf-pill" href="${esc(p.href)}" data-nobase>${esc(p.label)}</a>`).join('')}</div>` : ''}

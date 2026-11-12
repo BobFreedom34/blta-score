@@ -6991,3 +6991,10 @@ body:has(.admin-tabs) details.card:not(.sa-card) .btn-outline { color: #fff; bor
 body:has(#player-bio-card) :is(.player-bio-card, .statistics-card, .rivals-card, .h2h-card, .match-card, .match-card .scoreboard-compact, .player-avatar-fallback) { background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(21, 21, 24, 0.9), rgba(10, 10, 10, 0.6) 75%) !important; }
 /* the border of the black tiles that have a plain grey one: darker than the old --border-grey (not the green/orange frames of the season timeline and the invite card, and not the orange hover of a link tile) */
 :is(.home-card, .home-live, .home-mine-cell.next, .pom-card).black-tile:not(:hover) { border-color: #3b3d44; }
+/* the two highlighted links of the footer (Funkcie, courtIQ): green veil pills side by side in the right corner of the link area */
+.sf-pinned { grid-column: 1 / -1; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.sf-hl { display: inline-block; padding: 6px 14px; border: 1px solid var(--green); border-radius: var(--radius-sm); background: rgba(178, 250, 6, 0.12); color: var(--green); font-weight: 800; text-decoration: none; transition: background 0.15s; }
+.sf-hl:hover, .sf-hl:focus-visible { background: rgba(178, 250, 6, 0.2); color: var(--green); }
+/* the Kontakt button in the grey card of the footer, under the social icons (opens the contact window) */
+.sf-contact { display: inline-flex; align-items: center; margin-top: 16px; padding: 8px 18px; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.08); color: #fff; font-size: 13px; font-weight: 800; text-decoration: none; transition: border-color 0.15s, color 0.15s; }
+.sf-contact:hover, .sf-contact:focus-visible { border-color: var(--green); color: var(--green); }
