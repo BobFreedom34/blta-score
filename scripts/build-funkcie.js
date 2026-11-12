@@ -18,22 +18,24 @@ const P = {
   live: '<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M4.9 19.1a10 10 0 0 1 0-14.2"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
   code: '<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  phone: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>',
   arrow: '<path d="M7 17 17 7"/><path d="M7 7h10v10"/>',
 };
 const ic = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${P[k]}</svg>`;
 const META = {
-  1: ['ball', 'Od naplánovania po výsledok – skóre sa mení v reálnom čase.'],
-  2: ['user', 'Profil, odznaky, CourtIQ, notifikácie a správy.'],
-  3: ['barChart', 'Body, poradia a história – všetko sa eviduje a dá sa opraviť.'],
-  4: ['globe', 'Mestské ligy, skupiny a rozpis zápasov.'],
-  5: ['trophy', 'Od registrácie cez žreb a pavúk po víťazov.'],
-  6: ['users', 'Vlastná stránka, novinky, členovia a rebríček.'],
-  7: ['calendar', 'Voľné sloty, rezervácie a správa kurtov.'],
-  8: ['pin', 'Miesta hrania, kurty a ich živý prenos.'],
-  9: ['clipboard', 'Úvodná stránka, blog, FAQ, pravidlá a sponzori.'],
-  10: ['live', 'Overlay pre stream, embedy a obrazovky na turnaji.'],
-  11: ['grid', 'Správa všetkého na jednom mieste.'],
-  12: ['code', 'PWA, push, zálohy, SEO a nasadenie.'],
+  1: ['ball', 'Od naplánovania po výsledok – skóre sa mení pred očami, priamo z kurtu.'],
+  2: ['search', 'Nikdy nehraj sám – nájdi partnera a dohodni zápas za pár klepnutí.'],
+  3: ['user', 'Tvoja tenisová vizitka: štatistiky, úroveň, odznaky a pokrok.'],
+  4: ['barChart', 'Vidíš, kde si, kto je pred tebou a o čo hráš.'],
+  5: ['globe', 'Ligy vo viacerých mestách, sezóny, skupiny a play-off.'],
+  6: ['trophy', 'Od prihlášky cez žreb a pavúk až po víťazov.'],
+  7: ['users', 'Vlastná partia, klub alebo škola – so svojou stránkou, novinkami a rebríčkom.'],
+  8: ['calendar', 'Voľné kurty na týždeň dopredu a rezervácia na jedno kliknutie.'],
+  9: ['bell', 'Dôležité veci sa k tebe dostanú samy.'],
+  10: ['live', 'Ukáž zápas svetu – na webe, v streame aj na veľkej obrazovke.'],
+  11: ['phone', 'Vždy po ruke – bez sťahovania z obchodu.'],
 };
 const secs = [];
 let cur = null;
@@ -43,7 +45,7 @@ for (const l of fs.readFileSync(path.join(root, 'docs', 'funkcie-aplikacie.md'),
   else if (/^## /.test(l)) cur = null;
   else if (cur && /^\|/.test(l) && !/^\|[-| ]+\|$/.test(l)) {
     const c = l.replace(/^\||\|$/g, '').split('|').map((x) => x.trim());
-    if (c[0] !== 'Funkcia' && c[0] !== 'Záložka') cur.cards.push(c);
+    if (c[0] !== 'Funkcia') cur.cards.push(c);
   }
 }
 const total = secs.reduce((a, s) => a + s.cards.length, 0);
@@ -54,7 +56,7 @@ const startMain = shell.indexOf('<div class="container pr-page ciq-page"');
 const endMain = shell.indexOf('\n', startMain);
 const intro = `<div class="container pr-page fn-page">
   <h1 class="fn-h1">Funkcie</h1>
-  <p class="page-intro">Všetko, čo aplikácia vie – od prvého plánovania zápasu až po výsledky a rebríčky. ${total} funkcií v ${secs.length} kategóriách.</p>
+  <p class="page-intro">Všetko, čo ti aplikácia ponúka – od prvého zápasu až po víťazstvo v turnaji. Skóre naživo, rebríčky, turnaje, komunity aj rezervácie kurtov na jednom mieste.</p>
   <div class="fn-chips">${chips}</div>
 ${body}
 </div>`;
