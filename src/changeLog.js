@@ -20,7 +20,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_change_log_created ON change_log(id DESC);
 `);
 
-const KINDS = ['FINISHED', 'CORRECTED', 'REOPENED', 'DELETED', 'MANUAL'];
+const KINDS = ['FINISHED', 'CORRECTED', 'REOPENED', 'DELETED', 'MANUAL', 'DEFENCE'];
 
 function parseState(raw) {
   try { return JSON.parse(raw); } catch { return {}; }
@@ -131,6 +131,14 @@ function logManualPoints(change) {
   return true;
 }
 
+// The weekly defence of the points (src/rankingExpiry.js) took points off a player: change = { tableKey, tableLabel, name, before, after, expired: [{ date, points, what }] }.
+function logDefence(change) {
+  if (!change || change.before === change.after) return false;
+  const { expired, ...ranking } = change;
+  write('DEFENCE', null, null, change.name, { ranking: [{ ...ranking, delta: change.after - change.before }], group: null, expired: expired || [] });
+  return true;
+}
+
 // The newest first. opts: { limit (1-200, default 50), before (an id: older than it), kind, q (a word in the title or a player name) }.
 function list(opts = {}) {
   const limit = Math.max(1, Math.min(200, Number(opts.limit) || 50));
@@ -150,4 +158,4 @@ function list(opts = {}) {
   return { items, hasMore: rows.length > limit };
 }
 
-module.exports = { KINDS, logMatchChange, logMatchDeleted, logManualPoints, list };
+module.exports = { KINDS, logMatchChange, logMatchDeleted, logManualPoints, logDefence, list };

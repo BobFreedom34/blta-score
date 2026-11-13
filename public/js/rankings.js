@@ -318,11 +318,12 @@ function renderTable() {
       </div>
     `;
   }).join('');
-  listEl.innerHTML = `<div class="rank-table">${headerRowHtml(table)}${rowsHtml}</div>${(isAdminUser && !IS_EMBED) ? setPointsFormHtml() : ''}`;
+  listEl.innerHTML = `<div class="rank-table">${headerRowHtml(table)}${rowsHtml}</div>${(isAdminUser && !IS_EMBED) ? setPointsFormHtml() : ''}${(isAdminUser && !IS_EMBED && table.key === 'blta') ? datedPointsFormHtml() : ''}`;
 
   if (isAdminUser && !IS_EMBED) {
     attachEditHandlers(table);
     attachSetPointsForm(table);
+    if (table.key === 'blta') attachDatedPointsForm();
   }
 }
 
@@ -342,6 +343,60 @@ function setPointsFormHtml() {
       </label>
       <button type="submit" class="btn btn-primary">${t('common.save')}</button>
     </form>`;
+}
+
+// Admin, overall BLTA table: points of an event WITH A DATE (a tournament, a placement bonus). They leave the table 52 weeks after the date
+// (src/rankingExpiry.js): the weekly defence of the points.
+function datedPointsFormHtml() {
+  const input = 'display:block;width:100%;margin-top:4px;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px';
+  const label = 'font-size:12px;font-weight:700;color:#c3c7cf';
+  return `
+    <form id="dated-points-form" style="margin-top:22px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.14)">
+      <div style="font-weight:700;margin-bottom:4px">${t('rankings.datedTitle')}</div>
+      <div style="font-size:12px;color:#c3c7cf;margin-bottom:10px">${t('rankings.datedHint')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <label style="flex:2;min-width:200px;${label}">${t('rankings.setPlayer')}
+          <input type="text" id="dp-name" list="sp-players" autocomplete="off" placeholder="${escapeHtml(t('rankings.setPlayerPlaceholder'))}" style="${input}">
+        </label>
+        <label style="width:100px;${label}">${t('rankings.setPoints')}
+          <input type="number" id="dp-points" step="1" min="1" style="${input}">
+        </label>
+        <label style="width:150px;${label}">${t('rankings.datedDate')}
+          <input type="date" id="dp-date" style="${input}">
+        </label>
+        <label style="width:170px;${label}">${t('rankings.datedKind')}
+          <select id="dp-kind" style="${input}">
+            <option value="TOURNAMENT">${t('rankings.datedKindTournament')}</option>
+            <option value="BONUS">${t('rankings.datedKindBonus')}</option>
+            <option value="OTHER">${t('rankings.datedKindOther')}</option>
+          </select>
+        </label>
+        <label style="flex:2;min-width:200px;${label}">${t('rankings.datedLabel')}
+          <input type="text" id="dp-label" maxlength="120" style="${input}">
+        </label>
+        <button type="submit" class="btn btn-primary">${t('rankings.datedAdd')}</button>
+      </div>
+    </form>`;
+}
+
+function attachDatedPointsForm() {
+  const form = document.getElementById('dated-points-form');
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('dp-name').value.trim();
+    const points = Number(document.getElementById('dp-points').value);
+    const date = document.getElementById('dp-date').value;
+    if (!name) return toast(t('rankings.setPlayerPlaceholder'));
+    if (!Number.isInteger(points) || points <= 0) return toast(t('rankings.pointsMustBeWhole'));
+    try {
+      await api('/rankings/dated-points', { method: 'POST', body: { name, points, date, kind: document.getElementById('dp-kind').value, label: document.getElementById('dp-label').value.trim() } });
+      toast(t('rankings.datedDone'));
+      load();
+    } catch (err) {
+      toast(err.message);
+    }
+  });
 }
 
 async function attachSetPointsForm(table) {

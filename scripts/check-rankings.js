@@ -345,6 +345,24 @@ test('api: after a recount by hand the admin can make the current ranks the star
   assert.strictEqual((await call('PUT', `/api/rankings/points/blta/${encodeURIComponent(leader)}`, { points: before.points })).status, 200);
 });
 
+test('api: points with a date (tournament, bonus) are added for the admin only and show in the list of what goes off', async () => {
+  newPlayer('Api Dated');
+  const day = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+  const body = { name: 'Api Dated', points: 25, date: day, kind: 'TOURNAMENT', label: 'Check Cup' };
+  assert.strictEqual((await call('POST', '/api/rankings/dated-points', body, false)).status, 401);
+  const made = await call('POST', '/api/rankings/dated-points', body);
+  assert.strictEqual(made.status, 201, made.text);
+  assert.deepStrictEqual(await pts('blta', 'Api Dated'), [25, 0]);
+  assert.strictEqual((await call('POST', '/api/rankings/dated-points', { ...body, date: '2020-01-01' })).status, 400, 'older than 52 weeks');
+  assert.strictEqual((await call('POST', '/api/rankings/dated-points', { ...body, points: 0 })).status, 400);
+  assert.strictEqual((await call('GET', '/api/rankings/expiry', undefined, false)).status, 401);
+  const list = await call('GET', '/api/rankings/expiry');
+  assert.strictEqual(list.status, 200, list.text);
+  assert.strictEqual(list.json.weeks.length, 8);
+  assert.strictEqual(list.json.windowDays, 364);
+  assert.ok(Array.isArray(list.json.unaccounted));
+});
+
 test('nothing is sent to the old plugin (not for a finish, a restart, a delete)', async () => {
   assert.strictEqual(pluginHits, 0, `the fake plugin was visited ${pluginHits} times`);
 });

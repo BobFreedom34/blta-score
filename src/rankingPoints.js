@@ -16,6 +16,7 @@ const db = require('./db');
 const clubTournaments = require('./clubTournaments');
 const engine = require('./matchEngine');
 const nameMatch = require('./nameMatch');
+const expiry = require('./rankingExpiry');
 
 // order = the order of the tabs on the rankings page
 const TABLES = [
@@ -120,6 +121,7 @@ function recordAwards(matchId, computed, ledgerOnly, collect) {
       if (!entry) return;
       if (!ledgerOnly) touchPoints.run(award.points, entry.id);
       ledger.run(matchId, entry.id, award.points);
+      if (tableKey === expiry.TABLE_KEY && !ledgerOnly) expiry.addForMatch(matchId, entry.id, award.points); // (the points leave the table 52 weeks after the match, see rankingExpiry.js)
       if (collect) collect.push({ entry_id: entry.id, points: award.points, added: true });
     });
   });
@@ -128,10 +130,13 @@ function recordAwards(matchId, computed, ledgerOnly, collect) {
 // Takes back everything a match added (nothing happens when it added nothing). Callers wrap this in a transaction.
 function reverseRows(matchId, collect) {
   const rows = db.prepare('SELECT * FROM ranking_awards WHERE match_id = ?').all(matchId);
-  if (collect) rows.forEach((r) => collect.push({ entry_id: r.entry_id, points: -r.points }));
+  // (points that the defence has already taken off the table - the match is older than 52 weeks - are not taken off a second time)
+  const gone = (r) => expiry.isApplied(matchId, r.entry_id);
+  if (collect) rows.forEach((r) => collect.push({ entry_id: r.entry_id, points: gone(r) ? 0 : -r.points }));
   const undo = db.prepare("UPDATE ranking_entries SET points = COALESCE(points, 0) - ?, matches = MAX(0, matches - ?), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?");
-  rows.forEach((r) => undo.run(r.points, r.matches_delta, r.entry_id));
+  rows.forEach((r) => undo.run(gone(r) ? 0 : r.points, r.matches_delta, r.entry_id));
   if (rows.length) db.prepare('DELETE FROM ranking_awards WHERE match_id = ?').run(matchId);
+  expiry.removeForMatch(matchId);
   return rows.length;
 }
 
@@ -280,5 +285,5 @@ function setPoints(tableKey, name, points, matches) {
 
 module.exports = {
   TABLES, TABLE_KEYS, CATEGORY_RULES, BASE_POINTS,
-  normalizeName, computeAwards, recordAwards, reverseRows, inTransaction, reconcile, reverseForMatch, reverseForMatchWithChanges, getTables, setPoints,
+  normalizeName, computeAwards, entryFor, recordAwards, reverseRows, inTransaction, reconcile, reverseForMatch, reverseForMatchWithChanges, getTables, setPoints,
 };

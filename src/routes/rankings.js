@@ -4,6 +4,7 @@ const leagues = require('../leagues');
 const playerPush = require('../playerPush');
 const { requireSuperAdmin } = require('../auth');
 const rankingPoints = require('../rankingPoints');
+const expiry = require('../rankingExpiry');
 const { getMoves, getHistory, rebase, isoWeekOf } = require('../rankingSnapshots');
 
 const router = express.Router();
@@ -31,6 +32,8 @@ function computeAge(birthday) {
 // leagueId: the city the tables are shown for. The points rules and the tables are shared, but a city shows only its own players (a row that
 // belongs to nobody is a Bratislava one: those are the names from before the cities); ranks are counted again within the city.
 function buildRankings(leagueId = leagues.DEFAULT_LEAGUE_ID) {
+  // the defence of the points comes FIRST: the points that are 52 weeks old go off the table before the weekly roll below works out who moved
+  try { expiry.applyDue(); } catch (err) { console.error('[defence] could not take the old points off:', err); }
   const data = rankingPoints.getTables();
 
   // Slug, nationality and age live on the player's bio here; a row that is not tied to a player (a name that matched nobody)
@@ -229,6 +232,21 @@ router.put('/points/:tableKey/:name', requireSuperAdmin, (req, res) => {
   if (result.error) return res.status(400).json({ error: result.error });
   try { require('../changeLog').logManualPoints(result.change); } catch (err) { console.error('[change log]', err.message); }
   res.json({ ok: true, points, ...(matches !== undefined ? { matches } : {}) });
+});
+
+// Admin-only: points of an event WITH A DATE (a tournament, a placement bonus): they are added to the BLTA table and leave it 52 weeks after the date.
+// { name, points (whole, above 0), date (2026-11-15), kind: TOURNAMENT | BONUS | OTHER, label }
+router.post('/dated-points', requireSuperAdmin, (req, res) => {
+  const b = req.body || {};
+  const made = expiry.addDated({ name: String(b.name || ''), points: Number(b.points), date: b.date, kind: b.kind || 'TOURNAMENT', label: b.label, alreadyCounted: b.alreadyCounted === true });
+  if (made.error) return res.status(400).json({ error: made.error });
+  if (made.after !== made.before) try { require('../changeLog').logManualPoints({ tableKey: 'blta', tableLabel: 'BLTA', name: made.name, before: made.before, after: made.after }); } catch (err) { console.error('[change log]', err.message); }
+  res.status(201).json(made);
+});
+
+// Admin-only: the next Mondays and the points that will go off the table on each (the defence, see src/rankingExpiry.js)
+router.get('/expiry', requireSuperAdmin, (req, res) => {
+  res.json({ today: new Date().toISOString().slice(0, 10), windowDays: expiry.WINDOW_DAYS, weeks: expiry.upcoming(Math.min(26, Math.max(1, Number(req.query.weeks) || 8))), unaccounted: expiry.unaccounted() });
 });
 
 // Admin-only: after a bulk correction by hand the current ranks become the starting point of the week (no arrows, and no "you climbed N places"

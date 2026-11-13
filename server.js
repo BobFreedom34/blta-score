@@ -208,6 +208,11 @@ try {
   console.error('Rankings seed failed (will retry on next start):', err);
 }
 try {
+  require('./src/rankingExpiry').seed(); // the dated items of the BLTA points that are there today (once)
+} catch (err) {
+  console.error('Defence of points seed failed (will retry on next start):', err);
+}
+try {
   const renamed = communities.slugsFollowNames();
   if (renamed) console.log('Communities whose address now follows their name: ' + renamed);
 } catch (err) {
