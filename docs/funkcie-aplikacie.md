@@ -51,7 +51,10 @@ Zdroj textov pre stránku `/funkcie`. Stránku generuje `node scripts/build-funk
 | Celkový rebríček | Jedno bodové poradie všetkých hráčov ligy. Body za zápasy sa pripisujú automaticky. |
 | Rebríčky kategórií | Samostatné poradia pre Elite, Next Gen a Novice, aby si súťažil s hráčmi tvojej úrovne. |
 | Rebríček turnajov | Body z turnajov majú vlastné poradie. Víťazstvá z turnajov sa tak nestratia medzi ligovými zápasmi. |
-| Pohyb v rebríčku | Vidíš, o koľko miest si sa posunul, a dostaneš oznam, keď sa pohneš. |
+| Pohyb v rebríčku | Vidíš, o koľko miest si sa posunul. Každý pondelok dostaneš oznam s číslom týždňa, napríklad „V 47. týždni si sa posunul o 3 miesta hore“. |
+| Obhajoba bodov | Body v celkovom rebríčku platia 52 týždňov. Body zo zápasov odpadávajú postupne podľa dátumu zápasu a body z turnaja naraz po 52 týždňoch. Každý pondelok to aplikácia urobí sama a až potom vyhodnotí, kto sa posunul. Kto hrá pravidelne, o miesto neprichádza. |
+| Bonus za umiestnenie automaticky | Keď sa skončí play-off alebo turnaj, víťaz, finalista a semifinalisti dostanú bonusové body podľa propozícií sami, bez ručného zadávania. Každé pripísanie je vidieť v zázname zmien bodov. |
+| Rebríčky Race | Rebríčky Elite, Next Gen a Novice začínajú každý rok od nuly a ukazujú, kto bodoval v aktuálnom roku. |
 | Rebríček tento týždeň | Prehľad lídra a najväčších pohybov za posledný týždeň. |
 | Tabuľky skupín | Počas sezóny sa pri každej skupine priebežne ukazuje poradie hráčov a body. |
 | Konečné poradie | Po skončení turnaja alebo sezóny vidíš výsledné umiestnenia všetkých hráčov. |
@@ -64,6 +67,8 @@ Zdroj textov pre stránku `/funkcie`. Stránku generuje `node scripts/build-funk
 | Ligy vo viacerých mestách | Každé mesto má vlastnú ligu so svojou stránkou, hráčmi, tabuľkami a kontaktom. Nájdeš ju na mape Slovenska. |
 | Sezóny s fázami | Základná časť, potom play-off. Na stránke sezóny vidíš priebeh série, hráčov a odohrané zápasy. |
 | Skupiny podľa úrovne | Hráči hrajú v skupinách pre svoju kategóriu. Môžu sa meniť a odstúpiť a tabuľka sa sama prepočíta. |
+| Žreb do skupín naživo | Organizátor vytvorí prázdne skupiny a hráčov do nich rozdelí žreb pred kamerou. Skupiny vyjdú rovnako veľké a nasadení hráči idú „hadom“ (pri 4 skupinách A = 1 a 8, B = 2 a 7, C = 3 a 6, D = 4 a 5). Na stránke sezóny je tlačidlo na prehratie záznamu žrebu. |
+| Zmena hráča po žrebe | Hráč odstúpi alebo ho nahradí iný? Aplikácia upozorní, že rozpis skupiny treba aktualizovať, a doplní len chýbajúce zápasy. Odohraté zápasy ostanú. |
 | Harmonogram | Prehľadný kalendár ligy a turnajov na celý rok, aby si vedel, kedy sa čo hrá. |
 | Rozpis zápasov | Pre každé kolo vidíš, kto s kým hrá a kedy. |
 | Víťazi | Archív víťazov, finalistov a semifinalistov všetkých sérií, s fotkami z odovzdávania cien. |
@@ -76,7 +81,7 @@ Zdroj textov pre stránku `/funkcie`. Stránku generuje `node scripts/build-funk
 |---|---|
 | Registrácia online | Prihlás sa na turnaj, vyber si kategóriu a vidíš, koľko miest je ešte voľných. Ak sa turnaj zaplní, aplikácia to ukáže. |
 | Žreb, ktorý sa spraví sám | Nasadenie najlepších hráčov, náhodný žreb, švajčiarsky systém alebo skupiny, a potom vyraďovací pavúk. Organizátor si vyberie systém a zvyšok je na aplikácii. |
-| Žreb naživo pred kamerou | Žrebovanie ako prezentácia, ktorú môžeš ukázať aj na YouTube. Odpočítavanie od 5, nasadení hráči idú na svoje miesta a ostatných určí náhoda pred očami divákov: svetlo behá po menách, spomalí a zastaví sa na vyžrebovanom hráčovi, ktorý preletí do skupiny alebo do pavúka. Pred začiatkom je na obrazovke zámok žrebu a na konci jeho kľúč, z ktorého sa výsledok dá zopakovať a overiť. Záznam žrebu môže ktokoľvek prehrať. |
+| Žreb naživo pred kamerou | Žrebovanie ako prezentácia, ktorú môžeš ukázať aj na YouTube. Odpočítavanie od 5, nasadení hráči idú na svoje miesta a ostatných určí náhoda pred očami divákov: svetlo behá po menách, spomalí a zastaví sa na vyžrebovanom hráčovi, ktorý preletí do skupiny alebo do pavúka. Pred začiatkom je na obrazovke zámok žrebu a na konci jeho kľúč, z ktorého sa výsledok dá zopakovať a overiť. Záznam žrebu môže ktokoľvek prehrať. Žreb naživo funguje pri turnajoch aj pri skupinách ligy. |
 | Pavúk a útecha | Vyraďovací strom s výsledkami v reálnom čase. Hráči, ktorí vypadnú, môžu pokračovať v útešnej vetve. |
 | Rozpis na viac kurtov | Aplikácia rozdelí zápasy medzi kurty a časy. Každý kurt môže mať vlastný názov, napríklad „Kurt 1“ alebo „Centrálny“. |
 | Čo sa hrá na ktorom kurte | Divák vidí, ktorý zápas práve beží na ktorom kurte, a môže si pozrieť aj stream kurtu. |

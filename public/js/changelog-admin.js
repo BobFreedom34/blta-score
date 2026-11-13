@@ -11,6 +11,7 @@
     DELETED: ['Match deleted', 'var(--danger)'],
     MANUAL: ['Manual correction', '#6b7cff'],
     DEFENCE: ['Points defence', '#c27cff'],
+    BONUS: ['Placement bonus', '#2e9e4f'],
   };
   const CATEGORY = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice' };
   const field = 'padding:8px 10px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;font-size:14px';

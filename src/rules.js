@@ -33,6 +33,23 @@ if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'rules_seeded'").get()) {
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('rules_seeded')").run();
 }
 
+// Once: the part "Obhajoba bodov" of Bodovanie is rewritten as the defence of the points really works now (src/rulesDefenceText.js). The old text is found by its
+// heading and replaced up to the end of the section; a section that does not have it any more (the admin wrote it differently) is left as it is.
+if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'rules_defence_text_2026'").get()) {
+  const text = require('./rulesDefenceText');
+  db.prepare("SELECT id, body_html, body_en FROM rules_sections WHERE slug = 'bodovanie'").all().forEach((row) => {
+    const swap = (body, mark, fresh) => {
+      const i = body ? body.indexOf(mark) : -1;
+      return i < 0 ? null : body.slice(0, i) + fresh;
+    };
+    const sk = swap(row.body_html, text.MARK_SK, text.SK);
+    const en = swap(row.body_en, text.MARK_EN, text.EN);
+    if (sk !== null) db.prepare('UPDATE rules_sections SET body_html = ? WHERE id = ?').run(sk, row.id);
+    if (en !== null) db.prepare('UPDATE rules_sections SET body_en = ? WHERE id = ?').run(en, row.id);
+  });
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('rules_defence_text_2026')").run();
+}
+
 const TAGS = {
   p: 'p', div: 'div', span: 'span', br: 'br', strong: 'strong', b: 'strong', em: 'em', i: 'em', u: 'u', small: 'small',
   ul: 'ul', ol: 'ol', li: 'li', h3: 'h3', h4: 'h3', a: 'a',

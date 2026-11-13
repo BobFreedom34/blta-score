@@ -5,6 +5,7 @@ const playerPush = require('../playerPush');
 const { requireSuperAdmin } = require('../auth');
 const rankingPoints = require('../rankingPoints');
 const expiry = require('../rankingExpiry');
+const bonus = require('../rankingBonus');
 const { getMoves, getHistory, rebase, isoWeekOf } = require('../rankingSnapshots');
 
 const router = express.Router();
@@ -33,6 +34,7 @@ function computeAge(birthday) {
 // belongs to nobody is a Bratislava one: those are the names from before the cities); ranks are counted again within the city.
 function buildRankings(leagueId = leagues.DEFAULT_LEAGUE_ID) {
   // the defence of the points comes FIRST: the points that are 52 weeks old go off the table before the weekly roll below works out who moved
+  try { bonus.syncThrottled(); } catch (err) { console.error('[bonus] could not add the placement bonus:', err); } // (a decided play-off gives its bonus before anything else is worked out)
   try { expiry.applyDue(); } catch (err) { console.error('[defence] could not take the old points off:', err); }
   const data = rankingPoints.getTables();
 
