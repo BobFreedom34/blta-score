@@ -233,7 +233,7 @@
     const n = sorted.length;
     const cols = n > 60 ? 3 : n > 22 ? 2 : 1;
     const rows = Math.ceil(n / cols);
-    const poolW = cols === 1 ? 400 : cols === 2 ? 640 : 880;
+    const poolW = cols === 1 ? 400 : cols === 2 ? 540 : 760;
     $('dl-main').style.setProperty('--pool-w', `calc(var(--u) * ${poolW})`);
     list.style.setProperty('--cols', cols);
     list.style.setProperty('--rows', rows);
@@ -259,10 +259,13 @@
     let headFont = 22;
     let treeMode = false;
     let treeFont = 0;
+    const longest = Math.min(24, Math.max(...plan.entrants.map((e) => e.name.length)));
     if (layout.type === 'GROUPS') {
       const maxSize = Math.max(...layout.groups.map((g) => g.size));
       const fit = fitBoard(layout.groups.length, maxSize, 250, boardW, boardH, 56, 16, 52);
       cardCols = fit.cols; slotH = Math.max(24, Math.min(66, fit.slotH));
+      const cardW = (boardW - 16 * (cardCols - 1)) / cardCols;
+      treeFont = Math.max(12, Math.min(slotH * 0.5, (cardW - 16 - 20 - 50) / (longest * 0.6))); // (the seed badge and the number of the seat take some room)
       html = layout.groups.map((g, gi) => `<div class="dl-card-box" data-g="${gi}"><div class="dl-card-head"><span>${esc(g.name)}</span><span>${g.size}</span></div><div class="dl-card-body">${Array.from({ length: g.size }, (_, i) => slotHtml(`g${gi}-${i}`, i + 1)).join('')}</div></div>`).join('');
     } else if (layout.type === 'BRACKET' && layout.size <= 32) {
       const tree = buildTree(layout, boardW, 745, slotHtml, Math.max(...plan.entrants.map((e) => e.name.length))); // (the tree uses the whole height of the board)
@@ -285,7 +288,7 @@
     }
     board.style.setProperty('--bcols', cardCols);
     board.style.setProperty('--slot-h', slotH.toFixed(1));
-    board.style.setProperty('--slot-font', treeMode ? treeFont.toFixed(1) : Math.max(13, Math.min(30, Math.floor(slotH * 0.5))));
+    board.style.setProperty('--slot-font', treeFont ? treeFont.toFixed(1) : Math.max(13, Math.min(30, Math.floor(slotH * 0.5))));
     board.style.setProperty('--head-font', headFont);
     board.classList.toggle('dl-board-tree', treeMode);
     S.treeMode = treeMode;
