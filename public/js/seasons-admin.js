@@ -320,7 +320,7 @@ async function cropHero(file, w, h) {
 // when it is opened). The form of the basic info is in sections.
 // the last tab of a card is the winners list of the season or the tournament (also in the card of a community: its organiser fills it in, it shows on the page of the tournament and of the community)
 const cardTabs = () => (IS_TOURNAMENT
-  ? [['info', tl('Základné info', 'Basic info')], ['regs', tl('Registrácie', 'Registrations')], ['assign', tl('Zaradenie do kategórií', 'Category assignment')], ['draw', tl('Formát turnaja', 'Tournament format')]]
+  ? [['info', tl('Základné info', 'Basic info')], ['regs', tl('Registrácie', 'Registrations')], ['assign', tl('Zaradenie do kategórií', 'Category assignment')], ['draw', tl('Formát turnaja a žrebovanie', 'Tournament format and draw')]]
   : [['info', tl('Základné info', 'Basic info')], ['regs', tl('Registrácie', 'Registrations')], ['groups', tl('Skupiny', 'Groups')], ['schedule', tl('Rozpis', 'Schedule')], ['brackets', tl('Pavúk', 'Bracket')]]
 ).concat([['winners', tl('Víťazi', 'Winners')]]);
 const cardTab = new Map(); // season id -> the tab last opened (kept when the list is drawn again)
@@ -482,7 +482,7 @@ function seasonCardHtml(s) {
                     <div class="sa-checks">${CATEGORIES.map(([k, label]) => `<label><input type="checkbox" data-cat="${k}"${s.categories.includes(k) ? ' checked' : ''}${s.categories.includes('OPEN') ? ' disabled' : ''}> ${label}</label>`).join('')}
                       <label><input type="checkbox" data-cat="OPEN"${s.categories.includes('OPEN') ? ' checked' : ''}> ${tl('Bez kategórie', 'No category')}</label></div>
                     <span class="sa-hint">${IS_TOURNAMENT
-                      ? tl('Turnaj sa hrá len v zaškrtnutých kategóriách (len tie sa ukážu v „Zaradenie do kategórií“ a v „Formát turnaja“). „Bez kategórie“: hráči sa nezaraďujú, hrá sa jeden pavúk pre všetkých prihlásených.', 'The tournament is played only in the ticked categories (only those show in "Category assignment" and in "Tournament format"). "No category": players are not assigned, one bracket is played for everybody registered.')
+                      ? tl('Turnaj sa hrá len v zaškrtnutých kategóriách (len tie sa ukážu v „Zaradenie do kategórií“ a v „Formát turnaja a žrebovanie“). „Bez kategórie“: hráči sa nezaraďujú, hrá sa jeden pavúk pre všetkých prihlásených.', 'The tournament is played only in the ticked categories (only those show in "Category assignment" and in "Tournament format"). "No category": players are not assigned, one bracket is played for everybody registered.')
                       : tl('Sezóna sa hrá len v zaškrtnutých kategóriách: tie sa ukážu pri registrácii hráčov a v harmonograme. „Bez kategórie“: hráči sa pri registrácii kategóriu nevyberajú a skupiny sezóny sú bez kategórie (hrajú sa ako zápasy kategórie Iné).', 'The season is played only in the ticked categories: they show when players register and in the schedule. "No category": players do not choose a category when they register and the groups of the season have no category (they are played as matches of the category Other).')}</span>
                   </div>
                 </div>` : ''}
