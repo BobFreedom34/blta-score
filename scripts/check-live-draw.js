@@ -466,6 +466,31 @@ test('a season: the groups are made in one go, the players are divided at once (
   void regs;
 });
 
+test('the admin registers a player that is not in the list, typed as text: asks first, makes the profile with the phone, the player can log in; a repeat is refused', async () => {
+  const made = await call('POST', '/api/seasons', { name: 'Liga Text', kind: 'LEAGUE', startDate: '2099-03-01', endDate: '2099-06-01' });
+  const lg = made.json;
+  const url = `/api/seasons/${lg.id}/registrations/admin`;
+  assert.strictEqual((await call('POST', url, { category: 'ELITE' })).status, 400, 'nothing chosen, nothing typed');
+  const ask = await call('POST', url, { name: 'Zbyňo Nováčik', category: 'ELITE' });
+  assert.strictEqual(ask.status, 409, ask.text);
+  assert.strictEqual(ask.json.code, 'UNKNOWN_PLAYER');
+  const phone = '0907123987';
+  const ok = await call('POST', url, { name: 'Zbyňo Nováčik', confirmNew: true, category: 'ELITE', phone, email: 'zbyno@example.com' });
+  assert.strictEqual(ok.status, 201, ok.text);
+  assert.strictEqual(ok.json.newPlayer, true);
+  assert.strictEqual(ok.json.loginReady, true);
+  const players = (await call('GET', '/api/players')).json;
+  const mine = players.find((p) => p.name === 'Zbyňo Nováčik');
+  assert.ok(mine, 'the profile was made');
+  assert.strictEqual((await call('POST', url, { name: 'Zbyňo Nováčik', category: 'ELITE' })).status, 409, 'the same player twice');
+  const login = await call('POST', '/api/player/login', { code: phone }, { admin: false });
+  assert.ok(login.status === 200 || login.json.pinSetupRequired || login.json.pinRequired, `the phone finds the player: ${login.status} ${login.text}`);
+  // a number somebody has already is not given to the new profile (the registration is made, the profile has no phone)
+  const other = await call('POST', url, { name: 'Ďalší Nováčik', confirmNew: true, category: 'ELITE', phone });
+  assert.strictEqual(other.status, 201, other.text);
+  assert.strictEqual(other.json.loginReady, false);
+});
+
 test('the page of the season has the saved draw (tile) and the record can be replayed', async () => {
   const page = (await call('GET', `/api/seasons/by-slug/${league.slug}`, undefined, { admin: false })).json;
   assert.strictEqual(page.liveDraws.length, 1);

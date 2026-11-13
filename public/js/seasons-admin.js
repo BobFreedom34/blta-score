@@ -975,28 +975,44 @@ function wireSeason(card) {
       field('phone').value = chosen && chosen.phone ? chosen.phone : '';
       field('email').value = chosen && chosen.email ? chosen.email : '';
       if (!isDoubles) field('category').value = chosen ? profileCategory(chosen.category) : '';
-      if (!chosen) { say(''); return; }
+      if (!chosen) { say(String(field('player').value).trim().length >= 3 ? tl('Tento hráč nie je v zozname: po stlačení „Pridať hráča“ sa zaregistruje ako nový hráč (napíš aj telefón, aby sa vedel prihlásiť).', 'This player is not in the list: pressing Add player registers them as a new player (add a phone too so they can log in).') : ''); return; }
       const missing = [chosen.phone ? '' : tl('telefón', 'phone'), chosen.email ? '' : tl('e-mail', 'email'), IS_TOURNAMENT || profileCategory(chosen.category) ? '' : tl('kategória', 'category')].filter(Boolean);
       say(missing.length ? tl(`V profile zatiaľ chýba: ${missing.join(', ')} — doplň to tu (zapíše sa len do tejto registrácie).`, `No ${missing.join(', ')} in the profile yet — fill ${missing.length === 1 ? 'it' : 'them'} in here (only this registration gets it).`) : tl('Telefón, e-mail a kategória sa preberajú z profilu.', 'Phone, email and category are taken from the profile.'));
     });
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!chosen) { say(tl('Vyber hráča zo zoznamu.', 'Choose a player from the list.'), true); return; }
+    // typed as text: a name that is not in the list; the server says when it is the same as, or like, a player that exists
+    const send = async (extra) => {
+      const typed = chosen ? chosen.name : field('player').value.trim();
       // a tournament entry may have no category: the empty choice is sent as it is; a league season takes the profile's when none is picked
-      const body = { playerId: chosen.id, category: isDoubles ? '' : (IS_TOURNAMENT ? field('category').value : (field('category').value || undefined)) };
+      const body = { ...(chosen ? { playerId: chosen.id } : { name: typed }), category: isDoubles ? '' : (IS_TOURNAMENT ? field('category').value : (field('category').value || undefined)), ...extra };
       if (isDoubles) {
         const partner = field('partner').value.trim();
         if (!partner) { say(tl('Zadaj partnera páru.', 'Enter the partner of the pair.'), true); return; }
         body.partner = partner;
       }
-      if (field('phone').value.trim() !== (chosen.phone || '')) body.phone = field('phone').value;
-      if (field('email').value.trim() !== (chosen.email || '')) body.email = field('email').value;
+      if (!chosen || field('phone').value.trim() !== (chosen.phone || '')) body.phone = field('phone').value;
+      if (!chosen || field('email').value.trim() !== (chosen.email || '')) body.email = field('email').value;
       try {
-        await api(`/seasons/${id}/registrations/admin`, { method: 'POST', body });
-        toast(tl(`Pridané: ${chosen.name}`, `${chosen.name} added`));
+        const made = await api(`/seasons/${id}/registrations/admin`, { method: 'POST', body });
+        toast(made.newPlayer ? tl(`Nový hráč zaregistrovaný: ${typed}`, `New player registered: ${typed}`) : tl(`Pridané: ${typed}`, `${typed} added`));
+        if (made.newPlayer) alert(made.loginReady ? tl(`${typed} sa prihlási telefónnym číslom a pri prvom prihlásení si vytvorí svoj 5-miestny kód.`, `${typed} logs in with the phone number and creates a 5-digit code of their own at the first login.`) : tl(`${typed} je zaregistrovaný, ale nemá v profile telefón, takže sa zatiaľ nevie prihlásiť. Keď sa sám zaregistruje v aplikácii s rovnakým menom, prevezme tento profil.`, `${typed} is registered but has no phone on the profile, so they cannot log in yet. When they register in the app with the same name they take over this profile.`));
         await loadRegs();
         regsList.querySelector('[data-ra="player"]').focus();
-      } catch (err) { say(err.message, true); }
+      } catch (err) {
+        const d = err.data || {};
+        if (d.code === 'SIMILAR_PLAYERS' || d.code === 'UNKNOWN_PLAYER') {
+          const title = d.code === 'SIMILAR_PLAYERS' ? tl(`Je „${escapeHtml(d.typed)}“ jeden z týchto hráčov?`, `Is “${escapeHtml(d.typed)}” one of these players?`) : tl(`Hráč „${escapeHtml(d.typed)}“ zatiaľ neexistuje.`, `There is no player “${escapeHtml(d.typed)}” yet.`);
+          hint.style.color = 'var(--gray)';
+          hint.innerHTML = `<div style="margin-bottom:6px">${title}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${d.suggestions.map((p) => `<button type="button" class="btn btn-sm btn-outline" data-pick="${p.id}">${escapeHtml(p.name)}</button>`).join('')}<button type="button" class="btn btn-sm btn-primary" data-new="1">${tl(`Nie — zaregistrovať nového hráča „${escapeHtml(d.typed)}“`, `No — register a new player “${escapeHtml(d.typed)}”`)}</button><button type="button" class="btn btn-sm btn-outline" data-cancel="1">${tl('Zrušiť', 'Cancel')}</button></div>`;
+          hint.querySelectorAll('[data-pick]').forEach((b2) => b2.addEventListener('click', () => { const p = players.find((x) => x.id === Number(b2.dataset.pick)); chosen = p || { id: Number(b2.dataset.pick), name: b2.textContent, phone: '', email: '' }; hint.innerHTML = ''; send({}); }));
+          hint.querySelector('[data-new]').addEventListener('click', () => { hint.innerHTML = ''; send({ confirmNew: true }); });
+          hint.querySelector('[data-cancel]').addEventListener('click', () => { hint.innerHTML = ''; });
+        } else say(err.message, true);
+      }
+    };
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!chosen && String(field('player').value).trim().length < 3) { say(tl('Vyber hráča zo zoznamu, alebo napíš meno nového hráča.', 'Choose a player from the list, or type the name of a new player.'), true); return; }
+      send({});
     });
   }
 

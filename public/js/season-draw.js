@@ -355,7 +355,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
       if (box.dataset.open) { box.innerHTML = ''; delete box.dataset.open; return; }
       box.dataset.open = '1';
       box.innerHTML = `<div style="color:var(--gray)">${tl('Načítavam…', 'Loading…')}</div>`;
-      try { await window.mountBracketAdmin(box, seasonId); box.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (err) { box.innerHTML = `<div class="sa-hint">${escapeHtml(err.message)}</div>`; }
+      try { await window.mountBracketAdmin(box, seasonId, { editOnly: true }); box.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (err) { box.innerHTML = `<div class="sa-hint">${escapeHtml(err.message)}</div>`; }
       return;
     }
     if (cat) showError(cat, '');

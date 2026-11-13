@@ -929,8 +929,16 @@ router.post('/:id/registrations/admin', clubTournaments.requireSeasonManager(clu
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
   const body = req.body || {};
-  const player = db.prepare('SELECT * FROM players WHERE id = ?').get(Number(body.playerId));
-  if (!player) return res.status(400).json({ error: 'Choose a player from the list' });
+  // a player from the list (playerId) or a name typed as text: the same name is the same player, a similar name asks who is meant, a new name needs
+  // confirmNew: true and makes a new player (as when a player is added to a group)
+  const typedName = typeof body.name === 'string' ? body.name.trim() : '';
+  if ((body.playerId === undefined || body.playerId === null || body.playerId === '') && !typedName) return res.status(400).json({ error: 'Choose a player from the list' });
+  const found = resolveMemberPlayer(body, season.league_id);
+  if (found.error) return res.status(400).json({ error: found.error === 'That player does not exist' ? 'Choose a player from the list' : found.error });
+  if (found.conflict) {
+    return res.status(409).json({ error: found.conflict.code === 'SIMILAR_PLAYERS' ? 'Similar players exist — choose who you mean' : 'No such player yet — confirm to create a new one', ...found.conflict });
+  }
+  const player = found.player;
   // a tournament entry may have no category (category = ''): sent as an empty category, or when the profile has none either
   const tournament = season.kind === 'TOURNAMENT';
   const doublesTournament = tournamentDraw.isDoublesTournament(season);
@@ -957,11 +965,19 @@ router.post('/:id/registrations/admin', clubTournaments.requireSeasonManager(clu
   if (already) return res.status(409).json({ code: 'ALREADY_REGISTERED', error: `${player.name} is already registered for this season` });
 
   const substitute = capacity.wouldWait(season, category, doublesTournament ? { name: player.name, partner: partnerName } : undefined); // the maximum is reached: he is a substitute (raise the maximum to let him in)
+  // a player who is new (typed as text) gets the phone and the e-mail on his profile too, when the admin wrote them and nobody has that number: with it he can log in
+  // (the page then asks him for a code of his own) - the profile of an existing player is never changed here
+  let loginReady = false;
+  if (found.created && phone) {
+    const last9 = (v) => String(v || '').replace(/\D/g, '').slice(-9);
+    const taken = db.prepare('SELECT phone FROM players WHERE phone IS NOT NULL AND id != ?').all(player.id).some((p) => last9(p.phone) === last9(phone));
+    if (!taken) { db.prepare('UPDATE players SET phone = ?, email = COALESCE(NULLIF(?, \'\'), email) WHERE id = ?').run(phone, email, player.id); loginReady = true; }
+  }
   const info = db.prepare('INSERT INTO season_registrations (season_id, player_id, name, phone, email, category, paid, partner_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
     .run(season.id, player.id, player.name, phone, email, category, body.paid ? 1 : 0, partnerName);
   seasonActivity.log(season.id, substitute ? 'REGISTER_WAIT' : 'REGISTER', player.name, player.id);
   if (doublesTournament && !substitute) { try { tournamentDraw.addPair(season, { player: player.id, partner: partnerName }); } catch { /* the organiser makes the pair */ } }
-  res.status(201).json(serializeRegistrationsOf(season, [db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(info.lastInsertRowid)])[0]);
+  res.status(201).json({ ...serializeRegistrationsOf(season, [db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(info.lastInsertRowid)])[0], newPlayer: !!found.created, loginReady });
 });
 
 // The admin changes a registration: what is sent is changed, the rest stays — paid, category ('' = no category, tournaments only),
@@ -1491,7 +1507,7 @@ function resolveMemberPlayer(body, leagueId = leagues.DEFAULT_LEAGUE_ID) {
     return { conflict: { code: similar.length ? 'SIMILAR_PLAYERS' : 'UNKNOWN_PLAYER', typed, suggestions: similar.map((p) => ({ id: p.id, name: p.name })) } };
   }
   const info = db.prepare('INSERT INTO players (name, created_by_anonymous, league_id) VALUES (?, 0, ?)').run(typed, leagueId);
-  return { player: db.prepare('SELECT * FROM players WHERE id = ?').get(Number(info.lastInsertRowid)) };
+  return { player: db.prepare('SELECT * FROM players WHERE id = ?').get(Number(info.lastInsertRowid)), created: true };
 }
 
 function groupOr404(req, res) {

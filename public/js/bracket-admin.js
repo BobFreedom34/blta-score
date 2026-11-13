@@ -4,6 +4,7 @@
 // the ids of the fields are the ones of the document.
 let root = document.getElementById('bracket-admin-root');
 let scopeSeasonId = null;
+let editOnly = false; // the editor of an existing bracket (the draw panel of a tournament): no form to make a new one
 
 let brackets = [];
 let seasonsList = [];
@@ -620,6 +621,16 @@ async function renderManagePanel(bracketId, slotEl) {
 // ---------- Boot ----------
 
 function renderAdmin() {
+  if (editOnly) {
+    root.innerHTML = `
+    <div class="card">
+      <h3 style="margin-top:0">${tl('Pavúk turnaja', 'Bracket of the tournament')}</h3>
+      <p class="sa-hint" style="margin:0 0 12px">${tl('Pavúk je už vytvorený. Otvor „Spravovať miesta“ a dosaď hráčov do prvého kola (hráči sú z registrácií), potom zapisuj výsledky. Víťaz postupuje ďalej sám.', 'The bracket is made already. Open "Manage slots" and seat the players in the first round (they come from the registrations), then enter the results. The winner goes on by himself.')}</p>
+      <div id="bracket-list">${tl('Načítavam…', 'Loading…')}</div>
+    </div>`;
+    loadBrackets();
+    return;
+  }
   root.innerHTML = `
     ${createFormHtml()}
     <div class="card">
@@ -659,8 +670,9 @@ function renderLoggedOut() {
 }
 
 // the tab "Pavúk" of a season (the card is shown to an admin only)
-window.mountBracketAdmin = async function mountBracketAdmin(host, seasonId) {
+window.mountBracketAdmin = async function mountBracketAdmin(host, seasonId, opts) {
   root = host;
+  editOnly = !!(opts && opts.editOnly);
   scopeSeasonId = Number(seasonId) || null;
   brackets = [];
   entryRowCounter = 0;
