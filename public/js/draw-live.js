@@ -135,7 +135,7 @@
     if (layout.type === 'BRACKET') return `Zápas ${Math.floor(slot.p / 2) + 1} <small>· pozícia ${slot.p % 2 === 0 ? 'A' : 'B'}</small>`;
     return `Tabuľka <small>· miesto ${slot.i + 1}</small>`;
   }
-  const cardOfSlot = (slotEl) => slotEl.closest('.dl-card-box');
+  const cardOfSlot = (slotEl) => slotEl.closest('.dl-card-box, .dl-mbox');
 
   // sizes (in units of the page: 1/1920 of the width) so that the players and the board fill the screen whatever their number
   function fitBoard(cards, rowsOfCard, minWidth, boardW, boardH, fixedH, gap, cap) {
@@ -150,6 +150,77 @@
     }
     return best || { cols: 1, slotH: 30 };
   }
+
+  // ---------- the bracket as a tree ----------
+
+  const roundName = (r, R, short) => ((R - r) === 0 ? 'Finále' : (R - r) === 1 ? (short ? 'Semif.' : 'Semifinále') : (R - r) === 2 ? (short ? 'Štvrťf.' : 'Štvrťfinále') : `${r}. kolo`);
+
+  // The whole bracket drawn as a tree: the first round on the left (the seats of the draw), then every round up to the final, with the lines between the matches.
+  // Up to 16 players it runs from left to right; a bracket of 32 is drawn from both sides towards the final in the middle (so the seats stay big enough to read).
+  function buildTree(layout, boardW, boardH, slotHtml, maxName) {
+    const size = layout.size;
+    const R = Math.log2(size);
+    const split = size >= 32;
+    const cnt = (r) => size / (2 ** r);
+    const rows1 = split ? cnt(1) / 2 : cnt(1);
+    const boxH = Math.max(36, (boardH - 30) / rows1 - 8);
+    const slotH = Math.max(15, Math.min(60, (boxH - 8) / 2));
+    const cols = [];
+    if (!split) {
+      for (let r = 1; r <= R; r += 1) cols.push({ r, from: 0, to: cnt(r) });
+    } else {
+      for (let r = 1; r < R; r += 1) cols.push({ r, from: 0, to: cnt(r) / 2 });
+      cols.push({ r: R, from: 0, to: 1 });
+      for (let r = R - 1; r >= 1; r -= 1) cols.push({ r, from: cnt(r) / 2, to: cnt(r) });
+    }
+    const gap = 34;
+    const weight = (c) => (c.r === 1 ? 3.2 : c.r === 2 ? 2.4 : c.r === R ? 1.5 : 1.3);
+    const total = boardW - gap * (cols.length - 1);
+    const wsum = cols.reduce((a, c) => a + weight(c), 0);
+    const mbox = (r, m) => {
+      const slots = [0, 1].map((k) => (r === 1 ? slotHtml(`p${2 * m + k}`, '', layout.seats[2 * m + k].bye ? 'bye' : '') : slotHtml(`r${r}-${m}-${k}`, '', '')));
+      return `<div class="dl-mbox" data-r="${r}" data-m="${m}">${r === 1 ? `<span class="dl-mnum">${m + 1}</span>` : ''}${slots.join('')}</div>`;
+    };
+    const html = `<div class="dl-tree" style="--tree-gap: ${gap}">${cols.map((c) => {
+      const w = Math.min(380, (total * weight(c)) / wsum);
+      const boxes = Array.from({ length: c.to - c.from }, (_, i) => mbox(c.r, c.from + i)).join('');
+      return `<div class="dl-col" style="width: calc(var(--u) * ${w.toFixed(1)})"><div class="dl-col-h${w < 150 ? ' dl-short' : ''}">${roundName(c.r, R, w < 150)}</div><div class="dl-col-body">${boxes}</div></div>`;
+    }).join('')}<svg class="dl-tree-svg" aria-hidden="true"></svg></div>`;
+    // the longest name has to fit the first column (the seed badge takes some room): the font of the seats follows
+    const w1 = Math.min(380, (total * weight({ r: 1 })) / wsum);
+    const font = Math.max(12, Math.min(slotH * 0.58, (w1 - 20 - 46) / (Math.min(maxName, 24) * 0.6)));
+    return { html, slotH, font };
+  }
+
+  // the lines from every match to the match its winner goes to (drawn from where the boxes really are)
+  function drawTree() {
+    const tree = document.querySelector('.dl-tree');
+    if (!tree) return;
+    const svg = tree.querySelector('.dl-tree-svg');
+    const tr = tree.getBoundingClientRect();
+    svg.setAttribute('viewBox', `0 0 ${tr.width} ${tr.height}`);
+    const boxes = new Map([...tree.querySelectorAll('.dl-mbox')].map((el) => [`${el.dataset.r}-${el.dataset.m}`, el]));
+    const R = Math.max(...[...boxes.values()].map((el) => Number(el.dataset.r)));
+    const done = new Set([...svg.querySelectorAll('path.on')].map((p) => p.dataset.c));
+    let d = '';
+    boxes.forEach((el, key) => {
+      const [r, m] = key.split('-').map(Number);
+      if (r >= R) return;
+      const parent = boxes.get(`${r + 1}-${Math.floor(m / 2)}`);
+      if (!parent) return;
+      const a = el.getBoundingClientRect();
+      const b = parent.getBoundingClientRect();
+      const toRight = b.left > a.left;
+      const x1 = (toRight ? a.right : a.left) - tr.left;
+      const x2 = (toRight ? b.left : b.right) - tr.left;
+      const y1 = a.top + a.height / 2 - tr.top;
+      const y2 = b.top + b.height / 2 - tr.top;
+      const xm = (x1 + x2) / 2;
+      d += `<path data-c="${key}" class="${done.has(key) ? 'on' : ''}" d="M${x1.toFixed(1)} ${y1.toFixed(1)} H${xm.toFixed(1)} V${y2.toFixed(1)} H${x2.toFixed(1)}"/>`;
+    });
+    svg.innerHTML = d;
+  }
+  window.addEventListener('resize', () => drawTree());
 
   function buildBoard() {
     const plan = S.plan;
@@ -186,11 +257,16 @@
     let cardCols = 1;
     let slotH = 40;
     let headFont = 22;
+    let treeMode = false;
+    let treeFont = 0;
     if (layout.type === 'GROUPS') {
       const maxSize = Math.max(...layout.groups.map((g) => g.size));
       const fit = fitBoard(layout.groups.length, maxSize, 250, boardW, boardH, 56, 16, 52);
       cardCols = fit.cols; slotH = Math.max(24, Math.min(66, fit.slotH));
       html = layout.groups.map((g, gi) => `<div class="dl-card-box" data-g="${gi}"><div class="dl-card-head"><span>${esc(g.name)}</span><span>${g.size}</span></div><div class="dl-card-body">${Array.from({ length: g.size }, (_, i) => slotHtml(`g${gi}-${i}`, i + 1)).join('')}</div></div>`).join('');
+    } else if (layout.type === 'BRACKET' && layout.size <= 32) {
+      const tree = buildTree(layout, boardW, 745, slotHtml, Math.max(...plan.entrants.map((e) => e.name.length))); // (the tree uses the whole height of the board)
+      html = tree.html; slotH = tree.slotH; treeMode = true; treeFont = tree.font;
     } else if (layout.type === 'BRACKET') {
       const matches = layout.size / 2;
       const fit = fitBoard(matches, 2, 270, boardW, boardH, 56, 16, 48);
@@ -209,9 +285,12 @@
     }
     board.style.setProperty('--bcols', cardCols);
     board.style.setProperty('--slot-h', slotH.toFixed(1));
-    board.style.setProperty('--slot-font', Math.max(13, Math.min(30, Math.floor(slotH * 0.5))));
+    board.style.setProperty('--slot-font', treeMode ? treeFont.toFixed(1) : Math.max(13, Math.min(30, Math.floor(slotH * 0.5))));
     board.style.setProperty('--head-font', headFont);
+    board.classList.toggle('dl-board-tree', treeMode);
+    S.treeMode = treeMode;
     board.innerHTML = html;
+    if (treeMode) drawTree();
     board.querySelectorAll('.dl-slot').forEach((el) => S.slotEls.set(el.dataset.key, el));
     setProgress(0, plan.steps.length);
     $('dl-title').textContent = plan.season.name;
@@ -226,13 +305,13 @@
   // ---------- the draw ----------
 
   // the player flies from his place in the list to his seat
-  function fly(li, slotEl, ms, seeded) {
+  function fly(li, slotEl, ms, seeded, text) {
     return new Promise((resolve) => {
       const a = li.getBoundingClientRect();
       const b = slotEl.getBoundingClientRect();
       const el = document.createElement('div');
       el.className = `dl-fly${seeded ? ' dl-seeded' : ''}`;
-      el.textContent = li.querySelector('.dl-n').textContent;
+      el.textContent = text !== undefined ? text : li.querySelector('.dl-n').textContent;
       const f0 = getComputedStyle(li).fontSize;
       const f1 = getComputedStyle(slotEl).fontSize;
       el.style.cssText = `left:${a.left}px;top:${a.top}px;width:${a.width}px;height:${a.height}px;font-size:${f0}`;
@@ -265,6 +344,30 @@
     if (card) card.classList.remove('dl-active');
   }
 
+  function fillSlot(slotEl, ent, seeded) {
+    slotEl.classList.remove('dl-next', 'dl-reserved');
+    slotEl.classList.add('dl-filled');
+    if (seeded) slotEl.classList.add('dl-was-seed');
+    slotEl.querySelector('.dl-slot-name').innerHTML = `${esc(ent.name)}${ent.seed && seeded ? ` <span class="dl-seed">S${ent.seed}</span>` : ''}`;
+  }
+
+  // a bracket drawn as a tree: the player who has a free draw (bye) as his opponent goes on to the second round
+  async function advanceIfBye(step, fromSlot) {
+    const layout = S.plan.layout;
+    if (!S.treeMode || layout.type !== 'BRACKET' || layout.size < 4 || step.slot.p === undefined) return;
+    const p = step.slot.p;
+    if (!layout.seats[p ^ 1].bye) return;
+    const m = p >> 1;
+    const target = S.slotEls.get(`r2-${m >> 1}-${m & 1}`);
+    if (!target) return;
+    const ent = entrantOf(step.e);
+    await sleep(220 / S.tempo);
+    await fly(fromSlot, target, 650 / S.tempo, step.kind === 'SEED', ent.name);
+    fillSlot(target, ent, step.kind === 'SEED');
+    const line = document.querySelector(`.dl-tree-svg path[data-c="1-${m}"]`);
+    if (line) line.classList.add('on');
+  }
+
   async function seatSeeded(step) {
     const ent = entrantOf(step.e);
     const li = S.entrantEls.get(step.e);
@@ -276,6 +379,7 @@
     await sleep(650 / S.tempo);
     await fly(li, slotEl, 950 / S.tempo, true);
     place(step, slotEl);
+    await advanceIfBye(step, slotEl);
     await sleep(330 / S.tempo);
   }
 
@@ -319,6 +423,7 @@
     await sleep(1050 / S.tempo);
     await fly(li, slotEl, 1000 / S.tempo, false);
     place(step, slotEl);
+    await advanceIfBye(step, slotEl);
     await sleep(380 / S.tempo);
   }
 

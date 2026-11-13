@@ -255,9 +255,9 @@ test('the draw panel of the organiser has the button and the record link; the pa
   assert.ok(js.includes('data-act="live"') && js.includes("act === 'live'") && js.includes('/draw-live?season='), 'the button');
   assert.ok(js.includes('/draw-live?record='), 'the record link');
   const page = fs.readFileSync(path.join(ROOT, 'public', 'js', 'draw-live.js'), 'utf8');
-  for (const piece of ['/draw/live/prepare', '/draw/live/commit', '/draw-records/', 'DrawVerify.verifyRecord', 'requestFullscreen', 'countdown', 'dl-hot', 'dl-fly']) assert.ok(page.includes(piece), piece);
+  for (const piece of ['/draw/live/prepare', '/draw/live/commit', '/draw-records/', 'DrawVerify.verifyRecord', 'requestFullscreen', 'countdown', 'dl-hot', 'dl-fly', 'buildTree', 'drawTree', 'advanceIfBye']) assert.ok(page.includes(piece), piece);
   const css = fs.readFileSync(path.join(ROOT, 'public', 'css', 'draw-live.css'), 'utf8');
-  for (const piece of ['.dl-pool-item', '.dl-slot', '.dl-count-num', '.dl-final']) assert.ok(css.includes(piece), piece);
+  for (const piece of ['.dl-pool-item', '.dl-slot', '.dl-count-num', '.dl-final', '.dl-tree', '.dl-mbox', '.dl-tree-svg']) assert.ok(css.includes(piece), piece);
 });
 
 async function main() {
