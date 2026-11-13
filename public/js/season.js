@@ -372,6 +372,14 @@ function tilesHtml() {
   const players = model.total;
   // registered / maximum (the one limit of the event, or the limits of its categories added up); the ones over it are substitutes
   const maxPlayers = season.maxPlayers || Object.values(season.categoryMax || {}).reduce((a, b) => a + b, 0) || 0;
+  // "Žreb naživo": a button that replays the draw made in front of the camera (one link per category when there are several); a tournament whose draw has not been made says so
+  const liveDrawTile = () => {
+    const draws = season.liveDraws || [];
+    if (!draws.length && !isTournament()) return '';
+    if (!draws.length) return `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileLiveDraw'))}</div><div class="v sm sv-dim">${escapeHtml(t('season.liveDrawNone'))}</div></div>`;
+    const links = draws.map((d) => `<a class="sv-play" href="/draw-live?record=${d.id}">▶ ${escapeHtml(draws.length > 1 ? (CATEGORY_NAMES[d.category] || d.category) : t('season.liveDrawPlay'))}</a>`).join('');
+    return `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileLiveDraw'))}</div><div class="v sm sv-plays">${links}</div></div>`;
+  };
   const tile = (key, value, sub) => `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t(key))}</div><div class="v">${value}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</div></div>`;
   // the categories ticked in the Backend (a season or a tournament), and any a group is in
   const cats = CATEGORY_ORDER_ALL.filter((c) => (season.categories || []).includes(c) || (season.groups || []).some((g) => g.category === c) || (standings && standings.groups.some((g) => g.category === c)));
@@ -385,6 +393,7 @@ function tilesHtml() {
     drawFormatText() ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileFormat'))}</div><div class="v sm">${escapeHtml(drawFormatText())}</div></div>` : '',
     season.entryFee ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div></div>` : '',
     season.drawDate ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileDraw'))}</div><div class="v sm">${escapeHtml(formatDate(season.drawDate))}</div></div>` : '',
+    liveDrawTile(),
     season.prizeMoney ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tilePrize'))}</div><div class="v sm">${escapeHtml(season.prizeMoney)}</div></div>` : '',
   ].join('');
   // the tiles sit in a card of their own, with a small heading

@@ -174,6 +174,8 @@ function serializeSeason(s) {
     entryFee: s.entry_fee || '',
     prizeMoney: s.prize_money || '',
     drawDate: s.draw_date || null,
+    // the draws made in front of the camera that are saved in this tournament (one per category): the tile "Žreb naživo" lets everybody replay them
+    liveDraws: s.kind === 'TOURNAMENT' ? db.prepare("SELECT id, category FROM draw_records WHERE season_id = ? AND status = 'COMMITTED' ORDER BY id").all(s.id).map((r) => ({ id: Number(r.id), category: r.category })) : [],
     // the format the organiser plans to play (chosen in Backend > Základné info before the draw; once a category is drawn its own format counts): '' = not said yet
     plannedFormat: s.planned_format || '',
     info: s.info || '',

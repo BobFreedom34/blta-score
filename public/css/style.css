@@ -6998,3 +6998,9 @@ body:has(#player-bio-card) :is(.player-bio-card, .statistics-card, .rivals-card,
 /* the Kontakt button in the grey card of the footer, under the social icons (opens the contact window) */
 .sf-contact { display: inline-flex; align-items: center; margin-top: 16px; padding: 8px 18px; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.08); color: #fff; font-size: 13px; font-weight: 800; text-decoration: none; transition: border-color 0.15s, color 0.15s; }
 .sf-contact:hover, .sf-contact:focus-visible { border-color: var(--green); color: var(--green); }
+
+/* the tile "Žreb naživo" of a tournament: a green button that replays the draw, or a grey "not made yet" */
+.sv-dim { color: #8b8f98; font-weight: 700; }
+.sv-plays { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.sv-play { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: var(--radius-sm); border: 1px solid var(--green); background: rgba(178, 250, 6, 0.12); color: var(--green); font-weight: 800; text-decoration: none; white-space: nowrap; }
+.sv-play:hover { background: rgba(178, 250, 6, 0.2); }

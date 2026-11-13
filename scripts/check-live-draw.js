@@ -239,6 +239,21 @@ test('the Swiss table: the seeded players first, the others by lot, saved in the
   assert.deepStrictEqual(saved.json.groups[0].playerIds, r.json.plan.steps.map((s) => playerOf.get(s.e)));
 });
 
+test('the page of a tournament knows its saved live draws (the tile "Žreb naživo"): none before, one link per saved category after', async () => {
+  const { tournament: t5, people } = await tournamentWith('Tile Cup', { ELITE: 5 });
+  assert.deepStrictEqual((await call('GET', `/api/seasons/by-slug/${t5.slug}`, undefined, { admin: false })).json.liveDraws, [], 'not made yet');
+  const r = await prepare(t5, 'ELITE', { format: 'ELIMINATION' });
+  assert.deepStrictEqual((await call('GET', `/api/seasons/by-slug/${t5.slug}`, undefined, { admin: false })).json.liveDraws, [], 'a draw that is only started is not shown');
+  assert.strictEqual((await commit(t5, r.json.recordId)).status, 201);
+  const after = (await call('GET', `/api/seasons/by-slug/${t5.slug}`, undefined, { admin: false })).json.liveDraws;
+  assert.deepStrictEqual(after, [{ id: r.json.recordId, category: 'ELITE' }]);
+  const js = fs.readFileSync(path.join(ROOT, 'public', 'js', 'season.js'), 'utf8');
+  assert.ok(js.includes('liveDrawTile') && js.includes('/draw-live?record='), 'the tile');
+  const i18n = fs.readFileSync(path.join(ROOT, 'public', 'js', 'i18n.js'), 'utf8');
+  for (const key of ['season.tileLiveDraw', 'season.liveDrawPlay', 'season.liveDrawNone']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
+  void people;
+});
+
 test('a draw that was deleted later stays on record, marked as deleted', async () => {
   const rec = (await overviewOf(t1, 'NOVICE')).liveRecordId;
   assert.ok(rec);
