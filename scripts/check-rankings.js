@@ -286,6 +286,18 @@ test('api: a walkover is 3 / 0 for the winner (times the level), a friendly earn
   assert.strictEqual(await pts('blta', 'Api Fr A'), null);
 });
 
+test('api: an admin can also set the number of matches next to the points (left out = unchanged, bad numbers refused)', async () => {
+  newPlayer('Api Matches');
+  assert.strictEqual((await call('PUT', '/api/rankings/points/blta/Api%20Matches', { points: 120, matches: 9 })).status, 200);
+  assert.deepStrictEqual(await pts('blta', 'Api Matches'), [120, 9]);
+  assert.strictEqual((await call('PUT', '/api/rankings/points/blta/Api%20Matches', { points: 130 })).status, 200);
+  assert.deepStrictEqual(await pts('blta', 'Api Matches'), [130, 9], 'matches stay when left out');
+  assert.strictEqual((await call('PUT', '/api/rankings/points/blta/Api%20Matches', { points: 130, matches: 0 })).status, 200);
+  assert.deepStrictEqual(await pts('blta', 'Api Matches'), [130, 0]);
+  assert.strictEqual((await call('PUT', '/api/rankings/points/blta/Api%20Matches', { points: 130, matches: 2.5 })).status, 400);
+  assert.strictEqual((await call('PUT', '/api/rankings/points/blta/Api%20Matches', { points: 130, matches: -1 })).status, 400);
+});
+
 test('api: an admin sets points — also for a player who is not in the table yet — and bad requests are refused', async () => {
   const p = newPlayer('Api Manual');
   assert.strictEqual((await call('PUT', '/api/rankings/points/tournaments/Api%20Manual', { points: 55 })).status, 200);

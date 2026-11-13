@@ -253,8 +253,11 @@ function getTables() {
 }
 
 // An admin sets one player's points in one table (creating the row when the player is not in that table yet). points may be
-// null (back to "no points yet"). Returns { ok: true } or { error }.
-function setPoints(tableKey, name, points) {
+// null (back to "no points yet"). matches (optional, a whole number) sets the number of matches shown next to the points - the admin
+// enters it by hand together with the points (e.g. league + tournament matches); left out, it stays as it is. Returns { ok: true } or { error }.
+function setPoints(tableKey, name, points, matches) {
+  if (matches !== undefined && matches !== null && (!Number.isInteger(matches) || matches < 0)) return { error: 'Matches must be a whole number from 0' };
+  const setMatches = matches === undefined || matches === null ? null : matches;
   if (!TABLE_KEYS.includes(tableKey)) return { error: 'Unknown ranking table' };
   const key = normalizeName(name);
   if (!key) return { error: 'Player name is required' };
@@ -263,15 +266,15 @@ function setPoints(tableKey, name, points) {
     || db.prepare(`SELECT e.id FROM ranking_entries e JOIN players p ON p.id = e.player_id WHERE e.table_key = ? AND lower(p.name) = lower(?)`).get(tableKey, String(name).trim());
   if (existing) {
     const was = db.prepare('SELECT e.points, COALESCE(p.name, e.name) AS name FROM ranking_entries e LEFT JOIN players p ON p.id = e.player_id WHERE e.id = ?').get(existing.id);
-    db.prepare(`UPDATE ranking_entries SET points = ?, updated_at = ${stamp} WHERE id = ?`).run(points, existing.id);
+    db.prepare(`UPDATE ranking_entries SET points = ?, matches = COALESCE(?, matches), updated_at = ${stamp} WHERE id = ?`).run(points, setMatches, existing.id);
     return { ok: true, change: { tableKey, tableLabel: (TABLES.find((t) => t.key === tableKey) || {}).label || tableKey, name: was.name, before: was.points === null ? 0 : was.points, after: points === null ? 0 : points } };
   }
   const players = db.prepare('SELECT id, name FROM players').all();
   const player = players.find((p) => normalizeName(p.name) === key) || nameMatch.findSimilar(String(name), players).exact || null;
   if (!player) return { error: 'No player with that name — add the player first' };
   const next = (db.prepare('SELECT MAX(position) AS m FROM ranking_entries WHERE table_key = ?').get(tableKey).m ?? -1) + 1;
-  db.prepare('INSERT INTO ranking_entries (table_key, player_id, name, name_key, points, matches, position) VALUES (?, ?, ?, ?, ?, 0, ?)')
-    .run(tableKey, player.id, player.name, normalizeName(player.name), points, next);
+  db.prepare('INSERT INTO ranking_entries (table_key, player_id, name, name_key, points, matches, position) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(tableKey, player.id, player.name, normalizeName(player.name), points, setMatches === null ? 0 : setMatches, next);
   return { ok: true, change: { tableKey, tableLabel: (TABLES.find((t) => t.key === tableKey) || {}).label || tableKey, name: player.name, before: 0, after: points === null ? 0 : points } };
 }
 

@@ -218,10 +218,17 @@ router.put('/points/:tableKey/:name', requireSuperAdmin, (req, res) => {
     }
   }
 
-  const result = rankingPoints.setPoints(tableKey, name, points);
+  // matches: optional, the number of matches shown next to the points (set by hand); left out = unchanged
+  let matches;
+  if (req.body.matches !== null && req.body.matches !== undefined && req.body.matches !== '') {
+    matches = Number(req.body.matches);
+    if (!Number.isInteger(matches) || matches < 0) return res.status(400).json({ error: 'Matches must be a whole number from 0' });
+  }
+
+  const result = rankingPoints.setPoints(tableKey, name, points, matches);
   if (result.error) return res.status(400).json({ error: result.error });
   try { require('../changeLog').logManualPoints(result.change); } catch (err) { console.error('[change log]', err.message); }
-  res.json({ ok: true, points });
+  res.json({ ok: true, points, ...(matches !== undefined ? { matches } : {}) });
 });
 
 module.exports = router;
