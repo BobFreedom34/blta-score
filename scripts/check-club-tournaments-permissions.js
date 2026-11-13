@@ -146,11 +146,11 @@ let member;
 const OPENED_TO_CLUB_ADMIN = ['DELETE /api/brackets/:id', 'DELETE /api/brackets/:id/nodes/:nodeId/result', 'DELETE /api/seasons/:id', 'DELETE /api/seasons/:id/doubles/pairs/:pairId',
   'DELETE /api/seasons/:id/draw/:category', 'DELETE /api/seasons/:id/hero', 'DELETE /api/seasons/:id/logo', 'DELETE /api/seasons/groups/:groupId',
   'DELETE /api/seasons/groups/:groupId/members/:playerId', 'DELETE /api/seasons/registrations/:rid', 'GET /api/seasons/:id', 'GET /api/seasons/:id/doubles',
-  'GET /api/seasons/:id/draw', 'GET /api/seasons/:id/draw/groups-suggestion', 'GET /api/seasons/:id/match-options', 'GET /api/seasons/:id/registrations', 'GET /api/seasons/:id/registrations.csv',
+  'GET /api/seasons/:id/draw', 'GET /api/seasons/:id/draw/groups-suggestion', 'GET /api/seasons/:id/groups/draw-info', 'GET /api/seasons/:id/match-options', 'GET /api/seasons/:id/registrations', 'GET /api/seasons/:id/registrations.csv',
   'GET /api/seasons/:id/schedule-preview', 'PATCH /api/brackets/:id', 'PATCH /api/brackets/:id/nodes/:nodeId/result', 'PATCH /api/brackets/:id/slots/:nodeId',
   'PATCH /api/seasons/:id', 'PATCH /api/seasons/:id/schedule/settings', 'PATCH /api/seasons/groups/:groupId', 'PATCH /api/seasons/groups/:groupId/members/:playerId',
   'PATCH /api/seasons/registrations/:rid', 'POST /api/brackets/', 'POST /api/brackets/:id/consolation', 'POST /api/seasons/:id/doubles/pairs', 'POST /api/seasons/:id/draw',
-  'POST /api/seasons/:id/draw/bracket', 'POST /api/seasons/:id/draw/live/commit', 'POST /api/seasons/:id/draw/live/prepare', 'POST /api/seasons/:id/draw/swiss-round', 'POST /api/seasons/:id/groups', 'POST /api/seasons/:id/hero', 'POST /api/seasons/:id/logo', 'POST /api/seasons/:id/matches', 'POST /api/seasons/:id/registrations/admin',
+  'POST /api/seasons/:id/draw/bracket', 'POST /api/seasons/:id/draw/live/commit', 'POST /api/seasons/:id/draw/live/prepare', 'POST /api/seasons/:id/draw/swiss-round', 'POST /api/seasons/:id/groups', 'POST /api/seasons/:id/groups/live/commit', 'POST /api/seasons/:id/groups/live/prepare', 'POST /api/seasons/:id/groups/seeds', 'POST /api/seasons/:id/hero', 'POST /api/seasons/:id/logo', 'POST /api/seasons/:id/matches', 'POST /api/seasons/:id/registrations/admin',
   'POST /api/seasons/:id/registrations/categories', 'POST /api/seasons/:id/registrations/remind', 'POST /api/seasons/:id/schedule', 'POST /api/seasons/:id/schedule/auto',
   'POST /api/seasons/:id/seeds', 'POST /api/seasons/groups/:groupId/members', 'POST /api/seasons/groups/:groupId/members/:playerId/reinstate', 'POST /api/seasons/groups/:groupId/members/:playerId/withdraw',
   'POST /api/seasons/groups/:groupId/members/import', 'PUT /api/seasons/:id/schedule/matches/:token'];

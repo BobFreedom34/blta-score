@@ -265,12 +265,136 @@ test('a draw that was deleted later stays on record, marked as deleted', async (
   assert.strictEqual((await overviewOf(t1, 'NOVICE')).liveRecordId, null);
 });
 
+// ---------- the draw of the players of a SEASON into its groups ----------
+let league; let leagueGroups; let leaguePeople;
+const groupsPrepare = (x, category) => call('POST', `/api/seasons/${x.id}/groups/live/prepare`, { category });
+const groupsCommit = (x, recordId) => call('POST', `/api/seasons/${x.id}/groups/live/commit`, { recordId });
+const membersOf = async () => (await call('GET', `/api/seasons/${league.id}`)).json.groups.map((g) => (g.members || g.players || []).length);
+
+test('season setup: Elite 11 players (3 seeded), 3 empty groups; a tournament cannot use this draw', async () => {
+  const made = await call('POST', '/api/seasons', { name: 'Liga Žreb', kind: 'LEAGUE', startDate: '2099-03-01', endDate: '2099-06-01' });
+  assert.strictEqual(made.status, 201, made.text);
+  league = made.json;
+  leaguePeople = [];
+  for (let i = 0; i < 11; i += 1) {
+    counter += 1;
+    const p = await call('POST', '/api/players', { name: `Liga Hráč ${String(counter).padStart(2, '0')}` });
+    const reg = await call('POST', `/api/seasons/${league.id}/registrations/admin`, { playerId: p.json.id, category: 'ELITE', phone: `0904${String(100000 + counter)}`, email: `l${counter}@example.com` });
+    assert.strictEqual(reg.status, 201, reg.text);
+    leaguePeople.push({ player: p.json, reg: reg.json });
+  }
+  leagueGroups = [];
+  for (const name of ['A', 'B', 'C']) {
+    const g = await call('POST', `/api/seasons/${league.id}/groups`, { name, category: 'ELITE' });
+    assert.strictEqual(g.status, 201, g.text);
+    leagueGroups.push(g.json);
+  }
+  const seeds = await call('POST', `/api/seasons/${league.id}/groups/seeds`, { category: 'ELITE', seeds: leaguePeople.map((x, i) => ({ id: x.reg.id, seed: i < 3 ? i + 1 : null })) });
+  assert.strictEqual(seeds.status, 200, seeds.text);
+  assert.strictEqual((await groupsPrepare(t1, 'ELITE')).status, 400, 'a tournament has its own draw');
+  const info = (await call('GET', `/api/seasons/${league.id}/groups/draw-info`)).json.categories.find((c) => c.category === 'ELITE');
+  assert.strictEqual(info.groups, 3);
+  assert.strictEqual(info.toDraw.length, 11);
+});
+
+test('only the organiser can start or save the draw into groups', async () => {
+  assert.strictEqual((await call('POST', `/api/seasons/${league.id}/groups/live/prepare`, { category: 'ELITE' }, { admin: false })).status, 401);
+});
+
+test('the groups come out equal and the seeds go like a snake; the browser repeats the shuffle', async () => {
+  const r = await groupsPrepare(league, 'ELITE');
+  assert.strictEqual(r.status, 201, r.text);
+  const plan = r.json.plan;
+  assert.deepStrictEqual(plan.layout.caps, [4, 4, 3]);
+  assertPlanIsComplete(plan);
+  const seatOf = (n) => plan.steps.find((st) => st.e === leaguePeople[n].reg.id).slot;
+  assert.deepStrictEqual([seatOf(0).g, seatOf(1).g, seatOf(2).g], [0, 1, 2], 'seeds 1, 2, 3 in the groups A, B, C');
+  const verdict = await DrawVerify.verifyRecord({ seed: r.json.seed, seedHash: r.json.seedHash, plan });
+  assert.deepStrictEqual(verdict, { ok: true, lockOk: true, problems: [] });
+  const bad = JSON.parse(JSON.stringify(plan));
+  [bad.steps[5].slot, bad.steps[6].slot] = [bad.steps[6].slot, bad.steps[5].slot];
+  assert.strictEqual((await DrawVerify.verifyRecord({ seed: r.json.seed, seedHash: r.json.seedHash, plan: bad })).ok, false);
+  assert.deepStrictEqual(await membersOf(), [0, 0, 0], 'starting writes nothing');
+});
+
+test('the snake: 8 seeds in 4 groups go A 1+8, B 2+7, C 3+6, D 4+5; equal sizes when it divides or one less', async () => {
+  const L = require('../src/liveDraw.js');
+  assert.deepStrictEqual(L.dealSnake([1, 2, 3, 4, 5, 6, 7, 8], [2, 2, 2, 2]), [[1, 8], [2, 7], [3, 6], [4, 5]]);
+  assert.deepStrictEqual(L.capacitiesOf([0, 0, 0, 0], 22), [6, 6, 5, 5]);
+  assert.deepStrictEqual(L.capacitiesOf([0, 0, 1], 10), [4, 4, 2]);
+});
+
+test('what is saved is what was shown: a player put into a group by hand stays and the draw fills the rest', async () => {
+  const manual = leaguePeople[10];
+  const add = await call('POST', `/api/seasons/groups/${leagueGroups[2].id}/members`, { playerId: manual.player.id });
+  assert.ok(add.status === 201 || add.status === 200, add.text);
+  const r = await groupsPrepare(league, 'ELITE');
+  assert.strictEqual(r.status, 201, r.text);
+  const plan = r.json.plan;
+  assert.strictEqual(plan.entrants.length, 10, 'the player that is in a group is not drawn again');
+  assert.deepStrictEqual(plan.layout.caps, [4, 4, 2]);
+  assert.deepStrictEqual(plan.layout.groups.map((g) => g.size), [4, 4, 4 - 1]);
+  assert.strictEqual((await DrawVerify.verifyRecord({ seed: r.json.seed, seedHash: r.json.seedHash, plan })).ok, true);
+  const saved = await groupsCommit(league, r.json.recordId);
+  assert.strictEqual(saved.status, 201, saved.text);
+  assert.strictEqual(saved.json.saved, 10);
+  assert.deepStrictEqual(await membersOf(), [4, 4, 3]);
+  const season = (await call('GET', `/api/seasons/${league.id}`)).json;
+  plan.steps.forEach((st) => {
+    const group = season.groups.find((g) => g.id === leagueGroups[st.slot.g].id);
+    const ids = (group.members || group.players).map((m) => m.playerId || m.player_id || m.id);
+    const reg = plan.entrants.find((e) => e.id === st.e);
+    const person = leaguePeople.find((x) => x.reg.id === reg.id);
+    assert.ok(ids.includes(person.player.id), `${reg.name} is in the group shown`);
+  });
+  assert.strictEqual((await groupsCommit(league, r.json.recordId)).status, 409, 'saved once');
+  assert.strictEqual((await groupsPrepare(league, 'ELITE')).status, 400, 'nobody is left to draw');
+});
+
+test('a player replaced after the draw: only that group is recomputed, its unplayed matches of the leaver go, the missing pairs come', async () => {
+  const A = leagueGroups[0].id;
+  const made = await call('POST', `/api/seasons/${league.id}/schedule`, { groupIds: [A] });
+  assert.strictEqual(made.status, 201, made.text);
+  const matchesOf = async (gid) => (await call('GET', `/api/seasons/${league.id}`)).json.groups.find((g) => g.id === gid).matchCount;
+  assert.strictEqual(await matchesOf(A), 6);
+  assert.strictEqual(await matchesOf(leagueGroups[1].id), 0, 'the other groups are not touched');
+  const group = (await call('GET', `/api/seasons/${league.id}`)).json.groups.find((g) => g.id === A);
+  const leaver = group.members[0];
+  const gone = await call('DELETE', `/api/seasons/groups/${A}/members/${leaver.id}`);
+  assert.strictEqual(gone.status, 200, gone.text);
+  assert.strictEqual(gone.json.removedMatches, 3);
+  assert.strictEqual(await matchesOf(A), 3);
+  counter += 1;
+  const np = await call('POST', '/api/players', { name: `Náhradník ${counter}` });
+  assert.strictEqual((await call('POST', `/api/seasons/groups/${A}/members`, { playerId: np.json.id })).status, 201);
+  const preview = (await call('GET', `/api/seasons/${league.id}/schedule-preview`)).json.groups.find((g) => g.groupId === A);
+  assert.strictEqual(preview.toCreate, 3, 'the warning: three matches are missing');
+  const again = await call('POST', `/api/seasons/${league.id}/schedule`, { groupIds: [A] });
+  assert.strictEqual(again.status, 201, again.text);
+  assert.strictEqual(await matchesOf(A), 6);
+  const admin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'seasons-admin.js'), 'utf8');
+  assert.ok(admin.includes('wireStaleSchedules') && admin.includes('sg-stale'), 'the warning under the group');
+});
+
+test('the page of the season has the saved draw (tile) and the record can be replayed', async () => {
+  const page = (await call('GET', `/api/seasons/by-slug/${league.slug}`, undefined, { admin: false })).json;
+  assert.strictEqual(page.liveDraws.length, 1);
+  const rec = await call('GET', `/api/draw-records/${page.liveDraws[0].id}`, undefined, { admin: false });
+  assert.strictEqual(rec.status, 200);
+  assert.strictEqual(rec.json.format, 'SEASON_GROUPS');
+  assert.strictEqual((await DrawVerify.verifyRecord(rec.json)).ok, true);
+  const js = fs.readFileSync(path.join(ROOT, 'public', 'js', 'draw-live.js'), 'utf8');
+  assert.ok(js.includes('GROUPS_MODE') && js.includes('/groups/live/'), 'the page knows the draw into groups');
+  const admin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'seasons-admin.js'), 'utf8');
+  assert.ok(admin.includes('wireLiveGroups') && admin.includes('mode=groups'), 'the button in the tab Skupiny');
+});
+
 test('the draw panel of the organiser has the button and the record link; the page scripts exist', async () => {
   const js = fs.readFileSync(path.join(ROOT, 'public', 'js', 'season-draw.js'), 'utf8');
   assert.ok(js.includes('data-act="live"') && js.includes("act === 'live'") && js.includes('/draw-live?season='), 'the button');
   assert.ok(js.includes('/draw-live?record='), 'the record link');
   const page = fs.readFileSync(path.join(ROOT, 'public', 'js', 'draw-live.js'), 'utf8');
-  for (const piece of ['/draw/live/prepare', '/draw/live/commit', '/draw-records/', 'DrawVerify.verifyRecord', 'requestFullscreen', 'countdown', 'dl-hot', 'dl-fly', 'buildTree', 'drawTree', 'advanceIfBye']) assert.ok(page.includes(piece), piece);
+  for (const piece of ['/draw/live/', 'drawPath', '/draw-records/', 'DrawVerify.verifyRecord', 'requestFullscreen', 'countdown', 'dl-hot', 'dl-fly', 'buildTree', 'drawTree', 'advanceIfBye']) assert.ok(page.includes(piece), piece);
   const css = fs.readFileSync(path.join(ROOT, 'public', 'css', 'draw-live.css'), 'utf8');
   for (const piece of ['.dl-pool-item', '.dl-slot', '.dl-count-num', '.dl-final', '.dl-tree', '.dl-mbox', '.dl-tree-svg']) assert.ok(css.includes(piece), piece);
 });

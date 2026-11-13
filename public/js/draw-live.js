@@ -16,9 +16,11 @@
   let options = {};
   try { options = JSON.parse(qs.get('o') || '{}') || {}; } catch { options = {}; }
   const REPLAY = recordId > 0;
+  const GROUPS_MODE = qs.get('mode') === 'groups'; // the players of a season are drawn into its groups (see liveDraw.prepareGroups)
+  const drawPath = (what) => (GROUPS_MODE ? `/seasons/${seasonId}/groups/live/${what}` : `/seasons/${seasonId}/draw/live/${what}`);
 
   const FORMAT_LABELS = {
-    PRINCE: 'PRINCE', MONRAD: 'Monrad', ELIMINATION: 'Eliminácia', GROUPS: 'Skupiny', GROUPS_BRACKET: 'Skupiny + pavúk', SWISS: 'Švajčiarsky systém', SIX_ROUNDS: '6 hráčov, 3 kolá',
+    PRINCE: 'PRINCE', MONRAD: 'Monrad', ELIMINATION: 'Eliminácia', GROUPS: 'Skupiny', GROUPS_BRACKET: 'Skupiny + pavúk', SWISS: 'Švajčiarsky systém', SIX_ROUNDS: '6 hráčov, 3 kolá', SEASON_GROUPS: 'Skupiny sezóny',
   };
 
   const S = {
@@ -292,7 +294,9 @@
       if (portrait) headFont = 13;
       const cardW = (boardW - gap * (cardCols - 1)) / cardCols;
       treeFont = Math.max(12, Math.min(slotH * 0.5, (cardW - 16 - 20 - 50) / (longest * 0.6))); // (the seed badge and the number of the seat take some room)
-      html = layout.groups.map((g, gi) => `<div class="dl-card-box" data-g="${gi}"><div class="dl-card-head"><span>${esc(g.name)}</span><span>${g.size}</span></div><div class="dl-card-body">${Array.from({ length: g.size }, (_, i) => slotHtml(`g${gi}-${i}`, i + 1)).join('')}</div></div>`).join('');
+      // (the players that are in the group already stand in their seats from the start)
+      const kept = (g, i) => ((g.existing || [])[i]);
+      html = layout.groups.map((g, gi) => `<div class="dl-card-box" data-g="${gi}"><div class="dl-card-head"><span>${esc(g.name)}</span><span>${g.size}</span></div><div class="dl-card-body">${Array.from({ length: g.size }, (_, i) => (kept(g, i) ? `<div class="dl-slot dl-filled" data-key="g${gi}-${i}"><span class="dl-slot-no">${i + 1}</span><span class="dl-slot-name">${esc(dispName(kept(g, i)))}</span></div>` : slotHtml(`g${gi}-${i}`, i + 1))).join('')}</div></div>`).join('');
     } else if (layout.type === 'BRACKET' && layout.size <= 32 && !portrait) {
       const tree = buildTree(layout, boardW, 745, slotHtml, Math.max(...plan.entrants.map((e) => e.name.length))); // (the tree uses the whole height of the board)
       html = tree.html; slotH = tree.slotH; treeMode = true; treeFont = tree.font;
@@ -520,10 +524,10 @@
     result.title = 'Rozhodol kľúč, ktorý server vytvoril pred začiatkom (zámok bol hore na obrazovke). Z kľúča a zoznamu hráčov sa dá žreb zopakovať: overenie to práve spravilo v tomto prehliadači. Kolotoč je len zobrazenie už určeného výsledku.';
     const actions = $('dl-final-actions');
     const buttons = [];
-    if (!REPLAY && !S.committed) buttons.push('<button type="button" class="dl-btn dl-btn-primary" id="dl-a-save">Uložiť žreb do turnaja</button>');
+    if (!REPLAY && !S.committed) buttons.push(`<button type="button" class="dl-btn dl-btn-primary" id="dl-a-save">Uložiť žreb ${GROUPS_MODE ? 'do skupín' : 'do turnaja'}</button>`);
     buttons.push('<button type="button" class="dl-btn" id="dl-a-replay">Prehrať znova</button>');
     if (!REPLAY && !S.committed) buttons.push('<button type="button" class="dl-btn" id="dl-a-new">Nový žreb (tento sa zahodí)</button>');
-    buttons.push(`<a class="dl-btn" href="/tournament/${encodeURIComponent(S.plan.season.slug)}">Stránka turnaja</a>`);
+    buttons.push(GROUPS_MODE || S.plan.season.kind !== 'TOURNAMENT' ? `<a class="dl-btn" href="/season/${encodeURIComponent(S.plan.season.slug)}">Stránka sezóny</a>` : `<a class="dl-btn" href="/tournament/${encodeURIComponent(S.plan.season.slug)}">Stránka turnaja</a>`);
     actions.innerHTML = buttons.join('');
     const save = $('dl-a-save'); if (save) save.onclick = commit;
     $('dl-a-replay').onclick = replay;
@@ -538,12 +542,12 @@
     const btn = $('dl-a-save');
     if (btn) btn.disabled = true;
     try {
-      const made = await api(`/seasons/${seasonId}/draw/live/commit`, { method: 'POST', body: { recordId: S.recordId } });
+      const made = await api(drawPath('commit'), { method: 'POST', body: { recordId: S.recordId } });
       S.committed = true;
       const url = `${location.origin}/draw-live?record=${made.recordId || S.recordId}`;
       const box = $('dl-saved');
       box.hidden = false;
-      box.innerHTML = `✓ Žreb je uložený v turnaji. Záznam, ktorý môže ktokoľvek prehrať a overiť: <a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a> <button type="button" class="dl-btn" id="dl-a-copy" style="padding:3px 10px;font-size:inherit">Kopírovať</button>`;
+      box.innerHTML = `✓ Žreb je uložený${GROUPS_MODE ? ' v skupinách (rozpis zápasov vytvor v záložke Rozpis)' : ' v turnaji'}. Záznam, ktorý môže ktokoľvek prehrať a overiť: <a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a> <button type="button" class="dl-btn" id="dl-a-copy" style="padding:3px 10px;font-size:inherit">Kopírovať</button>`;
       $('dl-a-copy').onclick = () => { navigator.clipboard.writeText(url).catch(() => {}); $('dl-a-copy').textContent = 'Skopírované'; };
       ['dl-a-save', 'dl-a-new'].forEach((id) => { const b = $(id); if (b) b.remove(); });
     } catch (err) {
@@ -577,7 +581,7 @@
     ov.hidden = false;
     $('dl-count-text').textContent = 'Žreb sa začína';
     // the lot is made on the server while the countdown runs
-    const prepared = REPLAY ? null : api(`/seasons/${seasonId}/draw/live/prepare`, { method: 'POST', body: { category, ...options } }).catch((err) => ({ failed: err }));
+    const prepared = REPLAY ? null : api(drawPath('prepare'), { method: 'POST', body: { category, ...options } }).catch((err) => ({ failed: err }));
     for (let n = 5; n >= 1; n -= 1) {
       if (n === 3) {
         if (REPLAY) buildBoard();
@@ -611,6 +615,7 @@
 
   async function initLive() {
     $('dl-autosave-wrap').hidden = false;
+    if (GROUPS_MODE) { $('dl-autosave-wrap').lastChild.textContent = ' Po skončení žreb sám uložiť do skupín'; return initGroupsLive(); }
     if (!seasonId || !category) throw new Error('Chýba turnaj alebo kategória. Otvor žreb tlačidlom v nastaveniach turnaja.');
     const [season, overview] = await Promise.all([api(`/seasons/${seasonId}`), api(`/seasons/${seasonId}/draw`)]);
     const cat = overview.categories.find((c) => c.category === category);
@@ -626,6 +631,21 @@
     ].join('');
     if (cat.stage !== 'NONE') throw new Error('Žreb tejto kategórie už existuje. Najprv ho zmaž v nastaveniach turnaja.');
     if (cat.players < 2) throw new Error('Treba aspoň 2 hráčov.');
+    $('dl-start').disabled = false;
+    $('dl-start').textContent = 'Spustiť žreb';
+  }
+
+  // the draw of the players of a season into the groups of a category
+  async function initGroupsLive() {
+    if (!seasonId || !category) throw new Error('Chýba sezóna alebo kategória. Otvor žreb tlačidlom v záložke Skupiny.');
+    const season = await api(`/seasons/${seasonId}`);
+    S.season = season;
+    $('dl-title').textContent = season.name;
+    $('dl-setup-title').textContent = season.name;
+    $('dl-setup-sub').textContent = `Žreb hráčov do skupín · kategória ${category}`;
+    const mine = (season.groups || []).filter((g) => g.category === category);
+    if (!mine.length) throw new Error('Táto kategória nemá skupiny. Najprv ich vytvor v záložke Skupiny.');
+    $('dl-facts').innerHTML = [fact('Skupín', mine.length), fact('Formát', 'Skupiny')].join('');
     $('dl-start').disabled = false;
     $('dl-start').textContent = 'Spustiť žreb';
   }

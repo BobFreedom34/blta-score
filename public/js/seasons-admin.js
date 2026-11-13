@@ -582,6 +582,11 @@ function seasonCardHtml(s) {
           <div class="season-groups">${s.groups.length ? s.groups.map((g) => groupRowHtml(g, s)).join('') : `<div class="empty-state" style="padding:12px 0">${tl('Zatiaľ žiadne skupiny.', 'No groups yet.')}</div>`}</div>
           </section>
           <section class="sa-section">
+          <h4>${tl('Žreb hráčov do skupín', 'Draw the players into the groups')}</h4>
+          <div class="sa-hint" style="margin:0 0 12px">${tl('Skupiny vytvor prázdne (nižšie). Hráčov do nich rozdelí žreb naživo pred kamerou: skupiny vyjdú rovnako veľké (ak sa nedá, v niektorých je o hráča menej) a nasadení idú „hadom“ (pri 4 skupinách A = 1 a 8, B = 2 a 7, C = 3 a 6, D = 4 a 5). Hráči, ktorých si už ručne dal do skupiny, tam zostanú. Rozpis zápasov vytvoríš po žrebe v záložke Rozpis.', 'Create the groups empty (below). The live draw in front of the camera puts the players in them: the groups come out equal (some have one player less when it does not divide) and the seeded players go like a snake (4 groups: A = 1 and 8, B = 2 and 7, C = 3 and 6, D = 4 and 5). Players you already put into a group by hand stay there. Create the schedule after the draw in the tab Schedule.')}</div>
+          <div class="season-livegroups"><div class="sa-hint">…</div></div>
+          </section>
+          <section class="sa-section">
           <h4>${tl('Pridať skupinu', 'Add a group')}</h4>
           <form class="add-group-form" style="display:flex;gap:12px;flex-wrap:wrap">
             <input type="text" data-field="name" maxlength="80" placeholder="${escapeHtml(tl('Nová skupina, napr. Babolat', 'New group, e.g. Babolat'))}" required style="flex:1;min-width:160px;${inputStyle}">
@@ -599,6 +604,82 @@ function seasonCardHtml(s) {
       </div>
     </details>
   `;
+}
+
+// A group whose players changed (a draw, a player added, replaced or removed) needs its schedule made again: the warning sits under the group with the button
+// that makes only the missing matches of THAT group (the played ones are not touched).
+async function wireStaleSchedules(card, seasonId, season, fail) {
+  if (IS_TOURNAMENT || !season.groups.some((g) => g.activeMemberCount >= 2)) return;
+  let preview;
+  try { preview = await api(`/seasons/${seasonId}/schedule-preview`); } catch { return; }
+  preview.groups.filter((g) => g.activeCount >= 2 && g.toCreate > 0).forEach((g) => {
+    const wrap = card.querySelector(`.season-group[data-group-wrap="${g.groupId}"]`);
+    const group = season.groups.find((x) => x.id === g.groupId);
+    if (!wrap || !group) return;
+    const none = group.matchCount === 0;
+    const note = document.createElement('div');
+    note.className = 'sg-stale';
+    note.style.cssText = 'margin:6px 0 10px;padding:8px 12px;border-radius:8px;background:rgba(255,170,0,.12);border:1px solid rgba(255,170,0,.45);display:flex;gap:10px;align-items:center;flex-wrap:wrap';
+    note.innerHTML = `<span>⚠ ${none ? tl(`Skupina ${escapeHtml(g.name)} ešte nemá rozpis: treba vytvoriť ${g.toCreate} zápasov.`, `Group ${escapeHtml(g.name)} has no schedule yet: ${g.toCreate} matches to create.`) : tl(`Hráči skupiny ${escapeHtml(g.name)} sa zmenili: rozpis treba aktualizovať (chýba ${g.toCreate} zápasov, odohrané zostanú).`, `The players of group ${escapeHtml(g.name)} changed: the schedule needs updating (${g.toCreate} matches missing, the played ones stay).`)}</span><button type="button" class="btn btn-sm btn-primary">${none ? tl('Vytvoriť rozpis skupiny', 'Create the schedule of the group') : tl('Aktualizovať rozpis skupiny', 'Update the schedule of the group')}</button>`;
+    note.querySelector('button').addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      try {
+        await api(`/seasons/${seasonId}/schedule`, { method: 'POST', body: { groupIds: [g.groupId] } });
+        toast(tl('Rozpis skupiny aktualizovaný', 'Group schedule updated'));
+        openPanels.add(g.groupId);
+        await load();
+      } catch (err) { e.target.disabled = false; fail(err); }
+    });
+    wrap.querySelector('.season-group-row').after(note);
+  });
+}
+
+// the draw of the players into the groups (the box in the tab Skupiny): the seeding per category and the button for the draw in front of the camera
+async function wireLiveGroups(card, id, fail) {
+  const host = card.querySelector('.season-livegroups');
+  if (!host) return;
+  const draftSeeds = new Map(); // registration id -> text in the box (kept while the box is redrawn)
+  let info;
+  const render = () => {
+    if (!info.categories.length) { host.innerHTML = `<div class="sa-hint">${tl('Zatiaľ nie sú skupiny ani registrovaní hráči.', 'There are no groups or registered players yet.')}</div>`; return; }
+    host.innerHTML = info.categories.map((c) => {
+      const rows = c.toDraw.map((p) => {
+        const shown = draftSeeds.has(p.id) ? draftSeeds.get(p.id) : (p.seed || '');
+        return `<div style="display:flex;gap:8px;align-items:center;padding:3px 0"><input type="number" min="1" data-seed="${p.id}" value="${shown}" placeholder="—" style="width:64px;${inputStyle}" title="${escapeHtml(tl('Nasadenie (prázdne = bez nasadenia)', 'Seed (empty = not seeded)'))}"><span>${escapeHtml(p.name)}${p.noPlayer ? ` <span class="sa-hint">· ${tl('chýba profil hráča', 'no player profile')}</span>` : ''}</span></div>`;
+      }).join('');
+      const ready = c.groups > 0 && c.toDraw.length > 0 && !c.toDraw.some((p) => p.noPlayer);
+      return `<div class="sa-block" data-cat="${c.category}" style="padding:10px 0;border-top:1px solid var(--border,rgba(255,255,255,.12))">
+        <div style="font-weight:600">${escapeHtml(c.label)} <span class="sa-hint">· ${c.groups} ${nounFor(c.groups, 'skupina', 'skupiny', 'skupín', 'group', 'groups')} · ${tl('v skupinách', 'in the groups')}: ${c.members} · ${tl('na žrebovanie', 'to draw')}: ${c.toDraw.length}</span></div>
+        ${c.toDraw.length ? `<div style="margin:8px 0">${rows}</div>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${c.toDraw.length ? `<button type="button" class="btn btn-sm btn-outline" data-act="save-seeds">${tl('Uložiť nasadenie', 'Save seeding')}</button>` : ''}
+          <button type="button" class="btn btn-sm btn-primary" data-act="live" ${ready ? '' : 'disabled'}>${tl('Žreb naživo do skupín', 'Live draw into the groups')}</button>
+          ${c.liveRecordId ? `<a class="btn btn-sm btn-outline" href="/draw-live?record=${c.liveRecordId}" target="_blank" rel="noopener">${tl('Záznam žrebu (prehrať)', 'Draw record (replay)')}</a>` : ''}
+        </div>
+        ${!c.groups ? `<div class="sa-hint" style="margin-top:6px">${tl('Najprv vytvor skupiny tejto kategórie.', 'Create the groups of this category first.')}</div>` : ''}
+      </div>`;
+    }).join('');
+  };
+  const reload = async () => { info = await api(`/seasons/${id}/groups/draw-info`); render(); };
+  host.addEventListener('input', (e) => { const el = e.target.closest('[data-seed]'); if (el) draftSeeds.set(Number(el.dataset.seed), el.value); });
+  host.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const cat = btn.closest('[data-cat]').dataset.cat;
+    try {
+      if (btn.dataset.act === 'save-seeds') {
+        const c = info.categories.find((x) => x.category === cat);
+        const seeds = c.toDraw.map((p) => ({ id: p.id, seed: (draftSeeds.has(p.id) ? draftSeeds.get(p.id) : p.seed) || null }));
+        await api(`/seasons/${id}/groups/seeds`, { method: 'POST', body: { category: cat, seeds } });
+        toast(tl('Nasadenie uložené', 'Seeding saved'));
+        c.toDraw.forEach((p) => draftSeeds.delete(p.id));
+        await reload();
+      } else if (btn.dataset.act === 'live') {
+        window.open(`/draw-live?mode=groups&season=${id}&category=${encodeURIComponent(cat)}`, '_blank');
+      }
+    } catch (err) { fail(err); }
+  });
+  try { await reload(); } catch (err) { host.innerHTML = `<div class="sa-hint">${escapeHtml(err.message)}</div>`; }
 }
 
 function seasonHtml(s) {
@@ -1101,6 +1182,8 @@ function wireSeason(card) {
     wireGroupPanel(wrap, season.groups.find((g) => g.id === gid), fail);
   });
   wireSchedule(card, id, fail);
+  wireLiveGroups(card, id, fail);
+  wireStaleSchedules(card, id, season, fail);
 
   card.querySelectorAll('.season-group-row').forEach((row) => {
     const groupId = Number(row.dataset.group);

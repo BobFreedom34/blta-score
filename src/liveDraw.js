@@ -111,6 +111,136 @@ function planTable(regs, s, rng) {
   };
 }
 
+// ---------- the draw of the players of a season into its groups ----------
+
+// How many players each group takes: the groups come out equal (some have one player less when it does not divide), the groups that already have players counting them in.
+function capacitiesOf(existingCounts, newPlayers) {
+  const caps = existingCounts.map(() => 0);
+  for (let i = 0; i < newPlayers; i += 1) {
+    let best = 0;
+    existingCounts.forEach((e, g) => { if (e + caps[g] < existingCounts[best] + caps[best]) best = g; });
+    caps[best] += 1;
+  }
+  return caps;
+}
+
+// The snake over groups with room left: seed 1 in group A, seed 2 in B … and back (8 seeds in 4 groups: A 1 and 8, B 2 and 7 …); a group that is full is skipped.
+// -> [[item, …] per group] (the same code is in public/js/draw-verify.js)
+function dealSnake(ordered, caps) {
+  const left = [...caps];
+  const out = caps.map(() => []);
+  let i = 0;
+  let row = 0;
+  while (i < ordered.length) {
+    const order = caps.map((c, g) => g);
+    if (row % 2 === 1) order.reverse();
+    let placed = false;
+    order.forEach((g) => { if (i < ordered.length && left[g] > 0) { out[g].push(ordered[i]); i += 1; left[g] -= 1; placed = true; } });
+    row += 1;
+    if (!placed) break;
+  }
+  return out;
+}
+
+// who is in the groups of a category and who is to be drawn: the registered players of the category that are in no group of the season yet
+function groupInputs(season, category) {
+  if (season.kind === 'TOURNAMENT') return { status: 400, error: 'This is the draw of the groups of a season: a tournament has its own draw' };
+  if (!draw.categoriesFor(season).includes(category)) return { status: 400, error: 'Choose a category of this season' };
+  const groupRows = db.prepare('SELECT * FROM season_groups WHERE season_id = ? AND category = ? ORDER BY sort_order, name COLLATE NOCASE').all(season.id, category);
+  if (!groupRows.length) return { status: 400, error: 'Create the groups of this category first (the tab Skupiny)' };
+  const inGroup = new Set(db.prepare('SELECT m.player_id FROM season_group_members m JOIN season_groups g ON g.id = m.group_id WHERE g.season_id = ?').all(season.id).map((r) => r.player_id));
+  const all = draw.registrationsOf(season.id, category);
+  const missing = all.filter((r) => !r.player_id);
+  if (missing.length) return { status: 400, error: `These players have no player profile yet: ${missing.map((r) => r.name).join(', ')}` };
+  const regs = all.filter((r) => !inGroup.has(r.player_id));
+  if (!regs.length) return { status: 400, error: 'There is nobody to draw: every registered player of this category is already in a group' };
+  const existing = groupRows.map((g) => db.prepare('SELECT p.id, p.name FROM season_group_members m JOIN players p ON p.id = m.player_id WHERE m.group_id = ? ORDER BY m.sort_order, m.id').all(g.id));
+  const fingerprint = sha256(JSON.stringify([regs.map((r) => [r.id, r.player_id, r.seed || 0]).sort((a, b) => a[0] - b[0]), groupRows.map((g, i) => [g.id, existing[i].map((p) => p.id)])]));
+  return { groupRows, existing, regs, fingerprint };
+}
+
+// What the tab Skupiny shows per category: the groups, who sits in them, and who is still to be drawn (with the seeding).
+function groupsOverview(season) {
+  return draw.categoriesFor(season).map((category) => {
+    const groups = db.prepare('SELECT * FROM season_groups WHERE season_id = ? AND category = ? ORDER BY sort_order, name COLLATE NOCASE').all(season.id, category);
+    const inGroup = new Set(db.prepare('SELECT m.player_id FROM season_group_members m JOIN season_groups g ON g.id = m.group_id WHERE g.season_id = ?').all(season.id).map((r) => r.player_id));
+    const regs = draw.registrationsOf(season.id, category);
+    const toDraw = regs.filter((r) => !r.player_id || !inGroup.has(r.player_id));
+    const members = groups.reduce((n, g) => n + db.prepare('SELECT COUNT(*) AS c FROM season_group_members WHERE group_id = ?').get(g.id).c, 0);
+    const rec = db.prepare("SELECT id FROM draw_records WHERE season_id = ? AND category = ? AND format = 'SEASON_GROUPS' AND status = 'COMMITTED' ORDER BY id DESC LIMIT 1").get(season.id, category);
+    return {
+      category, label: draw.CATEGORY_LABELS[category] || category, groups: groups.length, members,
+      toDraw: toDraw.map((r) => ({ id: r.id, name: r.name, seed: r.seed || null, noPlayer: !r.player_id })),
+      liveRecordId: rec ? Number(rec.id) : null,
+    };
+  }).filter((c) => c.groups || c.toDraw.length);
+}
+
+// Starts the draw into the groups of a category of a season. -> { error, status } | { recordId, attempt, seedHash, seed, plan }
+function prepareGroups(season, category) {
+  const inputs = groupInputs(season, category);
+  if (inputs.error) return inputs;
+  const { groupRows, existing, regs, fingerprint } = inputs;
+  const seed = crypto.randomBytes(32).toString('hex');
+  const rng = makeRandom(seed);
+  const seeded = regs.filter((r) => r.seed).sort((a, b) => a.seed - b.seed);
+  const rest = draw.shuffled(regs.filter((r) => !r.seed), rng);
+  const caps = capacitiesOf(existing.map((e) => e.length), regs.length);
+  const ordered = [...seeded, ...rest];
+  const dealt = dealSnake(ordered, caps);
+  // the order of the page: the players in the order they are dealt (the snake), every one on his seat (after the players that are in the group already)
+  const steps = [];
+  const placed = caps.map(() => 0);
+  const dealtRows = Math.max(...dealt.map((d) => d.length));
+  for (let row = 0; row < dealtRows; row += 1) {
+    const order = caps.map((c, g) => g);
+    if (row % 2 === 1) order.reverse();
+    order.forEach((g) => {
+      const reg = dealt[g][placed[g]];
+      if (!reg) return;
+      steps.push({ e: reg.id, kind: reg.seed ? 'SEED' : 'DRAW', slot: { g, i: existing[g].length + placed[g] } });
+      placed[g] += 1;
+    });
+  }
+  const plan = {
+    v: 1,
+    season: { id: season.id, name: season.name, slug: season.slug, kind: season.kind },
+    category,
+    categoryLabel: draw.CATEGORY_LABELS[category] || category,
+    format: 'SEASON_GROUPS',
+    entrants: regs.map((r, input) => ({ id: r.id, name: r.name, seed: r.seed || null, input })),
+    layout: { type: 'GROUPS', caps, groups: groupRows.map((g, gi) => ({ name: g.name, size: existing[gi].length + caps[gi], existing: existing[gi].map((p) => p.name) })) },
+    steps,
+  };
+  const args = { assign: groupRows.map((g, gi) => ({ groupId: g.id, playerIds: dealt[gi].map((r) => r.player_id) })) };
+  const seedHash = sha256(seed);
+  const info = db.prepare('INSERT INTO draw_records (season_id, category, format, status, seed, seed_hash, fingerprint, options, args, plan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(season.id, category, 'SEASON_GROUPS', 'PLANNED', seed, seedHash, fingerprint, '{}', JSON.stringify(args), JSON.stringify(plan));
+  const attempt = db.prepare('SELECT COUNT(*) AS c FROM draw_records WHERE season_id = ? AND category = ?').get(season.id, category).c;
+  return { recordId: Number(info.lastInsertRowid), attempt, seedHash, seed, plan };
+}
+
+// Puts the players of the draw that was shown into the groups. The schedule is not touched: the tab Rozpis says which groups need their matches made.
+function commitGroups(season, rec) {
+  const inputs = groupInputs(season, rec.category);
+  if (inputs.error) return inputs;
+  if (inputs.fingerprint !== rec.fingerprint) return { status: 409, error: 'The registered players, their seeding or the groups changed after the draw was made: start the draw again' };
+  const args = JSON.parse(rec.args);
+  db.exec('BEGIN');
+  try {
+    args.assign.forEach((a) => {
+      let next = db.prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM season_group_members WHERE group_id = ?').get(a.groupId).n;
+      a.playerIds.forEach((pid) => { db.prepare('INSERT INTO season_group_members (group_id, player_id, sort_order) VALUES (?, ?, ?)').run(a.groupId, pid, next); next += 1; });
+    });
+    db.prepare("UPDATE draw_records SET status = 'COMMITTED', committed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(rec.id);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  return { recordId: rec.id, saved: args.assign.reduce((n, a) => n + a.playerIds.length, 0) };
+}
+
 // ---------- the two things the organiser does ----------
 
 // Starts a draw: checks everything the real draw checks, makes the key and the plan, writes it down. -> { error, status } | { recordId, attempt, seedHash, seed, plan }
@@ -151,6 +281,7 @@ function commit(season, recordId) {
   const rec = db.prepare('SELECT * FROM draw_records WHERE id = ? AND season_id = ?').get(Number(recordId), season.id);
   if (!rec) return { status: 404, error: 'This draw was not found' };
   if (rec.status !== 'PLANNED') return { status: 409, error: rec.status === 'COMMITTED' ? 'This draw is already saved' : 'This draw can no longer be saved' };
+  if (rec.format === 'SEASON_GROUPS') return commitGroups(season, rec);
   const options = JSON.parse(rec.options);
   const prep = draw.prepareDraw(season, rec.category, options);
   if (prep.error) return prep;
@@ -185,4 +316,4 @@ function publicRecord(id) {
   };
 }
 
-module.exports = { prepare, commit, publicRecord, makeRandom, sha256, fingerprintOf };
+module.exports = { prepare, prepareGroups, groupsOverview, commit, dealSnake, capacitiesOf, publicRecord, makeRandom, sha256, fingerprintOf };

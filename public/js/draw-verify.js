@@ -48,6 +48,23 @@
     return order;
   }
 
+  // the snake over the groups that have room left (the same as dealSnake in src/liveDraw.js)
+  function dealSnake(ordered, caps) {
+    const left = [...caps];
+    const out = caps.map(() => []);
+    let i = 0;
+    let row = 0;
+    while (i < ordered.length) {
+      const order = caps.map((c, g) => g);
+      if (row % 2 === 1) order.reverse();
+      let placed = false;
+      order.forEach((g) => { if (i < ordered.length && left[g] > 0) { out[g].push(ordered[i]); i += 1; left[g] -= 1; placed = true; } });
+      row += 1;
+      if (!placed) break;
+    }
+    return out;
+  }
+
   // -> { ok, lockOk, problems: [text] }
   async function verifyRecord(record) {
     const problems = [];
@@ -77,6 +94,11 @@
       const order = [...seeded, ...(await shuffled(unseeded, random))]; // seed numbers 1..n
       const seats = standardSeedOrder(layout.size);
       seats.forEach((seedNo, p) => { if (seedNo <= order.length) check(order[seedNo - 1].id, { p }); });
+    } else if (layout.caps) {
+      // the groups of a season: the groups already have players, every group takes what the equal division says
+      const order = [...seeded, ...(await shuffled(unseeded, random))];
+      const dealt = dealSnake(order, layout.caps);
+      dealt.forEach((list, g) => list.forEach((e, k) => check(e.id, { g, i: layout.groups[g].existing.length + k })));
     } else {
       const order = [...seeded, ...(await shuffled(unseeded, random))];
       const count = layout.groups.length;

@@ -175,7 +175,7 @@ function serializeSeason(s) {
     prizeMoney: s.prize_money || '',
     drawDate: s.draw_date || null,
     // the draws made in front of the camera that are saved in this tournament (one per category): the tile "Žreb naživo" lets everybody replay them
-    liveDraws: s.kind === 'TOURNAMENT' ? db.prepare("SELECT id, category FROM draw_records WHERE season_id = ? AND status = 'COMMITTED' ORDER BY id").all(s.id).map((r) => ({ id: Number(r.id), category: r.category })) : [],
+    liveDraws: db.prepare("SELECT id, category FROM draw_records WHERE season_id = ? AND status = 'COMMITTED' ORDER BY id").all(s.id).map((r) => ({ id: Number(r.id), category: r.category })),
     // the format the organiser plans to play (chosen in Backend > Základné info before the draw; once a category is drawn its own format counts): '' = not said yet
     plannedFormat: s.planned_format || '',
     info: s.info || '',
@@ -714,6 +714,42 @@ router.post('/:id/draw/live/commit', clubTournaments.requireSeasonManager(clubTo
   const io = req.app.get('io');
   if (io) io.emit('matches:changed', { seasonId: season.id, status: 'CREATED' });
   res.status(201).json({ ...made, categories: tournamentDraw.overview(season.id) });
+});
+
+// The draw of the players of a SEASON into its groups in front of the camera (the page /draw-live?mode=groups, see src/liveDraw.js): { category }
+router.post('/:id/groups/live/prepare', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  const made = liveDraw.prepareGroups(season, (req.body || {}).category);
+  if (made.error) return res.status(made.status || 400).json({ error: made.error });
+  res.status(201).json(made);
+});
+
+router.post('/:id/groups/live/commit', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  const made = liveDraw.commit(season, (req.body || {}).recordId);
+  if (made.error) return res.status(made.status || 400).json({ error: made.error });
+  const io = req.app.get('io');
+  if (io) io.emit('matches:changed', { seasonId: season.id, status: 'CREATED' });
+  res.status(201).json(made);
+});
+
+router.get('/:id/groups/draw-info', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  if (season.kind === 'TOURNAMENT') return res.json({ categories: [] });
+  res.json({ categories: liveDraw.groupsOverview(season) });
+});
+
+// the seeding of the registered players of a category of a season: { category, seeds: [{ id: registrationId, seed }] } (the seeded players go into the groups like a snake)
+router.post('/:id/groups/seeds', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  if (season.kind === 'TOURNAMENT') return res.status(400).json({ error: 'A tournament has its seeding in the tab Formát' });
+  const done = tournamentDraw.setSeeds(season.id, (req.body || {}).category, (req.body || {}).seeds);
+  if (done.error) return res.status(400).json({ error: done.error });
+  res.json({ ok: true });
 });
 
 router.get('/:id/draw/groups-suggestion', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
@@ -1477,7 +1513,8 @@ router.patch('/groups/:groupId/members/:playerId', clubTournaments.requireSeason
   res.json(serializeGroup(group));
 });
 
-// Removing is only for a mistake: once the player has matches in the group they have to be withdrawn instead.
+// Removing a player (a mistake, or somebody else takes the place): the matches he has not played yet go with him, the played ones stay untouched -
+// once he has played (or is playing) a match in the group he has to be withdrawn instead. The schedule of the group is then made again with the tab Rozpis (only the missing pairs).
 router.delete('/groups/:groupId/members/:playerId', clubTournaments.requireSeasonManager(clubTournaments.byGroupId), (req, res) => {
   const group = groupOr404(req, res);
   if (!group) return;
@@ -1485,10 +1522,27 @@ router.delete('/groups/:groupId/members/:playerId', clubTournaments.requireSeaso
   if (!db.prepare('SELECT 1 FROM season_group_members WHERE group_id = ? AND player_id = ?').get(group.id, playerId)) {
     return res.status(404).json({ error: 'That player is not in this group' });
   }
-  const played = db.prepare('SELECT COUNT(*) AS n FROM matches WHERE group_id = ? AND (player1_id = ? OR player2_id = ?)').get(group.id, playerId, playerId).n;
-  if (played) return res.status(400).json({ error: 'This player already has matches in the group — withdraw them instead (their unplayed matches become walkovers)' });
-  db.prepare('DELETE FROM season_group_members WHERE group_id = ? AND player_id = ?').run(group.id, playerId);
-  res.json(serializeGroup(group));
+  const played = db.prepare("SELECT COUNT(*) AS n FROM matches WHERE group_id = ? AND (player1_id = ? OR player2_id = ?) AND status != 'PLANNED'").get(group.id, playerId, playerId).n;
+  if (played) return res.status(400).json({ error: 'This player already has played matches in the group — withdraw them instead (their unplayed matches become walkovers)' });
+  const planned = db.prepare("SELECT id FROM matches WHERE group_id = ? AND (player1_id = ? OR player2_id = ?) AND status = 'PLANNED'").all(group.id, playerId, playerId);
+  db.exec('BEGIN');
+  try {
+    planned.forEach((m) => {
+      db.prepare('DELETE FROM messages WHERE match_id = ?').run(m.id);
+      db.prepare('DELETE FROM match_notifications WHERE match_id = ?').run(m.id);
+      db.prepare('DELETE FROM push_subscriptions WHERE match_id = ?').run(m.id);
+      matchPhotos.removeAllForMatch(m.id);
+      db.prepare('UPDATE bracket_matches SET match_id = NULL WHERE match_id = ?').run(m.id);
+      db.prepare('DELETE FROM matches WHERE id = ?').run(m.id);
+    });
+    db.prepare('DELETE FROM season_group_members WHERE group_id = ? AND player_id = ?').run(group.id, playerId);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  if (planned.length) { const io = req.app.get('io'); if (io) io.emit('matches:changed', { seasonId: group.season_id, status: 'REMOVED' }); }
+  res.json({ ...serializeGroup(group), removedMatches: planned.length });
 });
 
 // The player leaves mid-season: no new matches for them, and every unplayed match of theirs becomes a walkover win for
