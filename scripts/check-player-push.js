@@ -71,8 +71,8 @@ test('texts: every kind has a Slovak and an English wording that matches the bel
     PROPOSAL_RECEIVED: { name: 'Cyril', matchToken: 'tok2' },
     PROPOSAL_CONFIRMED: { name: 'Cyril', matchToken: 'tok2' },
     PHOTO: { name: 'Dana', matchToken: 'tok3' },
-    RANKING_UP: { amount: 3, rank: 4 },
-    RANKING_DOWN: { amount: 2, rank: 9 },
+    RANKING_UP: { amount: 3, rank: 4, week: 47 },
+    RANKING_DOWN: { amount: 2, rank: 9, week: 47 },
     INVITE: { fromName: 'Anna', orgName: 'VIP CUP' },
     POST: { name: 'Anna', orgName: 'VIP CUP', body: 'Turnaj v sobotu', orgSlug: 'vip-cup' },
     REACTION: { name: 'Anna', orgName: 'VIP CUP', emoji: '🔥', orgSlug: 'vip-cup' },
@@ -90,7 +90,10 @@ test('texts: every kind has a Slovak and an English wording that matches the bel
   assert.strictEqual(texts.build('DM', { fromName: 'Anna', body: 'Ahoj' }, 'sk').title, 'Anna');
   assert.strictEqual(texts.build('DM', { fromName: 'Anna', body: 'Ahoj' }, 'sk').body, 'Ahoj');
   assert.strictEqual(texts.build('CHAT', { fromName: 'Anna', body: 'x', matchToken: 'tok1' }, 'en').url, '/match/tok1');
-  assert.strictEqual(texts.build('RANKING_UP', { amount: 3, rank: 4 }, 'en').title, '📈 You climbed 3 places in the BLTA ranking — now #4');
+  assert.strictEqual(texts.build('RANKING_UP', { amount: 3, rank: 4, week: 47 }, 'en').title, '📈 Week 47: you climbed 3 places in the BLTA ranking — now #4');
+  assert.strictEqual(texts.build('RANKING_UP', { amount: 3, rank: 4, week: 29 }, 'sk').title, '📈 V 29. týždni si sa v BLTA rebríčku posunul o 3 miesta hore — teraz si na 4. mieste');
+  assert.strictEqual(texts.build('RANKING_DOWN', { amount: 5, rank: 12, week: 29 }, 'sk').title, '📉 V 29. týždni si v BLTA rebríčku klesol o 5 miest — teraz si na 12. mieste');
+  assert.strictEqual(texts.build('RANKING_DOWN', { amount: 1, rank: 12, week: 29 }, 'sk').title, '📉 V 29. týždni si v BLTA rebríčku klesol o 1 miesto — teraz si na 12. mieste');
   assert.strictEqual(texts.build('DM', { fromName: 'A', body: 'x'.repeat(500) }, 'sk').body.length <= 120, true, 'long text is cut for the notification');
   assert.strictEqual(texts.build('DM', { fromName: 'A', body: 'x' }, 'de').title, 'A', 'an unknown language falls back to Slovak');
 });

@@ -4,7 +4,7 @@ const leagues = require('../leagues');
 const playerPush = require('../playerPush');
 const { requireSuperAdmin } = require('../auth');
 const rankingPoints = require('../rankingPoints');
-const { getMoves, getHistory, rebase } = require('../rankingSnapshots');
+const { getMoves, getHistory, rebase, isoWeekOf } = require('../rankingSnapshots');
 
 const router = express.Router();
 
@@ -65,7 +65,7 @@ function buildRankings(leagueId = leagues.DEFAULT_LEAGUE_ID) {
         const player = row && playerOf(row);
         if (!player) return;
         const made = insert.run(player.id, t.key, move.direction, move.amount, row.rank, currentWeek);
-        if (made.changes) playerPush.notifyPlayer(player.id, move.direction === 'up' ? 'RANKING_UP' : 'RANKING_DOWN', { amount: move.amount, rank: row.rank });
+        if (made.changes) playerPush.notifyPlayer(player.id, move.direction === 'up' ? 'RANKING_UP' : 'RANKING_DOWN', { amount: move.amount, rank: row.rank, week: isoWeekOf(currentWeek) });
       });
     }
 

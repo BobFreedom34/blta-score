@@ -3529,7 +3529,7 @@ function renderBadgeNotifList() {
     } else if (n.type === 'RANKING') {
       icon = n.ranking.direction === 'up' ? '📈' : '📉';
       title = t(n.ranking.direction === 'up' ? 'notif.rankingUpTitle' : 'notif.rankingDownTitle', {
-        amount: n.ranking.amount, rank: n.ranking.newRank,
+        amount: n.ranking.amount, rank: n.ranking.newRank, week: n.ranking.week, places: nounFor(n.ranking.amount, 'miesto', 'miesta', 'miest', 'place', 'places'),
       });
       subtitle = fmtDateShort(n.createdAt);
     } else if (n.type === 'PHOTO') {

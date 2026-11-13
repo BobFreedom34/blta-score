@@ -6,6 +6,8 @@ const clip = (text) => {
   const s = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
   return s.length > BODY_MAX ? `${s.slice(0, BODY_MAX - 1).trimEnd()}…` : s;
 };
+// "1 miesto, 2 miesta, 5 miest" / "1 place, 2 places"
+const placesWord = (n, l) => (l === 'en' ? (Number(n) === 1 ? 'place' : 'places') : (Number(n) === 1 ? 'miesto' : (Number(n) >= 2 && Number(n) <= 4 ? 'miesta' : 'miest')));
 const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, k) => (values[k] == null ? '' : String(values[k])));
 
 const WORDING = {
@@ -15,8 +17,8 @@ const WORDING = {
   PROPOSAL_RECEIVED: { sk: '📅 {name} ti navrhol termíny', en: '📅 {name} proposed times to you' },
   PROPOSAL_CONFIRMED: { sk: '✅ {name} potvrdil termín zápasu', en: '✅ {name} confirmed a time' },
   PHOTO: { sk: '📷 {name} pridal fotku k tvojmu zápasu', en: '📷 {name} added a photo to your match' },
-  RANKING_UP: { sk: '📈 V BLTA rebríčku si sa posunul o {amount} hore — teraz si na {rank}. mieste', en: '📈 You climbed {amount} places in the BLTA ranking — now #{rank}' },
-  RANKING_DOWN: { sk: '📉 V BLTA rebríčku si klesol o {amount} dole — teraz si na {rank}. mieste', en: '📉 You dropped {amount} places in the BLTA ranking — now #{rank}' },
+  RANKING_UP: { sk: '📈 V {week}. týždni si sa v BLTA rebríčku posunul o {amount} {places} hore — teraz si na {rank}. mieste', en: '📈 Week {week}: you climbed {amount} {places} in the BLTA ranking — now #{rank}' },
+  RANKING_DOWN: { sk: '📉 V {week}. týždni si v BLTA rebríčku klesol o {amount} {places} — teraz si na {rank}. mieste', en: '📉 Week {week}: you dropped {amount} {places} in the BLTA ranking — now #{rank}' },
   POST: { sk: '📢 {org}: nová novinka od {name}', en: '📢 {org}: a new post from {name}' },
   REACTION: { sk: '{emoji} {name} reagoval na tvoju novinku v {org}', en: '{emoji} {name} reacted to your post in {org}' },
   REGISTRATION: { sk: '🎾 {name} sa prihlásil do {season}', en: '🎾 {name} registered for {season}' },
@@ -61,7 +63,7 @@ function build(kind, data = {}, lang = 'sk') {
     case 'INVITE': return { title: fill(WORDING.INVITE[l], { name, org: data.orgName || '' }), body: '', url: '/messages', tag: 'invite' };
     case 'PHOTO': return { title: fill(WORDING.PHOTO[l], { name }), body: '', url: matchUrl, tag: `photo-${data.matchToken || 'x'}` };
     case 'RANKING_UP':
-    case 'RANKING_DOWN': return { title: fill(WORDING[kind][l], data), body: '', url: '/rankings', tag: 'ranking' };
+    case 'RANKING_DOWN': return { title: fill(WORDING[kind][l], { ...data, places: placesWord(data.amount, l) }), body: '', url: '/rankings', tag: 'ranking' };
     case 'BADGE': return { title: fill(WORDING.BADGE[l], { badge: data.badge }), body: clip(data.description), url: data.playerPath || '/', tag: 'badge' };
     case 'BADGE_REMINDER': return { title: fill(WORDING.BADGE_REMINDER[l], { badge: data.badge }), body: BADGE_REMINDER_BODY[l], url: data.playerPath || '/', tag: 'badge-reminder' };
     default: throw new Error(`Unknown push kind: ${kind}`);

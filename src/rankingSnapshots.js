@@ -23,6 +23,15 @@ function mondayOf(date = new Date()) {
   return d.toISOString().slice(0, 10);
 }
 
+// The ISO week number (1-53) of a day written 2026-11-16: the number the players read in "in week 47 you moved ..." (the Monday the ranking rolled).
+function isoWeekOf(day) {
+  const d = new Date(`${day}T00:00:00Z`);
+  const dayNo = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNo); // the Thursday of that week decides the year
+  const yearStart = Date.UTC(d.getUTCFullYear(), 0, 1);
+  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+}
+
 // rows: [{ name, rank }] — the CURRENT rank for every player in one table
 // (already resolved, whatever the source). Returns { moves, isNewWeek,
 // weekMoves, currentWeek }:
@@ -128,4 +137,4 @@ function getHistory(tableKey, normalizedName, limit = 16) {
   return rows.slice(-limit);
 }
 
-module.exports = { getMoves, getHistory, rebase };
+module.exports = { getMoves, getHistory, rebase, isoWeekOf };

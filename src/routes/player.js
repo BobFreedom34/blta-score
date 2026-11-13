@@ -4,6 +4,7 @@ const db = require('../db');
 const auth = require('../auth');
 const { sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail } = require('../mailer');
 const { creditInviter } = require('./invites');
+const { isoWeekOf } = require('../rankingSnapshots');
 
 const router = express.Router();
 
@@ -255,7 +256,7 @@ router.get('/notifications', (req, res) => {
   }));
 
   const rankingRows = db.prepare(`
-    SELECT id, seen, created_at, table_key, direction, amount, new_rank
+    SELECT id, seen, created_at, table_key, direction, amount, new_rank, snapshot_week
     FROM ranking_notifications
     WHERE player_id = ?
   `).all(playerId).map((r) => ({
@@ -264,7 +265,7 @@ router.get('/notifications', (req, res) => {
     seen: !!r.seen,
     createdAt: r.created_at,
     ranking: {
-      tableKey: r.table_key, direction: r.direction, amount: r.amount, newRank: r.new_rank,
+      tableKey: r.table_key, direction: r.direction, amount: r.amount, newRank: r.new_rank, week: isoWeekOf(r.snapshot_week),
     },
   }));
 
