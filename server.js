@@ -419,6 +419,23 @@ function ownCityAddress(hit, req) {
   return site ? `${site}/${owner.slug}${page}` : null;
 }
 
+// what the structured data (SportsEvent) of a season / tournament page is made of (see structuredData in src/seo.js): the dates, for a tournament also the playing window of its first and last
+// day, the venue, the entry fee, the capacity and the club that runs it
+function eventLd(s) {
+  return {
+    type: 'event',
+    start: s.start_date,
+    end: s.end_date,
+    tournament: s.kind === 'TOURNAMENT',
+    dayStart: s.day_start || '',
+    dayEnd: s.day_end || '',
+    venue: s.venue || '',
+    fee: s.entry_fee || '',
+    registrationOpen: !!s.registration_open,
+    capacity: s.max_players || 0,
+    organiser: s.org_name || '',
+  };
+}
 const TEMPLATE_ENTITY = {
   article: (slug, lang, leagueId) => blog.articleEntity(slug, lang, leagueId),
   player: (id) => {
@@ -432,12 +449,12 @@ const TEMPLATE_ENTITY = {
     return b ? { name: b.name, image: b.hero_url || b.hero_mobile_url || b.logo_url || '' } : null;
   },
   season: (slug, lang, leagueId) => {
-    const s = db.prepare('SELECT name, logo_url, hero_url, hero_mobile_url, start_date, end_date FROM seasons WHERE slug = ? AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))').get(slug, leagueId);
-    return s ? { name: s.name, image: s.hero_url || s.hero_mobile_url || s.logo_url || '', ld: { type: 'event', start: s.start_date, end: s.end_date } } : null;
+    const s = db.prepare('SELECT name, kind, logo_url, hero_url, hero_mobile_url, start_date, end_date, venue, entry_fee, registration_open, day_start, day_end, max_players, (SELECT name FROM organisations o WHERE o.id = seasons.organisation_id) AS org_name FROM seasons WHERE slug = ? AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))').get(slug, leagueId);
+    return s ? { name: s.name, image: s.hero_url || s.hero_mobile_url || s.logo_url || '', ld: eventLd(s) } : null;
   },
   tournament: (slug, lang, leagueId) => {
-    const s = db.prepare("SELECT name, logo_url, hero_url, hero_mobile_url, start_date, end_date FROM seasons WHERE slug = ? AND kind = 'TOURNAMENT' AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").get(slug, leagueId);
-    return s ? { name: s.name, image: s.hero_url || s.hero_mobile_url || s.logo_url || '', ld: { type: 'event', start: s.start_date, end: s.end_date } } : null;
+    const s = db.prepare("SELECT name, kind, logo_url, hero_url, hero_mobile_url, start_date, end_date, venue, entry_fee, registration_open, day_start, day_end, max_players, (SELECT name FROM organisations o WHERE o.id = seasons.organisation_id) AS org_name FROM seasons WHERE slug = ? AND kind = 'TOURNAMENT' AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").get(slug, leagueId);
+    return s ? { name: s.name, image: s.hero_url || s.hero_mobile_url || s.logo_url || '', ld: eventLd(s) } : null;
   },
   // a court: the texts and the preview picture of its own (Backend > Venues > SEO) first, then its photo, then the shared ones of Backend > SEO
   court: (slug, lang) => {

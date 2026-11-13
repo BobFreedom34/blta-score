@@ -932,6 +932,23 @@ const INTRO_MARKER = /<!--PAGE_SSR(:hidden)?-->/;
 // The page that is the list a page belongs to (a season is listed in Harmonogram, a player in Hráči…): the middle step of its breadcrumb.
 const BREADCRUMB_PARENT = { season: 'harmonogram', tournament: 'harmonogram', player: 'players', court: 'courts', community: 'communities', article: 'blog', bracket: 'tables' };
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}/;
+const TIME_OF_DAY = /^([01]\d|2[0-3]):[0-5]\d$/;
+// the offset of Slovakia on a day ("+01:00" in winter, "+02:00" in summer), so a time written in the Backend gets a correct time zone in the structured data
+function bratislavaOffset(day) {
+  try {
+    const part = new Intl.DateTimeFormat('en', { timeZone: 'Europe/Bratislava', timeZoneName: 'longOffset' }).formatToParts(new Date(`${day}T12:00:00Z`)).find((p) => p.type === 'timeZoneName');
+    const m = part && /GMT([+-]\d{2}:\d{2})/.exec(part.value);
+    return m ? m[1] : '+01:00';
+  } catch { return '+01:00'; }
+}
+// "10 €", "10,50 eur", "zadarmo", "free", "0" -> a number; null when the text holds no price (then no offer is written)
+function entryFeeNumber(text) {
+  const t = String(text || '').trim().toLowerCase();
+  if (!t) return null;
+  if (/^(zadarmo|free|bez poplatku|0)\b/.test(t)) return 0;
+  const m = /(\d+(?:[.,]\d{1,2})?)/.exec(t);
+  return m ? Number(m[1].replace(',', '.')) : null;
+}
 const scriptTag = (data) => `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
 
 // What Google reads next to the meta tags: who the site is (home page), what the page is about (an event, a person, a place, an organisation —
@@ -952,8 +969,27 @@ function structuredData({ key, entity, origin, siteName, leagueName, lang, title
   const place = { '@type': 'Place', name: leagueName || 'Bratislava', address: { '@type': 'PostalAddress', addressLocality: leagueName || 'Bratislava', addressCountry: 'SK' } };
   if (ld && ld.type === 'event') {
     const event = { '@type': 'SportsEvent', name: entity.name, url, image: [imageUrl], description, sport: 'Tennis', eventStatus: 'https://schema.org/EventScheduled', eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode', location: place, organizer: orgRef, inLanguage: lang };
+    // the venue the organiser wrote ("TKP Nobelko, Nobelovo námestie 6"), in the city of the league
+    if (ld.venue) event.location = { '@type': 'Place', name: ld.venue, address: place.address };
+    // a club or a community that runs it is the organiser, not the league
+    if (ld.organiser) event.organizer = { '@type': 'Organization', name: ld.organiser };
     if (DATE_ONLY.test(ld.start || '')) event.startDate = ld.start.slice(0, 10);
     if (DATE_ONLY.test(ld.end || '')) event.endDate = ld.end.slice(0, 10);
+    // a tournament of a few days plays within hours: the start and the end with the time of the first and the last day (Google shows the time)
+    if (ld.tournament) {
+      const stamp = (day, time) => (DATE_ONLY.test(day || '') && TIME_OF_DAY.test(time || '') ? `${day.slice(0, 10)}T${time}:00${bratislavaOffset(day.slice(0, 10))}` : null);
+      const from = stamp(ld.start, ld.dayStart);
+      const to = stamp(ld.end || ld.start, ld.dayEnd);
+      if (from) event.startDate = from;
+      if (to) event.endDate = to;
+    }
+    if (Number(ld.capacity) > 0) event.maximumAttendeeCapacity = Number(ld.capacity);
+    // the entry fee as an offer ("10 €" -> 10 EUR, "zadarmo" / "free" -> 0): a visitor can register while the registration is open
+    const price = entryFeeNumber(ld.fee);
+    if (price !== null) {
+      event.isAccessibleForFree = price === 0;
+      event.offers = { '@type': 'Offer', url: `${url}`, price: String(price), priceCurrency: 'EUR', availability: ld.registrationOpen ? 'https://schema.org/InStock' : 'https://schema.org/SoldOut' };
+    }
     // Google lists an event only with a start date
     if (event.startDate) graph.push(event);
   } else if (ld && ld.type === 'person') {

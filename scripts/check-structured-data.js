@@ -92,6 +92,26 @@ test('a season is a sports event with its dates, and has a breadcrumb through Ha
   assert.strictEqual(crumbs[2].name, 'Summer Rally 2026');
 });
 
+test('a tournament carries its venue, its time of day with the time zone of the day, the capacity and the entry fee as an offer', async () => {
+  db.prepare("INSERT INTO seasons (name, slug, kind, start_date, end_date, venue, entry_fee, registration_open, day_start, day_end, max_players) VALUES ('Sunday Series 15.11.', 'sunday-series-15-11', 'TOURNAMENT', '2026-11-15', '2026-11-15', 'TKP Nobelko, Nobelovo námestie 6', '10,50 €', 1, '10:00', '12:00', 16)").run();
+  db.prepare("INSERT INTO seasons (name, slug, kind, start_date, end_date, entry_fee, registration_open, day_start, day_end) VALUES ('Summer Free Cup', 'summer-free-cup', 'TOURNAMENT', '2026-07-04', '2026-07-04', 'zadarmo', 0, '09:30', '18:00')").run();
+  const ev = ofType(graphOf((await getPage('/tournament/sunday-series-15-11')).text), 'SportsEvent');
+  assert.ok(ev, 'no event');
+  assert.strictEqual(ev.startDate, '2026-11-15T10:00:00+01:00', 'winter: +01:00');
+  assert.strictEqual(ev.endDate, '2026-11-15T12:00:00+01:00');
+  assert.strictEqual(ev.location.name, 'TKP Nobelko, Nobelovo námestie 6');
+  assert.strictEqual(ev.maximumAttendeeCapacity, 16);
+  assert.strictEqual(ev.offers.price, '10.5');
+  assert.strictEqual(ev.offers.priceCurrency, 'EUR');
+  assert.strictEqual(ev.offers.availability, 'https://schema.org/InStock');
+  assert.strictEqual(ev.isAccessibleForFree, false);
+  const free = ofType(graphOf((await getPage('/tournament/summer-free-cup')).text), 'SportsEvent');
+  assert.strictEqual(free.startDate, '2026-07-04T09:30:00+02:00', 'summer: +02:00');
+  assert.strictEqual(free.offers.price, '0');
+  assert.strictEqual(free.isAccessibleForFree, true);
+  assert.strictEqual(free.offers.availability, 'https://schema.org/SoldOut', 'registration closed');
+});
+
 test('a season without a start date gets no event (Google lists an event only with a date), but keeps its breadcrumb', async () => {
   db.prepare("INSERT INTO seasons (name, slug) VALUES ('No Dates Cup', 'no-dates-cup')").run();
   const g = graphOf((await getPage('/season/no-dates-cup')).text);
