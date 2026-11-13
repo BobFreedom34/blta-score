@@ -576,11 +576,8 @@ function seasonCardHtml(s) {
         ${IS_TOURNAMENT ? `<div class="sa-panel" data-panel="assign"${active === 'assign' ? '' : ' hidden'}><div class="season-assign"></div></div>
         <div class="sa-panel" data-panel="draw"${active === 'draw' ? '' : ' hidden'}><div class="season-draw"></div></div>` : `<div class="sa-panel" data-panel="assign"${active === 'assign' ? '' : ' hidden'}><div class="season-assign"></div></div>
         <div class="sa-panel" data-panel="groups"${active === 'groups' ? '' : ' hidden'}>
-          <section class="sa-section">
-          <h4>${tl('Rozdelenie hráčov do skupín', 'Dividing the players into groups')}</h4>
-          <div class="sa-hint" style="margin:0 0 12px">${tl('Postup: 1. v záložke Zaradenie do kategórií rozdeľ hráčov do kategórií · 2. nižšie pri každej kategórii nastav nasadenie a vytvor skupiny (stačí povedať, koľko ich má byť) · 3. hráčov do skupín dáš ručne (tlačidlo Hráči pri skupine), rozdelíš automaticky, alebo ich rozdelí žreb naživo pred kamerou. Skupiny vyjdú rovnako veľké (ak sa nedá, v niektorých je o hráča menej) a nasadení idú „hadom“ (pri 4 skupinách A = 1 a 8, B = 2 a 7, C = 3 a 6, D = 4 a 5). Hráči, ktorých si už ručne dal do skupiny, tam zostanú. Rozpis zápasov vytvoríš potom v záložke Rozpis.', 'Steps: 1. in the tab Category assignment sort the players into categories · 2. below, for each category set the seeding and make the groups (just say how many) · 3. put the players into the groups by hand (the button Players of a group), divide them automatically, or let the live draw in front of the camera do it. The groups come out equal (some have one player less when it does not divide) and the seeded players go like a snake (4 groups: A = 1 and 8, B = 2 and 7, C = 3 and 6, D = 4 and 5). Players you put into a group by hand stay there. Create the schedule afterwards in the tab Schedule.')}</div>
+          <div class="sa-hint" style="margin:0 0 14px">${tl('Postup: 1. v záložke Zaradenie do kategórií rozdeľ hráčov do kategórií · 2. nižšie pri každej kategórii nastav nasadenie a vytvor skupiny (stačí povedať, koľko ich má byť) · 3. hráčov do skupín dáš ručne (tlačidlo Hráči pri skupine), rozdelíš automaticky, alebo ich rozdelí žreb naživo pred kamerou. Skupiny vyjdú rovnako veľké (ak sa nedá, v niektorých je o hráča menej) a nasadení idú „hadom“ (pri 4 skupinách A = 1 a 8, B = 2 a 7, C = 3 a 6, D = 4 a 5). Hráči, ktorých si už ručne dal do skupiny, tam zostanú. Rozpis zápasov vytvoríš potom v záložke Rozpis.', 'Steps: 1. in the tab Category assignment sort the players into categories · 2. below, for each category set the seeding and make the groups (just say how many) · 3. put the players into the groups by hand (the button Players of a group), divide them automatically, or let the live draw in front of the camera do it. The groups come out equal (some have one player less when it does not divide) and the seeded players go like a snake (4 groups: A = 1 and 8, B = 2 and 7, C = 3 and 6, D = 4 and 5). Players you put into a group by hand stay there. Create the schedule afterwards in the tab Schedule.')}</div>
           <div class="season-livegroups"><div class="sa-hint">…</div></div>
-          </section>
           <section class="sa-section">
           <h4>${tl('Skupiny a hráči v nich', 'Groups and their players')}</h4>
           <div class="sa-hint" style="margin:0 0 14px">${s.matchCount} ${tl('označených', 'tagged')} ${nounFor(s.matchCount, 'zápas', 'zápasy', 'zápasov', 'match', 'matches')} · ${s.groups.length} ${nounFor(s.groups.length, 'skupina', 'skupiny', 'skupín', 'group', 'groups')}
@@ -643,35 +640,38 @@ async function wireLiveGroups(card, id, fail) {
   let info;
   const render = () => {
     if (!info.categories.length) { host.innerHTML = `<div class="sa-hint">${tl('Zatiaľ nie sú skupiny ani registrovaní hráči.', 'There are no groups or registered players yet.')}</div>`; return; }
-    host.innerHTML = info.categories.map((c) => {
+    const card = (c) => {
       const rows = c.toDraw.map((p) => {
         const shown = draftSeeds.has(p.id) ? draftSeeds.get(p.id) : (p.seed || '');
         return `<div style="display:flex;gap:8px;align-items:center;padding:3px 0;min-width:230px"><input type="number" min="1" data-seed="${p.id}" value="${shown}" placeholder="—" style="width:64px;${inputStyle}" title="${escapeHtml(tl('Nasadenie (prázdne = bez nasadenia)', 'Seed (empty = not seeded)'))}"><span>${escapeHtml(p.name)}${p.noPlayer ? ` <span class="sa-hint">· ${tl('chýba profil hráča', 'no player profile')}</span>` : ''}</span></div>`;
       }).join('');
       const ready = c.groups > 0 && c.toDraw.length > 0 && !c.toDraw.some((p) => p.noPlayer);
       const suggested = Math.max(1, Math.ceil(c.total / 7));
-      const step = 'padding:8px 0;border-top:1px dashed var(--border,rgba(255,255,255,.12))';
-      return `<div class="sa-block" data-cat="${c.category}" style="padding:12px 0;border-top:1px solid var(--border,rgba(255,255,255,.12))">
-        <div style="font-weight:700;font-size:16px">${escapeHtml(c.label)} <span class="sa-hint">· ${tl('hráčov', 'players')}: ${c.total} · ${c.groups} ${nounFor(c.groups, 'skupina', 'skupiny', 'skupín', 'group', 'groups')} · ${tl('v skupinách', 'in the groups')}: ${c.members} · ${tl('na rozdelenie', 'to divide')}: ${c.toDraw.length}</span></div>
-        ${c.total === 0 ? `<div class="sa-hint" style="margin-top:6px">${tl('V tejto kategórii zatiaľ nikto nie je. Zaraď hráčov v záložke Zaradenie do kategórií.', 'Nobody is in this category yet. Sort the players in the tab Category assignment.')}</div>` : `
-        <div style="${step};margin-top:8px"><div class="sa-hint" style="margin-bottom:6px"><b>${tl('1. Nasadenie', '1. Seeding')}</b> — ${tl('číslo 1 je najlepší, nenasadených nechaj prázdne', 'number 1 is the best, leave the unseeded empty')}</div>
-          ${c.toDraw.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 18px">${rows}</div>
-          <button type="button" class="btn btn-sm btn-outline" data-act="save-seeds" style="margin-top:6px">${tl('Uložiť nasadenie', 'Save seeding')}</button>` : `<div class="sa-hint">${tl('Všetci hráči sú už v skupinách.', 'Everybody is in a group already.')}</div>`}
-        </div>
-        <div style="${step}"><div class="sa-hint" style="margin-bottom:6px"><b>${tl('2. Skupiny', '2. Groups')}</b> — ${tl('koľko skupín má táto kategória mať (návrh podľa počtu hráčov, po 7)', 'how many groups this category should have (suggested from the number of players, 7 each)')}</div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="number" min="1" max="16" data-count value="${suggested}" style="width:70px;${inputStyle}"><button type="button" class="btn btn-sm btn-outline" data-act="create-groups">${c.groups ? tl('Pridať skupiny', 'Add groups') : tl('Vytvoriť skupiny', 'Create groups')}</button></div>
-        </div>
-        <div style="${step}"><div class="sa-hint" style="margin-bottom:6px"><b>${tl('3. Rozdelenie hráčov do skupín', '3. Dividing the players into groups')}</b> — ${tl('ručne (tlačidlo Hráči pri skupine nižšie), automaticky, alebo žrebom naživo', 'by hand (the button Players of a group below), automatically, or by the live draw')}</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
+      const summary = c.total
+        ? `${c.total} ${nounFor(c.total, 'hráč', 'hráči', 'hráčov', 'player', 'players')} · ${c.groups} ${nounFor(c.groups, 'skupina', 'skupiny', 'skupín', 'group', 'groups')} · ${tl('v skupinách', 'in the groups')}: ${c.members} · ${tl('na rozdelenie', 'to divide')}: ${c.toDraw.length}`
+        : tl('Zatiaľ nikto nie je zaradený.', 'Nobody is sorted into this category yet.');
+      const inner = c.total === 0 ? '' : `
+        <div style="font-weight:700;font-size:14px;margin-top:20px;line-height:1.5">${tl('Nasadenie', 'Seeding')} <span style="font-weight:400;color:var(--gray)">— ${tl('číslo 1 je najlepší, nenasadených nechaj prázdne', 'number 1 is the best, leave the unseeded empty')}</span></div>
+        ${c.toDraw.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:8px">${rows}</div>
+        <button type="button" class="btn btn-sm btn-outline" data-act="save-seeds" style="margin-top:8px">${tl('Uložiť nasadenie', 'Save seeding')}</button>` : `<div class="sa-hint" style="margin-top:6px">${tl('Všetci hráči sú už v skupinách.', 'Everybody is in a group already.')}</div>`}
+        <div style="border-top:1px solid rgba(255,255,255,0.12);margin-top:22px;padding-top:22px">
+          <div style="font-weight:700;font-size:14px;line-height:1.5">${tl('Skupiny', 'Groups')} <span style="font-weight:400;color:var(--gray)">— ${tl('koľko ich má kategória mať (návrh po 7 hráčov)', 'how many the category should have (suggested: 7 players each)')}</span></div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 18px"><input type="number" min="1" max="16" data-count value="${suggested}" style="width:70px;${inputStyle}"><button type="button" class="btn btn-sm btn-outline" data-act="create-groups">${c.groups ? tl('Pridať skupiny', 'Add groups') : tl('Vytvoriť skupiny', 'Create groups')}</button></div>
+          <div style="font-weight:700;font-size:14px;line-height:1.5">${tl('Rozdelenie hráčov do skupín', 'Dividing the players into groups')} <span style="font-weight:400;color:var(--gray)">— ${tl('ručne (tlačidlo Hráči pri skupine nižšie), automaticky, alebo žrebom naživo', 'by hand (the button Players of a group below), automatically, or by the live draw')}</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">
             <button type="button" class="btn btn-sm btn-outline" data-act="auto" ${ready ? '' : 'disabled'}>${tl('Rozdeliť automaticky', 'Divide automatically')}</button>
-            <button type="button" class="btn btn-sm btn-primary" data-act="live" ${ready ? '' : 'disabled'}>${tl('Žreb naživo do skupín', 'Live draw into the groups')}</button>
+            <button type="button" class="btn btn-sm btn-outline" data-act="live" ${ready ? '' : 'disabled'}>${tl('Žreb naživo (na kameru)', 'Live draw (on camera)')}</button>
             ${c.members ? `<button type="button" class="btn btn-sm btn-outline" data-act="clear" style="color:var(--danger)">${tl('Vybrať hráčov zo skupín', 'Take the players out of the groups')}</button>` : ''}
             ${c.liveRecordId ? `<a class="btn btn-sm btn-outline" href="/draw-live?record=${c.liveRecordId}" target="_blank" rel="noopener">${tl('Záznam žrebu (prehrať)', 'Draw record (replay)')}</a>` : ''}
           </div>
-          ${!c.groups ? `<div class="sa-hint" style="margin-top:6px">${tl('Najprv vytvor skupiny (krok 2).', 'Make the groups first (step 2).')}</div>` : ''}
-        </div>`}
-      </div>`;
-    }).join('');
+          ${!c.groups ? `<div class="sa-hint" style="margin-top:8px">${tl('Najprv vytvor skupiny.', 'Make the groups first.')}</div>` : ''}
+        </div>`;
+      return `<section class="sa-section sd-block" data-cat="${c.category}">
+        <h4>${escapeHtml(c.label.toUpperCase())}</h4>
+        <div class="sa-hint" style="margin:-6px 0 6px">${summary}</div>${inner}
+      </section>`;
+    };
+    host.innerHTML = `<div class="sd-grid">${info.categories.map(card).join('')}</div>`;
   };
   const reload = async () => { info = await api(`/seasons/${id}/groups/draw-info`); render(); };
   host.addEventListener('input', (e) => { const el = e.target.closest('[data-seed]'); if (el) draftSeeds.set(Number(el.dataset.seed), el.value); });

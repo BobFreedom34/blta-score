@@ -38,8 +38,9 @@ function categoryOptionsHtml(selected) {
   return list.map(([value, label]) => `<option value="${value}" ${(selected || '') === value ? 'selected' : ''}>${scopedCategories && value === '' ? tl('Bez kategórie', 'No category') : label}</option>`).join('');
 }
 
+let scopeSeason = null; // the tournament of the editor (read on its own: the list of seasons has no tournaments of a club)
 function seasonOptionsHtml(selectedId) {
-  if (editOnly && scopeSeasonId) { const own = seasonsList.find((x) => x.id === scopeSeasonId); return own ? `<option value="${own.id}" selected>${escapeHtml(own.name)}</option>` : ''; } // (the tournament's own bracket stays with it)
+  if (editOnly && scopeSeasonId) { const own = scopeSeason; return own ? `<option value="${own.id}" selected>${escapeHtml(own.name)}</option>` : ''; } // (the tournament's own bracket stays with it)
   return `<option value="">${tl('— žiadna —', '— none —')}</option>` + seasonsList.map((x) => `<option value="${x.id}" ${Number(selectedId) === x.id ? 'selected' : ''}>${escapeHtml(x.name)}</option>`).join('');
 }
 
@@ -681,6 +682,7 @@ window.mountBracketAdmin = async function mountBracketAdmin(host, seasonId, opts
   editOnly = !!(opts && opts.editOnly);
   registeredPlayers = null;
   scopedCategories = null;
+  scopeSeason = null;
   scopeSeasonId = Number(seasonId) || null;
   brackets = [];
   entryRowCounter = 0;
@@ -691,11 +693,9 @@ window.mountBracketAdmin = async function mountBracketAdmin(host, seasonId, opts
   try { seasonsList = await api('/seasons'); } catch { seasonsList = []; }
   // the editor of a tournament offers the categories of the tournament and its registered players only
   if (editOnly && scopeSeasonId) {
-    const own = (seasonsList || []).find((x) => x.id === scopeSeasonId);
-    scopedCategories = own ? (own.categories || []).filter((c) => BLTA_CATEGORY_KEYS.includes(c)) : null;
-  }
-  if (editOnly && scopeSeasonId) {
-    try { const season = (seasonsList || []).find((x) => x.id === scopeSeasonId); if (!season || season.playType !== 'DOUBLES') registeredPlayers = (await api(`/seasons/${scopeSeasonId}/registrations`)).filter((r) => r.playerId).map((r) => ({ id: r.playerId, name: r.name })); } catch { registeredPlayers = null; }
+    try { scopeSeason = await api(`/seasons/${scopeSeasonId}`); } catch { scopeSeason = null; }
+    scopedCategories = scopeSeason ? (scopeSeason.categories || []).filter((c) => BLTA_CATEGORY_KEYS.includes(c)) : null;
+    try { if (!scopeSeason || scopeSeason.playType !== 'DOUBLES') registeredPlayers = (await api(`/seasons/${scopeSeasonId}/registrations`)).filter((r) => r.playerId).map((r) => ({ id: r.playerId, name: r.name })); } catch { registeredPlayers = null; }
   }
   renderAdmin();
 };
