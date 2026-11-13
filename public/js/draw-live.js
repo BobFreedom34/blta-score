@@ -54,6 +54,14 @@
 
   const collator = new Intl.Collator('sk');
   const entrantOf = (id) => S.plan.entrants.find((e) => e.id === id);
+  // A tall screen (a phone held upright): the page is laid out for it (the board on top, the list of players below, the seats as cards that scroll to the one that is drawn)
+  const portraitQuery = window.matchMedia('(max-aspect-ratio: 9/10)');
+  // on a narrow screen a long name is shortened ("Aleksandr Piliptsevich" -> "A. Piliptsevich"); the line at the bottom always has the whole name
+  const dispName = (name) => {
+    if (!S.portrait || name.length <= 13) return name;
+    const parts = name.trim().split(/\s+/);
+    return parts.length < 2 ? name : `${parts[0].charAt(0)}. ${parts.slice(1).join(' ')}`;
+  };
   const keyOf = (slot) => (slot.g !== undefined ? `g${slot.g}-${slot.i}` : slot.p !== undefined ? `p${slot.p}` : `t${slot.i}`);
 
   // ---------- sounds ----------
@@ -230,15 +238,30 @@
     // the players on the left (in the order of the alphabet, so the list says nothing about the draw)
     const list = $('dl-pool-list');
     const sorted = [...plan.entrants].sort((a, b) => collator.compare(a.name, b.name));
+    const portrait = portraitQuery.matches;
+    S.portrait = portrait;
     const n = sorted.length;
-    const cols = n > 60 ? 3 : n > 22 ? 2 : 1;
-    const rows = Math.ceil(n / cols);
-    const poolW = cols === 1 ? 400 : cols === 2 ? 540 : 760;
-    $('dl-main').style.setProperty('--pool-w', `calc(var(--u) * ${poolW})`);
+    let cols;
+    let rows;
+    let poolW = 0;
+    let poolFont;
+    if (portrait) {
+      // below the board, in a few columns of small chips
+      cols = n <= 9 ? 3 : n <= 24 ? 4 : 5;
+      rows = Math.ceil(n / cols);
+      poolFont = 14;
+      $('dl-main').style.setProperty('--pool-h', 44 + rows * 26 + (rows - 1) * 4 + 22);
+    } else {
+      cols = n > 60 ? 3 : n > 22 ? 2 : 1;
+      rows = Math.ceil(n / cols);
+      poolW = cols === 1 ? 400 : cols === 2 ? 540 : 760;
+      poolFont = Math.max(12, Math.min(26, Math.floor((600 / rows) * 0.52)));
+      $('dl-main').style.setProperty('--pool-w', `calc(var(--u) * ${poolW})`);
+    }
     list.style.setProperty('--cols', cols);
     list.style.setProperty('--rows', rows);
-    list.style.setProperty('--pool-font', Math.max(12, Math.min(26, Math.floor((600 / rows) * 0.52))));
-    list.innerHTML = sorted.map((e) => `<li class="dl-pool-item" data-e="${e.id}"><span class="dl-n">${esc(e.name)}</span>${e.seed ? `<span class="dl-seed">S${e.seed}</span>` : ''}</li>`).join('');
+    list.style.setProperty('--pool-font', poolFont);
+    list.innerHTML = sorted.map((e) => `<li class="dl-pool-item" data-e="${e.id}"><span class="dl-n">${esc(dispName(e.name))}</span>${e.seed ? `<span class="dl-seed">S${e.seed}</span>` : ''}</li>`).join('');
     list.querySelectorAll('.dl-pool-item').forEach((li) => S.entrantEls.set(Number(li.dataset.e), li));
     $('dl-pool-n').textContent = `${n}`;
 
@@ -251,42 +274,49 @@
     };
     const board = $('dl-board');
     const layout = plan.layout;
-    const boardW = 1920 - 72 - 24 - poolW;
-    const boardH = 650;
+    // (a tall screen is laid out on a page 480 units wide, and the board may be longer than the screen: it scrolls)
+    const boardW = portrait ? 480 - 24 : 1920 - 72 - 24 - poolW;
+    const boardH = portrait ? 900 : 650;
+    const gap = portrait ? 12 : 16;
     let html = '';
     let cardCols = 1;
     let slotH = 40;
     let headFont = 22;
     let treeMode = false;
     let treeFont = 0;
-    const longest = Math.min(24, Math.max(...plan.entrants.map((e) => e.name.length)));
+    const longest = Math.min(24, Math.max(...plan.entrants.map((e) => dispName(e.name).length)));
     if (layout.type === 'GROUPS') {
       const maxSize = Math.max(...layout.groups.map((g) => g.size));
-      const fit = fitBoard(layout.groups.length, maxSize, 250, boardW, boardH, 56, 16, 52);
-      cardCols = fit.cols; slotH = Math.max(24, Math.min(66, fit.slotH));
-      const cardW = (boardW - 16 * (cardCols - 1)) / cardCols;
+      const fit = fitBoard(layout.groups.length, maxSize, portrait ? 170 : 250, boardW, boardH, portrait ? 46 : 56, gap, portrait ? 32 : 52);
+      cardCols = fit.cols; slotH = portrait ? Math.max(22, Math.min(32, fit.slotH)) : Math.max(24, Math.min(66, fit.slotH));
+      if (portrait) headFont = 13;
+      const cardW = (boardW - gap * (cardCols - 1)) / cardCols;
       treeFont = Math.max(12, Math.min(slotH * 0.5, (cardW - 16 - 20 - 50) / (longest * 0.6))); // (the seed badge and the number of the seat take some room)
       html = layout.groups.map((g, gi) => `<div class="dl-card-box" data-g="${gi}"><div class="dl-card-head"><span>${esc(g.name)}</span><span>${g.size}</span></div><div class="dl-card-body">${Array.from({ length: g.size }, (_, i) => slotHtml(`g${gi}-${i}`, i + 1)).join('')}</div></div>`).join('');
-    } else if (layout.type === 'BRACKET' && layout.size <= 32) {
+    } else if (layout.type === 'BRACKET' && layout.size <= 32 && !portrait) {
       const tree = buildTree(layout, boardW, 745, slotHtml, Math.max(...plan.entrants.map((e) => e.name.length))); // (the tree uses the whole height of the board)
       html = tree.html; slotH = tree.slotH; treeMode = true; treeFont = tree.font;
     } else if (layout.type === 'BRACKET') {
       const matches = layout.size / 2;
-      const fit = fitBoard(matches, 2, 270, boardW, boardH, 56, 16, 48);
-      cardCols = fit.cols; slotH = Math.max(22, Math.min(60, fit.slotH)); headFont = 17;
+      const fit = fitBoard(matches, 2, portrait ? 170 : 270, boardW, boardH, portrait ? 46 : 56, gap, portrait ? 30 : 48);
+      cardCols = fit.cols; slotH = portrait ? Math.max(22, Math.min(30, fit.slotH)) : Math.max(22, Math.min(60, fit.slotH)); headFont = portrait ? 13 : 17;
+      if (portrait) treeFont = Math.max(12, Math.min(slotH * 0.5, (((boardW - gap * (cardCols - 1)) / cardCols) - 16 - 20 - 50) / (longest * 0.6)));
       html = Array.from({ length: matches }, (_, m) => {
         const seats = [layout.seats[2 * m], layout.seats[2 * m + 1]];
         return `<div class="dl-card-box" data-m="${m}"><div class="dl-card-head"><span>Zápas ${m + 1}</span><span>1. kolo</span></div><div class="dl-card-body">${seats.map((seat, k) => slotHtml(`p${seat.p}`, k === 0 ? 'A' : 'B', seat.bye ? 'bye' : '')).join('')}</div></div>`;
       }).join('');
     } else {
       const size = layout.size;
-      const two = size > 9;
+      const two = !portrait && size > 9;
       const per = two ? Math.ceil(size / 2) : size;
-      const fit = fitBoard(1, per, 400, boardW, boardH, 56, 16, 70);
-      slotH = Math.max(26, Math.min(70, fit.slotH));
+      const fit = fitBoard(1, per, portrait ? 200 : 400, boardW, boardH, portrait ? 46 : 56, gap, portrait ? 32 : 70);
+      slotH = portrait ? Math.max(22, Math.min(32, fit.slotH)) : Math.max(26, Math.min(70, fit.slotH));
+      if (portrait) headFont = 13;
       html = `<div class="dl-card-box" style="grid-column: 1 / -1"><div class="dl-card-head"><span>${plan.format === 'SWISS' ? 'Švajčiarsky systém' : 'Tabuľka 6 hráčov'}</span><span>${size}</span></div><div class="dl-card-body" style="grid-template-columns: repeat(${two ? 2 : 1}, minmax(0, 1fr)); grid-auto-flow: column; grid-template-rows: repeat(${per}, auto)">${Array.from({ length: size }, (_, i) => slotHtml(`t${i}`, i + 1)).join('')}</div></div>`;
     }
     board.style.setProperty('--bcols', cardCols);
+    board.style.setProperty('--board-gap', gap);
+    board.scrollTop = 0;
     board.style.setProperty('--slot-h', slotH.toFixed(1));
     board.style.setProperty('--slot-font', treeFont ? treeFont.toFixed(1) : Math.max(13, Math.min(30, Math.floor(slotH * 0.5))));
     board.style.setProperty('--head-font', headFont);
@@ -337,7 +367,7 @@
     slotEl.classList.remove('dl-next', 'dl-reserved');
     slotEl.classList.add('dl-filled');
     if (step.kind === 'SEED') slotEl.classList.add('dl-was-seed');
-    slotEl.querySelector('.dl-slot-name').innerHTML = `${esc(ent.name)}${ent.seed && step.kind === 'SEED' ? ` <span class="dl-seed">S${ent.seed}</span>` : ''}`;
+    slotEl.querySelector('.dl-slot-name').innerHTML = `${esc(dispName(ent.name))}${ent.seed && step.kind === 'SEED' ? ` <span class="dl-seed">S${ent.seed}</span>` : ''}`;
     li.classList.remove('dl-hot', 'dl-seedhot', 'dl-picked');
     li.classList.add('dl-gone');
     S.done += 1;
@@ -351,7 +381,7 @@
     slotEl.classList.remove('dl-next', 'dl-reserved');
     slotEl.classList.add('dl-filled');
     if (seeded) slotEl.classList.add('dl-was-seed');
-    slotEl.querySelector('.dl-slot-name').innerHTML = `${esc(ent.name)}${ent.seed && seeded ? ` <span class="dl-seed">S${ent.seed}</span>` : ''}`;
+    slotEl.querySelector('.dl-slot-name').innerHTML = `${esc(dispName(ent.name))}${ent.seed && seeded ? ` <span class="dl-seed">S${ent.seed}</span>` : ''}`;
   }
 
   // a bracket drawn as a tree: the player who has a free draw (bye) as his opponent goes on to the second round
@@ -365,10 +395,15 @@
     if (!target) return;
     const ent = entrantOf(step.e);
     await sleep(220 / S.tempo);
-    await fly(fromSlot, target, 650 / S.tempo, step.kind === 'SEED', ent.name);
+    await fly(fromSlot, target, 650 / S.tempo, step.kind === 'SEED', dispName(ent.name));
     fillSlot(target, ent, step.kind === 'SEED');
     const line = document.querySelector(`.dl-tree-svg path[data-c="1-${m}"]`);
     if (line) line.classList.add('on');
+  }
+
+  // (a tall screen: the board is longer than the screen, so it is scrolled to the card of the seat before the player flies there)
+  function showSlot(slotEl) {
+    if (S.portrait) slotEl.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
   }
 
   async function seatSeeded(step) {
@@ -376,6 +411,7 @@
     const li = S.entrantEls.get(step.e);
     const slotEl = S.slotEls.get(keyOf(step.slot));
     setCaption(`NASADENÝ #${ent.seed}`, `<em>${esc(ent.name)}</em> <small>→ ${describeTarget(step.slot)}</small>`);
+    showSlot(slotEl);
     li.classList.add('dl-seedhot');
     const card = cardOfSlot(slotEl);
     if (card) card.classList.add('dl-active');
@@ -412,6 +448,7 @@
     const rem = [...S.entrantEls.values()].filter((x) => !x.classList.contains('dl-gone'));
     const card = cardOfSlot(slotEl);
     if (card) card.classList.add('dl-active');
+    showSlot(slotEl);
     slotEl.classList.add('dl-next');
     setCaption('ŽREBUJE SA', `${describeTarget(step.slot)}`);
     await sleep(380 / S.tempo);
@@ -458,6 +495,7 @@
     S.finished = true;
     $('dl-t-pause').hidden = true;
     document.body.classList.remove('dl-running', 'dl-idle');
+    document.body.classList.add('dl-done');
     setCaption('ŽREB JE HOTOVÝ', `<em>${esc(S.plan.season.name)}</em> <small>· ${esc(S.plan.categoryLabel)}</small>`);
     sfx.fanfare();
     const w = window.innerWidth;
@@ -519,6 +557,7 @@
   async function replay() {
     $('dl-final').hidden = true;
     $('dl-caption').hidden = false;
+    document.body.classList.remove('dl-done');
     buildBoard();
     S.tempo = Number($('dl-tempo').value) || 1;
     await sleep(500);
