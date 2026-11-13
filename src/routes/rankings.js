@@ -4,7 +4,7 @@ const leagues = require('../leagues');
 const playerPush = require('../playerPush');
 const { requireSuperAdmin } = require('../auth');
 const rankingPoints = require('../rankingPoints');
-const { getMoves, getHistory } = require('../rankingSnapshots');
+const { getMoves, getHistory, rebase } = require('../rankingSnapshots');
 
 const router = express.Router();
 
@@ -229,6 +229,16 @@ router.put('/points/:tableKey/:name', requireSuperAdmin, (req, res) => {
   if (result.error) return res.status(400).json({ error: result.error });
   try { require('../changeLog').logManualPoints(result.change); } catch (err) { console.error('[change log]', err.message); }
   res.json({ ok: true, points, ...(matches !== undefined ? { matches } : {}) });
+});
+
+// Admin-only: after a bulk correction by hand the current ranks become the starting point of the week (no arrows, and no "you climbed N places"
+// bell / push from the next weekly roll for the corrections). Genuine moves after this call are announced as usual.
+router.post('/rebase-moves', requireSuperAdmin, (req, res) => {
+  const weeks = {};
+  rankingPoints.getTables().tables.forEach((t) => {
+    weeks[t.key] = rebase(t.key, t.rows.map((r) => ({ name: normalize(r.name), rank: r.rank })));
+  });
+  res.json({ ok: true, weeks });
 });
 
 module.exports = router;

@@ -95,6 +95,26 @@ function getMoves(tableKey, rows) {
   };
 }
 
+// Makes the ranks as they are NOW the starting point of the week for one table: the latest stored snapshot is rewritten with the current ranks.
+// For when the admin has changed many points by hand (a recount): those changes are not a "move" - the arrows go and the next weekly roll does
+// not send "you climbed N places" to the players because of them. rows: [{ name (normalized), rank }]. Returns the week that was rewritten (or null
+// when nothing is stored yet).
+function rebase(tableKey, rows) {
+  const latest = db.prepare('SELECT MAX(snapshot_week) AS w FROM ranking_snapshots WHERE table_key = ?').get(tableKey).w;
+  if (!latest) return null;
+  db.exec('BEGIN');
+  try {
+    db.prepare('DELETE FROM ranking_snapshots WHERE table_key = ? AND snapshot_week = ?').run(tableKey, latest);
+    const insert = db.prepare('INSERT INTO ranking_snapshots (table_key, player_name, rank, snapshot_week) VALUES (?, ?, ?, ?)');
+    rows.forEach((r) => insert.run(tableKey, r.name, r.rank, latest));
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  return latest;
+}
+
 // Full weekly rank history for one player in one table, oldest to newest —
 // the data behind the rank-trend chart on a player's profile page. Capped
 // to the most recent `limit` weeks (16 — about a season) so the chart
@@ -108,4 +128,4 @@ function getHistory(tableKey, normalizedName, limit = 16) {
   return rows.slice(-limit);
 }
 
-module.exports = { getMoves, getHistory };
+module.exports = { getMoves, getHistory, rebase };

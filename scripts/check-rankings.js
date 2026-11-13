@@ -319,6 +319,32 @@ test('api: the small rank list and the history keep working', async () => {
   assert.strictEqual((await call('GET', `/api/rankings/history/blta/${encodeURIComponent(baseline.tables[0].rows[0].name)}`, undefined, false)).status, 200);
 });
 
+test('api: after a recount by hand the admin can make the current ranks the start of the week (no arrows, nothing for the weekly bell)', async () => {
+  const leader = baseline.tables[0].rows[0].name;
+  const table = async () => (await call('GET', '/api/rankings', undefined, false)).json.tables.find((x) => x.key === 'blta').rows;
+  const before = (await table()).find((r) => r.name === leader);
+  assert.ok(before.points > 0);
+  // the admin lowers the leader's points by hand: the others climb, the leader drops -> arrows against the snapshot of the week
+  assert.strictEqual((await call('PUT', `/api/rankings/points/blta/${encodeURIComponent(leader)}`, { points: 1 })).status, 200);
+  const moved = await table();
+  assert.ok(moved.some((r) => r.move), 'the correction shows as moves');
+  assert.strictEqual((await call('POST', '/api/rankings/rebase-moves', {}, false)).status, 401, 'admin only');
+  const done = await call('POST', '/api/rankings/rebase-moves', {});
+  assert.strictEqual(done.status, 200, done.text);
+  assert.ok(done.json.weeks.blta, 'the week that was rewritten');
+  const rebased = await table();
+  assert.ok(rebased.every((r) => !r.move), 'no arrows after the rebase');
+  // what is stored is exactly the current ranks (so the next weekly roll compares with them)
+  const raw = new DatabaseSync(path.join(serverDir, 'blta-score.db'), { readOnly: true });
+  const stored = raw.prepare('SELECT player_name, rank FROM ranking_snapshots WHERE table_key = ? AND snapshot_week = ?').all('blta', done.json.weeks.blta);
+  raw.close();
+  assert.strictEqual(stored.length, rebased.length);
+  const byName = new Map(stored.map((r) => [r.player_name, r.rank]));
+  rebased.forEach((r) => assert.strictEqual(byName.get(rankingPoints.normalizeName(r.name)), r.rank, r.name));
+  // put the leader back
+  assert.strictEqual((await call('PUT', `/api/rankings/points/blta/${encodeURIComponent(leader)}`, { points: before.points })).status, 200);
+});
+
 test('nothing is sent to the old plugin (not for a finish, a restart, a delete)', async () => {
   assert.strictEqual(pluginHits, 0, `the fake plugin was visited ${pluginHits} times`);
 });
