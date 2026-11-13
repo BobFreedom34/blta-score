@@ -376,6 +376,57 @@ test('a player replaced after the draw: only that group is recomputed, its unpla
   assert.ok(admin.includes('wireStaleSchedules') && admin.includes('sg-stale'), 'the warning under the group');
 });
 
+test('manual edits after the draw: adding to a group, a player of another group, a played match blocks removal, withdrawal keeps the pairs', async () => {
+  const B = leagueGroups[1].id;
+  const season = async () => (await call('GET', `/api/seasons/${league.id}`)).json;
+  const preview = async (gid) => (await call('GET', `/api/seasons/${league.id}/schedule-preview`)).json.groups.find((g) => g.groupId === gid);
+  const matchesOf = async (gid) => (await season()).groups.find((g) => g.id === gid).matchCount;
+  // group B: the schedule is made, then a fifth player is added by hand -> only B warns, only 4 new pairs
+  assert.strictEqual((await call('POST', `/api/seasons/${league.id}/schedule`, { groupIds: [B] })).status, 201);
+  const before = await matchesOf(B);
+  assert.strictEqual(before, 6);
+  counter += 1;
+  const extra = await call('POST', '/api/players', { name: `Doplnený ${counter}` });
+  assert.strictEqual((await call('POST', `/api/seasons/groups/${B}/members`, { playerId: extra.json.id })).status, 201);
+  assert.strictEqual((await preview(B)).toCreate, 4, 'the new player needs 4 matches');
+  assert.strictEqual(await matchesOf(B), 6, 'adding alone does not touch the schedule');
+  const c = await preview(leagueGroups[2].id);
+  assert.strictEqual(c.existing, 0, 'the group C has no matches yet');
+  // the same player twice, and a player of another group, are refused
+  assert.strictEqual((await call('POST', `/api/seasons/groups/${B}/members`, { playerId: extra.json.id })).status, 409);
+  const inA = (await season()).groups.find((g) => g.id === leagueGroups[0].id).members[0];
+  assert.strictEqual((await call('POST', `/api/seasons/groups/${B}/members`, { playerId: inA.id })).status, 409);
+  assert.strictEqual((await call('POST', `/api/seasons/${league.id}/schedule`, { groupIds: [B] })).status, 201);
+  assert.strictEqual(await matchesOf(B), 10);
+  assert.strictEqual((await preview(B)).toCreate, 0, 'the warning is gone');
+  // a player with a played match cannot be removed, he is withdrawn: his open matches become walkovers and nothing new is planned
+  const bm = (await season()).groups.find((g) => g.id === B).members;
+  const played = bm[0];
+  // one of his matches is played (written straight into the test database)
+  const { DatabaseSync } = require('node:sqlite');
+  const raw = new DatabaseSync(path.join(dir, 'blta-score.db'));
+  const own = raw.prepare("SELECT id, player1_id, player2_id FROM matches WHERE group_id = ? AND status = 'PLANNED' AND (player1_id = ? OR player2_id = ?)").all(B, played.id, played.id);
+  assert.ok(own.length >= 4, 'the player has matches');
+  raw.prepare("UPDATE matches SET status = 'FINISHED', winner_id = ? WHERE id = ?").run(played.id, own[0].id);
+  raw.close();
+  const del = await call('DELETE', `/api/seasons/groups/${B}/members/${played.id}`);
+  assert.strictEqual(del.status, 400, 'he has played: withdraw instead');
+  const wd = await call('POST', `/api/seasons/groups/${B}/members/${played.id}/withdraw`);
+  assert.strictEqual(wd.status, 200, wd.text);
+  assert.ok(wd.json.walkovers >= 1);
+  assert.strictEqual((await preview(B)).toCreate, 0, 'a withdrawn player needs no new matches');
+  // a replacement for him takes the place: only his pairs are made
+  counter += 1;
+  const repl = await call('POST', '/api/players', { name: `Náhrada ${counter}` });
+  assert.strictEqual((await call('POST', `/api/seasons/groups/${B}/members`, { playerId: repl.json.id })).status, 201);
+  const p2 = await preview(B);
+  assert.strictEqual(p2.toCreate, 4, 'the replacement plays the 4 active players');
+  assert.strictEqual((await call('POST', `/api/seasons/${league.id}/schedule`, { groupIds: [B] })).status, 201);
+  assert.strictEqual((await preview(B)).toCreate, 0);
+  // reinstating works
+  assert.strictEqual((await call('POST', `/api/seasons/groups/${B}/members/${played.id}/reinstate`)).status, 200);
+});
+
 test('the page of the season has the saved draw (tile) and the record can be replayed', async () => {
   const page = (await call('GET', `/api/seasons/by-slug/${league.slug}`, undefined, { admin: false })).json;
   assert.strictEqual(page.liveDraws.length, 1);
