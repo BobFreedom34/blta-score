@@ -50,6 +50,28 @@ if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'rules_defence_text_2026'")
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('rules_defence_text_2026')").run();
 }
 
+// Once: the three bold paragraphs about unplayed matches in Bodovanie become a list (src/rulesLayoutFix.js); a section written differently is left alone.
+if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'rules_unbold_2026'").get()) {
+  const { fix } = require('./rulesLayoutFix');
+  db.prepare("SELECT id, body_html, body_en FROM rules_sections WHERE slug = 'bodovanie'").all().forEach((row) => {
+    const sk = fix(row.body_html, 'sk');
+    const en = fix(row.body_en, 'en');
+    if (sk) db.prepare('UPDATE rules_sections SET body_html = ? WHERE id = ?').run(sk, row.id);
+    if (en) db.prepare('UPDATE rules_sections SET body_en = ? WHERE id = ?').run(en, row.id);
+  });
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('rules_unbold_2026')").run();
+}
+
+// Once: "Nahlasovanie výsledkov" says that the results are written in the app (src/rulesReportText.js). Only a section that still has the first text is replaced.
+if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'rules_report_text_2026'").get()) {
+  const text = require('./rulesReportText');
+  db.prepare("SELECT id, body_html, body_en FROM rules_sections WHERE slug = 'nahlasovanie'").all().forEach((row) => {
+    if (row.body_html === text.OLD_SK) db.prepare('UPDATE rules_sections SET body_html = ? WHERE id = ?').run(text.SK, row.id);
+    if (row.body_en === text.OLD_EN) db.prepare('UPDATE rules_sections SET body_en = ? WHERE id = ?').run(text.EN, row.id);
+  });
+  db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('rules_report_text_2026')").run();
+}
+
 const TAGS = {
   p: 'p', div: 'div', span: 'span', br: 'br', strong: 'strong', b: 'strong', em: 'em', i: 'em', u: 'u', small: 'small',
   ul: 'ul', ol: 'ol', li: 'li', h3: 'h3', h4: 'h3', a: 'a',

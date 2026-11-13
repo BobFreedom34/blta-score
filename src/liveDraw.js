@@ -169,11 +169,62 @@ function groupsOverview(season) {
     const members = groups.reduce((n, g) => n + db.prepare('SELECT COUNT(*) AS c FROM season_group_members WHERE group_id = ?').get(g.id).c, 0);
     const rec = db.prepare("SELECT id FROM draw_records WHERE season_id = ? AND category = ? AND format = 'SEASON_GROUPS' AND status = 'COMMITTED' ORDER BY id DESC LIMIT 1").get(season.id, category);
     return {
-      category, label: draw.CATEGORY_LABELS[category] || category, groups: groups.length, members,
+      category, label: draw.CATEGORY_LABELS[category] || category, total: regs.length, groups: groups.length, members,
       toDraw: toDraw.map((r) => ({ id: r.id, name: r.name, seed: r.seed || null, noPlayer: !r.player_id })),
       liveRecordId: rec ? Number(rec.id) : null,
     };
   }).filter((c) => c.groups || c.toDraw.length);
+}
+
+// Makes `count` empty groups for a category (named "Elite A", "Elite B" ... - the first free letters). -> { created: [{ id, name }] } | { error, status }
+function createGroups(season, category, count) {
+  if (season.kind === 'TOURNAMENT') return { status: 400, error: 'This is for the groups of a season' };
+  if (!draw.categoriesFor(season).includes(category)) return { status: 400, error: 'Choose a category of this season' };
+  const n = Number(count);
+  if (!Number.isInteger(n) || n < 1 || n > 16) return { status: 400, error: 'The number of groups is from 1 to 16' };
+  const label = draw.CATEGORY_LABELS[category] || category;
+  const taken = new Set(db.prepare('SELECT name FROM season_groups WHERE season_id = ?').all(season.id).map((g) => g.name.toLowerCase()));
+  let order = (db.prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM season_groups WHERE season_id = ?').get(season.id).n);
+  const created = [];
+  let letter = 0;
+  db.exec('BEGIN');
+  try {
+    while (created.length < n) {
+      const name = `${label} ${String.fromCharCode(65 + (letter % 26))}${letter >= 26 ? Math.floor(letter / 26) : ''}`;
+      letter += 1;
+      if (taken.has(name.toLowerCase())) continue;
+      const info = db.prepare('INSERT INTO season_groups (season_id, name, category, sort_order) VALUES (?, ?, ?, ?)').run(season.id, name, category, order);
+      order += 1;
+      created.push({ id: Number(info.lastInsertRowid), name });
+    }
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  return { created };
+}
+
+// The same draw, but at once and without the show (the organiser does not want the camera): equal groups, seeded players like a snake, nothing is shown to the public.
+function assignNow(season, category) {
+  const made = prepareGroups(season, category);
+  if (made.error) return made;
+  const done = commitGroups(season, db.prepare('SELECT * FROM draw_records WHERE id = ?').get(made.recordId));
+  if (done.error) return done;
+  db.prepare("UPDATE draw_records SET status = 'AUTO', committed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(made.recordId); // (not a draw that is replayed on the page)
+  return { saved: done.saved };
+}
+
+// Takes the players out of the groups of a category so that they can be divided again (not when a group already has matches). -> { removed } | { error, status }
+function clearGroups(season, category) {
+  if (season.kind === 'TOURNAMENT') return { status: 400, error: 'This is for the groups of a season' };
+  if (!draw.categoriesFor(season).includes(category)) return { status: 400, error: 'Choose a category of this season' };
+  const groups = db.prepare('SELECT id, name FROM season_groups WHERE season_id = ? AND category = ?').all(season.id, category);
+  const withMatches = groups.filter((g) => db.prepare('SELECT 1 FROM matches WHERE group_id = ? LIMIT 1').get(g.id));
+  if (withMatches.length) return { status: 400, error: `These groups already have matches: ${withMatches.map((g) => g.name).join(', ')}` };
+  let removed = 0;
+  groups.forEach((g) => { removed += db.prepare('DELETE FROM season_group_members WHERE group_id = ?').run(g.id).changes; });
+  return { removed };
 }
 
 // Starts the draw into the groups of a category of a season. -> { error, status } | { recordId, attempt, seedHash, seed, plan }
@@ -316,4 +367,4 @@ function publicRecord(id) {
   };
 }
 
-module.exports = { prepare, prepareGroups, groupsOverview, commit, dealSnake, capacitiesOf, publicRecord, makeRandom, sha256, fingerprintOf };
+module.exports = { prepare, prepareGroups, createGroups, assignNow, clearGroups, groupsOverview, commit, dealSnake, capacitiesOf, publicRecord, makeRandom, sha256, fingerprintOf };

@@ -427,6 +427,45 @@ test('manual edits after the draw: adding to a group, a player of another group,
   assert.strictEqual((await call('POST', `/api/seasons/groups/${B}/members/${played.id}/reinstate`)).status, 200);
 });
 
+test('a season: the groups are made in one go, the players are divided at once (no show, nothing for the tile), taken out again', async () => {
+  const made = await call('POST', '/api/seasons', { name: 'Liga Auto', kind: 'LEAGUE', startDate: '2099-03-01', endDate: '2099-06-01' });
+  assert.strictEqual(made.status, 201, made.text);
+  const lg = made.json;
+  const regs = [];
+  for (let i = 0; i < 9; i += 1) {
+    counter += 1;
+    const p = await call('POST', '/api/players', { name: `Auto Hráč ${String(counter).padStart(2, '0')}` });
+    const reg = await call('POST', `/api/seasons/${lg.id}/registrations/admin`, { playerId: p.json.id, category: 'NOVICE', phone: `0905${String(100000 + counter)}`, email: `a${counter}@example.com` });
+    assert.strictEqual(reg.status, 201, reg.text);
+    regs.push(reg.json);
+  }
+  assert.strictEqual((await call('POST', `/api/seasons/${lg.id}/groups/bulk`, { category: 'NOVICE', count: 0 })).status, 400);
+  assert.strictEqual((await call('POST', `/api/seasons/${lg.id}/groups/bulk`, { category: 'NOPE', count: 2 })).status, 400);
+  assert.strictEqual((await call('POST', `/api/seasons/${lg.id}/groups/bulk`, { category: 'NOVICE', count: 2 }, { admin: false })).status, 401);
+  const groups = await call('POST', `/api/seasons/${lg.id}/groups/bulk`, { category: 'NOVICE', count: 2 });
+  assert.strictEqual(groups.status, 201, groups.text);
+  assert.deepStrictEqual(groups.json.created.map((g) => g.name), ['Novice A', 'Novice B']);
+  const more = await call('POST', `/api/seasons/${lg.id}/groups/bulk`, { category: 'NOVICE', count: 1 });
+  assert.deepStrictEqual(more.json.created.map((g) => g.name), ['Novice C'], 'the next free letter');
+  // (the third is not wanted: take it away again so the 9 players go into 2 groups)
+  assert.strictEqual((await call('DELETE', `/api/seasons/groups/${more.json.created[0].id}`)).status, 200);
+  const auto = await call('POST', `/api/seasons/${lg.id}/groups/auto`, { category: 'NOVICE' });
+  assert.strictEqual(auto.status, 201, auto.text);
+  assert.strictEqual(auto.json.saved, 9);
+  const sizes = (await call('GET', `/api/seasons/${lg.id}`)).json.groups.map((g) => g.members.length).sort();
+  assert.deepStrictEqual(sizes, [4, 5], 'equal groups, one player less in one');
+  const page = (await call('GET', `/api/seasons/by-slug/${lg.slug}`, undefined, { admin: false })).json;
+  assert.deepStrictEqual(page.liveDraws, [], 'an instant division is not a draw to replay');
+  assert.strictEqual((await call('POST', `/api/seasons/${lg.id}/groups/auto`, { category: 'NOVICE' })).status, 400, 'nobody left to divide');
+  const cleared = await call('POST', `/api/seasons/${lg.id}/groups/clear`, { category: 'NOVICE' });
+  assert.strictEqual(cleared.status, 200, cleared.text);
+  assert.strictEqual(cleared.json.removed, 9);
+  assert.strictEqual((await call('POST', `/api/seasons/${lg.id}/groups/auto`, { category: 'NOVICE' })).status, 201, 'and again');
+  const admin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'seasons-admin.js'), 'utf8');
+  assert.ok(admin.includes("['assign', tl('Zaradenie do kategórií'") && admin.includes("data-act=\"create-groups\"") && admin.includes("data-act=\"auto\""), 'the tab and the steps');
+  void regs;
+});
+
 test('the page of the season has the saved draw (tile) and the record can be replayed', async () => {
   const page = (await call('GET', `/api/seasons/by-slug/${league.slug}`, undefined, { admin: false })).json;
   assert.strictEqual(page.liveDraws.length, 1);

@@ -742,6 +742,33 @@ router.get('/:id/groups/draw-info', clubTournaments.requireSeasonManager(clubTou
   res.json({ categories: liveDraw.groupsOverview(season) });
 });
 
+// Empty groups of a category in one go: { category, count }
+router.post('/:id/groups/bulk', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  const made = liveDraw.createGroups(season, (req.body || {}).category, (req.body || {}).count);
+  if (made.error) return res.status(made.status || 400).json({ error: made.error });
+  res.status(201).json(made);
+});
+
+// The draw into the groups at once, without the show: { category }
+router.post('/:id/groups/auto', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  const made = liveDraw.assignNow(season, (req.body || {}).category);
+  if (made.error) return res.status(made.status || 400).json({ error: made.error });
+  res.status(201).json(made);
+});
+
+// The players out of the groups of a category (to divide them again): { category }
+router.post('/:id/groups/clear', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
+  if (!season) return res.status(404).json({ error: 'Season not found' });
+  const made = liveDraw.clearGroups(season, (req.body || {}).category);
+  if (made.error) return res.status(made.status || 400).json({ error: made.error });
+  res.json(made);
+});
+
 // the seeding of the registered players of a category of a season: { category, seeds: [{ id: registrationId, seed }] } (the seeded players go into the groups like a snake)
 router.post('/:id/groups/seeds', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));

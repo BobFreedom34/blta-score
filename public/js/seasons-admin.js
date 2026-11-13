@@ -321,7 +321,7 @@ async function cropHero(file, w, h) {
 // the last tab of a card is the winners list of the season or the tournament (also in the card of a community: its organiser fills it in, it shows on the page of the tournament and of the community)
 const cardTabs = () => (IS_TOURNAMENT
   ? [['info', tl('Základné info', 'Basic info')], ['regs', tl('Registrácie', 'Registrations')], ['assign', tl('Zaradenie do kategórií', 'Category assignment')], ['draw', tl('Formát turnaja a žrebovanie', 'Tournament format and draw')]]
-  : [['info', tl('Základné info', 'Basic info')], ['regs', tl('Registrácie', 'Registrations')], ['groups', tl('Skupiny a žrebovanie', 'Groups and draw')], ['schedule', tl('Rozpis', 'Schedule')], ['brackets', tl('Pavúk', 'Bracket')]]
+  : [['info', tl('Základné info', 'Basic info')], ['regs', tl('Registrácie', 'Registrations')], ['assign', tl('Zaradenie do kategórií', 'Category assignment')], ['groups', tl('Skupiny a žrebovanie', 'Groups and draw')], ['schedule', tl('Rozpis', 'Schedule')], ['brackets', tl('Pavúk', 'Bracket')]]
 ).concat([['winners', tl('Víťazi', 'Winners')]]);
 const cardTab = new Map(); // season id -> the tab last opened (kept when the list is drawn again)
 
@@ -574,20 +574,21 @@ function seasonCardHtml(s) {
 
         <div class="sa-panel" data-panel="regs"${active === 'regs' ? '' : ' hidden'}><div class="season-regs-list"></div></div>
         ${IS_TOURNAMENT ? `<div class="sa-panel" data-panel="assign"${active === 'assign' ? '' : ' hidden'}><div class="season-assign"></div></div>
-        <div class="sa-panel" data-panel="draw"${active === 'draw' ? '' : ' hidden'}><div class="season-draw"></div></div>` : `<div class="sa-panel" data-panel="groups"${active === 'groups' ? '' : ' hidden'}>
+        <div class="sa-panel" data-panel="draw"${active === 'draw' ? '' : ' hidden'}><div class="season-draw"></div></div>` : `<div class="sa-panel" data-panel="assign"${active === 'assign' ? '' : ' hidden'}><div class="season-assign"></div></div>
+        <div class="sa-panel" data-panel="groups"${active === 'groups' ? '' : ' hidden'}>
           <section class="sa-section">
-          <h4>${tl('Skupiny', 'Groups')}</h4>
+          <h4>${tl('Rozdelenie hráčov do skupín', 'Dividing the players into groups')}</h4>
+          <div class="sa-hint" style="margin:0 0 12px">${tl('Postup: 1. v záložke Zaradenie do kategórií rozdeľ hráčov do kategórií · 2. nižšie pri každej kategórii nastav nasadenie a vytvor skupiny (stačí povedať, koľko ich má byť) · 3. hráčov do skupín dáš ručne (tlačidlo Hráči pri skupine), rozdelíš automaticky, alebo ich rozdelí žreb naživo pred kamerou. Skupiny vyjdú rovnako veľké (ak sa nedá, v niektorých je o hráča menej) a nasadení idú „hadom“ (pri 4 skupinách A = 1 a 8, B = 2 a 7, C = 3 a 6, D = 4 a 5). Hráči, ktorých si už ručne dal do skupiny, tam zostanú. Rozpis zápasov vytvoríš potom v záložke Rozpis.', 'Steps: 1. in the tab Category assignment sort the players into categories · 2. below, for each category set the seeding and make the groups (just say how many) · 3. put the players into the groups by hand (the button Players of a group), divide them automatically, or let the live draw in front of the camera do it. The groups come out equal (some have one player less when it does not divide) and the seeded players go like a snake (4 groups: A = 1 and 8, B = 2 and 7, C = 3 and 6, D = 4 and 5). Players you put into a group by hand stay there. Create the schedule afterwards in the tab Schedule.')}</div>
+          <div class="season-livegroups"><div class="sa-hint">…</div></div>
+          </section>
+          <section class="sa-section">
+          <h4>${tl('Skupiny a hráči v nich', 'Groups and their players')}</h4>
           <div class="sa-hint" style="margin:0 0 14px">${s.matchCount} ${tl('označených', 'tagged')} ${nounFor(s.matchCount, 'zápas', 'zápasy', 'zápasov', 'match', 'matches')} · ${s.groups.length} ${nounFor(s.groups.length, 'skupina', 'skupiny', 'skupín', 'group', 'groups')}
             (${byCategory[0]} Elite, ${byCategory[1]} Next Gen, ${byCategory[2]} Novice) — ${tl('každá skupina je jedna tabuľka', 'each group is one standings table')}</div>
           <div class="season-groups">${s.groups.length ? s.groups.map((g) => groupRowHtml(g, s)).join('') : `<div class="empty-state" style="padding:12px 0">${tl('Zatiaľ žiadne skupiny.', 'No groups yet.')}</div>`}</div>
           </section>
           <section class="sa-section">
-          <h4>${tl('Žreb hráčov do skupín', 'Draw the players into the groups')}</h4>
-          <div class="sa-hint" style="margin:0 0 12px">${tl('Skupiny vytvor prázdne (nižšie). Hráčov do nich rozdelí žreb naživo pred kamerou: skupiny vyjdú rovnako veľké (ak sa nedá, v niektorých je o hráča menej) a nasadení idú „hadom“ (pri 4 skupinách A = 1 a 8, B = 2 a 7, C = 3 a 6, D = 4 a 5). Hráči, ktorých si už ručne dal do skupiny, tam zostanú. Rozpis zápasov vytvoríš po žrebe v záložke Rozpis.', 'Create the groups empty (below). The live draw in front of the camera puts the players in them: the groups come out equal (some have one player less when it does not divide) and the seeded players go like a snake (4 groups: A = 1 and 8, B = 2 and 7, C = 3 and 6, D = 4 and 5). Players you already put into a group by hand stay there. Create the schedule after the draw in the tab Schedule.')}</div>
-          <div class="season-livegroups"><div class="sa-hint">…</div></div>
-          </section>
-          <section class="sa-section">
-          <h4>${tl('Pridať skupinu', 'Add a group')}</h4>
+          <h4>${tl('Pridať jednu skupinu s vlastným názvom', 'Add one group with a name of its own')}</h4>
           <form class="add-group-form" style="display:flex;gap:12px;flex-wrap:wrap">
             <input type="text" data-field="name" maxlength="80" placeholder="${escapeHtml(tl('Nová skupina, napr. Babolat', 'New group, e.g. Babolat'))}" required style="flex:1;min-width:160px;${inputStyle}">
             <select data-field="category" required style="${inputStyle}">
@@ -645,18 +646,30 @@ async function wireLiveGroups(card, id, fail) {
     host.innerHTML = info.categories.map((c) => {
       const rows = c.toDraw.map((p) => {
         const shown = draftSeeds.has(p.id) ? draftSeeds.get(p.id) : (p.seed || '');
-        return `<div style="display:flex;gap:8px;align-items:center;padding:3px 0"><input type="number" min="1" data-seed="${p.id}" value="${shown}" placeholder="—" style="width:64px;${inputStyle}" title="${escapeHtml(tl('Nasadenie (prázdne = bez nasadenia)', 'Seed (empty = not seeded)'))}"><span>${escapeHtml(p.name)}${p.noPlayer ? ` <span class="sa-hint">· ${tl('chýba profil hráča', 'no player profile')}</span>` : ''}</span></div>`;
+        return `<div style="display:flex;gap:8px;align-items:center;padding:3px 0;min-width:230px"><input type="number" min="1" data-seed="${p.id}" value="${shown}" placeholder="—" style="width:64px;${inputStyle}" title="${escapeHtml(tl('Nasadenie (prázdne = bez nasadenia)', 'Seed (empty = not seeded)'))}"><span>${escapeHtml(p.name)}${p.noPlayer ? ` <span class="sa-hint">· ${tl('chýba profil hráča', 'no player profile')}</span>` : ''}</span></div>`;
       }).join('');
       const ready = c.groups > 0 && c.toDraw.length > 0 && !c.toDraw.some((p) => p.noPlayer);
-      return `<div class="sa-block" data-cat="${c.category}" style="padding:10px 0;border-top:1px solid var(--border,rgba(255,255,255,.12))">
-        <div style="font-weight:600">${escapeHtml(c.label)} <span class="sa-hint">· ${c.groups} ${nounFor(c.groups, 'skupina', 'skupiny', 'skupín', 'group', 'groups')} · ${tl('v skupinách', 'in the groups')}: ${c.members} · ${tl('na žrebovanie', 'to draw')}: ${c.toDraw.length}</span></div>
-        ${c.toDraw.length ? `<div style="margin:8px 0">${rows}</div>` : ''}
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${c.toDraw.length ? `<button type="button" class="btn btn-sm btn-outline" data-act="save-seeds">${tl('Uložiť nasadenie', 'Save seeding')}</button>` : ''}
-          <button type="button" class="btn btn-sm btn-primary" data-act="live" ${ready ? '' : 'disabled'}>${tl('Žreb naživo do skupín', 'Live draw into the groups')}</button>
-          ${c.liveRecordId ? `<a class="btn btn-sm btn-outline" href="/draw-live?record=${c.liveRecordId}" target="_blank" rel="noopener">${tl('Záznam žrebu (prehrať)', 'Draw record (replay)')}</a>` : ''}
+      const suggested = Math.max(1, Math.ceil(c.total / 7));
+      const step = 'padding:8px 0;border-top:1px dashed var(--border,rgba(255,255,255,.12))';
+      return `<div class="sa-block" data-cat="${c.category}" style="padding:12px 0;border-top:1px solid var(--border,rgba(255,255,255,.12))">
+        <div style="font-weight:700;font-size:16px">${escapeHtml(c.label)} <span class="sa-hint">· ${tl('hráčov', 'players')}: ${c.total} · ${c.groups} ${nounFor(c.groups, 'skupina', 'skupiny', 'skupín', 'group', 'groups')} · ${tl('v skupinách', 'in the groups')}: ${c.members} · ${tl('na rozdelenie', 'to divide')}: ${c.toDraw.length}</span></div>
+        ${c.total === 0 ? `<div class="sa-hint" style="margin-top:6px">${tl('V tejto kategórii zatiaľ nikto nie je. Zaraď hráčov v záložke Zaradenie do kategórií.', 'Nobody is in this category yet. Sort the players in the tab Category assignment.')}</div>` : `
+        <div style="${step};margin-top:8px"><div class="sa-hint" style="margin-bottom:6px"><b>${tl('1. Nasadenie', '1. Seeding')}</b> — ${tl('číslo 1 je najlepší, nenasadených nechaj prázdne', 'number 1 is the best, leave the unseeded empty')}</div>
+          ${c.toDraw.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 18px">${rows}</div>
+          <button type="button" class="btn btn-sm btn-outline" data-act="save-seeds" style="margin-top:6px">${tl('Uložiť nasadenie', 'Save seeding')}</button>` : `<div class="sa-hint">${tl('Všetci hráči sú už v skupinách.', 'Everybody is in a group already.')}</div>`}
         </div>
-        ${!c.groups ? `<div class="sa-hint" style="margin-top:6px">${tl('Najprv vytvor skupiny tejto kategórie.', 'Create the groups of this category first.')}</div>` : ''}
+        <div style="${step}"><div class="sa-hint" style="margin-bottom:6px"><b>${tl('2. Skupiny', '2. Groups')}</b> — ${tl('koľko skupín má táto kategória mať (návrh podľa počtu hráčov, po 7)', 'how many groups this category should have (suggested from the number of players, 7 each)')}</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="number" min="1" max="16" data-count value="${suggested}" style="width:70px;${inputStyle}"><button type="button" class="btn btn-sm btn-outline" data-act="create-groups">${c.groups ? tl('Pridať skupiny', 'Add groups') : tl('Vytvoriť skupiny', 'Create groups')}</button></div>
+        </div>
+        <div style="${step}"><div class="sa-hint" style="margin-bottom:6px"><b>${tl('3. Rozdelenie hráčov do skupín', '3. Dividing the players into groups')}</b> — ${tl('ručne (tlačidlo Hráči pri skupine nižšie), automaticky, alebo žrebom naživo', 'by hand (the button Players of a group below), automatically, or by the live draw')}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm btn-outline" data-act="auto" ${ready ? '' : 'disabled'}>${tl('Rozdeliť automaticky', 'Divide automatically')}</button>
+            <button type="button" class="btn btn-sm btn-primary" data-act="live" ${ready ? '' : 'disabled'}>${tl('Žreb naživo do skupín', 'Live draw into the groups')}</button>
+            ${c.members ? `<button type="button" class="btn btn-sm btn-outline" data-act="clear" style="color:var(--danger)">${tl('Vybrať hráčov zo skupín', 'Take the players out of the groups')}</button>` : ''}
+            ${c.liveRecordId ? `<a class="btn btn-sm btn-outline" href="/draw-live?record=${c.liveRecordId}" target="_blank" rel="noopener">${tl('Záznam žrebu (prehrať)', 'Draw record (replay)')}</a>` : ''}
+          </div>
+          ${!c.groups ? `<div class="sa-hint" style="margin-top:6px">${tl('Najprv vytvor skupiny (krok 2).', 'Make the groups first (step 2).')}</div>` : ''}
+        </div>`}
       </div>`;
     }).join('');
   };
@@ -674,12 +687,28 @@ async function wireLiveGroups(card, id, fail) {
         toast(tl('Nasadenie uložené', 'Seeding saved'));
         c.toDraw.forEach((p) => draftSeeds.delete(p.id));
         await reload();
+      } else if (btn.dataset.act === 'create-groups') {
+        const count = Number(btn.closest('[data-cat]').querySelector('[data-count]').value);
+        const made = await api(`/seasons/${id}/groups/bulk`, { method: 'POST', body: { category: cat, count } });
+        toast(tl(`Vytvorené skupiny: ${made.created.map((g) => g.name).join(', ')}`, `Groups made: ${made.created.map((g) => g.name).join(', ')}`));
+        await load();
+      } else if (btn.dataset.act === 'auto') {
+        if (!confirm(tl('Hráči sa rozdelia do skupín náhodne (nasadení „hadom“). Pokračovať?', 'The players will be divided into the groups at random (the seeded ones like a snake). Continue?'))) return;
+        const made = await api(`/seasons/${id}/groups/auto`, { method: 'POST', body: { category: cat } });
+        toast(tl(`Rozdelených hráčov: ${made.saved}. Rozpis vytvoríš v záložke Rozpis.`, `Players divided: ${made.saved}. Create the schedule in the tab Schedule.`));
+        await load();
+      } else if (btn.dataset.act === 'clear') {
+        if (!confirm(tl('Všetci hráči tejto kategórie sa vyberú zo skupín (skupiny ostanú prázdne). Pokračovať?', 'All the players of this category are taken out of the groups (the groups stay empty). Continue?'))) return;
+        const made = await api(`/seasons/${id}/groups/clear`, { method: 'POST', body: { category: cat } });
+        toast(tl(`Vybraných hráčov: ${made.removed}`, `Players taken out: ${made.removed}`));
+        await load();
       } else if (btn.dataset.act === 'live') {
         window.open(`/draw-live?mode=groups&season=${id}&category=${encodeURIComponent(cat)}`, '_blank');
       }
     } catch (err) { fail(err); }
   });
-  try { await reload(); } catch (err) { host.innerHTML = `<div class="sa-hint">${escapeHtml(err.message)}</div>`; }
+  card.reloadLiveGroups = async () => { try { await reload(); } catch (err) { host.innerHTML = `<div class="sa-hint">${escapeHtml(err.message)}</div>`; } };
+  await card.reloadLiveGroups();
 }
 
 function seasonHtml(s) {
@@ -1084,6 +1113,8 @@ function wireSeason(card) {
       winners,
     } : {
       regs: () => loadRegs(),
+      assign: () => openAssignPanel(assignHost, id, () => {}, season.categories),
+      groups: () => (card.reloadLiveGroups ? card.reloadLiveGroups() : null),
       // the play-off brackets of the season: one panel is mounted at a time (the fields of the form have ids), so the others are emptied
       brackets: async () => {
         document.querySelectorAll('.season-brackets').forEach((el) => { if (el !== bracketsHost) el.innerHTML = ''; });
