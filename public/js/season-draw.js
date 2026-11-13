@@ -193,6 +193,8 @@ async function openDrawPanel(host, seasonId, onChanged) {
       buttons.push(`<select class="sd-cons-format" data-cat="${c.category}" style="${inputStyle}">${drawFormatOptions(cf)}</select><button type="button" class="btn btn-sm btn-primary" data-act="consolation" data-cat="${c.category}">${tl('Vytvoriť útechu', 'Create the consolation')}</button>`);
     }
     if (c.main && !document.querySelector('[data-club]')) buttons.push(`<a class="btn btn-sm btn-outline" href="/bracket-admin" target="_blank" rel="noopener">${tl('Upraviť pavúk', 'Edit the bracket')}</a>`);
+    // a club's tournament has no /bracket-admin page: the editor of the bracket opens under the panel
+    else if (c.main && window.mountBracketAdmin) buttons.push(`<button type="button" class="btn btn-sm btn-primary" data-act="edit-bracket" data-cat="${c.category}">${tl('Upraviť pavúk (dosadiť hráčov a výsledky)', 'Edit the bracket (seat the players and results)')}</button>`);
     if (c.liveRecordId) buttons.push(`<a class="btn btn-sm btn-outline" href="/draw-live?record=${c.liveRecordId}" target="_blank" rel="noopener">${tl('Záznam žrebu (prehrať)', 'Draw record (replay)')}</a>`);
     buttons.push(`<button type="button" class="btn btn-sm btn-outline" data-act="delete" data-cat="${c.category}" style="color:var(--danger)">${c.groups && !c.main ? tl('Zmazať skupiny', 'Delete the groups') : tl('Zmazať pavúk', 'Delete the bracket')}</button>`);
     parts.push(`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">${buttons.join('')}</div>`);
@@ -346,6 +348,16 @@ async function openDrawPanel(host, seasonId, onChanged) {
     if (!btn) return;
     const act = btn.dataset.act;
     const cat = btn.dataset.cat;
+    if (act === 'edit-bracket') {
+      // the editor of the brackets of this tournament under the panel (open / closed with the same button)
+      let box = host.nextElementSibling && host.nextElementSibling.classList.contains('sd-bracket-editor') ? host.nextElementSibling : null;
+      if (!box) { box = document.createElement('div'); box.className = 'sd-bracket-editor'; box.style.marginTop = '16px'; host.insertAdjacentElement('afterend', box); }
+      if (box.dataset.open) { box.innerHTML = ''; delete box.dataset.open; return; }
+      box.dataset.open = '1';
+      box.innerHTML = `<div style="color:var(--gray)">${tl('Načítavam…', 'Loading…')}</div>`;
+      try { await window.mountBracketAdmin(box, seasonId); box.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (err) { box.innerHTML = `<div class="sa-hint">${escapeHtml(err.message)}</div>`; }
+      return;
+    }
     if (cat) showError(cat, '');
     btn.disabled = true;
     try {
