@@ -372,8 +372,20 @@ router.patch('/:id/slots/:nodeId', clubTournaments.requireSeasonManager(clubTour
   if (player1Id && player2Id && player1Id === player2Id) {
     return res.status(400).json({ error: 'Both slots have the same player' });
   }
-  // a doubles draw: every player seated needs a partner (sent now, or set before), and nobody may be in the draw twice
+  // a tournament: only players who are registered for it can be seated (in a doubles draw the player of the pair; the partner is a name)
   const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(bracketId);
+  const bracketSeason = bracket.season_id ? db.prepare('SELECT id, kind FROM seasons WHERE id = ?').get(bracket.season_id) : null;
+  if (bracketSeason && bracketSeason.kind === 'TOURNAMENT') {
+    const registered = new Set(db.prepare('SELECT player_id FROM season_registrations WHERE season_id = ? AND player_id IS NOT NULL').all(bracketSeason.id).map((r) => r.player_id));
+    // (a doubles tournament: the pairs that were made - both players of a pair)
+    db.prepare('SELECT player_id, partner_id FROM tournament_pairs WHERE season_id = ?').all(bracketSeason.id).forEach((p) => { if (p.player_id) registered.add(p.player_id); if (p.partner_id) registered.add(p.partner_id); });
+    const outsider = [player1Id, player2Id].find((id) => id && !registered.has(id));
+    if (outsider) {
+      const who = db.prepare('SELECT name FROM players WHERE id = ?').get(outsider);
+      return res.status(400).json({ error: `${who ? who.name : 'This player'} is not registered for this tournament — register them first (tab Registrácie)`, code: 'NOT_REGISTERED' });
+    }
+  }
+  // a doubles draw: every player seated needs a partner (sent now, or set before), and nobody may be in the draw twice
   let partners = {};
   if (bracket.is_doubles) {
     const p1Partner = player1Id ? (resolve(req.body.player1PartnerId) || bracketEngine.partnerOf(bracketId, player1Id)) : null;

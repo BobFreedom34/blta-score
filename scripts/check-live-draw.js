@@ -491,6 +491,21 @@ test('the admin registers a player that is not in the list, typed as text: asks 
   assert.strictEqual(other.json.loginReady, false);
 });
 
+test('a tournament bracket seats only players who are registered for it', async () => {
+  const { tournament, people } = await tournamentWith('Slot Cup', { ELITE: 4 });
+  const br = await call('POST', '/api/brackets', { name: 'Slot Cup', format: 'BO3', size: 4, seasonId: tournament.id, category: 'ELITE', autoCreateMatches: true });
+  assert.strictEqual(br.status, 201, br.text);
+  const tree = (await call('GET', `/api/brackets/${br.json.id}`)).json;
+  const semi = tree.nodes.find((n) => n.round === 1 && n.position === 0);
+  counter += 1;
+  const stranger = await call('POST', '/api/players', { name: `Cudzí Hráč ${counter}` });
+  const bad = await call('PATCH', `/api/brackets/${br.json.id}/slots/${semi.id}`, { player1Id: people.ELITE[0].player.id, player2Id: stranger.json.id });
+  assert.strictEqual(bad.status, 400, bad.text);
+  assert.strictEqual(bad.json.code, 'NOT_REGISTERED');
+  const ok = await call('PATCH', `/api/brackets/${br.json.id}/slots/${semi.id}`, { player1Id: people.ELITE[0].player.id, player2Id: people.ELITE[1].player.id });
+  assert.strictEqual(ok.status, 200, ok.text);
+});
+
 test('the page of the season has the saved draw (tile) and the record can be replayed', async () => {
   const page = (await call('GET', `/api/seasons/by-slug/${league.slug}`, undefined, { admin: false })).json;
   assert.strictEqual(page.liveDraws.length, 1);

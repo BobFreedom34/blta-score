@@ -4,6 +4,7 @@
 // the ids of the fields are the ones of the document.
 let root = document.getElementById('bracket-admin-root');
 let scopeSeasonId = null;
+let registeredPlayers = null; // the tournament's registered players (editor of a tournament): only they are offered for a slot
 let editOnly = false; // the editor of an existing bracket (the draw panel of a tournament): no form to make a new one
 
 let brackets = [];
@@ -30,11 +31,15 @@ const CATEGORY_OPTIONS = [
   ['OTHER', tl('INÉ', 'OTHER')],
 ];
 
+// (the editor of a tournament: only the categories the tournament is played in, or no category at all when it has none)
+let scopedCategories = null;
 function categoryOptionsHtml(selected) {
-  return CATEGORY_OPTIONS.map(([value, label]) => `<option value="${value}" ${(selected || '') === value ? 'selected' : ''}>${label}</option>`).join('');
+  const list = scopedCategories ? CATEGORY_OPTIONS.filter(([value]) => (value === '' ? !scopedCategories.length : scopedCategories.includes(value))) : CATEGORY_OPTIONS;
+  return list.map(([value, label]) => `<option value="${value}" ${(selected || '') === value ? 'selected' : ''}>${scopedCategories && value === '' ? tl('Bez kategórie', 'No category') : label}</option>`).join('');
 }
 
 function seasonOptionsHtml(selectedId) {
+  if (editOnly && scopeSeasonId) { const own = seasonsList.find((x) => x.id === scopeSeasonId); return own ? `<option value="${own.id}" selected>${escapeHtml(own.name)}</option>` : ''; } // (the tournament's own bracket stays with it)
   return `<option value="">${tl('— žiadna —', '— none —')}</option>` + seasonsList.map((x) => `<option value="${x.id}" ${Number(selectedId) === x.id ? 'selected' : ''}>${escapeHtml(x.name)}</option>`).join('');
 }
 
@@ -541,8 +546,9 @@ async function renderManagePanel(bracketId, slotEl) {
   data.nodes.forEach((n) => {
     const form = slotEl.querySelector(`.bracket-slot-form[data-node-id="${n.id}"]`);
     if (form) {
-      if (!n.player1) setupAutocomplete(`slot-${n.id}-p1`, `slot-${n.id}-p1-list`);
-      if (!n.player2) setupAutocomplete(`slot-${n.id}-p2`, `slot-${n.id}-p2-list`);
+      const slotNames = registeredPlayers ? () => registeredPlayers.map((p) => p.name) : undefined; // (the partner of a pair may be anybody)
+      if (!n.player1) setupAutocomplete(`slot-${n.id}-p1`, `slot-${n.id}-p1-list`, slotNames);
+      if (!n.player2) setupAutocomplete(`slot-${n.id}-p2`, `slot-${n.id}-p2-list`, slotNames);
       if (manageIsDoubles) {
         if (!n.player1) setupAutocomplete(`slot-${n.id}-p1b`, `slot-${n.id}-p1b-list`);
         if (!n.player2) setupAutocomplete(`slot-${n.id}-p2b`, `slot-${n.id}-p2b-list`);
@@ -673,6 +679,8 @@ function renderLoggedOut() {
 window.mountBracketAdmin = async function mountBracketAdmin(host, seasonId, opts) {
   root = host;
   editOnly = !!(opts && opts.editOnly);
+  registeredPlayers = null;
+  scopedCategories = null;
   scopeSeasonId = Number(seasonId) || null;
   brackets = [];
   entryRowCounter = 0;
@@ -681,6 +689,14 @@ window.mountBracketAdmin = async function mountBracketAdmin(host, seasonId, opts
   root.innerHTML = `<p style="color:var(--gray-dim);margin:6px 0">${tl('Načítavam…', 'Loading…')}</p>`;
   await loadPlayers();
   try { seasonsList = await api('/seasons'); } catch { seasonsList = []; }
+  // the editor of a tournament offers the categories of the tournament and its registered players only
+  if (editOnly && scopeSeasonId) {
+    const own = (seasonsList || []).find((x) => x.id === scopeSeasonId);
+    scopedCategories = own ? (own.categories || []).filter((c) => BLTA_CATEGORY_KEYS.includes(c)) : null;
+  }
+  if (editOnly && scopeSeasonId) {
+    try { const season = (seasonsList || []).find((x) => x.id === scopeSeasonId); if (!season || season.playType !== 'DOUBLES') registeredPlayers = (await api(`/seasons/${scopeSeasonId}/registrations`)).filter((r) => r.playerId).map((r) => ({ id: r.playerId, name: r.name })); } catch { registeredPlayers = null; }
+  }
   renderAdmin();
 };
 
