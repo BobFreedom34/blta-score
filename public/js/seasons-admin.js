@@ -321,7 +321,7 @@ async function cropHero(file, w, h) {
 // the last tab of a card is the winners list of the season or the tournament (also in the card of a community: its organiser fills it in, it shows on the page of the tournament and of the community)
 const cardTabs = () => (IS_TOURNAMENT
   ? [['info', tl('Základné info', 'Basic info')], ['regs', tl('Registrácie', 'Registrations')], ['assign', tl('Zaradenie do kategórií', 'Category assignment')], ['draw', tl('Formát turnaja a žrebovanie', 'Tournament format and draw')]]
-  : [['info', tl('Základné info', 'Basic info')], ['regs', tl('Registrácie', 'Registrations')], ['groups', tl('Skupiny', 'Groups')], ['schedule', tl('Rozpis', 'Schedule')], ['brackets', tl('Pavúk', 'Bracket')]]
+  : [['info', tl('Základné info', 'Basic info')], ['regs', tl('Registrácie', 'Registrations')], ['groups', tl('Skupiny a žrebovanie', 'Groups and draw')], ['schedule', tl('Rozpis', 'Schedule')], ['brackets', tl('Pavúk', 'Bracket')]]
 ).concat([['winners', tl('Víťazi', 'Winners')]]);
 const cardTab = new Map(); // season id -> the tab last opened (kept when the list is drawn again)
 
