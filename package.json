@@ -16,6 +16,7 @@
     "cookie-signature": "^1.0.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "esbuild": "^0.28.2",
     "express": "^4.19.2",
     "google-auth-library": "^11.2.0",
     "multer": "^2.2.0",

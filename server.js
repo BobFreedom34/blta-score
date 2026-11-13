@@ -227,6 +227,9 @@ backup.startScheduledBackups();
 // package itself). Registered first, before the static files and every route, so all of them are covered. Responses
 // under 1 kB are left alone, and the ETag the next middleware sets still works with it (304 Not Modified).
 app.use(compression());
+// speed of the static files: ?v=<hash> on the scripts and styles of every HTML page (kept a year), minified in production - see src/assets.js
+const assets = require('./src/assets');
+app.use(assets.versionSend);
 // Security headers on every response. The widgets that other websites put in a frame (/embed/..., /compact, /compactblta) stay frameable; every
 // other page may only be framed by the site itself (clickjacking). The Content-Security-Policy here is the part that cannot break a page: it does not
 // limit scripts, styles or images (the pages use inline code and a few outside services), only <object>, <base> and who may frame the page.
@@ -638,7 +641,7 @@ app.use((req, res, next) => {
     if (fs.existsSync(file)) return res.type('html').send(fs.readFileSync(file, 'utf8'));
   }
   if (req.query.v && /\.(js|css)$/.test(req.path)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-  staticFiles(req, res, next);
+  assets.serveMinified(req, res, () => staticFiles(req, res, next));
 });
 // Uploaded badge icons live on the persistent disk (see src/db.js's
 // dataDir), not under public/, so they survive redeploys.
@@ -654,7 +657,16 @@ app.use('/winner-photos', express.static(path.join(db.dataDir, 'winner-photos'),
 app.use('/media', express.static(mediaRouter.DIR, { maxAge: '30d' }));
 app.use('/blog-images', express.static(blog.UPLOAD_DIR, { maxAge: '30d' }));
 
-app.use('/api/players', playersRouter);
+// the lists that change rarely (the players, the rankings): a visitor's browser keeps them 20 seconds (private: not for a shared cache - what a player or an admin sees depends on who
+// asks). Whoever has a login cookie (a player sees own private fields, an admin everything) always asks again, so an edit shows at once.
+const briefCache = (req, res, next) => {
+  if (req.method === 'GET') {
+    const c = req.signedCookies || {};
+    res.setHeader('Cache-Control', c.blta_admin || c.blta_player ? 'private, no-cache' : 'private, max-age=20, stale-while-revalidate=60');
+  }
+  next();
+};
+app.use('/api/players', briefCache, playersRouter);
 app.use('/api/matches', matchesRouter);
 app.use('/api/matches', matchPhotosRouter);
 app.use('/api/match-of-the-week', matchOfTheWeekRouter);
@@ -663,7 +675,7 @@ app.use('/api/player/push', playerPushRouter);
 app.use('/api/player', playerAuthRouter);
 app.use('/api/push', pushRouter);
 app.use('/api/badges', badgesRouter);
-app.use('/api/rankings', rankingsRouter);
+app.use('/api/rankings', briefCache, rankingsRouter);
 app.use('/api/availability', availabilityRouter);
 app.use('/api/referee', refereeRouter);
 app.use('/api/header-items', headerItemsRouter);

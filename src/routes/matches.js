@@ -29,8 +29,16 @@ const MAX_HISTORY = 30;
 const CATEGORIES = ['ELITE', 'NEXT_GEN', 'NOVICE', 'FRIENDLY', 'VIP_CUP', 'ATA_TENNIS', 'OTHER'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// While a LIST of matches is built (listMemo is set around rows.map(serialize), synchronously) the lookups that every match of the list repeats (the same few players,
+// the season, the group, the organisation) are read from the database once. Outside a list listMemo is null and nothing is remembered.
+let listMemo = null;
+function memoised(key, read) {
+  if (!listMemo) return read();
+  if (!listMemo.has(key)) listMemo.set(key, read());
+  return listMemo.get(key);
+}
 function getPlayer(id) {
-  return db.prepare('SELECT * FROM players WHERE id = ?').get(id);
+  return memoised(`player:${id}`, () => db.prepare('SELECT * FROM players WHERE id = ?').get(id));
 }
 
 // Doubles: every player of a match (the four of a doubles match), and a side as ONE player object whose name is "A / B" - so the cards, the
@@ -153,7 +161,22 @@ async function notifyPushSubscribers(matchId, type, updated) {
 // How many people have ever activated each notification type for this
 // match — every row in match_notifications/push_subscriptions counts,
 // regardless of whether its notification has already gone out.
+// the numbers of "tell me" subscriptions of every match at once (while a list is built: one query each instead of two per match), as { matchId -> { START, FINISH } }
+function notifyCountsOfAll() {
+  const all = new Map();
+  const add = (rows) => rows.forEach((r) => {
+    if (!all.has(r.match_id)) all.set(r.match_id, { START: 0, FINISH: 0 });
+    all.get(r.match_id)[r.type] += r.cnt;
+  });
+  add(db.prepare('SELECT match_id, type, COUNT(*) AS cnt FROM match_notifications GROUP BY match_id, type').all());
+  add(db.prepare('SELECT match_id, type, COUNT(*) AS cnt FROM push_subscriptions GROUP BY match_id, type').all());
+  return all;
+}
 function getNotifyCounts(matchId) {
+  if (listMemo) {
+    if (!listMemo.has('notify')) listMemo.set('notify', notifyCountsOfAll());
+    return listMemo.get('notify').get(matchId) || { START: 0, FINISH: 0 };
+  }
   const counts = { START: 0, FINISH: 0 };
   const emailRows = db.prepare('SELECT type, COUNT(*) AS cnt FROM match_notifications WHERE match_id = ? GROUP BY type').all(matchId);
   for (const row of emailRows) counts[row.type] += row.cnt;
@@ -192,10 +215,10 @@ function bracketInfo(row) {
 }
 
 function seasonAndGroup(row) {
-  const season = row.season_id ? db.prepare('SELECT id, name, slug, kind, organisation_id FROM seasons WHERE id = ?').get(row.season_id) : null;
-  const group = row.group_id ? db.prepare('SELECT id, name, category FROM season_groups WHERE id = ?').get(row.group_id) : null;
+  const season = row.season_id ? memoised(`season:${row.season_id}`, () => db.prepare('SELECT id, name, slug, kind, organisation_id FROM seasons WHERE id = ?').get(row.season_id)) : null;
+  const group = row.group_id ? memoised(`group:${row.group_id}`, () => db.prepare('SELECT id, name, category FROM season_groups WHERE id = ?').get(row.group_id)) : null;
   // the community or club that runs the tournament (null for the league's own): the profile of a player marks its matches with it
-  const org = season && season.organisation_id ? db.prepare('SELECT id, slug, name, type FROM organisations WHERE id = ?').get(season.organisation_id) : null;
+  const org = season && season.organisation_id ? memoised(`org:${season.organisation_id}`, () => db.prepare('SELECT id, slug, name, type FROM organisations WHERE id = ?').get(season.organisation_id)) : null;
   return {
     season: season ? { id: season.id, name: season.name, slug: season.slug, kind: season.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE', organisation: org ? { id: org.id, slug: org.slug, name: org.name, type: org.type === 'CLUB' ? 'CLUB' : 'COMMUNITY' } : null } : null,
     bracket: bracketInfo(row),
@@ -207,7 +230,7 @@ function serialize(row) {
   const p1 = sideOf(row, 1);
   const p2 = sideOf(row, 2);
   const state = JSON.parse(row.state);
-  const history = JSON.parse(row.history);
+  const hasHistory = typeof row.history === 'string' ? row.history.length > 2 : JSON.parse(row.history).length > 0; // ('[]' = nothing to undo; no need to parse every point of every match)
   const notifyCounts = getNotifyCounts(row.id);
   return {
     token: row.share_token,
@@ -228,7 +251,7 @@ function serialize(row) {
     status: row.status,
     state,
     scoreSummary: engine.describeMatch(state),
-    canUndo: history.length > 0,
+    canUndo: hasHistory,
     createdByAdmin: !!row.created_by_admin,
     createdByAnonymous: !!row.created_by_anonymous,
     createdByPlayerId: row.created_by_player_id || null,
@@ -579,7 +602,8 @@ router.get('/', (req, res) => {
   let rows = selectMatchRows({ ...req.query, _league: leagues.actingIdOf(req), _viewer: getPlayerId(req) || '' });
   // Optional cap (the home page and the embeds only need the latest few); no limit = everything, as before.
   if (limit) rows = rows.slice(0, limit);
-  res.json(rows.map(serialize));
+  listMemo = new Map();
+  try { res.json(rows.map(serialize)); } finally { listMemo = null; }
 });
 
 // The numbers on the matches page's tabs in one small response instead of downloading every list just to count it.

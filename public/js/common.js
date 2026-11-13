@@ -2565,7 +2565,7 @@ function flagCodeFor(nationality) {
 function flagImgHtml(nationality, cssClass) {
   const code = flagCodeFor(nationality);
   if (!code) return '';
-  return `<img class="${cssClass}" src="https://flagcdn.com/${code}.svg" alt="${code.toUpperCase()}">`;
+  return `<img class="${cssClass}" src="https://flagcdn.com/${code}.svg" alt="${code.toUpperCase()}" loading="lazy">`;
 }
 
 // Shared building blocks for every date/time label in the app — driven by

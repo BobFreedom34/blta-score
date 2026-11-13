@@ -67,7 +67,7 @@ test('blta.sk gets its container, with consent defaults, the choice of an earlie
   assert.ok(hasTag(r.body, 'GTM-BLTA123'));
   assert.ok(/gtag\('consent','default',Object\.assign\(\{ad_storage:'denied'/.test(r.body));
   assert.ok(r.body.includes("localStorage.getItem('blta-cookies')==='granted'"));
-  assert.ok(r.body.includes('<script src="/js/consent.js" defer></script>'));
+  assert.ok(/<script src="\/js\/consent\.js(\?v=[0-9a-f]+)?" defer><\/script>/.test(r.body)); // (the address carries ?v=<hash of the file>, see src/assets.js)
   // the tag is the first thing in the head: before the Analytics tag the page has by hand (so the consent defaults come first) and before the title
   const at = r.body.indexOf('<!-- Google Tag Manager -->');
   assert.ok(at > 0 && at < r.body.indexOf('<title>'));
