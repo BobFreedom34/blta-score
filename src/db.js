@@ -2000,6 +2000,28 @@ if (!db.prepare('PRAGMA table_info(organisations)').all().some((c) => c.name ===
 });
 db.exec('CREATE INDEX IF NOT EXISTS idx_seasons_organisation ON seasons(organisation_id)');
 
+// The draw in front of the camera (src/liveDraw.js): every time the organiser starts one, the lot is made from a fresh random key (seed) and written here (PLANNED); the draw that
+// was saved into the tournament is COMMITTED. The key is public once the draw is saved: anybody can check the shuffle from it, and the number of PLANNED + COMMITTED rows of a
+// category says how many times a draw was started (a draw that was started and thrown away is not hidden).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS draw_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id INTEGER NOT NULL,
+    category TEXT NOT NULL,
+    format TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'PLANNED',
+    seed TEXT NOT NULL,
+    seed_hash TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    options TEXT NOT NULL DEFAULT '{}',
+    args TEXT NOT NULL DEFAULT '{}',
+    plan TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    committed_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_draw_records_season ON draw_records(season_id, category);
+`);
+
 // Every handler of the app calls db.prepare(sql) on each request, and compiling the SQL is a good part of the time of a list (a list of matches compiled the same few statements
 // thousands of times). From here on (after the schema above is final) a statement is compiled once per SQL text and reused; the cache is capped, so SQL built with changing text
 // (an IN (...) list) cannot grow it without end. A statement is reused only between synchronous calls, so two users never share a half-used one.

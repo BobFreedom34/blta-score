@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Žreb naživo - BLTA - Bratislavská Liga Tenisových Amatérov</title>
+<meta name="description" content="Žrebovanie turnaja BLTA naživo: nasadení hráči a náhodný žreb do skupín alebo pavúka pred kamerou.">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
+<link rel="preload" href="/fonts/montserrat-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/draw-live.css">
+</head>
+<body class="dl-body">
+
+<div class="dl-app" id="dl-app" data-state="setup">
+
+  <header class="dl-top">
+    <div class="dl-brand">
+      <img class="dl-logo" src="/img/blta-logo-sm.png" alt="">
+      <div>
+        <div class="dl-eyebrow" id="dl-eyebrow">ŽREB NAŽIVO</div>
+        <h1 class="dl-title" id="dl-title">&nbsp;</h1>
+      </div>
+    </div>
+    <div class="dl-meta">
+      <span class="dl-chip" id="dl-cat" hidden></span>
+      <span class="dl-chip" id="dl-format" hidden></span>
+      <button type="button" class="dl-chip dl-lock" id="dl-lock" hidden title="Zámok žrebu: SHA-256 kľúča, z ktorého sa žrebuje. Kľúč sa ukáže po žrebe."></button>
+    </div>
+    <div class="dl-progress" id="dl-progress" hidden>
+      <span class="dl-progress-n" id="dl-progress-n">0 / 0</span>
+      <span class="dl-bar"><i id="dl-bar-i"></i></span>
+    </div>
+  </header>
+
+  <main class="dl-main" id="dl-main">
+    <aside class="dl-pool" id="dl-pool">
+      <h2 class="dl-pool-h">HRÁČI <small id="dl-pool-n"></small></h2>
+      <ul class="dl-pool-list" id="dl-pool-list"></ul>
+    </aside>
+    <section class="dl-board" id="dl-board" aria-live="polite"></section>
+  </main>
+
+  <footer class="dl-caption" id="dl-caption">
+    <div class="dl-cap-label" id="dl-cap-label"></div>
+    <div class="dl-cap-main" id="dl-cap-main"></div>
+  </footer>
+
+  <!-- the start card -->
+  <div class="dl-overlay" id="dl-setup">
+    <div class="dl-card dl-setup-card">
+      <div class="dl-eyebrow" id="dl-setup-eyebrow">ŽREB NAŽIVO</div>
+      <h2 class="dl-setup-title" id="dl-setup-title">Načítavam…</h2>
+      <p class="dl-setup-sub" id="dl-setup-sub"></p>
+      <dl class="dl-facts" id="dl-facts"></dl>
+      <div class="dl-error" id="dl-error" hidden></div>
+      <div class="dl-controls" id="dl-controls">
+        <label class="dl-field">Tempo
+          <select id="dl-tempo">
+            <option value="1.5">Rýchle</option>
+            <option value="1" selected>Normálne</option>
+            <option value="0.7">Pomalé (pre prenos)</option>
+          </select>
+        </label>
+        <label class="dl-check"><input type="checkbox" id="dl-sound" checked> Zvuky</label>
+        <label class="dl-check" id="dl-autosave-wrap"><input type="checkbox" id="dl-autosave"> Po skončení žreb sám uložiť do turnaja</label>
+      </div>
+      <button type="button" class="dl-btn dl-btn-go" id="dl-start" disabled>Spustiť žreb</button>
+      <p class="dl-hint" id="dl-hint">Stlač <kbd>F</kbd> pre celú obrazovku, <kbd>Medzerník</kbd> spustí alebo pozastaví, <kbd>M</kbd> vypne zvuk. Pre YouTube zdieľaj toto okno cez OBS, Google Meet alebo Zoom.</p>
+    </div>
+  </div>
+
+  <!-- the countdown -->
+  <div class="dl-overlay dl-count-ov" id="dl-countdown" hidden>
+    <div class="dl-count-ring"><span class="dl-count-num" id="dl-count-num">5</span></div>
+    <div class="dl-count-text" id="dl-count-text">Žreb sa začína</div>
+  </div>
+
+  <!-- the end (takes the place of the line at the bottom) -->
+  <div class="dl-final" id="dl-final" hidden>
+    <div class="dl-card dl-final-card">
+      <div class="dl-final-info">
+        <div class="dl-final-head"><span class="dl-eyebrow">ŽREB JE HOTOVÝ</span><b class="dl-final-title" id="dl-final-title"></b><b id="dl-v-result" class="dl-v-result">Overujem…</b></div>
+        <div class="dl-verify-row"><span>Zámok (SHA-256 kľúča)</span><code id="dl-v-lock"></code></div>
+        <div class="dl-verify-row"><span>Kľúč žrebu</span><code id="dl-v-seed"></code></div>
+        <div class="dl-saved" id="dl-saved" hidden></div>
+      </div>
+      <div class="dl-final-actions" id="dl-final-actions"></div>
+    </div>
+  </div>
+
+  <div class="dl-toolbar" id="dl-toolbar">
+    <button type="button" class="dl-tool" id="dl-t-pause" title="Pozastaviť / pokračovať (medzerník)" hidden>❚❚</button>
+    <button type="button" class="dl-tool" id="dl-t-sound" title="Zvuky (M)">♪</button>
+    <button type="button" class="dl-tool" id="dl-t-full" title="Celá obrazovka (F)">⛶</button>
+  </div>
+  <canvas class="dl-confetti" id="dl-confetti"></canvas>
+</div>
+
+<script src="/js/localize.js"></script>
+<script src="/js/draw-verify.js"></script>
+<script src="/js/draw-live.js"></script>
+</body>
+</html>

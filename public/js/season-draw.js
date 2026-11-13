@@ -157,6 +157,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
     const ready = (isSix(s.format) ? c.players === 6 : isSwiss(s.format) ? c.players >= 4 : c.players >= 2) && !c.withoutProfile.length && !dirty(c.category);
     body += `
       <button type="button" class="btn btn-sm btn-primary" data-act="draw" data-cat="${c.category}" ${ready ? '' : 'disabled'}>${isSwiss(s.format) ? tl('Vytvoriť 1. kolo', 'Create round 1') : isSix(s.format) ? tl('Vytvoriť tabuľku a zápasy', 'Create the table and matches') : isGroups(s.format) ? tl('Vytvoriť skupiny a zápasy', 'Create groups and matches') : (s.mode === 'AUTO' ? tl('Vytvoriť pavúk', 'Create bracket') : tl('Vytvoriť prázdny pavúk', 'Create an empty bracket'))}</button>
+      ${s.mode === 'AUTO' || isSwiss(s.format) || isSix(s.format) ? `<button type="button" class="btn btn-sm btn-outline" data-act="live" data-cat="${c.category}" ${ready ? '' : 'disabled'} title="${escapeHtml(tl('Otvorí obrazovku na prezentáciu žrebu: odpočítavanie, nasadení hráči a náhodný žreb pred kamerou. Žreb sa uloží až tlačidlom na konci.', 'Opens a presentation screen for the draw: a countdown, the seeded players and the random draw in front of the camera. The draw is saved only with the button at the end.'))}">${tl('Žreb naživo (na kameru)', 'Live draw (on camera)')}</button>` : ''}
       ${dirty(c.category) ? `<span style="font-size:12px;color:var(--gray);margin-left:8px">${tl('Najprv ulož nasadenie.', 'Save the seeding first.')}</span>` : ''}
       ${c.withoutProfile.length ? `<div style="color:var(--danger);font-size:12px;margin-top:6px">${tl('Bez profilu hráča', 'Without a player profile')}: ${escapeHtml(c.withoutProfile.join(', '))}</div>` : ''}`;
     return body;
@@ -192,6 +193,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
       buttons.push(`<select class="sd-cons-format" data-cat="${c.category}" style="${inputStyle}">${drawFormatOptions(cf)}</select><button type="button" class="btn btn-sm btn-primary" data-act="consolation" data-cat="${c.category}">${tl('Vytvoriť útechu', 'Create the consolation')}</button>`);
     }
     if (c.main && !document.querySelector('[data-club]')) buttons.push(`<a class="btn btn-sm btn-outline" href="/bracket-admin" target="_blank" rel="noopener">${tl('Upraviť pavúk', 'Edit the bracket')}</a>`);
+    if (c.liveRecordId) buttons.push(`<a class="btn btn-sm btn-outline" href="/draw-live?record=${c.liveRecordId}" target="_blank" rel="noopener">${tl('Záznam žrebu (prehrať)', 'Draw record (replay)')}</a>`);
     buttons.push(`<button type="button" class="btn btn-sm btn-outline" data-act="delete" data-cat="${c.category}" style="color:var(--danger)">${c.groups && !c.main ? tl('Zmazať skupiny', 'Delete the groups') : tl('Zmazať pavúk', 'Delete the bracket')}</button>`);
     parts.push(`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">${buttons.join('')}</div>`);
     return parts.join('');
@@ -376,6 +378,12 @@ async function openDrawPanel(host, seasonId, onChanged) {
         toast(isSwiss(s.format) ? tl(`1. kolo vytvorené (${made.matches} zápasov, ${made.rounds} kôl)`, `Round 1 created (${made.matches} matches, ${made.rounds} rounds)`) : isGroups(s.format) || isSix(s.format) ? tl(`Skupiny vytvorené (${made.matches} zápasov)`, `Groups created (${made.matches} matches)`) : (made.consolationNote ? tl(`Pavúk vytvorený (bez útechy: ${made.consolationNote})`, `Bracket created (no consolation: ${made.consolationNote})`) : tl('Pavúk vytvorený', 'Bracket created')));
         await refresh();
         if (made.warnings && made.warnings.length) showError(cat, made.warnings.join(' '));
+      } else if (act === 'live') {
+        // the presentation of the draw opens in a new window; it makes the draw with these settings and saves it only when the organiser says so
+        const s = settingsFor(catOf(cat));
+        const o = { format: s.format, mode: 'AUTO', mainFormat: s.mainFormat, consolationFormat: s.consolationFormat, groupFormat: s.groupFormat, groupSize: s.groupSize, groupCount: s.groupCount, qualifiers: s.qualifiers, bracketType: s.bracketType, autoBracket: s.autoBracket, rounds: s.rounds };
+        window.open(`/draw-live?season=${seasonId}&category=${encodeURIComponent(cat)}&o=${encodeURIComponent(JSON.stringify(o))}`, '_blank');
+        btn.disabled = false;
       } else if (act === 'swiss-round') {
         const made = await api(`/seasons/${seasonId}/draw/swiss-round`, { method: 'POST', body: { category: cat } });
         toast(tl(`Kolo ${made.round} vytvorené (${made.matches} zápasov)`, `Round ${made.round} created (${made.matches} matches)`));

@@ -150,6 +150,12 @@ const PAGES = [
     description: '{name} - článok z blogu BLTA, tenisovej amatérskej ligy v Bratislave.',
   },
   {
+    // the draw of a tournament made in front of the camera (opened from the draw panel in the Backend; with ?record=<id> it replays a saved draw): a presentation page, not one to find in a search
+    key: 'drawlive', label: 'Live draw (Žreb naživo)', path: '/draw-live', file: 'draw-live.html', blta: null, noindex: true,
+    title: `Žreb naživo${SUFFIX}`,
+    description: 'Žrebovanie turnaja BLTA naživo: nasadení hráči a náhodný žreb do skupín alebo pavúka pred kamerou.',
+  },
+  {
     key: 'new-match', label: 'New match', path: '/new-match', file: 'new-match.html', blta: null, noindex: true,
     title: `Nový zápas${SUFFIX}`,
     description: 'Vytvor nový zápas BLTA a sleduj jeho skóre naživo.',
@@ -342,6 +348,11 @@ const ENGLISH = {
     slug: 'article',
     title: `{name}${SUFFIX_EN}`,
     description: '{name} - an article of the BLTA blog, the amateur tennis league in Bratislava.',
+  },
+  drawlive: {
+    slug: 'live-draw',
+    title: `Live draw${SUFFIX_EN}`,
+    description: 'The draw of a BLTA tournament live: the seeded players and the random draw into groups or a bracket, in front of the camera.',
   },
   'new-match': {
     slug: 'new-match',

@@ -19,6 +19,7 @@ const auth = require('../auth');
 const playerRoutes = require('./player');
 const { creditInviter } = require('./invites');
 const tournamentDraw = require('../tournamentDraw');
+const liveDraw = require('../liveDraw');
 const matchPhotos = require('./matchPhotos');
 const rankingPoints = require('../rankingPoints');
 const communityPoints = require('../communityPoints');
@@ -686,6 +687,27 @@ router.post('/:id/draw/swiss-round', clubTournaments.requireSeasonManager(clubTo
   const season = tournamentOr404(req, res);
   if (!season) return;
   const made = require('../swiss').nextRound(season, (req.body || {}).category);
+  if (made.error) return res.status(made.status || 400).json({ error: made.error });
+  const io = req.app.get('io');
+  if (io) io.emit('matches:changed', { seasonId: season.id, status: 'CREATED' });
+  res.status(201).json({ ...made, categories: tournamentDraw.overview(season.id) });
+});
+
+// The draw in front of the camera (the page /draw-live, see src/liveDraw.js): "prepare" makes the key and the plan of the draw from the same settings as POST /:id/draw
+// ({ category, format, … }) and writes nothing into the tournament; "commit" ({ recordId }) saves exactly the draw that was shown.
+router.post('/:id/draw/live/prepare', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const body = req.body || {};
+  const made = liveDraw.prepare(season, body.category, body);
+  if (made.error) return res.status(made.status || 400).json({ error: made.error });
+  res.status(201).json(made);
+});
+
+router.post('/:id/draw/live/commit', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const made = liveDraw.commit(season, (req.body || {}).recordId);
   if (made.error) return res.status(made.status || 400).json({ error: made.error });
   const io = req.app.get('io');
   if (io) io.emit('matches:changed', { seasonId: season.id, status: 'CREATED' });

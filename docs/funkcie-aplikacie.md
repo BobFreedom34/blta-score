@@ -76,6 +76,7 @@ Zdroj textov pre stránku `/funkcie`. Stránku generuje `node scripts/build-funk
 |---|---|
 | Registrácia online | Prihlás sa na turnaj, vyber si kategóriu a vidíš, koľko miest je ešte voľných. Ak sa turnaj zaplní, aplikácia to ukáže. |
 | Žreb, ktorý sa spraví sám | Nasadenie najlepších hráčov, náhodný žreb, švajčiarsky systém alebo skupiny, a potom vyraďovací pavúk. Organizátor si vyberie systém a zvyšok je na aplikácii. |
+| Žreb naživo pred kamerou | Žrebovanie ako prezentácia, ktorú môžeš ukázať aj na YouTube. Odpočítavanie od 5, nasadení hráči idú na svoje miesta a ostatných určí náhoda pred očami divákov: svetlo behá po menách, spomalí a zastaví sa na vyžrebovanom hráčovi, ktorý preletí do skupiny alebo do pavúka. Pred začiatkom je na obrazovke zámok žrebu a na konci jeho kľúč, z ktorého sa výsledok dá zopakovať a overiť. Záznam žrebu môže ktokoľvek prehrať. |
 | Pavúk a útecha | Vyraďovací strom s výsledkami v reálnom čase. Hráči, ktorí vypadnú, môžu pokračovať v útešnej vetve. |
 | Rozpis na viac kurtov | Aplikácia rozdelí zápasy medzi kurty a časy. Každý kurt môže mať vlastný názov, napríklad „Kurt 1“ alebo „Centrálny“. |
 | Čo sa hrá na ktorom kurte | Divák vidí, ktorý zápas práve beží na ktorom kurte, a môže si pozrieť aj stream kurtu. |

@@ -140,6 +140,8 @@ function overview(seasonId) {
     return {
       category,
       label: CATEGORY_LABELS[category],
+      // the draw in front of the camera that is saved here (its record can be replayed), or null
+      liveRecordId: (db.prepare("SELECT id FROM draw_records WHERE season_id = ? AND category = ? AND status = 'COMMITTED' ORDER BY id DESC LIMIT 1").get(seasonId, category) || {}).id || null,
       players: regs.length,
       withoutProfile: regs.filter((r) => !r.player_id).map((r) => r.name),
       withProfile: withProfile.length,
@@ -285,7 +287,9 @@ function validFormat(f) { return engine.FORMATS[f] && f !== 'FREE_PLAY'; }
 // opts: { format, mode: 'AUTO' | 'MANUAL', mainFormat, consolationFormat, groupFormat, groupSize, groupCount, qualifiers, bracketType, autoBracket,
 //         groups: [{ name, registrationIds }] (the groups as the organiser put them together; else suggested), random }
 // -> { error, status } | { format, main, consolation, consolationNote, groups, warnings: [] }
-function createDraw(season, category, opts = {}) {
+// The checks of a draw and its settings (everything createDraw does before it makes anything): -> { error, status } | { s (the settings), regs (the entrants) }.
+// The draw in front of the camera (src/liveDraw.js) asks the same questions before it lets the lot be drawn.
+function prepareDraw(season, category, opts = {}) {
   if (season.kind !== 'TOURNAMENT') return { status: 400, error: 'Only a tournament has a draw' };
   if (!categoriesFor(season).includes(category)) return { status: 400, error: isDoublesTournament(season) ? 'A doubles tournament has only the Štvorhra draw' : 'Choose a category' };
   const prev = settingsOf(season.id, category);
@@ -316,13 +320,20 @@ function createDraw(season, category, opts = {}) {
   if (regs.length < 2) return { status: 400, error: `Need at least 2 ${CATEGORY_LABELS[category]} players to make a draw` };
   const missing = regs.filter((r) => !r.player_id);
   if (missing.length) return { status: 400, error: `These players have no player profile yet: ${missing.map((r) => r.name).join(', ')}` };
+  return { s, regs };
+}
+
+function createDraw(season, category, opts = {}) {
+  const prep = prepareDraw(season, category, opts);
+  if (prep.error) return prep;
+  const { s, regs } = prep;
   const random = opts.random || Math.random;
   const warnings = [];
 
   // ----- 6 players, 3 rounds (SIX_ROUNDS) -----
   if (s.format === 'SIX_ROUNDS') {
     if (regs.length !== 6) return { status: 400, error: `This format is for exactly 6 players (${CATEGORY_LABELS[category]} has ${regs.length})` };
-    const order = shuffled(regs.map((r) => r.player_id), random); // always by lot, whatever the seeds say
+    const order = opts.order ? [...opts.order] : shuffled(regs.map((r) => r.player_id), random); // always by lot, whatever the seeds say (opts.order: the order drawn in front of the camera)
     const plan = [];
     SIX_ROUNDS_PLAN.forEach((pairs, i) => pairs.forEach(([a, b]) => plan.push({ round: i + 1, p1: order[a - 1], p2: order[b - 1] })));
     let made;
@@ -348,7 +359,7 @@ function createDraw(season, category, opts = {}) {
     s.mode = 'AUTO'; // (a Swiss draw is always made by the system: the seeded players first, the others by lot)
     const seeded = regs.filter((r) => r.seed).sort((a, b) => a.seed - b.seed);
     const unseeded = regs.filter((r) => !r.seed).map((r) => ({ r, k: random() })).sort((a, b) => a.k - b.k).map((x) => x.r);
-    const order = [...seeded, ...unseeded].map((r) => r.player_id);
+    const order = opts.order ? [...opts.order] : [...seeded, ...unseeded].map((r) => r.player_id); // (opts.order: the order drawn in front of the camera)
     const first = swiss.firstRound(order);
     let made;
     db.exec('BEGIN');
@@ -419,7 +430,7 @@ function createDraw(season, category, opts = {}) {
   db.exec('BEGIN');
   try {
     set = makeBracketSet(season, category, {
-      type: s.format, mainFormat: s.mainFormat, consolationFormat: s.consolationFormat, entries: s.mode === 'AUTO' ? entriesFor(regs, random) : null, size,
+      type: s.format, mainFormat: s.mainFormat, consolationFormat: s.consolationFormat, entries: s.mode === 'AUTO' ? (opts.entries || entriesFor(regs, random)) : null, size, // (opts.entries: the seats drawn in front of the camera)
     });
     saveSettings(season.id, category, s);
     db.exec('COMMIT');
@@ -532,6 +543,8 @@ function deleteDraw(season, category) {
   const main = mainBracketOf(season.id, category);
   const groupRows = groups.groupsOf(season.id, category);
   if (!main && !groupRows.length) return { status: 404, error: 'There is no draw for this category' };
+  // a draw that was made in front of the camera stays on record ("deleted later"), it is not made to disappear
+  db.prepare("UPDATE draw_records SET status = 'DELETED' WHERE season_id = ? AND category = ? AND status = 'COMMITTED'").run(season.id, category);
   const bracketIds = main ? [main.id, ...bracketEngine.descendants(main.id)] : [];
   const marks = bracketIds.map(() => '?').join(',');
   const bracketMatchIds = bracketIds.length ? db.prepare(`SELECT match_id FROM bracket_matches WHERE bracket_id IN (${marks}) AND match_id IS NOT NULL`).all(...bracketIds).map((r) => r.match_id) : [];
@@ -682,6 +695,7 @@ module.exports = {
   categoriesFor,
   isDoublesTournament,
   CATEGORIES,
+  CATEGORY_LABELS,
   FORMATS,
   BRACKET_TYPES,
   DEFAULT_MAIN_FORMAT,
@@ -691,6 +705,9 @@ module.exports = {
   settingsOf,
   losersTypeFor,
   createDraw,
+  prepareDraw,
+  entriesFor,
+  shuffled,
   createBracketFromGroups,
   onMatchFinished,
   deleteDraw,

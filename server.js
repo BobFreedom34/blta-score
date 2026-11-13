@@ -709,6 +709,7 @@ app.use('/api/tracking', trackingRouter);
 app.use('/api/footer', footerRouter);
 app.use('/api/media', mediaRouter);
 app.use('/api/seasons', seasonsRouter);
+app.use('/api/draw-records', require('./src/routes/drawRecords')); // a draw made in front of the camera, as it was saved (public)
 app.use('/api/seasons', require('./src/routes/seasonPhotos')); // the gallery of an event (photos in the same Drive folder as the match photos)
 app.use('/api/invites', invitesRouter);
 app.use('/api/highlights', highlightsRouter);
