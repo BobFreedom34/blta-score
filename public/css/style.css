@@ -4052,6 +4052,10 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sch-tag { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: var(--radius-sm); border: 1px solid var(--green); color: var(--green); }
 .sch-tag.tour { border-color: var(--orange); color: var(--orange); }
 /* the club that runs a tournament: grey, so it reads as who, not as what; it leads to the page of the club */
+.sch-tag.sch-city { border-color: #8b8f98; color: #fff; text-transform: none; letter-spacing: .02em; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* the city of a tournament that is not played in this city */
+.sch-section { margin: 38px 0 4px; font-size: 22px; font-weight: 800; text-transform: none; color: #fff; }
+.sch-city-tabs { margin: 18px 0 4px; }
+.sch-section-hint { margin: 0 0 6px; color: #aeb2ba; font-size: 13px; font-weight: 600; }
 .sch-tag.sch-club { border-color: #8b8f98; color: #c3c7cf; text-transform: none; letter-spacing: .02em; cursor: pointer; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sch-tag.sch-club:hover, .sch-tag.sch-club:focus-visible { border-color: var(--green); color: var(--green); }
 .sch-tag.now { background: var(--green); border-color: var(--green); color: #0a0a0a; }

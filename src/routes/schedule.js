@@ -62,6 +62,32 @@ router.get('/', (req, res) => {
   res.json(scheduleOf(leagues.actingIdOf(req)));
 });
 
+// The tournaments of the OTHER cities that are still to be played (running now or coming), soonest first - under the ones of this city on the Harmonogram.
+// Every item carries its city and a real address (the city's own domain, else slta.sk/<slug>) in the language asked for (?lang=en). Cities that are hidden are left out,
+// so are the tournaments of the clubs (they are in the Harmonogram of their own city, labelled with the club). { city: { name, nameLocative }, items: [...] }
+router.get('/elsewhere', (req, res) => {
+  const lang = req.query.lang === 'en' ? 'en' : 'sk';
+  const ownId = leagues.actingIdOf(req);
+  const own = db.prepare('SELECT * FROM leagues WHERE id = ?').get(ownId) || {};
+  const today = new Date().toISOString().slice(0, 10);
+  const site = require('../national').siteOrigin(req);
+  const seo = require('../seo');
+  const items = [];
+  db.prepare("SELECT * FROM leagues WHERE id != ? AND status != 'HIDDEN' ORDER BY sort_order, id").all(ownId).forEach((row) => {
+    const base = row.domain ? `https://${row.domain}` : (site ? `${site}/${row.slug}` : `/${row.slug}`);
+    const link = (raw) => {
+      if (!raw) return '';
+      if (/^https?:\/\//i.test(raw)) return raw;
+      return raw.startsWith('/') ? base + seo.pageUrl(raw.replace(/\/+$/, '') || '/', lang) : raw;
+    };
+    scheduleOf(row.id)
+      .filter((e) => e.type === 'TOURNAMENT' && !e.organisation && e.endDate >= today && !e.tournamentEnded)
+      .forEach((e) => items.push({ ...e, link: link(e.link), city: { slug: row.slug, name: row.name, brandName: row.brand_name || row.name } }));
+  });
+  items.sort((a, b) => (a.startDate + a.name).localeCompare(b.startDate + b.name));
+  res.json({ city: { name: own.name || '', nameLocative: own.name_locative || '' }, items });
+});
+
 // Reads and checks the fields of an event from a request body; returns { error } or { values }.
 function parseEvent(body, partial) {
   const values = {};

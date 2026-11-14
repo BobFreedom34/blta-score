@@ -10,7 +10,9 @@ const timelineEl = document.getElementById('sch-timeline');
 const rootEl = document.getElementById('sch-root');
 
 let events = [];
+let elsewhere = { city: { name: '', nameLocative: '' }, items: [] }; // the tournaments of the other cities that are still to be played (shown under the ones of this city)
 let year = null;
+let cityTab = 'ALL'; // the tab of the other cities: ALL or the slug of one city
 let cat = 'ALL';
 let type = 'ALL';
 // the address can open the page already filtered: /harmonogram?type=TOURNAMENT (the menu item "Turnaje") or ?type=LEAGUE; the year is the current one unless ?year= says another
@@ -116,6 +118,25 @@ function rowHtml(e, today) {
   }, today);
 }
 
+// the months of a list of events as headings and cards (a month of this year; the tournaments of other cities may be from the next years, so the year is written there)
+function monthsHtml(list, today, { from, withYear = false } = {}) {
+  const byMonth = new Map();
+  list.forEach((e) => {
+    const start = from && e.startDate < from ? from : e.startDate;
+    const d = parseDay(start);
+    const key = withYear ? `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}` : String(d.getMonth()).padStart(2, '0');
+    if (!byMonth.has(key)) byMonth.set(key, { d, list: [] });
+    byMonth.get(key).list.push(e);
+  });
+  return [...byMonth.keys()].sort().map((key) => {
+    const { d, list: inMonth } = byMonth.get(key);
+    const name = new Date(d.getFullYear(), d.getMonth(), 1, 12).toLocaleDateString(locale(), withYear ? { month: 'long', year: 'numeric' } : { month: 'long' });
+    const states = inMonth.map((e) => statusOf(e, today));
+    const tone = states.includes('now') ? ' now' : (states.every((x) => x === 'past') ? ' past' : '');
+    return `<h2 class="sch-month-title">${escapeHtml(name)}</h2><div class="sch-card${tone}">${inMonth.map((e) => rowHtml(e, today)).join('')}</div>`;
+  }).join('');
+}
+
 function render() {
   renderFilters();
   const today = todayIso();
@@ -125,30 +146,39 @@ function render() {
     .filter((e) => e.startDate <= to && e.endDate >= from)
     .filter((e) => cat === 'ALL' || e.categories.includes(cat))
     .filter((e) => type === 'ALL' || e.type === type);
+  // the tournaments of the other cities that are still to be played: under the ones of this city (not with the filter "League")
+  const inCategory = type === 'LEAGUE' ? [] : elsewhere.items
+    .filter((e) => cat === 'ALL' || e.categories.includes(cat))
+    .map((e) => ({ ...e, cityName: e.city && e.city.brandName }));
+  // the tabs of the cities that have a tournament to come (one tab per city, in the order of the first tournament)
+  const cityList = [];
+  inCategory.forEach((e) => { if (e.city && !cityList.some((c) => c.slug === e.city.slug)) cityList.push(e.city); });
+  if (cityTab !== 'ALL' && !cityList.some((c) => c.slug === cityTab)) cityTab = 'ALL';
+  const others = inCategory.filter((e) => cityTab === 'ALL' || (e.city && e.city.slug === cityTab));
+  const cityTabs = cityList.length > 1
+    ? `<div class="tabs sch-city-tabs" role="tablist"><button type="button" class="tab${cityTab === 'ALL' ? ' active' : ''}" data-city="ALL">${escapeHtml(t('schedule.allCities'))}</button>${cityList.map((c) => `<button type="button" class="tab${cityTab === c.slug ? ' active' : ''}" data-city="${escapeHtml(c.slug)}">${escapeHtml(c.name)}</button>`).join('')}</div>`
+    : '';
+  // (Slovak needs the 6th case of the city, written in Backend > Cities; English uses the name)
+  const where = currentLang === 'en' ? elsewhere.city.name : elsewhere.city.nameLocative;
+  const hereTitle = where ? t('schedule.hereTitle', { where }) : t('schedule.hereTitleNoCity');
+  const elseHtml = inCategory.length
+    ? `<h2 class="sch-section">${escapeHtml(t('schedule.elsewhereTitle'))}</h2><p class="sch-section-hint">${escapeHtml(t('schedule.elsewhereHint'))}</p>${cityTabs}${monthsHtml(others, today, { withYear: true })}`
+    : '';
+  const heading = inCategory.length ? `<h2 class="sch-section" style="margin-top:6px">${escapeHtml(hereTitle)}</h2>` : '';
   // only the chosen view is shown (with nothing to show, the note is in the list place whatever the view)
   viewEl.querySelectorAll('[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   timelineEl.hidden = view !== 'timeline' || !shown.length;
-  rootEl.hidden = view !== 'list' && !!shown.length;
+  timelineEl.innerHTML = shown.length ? timelineHtml(shown, today) : '';
   if (!shown.length) {
-    timelineEl.innerHTML = '';
-    rootEl.innerHTML = `<div class="empty-state">${escapeHtml(t('schedule.empty'))}</div>`;
+    const note = `<div class="empty-state">${escapeHtml(others.length && where ? t('schedule.emptyHere', { where }) : t('schedule.empty'))}</div>`;
+    rootEl.innerHTML = heading + note + elseHtml;
+    rootEl.hidden = false;
     return;
   }
-  timelineEl.innerHTML = timelineHtml(shown, today);
   // in the order of time: the past, what is running now and what is coming, grouped by the month the event starts in (inside the shown year)
-  const byMonth = new Map();
-  shown.forEach((e) => {
-    const start = e.startDate < from ? from : e.startDate;
-    const month = parseDay(start).getMonth();
-    if (!byMonth.has(month)) byMonth.set(month, []);
-    byMonth.get(month).push(e);
-  });
-  rootEl.innerHTML = [...byMonth.keys()].sort((a, b) => a - b).map((month) => {
-    const name = new Date(year, month, 1, 12).toLocaleDateString(locale(), { month: 'long' });
-    const states = byMonth.get(month).map((e) => statusOf(e, today));
-    const tone = states.includes('now') ? ' now' : (states.every((x) => x === 'past') ? ' past' : '');
-    return `<h2 class="sch-month-title">${escapeHtml(name)}</h2><div class="sch-card${tone}">${byMonth.get(month).map((e) => rowHtml(e, today)).join('')}</div>`;
-  }).join('');
+  const mine = monthsHtml(shown, today, { from });
+  rootEl.innerHTML = (view === 'list' ? heading + mine : '') + elseHtml;
+  rootEl.hidden = !rootEl.innerHTML;
 }
 
 viewEl.addEventListener('click', (e) => {
@@ -179,6 +209,12 @@ rootEl.addEventListener('click', (e) => {
 rootEl.addEventListener('keydown', (e) => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && (e.target.classList.contains('sch-reg') || e.target.classList.contains('sch-club'))) { e.preventDefault(); goRegister(e.target); }
 });
+rootEl.addEventListener('click', (e) => {
+  const tab = e.target.closest('[data-city]');
+  if (!tab) return;
+  cityTab = tab.dataset.city;
+  render();
+});
 catEl.addEventListener('change', () => { cat = catEl.value; render(); });
 typeEl.addEventListener('change', () => { type = typeEl.value; render(); });
 
@@ -189,6 +225,7 @@ typeEl.addEventListener('change', () => { type = typeEl.value; render(); });
     rootEl.innerHTML = `<div class="empty-state">${escapeHtml(t('schedule.loadError'))}</div>`;
     return;
   }
+  try { elsewhere = await api(`/schedule/elsewhere?lang=${currentLang === 'en' ? 'en' : 'sk'}`); } catch { /* the other cities are an extra: the page works without them */ }
   if (year === null || !allYears().includes(year)) year = pickDefaultYear(); // (?year= in the address, else the current year)
   if (year === null) {
     rootEl.innerHTML = `<div class="empty-state">${escapeHtml(t('schedule.empty'))}</div>`;

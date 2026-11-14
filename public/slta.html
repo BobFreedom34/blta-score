@@ -65,7 +65,7 @@
   #map .m-pin .m-halo { transition: opacity .2s; }
   #map .m-pin:hover .m-core { r: 10.5px; }
   #map .m-lab rect { fill: rgba(10,10,10,.86); stroke-width: 1.4; }
-  #map .m-lab text { fill: #cfd2d8; font-size: 20px; font-weight: 800; letter-spacing: .02em; }
+  #map .m-lab text { fill: #cfd2d8; font-size: 14px; font-weight: 800; letter-spacing: .02em; }
   #map .m-pin.on .m-lab text { fill: #fff; }
   @keyframes m-pulse { 0% { transform: scale(.7); opacity: .85; } 100% { transform: scale(2.6); opacity: 0; } }
   .sl-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; font-size: 11px; font-weight: 800; color: #aeb2ba; text-transform: uppercase; letter-spacing: .06em; }
@@ -426,22 +426,22 @@ function draw() {
   pinsEl.innerHTML = cities.map((c, i) => {
     if (c.lat == null || c.lng == null) return '';
     const [x, y] = P(c.lng, c.lat); const on = i === sel; const col = colour[kind(c)];
-    const width = Math.round(c.name.length * 12.5 + 22);
+    const width = Math.round(c.name.length * 8.8 + 16);
     const left = x > VB.x + VB.w * 0.72 || x + width > VB.x + VB.w - 6;
     const lx = left ? x - 14 - width : x + 14;
     return '<g class="m-pin' + (on ? ' on' : '') + '" data-i="' + i + '">' +
-      '<circle cx="' + x + '" cy="' + y + '" r="30" fill="transparent"/>' +
+      '<circle cx="' + x + '" cy="' + y + '" r="24" fill="transparent"/>' +
       (on ? '<circle class="m-pulse" cx="' + x + '" cy="' + y + '" r="11" stroke="' + col + '"/><circle class="m-halo" cx="' + x + '" cy="' + y + '" r="19" fill="' + col + '" opacity=".22"/>' : '') +
       '<circle class="m-core" cx="' + x + '" cy="' + y + '" r="' + (on ? 10 : 7.5) + '" fill="' + col + '"/>' +
-      '<g class="m-lab" data-left="' + (left ? 1 : 0) + '" data-px="' + x + '"><rect x="' + lx + '" y="' + (y - 17) + '" width="' + width + '" height="34" rx="9" stroke="' + (on ? col : 'rgba(255,255,255,.22)') + '"/><text x="' + (lx + 11) + '" y="' + (y + 7) + '">' + esc(c.name) + '</text></g></g>';
+      '<g class="m-lab" data-left="' + (left ? 1 : 0) + '" data-px="' + x + '"><rect x="' + lx + '" y="' + (y - 12) + '" width="' + width + '" height="24" rx="7" stroke="' + (on ? col : 'rgba(255,255,255,.22)') + '"/><text x="' + (lx + 8) + '" y="' + (y + 5) + '">' + esc(c.name) + '</text></g></g>';
   }).join('');
   document.getElementById('legend').innerHTML = [['now', T.running], ['reg', T.regOpen], ['soon', T.soon]].concat(cities.some((c) => kind(c) === 'org') ? [['org', T.seekOrg]] : []).map(([k, l]) => '<span><i style="background:' + colour[k] + '"></i>' + esc(l) + '</span>').join('');
   // the name plate is as wide as its text (the text gets bigger on a phone)
   pinsEl.querySelectorAll('.m-lab').forEach((g) => {
     const text = g.querySelector('text'); const rect = g.querySelector('rect');
-    const w = Math.ceil(text.getBBox().width) + 22;
+    const w = Math.ceil(text.getBBox().width) + 16;
     rect.setAttribute('width', w);
-    if (g.dataset.left === '1') { const x = Number(g.dataset.px) - 14 - w; rect.setAttribute('x', x); text.setAttribute('x', x + 11); }
+    if (g.dataset.left === '1') { const x = Number(g.dataset.px) - 14 - w; rect.setAttribute('x', x); text.setAttribute('x', x + 8); }
   });
   const shown = cities.map((c, i) => ({ c, i })).filter((o) => fold(o.c.name).includes(q));
   listEl.innerHTML = shown.length

@@ -75,6 +75,7 @@
     const tags = `<span class="sch-tags"><span class="sch-tag${isLeague ? '' : ' tour'}">${escapeHtml(ev.kindLabel || t(isLeague ? 'schedule.league' : 'schedule.tournament'))}</span>`
       + (status === 'now' ? `<span class="sch-tag now">${escapeHtml(t('schedule.running'))}</span>` : '')
       + (status === 'past' ? `<span class="sch-tag past">${escapeHtml(t('schedule.finishedTag'))}</span>` : '')
+      + (ev.cityName ? `<span class="sch-tag sch-city">${escapeHtml(ev.cityName)}</span>` : '')
       + (org ? `<span class="sch-tag sch-club" role="link" tabindex="0" title="${escapeHtml(t('schedule.organiser', { name: org.name }))}" data-href="/community/${encodeURIComponent(org.slug)}">${escapeHtml(org.name)}</span>` : '')
       + '</span>';
     const chips = (ev.categories || []).map((c) => `<span class="sch-chip">${escapeHtml(categoryName(c))}</span>`).join('');
