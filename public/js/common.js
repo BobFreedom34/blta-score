@@ -1304,6 +1304,12 @@ const CONTACT_ICONS = {
   whatsapp: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
 };
 
+// the logo of the contact window: BLTA on blta.sk (the first city), the SLTA logo on slta.sk and on every other city (slta.sk/kosice, a city's own domain)
+function contactLogoHtml() {
+  const slta = window.CITY ? !window.CITY.first : /(^|.)slta.sk$/.test(window.location.hostname);
+  return slta ? '<img class="ct-logo" src="/img/slta-logo.png" alt="SLTA" width="500" height="141">' : '<img class="ct-logo" src="/img/blta-logo.png" alt="BLTA">';
+}
+
 function contactWindowHtml(c) {
   const link = (url) => (/^https?:\/\//i.test(url || '') ? url : '');
   const lines = [];
@@ -1317,7 +1323,7 @@ function contactWindowHtml(c) {
     .map(([key, name, url]) => `<a href="${escapeHtml(link(url))}" target="_blank" rel="noopener" aria-label="${name}" title="${name}"><svg viewBox="0 0 24 24" aria-hidden="true">${CONTACT_ICONS[key]}</svg></a>`).join('');
   return `
     <div class="ct-left">
-      <img class="ct-logo" src="/img/blta-logo.png" alt="BLTA">
+      ${contactLogoHtml()}
       ${c.orgName ? `<h2 class="ct-title" id="ct-title">${escapeHtml(c.orgName)}</h2>` : ''}
       <div class="ct-lines">${lines.join('')}</div>
     </div>

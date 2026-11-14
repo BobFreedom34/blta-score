@@ -4702,6 +4702,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .ct-close:hover { border-color: var(--orange); color: var(--orange); }
 .ct-left { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
 .ct-logo { width: 120px; height: auto; }
+.ct-logo[alt="SLTA"] { width: 190px; } /* the SLTA logo is wide: it needs more room than the round BLTA one */
 .ct-title { margin: 6px 0 0; font-size: 22px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
 .ct-lines { display: flex; flex-direction: column; gap: 6px; color: #e6e8ec; font-size: 15px; font-weight: 700; }
 .ct-lines p { margin: 0; overflow-wrap: anywhere; }
@@ -5758,8 +5759,8 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
    on a computer and a tablet and side by side on a phone. Change it here and it changes in both places. */
 :is(.sch-lists, .com-news-tournament) .sch-row.has-poster { overflow: hidden; isolation: isolate; }
 :is(.sch-lists, .com-news-tournament) .sch-row.has-poster .sch-title, :is(.sch-lists, .com-news-tournament) .sch-row.has-poster .sch-tags, :is(.sch-lists, .com-news-tournament) .sch-row.has-poster .sch-sub, :is(.sch-lists, .com-news-tournament) .sch-row.has-poster .sch-eta, :is(.sch-lists, .com-news-tournament) .sch-row.has-poster .home-bar { position: relative; z-index: 1; } /* (on a phone the info is display: contents: its pieces must stand over the veil themselves) */
-:is(.sch-lists, .com-news-tournament) .sch-row.has-poster::before { content: ''; position: absolute; inset: 0 auto 0 0; width: max(270px, 32%); z-index: 0; background: var(--poster) left center / cover no-repeat; opacity: 0.7; -webkit-mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); }
-:is(.sch-lists, .com-news-tournament) .sch-row.has-poster::after { content: ''; position: absolute; inset: 0 auto 0 0; width: max(270px, 32%); z-index: 0; background: linear-gradient(to right, rgba(10, 10, 10, 0.5), transparent); }
+:is(.sch-lists, .com-news-tournament) .sch-row.has-poster::before { content: ''; position: absolute; inset: 0 auto 0 0; width: max(270px, 32%); z-index: 0; background: var(--poster) left center / cover no-repeat; opacity: 0.85; -webkit-mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.14) 75%, rgba(0, 0, 0, 0.04) 90%, transparent 100%); }
+:is(.sch-lists, .com-news-tournament) .sch-row.has-poster::after { content: ''; position: absolute; inset: 0 auto 0 0; width: max(270px, 32%); z-index: 0; background: linear-gradient(to right, rgba(10, 10, 10, 0.25), transparent); }
 :is(.sch-lists, .com-news-tournament) .sch-date { font-size: 25px; }
 :is(.sch-lists, .com-news-tournament) .sch-date small { font-size: 14px; }
 :is(.sch-lists, .com-news-tournament) .sch-row.has-poster .sch-date { text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9); }
@@ -5771,7 +5772,7 @@ a.sp-item:hover { opacity: 1; transform: translateY(-2px); }
 }
 @media (max-width: 700px) {
   :is(.sch-lists, .com-news-tournament) .sch-row.has-poster::before { inset: 0 0 auto 0; width: auto; height: 160px; background: var(--poster-m) right top / cover no-repeat; -webkit-mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.45) 60%, rgba(0, 0, 0, 0.15) 85%, transparent 100%), linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.85) 25%, rgba(0, 0, 0, 0.5) 55%, rgba(0, 0, 0, 0.2) 80%, transparent 100%); mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.45) 60%, rgba(0, 0, 0, 0.15) 85%, transparent 100%), linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.85) 25%, rgba(0, 0, 0, 0.5) 55%, rgba(0, 0, 0, 0.2) 80%, transparent 100%); -webkit-mask-composite: source-in; mask-composite: intersect; }
-  :is(.sch-lists, .com-news-tournament) .sch-row.has-poster::after { inset: 0 0 auto 0; width: auto; height: 160px; background: linear-gradient(to bottom, rgba(10, 10, 10, 0.5), rgba(10, 10, 10, 0.35) 60%, transparent); }
+  :is(.sch-lists, .com-news-tournament) .sch-row.has-poster::after { inset: 0 0 auto 0; width: auto; height: 160px; background: linear-gradient(to bottom, rgba(10, 10, 10, 0.25), rgba(10, 10, 10, 0.15) 60%, transparent); }
 }
 
 /* Backend > Media on the dark page: headings, picture names and the outline buttons of the tiles are white (they were dark on dark) */
@@ -7008,3 +7009,12 @@ body:has(#player-bio-card) :is(.player-bio-card, .statistics-card, .rivals-card,
 .sv-plays { display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .sv-play { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: var(--radius-sm); border: 1px solid var(--green); background: rgba(178, 250, 6, 0.12); color: var(--green); font-weight: 800; text-decoration: none; white-space: nowrap; }
 .sv-play:hover { background: rgba(178, 250, 6, 0.2); }
+
+/* phone menu: the sign that opens a group is a big "+" (a "−" while it is open) in a round button, not a small arrow */
+@media (max-width: 1024px) {
+  .nav-item-dropdown-toggle > .nav-caret { font-size: 0; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; right: 10px; border-radius: 50%; background: rgba(255, 255, 255, 0.12); color: var(--white); }
+  .nav-item-dropdown-toggle > .nav-caret::after { content: '+'; font-size: 24px; font-weight: 300; line-height: 1; transform: translateY(-1px); }
+  .nav-item-dropdown.open > .nav-item-dropdown-toggle > .nav-caret { transform: translateY(-50%); color: var(--orange); }
+  .nav-item-dropdown.open > .nav-item-dropdown-toggle > .nav-caret::after { content: '\2212'; transform: translateY(-1px); }
+  .nav-item-dropdown-toggle a.nav-btn-green ~ .nav-caret, .nav-item-dropdown.open > .nav-item-dropdown-toggle a.nav-btn-green ~ .nav-caret { background: rgba(0, 0, 0, 0.14); color: #0a0a0a; font-size: 0; }
+}
