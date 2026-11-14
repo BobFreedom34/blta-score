@@ -153,7 +153,7 @@ const OPENED_TO_CLUB_ADMIN = ['DELETE /api/brackets/:id', 'DELETE /api/brackets/
   'POST /api/seasons/:id/draw/bracket', 'POST /api/seasons/:id/draw/live/commit', 'POST /api/seasons/:id/draw/live/prepare', 'POST /api/seasons/:id/draw/swiss-round', 'POST /api/seasons/:id/groups', 'POST /api/seasons/:id/groups/auto', 'POST /api/seasons/:id/groups/bulk', 'POST /api/seasons/:id/groups/clear', 'POST /api/seasons/:id/groups/live/commit', 'POST /api/seasons/:id/groups/live/prepare', 'POST /api/seasons/:id/groups/seeds', 'POST /api/seasons/:id/hero', 'POST /api/seasons/:id/logo', 'POST /api/seasons/:id/matches', 'POST /api/seasons/:id/registrations/admin',
   'POST /api/seasons/:id/registrations/categories', 'POST /api/seasons/:id/registrations/remind', 'POST /api/seasons/:id/schedule', 'POST /api/seasons/:id/schedule/auto',
   'POST /api/seasons/:id/seeds', 'POST /api/seasons/groups/:groupId/members', 'POST /api/seasons/groups/:groupId/members/:playerId/reinstate', 'POST /api/seasons/groups/:groupId/members/:playerId/withdraw',
-  'POST /api/seasons/groups/:groupId/members/import', 'PUT /api/seasons/:id/schedule/matches/:token'];
+  'POST /api/seasons/groups/:groupId/members/import', 'POST /api/seasons/registrations/:rid/replace', 'PUT /api/seasons/:id/schedule/matches/:token'];
 
 test('the scan finds the routes: the guarded ones are numerous, and the routes opened to the club admin are exactly the ones decided on', () => {
   routes = scanRoutes();

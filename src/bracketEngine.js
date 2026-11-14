@@ -499,7 +499,46 @@ function syncBracketMatches(bracketId) {
   return ids.length;
 }
 
+// The players of a match were changed (an admin put another player into it): the slot of the bracket that holds the match follows, and the player who had gone on
+// to the later rounds (a winner) is replaced there too, so the bracket and the final standings show the player who is in the match. -> the number of slots changed
+function followMatchPlayers(matchRow) {
+  const node = db.prepare('SELECT * FROM bracket_matches WHERE match_id = ?').get(matchRow.id);
+  if (!node) return 0;
+  const swaps = [];
+  if (node.player1_id !== matchRow.player1_id) swaps.push([node.player1_id, matchRow.player1_id]);
+  if (node.player2_id !== matchRow.player2_id) swaps.push([node.player2_id, matchRow.player2_id]);
+  if (!swaps.length) return 0;
+  const stamp = "updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
+  db.prepare(`UPDATE bracket_matches SET player1_id = ?, player2_id = ?, ${stamp} WHERE id = ?`).run(matchRow.player1_id, matchRow.player2_id, node.id);
+  let changed = 1;
+  swaps.forEach(([oldId, newId]) => {
+    if (!oldId || !newId) return;
+    if (node.manual_winner_id === oldId) db.prepare('UPDATE bracket_matches SET manual_winner_id = ? WHERE id = ?').run(newId, node.id);
+    db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round > ? AND (player1_id = ? OR player2_id = ? OR manual_winner_id = ?)').all(node.bracket_id, node.round, oldId, oldId, oldId).forEach((later) => {
+      db.prepare(`UPDATE bracket_matches SET player1_id = CASE WHEN player1_id = ? THEN ? ELSE player1_id END, player2_id = CASE WHEN player2_id = ? THEN ? ELSE player2_id END, manual_winner_id = CASE WHEN manual_winner_id = ? THEN ? ELSE manual_winner_id END, ${stamp} WHERE id = ?`).run(oldId, newId, oldId, newId, oldId, newId, later.id);
+      if (later.match_id) {
+        db.prepare("UPDATE matches SET player1_id = CASE WHEN player1_id = ? THEN ? ELSE player1_id END, player2_id = CASE WHEN player2_id = ? THEN ? ELSE player2_id END, winner_id = CASE WHEN winner_id = ? THEN ? ELSE winner_id END WHERE id = ? AND status != 'FINISHED'").run(oldId, newId, oldId, newId, oldId, newId, later.match_id);
+      }
+      changed += 1;
+    });
+  });
+  return changed;
+}
+
+// One-off repair: slots whose players differ from the players of their match (a player was changed in the match before the slot followed it): the match is right.
+function repairSlotsFromMatches() {
+  const rows = db.prepare(`
+    SELECT m.* FROM bracket_matches bm JOIN matches m ON m.id = bm.match_id
+    WHERE bm.player1_id IS NOT m.player1_id OR bm.player2_id IS NOT m.player2_id
+  `).all();
+  let fixed = 0;
+  rows.forEach((m) => { fixed += followMatchPlayers(m) ? 1 : 0; });
+  return fixed;
+}
+
 module.exports = {
+  followMatchPlayers,
+  repairSlotsFromMatches,
   placeLabel,
   nextPowerOfTwo,
   standardSeedOrder,

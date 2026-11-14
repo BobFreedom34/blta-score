@@ -506,6 +506,54 @@ test('a tournament bracket seats only players who are registered for it', async 
   assert.strictEqual(ok.status, 200, ok.text);
 });
 
+test('a player who left is replaced by another: registration (paid and seed stay), the slot of the bracket and the matches not played yet; a player who has played is refused', async () => {
+  const { tournament, people } = await tournamentWith('Replace Cup', { ELITE: 4 });
+  const p = people.ELITE;
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${p[0].reg.id}`, { paid: true })).status, 200);
+  await seed(tournament, 'ELITE', p, 2);
+  const br = await call('POST', '/api/brackets', { name: 'Replace Cup', format: 'BO3', size: 4, seasonId: tournament.id, category: 'ELITE', autoCreateMatches: true });
+  assert.strictEqual(br.status, 201, br.text);
+  const semis = (await call('GET', `/api/brackets/${br.json.id}`)).json.nodes.filter((n) => n.round === 1);
+  assert.strictEqual((await call('PATCH', `/api/brackets/${br.json.id}/slots/${semis[0].id}`, { player1Id: p[0].player.id, player2Id: p[1].player.id })).status, 200);
+  assert.strictEqual((await call('PATCH', `/api/brackets/${br.json.id}/slots/${semis[1].id}`, { player1Id: p[2].player.id, player2Id: p[3].player.id })).status, 200);
+  const url = (reg) => `/api/seasons/registrations/${reg.id}/replace`;
+  assert.strictEqual((await call('POST', url(p[0].reg), { name: 'X' }, { admin: false })).status, 401);
+  assert.strictEqual((await call('POST', url(p[0].reg), {})).status, 400, 'nobody chosen');
+  assert.strictEqual((await call('POST', url(p[0].reg), { playerId: p[1].player.id })).status, 409, 'already registered');
+  // a new player typed as text asks first, then replaces
+  const ask = await call('POST', url(p[0].reg), { name: 'Náhradník Cup' });
+  assert.strictEqual(ask.status, 409);
+  assert.strictEqual(ask.json.code, 'UNKNOWN_PLAYER');
+  const done = await call('POST', url(p[0].reg), { name: 'Náhradník Cup', confirmNew: true });
+  assert.strictEqual(done.status, 200, done.text);
+  assert.strictEqual(done.json.newPlayer, true);
+  assert.ok(done.json.slots >= 1 && done.json.matches >= 1, JSON.stringify(done.json));
+  const regs = (await call('GET', `/api/seasons/${tournament.id}/registrations`)).json;
+  const now = regs.find((r) => r.name === 'Náhradník Cup');
+  assert.ok(now, 'the registration has the new player');
+  assert.strictEqual(now.paid, true, 'paid stays');
+  assert.strictEqual(now.seed, 1, 'the seed stays');
+  assert.ok(!regs.some((r) => r.name === p[0].player.name), 'the old one is gone');
+  const tree = (await call('GET', `/api/brackets/${br.json.id}`)).json.nodes.find((n) => n.round === 1 && n.position === semis[0].position);
+  assert.strictEqual(tree.player1.name, 'Náhradník Cup', 'the slot of the bracket');
+  const matchNow = (await call('GET', `/api/matches/${tree.match.token}`)).json;
+  assert.strictEqual(matchNow.player1.name, 'Náhradník Cup', 'the match that was not played yet');
+  // an admin who puts another player into a match: the slot of the bracket follows
+  counter += 1;
+  const other = await call('POST', '/api/players', { name: `Zmena Zápasu ${counter}` });
+  const swap = await call('PATCH', `/api/matches/${tree.match.token}`, { player2Id: other.json.id });
+  assert.strictEqual(swap.status, 200, swap.text);
+  const after = (await call('GET', `/api/brackets/${br.json.id}`)).json.nodes.find((n) => n.round === 1 && n.position === semis[0].position);
+  assert.strictEqual(after.player2.name, other.json.name, 'the bracket follows the match');
+  // a player who has played: refused
+  const mt = tree.match.token;
+  const played = await call('POST', `/api/matches/${mt}/manual-result`, { sets: [{ p1: 6, p2: 2 }, { p1: 6, p2: 3 }], location: 'Kurt', scheduledAt: '2099-05-01T10:00:00.000Z' });
+  if (played.status === 200) {
+    const refused = await call('POST', url(now), { playerId: p[1].player.id === now.playerId ? p[2].player.id : (await call('POST', '/api/players', { name: 'Ďalší Náhradník' })).json.id });
+    assert.strictEqual(refused.status, 400, refused.text);
+  }
+});
+
 test('the page of the season has the saved draw (tile) and the record can be replayed', async () => {
   const page = (await call('GET', `/api/seasons/by-slug/${league.slug}`, undefined, { admin: false })).json;
   assert.strictEqual(page.liveDraws.length, 1);

@@ -1104,6 +1104,7 @@ function wireSeason(card) {
           ${r.remindedAt ? `<span style="font-size:11px;color:var(--gray)">${tl('pripomenuté', 'reminded')} ${escapeHtml(fmtDate(r.remindedAt))}</span>` : ''}
           ${!r.paid && r.email ? `<button type="button" class="sg-link" data-reg-remind title="${escapeHtml(tl('Pošle e-mail s pripomienkou platby', 'Sends an e-mail reminding about the payment'))}">✉ ${tl('Pripomenúť', 'Remind')}</button>` : ''}
           <button type="button" class="sg-link" data-reg-edit title="${escapeHtml(tl('Zmeniť kategóriu, telefón, e-mail alebo poznámku', 'Change the category, phone, e-mail or note'))}">${tl('Upraviť', 'Edit')}</button>
+          <button type="button" class="sg-link" data-reg-replace data-name="${escapeHtml(r.name)}" title="${escapeHtml(tl('Hráč odstúpil: nahradí ho iný hráč v registrácii, v skupine, v pavúku aj v neodohraných zápasoch', 'The player has left: another player takes his place in the registration, the group, the bracket and the matches not played yet'))}">${tl('Nahradiť', 'Replace')}</button>
           <button type="button" class="sg-link" data-reg-paid="${r.paid ? 0 : 1}">${r.paid ? tl('Zaplatené ✓', 'Paid ✓') : tl('Nezaplatené', 'Not paid')}</button>
           <button type="button" class="sg-link sg-unreg" data-reg-del data-name="${escapeHtml(r.name)}" title="${escapeHtml(tl('Odhlási hráča z turnaja (ak je plno, nastúpi prvý náhradník)', 'Withdraws the player from the tournament (when it is full, the first substitute comes in)'))}">${tl('Odhlásiť', 'Withdraw')}</button>
         </div>`);
@@ -1185,6 +1186,25 @@ function wireSeason(card) {
       } else if (e.target.closest('[data-reg-remind]')) {
         const res = await api(`/seasons/${id}/registrations/remind`, { method: 'POST', body: { ids: [Number(rid)] } });
         toast(res.sent ? tl('Pripomienka odoslaná', 'Reminder sent') : (res.recent ? tl('Dnes už bola pripomenutá', 'Already reminded today') : (res.failed ? tl('E-mail sa nepodarilo odoslať', 'The e-mail could not be sent') : tl('Bez e-mailu', 'No e-mail'))));
+        await loadRegs();
+      } else if (e.target.closest('[data-reg-replace]')) {
+        const who = e.target.closest('[data-reg-replace]').dataset.name || '';
+        const typed = (prompt(tl(`Kto nahradí hráča ${who}? Napíš meno hráča (aj nového, ktorý ešte nie je v aplikácii).`, `Who takes the place of ${who}? Type the name of the player (a new one who is not in the app yet works too).`)) || '').trim();
+        if (!typed) return;
+        const send = async (extra) => api(`/seasons/registrations/${rid}/replace`, { method: 'POST', body: { name: typed, ...extra } });
+        let made;
+        try { made = await send({}); } catch (err) {
+          const d = err.data || {};
+          if (d.code !== 'SIMILAR_PLAYERS' && d.code !== 'UNKNOWN_PLAYER') throw err;
+          if (d.code === 'SIMILAR_PLAYERS' && d.suggestions && d.suggestions.length) {
+            const first = d.suggestions[0];
+            if (confirm(tl(`Je „${typed}“ hráč ${first.name}? OK = áno, ten ho nahradí. Zrušiť = nie, vytvorí sa nový hráč.`, `Is "${typed}" the player ${first.name}? OK = yes, they take the place. Cancel = no, a new player is made.`))) made = await send({ playerId: first.id });
+            else if (confirm(tl(`Vytvoriť nového hráča „${typed}“ a dať ho na miesto ${who}?`, `Make a new player "${typed}" and put them in the place of ${who}?`))) made = await send({ confirmNew: true });
+            else return;
+          } else if (confirm(tl(`Hráč „${typed}“ zatiaľ neexistuje. Vytvoriť ho a dať na miesto ${who}?`, `There is no player "${typed}" yet. Make them and put them in the place of ${who}?`))) made = await send({ confirmNew: true });
+          else return;
+        }
+        toast(tl(`${made.old} nahradený hráčom ${made.name} (skupina: ${made.groups}, pavúk: ${made.slots}, zápasy: ${made.matches})`, `${made.old} replaced by ${made.name} (group: ${made.groups}, bracket: ${made.slots}, matches: ${made.matches})`));
         await loadRegs();
       } else if (e.target.closest('[data-reg-del]')) {
         const who = e.target.closest('[data-reg-del]').dataset.name || '';

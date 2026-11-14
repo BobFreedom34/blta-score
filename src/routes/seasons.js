@@ -27,6 +27,7 @@ const clubTournaments = require('../clubTournaments');
 const changeLog = require('../changeLog');
 const capacity = require('../registrationCapacity');
 const seasonActivity = require('../seasonActivity');
+const replacePlayer = require('../replacePlayer');
 const courtStreams = require('../courtStreams');
 const courtNames = require('../courtNames');
 const tournamentMatches = require('../tournamentMatches');
@@ -978,6 +979,30 @@ router.post('/:id/registrations/admin', clubTournaments.requireSeasonManager(clu
   seasonActivity.log(season.id, substitute ? 'REGISTER_WAIT' : 'REGISTER', player.name, player.id);
   if (doublesTournament && !substitute) { try { tournamentDraw.addPair(season, { player: player.id, partner: partnerName }); } catch { /* the organiser makes the pair */ } }
   res.status(201).json({ ...serializeRegistrationsOf(season, [db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(info.lastInsertRowid)])[0], newPlayer: !!found.created, loginReady });
+});
+
+// "Nahradiť hráča": the registered player leaves and another one takes his place everywhere (registration, group, bracket slot, matches not played yet):
+// { playerId } or { name (+ confirmNew) } for a player who is not in the list - a similar name asks first, as when a player is added to a group
+router.post('/registrations/:rid/replace', clubTournaments.requireSeasonManager(clubTournaments.byRegistrationId), (req, res) => {
+  const reg = db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(Number(req.params.rid));
+  if (!reg) return res.status(404).json({ error: 'Registration not found' });
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(reg.season_id);
+  const body = req.body || {};
+  const typed = typeof body.name === 'string' ? body.name.trim() : '';
+  if ((body.playerId === undefined || body.playerId === null || body.playerId === '') && !typed) return res.status(400).json({ error: 'Choose the new player' });
+  const found = resolveMemberPlayer(body, season.league_id);
+  if (found.error) return res.status(400).json({ error: found.error });
+  if (found.conflict) {
+    return res.status(409).json({ error: found.conflict.code === 'SIMILAR_PLAYERS' ? 'Similar players exist — choose who you mean' : 'No such player yet — confirm to create a new one', ...found.conflict });
+  }
+  const oldName = reg.name;
+  const done = replacePlayer.replaceInSeason(season, reg, found.player, { keepContact: auth.isAdmin(req) });
+  if (done.error) return res.status(done.status || 400).json({ error: done.error, code: done.code });
+  seasonActivity.log(season.id, 'UNREGISTER', oldName, reg.player_id);
+  seasonActivity.log(season.id, 'REGISTER', found.player.name, found.player.id);
+  const io = req.app.get('io');
+  if (io && done.matches) io.emit('matches:changed', { seasonId: season.id, status: 'REPLACED' });
+  res.json({ ...done, newPlayer: !!found.created, name: found.player.name, old: oldName });
 });
 
 // The admin changes a registration: what is sent is changed, the rest stays — paid, category ('' = no category, tournaments only),

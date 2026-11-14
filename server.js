@@ -208,6 +208,15 @@ try {
   console.error('Rankings seed failed (will retry on next start):', err);
 }
 try {
+  if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'bracket_slots_follow_matches'").get()) {
+    const fixed = require('./src/bracketEngine').repairSlotsFromMatches();
+    db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('bracket_slots_follow_matches')").run();
+    if (fixed) console.log('Bracket slots set to the players of their match: ' + fixed);
+  }
+} catch (err) {
+  console.error('Bracket slot repair failed (will retry on next start):', err);
+}
+try {
   require('./src/rankingExpiry').seed(); // the dated items of the BLTA points that are there today (once)
 } catch (err) {
   console.error('Defence of points seed failed (will retry on next start):', err);
