@@ -24,7 +24,10 @@ function weekRange() {
 function pickSeason(seasons) {
   const today = new Date().toISOString().slice(0, 10);
   const current = seasons.find((s) => s.startDate && s.endDate && s.startDate <= today && today <= s.endDate && s.groups.length);
-  return current || seasons.find((s) => s.matchCount > 0) || seasons[0] || null;
+  if (current) return current;
+  // nothing is running: the one that starts next (the soonest), else the latest one that has matches
+  const next = seasons.filter((s) => s.startDate && s.startDate > today).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+  return next || seasons.find((s) => s.matchCount > 0) || seasons[0] || null;
 }
 
 function soft(promise, fallback) {

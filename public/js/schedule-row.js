@@ -82,7 +82,7 @@
     const sub = `${ev.venue ? `<span class="sch-venue">${escapeHtml(ev.venue)}<i class="sch-dot"> · </i></span>` : ''}<b class="sch-cats">${chips}</b><span class="sch-extra">${eta ? escapeHtml(` · ${eta}`) : ''}</span>`;
     // the green button of an open registration (it sits inside the link of the row, so it is a link by role: the page's click handler leads it); a closed one is the grey button
     let reg = '';
-    if (ev.link && status !== 'past' && ev.registration === 'open') reg = `<span class="sch-reg" role="link" tabindex="0" data-href="${escapeHtml(`${ev.link}#register`)}">${escapeHtml(t('schedule.register'))}</span>`;
+    if (ev.link && status !== 'past' && ev.registration === 'open') reg = `<span class="sch-reg" role="link" tabindex="0" data-href="${escapeHtml(ev.link)}">${escapeHtml(t('schedule.register'))}</span>`;
     else if (ev.link && status !== 'past' && ev.registration === 'closed') reg = `<span class="sch-reg off">${escapeHtml(t('season.registerClosed'))}</span>`;
     const go = ev.link ? `<span class="sch-go">${escapeHtml(t('schedule.more'))} ›</span>` : '';
     const more = reg ? `<span class="sch-acts">${reg}${go}</span>` : (go || '<span></span>');

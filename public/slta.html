@@ -96,6 +96,14 @@
   .sl-city .sl-city-arrow { position: absolute; top: 9px; right: 11px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800; line-height: 1; color: var(--orange); text-decoration: none; transition: transform .15s; } /* the way to the league of the city: an orange arrow in the corner, as on the tiles of the home page of blta.sk */
   .sl-city .sl-city-arrow:hover { transform: translate(2px, -2px); }
   .sl-city .sl-city-go { display: block; text-align: center; margin-top: 4px; padding: 7px 9px; font-size: 10px; letter-spacing: .06em; line-height: 1.3; }
+  /* on a phone two tiles side by side; only a very small phone puts them one under the other */
+  @media (max-width: 860px) {
+    .sl-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .sl-city { padding: 10px 10px; }
+    .sl-city b { font-size: 15px; }
+    .sl-city .sl-city-state, .sl-city .sl-city-go, .sl-city .sl-city-org { font-size: 9.5px; letter-spacing: .03em; padding-left: 4px; padding-right: 4px; }
+  }
+  @media (max-width: 339px) { .sl-list { grid-template-columns: minmax(0, 1fr); } }
   .sl-addcity { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 11px 13px; border: 1px solid var(--green); border-radius: var(--radius); background: rgba(178, 250, 6, .12); color: #fff; text-decoration: none; transition: background .15s; } /* "your city is missing": the green veil, a plus, and the button to the organisers */
   .sl-addcity:hover { background: rgba(178, 250, 6, .2); }
   .sl-addcity-head { display: flex; align-items: center; gap: 9px; }

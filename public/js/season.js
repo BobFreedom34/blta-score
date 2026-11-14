@@ -1087,7 +1087,7 @@ async function refresh() {
   await loadFinal();
   await loadGallery();
   await loadEventThread();
-  const wantsRegister = window.location.hash === '#register'; // the green "Registrácia" button of a schedule row (slta.sk) leads here
+  const wantsRegister = window.location.hash === '#register'; // an old link with #register still opens the form (the green button of a schedule row now opens the event itself)
   tab = (wantsRegister ? '' : window.location.hash.slice(1)) || null; // renderTabs picks the first tab with content when there is none
   await render();
   window.dispatchEvent(new CustomEvent('blta:season-tab', { detail: { tab } }));

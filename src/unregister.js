@@ -1,4 +1,4 @@
-// A player who registered can drop out himself, up to a number of hours before the event starts (the organiser sets the number in the Backend, in the section Štartovné a
+// A player who registered can drop out himself, up to a number of hours before the day of the draw (the draw date; an event without one: before it starts) (the organiser sets the number in the Backend, in the section Štartovné a
 // registrácia: seasons.unregister_hours; empty = the player cannot drop out alone). The start of a tournament is its first day at the start of its playing day
 // (the planning setting, 09:00 unless set), the start of a league season is midnight of its first day (Bratislava time). Once the draw is made (the player is in a
 // group or a bracket, or has matches) he can no longer drop out alone: the organiser does it.
@@ -6,6 +6,12 @@ const db = require('./db');
 const tournamentSchedule = require('./tournamentSchedule');
 
 const HOUR = 3600 * 1000;
+
+// the moment the hours are counted back from: the day of the draw (its midnight, Bratislava time) when the event has a draw date, else the start of the event
+function referenceMs(season) {
+  if (season && /^\d{4}-\d{2}-\d{2}$/.test(String(season.draw_date || ''))) return tournamentSchedule.localToUtcMs(season.draw_date, '00:00');
+  return startMs(season);
+}
 
 function startMs(season) {
   if (!season || !season.start_date) return null;
@@ -16,7 +22,7 @@ function startMs(season) {
 // the moment after which he cannot drop out any more (UTC milliseconds), or null when the player cannot drop out at all
 function deadlineMs(season) {
   if (!season || season.unregister_hours === null || season.unregister_hours === undefined) return null;
-  const start = startMs(season);
+  const start = referenceMs(season);
   return start === null ? null : start - season.unregister_hours * HOUR;
 }
 

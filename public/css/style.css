@@ -7018,3 +7018,6 @@ body:has(#player-bio-card) :is(.player-bio-card, .statistics-card, .rivals-card,
   .nav-item-dropdown.open > .nav-item-dropdown-toggle > .nav-caret::after { content: '\2212'; transform: translateY(-1px); }
   .nav-item-dropdown-toggle a.nav-btn-green ~ .nav-caret, .nav-item-dropdown.open > .nav-item-dropdown-toggle a.nav-btn-green ~ .nav-caret { background: rgba(0, 0, 0, 0.14); color: #0a0a0a; font-size: 0; }
 }
+
+/* the two logins of the Backend (Super admin / City admin): the selected one is orange with white text, as every other selected tab (it was white on white) */
+.tab[data-mode].active { background: var(--orange); color: var(--white); border-color: var(--orange); }

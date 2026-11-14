@@ -3969,7 +3969,14 @@ function fixPublicLink(e) {
   const base = adminSessionInfo && adminSessionInfo.acting && adminSessionInfo.acting.publicBase;
   if (!a || !base) return;
   if (!a.dataset.publicPath) a.dataset.publicPath = a.getAttribute('href') || '';
-  if (a.dataset.publicPath.startsWith('/')) a.href = base + a.dataset.publicPath;
+  if (a.dataset.publicPath.startsWith('/')) {
+    // the address of the page in the language in use (/season/x is /sezona/x: the code address alone is a 404), then the site of the city
+    const L = window.BLTA_LOCALIZE;
+    let path = a.dataset.publicPath;
+    try { path = (L && L.toPublic(path, typeof currentLang !== 'undefined' ? currentLang : 'sk')) || path; } catch { /* keep the plain path */ }
+    const next = base + path;
+    if (a.getAttribute('href') !== next) a.setAttribute('href', next);
+  }
 }
 ['pointerover', 'pointerdown', 'focusin', 'click', 'auxclick', 'contextmenu'].forEach((type) => document.addEventListener(type, fixPublicLink, true));
 // At slta.sk/<city>/… the links of the tab bar carry the prefix of the city (/kosice/badges-admin): compared without it, so the tabs a city admin

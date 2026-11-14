@@ -189,6 +189,21 @@ test('the page: the button "Odhlásiť sa" replaces the registration of a regist
 });
 
 // ---------------------------------------------------------------- run
+test('the hours are counted back from the draw date when the event has one (midnight of the draw day), else from the start', async () => {
+  const t = setup.t;
+  assert.strictEqual((await setHours(t, 24)).status, 200);
+  const d = day(12);
+  const set = await call('PATCH', `/api/seasons/${t.id}`, { cookie: setup.owner.cookie, body: { drawDate: d } });
+  assert.strictEqual(set.status, 200, JSON.stringify(set.json));
+  const who = await makePlayer('Un Zrebovany');
+  assert.strictEqual((await register(t, who)).status, 201);
+  const mine = (await view(t, who.cookie)).myRegistration;
+  const expected = new Date(`${d}T00:00:00Z`).getTime() - 3600000 - 24 * 3600000; // midnight in Bratislava is 22:00 / 23:00 UTC the day before
+  assert.ok(Math.abs(new Date(mine.deadline).getTime() - expected) <= 3600000, `24 hours before the draw day: ${mine.deadline}`);
+  const label = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'seasons-admin.js'), 'utf8');
+  assert.ok(label.includes('hodín pred dátumom žrebovania') && label.includes('hours before the draw date'));
+});
+
 async function main() {
   let failed = 0;
   try {
