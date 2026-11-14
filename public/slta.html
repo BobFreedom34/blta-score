@@ -42,12 +42,14 @@
   .sl-hero h1 { margin: 0 0 12px; font-size: 52px; line-height: 1.04; font-weight: 800; color: #fff; text-transform: none; letter-spacing: -.01em; max-width: 780px; }
   .sl-hero h1 em { font-style: normal; color: var(--green); }
   .sl-hero p { margin: 0 0 22px; color: #c3c7cf; font-size: 17px; max-width: 560px; line-height: 1.5; }
-  .sl-search { display: flex; align-items: center; gap: 10px; max-width: 440px; background: var(--fill-grey); border: 1px solid rgba(255,255,255,.14); border-radius: var(--radius-md); padding: 0 16px; }
+  .sl-search { display: flex; align-items: center; gap: 10px; max-width: 440px; background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid rgba(255,255,255,.14); border-radius: var(--radius-md); padding: 0 16px; }
   .sl-search:focus-within { border-color: var(--orange); }
   .sl-search svg { color: var(--orange); flex: none; }
   .sl-search input { flex: 1; min-width: 0; height: 50px; background: none; border: 0; outline: 0; color: #fff; font: inherit; font-size: 15px; font-weight: 600; box-shadow: none; padding: 0; }
   .sl-search input::placeholder { color: #8b8f98; }
-  .sl-picker { display: grid; grid-template-columns: 1.2fr 1fr; gap: 22px; align-items: start; }
+  .sl-picker { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-items: start; } /* the cities (tiles) above the map, on a phone and on a desktop */
+  .sl-picker .sl-list { order: -1; }
+  .sl-picker .sl-map { width: 100%; max-width: 760px; margin: 0 auto; }
   /* the map: the 8 regions of Slovakia, the rivers, the mountains and the cities */
   .sl-map { position: relative; padding: 0; background: none; border: 0; }
   .sl-map svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -72,24 +74,32 @@
     #map .m-lab text { font-size: 25px; }
     #map .m-rl { font-size: 15px; }
       }
-  .sl-list { display: flex; flex-direction: column; gap: 10px; align-content: start; }
-  .sl-city { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; font: inherit; color: #fff; background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-md); padding: 14px 16px; cursor: pointer; transition: border-color .15s; }
+  .sl-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; align-content: start; }
+  .sl-city { display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%; min-width: 0; text-align: left; font: inherit; color: #fff; padding: 11px 13px; cursor: pointer; transition: border-color .15s; }
   .sl-city:hover { border-color: var(--orange); }
-  .sl-city.on { border-color: var(--green); background: #2f2f36; }
-  .sl-city b { display: block; font-size: 17px; font-weight: 800; }
+  .sl-city.on { border-color: var(--green); }
+  .sl-city.seek { border-style: dashed; border-color: #5a5e68; }
+  .sl-city.seek:hover { border-color: var(--orange); }
+  .sl-city.seek.on { border-color: var(--green); }
+  .sl-city-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .sl-city b { display: block; font-size: 16px; font-weight: 800; overflow-wrap: anywhere; line-height: 1.2; }
   .sl-city small { color: #aeb2ba; font-size: 12px; font-weight: 600; }
-  .sl-city .sl-tag { margin-left: auto; }
-  /* the status of the city and, when its registration is open, the green button under it */
-  .sl-city-side { margin-left: auto; display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
-  .sl-city-side .sl-tag { margin-left: 0; justify-content: center; } /* the tag and the button under it are as wide as each other */
-  .sl-city .sl-city-go { padding: 6px 9px; font-size: 10px; letter-spacing: .06em; line-height: 1.3; white-space: nowrap; } /* the type of the tag above it */
+  .sl-city .sl-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: #5a5e68; }
+  .sl-city .sl-dot.now { background: var(--orange); }
+  .sl-city .sl-dot.reg { background: var(--green); }
+  .sl-city .sl-dot.org { background: #fff; }
+  .sl-city .sl-city-state { color: #d3d6dc; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; line-height: 1.3; }
+  .sl-city .sl-city-state.reg { display: block; text-align: center; padding: 7px 9px; margin-top: 4px; border: 1px solid var(--green); border-radius: var(--radius-sm); background: rgba(178, 250, 6, .12); color: var(--green); } /* the registration is open: a green button with the green veil and the green border */
+  .sl-city .sl-city-org { display: block; text-align: center; margin-top: 4px; padding: 7px 9px; border: 1px solid #fff; border-radius: var(--radius-sm); color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; line-height: 1.3; text-decoration: none; transition: background .15s, border-color .15s; } /* a city that looks for an organiser: a white outlined button to the part for organisers */
+  .sl-city .sl-city-org:hover { background: rgba(255, 255, 255, .12); border-color: var(--orange); }
+  .sl-city .sl-city-go { display: block; text-align: center; margin-top: 4px; padding: 7px 9px; font-size: 10px; letter-spacing: .06em; line-height: 1.3; }
   .sl-tag { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-sm); padding: 4px 9px; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
   .sl-tag.now { background: var(--orange); color: #fff; }
   .sl-tag.reg { background: var(--green); color: #0a0a0a; }
   .sl-tag.soon { border: 1px solid #5a5e68; color: #d3d6dc; }
   .sl-tag.org { border: 1px solid #fff; color: #fff; }
   .sl-empty { color: #aeb2ba; padding: 14px; font-weight: 600; }
-  .sl-det { margin-top: 88px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; background: var(--fill-grey); border: 1px solid var(--green); border-radius: var(--radius); padding: 22px 26px; box-shadow: 0 0 30px -12px rgba(178,250,6,.4); }
+  .sl-det { margin-top: 88px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid var(--green); border-radius: var(--radius); padding: 22px 26px; box-shadow: 0 0 30px -12px rgba(178,250,6,.4); }
   .sl-det[hidden] { display: none; }
   .sl-sched[hidden] { display: none; }
   .sl-sched .sch-month-title:first-child { margin-top: 0; }
@@ -105,25 +115,25 @@
   .sl-btn.g:hover { background: #c6ff3a; }
   .sl-btn.o { background: var(--orange); color: #fff; }
   .sl-btn.o:hover { background: #ff6a22; }
-  .sl-btn.d { background: var(--fill-grey); color: #fff; border-color: rgba(255,255,255,.2); }
+  .sl-btn.d { background: linear-gradient(160deg, #41414a, #2e2e35); color: #fff; border-color: rgba(255,255,255,.2); }
   .sl-btn.d:hover { border-color: var(--orange); }
   /* the "Schedule ↓" under the numbers of the city card: just text */
   .sl-det-go { grid-column: 1 / -1; justify-self: center; background: none; border: 0; padding: 4px 8px; font: inherit; font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--green); cursor: pointer; }
   .sl-det-go:hover { color: #fff; }
-  .sl-btn.off { background: var(--fill-grey); color: #8b8f98; border-color: rgba(255,255,255,.1); cursor: default; }
+  .sl-btn.off { background: linear-gradient(160deg, #41414a, #2e2e35); color: #8b8f98; border-color: rgba(255,255,255,.1); cursor: default; }
   .sl-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .sl-stats[hidden], .home-mine-grid[hidden] { display: none; }
-  .sl-stat { background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 18px 20px; }
+  .sl-stat { background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 18px 20px; }
   .sl-stat b { display: block; font-size: 34px; font-weight: 800; line-height: 1.1; }
   .sl-stat small { color: #aeb2ba; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
   /* a menu link scrolls so the heading stays under the sticky header, not behind it */
   html { scroll-padding-top: 80px; }
   .sl-sec { margin: 0 0 14px; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; color: #fff; }
   .sl-how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .sl-how div { background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 22px; }
+  .sl-how div { background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 22px; }
   .sl-feat { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
   /* two columns; the picture stands on the left of the title and the text */
-  .sl-feat-card { display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 16px; align-items: start; background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 20px; }
+  .sl-feat-card { display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 16px; align-items: start; background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 20px; }
   .sl-feat-card .sl-feat-ico { grid-row: 1 / span 2; }
   .sl-feat-ico { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: var(--radius-sm); background: #0f0f12; border: 1px solid rgba(178,250,6,.35); color: var(--green); }
   .sl-feat-ico svg { width: 24px; height: 24px; }
@@ -169,7 +179,7 @@
   .sl-field { display: block; margin-bottom: 14px; }
   .sl-field > span { display: block; margin-bottom: 6px; color: #c3c7cf; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
   .sl-field > span i { font-style: normal; font-weight: 600; color: #8b8f98; text-transform: none; letter-spacing: 0; }
-  .sl-field input, .sl-field textarea { width: 100%; box-sizing: border-box; background: var(--fill-grey); border: 1px solid rgba(255,255,255,.14); border-radius: var(--radius-sm); color: #fff; font: inherit; font-size: 15px; font-weight: 600; padding: 12px 14px; outline: 0; box-shadow: none; }
+  .sl-field input, .sl-field textarea { width: 100%; box-sizing: border-box; background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid rgba(255,255,255,.14); border-radius: var(--radius-sm); color: #fff; font: inherit; font-size: 15px; font-weight: 600; padding: 12px 14px; outline: 0; box-shadow: none; }
   .sl-field textarea { min-height: 96px; resize: vertical; }
   .sl-field input:focus, .sl-field textarea:focus { border-color: var(--orange); }
   .sl-field input::placeholder, .sl-field textarea::placeholder { color: #6f737c; font-weight: 500; }
@@ -190,7 +200,7 @@
   @media (max-width: 860px) { .sl-org { grid-template-columns: 1fr; padding: 26px 22px; } .sl-org h2 { font-size: 24px; } .sl-org .sl-btns { min-width: 0; } }
   /* questions and answers: two columns of compact foldable rows in the grey of the other blocks */
   .sl-faq { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; align-items: start; counter-reset: faq; }
-  .sl-faq details { counter-increment: faq; background: var(--fill-grey); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); transition: border-color .2s, box-shadow .2s; }
+  .sl-faq details { counter-increment: faq; background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); transition: border-color .2s, box-shadow .2s; }
   .sl-faq details:hover { border-color: rgba(255,255,255,.18); }
   .sl-faq details[open] { border-color: rgba(178, 250, 6, 0.55); box-shadow: 0 0 24px -12px rgba(178, 250, 6, 0.5); }
   .sl-faq summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 14px 16px; font-size: 15px; font-weight: 800; line-height: 1.25; color: #fff; }
@@ -435,7 +445,7 @@ function draw() {
   });
   const shown = cities.map((c, i) => ({ c, i })).filter((o) => fold(o.c.name).includes(q));
   listEl.innerHTML = shown.length
-    ? shown.map((o) => `<div role="button" tabindex="0" class="sl-city${o.i === sel ? ' on' : ''}" data-i="${o.i}"><div><b>${esc(o.c.name)}</b><small>${esc(o.c.brandName)}${o.c.activePlayers ? ` · ${o.c.activePlayers} ${word('players', o.c.activePlayers)}` : ''}</small></div><div class="sl-city-side"><span class="sl-tag ${kind(o.c)}">${esc(label(o.c))}</span>${o.c.url && o.c.registrationOpen ? `<a class="sl-btn o sl-city-go" href="${esc(o.c.url)}">${T.enter}</a>` : ''}</div></div>`).join('')
+    ? shown.map((o) => `<div role="button" tabindex="0" class="sl-city grey-tile${kind(o.c) === 'org' ? ' seek' : ''}${o.i === sel ? ' on' : ''}" data-i="${o.i}"><div class="sl-city-head"><span class="sl-dot ${kind(o.c)}"></span><b>${esc(o.c.name)}</b></div><small>${esc(o.c.brandName)}${o.c.activePlayers ? ` · ${o.c.activePlayers} ${word('players', o.c.activePlayers)}` : ''}</small>${kind(o.c) === 'org' ? `<a class="sl-city-org" href="#organizator">${esc(label(o.c))}</a>` : `<span class="sl-city-state ${kind(o.c)}">${esc(label(o.c))}</span>`}${o.c.url && o.c.registrationOpen ? `<a class="sl-btn o sl-city-go" href="${esc(o.c.url)}">${T.enter}</a>` : ''}</div>`).join('')
     : `<div class="sl-empty">${T.none}</div>`;
   const c = cities[sel];
   if (!c) { detEl.hidden = true; return; }
@@ -693,7 +703,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('click', (e) => {
-  if (e.target.closest('.sl-city-go')) return; // the link goes to the league of the city
+  if (e.target.closest('.sl-city-go') || e.target.closest('.sl-city-org')) return; // the link goes to the league of the city
   const t = e.target.closest('#map [data-i], #list [data-i]');
   if (!t) return;
   sel = Number(t.dataset.i);
