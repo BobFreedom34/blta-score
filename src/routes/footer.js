@@ -3,6 +3,7 @@
 // can point at; PUT saves everything the editor has; DELETE goes back to the built-in footer.
 const express = require('express');
 const settings = require('../footerSettings');
+const nationalMenu = require('../nationalMenu');
 const footer = require('../footer');
 const leagues = require('../leagues');
 const db = require('../db');
@@ -26,6 +27,17 @@ function citiesFor(scope) {
   return scope === settings.NATIONAL ? list : [{ slug: 'slta', name: 'SLTA (the national site)' }, ...list];
 }
 const view = (scope) => ({ scope: scope === settings.NATIONAL ? 'national' : scope, settings: settings.get(scope), builtIn: footer.builtIn(scope), pages: settings.pageCodes(), cities: citiesFor(scope) });
+
+// the menu in the header of the national site (super admin only)
+const menuView = () => ({ items: nationalMenu.get(), builtIn: nationalMenu.BUILT_IN, pages: settings.pageCodes(), max: nationalMenu.MAX_ITEMS });
+const superOnly = (req, res, next) => (auth.isSuperAdmin(req) ? next() : res.status(403).json({ error: 'Only the super admin can change the menu of the national site' }));
+router.get('/menu', auth.requireAdmin, superOnly, (req, res) => res.json(menuView()));
+router.put('/menu', auth.requireAdmin, superOnly, (req, res) => {
+  const saved = nationalMenu.set(req.body && req.body.items);
+  if (saved.error) return res.status(400).json({ error: saved.error });
+  res.json(menuView());
+});
+router.delete('/menu', auth.requireAdmin, superOnly, (req, res) => { nationalMenu.reset(); res.json(menuView()); });
 
 router.get('/', auth.requireAdmin, (req, res) => {
   const scope = scopeOf(req, res);

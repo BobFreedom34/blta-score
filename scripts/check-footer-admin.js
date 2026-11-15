@@ -194,6 +194,27 @@ test('the national site has its own footer, only the super admin changes it', as
   }
 });
 
+const navOf = (html) => (/<nav class="nav-links" id="nav-links">[\s\S]*?<\/nav>/.exec(html) || [''])[0];
+
+test('the menu of the national site: built-in until saved, then the saved one (both languages), bad input refused, super admin only, reset', async () => {
+  assert.strictEqual((await blta('/api/footer/menu')).status, 401);
+  const built = navOf((await slta('/')).body);
+  assert.ok(built.includes('>Mestá<') && built.includes('>Organizátori<'), built);
+  assert.strictEqual((await blta('/api/footer/menu', { cookie: admin })).json.items, null);
+  const items = [{ sk: 'Domov', en: 'Home', url: '#mesta' }, { sk: 'Rebríčky', en: 'Rankings', page: '/slta-rankings' }, { sk: 'Blog', en: 'Blog', url: 'https://example.com/blog' }];
+  assert.strictEqual((await blta('/api/footer/menu', { method: 'PUT', body: { items: [{ sk: 'X', en: 'X', url: 'javascript:alert(1)' }] }, cookie: admin })).status, 400);
+  assert.strictEqual((await blta('/api/footer/menu', { method: 'PUT', body: { items: [{ sk: 'X', en: 'X', page: '/nope' }] }, cookie: admin })).status, 400);
+  assert.strictEqual((await blta('/api/footer/menu', { method: 'PUT', body: { items }, cookie: admin })).status, 200);
+  const sk = navOf((await slta('/')).body);
+  assert.ok(sk.includes('>Domov<') && sk.includes('href="https://example.com/blog"') && !sk.includes('Organizátori'), sk);
+  const en = navOf((await slta('/en')).body);
+  assert.ok(en.includes('>Home<') && en.includes('>Rankings<') && !en.includes('Domov'), en);
+  const rank = navOf((await slta(/href="([^"]*)" data-nav="rank"/.exec(sk)[1])).body);
+  assert.ok(/class="on"/.test(rank), 'the item of the page that is shown is marked: ' + rank);
+  assert.strictEqual((await blta('/api/footer/menu', { method: 'DELETE', cookie: admin })).status, 200);
+  assert.ok(navOf((await slta('/')).body).includes('Organizátori'));
+});
+
 test('reset goes back to the built-in footer (also for the groups); the backend page and its tab exist', async () => {
   assert.strictEqual((await blta('/api/footer', { method: 'DELETE', cookie: admin })).status, 200);
   const f = footerOf((await blta('/')).body);

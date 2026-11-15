@@ -132,8 +132,83 @@
         <button type="button" class="btn btn-outline" data-act="reset" style="color:#fff;border-color:rgba(255,255,255,.45)">Reset the whole footer to the built-in one</button>
         <a href="/" target="_blank" rel="noopener" style="color:var(--orange);text-decoration:underline;font-size:13px">Open the site ↗</a>
         <span id="fa-msg" style="font-weight:600"></span>
+      </div>
+      ${nat ? '<div id="fa-menu" class="card" style="margin-top:22px"></div>' : ''}`;
+    if (nat) loadMenu();
+  }
+
+  // ---- the menu in the header of the national site (GET / PUT / DELETE /api/footer/menu) ----
+  let menu = null; // { items: [...] | null (built-in), builtIn, pages, max }
+  let items = []; // the editor's copy
+
+  function loadMenu() {
+    return api('/footer/menu').then((d) => { menu = d; items = clone(d.items || d.builtIn); renderMenu(); });
+  }
+  const menuPageOptions = (selected) => menu.pages.map((p) => `<option value="${esc(p.code)}"${p.code === selected ? ' selected' : ''}>${esc(p.label)}</option>`).join('');
+  function renderMenu() {
+    const box = document.getElementById('fa-menu');
+    if (!box) return;
+    box.innerHTML = `
+      <strong>Menu in the header (slta.sk)</strong>
+      <div style="color:var(--gray);font-size:13px;margin:4px 0 0">${menu.items ? 'Your own menu.' : 'This is the built-in menu. Change anything and save to use your own.'} A link to a page follows its address in Backend → SEO; an address like <code>#mesta</code> jumps to a part of the home page.</div>
+      <div id="fm-items">${items.map((it, i) => {
+    const isPage = !!it.page;
+    return `<div class="fm-item" data-i="${i}" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px">
+          <input type="text" class="fm-sk" maxlength="40" placeholder="Text (Slovak)" value="${esc(it.sk)}" style="${small};flex:1 1 130px;min-width:110px">
+          <input type="text" class="fm-en" maxlength="40" placeholder="Text (English)" value="${esc(it.en)}" style="${small};flex:1 1 130px;min-width:110px">
+          <select class="fm-type" aria-label="Goes to" style="${small}"><option value="page"${isPage ? ' selected' : ''}>A page of the site</option><option value="url"${isPage ? '' : ' selected'}>An address</option></select>
+          ${isPage ? `<select class="fm-page" aria-label="Page" style="${small};flex:1 1 160px;min-width:140px">${menuPageOptions(it.page)}</select>` : `<input type="text" class="fm-url" maxlength="300" placeholder="https://…, /path or #part" value="${esc(it.url)}" style="${small};flex:1 1 160px;min-width:140px">`}
+          <button type="button" class="btn btn-sm btn-outline" data-mact="up" aria-label="Move up"${i === 0 ? ' disabled' : ''}>↑</button>
+          <button type="button" class="btn btn-sm btn-outline" data-mact="down" aria-label="Move down"${i === items.length - 1 ? ' disabled' : ''}>↓</button>
+          <button type="button" class="btn btn-sm btn-outline" data-mact="del" aria-label="Remove the item">✕</button>
+        </div>`;
+  }).join('')}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px">
+        <button type="button" class="btn btn-sm btn-outline" data-mact="add"${items.length >= menu.max ? ' disabled' : ''}>+ Add an item</button>
+        <button type="button" class="btn btn-primary" data-mact="save">Save the menu</button>
+        ${menu.items ? '<button type="button" class="btn btn-outline" data-mact="reset" style="color:#fff;border-color:rgba(255,255,255,.45)">Back to the built-in menu</button>' : ''}
+        <span id="fm-msg" style="font-weight:600"></span>
       </div>`;
   }
+  function readMenu() {
+    items = [...document.querySelectorAll('#fm-items .fm-item')].map((el) => {
+      const it = { sk: el.querySelector('.fm-sk').value, en: el.querySelector('.fm-en').value };
+      if (el.querySelector('.fm-type').value === 'page') it.page = (el.querySelector('.fm-page') || {}).value || menu.pages[0].code;
+      else it.url = (el.querySelector('.fm-url') || {}).value || '';
+      return it;
+    });
+  }
+  host.addEventListener('change', (e) => { if (e.target.classList.contains('fm-type')) { readMenu(); renderMenu(); } });
+  host.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-mact]');
+    if (!btn) return;
+    const act = btn.dataset.mact;
+    const msg = (t, bad) => { const m = document.getElementById('fm-msg'); if (m) { m.textContent = t; m.style.color = bad ? 'var(--danger)' : 'var(--green, #2e9e4f)'; } };
+    try {
+      readMenu();
+      const i = Number(btn.closest('.fm-item') ? btn.closest('.fm-item').dataset.i : -1);
+      if (act === 'save') {
+        menu = await api('/footer/menu', { method: 'PUT', body: { items } });
+        items = clone(menu.items || menu.builtIn);
+        renderMenu();
+        msg('Saved ✓ — the menu is changed on the site');
+        return;
+      }
+      if (act === 'reset') {
+        if (!window.confirm('Put the menu back to the built-in one? Your items are lost.')) return;
+        menu = await api('/footer/menu', { method: 'DELETE' });
+        items = clone(menu.builtIn);
+        renderMenu();
+        msg('Back to the built-in menu ✓');
+        return;
+      }
+      if (act === 'add') items.push({ sk: '', en: '', page: menu.pages[0].code });
+      else if (act === 'del') items.splice(i, 1);
+      else if (act === 'up') move(items, i, -1);
+      else if (act === 'down') move(items, i, 1);
+      renderMenu();
+    } catch (err) { msg(err.message, true); }
+  });
 
   // the editor's fields into the model (before any change of the structure and before saving)
   function read() {

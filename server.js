@@ -45,6 +45,7 @@ const cityScope = require('./src/cityScope');
 const leagues = require('./src/leagues');
 const auth = require('./src/auth');
 const national = require('./src/national');
+const nationalMenu = require('./src/nationalMenu');
 const seasonsRouter = require('./src/routes/seasons');
 const invitesRouter = require('./src/routes/invites');
 const highlightsRouter = require('./src/routes/highlights');
@@ -542,7 +543,9 @@ app.use((req, res, next) => {
       const key = rankPage ? 'slta-rankings' : 'slta';
       const html = seo.render(key, { origin: national.origin(req), canonical: rankPage ? '/slta-rankings' : '/', lang, siteName: 'SLTA' });
       // the addresses the page links to, in its own language
+      // the menu of the header is the one written in Backend > Footer (national site)
       return res.type('html').send(html
+        .replace(/<nav class="nav-links" id="nav-links">[\s\S]*?<\/nav>/, () => nationalMenu.html(lang, rankPage ? '/slta-rankings' : '/'))
         .replace(/\{\{HOME\}\}/g, seo.pageUrl('/', lang))
         .replace(/\{\{RANKINGS\}\}/g, seo.pageUrl('/slta-rankings', lang))
         .replace(/\{\{RANKINGS_SK\}\}/g, seo.pageUrl('/slta-rankings', 'sk'))
