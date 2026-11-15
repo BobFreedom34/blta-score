@@ -887,12 +887,12 @@ router.patch('/:id/schedule/settings', clubTournaments.requireSeasonManager(club
   res.json(tournamentSchedule.getSchedule(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
 });
 
-// { mode: 'fill' | 'rebuild' | 'compact' | 'clear' | 'unlock' } (compact: unlocked planned matches move forward where time was freed;
+// { mode: 'fill' | 'backfill' | 'rebuild' | 'compact' | 'clear' | 'unlock' } (backfill: the matches without a time are laid out from the start of the first day, not from now; compact: unlocked planned matches move forward where time was freed;
 // unlock: every planned match is unlocked, none is moved) — the planner puts the matches without a time on the courts (see tournamentSchedule.autoPlan)
 router.post('/:id/schedule/auto', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
-  const mode = ['fill', 'rebuild', 'compact', 'clear', 'unlock'].includes(req.body && req.body.mode) ? req.body.mode : 'fill';
+  const mode = ['fill', 'backfill', 'rebuild', 'compact', 'clear', 'unlock'].includes(req.body && req.body.mode) ? req.body.mode : 'fill';
   const done = tournamentSchedule.autoPlan(season.id, { mode });
   if (done.error) return res.status(400).json({ error: done.error });
   scheduleChanged(req, season);

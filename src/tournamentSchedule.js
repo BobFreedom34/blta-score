@@ -527,8 +527,12 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
   }
 
   const rows = loadMatches(seasonId).filter((r) => r.player1_id && r.player2_id);
-  const entries = planningEntries(rows, settings, now);
   const windows = settings.days.map((day) => [localToUtcMs(day, settings.dayTimes[day].start), localToUtcMs(day, settings.dayTimes[day].end)]);
+  // backfill ("build it backwards"): the matches without a time are laid out from the START of the first playing day, whatever time it is now - for a tournament
+  // whose matches were played before anybody put them on the courts. They are locked, so the planner does not move them afterwards.
+  const backfill = mode === 'backfill';
+  if (backfill) now = Math.min(now, Math.min(...windows.map((w) => w[0])));
+  const entries = planningEntries(rows, settings, now);
   const notBefore = Math.ceil(now / (GRID_MIN * MIN)) * GRID_MIN * MIN;
   const lengthOf = (r) => durationOf(r, settings);
   const update = db.prepare("UPDATE matches SET scheduled_at = ?, court_no = ?, slot_locked = ?, location = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?");
@@ -565,7 +569,7 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
     const found = findSlot(entries, settings, windows, players, lengthOf(r), notBefore, r.id);
     if (!found) { skipped += 1; return; }
     entries.push({ id: r.id, players, court: found.court, interval: found.slot });
-    update.run(new Date(found.slot[0]).toISOString(), found.court, 0, courtLabel(settings, found.court), r.id);
+    update.run(new Date(found.slot[0]).toISOString(), found.court, backfill ? 1 : 0, courtLabel(settings, found.court), r.id);
     placed += 1;
   });
   return { placed, skipped, moved };

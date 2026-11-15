@@ -248,6 +248,7 @@ function csAdminHtml() {
       <div class="cs-admin-row">
         <button type="button" class="btn btn-sm btn-primary" data-cs="addmatch">+ ${tl('Pridať zápas', 'Add a match')}</button>
         <button type="button" class="btn btn-sm btn-primary" data-cs="fill">${tl('Poskladať rozvrh', 'Build the schedule')}</button>
+        <button type="button" class="btn btn-sm btn-outline" data-cs="backfill" title="${escapeHtml(tl('Zápasy bez času rozloží od začiatku dňa, nie od aktuálneho času: pre zápasy, ktoré sa už odohrali skôr. Zápasy sa zamknú.', 'Lays the matches without a time out from the start of the day, not from now: for matches that were already played earlier. The matches get locked.'))}">${tl('Poskladať spätne', 'Build it backwards')}</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="compact" title="${escapeHtml(tl('Posunie nezamknuté zápasy dopredu tam, kde sa uvoľnil čas (zápas skončil skôr, bol skrátený)', 'Moves the unlocked matches earlier where time was freed (a match ended early or was shortened)'))}">${tl('Zhustiť rozvrh', 'Compact the schedule')}</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="rebuild">${tl('Prepočítať odznova', 'Rebuild from scratch')}</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="unlock">${tl('Odomknúť všetky zápasy', 'Unlock all matches')}</button>
@@ -645,6 +646,8 @@ async function initCourtSchedule(host, season) {
       csOpenAddMatch();
     } else if (kind === 'fill') {
       csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'fill' } }), tl('Rozvrh poskladaný', 'Schedule built'));
+    } else if (kind === 'backfill') {
+      if (confirm(tl('Poskladať spätne? Zápasy bez času sa rozložia od začiatku dňa (nie od aktuálneho času) a zamknú sa. Zápasy, ktoré už majú čas, ostanú.', 'Build it backwards? The matches without a time are laid out from the start of the day (not from now) and locked. Matches that already have a time stay.'))) csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'backfill' } }), tl('Rozvrh poskladaný spätne', 'Schedule built backwards'));
     } else if (kind === 'compact') {
       csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'compact' } }), tl('Zápasy posunuté dopredu', 'Matches moved earlier'));
     } else if (kind === 'rebuild') {

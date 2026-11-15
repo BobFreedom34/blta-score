@@ -59,6 +59,23 @@ test('an unscheduled match says why: it does not fit into the day (DAY_END), or 
   void fresh;
 });
 
+
+test('"build it backwards": a match without a time is laid out from the start of the day even when the day is over; the ordinary fill finds no room; the placed match is locked', () => {
+  const season = Number(db.prepare("INSERT INTO seasons (name, slug, kind, start_date, end_date, court_count, match_minutes, day_start, day_end, rest_minutes, auto_schedule, categories) VALUES ('Back Cup', 'back-cup', 'TOURNAMENT', ?, ?, 2, 35, '10:00', '12:00', 0, 0, 'ELITE')").run(DAY, DAY).lastInsertRowid);
+  const players = ['M', 'N', 'O', 'P'].map((n) => Number(db.prepare('INSERT INTO players (name) VALUES (?)').run(`Back ${n}`).lastInsertRowid));
+  const add = (p1, p2, token) => Number(db.prepare("INSERT INTO matches (share_token, category, player1_id, player2_id, format, status, state, season_id) VALUES (?, 'ELITE', ?, ?, 'BEST_OF_3', 'PLANNED', '{}', ?)").run(token, p1, p2, season).lastInsertRowid);
+  const a = add(players[0], players[1], 'backtok1');
+  const b = add(players[2], players[3], 'backtok2');
+  const evening = at('17:30');
+  const normal = schedule.autoPlan(season, { mode: 'fill', now: evening });
+  assert.strictEqual(normal.placed, 0, 'after the end of the day nothing fits');
+  const res = schedule.autoPlan(season, { mode: 'backfill', now: evening });
+  assert.ok(!res.error, res.error);
+  assert.strictEqual(res.placed, 2);
+  const rows = [a, b].map((id) => db.prepare('SELECT court_no, scheduled_at, slot_locked FROM matches WHERE id = ?').get(id));
+  assert.ok(rows.every((r) => r.scheduled_at === iso(at('10:00')) && r.slot_locked === 1), JSON.stringify(rows));
+  assert.deepStrictEqual(rows.map((r) => r.court_no).sort(), [1, 2], 'two courts, both at the start of the day');
+});
 let failed = 0;
 for (const { name, fn } of tests) {
   try { fn(); console.log(`PASS  ${name}`); } catch (err) { failed += 1; console.log(`FAIL  ${name}\n      ${String(err && err.stack).split('\n').slice(0, 5).join('\n      ')}`); }
