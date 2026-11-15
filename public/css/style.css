@@ -7021,3 +7021,11 @@ body:has(#player-bio-card) :is(.player-bio-card, .statistics-card, .rivals-card,
 
 /* the two logins of the Backend (Super admin / City admin): the selected one is orange with white text, as every other selected tab (it was white on white) */
 .tab[data-mode].active { background: var(--orange); color: var(--white); border-color: var(--orange); }
+
+/* "Prehrať žreb" must not run out of its tile on a phone: it fits the tile and wraps when it has to */
+.sv-plays { max-width: 100%; min-width: 0; }
+.sv-play { max-width: 100%; box-sizing: border-box; white-space: normal; text-align: left; line-height: 1.25; }
+@media (max-width: 480px) { .sv-play { font-size: 14px; padding: 4px 10px; gap: 5px; } }
+
+/* the reason a match has no time yet (in the tray "Nerozvrhnuté") */
+.cs-chip .cs-why { display: block; margin-top: 4px; font-size: 11px; line-height: 1.35; font-weight: 600; color: #f0b27a; white-space: normal; max-width: 240px; }

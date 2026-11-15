@@ -336,7 +336,9 @@ router.get('/by-slug/:slug', (req, res) => {
 // the manager of a season (an admin, or the admin of the club that runs it) reads it by id: the manage page of a club tournament starts from this
 router.get('/:id(\\d+)', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
-  res.json({ ...serializeSeason(season), organisation: clubTournaments.publicFace(season).organisation });
+  // withdrawn: the players who dropped out (or were taken out) and are not registered again, for the list of registrations in the Backend
+  const withdrawn = seasonActivity.withdrawn(season.id, db.prepare('SELECT player_id, name FROM season_registrations WHERE season_id = ?').all(season.id));
+  res.json({ ...serializeSeason(season), organisation: clubTournaments.publicFace(season).organisation, withdrawn });
 });
 
 // ---------- registration to a season ----------

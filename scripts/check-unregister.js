@@ -204,6 +204,15 @@ test('the hours are counted back from the draw date when the event has one (midn
   assert.ok(label.includes('hodín pred dátumom žrebovania') && label.includes('hours before the draw date'));
 });
 
+test('the Backend sees who dropped out (and is not registered again): GET /api/seasons/:id lists them, the list of registrations shows them', async () => {
+  const r = await call('GET', `/api/seasons/${setup.t.id}`, { cookie: setup.owner.cookie });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.json));
+  assert.ok(Array.isArray(r.json.withdrawn), 'withdrawn is a list');
+  assert.ok(r.json.withdrawn.every((w) => w.name && w.at), JSON.stringify(r.json.withdrawn));
+  const admin = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'seasons-admin.js'), 'utf8');
+  assert.ok(admin.includes("tl('Odhlásení', 'Withdrawn')"), 'the section is drawn under the registered players');
+});
+
 async function main() {
   let failed = 0;
   try {

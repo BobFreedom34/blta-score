@@ -141,6 +141,8 @@ router.get('/session', (req, res) => {
     // to send back here since this is always the logged-in player reading
     // their own session, never someone else's.
     playerEmail: player ? player.email : null,
+    playerPhone: player ? player.phone : null, // for prefilling the registration form of a season / tournament
+    playerCategory: player ? player.category || null : null,
     // Unrelated to playerId/isPlayer above — a referee session (see the
     // "Referee" button/modal in match.js, src/routes/referee.js) carries
     // no player identity at all, just a yes/no. Reported here rather than

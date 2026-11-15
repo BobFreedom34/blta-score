@@ -11,7 +11,7 @@ const courtStreams = require('./courtStreams');
 const courtNames = require('./courtNames');
 
 const TZ = 'Europe/Bratislava';
-const GRID_MIN = 15; // start times are on a 15-minute grid from the start of the playing day
+const GRID_MIN = 5; // start times are on a 5-minute grid from the start of the playing day
 const MAX_DAYS = 14;
 const MIN = 60 * 1000;
 
@@ -320,10 +320,39 @@ function tournamentEnded(season, now = Date.now()) {
 }
 
 // everything the schedule tab shows
+// Why a planned match has no time yet: { code, from?, end?, max? } — 'DAY_END' (it would start after the last moment a match fits into the day: from = the earliest start,
+// end = the end of the last day), 'DAY_LIMIT' (a player would play more than the limit a day), 'NO_ROOM' (every court is taken until the end), 'WAIT' (a place exists:
+// it waits for the planner / the button "Poskladať rozvrh"), 'NO_COURTS'. Used for the tray of unscheduled matches.
+function whyUnscheduled(row, rows, settings, now) {
+  if (!settings.courtCount) return { code: 'NO_COURTS' };
+  if (!settings.days.length) return { code: 'NO_DAYS' };
+  const entries = planningEntries(rows, settings, now);
+  const windows = settings.days.map((day) => [localToUtcMs(day, settings.dayTimes[day].start), localToUtcMs(day, settings.dayTimes[day].end)]);
+  const notBefore = Math.ceil(now / (GRID_MIN * MIN)) * GRID_MIN * MIN;
+  const length = durationOf(row, settings);
+  const players = playersOf(row);
+  if (findSlot(entries, settings, windows, players, length, notBefore, row.id)) return { code: 'WAIT' };
+  const lastEnd = Math.max(...windows.map((w) => w[1]));
+  const hhmm = (t) => new Intl.DateTimeFormat('sk-SK', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(t));
+  if (settings.maxPerDay) {
+    const mine = entries.filter((e) => e.id !== row.id && e.players.some((p) => players.includes(p)));
+    const full = windows.every(([ws]) => players.some((p) => mine.filter((e) => e.players.includes(p) && dayOf(e.interval[0]) === dayOf(ws)).length >= settings.maxPerDay));
+    if (full) return { code: 'DAY_LIMIT', max: settings.maxPerDay };
+  }
+  const rest = settings.restMinutes * MIN;
+  const free = Math.max(notBefore, ...entries.filter((e) => e.id !== row.id && e.players.some((p) => players.includes(p))).map((e) => e.interval[1] + rest));
+  if (free + length > lastEnd) return { code: 'DAY_END', from: hhmm(free), end: hhmm(lastEnd) };
+  return { code: 'NO_ROOM', end: hhmm(lastEnd) };
+}
+
 function getSchedule(season, now = Date.now()) {
   const settings = settingsOf(season);
   const rows = loadMatches(season.id).filter((r) => r.player1_id && r.player2_id);
-  const matches = rows.map((r) => serializeMatch(r, settings, now));
+  const matches = rows.map((r) => {
+    const m = serializeMatch(r, settings, now);
+    if (r.status === 'PLANNED' && !r.scheduled_at) m.why = whyUnscheduled(r, rows, settings, now);
+    return m;
+  });
   return {
     seasonId: season.id,
     // (for the page of the schedule on the whole screen: its heading and the way back)
@@ -416,11 +445,19 @@ function setLocked(season, token, locked) {
 // ---------- planning ----------
 
 // the courts and the players as they are now: one entry per match that has a time — { id, players, court (1-based or null), interval }
+// a planned match on a court whose start is already past (but not by more than half a day: an old one that was never played does not hold a court)
+function overdue(row, interval, now) {
+  return row.status === 'PLANNED' && !!row.court_no && interval[0] <= now && now - interval[0] < 12 * 60 * MIN;
+}
+
 function planningEntries(rows, settings, now) {
   const entries = [];
   rows.forEach((r) => {
-    const interval = intervalOf(r, settings, now);
+    let interval = intervalOf(r, settings, now);
     if (!interval) return;
+    // a match whose time has come but that was neither started nor finished is most likely being played: it keeps its court until the next planning
+    // (as a running one does), else the court would look free to the planner while the players are still on it
+    if (overdue(r, interval, now)) interval = [interval[0], Math.max(interval[1], now + 15 * MIN)];
     entries.push({ id: r.id, players: playersOf(r), court: r.court_no && r.court_no <= settings.courtCount ? r.court_no : null, interval });
   });
   return entries;
@@ -441,14 +478,14 @@ function slotProblem(entries, settings, players, court, slot, ignoreId) {
   return '';
 }
 
-// the earliest slot (on the 15-minute grid, inside a playing day, not before `notBefore`, and — when `before` is given — starting
+// the earliest slot (on the 5-minute grid, inside a playing day, not before `notBefore`, and — when `before` is given — starting
 // before it) where some court is free and both players are free with their rest; { court, slot } or null
 function findSlot(entries, settings, windows, players, duration, notBefore, ignoreId, before) {
   for (let w = 0; w < windows.length; w += 1) {
     const [ws, we] = windows[w];
     if (we <= notBefore) continue;
     const first = Math.max(ws, notBefore);
-    // the starts to try: the 15-minute grid, and the moments something ends (a court is free, a player is free after his rest), so a match can follow another at once
+    // the starts to try: the 5-minute grid, and the moments something ends (a court is free, a player is free after his rest), so a match can follow another at once
     // (matches of 40 minutes fit three into 2 hours instead of leaving 5 minutes after each)
     const rest = settings.restMinutes * MIN;
     const starts = new Set();
@@ -500,7 +537,7 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
   let moved = 0;
 
   if (mode === 'compact') {
-    const candidates = rows.filter((r) => r.status === 'PLANNED' && r.court_no && r.scheduled_at && !r.slot_locked)
+    const candidates = rows.filter((r) => r.status === 'PLANNED' && r.court_no && r.scheduled_at && !r.slot_locked && !(Date.parse(r.scheduled_at) <= now && now - Date.parse(r.scheduled_at) < 12 * 60 * MIN)) // (a match that is overdue is taken as being played: it stays)
       .sort((a, b) => Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at) || a.id - b.id);
     candidates.forEach((r) => {
       const entry = entries.find((e) => e.id === r.id);

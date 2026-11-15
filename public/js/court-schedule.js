@@ -7,7 +7,7 @@
 
 const CS_TZ = 'Europe/Bratislava';
 const CS_PX = 2.8; // pixels per minute of the timeline (a 30-minute match is high enough for the whole card: time, two players, category)
-const CS_SNAP = 15; // minutes
+const CS_SNAP = 5; // minutes
 const CS_MS = 60 * 1000;
 
 // the name of a court (the organiser may name them as the club marks them: Kurt 6, Kurt 1 …); the courts are 1 … n inside
@@ -201,7 +201,7 @@ function csTrayHtml() {
   const chips = waiting.map((m) => {
     const movable = csState.admin;
     return `<a class="cs-chip ${csStatusClass(m)}${movable ? ' cs-drag' : ''}" href="/match/${m.token}" draggable="false" data-token="${m.token}" ${movable ? 'data-drag="1"' : ''}>
-      <span class="cs-m-pl">${csPlayersHtml(m)}</span><span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span></a>`;
+      <span class="cs-m-pl">${csPlayersHtml(m)}</span><span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>${m.why ? `<span class="cs-why">${escapeHtml(t(`courts.why.${m.why.code}`, m.why))}</span>` : ''}</a>`;
   }).join('');
   return `<div class="cs-tray"><div class="cs-tray-h">${escapeHtml(t('courts.unscheduled'))}<em>${waiting.length}</em></div><div class="cs-tray-body">${chips || `<span class="cs-tray-empty">${escapeHtml(t('courts.trayEmpty'))}</span>`}</div></div>`;
 }

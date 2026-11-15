@@ -528,6 +528,7 @@ function seasonCardHtml(s) {
                 ${field(tl('Koniec dňa', 'End of the day'), input('dayEnd', s.planning.dayEnd, 'type="time"'))}
                 <div class="sa-field sa-full" data-day-times>${dayTimesHtml(s.startDate, s.endDate, s.planning.dayTimes || {}, s.planning.dayStart, s.planning.dayEnd)}</div>
                 <label class="sa-field sa-check"><input type="checkbox" data-field="autoSchedule"${s.planning.autoSchedule ? ' checked' : ''}> ${tl('Rozvrh skladá systém sám', 'The system builds the schedule itself')}</label>
+                <span class="sa-hint sa-full">${tl('Keď je to zapnuté, zápasy sa po žrebovaní a po každom výsledku samy rozdelia na kurty a časy podľa kritérií, ktoré sme zadali vyššie (dĺžka zápasu, začiatok a koniec dňa, oddych hráča, max. zápasov hráča za deň). Zápasy skladá tak, aby hráči čakali čo najmenej: skôr sa hrá nižšie kolo a v kole najprv dvojica, ktorej hráči sa už najdlhšie nehrali (skončili skôr). Keď zápas skončí skôr, nasledujúce sa posunú dopredu. Keď je to vypnuté, rozvrh si skladáš a upravuješ sám v časti Rozpis.', 'When this is on, the matches are placed on the courts and times by themselves after the draw and after every result, by the criteria set above (match length, start and end of the day, player rest, max. matches per player per day). It plans so that the players wait as little as possible: an earlier round is played first, and within a round the pair whose players have been free the longest (finished earlier) goes first. When a match ends early, the following ones move forward. When it is off, you build and edit the schedule yourself in the Schedule part.')}</span>
               </div>
             </section>` : ''}
 
@@ -1093,6 +1094,7 @@ function wireSeason(card) {
       const unpaidCount = rows.filter((r) => !r.paid).length;
       regsBtn.textContent = `${tl('Registrácie', 'Registrations')} (${rows.length}${unpaidCount ? ` · ${unpaidCount} ${tl('nezapl.', 'unpaid')}` : ''})`;
       const players = await loadAdminPlayers();
+      const gone = await api(`/seasons/${id}`).then((x) => x.withdrawn || []).catch(() => []); // the ones who dropped out
       const shown = rows.filter((r) => regFilter === 'all' || (regFilter === 'sub' ? r.substitute : regFilter === 'paid' ? r.paid : !r.paid));
       const regRow = (r) => (r.id === editingReg ? regEditHtml(r) : `
         <div class="sa-reg-row" data-reg="${r.id}">
@@ -1112,7 +1114,11 @@ function wireSeason(card) {
         <section class="sa-section">
           <h4>${tl('Prihlásení', 'Registered')} (${shown.length})</h4>
           ${shown.length ? shown.map(regRow).join('') : `<div class="sg-empty">${rows.length ? tl('Nikto v tomto filtri.', 'Nobody in this filter.') : tl('Zatiaľ žiadne registrácie.', 'No registrations yet.')}</div>`}
-        </section>`;
+        </section>`
+        + (gone.length ? `<section class="sa-section">
+          <h4>${tl('Odhlásení', 'Withdrawn')} (${gone.length})</h4>
+          ${gone.map((g) => `<div class="sa-reg-row" style="opacity:.75"><div style="flex:1;min-width:220px"><strong>${escapeHtml(g.name)}</strong> <span class="sa-chip">${tl('Odhlásený', 'Withdrawn')}</span><div style="font-size:12px;color:var(--gray);margin-top:6px">${escapeHtml(fmtDate(g.at))}</div></div></div>`).join('')}
+        </section>` : '');
       wireAddPlayerForm(players);
     } catch (err) { fail(err); }
   }

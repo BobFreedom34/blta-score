@@ -728,6 +728,14 @@ async function openRegisterModal() {
   if (isDoublesTournament()) setupAutocomplete('sv-reg-partner', 'sv-reg-partner-list');
   if (playerAuthed && currentPlayerName) $('name').value = currentPlayerName;
   if (typeof currentPlayerEmail === 'string' && currentPlayerEmail) $('email').value = currentPlayerEmail;
+  // the e-mail and the phone from the profile of the logged-in player (the session says them: it is the player's own)
+  if (playerAuthed) api('/player/session').then((me) => {
+    if (!me || !wrap.isConnected) return;
+    if (me.playerEmail && !$('email').value) $('email').value = me.playerEmail;
+    if (me.playerPhone && !$('phone').value) $('phone').value = me.playerPhone;
+    // the category of his profile, when the event has it (and it is the player who chooses a category)
+    if (me.playerCategory && $('cat') && !$('cat').value && [...$('cat').options].some((o) => o.value === me.playerCategory)) { $('cat').value = me.playerCategory; $('cat').dispatchEvent(new Event('change')); }
+  }).catch(() => {});
   $('name').focus();
 
   // the maximum of players is reached (for the chosen category, or for the whole event): the registration is a substitute one - the form says so before it is sent
@@ -1017,7 +1025,7 @@ function openTab(key) {
 }
 
 rootEl.addEventListener('click', async (e) => {
-  if (e.target.closest('#sv-register')) { openRegisterModal(); return; }
+  if (e.target.closest('#sv-register')) { requirePlayerAuth(openRegisterModal); return; } // only a registered player registers: the login / sign-up window comes first
   if (e.target.closest('#sv-unregister')) {
     if (!window.confirm(t('season.unregisterConfirm', { name: season.name }))) return;
     try {
@@ -1091,7 +1099,7 @@ async function refresh() {
   tab = (wantsRegister ? '' : window.location.hash.slice(1)) || null; // renderTabs picks the first tab with content when there is none
   await render();
   window.dispatchEvent(new CustomEvent('blta:season-tab', { detail: { tab } }));
-  if (wantsRegister && season.registrationAvailable && document.getElementById('sv-register')) openRegisterModal();
+  if (wantsRegister && season.registrationAvailable && document.getElementById('sv-register')) requirePlayerAuth(openRegisterModal);
   if (typeof io === 'function') {
     io().on('matches:changed', () => {
       clearTimeout(refreshTimer);
