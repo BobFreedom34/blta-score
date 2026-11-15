@@ -118,7 +118,7 @@ function countUnreadNotifications(playerId) {
 
 router.get('/session', (req, res) => {
   const playerId = auth.getPlayerId(req);
-  const player = playerId ? db.prepare('SELECT id, name, slug, login_pin, email, photo_url FROM players WHERE id = ?').get(playerId) : null;
+  const player = playerId ? db.prepare('SELECT id, name, slug, login_pin, email, phone, category, photo_url FROM players WHERE id = ?').get(playerId) : null;
   // Cheap enough to compute on every page load (two indexed COUNTs) — lets
   // the nav bell's unread bubble (see common.js) stay in sync without its
   // own separate poll. 0 for a logged-out visitor or an admin with no

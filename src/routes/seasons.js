@@ -379,7 +379,9 @@ router.post('/:id/registrations', async (req, res) => {
   if (phone.replace(/\D/g, '').length < 9 || phone.length > 20) return res.status(400).json({ code: 'BAD_PHONE', error: 'Enter a valid phone number' });
   // a tournament entry has no category: the admin sorts the players into categories afterwards
   // (a season without categories has none either: its groups are made by the organiser)
-  const noCategory = season.kind === 'TOURNAMENT' || season.categories === 'OPEN';
+  // (the pop-up of Backend > Popups asks no category either: the organiser knows the players and sorts them; only a logged-in player, for himself)
+  const sortedByOrganiser = body.popup === true && auth.getPlayerId(req) !== null && Number(body.playerId) === auth.getPlayerId(req) && !body.category;
+  const noCategory = season.kind === 'TOURNAMENT' || season.categories === 'OPEN' || sortedByOrganiser;
   const entryCategory = noCategory ? '' : body.category;
   if (!noCategory && !parseCategories(season.categories).includes(body.category)) return res.status(400).json({ code: 'BAD_CATEGORY', error: 'Choose a category' });
   const note = typeof body.note === 'string' ? body.note.replace(/\r\n/g, '\n').trim() : '';

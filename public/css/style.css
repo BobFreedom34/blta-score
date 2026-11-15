@@ -7029,3 +7029,35 @@ body:has(#player-bio-card) :is(.player-bio-card, .statistics-card, .rivals-card,
 
 /* the reason a match has no time yet (in the tray "Nerozvrhnuté") */
 .cs-chip .cs-why { display: block; margin-top: 4px; font-size: 11px; line-height: 1.35; font-weight: 600; color: #f0b27a; white-space: normal; max-width: 240px; }
+
+/* the pop-up that asks a player to register for the next season or tournament (js/event-popup.js, managed in Backend > Popups): the registration window with a headline, the dates, the data filled in and two answers */
+.ep .ep-headline { margin: 0 0 6px; font-size: 19px; font-weight: 800; line-height: 1.25; }
+.ep .ep-message { margin: 0 0 10px; color: var(--gray); font-size: 14px; line-height: 1.45; }
+.ep .ep-facts { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 14px; padding: 9px 12px; border-radius: var(--radius-md); background: rgba(178, 250, 6, 0.12); border: 1px solid rgba(178, 250, 6, 0.45); font-size: 13px; }
+.ep .ep-facts b { color: var(--green); margin-right: 4px; }
+.ep .ep-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.ep input[readonly] { opacity: 0.8; cursor: default; }
+.ep .ep-no { display: block; width: 100%; margin: 10px 0 0; padding: 10px; border: 0; background: transparent; color: var(--gray); font-family: inherit; font-size: 14px; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.ep .ep-no:hover { color: var(--white); }
+.ep .ep-later { margin: 6px 0 0; text-align: center; color: var(--gray); font-size: 12px; }
+.ep .ep-reasons { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+@media (max-width: 480px) { .ep .ep-row { grid-template-columns: 1fr; } .ep .ep-headline { font-size: 17px; } }
+/* "More info" stands beside the name of the event (on the photo, or under the cross when the event has none) */
+.ep .ep-nameRow { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+.ep .ep-nameRow.plain { margin: 0 0 14px; }
+.ep .ep-nameRow.plain .sv-reg-season { margin: 0; }
+.ep .ep-more { flex: none; padding: 7px 14px; border-radius: 999px; background: var(--orange); border: 1px solid var(--orange); color: var(--white); font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-decoration: none; white-space: nowrap; }
+.ep .ep-more:hover { background: var(--orange-dark); border-color: var(--orange-dark); color: var(--white); }
+.ep .ep-nameRow { width: 100%; box-sizing: border-box; }
+.ep .ep-nameRow .ep-more, .ep .ep-nameRow .ep-more:visited { color: var(--white); }
+.ep .ep-nameRow .ep-more:hover { color: var(--white); }
+.modal.ep .ep-nameRow a.ep-more, .modal.ep .ep-nameRow a.ep-more:hover, .modal.ep .ep-nameRow a.ep-more:visited { color: var(--white); }
+/* "More info" in the same design as the dates: the orange veil (translucent orange, orange border and text) instead of a solid pill */
+.ep .ep-more { padding: 9px 14px; border-radius: var(--radius-md); background: rgba(255, 85, 0, 0.18); border: 1px solid rgba(255, 85, 0, 0.6); font-size: 13px; letter-spacing: 0; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.ep .ep-more:hover { background: rgba(255, 85, 0, 0.3); border-color: var(--orange); }
+.modal.ep .ep-nameRow a.ep-more, .modal.ep .ep-nameRow a.ep-more:hover, .modal.ep .ep-nameRow a.ep-more:visited { color: var(--orange); }
+/* the headline of the pop-up is set like the title over the photo ("Registrácia na sezónu"): the same size and weight */
+.ep .ep-headline { font-size: 22px; font-weight: 800; line-height: 1.2; color: var(--white); }
+@media (max-width: 480px) { .ep .ep-headline { font-size: 20px; } }
+/* the headline written by the organiser stands out in the green of the site */
+.ep .ep-headline { color: var(--green); }

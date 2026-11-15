@@ -2818,7 +2818,24 @@ async function refreshPlayerAuth() {
   // pinSetupMandatory close-handlers below) logs them back out, and the
   // very next page they land on runs this same check again regardless.
   if (needsPinSetup) openPlayerLoginModal(null, { startAtSetPin: true });
+  else maybeShowEventPopup();
   return playerAuthed;
+}
+
+// The pop-up about an event (Backend > Popups) for a logged-in player on the public pages (not the backend, the screens, the overlays or a frame).
+// The script is loaded only when a player is logged in; it asks the server whether there is something to show.
+let eventPopupAsked = false;
+function maybeShowEventPopup() {
+  if (eventPopupAsked || !playerAuthed || !currentPlayerId) return;
+  const path = window.location.pathname;
+  if (window.self !== window.top || /-admin$|^\/admin|^\/login-history|\/embed|\/overlay|\/screen|\/draw-live|\/live\b|\/court-?iq|^\/match\//i.test(path)) return;
+  eventPopupAsked = true;
+  const run = () => setTimeout(() => window.BLTA_EVENT_POPUP && window.BLTA_EVENT_POPUP.check(), 1500);
+  if (window.BLTA_EVENT_POPUP) { run(); return; }
+  const s = document.createElement('script');
+  s.src = '/js/event-popup.js';
+  s.onload = run;
+  document.head.appendChild(s);
 }
 
 // Mirrors checkMatchAccess in routes/matches.js — whether the current
@@ -4021,6 +4038,15 @@ async function setUpAdminTabs() {
       link.href = '/footer-admin';
       link.className = `tab${location.pathname.endsWith('/footer-admin') ? ' active' : ''}`;
       link.textContent = 'Footer';
+      if (after) after.after(link); else bar.appendChild(link);
+    }
+    // the pop-ups that ask the players to register for the next season or tournament
+    if (!tabLink(bar, '/popups-admin')) {
+      const after = tabLink(bar, '/footer-admin') || tabLink(bar, '/about-admin') || tabLink(bar, '/rules-admin');
+      const link = document.createElement('a');
+      link.href = '/popups-admin';
+      link.className = `tab${location.pathname.endsWith('/popups-admin') ? ' active' : ''}`;
+      link.textContent = 'Popups';
       if (after) after.after(link); else bar.appendChild(link);
     }
     // the sponsors and partners of a city (shown as a "Partners" strip on its pages)
