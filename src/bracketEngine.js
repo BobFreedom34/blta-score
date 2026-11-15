@@ -355,8 +355,8 @@ function planCourts(bracketId) {
 // Every main draw has a consolation draw: whoever loses a round-1 match of the main draw drops into it (a player who lost in round 2
 // or later is out, a player who had a bye in round 1 has nothing to drop from). The consolation draw holds one entrant per real
 // round-1 match of the main draw, so its size is known as soon as round 1 of the main draw is seated: the loser of the k-th real
-// round-1 match takes seed k+1 (stored on that node as consolation_seed) and the standard seed order places the seeds, so the
-// consolation draw has byes exactly where it cannot be filled.
+// round-1 match takes seed k+1 (stored on that node as consolation_seed) and the seeds are seated in the order of the matches (the losers of
+// neighbouring matches meet), with byes where it cannot be filled.
 
 // The two players of a node and, once decided, who won; null while still open.
 function nodeWinner(node) {
@@ -397,8 +397,8 @@ function descendants(bracketId) {
 //  - MONRAD: a losers bracket for the losers of EVERY round (except the final), each of them again a Monrad — so every player keeps
 //    playing until all places are decided.
 // A losers bracket holds one entrant per real match of the round it is fed from, so its size is known at once: the loser of the k-th real
-// match takes seed k+1 (stored on that node as consolation_seed, the bracket on loser_bracket_id) and the standard seed order places the
-// seeds, so it has byes exactly where it cannot be filled. A round with fewer than two matches has no losers bracket.
+// match takes seed k+1 (stored on that node as consolation_seed, the bracket on loser_bracket_id) and the seeds are seated in the order of the
+// matches (the losers of neighbouring matches meet), so it has byes exactly where it cannot be filled. A round with fewer than two matches has no losers bracket.
 // Returns { bracketId (the first one), brackets (how many) } or { error }. Losers of matches that are already decided are dropped in.
 function buildLosers(mainBracketId, { name, format, type = 'PRINCE' }) {
   const main = db.prepare('SELECT * FROM brackets WHERE id = ?').get(mainBracketId);
@@ -429,13 +429,21 @@ function buildLosers(mainBracketId, { name, format, type = 'PRINCE' }) {
         .run(childName, format, size, main.auto_create_matches, main.category, main.season_id, 'CONSOLATION', parent.id, round, main.is_doubles ? 1 : 0);
       const childId = Number(info.lastInsertRowid);
       buildEmptyTree(childId, size);
-      // seeds and byes only; the players arrive one by one with dropLoser
-      const order = standardSeedOrder(size);
+      // seeds and byes only; the players arrive one by one with dropLoser.
+      // The losers of NEIGHBOURING matches meet (the 1st and the 2nd, the 3rd and the 4th …): they come from the same part of the draw, and the pairs
+      // follow the order of the matches. (Not the standard seed order of a main draw: here a seed is only the number of the match the loser comes from,
+      // so it would pair 1 with 4 and 2 with 3 for no reason.) With fewer entrants than seats the losers of the first matches get the byes; a bye
+      // seat holds a seed number beyond the entrants (n + 1, n + 2 …), so it stays empty.
+      const n = real.length;
+      const byes = size - n;
       const layout = db.prepare('UPDATE bracket_matches SET seed1 = ?, seed2 = ?, is_bye = ? WHERE bracket_id = ? AND round = 1 AND position = ?');
       for (let position = 0; position < size / 2; position += 1) {
-        const seed1 = order[position * 2];
-        const seed2 = order[position * 2 + 1];
-        layout.run(seed1, seed2, (seed1 <= real.length) !== (seed2 <= real.length) ? 1 : 0, childId, position);
+        if (position < byes) {
+          layout.run(position + 1, n + position + 1, 1, childId, position);
+        } else {
+          const k = byes + 2 * (position - byes);
+          layout.run(k + 1, k + 2, 0, childId, position);
+        }
       }
       real.forEach((node, i) => mark.run(i + 1, childId, node.id));
       created.push(childId);

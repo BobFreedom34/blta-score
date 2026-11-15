@@ -111,6 +111,8 @@ test('MONRAD with 16 players: a main bracket of 16 and 7 losers brackets (8, 4, 
   assert.strictEqual(ov.brackets.length, 8);
 });
 
+
+
 test('MONRAD: losers brackets made before (named "Útecha po 1. kole", "Útecha po 1. kole › po 1. kole") are renamed by the places they play for, from the structure alone', () => {
   const { DatabaseSync } = require('node:sqlite');
   const sql = new DatabaseSync(path.join(dir, 'blta-score.db'));
@@ -131,9 +133,48 @@ test('MONRAD: losers brackets made before (named "Útecha po 1. kole", "Útecha 
   sql.close();
 });
 
+// plays the real matches of round 1 of a main bracket (the higher player id wins); returns the losers in the order of the matches
+async function playRoundOne(mainId) {
+  const main = await bracketOf(mainId);
+  const losers = [];
+  for (const n of main.nodes.filter((x) => x.round === 1).sort((a, b) => a.position - b.position)) {
+    if (n.isBye || !n.player1 || !n.player2) continue;
+    const winner = Math.max(n.player1.id, n.player2.id);
+    await playMatch(n.match.token, winner, main.format);
+    losers.push(n.player1.id === winner ? n.player2 : n.player1);
+  }
+  return losers;
+}
+
+test('MONRAD: the losers of NEIGHBOURING matches of round 1 meet in the losers bracket (1st with 2nd, 3rd with 4th …), not 1 with 8 and 2 with 7', async () => {
+  const losers = await playRoundOne(monrad);
+  assert.strictEqual(losers.length, 8);
+  const kids = (await call('GET', `/api/seasons/${t1.id}/brackets`)).json.filter((b) => b.parentBracketId === monrad);
+  let r1 = null;
+  for (const b of kids) { const full = await bracketOf(b.id); if (full.size === 8) r1 = full.nodes.filter((n) => n.round === 1).sort((x, y) => x.position - y.position); }
+  assert.ok(r1, 'the losers bracket of round 1 (8 seats)');
+  assert.deepStrictEqual(r1.map((n) => [n.player1 && n.player1.id, n.player2 && n.player2.id]), [0, 2, 4, 6].map((i) => [losers[i].id, losers[i + 1].id]));
+});
+
+test('MONRAD with 7 players: 3 real matches in round 1, so the losers bracket has 4 seats: the 1st loser has the bye, the 2nd and 3rd meet', async () => {
+  const t7 = await newTournament('Format Seven');
+  await register(t7, 'ELITE', 7);
+  const made = await draw(t7, { category: 'ELITE', format: 'MONRAD', mode: 'AUTO' });
+  assert.strictEqual(made.status, 201, made.text);
+  const losers = await playRoundOne(made.json.main);
+  assert.strictEqual(losers.length, 3);
+  const kids = (await call('GET', `/api/seasons/${t7.id}/brackets`)).json.filter((b) => b.parentBracketId === made.json.main);
+  let r1 = null;
+  for (const b of kids) { const full = await bracketOf(b.id); if (full.size === 4 && full.nodes.some((n) => n.round === 1 && n.isBye)) r1 = full.nodes.filter((n) => n.round === 1).sort((x, y) => x.position - y.position); }
+  assert.ok(r1, 'a losers bracket of 4 seats with one bye');
+  assert.ok(r1[0].isBye && [r1[0].player1, r1[0].player2].some((p) => p && p.id === losers[0].id), 'the first loser sits at the bye');
+  assert.deepStrictEqual(r1[1].isBye, false);
+  assert.deepStrictEqual([r1[1].player1.id, r1[1].player2.id].sort(), [losers[1].id, losers[2].id].sort());
+});
+
 test('MONRAD played through: 32 matches in all (everybody keeps playing), every bracket decided', async () => {
   const played = await playAllBrackets(t1, monrad);
-  assert.strictEqual(played, 32);
+  assert.strictEqual(played + 8, 32, '8 matches of round 1 were played above, the rest here'); // (32 in all)
   const all = (await call('GET', `/api/seasons/${t1.id}/brackets`)).json;
   for (const b of all) {
     const full = await bracketOf(b.id);
