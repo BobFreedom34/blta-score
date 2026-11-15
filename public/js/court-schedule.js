@@ -147,7 +147,13 @@ const csPerRow = () => (csNarrow && csNarrow.matches ? 99 : 3);
 
 // the playing window of one day of the tournament { start, end }: its own times (set in the Backend) or the general ones
 function csDayWindow(settings, day) {
-  return (settings.dayTimes && settings.dayTimes[day]) || { start: settings.dayStart, end: settings.dayEnd };
+  return (settings.dayView && settings.dayView[day]) || (settings.dayTimes && settings.dayTimes[day]) || { start: settings.dayStart, end: settings.dayEnd };
+}
+
+// a time typed in "Plan from / until": the same as the playing time of the tournament form -> null (follow it), empty -> '' (no limit), else the time
+function csPlanValue(typed, formDefault) {
+  if (!typed) return '';
+  return typed === formDefault ? null : typed;
 }
 
 function csTimelineHtml(day) {
@@ -238,12 +244,13 @@ function csAdminHtml() {
     <div class="cs-admin">
       <div class="cs-admin-row">
         ${field('minutes', tl('Dĺžka zápasu (min)', 'Match length (min)'), s.matchMinutes, 'type="number" min="15" max="300" step="5"')}
-        ${field('start', tl('Začiatok dňa', 'Start of the day'), s.dayStart, 'type="time"')}
-        ${field('end', tl('Koniec dňa', 'End of the day'), s.dayEnd, 'type="time"')}
+        ${field('start', tl('Plánovať od', 'Plan from'), s.planStart === null || s.planStart === undefined ? s.dayStart : s.planStart, 'type="time"')}
+        ${field('end', tl('Plánovať do', 'Plan until'), s.planEnd === null || s.planEnd === undefined ? s.dayEnd : s.planEnd, 'type="time"')}
         ${field('rest', tl('Oddych hráča (min)', 'Player rest (min)'), s.restMinutes, 'type="number" min="0" max="240" step="5"')}
         ${field('maxday', tl('Max. zápasov hráča za deň (0 = bez limitu)', 'Max. matches per player per day (0 = no limit)'), s.maxPerDay, 'type="number" min="0" max="10"')}
         <label class="cs-check"><input type="checkbox" id="cs-auto" ${s.autoSchedule ? 'checked' : ''}> ${tl('Rozvrh skladá systém sám', 'The system builds the schedule itself')}</label>
         <button type="button" class="btn btn-sm btn-outline" data-cs="settings">${tl('Uložiť nastavenia', 'Save settings')}</button>
+        <span class="cs-hint cs-full">${tl('„Plánovať od / do“ je okno, v ktorom plánovač skladá zápasy. Predvolene sú to časy hrania z nastavení turnaja (tie vidia hráči); tu ich môžeš zmeniť len pre plánovanie a rozvrh sa zobrazí do času, ktorý zadáš. Keď čas vymažeš, plánovanie nemá hranicu: zápasy sa dopĺňajú pod seba a rozvrh sa postupne zväčšuje.', '“Plan from / until” is the window in which the planner lays out the matches. By default it is the playing times of the tournament settings (the ones the players see); here you can change it for the planning only, and the schedule shows up to the time you enter. When you empty a time there is no limit: the matches are added one under the other and the schedule grows.')}</span>
       </div>
       <div class="cs-admin-row">
         <button type="button" class="btn btn-sm btn-primary" data-cs="addmatch">+ ${tl('Pridať zápas', 'Add a match')}</button>
@@ -635,8 +642,9 @@ async function initCourtSchedule(host, season) {
     if (kind === 'settings') {
       const body = {
         matchMinutes: Number(document.getElementById('cs-minutes').value),
-        dayStart: document.getElementById('cs-start').value,
-        dayEnd: document.getElementById('cs-end').value,
+        // the window of the planner: the times of the tournament form are only the default (nothing is stored then); an empty time = no limit
+        planStart: csPlanValue(document.getElementById('cs-start').value, csState.data.settings.dayStart),
+        planEnd: csPlanValue(document.getElementById('cs-end').value, csState.data.settings.dayEnd),
         restMinutes: Number(document.getElementById('cs-rest').value),
         maxPerDay: Number(document.getElementById('cs-maxday').value) || 0,
         autoSchedule: document.getElementById('cs-auto').checked,

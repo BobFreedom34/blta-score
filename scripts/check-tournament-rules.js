@@ -180,7 +180,7 @@ test('the create window of a club tournament asks only for the basics (name, pla
   assert.ok(i18n.includes("'com.tournamentTitle': 'Nový turnaj klubu alebo komunity'") && i18n.includes("'com.seasonTitle': 'Nová sezóna klubu alebo komunity'"), 'the headings of the two windows');
   const card = pub('js/seasons-admin.js');
   const courts = card.slice(headingAt(card, 'Kurty a plánovanie'), headingAt(card, 'Bodovanie a podmienky'));
-  for (const text of ['Počet kurtov (Kurt 1 … Kurt n)', 'Max. zápasov hráča za deň', 'Plánovanie turnaja', 'Dĺžka zápasu (min)', 'Oddych hráča (min)', 'Začiatok dňa', 'Koniec dňa', 'Rozvrh skladá systém sám']) assert.ok(courts.includes(text), `${text} is in the section "Kurty a plánovanie" of the page`);
+  for (const text of ['Počet kurtov (Kurt 1 … Kurt n)', 'Max. zápasov hráča za deň', 'Plánovanie turnaja', 'Dĺžka zápasu (min)', 'Oddych hráča (min)', 'Začiatok hrania (pre hráčov)', 'Koniec hrania (pre hráčov)', 'Rozvrh skladá systém sám']) assert.ok(courts.includes(text), `${text} is in the section "Kurty a plánovanie" of the page`);
   assert.ok(/matchMinutes: Number\(f\('matchMinutes'\)\), restMinutes: Number\(f\('restMinutes'\)\), dayStart: f\('dayStart'\), dayEnd: f\('dayEnd'\), (dayTimes: readDayTimes\(e\.target\), )?autoSchedule:/.test(card), 'the planning fields are sent with the Save of the page');
 });
 

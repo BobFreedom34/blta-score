@@ -7061,3 +7061,4 @@ body:has(#player-bio-card) :is(.player-bio-card, .statistics-card, .rivals-card,
 @media (max-width: 480px) { .ep .ep-headline { font-size: 20px; } }
 /* the headline written by the organiser stands out in the green of the site */
 .ep .ep-headline { color: var(--green); }
+.cs-admin-row .cs-hint.cs-full { flex: 1 1 100%; max-width: none; }

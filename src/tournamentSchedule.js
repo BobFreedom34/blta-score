@@ -53,6 +53,8 @@ function dayOf(utcMs) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(utcMs));
 }
 
+// the end of a day without a limit: the planner may use the whole day
+const OPEN_END = '23:55';
 const validTime = (v) => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 
 // the playing times a tournament typed for single days: { "2027-05-02": { start, end } } (only valid ones; the other days use the general times)
@@ -75,9 +77,21 @@ function settingsOf(season) {
   const ownAll = ownDayTimesOf(season);
   const ownDayTimes = {};
   Object.keys(ownAll).forEach((day) => { if (!days.length || days.includes(day)) ownDayTimes[day] = ownAll[day]; });
-  // the playing window of EVERY day of the tournament: its own times when it has some, else the general ones
+  // the playing times of the tournament form (what the players see) of every day: its own times when it has some, else the general ones
+  const infoTimes = {};
+  days.forEach((day) => { infoTimes[day] = ownDayTimes[day] || { start: dayStart, end: dayEnd }; });
+  // The window the PLANNER works in (set on the schedule page). By default it is the playing times above; the organiser can give it another start and end, or empty one of
+  // them: no end = no limit (the matches are put one under the other and the schedule grows), no start = from the start of the day above.
+  // plan_start / plan_end: NULL = follow the times above, '' = none, 'HH:MM' = its own
+  const planStart = season.plan_start === null || season.plan_start === undefined ? null : (validTime(season.plan_start) ? season.plan_start : null);
+  const planEnd = season.plan_end === null || season.plan_end === undefined ? null : (season.plan_end === '' ? '' : (validTime(season.plan_end) ? season.plan_end : null));
   const dayTimes = {};
-  days.forEach((day) => { dayTimes[day] = ownDayTimes[day] || { start: dayStart, end: dayEnd }; });
+  days.forEach((day) => {
+    const own = infoTimes[day];
+    dayTimes[day] = { start: planStart || own.start, end: planEnd === '' ? OPEN_END : (planEnd || own.end) };
+    // an own start later than the end of that day's times would leave no room: the planner then has no limit at the end
+    if (dayTimes[day].start >= dayTimes[day].end) dayTimes[day] = { start: dayTimes[day].start, end: OPEN_END };
+  });
   return {
     courtCount: season.court_count || 0,
     courtNames: courtNames.namesOf(season),
@@ -86,6 +100,9 @@ function settingsOf(season) {
     dayEnd,
     dayTimes,
     ownDayTimes,
+    planStart,
+    planEnd,
+    openEnd: planEnd === '',
     restMinutes: season.rest_minutes === null || season.rest_minutes === undefined ? 30 : season.rest_minutes,
     autoSchedule: season.auto_schedule === 0 ? false : true,
     maxPerDay: season.max_matches_per_day || 0,
@@ -125,6 +142,14 @@ function readSettings(season, body) {
     next.ownDayTimes = {};
     Object.keys(own).forEach((day) => { if (!s.days.length || s.days.includes(day)) next.ownDayTimes[day] = own[day]; });
   }
+  // the planner's own window: null = follow the playing times of the tournament form, '' = no limit, 'HH:MM' = its own time
+  const planKinds = { planStart: 'The start of the planning', planEnd: 'The end of the planning' };
+  for (const key of Object.keys(planKinds)) {
+    if (body[key] === undefined) continue;
+    if (body[key] !== null && body[key] !== '' && !validTime(body[key])) return { error: `${planKinds[key]} must look like 09:00 (or be empty for no limit)` };
+    next[key] = body[key];
+  }
+  if (validTime(next.planStart) && validTime(next.planEnd) && next.planStart >= next.planEnd) return { error: 'The planning must end after it starts' };
   if (body.restMinutes !== undefined) {
     next.restMinutes = Number(body.restMinutes);
     if (!Number.isInteger(next.restMinutes) || next.restMinutes < 0 || next.restMinutes > 240) return { error: 'The rest between matches must be 0 to 240 minutes' };
@@ -135,6 +160,7 @@ function readSettings(season, body) {
     if (!Number.isInteger(next.maxPerDay) || next.maxPerDay < 0 || next.maxPerDay > 10) return { error: 'The most matches a player may play in a day must be 0 (no limit) to 10' };
   }
   if ((toMinutes(next.dayEnd) - toMinutes(next.dayStart)) < next.matchMinutes) return { error: 'The playing day is shorter than one match' };
+  if (validTime(next.planStart) && validTime(next.planEnd) && (toMinutes(next.planEnd) - toMinutes(next.planStart)) < next.matchMinutes) return { error: 'The planning window is shorter than one match' };
   const tooShort = Object.keys(next.ownDayTimes || {}).find((day) => (toMinutes(next.ownDayTimes[day].end) - toMinutes(next.ownDayTimes[day].start)) < next.matchMinutes);
   if (tooShort) return { error: `${tooShort}: the playing day is shorter than one match (change the playing times of that day in the tournament form in the Backend)` };
   return { next };
@@ -143,8 +169,9 @@ function readSettings(season, body) {
 // writes checked settings (the `next` of readSettings) to a tournament
 function storeSettings(seasonId, next) {
   const own = next.ownDayTimes || {};
-  db.prepare('UPDATE seasons SET match_minutes = ?, day_start = ?, day_end = ?, day_times = ?, rest_minutes = ?, auto_schedule = ?, max_matches_per_day = ? WHERE id = ?')
-    .run(next.matchMinutes, next.dayStart, next.dayEnd, Object.keys(own).length ? JSON.stringify(own) : '', next.restMinutes, next.autoSchedule ? 1 : 0, next.maxPerDay, seasonId);
+  db.prepare('UPDATE seasons SET match_minutes = ?, day_start = ?, day_end = ?, day_times = ?, rest_minutes = ?, auto_schedule = ?, max_matches_per_day = ?, plan_start = ?, plan_end = ? WHERE id = ?')
+    .run(next.matchMinutes, next.dayStart, next.dayEnd, Object.keys(own).length ? JSON.stringify(own) : '', next.restMinutes, next.autoSchedule ? 1 : 0, next.maxPerDay,
+      next.planStart === undefined ? null : next.planStart, next.planEnd === undefined ? null : next.planEnd, seasonId);
 }
 
 // validates and stores { matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule, maxPerDay }; returns { error } or { ok }
@@ -156,7 +183,7 @@ function saveSettings(season, body) {
 }
 
 // the keys of a request that are planning settings (a new tournament may bring them)
-const SETTING_KEYS = ['matchMinutes', 'dayStart', 'dayEnd', 'dayTimes', 'restMinutes', 'autoSchedule', 'maxPerDay'];
+const SETTING_KEYS = ['matchMinutes', 'dayStart', 'dayEnd', 'dayTimes', 'restMinutes', 'autoSchedule', 'maxPerDay', 'planStart', 'planEnd'];
 
 function toMinutes(hhmm) {
   const [h, m] = hhmm.split(':').map(Number);
@@ -353,13 +380,28 @@ function getSchedule(season, now = Date.now()) {
     if (r.status === 'PLANNED' && !r.scheduled_at) m.why = whyUnscheduled(r, rows, settings, now);
     return m;
   });
+  // the window the page DRAWS for each day: the planner's window; a day without an end shows the hours up to the end of its last match (rounded up to the hour, at least
+  // three hours from the start), so the schedule grows as matches are added
+  const dayView = {};
+  settings.days.forEach((day) => {
+    const w = settings.dayTimes[day];
+    if (!settings.openEnd) { dayView[day] = w; return; }
+    let last = 0;
+    rows.forEach((r) => {
+      const i = intervalOf(r, settings, now);
+      if (i && r.court_no && dayOf(i[0]) === day) last = Math.max(last, i[1]);
+    });
+    const [h, m] = (last ? new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(last)) : '00:00').split(':').map(Number);
+    const endMin = Math.min(23 * 60 + 55, Math.max(toMinutes(w.start) + 180, last ? (h + (m > 0 ? 1 : 0)) * 60 : 0));
+    dayView[day] = { start: w.start, end: `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}` };
+  });
   return {
     seasonId: season.id,
     // (for the page of the schedule on the whole screen: its heading and the way back)
     seasonName: season.name,
     seasonSlug: season.slug,
     seasonKind: season.kind === 'TOURNAMENT' ? 'TOURNAMENT' : 'LEAGUE',
-    settings,
+    settings: { ...settings, dayView },
     // the live video of each court: [{ videoId, url } or null] for Court 1 … n
     courtStreams: courtStreams.streamsOf(season),
     matches,

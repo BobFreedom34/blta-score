@@ -1539,6 +1539,10 @@ if (!seasonInfoColumns.includes('court_streams')) db.exec("ALTER TABLE seasons A
   ['unregister_hours', 'INTEGER'],
   // the points the event of a community or club puts into the ranking of the community (JSON settings, see src/communityPoints.js); NULL = nothing set
   ['community_points', 'TEXT'],
+  // the window the court planner works in (set on the schedule page): NULL = follow the playing times of the tournament form (the ones the players see), '' = no limit,
+  // 'HH:MM' = its own time. Start and end are separate (see tournamentSchedule.settingsOf)
+  ['plan_start', 'TEXT'],
+  ['plan_end', 'TEXT'],
 ].forEach(([col, type]) => {
   if (!seasonInfoColumns.includes(col)) db.exec(`ALTER TABLE seasons ADD COLUMN ${col} ${type}`);
 });

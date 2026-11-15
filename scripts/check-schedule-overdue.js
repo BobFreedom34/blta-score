@@ -76,6 +76,72 @@ test('"build it backwards": a match without a time is laid out from the start of
   assert.ok(rows.every((r) => r.scheduled_at === iso(at('10:00')) && r.slot_locked === 1), JSON.stringify(rows));
   assert.deepStrictEqual(rows.map((r) => r.court_no).sort(), [1, 2], 'two courts, both at the start of the day');
 });
+
+// the planner's own window (set on the schedule page): by default the playing times of the tournament form; the organiser can change them there, or empty one of them
+function planCup(name, planStart, planEnd, matches) {
+  const season = Number(db.prepare("INSERT INTO seasons (name, slug, kind, start_date, end_date, court_count, match_minutes, day_start, day_end, rest_minutes, auto_schedule, categories, plan_start, plan_end) VALUES (?, ?, 'TOURNAMENT', ?, ?, 1, 35, '10:00', '12:00', 0, 0, 'ELITE', ?, ?)")
+    .run(name, name.toLowerCase().replace(/\W+/g, '-'), DAY, DAY, planStart, planEnd).lastInsertRowid);
+  for (let i = 0; i < matches; i += 1) {
+    const p1 = Number(db.prepare('INSERT INTO players (name) VALUES (?)').run(`${name} ${i}a`).lastInsertRowid);
+    const p2 = Number(db.prepare('INSERT INTO players (name) VALUES (?)').run(`${name} ${i}b`).lastInsertRowid);
+    db.prepare("INSERT INTO matches (share_token, category, player1_id, player2_id, format, status, state, season_id) VALUES (?, 'ELITE', ?, ?, 'BEST_OF_3', 'PLANNED', '{}', ?)").run(`${name}${i}`.replace(/\W+/g, ''), p1, p2, season);
+  }
+  return season;
+}
+const placedOf = (season) => db.prepare('SELECT COUNT(*) AS n FROM matches WHERE season_id = ? AND scheduled_at IS NOT NULL').get(season).n;
+
+test('the planner follows the playing times of the form by default (10-12: 3 matches of 35 minutes on one court)', () => {
+  const season = planCup('Plan Default', null, null, 5);
+  const res = schedule.autoPlan(season, { mode: 'fill', now: at('09:00') });
+  assert.strictEqual(res.placed, 3);
+  const s = schedule.getSchedule(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season), at('09:00')).settings;
+  assert.strictEqual(s.dayTimes[DAY].end, '12:00');
+  assert.strictEqual(s.planEnd, null);
+});
+
+test('the organiser sets the end of the planning to 13:00 on the schedule: the planner plans until 13:00 and the schedule shows until 13:00', () => {
+  const season = planCup('Plan Until Thirteen', null, '13:00', 5);
+  const res = schedule.autoPlan(season, { mode: 'fill', now: at('09:00') });
+  assert.strictEqual(res.placed, 5, 'two more fit: 11:45 and 12:20 end at 12:55');
+  const s = schedule.getSchedule(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season), at('09:00')).settings;
+  assert.strictEqual(s.dayView[DAY].end, '13:00');
+  assert.strictEqual(s.dayStart, '10:00', 'the times of the form are not touched');
+  assert.strictEqual(s.dayEnd, '12:00');
+});
+
+test('a start of the planning of its own: the first match is not before it', () => {
+  const season = planCup('Plan From Eleven', '11:00', null, 1);
+  schedule.autoPlan(season, { mode: 'fill', now: at('09:00') });
+  assert.strictEqual(db.prepare('SELECT scheduled_at FROM matches WHERE season_id = ?').get(season).scheduled_at, iso(at('11:00')));
+});
+
+test('no end of the planning: every match is placed under the others and the schedule grows with them', () => {
+  const season = planCup('Plan Open', null, '', 12);
+  const res = schedule.autoPlan(season, { mode: 'fill', now: at('09:00') });
+  assert.strictEqual(res.placed, 12, 'nothing is left out: 12 x 35 minutes on one court is 7 hours');
+  const view = schedule.getSchedule(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season), at('09:00')).settings;
+  assert.strictEqual(view.openEnd, true);
+  assert.strictEqual(view.dayView[DAY].start, '10:00');
+  assert.strictEqual(view.dayView[DAY].end, '17:00', 'the last match ends at 17:00: 10:00 + 12 x 35 min');
+  // an empty schedule without an end shows three hours, not the whole day
+  const empty = planCup('Plan Open Empty', null, '', 0);
+  assert.strictEqual(schedule.getSchedule(db.prepare('SELECT * FROM seasons WHERE id = ?').get(empty), at('09:00')).settings.dayView[DAY].end, '13:00');
+});
+
+test('the settings of the planning are checked: a bad time, an end before the start, a window shorter than one match', () => {
+  const season = planCup('Plan Check', null, null, 0);
+  const row = () => db.prepare('SELECT * FROM seasons WHERE id = ?').get(season);
+  assert.ok(schedule.saveSettings(row(), { planEnd: '25:00' }).error);
+  assert.ok(schedule.saveSettings(row(), { planStart: '14:00', planEnd: '13:00' }).error);
+  assert.ok(schedule.saveSettings(row(), { planStart: '10:00', planEnd: '10:20' }).error, 'shorter than a match of 35 minutes');
+  assert.ok(schedule.saveSettings(row(), { planStart: '10:00', planEnd: '13:00' }).ok);
+  const saved = row();
+  assert.strictEqual(saved.plan_start, '10:00');
+  assert.strictEqual(saved.plan_end, '13:00');
+  assert.ok(schedule.saveSettings(row(), { planStart: null, planEnd: '' }).ok);
+  assert.strictEqual(row().plan_start, null, 'null = follow the form again');
+  assert.strictEqual(row().plan_end, '', 'empty = no limit');
+});
 let failed = 0;
 for (const { name, fn } of tests) {
   try { fn(); console.log(`PASS  ${name}`); } catch (err) { failed += 1; console.log(`FAIL  ${name}\n      ${String(err && err.stack).split('\n').slice(0, 5).join('\n      ')}`); }
