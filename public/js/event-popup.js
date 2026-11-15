@@ -27,15 +27,19 @@
   let open = false;
 
   // how to pay by bank transfer: the IBAN with a Copy button, the recipient, the amount and the note to write (the same block as on the page of the event)
-  function bankHtml(contact, ev) {
-    if (!contact || !contact.iban) return '';
+  function bankHtml(contact, ev, payerName, preview) {
+    const iban = ev.iban || (contact && contact.iban) || '';
+    if (!iban) return '';
+    contact = { ...(contact || {}), iban };
+    const customNote = String(ev.payNote || '').trim() ? String(ev.payNote).split('{turnaj}').join(ev.name).split('{meno}').join(payerName || '').trim() : '';
     const row = (label, value, copy) => `<div class="sv-pay-row"><span>${esc(label)}</span><b>${esc(value)}</b>${copy ? `<button type="button" class="sv-pay-copy" data-copy="${esc(copy)}">${esc(t('season.copy'))}</button>` : ''}</div>`;
     return `<div class="sv-pay-bank">
       <h4>${esc(t('popup.payTransfer'))}</h4>
-      ${row('IBAN', contact.iban, contact.iban.replace(/s+/g, ''))}
-      ${contact.orgName ? row(t('season.payTransferRecipient'), contact.orgName) : ''}
+      ${row('IBAN', contact.iban, contact.iban.replace(/\s+/g, ''))}
+      ${(ev.payRecipient || contact.orgName) ? row(t('season.payTransferRecipient'), ev.payRecipient || contact.orgName) : ''}
       ${ev.entryFee ? row(t('season.payTransferAmount'), ev.entryFee) : ''}
-      <p class="sv-pay-note">${esc(t('season.payTransferNote', { name: ev.name }))}</p>
+      ${customNote ? row(t('season.payTransferNoteLabel'), customNote, customNote) : `<p class="sv-pay-note">${esc(t('season.payTransferNote', { name: ev.name }))}</p>`}
+      <div class="sv-pay-qr"><img src="/api/seasons/${ev.id}/payment-qr?for=${encodeURIComponent(payerName || '')}" alt="QR" width="200" height="200"><span>${esc(t('season.payQr'))}</span></div>
     </div>`;
   }
 
@@ -139,7 +143,7 @@
         let contact = null;
         if (res && !res.substitute && hasFee(ev)) contact = await api('/contact').catch(() => null);
         if (preview && (!contact || !contact.iban)) contact = { ...(contact || {}), iban: 'SK00 0000 0000 0000 0000 0000', orgName: (contact && contact.orgName) || 'Názov organizátora' }; // (a sample, when none is set yet)
-        const bank = bankHtml(contact, ev);
+        const bank = bankHtml(contact, ev, (res && res.name) || $('name').value);
         // one line says the ways to pay: online and by transfer, or only one of them
         const pay = online || bank ? `<p>${esc(t(online && bank ? 'popup.payBoth' : online ? 'season.regPayHint' : 'popup.payTransferOnly'))}</p>${online}${bank}` : '';
         const here = typeof siteUrl === 'function' ? siteUrl(ev.codePath) : ev.codePath;

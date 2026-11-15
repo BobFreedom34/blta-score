@@ -34,6 +34,7 @@ const tournamentMatches = require('../tournamentMatches');
 const playerPush = require('../playerPush');
 const finalStandings = require('../finalStandings');
 const unregister = require('../unregister');
+const paymentQr = require('../paymentQr');
 
 const router = express.Router();
 
@@ -183,6 +184,9 @@ function serializeSeason(s) {
     rules: s.rules || '', // the rules of the event: cleaned HTML, shown on its page as an expandable "+ Pravidlá"
     galleryUrl: s.gallery_url || '',
     paymentUrl: s.payment_url || '',
+    payRecipient: s.pay_recipient || '',
+    payNote: s.pay_note || '',
+    iban: s.iban || '', // the account of this event's entry fee ('' = the one of Backend > Contact)
     logoUrl: s.logo_url || '',
     heroUrl: s.hero_url || '',
     heroMobileUrl: s.hero_mobile_url || '',
@@ -283,6 +287,17 @@ router.delete('/:id/logo', clubTournaments.requireSeasonManager(clubTournaments.
 });
 
 // Public: the match page and its admin editor read this (newest season first).
+// Public: the QR code (PAY by square) of the entry fee of an event, as an SVG picture; ?for=<name of the player> goes into the note
+router.get('/:id(\\d+)/payment-qr', async (req, res) => {
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(req.params.id);
+  if (!season || season.league_id !== leagues.actingIdOf(req) || clubTournaments.publicFace(season).hidden) return res.status(404).json({ error: 'Not found' });
+  try {
+    const svg = await paymentQr.svgFor(season, String(req.query.for || '').replace(/\s+/g, ' ').trim().slice(0, 40));
+    if (!svg) return res.status(404).json({ error: 'No IBAN set' });
+    res.set('Content-Type', 'image/svg+xml').set('Cache-Control', 'no-store').send(svg);
+  } catch (err) { res.status(500).json({ error: 'The QR code could not be made' }); }
+});
+
 router.get('/', (req, res) => {
   // (the tournaments of the clubs are not part of the league: they show on the page of their club and in the Harmonogram)
   const rows = db.prepare('SELECT * FROM seasons WHERE league_id = ? AND organisation_id IS NULL ORDER BY COALESCE(start_date, \'\') DESC, id DESC').all(leagues.actingIdOf(req));
@@ -1104,7 +1119,7 @@ router.get('/:id/standings', (req, res) => {
   // season and the later ones are calculated from the matches below.
   const frozen = FROZEN[season.slug];
   if (frozen) {
-    const fold = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’`´]/g, "'").replace(/s+/g, ' ').trim().toLowerCase();
+    const fold = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’`´]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
     const byName = new Map(db.prepare('SELECT id, name, slug FROM players').all().map((p) => [fold(p.name), p]));
     return res.json({
       id: season.id, name: season.name, slug: season.slug, startDate: season.start_date, endDate: season.end_date, frozen: true, rules: null,
@@ -1261,6 +1276,13 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
   const gallery = text('galleryUrl', season.gallery_url, 500);
   const payment = text('paymentUrl', season.payment_url, 500);
   const logo = text('logoUrl', season.logo_url, 300);
+  // the IBAN of the entry fee of this event: spaces and capitals are put right; empty = the IBAN of Backend > Contact
+  const ibanText = text('iban', season.iban, 60);
+  if (!ibanText.error && req.body.iban !== undefined && ibanText.value && !paymentQr.cleanIban(ibanText.value)) return res.status(400).json({ error: 'The IBAN does not look right (e.g. SK31 1200 0000 1987 4263 7541)' });
+  const payRecipient = text('payRecipient', season.pay_recipient, 120);
+  const payNote = text('payNote', season.pay_note, 140);
+  if (payRecipient.error || payNote.error) return res.status(400).json({ error: payRecipient.error || payNote.error });
+  const iban = { value: ibanText.value ? paymentQr.cleanIban(ibanText.value) : ibanText.value };
   const draw = req.body.drawDate !== undefined ? parseDate(req.body.drawDate) : { value: season.draw_date };
   const venue = text('venue', season.venue, 200);
   // the organiser of a club cannot change what a club tournament is (only an admin of the site may)
@@ -1365,8 +1387,8 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     if (planned.error) return res.status(400).json({ error: planned.error });
     planning = planned.next;
   }
-  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ?, court_count = ?, max_matches_per_day = ?, scoring = ?, tiebreakers = ?, max_players = ?, category_max = ? WHERE id = ?')
-    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, scoring, tiebreakers, maxPlayers, nextSeason.category_max, season.id);
+  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, iban = ?, pay_recipient = ?, pay_note = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ?, court_count = ?, max_matches_per_day = ?, scoring = ?, tiebreakers = ?, max_players = ?, category_max = ? WHERE id = ?')
+    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, iban.value, payRecipient.value, payNote.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, scoring, tiebreakers, maxPlayers, nextSeason.category_max, season.id);
   if (planning) tournamentSchedule.storeSettings(season.id, planning);
   db.prepare('UPDATE seasons SET unregister_hours = ? WHERE id = ?').run(unregisterHours, season.id);
   if (req.body.rules !== undefined) db.prepare('UPDATE seasons SET rules = ? WHERE id = ?').run(rules.value, season.id);

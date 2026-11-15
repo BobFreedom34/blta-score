@@ -32,7 +32,7 @@ function parse(body, existing) {
     fields.brand_name = `SLTA ${fields.name}`;
   }
   if (body.nameLocative !== undefined) {
-    const place = String(body.nameLocative || '').replace(/s+/g, ' ').trim();
+    const place = String(body.nameLocative || '').replace(/\s+/g, ' ').trim();
     if (place.length > 60) return { error: 'The name of the city in the 6th case is too long (max 60 characters)' };
     fields.name_locative = place;
   }

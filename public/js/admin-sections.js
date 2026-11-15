@@ -94,7 +94,7 @@
       if (control.tagName === 'INPUT' && !TEXTISH.test(control.type || '')) return;
       const before = nodes.slice(0, at);
       if (!before.every((n) => n.nodeType === 3 || (n.nodeType === 1 && /^(SPAN|B|STRONG|EM|SMALL|I)$/.test(n.tagName)))) return;
-      const text = before.map((n) => n.textContent).join('').replace(/s+/g, ' ').trim();
+      const text = before.map((n) => n.textContent).join('').replace(/\s+/g, ' ').trim();
       if (!text || text.length > 60) return;
       const tag = document.createElement('span');
       tag.className = text.length > 22 ? 'sa-label sa-label-long' : 'sa-label';

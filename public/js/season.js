@@ -280,16 +280,20 @@ function hasEntryFee() {
 }
 
 // "Payment by transfer" in the window after a tournament registration. contact = GET /api/contact (the IBAN is edited in Backend > Contact).
-function bankTransferHtml(contact, alongsideOnline) {
-  if (!contact || !contact.iban) return '';
+function bankTransferHtml(contact, alongsideOnline, payerName) {
+  const iban = season.iban || (contact && contact.iban) || ''; // the IBAN of this event first, else the one of Backend > Contact
+  if (!iban) return '';
+  contact = { ...(contact || {}), iban };
+  const customNote = String(season.payNote || '').trim() ? String(season.payNote).split('{turnaj}').join(season.name).split('{meno}').join(payerName || '').trim() : '';
   const row = (label, value, copy) => `<div class="sv-pay-row"><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b>${copy ? `<button type="button" class="sv-pay-copy" data-copy="${escapeHtml(copy)}">${escapeHtml(t('season.copy'))}</button>` : ''}</div>`;
   return `
     <div class="sv-pay-bank">
       <h4>${escapeHtml(t(alongsideOnline ? 'season.payTransferOr' : 'season.payTransferTitle'))}</h4>
       ${row('IBAN', contact.iban, contact.iban.replace(/\s+/g, ''))}
-      ${contact.orgName ? row(t('season.payTransferRecipient'), contact.orgName) : ''}
+      ${(season.payRecipient || contact.orgName) ? row(t('season.payTransferRecipient'), season.payRecipient || contact.orgName) : ''}
       ${season.entryFee ? row(t('season.payTransferAmount'), season.entryFee) : ''}
-      <p class="sv-pay-note">${escapeHtml(t('season.payTransferNote', { name: season.name }))}</p>
+      ${customNote ? row(t('season.payTransferNoteLabel'), customNote, customNote) : `<p class="sv-pay-note">${escapeHtml(t('season.payTransferNote', { name: season.name }))}</p>`}
+      <div class="sv-pay-qr"><img src="/api/seasons/${season.id}/payment-qr?for=${encodeURIComponent(payerName || '')}" alt="QR" width="200" height="200"><span>${escapeHtml(t('season.payQr'))}</span></div>
     </div>`;
 }
 
@@ -782,7 +786,7 @@ async function openRegisterModal() {
       // a tournament also offers a bank transfer: the IBAN of the contact page, the entry fee and a reminder to put the tournament's name in the note
       const contact = isTournament() ? await api('/contact').catch(() => null) : null;
       // a substitute pays nothing yet (the payment is asked when he comes in), and an event with no entry fee asks for no payment at all
-      const pay = (res && res.substitute) || !hasEntryFee() ? '' : stripe + bankTransferHtml(contact, !!stripe);
+      const pay = (res && res.substitute) || !hasEntryFee() ? '' : stripe + bankTransferHtml(contact, !!stripe, (res && res.name) || typed);
       wrap.querySelector('.modal').innerHTML = `
         <button type="button" class="close" data-close aria-label="${escapeHtml(t('season.regClose'))}">&times;</button>
         <h3>${escapeHtml(t('season.regThanks', { name: (res && res.name) || typed }))}</h3>

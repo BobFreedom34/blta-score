@@ -11,6 +11,7 @@
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",
     "archiver": "^7.0.1",
+    "bysquare": "^4.1.1",
     "compression": "^1.8.2",
     "cookie-parser": "^1.4.6",
     "cookie-signature": "^1.0.7",
@@ -21,6 +22,7 @@
     "google-auth-library": "^11.2.0",
     "multer": "^2.2.0",
     "nodemailer": "^10.0.16",
+    "qrcode": "^1.5.4",
     "socket.io": "^4.7.5",
     "web-push": "^3.6.7"
   },
