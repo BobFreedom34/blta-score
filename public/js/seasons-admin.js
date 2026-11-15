@@ -513,6 +513,7 @@ function seasonCardHtml(s) {
                 ${field(tl('Nadpis platby prevodom', 'Heading of the bank transfer'), input('payTitle', s.payTitle || '', 'maxlength="120" placeholder="' + escapeHtml(tl('prázdne = Štartovné uhraď prevodom na účet', 'empty = the default heading')) + '"'), 'sa-full')}
                 ${field(tl('Príjemca platby', 'Recipient of the payment'), input('payRecipient', s.payRecipient || '', 'maxlength="120" placeholder="' + escapeHtml(tl('prázdne = názov z Backend > Kontakt', 'empty = the name of Backend > Contact')) + '"'))}
                 ${field(tl('Poznámka platby', 'Payment note'), input('payNote', s.payNote || '', 'maxlength="140" placeholder="' + escapeHtml(tl('napr. Štartovné {turnaj} – {meno}', 'e.g. Entry fee {turnaj} – {meno}')) + '"'))}
+                <div class="sa-full"><button type="button" class="btn btn-sm btn-outline" data-pay-preview>${tl('Ukázať okno platby', 'Show the payment window')}</button></div>
                 <span class="sa-hint sa-full">${tl('Na tento účet sa pošle štartovné. Ukáže sa hráčovi v okne po registrácii spolu s QR kódom na platbu. Prázdne = použije sa IBAN z Backend > Kontakt. V poznámke môžeš použiť {turnaj} (názov turnaja) a {meno} (meno hráča); prázdna poznámka = názov turnaja a meno hráča.', 'The entry fee is sent to this account. It is shown to the player in the window after registering, with a QR code for the payment. Empty = the IBAN of Backend > Contact is used. In the note you can use {turnaj} (the name of the event) and {meno} (the player); an empty note = the event name and the player.')}</span>
               </div>
             </section>
@@ -803,6 +804,16 @@ function wireSeason(card) {
   // every section of the form ends with the same Uložiť button (it is ONE form, so any of them saves all of it)
   card.querySelectorAll('.season-edit-form > .sa-section').forEach((sec) => {
     sec.insertAdjacentHTML('beforeend', `<div class="sa-section-save"><button type="submit" class="btn btn-sm btn-primary">${tl('Uložiť', 'Save')}</button></div>`);
+  });
+  // "Show the payment window": what the player sees after registering, from the values of the form as they are now (also those not saved yet)
+  const payPreview = card.querySelector('[data-pay-preview]');
+  if (payPreview) payPreview.addEventListener('click', () => {
+    const v = (name) => { const el = card.querySelector(`[data-field="${name}"]`); return el ? el.value.trim() : ''; };
+    const ev = { id, name: v('name') || '', entryFee: v('entryFee'), paymentUrl: v('paymentUrl'), iban: v('iban'), payRecipient: v('payRecipient'), payNote: v('payNote'), payTitle: v('payTitle') };
+    const mine = v('iban').replace(/s+/g, '');
+    const query = `&preview=1&iban=${encodeURIComponent(mine)}&recipient=${encodeURIComponent(v('payRecipient'))}&note=${encodeURIComponent(v('payNote'))}&fee=${encodeURIComponent(v('entryFee'))}&name=${encodeURIComponent(v('name'))}`;
+    if (!window.BLTA_EVENT_POPUP) return;
+    window.BLTA_EVENT_POPUP.showPayment({ ...ev, qrExtra: query }, tl('Ján Novák', 'John Smith'));
   });
   card.querySelector('.season-edit-form').addEventListener('submit', async (e) => {
     e.preventDefault();

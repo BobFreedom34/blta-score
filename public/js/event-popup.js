@@ -39,7 +39,7 @@
       ${(ev.payRecipient || contact.orgName) ? row(t('season.payTransferRecipient'), ev.payRecipient || contact.orgName) : ''}
       ${ev.entryFee ? row(t('season.payTransferAmount'), ev.entryFee) : ''}
       ${customNote ? row(t('season.payTransferNoteLabel'), customNote, customNote) : `<p class="sv-pay-note">${esc(t('season.payTransferNote', { name: ev.name }))}</p>`}
-      <div class="sv-pay-qr"><img src="/api/seasons/${ev.id}/payment-qr?for=${encodeURIComponent(payerName || '')}" alt="QR" width="200" height="200"><span>${esc(t('season.payQr'))}</span></div>
+      <div class="sv-pay-qr"><img src="/api/seasons/${ev.id}/payment-qr?for=${encodeURIComponent(payerName || '')}${ev.qrExtra || ''}" alt="QR" width="200" height="200"><span>${esc(t('season.payQr'))}</span></div>
     </div>`;
   }
 
@@ -197,5 +197,28 @@
     } catch { /* no pop-up this time */ }
   }
 
-  window.BLTA_EVENT_POPUP = { check, show };
+  // the Backend's "Show the payment window": the thank-you window after a registration with the payment block, drawn from the data of the form (nothing is sent)
+  async function showPayment(ev, name) {
+    if (open) return;
+    open = true;
+    const contact = await api('/contact').catch(() => null); // (the IBAN and the name of Backend > Contact, when the event has none of its own)
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop ep-backdrop';
+    const hasMoney = hasFee(ev);
+    const online = hasMoney && ev.paymentUrl ? `<a class="btn btn-primary btn-block" href="${esc(ev.paymentUrl)}" target="_blank" rel="noopener">${esc(t('season.payOnline'))}</a>` : '';
+    const bank = hasMoney ? bankHtml(contact, ev, name, true) : '';
+    const pay = online || bank ? `<p>${esc(t(online && bank ? 'popup.payBoth' : online ? 'season.regPayHint' : 'popup.payTransferOnly'))}</p>${online}${bank}` : `<p>${esc(t('season.payPreviewNone'))}</p>`;
+    wrap.innerHTML = `<div class="modal ep"><button type="button" class="close" data-x aria-label="${esc(t('season.regClose'))}">&times;</button>
+      <h3>${esc(t('season.regThanks', { name }))}</h3><p>${esc(t('season.regDone'))}</p>${pay}
+      <button type="button" class="btn btn-outline btn-block" data-x style="margin-top:10px">${esc(t('season.regClose'))}</button></div>`;
+    const close = () => { wrap.remove(); open = false; };
+    wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('[data-x]')) close(); });
+    wrap.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => {
+      const done = () => { b.textContent = t('season.copied'); };
+      if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(done, done); else done();
+    }));
+    document.body.appendChild(wrap);
+  }
+
+  window.BLTA_EVENT_POPUP = { check, show, showPayment };
 })();

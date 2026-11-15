@@ -293,7 +293,13 @@ router.get('/:id(\\d+)/payment-qr', async (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(req.params.id);
   if (!season || season.league_id !== leagues.actingIdOf(req) || clubTournaments.publicFace(season).hidden) return res.status(404).json({ error: 'Not found' });
   try {
-    const svg = await paymentQr.svgFor(season, String(req.query.for || '').replace(/\s+/g, ' ').trim().slice(0, 40));
+    // an admin looking at the form before saving: the values of the form go along and win over the saved ones
+    let shown = season;
+    if (auth.isAdmin(req) && req.query.preview === '1') {
+      const q = (k, n) => String(req.query[k] || '').slice(0, n);
+      shown = { ...season, iban: q('iban', 60), pay_recipient: q('recipient', 120), pay_note: q('note', 140), entry_fee: q('fee', 40), name: q('name', 200) || season.name };
+    }
+    const svg = await paymentQr.svgFor(shown, String(req.query.for || '').replace(/\s+/g, ' ').trim().slice(0, 40));
     if (!svg) return res.status(404).json({ error: 'No IBAN set' });
     res.set('Content-Type', 'image/svg+xml').set('Cache-Control', 'no-store').send(svg);
   } catch (err) { res.status(500).json({ error: 'The QR code could not be made' }); }
