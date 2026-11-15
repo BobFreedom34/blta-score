@@ -219,6 +219,16 @@ try {
   console.error('Bracket slot repair failed (will retry on next start):', err);
 }
 try {
+  // matches of a bracket that kept the old players after a corrected result (once)
+  if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'bracket_matches_follow_slots'").get()) {
+    const fixed = require('./src/bracketEngine').repairMatchesFromSlots();
+    db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('bracket_matches_follow_slots')").run();
+    if (fixed) console.log('Bracket matches set to the players of their slot: ' + fixed);
+  }
+} catch (err) {
+  console.error('Bracket match repair failed (will retry on next start):', err);
+}
+try {
   require('./src/rankingExpiry').seed(); // the dated items of the BLTA points that are there today (once)
 } catch (err) {
   console.error('Defence of points seed failed (will retry on next start):', err);

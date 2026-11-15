@@ -144,6 +144,26 @@ function maybeCreateMatch(node) {
   return db.prepare('SELECT * FROM bracket_matches WHERE id = ?').get(node.id);
 }
 
+// A slot of the bracket got another player (a result was corrected, so the winner or the loser is somebody else now): the match of that slot, when it was made
+// already and has not been played, follows - else the page of the match would still show the old pairing. A match that is being played or finished is left alone.
+function syncMatchToNode(node) {
+  if (!node || !node.match_id || !node.player1_id || !node.player2_id) return;
+  const match = db.prepare('SELECT status, player1_id, player2_id FROM matches WHERE id = ?').get(node.match_id);
+  if (!match || match.status !== 'PLANNED') return;
+  if (match.player1_id === node.player1_id && match.player2_id === node.player2_id) return;
+  const bracket = db.prepare('SELECT id, is_doubles FROM brackets WHERE id = ?').get(node.bracket_id);
+  const doubles = bracket && bracket.is_doubles;
+  db.prepare("UPDATE matches SET player1_id = ?, player2_id = ?, player1b_id = ?, player2b_id = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?")
+    .run(node.player1_id, node.player2_id, doubles ? partnerOf(bracket.id, node.player1_id) : null, doubles ? partnerOf(bracket.id, node.player2_id) : null, node.match_id);
+}
+
+// One-off repair of the matches that kept the old players after a corrected result (see syncMatchToNode): a planned match whose players differ from its slot takes the slot's.
+function repairMatchesFromSlots() {
+  const rows = db.prepare(`SELECT bm.* FROM bracket_matches bm JOIN matches m ON m.id = bm.match_id WHERE bm.player1_id IS NOT NULL AND bm.player2_id IS NOT NULL AND m.status = 'PLANNED' AND (bm.player1_id IS NOT m.player1_id OR bm.player2_id IS NOT m.player2_id)`).all();
+  rows.forEach((node) => syncMatchToNode(node));
+  return rows.length;
+}
+
 // Writes `winnerId` into the next round's node, in the slot this node
 // feeds into, then — if that node now has both its players (either two
 // real winners, or one real player meeting a bye) — either creates its
@@ -157,6 +177,7 @@ function advanceWinner(node, winnerId) {
   db.prepare(`UPDATE bracket_matches SET ${column} = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`)
     .run(winnerId, node.next_bracket_match_id);
   let nextNode = db.prepare('SELECT * FROM bracket_matches WHERE id = ?').get(node.next_bracket_match_id);
+  syncMatchToNode(nextNode);
 
   if (nextNode.player1_id && nextNode.player2_id) {
     nextNode = maybeCreateMatch(nextNode);
@@ -480,6 +501,7 @@ function dropLoser(node, winnerId) {
   const column = target.seed1 === node.consolation_seed ? 'player1_id' : 'player2_id';
   db.prepare(`UPDATE bracket_matches SET ${column} = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`).run(loserId, target.id);
   target = db.prepare('SELECT * FROM bracket_matches WHERE id = ?').get(target.id);
+  syncMatchToNode(target);
   if (target.is_bye) advanceWinner(target, loserId);
   else if (target.player1_id && target.player2_id) maybeCreateMatch(target);
 }
@@ -546,6 +568,7 @@ function repairSlotsFromMatches() {
 
 module.exports = {
   followMatchPlayers,
+  repairMatchesFromSlots,
   repairSlotsFromMatches,
   placeLabel,
   nextPowerOfTwo,

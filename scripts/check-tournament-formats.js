@@ -172,6 +172,39 @@ test('MONRAD with 7 players: 3 real matches in round 1, so the losers bracket ha
   assert.deepStrictEqual([r1[1].player1.id, r1[1].player2.id].sort(), [losers[1].id, losers[2].id].sort());
 });
 
+
+test('a corrected result: the next match and the losers-bracket match that were already made follow the new winner / loser (not the old pairing)', async () => {
+  const t4 = await newTournament('Format Correct');
+  await register(t4, 'ELITE', 4);
+  const made = await draw(t4, { category: 'ELITE', format: 'MONRAD', mode: 'AUTO' });
+  assert.strictEqual(made.status, 201, made.text);
+  const mainId = made.json.main;
+  const main = await bracketOf(mainId);
+  const r1 = main.nodes.filter((n) => n.round === 1).sort((a, b) => a.position - b.position);
+  const play = async (node, winnerId) => playMatch(node.match.token, winnerId, main.format);
+  const high = (n) => Math.max(n.player1.id, n.player2.id);
+  const low = (n) => Math.min(n.player1.id, n.player2.id);
+  await play(r1[0], high(r1[0]));
+  await play(r1[1], high(r1[1]));
+  const matchOf = async (token) => (await call('GET', `/api/matches/${token}`)).json;
+  const idsOf = (m) => [m.player1.id, m.player2.id].sort((a, b) => a - b);
+  let now = await bracketOf(mainId);
+  const finalNode = now.nodes.find((n) => n.round === 2);
+  assert.deepStrictEqual(idsOf(await matchOf(finalNode.match.token)), [high(r1[0]), high(r1[1])].sort((a, b) => a - b));
+  const kids = (await call('GET', `/api/seasons/${t4.id}/brackets`)).json.filter((b) => b.parentBracketId === mainId);
+  const third = await bracketOf(kids[0].id);
+  const thirdNode = third.nodes.find((n) => n.round === 1 && n.match);
+  assert.ok(thirdNode, 'the match of the losers');
+  // the first match is corrected: the admin restarts it and enters the result again, now the other player won
+  assert.strictEqual((await call('POST', `/api/matches/${r1[0].match.token}/restart`, {})).status, 200);
+  await playMatch(r1[0].match.token, low(r1[0]), main.format);
+  const correct = { status: 200 };
+  assert.strictEqual(correct.status, 200, correct.text);
+  now = await bracketOf(mainId);
+  const finalAfter = now.nodes.find((n) => n.round === 2);
+  assert.deepStrictEqual(idsOf(await matchOf(finalAfter.match.token)), [low(r1[0]), high(r1[1])].sort((a, b) => a - b), 'the final follows the corrected winner');
+  assert.deepStrictEqual(idsOf(await matchOf(thirdNode.match.token)), [high(r1[0]), low(r1[1])].sort((a, b) => a - b), 'the match of the losers follows the corrected loser');
+});
 test('MONRAD played through: 32 matches in all (everybody keeps playing), every bracket decided', async () => {
   const played = await playAllBrackets(t1, monrad);
   assert.strictEqual(played + 8, 32, '8 matches of round 1 were played above, the rest here'); // (32 in all)
