@@ -288,7 +288,7 @@ function bankTransferHtml(contact, alongsideOnline, payerName) {
   const row = (label, value, copy) => `<div class="sv-pay-row"><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b>${copy ? `<button type="button" class="sv-pay-copy" data-copy="${escapeHtml(copy)}">${escapeHtml(t('season.copy'))}</button>` : ''}</div>`;
   return `
     <div class="sv-pay-bank">
-      <h4>${escapeHtml(t(alongsideOnline ? 'season.payTransferOr' : 'season.payTransferTitle'))}</h4>
+      <h4>${escapeHtml(season.payTitle || t(alongsideOnline ? 'season.payTransferOr' : 'season.payTransferTitle'))}</h4>
       ${row('IBAN', contact.iban, contact.iban.replace(/\s+/g, ''))}
       ${(season.payRecipient || contact.orgName) ? row(t('season.payTransferRecipient'), season.payRecipient || contact.orgName) : ''}
       ${season.entryFee ? row(t('season.payTransferAmount'), season.entryFee) : ''}

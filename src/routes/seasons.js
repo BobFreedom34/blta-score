@@ -186,6 +186,7 @@ function serializeSeason(s) {
     paymentUrl: s.payment_url || '',
     payRecipient: s.pay_recipient || '',
     payNote: s.pay_note || '',
+    payTitle: s.pay_title || '',
     iban: s.iban || '', // the account of this event's entry fee ('' = the one of Backend > Contact)
     logoUrl: s.logo_url || '',
     heroUrl: s.hero_url || '',
@@ -1281,7 +1282,8 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
   if (!ibanText.error && req.body.iban !== undefined && ibanText.value && !paymentQr.cleanIban(ibanText.value)) return res.status(400).json({ error: 'The IBAN does not look right (e.g. SK31 1200 0000 1987 4263 7541)' });
   const payRecipient = text('payRecipient', season.pay_recipient, 120);
   const payNote = text('payNote', season.pay_note, 140);
-  if (payRecipient.error || payNote.error) return res.status(400).json({ error: payRecipient.error || payNote.error });
+  const payTitle = text('payTitle', season.pay_title, 120);
+  if (payRecipient.error || payNote.error || payTitle.error) return res.status(400).json({ error: payRecipient.error || payNote.error || payTitle.error });
   const iban = { value: ibanText.value ? paymentQr.cleanIban(ibanText.value) : ibanText.value };
   const draw = req.body.drawDate !== undefined ? parseDate(req.body.drawDate) : { value: season.draw_date };
   const venue = text('venue', season.venue, 200);
@@ -1387,8 +1389,8 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     if (planned.error) return res.status(400).json({ error: planned.error });
     planning = planned.next;
   }
-  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, iban = ?, pay_recipient = ?, pay_note = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ?, court_count = ?, max_matches_per_day = ?, scoring = ?, tiebreakers = ?, max_players = ?, category_max = ? WHERE id = ?')
-    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, iban.value, payRecipient.value, payNote.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, scoring, tiebreakers, maxPlayers, nextSeason.category_max, season.id);
+  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, iban = ?, pay_recipient = ?, pay_note = ?, pay_title = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ?, court_count = ?, max_matches_per_day = ?, scoring = ?, tiebreakers = ?, max_players = ?, category_max = ? WHERE id = ?')
+    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, iban.value, payRecipient.value, payNote.value, payTitle.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, scoring, tiebreakers, maxPlayers, nextSeason.category_max, season.id);
   if (planning) tournamentSchedule.storeSettings(season.id, planning);
   db.prepare('UPDATE seasons SET unregister_hours = ? WHERE id = ?').run(unregisterHours, season.id);
   if (req.body.rules !== undefined) db.prepare('UPDATE seasons SET rules = ? WHERE id = ?').run(rules.value, season.id);

@@ -34,7 +34,7 @@
     const customNote = String(ev.payNote || '').trim() ? String(ev.payNote).split('{turnaj}').join(ev.name).split('{meno}').join(payerName || '').trim() : '';
     const row = (label, value, copy) => `<div class="sv-pay-row"><span>${esc(label)}</span><b>${esc(value)}</b>${copy ? `<button type="button" class="sv-pay-copy" data-copy="${esc(copy)}">${esc(t('season.copy'))}</button>` : ''}</div>`;
     return `<div class="sv-pay-bank">
-      <h4>${esc(t('popup.payTransfer'))}</h4>
+      <h4>${esc(ev.payTitle || t('popup.payTransfer'))}</h4>
       ${row('IBAN', contact.iban, contact.iban.replace(/\s+/g, ''))}
       ${(ev.payRecipient || contact.orgName) ? row(t('season.payTransferRecipient'), ev.payRecipient || contact.orgName) : ''}
       ${ev.entryFee ? row(t('season.payTransferAmount'), ev.entryFee) : ''}

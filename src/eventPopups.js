@@ -192,7 +192,7 @@ function payloadOf(p, now = Date.now()) {
       id: s.id, name: s.name, slug: s.slug, kind: tournament ? 'TOURNAMENT' : 'LEAGUE', playType: doubles ? 'DOUBLES' : 'SINGLES', venue: s.venue || '',
       startDate: s.start_date || '', endDate: s.end_date || '', drawDate: s.draw_date || '', heroUrl: s.hero_url || '', heroMobileUrl: s.hero_mobile_url || '',
       categories: doubles ? [] : categories, categoryChoice: !(tournament || (categories || []).includes('OPEN')),
-      entryFee: s.entry_fee || '', paymentUrl: s.payment_url || '', iban: s.iban || '', payRecipient: s.pay_recipient || '', payNote: s.pay_note || '', codePath: `/${tournament ? 'tournament' : 'season'}/${encodeURIComponent(s.slug)}`,
+      entryFee: s.entry_fee || '', paymentUrl: s.payment_url || '', iban: s.iban || '', payRecipient: s.pay_recipient || '', payNote: s.pay_note || '', payTitle: s.pay_title || '', codePath: `/${tournament ? 'tournament' : 'season'}/${encodeURIComponent(s.slug)}`,
     },
     asOf: now,
   };
