@@ -132,6 +132,12 @@ function ensureManualResultModal() {
         <span style="font-size:13px;font-weight:600">${escapeHtml(t('match.unfinishedCheckboxLabel'))}</span>
       </label>
 
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:10px">
+        <input type="checkbox" id="manual-result-bygames-checkbox">
+        <span style="font-size:13px;font-weight:600">${escapeHtml(t('match.byGamesCheckboxLabel'))}</span>
+      </label>
+      <div id="manual-result-bygames-hint" style="display:none;margin:4px 0 0 26px;font-size:13px;color:var(--gray)"></div>
+
       <div id="manual-result-error" style="color:var(--danger);font-weight:600;margin:8px 0"></div>
       <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">${escapeHtml(t('match.saveResult'))}</button>
     </form>
@@ -157,17 +163,64 @@ function openManualResult(m, { token, onSaved } = {}) {
   const retiredCheckbox = document.getElementById('manual-result-retired-checkbox');
   const retiredFields = document.getElementById('manual-result-retired-fields');
   const unfinishedCheckbox = document.getElementById('manual-result-unfinished-checkbox');
+  const byGamesCheckbox = document.getElementById('manual-result-bygames-checkbox');
+  const byGamesHint = document.getElementById('manual-result-bygames-hint');
   retiredCheckbox.checked = false;
   unfinishedCheckbox.checked = false;
+  byGamesCheckbox.checked = false;
+  byGamesHint.style.display = 'none';
   retiredFields.style.display = 'none';
+  // "the match ends with this result": who leads in the finished sets wins; when the sets are level (1:1, or one set that was not finished) the games of the LAST set entered
+  // decide (the same rule as src/matchEngine.js leaderOfSets)
+  const gamesLeader = () => {
+    const meta = FORMAT_META[m.format] || { setsToWin: 2, finalSetSuperTiebreak: false };
+    const rules = { games: meta.setGames || 6, tbAt: meta.tiebreakAt || 6 };
+    const deciderIndex = meta.setsToWin * 2 - 2;
+    const sets = [];
+    document.querySelectorAll('.manual-set-row').forEach((row) => {
+      const x = row.querySelector('[data-player="1"]').value.trim();
+      const y = row.querySelector('[data-player="2"]').value.trim();
+      if (x !== '' && y !== '') sets.push({ p1: Number(x) || 0, p2: Number(y) || 0 });
+    });
+    const won = { 1: 0, 2: 0 };
+    sets.forEach((x, i) => {
+      const matchTiebreak = i === deciderIndex && meta.finalSetSuperTiebreak;
+      const done = matchTiebreak
+        ? ((x.p1 >= 10 || x.p2 >= 10) && Math.abs(x.p1 - x.p2) >= 2)
+        : ((x.p1 === rules.tbAt + 1 && x.p2 === rules.tbAt) || (x.p1 === rules.tbAt && x.p2 === rules.tbAt + 1) || (!(rules.games === rules.tbAt + 1 && Math.max(x.p1, x.p2) > rules.games) && (x.p1 >= rules.games || x.p2 >= rules.games) && Math.abs(x.p1 - x.p2) >= 2));
+      if (done && x.p1 !== x.p2) won[x.p1 > x.p2 ? 1 : 2] += 1;
+    });
+    const last = sets[sets.length - 1] || { p1: 0, p2: 0 };
+    const bySets = won[1] !== won[2];
+    const winner = bySets ? (won[1] > won[2] ? 1 : 2) : (last.p1 > last.p2 ? 1 : last.p2 > last.p1 ? 2 : null);
+    return { winner, bySets, a: won[1], b: won[2], x: last.p1, y: last.p2 };
+  };
+  const showByGamesHint = () => {
+    if (!byGamesCheckbox.checked) { byGamesHint.style.display = 'none'; return; }
+    const g = gamesLeader();
+    byGamesHint.style.display = 'block';
+    if (!g.winner) byGamesHint.textContent = t('match.byGamesTie', g);
+    else byGamesHint.textContent = t(g.bySets ? 'match.byGamesWinnerSets' : 'match.byGamesWinnerLast', { name: g.winner === 1 ? m.player1.name : m.player2.name, a: g.a, b: g.b, x: g.x, y: g.y });
+  };
+  document.getElementById('manual-result-sets').oninput = showByGamesHint;
   // Mutually exclusive — a walkover/retirement claims a winner+reason, while Unfinished explicitly declines to claim anything, so only one can apply.
   retiredCheckbox.onchange = () => {
     retiredFields.style.display = retiredCheckbox.checked ? 'block' : 'none';
-    if (retiredCheckbox.checked) unfinishedCheckbox.checked = false;
+    if (retiredCheckbox.checked) { unfinishedCheckbox.checked = false; byGamesCheckbox.checked = false; showByGamesHint(); }
+  };
+  byGamesCheckbox.onchange = () => {
+    if (byGamesCheckbox.checked) {
+      retiredCheckbox.checked = false;
+      unfinishedCheckbox.checked = false;
+      retiredFields.style.display = 'none';
+    }
+    showByGamesHint();
   };
   unfinishedCheckbox.onchange = () => {
     if (unfinishedCheckbox.checked) {
       retiredCheckbox.checked = false;
+      byGamesCheckbox.checked = false;
+      showByGamesHint();
       retiredFields.style.display = 'none';
     }
   };
@@ -246,6 +299,17 @@ function openManualResult(m, { token, onSaved } = {}) {
       }
       body.winner = winner;
       body.reason = reason;
+    } else if (byGamesCheckbox.checked) {
+      if (sets.length === 0) {
+        errorEl.textContent = t('match.enterAtLeastOneSetScore');
+        return;
+      }
+      const g = gamesLeader();
+      if (!g.winner) {
+        errorEl.textContent = t('match.byGamesTie', g);
+        return;
+      }
+      body.byGames = true;
     } else if (unfinishedCheckbox.checked) {
       if (sets.length === 0) {
         errorEl.textContent = t('match.enterAtLeastOneSetScore');

@@ -1963,7 +1963,7 @@ body:not(.embed-light) .match-card .scoreboard .set-win { color: var(--status-gr
 .manual-set-field label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--gray);
+  color: var(--green);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

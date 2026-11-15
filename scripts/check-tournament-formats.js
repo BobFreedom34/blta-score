@@ -205,6 +205,37 @@ test('a corrected result: the next match and the losers-bracket match that were 
   assert.deepStrictEqual(idsOf(await matchOf(finalAfter.match.token)), [low(r1[0]), high(r1[1])].sort((a, b) => a - b), 'the final follows the corrected winner');
   assert.deepStrictEqual(idsOf(await matchOf(thirdNode.match.token)), [high(r1[0]), low(r1[1])].sort((a, b) => a - b), 'the match of the losers follows the corrected loser');
 });
+
+test('manual result "the match ends with this result": the one ahead in sets wins, at level sets the games of the last set decide; an ordinary finished result, the bracket moves on; a level last set is refused', async () => {
+  const t4 = await newTournament('Format ByGames');
+  await register(t4, 'ELITE', 4);
+  const made = await draw(t4, { category: 'ELITE', format: 'ELIMINATION', mode: 'AUTO' });
+  assert.strictEqual(made.status, 201, made.text);
+  const main = await bracketOf(made.json.main);
+  const r1 = main.nodes.filter((n) => n.round === 1).sort((a, b) => a.position - b.position);
+  const send = (node, sets, extra = {}) => call('POST', `/api/matches/${node.match.token}/manual-result`, { sets, location: 'Kurt 5', scheduledAt: '2099-07-01T10:00:00.000Z', ...extra });
+  // 4:1 in the first set, not finished: without the option it is refused (a set has to have a valid winner)
+  assert.strictEqual((await send(r1[0], [{ p1: 4, p2: 1 }])).status, 400);
+  // level games: nobody can be told
+  const tie = await send(r1[0], [{ p1: 3, p2: 3 }], { byGames: true });
+  assert.strictEqual(tie.status, 400, tie.text);
+  assert.ok(/level/.test(tie.json.error), tie.text);
+  // sets 1:1 and the last set decides by its games, not the games of all the sets: 6:0, 3:6, 2:3 (11:9 in all for player 1, but player 2 leads the last set)
+  const lastSet = await send(r1[1], [{ p1: 6, p2: 0 }, { p1: 3, p2: 6 }, { p1: 2, p2: 3 }], { byGames: true });
+  assert.strictEqual(lastSet.status, 200, lastSet.text);
+  const m2 = (await call('GET', `/api/matches/${r1[1].match.token}`)).json;
+  assert.strictEqual(m2.winnerId || (m2.winner && m2.winner.id), r1[1].player2.id, 'sets 1:1, player 2 leads the last set');
+  // one finished set and one that was not: 6:2, 1:3 - player 1 is ahead in sets
+  const ok = await send(r1[0], [{ p1: 6, p2: 2 }, { p1: 1, p2: 3 }], { byGames: true });
+  assert.strictEqual(ok.status, 200, ok.text);
+  const m = (await call('GET', `/api/matches/${r1[0].match.token}`)).json;
+  assert.strictEqual(m.status, 'FINISHED');
+  assert.strictEqual(m.winnerId || (m.winner && m.winner.id), r1[0].player1.id, 'player 1 has more games');
+  assert.ok(!m.endReason, 'an ordinary result, no walkover / retirement');
+  const after = await bracketOf(made.json.main);
+  const final = after.nodes.find((n) => n.round === 2);
+  assert.ok([final.player1, final.player2].some((p) => p && p.id === r1[0].player1.id), 'the winner is in the final');
+});
 test('MONRAD played through: 32 matches in all (everybody keeps playing), every bracket decided', async () => {
   const played = await playAllBrackets(t1, monrad);
   assert.strictEqual(played + 8, 32, '8 matches of round 1 were played above, the rest here'); // (32 in all)

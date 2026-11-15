@@ -395,6 +395,25 @@ function tiebreakFromRaw(raw, p1, p2, setWinner, rules) {
 // retirement instead: only the LAST entered set may be a partial/in-progress
 // score (or there may be no sets at all), and the given player is recorded
 // as the winner regardless of what the raw scores add up to.
+// Who wins a match that is ended with the score as it stands (the option "the match ends with this result"): the one who leads in finished sets; when the sets are level
+// (also 0:0, e.g. a single set that was not finished) the games of the LAST set entered decide. -> { winner: 1 | 2 | null (level), setsWon, last: { p1, p2 } }
+function leaderOfSets(formatKey, rawSets) {
+  const format = FORMATS[formatKey];
+  if (!format) throw new Error(`Unknown match format: ${formatKey}`);
+  const sets = (Array.isArray(rawSets) ? rawSets : []).map((r) => ({ p1: Number(r && r.p1), p2: Number(r && r.p2) }));
+  if (!sets.length || sets.some((x) => !Number.isInteger(x.p1) || !Number.isInteger(x.p2) || x.p1 < 0 || x.p2 < 0)) throw new Error('Enter at least one valid set score');
+  const rules = formatSetRules(format);
+  const setsWon = { 1: 0, 2: 0 };
+  sets.forEach((x, i) => {
+    const matchTiebreak = i === decidingSetIndex(format) && format.finalSetSuperTiebreak;
+    const done = matchTiebreak ? ((x.p1 >= SUPER_TIEBREAK_POINTS || x.p2 >= SUPER_TIEBREAK_POINTS) && Math.abs(x.p1 - x.p2) >= 2) : isValidSetScore(x.p1, x.p2, rules);
+    if (done && x.p1 !== x.p2) setsWon[x.p1 > x.p2 ? 1 : 2] += 1;
+  });
+  const last = sets[sets.length - 1];
+  const winner = setsWon[1] !== setsWon[2] ? (setsWon[1] > setsWon[2] ? 1 : 2) : (last.p1 > last.p2 ? 1 : last.p2 > last.p1 ? 2 : null);
+  return { winner, setsWon, last };
+}
+
 function buildResultFromSets(formatKey, rawSets, explicitWinner) {
   const format = FORMATS[formatKey];
   if (!format) throw new Error(`Unknown match format: ${formatKey}`);
@@ -550,6 +569,7 @@ module.exports = {
   setNextSetStyle,
   decideByCompletedSets,
   buildResultFromSets,
+  leaderOfSets,
   buildStateFromSets,
   describeSet,
   describeMatch,

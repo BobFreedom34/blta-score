@@ -2039,7 +2039,18 @@ router.post('/:token/manual-result', requireLoggedIn, async (req, res) => {
     return res.json(payload);
   }
 
-  const hasExplicitWinner = req.body.winner !== undefined && req.body.winner !== null;
+  // "The match ends with this result": the match was played to a time limit (or stopped) and counts as finished. Who leads in finished sets wins; when the sets are
+  // level (1:1, or one set that was not finished) the games of the last set decide (see matchEngine.leaderOfSets). No reason and no end_reason: it is an ordinary
+  // result. A level last set decides nothing.
+  let leader;
+  if (req.body.byGames === true) {
+    let found;
+    try { found = engine.leaderOfSets(row.format, req.body.sets); } catch (err) { return res.status(400).json({ error: err.message }); }
+    if (!found.winner) return res.status(400).json({ error: `The sets are level and so are the games of the last set (${found.last.p1}:${found.last.p2}), so a winner cannot be told` });
+    leader = found.winner;
+  }
+
+  const hasExplicitWinner = leader === undefined && req.body.winner !== undefined && req.body.winner !== null;
   let endReason = null;
   if (hasExplicitWinner) {
     if (!['WALKOVER', 'RETIREMENT'].includes(req.body.reason)) {
@@ -2050,7 +2061,7 @@ router.post('/:token/manual-result', requireLoggedIn, async (req, res) => {
 
   let state;
   try {
-    state = engine.buildResultFromSets(row.format, req.body.sets, hasExplicitWinner ? Number(req.body.winner) : undefined);
+    state = engine.buildResultFromSets(row.format, req.body.sets, leader !== undefined ? leader : hasExplicitWinner ? Number(req.body.winner) : undefined);
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
