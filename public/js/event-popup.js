@@ -145,7 +145,7 @@
         if (preview && (!contact || !contact.iban)) contact = { ...(contact || {}), iban: 'SK00 0000 0000 0000 0000 0000', orgName: (contact && contact.orgName) || 'Názov organizátora' }; // (a sample, when none is set yet)
         const bank = bankHtml(contact, ev, (res && res.name) || $('name').value);
         // one line says the ways to pay: online and by transfer, or only one of them
-        const pay = online || bank ? `<p>${esc(t(online && bank ? 'popup.payBoth' : online ? 'season.regPayHint' : 'popup.payTransferOnly'))}</p>${online}${bank}` : '';
+        const pay = online || bank ? `${online ? `<p>${esc(t(bank ? 'popup.payBoth' : 'season.regPayHint'))}</p>` : ''}${online}${bank}` : '';
         const here = typeof siteUrl === 'function' ? siteUrl(ev.codePath) : ev.codePath;
         wrap.querySelector('.modal').innerHTML = `
           <button type="button" class="close" data-dismiss-done aria-label="${closeLabel}">&times;</button>
@@ -207,7 +207,7 @@
     const hasMoney = hasFee(ev);
     const online = hasMoney && ev.paymentUrl ? `<a class="btn btn-primary btn-block" href="${esc(ev.paymentUrl)}" target="_blank" rel="noopener">${esc(t('season.payOnline'))}</a>` : '';
     const bank = hasMoney ? bankHtml(contact, ev, name, true) : '';
-    const pay = online || bank ? `<p>${esc(t(online && bank ? 'popup.payBoth' : online ? 'season.regPayHint' : 'popup.payTransferOnly'))}</p>${online}${bank}` : `<p>${esc(t('season.payPreviewNone'))}</p>`;
+    const pay = online || bank ? `${online ? `<p>${esc(t(bank ? 'popup.payBoth' : 'season.regPayHint'))}</p>` : ''}${online}${bank}` : `<p>${esc(t('season.payPreviewNone'))}</p>`;
     wrap.innerHTML = `<div class="modal ep"><button type="button" class="close" data-x aria-label="${esc(t('season.regClose'))}">&times;</button>
       <h3>${esc(t('season.regThanks', { name }))}</h3><p>${esc(t('season.regDone'))}</p>${pay}
       <button type="button" class="btn btn-outline btn-block" data-x style="margin-top:10px">${esc(t('season.regClose'))}</button></div>`;
