@@ -198,7 +198,7 @@
   }
 
   // the Backend's "Show the payment window": the thank-you window after a registration with the payment block, drawn from the data of the form (nothing is sent)
-  async function showPayment(ev, name) {
+  async function showPayment(ev, name, opts = {}) {
     if (open) return;
     open = true;
     const contact = await api('/contact').catch(() => null); // (the IBAN and the name of Backend > Contact, when the event has none of its own)
@@ -209,7 +209,7 @@
     const bank = hasMoney ? bankHtml(contact, ev, name, true) : '';
     const pay = online || bank ? `${online ? `<p>${esc(t(bank ? 'popup.payBoth' : 'season.regPayHint'))}</p>` : ''}${online}${bank}` : `<p>${esc(t('season.payPreviewNone'))}</p>`;
     wrap.innerHTML = `<div class="modal ep"><button type="button" class="close" data-x aria-label="${esc(t('season.regClose'))}">&times;</button>
-      <h3>${esc(t('season.regThanks', { name }))}</h3><p>${esc(t('season.regDone'))}</p>${pay}
+      ${opts.info ? `<h3>${esc(t('season.payInfoTitle'))}</h3>` : `<h3>${esc(t('season.regThanks', { name }))}</h3><p>${esc(t('season.regDone'))}</p>`}${pay}
       <button type="button" class="btn btn-outline btn-block" data-x style="margin-top:10px">${esc(t('season.regClose'))}</button></div>`;
     const close = () => { wrap.remove(); open = false; };
     wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('[data-x]')) close(); });

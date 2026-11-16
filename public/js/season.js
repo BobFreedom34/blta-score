@@ -395,7 +395,8 @@ function tilesHtml() {
     players || maxPlayers ? tile('season.tilePlayers', maxPlayers ? `${players}<span class="sv-max">/${maxPlayers}</span>` : String(players), (model.substitutes.length ? `+${model.substitutes.length} ${t('season.onWaiting')}` : '')) : '',
     season.courtCount > 0 ? tile('season.tileCourts', String(season.courtCount)) : '',
     drawFormatText() ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileFormat'))}</div><div class="v sm">${escapeHtml(drawFormatText())}</div></div>` : '',
-    season.entryFee ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div></div>` : '',
+    // a tournament with an entry fee: the green "i" opens the window with how to pay it (the IBAN, the QR code)
+    season.entryFee ? `<div class="sv-tile grey-tile sv-tile-fee"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div>${isTournament() && hasEntryFee() ? `<button type="button" class="sv-fee-info" data-fee-info aria-label="${escapeHtml(t('season.payInfoLabel'))}" title="${escapeHtml(t('season.payInfoLabel'))}">i</button>` : ''}</div>` : '',
     season.drawDate ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileDraw'))}</div><div class="v sm">${escapeHtml(formatDate(season.drawDate))}</div></div>` : '',
     liveDrawTile(),
     season.prizeMoney ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tilePrize'))}</div><div class="v sm">${escapeHtml(season.prizeMoney)}</div></div>` : '',
@@ -995,6 +996,14 @@ function bindThread() {
 }
 
 function render() {
+  if (!window.__feeInfoWired) {
+    window.__feeInfoWired = true;
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('[data-fee-info]') || !window.BLTA_EVENT_POPUP) return;
+      const who = typeof currentPlayerName === 'string' ? currentPlayerName : '';
+      window.BLTA_EVENT_POPUP.showPayment({ id: season.id, name: season.name, entryFee: season.entryFee, paymentUrl: season.paymentUrl, iban: season.iban, payRecipient: season.payRecipient, payNote: season.payNote, payTitle: season.payTitle }, who, { info: true });
+    });
+  }
   rootEl.innerHTML = `${headerHtml()}${tilesHtml()}${progressBlockHtml()}${seriesWinnersHtml()}<div class="tabs" id="sv-tabs" role="tablist"></div><div id="sv-panel" class="sv-panel"></div><div id="sv-players-fixed"></div>${threadCommentsHtml()}<section class="sv-partners" id="sv-partners" hidden></section>`;
   renderFixedPlayers();
   bindThread();

@@ -4101,6 +4101,9 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 /* the info tiles of an event: every value is 20px on one line, and a tile is as wide as its text needs (a very long text is cut with ... at the edge of the page, never put on a second line) */
 .sv-tiles { display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0 0; }
 .sv-tile { flex: 0 0 auto; min-width: 150px; max-width: 100%; box-sizing: border-box; background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius); padding: 14px 16px; }
+.sv-tile-fee { position: relative; }
+.sv-fee-info { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: var(--green); color: var(--ink); font: italic 800 15px/1 Georgia, serif; cursor: pointer; display: grid; place-items: center; padding: 0; }
+.sv-fee-info:hover { filter: brightness(1.1); }
 .sv-tile .k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .sv-tile .v { font-size: 16px; font-weight: 800; line-height: 1.2; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sv-tile .v.sm { font-size: 16px; }
