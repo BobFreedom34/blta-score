@@ -112,7 +112,7 @@ router.get('/', (req, res) => {
   let rows;
   if (req.query.seasonId !== undefined) {
     const season = seasonRow(Number(req.query.seasonId));
-    if (!season || (season.organisation_id && clubTournaments.publicFace(season).hidden)) return res.json([]);
+    if (!season || (season.organisation_id && clubTournaments.publicFace(season, req).hidden)) return res.json([]);
     rows = db.prepare(`${EDITION_SQL} WHERE e.visible = 1 AND e.season_id = ? ORDER BY e.sort_order, e.id`).all(season.id);
   } else if (req.query.organisation !== undefined) {
     const org = db.prepare('SELECT * FROM organisations WHERE slug = ?').get(String(req.query.organisation));

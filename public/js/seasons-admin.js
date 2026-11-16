@@ -122,6 +122,7 @@ function renderAdmin() {
         ${IS_TOURNAMENT ? `<label style="flex:1;min-width:200px;font-size:12px;font-weight:700">${tl('Miesto', 'Venue')} <span style="font-weight:600;color:var(--gray)">${tl('(nepovinné)', '(optional)')}</span>
           <input type="text" id="season-venue" maxlength="200" placeholder="${tl('Adresa alebo klub', 'Address or club')}" style="display:block;width:100%;margin-top:4px;${inputStyle}">
         </label>` : ''}
+        <label style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px"><input type="checkbox" id="season-hidden"> ${tl('Skrytý (neverejný)', 'Hidden (not public)')}</label>
         <button type="submit" class="btn btn-primary">${tl('Pridať', 'Add')}</button>
       </form>
       <div id="add-season-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
@@ -143,6 +144,7 @@ function renderAdmin() {
           startDate: document.getElementById('season-start').value || null,
           endDate: document.getElementById('season-end').value || null,
           kind: KIND,
+          hidden: document.getElementById('season-hidden').checked,
           venue: IS_TOURNAMENT ? document.getElementById('season-venue').value.trim() : '',
           ...(IS_TOURNAMENT ? { playType: document.getElementById('season-playtype').value } : {}),
         },
@@ -456,6 +458,7 @@ function seasonCardHtml(s) {
         ${IS_TOURNAMENT ? `<span class="sa-chip future">${s.playType === 'DOUBLES' ? tl('Štvorhra', 'Doubles') : tl('Dvojhra', 'Singles')}</span>` : ''}
         <span class="sa-dates">${escapeHtml(s.startDate && s.endDate ? `${fmtDate(s.startDate)} – ${fmtDate(s.endDate)}` : '')}</span>
         <span class="sa-chip ${seasonStatus(s)}">${STATUS_LABEL[seasonStatus(s)]}</span>
+        ${s.hidden ? `<span class="sa-chip sa-hidden" title="${escapeHtml(tl('Neverejný: na webe ho vidíš len ty ako admin', 'Not public: only you, as an admin, see it on the site'))}">${tl('SKRYTÝ', 'HIDDEN')}</span>` : ''}
         <span class="sa-count">${IS_TOURNAMENT ? '' : `${s.groups.length} ${nounFor(s.groups.length, 'skupina', 'skupiny', 'skupín', 'group', 'groups')} · `}${s.matchCount} ${nounFor(s.matchCount, 'zápas', 'zápasy', 'zápasov', 'match', 'matches')}</span>
       </summary>
       <div class="sa-tabs" role="tablist">
@@ -474,6 +477,7 @@ function seasonCardHtml(s) {
                 ${field(tl('Začiatok', 'Starts'), input('startDate', s.startDate || '', 'type="date"'))}
                 ${field(tl('Koniec', 'Ends'), input('endDate', s.endDate || '', 'type="date"'))}
                 ${IS_TOURNAMENT ? field(tl('Miesto', 'Venue'), input('venue', s.venue || '', `maxlength="200" placeholder="${escapeHtml(tl('Adresa alebo klub', 'Address or club'))}"`), 'sa-wide') : ''}
+                <label class="sa-field sa-check sa-full"><input type="checkbox" data-field="hidden"${s.hidden ? ' checked' : ''}> ${tl('Skrytý (neverejný) — na webe ho neuvidí nikto okrem adminov, kým túto voľbu nevypneš', 'Hidden (not public) — nobody but admins sees it on the site until you turn this off')}</label>
                 ${IS_TOURNAMENT && s.playType === 'DOUBLES' ? `<div class="sa-field sa-wide">${tl('Typ turnaja', 'Tournament type')}
                   <div style="padding-top:6px">${tl('Štvorhra — turnaj dvojíc (typ sa po vytvorení nedá zmeniť)', 'Doubles — a tournament of pairs (the type cannot be changed after it is made)')}</div>
                 </div>` : ''}
@@ -823,7 +827,7 @@ function wireSeason(card) {
       // a season is played in at least one category (an empty choice would mean "all" to the server)
       if (!IS_TOURNAMENT && e.target.querySelectorAll('[data-cat]').length && ![...e.target.querySelectorAll('[data-cat]')].some((b) => b.checked)) throw new Error(tl('Vyber aspoň jednu kategóriu.', 'Choose at least one category.'));
       if (e.target.querySelector('[data-field="registrationOpen"]').checked && maxMissing(e.target)) throw new Error(MAX_MISSING_TEXT());
-      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), iban: f('iban'), payRecipient: f('payRecipient'), payNote: f('payNote'), payTitle: f('payTitle'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, ...maxBody(e.target), unregisterHours: f('unregisterHours') === '' ? null : Number(f('unregisterHours')), drawDate: f('drawDate') || null, ...(IS_TOURNAMENT ? { plannedFormat: f('plannedFormat') || '' } : {}), info: e.target.querySelector('[data-rte="info"]').innerHTML, rules: e.target.querySelector('[data-rte="rules"]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(CLUB ? { communityPoints: readCommunityPoints(e.target) } : {}), ...(IS_TOURNAMENT ? { venue: f('venue'), ...(courtsTouched ? { courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), courtStreams: readCourtStreams(e.target), courtNames: readCourtNames(e.target) } : {}), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), matchMinutes: Number(f('matchMinutes')), restMinutes: Number(f('restMinutes')), dayStart: f('dayStart'), dayEnd: f('dayEnd'), dayTimes: readDayTimes(e.target), autoSchedule: e.target.querySelector('[data-field="autoSchedule"]').checked } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
+      await api(`/seasons/${id}`, { method: 'PATCH', body: { name: f('name').trim(), startDate: f('startDate') || null, endDate: f('endDate') || null, entryFee: f('entryFee'), prizeMoney: f('prizeMoney'), paymentUrl: f('paymentUrl'), iban: f('iban'), payRecipient: f('payRecipient'), payNote: f('payNote'), payTitle: f('payTitle'), registrationOpen: e.target.querySelector('[data-field="registrationOpen"]').checked, hidden: e.target.querySelector('[data-field="hidden"]').checked, ...maxBody(e.target), unregisterHours: f('unregisterHours') === '' ? null : Number(f('unregisterHours')), drawDate: f('drawDate') || null, ...(IS_TOURNAMENT ? { plannedFormat: f('plannedFormat') || '' } : {}), info: e.target.querySelector('[data-rte="info"]').innerHTML, rules: e.target.querySelector('[data-rte="rules"]').innerHTML, ...(() => { const box = e.target.querySelector('[data-rules-section]'); return box.hasAttribute('data-rules-default') && !box.dataset.touched ? {} : TournamentRules.read(box); })(), ...(CLUB ? { communityPoints: readCommunityPoints(e.target) } : {}), ...(IS_TOURNAMENT ? { venue: f('venue'), ...(courtsTouched ? { courtCount: f('courtCount') === '' ? 0 : Number(f('courtCount')), courtStreams: readCourtStreams(e.target), courtNames: readCourtNames(e.target) } : {}), maxMatchesPerDay: f('maxMatchesPerDay') === '' ? 0 : Number(f('maxMatchesPerDay')), matchMinutes: Number(f('matchMinutes')), restMinutes: Number(f('restMinutes')), dayStart: f('dayStart'), dayEnd: f('dayEnd'), dayTimes: readDayTimes(e.target), autoSchedule: e.target.querySelector('[data-field="autoSchedule"]').checked } : {}), ...(() => { const boxes = [...e.target.querySelectorAll('[data-cat]')]; return boxes.length ? { categories: boxes.filter((b) => b.checked).map((b) => b.dataset.cat) } : {}; })() } });
       toast(tl('Uložené', 'Saved'));
       await load();
     } catch (err) { fail(err); }

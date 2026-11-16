@@ -614,6 +614,16 @@ app.use((req, res, next) => {
       return res.redirect(301, `${req.cityBase || ''}${seo.pageUrl(`/community/${encodeURIComponent(org.slug)}`, hit.lang)}${tail}`);
     }
   }
+  // a hidden event (Backend > Základné info): a visitor gets a 404 as if it did not exist, an admin sees it (and it stays out of the search engines)
+  if (hit.key === 'season' || hit.key === 'tournament') {
+    let slug = hit.param;
+    try { slug = decodeURIComponent(slug); } catch { /* keep it as it is */ }
+    const hiddenRow = db.prepare('SELECT hidden FROM seasons WHERE slug = ?').get(slug);
+    if (hiddenRow && hiddenRow.hidden) {
+      if (!auth.isAdmin(req)) return pageNotFound(res);
+      res.set('X-Robots-Tag', 'noindex, nofollow');
+    }
+  }
   if (page.template) {
     try {
       let param = hit.param;

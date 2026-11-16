@@ -29,8 +29,8 @@ function serializeEvent(e) {
 // The schedule page: the league seasons (always from the seasons themselves, so changing a season's dates in the
 // backend changes the schedule) and the tournaments / other events added in the backend, soonest first. A league
 // season has the BLTA categories it is played in (every one until the admin ticks fewer); its "more info" is its season page.
-function scheduleOf(leagueId) {
-  const seasons = db.prepare("SELECT * FROM seasons WHERE start_date IS NOT NULL AND start_date != '' AND league_id = ? AND organisation_id IS NULL").all(leagueId).map((s) => {
+function scheduleOf(leagueId, withHidden = false) {
+  const seasons = db.prepare("SELECT * FROM seasons WHERE start_date IS NOT NULL AND start_date != '' AND league_id = ? AND organisation_id IS NULL").all(leagueId).filter((s) => withHidden || !s.hidden).map((s) => {
     const tournament = s.kind === 'TOURNAMENT';
     const own = parseCategories(s.categories);
     return {
@@ -59,7 +59,7 @@ function scheduleOf(leagueId) {
 }
 
 router.get('/', (req, res) => {
-  res.json(scheduleOf(leagues.actingIdOf(req)));
+  res.json(scheduleOf(leagues.actingIdOf(req), require('../auth').isAdmin(req))); // (a hidden event shows to an admin only)
 });
 
 // The tournaments of the OTHER cities that are still to be played (running now or coming), soonest first - under the ones of this city on the Harmonogram.

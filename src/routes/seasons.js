@@ -187,6 +187,7 @@ function serializeSeason(s) {
     payRecipient: s.pay_recipient || '',
     payNote: s.pay_note || '',
     payTitle: s.pay_title || '',
+    hidden: !!s.hidden, // not public: only an admin sees it
     iban: s.iban || '', // the account of this event's entry fee ('' = the one of Backend > Contact)
     logoUrl: s.logo_url || '',
     heroUrl: s.hero_url || '',
@@ -291,7 +292,7 @@ router.delete('/:id/logo', clubTournaments.requireSeasonManager(clubTournaments.
 // Public: the QR code (PAY by square) of the entry fee of an event, as an SVG picture; ?for=<name of the player> goes into the note
 router.get('/:id(\\d+)/payment-qr', async (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(req.params.id);
-  if (!season || season.league_id !== leagues.actingIdOf(req) || clubTournaments.publicFace(season).hidden) return res.status(404).json({ error: 'Not found' });
+  if (!season || season.league_id !== leagues.actingIdOf(req) || clubTournaments.publicFace(season, req).hidden) return res.status(404).json({ error: 'Not found' });
   try {
     // an admin looking at the form before saving: the values of the form go along and win over the saved ones
     let shown = season;
@@ -308,7 +309,7 @@ router.get('/:id(\\d+)/payment-qr', async (req, res) => {
 router.get('/', (req, res) => {
   // (the tournaments of the clubs are not part of the league: they show on the page of their club and in the Harmonogram)
   const rows = db.prepare('SELECT * FROM seasons WHERE league_id = ? AND organisation_id IS NULL ORDER BY COALESCE(start_date, \'\') DESC, id DESC').all(leagues.actingIdOf(req));
-  res.json(rows.map(serializeSeason));
+  res.json((auth.isAdmin(req) ? rows : rows.filter((r) => !r.hidden)).map(serializeSeason)); // (a hidden event is in the list for an admin only)
 });
 
 // Public: the brackets (play-off draws) tied to a season — the league tables page shows them under "Play-off".
@@ -316,7 +317,7 @@ router.get('/', (req, res) => {
 // that has a YouTube link has an overlay; any other court, a hidden club tournament and another city's tournament are 404, like the season page itself.
 router.get('/by-slug/:slug/court/:court/live', (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE slug = ?').get(req.params.slug);
-  if (!season || season.league_id !== leagues.actingIdOf(req) || clubTournaments.publicFace(season).hidden) return res.status(404).json({ error: 'Not found' });
+  if (!season || season.league_id !== leagues.actingIdOf(req) || clubTournaments.publicFace(season, req).hidden) return res.status(404).json({ error: 'Not found' });
   const court = /^\d{1,3}$/.test(req.params.court) ? Number(req.params.court) : 0;
   const stream = court >= 1 && court <= (season.court_count || 0) ? courtStreams.streamsOf(season)[court - 1] : null;
   if (!stream) return res.status(404).json({ error: 'Not found' });
@@ -330,7 +331,7 @@ router.get('/by-slug/:slug', (req, res) => {
   // a season belongs to one city: under the address of another city it does not exist
   if (!season || season.league_id !== leagues.actingIdOf(req)) return res.status(404).json({ error: 'Season not found' });
   // the tournament of a club that is hidden, or whose approval was withdrawn, does not exist for the public
-  const face = clubTournaments.publicFace(season);
+  const face = clubTournaments.publicFace(season, req);
   if (face.hidden) return res.status(404).json({ error: 'Season not found' });
   const rounds = db.prepare(`
     SELECT round, COUNT(*) AS total, SUM(CASE WHEN status = 'FINISHED' THEN 1 ELSE 0 END) AS finished
@@ -360,7 +361,7 @@ router.get('/:id(\\d+)', clubTournaments.requireSeasonManager(clubTournaments.by
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   // withdrawn: the players who dropped out (or were taken out) and are not registered again, for the list of registrations in the Backend
   const withdrawn = seasonActivity.withdrawn(season.id, db.prepare('SELECT player_id, name FROM season_registrations WHERE season_id = ?').all(season.id));
-  res.json({ ...serializeSeason(season), organisation: clubTournaments.publicFace(season).organisation, withdrawn });
+  res.json({ ...serializeSeason(season), organisation: clubTournaments.publicFace(season, req).organisation, withdrawn });
 });
 
 // ---------- registration to a season ----------
@@ -387,7 +388,7 @@ function registrationOpen(season) {
 
 router.post('/:id/registrations', async (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
-  if (!season || clubTournaments.publicFace(season).hidden) return res.status(404).json({ error: 'Season not found' });
+  if (!season || clubTournaments.publicFace(season, req).hidden) return res.status(404).json({ error: 'Season not found' });
   const body = req.body || {};
   if (body.website) return res.status(201).json({ ok: true }); // the hidden field was filled in: a bot, pretend it worked
   if (!registrationOpen(season)) return res.status(403).json({ code: 'REGISTRATION_CLOSED', error: tournamentStarted(season) ? 'Registration is closed: the tournament has already started' : 'Registration for this season is closed' });
@@ -459,7 +460,7 @@ router.post('/:id/registrations', async (req, res) => {
 // draw. The first substitute comes in, and the organisation's admins get a bell row, a push and (the owner of the site) an e-mail, like for a registration.
 router.delete('/:id/registrations/mine', async (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
-  if (!season || clubTournaments.publicFace(season).hidden) return res.status(404).json({ error: 'Season not found' });
+  if (!season || clubTournaments.publicFace(season, req).hidden) return res.status(404).json({ error: 'Season not found' });
   const playerId = auth.getPlayerId(req);
   if (!playerId) return res.status(401).json({ error: 'Log in as a player first' });
   const row = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? AND player_id = ? ORDER BY id LIMIT 1').get(season.id, playerId);
@@ -1112,7 +1113,7 @@ router.get('/:id/brackets', (req, res) => {
 router.get('/:id/final-standings', (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season || season.league_id !== leagues.actingIdOf(req)) return res.status(404).json({ error: 'Season not found' });
-  if (clubTournaments.publicFace(season).hidden) return res.status(404).json({ error: 'Season not found' });
+  if (clubTournaments.publicFace(season, req).hidden) return res.status(404).json({ error: 'Season not found' });
   res.json(finalStandings.compute(season));
 });
 
@@ -1242,7 +1243,9 @@ function insertSeason(values, leagueId, organisationId = null) {
 router.post('/', requireAdmin, (req, res) => {
   const read = readNewSeason(req.body);
   if (read.error) return res.status(400).json({ error: read.error });
-  res.status(201).json(serializeSeason(insertSeason(read.values, leagues.actingIdOf(req))));
+  const made = insertSeason(read.values, leagues.actingIdOf(req));
+  if (req.body.hidden === true) { db.prepare('UPDATE seasons SET hidden = 1 WHERE id = ?').run(made.id); made.hidden = 1; }
+  res.status(201).json(serializeSeason(made));
 });
 
 router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
@@ -1398,6 +1401,7 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
   db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, iban = ?, pay_recipient = ?, pay_note = ?, pay_title = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ?, court_count = ?, max_matches_per_day = ?, scoring = ?, tiebreakers = ?, max_players = ?, category_max = ? WHERE id = ?')
     .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, iban.value, payRecipient.value, payNote.value, payTitle.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, scoring, tiebreakers, maxPlayers, nextSeason.category_max, season.id);
   if (planning) tournamentSchedule.storeSettings(season.id, planning);
+  if (typeof req.body.hidden === 'boolean') db.prepare('UPDATE seasons SET hidden = ? WHERE id = ?').run(req.body.hidden ? 1 : 0, season.id);
   db.prepare('UPDATE seasons SET unregister_hours = ? WHERE id = ?').run(unregisterHours, season.id);
   if (req.body.rules !== undefined) db.prepare('UPDATE seasons SET rules = ? WHERE id = ?').run(rules.value, season.id);
   if (req.body.plannedFormat !== undefined) db.prepare('UPDATE seasons SET planned_format = ? WHERE id = ?').run(PLANNED_FORMATS.includes(req.body.plannedFormat) ? req.body.plannedFormat : null, season.id);

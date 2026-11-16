@@ -167,7 +167,7 @@ function nextFor(playerId, leagueId, now = Date.now()) {
   const candidates = db.prepare('SELECT * FROM event_popups WHERE league_id = ? AND enabled = 1 AND (starts_at IS NULL OR starts_at <= ?) AND (ends_at IS NULL OR ends_at >= ?) ORDER BY COALESCE(ends_at, \'9999-12-31\'), id').all(leagueId, t, t);
   for (const p of candidates) {
     const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(p.season_id);
-    if (!season || season.league_id !== leagueId || season.organisation_id || !season.slug || !registrationAvailable(season, now)) continue;
+    if (!season || season.league_id !== leagueId || season.organisation_id || season.hidden || !season.slug || !registrationAvailable(season, now)) continue;
     if (db.prepare('SELECT 1 FROM season_registrations WHERE season_id = ? AND player_id = ?').get(p.season_id, playerId)) continue;
     const r = db.prepare('SELECT * FROM event_popup_responses WHERE popup_id = ? AND player_id = ?').get(p.id, playerId);
     if (r && r.declined_at) continue;

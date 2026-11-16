@@ -18,7 +18,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX
 // the event, or an answer that it does not exist (an event of a club that is hidden does not exist for the public)
 function seasonOr404(req, res) {
   const season = /^\d+$/.test(req.params.id) ? db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id)) : null;
-  if (!season || clubTournaments.publicFace(season).hidden) {
+  if (!season || clubTournaments.publicFace(season, req).hidden) {
     res.status(404).json({ error: 'Season not found' });
     return null;
   }

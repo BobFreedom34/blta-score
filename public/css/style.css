@@ -3941,6 +3941,7 @@ a.home-tl.future:hover .home-tl-body { border-color: var(--orange); }
 .season-admin-card[open] > .sa-sum { border-bottom: 1px solid var(--gray-light); }
 .sa-name { font-weight: 800; font-size: 16px; }
 .sa-dates { color: var(--gray); font-size: 13px; font-weight: 600; }
+.sa-chip.sa-hidden { background: rgba(255, 85, 0, 0.18); color: var(--orange); border: 1px solid rgba(255, 85, 0, 0.6); }
 .sa-chip { padding: 3px 9px; border-radius: var(--radius-sm); font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; background: var(--gray-light); color: var(--gray); }
 .sa-chip.now { background: var(--orange); color: var(--white); }
 .sa-chip.future { background: transparent; border: 1px solid var(--gray-dim); color: #d6d8dd; }

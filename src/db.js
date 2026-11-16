@@ -1504,6 +1504,8 @@ const seasonInfoColumns = db.prepare('PRAGMA table_info(seasons)').all().map((c)
 ['entry_fee', 'prize_money', 'draw_date', 'info', 'gallery_url', 'payment_url', 'iban', 'pay_recipient', 'pay_note', 'pay_title', 'logo_url', 'venue', 'categories', 'hero_url', 'hero_mobile_url', 'scoring', 'tiebreakers', 'planned_format', 'rules'].forEach((col) => {
   if (!seasonInfoColumns.includes(col)) db.exec(`ALTER TABLE seasons ADD COLUMN ${col} TEXT`);
 });
+// A hidden event (tournament or season): nobody but an admin sees it on the web (page, lists, schedule, sitemap) until the admin makes it public
+if (!seasonInfoColumns.includes('hidden')) db.exec('ALTER TABLE seasons ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0');
 // A tournament's table rules (see standings.js): scoring = BLTA / WIN2 / WIN1, tiebreakers = the conditions in order (comma list of H2H, SETS,
 // WINS, GAMES). NULL (a league season, or a tournament made before the rules existed) = the league's way of calculating.
 // A season is a league season ('LEAGUE') or a tournament ('TOURNAMENT'): the same page, registration, groups, brackets, matches and

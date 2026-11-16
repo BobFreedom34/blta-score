@@ -12,7 +12,9 @@ const organisationOf = (season) => (season && season.organisation_id ? db.prepar
 
 // the organisation of a season as the public may see it: { id, slug, name } for a tournament of a public club, null for every other season;
 // `hidden` is true for a club tournament whose club is hidden or not (any more) approved - such a tournament is not shown anywhere
-function publicFace(season) {
+// req: the request (an admin sees a hidden event, a visitor does not)
+function publicFace(season, req) {
+  if (season && season.hidden && !(req && auth.isAdmin(req))) return { organisation: null, hidden: true };
   if (!season || !season.organisation_id) return { organisation: null, hidden: false };
   const org = organisationOf(season);
   if (!isPublicOrg(org)) return { organisation: null, hidden: true };
@@ -85,14 +87,14 @@ function countingSql(alias) {
 // leaves them out (alias = the alias of the matches table, if it has one). Their own tournament page lists them.
 function leagueOnlySql(alias) {
   const column = alias ? `${alias}.season_id` : 'season_id';
-  return `(${column} IS NULL OR ${column} NOT IN (SELECT s.id FROM seasons s WHERE s.organisation_id IS NOT NULL))`;
+  return `(${column} IS NULL OR ${column} NOT IN (SELECT s.id FROM seasons s WHERE s.organisation_id IS NOT NULL OR s.hidden = 1))`;
 }
 
 // The matches of the tournaments of PUBLIC communities and clubs (not hidden, and for a club approved): what a player's profile adds to the league's matches
 // (the matches page and the other lists never hold them, see leagueOnlySql). A match of a hidden or not yet approved club is nowhere.
 function leagueAndPublicClubSql(alias) {
   const column = alias ? `${alias}.season_id` : 'season_id';
-  return `(${column} IS NULL OR ${column} NOT IN (SELECT s.id FROM seasons s JOIN organisations o ON o.id = s.organisation_id WHERE o.hidden = 1 OR o.approved = 0))`;
+  return `(${column} IS NULL OR ${column} NOT IN (SELECT s.id FROM seasons s JOIN organisations o ON o.id = s.organisation_id WHERE o.hidden = 1 OR o.approved = 0) AND ${column} NOT IN (SELECT s.id FROM seasons s WHERE s.hidden = 1))`;
 }
 
 // ---- resolvers: which season is a request about (each returns a season row, or null/undefined when there is none or the ids do not belong together) ----
