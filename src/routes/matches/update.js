@@ -191,7 +191,7 @@ router.patch('/:token', requireLoggedIn, (req, res) => {
   if (fields.proposal_slots) notifyProposalReceived(row, fields.proposed_by);
 
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
-  if (fields.player1_id !== undefined || fields.player2_id !== undefined) { try { require('../bracketEngine').followMatchPlayers(updated); } catch (err) { console.error('[matches] the bracket slot did not follow the players:', err.message); } }
+  if (fields.player1_id !== undefined || fields.player2_id !== undefined) { try { require('../../bracketEngine').followMatchPlayers(updated); } catch (err) { console.error('[matches] the bracket slot did not follow the players:', err.message); } }
   const payload = broadcast(req, updated);
   res.json(payload);
 });
