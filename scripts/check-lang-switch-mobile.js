@@ -20,7 +20,7 @@ test('the account dropdown gets a language row with the two languages, and it sw
   assert.ok(fn.length > 200 && fn.includes('function mountLangRow'), 'buildLangRow and mountLangRow exist');
   ['auth-lang-row', 'auth-lang-seg', 'auth-menu-panel', 'setLang(', 'currentLang', "t('nav.language')", 'textContent'].forEach((s) => assert.ok(fn.includes(s), `${s} is used`));
   assert.ok(!/innerHTML/.test(fn), 'only DOM text');
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   assert.strictEqual(i18n.split("'nav.language':").length, 3, 'the label exists in both languages');
 });
 

@@ -59,7 +59,7 @@ test('the screen reads a real match from the API (what the page draws it from)',
 
 test('the match page has the "Live obrazovka" button that leads to the screen', () => {
   assert.ok(read('js/match.js').includes('siteUrl(`/screen/${encodeURIComponent(m.token)}`)'));
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   assert.strictEqual((i18n.match(/'match\.screenBtn':/g) || []).length, 2, 'both languages');
 });
 

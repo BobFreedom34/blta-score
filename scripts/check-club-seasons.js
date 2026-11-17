@@ -203,7 +203,7 @@ test('the page side: the club page offers a new season, lists seasons and links 
   const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
   const com = pub('js/community.js');
   assert.ok(com.includes('new-season') && com.includes('openSeasonDialog') && com.includes("'season' : 'tournament'"), 'the club page');
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['com.newSeason', 'com.seasonTitle']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
 });
 

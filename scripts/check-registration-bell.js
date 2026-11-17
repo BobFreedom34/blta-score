@@ -126,7 +126,7 @@ test('the push and the bell have their words in both languages, and the click op
   assert.deepStrictEqual([sk.title, sk.body, sk.url], ['🎾 Anton sa prihlásil do Turnaj 1', 'COURTCREW', '/community-tournament/7']);
   assert.strictEqual(texts.build('REGISTRATION', { name: 'Anton', seasonName: 'Turnaj 1', seasonId: 7, substitute: true }, 'en').title, '🎾 Anton registered as a substitute for Turnaj 1');
   const read = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['notif.registrationTitle', 'notif.registrationSubTitle']) assert.strictEqual((i18n.match(new RegExp(`'${key.replace('.', '\\.')}':`, 'g')) || []).length, 2, `${key} in both languages`);
   const common = read('js/common.js');
   assert.ok(common.includes("n.type === 'REGISTRATION'") && common.includes("notif.type === 'REGISTRATION' ? 'registration'") && common.includes('/community-tournament/${notif.registration.seasonId}'), 'the bell shows it, marks it read and opens the manage page');

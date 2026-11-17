@@ -493,7 +493,7 @@ test('the pages say BLTA, not "BLTA Score" or "Tennis SCORE" (og:site_name, mani
   assert.strictEqual(metaOf(home.text, 'property', 'og:site_name'), 'BLTA');
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'public', 'manifest.json'), 'utf8'));
   assert.deepStrictEqual([manifest.name, manifest.short_name], ['BLTA', 'BLTA']);
-  const texts = ['public/sw.js', 'public/js/i18n.js', 'src/mailer.js'].map((p) => fs.readFileSync(path.join(ROOT, p), 'utf8')).join(String.fromCharCode(10));
+  const texts = ['public/sw.js', 'src/mailer.js'].map((p) => fs.readFileSync(path.join(ROOT, p), 'utf8')).concat(require('./i18n-source').i18nSource()).join(String.fromCharCode(10));
   assert.ok(!/Tennis SCORE|BLTA Score/.test(texts), 'an old name is left in the texts');
 });
 

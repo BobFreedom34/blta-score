@@ -51,7 +51,7 @@ test('the drawn brackets carry the hooks of the admin button, and only an admin 
   assert.ok(js.includes('/nodes/') && js.includes('manual-result'), 'both ways of entering a result');
   ['season.html', 'bracket.html', 'tables.html'].forEach((f) => assert.ok(read(f).includes('/js/bracket-result.js'), f));
   assert.ok(!read('embed-bracket.html').includes('bracket-result.js'), 'not in the embed');
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   ['bracket.addResult', 'bracket.editResult', 'bracket.setsHint'].forEach((k) => assert.strictEqual(i18n.split(`'${k}'`).length, 3, `${k} in both languages`));
 });
 

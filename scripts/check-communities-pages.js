@@ -39,7 +39,7 @@ function usedKeys(file) {
   return [...keys];
 }
 function checkKeys(file) {
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   const keys = usedKeys(file);
   assert.ok(keys.length > 0, `${file} uses no com.* keys at all`);
   keys.forEach((k) => assert.strictEqual(i18n.split(`'${k}':`).length, 3, `${k} must be in both the SK and the EN block`));
@@ -96,7 +96,7 @@ test('community.html exists with its script and the login popup', () => {
 });
 
 test('the approval texts exist in both languages and the Backend page can approve a club (super admin only button)', () => {
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   ['com.pendingApproval', 'com.clubNote', 'com.pendingBanner'].forEach((k) => assert.strictEqual(i18n.split(`'${k}':`).length, 3, k));
   const js = read('js/communities-admin.js');
   assert.ok(js.includes('/approval') && js.includes("adminRole === 'SUPER'") && js.includes('data-approve'));
@@ -255,7 +255,7 @@ test('the create dialog and the list page: no double submit, a login prompt on "
   const js = read('js/communities.js');
   assert.ok(js.includes('submit.disabled = true') || js.includes('.disabled = true'), 'the create button is disabled while it works');
   assert.ok(js.includes('com.membersFew') && js.includes("t('nav.loginPlayer')"));
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   ['com.membersFew', 'com.leaveConfirm'].forEach((k) => assert.strictEqual(i18n.split(`'${k}':`).length, 3, k));
 });
 
@@ -265,7 +265,7 @@ test('logging out or leaving the club while acting rebuilds the normal menu; a c
   assert.ok(fn.includes('renderHeaderNav()'), 'the normal menu comes back');
   assert.ok(/nav-my-profile-link/.test(common.slice(common.indexOf('function applyClubMenu'), common.indexOf('async function switchActing'))), 'the my-profile link is kept when the club menu replaces the menu');
   assert.ok(!/if \(\/admin\|login-history\/\.test\(window\.location\.pathname\)\) return;/.test(common), 'the bottom navigation is not skipped for any path that merely contains "admin"');
-  assert.ok(read('js/i18n.js').includes('() => String(vars[k])'), 'a name with $& in it stays as it is');
+  assert.ok(require('./i18n-source').i18nSource().includes('() => String(vars[k])'), 'a name with $& in it stays as it is');
 });
 
 test('long names and texts break instead of widening the page', () => {
@@ -312,7 +312,7 @@ test('the list page has a Feed tab first (and open by default) with the news of 
   const card = read('js/community-post.js');
   assert.ok(js.includes('comTournamentNewsHtml(p') && read('js/schedule-row.js').includes('escapeHtml(ev.name)') && card.includes("/${season ? 'season' : 'tournament'}/${encodeURIComponent(s.slug)}"), 'a tournament (or a season) is escaped and links to its page');
   assert.ok(js.includes('encodeURIComponent(feed.next)'), 'the older pages follow the cursor of the answer');
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   ['com.tabFeed', 'com.feedEmptyTitle', 'com.feedEmptyText', 'com.feedExplore', 'com.feedSuggested', 'com.feedLogin', 'com.feedNewTournament'].forEach((k) => assert.strictEqual(i18n.split(`'${k}':`).length, 3, `${k} in both languages`));
   const css = read('css/style.css');
   ['.com-feed-head {', '.com-feed-empty {'].forEach((sel) => assert.ok(css.includes(sel), `${sel} has a rule`));
@@ -328,7 +328,7 @@ test('the "Prihlásiť sa" button of the Moje tab is green like Join, not a dark
 });
 
 test('the new texts of the club page exist in both languages', () => {
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   ['com.tabInfo', 'com.joinOpenInfo', 'com.joinApprovalInfo', 'com.infoType', 'com.infoCity', 'com.infoJoin', 'com.infoContact', 'com.infoAbout'].forEach((k) => assert.strictEqual(i18n.split(`'${k}':`).length, 3, k));
 });
 

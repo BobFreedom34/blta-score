@@ -205,7 +205,7 @@ test('the page side: comments under every post (club page and feed), the compose
   assert.ok(pub('js/common.js').includes("n.type === 'COMMENT'") && pub('js/common.js').includes("notif.type === 'COMMENT' ? 'comment'"), 'the bell shows a comment and marks it read');
   const feed = pub('js/communities.js');
   assert.ok(feed.includes('comCommentsHtml(p)') && feed.includes('comBindComments('), 'the feed has them');
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['com.commentsOne', 'com.commentsFew', 'com.commentsMany', 'com.commentWrite', 'com.commentSend', 'com.commentsOlder', 'com.commentMembersOnly', 'com.commentDelete', 'com.commentFirst', 'notif.commentTitle']) {
     assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
   }

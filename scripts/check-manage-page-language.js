@@ -53,7 +53,7 @@ test('the scripts of the manage page have no text outside tl(): nothing is left 
 });
 
 test('every tl() has both languages, and the plural helper and tl() are defined once, in i18n.js, before the scripts that use them', () => {
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   assert.ok(/function tl\(sk, en\) \{\s*return currentLang === 'en' \? en : sk;\s*\}/.test(i18n), 'tl() picks by the language of the page');
   assert.ok(i18n.includes('function nounFor(n, sk1, sk2to4, sk5, en1, en2)'), 'nounFor() is in i18n.js');
   for (const file of FILES) assert.ok(!/function (tl|nounFor)\(/.test(read(`js/${file}`)), `${file} does not define its own tl / nounFor`);
@@ -72,7 +72,7 @@ test('every tl() has both languages, and the plural helper and tl() are defined 
 
 test('the English page has the English texts and the Slovak page the Slovak ones: run the pieces with each language', () => {
   const vm = require('vm');
-  const src = read('js/i18n.js');
+  const src = require('./i18n-source').i18nSource();
   const pick = (name) => { const m = new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`).exec(src); assert.ok(m, name); return m[0]; };
   const run = (lang) => {
     const ctx = vm.createContext({ currentLang: lang });

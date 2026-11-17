@@ -98,7 +98,7 @@ test('the pages carry the pieces: the embed and the admin tile on the match page
   const common = await js('common.js');
   assert.ok(common.includes('function videoBadge') && common.includes('${categoryBadge(m.category)}${videoBadge(m)}'), 'the compact cards');
   assert.ok((await js('app.js')).includes('videoBadge(m)') && (await js('player.js')).includes('videoBadge(m)'));
-  assert.ok((await js('i18n.js')).includes("'match.liveVideo': 'Live video'"));
+  assert.ok((await require('./i18n-source').i18nSourceFrom((u) => js(u.slice(4)))).includes("'match.liveVideo': 'Live video'"));
   assert.ok((await call('GET', '/css/style.css')).text.includes('.badge-video'));
 });
 

@@ -122,7 +122,7 @@ test('a community that lets everybody join stays open to look at', async () => {
 test('the page side: a locked community shows its header, the join button and the note only', () => {
   const js = fs.readFileSync(path.join(ROOT, 'public/js/community.js'), 'utf8');
   assert.ok(js.includes('org.locked') && js.includes("t('com.lockedNote')") && js.includes('previewPhotos'));
-  const i18n = fs.readFileSync(path.join(ROOT, 'public/js/i18n.js'), 'utf8');
+  const i18n = require('./i18n-source').i18nSource();
   assert.strictEqual(i18n.split("'com.lockedNote':").length - 1, 2);
 });
 

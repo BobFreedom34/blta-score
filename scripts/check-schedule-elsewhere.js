@@ -63,7 +63,7 @@ test('the page draws the section under the tournaments of this city, with the ci
   for (const piece of ['/schedule/elsewhere', 'schedule.elsewhereTitle', 'schedule.hereTitle', 'cityName', 'data-city', "type === 'LEAGUE' ? []"]) assert.ok(js.includes(piece), piece);
   const row = fs.readFileSync(path.join(ROOT, 'public', 'js', 'schedule-row.js'), 'utf8');
   assert.ok(row.includes('sch-city'));
-  const i18n = fs.readFileSync(path.join(ROOT, 'public', 'js', 'i18n.js'), 'utf8');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['schedule.allCities', 'schedule.hereTitle', 'schedule.hereTitleNoCity', 'schedule.emptyHere', 'schedule.elsewhereTitle', 'schedule.elsewhereHint']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
 });
 

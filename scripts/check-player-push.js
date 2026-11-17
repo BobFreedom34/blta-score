@@ -101,7 +101,7 @@ test('texts: every kind has a Slovak and an English wording that matches the bel
 test('the page side: the bell panel has the push row, the texts exist in both languages, the device is dropped before a logout', () => {
   const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
   const js = pub('js/common.js');
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   assert.ok(js.includes('id="badge-notif-push"') && js.includes('refreshPushRow()') && js.includes('/player/push/subscribe'));
   assert.ok(/await dropDevicePush\(\);[^\n]*\n\s*try \{ await api\('\/player\/logout'/.test(js), 'the server is told before the session ends');
   for (const key of ['notif.pushOn', 'notif.pushOff', 'notif.pushOnLabel', 'notif.pushBlocked', 'notif.pushDenied', 'notif.pushUnsupported', 'notif.pushError', 'notif.pushIosHint', 'login.registerBtn']) {
@@ -305,7 +305,7 @@ test('the page side: a phone that allows notifications is linked at login withou
     'pushStore(`blta-push-off-${currentPlayerId}`, 1)',
   ];
   for (const part of parts) assert.ok(common.includes(part), part);
-  const i18n = fs.readFileSync(path.join(ROOT, 'public', 'js', 'i18n.js'), 'utf8');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['notif.askTitle', 'notif.askBody', 'notif.askLater']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
 });
 

@@ -163,7 +163,7 @@ test('the page side: the invite dialog picks players from a list, the chat shows
   assert.ok(club.includes('invite-candidates') && club.includes('invite-players') && club.includes('id="com-invite-send"') && club.includes('id="com-invite-search"'));
   const chat = pub('js/messages.js');
   assert.ok(chat.includes('m.invite') && chat.includes('data-invite-join') && chat.includes('/join'));
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['com.invitePlayers', 'com.inviteSearch', 'com.inviteSend', 'com.inviteSent', 'com.inviteNobody', 'msg.inviteJoin', 'msg.inviteMember', 'msg.inviteSent', 'msg.inviteGone', 'msg.inviteText']) {
     assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
   }

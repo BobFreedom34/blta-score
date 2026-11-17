@@ -129,7 +129,7 @@ test('the page side: the button and the dialog of the community page, in both la
   const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
   const club = pub('js/community.js');
   assert.ok(club.includes('data-act="add-members"') && club.includes('add-candidates') && club.includes('add-members') && club.includes('id="com-add-send"'));
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['com.addMembers', 'com.addTitle', 'com.addHint', 'com.addSend', 'com.addDone', 'com.addWaiting']) {
     assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
   }

@@ -28,7 +28,7 @@ async function call(method, url, { cookie = adminCookie, body } = {}) {
   return { status: res.status, json, res };
 }
 const cookieOf = (r) => r.res.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
-const i18n = read('js/i18n.js');
+const i18n = require('./i18n-source').i18nSource();
 const inBothLanguages = (key) => assert.strictEqual(i18n.split(`'${key}':`).length, 3, `${key} must be in both the SK and the EN block`);
 
 test('the Events tab and the create dialog: every text exists in both languages, every field written by a player is escaped, the dialog posts to the club', () => {
@@ -109,7 +109,7 @@ test('the public page of an event shows a settings gear next to the title only t
   assert.ok(src.includes('${escapeHtml(season.name)}${settingsLinkHtml()}</h1>'), 'it sits next to the title');
   const admin = read('js/seasons-admin.js');
   assert.ok(admin.includes('#season-(\\d+)$') && admin.includes('wantedCard.open = true'), 'the Backend opens the card the link points to');
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   assert.strictEqual((i18n.match(/'season\.settings':/g) || []).length, 2, 'the label exists in Slovak and in English');
   assert.ok(read('css/style.css').includes('.sv-gear {'), 'the gear is styled');
 });

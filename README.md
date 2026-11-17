@@ -42,6 +42,16 @@ There is **no React, no build tool, no TypeScript**. Every page is a plain `.htm
 a matching `.js` file. To change something you almost always edit exactly one HTML file, one
 JS file, and/or `style.css` — restart the app, refresh the browser, done.
 
+**Texts (Slovak + English).** `public/js/i18n.js` holds `t()`, `tl()`, the `data-i18n` walker and the texts every page needs
+(nav, login, footer, everything `common.js` shows). The texts of one part of the site are in `public/js/i18n-<part>.js`
+(`season`, `community`, `match`, `players`, `rankings`, `courts`, `home`; each file has its own `sk:` and `en:` block). A page loads
+only the parts it uses, **before** `i18n.js`: `<script src="/js/i18n-season.js"></script>` then `<script src="/js/i18n.js"></script>`
+(the parts register in `window.I18N_PARTS`, `i18n.js` merges them). Adding a text: put it in the file of its prefix (both languages,
+same key); if a page starts using a key from another part, add that part's script tag to the page. The server (mail, push, SEO,
+the info page) loads all the parts through `src/browserTexts.js`. `node scripts/check-i18n-split.js` checks every page against the
+files it loads (and that Slovak and English have the same keys); in the browser a missing text is also said once in the console
+(`i18n: missing text "key"`).
+
 Live updates work over Socket.IO: whenever the server changes a match (score, start, finish,
 location edit) it broadcasts the new match to everyone currently viewing it, and a lighter
 signal to everyone on the home page so lists refresh automatically.

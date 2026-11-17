@@ -192,7 +192,7 @@ test('the page has the tab Konečné poradie after the matches, in both language
   assert.ok(order.every((n) => n >= 0) && order[0] < order[1] && order[1] < order[2], 'tab order: ' + order);
   assert.ok(js.includes("'playoff', 'matches', 'final'") && js.includes('/final-standings') && js.includes('function finalHtml()'));
   assert.ok(js.includes("x.key !== 'courts' && x.key !== 'final'"), 'a league season has no Konečné poradie tab');
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['navFinal', 'empty.final', 'final.provisional', 'final.hint', 'final.colName', 'final.colResult', 'final.place', 'final.semi', 'final.quarter', 'final.last16', 'final.round', 'final.group', 'final.playing']) {
     assert.strictEqual((i18n.match(new RegExp(`'season\\.${key.replace('.', '\\.')}':`, 'g')) || []).length, 2, `season.${key} in both languages`);
   }

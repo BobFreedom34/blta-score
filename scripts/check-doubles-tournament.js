@@ -298,7 +298,7 @@ test('the pages carry the pieces: the partner field of the form, the pairs of th
   assert.ok(home.includes('home-tl-type') && home.includes('home-tl-filter') && !home.includes("filter((s) => s.kind !== 'TOURNAMENT').sort"), 'home.js: tournaments in the strip, each tagged');
   const admin = read('js/seasons-admin.js');
   ['season-playtype', 'data-playtype', 'Add pair'].forEach((x) => assert.ok(admin.includes(x), 'seasons-admin.js: ' + x));
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   ['season.regPartner', 'season.catDoubles', 'season.pairsTitle'].forEach((k) => assert.strictEqual(i18n.split("'" + k + "'").length, 3, k + ' in Slovak and English'));
 });
 

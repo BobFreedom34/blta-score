@@ -186,7 +186,7 @@ test('the pages: the maximum field is in the form, the registration list shows t
   assert.ok(admin.includes("Náhradník č.") && admin.includes("chip('sub'"), 'the list shows the substitutes');
   const pub = read('js/season.js');
   assert.ok(pub.includes("t('season.substitutes')") && pub.includes('id="sv-reg-full"') && pub.includes("'season.regDoneSub'"), 'the public page');
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['substitutes', 'substitutesNote', 'regFull', 'regSendSub', 'regDoneSub']) assert.strictEqual((i18n.match(new RegExp(`'season\\.${key}':`, 'g')) || []).length, 2, `season.${key} in both languages`);
   for (const f of ['js/seasons-admin.js', 'js/season.js', 'js/season-assign.js', 'js/season-draw.js']) new (require('vm').Script)(read(f), { filename: f });
 });

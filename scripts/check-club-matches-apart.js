@@ -125,7 +125,7 @@ test('the profile page asks for them, lists them with the name of the community,
   assert.ok(player.includes("withClub: '1'"), 'the profile asks for the matches of communities');
   assert.ok(player.includes('rawGroups = allGroups.map((list) => list.filter((m) => !(m.season && m.season.organisation)))'), 'the statistics, badges and rivals are counted from the league matches only');
   assert.ok(/allGroups\.forEach\(\(matches, i\) =>/.test(player), 'the list shows all of them');
-  assert.ok(pub('js/common.js').includes("m.season && m.season.organisation ? m.season.organisation.name : ''") && pub('js/common.js').includes('function clubBadge(m)') && pub('js/player.js').includes('clubBadge(m)') && pub('js/common.js').includes('class="club-private"') && pub('js/i18n.js').split("'match.notPublic':").length === 3, 'the card says which community, has the badge Klub / Komunita and the grey crossed eye (not public), in both languages');
+  assert.ok(pub('js/common.js').includes("m.season && m.season.organisation ? m.season.organisation.name : ''") && pub('js/common.js').includes('function clubBadge(m)') && pub('js/player.js').includes('clubBadge(m)') && pub('js/common.js').includes('class="club-private"') && require('./i18n-source').i18nSource().split("'match.notPublic':").length === 3, 'the card says which community, has the badge Klub / Komunita and the grey crossed eye (not public), in both languages');
   for (const f of ['js/player.js', 'js/common.js']) new (require('vm').Script)(pub(f), { filename: f });
 });
 
@@ -160,7 +160,7 @@ test('the page side: the tournament page has a Zápasy tab with the matches as c
   assert.ok(season.includes("key: 'matches'") && season.includes('function matchesHtml') && season.includes('match-card'), 'the Zápasy tab');
   assert.ok(/\['info', 'courts', 'tables', 'playoff', 'matches', 'final', 'gallery', 'live'\]/.test(season), 'a tournament has the tab (the Live video tab is the last one)');
   assert.ok(season.includes('loadAllMatches') && season.includes('/matches?seasonId='), 'it loads the matches of the tournament');
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['season.navMatches', 'season.empty.matches']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
 });
 

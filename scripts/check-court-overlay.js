@@ -271,7 +271,7 @@ test('league match overlay: the admin tile of the match page shows the overlay l
   const js = (await call('GET', '/js/match.js')).text;
   for (const piece of ['/overlay/match/', 'window.CITY_BASE', 'data-copy-overlay', 'match.overlayLink']) assert.ok(js.includes(piece), piece);
   assert.ok(js.includes('${m.videoId ? overlayLinkHtml(m) :'), 'the link is only shown for a match that has a YouTube link');
-  const i18n = (await call('GET', '/js/i18n.js')).text;
+  const i18n = await require('./i18n-source').i18nSourceFrom(async (u) => (await call('GET', u)).text);
   assert.strictEqual(i18n.split("'match.overlayLink'").length - 1, 2, 'SK and EN');
   assert.ok(/\.info-item \.court-overlay-url > div \{[^}]*flex-direction: column/.test((await call('GET', '/css/style.css')).text), 'in the narrow info tile the link and the button are stacked, not side by side');
 });

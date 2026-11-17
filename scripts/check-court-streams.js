@@ -131,7 +131,7 @@ test('the public pages carry the pieces: button in the Harmonogram (not on the T
   const season = await get('/js/season.js');
   assert.ok(season.includes("key: 'live'") && season.includes('function liveVideoHtml(') && season.includes('youtube-nocookie.com/embed/'), 'the tab');
   assert.ok(season.includes("tab === 'live' ? liveVideoHtml()"), 'the tab is drawn');
-  const i18n = await get('/js/i18n.js');
+  const i18n = await require('./i18n-source').i18nSourceFrom(get);
   assert.strictEqual(i18n.split("'courts.liveVideo': 'Live video'").length - 1, 2, 'SK and EN');
   assert.strictEqual(i18n.split("'season.navLive': 'Live video'").length - 1, 2, 'SK and EN');
   const css = await get('/css/style.css');
@@ -144,7 +144,7 @@ test('review findings: the Live video tab is not redrawn on every score change; 
   assert.ok(/matches:changed[\s\S]{0,400}tab === 'live'/.test(season), "a score change must not rebuild the page (and reload the videos) while the Live video tab is open");
   const helper = await get('/js/court-streams.js');
   assert.ok(helper.includes('_kept'), 'links typed for courts that are not shown now are kept, so 3 -> "" -> 4 does not lose them');
-  const i18n = await get('/js/i18n.js');
+  const i18n = await require('./i18n-source').i18nSourceFrom(get);
   assert.strictEqual(i18n.split("'courts.liveShort': 'Live'").length - 1, 2, 'a short label for the narrow court columns of a phone, SK and EN');
   assert.ok((await get('/js/court-schedule.js')).includes('cs-live-short') && (await get('/css/style.css')).includes('.cs-live-short'), 'the short label is what a phone shows');
   const css = await get('/css/style.css');

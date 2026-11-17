@@ -249,7 +249,7 @@ test('the page of a tournament knows its saved live draws (the tile "Žreb naži
   assert.deepStrictEqual(after, [{ id: r.json.recordId, category: 'ELITE' }]);
   const js = fs.readFileSync(path.join(ROOT, 'public', 'js', 'season.js'), 'utf8');
   assert.ok(js.includes('liveDrawTile') && js.includes('/draw-live?record='), 'the tile');
-  const i18n = fs.readFileSync(path.join(ROOT, 'public', 'js', 'i18n.js'), 'utf8');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['season.tileLiveDraw', 'season.liveDrawPlay', 'season.liveDrawNone']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
   void people;
 });

@@ -105,7 +105,7 @@ test('the page side: one card like a Harmonogram row, with the day it was posted
   const feed = pub('js/communities.js');
   assert.ok(feed.includes('comTournamentNewsHtml(') && feed.includes('comBindTournaments(') && feed.includes('dateText(p.createdAt)'), 'the Feed too');
   assert.ok(feed.includes('/communities/my-events') && feed.includes('comTournamentRow('), 'the Udalosti tab lists the events of his communities as the same cards');
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['com.eventsNone', 'com.eventsLogin']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
   const css = pub('css/style.css');
   assert.ok(/.com-news-tournament .sch-row.link:hover {[^}]*background/.test(css), 'the card gets a background on hover, like a row of the schedule');
@@ -123,7 +123,7 @@ test('the page side: every item of the news is a bordered card with the header o
   const css = pub('css/style.css');
   assert.ok(!/.com-post.com-news-tournament {[^}]*border: 0/.test(css), 'a tournament is a bordered card like a post');
   assert.ok(/.com-post-img img {[^}]*width: 100%/.test(css), 'the picture runs the whole width of the card');
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['com.postedBy', 'com.postMenu']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
 });
 

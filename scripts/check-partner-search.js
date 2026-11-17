@@ -104,7 +104,7 @@ test('the pages carry the pieces: the choice in the post form, the badge and the
   ['mode', 'DOUBLES', 'doubles=1'].forEach((s) => assert.ok(board.includes(s), 'looking-to-play.js: ' + s));
   const form = read('js/new-match.js');
   ['doubles', 'p1b'].forEach((s) => assert.ok(form.includes(s), 'new-match.js: ' + s));
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   ['lookingToPlay.modeDoubles', 'lookingToPlay.createDoublesMatch', 'notif.partnerRequestTitle'].forEach((k) => assert.strictEqual(i18n.split("'" + k + "'").length, 3, k + ' in Slovak and English'));
 });
 

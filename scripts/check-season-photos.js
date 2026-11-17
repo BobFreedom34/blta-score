@@ -132,7 +132,7 @@ test('the pages: the gallery tab has the add button and the viewer of the match 
   assert.ok(read('season.html').includes('/js/match-photos.js'), 'season.html loads the photo code');
   const photos = read('js/match-photos.js');
   assert.ok(photos.includes('async function loadSeasonPhotos(') && photos.includes('/seasons/${seasonId}/photos'), 'the photo code serves the gallery');
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   assert.strictEqual((i18n.match(/'season\.galleryAdd':/g) || []).length, 2, 'the button text in both languages');
   for (const f of ['js/season.js', 'js/match-photos.js']) new (require('vm').Script)(read(f), { filename: f });
 });

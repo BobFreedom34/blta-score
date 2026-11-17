@@ -33,7 +33,7 @@ const titleOf = (html) => ((html.match(/<title[^>]*>([^<]*)<\/title>/) || [])[1]
 // every msg.* / page.messagesTitle key used by a file must exist in BOTH language blocks of i18n.js
 function checkKeys(file) {
   const src = read(file);
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   const keys = new Set();
   for (const m of src.matchAll(/t\('((?:msg|page\.messages)[a-zA-Z.]*)'/g)) keys.add(m[1]);
   for (const m of src.matchAll(/data-i18n(?:-html|-placeholder)?="((?:msg|page\.messages)[a-zA-Z.]*)"/g)) keys.add(m[1]);
@@ -138,7 +138,7 @@ test('the menu badge skips heading links ("#") and the Messages page layout leav
 });
 
 test('the new texts exist in both languages, and the server messages are shown in the language of the page', () => {
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   ['msg.errWait', 'msg.errFast', 'msg.errBlocked', 'msg.errInvalid'].forEach((k) => assert.strictEqual(i18n.split(`'${k}':`).length, 3, k));
   assert.ok(read('js/messages.js').includes('msg.errWait') && read('js/common.js').includes('err.status = res.status'), 'errors carry their status and are mapped to texts');
 });
@@ -155,7 +155,7 @@ test('the profile of a player has a "Write a message" button beside the planned 
   assert.ok(js.includes("'/messages/conversations'") && js.includes('playerId: currentPlayer.id'), 'the chat is started with this player');
   assert.ok(js.includes('requireRealPlayer(') && js.includes('siteUrl(`/messages/${') , 'a visitor logs in first, then the chat is opened');
   assert.ok(js.includes('toast(err.message)'), 'a refusal of the server (blocked, too many strangers today, no phone) is shown');
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   assert.strictEqual(i18n.split("'player.writeMessage':").length, 3, 'the label exists in both languages');
   const css = read('css/style.css');
   assert.ok(css.includes('.player-stat-row {') && css.includes('.player-msg-btn {'), 'it is styled');

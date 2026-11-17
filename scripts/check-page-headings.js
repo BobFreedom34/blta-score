@@ -66,7 +66,7 @@ test('the matches page and the blog have a descriptive H1 as well (the matches p
 });
 
 test('the new texts exist once per language (a key written twice would be overridden by the older one) and every key a page file points at exists', () => {
-  const i18n = read('public/js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   ['tables', 'rankings', 'players', 'courts', 'schedule', 'winners', 'rv', 'com', 'rules'].forEach((p) => {
     ['h1', p === 'players' ? 'leagueIntro' : 'intro'].forEach((suffix) => {
       assert.strictEqual((i18n.match(new RegExp(`^    '${p}\\.${suffix}':`, 'gm')) || []).length, 2, `${p}.${suffix}: once in Slovak, once in English`);

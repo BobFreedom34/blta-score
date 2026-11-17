@@ -169,7 +169,7 @@ test('the page side: the menu of a post has Upraviť, the text turns into a box 
   const club = pub('js/community.js');
   assert.ok(club.includes('id="com-edit-text"') && club.includes('id="com-edit-save"') && club.includes("method: 'PATCH', body: { body:") && club.includes("t('com.edited')"));
   assert.ok(pub('js/communities.js').includes("t('com.edited')"), 'the feed says it too');
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['com.editPost', 'com.edited', 'com.saveEdit', 'com.cancelEdit', 'com.postEdited']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, key);
 });
 
@@ -192,7 +192,7 @@ test('the page side: the gear opens the settings dialog, the composer has the em
   const feed = pub('js/communities.js');
   assert.ok(feed.includes('comPostText(p.body)') && feed.includes('comReactionsHtml(p)') && feed.includes('comBindReactions('));
   for (const page of ['community.html', 'communities.html']) assert.ok(pub(page).includes('/js/community-post.js'), page);
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['com.emoji', 'com.addImage', 'com.react']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, key);
   // the emoji the page offers are the ones the server accepts
   const offered = [...post.match(/COM_REACTIONS = \[([^\]]*)\]/)[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);

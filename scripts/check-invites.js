@@ -144,7 +144,7 @@ test('the home page and the players page carry the invite pieces', async () => {
   const home = await call('GET', '/');
   assert.strictEqual(home.status, 200);
   assert.ok((await call('GET', '/js/home.js')).text.includes('/pozvanka/'));
-  assert.ok((await call('GET', '/js/i18n.js')).text.includes('invite.whatsapp'));
+  assert.ok((await require('./i18n-source').i18nSourceFrom(async (u) => (await call('GET', u)).text)).includes('invite.whatsapp'));
   assert.ok((await call('GET', '/players')).text.includes('invites-admin'));
 });
 

@@ -109,7 +109,7 @@ test('the page side: the settings dialog shows the link with Copy and a new link
   const club = pub('js/community.js');
   assert.ok(club.includes('/invite') && club.includes('inviteToken') && club.includes("get('invite')"), 'the page reads ?invite= and sends it');
   assert.ok(club.includes('id="com-invite-link"') && club.includes('id="com-invite-copy"') && club.includes('id="com-invite-new"'));
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['com.inviteTitle', 'com.inviteHint', 'com.inviteCopy', 'com.inviteCopied', 'com.inviteNew', 'com.inviteNewConfirm', 'com.invitedBanner']) {
     assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
   }

@@ -132,7 +132,7 @@ test('the page has the tab Rebríček in the 3rd place (after Udalosti, before I
   const fn = /function rankingHtml\(\) \{[\s\S]*?\n  \}/.exec(js)[0];
   assert.ok(fn.includes('const manage = isActing() && org.approved;') && fn.includes('${manage ? `<span class="com-rank-edit">'), 'the inputs only for who manages');
   assert.ok(!fn.includes('rank-add') && !fn.includes('candidates'), 'nobody is added by hand');
-  const i18n = fs.readFileSync(path.join(ROOT, 'public/js/i18n.js'), 'utf8');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['tabRanking', 'rankEmpty', 'rankPlayer', 'rankPoints', 'rankSave', 'rankSaved', 'rankHint', 'rankInvalid']) {
     assert.strictEqual((i18n.match(new RegExp(`'com\\.${key}':`, 'g')) || []).length, 2, `com.${key} in Slovak and English`);
     assert.ok(js.includes(`'com.${key}'`), `com.${key} is used`);

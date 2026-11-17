@@ -165,7 +165,7 @@ test('the page side: links in the settings dialog and on the Info tab, a delete 
   const list = pub('js/communities.js');
   assert.ok(list.includes('com.cardOpen') && list.includes('com.cardApproval') && list.includes('joinPolicy'), 'the card says who can join');
   assert.ok(list.includes('id="com-f-search"') && list.includes('id="com-f-type"') && list.includes('id="com-f-city"') && list.includes('scope=all'), 'Discover has a search bar, a kind filter and a city filter');
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['com.filterSearch', 'com.filterAllTypes', 'com.filterAllCities', 'com.filterNone', 'com.fieldWebsite', 'com.fieldFacebook', 'com.fieldInstagram', 'com.deleteBtn', 'com.deleteConfirm', 'com.deleted', 'com.cardOpen', 'com.cardApproval', 'com.infoLinks']) {
     assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
   }

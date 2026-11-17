@@ -166,7 +166,7 @@ test('a player who is left out is never the player of the month or the biggest p
 test('the Players page has the switch, with its texts in both languages; a new database has the column (default: everybody may be chosen)', async () => {
   const js = await (await fetch(`${BASE}/js/players.js`)).text();
   assert.ok(js.includes('toggle-highlights') && js.includes('/no-highlights'));
-  const i18n = await (await fetch(`${BASE}/js/i18n.js`)).text();
+  const i18n = await require('./i18n-source').i18nSourceFrom(async (u) => (await fetch(`${BASE}${u}`)).text());
   ['players.noMonth', 'players.yesMonth', 'players.noMonthBadge', 'players.noMonthOn', 'players.noMonthOff'].forEach((k) => assert.strictEqual(i18n.split(`'${k}':`).length - 1, 2, k));
   assert.strictEqual(db.prepare("SELECT COUNT(*) AS n FROM players WHERE no_highlights = 1").get().n, 0);
 });
@@ -208,7 +208,7 @@ test('the audit (admin only, read-only): which matches have the points the rules
 
 test('the home page carries the card', async () => {
   assert.ok((await (await fetch(`${BASE}/js/home.js`)).text()).includes('/highlights/month'));
-  assert.ok((await (await fetch(`${BASE}/js/i18n.js`)).text()).includes('pom.title'));
+  assert.ok((await require('./i18n-source').i18nSourceFrom(async (u) => (await fetch(`${BASE}${u}`)).text())).includes('pom.title'));
 });
 
 async function startServer() {

@@ -161,7 +161,7 @@ test('the page side: the shared form is on the Backend card and the club manage 
   assert.ok(seasonDialog.includes('window.location.href = siteUrl(`/community-tournament/${made.id}`)'), 'the season window opens the page of the new season');
   const form = pub('js/tournament-rules.js');
   for (const text of ['BLTA bodovanie', '2 body za výhru', '1 bod za výhru', 'Vzájomný zápas', 'Rozdiel setov', 'Počet výhier', 'Rozdiel gemov']) assert.ok(form.includes(text), text);
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['season.rulesScoring.BLTA', 'season.rulesScoring.WIN2', 'season.rulesScoring.WIN1', 'season.rulesOrder', 'season.rulesTie.H2H', 'season.rulesTie.GAMES']) {
     assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
   }
@@ -176,7 +176,7 @@ test('the create window of a club tournament asks only for the basics (name, pla
   for (const gone of ['com-t-rules', 'com-t-plan', 'com-t-reg', 'com-t-step', 'TournamentRules', 'TournamentPlanning', 'registrationOpen']) assert.ok(!dialog.includes(gone), `${gone} is not in the window (it is set on the page of the tournament)`);
   assert.ok(dialog.includes('window.location.href = siteUrl(`/community-tournament/${made.id}`)'), 'it opens the page of the new tournament');
   assert.ok(!pub('community.html').includes('tournament-planning'), 'there is no separate planning script any more');
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   assert.ok(i18n.includes("'com.tournamentTitle': 'Nový turnaj klubu alebo komunity'") && i18n.includes("'com.seasonTitle': 'Nová sezóna klubu alebo komunity'"), 'the headings of the two windows');
   const card = pub('js/seasons-admin.js');
   const courts = card.slice(headingAt(card, 'Kurty a plánovanie'), headingAt(card, 'Bodovanie a podmienky'));

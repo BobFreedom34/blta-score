@@ -139,7 +139,7 @@ test('the editor of a tournament offers "Bez kategórie" (it switches the three 
   assert.ok(dialog.includes('id="com-t-open"') && dialog.includes("noCategory.checked ? ['OPEN']") && dialog.includes("t('com.tNoCategory')"), 'the create dialog of a club has Bez kategórie too');
   const publicPage = read('js/season.js');
   assert.ok(publicPage.includes("CATEGORY_ORDER_ALL = [...CATEGORY_ORDER, 'DOUBLES', 'OPEN']") && publicPage.includes('get OPEN()'), 'the public page shows the draw without categories');
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   ['season.catOpen', 'com.tNoCategory'].forEach((k) => assert.strictEqual(i18n.split("'" + k + "':").length, 3, k + ' in both languages'));
   const draw = read('js/season-draw.js');
   assert.ok(draw.includes("const rowsOf = (category) => (category === 'OPEN' ? regs"), 'the draw of a tournament without categories takes everybody who registered');

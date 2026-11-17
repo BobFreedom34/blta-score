@@ -188,7 +188,7 @@ test('the pages carry the pieces: the switch and the four fields, the ranking ta
   assert.ok(read('js/rankings.js').includes('m.isDoubles ? [...m.team1'), 'the badges tab counts a doubles match for all four players (the doubles badges only)');
   assert.ok(read('player.html').includes('doubles-card') && read('js/player.js').includes('/doubles/player/'), 'the profile card');
   assert.ok(read('js/app.js').includes("'withDoubles'"), 'my matches ask for the doubles too');
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   ['newMatch.modeDoubles', 'rankings.doublesTab', 'player.doublesLabel'].forEach((k) => assert.strictEqual(i18n.split("'" + k + "'").length, 3, k + ' in Slovak and English'));
   const title = await (await fetch(base + '/match/' + first.token)).text();
   assert.ok(title.includes('Anna Alfa / Boris Beta vs Cyril Gama / Dana Delta'), 'the page title and the link preview name the pairs');

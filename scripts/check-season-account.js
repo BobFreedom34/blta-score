@@ -159,7 +159,7 @@ test('an invite link brings the inviter credit for the new player', async () => 
 test('the page and the texts: the thank-you says an account was made and the code step follows', async () => {
   const js = await (await fetch(`${BASE}/js/season.js`)).text();
   assert.ok(js.includes('pinSetupRequired') && js.includes('refreshPlayerAuth()') && js.includes('season.regAccount'));
-  const i18n = await (await fetch(`${BASE}/js/i18n.js`)).text();
+  const i18n = await require('./i18n-source').i18nSourceFrom(async (u) => (await fetch(`${BASE}${u}`)).text());
   assert.ok(i18n.includes("'season.regAccount': 'Vytvorili sme ti aj účet") && i18n.includes("'season.regAccount': 'We have also created your account"));
 });
 

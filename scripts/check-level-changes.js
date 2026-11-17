@@ -79,7 +79,7 @@ test('the match page carries the card and its words', async () => {
   const read = (p) => fs.readFileSync(path.join(ROOT, 'public', p), 'utf8');
   const js = read('js/match.js');
   assert.ok(js.includes('levelChangesHtml') && js.includes('/rating-changes') && js.includes('lc-card'));
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   ['match.levelChanges', 'match.levelChangesDoubles'].forEach((k) => assert.strictEqual(i18n.split(`'${k}'`).length, 3, `${k} in Slovak and English`));
   assert.ok(read('css/style.css').includes('.lc-change.up'));
 });

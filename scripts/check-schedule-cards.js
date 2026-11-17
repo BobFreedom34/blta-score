@@ -40,7 +40,7 @@ test('ONE template: the Harmonogram and the tournament cards of the clubs draw t
 });
 
 test('the words exist in both languages', () => {
-  const i18n = read('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   assert.strictEqual(i18n.split("'schedule.register'").length, 3, 'schedule.register in Slovak and English');
 });
 

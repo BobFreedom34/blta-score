@@ -121,7 +121,7 @@ test('the page side: the chat shows the request with an Approve button, the Back
   assert.ok(chat.includes('m.approval') && chat.includes('data-approval-approve') && chat.includes('/approval'));
   const admin = pub('js/communities-admin.js');
   assert.ok(admin.includes('approval-inbox') && admin.includes('id="approval-inbox-select"'));
-  const i18n = pub('js/i18n.js');
+  const i18n = require('./i18n-source').i18nSource();
   for (const key of ['msg.approvalText', 'msg.approvalApprove', 'msg.approvalApproved', 'msg.approvalSent', 'msg.approvalGone']) {
     assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);
   }
