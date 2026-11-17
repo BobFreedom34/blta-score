@@ -16,10 +16,10 @@ const test = (name, fn) => tests.push({ name, fn });
 const html = async (url) => (await fetch(BASE + url)).text();
 const read = (file) => fs.readFileSync(path.join(ROOT, file), 'utf8');
 
-test('the Slovak home page has one H1, "BLTA – Bratislavská Liga tenisových amatérov", with the intro under it, then the buttons, all in the HTML', async () => {
+test('the Slovak home page has one H1, "BLTA – Bratislavská Liga Tenisových Amatérov", with the intro under it, then the buttons, all in the HTML', async () => {
   const page = await html('/');
   assert.strictEqual((page.match(/<h1[ >]/g) || []).length, 1, 'one H1');
-  assert.ok(page.includes('<h1 class="home-h1">BLTA – Bratislavská Liga tenisových amatérov</h1>'), 'H1 text');
+  assert.ok(page.includes('<h1 class="home-h1">BLTA – Bratislavská Liga Tenisových Amatérov</h1>'), 'H1 text');
   assert.ok(!page.includes('home-kicker'), 'the old label is gone');
   assert.ok(page.includes('<div class="home-eyebrow">Amatérska tenisová liga</div>'), 'the small line above the H1');
   assert.ok(page.indexOf('class="home-eyebrow"') < page.indexOf('<h1'), 'and it is above the H1');
@@ -67,8 +67,8 @@ test('on a phone the gap between the sign-in buttons and the league info button 
 
 test('the texts of another city: its brand, the full name of the league and the city in the 6th case (nothing about Bratislava)', () => {
   const { t } = require('../src/browserTexts');
-  assert.strictEqual(t('home.h1City', 'sk', { brand: 'SLTA Košice', place: ' v Košiciach' }), 'SLTA Košice – Slovenská liga tenisových amatérov v Košiciach');
-  assert.strictEqual(t('home.h1City', 'sk', { brand: 'SLTA Košice', place: '' }), 'SLTA Košice – Slovenská liga tenisových amatérov', 'no place written yet');
+  assert.strictEqual(t('home.h1City', 'sk', { brand: 'SLTA Košice', place: ' v Košiciach' }), 'SLTA Košice – Slovenská Liga Tenisových Amatérov v Košiciach');
+  assert.strictEqual(t('home.h1City', 'sk', { brand: 'SLTA Košice', place: '' }), 'SLTA Košice – Slovenská Liga Tenisových Amatérov', 'no place written yet');
   assert.strictEqual(t('home.h1City', 'en', { brand: 'SLTA Košice', place: ' in Košice' }), 'SLTA Košice – Slovak Amateur Tennis League in Košice');
   assert.ok(t('home.introCity', 'sk', { place: ' v Košiciach' }).startsWith('Amatérska tenisová liga pre rekreačných hráčov v Košiciach. Hraj'));
   ['sk', 'en'].forEach((lang) => assert.ok(!/Bratislav/.test(t('home.introCity', lang, { place: '' })), `introCity ${lang}`));

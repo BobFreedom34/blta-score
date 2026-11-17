@@ -256,7 +256,7 @@ function createLtpAvailabilityPicker({
 function myPostFormHtml(existing) {
   const mode = existing && existing.mode === 'DOUBLES' ? 'DOUBLES' : 'SINGLES';
   return `
-    <h2 style="margin-top:0">${t('lookingToPlay.myPostHeading')}</h2>
+    <h2 style="margin-top:0;margin-bottom:20px">${t('lookingToPlay.myPostHeading')}</h2>
     <form id="my-post-form">
       <div class="field">
         <div class="mode-switch" id="my-post-mode">

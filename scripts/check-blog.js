@@ -120,7 +120,7 @@ test('the blog list: both languages, the old SEO texts, a card per article, the 
   assert.strictEqual(sk.status, 200);
   assert.strictEqual(titleOf(sk.text), 'Blog - BLTA - Bratislavská Liga Tenisových Amatérov');
   assert.strictEqual(descOf(sk.text), 'Novinky z tenisovej amatérskej ligy BLTA, ktorá sa hrá v Bratislave a v okolí. Ak chces byť informovaný o novinkách z amatérskeho tenisu tak si tu správne.');
-  assert.strictEqual((sk.text.match(/class="blog-card"/g) || []).length, 4);
+  assert.strictEqual((sk.text.match(/class="blog-card[ "]/g) || []).length, 4);
   for (const a of OLD) assert.ok(sk.text.includes(`href="${a.sk}"`), `the list links to ${a.sk}`);
   assert.ok(sk.text.indexOf('rozhovor-s-tomasom') < sk.text.indexOf('nove-tricka') && sk.text.indexOf('nove-tricka') < sk.text.indexOf('tenisove-turnaje') && sk.text.indexOf('tenisove-turnaje') < sk.text.indexOf('co-je-blta'), 'newest first');
   assert.ok(/property="og:image" content="[^"]*lopta-2bllta\.png"/.test(sk.text));

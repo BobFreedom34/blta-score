@@ -96,7 +96,7 @@ function listHtml(lang, leagueId = 1) {
     const a = pick(row, lang);
     const href = urlOf(`/article/${row.slug_sk}`, lang);
     const image = a.image ? `<a class="blog-card-img" href="${esc(href)}"><img src="${esc(a.image)}" alt="${esc(a.title)}" loading="lazy"></a>` : '';
-    return `<article class="blog-card">${image}<div class="blog-card-body"><div class="blog-meta">${esc(dateText(a.published, lang))}</div><h2><a href="${esc(href)}">${esc(a.title)}</a></h2><p>${esc(a.excerpt || plainText(a.body).slice(0, 180))}</p><a class="blog-more" href="${esc(href)}">${esc(t.readMore)} →</a></div></article>`;
+    return `<article class="blog-card black-tile">${image}<div class="blog-card-body"><div class="blog-meta">${esc(dateText(a.published, lang))}</div><h2><a href="${esc(href)}">${esc(a.title)}</a></h2><p>${esc(a.excerpt || plainText(a.body).slice(0, 180))}</p><a class="blog-more" href="${esc(href)}">${esc(t.readMore)} →</a></div></article>`;
   });
   return `<h1 class="blog-h1">${esc(t.heading)}</h1><p class="home-sub">${esc(t.sub)}</p>${cards.length ? `<div class="blog-grid">${cards.join('')}</div>` : `<div class="empty-state">${esc(t.empty)}</div>`}`;
 }

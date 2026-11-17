@@ -81,12 +81,12 @@ test('the home page of a city: the site with its prefix, brand and address', asy
 
 test('the home page of a city has its own H1: brand, the full name of the league and the city in the 6th case written in Backend > Cities', async () => {
   let r = await nat('/kosice');
-  assert.ok(r.body.includes('<h1 class="home-h1">SLTA Kosice – Slovenská liga tenisových amatérov</h1>'), 'no place written: the H1 has none (and says nothing about Bratislava)');
+  assert.ok(r.body.includes('<h1 class="home-h1">SLTA Kosice – Slovenská Liga Tenisových Amatérov</h1>'), 'no place written: the H1 has none (and says nothing about Bratislava)');
   const set = await local('PATCH', `/api/leagues/${cityId}`, { nameLocative: 'v Košiciach' }, superCookie);
   assert.strictEqual(set.status, 200);
   assert.strictEqual(set.json.nameLocative, 'v Košiciach');
   r = await nat('/kosice');
-  assert.ok(r.body.includes('<h1 class="home-h1">SLTA Kosice – Slovenská liga tenisových amatérov v Košiciach</h1>'), 'Slovak H1 with the place');
+  assert.ok(r.body.includes('<h1 class="home-h1">SLTA Kosice – Slovenská Liga Tenisových Amatérov v Košiciach</h1>'), 'Slovak H1 with the place');
   assert.ok(r.body.includes('<p class="home-intro">Amatérska tenisová liga pre rekreačných hráčov v Košiciach. Hraj'), 'and the intro');
   const en = await nat('/kosice/en');
   assert.ok(en.body.includes('<h1 class="home-h1">SLTA Kosice – Slovak Amateur Tennis League in Kosice</h1>'), 'English H1 uses the name of the city');
@@ -94,7 +94,7 @@ test('the home page of a city has its own H1: brand, the full name of the league
   assert.ok(en.body.includes('<div class="home-eyebrow">Amateur tennis league</div>'), 'and in English');
   assert.strictEqual((await local('PATCH', `/api/leagues/${cityId}`, { nameLocative: 'x'.repeat(61) }, superCookie)).status, 400, 'too long');
   const blta = await local('GET', '/');
-  assert.ok(blta.body.includes('<h1 class="home-h1">BLTA – Bratislavská Liga tenisových amatérov</h1>'), 'blta.sk keeps its own H1');
+  assert.ok(blta.body.includes('<h1 class="home-h1">BLTA – Bratislavská Liga Tenisových Amatérov</h1>'), 'blta.sk keeps its own H1');
 });
 
 test('the other pages of a city say its brand and its place in the heading and the intro, not BLTA and Bratislava', async () => {

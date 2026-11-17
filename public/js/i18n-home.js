@@ -4,8 +4,8 @@
   sk: {
     'home.heading': 'Prehľad ligy',
     'home.eyebrow': 'Amatérska tenisová liga',
-    'home.h1': 'BLTA – Bratislavská Liga tenisových amatérov',
-    'home.h1City': '{brand} – Slovenská liga tenisových amatérov{place}',
+    'home.h1': 'BLTA – Bratislavská Liga Tenisových Amatérov',
+    'home.h1City': '{brand} – Slovenská Liga Tenisových Amatérov{place}',
     'home.intro': 'Amatérska tenisová liga pre rekreačných hráčov v Bratislave. Hraj ligové zápasy a turnaje na svojej úrovni v kategóriách Novice, Next Gen a Elite, sleduj živé skóre, tabuľky a rebríčky.',
     'home.introCity': 'Amatérska tenisová liga pre rekreačných hráčov{place}. Hraj ligové zápasy a turnaje na svojej úrovni v kategóriách Novice, Next Gen a Elite, sleduj živé skóre, tabuľky a rebríčky.',
     'home.latestResults': 'Posledné výsledky',
