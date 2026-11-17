@@ -13,7 +13,8 @@ Open **[preview.html](preview.html)** to see all three on one page (it uses the 
 
 ## Where it is used today
 
-- **Applied:** the home page, the footer and the bottom bar of every public page, window titles (`.modal h3`), the `button`/`input` font.
+- **Applied:** the home page, the **player profile page** (`/player/<name>`), the **tables page** (`/tabulky`), the **rankings page** (`/rebricky`), the **players page** (`/hraci`), the footer and the bottom bar of every public page, window titles (`.modal h3`), the `button`/`input` font.
+  Each page has its own block at the end of `style.css` ("APPLIED TO THE HOME PAGE", "THE DESIGN SYSTEM ON THE PLAYER PAGE"); the player page's rules all start with `body:has(#player-bio-card)` the tables page's with `body:has(#tables-root)`, the rankings page's with `body:has(#rankings-list)` and the players page's with `body:has(#player-list)`, so nothing outside it changes (the match cards, badges and tables are shared with other pages).
 - **Not yet applied:** every other page still has its own older sizes, gaps and greys (see "Moving a page over" below). Nothing is broken there; they just do not follow the system yet.
 
 ## Using it on a new page (the short version)
@@ -34,6 +35,7 @@ Open **[preview.html](preview.html)** to see all three on one page (it uses the 
 ## Rules that are decisions, not taste
 
 - **Nothing readable under 12 px.** Smaller text fails on phones and for people with weaker eyesight.
+- **No coloured glow, no orange frame on a card.** A card has the one border (`--tile-border`) and no `box-shadow`. The old orange frame with an orange glow (`border: 1px solid var(--orange); box-shadow: 0 0 18px rgba(255,85,0,.25)`) is still on other pages (rankings, courts, schedule); the player page no longer has it.
 - **One corner for every control** (`--radius-sm`, 8 px): buttons, tabs, chips, inputs. Cards and tiles use `--radius` (16 px). Only circles are round.
 - **Orange = do something / selected / live. Lime = status and result.** Do not use lime to mean "selected".
 - **One arrow for links to another page of the site: ↗**, drawn by CSS (`.ds-link`), never typed into the text.

@@ -7134,7 +7134,9 @@ body .modal h3 { font-size: var(--fs-lg); line-height: 1.25; }
 /* APPLIED TO THE HOME PAGE */
 /* 12: labels, chips, table heads */
 body .home-stat .k, body .home-mv .k, body .home-mine-cell .k, body .home-t-head span, body .pom-k, body .pom-nums small, body .home-chip, body .home-tl-chip,
-body .home-tl-type, body .home-feat-label, body .home-m-row .r small, body .ciq-c, body .ciq-iq, body .bottom-nav-item span, body .home-auth-btn.info i { font-size: var(--fs-xs); }
+body .home-tl-type, body .home-feat-label, body .home-m-row .r small, body .bottom-nav-item span, body .home-auth-btn.info i { font-size: var(--fs-xs); }
+/* the courtIQ wordmark takes the size of its line (1.15em, see .ciq-c); in a title it is exactly the size of the title, like every other word of it */
+body :is(h1, h2, h3, .t-section, .t-hero) :is(.ciq-c, .ciq-iq) { font-size: 1em; }
 body .home-auth-btn.info i { font-family: inherit; }
 /* 14: secondary text, tabs, links, footer text */
 body .home-mv .d, body .home-t-row.rank .mv, body .home-season-top > span, body .home-sub span, body .home-tip, body .hc-caption small,
@@ -7209,6 +7211,7 @@ body .home-sec-title a::before, body .home-live .go::before { content: '\2197\FE
   --title-gap: var(--sp-4);    /* a section title to its content */
   --card-gap: var(--sp-4);     /* neighbouring cards and tiles */
   --block-gap: var(--sp-6);    /* blocks that have a title of their own */
+  --inner-gap: var(--sp-5);    /* blocks inside one card that each have their own small label (tiles, form, charts) */
   --card-pad-y: var(--sp-4); --card-pad-x: 20px;
 }
 @media (max-width: 900px) { :root { --sec-gap: var(--sp-7); } }
@@ -7253,3 +7256,205 @@ body .home-sec > .home-cols > .home-col:has(> .home-col-sub), body .home-sec > .
 body .home-current.home-current-season { margin-top: var(--sec-gap); }
 body #home-cats { margin-bottom: var(--sp-4); }
 body #home-tl-filter { margin-bottom: var(--sp-6); }
+
+/* ---------------------------------------------------------------------------------------------------------------------------------
+   THE DESIGN SYSTEM ON THE PLAYER PAGE (/player/<name>)
+   Same three parts as on the home page: fonts, colours, gaps. Every rule starts with body:has(#player-bio-card), so nothing outside the player page changes
+   (the match cards, badges and tables are shared with other pages).
+   --------------------------------------------------------------------------------------------------------------------------------- */
+/* FONTS: 12 for labels, chips, table heads, chart labels and the lines of a match card; 14 for the facts of the profile; 16 for names and scores;
+   20 for a value in a tile; 28 for the one big number; the name of the player and the courtIQ number are the biggest text of the page */
+body:has(#player-bio-card) :is(.courtiq-info-btn, .courtiq-provisional-tag, .info-item .label, .player-upcoming-stat .label, .form-guide-label, .badge-name, .rival-label,
+  .rival-tile small, .badge, th, .match-card-meta, .match-card-meta span, .match-card-notes, .player-rank, #edit-bio-btn, .rank-trend-labels span, .months-chart-labels span) { font-size: var(--fs-xs); }
+body:has(#player-bio-card) .courtiq-info-btn { font-family: inherit; }
+body:has(#player-bio-card) :is(.bio-label, .bio-value, .courtiq-meta div, #stats-tabs .tab, .form-square, .h2h-score, .h2h-toggle) { font-size: var(--fs-sm); }
+body:has(#player-bio-card) :is(.rival-who, .match-score-format, .set-score, td.set-score, .set-score span) { font-size: var(--fs-md); }
+body:has(#player-bio-card) :is(.info-item .value, .rival-rec) { font-size: var(--fs-lg); }
+body:has(#player-bio-card) .player-upcoming-stat .value { font-size: var(--fs-xl); }
+body:has(#player-bio-card) :is(.player-courtiq-value, .courtiq-band-big) { font-size: var(--fs-hero); }
+body:has(#player-bio-card) #player-name :is(.player-first-name, .player-surname) { font-size: clamp(26px, 3.4vw, var(--fs-hero)); }
+
+/* COLOURS: the dim grey of the page is --text-3 (#8b8f98, was #9a9a9a); the labels of the facts are grey, not orange (orange means action); one border for every card;
+   a chip is 24px high, a tab and a field of the filter 40px, a small button 28px */
+body:has(#player-bio-card) { --gray-dim: var(--text-3); }
+body:has(#player-bio-card) .bio-label { color: var(--text-3); }
+body:has(#player-bio-card) :is(.player-bio-card, .statistics-card, .h2h-card, .rivals-card, .card-dark) { border-color: var(--tile-border); box-shadow: none; }
+body:has(#player-bio-card) .match-card:not(:hover) { border-color: var(--tile-border); }
+body:has(#player-bio-card) .badge { box-sizing: border-box; display: inline-flex; align-items: center; min-height: var(--chip-h); padding-top: 0; padding-bottom: 0; line-height: 1; }
+body:has(#player-bio-card) :is(#stats-tabs .tab, .filters select, .filters input, .filters .btn) { box-sizing: border-box; min-height: var(--control-h); }
+body:has(#player-bio-card) :is(#edit-bio-btn, .btn-sm) { min-height: var(--chip-btn-h); }
+
+/* GAPS: 64px between the sections (48px on a tablet and phone), a section title 16px above its content, the cards and tiles of a row 16px apart, 24px between match cards,
+   the same padding in every card (16px 20px; a compact stat tile 12px 16px) */
+body:has(#player-bio-card) .player-sec { margin-top: var(--sec-gap); }
+body:has(#player-bio-card) #courtiq-card.player-sec { margin-top: var(--sp-5); }
+body:has(#player-bio-card) .player-sec > .section-label, body:has(#player-bio-card) .player-sec > .section-header { margin: 0 0 var(--title-gap); }
+body:has(#player-bio-card) #rivals-section .section-label { margin: var(--sec-gap) 0 var(--title-gap); }
+body:has(#player-bio-card) .section-label-line { margin: var(--sec-gap) 0 var(--title-gap); }
+body:has(#player-bio-card) .section-label-line .section-label { margin: 0; }
+body:has(#player-bio-card) .h2h-card { margin-bottom: var(--sec-gap); }
+body:has(#player-bio-card) #player-filters { margin-bottom: var(--sec-gap); gap: var(--sp-3); }
+body:has(#player-bio-card) :is(#player-stats-blta, #player-stats-overall) { gap: var(--card-gap); }
+body:has(#player-bio-card) .badges-grid { gap: var(--card-gap); }
+body:has(#player-bio-card) .match-list { gap: var(--sp-5); }
+body:has(#player-bio-card) .form-guide { gap: var(--sp-2); }
+body:has(#player-bio-card) :is(.statistics-card, .rivals-card, .match-card, .rival-tile) { padding: var(--card-pad-y) var(--card-pad-x); }
+body:has(#player-bio-card) .info-item { padding: var(--sp-3) var(--sp-4); }
+@media (max-width: 480px) { body:has(#player-bio-card) :is(.statistics-card, .rivals-card, .match-card, .rival-tile) { padding: var(--sp-4); } }
+/* the three headline numbers of the statistics (played, wins — losses, success rate) are the big number of the page; the title of the head-to-head block gets the section gap; the filter fields are exactly 40px */
+body:has(#player-bio-card) .info-item .value.stat-big { font-size: var(--fs-xl); }
+body:has(#player-bio-card) #h2h-section .section-label { margin: var(--sec-gap) 0 var(--title-gap); }
+body:has(#player-bio-card) :is(.filters select, .filters input, .filters .btn) { height: var(--control-h); }
+/* the two tabs of the statistics at 14px: a little less padding on a narrow phone, so both fit the row without scrolling */
+@media (max-width: 400px) { body:has(#player-bio-card) #stats-tabs .tab { padding-left: 10px; padding-right: 10px; } }
+
+/* GAPS INSIDE THE CARDS of the player page: nothing is 3, 5, 6, 9, 10, 11, 14, 18 or 22 any more — every distance is a step of the scale.
+   Inside the statistics card: the tabs are 16px above what they filter, the note is 12px above its tiles, the blocks under the tiles (form, charts, months) are 24px apart */
+body:has(#player-bio-card) #stats-tabs { margin-bottom: var(--title-gap); }
+body:has(#player-bio-card) .stats-tab-note { margin-bottom: var(--sp-3); }
+body:has(#player-bio-card) .info-grid ~ div { margin-top: var(--inner-gap); }
+body:has(#player-bio-card) .trend-row-2col { gap: var(--inner-gap); }
+body:has(#player-bio-card) .info-item .value { font-size: var(--fs-name); }
+body:has(#player-bio-card) .info-item { gap: var(--sp-2); }
+/* the head of the page: the photo and the name 16px apart, 24px above it */
+body:has(#player-bio-card) .player-avatar-row { margin-top: var(--sp-5); gap: var(--sp-4); }
+body:has(#player-bio-card) .player-msg-btn { gap: var(--sp-2); padding-left: var(--sp-4); padding-right: var(--sp-4); }
+body:has(#player-bio-card) .courtiq-meta { gap: var(--sp-1); }
+body:has(#player-bio-card) #edit-bio-btn, body:has(#player-bio-card) .btn-sm { padding: var(--sp-1) var(--sp-3); }
+body:has(#player-bio-card) #stats-tabs .tab { padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
+body:has(#player-bio-card) .filters select { padding-top: var(--sp-3); padding-bottom: var(--sp-3); }
+body:has(#player-bio-card) .rivals-card { gap: var(--card-gap); }
+/* a match card: 16px between its lines, 8px between a chip and the next one, 12px of side padding in a chip */
+body:has(#player-bio-card) .match-card { gap: var(--sp-4); }
+body:has(#player-bio-card) .match-card-top { gap: var(--sp-2); }
+body:has(#player-bio-card) .match-card-meta { gap: var(--sp-2) var(--sp-4); }
+body:has(#player-bio-card) .match-card-meta span { gap: var(--sp-2); }
+body:has(#player-bio-card) .badge { padding-left: var(--sp-3); padding-right: var(--sp-3); }
+body:has(#player-bio-card) .scoreboard-compact { padding-top: var(--sp-3); padding-bottom: var(--sp-3); }
+body:has(#player-bio-card) th.timer-cell { padding-bottom: var(--sp-2); }
+/* the rest of the player page: rivals, head-to-head, the filters and the heading of the match list */
+body:has(#player-bio-card) .rival-who { margin-top: var(--sp-2); }
+body:has(#player-bio-card) .h2h-row { padding-left: var(--sp-4); padding-right: var(--sp-4); }
+body:has(#player-bio-card) .h2h-record { gap: var(--sp-2); }
+body:has(#player-bio-card) .h2h-toggle { padding: var(--sp-3) var(--sp-4); }
+body:has(#player-bio-card) .opp-input { padding-top: var(--sp-3); padding-bottom: var(--sp-3); }
+body:has(#player-bio-card) .filters .btn-outline { padding: var(--sp-3) var(--sp-2); }
+body:has(#player-bio-card) .match-list-heading { margin-bottom: var(--sp-2); gap: var(--sp-4); }
+body:has(#player-bio-card) .match-heading-label { gap: var(--sp-2); }
+body:has(#player-bio-card) .level-dots { gap: var(--sp-1); }
+body:has(#player-bio-card) #courtiq-trend-inner { margin-top: var(--inner-gap); }
+/* Rivals: only the three tiles, no outer box around them (like the tiles of the statistics and of the home page) */
+body:has(#player-bio-card) #rivals-section .rivals-card { background: none !important; background-image: none !important; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+
+/* ---------------------------------------------------------------------------------------------------------------------------------
+   THE DESIGN SYSTEM ON THE TABLES PAGE (/tabulky, /en/tables)
+   Every rule starts with body:has(#tables-root), so the other pages that use .grp-card / .grp-title (a season, a tournament) keep their own look.
+   --------------------------------------------------------------------------------------------------------------------------------- */
+/* FONTS: the H1 is the hero size, the intro is body text, the tabs and the select 14, the title of a group 20, the heads of the table 12, the legend 14 */
+body:has(#tables-root) .container > h1 { font-size: clamp(26px, 3.4vw, var(--fs-hero)); font-weight: var(--fw-black); line-height: 1.12; }
+body:has(#tables-root) .page-intro { font-size: var(--fs-md); color: var(--text-2); line-height: 1.5; }
+body:has(#tables-root) :is(.tabs .tab, .grp-tabs .tab, .grey-select) { font-size: var(--fs-sm); }
+body:has(#tables-root) .grp-title { font-size: var(--fs-lg); line-height: 1.2; }
+body:has(#tables-root) .grp-title span { font-size: var(--fs-xs); }
+body:has(#tables-root) :is(.grp-head, .grp-card .grp-head, .grp-head span) { font-size: var(--fs-xs); }
+body:has(#tables-root) .grp-row, body:has(#tables-root) .grp-card .grp-row { font-size: var(--fs-sm); }
+body:has(#tables-root) :is(.grp-legend, .rankings-desc) { font-size: var(--fs-sm); line-height: 1.5; }
+
+/* COLOURS: the title of a group is white (lime means status), one border and no glow on the table card, the dim grey is --text-3 */
+body:has(#tables-root) { --gray-dim: var(--text-3); }
+body:has(#tables-root) .grp-title { color: var(--text-1); }
+body:has(#tables-root) .grp-card { border-color: var(--tile-border); box-shadow: none; }
+body:has(#tables-root) :is(.grp-legend, .rankings-desc) { color: var(--text-2); }
+body:has(#tables-root) :is(.tabs .tab, .grey-select) { box-sizing: border-box; min-height: var(--control-h); }
+
+/* GAPS: the title is 24px from the top, 8px above its intro, 24px between the intro and the filters; the select and the rows of tabs are 12px apart;
+   the filters are one section gap (64px, 48px on a tablet and phone) above the first table, the tables one section gap apart; a title is 16px above its table;
+   the table card has the standard padding and its rows are 12px high on both sides */
+body:has(#tables-root) .container > h1 { margin: var(--sp-5) 0 var(--sp-2); }
+body:has(#tables-root) .page-intro { margin: 0 0 var(--sp-5); }
+body:has(#tables-root) .grey-select { margin: 0 0 var(--sp-3); }
+body:has(#tables-root) :is(#tables-cats, #tables-phase, #tables-groups) { margin: 0 0 var(--sp-3); gap: var(--sp-2); }
+@media (max-width: 680px) { body:has(#tables-root) :is(#tables-cats, #tables-phase, #tables-groups) { margin: 0 -16px var(--sp-3); } }
+body:has(#tables-root) .grp-section:first-child .grp-title, body:has(#tables-root) .grp-section + .grp-section .grp-title { margin-top: var(--sec-gap); }
+body:has(#tables-root) .grp-title { margin-bottom: var(--title-gap); }
+body:has(#tables-root) .grp-title span { margin-left: var(--sp-2); }
+body:has(#tables-root) .grp-card, body:has(#tables-root) .grp-card.card { padding: var(--card-pad-y) var(--card-pad-x); }
+@media (max-width: 680px) { body:has(#tables-root) .grp-card, body:has(#tables-root) .grp-card.card { padding: var(--sp-3) var(--sp-4); } }
+body:has(#tables-root) .grp-head, body:has(#tables-root) .grp-row, body:has(#tables-root) .grp-card .grp-head, body:has(#tables-root) .grp-card .grp-row { gap: var(--sp-2); }
+body:has(#tables-root) .grp-card .grp-head { padding: 0 var(--sp-1) var(--sp-2); }
+body:has(#tables-root) .grp-card .grp-row { padding: var(--sp-3) var(--sp-1); }
+body:has(#tables-root) .grp-name { gap: var(--sp-2); }
+body:has(#tables-root) :is(.grp-legend, .rankings-desc) { margin: var(--title-gap) 0 0; }
+body:has(#tables-root) :is(.tabs .tab, .grp-tabs .tab, .grey-select) { padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
+body:has(#tables-root) .empty-state { padding-top: var(--sp-4); padding-bottom: var(--sp-4); }
+
+/* ---------------------------------------------------------------------------------------------------------------------------------
+   THE DESIGN SYSTEM ON THE RANKINGS PAGE (/rebricky, /en/rankings)
+   Every rule starts with body:has(#rankings-list), so the other pages that use .card-dark / .rank-grid keep their own look.
+   --------------------------------------------------------------------------------------------------------------------------------- */
+/* FONTS: the H1 is the hero size, the intro is body text, the tabs, the note and the numbers of the table 14, the heads of the table and the credit line 12 */
+body:has(#rankings-list) .container > h1 { font-size: clamp(26px, 3.4vw, var(--fs-hero)); font-weight: var(--fw-black); line-height: 1.12; }
+body:has(#rankings-list) .page-intro { font-size: var(--fs-md); color: var(--text-2); line-height: 1.5; }
+body:has(#rankings-list) .tabs .tab { font-size: var(--fs-sm); }
+body:has(#rankings-list) .rankings-desc { font-size: var(--fs-sm); color: var(--text-2); line-height: 1.5; }
+body:has(#rankings-list) .rank-table-header, body:has(#rankings-list) .rank-table-header > div { font-size: var(--fs-xs); }
+body:has(#rankings-list) :is(.rank-col-age, .rank-col-matches) { font-size: var(--fs-sm); }
+body:has(#rankings-list) footer.credit, body:has(#rankings-list) footer.credit button { font-size: var(--fs-xs); }
+
+/* COLOURS: the dim grey is --text-3, the table card has the one border and no orange glow, a tab is 40px high */
+body:has(#rankings-list) { --gray-dim: var(--text-3); }
+body:has(#rankings-list) .card-dark { border-color: var(--tile-border); box-shadow: none; }
+body:has(#rankings-list) .tabs .tab { box-sizing: border-box; min-height: var(--control-h); }
+
+/* GAPS: 24px from the top of the page, 8px to the intro, 24px to the tabs; the tabs are 16px above their note, the note 12px above the table; the table card has the
+   standard padding and its rows are 12px high on both sides; 8px between the cells of a row */
+body:has(#rankings-list) .container > h1 { margin: var(--sp-5) 0 var(--sp-2); }
+body:has(#rankings-list) .page-intro { margin: 0 0 var(--sp-5); }
+body:has(#rankings-list) #rankings-tabs { margin: 0 0 var(--title-gap); gap: var(--sp-2); }
+@media (max-width: 680px) { body:has(#rankings-list) #rankings-tabs { margin: 0 -16px var(--title-gap); } }
+body:has(#rankings-list) .tabs .tab { padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
+body:has(#rankings-list) .rankings-desc { margin: 0 0 var(--sp-3); }
+body:has(#rankings-list) .card-dark { padding: var(--card-pad-y) var(--card-pad-x); }
+@media (max-width: 680px) { body:has(#rankings-list) .card-dark { padding: var(--sp-3) var(--sp-4); } }
+body:has(#rankings-list) :is(.rank-grid, .rank-table-header) { gap: var(--sp-2); }
+body:has(#rankings-list) .rank-row { padding-top: var(--sp-3); padding-bottom: var(--sp-3); }
+body:has(#rankings-list) .rank-pos { gap: var(--sp-2); }
+
+/* ---------------------------------------------------------------------------------------------------------------------------------
+   THE DESIGN SYSTEM ON THE PLAYERS PAGE (/hraci, /en/players)
+   Every rule starts with body:has(#player-list), so the other pages that use .card-dark or .ltp-iq keep their own look.
+   --------------------------------------------------------------------------------------------------------------------------------- */
+/* FONTS: the H1 is the hero size, the intro is body text, the letter above a group of players 16, the category line 12 (as a label), the IQ chip 12 */
+body:has(#player-list) .container > h1 { font-size: clamp(26px, 3.4vw, var(--fs-hero)); font-weight: var(--fw-black); line-height: 1.12; }
+body:has(#player-list) .page-intro { font-size: var(--fs-md); color: var(--text-2); line-height: 1.5; }
+body:has(#player-list) .player-group-heading { font-size: var(--fs-md); }
+body:has(#player-list) .player-cat { font-size: var(--fs-xs); }
+body:has(#player-list) .ltp-iq.iq-inline, body:has(#player-list) .ltp-iq.iq-inline :is(small, em) { font-size: var(--fs-xs); }
+body:has(#player-list) .badge { font-size: var(--fs-xs); }
+
+/* COLOURS: the letter above a group is white (orange means action), the player list card has the one border and no orange glow, the dim grey is --text-3,
+   a chip is 24px high, the search field 40px */
+body:has(#player-list) { --gray-dim: var(--text-3); }
+body:has(#player-list) .player-group-heading { color: var(--text-1); }
+body:has(#player-list) .card-dark { border-color: var(--tile-border); box-shadow: none; }
+body:has(#player-list) .badge { box-sizing: border-box; display: inline-flex; align-items: center; min-height: var(--chip-h); padding: 0 var(--sp-3); line-height: 1; }
+body:has(#player-list) input.grey-search { box-sizing: border-box; height: var(--control-h); }
+
+/* GAPS: 24px from the top, 8px to the intro, 24px to the search; the search is 16px above the list; the list card has the standard padding; a letter is 24px below
+   the group before it; a player row is 12px high on both sides and 16px between the photo and the name; the columns of the list are 24px apart */
+body:has(#player-list) .container > h1 { margin: var(--sp-5) 0 var(--sp-2); }
+body:has(#player-list) .page-intro { margin: 0 0 var(--sp-5); }
+body:has(#player-list) #add-player-card { margin-bottom: var(--sp-5); }
+body:has(#player-list) #invites-admin { margin-top: var(--sp-5); }
+body:has(#player-list) input.grey-search { margin: 0 0 var(--title-gap); padding-left: var(--sp-4); padding-right: var(--sp-4); }
+body:has(#player-list) .card-dark { padding: var(--card-pad-y) var(--card-pad-x); }
+@media (max-width: 680px) { body:has(#player-list) .card-dark { padding: var(--sp-3) var(--sp-4); } }
+body:has(#player-list) #player-list { column-gap: var(--sp-5); }
+@media (max-width: 900px) { body:has(#player-list) #player-list { column-gap: var(--sp-4); } }
+body:has(#player-list) .player-group-heading { margin: var(--sp-5) 0 var(--sp-1); padding: 0 var(--sp-1) var(--sp-1); }
+body:has(#player-list) .player-group-heading:first-child { margin-top: 0; }
+body:has(#player-list) .player-row { padding-top: var(--sp-3); padding-bottom: var(--sp-3); }
+body:has(#player-list) .player-name-cell { gap: var(--sp-4); }
+body:has(#player-list) .player-name-stack { gap: var(--sp-1); }
+body:has(#player-list) .player-cat { display: flex; align-items: center; gap: var(--sp-2); }
+body:has(#player-list) .ltp-iq.iq-inline { gap: var(--sp-1); padding: 0 var(--sp-2); }

@@ -23,6 +23,7 @@ Every distance is a step of one scale. No 14, 22, 34, 40, 44, 68 or 88.
 | `--title-gap` | 16 px | a section title to its content |
 | `--card-gap` | 16 px | neighbouring cards and tiles |
 | `--block-gap` | 32 px | rows of blocks that each have their own title |
+| `--inner-gap` | 24 px | blocks **inside one card** that each have a small label of their own (tiles, form, charts, months) |
 | `--card-pad-y` / `--card-pad-x` | 16 px / 20 px (16 px at ≤ 480 px) | the padding of every card |
 
 ## Page rhythm
@@ -89,3 +90,11 @@ whatever wraps in one title, all the cards still start and end at the same heigh
 | 14 (title to content) | `--title-gap` (16) |
 | 12 / 16 between cards, 24 / 40 between blocks | `--card-gap` (16) / `--block-gap` (32) |
 | padding 16 × 18 / 16 × 20 / 20 × 24 | `--card-pad-y` × `--card-pad-x` (16 × 20) |
+
+## Inside a card (the player page, as measured)
+
+```
+tabs ──16── note ──12── tiles (16 apart) ──24── form ──24── charts (24 apart) ──24── months
+```
+
+No distance of **3, 5, 6, 9, 10, 11, 14, 18 or 22 px** is left on the player page; a check you can run in the browser: collect `margin`, `padding` and `gap` of every element and list the values not in `0, 1, 2, 4, 8, 12, 16, 20, 24, 32, 48, 64` (the player page returns none).

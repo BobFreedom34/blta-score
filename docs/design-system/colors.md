@@ -37,6 +37,9 @@ Red (`#ff7a6e`, `#ff3b3b`) is only for a fall in the ranking and for "overdue".
 Every tile and card has the same border: `border: 1px solid var(--tile-border)` (white at 18 %). The corner is `--radius` (16 px).
 Hover on a tile that is a link: the border turns orange (`a.home-mv:hover`, `a.home-mine-cell:hover`).
 
+Cards have **no glow**: no `box-shadow` in a colour. The old orange frame + orange glow of the dark cards (`.card-dark`, `.statistics-card`, `.h2h-card`, `.player-bio-card`) is replaced by the grey border on the player page.
+The **labels** of facts ("Kategória", "Raketa" …) are `--text-3`, not orange: orange means action.
+
 ## Chips
 
 24 px high, 8 px corners, 12 px UPPERCASE, 12 px of side padding. The colour says what it is.
