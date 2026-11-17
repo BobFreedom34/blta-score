@@ -3862,6 +3862,24 @@ a.home-tl.future:hover .home-tl-body { border-color: var(--orange); }
 .home-cols, .home-cols-3 { display: grid; gap: 40px 16px; }
 .home-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .home-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 16px; }
+/* Tables: group leaders. A computer shows the groups side by side; a tablet shows two at a time and a phone one, in a row that scrolls sideways (home.js, initLeadersCarousel) */
+.home-ld-wrap { position: relative; }
+.home-ld-dots { display: none; }
+@media (max-width: 1024px) {
+  .home-ld-row { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+  .home-ld-row::-webkit-scrollbar { display: none; }
+  .home-ld-row > .home-col { flex: 0 0 calc((100% - 16px) / 2); scroll-snap-align: start; }
+  .home-ld-row.dragging { cursor: grabbing; scroll-snap-type: none; user-select: none; }
+  .home-ld-row.dragging a { pointer-events: none; }
+  .home-ld-wrap.scrolls ~ .home-ld-dots { display: flex; justify-content: center; gap: 7px; margin-top: 14px; }
+  .home-ld-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.25); transition: background 0.15s; }
+  .home-ld-dots i.on { background: var(--orange); }
+}
+@media (max-width: 640px) { .home-ld-row > .home-col { flex-basis: 100%; } }
+@media (max-width: 1024px) and (hover: hover) {
+  .home-ld-wrap.can-prev .home-tl-nav.prev, .home-ld-wrap.can-next .home-tl-nav.next { display: block; }
+  .home-ld-row { cursor: grab; }
+}
 .home-col { display: flex; flex-direction: column; min-width: 0; }
 .home-col > .home-card { flex: 1; }
 /* the heading of a column of the ranking row: the note sits under the title (an empty note keeps its line, so the cards stay level) */
@@ -4925,7 +4943,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .pom-photo { width: 46px; height: 46px; border-radius: var(--radius-md); object-fit: cover; background: var(--orange); }
 .pom-initials { display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; color: #fff; }
 .pom-who { min-width: 0; }
-.pom-who b { display: block; font-size: 20px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pom-who b { display: block; font-size: 18px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pom-k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .pom-nums { display: contents; font-weight: 800; font-size: 18px; }
 .pom-nums > div { line-height: 1.2; }
@@ -7002,7 +7020,7 @@ body:has(.admin-tabs) details.card:not(.sa-card) .btn-outline { color: #fff; bor
 .badge-notif-readall[hidden] { display: none; }
 /* "Čierna dlaždica" (black tile): the black twin of the grey tile - a soft diagonal gradient that starts lighter in the bottom right corner and fades into black towards the top left, plus a 1px light line along the bottom edge. Add the class black-tile to a black block; its own border, radius and padding stay as they are. !important on the image because the glass lists carry an #id */
 .black-tile,
-body:has(#player-bio-card) :is(.player-bio-card, .statistics-card, .rivals-card, .h2h-card, .match-card, .match-card .scoreboard-compact, .player-avatar-fallback) { background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(21, 21, 24, 0.9), rgba(10, 10, 10, 0.6) 75%) !important; }
+body:has(#player-bio-card) :is(.player-bio-card, .statistics-card, .rivals-card, .h2h-card, .match-card, .match-card .scoreboard-compact, .player-avatar-fallback) { background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(33, 34, 38, 0.93), rgba(10, 10, 10, 0.6) 75%) !important; }
 /* the border of the black tiles that have a plain grey one: darker than the old --border-grey (not the green/orange frames of the season timeline and the invite card, and not the orange hover of a link tile) */
 :is(.home-card, .home-live, .home-mine-cell.next, .pom-card).black-tile:not(:hover) { border-color: #3b3d44; }
 /* the two highlighted links of the footer (Funkcie, courtIQ): green veil pills side by side in the right corner of the link area */

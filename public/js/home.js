@@ -430,9 +430,62 @@ function leadersHtml(d) {
   <section class="home-sec" id="home-leaders">
     ${secTitle(t('home.leaders'), '', '/tables', t('home.allTables'))}
     <div class="tabs" id="home-cats" role="tablist">${cats.map((c) => `<button type="button" class="tab${c === homeCategory ? ' active' : ''}" data-cat="${c}">${HOME_CATEGORY_NAMES[c]}</button>`).join('')}</div>
-    <div class="home-cols-3">${inCat.map(card).join('')}</div>
+    <div class="home-ld-wrap" id="home-ld-wrap">
+      <button type="button" class="home-tl-nav prev" aria-label="←">‹</button>
+      <div class="home-cols-3 home-ld-row" id="home-ld-row">${inCat.map(card).join('')}</div>
+      <button type="button" class="home-tl-nav next" aria-label="→">›</button>
+    </div>
+    <div class="home-ld-dots" id="home-ld-dots" aria-hidden="true">${inCat.map(() => '<i></i>').join('')}</div>
   </section>`;
 }
+
+// Tablet (two groups at a time) and phone (one at a time): the group tables sit in a row that scrolls sideways, like the season strip above (the same edge fade,
+// arrows for a mouse, dragging with a mouse; a finger swipes it natively). A computer shows all the groups side by side, and nothing here runs.
+const leadersCarousel = () => window.matchMedia('(max-width: 1024px)').matches;
+function updateLeadersEdges() {
+  const wrap = document.getElementById('home-ld-wrap');
+  const row = document.getElementById('home-ld-row');
+  if (!wrap || !row) return;
+  const max = row.scrollWidth - row.clientWidth;
+  wrap.classList.toggle('scrolls', max > 4);
+  wrap.classList.toggle('can-prev', row.scrollLeft > 4);
+  wrap.classList.toggle('can-next', row.scrollLeft < max - 4);
+  // the dots: the table at the left edge (or the last one, when the row is at its end)
+  const cols = [...row.children];
+  let at = cols.findIndex((c) => c.offsetLeft - row.offsetLeft >= row.scrollLeft - 8);
+  if (at < 0 || row.scrollLeft >= max - 4) at = cols.length - 1;
+  document.querySelectorAll('#home-ld-dots i').forEach((dot, i) => dot.classList.toggle('on', i === at));
+}
+function initLeadersCarousel() {
+  const wrap = document.getElementById('home-ld-wrap');
+  const row = document.getElementById('home-ld-row');
+  if (!wrap || !row) return;
+  row.addEventListener('scroll', updateLeadersEdges, { passive: true });
+  wrap.querySelector('.prev').addEventListener('click', () => row.scrollBy({ left: -row.clientWidth, behavior: 'smooth' }));
+  wrap.querySelector('.next').addEventListener('click', () => row.scrollBy({ left: row.clientWidth, behavior: 'smooth' }));
+  let startX = 0;
+  let startLeft = 0;
+  let dragging = false;
+  let moved = false;
+  row.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0 || !leadersCarousel()) return;
+    dragging = true; moved = false; startX = e.clientX; startLeft = row.scrollLeft;
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) > 5) { moved = true; row.classList.add('dragging'); }
+    if (moved) row.scrollLeft = startLeft - dx;
+  });
+  window.addEventListener('pointerup', () => {
+    if (!dragging) return;
+    dragging = false;
+    row.classList.remove('dragging');
+  });
+  row.addEventListener('click', (e) => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } }, true);
+  updateLeadersEdges();
+}
+window.addEventListener('resize', updateLeadersEdges);
 
 // The "Najbližšie zápasy" rows: the match of the week first (highlighted), then the next matches without it — four rows at most.
 function upcomingRows(d) {
@@ -644,6 +697,7 @@ function renderHome() {
     ${inviteShellHtml(d)}
     <section class="home-sec home-partners" id="home-partners" hidden></section>`;
   initTimelineScroll(keepLeft);
+  initLeadersCarousel();
   document.querySelectorAll('#home-tl-filter [data-strip]').forEach((btn) => {
     btn.addEventListener('click', () => { stripFilter = btn.dataset.strip; stripFilterChanged = true; renderHome(); });
   });
