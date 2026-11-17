@@ -10,7 +10,7 @@ const { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const PUBLIC = path.join(ROOT, 'public');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ctpages-'));
-const port = 3100 + Math.floor(Math.random() * 800);
+const port = 3100 + (process.pid % 800);
 const base = `http://localhost:${port}`;
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });

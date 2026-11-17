@@ -9,7 +9,7 @@ const assert = require('assert');
 const { spawn } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 3100 + Math.floor(Math.random() * 800);
+const PORT = 3100 + (process.pid % 800);
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'footer-admin-'));
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });

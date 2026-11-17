@@ -12,7 +12,7 @@ const DrawVerify = require('../public/js/draw-verify.js');
 
 const ROOT = path.join(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ldraw-'));
-const port = 3100 + Math.floor(Math.random() * 800);
+const port = 3100 + (process.pid % 800);
 const base = `http://localhost:${port}`;
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });

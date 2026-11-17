@@ -13,7 +13,7 @@
 // scripts/get-drive-refresh-token.js once to mint the refresh token).
 const fs = require('fs');
 const path = require('path');
-const archiver = require('archiver');
+const { ZipArchive } = require('archiver');
 const { OAuth2Client } = require('google-auth-library');
 const db = require('./db');
 const mailer = require('./mailer');
@@ -148,7 +148,7 @@ function zipDataFiles() {
     const files = listNonDbFiles(db.dataDir, db.dataDir);
     if (!files.length) return resolve(null);
 
-    const archive = archiver('zip', { zlib: { level: 9 } });
+    const archive = new ZipArchive({ zlib: { level: 9 } });
     const chunks = [];
     archive.on('data', (chunk) => chunks.push(chunk));
     archive.on('error', reject);

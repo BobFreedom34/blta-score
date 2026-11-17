@@ -9,7 +9,7 @@ const { spawn } = require('child_process');
 const { parseCourtStreams, streamsOf, fitToCount } = require('../src/courtStreams');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 3100 + Math.floor(Math.random() * 800);
+const PORT = 3100 + (process.pid % 800);
 const BASE = `http://localhost:${PORT}`;
 const serverDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cs-server-'));
 

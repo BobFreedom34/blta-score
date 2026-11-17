@@ -44,6 +44,7 @@ const eventPopupsRouter = require('./src/routes/popups');
 const mediaRouter = require('./src/routes/media');
 const cityScope = require('./src/cityScope');
 const leagues = require('./src/leagues');
+const corsPolicy = require('./src/corsPolicy');
 const auth = require('./src/auth');
 const national = require('./src/national');
 const nationalMenu = require('./src/nationalMenu');
@@ -70,7 +71,7 @@ const seo = require('./src/seo');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' },
+  cors: { origin: corsPolicy.origin },
 });
 app.set('io', io);
 
@@ -271,9 +272,13 @@ app.use((req, res, next) => {
   if (req.secure || req.get('x-forwarded-proto') === 'https') res.set('Strict-Transport-Security', 'max-age=31536000');
   if (FRAMEABLE.test(req.path)) res.set('Content-Security-Policy', "object-src 'none'; base-uri 'self'");
   else res.set({ 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "object-src 'none'; base-uri 'self'; frame-ancestors 'self'" });
+  // The next step towards a strict policy, only REPORTED for now (a browser shows what it would block in its console, nothing is blocked): scripts only from
+  // this site and the two outside hosts the pages use. Inline code is still allowed ('unsafe-inline') until the few inline scripts get a nonce. When the console
+  // stays clean on every page, move this text into the enforced header above.
+  res.set('Content-Security-Policy-Report-Only', "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://unpkg.com; object-src 'none'; base-uri 'self'; form-action 'self'");
   next();
 });
-app.use(cors());
+app.use(cors({ origin: corsPolicy.origin }));
 app.use(express.json());
 app.use(cookieParser(process.env.SESSION_SECRET || 'dev-only-insecure-secret'));
 // the city of the request on req.league (an own domain such as blta.sk; otherwise Bratislava)

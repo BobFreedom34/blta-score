@@ -9,7 +9,7 @@ const { spawn } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'payments-'));
-const port = 3100 + Math.floor(Math.random() * 800);
+const port = 3100 + (process.pid % 800);
 const base = `http://localhost:${port}`;
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -91,7 +91,7 @@ test('the window after a registration asks for a payment only when the event has
   assert.strictEqual(check('Free', ''), false);
   assert.strictEqual(check('', ''), false, 'nothing written, no link');
   assert.strictEqual(check('', 'https://pay.example'), true, 'nothing written but a payment link: it is paid online');
-  assert.ok(js.includes('|| !hasEntryFee() ? \'\' : stripe + bankTransferHtml(contact, !!stripe)'), 'the window uses it');
+  assert.ok(js.includes("|| !hasEntryFee() ? '' : stripe + bankTransferHtml(contact, !!stripe"), 'the window uses it');
 });
 
 async function main() {

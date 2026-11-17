@@ -15,7 +15,7 @@ const children = [];
 const dirs = [];
 
 async function start(env) {
-  const port = 3100 + Math.floor(Math.random() * 800);
+  const port = 3100 + ((process.pid + (global.__ports = (global.__ports || 0) + 1)) % 800);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'redirect-'));
   dirs.push(dir);
   const child = spawn(process.execPath, ['server.js'], { cwd: ROOT, env: { ...process.env, DATA_DIR: dir, PORT: String(port), ADMIN_PASSWORD: 'test', SESSION_SECRET: 'test', ...env }, stdio: ['ignore', 'pipe', 'pipe'] });

@@ -183,7 +183,7 @@ test('ranks: BLTA overall is 1, 2, 3… (ties in the order they came in), the ot
 });
 
 // ================================================================ the real flow, through the API
-const PORT = 3100 + Math.floor(Math.random() * 800);
+const PORT = 3100 + (process.pid % 800);
 const BASE = `http://localhost:${PORT}`;
 let child = null;
 let cookie = '';

@@ -6,11 +6,12 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node scripts/run-checks.js"
+    "test": "node scripts/run-checks.js",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",
-    "archiver": "^7.0.1",
+    "archiver": "^8.0.0",
     "bysquare": "^4.1.1",
     "compression": "^1.8.2",
     "cookie-parser": "^1.4.6",
@@ -28,5 +29,13 @@
   },
   "engines": {
     "node": ">=22.5.0"
+  },
+  "overrides": {
+    "minimatch": "^11.0.9"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0"
   }
 }

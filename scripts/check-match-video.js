@@ -9,7 +9,7 @@ const cookieSignature = require('cookie-signature');
 const { parseVideoId, watchUrl } = require('../src/youtube');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 3100 + Math.floor(Math.random() * 800);
+const PORT = 3100 + (process.pid % 800);
 const BASE = `http://localhost:${PORT}`;
 const serverDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mv-server-'));
 

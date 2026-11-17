@@ -10,7 +10,7 @@ const { spawn } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wos26seed-'));
-const port = 3100 + Math.floor(Math.random() * 800);
+const port = 3100 + (process.pid % 800);
 const base = `http://localhost:${port}`;
 const DATA = require('../src/winter2026PlayoffData.json');
 const tests = [];

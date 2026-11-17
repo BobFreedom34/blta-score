@@ -20,7 +20,7 @@ const servers = [];
 
 // ---- servers ----
 async function startServer(name, { configured }) {
-  const port = 3100 + Math.floor(Math.random() * 800);
+  const port = 3100 + ((process.pid + (global.__ports = (global.__ports || 0) + 1)) % 800);
   const dir = path.join(tmp, name);
   fs.mkdirSync(dir);
   const srv = { base: `http://localhost:${port}`, dir, logFile: path.join(dir, 'drive.log'), failFile: path.join(dir, 'drive.fail'), adminCookie: '', child: null };

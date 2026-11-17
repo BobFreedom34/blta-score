@@ -15,7 +15,7 @@ const test = (name, fn) => tests.push({ name, fn });
 const servers = [];
 
 async function startServer(name, { configured }) {
-  const port = 3100 + Math.floor(Math.random() * 800);
+  const port = 3100 + ((process.pid + servers.length) % 800);
   const dir = path.join(tmp, name);
   fs.mkdirSync(dir);
   const srv = { base: `http://localhost:${port}`, dir, logFile: path.join(dir, 'drive.log'), adminCookie: '', child: null };

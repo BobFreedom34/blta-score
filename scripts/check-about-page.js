@@ -11,7 +11,7 @@ const { DatabaseSync } = require('node:sqlite');
 const seasonSeed = require('../src/seasonSeed');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 3100 + Math.floor(Math.random() * 800);
+const PORT = 3100 + (process.pid % 800);
 const BASE = `http://localhost:${PORT}`;
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'about-page-'));
 

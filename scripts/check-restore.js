@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const assert = require('assert');
-const archiver = require('archiver');
+const { ZipArchive } = require('archiver');
 const { spawn } = require('child_process');
 const { DatabaseSync } = require('node:sqlite');
 const { restore, readZip } = require('./restore-backup');
@@ -21,7 +21,7 @@ function test(name, fn) { tests.push({ name, fn }); }
 
 const children = [];
 async function startServer(dataDir) {
-  const port = 3100 + Math.floor(Math.random() * 800);
+  const port = 3100 + ((process.pid + (global.__ports = (global.__ports || 0) + 1)) % 800);
   const child = spawn(process.execPath, ['server.js'], {
     cwd: ROOT,
     env: { ...process.env, DATA_DIR: dataDir, PORT: String(port), ADMIN_PASSWORD: 'test', SESSION_SECRET: 'test' },
@@ -41,7 +41,7 @@ const stop = (child) => new Promise((resolve) => { child.once('exit', resolve); 
 
 function zipOf(entries) {
   return new Promise((resolve, reject) => {
-    const archive = archiver('zip', { zlib: { level: 9 } });
+    const archive = new ZipArchive({ zlib: { level: 9 } });
     const chunks = [];
     archive.on('data', (c) => chunks.push(c));
     archive.on('error', reject);

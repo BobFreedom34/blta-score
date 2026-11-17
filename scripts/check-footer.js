@@ -11,7 +11,7 @@ const { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'footer-unit-')); // for requiring src/footer.js below (its own database, not the server's)
 const footerModule = require('../src/footer');
-const PORT = 3100 + Math.floor(Math.random() * 800);
+const PORT = 3100 + (process.pid % 800);
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'footer-'));
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
