@@ -767,6 +767,7 @@ app.use('/api/highlights', highlightsRouter);
 app.use('/api/schedule', scheduleRouter);
 app.use('/api/winners', winnersRouter);
 app.use('/api/contact', contactRouter);
+app.use('/api/welcome-email', require('./src/routes/welcomeEmail'));
 app.use('/api/seo', seoRouter);
 app.use('/api/articles', blogRouter);
 app.use('/api/changelog', changeLogRouter);

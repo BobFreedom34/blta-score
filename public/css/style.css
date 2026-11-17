@@ -3477,7 +3477,7 @@ body.club-app.club-view .nav-links { display: none; }
     gap: 4px;
     padding: 6px 0;
     border-radius: var(--radius-sm);
-    color: #c3c7cf;
+    color: #a9adb6;
     font-size: 10.5px;
     font-weight: 700;
     letter-spacing: 0;
@@ -3513,7 +3513,7 @@ body.club-app.club-view .nav-links { display: none; }
     width: 20px;
     height: 20px;
     flex: 0 0 20px;
-    background: #c3c7cf;
+    background: #a9adb6;
     -webkit-mask: var(--nav-ico) center / contain no-repeat;
     mask: var(--nav-ico) center / contain no-repeat;
   }
@@ -3872,6 +3872,16 @@ a.home-tl.future:hover .home-tl-body { border-color: var(--orange); }
   .home-ld-dots i.on { background: var(--orange); }
 }
 @media (max-width: 640px) { .home-ld-row > .home-col { flex-basis: 100%; } }
+/* a computer with more than three groups (five in Elite, for one): the same row, three tables at a time */
+@media (min-width: 1025px) {
+  .home-ld-wrap.many .home-ld-row { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; cursor: grab; }
+  .home-ld-wrap.many .home-ld-row::-webkit-scrollbar { display: none; }
+  .home-ld-wrap.many .home-ld-row > .home-col { flex: 0 0 calc((100% - 32px) / 3); scroll-snap-align: start; }
+  .home-ld-wrap.many .home-ld-row.dragging { cursor: grabbing; scroll-snap-type: none; user-select: none; }
+  .home-ld-wrap.many .home-ld-row.dragging a { pointer-events: none; }
+  .home-ld-wrap.many.scrolls ~ .home-ld-dots { display: flex; justify-content: center; gap: 7px; margin-top: 14px; }
+  .home-ld-wrap.many.can-prev .home-tl-nav.prev, .home-ld-wrap.many.can-next .home-tl-nav.next { display: block; }
+}
 @media (max-width: 1024px) and (hover: hover) {
   .home-ld-wrap.can-prev .home-tl-nav.prev, .home-ld-wrap.can-next .home-tl-nav.next { display: block; }
   .home-ld-row { cursor: grab; }
@@ -4493,7 +4503,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
     letter-spacing: 0.05em;
     text-align: left;
   }
-  .nav-links .nav-submenu a::before { display: block; content: ''; width: 16px; height: 16px; flex: 0 0 16px; background: #c3c7cf; -webkit-mask: var(--nav-ico) center / contain no-repeat; mask: var(--nav-ico) center / contain no-repeat; }
+  .nav-links .nav-submenu a::before { display: block; content: ''; width: 16px; height: 16px; flex: 0 0 16px; background: #a9adb6; -webkit-mask: var(--nav-ico) center / contain no-repeat; mask: var(--nav-ico) center / contain no-repeat; }
   .nav-links .nav-submenu a::after { display: none; }
   .nav-links .nav-submenu a:hover { background: var(--fill-grey); color: var(--orange); }
   .nav-links .nav-submenu a:hover::before { background: var(--orange); }
@@ -6828,11 +6838,13 @@ body:not(.embed-light):not(.embed) .match-card.availability-post .scoreboard { b
 #my-post-card { border: 1px solid rgba(255, 255, 255, 0.18); }
 
 /* the contact window ("Kontakt") is a glass panel too: the same translucent dark, blur and grey outline as the players table */
+/* the same look as every other window (.modal): the dark grey tile #1b1b1f with the light grey outline */
 body:not(.embed-light):not(.embed) .ct-card {
-  background: rgba(10, 10, 10, 0.55);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  backdrop-filter: blur(14px) saturate(140%);
+  background: #1b1b1f;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 /* the windows (login, the 5-digit code, the profile, the registration …) are glass panels too */
 .modal { border: 1px solid rgba(255, 255, 255, 0.18); }
@@ -7126,7 +7138,7 @@ body .modal h3 { font-size: var(--fs-lg); line-height: 1.25; }
 /* APPLIED TO THE HOME PAGE */
 /* 12: labels, chips, table heads */
 body .home-stat .k, body .home-mv .k, body .home-mine-cell .k, body .home-t-head span, body .pom-k, body .pom-nums small, body .home-chip, body .home-tl-chip,
-body .home-tl-type, body .home-feat-label, body .home-m-row .r small, body .bottom-nav-item span, body .home-auth-btn.info i { font-size: var(--fs-xs); }
+body .home-tl-type, body .home-feat-label, body .home-m-row .r small, body .home-auth-btn.info i { font-size: var(--fs-xs); }
 /* the courtIQ wordmark takes the size of its line (1.15em, see .ciq-c); in a title it is exactly the size of the title, like every other word of it */
 body :is(h1, h2, h3, .t-section, .t-hero) :is(.ciq-c, .ciq-iq) { font-size: 1em; }
 body .home-auth-btn.info i { font-family: inherit; }
@@ -7136,12 +7148,9 @@ body #home-cats .tab, body .home-tl-filter .tab, body .home-sec .tabs .tab, body
 /* 16: names, points, group titles, the intro */
 body .home-m-row .r, body .home-grp-t, body .home-t-row .pts, body .home-tl-name, body .home-intro { font-size: var(--fs-md); }
 /* the rest of the home page: the menu, the language switch, the season tile, the progress labels, the live strip, the footer address */
-body .nav-links a, body .lang-btn, body .home-live .p, body .home-phase .lbl b, body .home-phase .lbl span { font-size: var(--fs-xs); }
+body .home-live .p, body .home-phase .lbl b, body .home-phase .lbl span { font-size: var(--fs-xs); }
 body .home-season-info .home-sub { font-size: var(--fs-name); }
 body .home-season-info .home-sub span, body .sf-address, body .sf-address a { font-size: var(--fs-sm); }
-/* the menu at 12px needs a little less room around each item, or the last one falls to a second row */
-body .nav-links { gap: 1px; }
-body .nav-links a { padding: 7px 6px; letter-spacing: 0.01em; }
 /* the filter tabs at 14px: a little less padding on a narrow phone, so the three of them still fit one row */
 @media (max-width: 400px) { body .home-tl-filter .tab, body #home-cats .tab { padding-left: 13px; padding-right: 13px; } }
 
@@ -7195,20 +7204,20 @@ body .home-sec-title a::before, body .home-live .go::before { content: '\2197\FE
 
 /* ---------------------------------------------------------------------------------------------------------------------------------
    3 / 3  GAPS
-   One scale: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64. Between sections --sec-gap (64px, 48px on a tablet and phone) with a grey line in the middle;
+   One scale: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64. Between sections --sec-gap (96px, 72px on a tablet and phone) with a grey line in the middle;
    a section title is 16px above its content; neighbouring cards are 16px apart, blocks with a title of their own 32px; every card has the same padding.
    --------------------------------------------------------------------------------------------------------------------------------- */
 /* TOKENS */
 :root {
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
-  --sec-gap: var(--sp-8);      /* between two sections of a page */
+  --sec-gap: 96px;             /* between two sections of a page (airy: 96px, 72px on a tablet and phone) */
   --title-gap: var(--sp-4);    /* a section title to its content */
   --card-gap: var(--sp-4);     /* neighbouring cards and tiles */
   --block-gap: var(--sp-6);    /* blocks that have a title of their own */
   --inner-gap: var(--sp-5);    /* blocks inside one card that each have their own small label (tiles, form, charts) */
   --card-pad-y: var(--sp-4); --card-pad-x: 20px;
 }
-@media (max-width: 900px) { :root { --sec-gap: var(--sp-7); } }
+@media (max-width: 900px) { :root { --sec-gap: 72px; } }
 /* CLASSES */
 .ds-section { position: relative; margin-top: var(--sec-gap); }
 .ds-section::before { content: ''; position: absolute; left: 0; right: 0; top: calc(var(--sec-gap) / -2); height: 1px; background: rgba(255, 255, 255, 0.14); pointer-events: none; }   /* the grey line in the middle of the gap */
@@ -7295,7 +7304,6 @@ body:has(#player-bio-card) :is(.statistics-card, .rivals-card, .match-card, .riv
 body:has(#player-bio-card) .info-item { padding: var(--sp-3) var(--sp-4); }
 @media (max-width: 480px) { body:has(#player-bio-card) :is(.statistics-card, .rivals-card, .match-card, .rival-tile) { padding: var(--sp-4); } }
 /* the three headline numbers of the statistics (played, wins — losses, success rate) are the big number of the page; the title of the head-to-head block gets the section gap; the filter fields are exactly 40px */
-body:has(#player-bio-card) .info-item .value.stat-big { font-size: var(--fs-xl); }
 body:has(#player-bio-card) #h2h-section .section-label { margin: var(--sec-gap) 0 var(--title-gap); }
 body:has(#player-bio-card) :is(.filters select, .filters input, .filters .btn) { height: var(--control-h); }
 /* the two tabs of the statistics at 14px: a little less padding on a narrow phone, so both fit the row without scrolling */
@@ -7457,3 +7465,13 @@ body:has(#player-list) .ltp-iq.iq-inline { gap: var(--sp-1); padding: 0 var(--sp
 .sch-tag.tour:not(.past):not(.now), .sv-chip.t { background: rgba(255, 85, 0, 0.12); border-color: var(--orange); color: var(--orange); }
 /* the count in the "Plánované zápasy" tile of the player page keeps its own big size (32px, as it always was) */
 body:has(#player-bio-card) .player-upcoming-stat .value { font-size: 32px; }
+
+/* ---------------------------------------------------------------------------------------------------------------------------------
+   2026-11-18 touch-ups
+   --------------------------------------------------------------------------------------------------------------------------------- */
+/* the posts of a community feed: 24px apart (were 10px) */
+.com-post { margin-bottom: var(--sp-5); }
+/* "Hráči hľadajúci súpera": the photo is a square with the rounded corners of the site (not a circle), and there is no empty band between the place and the grey foot */
+body .ltp-photo { border-radius: var(--radius-md); box-shadow: 0 0 0 3px #1b1b1f, 0 0 0 5px var(--green); }
+body .ltp-head { padding-bottom: var(--sp-3); }
+body .ltp-loc { min-height: 0; }

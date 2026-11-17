@@ -19,7 +19,7 @@ Every distance is a step of one scale. No 14, 22, 34, 40, 44, 68 or 88.
 
 | Token | Value | What |
 |---|---|---|
-| `--sec-gap` | 64 px (48 px at ≤ 900 px) | between two sections of a page. A 1 px grey line sits in the middle of it |
+| `--sec-gap` | 96 px (72 px at ≤ 900 px) | between two sections of a page. A 1 px grey line sits in the middle of it |
 | `--title-gap` | 16 px | a section title to its content |
 | `--card-gap` | 16 px | neighbouring cards and tiles |
 | `--block-gap` | 32 px | rows of blocks that each have their own title |

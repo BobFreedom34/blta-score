@@ -430,7 +430,7 @@ function leadersHtml(d) {
   <section class="home-sec" id="home-leaders">
     ${secTitle(t('home.leaders'), '', '/tables', t('home.allTables'))}
     <div class="tabs" id="home-cats" role="tablist">${cats.map((c) => `<button type="button" class="tab${c === homeCategory ? ' active' : ''}" data-cat="${c}">${HOME_CATEGORY_NAMES[c]}</button>`).join('')}</div>
-    <div class="home-ld-wrap" id="home-ld-wrap">
+    <div class="home-ld-wrap${inCat.length > 3 ? ' many' : ''}" id="home-ld-wrap">
       <button type="button" class="home-tl-nav prev" aria-label="←">‹</button>
       <div class="home-cols-3 home-ld-row" id="home-ld-row">${inCat.map(card).join('')}</div>
       <button type="button" class="home-tl-nav next" aria-label="→">›</button>
@@ -441,7 +441,7 @@ function leadersHtml(d) {
 
 // Tablet (two groups at a time) and phone (one at a time): the group tables sit in a row that scrolls sideways, like the season strip above (the same edge fade,
 // arrows for a mouse, dragging with a mouse; a finger swipes it natively). A computer shows all the groups side by side, and nothing here runs.
-const leadersCarousel = () => window.matchMedia('(max-width: 1024px)').matches;
+const leadersCarousel = () => window.matchMedia('(max-width: 1024px)').matches || !!document.querySelector('#home-ld-wrap.many');
 function updateLeadersEdges() {
   const wrap = document.getElementById('home-ld-wrap');
   const row = document.getElementById('home-ld-row');

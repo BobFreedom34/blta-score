@@ -563,6 +563,29 @@ async function sendContactRequestEmail({ to, name, phone, email, message, lang }
 }
 
 // A reminder to a registered player who has not paid the entry fee yet (Backend > Seasons > Registrácie > "Remind unpaid").
+// The welcome e-mail after the first registration: the texts are the ones edited in Backend > Menu (src/welcomeEmail.js). `force` sends it even when it is switched off (the test button).
+async function sendWelcomeEmail({ to, name, slug, lang, force }) {
+  const welcome = require('./welcomeEmail');
+  if (!force && !welcome.isEnabled()) return false;
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping welcome email.');
+    return false;
+  }
+  const base = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
+  const link = slug ? `${base}/player/${encodeURIComponent(slug)}` : base || 'https://score.blta.sk';
+  const { subject, text, html } = welcome.render(lang, { name, link });
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to,
+    replyTo: process.env.NOTIFY_EMAIL || undefined,
+    subject,
+    text,
+    html,
+  });
+  return true;
+}
+
 async function sendPaymentReminderEmail({ to, name, seasonName, fee, paymentUrl, organiser }) {
   const t = getTransporter();
   if (!t) return false;
@@ -726,6 +749,6 @@ module.exports = {
   sendSeasonRegistrationEmail, sendSeasonUnregistrationEmail, sendSubstituteInEmail,
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendProposalReceivedEmail,
-  sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendClubWaitingEmail, sendPlayRequestEmail,
+  sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendWelcomeEmail, sendClubWaitingEmail, sendPlayRequestEmail,
   sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail, sendPartnerAcceptedEmail, sendBackupFailedEmail,
 };

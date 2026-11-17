@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const express = require('express');
 const db = require('../db');
 const auth = require('../auth');
-const { sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail } = require('../mailer');
+const { sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendWelcomeEmail } = require('../mailer');
 const { creditInviter } = require('./invites');
 const { isoWeekOf } = require('../rankingSnapshots');
 
@@ -620,6 +620,12 @@ router.post('/register', async (req, res) => {
     await sendNewRegistrationEmail({ name, phone: digits, email, claimed: !!existingByName });
   } catch (err) {
     console.error('[player] Failed to send new-registration admin email:', err.message);
+  }
+  // the welcome e-mail to the player (texts: Backend > Menu > Welcome e-mail); a failure here never touches the registration
+  try {
+    await sendWelcomeEmail({ to: email, name, slug: player.slug, lang: req.body.lang === 'en' ? 'en' : 'sk' });
+  } catch (err) {
+    console.error('[player] Failed to send the welcome email:', err.message);
   }
 });
 

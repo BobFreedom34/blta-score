@@ -462,7 +462,7 @@ function openPlayerLoginModal(onSuccess, opts) {
     registerErrorEl.textContent = '';
     registerSubmitBtn.disabled = true;
     try {
-      const res = await api('/player/register', { method: 'POST', body: { name, email, phone } });
+      const res = await api('/player/register', { method: 'POST', body: { name, email, phone, lang: typeof currentLang === 'string' ? currentLang : 'sk' } });
       applySession(res);
       // Same landing spot a pinSetupRequired login uses — registering and
       // a first login both end with "now create your code".
