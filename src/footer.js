@@ -19,6 +19,8 @@ const GROUPS = [
   { sk: 'Komunita', en: 'Community', links: [['/communities', 'Komunity a kluby', 'Communities and clubs'], ['/blog', 'Blog', 'Blog']] },
 ];
 // the two highlighted links, always shown together in the right corner of the link area (whatever groups Backend > Footer saved: a link to one of them inside a group is left out there)
+// the legal pages in the small print: [code address of the page, key of its text in TEXT]
+const LEGAL_PAGES = [['/privacy', 'privacy'], ['/cookies', 'cookies'], ['/terms', 'terms']];
 const PINNED = [['/funkcie', 'Funkcie', 'Features'], ['/courtiq', 'courtIQ', 'courtIQ']];
 const NATIONAL_GROUPS = [
   { sk: 'SLTA', en: 'SLTA', links: [['#mesta', 'Mestá', 'Cities'], ['/slta-rankings', 'Rebríčky miest', 'City rankings'], ['#ako', 'Ako to funguje', 'How it works'], ['#funkcie', 'Funkcie', 'Features']] },
@@ -31,13 +33,13 @@ const defaultGroups = (isNational) => toModel(isNational ? NATIONAL_GROUPS : GRO
 
 const TEXT = {
   sk: {
-    nav: 'Pätička stránky', contact: 'Kontakt', cities: 'Mestá SLTA', admin: 'Admin', sitemap: 'Mapa stránok', home: 'Domov',
+    nav: 'Pätička stránky', contact: 'Kontakt', cities: 'Mestá SLTA', admin: 'Admin', sitemap: 'Mapa stránok', home: 'Domov', privacy: 'Ochrana osobných údajov', cookies: 'Zásady cookies', terms: 'Obchodné podmienky',
     descBlta: 'Liga pre rekreačných a amatérskych tenistov v Bratislave. Živé skóre, tabuľky, rebríčky, turnaje a kurty na jednom mieste.',
     descCity: (brand) => `Liga pre rekreačných a amatérskych tenistov – ${brand}. Živé skóre, tabuľky, rebríčky a turnaje na jednom mieste.`,
     descNational: 'Slovenská liga tenisových amatérov. Vyber si svoje mesto, zaregistruj sa a hraj ligu na svojej úrovni.',
   },
   en: {
-    nav: 'Site footer', contact: 'Contact', cities: 'SLTA cities', admin: 'Admin', sitemap: 'Sitemap', home: 'Home',
+    nav: 'Site footer', contact: 'Contact', cities: 'SLTA cities', admin: 'Admin', sitemap: 'Sitemap', home: 'Home', privacy: 'Privacy policy', cookies: 'Cookie policy', terms: 'Terms and conditions',
     descBlta: 'A league for recreational and amateur tennis players in Bratislava. Live scores, tables, rankings, tournaments and courts in one place.',
     descCity: (brand) => `A league for recreational and amateur tennis players – ${brand}. Live scores, tables, rankings and tournaments in one place.`,
     descNational: 'The Slovak Amateur Tennis League. Pick your city, sign up and play a league at your level.',
@@ -122,7 +124,7 @@ function render(req) {
       </nav>
     </div>
     ${pills.length ? `<div class="sf-cities"><span>${esc(T.cities)}:</span>${pills.map((p) => `<a class="sf-pill" href="${esc(p.href)}" data-nobase>${esc(p.label)}</a>`).join('')}</div>` : ''}
-    <div class="sf-bottom"><span>© ${new Date().getFullYear()} ${esc(brand)}${legal}</span><div class="sf-legal"><a href="/sitemap.xml">${esc(T.sitemap)}</a><a href="${esc(`${base}/admin`)}">${esc(T.admin)}</a></div></div>
+    <div class="sf-bottom"><span>© ${new Date().getFullYear()} ${esc(brand)}${legal}</span><div class="sf-legal">${LEGAL_PAGES.map(([code, key]) => `<a href="${esc(`${base}${seo.pageUrl(code, lang)}`)}">${esc(T[key])}</a>`).join('')}<a href="/sitemap.xml">${esc(T.sitemap)}</a><a href="${esc(`${base}/admin`)}">${esc(T.admin)}</a></div></div>
   </div>
 </footer>`;
 }

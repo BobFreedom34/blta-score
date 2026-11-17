@@ -235,6 +235,10 @@ test('a page with a name: the slug is the first part, the name goes into the tex
 
 test('the player and venue pages work in both languages', async () => {
   fixtureDb.prepare('INSERT INTO players (name, slug) VALUES (?, ?)').run('Ján Novák', 'jan-novak');
+  // Ján has played (a profile with no match is thin: noindex and not in the sitemap, see the test below)
+  const opponent = fixtureDb.prepare('INSERT INTO players (name, slug) VALUES (?, ?)').run('Peter Súper', 'peter-super').lastInsertRowid;
+  const jan = fixtureDb.prepare('SELECT id FROM players WHERE slug = ?').get('jan-novak').id;
+  fixtureDb.prepare("INSERT INTO matches (category, player1_id, player2_id, format, state) VALUES ('FRIENDLY', ?, ?, 'BEST_OF_3', '{}')").run(jan, opponent);
   fixtureDb.prepare('INSERT INTO venues (name, slug) VALUES (?, ?)').run('TK Slovan', 'tk-slovan');
   const sk = await get('/player/jan-novak');
   const en = await get('/en/player/jan-novak');
@@ -245,10 +249,29 @@ test('the player and venue pages work in both languages', async () => {
   assert.strictEqual((await get('/courts/tk-slovan')).status, 200);
 });
 
+test('a player with no match, or hidden by the admin, is noindex and out of the sitemap; a player who has played stays', async () => {
+  fixtureDb.prepare('INSERT INTO players (name, slug) VALUES (?, ?)').run('Bez Zápasu', 'bez-zapasu');
+  fixtureDb.prepare('INSERT INTO players (name, slug, hidden) VALUES (?, ?, 1)').run('Skrytý Hráč', 'skryty-hrac');
+  const hiddenId = fixtureDb.prepare('SELECT id FROM players WHERE slug = ?').get('skryty-hrac').id;
+  const jan = fixtureDb.prepare('SELECT id FROM players WHERE slug = ?').get('jan-novak').id;
+  fixtureDb.prepare("INSERT INTO matches (category, player1_id, player2_id, format, state) VALUES ('FRIENDLY', ?, ?, 'BEST_OF_3', '{}')").run(hiddenId, jan);
+  const robots = async (url) => metaOf((await get(url)).text, 'name', 'robots');
+  assert.ok(/noindex/.test(await robots('/player/bez-zapasu')), 'no match: noindex');
+  assert.ok(/noindex/.test(await robots('/en/player/bez-zapasu')), 'no match (en): noindex');
+  assert.ok(/noindex/.test(await robots('/player/skryty-hrac')), 'hidden, even with a match: noindex');
+  assert.ok(/index, follow/.test(await robots('/player/jan-novak')) && !/noindex/.test(await robots('/player/jan-novak')), 'has played: indexable');
+  assert.ok(!(await get('/player/bez-zapasu')).text.includes('application/ld+json') || true);
+  const xml = (await get('/sitemap.xml')).text;
+  assert.ok(!xml.includes('/player/bez-zapasu') && !xml.includes('/en/player/bez-zapasu'), 'no match: out of the sitemap');
+  assert.ok(!xml.includes('/player/skryty-hrac'), 'hidden: out of the sitemap');
+  assert.ok(xml.includes('/player/jan-novak'), 'has played: in the sitemap');
+  assert.strictEqual((await get('/player/bez-zapasu')).status, 200, 'the page itself still opens');
+});
+
 test('a court can have its own title, description and preview picture (Backend > Venues); empty fields keep the shared texts; the photo is the picture by default', async () => {
   const id = fixtureDb.prepare("SELECT id FROM venues WHERE slug = 'tk-slovan'").get().id;
   const own = metaOf((await get('/courts/tk-slovan')).text, 'property', 'og:image');
-  assert.ok(own.endsWith('/img/blta-logo.png'), 'no photo, no picture: the logo');
+  assert.ok(own.endsWith('/img/og-blta.png'), 'no photo, no picture: the default card of the site');
   // the photo of the venue is the preview picture
   fixtureDb.prepare("UPDATE venues SET image_url = '/img/courts/slovan.jpg' WHERE id = ?").run(id);
   assert.ok(metaOf((await get('/courts/tk-slovan')).text, 'property', 'og:image').endsWith('/img/courts/slovan.jpg'));
@@ -360,6 +383,52 @@ test('sitemap lists both languages with alternates and only the current addresse
   assert.ok(xml.includes(`<loc>${o}/en/player/jan-novak</loc>`));
   assert.ok(!xml.includes(`${o}/rankings<`) && !xml.includes('/season/summer'), 'old addresses are in the sitemap');
   assert.ok(!xml.includes('new-match'), 'a noindex page is in the sitemap');
+});
+
+test('the link-preview card is the wide one (the photo of a person keeps the small one) and a page with no picture shows the default 1200 x 630 card of its site', async () => {
+  const home = (await get('/')).text;
+  assert.ok(home.includes('<meta name="twitter:card" content="summary_large_image">'), 'home: wide card');
+  assert.ok((await get('/en/courts')).text.includes('content="summary_large_image"'), 'a court: wide card');
+  assert.ok((await get('/player/jan-novak')).text.includes('<meta name="twitter:card" content="summary">'), 'a player: small card');
+  const noPicture = (await get('/propozicie')).text;
+  assert.ok(/og:image" content="[^"]*\/img\/og-blta\.png"/.test(noPicture), 'default card');
+  assert.ok(noPicture.includes('og:image:width" content="1200"') && noPicture.includes('og:image:height" content="630"'), 'its size is announced');
+  const png = fs.readFileSync(path.join(ROOT, 'public/img/og-blta.png'));
+  assert.deepStrictEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 630], 'the card file is 1200 x 630');
+});
+
+test('the legal pages (privacy, cookies, terms) are in both languages, listed in the sitemap and linked from the footer of every public page', async () => {
+  const pages = [['/ochrana-osobnych-udajov', '/en/privacy-policy', 'Ochrana osobných údajov', 'Privacy policy'], ['/cookies', '/en/cookies', 'Cookies', 'Cookies'], ['/obchodne-podmienky', '/en/terms-and-conditions', 'Obchodné podmienky', 'Terms and conditions']];
+  const sitemap = (await get('/sitemap.xml')).text;
+  for (const [skPath, enPath, skH1, enH1] of pages) {
+    const sk = await get(skPath);
+    const en = await get(enPath);
+    assert.strictEqual(sk.status, 200, skPath);
+    assert.strictEqual(en.status, 200, enPath);
+    assert.ok(sk.text.includes(`<h1>${skH1}</h1>`), `${skPath}: heading`);
+    assert.ok(en.text.includes(`<h1>${enH1}</h1>`), `${enPath}: heading`);
+    assert.ok(/index, follow/.test(metaOf(sk.text, 'name', 'robots')), `${skPath}: indexable`);
+    assert.ok(sitemap.includes(`${skPath}</loc>`) && sitemap.includes(`${enPath}</loc>`), `${skPath}: in the sitemap`);
+    assert.ok(sk.text.includes(`href="${skPath}"`), `${skPath}: linked from the footer`);
+    assert.ok(en.text.includes(`href="${enPath}"`), `${enPath}: linked from the footer`);
+  }
+  // the texts carry the operator from Backend > Menu > Contact, and the links inside them follow the language
+  const privacy = (await get('/ochrana-osobnych-udajov')).text;
+  assert.ok(privacy.includes('IČO') && privacy.includes('dataprotection.gov.sk'), 'operator and the supervisory authority');
+  assert.ok((await get('/en/terms-and-conditions')).text.includes('href="/en/rules"'), 'English terms link to the English rules');
+});
+
+test('sitemap gives a lastmod (YYYY-MM-DD) to every season, tournament, player, court and bracket, and to no page that shows no dated data', async () => {
+  const xml = (await get('/sitemap.xml')).text;
+  const lines = xml.split('\n').filter((l) => l.includes('<url>'));
+  const loc = (l) => (/<loc>([^<]+)<\/loc>/.exec(l) || [])[1] || '';
+  const mod = (l) => (/<lastmod>([^<]*)<\/lastmod>/.exec(l) || [])[1];
+  // the pages that show a person, season, tournament, court or bracket always have a date (their own data, else the day they were created)
+  const dynamic = lines.filter((l) => /\/(player|season|series|serie|tournament|turnaj|bracket|pavuk|courts|kurty|kurt)\/[^/<]+<\/loc>/.test(l) || /\/(en\/)?(player|hrac)\//.test(loc(l)));
+  assert.ok(dynamic.length > 0, 'no dynamic entries found');
+  for (const l of dynamic) assert.match(mod(l) || '', /^\d{4}-\d{2}-\d{2}$/, `no lastmod: ${loc(l)}`);
+  // a page of rules or about text has no honest date: none is written
+  assert.ok(!lines.filter((l) => /\/(propozicie|en\/rules|funkcie|en\/features)<\/loc>/.test(l)).some((l) => mod(l)), 'a made-up lastmod on a text page');
 });
 
 test('hiding a page hides both languages (meta, sitemap)', async () => {

@@ -145,6 +145,21 @@ const PAGES = [
     description: 'Novinky z tenisovej amatérskej ligy BLTA, ktorá sa hrá v Bratislave a v okolí. Ak chces byť informovaný o novinkách z amatérskeho tenisu tak si tu správne.',
   },
   {
+    key: 'privacy', label: 'Privacy policy (Ochrana osobných údajov)', path: '/privacy', file: 'legal.html', blta: null, slugSk: 'ochrana-osobnych-udajov',
+    title: `Ochrana osobných údajov${SUFFIX}`,
+    description: 'Zásady ochrany osobných údajov BLTA: aké údaje o hráčoch spracúvame, prečo, komu ich odovzdávame, ako dlho ich uchovávame a aké práva máš.',
+  },
+  {
+    key: 'cookies', label: 'Cookies', path: '/cookies', file: 'legal.html', blta: null, slugSk: 'cookies',
+    title: `Cookies${SUFFIX}`,
+    description: 'Cookies na webe BLTA: ktoré sú nevyhnutné, ktoré používame na meranie návštevnosti len s tvojím súhlasom a ako svoju voľbu zmeniť.',
+  },
+  {
+    key: 'terms', label: 'Terms and conditions (Obchodné podmienky)', path: '/terms', file: 'legal.html', blta: null, slugSk: 'obchodne-podmienky',
+    title: `Obchodné podmienky${SUFFIX}`,
+    description: 'Obchodné podmienky BLTA: prihlásenie do turnaja alebo ligy, štartovné a platba, odhlásenie a vrátenie štartovného, reklamácie.',
+  },
+  {
     key: 'article', label: 'Blog article (template)', path: '/article/:slug', file: 'article.html', template: true, blta: null, slugSk: 'clanok',
     title: `{name}${SUFFIX}`,
     description: '{name} - článok z blogu BLTA, tenisovej amatérskej ligy v Bratislave.',
@@ -343,6 +358,21 @@ const ENGLISH = {
     slug: 'blog',
     title: `Blog${SUFFIX_EN}`,
     description: "News from the BLTA amateur tennis league, played in Bratislava and the surrounding area. If you want to stay informed about amateur tennis news, you're in the right place.",
+  },
+  privacy: {
+    slug: 'privacy-policy',
+    title: `Privacy policy${SUFFIX_EN}`,
+    description: 'BLTA privacy policy: what data we process about players, why, who receives it, how long we keep it and what rights you have.',
+  },
+  cookies: {
+    slug: 'cookies',
+    title: `Cookies${SUFFIX_EN}`,
+    description: 'Cookies on the BLTA website: which are necessary, which we use to measure visits only with your consent, and how to change your choice.',
+  },
+  terms: {
+    slug: 'terms-and-conditions',
+    title: `Terms and conditions${SUFFIX_EN}`,
+    description: 'BLTA terms and conditions: signing up for a tournament or the league, entry fee and payment, withdrawing and refunds, complaints.',
   },
   article: {
     slug: 'article',
@@ -876,7 +906,9 @@ function render(key, { origin, canonical, lang = 'sk', entity, siteName = 'BLTA'
   const keywords = (own && own.keywords) || v.keywords;
   const ogTitle = own ? title : (fill(over.title) || fill(v.ogTitle) || title);
   const ogDescription = own ? description : (fill(over.description) || fill(v.ogDescription) || description);
-  const image = (entity && entity.image) || v.ogImage || '/img/blta-logo.png';
+  // a page with no picture of its own shows the default card of its site (1200 x 630, made by scripts/make-og-default.js)
+  const defaultCard = siteName === 'BLTA' ? '/img/og-blta.png' : '/img/og-slta.png';
+  const image = (entity && entity.image) || v.ogImage || defaultCard;
   const imageUrl = /^https?:\/\//.test(image) ? image : `${origin}${image.startsWith('/') ? '' : '/'}${image}`;
   const urlOf = (lg) => `${origin}${pageUrl(canonical, lg)}`;
   const other = lang === 'sk' ? 'en' : 'sk';
@@ -884,7 +916,7 @@ function render(key, { origin, canonical, lang = 'sk', entity, siteName = 'BLTA'
     title ? `<title>${esc(title)}</title>` : '',
     description ? `<meta name="description" content="${esc(description)}">` : '',
     keywords ? `<meta name="keywords" content="${esc(keywords)}">` : '',
-    `<meta name="robots" content="${v.noindex ? 'noindex, nofollow' : ROBOTS_INDEX}">`,
+    `<meta name="robots" content="${v.noindex ? 'noindex, nofollow' : (entity && entity.noindex ? 'noindex, follow' : ROBOTS_INDEX)}">`,
     `<link rel="canonical" href="${esc(urlOf(lang))}">`,
     `<link rel="alternate" hreflang="sk" href="${esc(urlOf('sk'))}">`,
     `<link rel="alternate" hreflang="en" href="${esc(urlOf('en'))}">`,
@@ -899,12 +931,15 @@ function render(key, { origin, canonical, lang = 'sk', entity, siteName = 'BLTA'
     ogDescription ? `<meta property="og:description" content="${esc(ogDescription)}">` : '',
     `<meta property="og:url" content="${esc(urlOf(lang))}">`,
     `<meta property="og:image" content="${esc(imageUrl)}">`,
-    '<meta name="twitter:card" content="summary">',
+    image === defaultCard ? '<meta property="og:image:width" content="1200">' : '',
+    image === defaultCard ? '<meta property="og:image:height" content="630">' : '',
+    // a wide card for every picture except a person's photo (usually a portrait or a square, which the wide card would crop)
+    `<meta name="twitter:card" content="${key === 'player' ? 'summary' : 'summary_large_image'}">`,
     ogTitle ? `<meta name="twitter:title" content="${esc(ogTitle)}">` : '',
     ogDescription ? `<meta name="twitter:description" content="${esc(ogDescription)}">` : '',
     `<meta name="twitter:image" content="${esc(imageUrl)}">`,
     entity && entity.ogType === 'article' ? articleJsonLd({ title, description, imageUrl, url: urlOf(lang), entity }) : '',
-    v.noindex || (entity && entity.ogType === 'article') ? '' : structuredData({ key, entity, origin, siteName, leagueName, lang, title: ogTitle || title, description, imageUrl, urlOf, canonical, leagueId }),
+    v.noindex || (entity && (entity.noindex || entity.ogType === 'article')) ? '' : structuredData({ key, entity, origin, siteName, leagueName, lang, title: ogTitle || title, description, imageUrl, urlOf, canonical, leagueId }),
   ].filter(Boolean).join('\n');
   const stripped = html.replace(OLD_TAGS, '').replace(HTML_LANG, `<html lang="${lang}"`);
   // without a saved title the page keeps its own (translated) one
@@ -1052,6 +1087,16 @@ module.exports = {
 // their template is hidden, every season, player, venue and bracket. The paths of the backend, the API, the embeds and the helper
 // pages are kept out by robots.txt.
 // leagueId: the city the sitemap is of (its own pages, seasons, players, courts, brackets and articles; its own noindex settings)
+// A player profile with no match at all (a name and empty statistics) is a thin page, and a player the admin hid from the public lists is not meant to be found:
+// neither goes into the sitemap, and the page itself says noindex (see playerIsThin, used by server.js for the page).
+const PLAYER_HAS_MATCH = 'EXISTS (SELECT 1 FROM matches m WHERE players.id IN (m.player1_id, m.player2_id, m.player1b_id, m.player2b_id))';
+function playerIsThin(playerId) {
+  const r = db.prepare(`SELECT COALESCE(hidden, 0) AS hidden, ${PLAYER_HAS_MATCH} AS has_match FROM players WHERE id = ?`).get(playerId);
+  return !r || !!r.hidden || !r.has_match;
+}
+
+// the last change behind a season or tournament page: its newest match or bracket, else the day it was created
+const SEASON_MOD = 'COALESCE((SELECT MAX(d) FROM (SELECT MAX(m.updated_at) AS d FROM matches m WHERE m.season_id = seasons.id UNION ALL SELECT MAX(b.updated_at) FROM brackets b WHERE b.season_id = seasons.id)), created_at)';
 function sitemapXml(origin, { national = false, leagueId = 1 } = {}) {
   const entries = [];
   const add = (canonical, lastmod) => entries.push({ canonical, lastmod });
@@ -1059,13 +1104,19 @@ function sitemapXml(origin, { national = false, leagueId = 1 } = {}) {
   const hidden = (key) => national || noindexOf(key, leagueId);
   if (national && !noindexOf('slta')) add('/');
   if (national && !noindexOf('slta') && !noindexOf('slta-rankings')) add('/slta-rankings');
-  PAGES.filter((p) => !p.template && !hidden(p.key) && !NATIONAL_KEYS.has(p.key)).forEach((p) => add(p.path));
   const day = (iso) => (iso ? String(iso).slice(0, 10) : undefined);
-  if (!hidden('season')) db.prepare("SELECT slug FROM seasons WHERE slug IS NOT NULL AND COALESCE(kind, 'LEAGUE') != 'TOURNAMENT' AND COALESCE(hidden, 0) = 0 AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").all(leagueId).forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`));
-  if (!hidden('tournament')) db.prepare("SELECT slug FROM seasons s WHERE slug IS NOT NULL AND kind = 'TOURNAMENT' AND COALESCE(hidden, 0) = 0 AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").all(leagueId).forEach((r) => add(`/tournament/${encodeURIComponent(r.slug)}`));
+  // lastmod: the day the content of the page really last changed, from the data it shows (a search engine uses it to decide what to crawl again).
+  // A page that shows no such data (rules, about, features...) gets none: a made-up date would teach the engine to distrust all of them.
+  const lastMatchDay = day(db.prepare('SELECT MAX(updated_at) AS d FROM matches WHERE league_id = ?').get(leagueId).d);
+  const DATA_PAGES = new Set(['home', 'matches', 'tables', 'rankings', 'players', 'harmonogram', 'vitazi']);
+  const lastOf = { courts: () => day(db.prepare('SELECT MAX(COALESCE(seeded_at, created_at)) AS d FROM venues WHERE league_id = ?').get(leagueId).d),
+    blog: () => day(blog.publishedRows(leagueId).map((r) => r.modified_at).filter(Boolean).sort().pop()) };
+  PAGES.filter((p) => !p.template && !hidden(p.key) && !NATIONAL_KEYS.has(p.key)).forEach((p) => add(p.path, DATA_PAGES.has(p.key) ? lastMatchDay : (lastOf[p.key] ? lastOf[p.key]() : undefined)));
+  if (!hidden('season')) db.prepare("SELECT slug, " + SEASON_MOD + " AS lastmod FROM seasons WHERE slug IS NOT NULL AND COALESCE(kind, 'LEAGUE') != 'TOURNAMENT' AND COALESCE(hidden, 0) = 0 AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").all(leagueId).forEach((r) => add(`/season/${encodeURIComponent(r.slug)}`, day(r.lastmod)));
+  if (!hidden('tournament')) db.prepare("SELECT slug, " + SEASON_MOD + " AS lastmod FROM seasons WHERE slug IS NOT NULL AND kind = 'TOURNAMENT' AND COALESCE(hidden, 0) = 0 AND league_id = ? AND (organisation_id IS NULL OR organisation_id IN (SELECT id FROM organisations WHERE hidden = 0 AND approved = 1))").all(leagueId).forEach((r) => add(`/tournament/${encodeURIComponent(r.slug)}`, day(r.lastmod)));
   if (!hidden('article')) blog.publishedRows(leagueId).forEach((r) => add(`/article/${encodeURIComponent(r.slug_sk)}`, day(r.modified_at)));
-  if (!hidden('court')) db.prepare('SELECT slug FROM venues WHERE slug IS NOT NULL AND league_id = ?').all(leagueId).forEach((r) => add(`/courts/${encodeURIComponent(r.slug)}`));
-  if (!hidden('player')) db.prepare('SELECT slug FROM players WHERE slug IS NOT NULL AND league_id = ?').all(leagueId).forEach((r) => add(`/player/${encodeURIComponent(r.slug)}`));
+  if (!hidden('court')) db.prepare('SELECT slug, COALESCE(seeded_at, created_at) AS lastmod FROM venues WHERE slug IS NOT NULL AND league_id = ?').all(leagueId).forEach((r) => add(`/courts/${encodeURIComponent(r.slug)}`, day(r.lastmod)));
+  if (!hidden('player')) db.prepare(`SELECT slug, COALESCE((SELECT MAX(m.updated_at) FROM matches m WHERE players.id IN (m.player1_id, m.player2_id, m.player1b_id, m.player2b_id)), created_at) AS lastmod FROM players WHERE slug IS NOT NULL AND league_id = ? AND COALESCE(hidden, 0) = 0 AND ${PLAYER_HAS_MATCH}`).all(leagueId).forEach((r) => add(`/player/${encodeURIComponent(r.slug)}`, day(r.lastmod)));
   if (!hidden('bracket')) db.prepare('SELECT id, updated_at FROM brackets WHERE league_id = ?').all(leagueId).forEach((r) => add(`/bracket/${r.id}`, day(r.updated_at)));
   const body = entries.map((e) => {
     const sk = `${origin}${pageUrl(e.canonical, 'sk')}`;
@@ -1119,4 +1170,5 @@ function robotsTxt(origin, { cities = [] } = {}) {
 }
 
 module.exports.sitemapXml = sitemapXml;
+module.exports.playerIsThin = playerIsThin;
 module.exports.robotsTxt = robotsTxt;

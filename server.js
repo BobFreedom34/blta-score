@@ -67,6 +67,7 @@ const rules = require('./src/rules');
 const aboutPage = require('./src/aboutPage');
 const browserTexts = require('./src/browserTexts');
 const seo = require('./src/seo');
+const legalTexts = require('./src/legalTexts');
 
 const app = express();
 const server = http.createServer(app);
@@ -470,8 +471,9 @@ function eventLd(s) {
 const TEMPLATE_ENTITY = {
   article: (slug, lang, leagueId) => blog.articleEntity(slug, lang, leagueId),
   player: (id) => {
-    const p = db.prepare('SELECT name, photo_url FROM players WHERE slug = ? OR id = ?').get(id, /^\d+$/.test(id) ? Number(id) : -1);
-    return p ? { name: p.name, image: p.photo_url || '', ld: { type: 'person' } } : null;
+    const p = db.prepare('SELECT id, name, photo_url FROM players WHERE slug = ? OR id = ?').get(id, /^\d+$/.test(id) ? Number(id) : -1);
+    // a player with no match, or hidden by the admin: the page stays reachable, but a search engine is told not to list it (and it is not in the sitemap)
+    return p ? { name: p.name, image: p.photo_url || '', ld: { type: 'person' }, noindex: seo.playerIsThin(p.id) } : null;
   },
   // The link preview of these pages is always their own picture (it wins over the picture of Backend > SEO, which is only the fallback when the
   // page has none): a season / tournament / bracket its hero image (the one of the season, the desktop one first), a player his photo, a court its photo.
@@ -644,6 +646,10 @@ app.use((req, res, next) => {
     }
     // an article that does not exist (or is a draft) is a real 404; the other pages show their own "not found"
     if (!entity) return hit.key === 'article' ? pageNotFound(res) : res.sendFile(path.join(PUBLIC_DIR, page.file));
+  } else if (legalTexts.KEYS.includes(hit.key)) {
+    // the legal pages: the text is written by the server (src/legalTexts.js); the links in it follow the addresses of Backend > SEO and the city of the page
+    const base = req.cityBase || '';
+    entity = { html: legalTexts.page(hit.key, hit.lang, req.cityBase ? (req.league.brand_name || req.league.name) : 'BLTA', (code) => `${base}${seo.pageUrl(code, hit.lang)}`) };
   } else if (hit.key === 'blog') {
     entity = { html: blog.listHtml(hit.lang, req.league.id) };
     if (req.cityBase) entity.html = entity.html.replace(/BLTA/g, req.league.brand_name || req.league.name);

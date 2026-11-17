@@ -269,4 +269,40 @@ function cachedPng(token, version, match) {
   return png;
 }
 
-module.exports = { buildSvg, renderPng, cachedPng, WIDTH, HEIGHT };
+
+// ---------- the default card of a site (BLTA, SLTA): used as the link preview of every page that has no picture of its own ----------
+
+// brand: the big word (BLTA / SLTA); line1 and line2: the name of the league on two lines; tagline: one short line under it.
+function buildBrandSvg({ brand, line1, line2, tagline, logoFile = 'blta-logo.png', ratio = LOGO_RATIO }) {
+  let logoUri = logo();
+  if (logoFile !== 'blta-logo.png') logoUri = `data:image/png;base64,${fs.readFileSync(path.join(__dirname, '..', 'public', 'img', logoFile)).toString('base64')}`;
+  // a wide logo (SLTA) goes above the text, a square-ish one (BLTA) beside it
+  const wide = ratio > 2;
+  const logoH = wide ? 110 : 150;
+  const logoW = Math.round(logoH * ratio);
+  const textX = wide ? M : M + logoW + 48;
+  const logoY = wide ? 70 : 150;
+  const maxW = WIDTH - M - textX;
+  const l1 = fitText(line1, maxW, 56, 34, 800);
+  const l2 = fitText(line2, maxW, 56, 34, 800);
+  const tag = fitText(tagline, WIDTH - 2 * M, 30, 20, 600);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
+    <defs>
+      <radialGradient id="g1" cx="85%" cy="8%" r="60%"><stop offset="0" stop-color="#787e8c" stop-opacity="0.30"/><stop offset="1" stop-color="#787e8c" stop-opacity="0"/></radialGradient>
+      <radialGradient id="g2" cx="4%" cy="100%" r="55%"><stop offset="0" stop-color="${COLORS.orange}" stop-opacity="0.22"/><stop offset="1" stop-color="${COLORS.orange}" stop-opacity="0"/></radialGradient>
+    </defs>
+    <rect width="${WIDTH}" height="${HEIGHT}" fill="${COLORS.bg}"/><rect width="${WIDTH}" height="${HEIGHT}" fill="url(#g1)"/><rect width="${WIDTH}" height="${HEIGHT}" fill="url(#g2)"/>
+    <image x="${M}" y="${logoY}" width="${logoW}" height="${logoH}" href="${logoUri}"/>
+    <text x="${textX}" y="${wide ? 250 : 190}" font-family="Montserrat" font-weight="800" font-size="22" letter-spacing="6" fill="${COLORS.green}">${esc(brand)}</text>
+    <text x="${textX}" y="${(wide ? 250 : 190) + l1.size + 14}" font-family="Montserrat" font-weight="800" font-size="${l1.size}" fill="${COLORS.white}">${esc(l1.text)}</text>
+    <text x="${textX}" y="${(wide ? 250 : 190) + l1.size + 14 + l2.size + 8}" font-family="Montserrat" font-weight="800" font-size="${l2.size}" fill="${COLORS.white}">${esc(l2.text)}</text>
+    <rect x="${M}" y="${wide ? 428 : 400}" width="120" height="6" rx="3" fill="${COLORS.orange}"/>
+    <text x="${M}" y="${wide ? 500 : 470}" font-family="Montserrat" font-weight="600" font-size="${tag.size}" fill="${COLORS.soft}">${esc(tag.text)}</text>
+  </svg>`;
+}
+
+function renderBrandPng(opts) {
+  return new Resvg(buildBrandSvg(opts), { font: RESVG_FONT, fitTo: { mode: 'width', value: WIDTH } }).render().asPng();
+}
+
+module.exports = { buildSvg, renderPng, cachedPng, buildBrandSvg, renderBrandPng, WIDTH, HEIGHT };
