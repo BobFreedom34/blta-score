@@ -59,7 +59,10 @@ function scanRoutes() {
   for (const m of server.matchAll(/app\.use\('(\/api\/[\w-]+)',\s*(\w+)\)/g)) if (required.has(m[2])) mounts.push({ prefix: m[1], file: required.get(m[2]) });
   const routes = [];
   for (const mount of mounts) {
-    const src = fs.readFileSync(path.join(ROOT, 'src/routes', `${mount.file}.js`), 'utf8');
+    // a big router is split by topic into src/routes/<name>/*.js (registered on one shared router): read those too
+    const partsDir = path.join(ROOT, 'src/routes', mount.file);
+    const parts = fs.existsSync(partsDir) ? fs.readdirSync(partsDir).filter((n) => n.endsWith('.js')).sort().map((n) => fs.readFileSync(path.join(partsDir, n), 'utf8')) : [];
+    const src = [fs.readFileSync(path.join(ROOT, 'src/routes', `${mount.file}.js`), 'utf8'), ...parts].join('\n');
     for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*'([^']*)'\s*,([^]*?)\(\s*req\s*,/g)) {
       const guard = m[3];
       let kind = 'other';
