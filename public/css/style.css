@@ -166,7 +166,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   position: sticky;
   top: 0;
   z-index: 30;
-  box-shadow: 0 0 18px rgba(255, 85, 0, 0.25);
+  box-shadow: none;
 }
 .topbar-inner {
   /* The same width as .container (1080px, same 16px side padding), so the logo lines up with the left edge of the page content and the last icon of the top
@@ -829,7 +829,7 @@ body:not(.embed-light) .badge-status.status-LIVE { background: #ee3340; }
   --accent: var(--orange);
   background: var(--white);
   border-radius: var(--radius);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 25%, transparent);
+  box-shadow: none;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -838,7 +838,7 @@ body:not(.embed-light) .badge-status.status-LIVE { background: #ee3340; }
   border: 1px solid var(--accent);
   border-left: 5px solid var(--accent);
 }
-.match-card:hover { box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent); }
+.match-card:hover { box-shadow: none; }
 /* --accent drives the border, left-accent bar, and glow together — set it
    once per status/result and every one of those follows, instead of a
    plain orange border regardless of status (grey/planned, live, finished,
@@ -1099,7 +1099,7 @@ datalist {}
   border-radius: var(--radius);
   padding: 18px;
   border: 1px solid var(--orange);
-  box-shadow: 0 0 18px rgba(255, 85, 0, 0.25);
+  box-shadow: none;
   overflow-x: auto;
 }
 /* The compact variant sits nested inside a .match-card, which already
@@ -1502,7 +1502,7 @@ body:not(.embed-light) .match-card .scoreboard .set-win { color: var(--status-gr
   grid-template-columns: repeat(3, 1fr);
   gap: 8px 32px;
   border: 1px solid var(--orange);
-  box-shadow: 0 0 18px rgba(255, 85, 0, 0.25);
+  box-shadow: none;
 }
 @media (max-width: 680px) { .player-bio-card { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 480px) { .player-bio-card { grid-template-columns: 1fr; } }
@@ -1594,7 +1594,7 @@ body:not(.embed-light) .match-card .scoreboard .set-win { color: var(--status-gr
   padding: 20px;
   margin-top: 56px;
   border: 1px solid var(--orange);
-  box-shadow: 0 0 18px rgba(255, 85, 0, 0.25);
+  box-shadow: none;
 }
 /* Profile sections: heading outside the box, same white 20px style as the
    homepage's section titles (.home-sec-title .l) */
@@ -2326,7 +2326,7 @@ footer.credit { text-align: center; font-size: 11px; color: var(--gray-dim); mar
   background: var(--ink);
   color: var(--white);
   border: 1px solid var(--orange);
-  box-shadow: 0 0 18px rgba(255, 85, 0, 0.25);
+  box-shadow: none;
 }
 /* One-line explainer for whichever ranking tab is active (text pulled from
    blta.sk/rebricky/ for the scraped tables, and matching the CourtIQ info
@@ -2850,7 +2850,7 @@ a.rank-name:hover { text-decoration: underline; }
   transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 /* no glow at rest; it only shows on hover */
-.court-card:hover { box-shadow: 0 0 24px rgba(255, 85, 0, 0.4); }
+.court-card:hover { box-shadow: none; }
 /* a venue with a photo: it fills the top of the card (16:9, the card's own corners) and the name comes under it; the arrow moves below the photo */
 .court-card.has-image { padding-top: 0; overflow: hidden; }
 .court-card-img { display: block; margin: 0 -26px; aspect-ratio: 16 / 9; background: #1a1a1a; overflow: hidden; }
@@ -2930,7 +2930,7 @@ a.court-meta-address:hover { color: var(--orange); }
 .court-match-players .winner { color: var(--orange); }
 .court-match-vs { color: #8b8f98; font-weight: 600; margin: 0 4px; }
 .court-match-score { color: #c3c7cf; font-size: 13px; margin-top: 3px; }
-.court-info { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: 0 0 18px rgba(255, 85, 0, 0.25); border-radius: var(--radius); padding: 6px 24px; margin-top: 10px; color: var(--white); }
+.court-info { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: none; border-radius: var(--radius); padding: 6px 24px; margin-top: 10px; color: var(--white); }
 .court-info-row { display: flex; gap: 16px; padding: 15px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .court-info-row:last-child { border-bottom: none; }
 .court-info-icon { flex: 0 0 20px; color: #8b8f98; display: flex; padding-top: 2px; }
@@ -2951,11 +2951,7 @@ body:not(.embed-light) .match-card {
   color: var(--white);
   border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: var(--radius);
-  box-shadow:
-    -4px 0 18px -4px rgba(var(--glow), var(--g)),
-    4px 0 18px -4px rgba(128, 132, 140, var(--g)),
-    0 -4px 18px -4px rgba(128, 132, 140, var(--g)),
-    0 4px 18px -4px rgba(128, 132, 140, var(--g));
+  box-shadow: none;
   padding: 22px 22px 20px;
   gap: 14px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -3182,11 +3178,7 @@ body.match-page #match-root .card {
   background: #0a0a0a;
   color: var(--white);
   border: 1px solid rgba(255, 255, 255, 0.55);
-  box-shadow:
-    -4px 0 18px -4px rgba(128, 132, 140, 0.2),
-    4px 0 18px -4px rgba(128, 132, 140, 0.2),
-    0 -4px 18px -4px rgba(128, 132, 140, 0.2),
-    0 4px 18px -4px rgba(128, 132, 140, 0.2);
+  box-shadow: none;
 }
 /* ...the result item (the scoreboard) keeps the white border; every other panel and button of the page has the grey one */
 body.match-page .info-item,
@@ -3374,7 +3366,7 @@ body:not(.embed-light) .tab, body:not(.embed-light) .filter-bar .seg .tab { bord
 body:not(.embed-light) .lang-btn { border-radius: var(--radius-sm); }
 
 /* Player profile: the head-to-head table is a black card with an orange border, like the cards above it. */
-body:not(.match-page):not(.embed-light) .h2h-card { background: var(--ink); color: var(--white); border: 1px solid var(--orange); border-radius: var(--radius); box-shadow: 0 0 18px rgba(255, 85, 0, 0.25); }
+body:not(.match-page):not(.embed-light) .h2h-card { background: var(--ink); color: var(--white); border: 1px solid var(--orange); border-radius: var(--radius); box-shadow: none; }
 body:not(.match-page):not(.embed-light) .h2h-card .h2h-row { border-bottom-color: rgba(255, 255, 255, 0.12); }
 body:not(.match-page):not(.embed-light) .h2h-card .h2h-name { color: var(--white); }
 body:not(.match-page):not(.embed-light) .h2h-card .h2h-name:hover { color: var(--orange); }
@@ -3635,7 +3627,7 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
 .grp-tabs:empty { display: none; }
 .grp-tabs .tab { font-size: 12px; padding: 8px 14px; }
 .grp-tabs .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
-.grp-card { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: 0 0 18px rgba(255, 85, 0, 0.25); border-radius: var(--radius); padding: 6px 18px 10px; overflow-x: auto; }
+.grp-card { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: none; border-radius: var(--radius); padding: 6px 18px 10px; overflow-x: auto; }
 .grp-head, .grp-row { display: grid; grid-template-columns: 34px minmax(150px, 1fr) 46px 56px 38px 38px 52px; align-items: center; gap: 6px; min-width: 430px; }
 .grp-head { padding: 12px 0; color: #8b8f98; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(255, 255, 255, 0.18); }
 .grp-row { color: var(--white); padding: 11px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-weight: 700; font-size: 14px; }
@@ -3808,7 +3800,7 @@ a.home-mv:hover::after { color: var(--orange); }
 .home-tl-body { background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius); padding: 14px 16px; height: 100%; }
 .home-tl.past .home-tl-body { background: rgba(55, 55, 62, 0.45); opacity: 0.6; }
 .home-tl.past .home-tl-name { color: #c3c7cf; }
-.home-tl.now .home-tl-body { background: #0a0a0a; border-color: var(--green); box-shadow: 0 0 18px rgba(178, 250, 6, 0.25); }
+.home-tl.now .home-tl-body { background: #0a0a0a; border-color: var(--green); box-shadow: none; }
 .home-tl.future .home-tl-body { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: none; }
 a.home-tl:hover .home-tl-body { border-color: var(--border-grey); }
 a.home-tl.now:hover .home-tl-body { border-color: var(--green); }
@@ -4046,7 +4038,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sch-bar { position: absolute; top: 4px; height: 26px; border-radius: var(--radius-sm); display: flex; align-items: center; padding: 0 10px; font-size: 11px; font-weight: 800; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; background: var(--green); color: #0a0a0a; }
 .sch-bar span { position: relative; }
 .sch-bar.past { background: #4a4a52; color: #c3c7cf; }
-.sch-bar.now { box-shadow: 0 0 14px rgba(178, 250, 6, 0.4); }
+.sch-bar.now { box-shadow: none; }
 .sch-bar.now i { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(10, 10, 10, 0.38); }
 .sch-bar.tour { background: var(--orange); min-width: 12px; padding: 0; }
 .sch-bar.tour.past { opacity: 0.5; }
@@ -4063,7 +4055,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 
 /* the list: one black card per month with an orange glow, a row per event (like the league tables) */
 .sch-month-title { font-weight: 800; font-size: 17px; letter-spacing: 0.06em; color: var(--white); text-transform: uppercase; margin: 36px 0 12px; }
-.sch-card { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: 0 0 18px rgba(255, 85, 0, 0.25); border-radius: var(--radius); padding: 4px 22px; }
+.sch-card { background: #0a0a0a; border: 1px solid var(--orange); box-shadow: none; border-radius: var(--radius); padding: 4px 22px; }
 .sch-row { display: grid; grid-template-columns: 170px minmax(0, 1fr) auto; align-items: center; gap: 18px; padding: 16px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
 .sch-row:last-child { border-bottom: none; }
 .sch-row.past .sch-info, .sch-row.past .sch-go { opacity: 0.55; }
@@ -4348,8 +4340,8 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 @media (max-width: 900px) { #sv-pcats { margin-bottom: 40px; } }
 
 /* schedule list: the card of a running season is green, a month with only finished events is grey */
-.sch-card.now { border-color: var(--green); box-shadow: 0 0 18px rgba(178, 250, 6, 0.25); }
-.sch-card.past { border-color: rgba(255, 255, 255, 0.28); box-shadow: 0 0 18px rgba(128, 132, 140, 0.2); }
+.sch-card.now { border-color: var(--green); box-shadow: none; }
+.sch-card.past { border-color: rgba(255, 255, 255, 0.28); box-shadow: none; }
 .sch-tag.past { border-color: #8b8f98; color: #c3c7cf; }
 /* finished events: the date is grey like the rest of the row */
 .sch-row.past .sch-date { color: #8b8f98; }
@@ -4700,8 +4692,8 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .win-gold { --m: #ffb802; --mt: #1a1200; }
 .win-silver { --m: #c9ccd3; --mt: #14151a; }
 .win-bronze { --m: #c97a3d; --mt: #1a0e04; }
-.win-card { display: flex; flex-direction: column; background: #0a0a0a; border: 1px solid var(--m); border-radius: var(--radius); overflow: hidden; box-shadow: 0 0 14px -8px color-mix(in srgb, var(--m) 35%, transparent); color: var(--white); text-decoration: none; }
-a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, transparent); }
+.win-card { display: flex; flex-direction: column; background: #0a0a0a; border: 1px solid var(--m); border-radius: var(--radius); overflow: hidden; box-shadow: none; color: var(--white); text-decoration: none; }
+a.win-card:hover { box-shadow: none; }
 .win-ph { position: relative; aspect-ratio: 1 / 1; background: radial-gradient(120% 90% at 50% 20%, #3b3b44, #17171b); display: grid; place-items: center; overflow: hidden; }
 .win-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .win-av { width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--m); background: linear-gradient(145deg, #4a4a55, #26262c); display: grid; place-items: center; font-weight: 800; font-size: 34px; letter-spacing: 0.02em; }
@@ -4722,7 +4714,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 /* ---------- Contact window (menu item "Kontakt") ---------- */
 @keyframes ct-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
 .ct-backdrop { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(10, 10, 10, 0.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-.ct-card { position: relative; width: min(860px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; background: #0a0a0a; color: var(--white); border: 1px solid var(--orange); border-radius: var(--radius); box-shadow: 0 0 40px rgba(255, 85, 0, 0.25), 0 30px 80px rgba(0, 0, 0, 0.6); padding: 44px 40px; animation: ct-in 0.18s ease-out; }
+.ct-card { position: relative; width: min(860px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; background: #0a0a0a; color: var(--white); border: 1px solid var(--orange); border-radius: var(--radius); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); padding: 44px 40px; animation: ct-in 0.18s ease-out; }
 .ct-body { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; }
 .ct-close { position: absolute; top: 14px; right: 14px; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); background: var(--fill-grey); color: var(--white); font-size: 22px; line-height: 1; font-family: inherit; cursor: pointer; padding: 0 0 2px; }
 .ct-close:hover { border-color: var(--orange); color: var(--orange); }
@@ -4897,9 +4889,9 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
   position: fixed; top: var(--booking-top, 56px); right: 0; z-index: 25;
   display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 7px 14px; border-radius: 0 0 0 12px;
   background: var(--orange); color: #fff; font-size: 12px; font-weight: 800; letter-spacing: 0.02em; text-decoration: none;
-  box-shadow: 0 4px 14px rgba(255, 85, 0, 0.4); transition: box-shadow 0.15s, padding 0.15s;
+  box-shadow: none; transition: box-shadow 0.15s, padding 0.15s;
 }
-.booking-btn:hover { box-shadow: 0 6px 18px rgba(255, 85, 0, 0.6); color: #fff; padding-bottom: 9px; }
+.booking-btn:hover { box-shadow: none; color: #fff; padding-bottom: 9px; }
 /* the strip under the menu that the tab hangs in: shorter than the tab itself, so the page's own top margin (22px) leaves ~10px under it on every page */
 .booking-spacer { height: 16px; }
 .booking-btn { transition: box-shadow 0.15s, padding 0.15s, transform 0.25s; }
@@ -5442,7 +5434,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 /* the info window: the same frame as the contact window (black card, orange border and glow, round close button), controls as big as its social buttons */
 body.about-open { overflow: hidden; }
 .about-backdrop { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(10, 10, 10, 0.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-.about-modal { position: relative; width: min(860px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column; overflow: hidden; background: #0a0a0a; color: var(--white); border: 1px solid var(--orange); border-radius: var(--radius); box-shadow: 0 0 40px rgba(255, 85, 0, 0.25), 0 30px 80px rgba(0, 0, 0, 0.6); animation: ct-in 0.18s ease-out; }
+.about-modal { position: relative; width: min(860px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column; overflow: hidden; background: #0a0a0a; color: var(--white); border: 1px solid var(--orange); border-radius: var(--radius); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); animation: ct-in 0.18s ease-out; }
 .about-head { flex: none; padding: 34px 40px 0; }
 .about-head h2 { margin: 0; padding-right: 48px; font-size: 22px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
 .about-x { position: absolute; top: 14px; right: 14px; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); background: var(--fill-grey); color: var(--white); font-size: 22px; line-height: 1; font-family: inherit; cursor: pointer; padding: 0 0 2px; }
@@ -6071,7 +6063,7 @@ a.com-rank-name:hover { color: var(--orange); }
 .com-dots-menu[hidden] { display: none; }
 .com-dots-menu button { display: block; width: 100%; padding: 9px 12px; border: 0; border-radius: var(--radius-sm); background: transparent; color: #ff6b6b; font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; }
 .com-dots-menu button:hover { background: rgba(255, 255, 255, 0.08); }
-.com-news-tournament .sch-row { padding: 18px 22px; border: 1px solid var(--orange); border-radius: var(--radius); background: var(--ink); box-shadow: 0 0 18px rgba(255, 85, 0, 0.18); }
+.com-news-tournament .sch-row { padding: 18px 22px; border: 1px solid var(--orange); border-radius: var(--radius); background: var(--ink); box-shadow: none; }
 .com-news-tournament .sch-row:last-child { border-bottom: 1px solid var(--orange); }
 /* hovering the card lights it like a row of the schedule page */
 .com-news-tournament .sch-row.link:hover { background: #1a1c21; }
@@ -7180,6 +7172,8 @@ body .nav-links a { padding: 7px 6px; letter-spacing: 0.01em; }
 .chip--date   { background: rgba(178, 250, 6, 0.12); border: 1px solid var(--status-green); color: var(--status-green); }   /* planned */
 .chip--done   { background: rgba(255, 255, 255, 0.1); color: var(--text-2); }                                              /* finished */
 .chip--button { min-height: var(--chip-btn-h); background: var(--fill-grey); }
+.chip--league     { background: rgba(178, 250, 6, 0.12); border: 1px solid var(--status); color: var(--status); }   /* a league / series: green veil ("zelený závoj") */
+.chip--tournament { background: rgba(255, 85, 0, 0.12); border: 1px solid var(--action); color: var(--action); }     /* a tournament: orange veil */
 /* a control (button, tab): 40px high */
 .control { box-sizing: border-box; min-height: var(--control-h); }
 /* a link to another page of the site: short text and the arrow ↗ at its end (Montserrat has no ↗, so it is drawn here, not typed into the text) */
@@ -7270,7 +7264,6 @@ body:has(#player-bio-card) .courtiq-info-btn { font-family: inherit; }
 body:has(#player-bio-card) :is(.bio-label, .bio-value, .courtiq-meta div, #stats-tabs .tab, .form-square, .h2h-score, .h2h-toggle) { font-size: var(--fs-sm); }
 body:has(#player-bio-card) :is(.rival-who, .match-score-format, .set-score, td.set-score, .set-score span) { font-size: var(--fs-md); }
 body:has(#player-bio-card) :is(.info-item .value, .rival-rec) { font-size: var(--fs-lg); }
-body:has(#player-bio-card) .player-upcoming-stat .value { font-size: var(--fs-xl); }
 body:has(#player-bio-card) :is(.player-courtiq-value, .courtiq-band-big) { font-size: var(--fs-hero); }
 body:has(#player-bio-card) #player-name :is(.player-first-name, .player-surname) { font-size: clamp(26px, 3.4vw, var(--fs-hero)); }
 
@@ -7458,3 +7451,9 @@ body:has(#player-list) .player-name-cell { gap: var(--sp-4); }
 body:has(#player-list) .player-name-stack { gap: var(--sp-1); }
 body:has(#player-list) .player-cat { display: flex; align-items: center; gap: var(--sp-2); }
 body:has(#player-list) .ltp-iq.iq-inline { gap: var(--sp-1); padding: 0 var(--sp-2); }
+
+/* THE TYPE CHIP of an event (LIGA / TURNAJ) in the schedule list and on the page of a season: a league has the green veil, a tournament the orange veil — the same as the type chip of the home page timeline */
+.sch-tag:not(.tour):not(.sch-city):not(.sch-club):not(.past):not(.now), .sv-chip.l { background: rgba(178, 250, 6, 0.12); border-color: var(--green); color: var(--green); }
+.sch-tag.tour:not(.past):not(.now), .sv-chip.t { background: rgba(255, 85, 0, 0.12); border-color: var(--orange); color: var(--orange); }
+/* the count in the "Plánované zápasy" tile of the player page keeps its own big size (32px, as it always was) */
+body:has(#player-bio-card) .player-upcoming-stat .value { font-size: 32px; }

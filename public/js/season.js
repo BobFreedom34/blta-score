@@ -396,7 +396,7 @@ function tilesHtml() {
     season.courtCount > 0 ? tile('season.tileCourts', String(season.courtCount)) : '',
     drawFormatText() ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileFormat'))}</div><div class="v sm">${escapeHtml(drawFormatText())}</div></div>` : '',
     // a tournament with an entry fee: the green "i" opens the window with how to pay it (the IBAN, the QR code)
-    season.entryFee ? `<div class="sv-tile grey-tile sv-tile-fee"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div>${isTournament() && hasEntryFee() ? `<button type="button" class="sv-fee-info" data-fee-info aria-label="${escapeHtml(t('season.payInfoLabel'))}" title="${escapeHtml(t('season.payInfoLabel'))}">i</button>` : ''}</div>` : '',
+    season.entryFee ? `<div class="sv-tile grey-tile sv-tile-fee"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div>${hasEntryFee() ? `<button type="button" class="sv-fee-info" data-fee-info aria-label="${escapeHtml(t('season.payInfoLabel'))}" title="${escapeHtml(t('season.payInfoLabel'))}">i</button>` : ''}</div>` : '',
     season.drawDate ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileDraw'))}</div><div class="v sm">${escapeHtml(formatDate(season.drawDate))}</div></div>` : '',
     liveDrawTile(),
     season.prizeMoney ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tilePrize'))}</div><div class="v sm">${escapeHtml(season.prizeMoney)}</div></div>` : '',
@@ -784,8 +784,8 @@ async function openRegisterModal() {
       const stripe = res && res.paymentUrl
         ? `<p>${escapeHtml(t('season.regPayHint'))}</p><a class="btn btn-primary btn-block" href="${escapeHtml(res.paymentUrl)}" target="_blank" rel="noopener">${escapeHtml(t('season.payOnline'))}</a>`
         : '';
-      // a tournament also offers a bank transfer: the IBAN of the contact page, the entry fee and a reminder to put the tournament's name in the note
-      const contact = isTournament() ? await api('/contact').catch(() => null) : null;
+      // an event (a series as well as a tournament) also offers a bank transfer: the IBAN of the contact page, the entry fee and a reminder to put the event's name in the note
+      const contact = await api('/contact').catch(() => null);
       // a substitute pays nothing yet (the payment is asked when he comes in), and an event with no entry fee asks for no payment at all
       const pay = (res && res.substitute) || !hasEntryFee() ? '' : stripe + bankTransferHtml(contact, !!stripe, (res && res.name) || typed);
       wrap.querySelector('.modal').innerHTML = `

@@ -49,6 +49,8 @@ The **labels** of facts ("Kategória", "Raketa" …) are `--text-3`, not orange:
 <span class="chip chip--date">Št 19.11. 10:00</span> <!-- planned: lime outline -->
 <span class="chip chip--done">Ukončená</span>      <!-- finished: grey -->
 <span class="chip chip--button">Zahrať</span>      <!-- works like a button: 28 px -->
+<span class="chip chip--league">Liga</span>      <!-- a league / series: green veil -->
+<span class="chip chip--tournament">Turnaj</span> <!-- a tournament: orange veil -->
 ```
 
 Tokens: `--chip-h` 24 px, `--chip-btn-h` 28 px.

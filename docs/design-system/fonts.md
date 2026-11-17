@@ -68,3 +68,7 @@ Not on the scale, by design: the **logo word** ("LIGA" 10 px, "BLTA" 22 px) and 
 | browser default `h3` 18.72 | 20 (`.modal h3` already is) |
 
 The only exceptions on a page are decorative micro things (a dot, a sup/sub, a visually hidden label).
+
+## Exceptions that stay on purpose
+
+- The count in the "Plánované zápasy" tile of the player page is **32 px** (the big single digit next to its label); it was 28 px for a moment and was put back.

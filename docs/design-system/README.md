@@ -35,7 +35,7 @@ Open **[preview.html](preview.html)** to see all three on one page (it uses the 
 ## Rules that are decisions, not taste
 
 - **Nothing readable under 12 px.** Smaller text fails on phones and for people with weaker eyesight.
-- **No coloured glow, no orange frame on a card.** A card has the one border (`--tile-border`) and no `box-shadow`. The old orange frame with an orange glow (`border: 1px solid var(--orange); box-shadow: 0 0 18px rgba(255,85,0,.25)`) is still on other pages (rankings, courts, schedule); the player page no longer has it.
+- **No coloured glow anywhere.** No card, header, bar, button or window has a coloured `box-shadow` halo (the orange `0 0 18px rgba(255,85,0,.25)`, the green and grey ones, the stacked grey glow of the match cards). A card has the one border (`--tile-border`); only a neutral black drop shadow is allowed, and only on things that float (menus, windows). The orange frame itself is still on some pages other than the ones listed under "Applied".
 - **One corner for every control** (`--radius-sm`, 8 px): buttons, tabs, chips, inputs. Cards and tiles use `--radius` (16 px). Only circles are round.
 - **Orange = do something / selected / live. Lime = status and result.** Do not use lime to mean "selected".
 - **One arrow for links to another page of the site: ↗**, drawn by CSS (`.ds-link`), never typed into the text.
