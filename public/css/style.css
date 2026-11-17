@@ -6838,11 +6838,11 @@ body:not(.embed-light):not(.embed) .match-card.availability-post .scoreboard { b
 #my-post-card { border: 1px solid rgba(255, 255, 255, 0.18); }
 
 /* the contact window ("Kontakt") is a glass panel too: the same translucent dark, blur and grey outline as the players table */
-/* the same look as every other window (.modal): the dark grey tile #1b1b1f with the light grey outline */
+/* a glass panel ("sklenený panel"), like the payment window: translucent dark, blur and the light grey outline */
 body:not(.embed-light):not(.embed) .ct-card {
-  background: #1b1b1f;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+  background: rgba(10, 10, 10, 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
   border-color: rgba(255, 255, 255, 0.18);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
@@ -7475,3 +7475,17 @@ body:has(#player-bio-card) .player-upcoming-stat .value { font-size: 32px; }
 body .ltp-photo { border-radius: var(--radius-md); box-shadow: 0 0 0 3px #1b1b1f, 0 0 0 5px var(--green); }
 body .ltp-head { padding-bottom: var(--sp-3); }
 body .ltp-loc { min-height: 0; }
+/* "Hráči hľadajúci súpera": no gap between the head and the grey foot of a card (the card's own 14px gap showed as a dark band), and a narrower card: 260px wide, as many in a row as fit (a phone keeps its two columns) */
+body .match-card.availability-post.ltp-tile { gap: 0; }
+@media (min-width: 521px) {
+  body .ltp-grid { grid-template-columns: repeat(auto-fill, 260px); justify-content: start; }
+}
+/* the dark behind the contact window is the one behind every other window (55%, no blur of its own), so the glass of the window shows the page */
+.ct-backdrop { background: rgba(10, 10, 10, 0.55); -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* the button of a "looking for an opponent" card ("Zobraziť termíny", and the orange "Vaša dostupnosť" of your own card): orange, with an orange outline */
+body .ltp-foot .availability-calendar-btn { background: var(--orange); color: var(--white); border: 1px solid var(--orange); }
+body .ltp-foot .availability-calendar-btn:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
+body .ltp-foot .ltp-status .badge[style*="var(--orange)"] { border-color: var(--orange); }
+/* a post of a community feed is a black tile ("čierna dlaždica"): the same gradient and border as .black-tile */
+body .com-post { background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(33, 34, 38, 0.93), rgba(10, 10, 10, 0.6) 75%) !important; }
+body .com-post:not(:hover) { border-color: var(--tile-border); }
