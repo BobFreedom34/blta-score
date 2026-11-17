@@ -107,12 +107,18 @@ function localizeLinks(html, lang) {
   return html.replace(/href="(\/[^"#?]*)([^"]*)"/g, (all, p, tail) => `href="${esc(seo().pageUrl(p.length > 1 ? p.replace(/\/+$/, '') : p, lang))}${tail}"`);
 }
 
+// A paragraph that is bold from its first word to its last (the questions of an interview) is a heading in all but name: it keeps the larger size the body text had
+// before the body text became smaller (see .blog-q in style.css). A paragraph that only STARTS with bold text stays body text.
+function markQuestions(html) {
+  return String(html || '').replace(/<p>(\s*<(strong|b)>(?:(?!<\/\2>)[\s\S])*<\/\2>\s*)<\/p>/gi, '<p class="blog-q">$1</p>');
+}
+
 // one article: what render() needs — the title, the picture, the meta texts and the HTML of the page
 function articleEntity(slugSk, lang, leagueId = 1) {
   const row = db.prepare("SELECT * FROM articles WHERE slug_sk = ? AND status = 'PUBLISHED' AND league_id = ?").get(String(slugSk), leagueId);
   if (!row) return null;
   const a = pick(row, lang);
-  a.body = localizeLinks(a.body, lang);
+  a.body = markQuestions(localizeLinks(a.body, lang));
   const t = TEXT[lang];
   const hasImageInBody = a.image && a.body.includes(a.image.split('/').pop());
   const hero = a.image && !hasImageInBody ? `<img class="blog-hero" src="${esc(a.image)}" alt="${esc(a.title)}">` : '';
