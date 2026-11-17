@@ -3718,8 +3718,12 @@ body.embed .compact-match-list > .match-list-heading { width: calc(100vw - 20px)
 a.home-mine-cell:hover, .home-mine-cell.linked:hover { border-color: var(--orange); }
 a.home-mine-cell, .home-mine-cell.linked { position: relative; }
 /* a small grey arrow in the corner of every tile that is a link */
-a.home-mine-cell::after, .home-mine-cell.linked::after { content: '\2197\FE0E'; position: absolute; top: 13px; right: 15px; font-size: 15px; font-weight: 700; line-height: 1; color: #8d929c; pointer-events: none; z-index: 2; transition: color 0.15s; }
+a.home-mine-cell::after, .home-mine-cell.linked::after, a.home-mv::after { content: '\2197\FE0E'; position: absolute; top: 13px; right: 15px; font-size: 15px; font-weight: 700; line-height: 1; color: #8d929c; pointer-events: none; z-index: 2; transition: color 0.15s; }
 a.home-mine-cell:hover::after, .home-mine-cell.linked:hover::after { color: var(--orange); }
+/* the tiles of the ranking of the week are links as well: the same grey arrow in the corner and the orange frame on hover */
+a.home-mv { position: relative; display: block; color: var(--white); text-decoration: none; }
+a.home-mv:hover { border-color: var(--orange); }
+a.home-mv:hover::after { color: var(--orange); }
 .home-mine-cover { position: absolute; inset: 0; border-radius: var(--radius); z-index: 1; }
 .home-mine-cell.linked .home-mine-form { position: relative; z-index: 2; }
 .home-mine-cell .k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
@@ -4943,7 +4947,7 @@ a.win-card:hover { box-shadow: 0 0 16px -6px color-mix(in srgb, var(--m) 45%, tr
 .pom-photo { width: 46px; height: 46px; border-radius: var(--radius-md); object-fit: cover; background: var(--orange); }
 .pom-initials { display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; color: #fff; }
 .pom-who { min-width: 0; }
-.pom-who b { display: block; font-size: 18px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pom-who b { display: block; font-size: 18px; margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pom-k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .pom-nums { display: contents; font-weight: 800; font-size: 18px; }
 .pom-nums > div { line-height: 1.2; }

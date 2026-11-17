@@ -608,7 +608,8 @@ function moversHtml(d) {
   if (!rows) return '';
   const ups = rows.filter((r) => r.move && r.move.direction === 'up').sort((a, b) => b.move.amount - a.move.amount);
   const downs = rows.filter((r) => r.move && r.move.direction === 'down').sort((a, b) => b.move.amount - a.move.amount);
-  const tile = (k, r, text, cls) => `<div class="home-mv grey-tile"><div class="k">${escapeHtml(k)}</div><div class="nm">${escapeHtml(r.name)}</div><div class="d ${cls}">${escapeHtml(text)}</div></div>`;
+  // every tile is a link to the ranking (a small arrow in its corner, like the tiles of "Môj profil" above)
+  const tile = (k, r, text, cls) => `<a class="home-mv grey-tile" href="/rankings"><div class="k">${escapeHtml(k)}</div><div class="nm">${escapeHtml(r.name)}</div><div class="d ${cls}">${escapeHtml(text)}</div></a>`;
   const tiles = [tile(t('home.moverLeader'), rows[0], `#1 · ${rows[0].points}`, '')];
   if (ups[0]) tiles.push(tile(t('home.moverUp'), ups[0], `▲ ${ups[0].move.amount} · #${ups[0].rank}`, 'up'));
   if (downs[0]) tiles.push(tile(t('home.moverDown'), downs[0], `▼ ${downs[0].move.amount} · #${downs[0].rank}`, 'down'));
