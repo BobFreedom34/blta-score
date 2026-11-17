@@ -7,6 +7,7 @@ const path = require('path');
 const assert = require('assert');
 const { spawn } = require('child_process');
 const { DatabaseSync } = require('node:sqlite');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = 3100 + (process.pid % 800);
@@ -70,7 +71,7 @@ test('an item can be shown with a green frame and green words (outline); the Tur
   assert.ok(seed.includes('ensureTournamentsMenuItem') && seed.includes("'/harmonogram?type=TOURNAMENT'") && seed.includes('menu_tournaments_'), 'the menu item is added once per city');
   const page = fs.readFileSync(path.join(ROOT, 'public', 'js', 'harmonogram.js'), 'utf8');
   assert.ok(page.includes("asked.get('type')") && page.includes("'TOURNAMENT'"), 'the Harmonogram reads ?type= from the address');
-  assert.ok(fs.readFileSync(path.join(ROOT, 'public', 'js', 'common.js'), 'utf8').includes('nav-btn-green-outline'), 'the menu draws the frame');
+  assert.ok(commonSource().includes('nav-btn-green-outline'), 'the menu draws the frame');
 });
 
 test('a sub-item can have its own sub-items (three levels)', async () => {

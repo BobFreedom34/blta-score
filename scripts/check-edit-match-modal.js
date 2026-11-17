@@ -5,8 +5,9 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const assert = require('assert');
+const { commonSource } = require('./common-source');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'common.js'), 'utf8');
+const source = commonSource();
 const start = source.indexOf('async function openEditMatchModal(');
 const end = source.indexOf('\nlet allPlayers = [];', start);
 assert.ok(start > -1 && end > start, 'openEditMatchModal found in common.js');

@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 const { spawn } = require('child_process');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'unreg-'));
@@ -173,7 +174,7 @@ test('the page: the button "Odhlásiť sa" replaces the registration of a regist
   const admin = read('js/seasons-admin.js');
   new (require('vm').Script)(admin, { filename: 'seasons-admin.js' });
   assert.ok(admin.includes("input('unregisterHours'") && admin.includes("unregisterHours: f('unregisterHours')"), 'the field in the section Štartovné a registrácia, and its save');
-  const common = read('js/common.js');
+  const common = commonSource();
   new (require('vm').Script)(common, { filename: 'common.js' });
   assert.ok(common.includes("n.registration.kind === 'UNREGISTER' ? 'notif.unregistrationTitle'"), 'the bell');
   const i18n = require('./i18n-source').i18nSource();

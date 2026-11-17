@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 const { spawn } = require('child_process');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = 3100 + (process.pid % 800);
@@ -71,7 +72,7 @@ test('the top-bar logo of every page has its size in the file (no jump while it 
 test('the skip link and the code boxes have their texts in both languages', () => {
   const i18n = require('./i18n-source').i18nSource();
   ['a11y.skip', 'a11y.digit'].forEach((key) => assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} must be in both languages`));
-  const common = fs.readFileSync(path.join(ROOT, 'public/js/common.js'), 'utf8');
+  const common = commonSource();
   assert.ok(common.includes("t('a11y.skip')") && common.includes("t('a11y.digit'"));
 });
 

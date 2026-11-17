@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 const { spawn } = require('child_process');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clubres-'));
@@ -125,7 +126,7 @@ test('the match page asks whether the visitor is the admin of the club: the club
 test('the match page uses it: the controls and the result entry stay open to the admin of the club and to its players', () => {
   const read = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
   const match = read('js/match.js');
-  const common = read('js/common.js');
+  const common = commonSource();
   new (require('vm').Script)(match, { filename: 'match.js' });
   new (require('vm').Script)(common, { filename: 'common.js' });
   assert.ok(match.includes('/can-manage') && match.includes('m.viewerManagesClub = clubManager;'), 'the page asks and passes it to the checks');

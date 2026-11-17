@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 const { spawn } = require('child_process');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -17,7 +18,7 @@ const test = (name, fn) => tests.push({ name, fn });
 let child = null;
 let adminCookie = '';
 
-const read = (f) => fs.readFileSync(path.join(PUBLIC, f), 'utf8');
+const read = (f) => (f === 'js/common.js' ? commonSource() : fs.readFileSync(path.join(PUBLIC, f), 'utf8'));
 async function call(method, url, { cookie = adminCookie, body } = {}) {
   const h = {};
   if (cookie) h.Cookie = cookie;
@@ -132,7 +133,7 @@ test('a club page answers at its own address in both languages with the name of 
 // ---------- Task 9: the profile switcher and the club menu ----------
 
 test('common.js asks for the clubs of a player only once a player is known, and has the switcher, the chip and the club menu', () => {
-  const js = read('js/common.js');
+  const js = commonSource();
   assert.ok(js.includes("api('/communities/mine')"), 'it asks for the clubs');
   const at = js.indexOf("api('/communities/mine')");
   const fn = js.slice(js.lastIndexOf('async function refreshActingOrg', at), at);
@@ -143,7 +144,7 @@ test('common.js asks for the clubs of a player only once a player is known, and 
 });
 
 test('a logged-in player always sees his name as a profile pill in the top strip (also with no club), with a dropdown to switch between himself and his clubs', () => {
-  const js = read('js/common.js');
+  const js = commonSource();
   const fn = js.slice(js.indexOf('async function refreshActingOrg'), js.indexOf("window.addEventListener('blta:auth-changed', refreshActingOrg"));
   assert.ok(!fn.includes('if (!admins.length) return'), 'the pill does not depend on having a club');
   ['profile-pill', 'profile-pill-menu', 'profile-pill-caret', 'currentPlayerName', "'aria-expanded'", "'Escape'", 'switchActing('].forEach((s) => assert.ok(fn.includes(s), `${s} is in the switcher`));
@@ -154,7 +155,7 @@ test('a logged-in player always sees his name as a profile pill in the top strip
 });
 
 test('a logged-in player has no person icon any more: log out and the language row are in the profile pill dropdown, under "create a community or club"', () => {
-  const js = read('js/common.js');
+  const js = commonSource();
   const fn = js.slice(js.indexOf('async function refreshActingOrg'), js.indexOf("window.addEventListener('blta:auth-changed', refreshActingOrg"));
   assert.ok(fn.includes("document.body.classList.add('has-profile-pill')") && fn.includes("document.body.classList.remove('has-profile-pill')"), 'the page knows whether the pill is there');
   assert.ok(fn.indexOf("t('nav.logout')") > fn.indexOf("t('com.create')"), 'log out comes after "create a community or club"');
@@ -185,7 +186,7 @@ test('the session of a player carries his photo, and the pill and the dropdown s
   assert.strictEqual(session.json.playerPhotoUrl, '/player-photos/hrac.jpg');
   const plain = await makePlayer('Hrac Bez Fotky');
   assert.strictEqual((await call('GET', '/api/player/session', { cookie: plain.cookie })).json.playerPhotoUrl, null, 'null without a photo');
-  const js = read('js/common.js');
+  const js = commonSource();
   const fn = js.slice(js.indexOf('async function refreshActingOrg'), js.indexOf("window.addEventListener('blta:auth-changed', refreshActingOrg"));
   assert.ok(fn.includes('currentPlayerPhotoUrl') && fn.includes('safePictureUrl('), 'the avatar of the player uses his photo');
   assert.ok(js.includes('function safePictureUrl') && js.includes('currentPlayerPhotoUrl = res.playerPhotoUrl'), 'a picture address is checked, and the session fills it');
@@ -193,7 +194,7 @@ test('the session of a player carries his photo, and the pill and the dropdown s
 });
 
 test('two refreshes at once (the session event fires twice on some pages) leave ONE pill: the older run gives up after its await, and the pill is removed right before it is added', () => {
-  const js = read('js/common.js');
+  const js = commonSource();
   const fn = js.slice(js.indexOf('async function refreshActingOrg'), js.indexOf("window.addEventListener('blta:auth-changed', refreshActingOrg"));
   assert.ok(/const run = \+\+actingRun/.test(fn), 'each run takes a number');
   const awaited = fn.indexOf("await api('/communities/mine')");
@@ -204,7 +205,7 @@ test('two refreshes at once (the session event fires twice on some pages) leave 
 });
 
 test('the switcher puts only DOM text, never markup from a name, into the page', () => {
-  const js = read('js/common.js');
+  const js = commonSource();
   const block = js.slice(js.indexOf('// Komunity a kluby: the profile switcher'), js.indexOf("window.addEventListener('blta:auth-changed', refreshActingOrg"));
   assert.ok(block.length > 500, 'the block was found');
   assert.ok(!/innerHTMLs*=s*[^'"s]/.test(block.replace(/innerHTMLs*=s*''/g, '')), 'no innerHTML assignment with data in the switcher block');
@@ -260,7 +261,7 @@ test('the create dialog and the list page: no double submit, a login prompt on "
 });
 
 test('logging out or leaving the club while acting rebuilds the normal menu; a club slug with "admin" keeps the phone navigation; t() does not read $ in names', () => {
-  const common = read('js/common.js');
+  const common = commonSource();
   const fn = common.slice(common.indexOf('async function refreshActingOrg'), common.indexOf("window.addEventListener('blta:auth-changed', refreshActingOrg"));
   assert.ok(fn.includes('renderHeaderNav()'), 'the normal menu comes back');
   assert.ok(/nav-my-profile-link/.test(common.slice(common.indexOf('function applyClubMenu'), common.indexOf('async function switchActing'))), 'the my-profile link is kept when the club menu replaces the menu');

@@ -7,6 +7,7 @@ const path = require('path');
 const http = require('http');
 const assert = require('assert');
 const { spawn } = require('child_process');
+const { commonSource, COMMON_FILES } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = 3100 + (process.pid % 800);
@@ -104,8 +105,7 @@ test('the backend, the embeds for other websites and the login pages never get t
     const r = await blta(url, { cookie: admin });
     assert.ok(!/Google Tag Manager -->/.test(r.body), `${url} got the tag`);
   }
-  const files = await blta('/js/common.js');
-  assert.ok(!/GTM-BLTA123/.test(files.body));
+  for (const f of COMMON_FILES) assert.ok(!/GTM-BLTA123/.test((await blta('/js/' + f)).body), f);
   assert.ok(!/GTM-BLTA123/.test((await blta('/api/seasons')).body));
 });
 
@@ -143,7 +143,7 @@ test('the banner script and the backend page exist, and the page asks for the su
   assert.strictEqual(page.status, 200);
   assert.ok(page.body.includes('tracking-admin-root'));
   assert.ok(/Disallow: \/tracking-admin/.test((await blta('/robots.txt')).body));
-  const common = fs.readFileSync(path.join(ROOT, 'public/js/common.js'), 'utf8');
+  const common = commonSource();
   assert.ok(common.includes("'/tracking-admin'"));
 });
 

@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 const { spawn } = require('child_process');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'club-apart-'));
@@ -125,8 +126,8 @@ test('the profile page asks for them, lists them with the name of the community,
   assert.ok(player.includes("withClub: '1'"), 'the profile asks for the matches of communities');
   assert.ok(player.includes('rawGroups = allGroups.map((list) => list.filter((m) => !(m.season && m.season.organisation)))'), 'the statistics, badges and rivals are counted from the league matches only');
   assert.ok(/allGroups\.forEach\(\(matches, i\) =>/.test(player), 'the list shows all of them');
-  assert.ok(pub('js/common.js').includes("m.season && m.season.organisation ? m.season.organisation.name : ''") && pub('js/common.js').includes('function clubBadge(m)') && pub('js/player.js').includes('clubBadge(m)') && pub('js/common.js').includes('class="club-private"') && require('./i18n-source').i18nSource().split("'match.notPublic':").length === 3, 'the card says which community, has the badge Klub / Komunita and the grey crossed eye (not public), in both languages');
-  for (const f of ['js/player.js', 'js/common.js']) new (require('vm').Script)(pub(f), { filename: f });
+  assert.ok(commonSource().includes("m.season && m.season.organisation ? m.season.organisation.name : ''") && commonSource().includes('function clubBadge(m)') && pub('js/player.js').includes('clubBadge(m)') && commonSource().includes('class="club-private"') && require('./i18n-source').i18nSource().split("'match.notPublic':").length === 3, 'the card says which community, has the badge Klub / Komunita and the grey crossed eye (not public), in both languages');
+  for (const [f, text] of [['js/player.js', pub('js/player.js')], ['js/common.js', commonSource()]]) new (require('vm').Script)(text, { filename: f });
 });
 
 test('asking for the tournament itself (seasonId) gives all its matches', async () => {

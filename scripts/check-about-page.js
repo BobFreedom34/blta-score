@@ -9,6 +9,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { DatabaseSync } = require('node:sqlite');
 const seasonSeed = require('../src/seasonSeed');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = 3100 + (process.pid % 800);
@@ -124,7 +125,7 @@ test('the page is in Backend > SEO and in the sitemap in both languages, and the
   assert.ok(seo.includes("key: 'about-league'") && seo.includes("slugSk: 'info-o-amaterskej-tenisovej-lige'") && seo.includes("slug: 'about-the-amateur-tennis-league'"), 'PAGES and ENGLISH entries');
   const html = fs.readFileSync(path.join(ROOT, 'public/about-league.html'), 'utf8');
   assert.ok(html.includes('<!--PAGE_SSR-->') && html.includes('<!--ABOUT_PAGE-->') && html.includes('/js/about-league.js'), 'page file');
-  const common = fs.readFileSync(path.join(ROOT, 'public/js/common.js'), 'utf8');
+  const common = commonSource();
   assert.ok(common.includes("'/about-league': 'info'"), 'menu icon');
 });
 

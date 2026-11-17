@@ -9,6 +9,7 @@ const path = require('path');
 const http = require('http');
 const assert = require('assert');
 const { spawn } = require('child_process');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'citypages-'));
@@ -188,9 +189,9 @@ test('the Backend tells where the visitors of the city it works on find it, and 
   assert.strictEqual((await local('PATCH', `/api/leagues/${cityId}`, { domain: '' }, superCookie)).status, 200);
   // the pieces of the pages: the links are marked, one listener puts the address on them
   const read = (p) => fs.readFileSync(path.join(ROOT, 'public', p), 'utf8');
-  assert.ok(read('js/common.js').includes("a[data-public]") && read('js/common.js').includes('publicBase'));
+  assert.ok(commonSource().includes("a[data-public]") && commonSource().includes('publicBase'));
   // a city admin sees only the tabs of the Backend he may use, also at slta.sk/<city>/admin where the links carry the prefix of the city; the contact form of the whole site is not his
-  assert.ok(read('js/common.js').includes('const tabPath') && read('js/common.js').includes('SUPER_ONLY_TABS.includes(tabPath(a))'), 'the tabs are compared without the prefix of the city');
+  assert.ok(commonSource().includes('const tabPath') && commonSource().includes('SUPER_ONLY_TABS.includes(tabPath(a))'), 'the tabs are compared without the prefix of the city');
   assert.ok(read('js/header-admin.js').includes("me.role === 'CITY'"), 'the contact card is for the super admin only');
   ['seasons-admin', 'bracket-admin', 'season-draw', 'venues-admin'].forEach((f) => assert.ok(read(`js/${f}.js`).includes('data-public'), `${f}.js marks its links`));
 });

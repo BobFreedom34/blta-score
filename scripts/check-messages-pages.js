@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 const { spawn } = require('child_process');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -94,7 +95,7 @@ test('the main menu has "Správy" once, even when the helper runs again, and a d
 });
 
 test('common.js asks for the unread count only after a player session, shows the badge on the menu item and listens to the page that updates it live', () => {
-  const js = read('js/common.js');
+  const js = commonSource();
   assert.ok(js.includes("api('/messages/unread')"), 'it asks for the unread count');
   const at = js.indexOf("api('/messages/unread')");
   const fn = js.slice(js.lastIndexOf('async function refreshMessageBadge', at), at);
@@ -131,7 +132,7 @@ test('links are cut out of the raw text (a quote or a bracket ends the address),
 });
 
 test('the menu badge skips heading links ("#") and the Messages page layout leaves room for the bottom navigation up to 1024 px', () => {
-  assert.ok(/getAttribute\('href'\)/.test(read('js/common.js').slice(read('js/common.js').indexOf('function applyMessageBadge'))), 'the badge looks at the written href');
+  assert.ok(/getAttribute\('href'\)/.test(commonSource().slice(commonSource().indexOf('function applyMessageBadge'))), 'the badge looks at the written href');
   const css = read('css/style.css');
   const at = css.indexOf('/* Správy / Messages');
   assert.ok(/@media \(max-width: 1024px\)[^{]*\{[^}]*\.msg-layout[^}]*safe-area-inset-bottom/.test(css.slice(at)), 'tablet and landscape: height minus the bottom navigation');
@@ -140,7 +141,7 @@ test('the menu badge skips heading links ("#") and the Messages page layout leav
 test('the new texts exist in both languages, and the server messages are shown in the language of the page', () => {
   const i18n = require('./i18n-source').i18nSource();
   ['msg.errWait', 'msg.errFast', 'msg.errBlocked', 'msg.errInvalid'].forEach((k) => assert.strictEqual(i18n.split(`'${k}':`).length, 3, k));
-  assert.ok(read('js/messages.js').includes('msg.errWait') && read('js/common.js').includes('err.status = res.status'), 'errors carry their status and are mapped to texts');
+  assert.ok(read('js/messages.js').includes('msg.errWait') && commonSource().includes('err.status = res.status'), 'errors carry their status and are mapped to texts');
 });
 
 test('the profile of a player has a "Write a message" button beside the planned matches: it starts the chat and opens it, asks a visitor to log in first, and is not shown on your own profile', () => {
@@ -167,7 +168,7 @@ test('the profile of a player has a "Write a message" button beside the planned 
 });
 
 test('an admin without a player profile is not "logged in" for the player-only features: their login buttons open the login window (they used to do nothing)', () => {
-  const common = read('js/common.js');
+  const common = commonSource();
   const at = common.indexOf('function requireRealPlayer');
   assert.ok(at > 0, 'requireRealPlayer exists');
   const fn = common.slice(at, at + 500);

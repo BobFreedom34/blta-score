@@ -7,6 +7,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 const { spawn } = require('child_process');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'popups-'));
@@ -205,8 +206,8 @@ test('the backend page, its tab and the robots rule exist; the script is loaded 
   assert.strictEqual(page.status, 200);
   assert.ok((await page.text()).includes('popups-admin-root'));
   assert.ok(/Disallow: \/popups-admin/.test(await (await fetch(`${base}/robots.txt`)).text()));
-  assert.ok(fs.readFileSync(path.join(ROOT, 'public/js/common.js'), 'utf8').includes("'/popups-admin'"));
-  assert.ok(fs.readFileSync(path.join(ROOT, 'public/js/common.js'), 'utf8').includes('/js/event-popup.js'));
+  assert.ok(commonSource().includes("'/popups-admin'"));
+  assert.ok(commonSource().includes('/js/event-popup.js'));
 });
 
 async function main() {

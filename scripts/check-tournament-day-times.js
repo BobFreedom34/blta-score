@@ -7,6 +7,7 @@ const path = require('path');
 const assert = require('assert');
 const { spawn } = require('child_process');
 const { DatabaseSync } = require('node:sqlite');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = 3100 + (process.pid % 800);
@@ -172,7 +173,7 @@ test('a tournament is over once the playing window of its LAST day has ended (no
   assert.strictEqual((await patch(two, { maxPlayers: 10, matchMinutes: 15, dayTimes: { [today]: { start: '00:00', end: '23:59' } } })).status, 200);
   assert.strictEqual(await flag(two), false, 'its last day is still going');
   const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
-  for (const [file, piece] of [['js/community-post.js', 's.tournamentEnded'], ['js/community.js', 'comTournamentRow('], ['js/season.js', 'season.tournamentEnded'], ['js/harmonogram.js', 'e.tournamentEnded'], ['js/common.js', 's.tournamentEnded']]) assert.ok(pub(file).includes(piece), `${file} goes by tournamentEnded`);
+  for (const [file, piece] of [['js/community-post.js', 's.tournamentEnded'], ['js/community.js', 'comTournamentRow('], ['js/season.js', 'season.tournamentEnded'], ['js/harmonogram.js', 'e.tournamentEnded'], ['js/common.js', 's.tournamentEnded']]) assert.ok((file === 'js/common.js' ? commonSource() : pub(file)).includes(piece), `${file} goes by tournamentEnded`);
 });
 
 // ---------------------------------------------------------------- review findings

@@ -7,6 +7,7 @@ const assert = require('assert');
 const { spawn } = require('child_process');
 const cookieSignature = require('cookie-signature');
 const { parseVideoId, watchUrl } = require('../src/youtube');
+const { COMMON_FILES } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = 3100 + (process.pid % 800);
@@ -95,7 +96,7 @@ test('the pages carry the pieces: the embed and the admin tile on the match page
   assert.ok(match.includes('youtube-nocookie.com/embed/') && match.includes('video-form') && match.includes('videoBadge(m)'));
   assert.ok(match.includes('${isAdminUser ? videoItemHtml(m) :'), 'the tile is for the admin only');
   assert.ok(match.includes('if (!m.videoId) return \'\';'), 'no link, no player');
-  const common = await js('common.js');
+  const common = (await Promise.all(COMMON_FILES.map((f) => js(f)))).join('\n');
   assert.ok(common.includes('function videoBadge') && common.includes('${categoryBadge(m.category)}${videoBadge(m)}'), 'the compact cards');
   assert.ok((await js('app.js')).includes('videoBadge(m)') && (await js('player.js')).includes('videoBadge(m)'));
   assert.ok((await require('./i18n-source').i18nSourceFrom((u) => js(u.slice(4)))).includes("'match.liveVideo': 'Live video'"));

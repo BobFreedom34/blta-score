@@ -7,6 +7,7 @@ const path = require('path');
 const assert = require('assert');
 const { spawn } = require('child_process');
 const { DatabaseSync } = require('node:sqlite');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'com-notif-'));
@@ -135,8 +136,7 @@ test('a deleted post takes its notifications out of the bell and the count', asy
 });
 
 test('the page side: the bell shows a new post and a reaction and takes the player to the community, in both languages', () => {
-  const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
-  const js = pub('js/common.js');
+  const js = commonSource();
   assert.ok(js.includes("n.type === 'POST'") && js.includes("n.type === 'REACTION'") && js.includes("notif.type === 'POST' ? 'post'") && js.includes("notif.type === 'REACTION' ? 'reaction'"));
   const i18n = require('./i18n-source').i18nSource();
   for (const key of ['notif.postTitle', 'notif.reactionTitle']) assert.strictEqual(i18n.split(`'${key}':`).length - 1, 2, `${key} in both languages`);

@@ -6,6 +6,7 @@ const { DatabaseSync } = require('node:sqlite');
 const fs = require('fs');
 const path = require('path');
 const seasonSeed = require('../src/seasonSeed');
+const { commonSource } = require('./common-source');
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -64,7 +65,7 @@ test('a city that already has the link as a sub-item is not given a second one',
 });
 
 test('Messages is an icon in the top strip (with its unread badge) and the old menu item is not drawn', () => {
-  const js = fs.readFileSync(path.join(__dirname, '../public/js/common.js'), 'utf8');
+  const js = commonSource();
   assert.ok(js.includes("id = 'topbar-msg'") && js.includes("courtIcon('send')") && js.includes("t('msg.heading')"), 'the icon link in .topbar-right');
   assert.ok(js.includes("getElementById('topbar-msg')") && js.includes('nav-msg-badge'), 'the unread badge goes on the icon');
   assert.ok(js.includes("i.link !== '/messages'"), 'the main menu skips the Messages item of a city that still has it');

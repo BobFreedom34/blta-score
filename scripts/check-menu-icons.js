@@ -5,13 +5,14 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const assert = require('assert');
+const { commonSource } = require('./common-source');
 
 const PUBLIC = path.join(__dirname, '..', 'public');
 const read = (f) => fs.readFileSync(path.join(PUBLIC, f), 'utf8');
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
 
-const common = read('js/common.js');
+const common = commonSource();
 // the icon code is a block of its own in common.js, run here on its own with the two things it needs
 function loadNavIcons() {
   const start = common.indexOf('// NAV ICONS START');

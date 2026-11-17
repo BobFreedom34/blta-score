@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 const { spawn } = require('child_process');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'com-super-'));
@@ -118,7 +119,7 @@ test('the super admin sees how many new clubs wait for his approval (nobody else
 
 test('the Backend tabs carry the number of clubs waiting for approval, and a new club e-mails the administrators', () => {
   const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
-  assert.ok(read('public/js/common.js').includes('/communities/pending-count'), 'the Communities tab shows the count');
+  assert.ok(commonSource().includes('/communities/pending-count'), 'the Communities tab shows the count');
   assert.ok(read('src/routes/communities.js').includes('sendClubWaitingEmail') && read('src/mailer.js').includes('async function sendClubWaitingEmail'), 'an e-mail goes out when a club is made');
 });
 

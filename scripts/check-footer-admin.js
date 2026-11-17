@@ -7,6 +7,7 @@ const path = require('path');
 const http = require('http');
 const assert = require('assert');
 const { spawn } = require('child_process');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = 3100 + (process.pid % 800);
@@ -224,7 +225,7 @@ test('reset goes back to the built-in footer (also for the groups); the backend 
   assert.strictEqual(page.status, 200);
   assert.ok(page.body.includes('footer-admin-root'));
   assert.ok(/Disallow: \/footer-admin/.test((await blta('/robots.txt')).body));
-  assert.ok(fs.readFileSync(path.join(ROOT, 'public/js/common.js'), 'utf8').includes("'/footer-admin'"));
+  assert.ok(commonSource().includes("'/footer-admin'"));
   assert.ok(!/class="site-footer sf"/.test(page.body), 'the backend keeps its plain footer');
 });
 

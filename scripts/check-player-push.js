@@ -10,6 +10,7 @@ const { spawn } = require('child_process');
 const { DatabaseSync } = require('node:sqlite');
 const cookieSignature = require('cookie-signature');
 const texts = require('../src/pushTexts');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'player-push-'));
@@ -100,7 +101,7 @@ test('texts: every kind has a Slovak and an English wording that matches the bel
 
 test('the page side: the bell panel has the push row, the texts exist in both languages, the device is dropped before a logout', () => {
   const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
-  const js = pub('js/common.js');
+  const js = commonSource();
   const i18n = require('./i18n-source').i18nSource();
   assert.ok(js.includes('id="badge-notif-push"') && js.includes('refreshPushRow()') && js.includes('/player/push/subscribe'));
   assert.ok(/await dropDevicePush\(\);[^\n]*\n\s*try \{ await api\('\/player\/logout'/.test(js), 'the server is told before the session ends');
@@ -294,7 +295,7 @@ test('the module: pushing a player with two devices sends to both; a player with
 });
 
 test('the page side: a phone that allows notifications is linked at login without asking, one that was not asked gets the question once a week, a player who turned it off is left alone', () => {
-  const common = fs.readFileSync(path.join(ROOT, 'public', 'js', 'common.js'), 'utf8');
+  const common = commonSource();
   const parts = [
     'async function linkDevicePush()',
     'function askPlayerPush(',

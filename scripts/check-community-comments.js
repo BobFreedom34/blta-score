@@ -7,6 +7,7 @@ const path = require('path');
 const assert = require('assert');
 const { spawn } = require('child_process');
 const { DatabaseSync } = require('node:sqlite');
+const { commonSource } = require('./common-source');
 
 const ROOT = path.join(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'com-comments-'));
@@ -202,7 +203,7 @@ test('the page side: comments under every post (club page and feed), the compose
   const club = pub('js/community.js');
   assert.ok(club.includes('comCommentsHtml(p)') && club.includes('comBindComments('), 'the club page has them');
   assert.ok(/const isActing = \(\) => [^\n]*isAdminOfOrg\(\)/.test(club), 'every admin sees the composer without switching to the club profile');
-  assert.ok(pub('js/common.js').includes("n.type === 'COMMENT'") && pub('js/common.js').includes("notif.type === 'COMMENT' ? 'comment'"), 'the bell shows a comment and marks it read');
+  assert.ok(commonSource().includes("n.type === 'COMMENT'") && commonSource().includes("notif.type === 'COMMENT' ? 'comment'"), 'the bell shows a comment and marks it read');
   const feed = pub('js/communities.js');
   assert.ok(feed.includes('comCommentsHtml(p)') && feed.includes('comBindComments('), 'the feed has them');
   const i18n = require('./i18n-source').i18nSource();
