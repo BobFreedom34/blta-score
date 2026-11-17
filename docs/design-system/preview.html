@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>BLTA design system – preview</title>
+<!-- The real stylesheet, so this page can never drift from the site. Opens from the file system (the font is loaded from the relative path below). -->
+<link rel="stylesheet" href="../../public/css/style.css">
+<style>
+  @font-face { font-family: 'Montserrat'; font-weight: 100 900; src: url(../../public/fonts/montserrat-latin.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212; }
+  @font-face { font-family: 'Montserrat'; font-weight: 100 900; src: url(../../public/fonts/montserrat-latin-ext.woff2) format('woff2'); unicode-range: U+0100-02BA, U+1E00-1E9F; }
+  body { background: #0d0c0a; color: #fff; font-family: 'Montserrat', sans-serif; margin: 0; }
+  .guide { max-width: 1080px; margin: 0 auto; padding: 32px 16px 96px; }
+  .guide code, .guide .tok { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--text-3); font-weight: 600; letter-spacing: 0; text-transform: none; }
+  .row { display: flex; align-items: baseline; gap: 16px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.1); }
+  .row .meta { flex: 0 0 210px; }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+  .sw { border: 1px solid var(--tile-border); border-radius: var(--radius); overflow: hidden; }
+  .sw i { display: block; height: 56px; }
+  .sw div { padding: 8px 12px; }
+  .bar { display: flex; align-items: center; gap: 16px; padding: 4px 0; }
+  .bar b { display: block; height: 16px; background: var(--orange); border-radius: 2px; }
+  .guide .tab.active { background: var(--action); border-color: var(--action); color: #fff; }   /* the selected tab as the home page draws it */
+  .demo-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--block-gap) var(--card-gap); }
+  @media (max-width: 700px) { .row { flex-wrap: wrap; } .row .meta { flex-basis: 100%; } .demo-cols { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main class="guide">
+  <h1 class="t-hero">BLTA design system</h1>
+  <p class="t-body text-2" style="margin-top:8px">Three parts — <b class="text-1">fonts</b>, <b class="text-1">colours</b>, <b class="text-1">gaps</b>. Everything below is drawn with the real classes and variables of <code>public/css/style.css</code>. Notes: <code>docs/design-system/*.md</code>.</p>
+
+  <!-- ===================================================== 1 FONTS ===================================================== -->
+  <section class="ds-section">
+    <div class="ds-section-title"><h2 class="t-section">1 · Fonts</h2><span class="tok">Montserrat · 12 / 14 / 16 / 18 / 20 / 28 / 38</span></div>
+    <div class="row"><div class="meta"><code>.t-hero</code><br><span class="tok">--fs-hero 38 · 900</span></div><div class="t-hero">Bratislavská Liga Tenisových Amatérov</div></div>
+    <div class="row"><div class="meta"><code>.t-number</code><br><span class="tok">--fs-xl 28 · 800</span></div><div class="t-number">181 &nbsp; 76 &nbsp; 1530</div></div>
+    <div class="row"><div class="meta"><code>.t-section</code><br><span class="tok">--fs-lg 20 · 800 · caps</span></div><div class="t-section">Posledné výsledky</div></div>
+    <div class="row"><div class="meta"><code>.t-name-lg</code><br><span class="tok">--fs-name 18 · 800</span></div><div class="t-name-lg">Michal Bori</div></div>
+    <div class="row"><div class="meta"><code>.t-name</code> · <code>.t-text</code><br><span class="tok">--fs-md 16 · 800 / 500</span></div><div><div class="t-name">Róbert Sloboda</div><div class="t-text text-2">Amatérska tenisová liga pre rekreačných hráčov v Bratislave. Hraj ligové zápasy a turnaje na svojej úrovni.</div></div></div>
+    <div class="row"><div class="meta"><code>.t-body</code><br><span class="tok">--fs-sm 14 · 500</span></div><div class="t-body text-2">Sleduj živé skóre, tabuľky a rebríčky amatérskeho tenisu.</div></div>
+    <div class="row"><div class="meta"><code>.t-label</code> · <code>.t-small</code><br><span class="tok">--fs-xs 12 · 700 caps / 600</span></div><div><div class="t-label text-3">Hráč mesiaca · Október</div><div class="t-small text-2">17.11.2026 · Slazenger</div></div></div>
+  </section>
+
+  <!-- ===================================================== 2 COLOURS ===================================================== -->
+  <section class="ds-section">
+    <div class="ds-section-title"><h2 class="t-section">2 · Colours</h2><span class="tok">3 greys · orange = action · lime = status</span></div>
+    <div class="swatches">
+      <div class="sw"><i style="background:var(--text-1)"></i><div><b class="t-small">text-1</b><br><span class="tok">#ffffff · titles</span></div></div>
+      <div class="sw"><i style="background:var(--text-2)"></i><div><b class="t-small">text-2</b><br><span class="tok">#c3c7cf · supporting</span></div></div>
+      <div class="sw"><i style="background:var(--text-3)"></i><div><b class="t-small">text-3</b><br><span class="tok">#8b8f98 · labels</span></div></div>
+      <div class="sw"><i style="background:var(--action)"></i><div><b class="t-small">action</b><br><span class="tok">#ff5500 · do / selected / live</span></div></div>
+      <div class="sw"><i style="background:var(--status)"></i><div><b class="t-small">status</b><br><span class="tok">#b2fa06 · planned / won</span></div></div>
+      <div class="sw"><i style="background:var(--fill-grey)"></i><div><b class="t-small">fill-grey</b><br><span class="tok">#37373e · chips, buttons</span></div></div>
+    </div>
+
+    <h3 class="t-label text-3" style="margin:32px 0 12px">Surfaces — one border (<span class="tok">--tile-border</span>), 16px corner</h3>
+    <div class="ds-grid ds-grid--2">
+      <div class="ds-card black-tile"><div class="t-label text-3">Black tile · <span class="tok">.black-tile</span></div><div class="t-name" style="margin-top:8px">Lists and data</div><div class="t-body text-2">Results, ranking, awards, blog cards.</div></div>
+      <div class="ds-card grey-tile"><div class="t-label text-3">Grey tile · <span class="tok">.grey-tile</span></div><div class="t-number" style="margin-top:4px">181</div><div class="t-body text-2">Numbers and facts.</div></div>
+    </div>
+
+    <h3 class="t-label text-3" style="margin:32px 0 12px">Chips — 24px high, 8px corners</h3>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
+      <span class="chip chip--live">Prebieha</span><span class="chip chip--date">Št 19.11. 10:00</span><span class="chip chip--done">Ukončená</span><span class="chip chip--button">Zahrať</span>
+    </div>
+
+    <h3 class="t-label text-3" style="margin:32px 0 12px">Controls — 40px high, 8px corners</h3>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
+      <div class="tabs" style="margin:0"><button class="tab active control">Elite</button><button class="tab control">Next Gen</button><button class="tab control">Novice</button></div>
+    </div>
+
+    <h3 class="t-label text-3" style="margin:32px 0 12px">Link — short text, one arrow ↗ drawn by CSS</h3>
+    <div class="ds-section-title" style="max-width:420px"><h2 class="t-section">Tabuľky</h2><a class="ds-link" href="#" aria-label="Tabuľky – Všetko">Všetko</a></div>
+  </section>
+
+  <!-- ===================================================== 3 GAPS ===================================================== -->
+  <section class="ds-section">
+    <div class="ds-section-title"><h2 class="t-section">3 · Gaps</h2><span class="tok">4 · 8 · 12 · 16 · 24 · 32 · 48 · 64</span></div>
+    <div class="bar"><span class="tok" style="width:90px">--sp-1</span><b style="width:4px"></b><span class="tok">4 · tight</span></div>
+    <div class="bar"><span class="tok" style="width:90px">--sp-2</span><b style="width:8px"></b><span class="tok">8 · small</span></div>
+    <div class="bar"><span class="tok" style="width:90px">--sp-3</span><b style="width:12px"></b><span class="tok">12 · group title to table</span></div>
+    <div class="bar"><span class="tok" style="width:90px">--sp-4</span><b style="width:16px"></b><span class="tok">16 · standard: title → content, card ↔ card, padding</span></div>
+    <div class="bar"><span class="tok" style="width:90px">--sp-5</span><b style="width:24px"></b><span class="tok">24</span></div>
+    <div class="bar"><span class="tok" style="width:90px">--sp-6</span><b style="width:32px"></b><span class="tok">32 · blocks with a title of their own</span></div>
+    <div class="bar"><span class="tok" style="width:90px">--sp-7</span><b style="width:48px"></b><span class="tok">48 · between sections on tablet / phone</span></div>
+    <div class="bar"><span class="tok" style="width:90px">--sp-8</span><b style="width:64px"></b><span class="tok">64 · between sections on a computer</span></div>
+
+    <h3 class="t-label text-3" style="margin:32px 0 12px">The rhythm of a page</h3>
+    <div class="demo-cols">
+      <div><div class="ds-section-title"><h2 class="t-section">Rebríček</h2><a class="ds-link" href="#" aria-label="Rebríček – Všetko">Všetko</a></div><div class="ds-card black-tile"><div class="t-name">Róbert Sloboda</div><div class="t-body text-2">1530 b.</div></div></div>
+      <div><div class="ds-section-title"><h2 class="t-section">Hľadajú súpera</h2><a class="ds-link" href="#" aria-label="Hľadajú súpera – Všetci">Všetci</a></div><div class="ds-card black-tile"><div class="t-name">Jano Novák</div><div class="t-body text-2">Št 19.11.</div></div></div>
+      <div><div class="ds-section-title"><h2 class="t-section">Voľné kurty</h2><a class="ds-link" href="#" aria-label="Voľné kurty – Rezervovať">Rezervovať</a></div><div class="ds-card black-tile"><div class="t-name">Tenis ONE</div><div class="t-body text-2">10:30–12:30</div></div></div>
+    </div>
+    <p class="t-body text-3" style="margin-top:16px">Title → content 16 · cards 16 apart · blocks 32 apart · sections 64 apart (48 on a tablet and phone), grey line in the middle of the gap.</p>
+  </section>
+</main>
+</body>
+</html>

@@ -750,7 +750,7 @@ function pomCardHtml(d) {
     ? row(i, t('pom.improved'), [num('courtIQ', `${i.from.toFixed(1)} → ${i.to.toFixed(1)}`), num(t('pom.progress'), `+${i.delta.toFixed(1)}`, true), num(t('pom.games'), String(i.played))])
     : '';
   // the heading is plural when there are two awards on the card
-  return `${secTitle(t(i ? 'pom.heading' : 'pom.title'), '', '', '')}<div class="pom-card black-tile">${best}${improved}</div>`;
+  return `${secTitle(t(i ? 'pom.heading' : 'pom.title'), '', '/rankings', t('home.pomLink'))}<div class="pom-card black-tile">${best}${improved}</div>`;
 }
 
 async function loadPom() {

@@ -18,7 +18,7 @@ function chipDate(iso) {
 // heading = false: the title is a plain line (a block only a signed-in player sees, "My season", is not a heading of the page)
 function secTitle(label, note, linkHref, linkText, heading = true) {
   const tag = heading ? 'h2' : 'div';
-  return `<div class="home-sec-title"><${tag} class="l">${escapeHtml(label)}${note ? ` <span>${escapeHtml(note)}</span>` : ''}</${tag}>${linkHref ? `<a href="${linkHref}">${escapeHtml(linkText)}</a>` : ''}</div>`;
+  return `<div class="home-sec-title"><${tag} class="l">${escapeHtml(label)}${note ? ` <span>${escapeHtml(note)}</span>` : ''}</${tag}>${linkHref ? `<a href="${linkHref}" aria-label="${escapeHtml(`${label} – ${String(linkText).replace(/\s*[→↗]︎?\s*$/u, '')}`)}">${escapeHtml(linkText)}</a>` : ''}</div>`;
 }
 
 // scoreSummary lists each set as player1-player2 ("1-6, 3-6"); a result reads better from the winner's side.
