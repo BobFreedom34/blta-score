@@ -89,6 +89,8 @@ function serializeNodeMatch(matchId) {
     scheduledAt: row.scheduled_at,
     location: row.location,
     winnerId: row.winner_id,
+    // the sets, for the view of the rounds (the same columns S1, S2, MTB as in the lists of matches); it changes live with the score
+    state: { sets: state.sets || [], currentSet: state.currentSet || 0 },
   };
 }
 
@@ -135,8 +137,24 @@ function serializeBracket(bracketId) {
     rounds: bracketEngine.roundCount(tree.bracket.size),
     createdAt: tree.bracket.created_at,
     // a consolation draw's seeds only say where a loser is placed, not how good the player is: nothing to show
-    nodes: tree.nodes.map((n) => (tree.bracket.kind === 'CONSOLATION' ? serializeNode({ ...n, seed1: null, seed2: null }, tree.bracket) : serializeNode(n, tree.bracket))),
+    nodes: tree.nodes.map((n) => (tree.bracket.kind === 'CONSOLATION' ? withLoserSources(serializeNode({ ...n, seed1: null, seed2: null }, tree.bracket), n, tree.bracket) : serializeNode(n, tree.bracket))),
   };
+}
+
+// A consolation draw gets its round-1 entrants from the losers of the main draw's round 1: the seed of a consolation slot says which main match feeds it
+// (consolation_seed on the main node). Until that main match is played the slot is empty, so the draw shows who can drop into it: loserFrom1 / loserFrom2 =
+// the two players of that main match (a view of the rounds writes them in grey: "loser of A or B").
+function withLoserSources(serialized, rawNode, bracket) {
+  if (rawNode.round !== 1 || !bracket.parent_bracket_id) return serialized;
+  const main = db.prepare('SELECT * FROM brackets WHERE id = ?').get(bracket.parent_bracket_id);
+  if (!main) return serialized;
+  const feeding = (seed) => {
+    if (!seed) return null;
+    const m = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1 AND consolation_seed = ?').get(main.id, seed);
+    if (!m) return null;
+    return [m.player1_id, m.player2_id].map((id) => serializeSlotPlayer(main, id)).filter(Boolean);
+  };
+  return { ...serialized, loserFrom1: feeding(rawNode.seed1), loserFrom2: feeding(rawNode.seed2) };
 }
 
 // Admin list — name/size/created_at only, for the admin's own "pick a

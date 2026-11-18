@@ -28,6 +28,7 @@ let schedCat = null; // the Rozpis tab's category and group choice (always one o
 let schedGroup = null;
 let playersCat = 'ALL'; // the Hráči tab's category filter
 let playoffCat = 'ALL'; // the Play-off tab's category filter
+let playoffKind = 'MAIN'; // ... and the one of the draw: the main draw, the consolation draw (útecha) or the placement draws, one at a time
 const bracketData = new Map(); // bracket id -> full bracket, cleared whenever the data is refreshed
 // a result entered in a drawn bracket (bracket-result.js) comes back as the new bracket
 document.addEventListener('bracket:changed', (e) => { if (e.detail && bracketData.has(e.detail.id)) bracketData.set(e.detail.id, e.detail); });
@@ -639,9 +640,17 @@ function playoffHtml() {
     // a tournament's bracket carries the name of the tournament
     return isTournament() && !named.toLowerCase().includes(season.name.toLowerCase()) ? `${season.name} — ${named}` : named;
   };
-  const body = brackets.filter((b) => playoffCat === 'ALL' || catOfBracket(b) === playoffCat)
+  // the main draw and the consolation draw are not under each other: a second filter shows one kind at a time (only when there is more than one kind)
+  const kindOf = (b) => (b.kind === 'CONSOLATION' ? 'CONSOLATION' : b.kind === 'PLACEMENT' ? 'PLACEMENT' : 'MAIN');
+  const inCat = brackets.filter((b) => playoffCat === 'ALL' || catOfBracket(b) === playoffCat);
+  const kinds = ['MAIN', 'CONSOLATION', 'PLACEMENT'].filter((k) => inCat.some((b) => kindOf(b) === k));
+  if (!kinds.includes(playoffKind)) playoffKind = kinds[0] || 'MAIN';
+  const kindName = (k) => t(k === 'CONSOLATION' ? 'season.kindConsolation' : k === 'PLACEMENT' ? 'season.kindPlacement' : 'season.kindMain');
+  const kindFilter = kinds.length > 1
+    ? `<div class="tabs sv-line" id="sv-pkinds">${kinds.map((k) => `<button type="button" class="tab${playoffKind === k ? ' active' : ''}" data-ok="${k}">${escapeHtml(kindName(k))}<small>${inCat.filter((b) => kindOf(b) === k).length}</small></button>`).join('')}</div>` : '';
+  const body = inCat.filter((b) => kinds.length < 2 || kindOf(b) === playoffKind)
     .map((b) => `<div class="sv-bracket" data-bracket="${b.id}"><h3 class="grp-title">${escapeHtml(title(b))}</h3><div class="sv-bracket-body">${escapeHtml(t('common.loading'))}</div></div>`).join('');
-  return `<section class="sv-sec" id="sv-playoff">${filter}${body}</section>`;
+  return `<section class="sv-sec" id="sv-playoff">${filter}${kindFilter}${body}</section>`;
 }
 
 async function fillBrackets() {
@@ -1064,6 +1073,8 @@ rootEl.addEventListener('click', async (e) => {
   if (cat) { category = cat.dataset.cat; renderPanel(); return; }
   const oc = e.target.closest('#sv-panel [data-oc]');
   if (oc) { playoffCat = oc.dataset.oc; renderPanel(); return; }
+  const ok = e.target.closest('#sv-panel [data-ok]');
+  if (ok) { playoffKind = ok.dataset.ok; renderPanel(); return; }
   const pc = e.target.closest('#sv-panel [data-pc], #sv-players-fixed [data-pc]');
   if (pc) { playersCat = pc.dataset.pc; renderFixedPlayers(); renderPanel(); return; }
   const sc = e.target.closest('#sv-panel [data-sc]');

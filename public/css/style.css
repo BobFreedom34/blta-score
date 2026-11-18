@@ -7613,7 +7613,60 @@ body:has(#player-bio-card) #courtiq-card.player-sec { margin-top: 0; }
 #sv-tabs .tab { display: inline-flex; align-items: center; gap: 8px; }
 @media (max-width: 700px) {
   #sv-tabs.nav-a { margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; overflow: visible; }
-  #sv-tabs.nav-a .tab { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; min-height: 40px; padding: 6px 12px; border-radius: var(--radius-sm); white-space: normal; text-align: left; font-size: 12px; letter-spacing: 0.02em; line-height: 1.2; position: relative; min-width: 0; }
+  #sv-tabs.nav-a .tab { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; min-height: 40px; padding: 6px 12px; border-radius: var(--radius-sm); white-space: normal; text-align: left; font-size: 12px; font-weight: 800; letter-spacing: 0.02em; line-height: 1.2; position: relative; min-width: 0; }
   #sv-tabs.nav-a .tab:not(.active) { color: var(--white); }
   #sv-tabs.nav-a .tab small { margin: 0 0 0 auto; font-size: 11px; }
 }
+/* Season page on a phone, the look of the section tiles ("dlaždice s ikonou v kruhu"): a black tile with the grey frame, the icon in a green-veil circle; the open section has an orange frame and an orange circle */
+@media (max-width: 700px) {
+  #sv-tabs.nav-a .tab { background: linear-gradient(315deg, rgba(33, 34, 38, 0.93), rgba(10, 10, 10, 0.6) 75%); border: 1px solid var(--frame); color: var(--white); padding-left: 44px; transition: border-color 0.2s; }
+  #sv-tabs.nav-a .tab:hover { border-color: var(--frame-hover); }
+  #sv-tabs.nav-a .tab.active { background: linear-gradient(315deg, rgba(33, 34, 38, 0.93), rgba(10, 10, 10, 0.6) 75%); border-color: var(--orange); color: var(--white); }
+  #sv-tabs.nav-a .tab::before { position: absolute; left: 8px; top: 50%; margin-top: -13px; width: 26px; height: 26px; box-sizing: border-box; border-radius: 50%; background: rgba(178, 250, 6, 0.12); border: 1px solid var(--green); -webkit-mask: none; mask: none; }
+  #sv-tabs.nav-a .tab::after { content: ''; position: absolute; left: 14px; top: 50%; margin-top: -7px; width: 14px; height: 14px; background: var(--green); -webkit-mask: var(--ico) center / contain no-repeat; mask: var(--ico) center / contain no-repeat; }
+  #sv-tabs.nav-a .tab.active::before { background: var(--orange); border-color: var(--orange); }
+  #sv-tabs.nav-a .tab.active::after { background: var(--white); }
+  #sv-tabs.nav-a .tab:not(.active)::before { color: inherit; }
+}
+@media (max-width: 700px) { #sv-tabs.nav-a .tab { padding-right: 6px; font-size: 11px; letter-spacing: 0; white-space: nowrap; } }
+/* the filters of the second row (the categories: Všetky kategórie, Elite, Next Gen, Novice) are green when chosen, not orange (orange is for the sections of the first row) */
+#sv-cats .tab.active, #sv-pcats .tab.active { background: var(--green); color: #0a0a0a; border-color: var(--green); }
+#sv-cats .tab.active small, #sv-pcats .tab.active small { color: rgba(10, 10, 10, 0.6); }
+/* ---------- Bracket: the view "Po kolách" (rounds one under the other, the rounds to come with the grey names of who can be there) and the switch between it and the tree (public/js/bracket-view.js) ---------- */
+.bk-switch { display: flex; gap: 8px; margin: 0 0 16px; }
+.bk-switch-btn { box-sizing: border-box; min-height: 32px; padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--frame); background: transparent; color: var(--white); font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; }
+.bk-switch-btn:hover { border-color: var(--frame-hover); }
+.bk-switch-btn.on { background: var(--green); border-color: var(--green); color: #0a0a0a; }
+.bracket-wrap[data-view="tree"] .bk-rounds { display: none; }
+.bracket-wrap[data-view="rounds"] .bk-tree { display: none; }
+.bk-rounds { display: grid; gap: 24px; }
+.bk-round-h { margin: 0 0 10px; font-size: 14px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
+.bk-round-h small { color: #8b8f98; font-weight: 700; }
+.bk-m { background: var(--fill-grey); border-radius: var(--radius-md); padding: 8px 14px; margin: 0 0 8px; color: var(--white); }
+.bk-m.link { cursor: pointer; }
+.bk-m.link:hover { background: #45454d; }
+.bk-p { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; font-size: 14px; font-weight: 700; color: var(--white); }
+.bk-p + .bk-p { border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.bk-p .player-name-link { color: inherit; }
+.bk-p.win { color: var(--green); }
+.bk-p.pending { color: #8b8f98; font-weight: 600; }
+.bk-chk { flex: none; color: var(--green); font-weight: 800; }
+.bk-m .bracket-match-meta { margin: 0 0 4px; }
+.bk-champ .venue-icon { width: 18px; height: 18px; vertical-align: -3px; margin-right: 6px; }
+/* the rounds view runs the full width of the page: no frame and no inner padding around it (the match tiles are the cards) */
+body .bracket-wrap.card[data-view="rounds"] { border: 0; background: none !important; background-image: none !important; box-shadow: none; padding: 0; -webkit-backdrop-filter: none; backdrop-filter: none; overflow: visible; }
+/* the filter of the Play-off tab that shows one kind of draw at a time (Hlavný pavúk / Útecha): like the filter of the categories, green when chosen, 16px under it */
+#sv-pkinds { margin: -32px 0 48px; align-items: center; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
+#sv-pkinds .tab { white-space: nowrap; flex: 0 0 auto; }
+#sv-pkinds .tab.active { background: var(--green); color: #0a0a0a; border-color: var(--green); }
+#sv-pkinds .tab small { margin-left: 6px; color: rgba(255, 255, 255, 0.65); font-weight: 700; }
+#sv-pkinds .tab.active small { color: rgba(10, 10, 10, 0.6); }
+@media (max-width: 900px) { #sv-pkinds { margin: -24px 0 40px; } }
+@media (max-width: 680px) { #sv-pkinds { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; } }
+/* the rounds view: a match with a score looks like a row of the lists of matches (the pill and the labels S1 S2 MTB on top, the games of every set to the right of the name) */
+.bk-p.bk-head { padding: 0 0 2px; border: 0; }
+.bk-p.bk-head + .bk-p { border-top: 0; }
+.bk-pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.14); color: #c3c7cf; font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.bk-pill.live { background: #f0141e; color: var(--white); }
+.bk-m .cs-sc > span { font-size: 14px; }
+.bk-m .bk-head .cs-sc > span { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: #8b8f98; }
