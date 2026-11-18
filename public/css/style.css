@@ -7508,3 +7508,8 @@ body:not(:has(#player-bio-card)):not(.embed-light):not(.embed) .match-card:not(.
 .sch-card.kind-league, .sch-card.now.kind-league { border-color: var(--green); }
 .sch-card.kind-tour, .sch-card.now.kind-tour { border-color: var(--orange); }
 .sch-card.past { border-color: rgba(255, 255, 255, 0.28); }
+/* the title of a bracket on a season / tournament page ("… — Hlavný pavúk", "… — O 3. miesto") is white (was green) */
+.sv-bracket > .grp-title { color: var(--white); }
+/* the match boxes of a bracket are the grey of the court headings of the court schedule (--fill-grey) */
+body:not(.embed-light) .bracket-match-card { background: var(--fill-grey); }
+body:not(.embed-light) .bracket-match-card-clickable:hover { background: #45454d; }
