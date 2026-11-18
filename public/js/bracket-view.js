@@ -50,6 +50,9 @@ function matchMetaHtml(node) {
   return `<div class="bracket-match-meta">Not yet scheduled</div>`;
 }
 
+// the ids of the players of a node (a pair: both players), for the badge "My match" that common-site.js puts on the matches of the logged-in player
+const nodePlayerIds = (node) => [node.player1, node.player2].filter(Boolean).flatMap((p) => (p.team && p.team.length ? p.team.map((x) => x.id) : [p.id])).join(',');
+
 function nodeHtml(node) {
   const inner = `
     ${slotHtml(node, 1)}
@@ -76,7 +79,7 @@ function nodeHtml(node) {
   if (node.round > 1) connectorClasses.push('bracket-node--incoming');
   const connectorLen = (span / 2) * ROW_HEIGHT;
 
-  return `<div data-node-id="${node.id}" class="bracket-node${connectorClasses.length ? ` ${connectorClasses.join(' ')}` : ''}" style="grid-column:${node.round};grid-row:${node.position * span + 2} / span ${span};--connector-len:${connectorLen}px"><div class="${cardClass}"${clickNav}>${inner}</div></div>`;
+  return `<div data-node-id="${node.id}" data-players="${nodePlayerIds(node)}" class="bracket-node${connectorClasses.length ? ` ${connectorClasses.join(' ')}` : ''}" style="grid-column:${node.round};grid-row:${node.position * span + 2} / span ${span};--connector-len:${connectorLen}px"><div class="${cardClass}"${clickNav}>${inner}</div></div>`;
 }
 
 function bracketBoardHtml(data) {
@@ -206,7 +209,7 @@ function roundsHtml(data, championPlayer) {
     const cards = nodes.map((node) => {
       const click = node.match ? ` onclick="window.location.href='/match/${node.match.token}'"` : '';
       const sets = shownSets(node);
-      return `<div class="bk-m${node.match ? ' link' : ''}"${click}>${roundHeadHtml(node, sets)}${roundSlotHtml(node, 1, feeders, sets)}${roundSlotHtml(node, 2, feeders, sets)}${roundMetaHtml(node, sets)}</div>`;
+      return `<div class="bk-m${node.match ? ' link' : ''}" data-players="${nodePlayerIds(node)}"${click}>${roundHeadHtml(node, sets)}${roundSlotHtml(node, 1, feeders, sets)}${roundSlotHtml(node, 2, feeders, sets)}${roundMetaHtml(node, sets)}</div>`;
     }).join('');
     parts.push(`<section class="bk-round"><h4 class="bk-round-h">${escapeHtml(roundTitle(r, data.rounds))} <small>(${nodes.length})</small></h4>${cards}</section>`);
   }

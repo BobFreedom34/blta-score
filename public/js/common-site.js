@@ -1007,3 +1007,63 @@ async function loadSponsorStrip(el, query = '') {
     return realClick.apply(this, arguments);
   };
 })();
+
+// ---------- "Môj zápas": a small orange badge on every match of the logged-in player, wherever matches are listed ----------
+// The tokens of the matches the player plays in (also a doubles match he plays in, not the matches of his partner alone) are loaded once after the login is known; a
+// watcher then puts the badge into every card / row / block of a match of his (lists, the court schedule, the draws, the home page). The pages draw their lists again and
+// again (a live score), the watcher marks what is new. The badge is not put on the profile of the player himself (all matches there are his).
+(() => {
+  let mine = null; // Set of match tokens, null until the login is known
+  let timer = null;
+  const make = () => { const b = document.createElement('span'); b.className = 'my-badge'; b.textContent = t('match.mine'); return b; };
+  const tokenOf = (el, attr) => {
+    const raw = el.getAttribute(attr) || '';
+    return raw.split('?')[0].split('/').filter(Boolean).pop() || '';
+  };
+  const SPOTS = [
+    ['a.match-card[href^="/match/"]', 'href', (el, b) => { const top = el.querySelector('.match-card-top'); if (top) top.insertBefore(b, top.querySelector('.match-card-meta')); }],
+    ['a.cs-m[data-token]', 'data-token', (el, b) => { (el.querySelector('.cs-m-time') || el).appendChild(b); }],
+    ['a.cs-row[href^="/match/"]', 'href', (el, b) => { (el.querySelector('.cs-row-meta') || el).appendChild(b); }],
+    ['a.cs-chip[data-token]', 'data-token', (el, b) => { el.appendChild(b); }],
+    ['a.cs-livecard[href^="/match/"]', 'href', (el, b) => { (el.querySelector('.cs-live-h') || el).appendChild(b); }],
+    ['a.home-m-row[href^="/match/"]', 'href', (el, b) => { (el.querySelector('.s') || el).appendChild(b); }],
+    ['a.sv-rl-m[href^="/match/"]', 'href', (el, b) => { el.appendChild(b); }],
+  ];
+  const onOwnProfile = () => {
+    if (!document.getElementById('player-bio-card')) return false;
+    const last = location.pathname.split('/').filter(Boolean).pop();
+    return !!last && (last === currentPlayerSlug || last === String(currentPlayerId));
+  };
+  function decorate() {
+    if (mine === null || !playerAuthed || !currentPlayerId || onOwnProfile()) return;
+    SPOTS.forEach(([selector, attr, put]) => {
+      document.querySelectorAll(`${selector}:not([data-mine-seen])`).forEach((el) => {
+        el.dataset.mineSeen = '1';
+        if (mine.has(tokenOf(el, attr))) put(el, make());
+      });
+    });
+    // the draws (bracket-view.js) carry the ids of the players of a match: the badge sits in the corner of the box
+    document.querySelectorAll('[data-players]:not([data-mine-seen])').forEach((el) => {
+      el.dataset.mineSeen = '1';
+      if ((el.dataset.players || '').split(',').includes(String(currentPlayerId))) { const b = make(); b.classList.add('corner'); (el.querySelector('.bracket-match-card') || el).appendChild(b); }
+    });
+  }
+  function schedule() { clearTimeout(timer); timer = setTimeout(decorate, 80); }
+  async function load() {
+    document.querySelectorAll('.my-badge').forEach((b) => b.remove());
+    document.querySelectorAll('[data-mine-seen]').forEach((el) => el.removeAttribute('data-mine-seen'));
+    if (!playerAuthed || !currentPlayerId) { mine = new Set(); return; }
+    try {
+      const list = await api(`/matches?playerId=${encodeURIComponent(currentPlayerId)}&withDoubles=1`);
+      mine = new Set((Array.isArray(list) ? list : []).map((m) => m.token));
+    } catch { mine = new Set(); }
+    schedule();
+  }
+  window.addEventListener('blta:auth-changed', load);
+  new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
+  // a new match / a changed player of a match: the set is loaded again (not more often than every few seconds)
+  if (typeof io === 'function') {
+    let reload = null;
+    io().on('matches:changed', () => { clearTimeout(reload); reload = setTimeout(async () => { if (!playerAuthed || !currentPlayerId) return; try { const list = await api(`/matches?playerId=${encodeURIComponent(currentPlayerId)}&withDoubles=1`); mine = new Set((Array.isArray(list) ? list : []).map((m) => m.token)); schedule(); } catch { /* keeps the old set */ } }, 4000); });
+  }
+})();
