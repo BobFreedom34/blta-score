@@ -320,7 +320,14 @@ async function refreshActingOrg() {
     const create = document.createElement('a');
     create.href = '/communities';
     create.className = 'auth-menu-item com-switch-item';
-    create.textContent = '＋ ' + t('com.create');
+    // a green-veil circle with a plus, as big as the pictures of the profiles above it, then the text
+    const plus = document.createElement('span');
+    plus.className = 'profile-pill-av new';
+    plus.setAttribute('aria-hidden', 'true');
+    plus.textContent = '+';
+    const createText = document.createElement('span');
+    createText.textContent = t('com.create');
+    create.append(plus, createText);
     menu.appendChild(create);
     const logout = document.createElement('a');
     logout.href = '#';

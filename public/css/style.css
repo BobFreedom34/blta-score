@@ -7569,8 +7569,29 @@ body .home-head-state.now i { background: var(--white); animation: pulse-white 1
 body .home-live .p { background: #f0141e; color: var(--white); animation: live-blink 1.8s ease-in-out infinite; }
 body .home-live .p i { background: var(--white); animation: pulse-white 1.6s infinite; }
 @media (prefers-reduced-motion: reduce) { body .home-live .p, body .home-live .p i { animation: none; } }
-/* the player page: "Upraviť profil" sits at the right of the title "Štatistiky" (it used to have a row of its own under the bio card, which made a big empty gap) */
-body:has(#player-bio-card) .section-header { align-items: center; }
-body:has(#player-bio-card) .section-header .player-bio-edit-btn { min-height: var(--control-h); padding: 8px 18px; font-size: var(--fs-sm); font-weight: 700; border-radius: var(--radius-sm); box-sizing: border-box; }
+/* the player page: "Upraviť profil" sits at the right end of the row of the planned matches, right above the bio card (it used to have a row of its own under the bio card, which made a big empty gap) */
+body:has(#player-bio-card) .player-stat-row .player-bio-edit-btn { margin-left: auto; align-self: flex-end; min-height: var(--control-h); padding: 8px 18px; font-size: var(--fs-sm); font-weight: 700; border-radius: var(--radius-sm); box-sizing: border-box; }
+@media (max-width: 700px) { body:has(#player-bio-card) .player-stat-row .player-bio-edit-btn { width: 100%; } }
 /* the player page: the courtIQ section has ONE section gap above it (the 24px of its box came on top of the section gap of its title: 120px) */
 body:has(#player-bio-card) #courtiq-card.player-sec { margin-top: 0; }
+/* the "+ Create a community or club" row of the profile menu: a circle as big as the profile pictures above it, a green veil ("zelený závoj") with a green plus */
+.profile-pill-av.new { box-sizing: border-box; background: rgba(178, 250, 6, 0.12); border: 1px solid var(--green); color: var(--green); font-size: 20px; font-weight: 700; line-height: 1; }
+/* the "Viac info" button of the event window: white with black text */
+.ep .ep-more, .modal.ep .ep-nameRow a.ep-more, .modal.ep .ep-nameRow a.ep-more:visited, .ep .ep-nameRow .ep-more, .ep .ep-nameRow .ep-more:visited { background: var(--white); border: 1px solid var(--white); color: #0a0a0a; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.ep .ep-more:hover, .modal.ep .ep-nameRow a.ep-more:hover, .ep .ep-nameRow .ep-more:hover { background: #e6e8ec; border-color: #e6e8ec; color: #0a0a0a; }
+/* phones, page with a hero photo: the logo sits in the photo right above the path ("Harmonogram › …"), the three chips right under the title (inside the photo); the buttons (register, share) are one row under the photo, full width */
+.sv-logo-m, .sv-tags-m { display: none; }
+@media (max-width: 700px) {
+  .sv-head.has-hero > .sv-logo { display: none; }
+  .sv-head.has-hero .sv-logo-m { display: block; width: 72px; height: auto; margin: 0 0 12px; }
+  .sv-head.has-hero .sv-tags-m { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+  .sv-head.has-hero .sv-chips > .sv-chip { display: none; }
+  .sv-head.has-hero .sv-chips, .sv-head.has-hero:not(.with-logo) .sv-chips { grid-area: 2 / 1 / 3 / -1; }
+}
+/* every width, page with a hero photo: the logo sits in the photo right above the path, as on a phone (the logo beside the text is hidden); 96px on a tablet and a computer */
+.sv-head.has-hero > .sv-logo { display: none; }
+.sv-head.has-hero .sv-logo-m { display: block; width: 96px; height: auto; margin: 0 0 12px; }
+@media (max-width: 700px) { .sv-head.has-hero .sv-logo-m { width: 72px; } }
+/* the buttons of a season page are all the same height (the online payment button was thinner on a phone) */
+.sv-btn { box-sizing: border-box; min-height: 30px; justify-content: center; }
+@media (min-width: 701px) { .sv-btn { min-height: 36px; } }

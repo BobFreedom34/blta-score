@@ -325,16 +325,21 @@ function headerHtml() {
   const heroWide = season.heroUrl || season.heroMobileUrl;
   const heroPhone = season.heroMobileUrl || season.heroUrl;
   const hero = heroWide ? `<picture class="sv-hero-pic"><source media="(max-width: 700px)" srcset="${escapeHtml(heroPhone)}"><img src="${escapeHtml(heroWide)}" alt="${escapeHtml(season.name)}"></picture><span class="sv-hero-shade"></span>` : '';
+  // the three chips (League / state / days) and the logo are drawn twice: in their place for a computer, and inside the photo for a phone (css shows one of them)
+  const typeChip = `<span class="sv-chip ${isTournament() ? 't' : 'l'}">${escapeHtml(isClubSeason() ? t('com.seasonTag') : t(isTournament() ? 'schedule.tournament' : 'schedule.league'))}</span>`;
+  const logoM = season.logoUrl ? `<img class="sv-logo-m" src="${escapeHtml(season.logoUrl)}" alt="">` : '';
   return `
     <div class="sv-head${logo ? ' with-logo' : ''}${hero ? ' has-hero' : ''}">
       ${hero}
       ${logo}
       <div class="sv-head-main">
         <div class="sv-head-text">
+          ${logoM}
           <div class="sv-crumb">${isClubSeason() ? `<a href="/community/${encodeURIComponent(season.organisation.slug)}#events">${escapeHtml(season.organisation.name)}</a>` : `<a href="/harmonogram">${escapeHtml(t('schedule.heading'))}</a>`} › ${escapeHtml(termText())}</div>
           <h1 class="sv-title">${escapeHtml(season.name)}${settingsLinkHtml()}</h1>
+          <div class="sv-tags-m">${typeChip}${state}${note}</div>
         </div>
-        <div class="sv-chips"><span class="sv-chip ${isTournament() ? 't' : 'l'}">${escapeHtml(isClubSeason() ? t('com.seasonTag') : t(isTournament() ? 'schedule.tournament' : 'schedule.league'))}</span>${state}${note}${actionsHtml(status)}</div>
+        <div class="sv-chips">${typeChip}${state}${note}${actionsHtml(status)}</div>
       </div>
     </div>`;
 }
