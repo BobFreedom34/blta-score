@@ -83,3 +83,7 @@ Round (`999px`) corners are only for circles and dots — the footer's city pill
 
 - The selected segment of the switch in "Vaša dostupnosť" is **lime** (requested explicitly). By the rule above it should be orange. Change one line in `style.css`:
   `:is(#my-post-card, .modal) .mode-switch button.active { background: var(--action); color: #fff; }`.
+
+## Grey frame ("sivý rám", class `grey-frame`)
+
+The border of the match card: 1 px, `--frame` (30 % white) and `--frame-hover` (80 % white) when the mouse is on it. Use it on any black or glass block that should carry the one grey border; the radius, padding and background stay the block's own.

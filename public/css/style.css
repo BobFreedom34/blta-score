@@ -7514,6 +7514,25 @@ body:not(:has(#player-bio-card)):not(.embed-light):not(.embed) .match-card:not(.
 body:not(.embed-light) .bracket-match-card { background: var(--fill-grey); }
 body:not(.embed-light) .bracket-match-card-clickable:hover { background: #45454d; }
 /* ONE grey border (--tile-border, 18% white, 1px — the one of the match cards) on everything that sits on a BLACK background: the home page (the arrows of the season strip, the chips of its cards, the sign-in / register switch, the lines between the rows of a table) and the connector lines of a bracket. Grey tiles and buttons keep their own border. */
-body .home-tl-nav:not(:hover), body .home-tl-chip, body .home-auth-seg { border-color: var(--tile-border); }
+body .home-tl-nav:not(:hover), body .home-tl-chip, body .home-auth-seg { border-color: var(--frame); }
 body .home-m-row, body .home-t-row { border-color: var(--tile-border); }
 body:not(.embed-light) .bracket-node--incoming::before, body:not(.embed-light) .bracket-node--top::after, body:not(.embed-light) .bracket-node--bottom::after { border-color: var(--tile-border); }
+
+/* "SIVÝ RÁM" (grey frame): the border of the match card. 1px grey (30% white), and a clearly brighter one (80% white) when the mouse is on it. Add the class grey-frame to any block that should have it
+   (its radius, padding and background stay its own); the two values are the tokens --frame and --frame-hover. */
+:root { --frame: rgba(255, 255, 255, 0.3); --frame-hover: rgba(255, 255, 255, 0.8); }
+.grey-frame { border: 1px solid var(--frame); transition: border-color 0.2s; }
+.grey-frame:hover, a.grey-frame:focus-visible { border-color: var(--frame-hover); }
+/* the grey frame on the home page: the card of the players of the month and the group-leader tables */
+body .pom-card, body #home-leaders .home-card { border: 1px solid var(--frame); transition: border-color 0.2s; }
+body .pom-card:hover, body #home-leaders .home-card:hover { border-color: var(--frame-hover); }
+/* the grey frame on the match cards of the lists (Zápasy, home, schedule...): 18% white, bright on hover; a planned card with a date keeps its green frame, and the player page has its own rule */
+body:not(.embed-light):not(.embed):not(:has(#player-bio-card)) .match-card:not(.availability-post):not(.has-date):not(:hover) { border-color: var(--frame); }
+/* the black cards of the home page carry the grey frame: grey at rest, bright when the mouse is on them */
+:is(.home-card, .home-live, .home-mine-cell.next, .pom-card).black-tile:not(:hover) { border-color: var(--frame); }
+:is(.home-card, .home-live, .home-mine-cell.next, .pom-card).black-tile:hover { border-color: var(--frame-hover); }
+/* the frame around a bracket: the grey frame (was orange) */
+body:not(.embed-light) .bracket-wrap.card { border: 1px solid var(--frame); transition: border-color 0.2s; }
+body:not(.embed-light) .bracket-wrap.card:hover { border-color: var(--frame-hover); }
+/* the frame around a bracket is a black tile ("čierna dlaždica") too: the same gradient as .black-tile */
+body:not(.embed-light) .bracket-wrap.card { background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(33, 34, 38, 0.93), rgba(10, 10, 10, 0.6) 75%) !important; }

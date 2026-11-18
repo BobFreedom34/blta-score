@@ -25,7 +25,8 @@ const photoUpload = multer({
 // Only files this router wrote (their address starts with /venue-photos/) are ever removed; the photos shipped with the app under /img/courts/ stay.
 function deletePhotoFile(url) {
   if (typeof url !== 'string' || !url.startsWith('/venue-photos/')) return;
-  fs.unlink(path.join(PHOTO_DIR, path.basename(url)), () => { /* fine if it is already gone */ });
+  // synchronous: the file is gone when the answer is sent (a small file; an asynchronous unlink raced with whoever looks at the disk right after)
+  try { fs.unlinkSync(path.join(PHOTO_DIR, path.basename(url))); } catch { /* fine if it is already gone */ }
 }
 
 function parseName(body) {

@@ -119,8 +119,16 @@ test('a season without a start date gets no event (Google lists an event only wi
   assert.ok(ofType(g, 'BreadcrumbList'));
 });
 
+// a profile with no match is thin (noindex, no structured data, see seo.playerIsThin), so the players of these tests have played one
+function playedPlayer(name, slug) {
+  const id = db.prepare('INSERT INTO players (name, slug) VALUES (?, ?)').run(name, slug).lastInsertRowid;
+  const opponent = db.prepare('INSERT INTO players (name, slug) VALUES (?, ?)').run(`Súper ${slug}`, `super-${slug}`).lastInsertRowid;
+  db.prepare("INSERT INTO matches (category, player1_id, player2_id, format, state) VALUES ('FRIENDLY', ?, ?, 'BEST_OF_3', '{}')").run(id, opponent);
+  return id;
+}
+
 test('a player is a person and a court is a place with its address and position', async () => {
-  db.prepare("INSERT INTO players (name, slug) VALUES ('Ján Novák', 'jan-novak')").run();
+  playedPlayer('Ján Novák', 'jan-novak');
   const person = ofType(graphOf((await getPage('/player/jan-novak')).text), 'Person');
   assert.ok(person);
   assert.strictEqual(person.name, 'Ján Novák');
@@ -157,7 +165,7 @@ test('an English page carries the English language and address', async () => {
 });
 
 test('a name with a < in it cannot close the script tag', async () => {
-  db.prepare("INSERT INTO players (name, slug) VALUES ('A </script><b>x', 'evil-name')").run();
+  playedPlayer('A </script><b>x', 'evil-name');
   const r = await getPage('/player/evil-name');
   const scripts = r.text.match(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g) || [];
   assert.ok(scripts.length >= 1);
