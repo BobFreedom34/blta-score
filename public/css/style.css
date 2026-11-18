@@ -7695,3 +7695,7 @@ body:not(.embed-light) :is(.bk-m.link:hover, .bracket-match-card-clickable:hover
 .match-card-top .my-badge { margin-left: 0; }
 .my-badge.corner { position: absolute; right: 10px; bottom: 8px; margin: 0; }
 .bk-m { position: relative; }
+/* the score of a finished match in a draw (the tree and the rounds view) is white, not grey */
+.bracket-match-meta.bracket-match-score { color: var(--white); }
+/* the section tabs (Základné info, Hráči, ...) have the same box as the category filter under them: 2px border (transparent), 9px 16px padding */
+@media (min-width: 701px) { #sv-tabs .tab { border: 2px solid transparent; padding: 9px 16px; } #sv-tabs .tab.active { border-color: var(--orange); } }

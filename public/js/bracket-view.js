@@ -41,11 +41,11 @@ function slotHtml(node, which) {
 
 function matchMetaHtml(node) {
   if (node.isBye) return `<div class="bracket-match-meta">Bye</div>`;
-  if (node.isManualResult) return `<div class="bracket-match-meta">${escapeHtml(node.scoreSummary || 'Result recorded')}</div>`;
+  if (node.isManualResult) return `<div class="bracket-match-meta bracket-match-score">${escapeHtml(node.scoreSummary || 'Result recorded')}</div>`;
   if (!node.match) return '';
   const m = node.match;
   if (m.status === 'LIVE') return `<div class="bracket-match-meta" style="color:var(--orange)">● Live</div>`;
-  if (m.status === 'FINISHED') return `<div class="bracket-match-meta">${escapeHtml(m.scoreSummary || 'Finished')}</div>`;
+  if (m.status === 'FINISHED') return `<div class="bracket-match-meta bracket-match-score">${escapeHtml(m.scoreSummary || 'Finished')}</div>`;
   if (m.scheduledAt) return `<div class="bracket-match-meta">${escapeHtml(fmtDateShort(m.scheduledAt))}</div>`;
   return `<div class="bracket-match-meta">Not yet scheduled</div>`;
 }
@@ -193,7 +193,7 @@ function roundHeadHtml(node, sets) {
 
 function roundMetaHtml(node, sets) {
   if (node.isBye) return `<div class="bracket-match-meta">Bye</div>`;
-  if (node.isManualResult) return `<div class="bracket-match-meta">${escapeHtml(node.scoreSummary || '')}</div>`;
+  if (node.isManualResult) return `<div class="bracket-match-meta bracket-match-score">${escapeHtml(node.scoreSummary || '')}</div>`;
   if (!node.match || sets.length) return '';
   if (node.match.scheduledAt) return `<div class="bracket-match-meta">${escapeHtml(fmtDateShort(node.match.scheduledAt))}</div>`;
   return `<div class="bracket-match-meta">${escapeHtml(t('bracket.notScheduled'))}</div>`;
