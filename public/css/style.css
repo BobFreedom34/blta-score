@@ -7553,3 +7553,24 @@ body.match-page .chat-card .com-comment-new textarea::placeholder { color: #8b8f
 body.match-page .chat-card .com-comment-new textarea:focus { border-color: var(--orange); outline: none; }
 /* the match page: the "Zmeny úrovne" card has the same 20px gap under the winner card as the blocks above it (it had none) */
 body.match-page #match-root .result-card + .lc-card { margin-top: 20px; }
+/* "Prebieha" (a running season on the home page): the red of the live state, and its dot pulses with a ring like the dot of the live tab */
+@keyframes pulse-white { 0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { box-shadow: 0 0 0 7px rgba(255, 255, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
+body .home-tl.now .home-tl-chip { background: #ee3340; color: var(--white); border-color: #ee3340; }
+body .home-tl.now .home-tl-chip i { background: var(--white); animation: pulse-white 1.6s infinite; }
+@media (prefers-reduced-motion: reduce) { body .home-tl.now .home-tl-chip i { animation: none; } }
+/* the "Prebieha" chip of the season strip blinks like the one in the head of the page (live-blink) and is a clearer red */
+body .home-tl.now .home-tl-chip { background: #f0141e; border-color: #f0141e; animation: live-blink 1.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { body .home-tl.now .home-tl-chip { animation: none; } }
+/* the "Prebieha" chip in the head of the home page has the same design as the one of the season strip: red, blinking, with a pulsing dot */
+body .home-head-state.now { background: #f0141e; color: var(--white); animation: live-blink 1.8s ease-in-out infinite; }
+body .home-head-state.now i { background: var(--white); animation: pulse-white 1.6s infinite; }
+@media (prefers-reduced-motion: reduce) { body .home-head-state.now, body .home-head-state.now i { animation: none; } }
+/* the "Naživo" chip of the live strip has the same design as "Prebieha": red, blinking, with a pulsing dot */
+body .home-live .p { background: #f0141e; color: var(--white); animation: live-blink 1.8s ease-in-out infinite; }
+body .home-live .p i { background: var(--white); animation: pulse-white 1.6s infinite; }
+@media (prefers-reduced-motion: reduce) { body .home-live .p, body .home-live .p i { animation: none; } }
+/* the player page: "Upraviť profil" sits at the right of the title "Štatistiky" (it used to have a row of its own under the bio card, which made a big empty gap) */
+body:has(#player-bio-card) .section-header { align-items: center; }
+body:has(#player-bio-card) .section-header .player-bio-edit-btn { min-height: var(--control-h); padding: 8px 18px; font-size: var(--fs-sm); font-weight: 700; border-radius: var(--radius-sm); box-sizing: border-box; }
+/* the player page: the courtIQ section has ONE section gap above it (the 24px of its box came on top of the section gap of its title: 120px) */
+body:has(#player-bio-card) #courtiq-card.player-sec { margin-top: 0; }
