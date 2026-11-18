@@ -20,6 +20,9 @@ let standings = null;
 let category = null;
 let groupId = null; // null = all groups of the category
 let phase = 'GROUP'; // 'GROUP' = group stage tables, 'PLAYOFF' = the bracket
+let playoffKind = 'MAIN'; // the play-off shows one kind of draw at a time: the main draw (Hlavný pavúk), the consolation draw (Útecha) or the placement draws
+const kindOfBracket = (b) => (b.kind === 'CONSOLATION' ? 'CONSOLATION' : b.kind === 'PLACEMENT' ? 'PLACEMENT' : 'MAIN');
+const kindLabel = (k) => t(k === 'CONSOLATION' ? 'season.kindConsolation' : k === 'PLACEMENT' ? 'season.kindPlacement' : 'season.kindMain');
 let brackets = []; // the season's brackets: { id, name, category }
 const bracketData = new Map(); // bracket id -> full bracket, cleared whenever the data is refreshed
 // a result entered in a drawn bracket (bracket-result.js) comes back as the new bracket
@@ -55,16 +58,24 @@ function renderTabs() {
 
   const inCat = groups.filter((g) => g.category === category);
   if (groupId !== null && !inCat.some((g) => g.id === groupId)) groupId = null;
+  // the play-off: a filter for the kind of draw (only when the category has more than one kind), so the main draw and the consolation draw are not under each other
+  const catBrackets = brackets.filter((b) => b.category === category);
+  const kinds = ['MAIN', 'CONSOLATION', 'PLACEMENT'].filter((k) => catBrackets.some((b) => kindOfBracket(b) === k));
+  if (!kinds.includes(playoffKind)) playoffKind = kinds[0] || 'MAIN';
   groupsEl.innerHTML = phase === 'GROUP' && inCat.length > 1
     ? `<button type="button" class="tab${groupId === null ? ' active' : ''}" data-group="all">${escapeHtml(t('tables.allGroups'))}</button>`
       + inCat.map((g) => `<button type="button" class="tab${g.id === groupId ? ' active' : ''}" data-group="${g.id}">${escapeHtml(groupShortName(g.name))}</button>`).join('')
-    : '';
+    : (phase === 'PLAYOFF' && kinds.length > 1
+      ? kinds.map((k) => `<button type="button" class="tab${k === playoffKind ? ' active' : ''}" data-kind="${k}">${escapeHtml(kindLabel(k))}<small>${catBrackets.filter((b) => kindOfBracket(b) === k).length}</small></button>`).join('')
+      : '');
 }
 
 // The bracket(s) of the chosen season and category, drawn the same way as on the bracket page.
 async function renderBrackets() {
   const run = (bracketRun += 1);
-  const list = brackets.filter((b) => b.category === category);
+  const inCategory = brackets.filter((b) => b.category === category);
+  const kindsHere = new Set(inCategory.map(kindOfBracket));
+  const list = kindsHere.size > 1 ? inCategory.filter((b) => kindOfBracket(b) === playoffKind) : inCategory;
   const dates = standings && standings.startDate && standings.endDate ? ` · ${escapeHtml(formatDate(standings.startDate))} – ${escapeHtml(formatDate(standings.endDate))}` : '';
   legendEl.innerHTML = standings ? `${escapeHtml(standings.name)}${dates}` : '';
   if (!list.length) {
@@ -142,6 +153,8 @@ phaseEl.addEventListener('click', (e) => {
   renderTables();
 });
 groupsEl.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-kind]');
+  if (k) { playoffKind = k.dataset.kind; renderTabs(); renderTables(); return; }
   const b = e.target.closest('[data-group]');
   if (!b) return;
   groupId = b.dataset.group === 'all' ? null : Number(b.dataset.group);

@@ -7617,18 +7617,6 @@ body:has(#player-bio-card) #courtiq-card.player-sec { margin-top: 0; }
   #sv-tabs.nav-a .tab:not(.active) { color: var(--white); }
   #sv-tabs.nav-a .tab small { margin: 0 0 0 auto; font-size: 11px; }
 }
-/* Season page on a phone, the look of the section tiles ("dlaždice s ikonou v kruhu"): a black tile with the grey frame, the icon in a green-veil circle; the open section has an orange frame and an orange circle */
-@media (max-width: 700px) {
-  #sv-tabs.nav-a .tab { background: linear-gradient(315deg, rgba(33, 34, 38, 0.93), rgba(10, 10, 10, 0.6) 75%); border: 1px solid var(--frame); color: var(--white); padding-left: 44px; transition: border-color 0.2s; }
-  #sv-tabs.nav-a .tab:hover { border-color: var(--frame-hover); }
-  #sv-tabs.nav-a .tab.active { background: linear-gradient(315deg, rgba(33, 34, 38, 0.93), rgba(10, 10, 10, 0.6) 75%); border-color: var(--orange); color: var(--white); }
-  #sv-tabs.nav-a .tab::before { position: absolute; left: 8px; top: 50%; margin-top: -13px; width: 26px; height: 26px; box-sizing: border-box; border-radius: 50%; background: rgba(178, 250, 6, 0.12); border: 1px solid var(--green); -webkit-mask: none; mask: none; }
-  #sv-tabs.nav-a .tab::after { content: ''; position: absolute; left: 14px; top: 50%; margin-top: -7px; width: 14px; height: 14px; background: var(--green); -webkit-mask: var(--ico) center / contain no-repeat; mask: var(--ico) center / contain no-repeat; }
-  #sv-tabs.nav-a .tab.active::before { background: var(--orange); border-color: var(--orange); }
-  #sv-tabs.nav-a .tab.active::after { background: var(--white); }
-  #sv-tabs.nav-a .tab:not(.active)::before { color: inherit; }
-}
-@media (max-width: 700px) { #sv-tabs.nav-a .tab { padding-right: 6px; font-size: 11px; letter-spacing: 0; white-space: nowrap; } }
 /* the filters of the second row (the categories: Všetky kategórie, Elite, Next Gen, Novice) are green when chosen, not orange (orange is for the sections of the first row) */
 #sv-cats .tab.active, #sv-pcats .tab.active { background: var(--green); color: #0a0a0a; border-color: var(--green); }
 #sv-cats .tab.active small, #sv-pcats .tab.active small { color: rgba(10, 10, 10, 0.6); }
@@ -7670,3 +7658,12 @@ body .bracket-wrap.card[data-view="rounds"] { border: 0; background: none !impor
 .bk-pill.live { background: #f0141e; color: var(--white); }
 .bk-m .cs-sc > span { font-size: 14px; }
 .bk-m .bk-head .cs-sc > span { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: #8b8f98; }
+/* the play-off of the tables page: the filter of the kind of draw is green when chosen, like the other filters of the second row */
+#tables-groups .tab[data-kind].active { background: var(--green); color: #0a0a0a; border-color: var(--green); }
+#tables-groups .tab[data-kind] small { margin-left: 6px; color: rgba(255, 255, 255, 0.65); font-weight: 700; }
+#tables-groups .tab[data-kind].active small { color: rgba(10, 10, 10, 0.6); }
+/* the group tables (the Tabuľky tab of a season or a tournament, and the page Tabuľky): the grey frame and the black tile as the other cards, the name of the group white */
+:is(#sv-tables, #tables-root) .grp-card { border: 1px solid var(--frame); transition: border-color 0.2s; background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(33, 34, 38, 0.93), rgba(10, 10, 10, 0.6) 75%) !important; }
+:is(#sv-tables, #tables-root) .grp-card:hover { border-color: var(--frame-hover); }
+:is(#sv-tables, #tables-root) .grp-title { color: var(--white); }
+:is(#sv-tables, #tables-root) .grp-title span { color: #8b8f98; }
