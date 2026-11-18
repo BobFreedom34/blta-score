@@ -106,9 +106,9 @@ function bracketBoardHtml(data) {
   const view = BRACKET_VIEWS.get(data.id) || 'tree';
   return `
     <div class="bracket-wrap card card-dark" data-bracket-id="${data.id}" data-view="${view}">
-      <div class="bk-switch" role="tablist">
-        <button type="button" class="bk-switch-btn${view === 'tree' ? ' on' : ''}" data-bk-view="tree">${escapeHtml(t('bracket.viewTree'))}</button>
-        <button type="button" class="bk-switch-btn${view === 'rounds' ? ' on' : ''}" data-bk-view="rounds">${escapeHtml(t('bracket.viewRounds'))}</button>
+      <div class="cs-seg bk-switch" role="tablist">
+        <button type="button" class="${view === 'tree' ? 'active' : ''}" data-bk-view="tree">${escapeHtml(t('bracket.viewTree'))}</button>
+        <button type="button" class="${view === 'rounds' ? 'active' : ''}" data-bk-view="rounds">${escapeHtml(t('bracket.viewRounds'))}</button>
       </div>
       <div class="bk-tree">
         <div class="bracket-grid" style="grid-template-columns:repeat(${totalColumns}, minmax(180px, 1fr));grid-template-rows:auto repeat(${data.size}, ${ROW_HEIGHT}px)">
@@ -224,5 +224,5 @@ document.addEventListener('click', (e) => {
   if (!wrap) return;
   wrap.dataset.view = b.dataset.bkView;
   BRACKET_VIEWS.set(Number(wrap.dataset.bracketId), b.dataset.bkView);
-  wrap.querySelectorAll('.bk-switch-btn').forEach((x) => x.classList.toggle('on', x === b));
+  wrap.querySelectorAll('.bk-switch button').forEach((x) => x.classList.toggle('active', x === b));
 });

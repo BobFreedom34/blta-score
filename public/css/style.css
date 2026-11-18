@@ -7621,10 +7621,8 @@ body:has(#player-bio-card) #courtiq-card.player-sec { margin-top: 0; }
 #sv-cats .tab.active, #sv-pcats .tab.active { background: var(--green); color: #0a0a0a; border-color: var(--green); }
 #sv-cats .tab.active small, #sv-pcats .tab.active small { color: rgba(10, 10, 10, 0.6); }
 /* ---------- Bracket: the view "Po kolách" (rounds one under the other, the rounds to come with the grey names of who can be there) and the switch between it and the tree (public/js/bracket-view.js) ---------- */
-.bk-switch { display: flex; gap: 8px; margin: 0 0 16px; }
-.bk-switch-btn { box-sizing: border-box; min-height: 32px; padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--frame); background: transparent; color: var(--white); font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; }
-.bk-switch-btn:hover { border-color: var(--frame-hover); }
-.bk-switch-btn.on { background: var(--green); border-color: var(--green); color: #0a0a0a; }
+/* the switch of a view ("Pavúk | Po kolách") is the segmented control of the court schedule (.cs-seg: a grey tile, the chosen one green); only the gap under it is set here */
+.bk-switch { margin: 0 0 16px; }
 .bracket-wrap[data-view="tree"] .bk-rounds { display: none; }
 .bracket-wrap[data-view="rounds"] .bk-tree { display: none; }
 .bk-rounds { display: grid; gap: 24px; }
@@ -7641,14 +7639,14 @@ body:has(#player-bio-card) #courtiq-card.player-sec { margin-top: 0; }
 .bk-chk { flex: none; color: var(--green); font-weight: 800; }
 .bk-m .bracket-match-meta { margin: 0 0 4px; }
 .bk-champ .venue-icon { width: 18px; height: 18px; vertical-align: -3px; margin-right: 6px; }
-/* the rounds view runs the full width of the page: no frame and no inner padding around it (the match tiles are the cards) */
-body .bracket-wrap.card[data-view="rounds"] { border: 0; background: none !important; background-image: none !important; box-shadow: none; padding: 0; -webkit-backdrop-filter: none; backdrop-filter: none; overflow: visible; }
-/* the filter of the Play-off tab that shows one kind of draw at a time (Hlavný pavúk / Útecha): like the filter of the categories, green when chosen, 16px under it */
+/* the filter of the Play-off tab that shows one kind of draw at a time (Hlavný pavúk / Útecha): an orange veil when chosen (a grey frame otherwise), 16px under the filter of the categories */
 #sv-pkinds { margin: -32px 0 48px; align-items: center; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
 #sv-pkinds .tab { white-space: nowrap; flex: 0 0 auto; }
-#sv-pkinds .tab.active { background: var(--green); color: #0a0a0a; border-color: var(--green); }
-#sv-pkinds .tab small { margin-left: 6px; color: rgba(255, 255, 255, 0.65); font-weight: 700; }
-#sv-pkinds .tab.active small { color: rgba(10, 10, 10, 0.6); }
+#sv-pkinds .tab { background: transparent; border: 1px solid var(--frame); color: #c3c7cf; }
+#sv-pkinds .tab:hover { border-color: var(--frame-hover); color: var(--white); }
+#sv-pkinds .tab.active { background: rgba(255, 85, 0, 0.14); border-color: var(--orange); color: var(--orange); }
+#sv-pkinds .tab small { margin-left: 6px; color: #8b8f98; font-weight: 700; }
+#sv-pkinds .tab.active small { color: var(--orange); }
 @media (max-width: 900px) { #sv-pkinds { margin: -24px 0 40px; } }
 @media (max-width: 680px) { #sv-pkinds { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; } }
 /* the rounds view: a match with a score looks like a row of the lists of matches (the pill and the labels S1 S2 MTB on top, the games of every set to the right of the name) */
@@ -7658,12 +7656,17 @@ body .bracket-wrap.card[data-view="rounds"] { border: 0; background: none !impor
 .bk-pill.live { background: #f0141e; color: var(--white); }
 .bk-m .cs-sc > span { font-size: 14px; }
 .bk-m .bk-head .cs-sc > span { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: #8b8f98; }
-/* the play-off of the tables page: the filter of the kind of draw is green when chosen, like the other filters of the second row */
-#tables-groups .tab[data-kind].active { background: var(--green); color: #0a0a0a; border-color: var(--green); }
-#tables-groups .tab[data-kind] small { margin-left: 6px; color: rgba(255, 255, 255, 0.65); font-weight: 700; }
-#tables-groups .tab[data-kind].active small { color: rgba(10, 10, 10, 0.6); }
+/* the play-off of the tables page: the filter of the kind of draw is an orange veil when chosen (a grey frame otherwise), the same on the season page and here */
+#tables-groups .tab[data-kind] { background: transparent; border: 1px solid var(--frame); color: #c3c7cf; }
+#tables-groups .tab[data-kind]:hover { border-color: var(--frame-hover); color: var(--white); }
+#tables-groups .tab[data-kind].active { background: rgba(255, 85, 0, 0.14); border-color: var(--orange); color: var(--orange); }
+#tables-groups .tab[data-kind] small { margin-left: 6px; color: #8b8f98; font-weight: 700; }
+#tables-groups .tab[data-kind].active small { color: var(--orange); }
 /* the group tables (the Tabuľky tab of a season or a tournament, and the page Tabuľky): the grey frame and the black tile as the other cards, the name of the group white */
 :is(#sv-tables, #tables-root) .grp-card { border: 1px solid var(--frame); transition: border-color 0.2s; background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(33, 34, 38, 0.93), rgba(10, 10, 10, 0.6) 75%) !important; }
 :is(#sv-tables, #tables-root) .grp-card:hover { border-color: var(--frame-hover); }
 :is(#sv-tables, #tables-root) .grp-title { color: var(--white); }
 :is(#sv-tables, #tables-root) .grp-title span { color: #8b8f98; }
+/* the match tiles of a bracket (the tree and the rounds view) are grey tiles ("sivá dlaždica"): the gradient, the light border and the highlight of .grey-tile */
+body:not(.embed-light) :is(.bk-m, .bracket-match-card) { background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid var(--tile-border); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+body:not(.embed-light) :is(.bk-m.link:hover, .bracket-match-card-clickable:hover) { background: linear-gradient(160deg, #4a4a54, #35353d); }
