@@ -7489,3 +7489,22 @@ body .ltp-foot .ltp-status .badge[style*="var(--orange)"] { border-color: var(--
 /* a post of a community feed is a black tile ("čierna dlaždica"): the same gradient and border as .black-tile */
 body .com-post { background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(33, 34, 38, 0.93), rgba(10, 10, 10, 0.6) 75%) !important; }
 body .com-post:not(:hover) { border-color: var(--tile-border); }
+/* the top of a "looking for an opponent" card is a glass panel ("sklenený panel"): the card behind it is see-through, so the translucent dark and the blur of the head show the page (the card itself used to be solid black under it) */
+body:not(.embed-light):not(.embed) .match-card.availability-post.ltp-tile { background: transparent; background-image: none; }
+body:not(.embed-light):not(.embed) .ltp-head { background: rgba(10, 10, 10, 0.55); -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); }
+/* the players block of a planned or live match card (the two names and the format) is a grey tile ("sivá dlaždica"): the same gradient, border and highlight as .grey-tile (a finished match keeps its black block, and so does the player page) */
+body:not(:has(#player-bio-card)):not(.embed-light) :is(.match-card, .compact-card):not(.status-FINISHED) .scoreboard {
+  background: linear-gradient(160deg, #41414a, #2e2e35) !important;
+  border: 1px solid var(--tile-border);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+/* a match card (planned, live, finished) is a black tile ("čierna dlaždica"): the same gradient as .black-tile; its border (green planned, orange live) stays its own. The player page and the embeds keep their own rules */
+body:not(:has(#player-bio-card)):not(.embed-light):not(.embed) .match-card:not(.availability-post) { background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(33, 34, 38, 0.93), rgba(10, 10, 10, 0.6) 75%) !important; }
+
+/* Harmonogram: every event is a card of its own (not one card per month), 16px apart; a league has a green outline, a tournament an orange one, a finished event a grey one */
+.sch-card + .sch-card { margin-top: var(--card-gap); }
+.sch-card.kind-league, .sch-card.now.kind-league { border-color: var(--green); }
+.sch-card.kind-tour, .sch-card.now.kind-tour { border-color: var(--orange); }
+.sch-card.past { border-color: rgba(255, 255, 255, 0.28); }

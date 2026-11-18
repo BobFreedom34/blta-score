@@ -131,9 +131,13 @@ function monthsHtml(list, today, { from, withYear = false } = {}) {
   return [...byMonth.keys()].sort().map((key) => {
     const { d, list: inMonth } = byMonth.get(key);
     const name = new Date(d.getFullYear(), d.getMonth(), 1, 12).toLocaleDateString(locale(), withYear ? { month: 'long', year: 'numeric' } : { month: 'long' });
-    const states = inMonth.map((e) => statusOf(e, today));
-    const tone = states.includes('now') ? ' now' : (states.every((x) => x === 'past') ? ' past' : '');
-    return `<h2 class="sch-month-title">${escapeHtml(name)}</h2><div class="sch-card${tone}">${inMonth.map((e) => rowHtml(e, today)).join('')}</div>`;
+    // every event is a card of its own: a league has a green outline, a tournament an orange one (a finished one grey, see .sch-card.past)
+    const cards = inMonth.map((e) => {
+      const st = statusOf(e, today);
+      const tone = `${e.kind === 'LEAGUE' ? ' kind-league' : ' kind-tour'}${st === 'now' ? ' now' : (st === 'past' ? ' past' : '')}`;
+      return `<div class="sch-card${tone}">${rowHtml(e, today)}</div>`;
+    }).join('');
+    return `<h2 class="sch-month-title">${escapeHtml(name)}</h2>${cards}`;
   }).join('');
 }
 
