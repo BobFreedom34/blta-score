@@ -7536,3 +7536,11 @@ body:not(.embed-light) .bracket-wrap.card { border: 1px solid var(--frame); tran
 body:not(.embed-light) .bracket-wrap.card:hover { border-color: var(--frame-hover); }
 /* the frame around a bracket is a black tile ("čierna dlaždica") too: the same gradient as .black-tile */
 body:not(.embed-light) .bracket-wrap.card { background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(33, 34, 38, 0.93), rgba(10, 10, 10, 0.6) 75%) !important; }
+/* the match page: every black background (the scoreboard, the cards, the info tiles, the head-to-head) is a black tile ("čierna dlaždica") */
+body.match-page:not(.embed-light):not(.embed) #match-root :is(.scoreboard, .card, .info-item, .h2hc) { background-image: linear-gradient(to top, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(315deg, rgba(33, 34, 38, 0.93), rgba(10, 10, 10, 0.6) 75%) !important; }
+/* the match page: the delete button is a red veil ("červený závoj", like the green veil): translucent red, a clear red outline, red text */
+body.match-page #match-root .btn-danger { background: rgba(229, 72, 58, 0.18); color: #ff6a5a; border: 1px solid #e5483a; }
+body.match-page #match-root .btn-danger:hover { background: rgba(229, 72, 58, 0.32); border-color: #ff6a5a; color: #ff6a5a; }
+/* the "Poslať na WhatsApp" button of the match page is a green veil ("zelený závoj"), like Funkcie / courtIQ in the footer */
+body.match-page #match-root #whatsapp-result-btn { background: rgba(178, 250, 6, 0.12); color: var(--green); border: 1px solid var(--green); }
+body.match-page #match-root #whatsapp-result-btn:hover { background: rgba(178, 250, 6, 0.2); color: var(--green); }

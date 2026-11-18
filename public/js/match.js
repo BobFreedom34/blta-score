@@ -811,13 +811,13 @@ function render(m) {
     ${chatHtml()}
 
     <div class="match-actions">
-      <a class="btn btn-primary" id="screen-btn" href="${escapeHtml(siteUrl(`/screen/${encodeURIComponent(m.token)}`))}">${iconLabel('monitor', t('match.screenBtn'))}</a>
-      <button class="btn btn-green" id="share-btn">${iconLabel('link', t('match.shareBtn'))}</button>
-      <button class="btn" id="embed-btn">${iconLabel('code', t('match.embedBtn'))}</button>
-      <button class="btn btn-dark" id="referee-btn">${iconLabel('userCheck', t('referee.btn'))}</button>
       ${locationEditable ? `<button class="btn" id="edit-match-btn">${iconLabel('pencil', t('match.editMatchBtn'))}</button>` : ''}
-      ${m.status === 'FINISHED' ? `<button class="btn btn-green" id="whatsapp-result-btn">${iconLabel('message', t('match.sendToWhatsapp'))}</button>` : ''}
       ${deletable ? `<button class="btn btn-danger" id="delete-btn">${iconLabel('trash', t('match.deleteMatchBtn'))}</button>` : ''}
+      <button class="btn btn-dark" id="referee-btn">${iconLabel('userCheck', t('referee.btn'))}</button>
+      <button class="btn btn-dark" id="share-btn">${iconLabel('link', t('match.shareBtn'))}</button>
+      <button class="btn btn-dark" id="embed-btn">${iconLabel('code', t('match.embedBtn'))}</button>
+      <a class="btn btn-dark" id="screen-btn" href="${escapeHtml(siteUrl(`/screen/${encodeURIComponent(m.token)}`))}">${iconLabel('monitor', t('match.screenBtn'))}</a>
+      ${m.status === 'FINISHED' ? `<button class="btn btn-green" id="whatsapp-result-btn">${iconLabel('message', t('match.sendToWhatsapp'))}</button>` : ''}
     </div>
   `;
 
