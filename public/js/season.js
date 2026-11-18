@@ -956,7 +956,9 @@ function renderTabs() {
   const tabs = availableTabs();
   if (!tabs.some((x) => x.key === tab)) tab = (tabs.find((x) => x.has) || tabs[0]).key;
   const el = document.getElementById('sv-tabs');
-  el.innerHTML = tabs.map((x) => `<button type="button" class="tab${x.key === tab ? ' active' : ''}" data-tab="${x.key}">${escapeHtml(x.label)}${x.count ? `<small>${x.count}</small>` : ''}</button>`).join('');
+  // on a phone the sections are a grid of small tiles (css, max-width 700px), all visible at once; a computer keeps the row of buttons
+  el.classList.add('nav-a');
+  el.innerHTML = tabs.map((x) => `<button type="button" class="tab${x.key === tab ? ' active' : ''}" data-tab="${x.key}">${x.key === 'info' ? `<span class="lbl-l">${escapeHtml(x.label)}</span><span class="lbl-s">${escapeHtml(t('season.navInfoShort'))}</span>` : escapeHtml(x.label)}${x.count ? `<small>${x.count}</small>` : ''}</button>`).join('');
 }
 
 async function renderPanel() {
