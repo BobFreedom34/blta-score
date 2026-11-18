@@ -7513,3 +7513,7 @@ body:not(:has(#player-bio-card)):not(.embed-light):not(.embed) .match-card:not(.
 /* the match boxes of a bracket are the grey of the court headings of the court schedule (--fill-grey) */
 body:not(.embed-light) .bracket-match-card { background: var(--fill-grey); }
 body:not(.embed-light) .bracket-match-card-clickable:hover { background: #45454d; }
+/* ONE grey border (--tile-border, 18% white, 1px — the one of the match cards) on everything that sits on a BLACK background: the home page (the arrows of the season strip, the chips of its cards, the sign-in / register switch, the lines between the rows of a table) and the connector lines of a bracket. Grey tiles and buttons keep their own border. */
+body .home-tl-nav:not(:hover), body .home-tl-chip, body .home-auth-seg { border-color: var(--tile-border); }
+body .home-m-row, body .home-t-row { border-color: var(--tile-border); }
+body:not(.embed-light) .bracket-node--incoming::before, body:not(.embed-light) .bracket-node--top::after, body:not(.embed-light) .bracket-node--bottom::after { border-color: var(--tile-border); }
