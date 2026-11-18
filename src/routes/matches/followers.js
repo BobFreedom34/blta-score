@@ -60,8 +60,10 @@ router.post('/:token/push-subscribe', (req, res) => {
   res.status(201).json({ subscribed: true });
 });
 
+// a message carries the face of its author (photo and profile address) like a comment in the communities; the name is how it was written, so the player is found by it ("Admin" has none)
 function serializeMessage(row) {
-  return { id: row.id, author: row.author, body: row.body, createdAt: row.created_at };
+  const who = db.prepare('SELECT slug, photo_url FROM players WHERE name = ? COLLATE NOCASE').get(row.author);
+  return { id: row.id, author: row.author, authorSlug: who ? who.slug : null, authorPhotoUrl: who && who.photo_url ? who.photo_url : null, body: row.body, createdAt: row.created_at };
 }
 
 router.get('/:token/messages', (req, res) => {

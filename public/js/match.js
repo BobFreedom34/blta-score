@@ -220,13 +220,9 @@ function controlsHtml(m, canControlLive) {
   `;
 }
 
+// a message of the chat is a comment of the communities, drawn by the same code (community-post.js: face with the photo, the name linking to the profile, the text in a bubble, the time under it)
 function chatMessageHtml(msg) {
-  return `
-    <div class="chat-message">
-      <div class="chat-message-meta"><span class="chat-message-author">${escapeHtml(msg.author)}</span><span class="chat-message-time">${fmtDateShort(msg.createdAt)}</span></div>
-      <div class="chat-message-body">${escapeHtml(msg.body)}</div>
-    </div>
-  `;
+  return comCommentHtml({ id: msg.id, authorName: msg.author, authorSlug: msg.authorSlug, authorPhotoUrl: msg.authorPhotoUrl, body: msg.body, createdAt: msg.createdAt, canDelete: false }, []);
 }
 
 function appendChatMessage(message) {
@@ -254,10 +250,9 @@ function chatHtml() {
       </div>
       ${canWrite ? `
       <form id="chat-form">
-        <div style="display:flex;gap:6px">
-          <input type="text" id="chat-body" placeholder="${escapeHtml(t('match.typeMessagePlaceholder'))}" value="${escapeHtml(chatDraftBody)}" maxlength="500" required style="flex:1">
-          <button type="submit" class="btn btn-primary btn-sm">${t('match.sendBtn')}</button>
-        </div>
+        <div class="com-comment-new"><textarea rows="1" id="chat-body" maxlength="500" placeholder="${escapeHtml(t('match.typeMessagePlaceholder'))}">${escapeHtml(chatDraftBody)}</textarea>
+          <button type="button" class="btn btn-outline com-small com-tool" data-comment-emoji aria-label="${escapeHtml(t('com.emoji'))}">😊</button>
+          <button type="submit" class="btn btn-primary com-small">${t('match.sendBtn')}</button></div>
       </form>` : `
       <div class="chat-login-note">
         <span>${escapeHtml(t('match.chatLoginNote'))}</span>
@@ -1160,6 +1155,9 @@ function attachHandlers(m) {
   if (chatForm) {
     const bodyInput = document.getElementById('chat-body');
     bodyInput.addEventListener('input', () => { chatDraftBody = bodyInput.value; });
+    bodyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatForm.requestSubmit(); } });
+    const emojiBtn = chatForm.querySelector('[data-comment-emoji]');
+    emojiBtn.addEventListener('click', (e) => { e.stopPropagation(); comEmojiPanel(emojiBtn, COM_EMOJI, (em) => { comInsertAtCursor(bodyInput, em); chatDraftBody = bodyInput.value; }); });
     chatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const body = bodyInput.value.trim();

@@ -7544,3 +7544,12 @@ body.match-page #match-root .btn-danger:hover { background: rgba(229, 72, 58, 0.
 /* the "Poslať na WhatsApp" button of the match page is a green veil ("zelený závoj"), like Funkcie / courtIQ in the footer */
 body.match-page #match-root #whatsapp-result-btn { background: rgba(178, 250, 6, 0.12); color: var(--green); border: 1px solid var(--green); }
 body.match-page #match-root #whatsapp-result-btn:hover { background: rgba(178, 250, 6, 0.2); color: var(--green); }
+/* the match page: the Miesto and Dátum tiles (the first two of the info grid) are grey tiles ("sivá dlaždica") */
+body.match-page:not(.embed-light):not(.embed) #match-root .info-grid > .info-item:nth-child(-n+2) { background-image: linear-gradient(160deg, #41414a, #2e2e35) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+/* the chat of a match is a comment thread of the communities (the same classes, community-post.js): only the colours of the dark match page are set here */
+body.match-page .chat-messages { gap: 0; }
+body.match-page .chat-card .com-comment-new textarea { background: var(--fill-grey); color: var(--white); border: 1px solid rgba(255, 255, 255, 0.1); }
+body.match-page .chat-card .com-comment-new textarea::placeholder { color: #8b8f98; }
+body.match-page .chat-card .com-comment-new textarea:focus { border-color: var(--orange); outline: none; }
+/* the match page: the "Zmeny úrovne" card has the same 20px gap under the winner card as the blocks above it (it had none) */
+body.match-page #match-root .result-card + .lc-card { margin-top: 20px; }
