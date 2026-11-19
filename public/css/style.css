@@ -4340,15 +4340,15 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 
 /* season page, phone: every row of buttons runs to the screen edge like the other pages' tab rows, so the first button lines up with the content */
 @media (max-width: 680px) {
-  #sv-tabs, #sv-cats, #sv-pcats, .sv-filters .tabs, .sv-filters .sv-rounds { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+  #sv-tabs, #sv-cats, #sv-pcats, #sv-mcats, #sv-fcats, .sv-filters .tabs, .sv-filters .sv-rounds { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
 }
 
 /* Hráči: the category filter above the tables (like the one on the Tabuľky tab) */
-#sv-pcats { margin-top: 0; margin-bottom: 48px; /* (not the shorthand: on a phone the sides keep the negative margin that lines the first button up, see above) */ align-items: center; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
-#sv-pcats .tab { white-space: nowrap; flex: 0 0 auto; }
-#sv-pcats .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
-#sv-pcats .tab small { color: rgba(255, 255, 255, 0.65); font-weight: 700; margin-left: 6px; }
-@media (max-width: 900px) { #sv-pcats { margin-bottom: 40px; } }
+#sv-pcats, #sv-mcats, #sv-fcats { margin-top: 0; margin-bottom: 48px; /* (not the shorthand: on a phone the sides keep the negative margin that lines the first button up, see above) */ align-items: center; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
+#sv-pcats .tab, #sv-mcats .tab, #sv-fcats .tab { white-space: nowrap; flex: 0 0 auto; }
+#sv-pcats .tab.active, #sv-mcats .tab.active, #sv-fcats .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }
+#sv-pcats .tab small, #sv-mcats .tab small, #sv-fcats .tab small { color: rgba(255, 255, 255, 0.65); font-weight: 700; margin-left: 6px; }
+@media (max-width: 900px) { #sv-pcats, #sv-mcats, #sv-fcats { margin-bottom: 40px; } }
 
 /* schedule list: the card of a running season is green, a month with only finished events is grey */
 .sch-card.now { border-color: var(--green); box-shadow: none; }
@@ -7619,8 +7619,8 @@ body:has(#player-bio-card) #courtiq-card.player-sec { margin-top: 0; }
   #sv-tabs.nav-a .tab small { margin: 0 0 0 auto; font-size: 11px; }
 }
 /* the filters of the second row (the categories: Všetky kategórie, Elite, Next Gen, Novice) are green when chosen, not orange (orange is for the sections of the first row) */
-#sv-cats .tab.active, #sv-pcats .tab.active { background: var(--green); color: #0a0a0a; border-color: var(--green); }
-#sv-cats .tab.active small, #sv-pcats .tab.active small { color: rgba(10, 10, 10, 0.6); }
+#sv-cats .tab.active, #sv-pcats .tab.active, #sv-mcats .tab.active, #sv-fcats .tab.active { background: var(--green); color: #0a0a0a; border-color: var(--green); }
+#sv-cats .tab.active small, #sv-pcats .tab.active small, #sv-mcats .tab.active small, #sv-fcats .tab.active small { color: rgba(10, 10, 10, 0.6); }
 /* ---------- Bracket: the view "Po kolách" (rounds one under the other, the rounds to come with the grey names of who can be there) and the switch between it and the tree (public/js/bracket-view.js) ---------- */
 /* the switch of a view ("Pavúk | Po kolách") is the segmented control of the court schedule (.cs-seg: a grey tile, the chosen one green); only the gap under it is set here */
 .bk-switch { margin: 0 0 16px; }

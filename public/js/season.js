@@ -15,6 +15,17 @@ const CATEGORY_NAMES = { ELITE: 'Elite', NEXT_GEN: 'Next Gen', NOVICE: 'Novice',
 const CATEGORY_ORDER_ALL = [...CATEGORY_ORDER, 'DOUBLES', 'OPEN']; // (OPEN = a tournament played without categories: one draw for everybody)
 const playerCatName = (c) => (c === 'NONE' ? t(isDoublesTournament() ? 'season.pairsTitle' : 'season.noCategory') : CATEGORY_NAMES[c]);
 
+// a row of category buttons for a list (the Zápasy and Konečné poradie tabs): "Všetky" and one button per category that has something, the weakest first;
+// the row is left out when there is only one category. -> { html, cat } (cat = the category to show, 'ALL' when the chosen one has nothing)
+function categoryFilter(id, attr, items, chosen) {
+  const order = ['NOVICE', 'NEXT_GEN', 'ELITE'];
+  const keys = [...new Set(items.map((x) => x.category || 'NONE'))].sort((a, b) => (order.indexOf(a) === -1 ? 9 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 9 : order.indexOf(b)));
+  if (keys.length < 2) return { html: '', cat: 'ALL' };
+  const cat = chosen === 'ALL' || keys.includes(chosen) ? chosen : 'ALL';
+  const btn = (key, label, n) => `<button type="button" class="tab${cat === key ? ' active' : ''}" ${attr}="${key}">${escapeHtml(label)}<small>${n}</small></button>`;
+  return { html: `<div class="tabs sv-line" id="${id}">${btn('ALL', t('season.schedAll'), items.length)}${keys.map((k) => btn(k, playerCatName(k), items.filter((x) => (x.category || 'NONE') === k).length)).join('')}</div>`, cat };
+}
+
 let season = null;
 let standings = null;
 let winnersEdition = null; // the winners list (Backend > Winners) linked to this season, if there is one
@@ -27,6 +38,8 @@ let category = null;
 let schedCat = null; // the Rozpis tab's category and group choice (always one of each)
 let schedGroup = null;
 let playersCat = 'ALL'; // the Hráči tab's category filter
+let matchesCat = 'ALL'; // the Zápasy tab's category filter
+let finalCat = 'ALL'; // the Konečné poradie tab's category filter
 let playoffCat = 'ALL'; // the Play-off tab's category filter
 let playoffKind = 'MAIN'; // ... and the one of the draw: the main draw, the consolation draw (útecha) or the placement draws, one at a time
 const bracketData = new Map(); // bracket id -> full bracket, cleared whenever the data is refreshed
@@ -493,15 +506,18 @@ function leagueMatchCardHtml(m) {
 // The Zápasy tab of a tournament: all its matches in the groups of the league's matches page - live, scheduled, not yet scheduled, finished, unfinished
 function matchesHtml() {
   if (!allMatches.length) return '';
+  const filter = categoryFilter('sv-mcats', 'data-mc', allMatches, matchesCat);
+  matchesCat = filter.cat;
+  const shown = matchesCat === 'ALL' ? allMatches : allMatches.filter((m) => (m.category || 'NONE') === matchesCat);
   const when = (m) => m.scheduledAt || m.endTime || '';
   const groups = [
-    ['liveHeading', allMatches.filter((m) => m.status === 'LIVE')],
-    ['scheduledHeading', allMatches.filter((m) => m.status === 'PLANNED' && m.scheduledAt).sort((a, b) => when(a).localeCompare(when(b)))],
-    ['plannedHeading', allMatches.filter((m) => m.status === 'PLANNED' && !m.scheduledAt)],
-    ['finishedHeading', allMatches.filter((m) => m.status === 'FINISHED').sort((a, b) => when(b).localeCompare(when(a)))],
-    ['unfinishedHeading', allMatches.filter((m) => m.status === 'UNFINISHED').sort((a, b) => when(b).localeCompare(when(a)))],
+    ['liveHeading', shown.filter((m) => m.status === 'LIVE')],
+    ['scheduledHeading', shown.filter((m) => m.status === 'PLANNED' && m.scheduledAt).sort((a, b) => when(a).localeCompare(when(b)))],
+    ['plannedHeading', shown.filter((m) => m.status === 'PLANNED' && !m.scheduledAt)],
+    ['finishedHeading', shown.filter((m) => m.status === 'FINISHED').sort((a, b) => when(b).localeCompare(when(a)))],
+    ['unfinishedHeading', shown.filter((m) => m.status === 'UNFINISHED').sort((a, b) => when(b).localeCompare(when(a)))],
   ].filter(([, list]) => list.length);
-  return `<div class="sv-matches match-list">${groups.map(([key, list]) => `<h2 class="match-list-heading">${matchHeadingHtml(key)}</h2>${list.map(leagueMatchCardHtml).join('')}`).join('')}</div>`;
+  return `${filter.html}<div class="sv-matches match-list">${groups.map(([key, list]) => `<h2 class="match-list-heading">${matchHeadingHtml(key)}</h2>${list.map(leagueMatchCardHtml).join('')}`).join('')}</div>`;
 }
 
 function tablesHtml() {
@@ -871,8 +887,10 @@ function finalRowText(r) {
 }
 function finalHtml() {
   if (!finalData || !finalData.sections.length) return '';
+  const filter = categoryFilter('sv-fcats', 'data-fc', finalData.sections, finalCat);
+  finalCat = filter.cat;
   const note = finalData.complete ? '' : `<p class="sv-final-note">${escapeHtml(t('season.final.provisional'))}</p>`;
-  const sections = finalData.sections.map((s) => `
+  const sections = finalData.sections.filter((s) => finalCat === 'ALL' || (s.category || 'NONE') === finalCat).map((s) => `
     <div class="sv-final-one">
       <div class="sv-ptable">
         <div class="sv-ptable-t">${escapeHtml(s.title)}<em>${s.rows.length}</em></div>
@@ -886,7 +904,7 @@ function finalHtml() {
         </div>
       </div>
     </div>`).join('');
-  return `<section class="sv-sec" id="sv-final">${note}<div class="sv-pt">${sections}</div><p class="sv-sub-note">${escapeHtml(t('season.final.hint'))}</p></section>`;
+  return `<section class="sv-sec" id="sv-final">${filter.html}${note}<div class="sv-pt">${sections}</div><p class="sv-sub-note">${escapeHtml(t('season.final.hint'))}</p></section>`;
 }
 
 // ---------- tabs ----------
@@ -1083,6 +1101,10 @@ rootEl.addEventListener('click', async (e) => {
   if (ok) { playoffKind = ok.dataset.ok; renderPanel(); return; }
   const pc = e.target.closest('#sv-panel [data-pc], #sv-players-fixed [data-pc]');
   if (pc) { playersCat = pc.dataset.pc; renderFixedPlayers(); renderPanel(); return; }
+  const mc = e.target.closest('#sv-panel [data-mc]');
+  if (mc) { matchesCat = mc.dataset.mc; renderPanel(); return; }
+  const fc = e.target.closest('#sv-panel [data-fc]');
+  if (fc) { finalCat = fc.dataset.fc; renderPanel(); return; }
   const sc = e.target.closest('#sv-panel [data-sc]');
   if (sc) { schedCat = sc.dataset.sc; schedGroup = null; renderPanel(); return; }
   const sg = e.target.closest('#sv-panel [data-sg]');
