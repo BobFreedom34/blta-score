@@ -77,7 +77,7 @@ const TAGS = {
   ul: 'ul', ol: 'ol', li: 'li', h3: 'h3', h4: 'h3', a: 'a',
   table: 'table', thead: 'thead', tbody: 'tbody', tr: 'tr', th: 'th', td: 'td',
 };
-const CLASS_OK = /^(pr-[a-z-]+|win|bad|yes|no|elite|nextgen|novice|num)$/;
+const { TEMPLATE_CLASS: CLASS_OK, safeStyle } = require('./templateStyle'); // the classes of the page elements (and the tiles) + colours in a style
 
 function escapeText(text) {
   return text.replace(/&(?![a-zA-Z]+;|#\d+;)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -110,6 +110,11 @@ function sanitize(input) {
     if (cls) {
       const keep = (cls[1] !== undefined ? cls[1] : cls[2]).split(/\s+/).filter((c) => CLASS_OK.test(c));
       if (keep.length) attrs += ` class="${keep.join(' ')}"`;
+    }
+    const styleAttr = m[3].match(/style\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+    if (styleAttr) {
+      const safe = safeStyle(styleAttr[1] !== undefined ? styleAttr[1] : styleAttr[2]);
+      if (safe) attrs += ` style="${safe}"`;
     }
     if (name === 'a') {
       const href = m[3].match(/href\s*=\s*(?:"([^"]*)"|'([^']*)')/i);

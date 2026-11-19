@@ -51,7 +51,7 @@ test('sanitizer: scripts, styles, frames, event handlers and bad addresses go; t
   assert.strictEqual(clean('<img src="data:image/svg+xml;base64,AAAA" alt="x">'), '');
   assert.strictEqual(clean('<img src="x" onerror="alert(1)">'), '', 'a picture without an address of a site is nothing');
   assert.strictEqual(clean('<img src="/img/a.png" onerror="alert(1)" style="x:y" alt="A">'), '<img src="/img/a.png" alt="A" loading="lazy" />');
-  assert.strictEqual(clean('<a href="https://example.com/x?a=1&b=2" onclick="x" style="color:red">go</a>'), '<a href="https://example.com/x?a=1&amp;b=2" target="_blank" rel="noopener">go</a>');
+  assert.strictEqual(clean('<a href="https://example.com/x?a=1&b=2" onclick="x" style="color:red;position:fixed">go</a>'), '<a href="https://example.com/x?a=1&amp;b=2" target="_blank" rel="noopener" style="color:red">go</a>'); // a colour in a style is allowed now (text templates), anything else in it is not
   assert.strictEqual(clean('<a href="/blog">in</a> <a href="#top">up</a> <a href="mailto:a@b.sk">m</a>'), '<a href="/blog">in</a> <a href="#top">up</a> <a href="mailto:a@b.sk">m</a>');
   // the broken tags only leave text behind (harmless as text): nothing in it can start a script
   assert.ok(!/</.test(clean('<scr<script>ipt>alert(1)</scr</script>ipt>')), clean('<scr<script>ipt>alert(1)</scr</script>ipt>'));

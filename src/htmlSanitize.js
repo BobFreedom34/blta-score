@@ -7,12 +7,14 @@
 // It reads the text with a tokenizer (not with regular expressions over the whole string), so odd things like <scr<script>ipt> or
 // attributes with > inside quotes do not get through.
 
-const ALLOWED = new Set(['p', 'br', 'hr', 'h2', 'h3', 'h4', 'h5', 'strong', 'b', 'em', 'i', 'u', 's', 'sup', 'sub', 'ul', 'ol', 'li', 'blockquote',
+const { TEMPLATE_CLASS, safeStyle } = require('./templateStyle');
+
+const ALLOWED = new Set(['div', 'span', 'p', 'br', 'hr', 'h2', 'h3', 'h4', 'h5', 'strong', 'b', 'em', 'i', 'u', 's', 'sup', 'sub', 'ul', 'ol', 'li', 'blockquote',
   'a', 'img', 'figure', 'figcaption', 'table', 'thead', 'tbody', 'tr', 'th', 'td']);
 const VOID = new Set(['br', 'hr', 'img']);
 // the whole element goes, with what is inside it
 const DROP_WITH_CONTENT = new Set(['script', 'style', 'iframe', 'object', 'embed', 'noscript', 'template', 'svg', 'math', 'form', 'textarea', 'select', 'title', 'head']);
-const RENAME = { h1: 'h2', h6: 'h5', div: null, span: null, section: null, article: null, center: null, font: null };
+const RENAME = { h1: 'h2', h6: 'h5', section: null, article: null, center: null, font: null };
 
 const ATTRS = {
   a: ['href', 'title'],
@@ -82,12 +84,19 @@ function sanitizeHtml(input) {
     if (!ALLOWED.has(name)) continue; // an unknown tag goes, its text stays
     if (closing) {
       if (VOID.has(name)) continue;
-      const at = stack.lastIndexOf(name);
+      const kept = stack.lastIndexOf(name);
+      const bare = stack.lastIndexOf(`~${name}`); // a div/span without a template class or colour: unwrapped, only its marker is on the stack
+      const at = Math.max(kept, bare);
       if (at === -1) continue;
-      while (stack.length > at) out.push(`</${stack.pop()}>`);
+      while (stack.length > at + 1) out.push(`</${stack.pop()}>`);
+      if (at === bare) stack.pop(); else out.push(`</${stack.pop()}>`);
       continue;
     }
     const attrs = parseAttrs(tag[3]);
+    // the text templates: only the classes of the page elements and colours in a style (src/templateStyle.js)
+    const classes = String(attrs.class || '').split(/\s+/).filter((c) => TEMPLATE_CLASS.test(c));
+    const style = safeStyle(attrs.style);
+    if ((name === 'div' || name === 'span') && !classes.length && !style) { if (!tag[4]) stack.push(`~${name}`); continue; } // a plain layout tag goes, its text stays
     let text = `<${name}`;
     if (name === 'a') {
       const href = safeUrl(attrs.href);
@@ -103,11 +112,13 @@ function sanitizeHtml(input) {
     } else if (ATTRS[name]) {
       ATTRS[name].forEach((k) => { if (/^\d{1,4}$/.test(attrs[k] || '')) text += ` ${k}="${attrs[k]}"`; });
     }
+    if (classes.length) text += ` class="${classes.join(' ')}"`;
+    if (style) text += ` style="${escapeAttr(style)}"`;
     text += VOID.has(name) ? ' />' : '>';
     out.push(text);
     if (!VOID.has(name)) stack.push(name);
   }
-  while (stack.length) out.push(`</${stack.pop()}>`);
+  while (stack.length) { const top = stack.pop(); if (!top.startsWith('~')) out.push(`</${top}>`); }
   return out.join('').replace(/<p>(?:\s|&nbsp;|<br \/>)*<\/p>/g, '').trim();
 }
 
