@@ -67,7 +67,7 @@
       </label>
       <div style="${label}">Text of the article${hint(sk ? '' : '(empty = the Slovak one)')}</div>
       <div class="blg-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">
-        ${[['h2', 'H2'], ['h3', 'H3'], ['b', 'B'], ['i', 'I'], ['a', 'Link'], ['ul', 'List'], ['quote', 'Quote'], ['hr', '—'], ['img', 'Picture…']].map(([cmd, text]) => `<button type="button" class="btn btn-sm btn-outline" data-cmd="${cmd}">${text}</button>`).join('')}
+        ${[['h2', 'H2'], ['h3', 'H3'], ['b', 'B'], ['i', 'I'], ['a', 'Link'], ['ul', 'List'], ['quote', 'Quote'], ['hr', '—'], ['img', 'Picture…'], ['template', '▦ Template']].map(([cmd, text]) => `<button type="button" class="btn btn-sm btn-outline" data-cmd="${cmd}">${text}</button>`).join('')}
         <button type="button" class="btn btn-sm btn-outline" data-act="preview" style="margin-left:auto">Preview</button>
       </div>
       <textarea data-f="body${l}" rows="16" style="${field};font-family:ui-monospace,Consolas,monospace;font-size:13px;resize:vertical">${escapeHtml(draft[`body${l}`])}</textarea>
@@ -172,6 +172,7 @@
     else if (cmd === 'ul') wrap(area, '<ul>\n<li>', '</li>\n<li>item</li>\n</ul>\n', 'item');
     else if (cmd === 'quote') wrap(area, '<blockquote><p>', '</p></blockquote>\n', 'quote');
     else if (cmd === 'hr') wrap(area, '', '\n<hr />\n', '');
+    else if (cmd === 'template') RichEditor.openTemplatePicker((html) => wrap(area, `\n${html}\n`, '', '')); // the cards of the text templates (rich-editor.js): the HTML of the chosen card goes in at the cursor
     else if (cmd === 'a') {
       const url = window.prompt('Address of the link (https://… or /page)', 'https://');
       if (url) wrap(area, `<a href="${url.replace(/"/g, '&quot;')}">`, '</a>', 'link text');
