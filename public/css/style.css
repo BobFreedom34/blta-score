@@ -5126,7 +5126,7 @@ a.win-card:hover { box-shadow: none; }
 
 /* Rozvrh kurtov: the court schedule tab of a tournament (court-schedule.js) */
 .cs-bar { display: grid; gap: 14px; justify-items: start; margin-bottom: 18px; }
-.cs-bar .tabs { margin: 0; }
+.cs-bar .tabs { margin: 0; padding-left: 0; padding-right: 0; max-width: 100%; } /* (on a phone .tabs has 16px of padding inside a negative margin; here the margin is 0, so the padding pushed the day buttons 16px in from the other rows) */
 .cs-bar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .cs-fullscreen { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
 .cs-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-sm); background: var(--fill-grey); }
