@@ -4299,8 +4299,9 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 
 /* Hráči: one numbered table per category */
 .sv-pt { display: grid; gap: 48px; }
-.sv-ptable { background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius); padding: 4px 22px 10px; }
-.sv-ptable-t { padding: 16px 0 10px; font-size: 17px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.sv-ptable-card { background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius); padding: 4px 22px 10px; }
+/* the title of a table stands ABOVE its card, like every section title (the same as .section-label of the player page: 20px, 800, uppercase) */
+.sv-ptable-t { margin: 0 0 14px; font-size: 20px; line-height: 1.2; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
 .sv-ptable-t em { font-style: normal; color: #c3c7cf; font-size: 12px; letter-spacing: 0; margin-left: 10px; }
 .sv-pr { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-size: 14px; font-weight: 700; }
 .sv-pr:last-child { border-bottom: none; }
@@ -6549,7 +6550,7 @@ a.com-rank-name:hover { color: var(--orange); }
     .sv-fact,
     .sv-rg-card,
     .sv-pcard,
-    .sv-ptable,
+    .sv-ptable-card,
     .sa-section,
     .sv-tiles-panel,
     .sv-thread,
@@ -6619,7 +6620,7 @@ a.com-rank-name:hover { color: var(--orange); }
       .sv-fact,
       .sv-rg-card,
       .sv-pcard,
-      .sv-ptable,
+      .sv-ptable-card,
     .sa-section,
     .sv-tiles-panel,
     .sv-thread,
@@ -7729,3 +7730,6 @@ body:not(.embed-light) :is(.bk-m.link:hover, .bracket-match-card-clickable:hover
 .pr-card blockquote { margin: 0 0 14px; padding: 6px 0 6px 16px; border-left: 3px solid var(--green); color: #c3c7cf; font-style: italic; }
 .pr-card hr { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.18); margin: 18px 0; }
 .pr-card s { opacity: 0.7; }
+
+/* the selected tab inside a card of the Backend (the language of an article, ...) is the orange one like every selected tab: the card makes its text white, so it was white on white */
+body:has(.admin-tabs) .card .tab.active { background: var(--orange); color: var(--white); border-color: var(--orange); }

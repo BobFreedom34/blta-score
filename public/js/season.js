@@ -606,8 +606,10 @@ function playersHtml() {
     return `
       <div class="sv-ptable">
         <div class="sv-ptable-t">${escapeHtml(playerCatName(c.category))}<em>${c.players.length}</em></div>
+        <div class="sv-ptable-card">
         <div class="sv-pr head"><span class="n">#</span><span class="nm">${escapeHtml(t('season.colName'))}</span>${showPaid ? `<span class="fee">${escapeHtml(t('season.colFee'))}</span>` : ''}</div>
         ${rows}
+        </div>
       </div>`;
   }).join('');
   // the substitutes of the categories shown: after the tables, in the order they will come in
@@ -615,8 +617,10 @@ function playersHtml() {
   const subs = waiting.length ? `
       <div class="sv-ptable">
         <div class="sv-ptable-t">${escapeHtml(t('season.substitutes'))}<em>${waiting.length}</em></div>
+        <div class="sv-ptable-card">
         ${waiting.map((r, i) => `<div class="sv-pr"><span class="n">${i + 1}</span><span class="nm">${escapeHtml(r.name)}${r.category ? ` <small>(${escapeHtml(CATEGORY_NAMES[r.category] || r.category)})</small>` : ''}</span></div>`).join('')}
         <p class="sv-sub-note">${escapeHtml(t('season.substitutesNote'))}</p>
+        </div>
       </div>` : '';
   return `<section class="sv-sec" id="sv-players">${filter}<div class="sv-pt">${tables}${subs}</div></section>`;
 }
@@ -872,12 +876,14 @@ function finalHtml() {
     <div class="sv-final-one">
       <div class="sv-ptable">
         <div class="sv-ptable-t">${escapeHtml(s.title)}<em>${s.rows.length}</em></div>
+        <div class="sv-ptable-card">
         <div class="sv-pr head"><span class="n">#</span><span class="nm">${escapeHtml(t('season.final.colName'))}</span><span class="fee">${escapeHtml(t('season.final.colResult'))}</span></div>
         ${s.rows.map((r) => {
           const text = finalRowText(r);
           const name = r.player.slug ? `<a href="/player/${encodeURIComponent(r.player.slug)}">${escapeHtml(r.player.name)}</a>` : escapeHtml(r.player.name);
           return `<div class="sv-pr"><span class="n">${text.range}</span><span class="nm">${name}</span><span class="fee">${escapeHtml(text.result)}</span></div>`;
         }).join('')}
+        </div>
       </div>
     </div>`).join('');
   return `<section class="sv-sec" id="sv-final">${note}<div class="sv-pt">${sections}</div><p class="sv-sub-note">${escapeHtml(t('season.final.hint'))}</p></section>`;
