@@ -71,8 +71,8 @@ test('the test button needs a valid address and says so when there is no mail se
   assert.strictEqual((await call('POST', '/api/welcome-email/test', { to: 'me@example.com' })).status, 503);
 });
 
-test('the editor card is on the Menu page', () => {
-  const js = fs.readFileSync(path.join(ROOT, 'public', 'js', 'header-admin.js'), 'utf8');
+test('the editor card is on the E-mails page (Backend > E-mails)', () => {
+  const js = fs.readFileSync(path.join(ROOT, 'public', 'js', 'emails-admin.js'), 'utf8');
   assert.ok(js.includes('welcome-card') && js.includes("'/welcome-email'"));
 });
 

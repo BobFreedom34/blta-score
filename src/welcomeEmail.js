@@ -96,6 +96,8 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const C = { page: '#0d0c0a', card: '#17171a', line: '#2a2a30', white: '#ffffff', text: '#c9ccd3', dim: '#8b8f98', green: '#b2fa06', ink: '#0a0a0a', orange: '#ff5500' };
 const FONT = "font-family:'Segoe UI',Helvetica,Arial,sans-serif;";
 
+const button = (label, href) => `<tr><td style="padding:14px 0 6px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${C.orange}" style="border-radius:8px"><a href="${esc(href)}" style="display:inline-block;padding:13px 26px;${FONT}font-size:14px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:${C.white};text-decoration:none">${esc(label)} &rarr;</a></td></tr></table></td></tr>`;
+
 function dress(text, { origin, logoUrl }) {
   const lines = text.split('\n');
   // the signature = the last paragraph (after the last blank line), when there is more than one paragraph
@@ -107,14 +109,22 @@ function dress(text, { origin, logoUrl }) {
   lines.forEach((raw, i) => {
     const line = raw.trim();
     if (line === '') { out.push('<tr><td style="height:10px;line-height:10px;font-size:0">&nbsp;</td></tr>'); return; }
-    if (i >= sigFrom) {
-      const style = i === sigFrom ? `${FONT}font-size:16px;font-weight:800;color:${C.white};padding-top:6px` : `${FONT}font-size:14px;color:${C.green};font-weight:700`;
-      out.push(`<tr><td style="${style}">${esc(line)}</td></tr>`);
+    const bigTitle = (t) => `<tr><td style="${FONT}font-size:26px;line-height:1.25;font-weight:800;color:${C.white};padding-bottom:4px">${esc(t)}</td></tr>`;
+    const heading = line.match(/^#\s+(.*)$/);
+    if (heading) { first = false; out.push(bigTitle(heading[1])); return; }
+    if (/^-{3,}$/.test(line)) {
+      out.push(`<tr><td data-divider="1" style="padding:12px 0"><div style="border-top:1px solid ${C.line};height:1px;line-height:1px;font-size:0">&nbsp;</div></td></tr>`);
       return;
     }
-    if (first) {
-      first = false;
-      out.push(`<tr><td style="${FONT}font-size:26px;line-height:1.25;font-weight:800;color:${C.white};padding-bottom:4px">${esc(line)}</td></tr>`);
+    const box = line.match(/^>\s+(.*)$/);
+    if (box) {
+      out.push(`<tr><td style="padding:6px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#222a10" style="background:#222a10;border-left:4px solid ${C.green};border-radius:6px;padding:12px 16px;${FONT}font-size:15px;line-height:1.55;color:${C.white}">${esc(box[1])}</td></tr></table></td></tr>`);
+      return;
+    }
+    const btn = line.match(/^\[([^\]]+)\]\(([^)\s]+)\)$/);
+    if (btn) {
+      const href = /^https?:\/\//i.test(btn[2]) || /^mailto:/i.test(btn[2]) ? btn[2] : (/^\/(?!\/)/.test(btn[2]) && origin ? origin + btn[2] : '');
+      out.push(href ? button(btn[1], href) : `<tr><td style="${FONT}font-size:15px;line-height:1.6;color:${C.text}">${esc(btn[1])}</td></tr>`);
       return;
     }
     const step = line.match(/^(\d+)\.\s+(.*)$/);
@@ -131,10 +141,15 @@ function dress(text, { origin, logoUrl }) {
     }
     const lk = line.match(/^(.*?):?\s*(https?:\/\/\S+)\s*$/);
     if (lk) {
-      const label = lk[1].trim() || 'BLTA';
-      out.push(`<tr><td style="padding:14px 0 6px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${C.orange}" style="border-radius:8px"><a href="${esc(lk[2])}" style="display:inline-block;padding:13px 26px;${FONT}font-size:14px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:${C.white};text-decoration:none">${esc(label)} &rarr;</a></td></tr></table></td></tr>`);
+      out.push(button(lk[1].trim() || 'BLTA', lk[2]));
       return;
     }
+    if (i >= sigFrom) { // plain lines of the last paragraph: the signature
+      const style = i === sigFrom ? `${FONT}font-size:16px;font-weight:800;color:${C.white};padding-top:6px` : `${FONT}font-size:14px;color:${C.green};font-weight:700`;
+      out.push(`<tr><td style="${style}">${esc(line)}</td></tr>`);
+      return;
+    }
+    if (first) { first = false; out.push(bigTitle(line)); return; } // the first plain line: the greeting
     out.push(`<tr><td style="${FONT}font-size:15px;line-height:1.6;color:${C.text}">${esc(line).replace(/(https?:\/\/[^\s<]+)/g, `<a href="$1" style="color:${C.green}">$1</a>`)}</td></tr>`);
   });
   const logo = logoUrl ? `<img src="${esc(logoUrl)}" width="52" height="39" alt="BLTA" style="display:block;border:0">` : '';
@@ -150,12 +165,13 @@ function dress(text, { origin, logoUrl }) {
 }
 
 // -> { subject, text, html } in the player's language
-function render(lang, { name, link }) {
+// `bodyOverride` (the live preview of the backend editor) is used instead of the saved text; nothing is saved
+function render(lang, { name, link }, bodyOverride) {
   const s = read();
   const l = lang === 'en' ? 'en' : 'sk';
   const vars = { name, link };
   const subject = fill(s[l].subject, vars);
-  const text = fill(s[l].body, vars);
+  const text = fill(typeof bodyOverride === 'string' ? bodyOverride.replace(/\r/g, '') : s[l].body, vars);
   const origin = (/^https?:\/\/[^/]+/.exec(link || '') || [''])[0];
   const html = dress(text, { origin, logoUrl: origin ? `${origin}/img/blta-logo-sm.png` : '' });
   return { subject, text, html };

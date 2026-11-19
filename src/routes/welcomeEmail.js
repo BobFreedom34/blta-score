@@ -15,6 +15,16 @@ router.put('/', requireSuperAdmin, (req, res) => {
   res.json({ ...out, defaults: welcome.DEFAULTS });
 });
 
+// the e-mail as it would look with the text typed now ({ lang, subject?, body }): nothing is saved, nothing is sent (the live preview of Backend > E-mails)
+router.post('/preview', requireSuperAdmin, (req, res) => {
+  const b = req.body || {};
+  const lang = b.lang === 'en' ? 'en' : 'sk';
+  if (typeof b.body !== 'string' || b.body.length > 6000) return res.status(400).json({ error: 'The text is missing or too long' });
+  const base = `${req.protocol}://${req.get('host')}`;
+  const out = welcome.render(lang, { name: 'Jozef', link: `${base}/player/jozef` }, b.body);
+  res.json({ html: out.html });
+});
+
 // sends the e-mail as it stands now (the saved texts) to the address of the admin who asks, so it can be seen in a real inbox
 router.post('/test', requireSuperAdmin, async (req, res) => {
   const to = String((req.body && req.body.to) || '').trim();

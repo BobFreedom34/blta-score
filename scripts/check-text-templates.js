@@ -57,6 +57,36 @@ test('every template survives the blog sanitizer unchanged', () => {
   TEMPLATES.forEach((t) => assert.strictEqual(flat(sanitizeHtml(t.html)), flat(t.html), t.id));
 });
 
+const welcome = require('../src/welcomeEmail');
+const mail = (body) => welcome.render('sk', { name: 'Jozef', link: 'https://score.blta.sk/player/jozef' }, body).html;
+test('e-mail: a # line is a big heading', () => {
+  const h = mail('Ahoj\n\n# Nový nadpis\nText');
+  assert.ok(h.includes('Nový nadpis') && !h.includes('# Nový'), 'heading text');
+  assert.ok((h.match(/font-size:26px/g) || []).length >= 2, 'two big headings');
+});
+test('e-mail: a > line is a framed box', () => {
+  const h = mail('Ahoj\n> Dôležité upozornenie');
+  assert.ok(h.includes('Dôležité upozornenie') && !h.includes('&gt; Dôležité'));
+  assert.ok(/border-left:\d+px solid/.test(h));
+});
+test('e-mail: [Text](address) is a button', () => {
+  const h = mail('Ahoj\n[Môj profil](https://score.blta.sk/x)');
+  assert.ok(h.includes('href="https://score.blta.sk/x"') && h.includes('Môj profil'));
+});
+test('e-mail: a javascript: address is not a link', () => {
+  const h = mail('Ahoj\n[Klik](javascript:alert(1))');
+  assert.ok(!/href="javascript/i.test(h));
+  assert.ok(h.includes('Klik'));
+});
+test('e-mail: --- alone is a divider, --- inside a sentence is text', () => {
+  assert.ok(mail('Ahoj\n---\nDruhá časť').includes('data-divider'));
+  assert.ok(!mail('Ahoj\nA --- B').includes('data-divider'));
+});
+test('e-mail: the preview route is for the super admin only', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../src/routes/welcomeEmail.js'), 'utf8');
+  assert.ok(/router\.post\('\/preview', requireSuperAdmin/.test(src));
+});
+
 (async () => {
   let failed = 0;
   for (const t of tests) {
