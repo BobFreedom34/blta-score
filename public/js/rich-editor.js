@@ -169,5 +169,10 @@
     return true;
   }
 
-  root.RichEditor = { toolbarHtml, handleToolbarClick, handleToolbarChange, openTemplatePicker, tidy, paragraphs };
+  // puts HTML at the last cursor of an editor (at its end when the cursor was elsewhere): a picture from the blog toolbar
+  function insertHtmlAtCursor(rte, html) {
+    insertBlock(rte, { style: { display: 'none' } }, html, lastRange);
+  }
+
+  root.RichEditor = { insertHtmlAtCursor, toolbarHtml, handleToolbarClick, handleToolbarChange, openTemplatePicker, tidy, paragraphs };
 }(window));

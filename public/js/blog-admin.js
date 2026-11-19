@@ -66,12 +66,12 @@
         <textarea data-f="excerpt${l}" rows="2" maxlength="400" style="${field};resize:vertical">${escapeHtml(draft[`excerpt${l}`])}</textarea>
       </label>
       <div style="${label}">Text of the article${hint(sk ? '' : '(empty = the Slovak one)')}</div>
-      <div class="blg-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">
-        ${[['h2', 'H2'], ['h3', 'H3'], ['b', 'B'], ['i', 'I'], ['a', 'Link'], ['ul', 'List'], ['quote', 'Quote'], ['hr', '—'], ['img', 'Picture…'], ['template', '▦ Template']].map(([cmd, text]) => `<button type="button" class="btn btn-sm btn-outline" data-cmd="${cmd}">${text}</button>`).join('')}
-        <button type="button" class="btn btn-sm btn-outline" data-act="preview" style="margin-left:auto">Preview</button>
+      <div class="blg-pane">
+        ${RichEditor.toolbarHtml()}
+        <div style="margin:6px 0"><button type="button" class="btn btn-sm btn-outline" data-act="insert-img">Picture…</button></div>
+        <div class="blg-rte blog-body pr-edit" contenteditable="true" style="padding:14px;background:#161618;border-radius:10px">${RichEditor.tidy(draft[`body${l}`] || '')}</div>
+        <textarea class="blg-source" data-f="body${l}" rows="16" style="${field};font-family:ui-monospace,Consolas,monospace;font-size:13px;resize:vertical;display:none">${escapeHtml(draft[`body${l}`])}</textarea>
       </div>
-      <textarea data-f="body${l}" rows="16" style="${field};font-family:ui-monospace,Consolas,monospace;font-size:13px;resize:vertical">${escapeHtml(draft[`body${l}`])}</textarea>
-      <div class="blg-preview blog-body" style="display:none;margin-top:8px;padding:14px;background:#161618;border-radius:10px"></div>
       <div style="margin-top:16px;padding-top:6px;border-top:1px solid #eee;font-weight:800">For search engines${hint('(what Google and link previews show)')}</div>
       <label style="${label}">Title tag${hint(sk ? '(empty = the title + " - BLTA - …")' : '(empty = the Slovak one, or the title + " - BLTA - …")')}
         <input type="text" data-f="seoTitle${l}" value="${escapeHtml(draft[`seoTitle${l}`])}" maxlength="200" style="${field}">
@@ -120,6 +120,8 @@
 
   // the form's current values back into `draft` (what is on screen for the language shown + the shared fields)
   function collect() {
+    // the text of the article: what is in the visual editor (the HTML view keeps its own text in the textarea)
+    host.querySelectorAll('.blg-pane').forEach((p) => { const src = p.querySelector('.blg-source'); if (src.style.display === 'none') src.value = p.querySelector('.blg-rte').innerHTML; });
     host.querySelectorAll('[data-f]').forEach((el) => {
       const k = el.dataset.f;
       draft[k] = k === 'publishedAt' ? new Date(el.value || Date.now()).toISOString() : el.value;
@@ -127,21 +129,6 @@
   }
 
   // ---------------------------------------------------------------- the toolbar
-
-  function previewSafe(html) {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    doc.querySelectorAll('script,style,iframe,object,embed,form,link,meta,base').forEach((n) => n.remove());
-    doc.querySelectorAll('*').forEach((n) => [...n.attributes].forEach((a) => { if (/^on/i.test(a.name) || /^\s*javascript:/i.test(a.value)) n.removeAttribute(a.name); }));
-    return doc.body.innerHTML;
-  }
-
-  function wrap(area, before, after, placeholder) {
-    const { selectionStart: a, selectionEnd: b, value } = area;
-    const chosen = value.slice(a, b) || placeholder;
-    area.value = `${value.slice(0, a)}${before}${chosen}${after}${value.slice(b)}`;
-    area.focus();
-    area.setSelectionRange(a + before.length, a + before.length + chosen.length);
-  }
 
   async function uploadPicture() {
     const input = host.querySelector('#blg-file');
@@ -163,32 +150,12 @@
     });
   }
 
-  async function command(cmd) {
-    const area = host.querySelector(`[data-f="body${lang}"]`);
-    if (cmd === 'h2') wrap(area, '<h2>', '</h2>\n', 'Heading');
-    else if (cmd === 'h3') wrap(area, '<h3>', '</h3>\n', 'Heading');
-    else if (cmd === 'b') wrap(area, '<strong>', '</strong>', 'bold');
-    else if (cmd === 'i') wrap(area, '<em>', '</em>', 'italic');
-    else if (cmd === 'ul') wrap(area, '<ul>\n<li>', '</li>\n<li>item</li>\n</ul>\n', 'item');
-    else if (cmd === 'quote') wrap(area, '<blockquote><p>', '</p></blockquote>\n', 'quote');
-    else if (cmd === 'hr') wrap(area, '', '\n<hr />\n', '');
-    else if (cmd === 'template') RichEditor.openTemplatePicker((html) => wrap(area, `\n${html}\n`, '', '')); // the cards of the text templates (rich-editor.js): the HTML of the chosen card goes in at the cursor
-    else if (cmd === 'a') {
-      const url = window.prompt('Address of the link (https://… or /page)', 'https://');
-      if (url) wrap(area, `<a href="${url.replace(/"/g, '&quot;')}">`, '</a>', 'link text');
-    } else if (cmd === 'img') {
-      const url = await uploadPicture();
-      if (url) wrap(area, `<p><img src="${url}" alt="`, '" /></p>\n', 'describe the picture');
-    }
-  }
-
   // ---------------------------------------------------------------- events
 
   host.addEventListener('click', async (e) => {
     const lg = e.target.closest('[data-lang]');
     if (lg) { collect(); lang = lg.dataset.lang; render(); return; }
-    const cmd = e.target.closest('[data-cmd]');
-    if (cmd) { await command(cmd.dataset.cmd); return; }
+    if (RichEditor.handleToolbarClick(e, { pane: '.blg-pane', editor: '.blg-rte', source: '.blg-source' })) return; // the toolbar of the text (shared with Rules and Info)
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
     const row = e.target.closest('.blg-row');
@@ -202,15 +169,9 @@
       try { await api(`/articles/admin/${a.id}`, { method: 'DELETE' }); await load(); } catch (err) { window.alert(err.message); }
       return;
     }
-    if (act === 'preview') {
-      const area = host.querySelector(`[data-f="body${lang}"]`);
-      const box = host.querySelector('.blg-preview');
-      const show = box.style.display === 'none';
-      // the typed text without scripts, styles, frames and event handlers (the saved text is cleaned again, more strictly, on the server)
-      box.innerHTML = show ? previewSafe(area.value) : '';
-      box.style.display = show ? 'block' : 'none';
-      btn.textContent = show ? 'Edit' : 'Preview';
-      area.style.display = show ? 'none' : 'block';
+    if (act === 'insert-img') {
+      const url = await uploadPicture();
+      if (url) RichEditor.insertHtmlAtCursor(host.querySelector('.blg-rte'), `<p><img src="${escapeHtml(url)}" alt=""></p>`);
       return;
     }
     if (act === 'upload-main') {
@@ -229,6 +190,9 @@
       } catch (err) { say(msg, err.message, true); }
     }
   });
+
+  host.addEventListener('mousedown', (e) => { if (e.target.closest('.rte-toolbar button')) e.preventDefault(); });
+  host.addEventListener('change', (e) => { RichEditor.handleToolbarChange(e, { pane: '.blg-pane', editor: '.blg-rte', source: '.blg-source' }); });
 
   host.addEventListener('input', (e) => {
     if (e.target.dataset && e.target.dataset.f === 'imageUrl') {
