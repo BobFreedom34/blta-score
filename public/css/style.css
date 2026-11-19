@@ -7512,8 +7512,8 @@ body:not(:has(#player-bio-card)):not(.embed-light):not(.embed) .match-card:not(.
 /* the title of a bracket on a season / tournament page ("… — Hlavný pavúk", "… — O 3. miesto") is white (was green) */
 .sv-bracket > .grp-title { color: var(--white); }
 /* the match boxes of a bracket are the grey of the court headings of the court schedule (--fill-grey) */
-body:not(.embed-light) .bracket-match-card { background: var(--fill-grey); }
-body:not(.embed-light) .bracket-match-card-clickable:hover { background: #45454d; }
+body:not(.embed-light) .bracket-match-card { background: #2d2d33; }
+body:not(.embed-light) .bracket-match-card-clickable:hover { background: #36363d; }
 /* ONE grey border (--tile-border, 18% white, 1px — the one of the match cards) on everything that sits on a BLACK background: the home page (the arrows of the season strip, the chips of its cards, the sign-in / register switch, the lines between the rows of a table) and the connector lines of a bracket. Grey tiles and buttons keep their own border. */
 body .home-tl-nav:not(:hover), body .home-tl-chip, body .home-auth-seg { border-color: var(--frame); }
 body .home-m-row, body .home-t-row { border-color: var(--tile-border); }
@@ -7669,8 +7669,9 @@ body:has(#player-bio-card) #courtiq-card.player-sec { margin-top: 0; }
 :is(#sv-tables, #tables-root) .grp-title { color: var(--white); }
 :is(#sv-tables, #tables-root) .grp-title span { color: #8b8f98; }
 /* the match tiles of a bracket (the tree and the rounds view) are grey tiles ("sivá dlaždica"): the gradient, the light border and the highlight of .grey-tile */
-body:not(.embed-light) :is(.bk-m, .bracket-match-card) { background: linear-gradient(160deg, #41414a, #2e2e35); border: 1px solid var(--tile-border); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); }
-body:not(.embed-light) :is(.bk-m.link:hover, .bracket-match-card-clickable:hover) { background: linear-gradient(160deg, #4a4a54, #35353d); }
+/* the cards of the draws: flat dark grey, no gradient */
+body:not(.embed-light) :is(.bk-m, .bracket-match-card) { background: #2d2d33; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: none; }
+body:not(.embed-light) :is(.bk-m.link:hover, .bracket-match-card-clickable:hover) { background: #36363d; }
 /* the sections of a season / tournament on a tablet and a computer (Základné info, Hráči, Tabuľky ...): one grey tile; the sections are black tiles 8px apart, the chosen one an orange capsule (a phone has its own tiles) */
 @media (min-width: 701px) {
   #sv-tabs { display: flex; flex-wrap: wrap; width: fit-content; max-width: 100%; gap: 8px; padding: 6px; border-radius: var(--radius-md); background: var(--fill-grey); }
