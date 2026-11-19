@@ -40,8 +40,21 @@ test('sanitizeHtml leaves an old article unchanged', () => {
   assert.strictEqual(sanitizeHtml(html), html);
 });
 test('sanitizeHtml balances a plain div inside a template and an unclosed template', () => {
-  assert.strictEqual(sanitizeHtml('<div class="pr-cats"><div>a</div>b</div>'), '<div class="pr-cats">ab</div>');
+  assert.strictEqual(sanitizeHtml('<div class="pr-cats"><div>a</div>b</div>'), '<div class="pr-cats"><div>a</div>b</div>');
   assert.strictEqual(sanitizeHtml('<div class="pr-cat">a'), '<div class="pr-cat">a</div>');
+});
+const TEMPLATES = (() => { try { return require('../public/js/text-templates.js'); } catch { return []; } })();
+const flat = (h) => h.replace(/>s+</g, '><').trim();
+test('there are at least 12 templates with unique ids and names in sk and en', () => {
+  assert.ok(TEMPLATES.length >= 12, 'found ' + TEMPLATES.length);
+  assert.strictEqual(new Set(TEMPLATES.map((t) => t.id)).size, TEMPLATES.length);
+  TEMPLATES.forEach((t) => assert.ok(t.name && t.name.sk && t.name.en && t.html, t.id));
+});
+test('every template survives the Rules sanitizer unchanged', () => {
+  TEMPLATES.forEach((t) => assert.strictEqual(flat(rules.sanitize(t.html)), flat(t.html), t.id));
+});
+test('every template survives the blog sanitizer unchanged', () => {
+  TEMPLATES.forEach((t) => assert.strictEqual(flat(sanitizeHtml(t.html)), flat(t.html), t.id));
 });
 
 (async () => {

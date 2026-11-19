@@ -57,7 +57,7 @@ test('sanitizer: scripts, styles, frames, event handlers and bad addresses go; t
   assert.ok(!/</.test(clean('<scr<script>ipt>alert(1)</scr</script>ipt>')), clean('<scr<script>ipt>alert(1)</scr</script>ipt>'));
   assert.strictEqual(clean('<svg onload=alert(1)><p>a</p></svg>'), '', 'a whole svg goes');
   assert.ok(!/<form|<input|<button/i.test(clean('<form action="/x"><input name=a><button>b</button></form>')));
-  assert.strictEqual(clean('<div class="x"><span style="a:b">text</span></div>'), 'text', 'layout tags go, the text stays');
+  assert.strictEqual(clean('<div class="x"><span style="a:b">text</span></div>'), '<div><span>text</span></div>', 'a foreign class and a style that is not a colour go; div and span stay for the text templates');
   assert.strictEqual(clean('<h1>Big</h1><h6>Small</h6>'), '<h2>Big</h2><h5>Small</h5>');
   assert.strictEqual(clean('<p>one<p>two'), '<p>one<p>two</p></p>', 'open tags are closed');
   assert.strictEqual(clean('</p></div>text'), 'text');

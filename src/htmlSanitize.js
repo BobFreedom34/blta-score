@@ -84,19 +84,15 @@ function sanitizeHtml(input) {
     if (!ALLOWED.has(name)) continue; // an unknown tag goes, its text stays
     if (closing) {
       if (VOID.has(name)) continue;
-      const kept = stack.lastIndexOf(name);
-      const bare = stack.lastIndexOf(`~${name}`); // a div/span without a template class or colour: unwrapped, only its marker is on the stack
-      const at = Math.max(kept, bare);
+      const at = stack.lastIndexOf(name);
       if (at === -1) continue;
-      while (stack.length > at + 1) out.push(`</${stack.pop()}>`);
-      if (at === bare) stack.pop(); else out.push(`</${stack.pop()}>`);
+      while (stack.length > at) out.push(`</${stack.pop()}>`);
       continue;
     }
     const attrs = parseAttrs(tag[3]);
     // the text templates: only the classes of the page elements and colours in a style (src/templateStyle.js)
     const classes = String(attrs.class || '').split(/\s+/).filter((c) => TEMPLATE_CLASS.test(c));
     const style = safeStyle(attrs.style);
-    if ((name === 'div' || name === 'span') && !classes.length && !style) { if (!tag[4]) stack.push(`~${name}`); continue; } // a plain layout tag goes, its text stays
     let text = `<${name}`;
     if (name === 'a') {
       const href = safeUrl(attrs.href);
@@ -118,7 +114,7 @@ function sanitizeHtml(input) {
     out.push(text);
     if (!VOID.has(name)) stack.push(name);
   }
-  while (stack.length) { const top = stack.pop(); if (!top.startsWith('~')) out.push(`</${top}>`); }
+  while (stack.length) out.push(`</${stack.pop()}>`);
   return out.join('').replace(/<p>(?:\s|&nbsp;|<br \/>)*<\/p>/g, '').trim();
 }
 
