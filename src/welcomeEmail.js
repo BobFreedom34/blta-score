@@ -118,7 +118,7 @@ function dress(text, { origin, logoUrl }) {
     }
     const box = line.match(/^>\s+(.*)$/);
     if (box) {
-      out.push(`<tr><td style="padding:6px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#222a10" style="background:#222a10;border-left:4px solid ${C.green};border-radius:6px;padding:12px 16px;${FONT}font-size:15px;line-height:1.55;color:${C.white}">${esc(box[1])}</td></tr></table></td></tr>`);
+      out.push(`<tr><td style="padding:6px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#222a10" style="background:#222a10;border:1px solid ${C.green};border-radius:10px;padding:12px 16px;${FONT}font-size:15px;line-height:1.55;color:${C.white}">${esc(box[1])}</td></tr></table></td></tr>`);
       return;
     }
     const btn = line.match(/^\[([^\]]+)\]\(([^)\s]+)\)$/);
