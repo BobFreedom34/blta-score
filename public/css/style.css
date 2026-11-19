@@ -7706,3 +7706,19 @@ body:not(.embed-light) :is(.bk-m.link:hover, .bracket-match-card-clickable:hover
 #home-cats .tab.active small, #home-cats .tab.active .count { color: rgba(10, 10, 10, 0.6); }
 /* the thin line under a row of tabs that scrolls sideways (phones) is grey, not orange */
 @media (max-width: 680px) { .tabs-progress i { background: #8b8f98; } }
+
+/* The window of the text templates (public/js/rich-editor.js): a card per template - a live preview next to its HTML, and Insert */
+.tpl-overlay { position: fixed; inset: 0; z-index: 3000; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.tpl-dialog { width: min(1100px, 100%); max-height: 92vh; overflow: auto; background: #111; border: 1px solid var(--frame, rgba(255, 255, 255, 0.3)); border-radius: var(--radius); padding: 18px 20px 22px; color: var(--white); }
+.tpl-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.tpl-head strong { font-size: 18px; font-weight: 800; }
+.tpl-head span { color: #8b8f98; font-size: 13px; flex: 1; }
+.tpl-close { background: transparent; border: 0; color: var(--white); font-size: 28px; line-height: 1; cursor: pointer; }
+.tpl-grid { display: grid; gap: 14px; }
+.tpl-card { border: 1px solid var(--frame, rgba(255, 255, 255, 0.3)); border-radius: var(--radius-md); padding: 12px 14px 14px; background: #0a0a0a; }
+.tpl-name { font-weight: 800; font-size: 14px; margin-bottom: 8px; }
+.tpl-name span { color: #8b8f98; font-weight: 600; margin-left: 6px; }
+.tpl-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-bottom: 10px; }
+.tpl-preview { min-width: 0; overflow: auto; }
+.tpl-html { width: 100%; min-width: 0; box-sizing: border-box; background: #000; color: #c3c7cf; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 8px; padding: 8px 10px; font-family: Consolas, monospace; font-size: 12px; resize: vertical; }
+@media (max-width: 760px) { .tpl-body { grid-template-columns: minmax(0, 1fr); } }

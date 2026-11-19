@@ -12,35 +12,8 @@
   let here = ''; // the name of the city that is worked on
   const openIds = new Set();
 
-  // text pasted into the editor keeps no formatting: its lines become paragraphs
-  function paragraphs(text) {
-    return String(text).split(/\r?\n+/).map((l) => l.trim()).filter(Boolean).map((l) => `<p>${escapeHtml(l)}</p>`).join('');
-  }
-
-  // code typed in the HTML view is cleaned of scripts and event handlers before it goes into the editor (the server keeps only
-  // the page's own tags and classes when it is saved)
-  function tidy(html) {
-    const t = document.createElement('template');
-    t.innerHTML = html;
-    t.content.querySelectorAll('script,style,iframe,object,embed,link,meta').forEach((n) => n.remove());
-    t.content.querySelectorAll('*').forEach((n) => [...n.attributes].forEach((a) => { if (/^on/i.test(a.name)) n.removeAttribute(a.name); }));
-    return t.innerHTML;
-  }
-
-  function toolbarHtml() {
-    return `
-      <div class="rte-toolbar">
-        <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
-        <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
-        <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
-        <button type="button" data-cmd="heading" title="Sub-heading">H</button>
-        <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">• List</button>
-        <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
-        <button type="button" data-cmd="link" title="Link">Link</button>
-        <button type="button" data-cmd="removeFormat" title="Remove formatting">Clear</button>
-        <button type="button" data-cmd="source" title="Show the HTML code" style="margin-left:auto">&lt;/&gt; HTML</button>
-      </div>`;
-  }
+  // the editor (toolbar, templates, HTML view) is shared with Info and Blog: public/js/rich-editor.js
+  const { paragraphs, tidy, toolbarHtml } = RichEditor;
 
   // the title, the button at the top and the text of a section in one language (lang: 'sk' | 'en')
   function paneHtml(lang, s) {
@@ -181,30 +154,7 @@
   host.addEventListener('mousedown', (e) => { if (e.target.closest('.rte-toolbar button')) e.preventDefault(); });
   host.addEventListener('click', async (e) => {
     if (e.target.closest('#rl-copy-go')) { copyFromCity(); return; }
-    const tb = e.target.closest('.rte-toolbar [data-cmd]');
-    if (tb) {
-      const pane = tb.closest('.rl-pane');
-      const rte = pane.querySelector('.rl-editor');
-      const src = pane.querySelector('.rl-source');
-      const cmd = tb.dataset.cmd;
-      if (cmd === 'source') {
-        if (src.style.display === 'none') { src.value = rte.innerHTML; src.style.display = 'block'; rte.style.display = 'none'; tb.style.borderColor = 'var(--orange)'; }
-        else { rte.innerHTML = tidy(src.value); src.style.display = 'none'; rte.style.display = ''; tb.style.borderColor = ''; }
-        return;
-      }
-      if (src.style.display !== 'none') return; // the buttons act on the formatted view
-      rte.focus();
-      if (cmd === 'link') {
-        const url = window.prompt('Link address (https://…, mailto:… or /page)');
-        if (url) document.execCommand('createLink', false, url);
-      } else if (cmd === 'heading') {
-        const inHeading = document.queryCommandValue('formatBlock').toLowerCase() === 'h3';
-        document.execCommand('formatBlock', false, inHeading ? 'p' : 'h3');
-      } else {
-        document.execCommand(cmd, false, null);
-      }
-      return;
-    }
+    if (RichEditor.handleToolbarClick(e, { pane: '.rl-pane', editor: '.rl-editor', source: '.rl-source' })) return;
 
     if (e.target.id === 'rl-add') {
       const title = document.getElementById('rl-new-title').value;
