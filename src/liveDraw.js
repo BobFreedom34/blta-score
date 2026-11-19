@@ -79,11 +79,14 @@ function planBracket(regs, s, rng) {
   const seededCount = regs.filter((r) => r.seed).length;
   const byPlayer = new Map(regs.map((r) => [r.player_id, r]));
   const regOfSeed = (seedNo) => byPlayer.get(entries[seedNo - 1].playerId);
+  // (the seeds 3-4, 5-8 ... are drawn among their own seats, see draw.drawSeedTiers: the seeded players are shown in the order the organiser gave and
+  // the seat of one is that of the seed number it was dealt; the label of a reserved seat is the seed the player who lands there was given)
+  const seatOf = new Map(entries.map((e, i) => [e.playerId, order.indexOf(i + 1)]));
   const steps = [];
-  for (let seedNo = 1; seedNo <= seededCount; seedNo += 1) steps.push({ e: regOfSeed(seedNo).id, kind: 'SEED', slot: { p: order.indexOf(seedNo) } });
+  regs.filter((r) => r.seed).sort((x, y) => x.seed - y.seed).forEach((r) => steps.push({ e: r.id, kind: 'SEED', slot: { p: seatOf.get(r.player_id) } }));
   order.forEach((seedNo, p) => { if (seedNo > seededCount && seedNo <= n) steps.push({ e: regOfSeed(seedNo).id, kind: 'DRAW', slot: { p } }); });
   return {
-    layout: { type: 'BRACKET', size, byes: size - n, seats: order.map((seedNo, p) => ({ p, bye: seedNo > n, seedNo: seedNo <= seededCount ? seedNo : null })) },
+    layout: { type: 'BRACKET', size, byes: size - n, seats: order.map((seedNo, p) => ({ p, bye: seedNo > n, seedNo: seedNo <= seededCount ? regOfSeed(seedNo).seed : null })) },
     steps,
     args: { entries },
   };
@@ -254,7 +257,7 @@ function prepareGroups(season, category) {
     });
   }
   const plan = {
-    v: 1,
+    v: 2, // 2: the seeds 3-4, 5-8 ... of a bracket are drawn among their seats (draw-verify.js repeats it)
     season: { id: season.id, name: season.name, slug: season.slug, kind: season.kind },
     category,
     categoryLabel: draw.CATEGORY_LABELS[category] || category,
@@ -311,7 +314,7 @@ function prepare(season, category, opts = {}) {
   } else planned = planBracket(regs, s, rng);
   if (planned.error) return planned;
   const plan = {
-    v: 1,
+    v: 2, // 2: the seeds 3-4, 5-8 ... of a bracket are drawn among their seats (draw-verify.js repeats it)
     season: { id: season.id, name: season.name, slug: season.slug },
     category,
     categoryLabel: draw.CATEGORY_LABELS[category] || category,
@@ -367,4 +370,4 @@ function publicRecord(id) {
   };
 }
 
-module.exports = { prepare, prepareGroups, createGroups, assignNow, clearGroups, groupsOverview, commit, dealSnake, capacitiesOf, publicRecord, makeRandom, sha256, fingerprintOf };
+module.exports = { planBracket, prepare, prepareGroups, createGroups, assignNow, clearGroups, groupsOverview, commit, dealSnake, capacitiesOf, publicRecord, makeRandom, sha256, fingerprintOf };

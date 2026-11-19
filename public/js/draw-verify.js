@@ -91,7 +91,10 @@
       }
       order.forEach((e, i) => check(e.id, { i }));
     } else if (layout.type === 'BRACKET') {
-      const order = [...seeded, ...(await shuffled(unseeded, random))]; // seed numbers 1..n
+      let order = [...seeded, ...(await shuffled(unseeded, random))]; // seed numbers 1..n
+      if (plan.v >= 2) { // the seeds 3-4, 5-8 ... are drawn among their own seats (only a complete group), after the unseeded were shuffled; v 1 records had none
+        for (let end = 4; end <= seeded.length; end *= 2) order.splice(end / 2, end / 2, ...(await shuffled(order.slice(end / 2, end), random)));
+      }
       const seats = standardSeedOrder(layout.size);
       seats.forEach((seedNo, p) => { if (seedNo <= order.length) check(order[seedNo - 1].id, { p }); });
     } else if (layout.caps) {

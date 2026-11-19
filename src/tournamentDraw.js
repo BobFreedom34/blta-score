@@ -220,13 +220,27 @@ function shuffled(list, random) {
   return out;
 }
 
-// Seeded players take seeds 1..k in the order the organiser gave, the rest get k+1..n by lot. The byes of a draw that cannot be
-// filled go to the highest seeds (standard seeding), so seeding at least as many players as there are byes means only seeded players
-// skip round 1.
+// The seeds 3-4, 5-8, 9-16 ... are drawn by lot among the seats of their own group (as in tennis: seed 3 and 4 go by lot into the two
+// quarters that are left, 5-8 into the four eighths ...); seeds 1 and 2 keep their seats. Only a COMPLETE group is drawn (every seat of it
+// belongs to a seeded player), so a player never gets a seed number above the number of seeded players. order = the players, the seed number of
+// a player being its place (1 = first); returns the new order. The same shuffle is repeated in public/js/draw-verify.js (plan.v 2).
+function drawSeedTiers(order, seededCount, random) {
+  const out = [...order];
+  for (let end = 4; end <= seededCount; end *= 2) {
+    const start = end / 2 + 1;
+    out.splice(start - 1, end - start + 1, ...shuffled(out.slice(start - 1, end), random));
+  }
+  return out;
+}
+
+// Seeded players take seeds 1..k in the order the organiser gave (3-4, 5-8 ... then drawn among their seats, see above), the rest get k+1..n
+// by lot. The byes of a draw that cannot be filled go to the highest seeds (standard seeding), so seeding at least as many players as there
+// are byes means only seeded players skip round 1.
 function entriesFor(regs, random) {
   const seeded = regs.filter((r) => r.seed).sort((a, b) => a.seed - b.seed);
   const rest = shuffled(regs.filter((r) => !r.seed), random);
-  return [...seeded, ...rest].map((r, i) => ({ playerId: r.player_id, seed: i + 1, partnerId: r.partner_id || null }));
+  const order = drawSeedTiers([...seeded, ...rest], seeded.length, random); // (after the unseeded were shuffled: their order does not change)
+  return order.map((r, i) => ({ playerId: r.player_id, seed: i + 1, partnerId: r.partner_id || null }));
 }
 
 // ---------- brackets ----------
@@ -707,6 +721,7 @@ module.exports = {
   createDraw,
   prepareDraw,
   entriesFor,
+  drawSeedTiers,
   shuffled,
   createBracketFromGroups,
   onMatchFinished,
