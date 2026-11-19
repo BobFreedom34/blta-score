@@ -2878,7 +2878,7 @@ a.rank-name:hover { text-decoration: underline; }
   font-size: 12px;
   font-weight: 700;
 }
-.court-chip-type { background: rgba(255, 85, 0, 0.16); color: #ff8a5c; }
+.court-chip-type { background: rgba(178, 250, 6, 0.12); color: var(--green); box-shadow: inset 0 0 0 1px var(--green); }
 .court-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 2px; }
 .court-btn {
   display: inline-flex;
@@ -4948,9 +4948,9 @@ a.win-card:hover { box-shadow: none; }
 .pom-photo { width: 46px; height: 46px; border-radius: var(--radius-md); object-fit: cover; background: var(--orange); }
 .pom-initials { display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; color: #fff; }
 .pom-who { min-width: 0; }
-.pom-who b { display: block; font-size: 18px; margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pom-who b { display: block; font-size: 16px; margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pom-k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-.pom-nums { display: contents; font-weight: 800; font-size: 18px; }
+.pom-nums { display: contents; font-weight: 800; font-size: 16px; }
 .pom-nums > div { line-height: 1.2; }
 .pom-nums small { display: block; font-size: 10px; color: #c3c7cf; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 2px; white-space: nowrap; }
 .pom-nums > div > span { display: block; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -4971,7 +4971,7 @@ a.win-card:hover { box-shadow: none; }
   .pom-photo { grid-row: 1 / 3; align-self: stretch; width: 76px; height: 100%; min-height: 76px; }
   .pom-initials { font-size: 24px; }
   .pom-nums { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 10px; grid-column: 2; grid-row: 2; font-size: 16px; }
-  .pom-who b { white-space: normal; font-size: 18px; line-height: 1.15; }
+  .pom-who b { white-space: normal; font-size: 16px; line-height: 1.15; }
 }
 
 /* blog: the list of articles and an article */
@@ -7610,7 +7610,7 @@ body:has(#player-bio-card) #courtiq-card.player-sec { margin-top: 0; }
 #sv-tabs [data-tab="live"] { --ico: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m22%208-6%204%206%204V8Z%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%226%22%20width%3D%2214%22%20height%3D%2212%22%20rx%3D%222%22%2F%3E%3C%2Fsvg%3E"); }
 #sv-tabs .tab::before { content: ''; display: inline-block; width: 16px; height: 16px; flex: none; background: currentColor; -webkit-mask: var(--ico) center / contain no-repeat; mask: var(--ico) center / contain no-repeat; }
 #sv-tabs .tab:not(.active)::before { color: var(--green); }
-#sv-tabs .tab { display: inline-flex; align-items: center; gap: 8px; }
+#sv-tabs .tab { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; }
 @media (max-width: 700px) {
   #sv-tabs.nav-a { margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; overflow: visible; }
   #sv-tabs.nav-a .tab { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; min-height: 40px; padding: 6px 12px; border-radius: var(--radius-sm); white-space: normal; text-align: left; font-size: 12px; font-weight: 800; letter-spacing: 0.02em; line-height: 1.2; position: relative; min-width: 0; }
