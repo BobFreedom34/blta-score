@@ -573,7 +573,7 @@ function scheduleHtml() {
       map.get(id).list.push(m);
     });
     return [...map.entries()].sort((x, y) => (order.get(x[0]) ?? 99) - (order.get(y[0]) ?? 99)).map(([, { group, list }]) => `
-      <div class="sv-rl-g">
+      <div class="sv-rl-g black-tile grey-frame">
         <div class="sv-rl-h">${group ? `${escapeHtml(CATEGORY_NAMES[group.category] || '')} · <b>${escapeHtml(group.name)}</b>` : ''}</div>
         ${list.map(scheduleRow).join('')}
       </div>`).join('');
@@ -991,7 +991,34 @@ function renderTabs() {
   const el = document.getElementById('sv-tabs');
   // on a phone the sections are a grid of small tiles (css, max-width 700px), all visible at once; a computer keeps the row of buttons
   el.classList.add('nav-a');
-  el.innerHTML = tabs.map((x) => `<button type="button" class="tab${x.key === tab ? ' active' : ''}" data-tab="${x.key}">${escapeHtml(x.label)}${x.count ? `<small>${x.count}</small>` : ''}</button>`).join('');
+  el.innerHTML = tabs.map((x) => `<button type="button" class="tab${x.key === tab ? ' active' : ''}" data-tab="${x.key}" title="${escapeHtml(x.label)}" aria-label="${escapeHtml(x.label)}">${escapeHtml(x.label)}${x.count ? `<small>${x.count}</small>` : ''}</button>`).join('');
+  watchStickyTabs(el);
+}
+
+// The section buttons stick under the top menu while the page scrolls; stuck, they shrink to the icons only, aligned left (css .is-stuck).
+// The bar is "stuck" when its top edge sits on the line under the menu and the page has been scrolled past its normal place.
+let stickyTabsBound = false;
+function watchStickyTabs() {
+  if (stickyTabsBound) return;
+  stickyTabsBound = true;
+  const update = () => {
+    const el = document.getElementById('sv-tabs');
+    if (!el) return;
+    const top = document.querySelector('.topbar');
+    const line = top ? Math.round(top.getBoundingClientRect().height) : 0;
+    el.style.setProperty('--sv-stick', `${line}px`);
+    // the bar's own place is read from the marker above it (the bar itself changes size when it is stuck, the marker does not)
+    const mark = document.getElementById('sv-tabs-mark');
+    const own = mark ? mark.getBoundingClientRect().bottom + parseFloat(getComputedStyle(el).marginTop || 0) : el.getBoundingClientRect().top;
+    const stuck = own <= line && window.scrollY > 0;
+    if (stuck === el.classList.contains('is-stuck')) return;
+    const before = el.offsetHeight;
+    el.classList.toggle('is-stuck', stuck);
+    el.style.marginBottom = stuck ? `calc(48px + ${before - el.offsetHeight}px)` : ''; // the slot keeps its size, so the page below does not jump
+  };
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  update();
 }
 
 async function renderPanel() {
@@ -1044,7 +1071,7 @@ function render() {
       window.BLTA_EVENT_POPUP.showPayment({ id: season.id, name: season.name, entryFee: season.entryFee, paymentUrl: season.paymentUrl, iban: season.iban, payRecipient: season.payRecipient, payNote: season.payNote, payTitle: season.payTitle }, who, { info: true });
     });
   }
-  rootEl.innerHTML = `${headerHtml()}${tilesHtml()}${progressBlockHtml()}${seriesWinnersHtml()}<div class="tabs" id="sv-tabs" role="tablist"></div><div id="sv-panel" class="sv-panel"></div><div id="sv-players-fixed"></div>${threadCommentsHtml()}<section class="sv-partners" id="sv-partners" hidden></section>`;
+  rootEl.innerHTML = `${headerHtml()}${tilesHtml()}${progressBlockHtml()}${seriesWinnersHtml()}<div id="sv-tabs-mark" aria-hidden="true"></div><div class="tabs" id="sv-tabs" role="tablist"></div><div id="sv-panel" class="sv-panel"></div><div id="sv-players-fixed"></div>${threadCommentsHtml()}<section class="sv-partners" id="sv-partners" hidden></section>`;
   renderFixedPlayers();
   bindThread();
   const shareBtn = rootEl.querySelector('[data-share-winners]');
