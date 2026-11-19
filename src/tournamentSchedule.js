@@ -190,6 +190,10 @@ function toMinutes(hhmm) {
   return h * 60 + m;
 }
 
+// the order the categories play in: the weakest first (a category that is none of the three - open, doubles - after them)
+const CATEGORY_ORDER = ['NOVICE', 'NEXT_GEN', 'ELITE'];
+const categoryRank = (category) => { const i = CATEGORY_ORDER.indexOf(category); return i === -1 ? CATEGORY_ORDER.length : i; };
+
 // ---------- reading ----------
 
 function loadMatches(seasonId) {
@@ -604,8 +608,8 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
 
   const availableAt = (r) => Math.max(0, ...entries.filter((e) => e.players.some((p) => playersOf(r).includes(p))).map((e) => e.interval[1]));
   const todo = rows.filter((r) => r.status === 'PLANNED' && !r.scheduled_at);
-  // the earlier round first; within a round the pair whose players have been resting longest first
-  todo.sort((a, b) => ((a.b_round || a.round || 0) - (b.b_round || b.round || 0)) || (availableAt(a) - availableAt(b)) || (a.id - b.id));
+  // the weakest category first (Novice, then Next Gen, then Elite), in it the earlier round first; within a round the pair whose players have been resting longest first
+  todo.sort((a, b) => (categoryRank(a.category) - categoryRank(b.category)) || ((a.b_round || a.round || 0) - (b.b_round || b.round || 0)) || (availableAt(a) - availableAt(b)) || (a.id - b.id));
   todo.forEach((r) => {
     const players = playersOf(r);
     const found = findSlot(entries, settings, windows, players, lengthOf(r), notBefore, r.id);
@@ -625,7 +629,10 @@ function autoPlanIfEnabled(seasonId) {
     if (!seasonId) return;
     const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(seasonId);
     if (!season || season.kind !== 'TOURNAMENT' || !season.court_count || season.auto_schedule === 0) return;
-    autoPlan(seasonId, { mode: 'fill' });
+    // before the first match is played the whole automatic schedule is laid out again (the matches placed by hand stay), so the order of the categories
+    // does not depend on the order in which the draws were made; later only the new matches are added
+    const started = db.prepare("SELECT 1 FROM matches WHERE season_id = ? AND status IN ('LIVE', 'FINISHED') LIMIT 1").get(seasonId);
+    autoPlan(seasonId, { mode: started ? 'fill' : 'rebuild' });
     autoPlan(seasonId, { mode: 'compact' });
   } catch (err) {
     console.error('[tournament schedule]', err.message);
