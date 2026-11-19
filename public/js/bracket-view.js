@@ -120,6 +120,7 @@ function bracketBoardHtml(data) {
           ${championHtml}
         </div>
       </div>
+      <div class="bk-mob">${mobileDrawHtml(data, championPlayer)}</div>
       <div class="bk-rounds">${roundsHtml(data, championPlayer)}</div>
     </div>
   `;
@@ -199,18 +200,61 @@ function roundMetaHtml(node, sets) {
   return `<div class="bracket-match-meta">${escapeHtml(t('bracket.notScheduled'))}</div>`;
 }
 
-function roundsHtml(data, championPlayer) {
+function roundCardHtml(node, feeders) {
+  const click = node.match ? ` onclick="window.location.href='/match/${node.match.token}'"` : '';
+  const sets = shownSets(node);
+  return `<div class="bk-m${node.match ? ' link' : ''}" data-players="${nodePlayerIds(node)}"${click}>${roundHeadHtml(node, sets)}${roundSlotHtml(node, 1, feeders, sets)}${roundSlotHtml(node, 2, feeders, sets)}${roundMetaHtml(node, sets)}</div>`;
+}
+
+function feedersOf(data) {
   const feeders = new Map();
   data.nodes.forEach((n) => { if (n.nextBracketMatchId) feeders.set(`${n.nextBracketMatchId}:${n.nextSlot}`, n); });
+  return feeders;
+}
+
+// ---------- the draw on a phone (up to 700px): chips of the rounds on top (1/4, SF, F), the rounds as wide columns side by side that snap under the finger,
+// the matches of a round stand one right under the other (like Blyzer: no empty space, so the draw stays low), a bracket joins the two matches that feed one match of the next round (css .bk-mob*) ----------
+const BRACKET_ROUNDS = new Map(); // the round last shown on a phone, by bracket id (the page draws all again with every live change of a score)
+
+function roundChip(r, total) {
+  if (r === total) return 'F';
+  if (r === total - 1) return 'SF';
+  return `1/${2 ** (total - r)}`;
+}
+
+function mobileDrawHtml(data, championPlayer) {
+  const feeders = feedersOf(data);
+  const total = data.rounds;
+  const open = (r) => data.nodes.some((n) => n.round === r && !n.winnerId && !n.isBye);
+  const firstOpen = Array.from({ length: total }, (_, i) => i + 1).find(open) || total;
+  const start = BRACKET_ROUNDS.get(data.id) || firstOpen;
+  const chips = Array.from({ length: total }, (_, i) => i + 1)
+    .map((r) => `<button type="button" class="${r === start ? 'active' : ''}" data-bk-round="${r}">${roundChip(r, total)}</button>`).join('')
+    + `<button type="button" class="bk-mob-trophy${start > total ? ' active' : ''}" data-bk-round="${total + 1}" aria-label="${escapeHtml(t('bracket.winnerLabel'))}">${courtIcon('trophy')}</button>`;
+  const cols = Array.from({ length: total }, (_, i) => i + 1).map((r) => {
+    const count = 2 ** (total - r);
+    const slots = Array.from({ length: count }, (_, p) => {
+      const node = data.nodes.find((n) => n.round === r && n.position === p);
+      const cls = ['bk-mob-slot', node && node.nextBracketMatchId ? (p % 2 === 0 ? 'top' : 'bottom') : ''].filter(Boolean).join(' ');
+      const hidden = !node || (r === 1 && node.isBye && !node.player1 && !node.player2);
+      return `<div class="${cls}" >${hidden ? '' : roundCardHtml(node, feeders)}</div>`;
+    }).join('');
+    return `<section class="bk-mob-col" data-round="${r}"><h4 class="bk-mob-h"><span>${roundChip(r, total)}</span>${escapeHtml(roundTitle(r, total))}</h4>${slots}</section>`;
+  }).join('');
+  const champ = championPlayer
+    ? `<div class="bk-p win"><span class="bk-name">${courtIcon('trophy')}${escapeHtml(championPlayer.name)}</span></div>`
+    : `<div class="bk-p pending"><span class="bk-name">${escapeHtml(t('bracket.tbd'))}</span></div>`;
+  const winnerCol = `<section class="bk-mob-col" data-round="${total + 1}"><h4 class="bk-mob-h"><span>${courtIcon('trophy')}</span>${escapeHtml(t('bracket.winnerLabel'))}</h4><div class="bk-mob-slot"><div class="bk-m bk-champ">${champ}</div></div></section>`;
+  return `<div class="bk-mob-chips">${chips}</div><div class="bk-mob-track" data-start="${start}">${cols}${winnerCol}</div>`;
+}
+
+function roundsHtml(data, championPlayer) {
+  const feeders = feedersOf(data);
   const parts = [];
   for (let r = 1; r <= data.rounds; r += 1) {
     const nodes = data.nodes.filter((n) => n.round === r).sort((a, b) => a.position - b.position).filter((n) => !(r === 1 && n.isBye && !n.player1 && !n.player2));
     if (!nodes.length) continue;
-    const cards = nodes.map((node) => {
-      const click = node.match ? ` onclick="window.location.href='/match/${node.match.token}'"` : '';
-      const sets = shownSets(node);
-      return `<div class="bk-m${node.match ? ' link' : ''}" data-players="${nodePlayerIds(node)}"${click}>${roundHeadHtml(node, sets)}${roundSlotHtml(node, 1, feeders, sets)}${roundSlotHtml(node, 2, feeders, sets)}${roundMetaHtml(node, sets)}</div>`;
-    }).join('');
+    const cards = nodes.map((node) => roundCardHtml(node, feeders)).join('');
     parts.push(`<section class="bk-round"><h4 class="bk-round-h">${escapeHtml(roundTitle(r, data.rounds))} <small>(${nodes.length})</small></h4>${cards}</section>`);
   }
   const champ = championPlayer
@@ -229,3 +273,43 @@ document.addEventListener('click', (e) => {
   BRACKET_VIEWS.set(Number(wrap.dataset.bracketId), b.dataset.bkView);
   wrap.querySelectorAll('.bk-switch button').forEach((x) => x.classList.toggle('active', x === b));
 });
+
+// the chips of the phone draw scroll to their round; scrolling by hand lights the chip of the round at the left edge
+function bkShowRound(track, r, smooth) {
+  const col = track.querySelector(`[data-round="${r}"]`);
+  if (!col) return;
+  track.scrollTo({ left: col.offsetLeft - track.offsetLeft, behavior: smooth ? 'smooth' : 'auto' });
+}
+function bkMarkRound(wrap, r) {
+  wrap.querySelectorAll('.bk-mob-chips button').forEach((b) => b.classList.toggle('active', b.dataset.bkRound === String(r)));
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-bk-round]');
+  if (!b) return;
+  const wrap = b.closest('.bracket-wrap');
+  const track = wrap && wrap.querySelector('.bk-mob-track');
+  if (!track) return;
+  bkMarkRound(wrap, b.dataset.bkRound);
+  bkShowRound(track, b.dataset.bkRound, true);
+});
+document.addEventListener('scroll', (e) => {
+  const track = e.target;
+  if (!track || !track.classList || !track.classList.contains('bk-mob-track')) return;
+  const wrap = track.closest('.bracket-wrap');
+  const cols = [...track.querySelectorAll('.bk-mob-col')];
+  const x = track.scrollLeft + track.offsetLeft;
+  // the round whose left edge is nearest to the left edge of the view (the last one when the end is reached)
+  const atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 2;
+  const near = atEnd ? cols[cols.length - 1] : cols.reduce((a, c) => (Math.abs(c.offsetLeft - x) < Math.abs(a.offsetLeft - x) ? c : a), cols[0]);
+  if (!near || !wrap) return;
+  BRACKET_ROUNDS.set(Number(wrap.dataset.bracketId), Number(near.dataset.round));
+  bkMarkRound(wrap, near.dataset.round);
+}, true);
+// a draw that was just drawn opens at its round (the first with matches to play, or the round the player was looking at)
+new MutationObserver(() => {
+  document.querySelectorAll('.bk-mob-track[data-start]:not([data-ready])').forEach((track) => {
+    if (!track.offsetParent) return; // hidden (a computer): nothing to scroll
+    track.dataset.ready = '1';
+    bkShowRound(track, track.dataset.start, false);
+  });
+}).observe(document.documentElement, { childList: true, subtree: true });
