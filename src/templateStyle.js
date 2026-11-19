@@ -1,11 +1,12 @@
 // What the text sanitizers (src/rules.js for Rules/Info, src/htmlSanitize.js for the blog) let through for the text templates
 // (public/js/text-templates.js): the classes of the existing page elements and a `style` attribute with COLOURS only, so the colours of a template
-// can be changed in its HTML. Anything else in a style (url(), expression(), position, ...) is dropped.
+// can be changed in its HTML (and the alignment of the toolbar: text-align). Anything else in a style (url(), expression(), position, ...) is dropped.
 
 // the elements of the page (pr-*: Propozície), the two tiles, and the category/win/bad modifiers the Propozície already use
 const TEMPLATE_CLASS = /^(pr-[a-z-]+|grey-tile|black-tile|win|bad|yes|no|elite|nextgen|novice|num)$/;
 
 const PROPS = new Set(['color', 'background', 'background-color', 'border-color', 'border-left-color']);
+const ALIGN = /^(left|center|right|justify)$/;
 const NAMED = /^[a-z]{3,20}$/i;
 const HEX = /^#[0-9a-f]{3,8}$/i;
 const FN = /^(rgb|rgba|hsl|hsla)\(\s*[0-9.%\s,/-]+\)$/i;
@@ -21,7 +22,7 @@ function safeStyle(css) {
     if (i < 1) return;
     const prop = decl.slice(0, i).trim().toLowerCase();
     const value = decl.slice(i + 1).trim();
-    if (PROPS.has(prop) && okValue(value)) out.push(`${prop}:${value}`);
+    if (prop === 'text-align' ? ALIGN.test(value) : PROPS.has(prop) && okValue(value)) out.push(`${prop}:${value}`);
   });
   return out.join(';');
 }

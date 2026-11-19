@@ -24,20 +24,56 @@
     return t.innerHTML;
   }
 
+  // the colours of the text colour menu: the colours of the site (the server keeps colours in a style, see src/templateStyle.js)
+  const COLOURS = [['', 'Colour'], ['#ffffff', 'White'], ['#b2fa06', 'Green'], ['#ff5500', 'Orange'], ['#c3c7cf', 'Grey'], ['#ff5c5c', 'Red'], ['#5cc8ff', 'Blue'], ['#0a0a0a', 'Black']];
+  const CHARS = ['Ω', '–', '—', '…', '×', '°', '½', '≥', '≤', '€', '•', '→'];
+
+  // like the toolbar of WordPress: B I U S, lists, quote, line, alignment, link, paragraph format, colour, special characters, undo / redo, clear,
+  // the templates and the HTML view
   function toolbarHtml() {
+    const b = (cmd, label, title, extra = '') => `<button type="button" data-cmd="${cmd}" title="${title}"${extra}>${label}</button>`;
     return `
       <div class="rte-toolbar">
-        <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
-        <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
-        <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
-        <button type="button" data-cmd="heading" title="Sub-heading">H</button>
-        <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">• List</button>
-        <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
-        <button type="button" data-cmd="link" title="Link">Link</button>
-        <button type="button" data-cmd="template" title="Insert a template (note, list, tiles, table...)">▦ Template</button>
-        <button type="button" data-cmd="removeFormat" title="Remove formatting">Clear</button>
-        <button type="button" data-cmd="source" title="Show the HTML code" style="margin-left:auto">&lt;/&gt; HTML</button>
+        ${b('bold', '<b>B</b>', 'Bold')}${b('italic', '<i>I</i>', 'Italic')}${b('underline', '<u>U</u>', 'Underline')}${b('strikeThrough', '<s>S</s>', 'Strikethrough')}
+        ${b('insertUnorderedList', '• List', 'Bulleted list')}${b('insertOrderedList', '1. List', 'Numbered list')}${b('quote', '“ Quote', 'Quote')}${b('insertHorizontalRule', '—', 'Horizontal line')}
+        ${b('justifyLeft', '⯇', 'Align left')}${b('justifyCenter', '≡', 'Align centre')}${b('justifyRight', '⯈', 'Align right')}${b('justifyFull', '☰', 'Justify')}
+        ${b('link', 'Link', 'Insert a link')}${b('unlink', 'Unlink', 'Remove the link')}
+        <select data-sel="format" title="Paragraph format"><option value="p">Paragraph</option><option value="h3">Heading</option><option value="h4">Sub-heading</option></select>
+        <select data-sel="colour" title="Text colour">${COLOURS.map(([v, n]) => `<option value="${v}">${n}</option>`).join('')}</select>
+        <select data-sel="char" title="Special character">${CHARS.map((c) => `<option value="${c === 'Ω' ? '' : c}">${c}</option>`).join('')}</select>
+        ${b('undo', '↶', 'Undo')}${b('redo', '↷', 'Redo')}${b('removeFormat', 'Clear', 'Remove formatting')}
+        ${b('template', '▦ Template', 'Insert a template (note, list, tiles, table...)')}
+        ${b('source', '&lt;/&gt; HTML', 'Show the HTML code', ' style="margin-left:auto"')}
       </div>`;
+  }
+
+  // the cursor of the editor, kept while a menu of the toolbar has the focus
+  let lastRange = null;
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount && sel.anchorNode) {
+      const el = sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement;
+      if (el && el.closest && el.closest('[contenteditable="true"]')) lastRange = sel.getRangeAt(0).cloneRange();
+    }
+  });
+
+  // a menu of the toolbar changed (paragraph format, colour, special character); cfg as in handleToolbarClick. true when it was a menu of the toolbar
+  function handleToolbarChange(e, cfg) {
+    const sel = e.target.closest && e.target.closest('.rte-toolbar [data-sel]');
+    if (!sel) return false;
+    const pane = sel.closest(cfg.pane);
+    const rte = pane.querySelector(cfg.editor);
+    const src = pane.querySelector(cfg.source);
+    const value = sel.value;
+    const kind = sel.dataset.sel;
+    if (src.style.display !== 'none' || (kind !== 'format' && !value)) { if (kind !== 'format') sel.selectedIndex = 0; return true; }
+    rte.focus();
+    if (lastRange && rte.contains(lastRange.commonAncestorContainer)) { const s = window.getSelection(); s.removeAllRanges(); s.addRange(lastRange); }
+    if (kind === 'format') document.execCommand('formatBlock', false, value);
+    else if (kind === 'colour') { document.execCommand('styleWithCSS', false, true); document.execCommand('foreColor', false, value); document.execCommand('styleWithCSS', false, false); }
+    else if (kind === 'char') document.execCommand('insertText', false, value);
+    if (kind !== 'format') sel.selectedIndex = 0;
+    return true;
   }
 
   // the window with the cards of the templates; onInsert(html) gets the HTML that is in the chosen card
@@ -120,11 +156,18 @@
     } else if (cmd === 'heading') {
       const inHeading = document.queryCommandValue('formatBlock').toLowerCase() === 'h3';
       document.execCommand('formatBlock', false, inHeading ? 'p' : 'h3');
+    } else if (cmd === 'quote') {
+      const inQuote = document.queryCommandValue('formatBlock').toLowerCase() === 'blockquote';
+      document.execCommand('formatBlock', false, inQuote ? 'p' : 'blockquote');
+    } else if (cmd.startsWith('justify')) { // the alignment as a style (text-align), not as the old align attribute
+      document.execCommand('styleWithCSS', false, true);
+      document.execCommand(cmd, false, null);
+      document.execCommand('styleWithCSS', false, false);
     } else {
       document.execCommand(cmd, false, null);
     }
     return true;
   }
 
-  root.RichEditor = { toolbarHtml, handleToolbarClick, openTemplatePicker, tidy, paragraphs };
+  root.RichEditor = { toolbarHtml, handleToolbarClick, handleToolbarChange, openTemplatePicker, tidy, paragraphs };
 }(window));

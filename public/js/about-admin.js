@@ -144,6 +144,7 @@
     if (c && c === e.target) { if (c.open) openTabs.add(c.dataset.tabKey); else openTabs.delete(c.dataset.tabKey); }
   }, true);
   host.addEventListener('mousedown', (e) => { if (e.target.closest('.rte-toolbar button')) e.preventDefault(); });
+  host.addEventListener('change', (e) => { RichEditor.handleToolbarChange(e, { pane: '.ab-panel', editor: '.ab-editor', source: '.ab-source' }); }); // the menus of the toolbar (format, colour, character)
 
   host.addEventListener('click', async (e) => {
     if (e.target.closest('#ab-copy-go')) { copyFromCity(); return; }

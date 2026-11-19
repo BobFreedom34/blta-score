@@ -152,6 +152,7 @@
 
   // the toolbar acts on the selection of the editor above it
   host.addEventListener('mousedown', (e) => { if (e.target.closest('.rte-toolbar button')) e.preventDefault(); });
+  host.addEventListener('change', (e) => { RichEditor.handleToolbarChange(e, { pane: '.rl-pane', editor: '.rl-editor', source: '.rl-source' }); }); // the menus of the toolbar (format, colour, character)
   host.addEventListener('click', async (e) => {
     if (e.target.closest('#rl-copy-go')) { copyFromCity(); return; }
     if (RichEditor.handleToolbarClick(e, { pane: '.rl-pane', editor: '.rl-editor', source: '.rl-source' })) return;

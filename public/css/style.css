@@ -7722,3 +7722,10 @@ body:not(.embed-light) :is(.bk-m.link:hover, .bracket-match-card-clickable:hover
 .tpl-preview { min-width: 0; overflow: auto; }
 .tpl-html { width: 100%; min-width: 0; box-sizing: border-box; background: #000; color: #c3c7cf; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 8px; padding: 8px 10px; font-family: Consolas, monospace; font-size: 12px; resize: vertical; }
 @media (max-width: 760px) { .tpl-body { grid-template-columns: minmax(0, 1fr); } }
+
+/* The toolbar of the shared text editor (public/js/rich-editor.js): the menus (format, colour, character) look like its buttons; what the buttons write on the Propozície page */
+.rte-toolbar select { font-family: inherit; font-size: 12px; font-weight: 700; padding: 5px 6px; border: 1.5px solid #ddd; border-radius: var(--radius-sm); background: #fff; color: #111; cursor: pointer; max-width: 120px; }
+.rte-toolbar select:hover { border-color: var(--orange); }
+.pr-card blockquote { margin: 0 0 14px; padding: 6px 0 6px 16px; border-left: 3px solid var(--green); color: #c3c7cf; font-style: italic; }
+.pr-card hr { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.18); margin: 18px 0; }
+.pr-card s { opacity: 0.7; }

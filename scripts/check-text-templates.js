@@ -57,6 +57,29 @@ test('every template survives the blog sanitizer unchanged', () => {
   TEMPLATES.forEach((t) => assert.strictEqual(flat(sanitizeHtml(t.html)), flat(t.html), t.id));
 });
 
+// the buttons of the editor toolbar (strikethrough, quote, line, alignment, colour): what they write has to survive the sanitizers
+const TOOLBAR_HTML = [
+  '<p style="text-align:center">A</p>',
+  '<p style="text-align:justify">A</p>',
+  '<p>A <span style="color:#ff5500">b</span></p>',
+  '<p><s>A</s></p>',
+  '<blockquote>Q</blockquote>',
+  '<hr>',
+];
+test('the Rules sanitizer keeps what the toolbar writes (alignment, colour, strikethrough, quote, line)', () => {
+  TOOLBAR_HTML.forEach((h) => assert.strictEqual(rules.sanitize(h), h));
+  assert.strictEqual(rules.sanitize('<p><strike>A</strike> <del>B</del></p>'), '<p><s>A</s> <s>B</s></p>');
+});
+test('the blog sanitizer keeps what the toolbar writes', () => {
+  TOOLBAR_HTML.forEach((h) => assert.strictEqual(sanitizeHtml(h).replace('<hr />', '<hr>'), h));
+  assert.strictEqual(sanitizeHtml('<p><strike>A</strike></p>'), '<p><s>A</s></p>');
+});
+test('safeStyle: text-align takes only left, center, right, justify', () => {
+  assert.strictEqual(safeStyle('text-align:center'), 'text-align:center');
+  assert.strictEqual(safeStyle('text-align:expression(1)'), '');
+  assert.strictEqual(safeStyle('text-align:foo'), '');
+});
+
 const welcome = require('../src/welcomeEmail');
 const mail = (body) => welcome.render('sk', { name: 'Jozef', link: 'https://score.blta.sk/player/jozef' }, body).html;
 test('e-mail: a # line is a big heading', () => {

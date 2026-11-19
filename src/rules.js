@@ -74,6 +74,7 @@ if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'rules_report_text_2026'").
 
 const TAGS = {
   p: 'p', div: 'div', span: 'span', br: 'br', strong: 'strong', b: 'strong', em: 'em', i: 'em', u: 'u', small: 'small',
+  s: 's', strike: 's', del: 's', blockquote: 'blockquote', hr: 'hr',
   ul: 'ul', ol: 'ol', li: 'li', h3: 'h3', h4: 'h3', a: 'a',
   table: 'table', thead: 'thead', tbody: 'tbody', tr: 'tr', th: 'th', td: 'td',
 };
@@ -97,7 +98,7 @@ function sanitize(input) {
     last = tag.lastIndex;
     const name = TAGS[m[2].toLowerCase()];
     if (!name) continue;
-    if (name === 'br') { out += '<br>'; continue; }
+    if (name === 'br' || name === 'hr') { out += `<${name}>`; continue; }
     if (m[1] === '/') {
       if (open.includes(name)) {
         let top;

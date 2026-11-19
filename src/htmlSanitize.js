@@ -14,7 +14,7 @@ const ALLOWED = new Set(['div', 'span', 'p', 'br', 'hr', 'h2', 'h3', 'h4', 'h5',
 const VOID = new Set(['br', 'hr', 'img']);
 // the whole element goes, with what is inside it
 const DROP_WITH_CONTENT = new Set(['script', 'style', 'iframe', 'object', 'embed', 'noscript', 'template', 'svg', 'math', 'form', 'textarea', 'select', 'title', 'head']);
-const RENAME = { h1: 'h2', h6: 'h5', section: null, article: null, center: null, font: null };
+const RENAME = { h1: 'h2', h6: 'h5', strike: 's', del: 's', section: null, article: null, center: null, font: null };
 
 const ATTRS = {
   a: ['href', 'title'],
