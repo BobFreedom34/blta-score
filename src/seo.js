@@ -1144,6 +1144,7 @@ function robotsTxt(origin, { cities = [] } = {}) {
     'Disallow: /about-admin',
     'Disallow: /faq-admin',
     'Disallow: /tracking-admin',
+    'Disallow: /emails-admin',
     'Disallow: /footer-admin',
     'Disallow: /popups-admin',
     'Disallow: /sponsors-admin',

@@ -90,6 +90,65 @@ const fill = (text, vars) => String(text).replace(/\{(name|link)\}/g, (_, k) => 
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+// The look of the e-mail: the BLTA colours (black, lime green, orange) in a table layout with inline styles, because mail programs ignore <style> and
+// CSS classes. The TEXT is the one edited in the backend; only its lines are dressed: the first line is the big greeting, "1. Title – text" lines
+// become numbered steps, "- " lines bullets, "Label: https://..." a button, the last paragraph the signature.
+const C = { page: '#0d0c0a', card: '#17171a', line: '#2a2a30', white: '#ffffff', text: '#c9ccd3', dim: '#8b8f98', green: '#b2fa06', ink: '#0a0a0a', orange: '#ff5500' };
+const FONT = "font-family:'Segoe UI',Helvetica,Arial,sans-serif;";
+
+function dress(text, { origin, logoUrl }) {
+  const lines = text.split('\n');
+  // the signature = the last paragraph (after the last blank line), when there is more than one paragraph
+  let sigFrom = lines.length;
+  const lastBlank = lines.map((l) => l.trim()).lastIndexOf('');
+  if (lastBlank > 0 && lastBlank < lines.length - 1) sigFrom = lastBlank + 1;
+  const out = [];
+  let first = true;
+  lines.forEach((raw, i) => {
+    const line = raw.trim();
+    if (line === '') { out.push('<tr><td style="height:10px;line-height:10px;font-size:0">&nbsp;</td></tr>'); return; }
+    if (i >= sigFrom) {
+      const style = i === sigFrom ? `${FONT}font-size:16px;font-weight:800;color:${C.white};padding-top:6px` : `${FONT}font-size:14px;color:${C.green};font-weight:700`;
+      out.push(`<tr><td style="${style}">${esc(line)}</td></tr>`);
+      return;
+    }
+    if (first) {
+      first = false;
+      out.push(`<tr><td style="${FONT}font-size:26px;line-height:1.25;font-weight:800;color:${C.white};padding-bottom:4px">${esc(line)}</td></tr>`);
+      return;
+    }
+    const step = line.match(/^(\d+)\.\s+(.*)$/);
+    const bullet = !step && line.match(/^-\s+(.*)$/);
+    if (step || bullet) {
+      const body = esc(step ? step[2] : bullet[1]);
+      const cut = body.search(/\s[–-]\s/);
+      const html = cut > 0 ? `<b style="color:${C.white}">${body.slice(0, cut)}</b>${body.slice(cut)}` : body;
+      const badge = step
+        ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" width="28" height="28" style="width:28px;height:28px;border-radius:14px;background:${C.green};color:${C.ink};${FONT}font-size:14px;font-weight:800">${esc(step[1])}</td></tr></table>`
+        : `<div style="width:8px;height:8px;border-radius:4px;background:${C.green};margin:9px 0 0 10px"></div>`;
+      out.push(`<tr><td style="padding:5px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td width="44" valign="top">${badge}</td><td valign="top" style="${FONT}font-size:15px;line-height:1.55;color:${C.text}">${html}</td></tr></table></td></tr>`);
+      return;
+    }
+    const lk = line.match(/^(.*?):?\s*(https?:\/\/\S+)\s*$/);
+    if (lk) {
+      const label = lk[1].trim() || 'BLTA';
+      out.push(`<tr><td style="padding:14px 0 6px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${C.orange}" style="border-radius:8px"><a href="${esc(lk[2])}" style="display:inline-block;padding:13px 26px;${FONT}font-size:14px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:${C.white};text-decoration:none">${esc(label)} &rarr;</a></td></tr></table></td></tr>`);
+      return;
+    }
+    out.push(`<tr><td style="${FONT}font-size:15px;line-height:1.6;color:${C.text}">${esc(line).replace(/(https?:\/\/[^\s<]+)/g, `<a href="$1" style="color:${C.green}">$1</a>`)}</td></tr>`);
+  });
+  const logo = logoUrl ? `<img src="${esc(logoUrl)}" width="52" height="39" alt="BLTA" style="display:block;border:0">` : '';
+  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:${C.page}" bgcolor="${C.page}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.page}" style="background:${C.page}"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px">
+  <tr><td style="padding:0 4px 14px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle">${logo}</td><td valign="middle" style="padding-left:12px;${FONT}color:${C.white}"><div style="font-size:11px;font-weight:700;letter-spacing:.18em;color:${C.dim}">LIGA</div><div style="font-size:22px;font-weight:800;letter-spacing:.04em;color:${C.white}">BLTA</div></td></tr></table></td></tr>
+  <tr><td bgcolor="${C.card}" style="background:${C.card};border:1px solid ${C.line};border-radius:14px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:30px 32px 28px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${out.join('')}</table></td></tr></table>
+  </td></tr>
+  <tr><td align="center" style="padding:16px 8px 0;${FONT}font-size:12px;color:${C.dim}">BLTA &middot; Bratislavská liga tenisových amatérov${origin ? ` &middot; <a href="${esc(origin)}" style="color:${C.dim}">${esc(origin.replace(/^https?:\/\//, ''))}</a>` : ''}</td></tr>
+</table></td></tr></table></body></html>`;
+}
+
 // -> { subject, text, html } in the player's language
 function render(lang, { name, link }) {
   const s = read();
@@ -97,9 +156,8 @@ function render(lang, { name, link }) {
   const vars = { name, link };
   const subject = fill(s[l].subject, vars);
   const text = fill(s[l].body, vars);
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#1b1b1f;max-width:560px">${
-    text.split('\n').map((line) => (line.trim() === '' ? '<div style="height:10px"></div>' : `<div>${esc(line).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#ff5500">$1</a>')}</div>`)).join('')
-  }</div>`;
+  const origin = (/^https?:\/\/[^/]+/.exec(link || '') || [''])[0];
+  const html = dress(text, { origin, logoUrl: origin ? `${origin}/img/blta-logo-sm.png` : '' });
   return { subject, text, html };
 }
 
