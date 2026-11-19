@@ -67,7 +67,7 @@ test('e-mail: a # line is a big heading', () => {
 test('e-mail: a > line is a framed box', () => {
   const h = mail('Ahoj\n> Dôležité upozornenie');
   assert.ok(h.includes('Dôležité upozornenie') && !h.includes('&gt; Dôležité'));
-  assert.ok(/border-left:\d+px solid/.test(h));
+  assert.ok(/border:1px solid #b2fa06/.test(h), 'the green veil: a full thin green border, no side stripe');
 });
 test('e-mail: [Text](address) is a button', () => {
   const h = mail('Ahoj\n[Môj profil](https://score.blta.sk/x)');
