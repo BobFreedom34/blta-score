@@ -727,6 +727,64 @@ function seasonHtml(s) {
   return seasonCardHtml(s);
 }
 
+// ---------- the parts of an event (Základné údaje, Registrácie ...) fold: closed at first, a + / - sign, the whole bar is the button ----------
+// The sections are drawn again and again (the tabs fill in later, a list is refreshed after a save), so every section that shows up is marked once; what the
+// admin opened is remembered by event and heading, so a refresh does not close it.
+const openedParts = new Set();
+function partKey(sec) {
+  const card = sec.closest('[data-season]');
+  const h = sec.querySelector(':scope > h4');
+  return card && h ? `${card.dataset.season}|${h.textContent.trim()}` : '';
+}
+function foldParts(root) {
+  root.querySelectorAll('.sa-section:not([data-fold-ready]):not(.as-col)').forEach((sec) => {
+    const h = sec.querySelector(':scope > h4');
+    if (!h) return;
+    sec.dataset.foldReady = '1';
+    sec.classList.add('sa-fold');
+    const key = partKey(sec);
+    if (!key || !openedParts.has(key)) sec.classList.add('is-folded');
+    h.insertAdjacentHTML('afterbegin', '<span class="sa-fold-sign" aria-hidden="true"></span>');
+    h.setAttribute('role', 'button');
+    h.tabIndex = 0;
+    h.setAttribute('aria-expanded', sec.classList.contains('is-folded') ? 'false' : 'true');
+  });
+}
+function toggleFold(sec, open) {
+  const folded = open === undefined ? !sec.classList.contains('is-folded') : !open;
+  sec.classList.toggle('is-folded', folded);
+  const h = sec.querySelector(':scope > h4');
+  if (h) h.setAttribute('aria-expanded', folded ? 'false' : 'true');
+  const key = partKey(sec);
+  if (key) { if (folded) openedParts.delete(key); else openedParts.add(key); }
+}
+// the height of the sticky name bar, for the tab bar that sticks right under it
+function measureSum() {
+  const sum = document.querySelector('.sa-card[open] > .sa-sum');
+  if (sum) document.documentElement.style.setProperty('--sa-sum-h', `${Math.round(sum.getBoundingClientRect().height)}px`);
+}
+window.addEventListener('resize', measureSum);
+let foldWatching = false;
+function watchFolds(listEl) {
+  foldParts(listEl);
+  measureSum();
+  if (foldWatching) return;
+  foldWatching = true;
+  new MutationObserver(() => { foldParts(listEl); measureSum(); }).observe(listEl, { childList: true, subtree: true });
+  listEl.addEventListener('toggle', measureSum, true);
+  listEl.addEventListener('click', (e) => {
+    const h = e.target.closest('.sa-fold > h4');
+    if (!h || e.target.closest('a, button, input, select, textarea, label')) return;
+    toggleFold(h.parentElement);
+  });
+  listEl.addEventListener('keydown', (e) => {
+    const h = e.target.closest && e.target.closest('.sa-fold > h4');
+    if (h && h === e.target && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleFold(h.parentElement); }
+  });
+  // a field of a closed part that the browser finds wrong opens its part (else the form cannot be sent and nothing shows why)
+  listEl.addEventListener('invalid', (e) => { const sec = e.target.closest && e.target.closest('.sa-fold.is-folded'); if (sec) toggleFold(sec, true); }, true);
+}
+
 function renderList() {
   const listEl = document.getElementById('season-list');
   if (!seasons.length) {
@@ -735,6 +793,7 @@ function renderList() {
   }
   listEl.innerHTML = `<div class="sa-bar"><button type="button" data-fold="open">${tl('Rozbaliť všetko', 'Expand all')}</button><span>·</span><button type="button" data-fold="close">${tl('Zbaliť všetko', 'Collapse all')}</button></div>` + seasons.map(seasonHtml).join('');
   listEl.querySelectorAll('.season-admin-card').forEach(wireSeason);
+  watchFolds(listEl);
   // a link from the public page of an event (#season-<id>): that card is open and in view
   const wanted = /^#season-(\d+)$/.exec(window.location.hash || '');
   const wantedCard = wanted && listEl.querySelector(`.season-admin-card[data-season="${wanted[1]}"]`);
