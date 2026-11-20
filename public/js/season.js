@@ -414,6 +414,7 @@ function tilesHtml() {
     players || maxPlayers ? tile('season.tilePlayers', maxPlayers ? `${players}<span class="sv-max">/${maxPlayers}</span>` : String(players), (model.substitutes.length ? `+${model.substitutes.length} ${t('season.onWaiting')}` : '')) : '',
     season.courtCount > 0 ? tile('season.tileCourts', String(season.courtCount)) : '',
     drawFormatText() ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileFormat'))}</div><div class="v sm">${escapeHtml(drawFormatText())}</div></div>` : '',
+    season.surface ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileSurface'))}</div><div class="v sm">${escapeHtml(t('season.surface.' + season.surface))}</div></div>` : '',
     season.balls ? `<div class="sv-tile grey-tile"><div class="k">${escapeHtml(t('season.tileBalls'))}</div><div class="v sm">${escapeHtml(season.balls)}</div></div>` : '',
     // a tournament with an entry fee: the green "i" opens the window with how to pay it (the IBAN, the QR code)
     season.entryFee ? `<div class="sv-tile grey-tile sv-tile-fee"><div class="k">${escapeHtml(t('season.tileFee'))}</div><div class="v">${escapeHtml(season.entryFee)}</div>${hasEntryFee() ? `<button type="button" class="sv-fee-info" data-fee-info aria-label="${escapeHtml(t('season.payInfoLabel'))}" title="${escapeHtml(t('season.payInfoLabel'))}">i</button>` : ''}</div>` : '',
@@ -833,6 +834,7 @@ async function openRegisterModal() {
         if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(done, done); else done();
       }));
       if (res && res.pinSetupRequired) askForCode = true;
+      trackConversion('blta_lead', { content_name: season.name, content_category: category || '', waiting_list: !!(res && res.substitute) }); // only after the server said yes
       refresh(); // the new name appears in the players tab
     } catch (err) {
       button.disabled = false;

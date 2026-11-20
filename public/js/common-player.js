@@ -464,6 +464,7 @@ function openPlayerLoginModal(onSuccess, opts) {
     try {
       const res = await api('/player/register', { method: 'POST', body: { name, email, phone, lang: typeof currentLang === 'string' ? currentLang : 'sk' } });
       applySession(res);
+      trackConversion('blta_complete_registration'); // after the server said yes
       // Same landing spot a pinSetupRequired login uses — registering and
       // a first login both end with "now create your code".
       otpClear('player-login-set-pin-input');

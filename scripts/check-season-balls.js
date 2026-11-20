@@ -44,6 +44,13 @@ test('other changes keep the balls, an empty text clears them, more than 100 cha
   assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { balls: '' })).json.balls, '');
 });
 
+test('the surface is one of clay / hard / grass / taraflex, kept by other changes, cleared with an empty text; anything else is refused', async () => {
+  assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { surface: 'grass' })).json.surface, 'grass');
+  assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { venue: 'Kurt 5' })).json.surface, 'grass');
+  assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { surface: 'sand' })).status, 400);
+  assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { surface: '' })).json.surface, '');
+});
+
 test('the page shows a Lopty tile after the format tile (season.js) and the Backend has the field', async () => {
   const season = fs.readFileSync(path.join(ROOT, 'public/js/season.js'), 'utf8');
   assert.ok(season.indexOf("season.tileFormat") < season.indexOf("season.tileBalls") && season.indexOf("season.tileBalls") < season.indexOf("season.tileFee"), 'the order of the tiles');

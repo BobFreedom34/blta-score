@@ -211,6 +211,15 @@ function videoBadge(m, { iconOnly = false } = {}) {
   return `<span class="badge badge-video"${iconOnly ? ` title="${escapeHtml(t('match.liveVideo'))}"` : ''}>${courtIcon('video')}${iconOnly ? '' : t('match.liveVideo')}</span>`;
 }
 
+// A conversion for the ad pixels (Meta Pixel in Google Tag Manager, Backend > Tracking): pushed to the dataLayer ONLY after the server has said yes
+// (never on page load). 'blta_complete_registration' = a new player account, 'blta_lead' = a registration to an event. GTM tags listen to these names.
+function trackConversion(event, data) {
+  try {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(Object.assign({ event, event_id: `${event}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }, data || {}));
+  } catch (e) { /* tracking never breaks the page */ }
+}
+
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]

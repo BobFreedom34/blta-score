@@ -147,6 +147,7 @@ function serializeSeason(s) {
     entryFee: s.entry_fee || '',
     prizeMoney: s.prize_money || '',
     balls: s.balls || '',
+    surface: s.surface || '',
     drawDate: s.draw_date || null,
     // the draws made in front of the camera that are saved in this tournament (one per category): the tile "Žreb naživo" lets everybody replay them
     liveDraws: db.prepare("SELECT id, category FROM draw_records WHERE season_id = ? AND status = 'COMMITTED' ORDER BY id").all(s.id).map((r) => ({ id: Number(r.id), category: r.category })),

@@ -1,0 +1,29 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "montserrat",
+        "createdAt": "2026-11-02T20:42:58.678Z",
+        "reason": "Montserrat is the established BLTA brand font, shipped as public/fonts/montserrat-*.woff2 and used site-wide; the finding is on the existing 404 page style in server.js, not code written this session"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "public/draw-live.html"
+        ],
+        "createdAt": "2026-11-13T12:44:44.690Z",
+        "reason": "assistant decision, checked in the browser: .dl-card has real padding (setup card 44u/52u, computed 19.7px 23.3px at 862px wide, 44px 52px at 1920px); the detector cannot evaluate calc(var(--u) * n)"
+      },
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "createdAt": "2026-11-17T23:27:16.782Z",
+        "reason": "HTML e-mail body in src/welcomeEmail.js: mail clients cannot load web fonts, so a system font stack is the correct choice (my call, not user-confirmed)"
+      }
+    ]
+  }
+}

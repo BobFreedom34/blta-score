@@ -165,7 +165,7 @@ h1, h2, h3 { margin: 0 0 4px; letter-spacing: -0.01em; }
   color: var(--white);
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: 41; /* above the sticky season tabs (40), so the menus that open from the top bar are not covered by them */
   box-shadow: none;
 }
 .topbar-inner {
