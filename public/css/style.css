@@ -6682,7 +6682,7 @@ a.com-rank-name:hover { color: var(--orange); }
 
 /* the overlay link of a court that has a saved YouTube link (public/js/court-streams.js): the link of the scoreboard to put into PRISM or OBS, with a Copy button */
 /* each court is a box of its own (its name, its live video and its overlay link), so it is clear what belongs together */
-.court-stream-item { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 14px 14px 16px; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
+.court-stream-item { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 14px 14px 16px; border: 1px solid rgba(255, 255, 255, 0.24); border-radius: 12px; background: #2a2a30; }
 .court-overlay-url { display: flex; flex-direction: column; gap: 4px; }
 .court-overlay-url > span { font-size: 12px; font-weight: 600; color: var(--gray); }
 .court-overlay-url > div { display: flex; gap: 8px; align-items: stretch; }

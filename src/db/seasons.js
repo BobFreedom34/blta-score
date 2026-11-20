@@ -109,7 +109,7 @@ if (!db.prepare('PRAGMA table_info(matches)').all().some((c) => c.name === 'roun
 // a short description and a link to the photo gallery (all optional text, edited in /seasons-admin); and, per player of a
 // group, whether the entry fee is paid.
 const seasonInfoColumns = db.prepare('PRAGMA table_info(seasons)').all().map((c) => c.name);
-['entry_fee', 'prize_money', 'draw_date', 'info', 'gallery_url', 'payment_url', 'iban', 'pay_recipient', 'pay_note', 'pay_title', 'logo_url', 'venue', 'categories', 'hero_url', 'hero_mobile_url', 'scoring', 'tiebreakers', 'planned_format', 'rules'].forEach((col) => {
+['entry_fee', 'prize_money', 'draw_date', 'info', 'gallery_url', 'payment_url', 'iban', 'pay_recipient', 'pay_note', 'pay_title', 'logo_url', 'venue', 'categories', 'hero_url', 'hero_mobile_url', 'scoring', 'tiebreakers', 'planned_format', 'rules', 'balls'].forEach((col) => {
   if (!seasonInfoColumns.includes(col)) db.exec(`ALTER TABLE seasons ADD COLUMN ${col} TEXT`);
 });
 // A hidden event (tournament or season): nobody but an admin sees it on the web (page, lists, schedule, sitemap) until the admin makes it public

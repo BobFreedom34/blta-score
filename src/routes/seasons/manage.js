@@ -72,6 +72,7 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
   const iban = { value: ibanText.value ? paymentQr.cleanIban(ibanText.value) : ibanText.value };
   const draw = req.body.drawDate !== undefined ? parseDate(req.body.drawDate) : { value: season.draw_date };
   const venue = text('venue', season.venue, 200);
+  const balls = text('balls', season.balls, 100); // the balls the tournament is played with (a tile of the page)
   // the organiser of a club cannot change what a club tournament is (only an admin of the site may)
   const kind = req.body.kind === undefined || !auth.isAdmin(req) ? (season.kind || 'LEAGUE') : req.body.kind;
   if (!KINDS.includes(kind)) return res.status(400).json({ error: 'The type must be LEAGUE or TOURNAMENT' });
@@ -95,7 +96,7 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     scoring = next.scoring;
     tiebreakers = next.tiebreakers.join(',');
   }
-  const bad = fee.error || prize.error || info.error || rules.error || gallery.error || payment.error || logo.error || draw.error || venue.error;
+  const bad = fee.error || prize.error || info.error || rules.error || gallery.error || payment.error || logo.error || draw.error || venue.error || balls.error;
   if (bad) return res.status(400).json({ error: bad });
   if (gallery.value && !/^https?:\/\//i.test(gallery.value)) return res.status(400).json({ error: 'The gallery link must start with http:// or https://' });
   if (payment.value && !/^https?:\/\//i.test(payment.value)) return res.status(400).json({ error: 'The payment link must start with http:// or https://' });
@@ -174,8 +175,8 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
     if (planned.error) return res.status(400).json({ error: planned.error });
     planning = planned.next;
   }
-  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, iban = ?, pay_recipient = ?, pay_note = ?, pay_title = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, categories = ?, court_count = ?, max_matches_per_day = ?, scoring = ?, tiebreakers = ?, max_players = ?, category_max = ? WHERE id = ?')
-    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, iban.value, payRecipient.value, payNote.value, payTitle.value, logo.value, open, kind, venue.value, categories, courts, maxPerDay, scoring, tiebreakers, maxPlayers, nextSeason.category_max, season.id);
+  db.prepare('UPDATE seasons SET name = ?, start_date = ?, end_date = ?, entry_fee = ?, prize_money = ?, draw_date = ?, info = ?, gallery_url = ?, payment_url = ?, iban = ?, pay_recipient = ?, pay_note = ?, pay_title = ?, logo_url = ?, registration_open = ?, kind = ?, venue = ?, balls = ?, categories = ?, court_count = ?, max_matches_per_day = ?, scoring = ?, tiebreakers = ?, max_players = ?, category_max = ? WHERE id = ?')
+    .run(name, start.value, end.value, fee.value, prize.value, draw.value, info.value, gallery.value, payment.value, iban.value, payRecipient.value, payNote.value, payTitle.value, logo.value, open, kind, venue.value, balls.value, categories, courts, maxPerDay, scoring, tiebreakers, maxPlayers, nextSeason.category_max, season.id);
   if (planning) tournamentSchedule.storeSettings(season.id, planning);
   if (typeof req.body.hidden === 'boolean') db.prepare('UPDATE seasons SET hidden = ? WHERE id = ?').run(req.body.hidden ? 1 : 0, season.id);
   db.prepare('UPDATE seasons SET unregister_hours = ? WHERE id = ?').run(unregisterHours, season.id);
