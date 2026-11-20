@@ -216,7 +216,10 @@ router.post('/:id/registrations/remind', clubTournaments.requireSeasonManager(cl
   const contact = require('../contact').read();
   const organiser = [contact.email, contact.phone].filter(Boolean).join(' · ');
   const stamp = db.prepare('UPDATE season_registrations SET reminded_at = ? WHERE id = ?');
-  for (const r of rows) {
+  const siteAdmin = auth.isAdmin(req); // (the admin of the site also reaches the e-mail of the profile when the registration has none, as the list shows it)
+  const profileEmail = db.prepare('SELECT email FROM players WHERE id = ?');
+  for (const r0 of rows) {
+    const r = { ...r0, email: r0.email || (siteAdmin && r0.player_id ? String((profileEmail.get(r0.player_id) || {}).email || '').trim() : '') };
     if (!r.email) { out.noEmail += 1; continue; }
     if (r.reminded_at && new Date(r.reminded_at).getTime() > dayAgo) { out.recent += 1; continue; }
     try {
@@ -234,7 +237,20 @@ router.post('/:id/registrations/remind', clubTournaments.requireSeasonManager(cl
 router.get('/:id/registrations', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   const rows = db.prepare('SELECT * FROM season_registrations WHERE season_id = ? ORDER BY created_at, id').all(Number(req.params.id));
-  res.json(season ? serializeRegistrationsOf(season, rows) : rows.map(serializeRegistration));
+  const list = season ? serializeRegistrationsOf(season, rows) : rows.map(serializeRegistration);
+  // the admin of the site sees the contact of the profile where the registration itself has none (a registration keeps the copy it got when it was made;
+  // a phone or an e-mail that came to the profile later was missing there). The organiser of a club never gets them.
+  if (auth.isAdmin(req)) {
+    const profile = db.prepare('SELECT phone, email FROM players WHERE id = ?');
+    list.forEach((r) => {
+      if (!r.playerId || (r.phone && r.email)) return;
+      const p = profile.get(r.playerId);
+      if (!p) return;
+      if (!r.phone && p.phone) r.phone = p.phone;
+      if (!r.email && p.email) r.email = p.email;
+    });
+  }
+  res.json(list);
 });
 
 // The admin sorts many players into categories at once (the "Zaradenie do kategórií" screen): { assignments: [{ id, category }] }, category

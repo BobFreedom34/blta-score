@@ -1088,7 +1088,7 @@ function wireSeason(card) {
           hint.querySelectorAll('[data-pick]').forEach((b2) => b2.addEventListener('click', () => { const p = players.find((x) => x.id === Number(b2.dataset.pick)); chosen = p || { id: Number(b2.dataset.pick), name: b2.textContent, phone: '', email: '' }; hint.innerHTML = ''; send({}); }));
           const newBtn = hint.querySelector('[data-new]'); if (newBtn) newBtn.addEventListener('click', () => { hint.innerHTML = ''; send({ confirmNew: true }); });
           hint.querySelector('[data-cancel]').addEventListener('click', () => { hint.innerHTML = ''; });
-        } else say(err.message, true);
+        } else say(/^Only players who are registered/.test(err.message || '') ? tl('Pridať môžeš len hráčov, ktorí sú registrovaní v aplikácii — vyber ho zo zoznamu.', err.message) : err.message, true);
       }
     };
     form.addEventListener('submit', (e) => {

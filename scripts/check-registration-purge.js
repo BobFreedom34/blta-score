@@ -100,6 +100,20 @@ test('the phone and the e-mail written in a registration also fill the profile o
   assert.ok(!String((await profile(b.id)).phone || '').trim(), 'a phone that another player has is not put on this profile');
 });
 
+test('the list shows the profile contact that came after the registration (site admin); the registration keeps its own value when it has one', async () => {
+  const p = await call('POST', '/api/players', { name: 'Kontakt Z Profilu' });
+  const reg = await call('POST', `/api/seasons/${season.id}/registrations/admin`, { playerId: p.json.id });
+  assert.ok([200, 201].includes(reg.status), JSON.stringify(reg.json));
+  const before = (await regs()).find((r) => r.name === 'Kontakt Z Profilu');
+  assert.ok(!before.phone, 'the registration was made while the profile had no phone');
+  assert.strictEqual((await call('PATCH', `/api/players/${p.json.id}/phone`, { phone: '0907333444' })).status, 200);
+  const after = (await regs()).find((r) => r.name === 'Kontakt Z Profilu');
+  assert.ok(String(after.phone || '').replace(/D/g, '').endsWith('907333444'), 'the phone that came to the profile later is shown: ' + JSON.stringify(after.phone));
+  // an own value of the registration is not replaced by the profile
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${reg.json.id}`, { phone: '0908555666' })).status, 200);
+  assert.ok(String((await regs()).find((r) => r.name === 'Kontakt Z Profilu').phone).replace(/D/g, '').endsWith('908555666'));
+});
+
 async function main() {
   let failed = 0;
   try {
