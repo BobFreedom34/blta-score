@@ -147,7 +147,7 @@ let member;
 // The routes that were opened to the admin of a club, on purpose (tasks 2 and 3 of the plan of phase 2). Opening another route to him means putting it here
 // in the same change, so it is a decision somebody read; a route that silently joins or leaves this set fails the test.
 const OPENED_TO_CLUB_ADMIN = ['DELETE /api/brackets/:id', 'DELETE /api/brackets/:id/nodes/:nodeId/result', 'DELETE /api/seasons/:id', 'DELETE /api/seasons/:id/doubles/pairs/:pairId',
-  'DELETE /api/seasons/:id/draw/:category', 'DELETE /api/seasons/:id/hero', 'DELETE /api/seasons/:id/logo', 'DELETE /api/seasons/groups/:groupId',
+  'DELETE /api/seasons/:id/draw/:category', 'DELETE /api/seasons/:id/hero', 'DELETE /api/seasons/:id/logo', 'DELETE /api/seasons/:id/withdrawn', 'DELETE /api/seasons/groups/:groupId',
   'DELETE /api/seasons/groups/:groupId/members/:playerId', 'DELETE /api/seasons/registrations/:rid', 'GET /api/seasons/:id', 'GET /api/seasons/:id/doubles',
   'GET /api/seasons/:id/draw', 'GET /api/seasons/:id/draw/groups-suggestion', 'GET /api/seasons/:id/groups/draw-info', 'GET /api/seasons/:id/match-options', 'GET /api/seasons/:id/registrations', 'GET /api/seasons/:id/registrations.csv',
   'GET /api/seasons/:id/schedule-preview', 'PATCH /api/brackets/:id', 'PATCH /api/brackets/:id/nodes/:nodeId/result', 'PATCH /api/brackets/:id/slots/:nodeId',

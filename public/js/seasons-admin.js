@@ -1057,7 +1057,7 @@ function wireSeason(card) {
       field('phone').value = chosen && chosen.phone ? chosen.phone : '';
       field('email').value = chosen && chosen.email ? chosen.email : '';
       if (!isDoubles) field('category').value = chosen ? profileCategory(chosen.category) : '';
-      if (!chosen) { say(String(field('player').value).trim().length >= 3 ? tl('Tento hráč nie je v zozname: po stlačení „Pridať hráča“ sa zaregistruje ako nový hráč (napíš aj telefón, aby sa vedel prihlásiť).', 'This player is not in the list: pressing Add player registers them as a new player (add a phone too so they can log in).') : ''); return; }
+      if (!chosen) { say(String(field('player').value).trim().length >= 3 ? CLUB ? tl('Tento hráč nie je v zozname: pridať môžeš len hráčov, ktorí sú registrovaní v aplikácii. Vyber ho zo zoznamu.', 'This player is not in the list: you can only add players who are registered in the app. Choose one from the list.') : tl('Tento hráč nie je v zozname: po stlačení „Pridať hráča“ sa zaregistruje ako nový hráč (napíš aj telefón, aby sa vedel prihlásiť).', 'This player is not in the list: pressing Add player registers them as a new player (add a phone too so they can log in).') : ''); return; }
       const missing = [chosen.phone ? '' : tl('telefón', 'phone'), chosen.email ? '' : tl('e-mail', 'email'), IS_TOURNAMENT || profileCategory(chosen.category) ? '' : tl('kategória', 'category')].filter(Boolean);
       say(missing.length ? tl(`V profile zatiaľ chýba: ${missing.join(', ')} — doplň to tu (zapíše sa len do tejto registrácie).`, `No ${missing.join(', ')} in the profile yet — fill ${missing.length === 1 ? 'it' : 'them'} in here (only this registration gets it).`) : tl('Telefón, e-mail a kategória sa preberajú z profilu.', 'Phone, email and category are taken from the profile.'));
     });
@@ -1084,9 +1084,9 @@ function wireSeason(card) {
         if (d.code === 'SIMILAR_PLAYERS' || d.code === 'UNKNOWN_PLAYER') {
           const title = d.code === 'SIMILAR_PLAYERS' ? tl(`Je „${escapeHtml(d.typed)}“ jeden z týchto hráčov?`, `Is “${escapeHtml(d.typed)}” one of these players?`) : tl(`Hráč „${escapeHtml(d.typed)}“ zatiaľ neexistuje.`, `There is no player “${escapeHtml(d.typed)}” yet.`);
           hint.style.color = 'var(--gray)';
-          hint.innerHTML = `<div style="margin-bottom:6px">${title}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${d.suggestions.map((p) => `<button type="button" class="btn btn-sm btn-outline" data-pick="${p.id}">${escapeHtml(p.name)}</button>`).join('')}<button type="button" class="btn btn-sm btn-primary" data-new="1">${tl(`Nie — zaregistrovať nového hráča „${escapeHtml(d.typed)}“`, `No — register a new player “${escapeHtml(d.typed)}”`)}</button><button type="button" class="btn btn-sm btn-outline" data-cancel="1">${tl('Zrušiť', 'Cancel')}</button></div>`;
+          hint.innerHTML = `<div style="margin-bottom:6px">${title}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${d.suggestions.map((p) => `<button type="button" class="btn btn-sm btn-outline" data-pick="${p.id}">${escapeHtml(p.name)}</button>`).join('')}${d.canCreate === false ? '' : `<button type="button" class="btn btn-sm btn-primary" data-new="1">${tl(`Nie — zaregistrovať nového hráča „${escapeHtml(d.typed)}“`, `No — register a new player “${escapeHtml(d.typed)}”`)}</button>`}<button type="button" class="btn btn-sm btn-outline" data-cancel="1">${tl('Zrušiť', 'Cancel')}</button></div>`;
           hint.querySelectorAll('[data-pick]').forEach((b2) => b2.addEventListener('click', () => { const p = players.find((x) => x.id === Number(b2.dataset.pick)); chosen = p || { id: Number(b2.dataset.pick), name: b2.textContent, phone: '', email: '' }; hint.innerHTML = ''; send({}); }));
-          hint.querySelector('[data-new]').addEventListener('click', () => { hint.innerHTML = ''; send({ confirmNew: true }); });
+          const newBtn = hint.querySelector('[data-new]'); if (newBtn) newBtn.addEventListener('click', () => { hint.innerHTML = ''; send({ confirmNew: true }); });
           hint.querySelector('[data-cancel]').addEventListener('click', () => { hint.innerHTML = ''; });
         } else say(err.message, true);
       }
@@ -1190,6 +1190,7 @@ function wireSeason(card) {
           <button type="button" class="sg-link" data-reg-replace data-name="${escapeHtml(r.name)}" title="${escapeHtml(tl('Hráč odstúpil: nahradí ho iný hráč v registrácii, v skupine, v pavúku aj v neodohraných zápasoch', 'The player has left: another player takes his place in the registration, the group, the bracket and the matches not played yet'))}">${tl('Nahradiť', 'Replace')}</button>
           <button type="button" class="sg-link" data-reg-paid="${r.paid ? 0 : 1}">${r.paid ? tl('Zaplatené ✓', 'Paid ✓') : tl('Nezaplatené', 'Not paid')}</button>
           <button type="button" class="sg-link sg-unreg" data-reg-del data-name="${escapeHtml(r.name)}" title="${escapeHtml(tl('Odhlási hráča z turnaja (ak je plno, nastúpi prvý náhradník)', 'Withdraws the player from the tournament (when it is full, the first substitute comes in)'))}">${tl('Odhlásiť', 'Withdraw')}</button>
+          <button type="button" class="sg-link sg-unreg" data-reg-purge data-name="${escapeHtml(r.name)}" title="${escapeHtml(tl('Vymaže hráča z turnaja úplne, bez stopy (ani v zozname odhlásených)', 'Deletes the player from the tournament completely, without a trace (not even in the list of the withdrawn)'))}">${tl('Vymazať', 'Delete')}</button>
         </div>`);
       regsList.innerHTML = payBarHtml(rows) + addPlayerFormHtml(players, rows) + `
         <section class="sa-section">
@@ -1198,7 +1199,7 @@ function wireSeason(card) {
         </section>`
         + (gone.length ? `<section class="sa-section">
           <h4>${tl('Odhlásení', 'Withdrawn')} (${gone.length})</h4>
-          ${gone.map((g) => `<div class="sa-reg-row" style="opacity:.75"><div style="flex:1;min-width:220px"><strong>${escapeHtml(g.name)}</strong> <span class="sa-chip">${tl('Odhlásený', 'Withdrawn')}</span><div style="font-size:12px;color:var(--gray);margin-top:6px">${escapeHtml(fmtDate(g.at))}</div></div></div>`).join('')}
+          ${gone.map((g) => `<div class="sa-reg-row" style="opacity:.75"><div style="flex:1;min-width:220px"><strong>${escapeHtml(g.name)}</strong> <span class="sa-chip">${tl('Odhlásený', 'Withdrawn')}</span><div style="font-size:12px;color:var(--gray);margin-top:6px">${escapeHtml(fmtDate(g.at))}</div></div><button type="button" class="sg-link sg-unreg" data-gone-purge data-pid="${g.playerId || ''}" data-name="${escapeHtml(g.name)}">${tl('Vymazať', 'Delete')}</button></div>`).join('')}
         </section>` : '');
       wireAddPlayerForm(players);
     } catch (err) { fail(err); }
@@ -1250,6 +1251,14 @@ function wireSeason(card) {
         await loadRegs();
         return;
       }
+      const goneBtn = e.target.closest('[data-gone-purge]');
+      if (goneBtn) {
+        if (!confirm(tl(`Vymazať ${goneBtn.dataset.name} zo zoznamu odhlásených? Nedá sa to vrátiť späť.`, `Delete ${goneBtn.dataset.name} from the list of the withdrawn? This cannot be undone.`))) return;
+        await api(`/seasons/${id}/withdrawn?${goneBtn.dataset.pid ? `playerId=${encodeURIComponent(goneBtn.dataset.pid)}` : `name=${encodeURIComponent(goneBtn.dataset.name)}`}`, { method: 'DELETE' });
+        toast(tl('Vymazané', 'Deleted'));
+        await loadRegs();
+        return;
+      }
     } catch (err) { fail(err); return; }
     const row = e.target.closest('[data-reg]');
     if (!row) return;
@@ -1292,6 +1301,16 @@ function wireSeason(card) {
           else return;
         }
         toast(tl(`${made.old} nahradený hráčom ${made.name} (skupina: ${made.groups}, pavúk: ${made.slots}, zápasy: ${made.matches})`, `${made.old} replaced by ${made.name} (group: ${made.groups}, bracket: ${made.slots}, matches: ${made.matches})`));
+        await loadRegs();
+      } else if (e.target.closest('[data-reg-purge]')) {
+        const who = e.target.closest('[data-reg-purge]').dataset.name || '';
+        if (!confirm(tl(`Vymazať hráča ${who} z ${IS_TOURNAMENT ? 'turnaja' : 'sezóny'} úplne?
+
+Nezostane po ňom ani riadok v zozname odhlásených. Ak je turnaj plný a čaká náhradník, nastúpi prvý z nich. Nedá sa to vrátiť späť.`, `Delete ${who} from the ${IS_TOURNAMENT ? 'tournament' : 'season'} completely?
+
+Nothing is left of him, not even a line in the list of the withdrawn. If it is full and somebody waits, the first substitute comes in. This cannot be undone.`))) return;
+        await api(`/seasons/registrations/${rid}?purge=1`, { method: 'DELETE' });
+        toast(tl('Hráč vymazaný', 'Player deleted'));
         await loadRegs();
       } else if (e.target.closest('[data-reg-del]')) {
         const who = e.target.closest('[data-reg-del]').dataset.name || '';

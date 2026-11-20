@@ -233,6 +233,23 @@ test('copying a tournament of a club: the settings come along, nothing else; onl
   assert.strictEqual(list.length, 2, 'only the one copy was made');
 });
 
+test('the organiser of a community adds only players who are already in the app: an unknown name (even with confirmNew) makes no new player, the site admin still may', async () => {
+  const before = (await call('GET', '/api/players')).json.length;
+  for (const body of [{ name: 'Uplne Neznamy Hrac', category: 'ELITE' }, { name: 'Uplne Neznamy Hrac', category: 'ELITE', confirmNew: true }]) {
+    const r = await call('POST', `/api/seasons/${season.id}/registrations/admin`, { cookie: owner.cookie, body });
+    assert.strictEqual(r.status, 400, JSON.stringify(r.json));
+    assert.ok(/registered in the app/.test(r.json.error), r.json.error);
+  }
+  const g = await call('POST', `/api/seasons/groups/${group.id}/members`, { cookie: owner.cookie, body: { name: 'Uplne Neznamy Hrac', confirmNew: true } });
+  assert.strictEqual(g.status, 400, JSON.stringify(g.json));
+  assert.strictEqual((await call('GET', '/api/players')).json.length, before, 'no player was made');
+  const ok = await call('POST', `/api/seasons/${season.id}/registrations/admin`, { cookie: owner.cookie, body: { name: outsider.name, category: 'ELITE' } });
+  assert.strictEqual(ok.status, 201, JSON.stringify(ok.json)); // a player of the app, typed by name: found, not made again
+  assert.strictEqual((await call('GET', '/api/players')).json.length, before);
+  const siteAdmin = await call('POST', `/api/seasons/${season.id}/registrations/admin`, { body: { name: 'Novy Od Admina', category: 'ELITE', confirmNew: true } });
+  assert.strictEqual(siteAdmin.status, 201, JSON.stringify(siteAdmin.json));
+});
+
 async function main() {
   let failed = 0;
   try {

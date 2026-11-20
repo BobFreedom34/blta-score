@@ -309,7 +309,9 @@ const matchCategoryOf = (groupCategory) => (groupCategory === 'OPEN' ? 'OTHER' :
 // The player a request means, for adding to a group: by id, or by typed name with the same protection as when a match
 // is created (the same name written differently is the same player; a similar name asks which one is meant; a name
 // nobody has needs confirmNew: true to create a new player). Returns { player } or { conflict } (HTTP 409 body).
-function resolveMemberPlayer(body, leagueId = leagues.DEFAULT_LEAGUE_ID) {
+// { allowCreate: false } (the organiser of a club or a community): only players who are already in the app can be added - a name nobody has is refused, a new player is never made
+// (a player typed as text made a second profile of somebody who was already registered)
+function resolveMemberPlayer(body, leagueId = leagues.DEFAULT_LEAGUE_ID, { allowCreate = true } = {}) {
   if (body.playerId !== undefined && body.playerId !== null) {
     const player = db.prepare('SELECT * FROM players WHERE id = ?').get(Number(body.playerId));
     return player ? { player } : { error: 'That player does not exist' };
@@ -320,8 +322,9 @@ function resolveMemberPlayer(body, leagueId = leagues.DEFAULT_LEAGUE_ID) {
   if (same) return { player: same };
   const { exact, similar } = nameMatch.findSimilar(typed, db.prepare('SELECT id, name FROM players WHERE league_id = ?').all(leagueId));
   if (exact) return { player: db.prepare('SELECT * FROM players WHERE id = ?').get(exact.id) };
+  if (!allowCreate && (!similar.length || body.confirmNew)) return { error: 'Only players who are registered in the app can be added — choose one from the list' };
   if (!body.confirmNew) {
-    return { conflict: { code: similar.length ? 'SIMILAR_PLAYERS' : 'UNKNOWN_PLAYER', typed, suggestions: similar.map((p) => ({ id: p.id, name: p.name })) } };
+    return { conflict: { code: similar.length ? 'SIMILAR_PLAYERS' : 'UNKNOWN_PLAYER', typed, canCreate: allowCreate, suggestions: similar.map((p) => ({ id: p.id, name: p.name })) } };
   }
   const info = db.prepare('INSERT INTO players (name, created_by_anonymous, league_id) VALUES (?, 0, ?)').run(typed, leagueId);
   return { player: db.prepare('SELECT * FROM players WHERE id = ?').get(Number(info.lastInsertRowid)), created: true };

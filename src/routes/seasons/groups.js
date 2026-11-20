@@ -5,6 +5,7 @@ const roundRobin = require('../../roundRobin');
 const matchPhotos = require('../matchPhotos');
 const rankingPoints = require('../../rankingPoints');
 const clubTournaments = require('../../clubTournaments');
+const auth = require('../../auth');
 const changeLog = require('../../changeLog');
 const router = require('./router');
 const { BLTA_CATEGORIES, serializeGroup, matchCategoryOf, resolveMemberPlayer, groupMembers } = require('./shared');
@@ -78,7 +79,7 @@ router.post('/groups/:groupId/members', clubTournaments.requireSeasonManager(clu
   const group = groupOr404(req, res);
   if (!group) return;
   const groupSeason = db.prepare('SELECT league_id FROM seasons WHERE id = ?').get(group.season_id);
-  const found = resolveMemberPlayer(req.body || {}, groupSeason ? groupSeason.league_id : undefined);
+  const found = resolveMemberPlayer(req.body || {}, groupSeason ? groupSeason.league_id : undefined, { allowCreate: auth.isAdmin(req) });
   if (found.error) return res.status(400).json({ error: found.error });
   if (found.conflict) {
     return res.status(409).json({ error: found.conflict.code === 'SIMILAR_PLAYERS' ? 'Similar players exist — choose who you mean' : 'No such player yet — confirm to create a new one', ...found.conflict });

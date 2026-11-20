@@ -20,7 +20,7 @@ router.post('/:id/registrations/admin', clubTournaments.requireSeasonManager(clu
   // confirmNew: true and makes a new player (as when a player is added to a group)
   const typedName = typeof body.name === 'string' ? body.name.trim() : '';
   if ((body.playerId === undefined || body.playerId === null || body.playerId === '') && !typedName) return res.status(400).json({ error: 'Choose a player from the list' });
-  const found = resolveMemberPlayer(body, season.league_id);
+  const found = resolveMemberPlayer(body, season.league_id, { allowCreate: auth.isAdmin(req) });
   if (found.error) return res.status(400).json({ error: found.error === 'That player does not exist' ? 'Choose a player from the list' : found.error });
   if (found.conflict) {
     return res.status(409).json({ error: found.conflict.code === 'SIMILAR_PLAYERS' ? 'Similar players exist — choose who you mean' : 'No such player yet — confirm to create a new one', ...found.conflict });
@@ -76,7 +76,7 @@ router.post('/registrations/:rid/replace', clubTournaments.requireSeasonManager(
   const body = req.body || {};
   const typed = typeof body.name === 'string' ? body.name.trim() : '';
   if ((body.playerId === undefined || body.playerId === null || body.playerId === '') && !typed) return res.status(400).json({ error: 'Choose the new player' });
-  const found = resolveMemberPlayer(body, season.league_id);
+  const found = resolveMemberPlayer(body, season.league_id, { allowCreate: auth.isAdmin(req) });
   if (found.error) return res.status(400).json({ error: found.error });
   if (found.conflict) {
     return res.status(409).json({ error: found.conflict.code === 'SIMILAR_PLAYERS' ? 'Similar players exist — choose who you mean' : 'No such player yet — confirm to create a new one', ...found.conflict });
@@ -136,13 +136,22 @@ router.patch('/registrations/:rid', clubTournaments.requireSeasonManager(clubTou
   res.json({ ok: true, ...(regSeason ? serializeRegistrationsOf(regSeason, [savedRow])[0] : serializeRegistration(savedRow)) });
 });
 
+// a withdrawn player is wiped out of the list of the withdrawn too (?playerId=<id> or ?name=<name> for one who had no profile)
+router.delete('/:id/withdrawn', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const changes = seasonActivity.purge(Number(req.params.id), req.query.playerId, req.query.name);
+  if (!changes) return res.status(404).json({ error: 'Nobody to delete' });
+  res.json({ ok: true });
+});
+
 router.delete('/registrations/:rid', clubTournaments.requireSeasonManager(clubTournaments.byRegistrationId), (req, res) => {
   const row = db.prepare('SELECT season_id, name, player_id FROM season_registrations WHERE id = ?').get(Number(req.params.rid));
   const regSeason = row ? db.prepare('SELECT * FROM seasons WHERE id = ?').get(row.season_id) : null;
   const waitingBefore = regSeason ? capacity.substituteIds(regSeason) : new Set();
   const info = db.prepare('DELETE FROM season_registrations WHERE id = ?').run(Number(req.params.rid));
   if (!info.changes) return res.status(404).json({ error: 'Registration not found' });
-  if (row) seasonActivity.log(row.season_id, 'UNREGISTER', row.name, row.player_id);
+  // ?purge=1 ("Vymazať"): the player is wiped out of the event, not only withdrawn: no line is left in the lists of the withdrawn and under the comments
+  if (row && req.query.purge === '1') seasonActivity.purge(row.season_id, row.player_id, row.name);
+  else if (row) seasonActivity.log(row.season_id, 'UNREGISTER', row.name, row.player_id);
   // somebody dropped out: the first substitute of that category (or of the tournament) is in now
   if (regSeason) announceNewlyIn(regSeason, waitingBefore);
   res.json({ ok: true });

@@ -46,7 +46,13 @@ function withdrawn(seasonId, registered) {
   const ids = new Set(registered.map((r) => r.player_id).filter(Boolean));
   const names = new Set(registered.map((r) => String(r.name || '').toLowerCase()));
   return rows.filter((r) => !(r.player_id && ids.has(r.player_id)) && !names.has(String(r.name).toLowerCase()))
-    .map((r) => ({ name: r.name, slug: r.slug || null, at: r.created_at }));
+    .map((r) => ({ name: r.name, slug: r.slug || null, at: r.created_at, playerId: r.player_id || null }));
 }
 
-module.exports = { log, latest, withdrawn };
+// wipes every line of one player (by id, else by name) in one event: nothing is left of him in the lists and in the lines under the comments
+function purge(seasonId, playerId, name) {
+  if (playerId) return db.prepare('DELETE FROM season_activity WHERE season_id = ? AND player_id = ?').run(seasonId, Number(playerId)).changes;
+  return db.prepare('DELETE FROM season_activity WHERE season_id = ? AND player_id IS NULL AND name = ?').run(seasonId, String(name || '')).changes;
+}
+
+module.exports = { log, latest, withdrawn, purge };
