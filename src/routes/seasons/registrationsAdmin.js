@@ -131,6 +131,19 @@ router.patch('/registrations/:rid', clubTournaments.requireSeasonManager(clubTou
   const waitingBefore = regSeason ? capacity.substituteIds(regSeason) : new Set();
   db.prepare('UPDATE season_registrations SET paid = ?, category = ?, phone = ?, email = ?, note = ?, partner_name = ? WHERE id = ?')
     .run(next.paid, next.category, next.phone, next.email, next.note, next.partner !== undefined ? next.partner : (row.partner_name || ''), row.id);
+  // the phone and the e-mail the admin wrote are put on the profile of the player too, but only where the profile has none (a value that is there is never overwritten,
+  // and a phone that another player already has is not taken: with it somebody could log in as somebody else)
+  if (siteAdmin && row.player_id) {
+    const prof = db.prepare('SELECT phone, email FROM players WHERE id = ?').get(row.player_id);
+    if (prof) {
+      const last9 = (v) => String(v || '').replace(/D/g, '').slice(-9);
+      const phoneFree = next.phone && !String(prof.phone || '').trim()
+        && !db.prepare('SELECT phone FROM players WHERE phone IS NOT NULL AND id != ?').all(row.player_id).some((p) => last9(p.phone) === last9(next.phone));
+      const emailFree = next.email && !String(prof.email || '').trim();
+      if (phoneFree) db.prepare('UPDATE players SET phone = ? WHERE id = ?').run(next.phone, row.player_id);
+      if (emailFree) db.prepare('UPDATE players SET email = ? WHERE id = ?').run(next.email, row.player_id);
+    }
+  }
   if (regSeason) announceNewlyIn(regSeason, waitingBefore); // (a category change can free a place in another category)
   const savedRow = db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(row.id);
   res.json({ ok: true, ...(regSeason ? serializeRegistrationsOf(regSeason, [savedRow])[0] : serializeRegistration(savedRow)) });

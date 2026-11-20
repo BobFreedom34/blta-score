@@ -82,6 +82,24 @@ test('only an admin of the event may do it: a visitor is refused', async () => {
   cookie = saved;
 });
 
+test('the phone and the e-mail written in a registration also fill the profile of the player, when the profile has none; nothing is overwritten, a phone of another player is not taken', async () => {
+  const mk = async (name) => { const p = await call('POST', '/api/players', { name }); const r = await call('POST', `/api/seasons/${season.id}/registrations/admin`, { playerId: p.json.id }); return { id: p.json.id, rid: r.json.id }; };
+  const a = await mk('Profil Prvy');
+  const b = await mk('Profil Druhy');
+  const profile = async (id) => (await call('GET', `/api/players/${id}`)).json;
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${a.rid}`, { phone: '0905111222', email: 'prvy@example.com' })).status, 200);
+  const pa = await profile(a.id);
+  assert.ok(String(pa.phone || '').replace(/D/g, '').endsWith('905111222'), 'the phone is on the profile: ' + JSON.stringify(pa.phone));
+  assert.strictEqual(pa.email, 'prvy@example.com');
+  // a value on the profile stays when another one is written in the registration
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${a.rid}`, { phone: '0905999888', email: 'iny@example.com' })).status, 200);
+  const pa2 = await profile(a.id);
+  assert.ok(String(pa2.phone || '').replace(/D/g, '').endsWith('905111222') && pa2.email === 'prvy@example.com', 'the profile was not overwritten');
+  // the same phone for another player: the registration takes it, the profile does not
+  assert.strictEqual((await call('PATCH', `/api/seasons/registrations/${b.rid}`, { phone: '0905111222' })).status, 200);
+  assert.ok(!String((await profile(b.id)).phone || '').trim(), 'a phone that another player has is not put on this profile');
+});
+
 async function main() {
   let failed = 0;
   try {
