@@ -296,6 +296,28 @@ test('with "automatic schedule" off, a new match stays unscheduled until the pla
   assertNoClashes(sch, 30);
 });
 
+test('the planner goes round by round: round 1 of Novice, of Next Gen, of Elite, then round 2 of each, not a whole category at once', async () => {
+  const t = (await call('POST', '/api/seasons', { name: 'Rounds Open 2099', kind: 'TOURNAMENT', startDate: '2099-07-01', endDate: '2099-07-02' })).json;
+  await call('PATCH', `/api/seasons/${t.id}`, { courtCount: 1 });
+  await call('PATCH', `/api/seasons/${t.id}/schedule/settings`, { autoSchedule: false });
+  for (const category of ['ELITE', 'NOVICE']) {
+    for (let i = 0; i < 4; i += 1) {
+      const p = (await call('POST', '/api/players', { name: `Rounds ${category} ${i + 1}` })).json;
+      const reg = await call('POST', `/api/seasons/${t.id}/registrations/admin`, { playerId: p.id, category, phone: `0908${category === 'ELITE' ? 1 : 2}${String(10000 + i)}`, email: `r${category}${i}@example.com` });
+      assert.strictEqual(reg.status, 201, reg.text);
+    }
+    const draw = await call('POST', `/api/seasons/${t.id}/draw`, { category, mode: 'AUTO', format: 'GROUPS', groupSize: 4 });
+    assert.strictEqual(draw.status, 201, draw.text);
+  }
+  const run = await call('POST', `/api/seasons/${t.id}/schedule/auto`, { mode: 'fill' });
+  assert.strictEqual(run.status, 200, run.text);
+  const order = run.json.schedule.matches.filter((m) => m.scheduledAt).sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt));
+  assert.strictEqual(order.length, 12);
+  const rounds = order.map((m) => m.groupRound || m.round);
+  assert.deepStrictEqual(rounds, [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3], 'every round of every category before the next round');
+  assert.deepStrictEqual(order.slice(0, 4).map((m) => m.category), ['NOVICE', 'NOVICE', 'ELITE', 'ELITE'], 'in a round the weakest category first');
+});
+
 test('the timeline view of a tournament: wide by default, compact when the organiser sets it, kept by later saves, anything else refused', async () => {
   const t = (await call('POST', '/api/seasons', { name: 'View Open 2099', kind: 'TOURNAMENT', startDate: '2099-06-01', endDate: '2099-06-02' })).json;
   assert.strictEqual((await call('GET', `/api/seasons/${t.id}/schedule`)).json.settings.timelineView, 'wide');

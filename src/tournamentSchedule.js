@@ -613,8 +613,9 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
 
   const availableAt = (r) => Math.max(0, ...entries.filter((e) => e.players.some((p) => playersOf(r).includes(p))).map((e) => e.interval[1]));
   const todo = rows.filter((r) => r.status === 'PLANNED' && !r.scheduled_at);
-  // the weakest category first (Novice, then Next Gen, then Elite), in it the earlier round first; within a round the pair whose players have been resting longest first
-  todo.sort((a, b) => (categoryRank(a.category) - categoryRank(b.category)) || ((a.b_round || a.round || 0) - (b.b_round || b.round || 0)) || (availableAt(a) - availableAt(b)) || (a.id - b.id));
+  // round by round: the 1st round of every category (the weakest first: Novice, then Next Gen, then Elite), then the 2nd round of every category in the same order, and so on;
+  // within a round of a category the pair whose players have been resting longest first
+  todo.sort((a, b) => ((a.b_round || a.round || 0) - (b.b_round || b.round || 0)) || (categoryRank(a.category) - categoryRank(b.category)) || (availableAt(a) - availableAt(b)) || (a.id - b.id));
   todo.forEach((r) => {
     const players = playersOf(r);
     const found = findSlot(entries, settings, windows, players, lengthOf(r), notBefore, r.id);
