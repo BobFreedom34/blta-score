@@ -7812,7 +7812,13 @@ html.kiosk-mode body { padding-bottom: var(--sp-5); }
 /* only the score is for a phone on a court: not the place, date and category (editing), the chat, nor the share / embed / referee buttons under it */
 html.kiosk-mode #match-root .info-grid, html.kiosk-mode #match-root .chat-card, html.kiosk-mode #match-root .chat-card ~ .match-actions { display: none; }
 /* the box under the buttons (the notes of the match) gets the same gap as the other blocks: with the info grid hidden nothing separates it from them */
-html.kiosk-mode #match-root .info-grid + .card { margin-top: 22px; }
+/* the notes of the match (the box "Doplňujúce informácie") stand above the buttons Pause / Finish / Unfinished, not under them: the page is a column, the order is set here, and the gaps are 22px between the blocks */
+html.kiosk-mode #match-root { display: flex; flex-direction: column; }
+html.kiosk-mode #match-root > * { order: 1; }
+html.kiosk-mode #match-root .match-header { order: 0; }
+html.kiosk-mode #match-root .info-grid + .card { order: 2; margin-top: 0; margin-bottom: 22px !important; } /* (the card has an inline margin of 16px) */
+html.kiosk-mode #match-root .info-grid + .card ~ .match-actions { order: 3; }
+html.kiosk-mode #match-root .score-controls + .match-actions { order: 3; margin-top: 0; }
 /* the big title with the two names: the scoreboard right under it shows them again */
 html.kiosk-mode #match-root .match-header h1 { display: none; }
 html.kiosk-mode #match-root .match-header .match-badges { margin-bottom: 16px; }
