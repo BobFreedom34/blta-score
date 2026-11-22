@@ -7811,6 +7811,11 @@ html.kiosk-mode .topbar, html.kiosk-mode .site-footer, html.kiosk-mode .bottom-n
 html.kiosk-mode body { padding-bottom: var(--sp-5); }
 /* only the score is for a phone on a court: not the place, date and category (editing), the chat, nor the share / embed / referee buttons under it */
 html.kiosk-mode #match-root .info-grid, html.kiosk-mode #match-root .chat-card, html.kiosk-mode #match-root .chat-card ~ .match-actions { display: none; }
+/* the box under the buttons (the notes of the match) gets the same gap as the other blocks: with the info grid hidden nothing separates it from them */
+html.kiosk-mode #match-root .info-grid + .card { margin-top: 22px; }
+/* the big title with the two names: the scoreboard right under it shows them again */
+html.kiosk-mode #match-root .match-header h1 { display: none; }
+html.kiosk-mode #match-root .match-header .match-badges { margin-bottom: 16px; }
 .kiosk-bar { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; min-height: 56px; padding: 0 var(--sp-4); background: #0a0a0a; border-bottom: 1px solid var(--tile-border); }
 .kiosk-back { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--fs-md); font-weight: 700; color: var(--text-1); text-decoration: none; }
 .kiosk-result { color: var(--text-1); position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; padding: var(--sp-4); background: rgba(10, 10, 10, 0.97); }
@@ -7821,3 +7826,5 @@ html.kiosk-mode #match-root .info-grid, html.kiosk-mode #match-root .chat-card, 
 .kiosk-result-score { font-size: var(--fs-hero); font-weight: 800; font-variant-numeric: tabular-nums; color: var(--green); }
 .kiosk-result-winner { font-size: var(--fs-name); font-weight: 700; }
 .kiosk-result-count { font-size: var(--fs-sm); color: var(--text-2); }
+.kiosk-decided-actions { width: 100%; display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-3); }
+.kiosk-decided-actions .btn-outline { color: var(--text-1); border-color: var(--frame); background: transparent; }

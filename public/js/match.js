@@ -190,7 +190,7 @@ function controlsHtml(m, canControlLive) {
     return `
       <div style="display:flex;gap:10px;margin-top:16px">
         <button class="btn btn-primary" id="start-btn" style="flex:1;padding:12px 10px;font-size:13px;text-transform:uppercase">${iconLabel('live', t('match.startLiveMatch'))}</button>
-        <button class="btn btn-green" id="manual-result-btn" style="flex:1;padding:12px 10px;font-size:13px;text-transform:uppercase">${iconLabel('clipboard', t('match.enterResultManually'))}</button>
+        ${kioskMode ? "" : `<button class="btn btn-green" id="manual-result-btn" style="flex:1;padding:12px 10px;font-size:13px;text-transform:uppercase">${iconLabel('clipboard', t('match.enterResultManually'))}</button>`}
       </div>
     `;
   }
@@ -677,6 +677,41 @@ function kioskAfterRender(m) {
     document.body.prepend(bar);
   }
   if (m.status === 'FINISHED' && !document.getElementById('kiosk-result')) showKioskResult(m);
+  // the match is decided but not finished yet (the last game was just scored): a big window asks, instead of the small window of the browser (which can be cancelled or blocked)
+  const decided = m.status === 'LIVE' && m.state.status === 'COMPLETE';
+  if (decided && !kioskDecidedDismissed) showKioskDecided(m);
+  if (!decided) { kioskDecidedDismissed = false; const old = document.getElementById('kiosk-decided'); if (old) old.remove(); }
+}
+
+let kioskDecidedDismissed = false; // "Opraviť skóre" was pressed: the window stays shut until the score changes again
+
+function showKioskDecided(m) {
+  if (document.getElementById('kiosk-decided')) return;
+  const winner = m.state.winner === 1 ? m.player1 : (m.state.winner === 2 ? m.player2 : null);
+  const box = document.createElement('div');
+  box.id = 'kiosk-decided';
+  box.className = 'kiosk-result';
+  box.innerHTML = `
+    <div class="kiosk-result-card">
+      <div class="kiosk-result-title">${escapeHtml(t('kiosk.decidedTitle'))}</div>
+      <div class="kiosk-result-names">${escapeHtml(m.player1.name)}<i>–</i>${escapeHtml(m.player2.name)}</div>
+      <div class="kiosk-result-score">${escapeHtml(m.scoreSummary || '')}</div>
+      ${winner ? `<div class="kiosk-result-winner">${escapeHtml(t('kiosk.winner', { name: winner.name }))}</div>` : ''}
+      <div class="kiosk-decided-actions">
+        <button type="button" class="btn btn-primary btn-block" id="kiosk-finish-btn">${escapeHtml(t('kiosk.finishBtn'))}</button>
+        <button type="button" class="btn btn-outline btn-block" id="kiosk-fix-btn">${escapeHtml(t('kiosk.fixBtn'))}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(box);
+  document.getElementById('kiosk-fix-btn').addEventListener('click', () => { kioskDecidedDismissed = true; box.remove(); });
+  document.getElementById('kiosk-finish-btn').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      const finished = await api(`/matches/${matchToken}/finish`, { method: 'POST' });
+      box.remove();
+      render(finished); // the result window follows (kioskAfterRender)
+    } catch (err) { toast(err.message); e.currentTarget.disabled = false; }
+  });
 }
 
 function showKioskResult(m) {
@@ -1594,6 +1629,7 @@ function openFinishUndecidedModal(m) {
 // Fired right when a scoring click decides the match, so the last point can't
 // just keep growing the score — offers to finish it immediately instead.
 function offerFinish(m) {
+  if (kioskMode) return; // the kiosk has its own, bigger window (showKioskDecided, drawn by render)
   if (!confirm(t('match.decidedFinishNowConfirm', { score: m.scoreSummary }))) return;
   api(`/matches/${matchToken}/finish`, { method: 'POST' })
     .then((finished) => { render(finished); openWhatsAppResultModal(finished); })

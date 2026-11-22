@@ -17,21 +17,17 @@ let ksTimer = null;
 
 const ksClock = () => ksTime.format(new Date());
 
-// a match of the court as a row: the time, the two players one under the other, and what the match is (category, group or round)
+// a match of the court as a row: the time (small, grey) above the two players on one line, and what the match is (category, group or round)
 function ksRow(m, kind) {
   const won = (p) => (m.winnerId && m.winnerId === p.id ? ' class="win"' : '');
-  const what = [m.category ? categoryLabel(m.category) : '', m.bracket ? m.bracket.name : (m.group ? m.group.name : '')].filter(Boolean).join(' · ');
+  const what = [m.category ? categoryLabel(m.category) : '', m.bracket ? String(m.bracket.name).split(' — ').pop() : (m.group ? m.group.name : '')].filter(Boolean).join(' · ');
   const body = `
-    <span class="ks-time">${ksTime.format(new Date(m.blockStart || m.scheduledAt))}</span>
-    <span class="ks-pl">
-      ${kind === 'live' ? `<b class="ks-pill">${escapeHtml(t('kiosk.live'))}</b>` : ''}
-      <span${won(m.player1)}>${escapeHtml(m.player1.name || '?')}</span>
-      <span${won(m.player2)}>${escapeHtml(m.player2.name || '?')}</span>
-      ${kind === 'done' && m.scoreSummary ? `<span class="ks-score">${escapeHtml(m.scoreSummary)}</span>` : ''}
-      ${what ? `<em class="ks-meta">${escapeHtml(what)}</em>` : ''}
-    </span>`;
-  if (kind === 'done') return `<div class="ks-row done">${body}</div>`;
-  return `<a class="ks-row ${kind}" href="/match/${encodeURIComponent(m.token)}?kiosk=${encodeURIComponent(ksToken)}&court=${ksCourt}">${body}</a>`;
+    <span class="ks-time">${ksTime.format(new Date(m.blockStart || m.scheduledAt))}${kind === 'live' ? ` <b class="ks-pill">${escapeHtml(t('kiosk.live'))}</b>` : ''}</span>
+    <span class="ks-names"><span${won(m.player1)}>${escapeHtml(m.player1.name || '?')}</span><i>–</i><span${won(m.player2)}>${escapeHtml(m.player2.name || '?')}</span></span>
+    ${kind === 'done' && m.scoreSummary ? `<span class="ks-score">${escapeHtml(m.scoreSummary)}</span>` : ''}
+    ${what ? `<em class="ks-meta">${escapeHtml(what)}</em>` : ''}`;
+  if (kind === 'done') return `<div class="ks-row ks-match done black-tile">${body}</div>`;
+  return `<a class="ks-row ks-match ${kind}" href="/match/${encodeURIComponent(m.token)}?kiosk=${encodeURIComponent(ksToken)}&court=${ksCourt}">${body}</a>`;
 }
 
 function ksSection(title, rows) {
@@ -85,7 +81,7 @@ async function ksPick() {
     ksRoot.innerHTML = `
       <header class="ks-head"><div><h1 class="ks-court">${escapeHtml(t('kiosk.pickCourt'))}</h1><p class="ks-season">${escapeHtml(r.seasonName)}</p></div></header>
       <p class="ks-hint">${escapeHtml(t('kiosk.pickHint'))}</p>
-      <div class="ks-section">${r.courts.map((c) => `<a class="ks-row ${c.live ? 'live' : ''}" href="/kiosk/${encodeURIComponent(ksToken)}?court=${c.courtNo}"><span class="ks-time">${c.courtNo}</span><span class="ks-pl"><span>${escapeHtml(c.name)}</span>${c.live ? `<b class="ks-pill">${escapeHtml(t('kiosk.live'))} · ${c.live}</b>` : ''}</span></a>`).join('')}</div>`;
+      <div class="ks-section">${r.courts.map((c) => `<a class="ks-row ${c.live ? 'live' : ''}" href="/kiosk/${encodeURIComponent(ksToken)}?court=${c.courtNo}"><span class="ks-num">${c.courtNo}</span><span class="ks-pl"><span>${escapeHtml(c.name)}</span>${c.live ? `<b class="ks-pill">${escapeHtml(t('kiosk.live'))} · ${c.live}</b>` : ''}</span></a>`).join('')}</div>`;
   } catch (err) {
     ksRoot.innerHTML = `<div class="ks-message bad">${escapeHtml(t('kiosk.invalid'))}</div>`;
   }

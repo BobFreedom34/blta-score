@@ -16,7 +16,13 @@ html.kiosk, body.kiosk-page { margin: 0; min-height: 100%; color: var(--text-1);
 
 .ks-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--sp-4); min-height: 72px; padding: var(--sp-3) var(--sp-4); box-sizing: border-box; border: 1px solid var(--tile-border); border-radius: var(--radius); background: var(--fill-grey); color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
 a.ks-row:active { border-color: var(--orange); }
-.ks-time { font-size: var(--fs-lg); font-weight: 800; font-variant-numeric: tabular-nums; }
+.ks-num { font-size: var(--fs-lg); font-weight: 800; }
+/* a match: the time small and grey above the names, the two names side by side (they wrap to a second line only when they do not fit) */
+.ks-match { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: var(--sp-1); }
+.ks-time { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.ks-names { display: flex; flex-wrap: wrap; gap: 0 var(--sp-2); font-size: var(--fs-name); font-weight: 700; line-height: 1.3; }
+.ks-names i { font-style: normal; color: var(--text-3); }
+.ks-names .win { color: var(--green); }
 .ks-pl { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; font-size: var(--fs-name); font-weight: 700; }
 .ks-pl span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ks-pl .win { color: var(--green); }
@@ -24,7 +30,8 @@ a.ks-row:active { border-color: var(--orange); }
 .ks-pill { align-self: flex-start; padding: 2px var(--sp-2); border-radius: var(--radius-sm); background: var(--orange); color: #fff; font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
 .ks-row.live { border-color: var(--orange); }
 .ks-row.next { border-color: var(--frame-hover); }
-.ks-row.done { background: transparent; opacity: 0.6; }
+/* a played match is a black tile ("čierna dlaždica", class black-tile of style.css, put on the row by kiosk.js) */
+.ks-row.done { border-color: var(--tile-border); }
 .ks-score { font-size: var(--fs-sm); font-weight: 700; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .ks-change { align-self: center; padding: var(--sp-3) var(--sp-4); font-size: var(--fs-sm); font-weight: 600; color: var(--text-3); text-decoration: underline; }
 

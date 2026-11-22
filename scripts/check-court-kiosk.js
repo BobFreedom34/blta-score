@@ -181,6 +181,7 @@ test('the kiosk page is a plain noindex page; Backend > SEO lists it as a utilit
   assert.strictEqual(r.status, 200);
   assert.ok(/noindex/.test(r.headers.get('x-robots-tag') || ''));
   assert.ok(r.text.includes('/js/kiosk.js'));
+  assert.ok(r.text.includes('/js/common-forms.js'), 'the names of the categories (categoryLabel needs CATEGORY_LABELS) - a list of an Elite match fails without it');
   const sitemap = (await call('GET', '/sitemap.xml')).text;
   assert.ok(!/\/kiosk[\/<"\s]/.test(sitemap), 'not in the sitemap');
   const seo = (await admin('GET', '/api/seo')).json;
