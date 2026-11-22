@@ -153,6 +153,8 @@ if (!seasonInfoColumns.includes('court_streams')) db.exec("ALTER TABLE seasons A
   // 'HH:MM' = its own time. Start and end are separate (see tournamentSchedule.settingsOf)
   ['plan_start', 'TEXT'],
   ['plan_end', 'TEXT'],
+  // the look of the timeline of the court schedule: 1 = compact (an hour is half as high), NULL/0 = wide (see tournamentSchedule.settingsOf)
+  ['timeline_compact', 'INTEGER'],
 ].forEach(([col, type]) => {
   if (!seasonInfoColumns.includes(col)) db.exec(`ALTER TABLE seasons ADD COLUMN ${col} ${type}`);
 });

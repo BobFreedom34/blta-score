@@ -106,6 +106,7 @@ function settingsOf(season) {
     restMinutes: season.rest_minutes === null || season.rest_minutes === undefined ? 30 : season.rest_minutes,
     autoSchedule: season.auto_schedule === 0 ? false : true,
     maxPerDay: season.max_matches_per_day || 0,
+    timelineView: season.timeline_compact ? 'compact' : 'wide',
     days,
     timezone: TZ,
   };
@@ -159,6 +160,10 @@ function readSettings(season, body) {
     next.maxPerDay = Number(body.maxPerDay);
     if (!Number.isInteger(next.maxPerDay) || next.maxPerDay < 0 || next.maxPerDay > 10) return { error: 'The most matches a player may play in a day must be 0 (no limit) to 10' };
   }
+  if (body.timelineView !== undefined) {
+    if (body.timelineView !== 'compact' && body.timelineView !== 'wide') return { error: 'The view of the timeline must be compact or wide' };
+    next.timelineView = body.timelineView;
+  }
   if ((toMinutes(next.dayEnd) - toMinutes(next.dayStart)) < next.matchMinutes) return { error: 'The playing day is shorter than one match' };
   if (validTime(next.planStart) && validTime(next.planEnd) && (toMinutes(next.planEnd) - toMinutes(next.planStart)) < next.matchMinutes) return { error: 'The planning window is shorter than one match' };
   const tooShort = Object.keys(next.ownDayTimes || {}).find((day) => (toMinutes(next.ownDayTimes[day].end) - toMinutes(next.ownDayTimes[day].start)) < next.matchMinutes);
@@ -169,9 +174,9 @@ function readSettings(season, body) {
 // writes checked settings (the `next` of readSettings) to a tournament
 function storeSettings(seasonId, next) {
   const own = next.ownDayTimes || {};
-  db.prepare('UPDATE seasons SET match_minutes = ?, day_start = ?, day_end = ?, day_times = ?, rest_minutes = ?, auto_schedule = ?, max_matches_per_day = ?, plan_start = ?, plan_end = ? WHERE id = ?')
+  db.prepare('UPDATE seasons SET match_minutes = ?, day_start = ?, day_end = ?, day_times = ?, rest_minutes = ?, auto_schedule = ?, max_matches_per_day = ?, plan_start = ?, plan_end = ?, timeline_compact = ? WHERE id = ?')
     .run(next.matchMinutes, next.dayStart, next.dayEnd, Object.keys(own).length ? JSON.stringify(own) : '', next.restMinutes, next.autoSchedule ? 1 : 0, next.maxPerDay,
-      next.planStart === undefined ? null : next.planStart, next.planEnd === undefined ? null : next.planEnd, seasonId);
+      next.planStart === undefined ? null : next.planStart, next.planEnd === undefined ? null : next.planEnd, next.timelineView === 'compact' ? 1 : 0, seasonId);
 }
 
 // validates and stores { matchMinutes, dayStart, dayEnd, restMinutes, autoSchedule, maxPerDay }; returns { error } or { ok }
@@ -183,7 +188,7 @@ function saveSettings(season, body) {
 }
 
 // the keys of a request that are planning settings (a new tournament may bring them)
-const SETTING_KEYS = ['matchMinutes', 'dayStart', 'dayEnd', 'dayTimes', 'restMinutes', 'autoSchedule', 'maxPerDay', 'planStart', 'planEnd'];
+const SETTING_KEYS = ['matchMinutes', 'dayStart', 'dayEnd', 'dayTimes', 'restMinutes', 'autoSchedule', 'maxPerDay', 'planStart', 'planEnd', 'timelineView'];
 
 function toMinutes(hhmm) {
   const [h, m] = hhmm.split(':').map(Number);

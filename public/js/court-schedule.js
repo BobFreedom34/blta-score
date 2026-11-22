@@ -6,7 +6,9 @@
 // Used by season.js: initCourtSchedule(hostElement, season).
 
 const CS_TZ = 'Europe/Bratislava';
-const CS_PX = 2.8; // pixels per minute of the timeline (a 30-minute match is high enough for the whole card: time, two players, category)
+// pixels per minute of the timeline: wide = 2.8 (a 30-minute match is high enough for the whole card: time, two players, category), compact = half of it
+// (the organiser chooses per tournament in the settings under the schedule; everybody sees the timeline in that view)
+const csPx = () => (csState && csState.data && csState.data.settings && csState.data.settings.timelineView === 'compact' ? 1.4 : 2.8);
 const CS_SNAP = 5; // minutes
 const CS_MS = 60 * 1000;
 
@@ -123,7 +125,7 @@ function csBlockHtml(m, day, startMin, laneInfo, endMin) {
   const real = endMin ? Math.min(realFull, Math.max(15, endMin - parts.minutes)) : realFull;
   const minutes = Math.max(20, real);
   const short = real < 25; // (the card is always whole, two lines of players; only a very short block drops the category line)
-  const top = (parts.minutes - startMin) * CS_PX;
+  const top = (parts.minutes - startMin) * csPx();
   const finished = m.status === 'FINISHED';
   const unlocked = finished && csUnlocked.has(m.token); // a finished match is locked by itself; the organiser unlocks it to move or resize it
   const resizable = csState.admin && (m.status === 'PLANNED' || unlocked);
@@ -132,7 +134,7 @@ function csBlockHtml(m, day, startMin, laneInfo, endMin) {
   const classes = ['cs-m', csStatusClass(m), `cs-st-${m.status.toLowerCase()}`, movable ? 'cs-drag' : '', m.locked ? 'cs-locked' : '', short ? 'cs-short' : '', lanes ? 'cs-lane' : ''].filter(Boolean).join(' ');
   const across = lanes ? `;left:calc(4px + (100% - 8px) * ${lanes.lane} / ${lanes.lanes});right:auto;width:calc((100% - 8px) / ${lanes.lanes} - 2px)` : '';
   return `<a class="${classes}" href="/match/${m.token}" draggable="false" data-token="${m.token}" ${movable ? 'data-drag="1"' : ''}
-      style="top:${top}px;height:${minutes * CS_PX - 3}px${across}" data-minutes="${real}" title="${escapeHtml(`${csTime(csStartOf(m))} · ${m.player1.name} – ${m.player2.name}`)}">
+      style="top:${top}px;height:${minutes * csPx() - 3}px${across}" data-minutes="${real}" title="${escapeHtml(`${csTime(csStartOf(m))} · ${m.player1.name} – ${m.player2.name}`)}">
     <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${finished && csState.admin ? ` <i class="cs-lock fin${unlocked ? ' open' : ''}" data-fin-lock="${m.token}" title="${escapeHtml(unlocked ? tl('Odomknutý — zápas môžeš posúvať a meniť mu dĺžku. Kliknutím ho zamkneš.', 'Unlocked — you can move the match and change its length. Click to lock it.') : tl('Skončený zápas je zamknutý. Kliknutím ho odomkneš, potom ho môžeš posúvať a meniť mu dĺžku.', 'A finished match is locked. Click to unlock it, then you can move it and change its length.'))}"></i>` : ''}${m.status === 'PLANNED' && m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="${escapeHtml(tl('Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš.', 'Locked — the planner does not move it. Click to unlock it.'))}"></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-done cs-live-pill">${escapeHtml(t('home.live'))}</b>` : ''}</span>
     <span class="cs-m-pl">${csScoredPlayersHtml(m)}</span>
     <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
@@ -161,15 +163,15 @@ function csTimelineHtml(day) {
   const window = csDayWindow(settings, day);
   const startMin = csMinutesOf(window.start);
   const endMin = csMinutesOf(window.end);
-  const height = (endMin - startMin) * CS_PX;
+  const height = (endMin - startMin) * csPx();
   const hours = [];
   const lines = [];
   for (let h = Math.ceil(startMin / 60); h * 60 <= endMin; h += 1) {
-    hours.push(`<div class="cs-hour" style="top:${(h * 60 - startMin) * CS_PX}px">${h}:00</div>`);
-    lines.push(`<i class="cs-line" style="top:${(h * 60 - startMin) * CS_PX}px"></i>`);
+    hours.push(`<div class="cs-hour" style="top:${(h * 60 - startMin) * csPx()}px">${h}:00</div>`);
+    lines.push(`<i class="cs-line" style="top:${(h * 60 - startMin) * csPx()}px"></i>`);
   }
   const today = csParts(new Date().toISOString());
-  const nowLine = today.day === day && today.minutes >= startMin && today.minutes <= endMin ? `<div class="cs-now" style="top:${(today.minutes - startMin) * CS_PX}px"></div>` : '';
+  const nowLine = today.day === day && today.minutes >= startMin && today.minutes <= endMin ? `<div class="cs-now" style="top:${(today.minutes - startMin) * csPx()}px"></div>` : '';
   const cols = Array.from({ length: settings.courtCount }, (_, i) => {
     const court = i + 1;
     const ofCourt = matches.filter((m) => m.courtNo === court && m.scheduledAt && csParts(csStartOf(m)).day === day);
@@ -249,6 +251,7 @@ function csAdminHtml() {
         ${field('rest', tl('Oddych hráča (min)', 'Player rest (min)'), s.restMinutes, 'type="number" min="0" max="240" step="5"')}
         ${field('maxday', tl('Max. zápasov hráča za deň (0 = bez limitu)', 'Max. matches per player per day (0 = no limit)'), s.maxPerDay, 'type="number" min="0" max="10"')}
         <label class="cs-check"><input type="checkbox" id="cs-auto" ${s.autoSchedule ? 'checked' : ''}> ${tl('Rozvrh skladá systém sám', 'The system builds the schedule itself')}</label>
+        <label>${tl('Pohľad časovej osi', 'Timeline view')}<select id="cs-tlview"><option value="wide"${s.timelineView === 'compact' ? '' : ' selected'}>${tl('Rozšírený', 'Wide')}</option><option value="compact"${s.timelineView === 'compact' ? ' selected' : ''}>${tl('Kompaktný (hodina je poloviečná)', 'Compact (an hour is half as high)')}</option></select></label>
         <button type="button" class="btn btn-sm btn-outline" data-cs="settings">${tl('Uložiť nastavenia', 'Save settings')}</button>
         <span class="cs-hint cs-full">${tl('„Plánovať od / do“ je okno, v ktorom plánovač skladá zápasy. Predvolene sú to časy hrania z nastavení turnaja (tie vidia hráči); tu ich môžeš zmeniť len pre plánovanie a rozvrh sa zobrazí do času, ktorý zadáš. Keď čas vymažeš, plánovanie nemá hranicu: zápasy sa dopĺňajú pod seba a rozvrh sa postupne zväčšuje.', '“Plan from / until” is the window in which the planner lays out the matches. By default it is the playing times of the tournament settings (the ones the players see); here you can change it for the planning only, and the schedule shows up to the time you enter. When you empty a time there is no limit: the matches are added one under the other and the schedule grows.')}</span>
       </div>
@@ -374,7 +377,7 @@ function csDropTarget(e) {
     const startMin = csMinutesOf(dayWindow.start);
     const endMin = csMinutesOf(dayWindow.end);
     const length = csDrag.length || settings.matchMinutes;
-    let minutes = startMin + Math.round(((e.clientY - csDrag.offY - colRect.top) / CS_PX) / CS_SNAP) * CS_SNAP;
+    let minutes = startMin + Math.round(((e.clientY - csDrag.offY - colRect.top) / csPx()) / CS_SNAP) * CS_SNAP;
     minutes = Math.max(startMin, Math.min(minutes, endMin - length));
     return { type: 'court', col, court: Number(col.dataset.court), minutes, length };
   }
@@ -388,8 +391,8 @@ function csOnPointerMove(e) {
     const dy = e.clientY - csDrag.startY;
     if (!csDrag.moved && Math.abs(dy) < 4) return;
     csDrag.moved = true;
-    csDrag.minutes = Math.max(15, Math.min(300, Math.round((csDrag.startMinutes + dy / CS_PX) / 5) * 5));
-    csDrag.el.style.height = `${csDrag.minutes * CS_PX - 3}px`;
+    csDrag.minutes = Math.max(15, Math.min(300, Math.round((csDrag.startMinutes + dy / csPx()) / 5) * 5));
+    csDrag.el.style.height = `${csDrag.minutes * csPx() - 3}px`;
     csDrag.el.title = `${csDrag.minutes} min`;
     return;
   }
@@ -420,8 +423,8 @@ function csUpdateTarget(e) {
     const startMin = csMinutesOf(csDayWindow(csState.data.settings, csChoice.day).start);
     const preview = document.createElement('div');
     preview.className = 'cs-drop';
-    preview.style.top = `${(target.minutes - startMin) * CS_PX}px`;
-    preview.style.height = `${target.length * CS_PX - 3}px`;
+    preview.style.top = `${(target.minutes - startMin) * csPx()}px`;
+    preview.style.height = `${target.length * csPx() - 3}px`;
     preview.textContent = csClock(target.minutes);
     target.col.appendChild(preview);
     csDrag.preview = preview;
@@ -715,6 +718,7 @@ async function initCourtSchedule(host, season) {
         restMinutes: Number(document.getElementById('cs-rest').value),
         maxPerDay: Number(document.getElementById('cs-maxday').value) || 0,
         autoSchedule: document.getElementById('cs-auto').checked,
+        timelineView: document.getElementById('cs-tlview').value,
       };
       csApply(api(`${base}/settings`, { method: 'PATCH', body }), tl('Nastavenia uložené', 'Settings saved'));
     } else if (kind === 'addmatch') {

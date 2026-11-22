@@ -296,6 +296,15 @@ test('with "automatic schedule" off, a new match stays unscheduled until the pla
   assertNoClashes(sch, 30);
 });
 
+test('the timeline view of a tournament: wide by default, compact when the organiser sets it, kept by later saves, anything else refused', async () => {
+  const t = (await call('POST', '/api/seasons', { name: 'View Open 2099', kind: 'TOURNAMENT', startDate: '2099-06-01', endDate: '2099-06-02' })).json;
+  assert.strictEqual((await call('GET', `/api/seasons/${t.id}/schedule`)).json.settings.timelineView, 'wide');
+  assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}/schedule/settings`, { timelineView: 'tiny' })).status, 400);
+  assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}/schedule/settings`, { timelineView: 'compact' })).json.settings.timelineView, 'compact');
+  assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}/schedule/settings`, { restMinutes: 10 })).json.settings.timelineView, 'compact');
+  assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}/schedule/settings`, { timelineView: 'wide' })).json.settings.timelineView, 'wide');
+});
+
 test('most matches per player per day: with a limit of 1 the next match of a player goes to the next day; 0 = no limit; the tournament form and the schedule settings both set it', async () => {
   const t = (await call('POST', '/api/seasons', { name: 'Limit Open 2099', kind: 'TOURNAMENT', startDate: '2099-06-01', endDate: '2099-06-02' })).json;
   assert.strictEqual(t.maxMatchesPerDay, 0);
