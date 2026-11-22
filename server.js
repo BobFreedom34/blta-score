@@ -592,6 +592,11 @@ app.get('/overlay/:slug/:court', (req, res) => {
   res.set('X-Robots-Tag', 'noindex, nofollow');
   res.sendFile(path.join(PUBLIC_DIR, 'overlay.html'));
 });
+// The same overlay by the NAME OF THE COURT alone (/overlay/kurt-1): one address per court name, for good; the tournament is found by the server (src/routes/seasons/info.js, overlay-court).
+app.get('/overlay/:court', (req, res) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.sendFile(path.join(PUBLIC_DIR, 'overlay.html'));
+});
 // The kiosk of a court: a phone on the court lists the matches of that court and scores them (public/js/kiosk.js, src/courtKiosk.js). The address is the secret, so the page is noindex.
 // The short address of the kiosk of a tournament, /turnaj<number> (the number of the tournament): the same page, it asks for the code of the kiosk (public/js/kiosk.js).
 app.get(/^[/]turnaj[0-9]+[/]?$/, (req, res) => {

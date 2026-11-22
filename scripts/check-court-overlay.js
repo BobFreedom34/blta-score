@@ -145,6 +145,80 @@ test('the overlay is not a page of the site: not in the sitemap, no bare /overla
   assert.ok(!/\(new page\)/.test(entry.label), 'listed by hand, not picked up as a new page');
 });
 
+// ---- the overlay by the NAME of the court: /overlay/<court name> (one address per court name, whatever tournament is played on it) ----
+
+const byName = (name) => call('GET', `/api/seasons/overlay-court/${encodeURIComponent(name)}/live`);
+const bratislavaDay = (plusDays = 0) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Bratislava' }).format(new Date(Date.now() + plusDays * 86400000));
+async function nameCup(name, start, end, courtNames, streams) {
+  const made = await admin('POST', '/api/seasons', { name, kind: 'TOURNAMENT', startDate: start, endDate: end });
+  assert.strictEqual(made.status, 201, made.text);
+  const set = await admin('PATCH', `/api/seasons/${made.json.id}`, { courtCount: courtNames.length, courtNames, courtStreams: streams });
+  assert.strictEqual(set.status, 200, set.text);
+  return set.json;
+}
+async function liveOn(cup, name, courtNo) {
+  const made = await admin('POST', '/api/matches', { category: 'FRIENDLY', player1Id: players[0].id, player2Id: players[1].id, format: 'BO3_STB', location: 'Kurt 1', scheduledAt: '2099-05-01T08:00:00.000Z' });
+  assert.strictEqual(made.status, 201, made.text);
+  db.prepare('UPDATE matches SET season_id = ?, court_no = ? WHERE share_token = ?').run(cup.id, courtNo, made.json.token);
+  await start(made.json.token);
+  return made.json.token;
+}
+
+test('the name of a court makes its address: capitals and accents are gone, anything else is one dash; the page /overlay/<name> is a plain noindex page', async () => {
+  const courtNames = require(path.join(ROOT, 'src', 'courtNames.js'));
+  for (const [text, expected] of [['Kurt 1', 'kurt-1'], ['Centrálny kurt', 'centralny-kurt'], ['  KURT   č. 3 ', 'kurt-c-3'], ['Hlavný/kurt!', 'hlavny-kurt'], ['', ''], ['---', '']]) assert.strictEqual(courtNames.slug(text), expected, text);
+  const r = await call('GET', '/overlay/kurt-1');
+  assert.strictEqual(r.status, 200);
+  assert.ok(/noindex/.test(r.headers.get('x-robots-tag') || '') && r.text.includes('/js/overlay.js'));
+  assert.ok(!(await call('GET', '/overlay')).text.includes('/js/overlay.js'), 'still no page without a name');
+});
+
+test('the same address in the admin pages and on the server: the text of court-streams.js makes what courtNames.slug makes', async () => {
+  const courtNames = require(path.join(ROOT, 'src', 'courtNames.js'));
+  const source = fs.readFileSync(path.join(ROOT, 'public', 'js', 'court-streams.js'), 'utf8');
+  const start = source.indexOf('function courtNameSlug');
+  const end = source.indexOf('\n}\n', start) + 3;
+  const clientSlug = new Function(`${source.slice(start, end)}; return courtNameSlug;`)();
+  for (const text of ['Kurt 1', 'Centrálny kurt', 'ŠTADIÓN – kurt č.2', 'Kurt 10', ' a  b ', 'Žltý Ďateľ']) assert.strictEqual(clientSlug(text), courtNames.slug(text), text);
+  assert.ok(source.includes("/overlay/${courtNameSlug(name)}"), 'the link of the admin page is /overlay/<name of the court> and nothing else');
+});
+
+test('by name: a court with a YouTube link answers (also by a name written with capitals and accents); one without a link, an unknown name and an empty address are 404', async () => {
+  const cup = await nameCup('Name Cup A', bratislavaDay(0), bratislavaDay(1), ['Hlavný kurt', 'Vedľajší', 'Bez videa'], [LINK, LINK, '']);
+  const main = await byName('hlavny-kurt');
+  assert.strictEqual(main.status, 200, main.text);
+  assert.deepStrictEqual([main.json.court, main.json.label, main.json.tournament], [1, 'Hlavný kurt', 'Name Cup A']);
+  assert.strictEqual((await byName('vedlajsi')).json.court, 2);
+  assert.strictEqual((await byName('Hlavný kurt')).status, 200, 'the name as it is written');
+  assert.strictEqual((await byName('bez-videa')).status, 404, 'no YouTube link: no overlay');
+  for (const bad of ['neexistuje', '---', '%20', 'hlavny-kurt-2']) assert.strictEqual((await byName(bad)).status, 404, bad);
+  assert.ok(cup.id);
+});
+
+test('by name, several tournaments with a court of that name: the one with a match live on it, else the one that is played today, else the nearest', async () => {
+  const names = ['Spolocny kurt'];
+  const today = await nameCup('Name Cup Today', bratislavaDay(-1), bratislavaDay(1), names, [LINK]);
+  const future = await nameCup('Name Cup Future', '2098-01-01', '2098-01-02', names, [LINK]);
+  const past = await nameCup('Name Cup Past', '2020-01-01', '2020-01-02', names, [LINK]);
+  assert.strictEqual((await byName('spolocny-kurt')).json.tournament, 'Name Cup Today', 'played today');
+  // the tournament of today ends: the nearest to today is the past one (2020 is nearer to today than 2098)
+  await admin('PATCH', `/api/seasons/${today.id}`, { startDate: '2021-01-01', endDate: '2021-01-02' });
+  assert.strictEqual((await byName('spolocny-kurt')).json.tournament, 'Name Cup Today', 'the nearest to today (2021)');
+  await admin('PATCH', `/api/seasons/${today.id}`, { startDate: '2097-01-01', endDate: '2097-01-02' });
+  assert.strictEqual((await byName('spolocny-kurt')).json.tournament, 'Name Cup Past', 'the nearest to today');
+  const liveToken = await liveOn(future, 'x', 1);
+  const shown = await byName('spolocny-kurt');
+  assert.deepStrictEqual([shown.json.tournament, shown.json.match && shown.json.match.token], ['Name Cup Future', liveToken], 'a live match wins over the dates');
+  assert.ok(past.id);
+});
+
+test('two courts of a tournament cannot have names that make the same address ("Kurt 1" and "kurt-1")', async () => {
+  const made = await admin('POST', '/api/seasons', { name: 'Name Cup Same', kind: 'TOURNAMENT', startDate: '2099-07-01', endDate: '2099-07-02' });
+  const r = await admin('PATCH', `/api/seasons/${made.json.id}`, { courtCount: 2, courtNames: ['Kurt 1', 'kurt-1'] });
+  assert.strictEqual(r.status, 400, r.text);
+  assert.ok(/same name/i.test(r.json.error), r.text);
+});
+
 // ---- review findings ----
 // overlay.js run on its own with a fake page: what it draws for a given answer of the endpoint
 async function drawn(answer, { cityBase = '', path: pathname = '/overlay/some-slug/1', status = 200, serverDate = new Date().toUTCString() } = {}) {

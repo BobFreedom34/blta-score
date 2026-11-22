@@ -5,15 +5,22 @@
 
 const COURT_STREAMS_MAX = 50; // the same top as the number of courts (src/routes/seasons.js)
 
-function courtOverlayUrl(slug, court) {
-  return `${window.location.origin}${window.CITY_BASE || ''}/overlay/${encodeURIComponent(slug)}/${court}`; // (a city site is slta.sk/<city>/…)
+// the name of a court as an address: "Kurt 1" -> "kurt-1", "Centrálny kurt" -> "centralny-kurt" (the same as courtNames.slug of the server, src/courtNames.js)
+function courtNameSlug(text) {
+  return String(text || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+// the overlay link of a court is made of the NAME of the court only (/overlay/kurt-1), not of the tournament: it stays the same for every tournament played on that court, so it can
+// stay in OBS / PRISM for good (the server finds the tournament, see overlay-court in src/routes/seasons/info.js)
+function courtOverlayUrl(name) {
+  return `${window.location.origin}${window.CITY_BASE || ''}/overlay/${courtNameSlug(name)}`; // (a city site is slta.sk/<city>/…)
 }
 
 // saved: which courts have a saved link (only those have an overlay); slug: the tournament's address
 function courtStreamInputsHtml(count, values, saved, slug, names = []) {
   const n = Math.max(0, Math.min(COURT_STREAMS_MAX, Math.floor(Number(count)) || 0));
   return Array.from({ length: n }, (_, i) => {
-    const url = saved[i] && slug ? courtOverlayUrl(slug, i + 1) : '';
+    const url = saved[i] ? courtOverlayUrl(names[i] || `Kurt ${i + 1}`) : '';
     return `
     <div class="court-stream-item">
       <label class="sa-field court-name-field"><span class="sa-label">${escapeHtml(tl('Názov kurtu', 'Court name'))} ${i + 1}</span>

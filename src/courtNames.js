@@ -13,6 +13,10 @@ function namesOf(season) {
 // the name a court shows: its own, or "Kurt <number>"
 const label = (names, n) => (names && names[n - 1]) || `Kurt ${n}`;
 
+// The name of a court as it stands in an address: "Kurt 1" -> "kurt-1", "Centrálny kurt" -> "centralny-kurt" (capitals and accents gone, anything else a single "-").
+// The overlay of a court is /overlay/<this> (public/js/court-streams.js builds the same text for the admin pages: keep the two in step).
+const slug = (text) => String(text || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
 // the list sent by the admin page (one entry per court) -> { names } cut or padded to the number of courts, or { error }
 function parse(raw, count) {
   if (!Array.isArray(raw)) return { error: 'courtNames must be a list with one name (or nothing) for each court' };
@@ -27,7 +31,8 @@ function parse(raw, count) {
   }
   const seen = new Set();
   for (let i = 0; i < names.length; i += 1) {
-    const shown = label(names, i + 1).toLowerCase();
+    // two names that make the same address ("Kurt 1" and "kurt-1") are the same name: the overlay link of a court is made of it
+    const shown = slug(label(names, i + 1)) || label(names, i + 1).toLowerCase();
     if (seen.has(shown)) return { error: `Two courts have the same name (${label(names, i + 1)})` };
     seen.add(shown);
   }
@@ -37,4 +42,4 @@ function parse(raw, count) {
 // the stored list when the number of courts changes: cut or padded
 const fit = (season, count) => { const list = namesOf(season).slice(0, count); while (list.length < count) list.push(''); return list; };
 
-module.exports = { namesOf, label, parse, fit, MAX_NAME };
+module.exports = { namesOf, label, slug, parse, fit, MAX_NAME };

@@ -11,6 +11,7 @@ const clubTournaments = require('../../clubTournaments');
 const capacity = require('../../registrationCapacity');
 const seasonActivity = require('../../seasonActivity');
 const courtStreams = require('../../courtStreams');
+const courtNames = require('../../courtNames');
 const unregister = require('../../unregister');
 const paymentQr = require('../../paymentQr');
 const tournamentSchedule = require('../../tournamentSchedule');
@@ -124,6 +125,39 @@ router.get('/by-slug/:slug/court/:court/live', (req, res) => {
   if (!stream) return res.status(404).json({ error: 'Not found' });
   res.json(tournamentSchedule.getCourtLive(season, court));
 });
+
+// Public: the scoreboard overlay of a court BY THE NAME OF THE COURT (the page /overlay/<court name>, e.g. /overlay/kurt-1): one address per court name, whatever tournament is played
+// on it, so it can stay in OBS / PRISM for good. The tournament is chosen on every request: of the tournaments of this city that have a court of that name WITH a YouTube link, the one
+// where a match is live on that court, else the one whose days include today, else the nearest to today (later wins a tie). Names are compared as addresses (courtNames.slug).
+router.get('/overlay-court/:name/live', (req, res) => {
+  const wanted = courtNames.slug(req.params.name);
+  const found = wanted ? overlayCourtFor(req, wanted) : null;
+  if (!found) return res.status(404).json({ error: 'Not found' });
+  res.json(found);
+});
+
+function overlayCourtFor(req, wanted, now = Date.now()) {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Bratislava' }).format(new Date(now));
+  const dayMs = (date) => Date.parse(`${date}T12:00:00Z`);
+  const candidates = [];
+  const rows = db.prepare("SELECT * FROM seasons WHERE kind = 'TOURNAMENT' AND league_id = ? AND court_count > 0").all(leagues.actingIdOf(req));
+  rows.forEach((season) => {
+    if (clubTournaments.publicFace(season, req).hidden) return;
+    const names = courtNames.namesOf(season);
+    const streams = courtStreams.streamsOf(season);
+    for (let court = 1; court <= season.court_count; court += 1) {
+      if (courtNames.slug(courtNames.label(names, court)) !== wanted || !streams[court - 1]) continue;
+      const live = tournamentSchedule.getCourtLive(season, court, now);
+      const start = season.start_date || '';
+      const end = season.end_date && season.end_date >= start ? season.end_date : start;
+      const inDays = !!start && start <= today && today <= end;
+      const distance = start ? Math.min(Math.abs(dayMs(start) - dayMs(today)), Math.abs(dayMs(end) - dayMs(today))) : Infinity;
+      candidates.push({ live, isLive: !!(live.match && live.match.status === 'LIVE'), inDays, distance, id: season.id });
+    }
+  });
+  candidates.sort((a, b) => (b.isLive - a.isLive) || (b.inDays - a.inDays) || (a.distance - b.distance) || (b.id - a.id));
+  return candidates.length ? candidates[0].live : null;
+}
 
 // The season page: one season by its slug, with its rounds (the group-stage rounds the season maker numbered, with how many
 // of their matches are finished).

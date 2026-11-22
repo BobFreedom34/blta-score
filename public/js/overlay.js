@@ -12,7 +12,9 @@
   const first = decodeURIComponent(parts[at + 1] || '');
   const second = decodeURIComponent(parts[at + 2] || '');
   // /overlay/match/<token>: one match (a tournament that happens to be called "match" has a court number, 1 to 3 digits, where the token is)
-  const matchMode = first === 'match' && !/^\d{1,3}$/.test(second);
+  const matchMode = first === 'match' && !!second && !/^\d{1,3}$/.test(second);
+  // /overlay/<court name> (one part): the court of that NAME, in whatever tournament is played on it (the server picks it, GET /api/seasons/overlay-court/<name>/live)
+  const byName = !!first && !second;
   const demo = new URLSearchParams(window.location.search).has('demo');
   const cityBase = window.CITY_BASE || '';
   const FINISHED_SHOW_MS = 3 * 60 * 1000; // after the end the final score stays this long (the same as the court overlay, src/tournamentSchedule.js)
@@ -143,7 +145,9 @@
   async function load() {
     const mine = ++latest;
     try {
-      const res = await fetch(`${cityBase}/api/seasons/by-slug/${encodeURIComponent(slug)}/court/${court}/live`, { cache: 'no-store' });
+      const res = await fetch(byName
+        ? `${cityBase}/api/seasons/overlay-court/${encodeURIComponent(first)}/live`
+        : `${cityBase}/api/seasons/by-slug/${encodeURIComponent(slug)}/court/${court}/live`, { cache: 'no-store' });
       if (mine !== latest) return;
       if (res.ok) render(await res.json());
       else if (res.status === 404) render(null); // no overlay for this court
