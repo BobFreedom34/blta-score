@@ -61,6 +61,9 @@ const csDayLabel = (day) => {
 
 // ---------- pieces ----------
 
+// the name of a player of a match: the seed number of the tournament in brackets before it, when he is seeded: "(3) Marek Mikuš"
+const csName = (p) => `${p && p.seed ? `(${p.seed}) ` : ''}${(p && p.name) || '?'}`;
+
 function csRoundLabel(m) {
   if (m.group) return [groupShortName(m.group.name), m.groupRound ? t('courts.round', { n: m.groupRound }) : ''].filter(Boolean).join(' · ');
   if (!m.round) return '';
@@ -77,7 +80,7 @@ const csStatusClass = (m) => `cs-st-${String(m.status || 'PLANNED').toLowerCase(
 
 function csPlayersHtml(m) {
   const won = (p) => (m.winnerId && m.winnerId === p.id ? ' class="cs-win"' : '');
-  return `<span${won(m.player1)}>${escapeHtml(m.player1.name || '?')}</span><span${won(m.player2)}>${escapeHtml(m.player2.name || '?')}</span>`;
+  return `<span${won(m.player1)}>${escapeHtml(csName(m.player1))}</span><span${won(m.player2)}>${escapeHtml(csName(m.player2))}</span>`;
 }
 
 // The two players, and when the match is being played or has been played their sets in the format of the match page (the same as the schedule on the whole screen): the
@@ -90,7 +93,7 @@ function csScoredPlayersHtml(m, pill) {
   const won = (p) => (m.winnerId && m.winnerId === p.id ? ' cs-win' : '');
   const head = shown.length
     ? `<span class="cs-pl-line cs-pl-head"><span class="cs-nm">${pill || ''}</span><span class="cs-sc">${shown.map((s, i) => `<span>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</span>`).join('')}</span></span>` : '';
-  const line = (p, num) => `<span class="cs-pl-line"><span class="cs-nm${won(p)}">${escapeHtml(p.name || '?')}</span>${shown.length ? `<span class="cs-sc">${shown.map((s) => `<span>${setCell(s, num, { highlightWinner: true })}</span>`).join('')}</span>` : ''}</span>`;
+  const line = (p, num) => `<span class="cs-pl-line"><span class="cs-nm${won(p)}">${escapeHtml(csName(p))}</span>${shown.length ? `<span class="cs-sc">${shown.map((s) => `<span>${setCell(s, num, { highlightWinner: true })}</span>`).join('')}</span>` : ''}</span>`;
   return `<span class="cs-pl">${head ? '' : (pill || '')}${head}${line(m.player1, 1)}${line(m.player2, 2)}</span>`;
 }
 

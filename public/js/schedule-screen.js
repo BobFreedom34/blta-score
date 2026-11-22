@@ -34,7 +34,7 @@ function stcChooseDay() {
 // the pair of players on one line: "Jan Szalay – Michal Bori" (the winner of a finished match in green)
 function stcPair(m) {
   const won = (p) => (m.winnerId && m.winnerId === p.id ? ' class="stc-win"' : '');
-  return `<span${won(m.player1)}>${escapeHtml(m.player1.name || '?')}</span><i> – </i><span${won(m.player2)}>${escapeHtml(m.player2.name || '?')}</span>`;
+  return `<span${won(m.player1)}>${escapeHtml(csName(m.player1))}</span><i> – </i><span${won(m.player2)}>${escapeHtml(csName(m.player2))}</span>`;
 }
 
 // the two players one under the other, and when the match is being played or has been played their sets in the format of the match page: a column per set (S1, S2, MTB),
@@ -54,7 +54,7 @@ function stcPlayers(m, pill) {
   const name = (p) => (m.winnerId && m.winnerId === p.id ? ' stc-win' : '');
   const head = shown.length
     ? `<span class="stc-pl-line stc-pl-head"><span class="stc-nm">${pill || ''}</span><span class="stc-sc">${shown.map((s, i) => `<span>${s.isSuperTiebreak ? 'MTB' : `S${i + 1}`}</span>`).join('')}</span></span>` : '';
-  const line = (p, num) => `<span class="stc-pl-line"><span class="stc-nm${name(p)}">${escapeHtml(p.name || '?')}</span>${shown.length ? `<span class="stc-sc">${shown.map((s) => `<span>${setCell(s, num, { highlightWinner: true })}</span>`).join('')}</span>` : ''}</span>`;
+  const line = (p, num) => `<span class="stc-pl-line"><span class="stc-nm${name(p)}">${escapeHtml(csName(p))}</span>${shown.length ? `<span class="stc-sc">${shown.map((s) => `<span>${setCell(s, num, { highlightWinner: true })}</span>`).join('')}</span>` : ''}</span>`;
   return `<span class="stc-pl">${head ? '' : (pill || '')}${head}${line(m.player1, 1)}${line(m.player2, 2)}</span>`;
 }
 
