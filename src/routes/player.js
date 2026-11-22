@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const express = require('express');
 const db = require('../db');
 const auth = require('../auth');
+const courtKiosk = require('../courtKiosk');
 const { sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendWelcomeEmail } = require('../mailer');
 const { creditInviter } = require('./invites');
 const { isoWeekOf } = require('../rankingSnapshots');
@@ -149,6 +150,8 @@ router.get('/session', (req, res) => {
     // its own session route so the client picks it up in the same
     // once-per-page-load request it already makes for player status.
     isReferee: auth.isReferee(req),
+    // the kiosk of a court (src/courtKiosk.js): which court this browser is the kiosk of, so the match page shows it the score controls of the matches of that court
+    kioskCourt: courtKiosk.fromRequest(req),
     // Also whether this is an admin session, so a page needs one session request, not this one plus /admin/session.
     isAdmin: auth.isAdmin(req),
     // the kind of admin (SUPER / CITY), so the backend can show the right menu

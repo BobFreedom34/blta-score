@@ -7802,3 +7802,22 @@ body:has(.admin-tabs) .card .tab.active { background: var(--orange); color: var(
 .sa-section .sa-grid { row-gap: 30px; }
 .sa-section > :is(.sa-field, .sa-grid, .sa-hint, .sa-cats-row, .sa-pay-grid) + :is(.sa-field, .sa-grid, .sa-cats-row) { margin-top: 30px; }
 .sa-section .sa-grid > .sa-field + .sa-hint { margin-top: -18px; } /* the note of the field above it: back up under that field */
+
+/* ==========================================================================
+   KIOSK MODE OF THE MATCH PAGE (/match/<token>?kiosk=<token>, opened from the kiosk of a court: public/kiosk.html, public/js/match.js)
+   No menus: a phone that lies on a court shows the match and a way back to the list of the court; when the match is over its result covers the page for a few seconds.
+   ========================================================================== */
+html.kiosk-mode .topbar, html.kiosk-mode .site-footer, html.kiosk-mode .bottom-nav, html.kiosk-mode .booking-btn, html.kiosk-mode .booking-spacer, html.kiosk-mode .scroll-top-btn { display: none !important; }
+html.kiosk-mode body { padding-bottom: var(--sp-5); }
+/* only the score is for a phone on a court: not the place, date and category (editing), the chat, nor the share / embed / referee buttons under it */
+html.kiosk-mode #match-root .info-grid, html.kiosk-mode #match-root .chat-card, html.kiosk-mode #match-root .chat-card ~ .match-actions { display: none; }
+.kiosk-bar { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; min-height: 56px; padding: 0 var(--sp-4); background: #0a0a0a; border-bottom: 1px solid var(--tile-border); }
+.kiosk-back { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--fs-md); font-weight: 700; color: var(--text-1); text-decoration: none; }
+.kiosk-result { color: var(--text-1); position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; padding: var(--sp-4); background: rgba(10, 10, 10, 0.97); }
+.kiosk-result-card { width: 100%; max-width: 520px; display: flex; flex-direction: column; align-items: center; gap: var(--sp-4); text-align: center; }
+.kiosk-result-title { font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--green); }
+.kiosk-result-names { font-size: var(--fs-lg); font-weight: 800; text-transform: uppercase; overflow-wrap: anywhere; }
+.kiosk-result-names i { padding: 0 var(--sp-2); font-style: normal; color: var(--text-3); }
+.kiosk-result-score { font-size: var(--fs-hero); font-weight: 800; font-variant-numeric: tabular-nums; color: var(--green); }
+.kiosk-result-winner { font-size: var(--fs-name); font-weight: 700; }
+.kiosk-result-count { font-size: var(--fs-sm); color: var(--text-2); }

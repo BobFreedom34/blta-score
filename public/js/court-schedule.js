@@ -260,6 +260,7 @@ function csAdminHtml() {
         <button type="button" class="btn btn-sm btn-outline" data-cs="rebuild">${tl('Prepočítať odznova', 'Rebuild from scratch')}</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="unlock">${tl('Odomknúť všetky zápasy', 'Unlock all matches')}</button>
         <button type="button" class="btn btn-sm btn-outline" data-cs="clear">${tl('Vyčistiť rozvrh', 'Clear the schedule')}</button>
+        <button type="button" class="btn btn-sm btn-outline" data-cs="kiosks" title="${escapeHtml(tl('Jeden odkaz pre telefóny na kurtoch: každý telefón si vyberie svoj kurt, hráči si na ňom vyberú zápas a zapisujú skóre', 'One link for the phones on the courts: each phone picks its court, the players pick their match on it and enter the score'))}">${tl('Kiosk kurtov', 'Court kiosk')}</button>
         <span class="cs-hint">${tl('Potiahni zápas na kurt a čas, spodnú hranu bloku na zmenu dĺžky zápasu (zámok = ručne umiestnený, plánovač ho nepresúva; kliknutím na zámok ho odomkneš). Späť do „Nerozvrhnuté“ ho zrušíš. Skončený zápas je zamknutý sám; kliknutím na jeho zámok ho odomkneš a môžeš ho posúvať aj meniť jeho dĺžku. Počet kurtov: Formát turnaja.', 'Drag a match to a court and a time, the bottom edge of a block to change the length of the match (lock = placed by hand, the planner does not move it; click the lock to unlock it). Drag it back to "Unscheduled" to take it off. A finished match is locked by itself; click its lock to unlock it, then you can move it and change its length. Number of courts: Tournament format.')}</span>
       </div>
     </div>`;
@@ -503,6 +504,72 @@ async function reloadCourtSchedule() {
 
 // "+ Pridať zápas": a match added by hand to a group (or Swiss round) of the tournament, for the organiser (src/tournamentMatches.js). A court and a time are optional: without
 // them the planner places it. A rematch or a second match of a player in the same round is refused by the server until "aj keď už hrali" is ticked.
+// "Kiosk kurtov": ONE link for the whole tournament. Open it on the phone that lies on a court: it shows the courts, the phone picks its own, and from then on it lists the matches of
+// that court, where the players pick their match and score it. A QR code opens the link on the phone, "Nový odkaz" replaces it (the old one stops working at once), "Vypnúť" switches
+// the kiosk off. Server: src/courtKiosk.js, src/routes/seasons/schedule.js.
+async function csOpenKiosks() {
+  const base = `/seasons/${csState.season.id}/kiosk`;
+  const old = document.getElementById('cs-kiosk-modal');
+  if (old) old.remove();
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.id = 'cs-kiosk-modal';
+  modal.style.display = 'flex';
+  document.body.appendChild(modal);
+  const draw = (k) => {
+    modal.innerHTML = `
+      <div class="modal cs-kiosks">
+        <button type="button" class="close" data-ks="close" aria-label="${escapeHtml(tl('Zavrieť', 'Close'))}">&times;</button>
+        <h3 style="margin-top:0">${escapeHtml(tl('Kiosk kurtov', 'Court kiosk'))}</h3>
+        <p style="font-size:14px;color:var(--text-2);margin:0 0 16px">${escapeHtml(tl('Jeden odkaz pre všetky kurty. Otvor ho na telefóne, ktorý bude ležať na kurte (naskenuj QR kód, alebo napíš krátky odkaz a zadaj kód), vyber kurt a pridaj stránku na plochu. Hráči si na telefóne vyberú svoj zápas a zapisujú skóre; po konci zápasu sa telefón vráti na zoznam kurtu. Telefón môže skórovať len zápasy svojho kurtu. Odkaz nezverejňuj: kto ho má, môže si vybrať ľubovoľný kurt.', 'One link for all the courts. Open it on the phone that will lie on the court (scan the QR code, or type the short link and enter the code), pick the court and add the page to the home screen. The players pick their match on the phone and enter the score; when the match is over the phone goes back to the list of its court. A phone can score only the matches of its own court. Do not publish the link: whoever has it can pick any court.'))}</p>
+        ${k.url ? `
+          <div style="display:flex;gap:16px;align-items:flex-start">
+            <img src="${k.qr}" alt="QR" width="120" height="120" style="flex:none;border-radius:8px;background:#fff">
+            <div style="min-width:0;flex:1">
+              <div style="font-size:12px;color:var(--text-3)">${escapeHtml(tl('Krátky odkaz', 'Short link'))}</div>
+              <div class="code-box" id="cs-kiosk-short" style="word-break:break-all;font-size:14px;font-weight:700;margin-bottom:6px">${escapeHtml(k.shortUrl)}</div>
+              <div style="font-size:12px;color:var(--text-3)">${escapeHtml(tl('Kód', 'Code'))}</div>
+              <div class="code-box" id="cs-kiosk-code" style="font-size:20px;font-weight:800;letter-spacing:0.2em;margin-bottom:8px">${escapeHtml(k.code || '-')}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <button type="button" class="btn btn-sm btn-primary" data-ks="share">${escapeHtml(tl('Zdieľať', 'Share'))}</button>
+                <button type="button" class="btn btn-sm btn-outline" data-ks="copy">${escapeHtml(tl('Kopírovať', 'Copy'))}</button>
+                <a class="btn btn-sm btn-outline" href="${escapeHtml(k.url)}" target="_blank" rel="noopener">${escapeHtml(tl('Otvoriť', 'Open'))}</a>
+                <button type="button" class="btn btn-sm btn-outline" data-ks="make">${escapeHtml(tl('Nový odkaz', 'New link'))}</button>
+                <button type="button" class="btn btn-sm btn-outline" data-ks="off">${escapeHtml(tl('Vypnúť', 'Turn off'))}</button>
+              </div>
+            </div>
+          </div>` : `
+          <div style="color:var(--text-3);font-size:14px;margin-bottom:12px">${escapeHtml(tl('Kiosk nie je zapnutý.', 'The kiosk is off.'))}</div>
+          <button type="button" class="btn btn-sm btn-primary" data-ks="make">${escapeHtml(tl('Zapnúť kiosk', 'Turn the kiosk on'))}</button>`}
+      </div>`;
+  };
+  modal.addEventListener('click', async (e) => {
+    if (e.target === modal || e.target.closest('[data-ks="close"]')) { modal.remove(); return; }
+    const act = e.target.closest('[data-ks]');
+    if (!act) return;
+    try {
+      const shortUrl = () => (document.getElementById('cs-kiosk-short') || {}).textContent || '';
+      const code = () => (document.getElementById('cs-kiosk-code') || {}).textContent || '';
+      // what a player needs on the phone: the short address and the code
+      const message = () => `${tl('Kiosk kurtu', 'Court kiosk')} - ${csState.season.name}: ${shortUrl()} (${tl('kód', 'code')} ${code()})`;
+      if (act.dataset.ks === 'share') {
+        if (navigator.share) { try { await navigator.share({ title: tl('Kiosk kurtu', 'Court kiosk'), text: message() }); } catch { /* closed without sharing */ } }
+        else { await copyToClipboard(message()); toast(tl('Odkaz s kódom skopírovaný', 'Link with the code copied')); }
+      } else if (act.dataset.ks === 'copy') {
+        await copyToClipboard(message());
+        toast(tl('Odkaz s kódom skopírovaný', 'Link with the code copied'));
+      } else if (act.dataset.ks === 'make') {
+        if (modal.querySelector('.code-box') && !confirm(tl('Vytvoriť nový odkaz? Starý odkaz, jeho kód a všetky telefóny, ktoré ho používajú, prestanú fungovať. Nový odkaz treba znova otvoriť na každom telefóne.', 'Make a new link? The old link, its code and every phone that uses it stop working. The new link has to be opened again on every phone.'))) return;
+        draw(await api(base, { method: 'POST' }));
+      } else if (act.dataset.ks === 'off') {
+        if (!confirm(tl('Vypnúť kiosk? Telefóny na kurtoch prestanú fungovať, kým nevytvoríš nový odkaz.', 'Turn the kiosk off? The phones on the courts stop working until you make a new link.'))) return;
+        draw(await api(base, { method: 'DELETE' }));
+      }
+    } catch (err) { toast(err.message); }
+  });
+  try { draw(await api(base)); } catch (err) { modal.remove(); toast(err.message); }
+}
+
 async function csOpenAddMatch() {
   let opts;
   try { opts = await api(`/seasons/${csState.season.id}/match-options`); } catch (err) { toast(err.message); return; }
@@ -652,6 +719,8 @@ async function initCourtSchedule(host, season) {
       csApply(api(`${base}/settings`, { method: 'PATCH', body }), tl('Nastavenia uložené', 'Settings saved'));
     } else if (kind === 'addmatch') {
       csOpenAddMatch();
+    } else if (kind === 'kiosks') {
+      csOpenKiosks();
     } else if (kind === 'fill') {
       csApply(api(`${base}/auto`, { method: 'POST', body: { mode: 'fill' } }), tl('Rozvrh poskladaný', 'Schedule built'));
     } else if (kind === 'backfill') {

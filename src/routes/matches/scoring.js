@@ -177,7 +177,7 @@ router.post('/:token/resume-later', requireLoggedInOrReferee, (req, res) => {
 router.post('/:token/finish-as-is', requireLoggedInOrReferee, async (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!checkLiveScoreAccess(req, res, row)) return;
+  if (!checkLiveScoreAccess(req, res, row, { noKiosk: true })) return;
   if (row.status !== 'UNFINISHED') {
     return res.status(400).json({ error: 'Only an unfinished match can be finished this way' });
   }
@@ -219,7 +219,7 @@ router.post('/:token/finish-as-is', requireLoggedInOrReferee, async (req, res) =
 router.post('/:token/restart', requireLoggedInOrReferee, (req, res) => {
   const row = getRowOr404(req, res);
   if (!row) return;
-  if (!checkLiveScoreAccess(req, res, row)) return;
+  if (!checkLiveScoreAccess(req, res, row, { noKiosk: true })) return;
   if (row.status === 'FINISHED') {
     if (!mayCorrectFinished(req, row)) {
       return res.status(403).json({ error: 'Only an admin can restart a finished match' });

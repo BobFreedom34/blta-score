@@ -1,4 +1,12 @@
 const matchToken = window.location.pathname.split('/').filter(Boolean).pop();
+// Opened from the kiosk of a court (public/js/kiosk.js): the address says so (?kiosk=<token of the kiosk>). The page then has no menus, a way back to the list of the court, and
+// when the match is over it shows the result for a moment and goes back to that list.
+const kioskToken = new URLSearchParams(window.location.search).get('kiosk') || '';
+const kioskMode = !!kioskToken;
+const kioskBack = `/kiosk/${encodeURIComponent(kioskToken)}?court=${encodeURIComponent(new URLSearchParams(window.location.search).get('court') || '')}`; // the list of the court this phone lies on
+const KIOSK_RESULT_SECONDS = 5;
+// is this browser the kiosk of the court this match stands on? (then it may score it, like a referee; kioskCourt is read from the session by common-player.js)
+const kioskOk = (m) => !!kioskCourt && !!m.season && m.season.id === kioskCourt.seasonId && m.courtNo === kioskCourt.courtNo;
 const root = document.getElementById('match-root');
 let current = null;
 let timerInterval = null;
@@ -187,7 +195,7 @@ function controlsHtml(m, canControlLive) {
     `;
   }
   if (m.status === 'LIVE') {
-    return scoreControlsHtml(m, { showFinish: true, showRestart: true, canControlLive });
+    return scoreControlsHtml(m, { showFinish: true, showRestart: !kioskMode, canControlLive });
   }
   if (m.status === 'UNFINISHED') {
     return `
@@ -197,7 +205,7 @@ function controlsHtml(m, canControlLive) {
       </div>
       ${canControlLive ? `
       <button class="btn btn-primary btn-block" id="resume-later-btn" style="padding:16px;font-size:16px;margin-top:10px;text-transform:uppercase">${iconLabel('calendar', t('match.setNewDateResume'))}</button>
-      <button class="btn btn-dark btn-block" id="finish-as-is-btn" style="margin-top:10px">${iconLabel('flag', t('match.finishAsIs'))}</button>
+      ${kioskMode ? '' : `<button class="btn btn-dark btn-block" id="finish-as-is-btn" style="margin-top:10px">${iconLabel('flag', t('match.finishAsIs'))}</button>`}
       <button class="btn btn-block" id="restart-btn" style="margin-top:10px">${iconLabel('restart', t('match.restartFromScratch'))}</button>
       ` : ''}
     `;
@@ -216,7 +224,7 @@ function controlsHtml(m, canControlLive) {
   return `
     ${winnerCard}
     <div style="text-align:center;font-size:12px;color:var(--gray-dim);margin:14px 0 -6px">${t('match.adminCorrectNote')}</div>
-    ${scoreControlsHtml(m, { showFinish: false, showRestart: true, canControlLive })}
+    ${scoreControlsHtml(m, { showFinish: false, showRestart: !kioskMode, canControlLive })}
   `;
 }
 
@@ -659,9 +667,48 @@ function attachInteractiveProposalPicker(m, which, idPrefix, proposedBy, propose
   }));
 }
 
+// Kiosk mode (see the top of this file): the bar with the way back to the list of the court, and, when the match is over, its result for a few seconds, then the list.
+function kioskAfterRender(m) {
+  if (!document.getElementById('kiosk-bar')) {
+    const bar = document.createElement('div');
+    bar.id = 'kiosk-bar';
+    bar.className = 'kiosk-bar';
+    bar.innerHTML = `<a class="kiosk-back" href="${kioskBack}">← ${escapeHtml(t('kiosk.back'))}</a>`;
+    document.body.prepend(bar);
+  }
+  if (m.status === 'FINISHED' && !document.getElementById('kiosk-result')) showKioskResult(m);
+}
+
+function showKioskResult(m) {
+  const winner = m.winnerId && m.winnerId === m.player1.id ? m.player1 : (m.winnerId && m.winnerId === m.player2.id ? m.player2 : null);
+  const back = kioskBack;
+  const box = document.createElement('div');
+  box.id = 'kiosk-result';
+  box.className = 'kiosk-result';
+  let left = KIOSK_RESULT_SECONDS;
+  const countdown = () => escapeHtml(t('kiosk.returning', { s: left }));
+  box.innerHTML = `
+    <div class="kiosk-result-card">
+      <div class="kiosk-result-title">${escapeHtml(t('kiosk.resultTitle'))}</div>
+      <div class="kiosk-result-names">${escapeHtml(m.player1.name)}<i>–</i>${escapeHtml(m.player2.name)}</div>
+      <div class="kiosk-result-score">${escapeHtml(m.scoreSummary || '')}</div>
+      ${winner ? `<div class="kiosk-result-winner">${escapeHtml(t('kiosk.winner', { name: winner.name }))}</div>` : ''}
+      <div class="kiosk-result-count" id="kiosk-count">${countdown()}</div>
+      <a class="btn btn-primary" href="${back}">${escapeHtml(t('kiosk.returnNow'))}</a>
+    </div>`;
+  document.body.appendChild(box);
+  const timer = setInterval(() => {
+    left -= 1;
+    if (left <= 0) { clearInterval(timer); window.location.href = back; return; }
+    const el = document.getElementById('kiosk-count');
+    if (el) el.innerHTML = countdown();
+  }, 1000);
+}
+
 function render(m) {
   m.viewerManagesClub = clubManager;
   current = m;
+  if (kioskMode) kioskAfterRender(m);
   // The static <title> in match.html is just a generic placeholder — every
   // real visit lands here via JS, so the actual per-match tab title (and
   // what shows if the tab is bookmarked) only ever gets set here. Server-
@@ -696,7 +743,7 @@ function render(m) {
   // location/date or delete it (see locationEditable/deletable below,
   // still on canManageMatch/canControlLive).
   const canControlLiveScore = isAdminUser || (playerAuthed && canManageLiveScore(m, isAdminUser));
-  const canControlLiveScoreOrReferee = canControlLiveScore || refereeAuthed;
+  const canControlLiveScoreOrReferee = canControlLiveScore || refereeAuthed || kioskOk(m);
   // Kept as its own, separately-computed flag (still on the broader
   // canManageMatch) purely because `deletable` below mirrors DELETE
   // /:token, which — unlike the live-scoring routes — still goes through
@@ -950,7 +997,7 @@ function attachHandlers(m) {
   // it — see canManageMatch/checkMatchAccess.
   const startBtn = document.getElementById('start-btn');
   if (startBtn) startBtn.addEventListener('click', () => requireLiveScoreAuth(() => {
-    if (!refereeAuthed && !canManageLiveScore(m, isAdminUser)) {
+    if (!refereeAuthed && !kioskOk(m) && !canManageLiveScore(m, isAdminUser)) {
       showAccessDeniedModal(t('accessDenied.message'));
       return;
     }
@@ -1052,7 +1099,7 @@ function attachHandlers(m) {
   // pattern start-btn/manual-result-btn/openEditMatch already use, for the
   // rare case a stale render leaves one of these clickable a beat too long.
   function guardCanControl() {
-    if (!refereeAuthed && !canManageLiveScore(m, isAdminUser)) {
+    if (!refereeAuthed && !kioskOk(m) && !canManageLiveScore(m, isAdminUser)) {
       showAccessDeniedModal(t('accessDenied.message'));
       return false;
     }
@@ -1099,7 +1146,7 @@ function attachHandlers(m) {
     try {
       const finished = await api(`/matches/${matchToken}/finish`, { method: 'POST' });
       render(finished);
-      openWhatsAppResultModal(finished);
+      if (!kioskMode) openWhatsAppResultModal(finished);
     }
     catch (err) { toast(err.message); finishBtn.disabled = false; }
   }));

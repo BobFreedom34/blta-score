@@ -229,3 +229,16 @@ if (!db.prepare("SELECT 1 FROM app_flags WHERE key = 'tournament_play_type'").ge
   `);
   db.prepare("INSERT OR IGNORE INTO app_flags (key) VALUES ('tournament_play_type')").run();
 }
+
+// The kiosk of a tournament: phones that lie on its courts open ONE link, /kiosk/<token>, pick their court there, and list and score the matches of it (see src/courtKiosk.js).
+// One row per tournament; the token is the secret of the address (it is replaced by a new one when the organiser makes the link again).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS season_kiosks (
+    season_id INTEGER PRIMARY KEY REFERENCES seasons(id) ON DELETE CASCADE,
+    token TEXT NOT NULL UNIQUE,
+    pin TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+  );
+`);
+// the short code that opens the short address /turnaj<number> (a database made before it was added gets the column; its links get a code when they are made again)
+if (!db.prepare('PRAGMA table_info(season_kiosks)').all().some((c) => c.name === 'pin')) db.exec("ALTER TABLE season_kiosks ADD COLUMN pin TEXT NOT NULL DEFAULT ''");

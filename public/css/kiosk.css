@@ -1,0 +1,32 @@
+/* The kiosk of a court (/kiosk/<token>): a phone that lies on the court, the list of the matches of that court. Big, touch-sized, readable from a step away. */
+html.kiosk, body.kiosk-page { margin: 0; min-height: 100%; color: var(--text-1); }
+.ks { max-width: 640px; margin: 0 auto; padding: var(--sp-4); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--sp-5); }
+.ks-loading, .ks-message { padding: var(--sp-7) var(--sp-4); text-align: center; font-size: var(--fs-lg); color: var(--text-2); }
+.ks-message.bad { color: var(--text-1); }
+
+.ks-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); padding-bottom: var(--sp-4); border-bottom: 1px solid var(--tile-border); }
+.ks-court { margin: 0; font-size: var(--fs-xl); font-weight: 800; line-height: 1.1; text-transform: uppercase; }
+.ks-season { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); color: var(--text-2); }
+.ks-clock { font-size: var(--fs-xl); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-2); }
+.ks-hint { margin: 0; font-size: var(--fs-md); color: var(--text-2); }
+.ks-offline { padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-sm); background: var(--fill-grey); font-size: var(--fs-sm); color: var(--text-2); }
+
+.ks-section { display: flex; flex-direction: column; gap: var(--sp-3); }
+.ks-section-h { margin: 0; font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+
+.ks-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--sp-4); min-height: 72px; padding: var(--sp-3) var(--sp-4); box-sizing: border-box; border: 1px solid var(--tile-border); border-radius: var(--radius); background: var(--fill-grey); color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+a.ks-row:active { border-color: var(--orange); }
+.ks-time { font-size: var(--fs-lg); font-weight: 800; font-variant-numeric: tabular-nums; }
+.ks-pl { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; font-size: var(--fs-name); font-weight: 700; }
+.ks-pl span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ks-pl .win { color: var(--green); }
+.ks-meta { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.ks-pill { align-self: flex-start; padding: 2px var(--sp-2); border-radius: var(--radius-sm); background: var(--orange); color: #fff; font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.ks-row.live { border-color: var(--orange); }
+.ks-row.next { border-color: var(--frame-hover); }
+.ks-row.done { background: transparent; opacity: 0.6; }
+.ks-score { font-size: var(--fs-sm); font-weight: 700; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.ks-change { align-self: center; padding: var(--sp-3) var(--sp-4); font-size: var(--fs-sm); font-weight: 600; color: var(--text-3); text-decoration: underline; }
+
+.ks-code { display: flex; flex-direction: column; gap: var(--sp-4); }
+.ks-code-error { min-height: 20px; text-align: center; font-size: var(--fs-sm); font-weight: 600; color: var(--orange); }

@@ -125,6 +125,13 @@ const PAGES = [
     description: 'Priehľadné živé skóre kurtu turnaja BLTA, ktoré sa kladie na obraz živého prenosu.',
   },
   {
+    // the kiosk of a court: a phone that lies on the court lists its matches and scores them (public/js/kiosk.js, src/courtKiosk.js); a utility page, noindex, its address
+    // /kiosk/<token> is a plain route of server.js (the token is the secret); listed here so that the file is not picked up as a page of its own (discoverPages)
+    key: 'kiosk', label: 'Kiosk of a court (template)', path: '/kiosk/:token', file: 'kiosk.html', template: true, blta: null, slugSk: 'kiosk', noindex: true,
+    title: `Kiosk kurtu${SUFFIX}`,
+    description: 'Telefón na kurte turnaja BLTA: zoznam zápasov kurtu a živé zapisovanie skóre.',
+  },
+  {
     key: 'communities', label: 'Communities and clubs (list)', path: '/communities', file: 'communities.html', blta: null, slugSk: 'komunity-a-kluby',
     title: `Komunity a kluby${SUFFIX}`,
     description: 'Komunity a kluby BLTA - skupiny hráčov, ktoré si organizujú vlastné turnaje a akcie. Pridaj sa do klubu alebo si vytvor vlastnú komunitu.',
@@ -333,6 +340,11 @@ const ENGLISH = {
     slug: 'overlay',
     title: `Scoreboard of a court for the live stream${SUFFIX_EN}`,
     description: 'The transparent live score of a BLTA tournament court, laid over the picture of the live stream.',
+  },
+  kiosk: {
+    slug: 'kiosk',
+    title: `Kiosk of a court${SUFFIX_EN}`,
+    description: 'A phone that lies on a court of a BLTA tournament: the matches of that court and live scoring.',
   },
   screen: {
     slug: 'screen',

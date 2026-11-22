@@ -509,6 +509,7 @@ const TEMPLATE_ENTITY = {
   screen: () => ({ name: 'Live screen' }),
   schedulescreen: () => ({ name: 'Schedule screen' }),
   overlay: () => ({ name: 'Scoreboard overlay' }),
+  kiosk: () => ({ name: 'Kiosk of a court' }),
   // the manage page of a club tournament: noindex, the editor is loaded by the script
   clubtournament: () => ({ name: 'Club tournament' }),
   community: (slug, lang, leagueId) => {
@@ -590,6 +591,18 @@ app.use((req, res, next) => {
 app.get('/overlay/:slug/:court', (req, res) => {
   res.set('X-Robots-Tag', 'noindex, nofollow');
   res.sendFile(path.join(PUBLIC_DIR, 'overlay.html'));
+});
+// The kiosk of a court: a phone on the court lists the matches of that court and scores them (public/js/kiosk.js, src/courtKiosk.js). The address is the secret, so the page is noindex.
+// The short address of the kiosk of a tournament, /turnaj<number> (the number of the tournament): the same page, it asks for the code of the kiosk (public/js/kiosk.js).
+app.get(/^[/]turnaj[0-9]+[/]?$/, (req, res) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(PUBLIC_DIR, 'kiosk.html'));
+});
+app.get('/kiosk/:token', (req, res) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(PUBLIC_DIR, 'kiosk.html'));
 });
 app.use((req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
@@ -746,6 +759,7 @@ app.use('/api/badges', badgesRouter);
 app.use('/api/rankings', briefCache, rankingsRouter);
 app.use('/api/availability', availabilityRouter);
 app.use('/api/referee', refereeRouter);
+app.use('/api/kiosk', require('./src/routes/kiosk')); // the phone that lies on a court of a tournament (src/courtKiosk.js)
 app.use('/api/header-items', headerItemsRouter);
 app.use('/api/courtiq', courtIQRouter);
 app.use('/api/brackets', bracketsRouter);

@@ -21,6 +21,9 @@ let playerAuthed = false;
 // requireLiveScoreAuth below (used ONLY by match.js's live-scoring button
 // handlers) — nothing else in the app checks it or should.
 let refereeAuthed = false;
+// The kiosk of a court (public/js/kiosk.js, src/courtKiosk.js): { seasonId, courtNo } while this browser is the kiosk of a court, else null. Like a referee it may run the
+// live score - but only of the matches of its own court (the server checks that on every request; match.js hides the controls of any other match).
+let kioskCourt = null;
 let currentPlayerName = null;
 let currentPlayerPhotoUrl = null; // the photo of the logged-in player (his profile pill shows it instead of letters), or null
 // Null for a pure admin session (no player cookie) or no session at all —
@@ -102,6 +105,7 @@ async function refreshPlayerAuth() {
     needsPinSetup = !!res.needsPinSetup;
     unreadNotificationCount = res.unreadNotificationCount || 0;
     refereeAuthed = !!res.isReferee;
+    kioskCourt = res.kioskCourt || null;
   } catch {
     playerAuthed = false;
     currentPlayerName = null;
@@ -109,6 +113,7 @@ async function refreshPlayerAuth() {
     currentPlayerSlug = null;
     currentPlayerEmail = null;
     refereeAuthed = false;
+    kioskCourt = null;
   }
   updatePlayerNavLinks();
   updateBadgeBellUI(unreadNotificationCount);
@@ -640,7 +645,7 @@ function requireRealPlayer(onReady) {
 // general replacement for requirePlayerAuth elsewhere — a referee isn't a
 // stand-in for a real player or admin on anything but live scoring.
 function requireLiveScoreAuth(onReady) {
-  if (playerAuthed || refereeAuthed) { onReady(); return; }
+  if (playerAuthed || refereeAuthed || kioskCourt) { onReady(); return; }
   openPlayerLoginModal(onReady);
 }
 

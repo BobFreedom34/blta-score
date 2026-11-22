@@ -4,6 +4,7 @@ const nameMatch = require('../../nameMatch');
 const { sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalReceivedEmail } = require('../../mailer');
 const { sendPush } = require('../../push');
 const { isAdmin, getPlayerId, stripPrivateFields, isReferee } = require('../../auth');
+const courtKiosk = require('../../courtKiosk');
 const badgeEngine = require('../../badgeEngine');
 const courtIQ = require('../../courtIQEngine');
 const rankingPoints = require('../../rankingPoints');
@@ -262,6 +263,7 @@ function serialize(row) {
     pausedSeconds: row.paused_seconds || 0,
     firstServer: row.first_server || null,
     ballsPlayer: row.balls_player || null,
+    courtNo: row.court_no || null,
     courtPlayer: row.court_player || null,
     endReason: row.end_reason || null,
     proposalSlots: row.proposal_slots ? JSON.parse(row.proposal_slots) : null,
@@ -372,8 +374,11 @@ function mayCorrectFinished(req, row) {
   return isAdmin(req) || managesMatchSeason(req, row);
 }
 
-function checkLiveScoreAccess(req, res, row) {
+// The kiosk of a court (src/courtKiosk.js) may run the live score of the matches of its own court, and only that: not a finished match, and with { noKiosk: true } not the two
+// moves that throw a match away (restart, finish as it is) - a phone that lies on a court is in reach of everybody.
+function checkLiveScoreAccess(req, res, row, { noKiosk = false } = {}) {
   if (isAdmin(req) || isReferee(req) || managesMatchSeason(req, row)) return true;
+  if (!noKiosk && courtKiosk.mayScore(courtKiosk.fromRequest(req), row)) return true;
   const playerId = getPlayerId(req);
   if (playerId && playerIdsOf(row).includes(playerId)) return true;
   res.status(403).json({ error: 'Only the players in this match, an admin, or a referee can control the live score' });

@@ -3,6 +3,8 @@ const db = require('../../db');
 const clubTournaments = require('../../clubTournaments');
 const tournamentMatches = require('../../tournamentMatches');
 const tournamentSchedule = require('../../tournamentSchedule');
+const courtKiosk = require('../../courtKiosk');
+const QRCode = require('qrcode');
 const router = require('./router');
 const { tournamentOr404 } = require('./shared');
 
@@ -82,4 +84,38 @@ router.put('/:id/schedule/matches/:token', clubTournaments.requireSeasonManager(
   if (done.error) return res.status(done.status || 400).json({ error: done.error });
   scheduleChanged(req, season);
   res.json({ warnings: done.warnings, schedule: tournamentSchedule.getSchedule(season) });
+});
+
+// ---------------- the kiosk of the tournament (see src/courtKiosk.js) ----------------
+
+async function kioskView(req, season) {
+  const link = courtKiosk.linkOf(season.id);
+  if (!link) return { url: null, qr: null, shortUrl: null, code: null };
+  const origin = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/[/]$/, '');
+  const url = `${origin}/kiosk/${link.token}`;
+  // the short address (for typing and for sharing) and its code; the QR code holds the long link, which needs no code
+  return { url, qr: await QRCode.toDataURL(url, { margin: 1, width: 320 }), shortUrl: `${origin}/turnaj${season.id}`, code: link.pin || null };
+}
+
+// The one kiosk link of the tournament (organiser): { url, qr }, both null while there is none.
+router.get('/:id/kiosk', clubTournaments.requireSeasonManager(clubTournaments.byParamId), async (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  res.json(await kioskView(req, season));
+});
+
+// A new link (the first one, or a replacement: the old address and the phones that use it stop working at once).
+router.post('/:id/kiosk', clubTournaments.requireSeasonManager(clubTournaments.byParamId), async (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  courtKiosk.makeLink(season);
+  res.status(201).json(await kioskView(req, season));
+});
+
+// Switches the kiosk off.
+router.delete('/:id/kiosk', clubTournaments.requireSeasonManager(clubTournaments.byParamId), async (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  courtKiosk.removeLink(season.id);
+  res.json(await kioskView(req, season));
 });

@@ -4,6 +4,7 @@ const db = require('./db');
 const COOKIE_NAME = 'blta_admin';
 const PLAYER_COOKIE_NAME = 'blta_player';
 const REFEREE_COOKIE_NAME = 'blta_referee';
+const KIOSK_COOKIE_NAME = 'blta_kiosk';
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const isSecure = (process.env.PUBLIC_URL || '').startsWith('https://');
 
@@ -142,6 +143,21 @@ function logInReferee(res) {
   res.cookie(REFEREE_COOKIE_NAME, REFEREE_VALUE, cookieOptions());
 }
 
+// The kiosk of a tournament (src/courtKiosk.js): the cookie is "kiosk:<token>:<court>" and says nothing by itself - the token is looked up in the table of kiosks on every request,
+// so a new link (or a removed one) switches the phones off at once, and the court is checked against the tournament. What it unlocks is decided per match (courtKiosk.mayScore).
+const KIOSK_PREFIX = 'kiosk:';
+
+// -> { token, courtNo } as the cookie says it (not yet checked against the table), or null
+function kioskOf(req) {
+  const raw = req.signedCookies && req.signedCookies[KIOSK_COOKIE_NAME];
+  const m = typeof raw === 'string' ? /^kiosk:([A-Za-z0-9_-]{20,64}):([0-9]{1,3})$/.exec(raw) : null;
+  return m ? { token: m[1], courtNo: Number(m[2]) } : null;
+}
+
+function logInKiosk(res, token, courtNo) {
+  res.cookie(KIOSK_COOKIE_NAME, `${KIOSK_PREFIX}${token}:${courtNo}`, cookieOptions());
+}
+
 function logOutReferee(res) {
   res.clearCookie(REFEREE_COOKIE_NAME, clearOptions());
 }
@@ -237,7 +253,7 @@ function requireLoggedIn(req, res, next) {
 // also swap checkMatchAccess for checkLiveScoreAccess. Not a general
 // replacement for requireLoggedIn elsewhere.
 function requireLoggedInOrReferee(req, res, next) {
-  if (!isPlayer(req) && !isReferee(req)) {
+  if (!isPlayer(req) && !isReferee(req) && !kioskOf(req)) {
     return res.status(401).json({ error: 'Please log in, or enter the referee code, to do this' });
   }
   next();
@@ -273,6 +289,6 @@ module.exports = {
   hashPassword, verifyPassword,
   isPlayer, getPlayerId, logInPlayer, logOutPlayer, requirePlayer,
   requireLoggedIn, hashPin, verifyPin, canSeePrivateFields, stripPrivateFields,
-  isReferee, logInReferee, logOutReferee, requireLoggedInOrReferee,
+  isReferee, logInReferee, logOutReferee, requireLoggedInOrReferee, KIOSK_COOKIE_NAME, kioskOf, logInKiosk,
   ACTING_ORG_COOKIE, getActingOrgId, setActingOrg, clearActingOrg,
 };
