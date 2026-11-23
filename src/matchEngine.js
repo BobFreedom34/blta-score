@@ -109,7 +109,7 @@ function finalizeSet(state, set, winner) {
 }
 
 // Returns a NEW state object (does not mutate the input).
-function applyDelta(state, formatKey, player, delta) {
+function applyDeltaRaw(state, formatKey, player, delta) {
   const format = FORMATS[formatKey];
   if (!format) throw new Error(`Unknown match format: ${formatKey}`);
   if (state.status === 'COMPLETE') return state;
@@ -149,6 +149,87 @@ function applyDelta(state, formatKey, player, delta) {
     }
   }
 
+  return next;
+}
+
+// ---- Point-by-point scoring (15-30-40-Ad) for admins, city admins and referees ------------------------------------------------------
+// state.game = { p1, p2 } counts the points of the game being played (0,1,2,3 = 0,15,30,40; both on 3+ = deuce / advantage). It exists only once
+// point scoring has been used, and is thrown away when a game ends or games are changed by hand. state.log is the timeline: one entry per point
+// (k:'P') or per hand correction of a game (k:'G'), written only for a match scored by points (a match scored by games has no log):
+//   { k, w: who won the point 1|2, s: set index, n: number of the game in the set (0 = tie-break), sc: '15-0' | 'GAME' | 'SET' | 'MATCH' | 'G+' | 'G-',
+//     g: 'p1-p2' games of the set (after the point, tie-break: the score of the tie-break), t: epoch seconds }
+const LOG_MAX = 600;
+const POINT_LABELS = ['0', '15', '30', '40'];
+
+function pushLog(state, entry) {
+  state.log = (state.log || []).concat([entry]).slice(-LOG_MAX);
+}
+
+// What the points of a game read as: ['15', '30'], ['40', '40'] (deuce), ['Ad', '40']
+function gamePointLabels(game) {
+  const g = game || { p1: 0, p2: 0 };
+  if (g.p1 >= 3 && g.p2 >= 3) {
+    if (g.p1 === g.p2) return ['40', '40'];
+    return g.p1 > g.p2 ? ['Ad', '40'] : ['40', 'Ad'];
+  }
+  return [POINT_LABELS[g.p1], POINT_LABELS[g.p2]];
+}
+
+// Games changed by hand: the points of the game in play are dropped (nobody can say what they should become), and a match already scored by
+// points writes the correction into its timeline.
+function applyDelta(state, formatKey, player, delta) {
+  const next = applyDeltaRaw(state, formatKey, player, delta);
+  if (next === state) return state; // the match is decided: nothing changed
+  delete next.game;
+  if (state.log) {
+    const set = state.sets[state.currentSet];
+    pushLog(next, { k: 'G', w: player, s: state.currentSet, sc: delta > 0 ? 'G+' : 'G-', g: `${set.p1}-${set.p2}`, t: Math.floor(Date.now() / 1000) });
+  }
+  return next;
+}
+
+// One point won by `player`; returns a NEW state. In a tie-break (or match tie-break) it is a tie-break point; in a normal game the score moves
+// 0 → 15 → 30 → 40 → game, with deuce and advantage (a game needs 4 points and a lead of 2). A won game goes through applyDeltaRaw, so the end of
+// a set, the tie-break at 6-6 and the end of the match work exactly as with the game buttons.
+function applyPoint(state, formatKey, player, nowMs = Date.now()) {
+  if (!FORMATS[formatKey]) throw new Error(`Unknown match format: ${formatKey}`);
+  if (player !== 1 && player !== 2) throw new Error('player must be 1 or 2');
+  if (state.status === 'COMPLETE') throw new Error('The match is already decided');
+
+  const setIndex = state.currentSet;
+  const before = state.sets[setIndex];
+  const t = Math.floor(nowMs / 1000);
+  const key = player === 1 ? 'p1' : 'p2';
+  const otherKey = player === 1 ? 'p2' : 'p1';
+  let next;
+  let entry;
+
+  if (before.tiebreak) {
+    next = applyDeltaRaw(state, formatKey, player, 1);
+    const after = next.sets[setIndex];
+    const ended = !!after.winner;
+    entry = {
+      k: 'P', w: player, s: setIndex, n: 0,
+      sc: ended ? (next.status === 'COMPLETE' ? 'MATCH' : 'SET') : `${after.tiebreak.p1}-${after.tiebreak.p2}`,
+      g: before.isSuperTiebreak ? `${after.tiebreak.p1}-${after.tiebreak.p2}` : `${after.p1}-${after.p2}`, t,
+    };
+  } else {
+    const game = { p1: 0, p2: 0, ...(state.game || {}) };
+    game[key] += 1;
+    const gameNo = before.p1 + before.p2 + 1;
+    if (game[key] >= 4 && game[key] - game[otherKey] >= 2) {
+      next = applyDeltaRaw(state, formatKey, player, 1);
+      const after = next.sets[setIndex];
+      entry = { k: 'P', w: player, s: setIndex, n: gameNo, sc: after.winner ? (next.status === 'COMPLETE' ? 'MATCH' : 'SET') : 'GAME', g: `${after.p1}-${after.p2}`, t };
+    } else {
+      next = JSON.parse(JSON.stringify(state));
+      next.game = game;
+      const [a, b] = gamePointLabels(game);
+      entry = { k: 'P', w: player, s: setIndex, n: gameNo, sc: `${a}-${b}`, g: `${before.p1}-${before.p2}`, t };
+    }
+  }
+  if (['GAME', 'SET', 'MATCH'].includes(entry.sc)) delete next.game; // the game is over: the next one starts at 0-0
+  pushLog(next, entry);
   return next;
 }
 
@@ -274,6 +355,8 @@ function editSetScore(state, formatKey, setIndex, player, delta) {
     }
   }
 
+  delete next.game;
+  if (state.log) pushLog(next, { k: 'G', w: player, s: setIndex, sc: delta > 0 ? 'G+' : 'G-', g: `${next.sets[setIndex] ? next.sets[setIndex].p1 : 0}-${next.sets[setIndex] ? next.sets[setIndex].p2 : 0}`, t: Math.floor(Date.now() / 1000) });
   return recomputeFromSets(next, format);
 }
 
@@ -299,6 +382,7 @@ function applyFormatChange(state, newFormatKey) {
   const hasProgress = cur.p1 > 0 || cur.p2 > 0 || (cur.tiebreak && (cur.tiebreak.p1 > 0 || cur.tiebreak.p2 > 0));
   if (!hasProgress) {
     next.sets[next.currentSet] = createSetForIndex(next.currentSet, newFormat, next.nextSetStyle);
+    delete next.game;
   }
 
   const recomputed = recomputeFromSets(next, newFormat);
@@ -322,6 +406,7 @@ function setNextSetStyle(state, formatKey, style) {
   const hasProgress = cur.p1 > 0 || cur.p2 > 0 || (cur.tiebreak && (cur.tiebreak.p1 > 0 || cur.tiebreak.p2 > 0));
   if (!hasProgress) {
     next.sets[next.currentSet] = createSetForIndex(next.currentSet, format, style);
+    delete next.game;
   }
   return next;
 }
@@ -564,6 +649,8 @@ module.exports = {
   FORMATS,
   initState,
   applyDelta,
+  applyPoint,
+  gamePointLabels,
   editSetScore,
   applyFormatChange,
   setNextSetStyle,

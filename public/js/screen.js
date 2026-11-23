@@ -36,6 +36,17 @@ function scrSetChip(set, i) {
   return `<div class="scr-set"><small>${label}</small>${set.p1}:${set.p2}${tb}</div>`;
 }
 
+// 0, 15, 30, 40 / deuce / advantage of the game in play (the same rule as gamePointLabels in src/matchEngine.js)
+function scrGamePoints(game) {
+  const g = game || { p1: 0, p2: 0 };
+  if (g.p1 >= 3 && g.p2 >= 3) {
+    if (g.p1 === g.p2) return ['40', '40'];
+    return g.p1 > g.p2 ? ['Ad', '40'] : ['40', 'Ad'];
+  }
+  const names = ['0', '15', '30', '40'];
+  return [names[g.p1], names[g.p2]];
+}
+
 // the middle of the screen, by the state of the match
 function scrMiddle(m) {
   const st = m.state;
@@ -60,10 +71,13 @@ function scrMiddle(m) {
       ? (cur.isSuperTiebreak ? tl('Supertajbrejk', 'Match tie-break') : tl('Tajbrejk', 'Tie-break'))
       : `${tl('Set', 'Set')} ${(st.currentSet || 0) + 1}`;
     const done = sets.filter((s) => s.winner);
+    // once somebody scores point by point: the points of the game in play (15, 30, 40, Ad) under the number of games (a tie-break has its points in the big number)
+    const gl = (st.log && !inTb && st.status !== 'COMPLETE') ? scrGamePoints(st.game) : null;
     return `
       <div class="scr-pill ${m.pausedAt ? 'paused' : 'live'}"><i></i>${escapeHtml(m.pausedAt ? tl('Prerušené', 'Paused') : tl('Naživo', 'Live'))}</div>
       <div class="scr-label">${escapeHtml(label)}</div>
       <div class="scr-big">${a}<span class="sep">:</span>${b}</div>
+      ${gl ? `<div class="scr-game"><small>${escapeHtml(tl('Hra', 'Game'))}</small>${gl[0]}<span class="sep">:</span>${gl[1]}</div>` : ''}
       <div class="scr-sub">${escapeHtml(tl('Sety', 'Sets'))} ${won[1]} : ${won[2]}</div>
       ${done.length ? `<div class="scr-sets">${sets.map((s, i) => (s.winner ? scrSetChip(s, i) : '')).join('')}</div>` : ''}
       <div class="scr-timer" id="scr-timer"></div>`;

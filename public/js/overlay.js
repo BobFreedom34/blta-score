@@ -32,12 +32,23 @@
       winnerId: null,
       player1: { name: 'Róbert Sloboda' },
       player2: { name: 'Peter Pálenek' },
-      state: { currentSet: 1, sets: [{ p1: 6, p2: 1, winner: 1 }, { p1: 3, p2: 2, winner: null }] },
+      state: { currentSet: 1, sets: [{ p1: 6, p2: 1, winner: 1 }, { p1: 3, p2: 2, winner: null }], game: { p1: 3, p2: 2 }, log: [1] },
     },
   };
 
   // a doubles side is called "A / B" (two full names): its row is narrow, so it shows the surnames; a single player keeps the full name
   const rowName = (name) => (String(name || '').includes(' / ') ? String(name).split(' / ').map((n) => n.trim().split(/\s+/).pop()).join(' / ') : name);
+
+  // 0, 15, 30, 40 / deuce / advantage (the same rule as gamePointLabels in src/matchEngine.js)
+  function gamePointLabels(game) {
+    const g = game || { p1: 0, p2: 0 };
+    if (g.p1 >= 3 && g.p2 >= 3) {
+      if (g.p1 === g.p2) return ['40', '40'];
+      return g.p1 > g.p2 ? ['Ad', '40'] : ['40', 'Ad'];
+    }
+    const names = ['0', '15', '30', '40'];
+    return [names[g.p1], names[g.p2]];
+  }
 
   const started = (s) => !!(s.winner || s.p1 || s.p2 || (s.tiebreak && (s.tiebreak.p1 || s.tiebreak.p2)));
 
@@ -75,14 +86,20 @@
     const current = m.state.currentSet;
     const shown = (m.state.sets || []).map((s, i) => ({ s, i })).filter(({ s, i }) => (live && i === current) || started(s));
     const cells = (player) => shown.map(({ s, i }) => cellHtml(s, player, live && i === current)).join('');
+    // once somebody scores point by point, the points of the game in play (15, 30, 40, Ad) are the last column (a tie-break already shows its points in the set)
+    const curSet = (m.state.sets || [])[current];
+    const showGame = live && !!m.state.log && m.state.status !== 'COMPLETE' && !!curSet && !curSet.tiebreak;
+    const labels = showGame ? gamePointLabels(m.state.game) : null;
+    const gameCell = (player) => (showGame ? `<div class="ov-cell ov-game${player === 2 ? ' ov-row2' : ''}">${labels[player - 1]}</div>` : '');
+    const columns = `auto repeat(${shown.length}, 67px)${showGame ? ' 86px' : ''}`;
     const tag = data.tag != null ? data.tag : (data.label || `Kurt ${data.court}`);
     const subtitle = data.subtitle != null ? data.subtitle : data.tournament;
     stage.innerHTML = `
       <div class="ov-panel">
         <div class="ov-tag"><b>${escapeHtml(tag)}</b>${subtitle ? `<span>${escapeHtml(subtitle)}</span>` : ''}</div>
-        <div class="ov-board" style="--sets:${shown.length}">
-          <div class="ov-name"><span>${escapeHtml(rowName(m.player1.name))}</span></div>${cells(1)}
-          <div class="ov-name ov-row2"><span>${escapeHtml(rowName(m.player2.name))}</span></div>${cells(2)}
+        <div class="ov-board" style="grid-template-columns:${columns}">
+          <div class="ov-name"><span>${escapeHtml(rowName(m.player1.name))}</span></div>${cells(1)}${gameCell(1)}
+          <div class="ov-name ov-row2"><span>${escapeHtml(rowName(m.player2.name))}</span></div>${cells(2)}${gameCell(2)}
         </div>
       </div>`;
   }

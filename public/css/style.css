@@ -7848,3 +7848,46 @@ html.kiosk-mode #match-root .match-header .match-badges { margin-bottom: 16px; }
 .sa-tag-orange { margin-bottom: 26px; } /* a little air under the orange title pills */
 .sa-grid > .sa-tag-orange { margin-bottom: -4px; } /* inside a grid the row gap (30px) adds to it: the same 26px as everywhere */
 .sa-tag-orange + .tr-hint { margin-bottom: 26px; } /* the same air under the note as under the title pill */
+
+/* ---- Point-by-point scoring (admin, city admin, referee) and the tab "Priebeh zápasu" on the match page ---- */
+.point-mode-switch { margin: 14px 0 0; }
+.point-controls .player-controls { gap: 10px; }
+.btn-point {
+  width: 100%; flex-direction: column; gap: 4px; padding: 22px 10px 16px;
+  background: var(--orange); border: 1px solid var(--orange); color: var(--white);
+  border-radius: var(--radius-sm); box-shadow: none; text-transform: none; letter-spacing: 0;
+  touch-action: manipulation; /* no double-tap zoom: a quick second tap is a second point */
+}
+.btn-point:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
+.btn-point:active { transform: translateY(2px) scale(0.98); }
+.btn-point:disabled { opacity: 0.6; cursor: wait; }
+.btn-point .bp-score { font-size: 56px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.btn-point .bp-cap { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
+.point-games { font-size: 12px; color: #c3c7cf; }
+.point-games b { color: var(--white); font-size: 14px; }
+.point-bar { display: flex; justify-content: center; margin: -6px 0 6px; }
+.btn-point-undo { background: var(--fill-grey); color: var(--white); border: 1px solid var(--frame, rgba(255, 255, 255, 0.3)); min-width: 160px; }
+.btn-point-undo:hover:not(:disabled) { border-color: var(--frame-hover, rgba(255, 255, 255, 0.8)); }
+.btn-point-undo:disabled { opacity: 0.4; cursor: default; }
+
+.tl-wrap { margin: 18px 0 6px; }
+.tl-card { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+.tl-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; font-weight: 700; color: #c3c7cf; }
+.tl-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: -8px; }
+.tl-dot.p1 { background: var(--green); }
+.tl-dot.p2 { background: var(--white); }
+.tl-row { display: grid; grid-template-columns: 120px 1fr; gap: 8px 14px; align-items: start; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.tl-row:first-of-type { border-top: 0; padding-top: 0; }
+.tl-head { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #c3c7cf; padding-top: 5px; }
+.tl-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tl-arrow { color: rgba(255, 255, 255, 0.35); font-size: 12px; }
+.tl-chip { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid transparent; background: var(--fill-grey); color: var(--white); }
+.tl-chip.p1 { border-color: var(--green); }
+.tl-chip.p2 { border-color: var(--white); }
+.tl-chip.end.p1 { background: var(--green); color: var(--ink); }
+.tl-chip.end.p2 { background: var(--white); color: var(--ink); }
+.tl-chip.adj { background: transparent; border: 1px dashed rgba(255, 255, 255, 0.4); color: #c3c7cf; font-weight: 600; }
+@media (max-width: 560px) { .tl-row { grid-template-columns: 1fr; } .tl-head { padding-top: 0; } }
+/* the points of the game in play (15, 30, 40, Ad) as the last column of the scoreboard, once somebody scores point by point */
+body.match-page .scoreboard th.game-col { color: var(--green); }
+body.match-page .scoreboard td.game-col { color: var(--green); font-weight: 800; border-left: 1px solid rgba(255, 255, 255, 0.12); }

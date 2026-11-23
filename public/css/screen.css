@@ -35,6 +35,9 @@ body.screen-page.idle { cursor: none; }
 .scr-label { font-size: clamp(12px, 2.8vh, 38px); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #a9adb6; }
 .scr-big { font-size: clamp(48px, min(26vh, 11vw), 380px); font-size: min(26vh, 29cqw); font-weight: 800; line-height: 1; color: var(--green); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .scr-big.time { font-size: clamp(48px, min(24vh, 10vw), 360px); font-size: min(24vh, 27cqw); }
+.scr-game { display: flex; align-items: baseline; justify-content: center; gap: 0.5em; font-size: min(11vh, 12cqw); font-weight: 800; line-height: 1; color: #fff; font-variant-numeric: tabular-nums; }
+.scr-game small { font-size: 0.34em; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #a9adb6; }
+.scr-game .sep { color: #a9adb6; }
 .scr-big .sep { padding: 0 0.12em; color: #fff; }
 .scr-sub { font-size: clamp(14px, min(4vh, 2.6vw), 56px); font-weight: 800; text-transform: uppercase; color: #fff; }
 .scr-sets { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(8px, 1.4vh, 18px) clamp(10px, 1.4vw, 26px); }

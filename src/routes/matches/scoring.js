@@ -1,7 +1,7 @@
 const db = require('../../db');
 const engine = require('../../matchEngine');
 const { sendMatchFinishedEmail } = require('../../mailer');
-const { requireLoggedIn, requireLoggedInOrReferee } = require('../../auth');
+const { requireLoggedIn, requireLoggedInOrReferee, isAdmin, isReferee } = require('../../auth');
 const bracketEngine = require('../../bracketEngine');
 const router = require('./router');
 const { getRowOr404, checkLiveScoreAccess, nowIso, broadcast, notifySubscribers, notifyPushSubscribers, checkMatchAccess, sideOf, reconcileRankingPoints, mayCorrectFinished, MAX_HISTORY, deriveWinnerId, syncBadgesIfFinished, syncCourtIQIfFinished, playsInClubMatch } = require('./shared');
@@ -333,6 +333,37 @@ router.post('/:token/score', requireLoggedInOrReferee, (req, res) => {
       console.error('[matches] failed to reconcile ranking points:', err.message);
     });
   }
+});
+
+// One point (15-30-40-Ad) of the live score. Only an admin, a city admin or a referee scores by points; everybody else keeps the game buttons. Goes
+// through the same history as /score, so /undo takes a point back too.
+router.post('/:token/point', requireLoggedInOrReferee, (req, res) => {
+  const row = getRowOr404(req, res);
+  if (!row) return;
+  if (!isAdmin(req) && !isReferee(req)) {
+    return res.status(403).json({ error: 'Only an admin or a referee can score point by point' });
+  }
+  if (row.status !== 'LIVE') {
+    return res.status(400).json({ error: 'Match must be live to score a point' });
+  }
+  const player = Number(req.body.player);
+  if (![1, 2].includes(player)) {
+    return res.status(400).json({ error: 'player must be 1 or 2' });
+  }
+  const prevState = row.state;
+  let nextState;
+  try {
+    nextState = engine.applyPoint(JSON.parse(row.state), row.format, player);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+  const history = JSON.parse(row.history);
+  history.push(prevState);
+  while (history.length > MAX_HISTORY) history.shift();
+  db.prepare('UPDATE matches SET state = ?, history = ?, winner_id = ?, updated_at = ? WHERE id = ?')
+    .run(JSON.stringify(nextState), JSON.stringify(history), deriveWinnerId(nextState, row), nowIso(), row.id);
+  const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  res.json(broadcast(req, updated));
 });
 
 router.post('/:token/undo', requireLoggedInOrReferee, (req, res) => {

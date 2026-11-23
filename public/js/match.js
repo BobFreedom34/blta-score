@@ -15,6 +15,8 @@ let clubManager = false; // the admin of the club that runs the tournament of th
 let messages = [];
 let chatDraftBody = '';
 let editSetIndex = null;
+let scoreMode = 'games'; // Hry first (the default); an admin / referee can switch to Body = point by point (15-30-40)
+let timelineOpen = false; // the tab "Priebeh zápasu" under the score stays closed until somebody opens it
 let viewerCount = null;
 let h2hKey = null;
 let h2hHtml = '';
@@ -99,6 +101,10 @@ function scoreboardHtml(m, durationHtml) {
   const setsToShow = state.sets;
   const headerCells = setsToShow.map((s, i) => `<th>${s.isSuperTiebreak ? t('match.mtbAbbrev') : t('match.setLabel', { n: i + 1 })}</th>`).join('');
   const serving = m.status === 'LIVE' ? currentServer(state, m.firstServer) : null;
+  // once somebody scores point by point, the points of the game in play (15, 30, 40, Ad) are a column of the scoreboard too (a tie-break shows its points in the set)
+  const showGame = m.status === 'LIVE' && !!state.log && state.status !== 'COMPLETE' && !state.sets[state.currentSet].tiebreak;
+  const gameLabels = showGame ? gamePointLabels(state.game) : null;
+  const gameHeader = showGame ? `<th class="game-col">${t('match.tl.game')}</th>` : '';
 
   const row = (playerNum, player) => {
     const isWinner = m.status === 'FINISHED' && m.winnerId === player.id;
@@ -107,13 +113,14 @@ function scoreboardHtml(m, durationHtml) {
       return `<td class="set-score ${isCurrent ? 'current' : ''}">${setCell(s, playerNum)}</td>`;
     }).join('');
     const ball = serving === playerNum ? `<span class="serve-ball" title="${escapeHtml(t('match.servingTitle'))}">${courtIcon('ball')}</span>` : '';
-    return `<tr class="${isWinner ? 'winner-row' : ''}"><td class="name-cell">${ball}${escapeHtml(player.name)}</td>${cells}</tr>`;
+    const gameCell = showGame ? `<td class="set-score game-col">${gameLabels[playerNum - 1]}</td>` : '';
+    return `<tr class="${isWinner ? 'winner-row' : ''}"><td class="name-cell">${ball}${escapeHtml(player.name)}</td>${cells}${gameCell}</tr>`;
   };
 
   return `
     <div class="scoreboard status-${m.status}">
       <table>
-        <thead><tr><th class="timer-cell">${durationHtml || ''}</th>${headerCells}</tr></thead>
+        <thead><tr><th class="timer-cell">${durationHtml || ''}</th>${headerCells}${gameHeader}</tr></thead>
         <tbody>
           ${row(1, m.player1)}
           ${row(2, m.player2)}
@@ -123,6 +130,72 @@ function scoreboardHtml(m, durationHtml) {
   `;
 }
 
+// 0, 15, 30, 40 / deuce / advantage of the game in play (the same rule as gamePointLabels in src/matchEngine.js)
+function gamePointLabels(game) {
+  const g = game || { p1: 0, p2: 0 };
+  if (g.p1 >= 3 && g.p2 >= 3) {
+    if (g.p1 === g.p2) return ['40', '40'];
+    return g.p1 > g.p2 ? ['Ad', '40'] : ['40', 'Ad'];
+  }
+  const names = ['0', '15', '30', '40'];
+  return [names[g.p1], names[g.p2]];
+}
+
+// Admin / city admin / referee: tap the player who won the point. The big number is the score of the game in play (15, 30, 40, Ad; in a tie-break its points).
+function pointControlsHtml(m, curSet) {
+  const isTiebreak = !!curSet.tiebreak;
+  const labels = isTiebreak ? [curSet.tiebreak.p1, curSet.tiebreak.p2] : gamePointLabels(m.state.game);
+  const server = currentServer(m.state, m.firstServer);
+  const card = (n, player) => `
+      <div class="player-controls">
+        <div class="pname">${server === n ? `<span class="serve-ball" title="${escapeHtml(t('match.servingTitle'))}">${courtIcon('ball')}</span>` : ''}${escapeHtml(player.name)}</div>
+        <button type="button" class="btn btn-point" data-point-player="${n}" aria-label="${escapeHtml(t('match.pointFor', { name: player.name }))}">
+          <span class="bp-score">${labels[n - 1]}</span><span class="bp-cap">+ ${escapeHtml(t('match.pointBtn'))}</span>
+        </button>
+        ${isTiebreak && curSet.isSuperTiebreak ? '' : `<div class="point-games">${escapeHtml(t('match.gamesInSet'))}: <b>${n === 1 ? curSet.p1 : curSet.p2}</b></div>`}
+      </div>`;
+  return `
+    <div class="score-controls point-controls">${card(1, m.player1)}${card(2, m.player2)}</div>
+    <div class="point-bar"><button type="button" class="btn btn-point-undo" id="point-undo-btn" ${m.canUndo ? '' : 'disabled'}>${iconLabel('restart', t('match.undoPoint'))}</button></div>
+  `;
+}
+
+// The tab "Priebeh zápasu": every point of the match (written while an admin or a referee scores by points), newest game first. Closed until opened.
+function timelineHtml(m) {
+  const log = m.state.log;
+  if (!log || !log.length) return '';
+  const tab = `<div class="tl-wrap"><div class="cs-seg tl-switch" role="group"><button type="button" class="${timelineOpen ? 'active' : ''}" data-tl-toggle aria-expanded="${timelineOpen}">${escapeHtml(t('match.tl.tab'))}</button></div>`;
+  if (!timelineOpen) return `${tab}</div>`;
+  const groups = [];
+  log.forEach((e) => {
+    const key = e.k === 'G' ? null : `${e.s}:${e.n}`;
+    const last = groups[groups.length - 1];
+    if (key && last && last.key === key) last.entries.push(e);
+    else groups.push({ key, s: e.s, n: e.n, entries: [e] });
+  });
+  const time = (e) => { const d = new Date(e.t * 1000); return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
+  const chip = (e) => {
+    let text = e.sc;
+    let cls = `tl-chip p${e.w}`;
+    if (e.sc === 'GAME') { text = `${t('match.tl.game')} ${e.g}`; cls += ' end'; }
+    else if (e.sc === 'SET') { text = `${t('match.tl.set')} ${e.g}`; cls += ' end'; }
+    else if (e.sc === 'MATCH') { text = `${t('match.tl.match')} ${e.g}`; cls += ' end'; }
+    else if (e.sc === 'G+' || e.sc === 'G-') { text = `${t('match.tl.adj')}: ${t(e.sc === 'G+' ? 'match.tl.gamePlus' : 'match.tl.gameMinus')}`; cls = 'tl-chip adj'; }
+    return `<span class="${cls}" title="${time(e)}">${escapeHtml(text)}</span>`;
+  };
+  const rows = groups.slice().reverse().map((g) => {
+    const head = g.key
+      ? `${t('match.tl.setN', { n: g.s + 1 })} · ${g.n === 0 ? t('match.tl.tiebreak') : t('match.tl.gameN', { n: g.n })}`
+      : t('match.tl.adj');
+    return `<div class="tl-row"><div class="tl-head">${escapeHtml(head)}</div><div class="tl-chips">${g.entries.map(chip).join('<span class="tl-arrow">→</span>')}</div></div>`;
+  }).join('');
+  return `${tab}
+    <div class="card tl-card">
+      <div class="tl-legend"><span class="tl-dot p1"></span>${escapeHtml(m.player1.name)} <span class="tl-dot p2"></span>${escapeHtml(m.player2.name)}</div>
+      ${rows}
+    </div></div>`;
+}
+
 function scoreControlsHtml(m, { showFinish, showRestart, canControlLive }) {
   // scoreControlsHtml is only ever called for a FINISHED match from the
   // admin-only correction view, so the picker below is naturally admin-only
@@ -130,6 +203,8 @@ function scoreControlsHtml(m, { showFinish, showRestart, canControlLive }) {
   const effIndex = getEffectiveSetIndex(m);
   const curSet = m.state.sets[effIndex];
   const isTiebreak = !!curSet.tiebreak;
+  const pointCapable = showFinish && m.status === 'LIVE' && (isAdminUser || refereeAuthed) && m.state.status !== 'COMPLETE';
+  const pointMode = pointCapable && scoreMode === 'points' && effIndex === m.state.currentSet;
   const unitLabel = isTiebreak
     ? (curSet.isSuperTiebreak ? (curSet.tiebreakTarget === 7 ? t('match.unit.tb7') : t('match.unit.mtb')) : t('match.unit.tiebreak'))
     : t('match.unit.game');
@@ -158,9 +233,10 @@ function scoreControlsHtml(m, { showFinish, showRestart, canControlLive }) {
     </div>
   ` : '';
   return `
+    ${pointCapable ? `<div class="cs-seg point-mode-switch" role="group"><button type="button" class="${pointMode ? '' : 'active'}" data-score-mode="games">${escapeHtml(t('match.mode.games'))}</button><button type="button" class="${pointMode ? 'active' : ''}" data-score-mode="points">${escapeHtml(t('match.mode.points'))}</button></div>` : ''}
     ${setPicker}
     ${styleSwitcher}
-    <div class="score-controls">
+    ${pointMode ? pointControlsHtml(m, curSet) : `<div class="score-controls">
       <div class="player-controls">
         <div class="pname">${escapeHtml(m.player1.name)}</div>
         <button class="btn btn-giant btn-score-number" data-player="1" data-delta="1" aria-label="${escapeHtml(t('match.addUnitFor', { unit: unitLabel, name: m.player1.name }))}">${p1Value}</button>
@@ -171,7 +247,7 @@ function scoreControlsHtml(m, { showFinish, showRestart, canControlLive }) {
         <button class="btn btn-giant btn-score-number" data-player="2" data-delta="1" aria-label="${escapeHtml(t('match.addUnitFor', { unit: unitLabel, name: m.player2.name }))}">${p2Value}</button>
         <button class="btn btn-minus" data-player="2" data-delta="-1">−1</button>
       </div>
-    </div>
+    </div>`}
     <div class="match-actions">
       ${canControlLive ? `
       ${showFinish ? (m.pausedAt
@@ -831,6 +907,7 @@ function render(m) {
 
     ${scoreboardHtml(m, durationHtml)}
     ${controlsHtml(m, canControlLiveScoreOrReferee)}
+    ${timelineHtml(m)}
     ${videoEmbedHtml(m)}
     ${levelChangesHtml(m)}
 
@@ -1112,6 +1189,39 @@ function attachHandlers(m) {
       } catch (err) { toast(err.message); }
       root.querySelectorAll('.btn-giant, .btn-minus').forEach((b) => b.disabled = false);
     }));
+  });
+
+  root.querySelectorAll('[data-score-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      scoreMode = btn.dataset.scoreMode;
+      if (scoreMode === 'points') editSetIndex = null;
+      render(current);
+    });
+  });
+
+  root.querySelectorAll('.btn-point').forEach((btn) => {
+    btn.addEventListener('click', () => requireLiveScoreAuth(async () => {
+      root.querySelectorAll('.btn-point, #point-undo-btn').forEach((b) => { b.disabled = true; });
+      try {
+        const updated = await api(`/matches/${matchToken}/point`, { method: 'POST', body: { player: Number(btn.dataset.pointPlayer) } });
+        render(updated);
+        if (updated.status === 'LIVE' && updated.state.status === 'COMPLETE') offerFinish(updated);
+      } catch (err) {
+        toast(err.message);
+        root.querySelectorAll('.btn-point, #point-undo-btn').forEach((b) => { b.disabled = false; });
+      }
+    }));
+  });
+
+  const pointUndoBtn = document.getElementById('point-undo-btn');
+  if (pointUndoBtn) pointUndoBtn.addEventListener('click', () => requireLiveScoreAuth(async () => {
+    pointUndoBtn.disabled = true;
+    try { render(await api(`/matches/${matchToken}/undo`, { method: 'POST' })); }
+    catch (err) { toast(err.message); pointUndoBtn.disabled = false; }
+  }));
+
+  root.querySelectorAll('[data-tl-toggle]').forEach((btn) => {
+    btn.addEventListener('click', () => { timelineOpen = !timelineOpen; render(current); });
   });
 
   root.querySelectorAll('.set-picker-btn[data-set-index]').forEach((btn) => {
