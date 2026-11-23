@@ -619,7 +619,7 @@ function moversHtml(d) {
 // the card of the matches that are being played now, alone at the very top of the page (above the carousel); nothing is shown when no match is live
 function liveHtml(d) {
   if (!d.live.length) return '';
-  const items = d.live.slice(0, 2).map((m) => `<a class="item" href="/match/${m.token}">${m.videoId ? `<span class="live-cam" title="${escapeHtml(t('match.liveVideo'))}">${courtIcon('video')}</span>` : ''}<b>${escapeHtml(m.player1.name)}</b> ${escapeHtml(m.scoreSummary || '–')} <b>${escapeHtml(m.player2.name)}</b></a>`).join('<span class="sep">·</span>');
+  const items = d.live.slice(0, 2).map((m) => `<a class="item" href="/match/${m.token}">${videoBadge(m)}<b>${escapeHtml(m.player1.name)}</b> ${escapeHtml(m.scoreSummary || '–')} <b>${escapeHtml(m.player2.name)}</b></a>`).join('<span class="sep">·</span>');
   return `<div class="home-live black-tile"><span class="p"><i></i>${escapeHtml(t('home.live'))} · ${d.live.length}</span>${items}<a class="go" href="${d.live.length === 1 ? `/match/${d.live[0].token}` : '/matches'}">${escapeHtml(t('home.watch'))}</a></div>`;
 }
 
