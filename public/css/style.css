@@ -3942,7 +3942,8 @@ a.home-tl.future:hover .home-tl-body { border-color: var(--orange); }
 .home-live .item:hover { color: var(--orange); }
 .home-live .item b { font-weight: 800; }
 .home-live .sep { color: #c3c7cf; }
-.home-live .item .badge-video { margin-left: 8px; padding: 3px 6px; vertical-align: middle; }
+.home-live .item .live-cam { display: inline-flex; vertical-align: middle; margin-right: 7px; color: #ee3340; }
+.home-live .item .live-cam .venue-icon { width: 16px; height: 16px; flex-basis: 16px; }
 .home-live .go { margin-left: auto; color: var(--orange); font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
 
 @media (max-width: 900px) {
