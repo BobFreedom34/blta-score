@@ -7834,3 +7834,6 @@ html.kiosk-mode #match-root .match-header .match-badges { margin-bottom: 16px; }
 .kiosk-result-count { font-size: var(--fs-sm); color: var(--text-2); }
 .kiosk-decided-actions { width: 100%; display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-3); }
 .kiosk-decided-actions .btn-outline { color: var(--text-1); border-color: var(--frame); background: transparent; }
+
+/* the seed number before the name of a player in the court schedule: orange, thin */
+.cs-seed { color: var(--orange); font-weight: 300; }
