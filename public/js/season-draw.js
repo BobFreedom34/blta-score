@@ -192,11 +192,10 @@ async function openDrawPanel(host, seasonId, onChanged) {
       const cf = settingsFor(c).consolationFormat;
       buttons.push(`<select class="sd-cons-format" data-cat="${c.category}" style="${inputStyle}">${drawFormatOptions(cf)}</select><button type="button" class="btn btn-sm btn-primary" data-act="consolation" data-cat="${c.category}">${tl('Vytvoriť útechu', 'Create the consolation')}</button>`);
     }
-    if (c.main && !document.querySelector('[data-club]')) buttons.push(`<a class="btn btn-sm btn-outline" href="/bracket-admin" target="_blank" rel="noopener">${tl('Upraviť pavúk', 'Edit the bracket')}</a>`);
-    // a club's tournament has no /bracket-admin page: the editor of the bracket opens under the panel
-    else if (c.main && window.mountBracketAdmin) buttons.push(`<button type="button" class="btn btn-sm btn-primary" data-act="edit-bracket" data-cat="${c.category}">${tl('Upraviť pavúk (dosadiť hráčov a výsledky)', 'Edit the bracket (seat the players and results)')}</button>`);
+    if (c.main && window.mountBracketAdmin) buttons.push(`<button type="button" class="btn btn-sm btn-primary" data-act="edit-bracket" data-cat="${c.category}">${tl('Upraviť pavúk (dosadiť hráčov a výsledky)', 'Edit the bracket (seat the players and results)')}</button>`);
     if (c.liveRecordId) buttons.push(`<a class="btn btn-sm btn-outline" href="/draw-live?record=${c.liveRecordId}" target="_blank" rel="noopener">${tl('Záznam žrebu (prehrať)', 'Draw record (replay)')}</a>`);
-    buttons.push(`<button type="button" class="btn btn-sm btn-outline" data-act="delete" data-cat="${c.category}" style="color:var(--danger)">${c.groups && !c.main ? tl('Zmazať skupiny', 'Delete the groups') : tl('Zmazať pavúk', 'Delete the bracket')}</button>`);
+    if (c.groups && c.main) buttons.push(`<button type="button" class="btn btn-sm btn-outline" data-act="delete-bracket" data-cat="${c.category}" style="color:var(--danger)">${tl('Zmazať pavúk', 'Delete the bracket')}</button>`);
+    buttons.push(`<button type="button" class="btn btn-sm btn-outline" data-act="delete" data-cat="${c.category}" style="color:var(--danger)">${c.groups ? (c.main ? tl('Zmazať skupiny aj pavúk', 'Delete the groups and the bracket') : tl('Zmazať skupiny', 'Delete the groups')) : tl('Zmazať pavúk', 'Delete the bracket')}</button>`);
     parts.push(`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">${buttons.join('')}</div>`);
     return parts.join('');
   }
@@ -415,6 +414,11 @@ async function openDrawPanel(host, seasonId, onChanged) {
         const c = catOf(cat);
         await api(`/brackets/${c.main.id}/consolation`, { method: 'POST', body: { format: settingsFor(c).consolationFormat } });
         toast(tl('Útecha vytvorená', 'Consolation created'));
+        await refresh();
+      } else if (act === 'delete-bracket') {
+        if (!confirm(tl('Zmazať pavúk? Skupiny a ich zápasy ostanú.', 'Delete the bracket? The groups and their matches stay.'))) { btn.disabled = false; return; }
+        await api(`/seasons/${seasonId}/draw/${cat}?bracketOnly=1`, { method: 'DELETE' });
+        toast(tl('Pavúk zmazaný', 'Bracket deleted'));
         await refresh();
       } else if (act === 'delete') {
         if (!confirm(tl('Zmazať žrebovanie tejto kategórie (skupiny, pavúky aj útechy)? Naplánované zápasy sa zmažú.', 'Delete the draw of this category (groups, brackets and consolations)? Planned matches will be deleted.'))) { btn.disabled = false; return; }

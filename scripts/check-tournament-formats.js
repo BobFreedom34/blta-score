@@ -375,6 +375,14 @@ test('GROUPS_BRACKET (by hand): groups put together by the organiser, the bracke
   assert.strictEqual(empty.size, 4);
   assert.ok(empty.nodes.every((n) => !n.player1 && !n.player2), 'the bracket is empty, the organiser seats it');
   assert.strictEqual((await call('POST', `/api/seasons/${t.id}/draw/bracket`, { category: 'NOVICE', mode: 'AUTO', force: true })).status, 409, 'only one bracket');
+  // deleting only the bracket keeps the groups; the bracket can then be made again
+  const only = await call('DELETE', `/api/seasons/${t.id}/draw/NOVICE?bracketOnly=1`);
+  assert.strictEqual(only.status, 200, only.text);
+  const after = only.json.categories.find((c) => c.category === 'NOVICE');
+  assert.ok(after.groups && after.groups.groups.length === 2, 'the groups stay');
+  assert.strictEqual(after.brackets.length, 0, 'the bracket is gone');
+  assert.strictEqual((await call('DELETE', `/api/seasons/${t.id}/draw/NOVICE?bracketOnly=1`)).status, 404, 'no bracket left');
+  assert.strictEqual((await call('POST', `/api/seasons/${t.id}/draw/bracket`, { category: 'NOVICE', mode: 'MANUAL', force: true })).status, 201, 'made again');
 });
 
 test('GROUPS_BRACKET with the placement matches: 6 players, 2 groups of 3 → after the groups 1st–1st (final), 2nd–2nd (3rd place), 3rd–3rd (5th place), made by itself', async () => {

@@ -195,7 +195,7 @@ router.delete('/:id/doubles/pairs/:pairId', clubTournaments.requireSeasonManager
 router.delete('/:id/draw/:category', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
-  const done = tournamentDraw.deleteDraw(season, req.params.category);
+  const done = tournamentDraw.deleteDraw(season, req.params.category, { bracketOnly: req.query.bracketOnly === "1" });
   if (done.error) return res.status(done.status || 400).json({ error: done.error });
   res.json({ ok: true, categories: tournamentDraw.overview(season.id) });
 });

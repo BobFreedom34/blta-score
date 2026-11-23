@@ -553,16 +553,19 @@ function onMatchFinished(row) {
 
 // Removes the draw of one category (groups and brackets with all their losers brackets). Refused once a match of it has started: only a
 // draw whose matches are all still PLANNED can go, and those planned matches go with it (they exist only because of the draw).
-function deleteDraw(season, category) {
+// { bracketOnly: true }: only the bracket(s) go, the groups (and their matches and the category settings) stay
+function deleteDraw(season, category, opts = {}) {
   const main = mainBracketOf(season.id, category);
   const groupRows = groups.groupsOf(season.id, category);
+  const keepGroups = !!opts.bracketOnly && groupRows.length > 0;
+  if (opts.bracketOnly && !main) return { status: 404, error: 'There is no bracket in this category' };
   if (!main && !groupRows.length) return { status: 404, error: 'There is no draw for this category' };
   // a draw that was made in front of the camera stays on record ("deleted later"), it is not made to disappear
-  db.prepare("UPDATE draw_records SET status = 'DELETED' WHERE season_id = ? AND category = ? AND status = 'COMMITTED'").run(season.id, category);
+  if (!keepGroups) db.prepare("UPDATE draw_records SET status = 'DELETED' WHERE season_id = ? AND category = ? AND status = 'COMMITTED'").run(season.id, category);
   const bracketIds = main ? [main.id, ...bracketEngine.descendants(main.id)] : [];
   const marks = bracketIds.map(() => '?').join(',');
   const bracketMatchIds = bracketIds.length ? db.prepare(`SELECT match_id FROM bracket_matches WHERE bracket_id IN (${marks}) AND match_id IS NOT NULL`).all(...bracketIds).map((r) => r.match_id) : [];
-  const groupIds = groupRows.map((g) => g.id);
+  const groupIds = keepGroups ? [] : groupRows.map((g) => g.id);
   const gMarks = groupIds.map(() => '?').join(',');
   const groupMatchIds = groupIds.length ? db.prepare(`SELECT id FROM matches WHERE group_id IN (${gMarks})`).all(...groupIds).map((r) => r.id) : [];
   const matchIds = [...bracketMatchIds, ...groupMatchIds];
@@ -583,7 +586,7 @@ function deleteDraw(season, category) {
       db.prepare(`DELETE FROM season_group_members WHERE group_id IN (${gMarks})`).run(...groupIds);
       db.prepare(`DELETE FROM season_groups WHERE id IN (${gMarks})`).run(...groupIds);
     }
-    db.prepare('DELETE FROM tournament_categories WHERE season_id = ? AND category = ?').run(season.id, category);
+    if (!keepGroups) db.prepare('DELETE FROM tournament_categories WHERE season_id = ? AND category = ?').run(season.id, category);
     db.exec('COMMIT');
   } catch (err) {
     db.exec('ROLLBACK');
