@@ -65,7 +65,7 @@ test('the CSV: with the byte-order mark, a header and every registration; only f
 test('the reminder: the paid one is not asked, the one without an e-mail is counted, the other fails here (no mail server)', async () => {
   const r = await call('POST', `/api/seasons/${seasonId}/registrations/remind`, { body: {} });
   assert.strictEqual(r.status, 200, JSON.stringify(r.json));
-  assert.deepStrictEqual(r.json, { sent: 0, noEmail: 1, recent: 0, failed: 1 });
+  assert.deepStrictEqual(r.json, { sent: 0, noEmail: 0, recent: 0, failed: 2 }, 'the admin also reaches the e-mail of the profile of the registration without one');
   const one = await call('POST', `/api/seasons/${seasonId}/registrations/remind`, { body: { ids: [ids[1]] } });
   assert.deepStrictEqual(one.json, { sent: 0, noEmail: 0, recent: 0, failed: 1 });
   const none = await call('POST', `/api/seasons/${seasonId}/registrations/remind`, { body: { ids: [ids[0]] } });

@@ -121,11 +121,11 @@ async function openAssignPanel(host, seasonId, onSaved, categories) {
           <button type="button" class="btn btn-sm btn-primary" data-act="save" ${changed ? '' : 'disabled'}>${tl('Uložiť zaradenie', 'Save assignment')}${changed ? ` (${changed})` : ''}</button>
         </div>
         <div class="as-error"></div>
-      </section>
-      <div class="as-grid">
+        <div class="as-grid">
         ${sectionHtml(tl('Nezaradení', 'Not sorted'), unsorted)}
         ${cats.map(([key, name]) => sectionHtml(name, players.filter((p) => p.draft === key))).join('')}
-      </div>`;
+        </div>
+      </section>`;
   }
 
   host.onclick = async (e) => {
