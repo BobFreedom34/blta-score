@@ -207,7 +207,9 @@ function loadMatches(seasonId) {
            CASE WHEN m.is_doubles = 1 AND p1b.name IS NOT NULL THEN p1.name || ' / ' || p1b.name ELSE p1.name END AS p1_name, CASE WHEN m.is_doubles = 1 THEN NULL ELSE p1.slug END AS p1_slug,
            CASE WHEN m.is_doubles = 1 AND p2b.name IS NOT NULL THEN p2.name || ' / ' || p2b.name ELSE p2.name END AS p2_name, CASE WHEN m.is_doubles = 1 THEN NULL ELSE p2.slug END AS p2_slug, g.name AS group_name,
            (SELECT r.seed FROM season_registrations r WHERE r.season_id = m.season_id AND r.player_id = m.player1_id AND r.category = m.category LIMIT 1) AS p1_seed,
-           (SELECT r.seed FROM season_registrations r WHERE r.season_id = m.season_id AND r.player_id = m.player2_id AND r.category = m.category LIMIT 1) AS p2_seed
+           (SELECT r.seed FROM season_registrations r WHERE r.season_id = m.season_id AND r.player_id = m.player2_id AND r.category = m.category LIMIT 1) AS p2_seed,
+           (SELECT r.wildcard FROM season_registrations r WHERE r.season_id = m.season_id AND r.player_id = m.player1_id AND r.category = m.category LIMIT 1) AS p1_wc,
+           (SELECT r.wildcard FROM season_registrations r WHERE r.season_id = m.season_id AND r.player_id = m.player2_id AND r.category = m.category LIMIT 1) AS p2_wc
     FROM matches m
     LEFT JOIN season_groups g ON g.id = m.group_id
     LEFT JOIN bracket_matches bm ON bm.match_id = m.id
@@ -283,8 +285,8 @@ function serializeMatch(row, settings, now) {
     group: row.group_id ? { id: row.group_id, name: row.group_name } : null,
     groupRound: row.round || null,
     rounds: row.bracket_size ? Math.log2(row.bracket_size) : null,
-    player1: { id: row.player1_id, name: row.p1_name, slug: row.p1_slug, seed: row.p1_seed || null },
-    player2: { id: row.player2_id, name: row.p2_name, slug: row.p2_slug, seed: row.p2_seed || null },
+    player1: { id: row.player1_id, name: row.p1_name, slug: row.p1_slug, seed: row.p1_seed || null, wildcard: !!row.p1_wc },
+    player2: { id: row.player2_id, name: row.p2_name, slug: row.p2_slug, seed: row.p2_seed || null, wildcard: !!row.p2_wc },
     winnerId: row.winner_id || null,
     scoreSummary,
     state,

@@ -45,10 +45,10 @@ async function openDrawPanel(host, seasonId, onChanged) {
   const groupDraft = {}; // category -> { count, assign: Map(registration id -> group index) } (groups put together by hand)
 
   const settingsFor = (c) => choice[c.category] || (choice[c.category] = { ...c.settings });
-  const draftOf = (r) => (drafts.has(r.id) ? drafts.get(r.id) : (r.seed ? String(r.seed) : ''));
+  const draftOf = (r) => (drafts.has(r.id) ? drafts.get(r.id) : (r.seed ? String(r.seed) : (r.wildcard ? 'WC' : '')));
   // the players of a category (in a tournament without categories, 'OPEN', everybody who registered)
   const rowsOf = (category) => (category === 'OPEN' ? regs : regs.filter((r) => r.category === category));
-  const dirty = (category) => rowsOf(category).filter((r) => draftOf(r) !== (r.seed ? String(r.seed) : '')).length;
+  const dirty = (category) => rowsOf(category).filter((r) => draftOf(r) !== (r.seed ? String(r.seed) : (r.wildcard ? 'WC' : ''))).length;
   const isGroups = (f) => f === 'GROUPS' || f === 'GROUPS_BRACKET';
   const isSwiss = (f) => f === 'SWISS';
   // the rounds suggested for a number of players (the same as src/swiss.js roundsFor)
@@ -82,7 +82,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
     const locked = c.stage !== 'NONE';
     return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(210px,100%),1fr));gap:14px 28px;margin:16px 0 20px">${sorted.map((r) => `
       <label style="display:flex;gap:12px;align-items:center;font-size:14px">
-        <input type="number" min="1" max="${c.players}" inputmode="numeric" class="sd-seed" data-reg="${r.id}" value="${escapeHtml(draftOf(r))}" placeholder="–" style="width:54px;${inputStyle}"${locked ? ' disabled' : ''}>
+        <input type="text" maxlength="3" autocomplete="off" title="${escapeHtml(tl('číslo nasadenia, alebo WC = divoká karta', 'seed number, or WC = wild card'))}" class="sd-seed" data-reg="${r.id}" value="${escapeHtml(draftOf(r))}" placeholder="–" style="width:54px;${inputStyle}"${locked ? ' disabled' : ''}>
         <span>${escapeHtml(r.name)}</span>
       </label>`).join('')}</div>`;
   }
@@ -206,7 +206,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
       <section class="sa-section sd-block" data-cat="${c.category}">
         <h4>${drawCategoryLabel(c)}</h4>
         <div class="sa-hint" style="margin:-6px 0 6px">${escapeHtml(summaryText(c))}</div>
-        ${c.players ? `<div style="font-weight:700;font-size:14px;margin-top:20px;line-height:1.5">${tl('Nasadenie', 'Seeding')} ${noDraw ? `<span style="font-weight:400;color:var(--gray)">${tl('— číslo 1 je najlepší; nenasadení nechajte prázdni. Nasadení 1 a 2 majú pevné miesto, 3–4 a 5–8 sa žrebujú medzi svoje miesta.', '— number 1 is the best; leave the unseeded empty. Seeds 1 and 2 have fixed seats, 3–4 and 5–8 are drawn by lot among their own seats.')}</span>` : `<span style="font-weight:400;color:var(--gray)">${tl('(žrebovanie je už vytvorené)', '(the draw has been made already)')}</span>`}</div>` : ''}
+        ${c.players ? `<div style="font-weight:700;font-size:14px;margin-top:20px;line-height:1.5">${tl('Nasadenie', 'Seeding')} ${noDraw ? `<span style="font-weight:400;color:var(--gray)">${tl('— číslo 1 je najlepší; nenasadení nechajte prázdni. Nasadení 1 a 2 majú pevné miesto, 3–4 a 5–8 sa žrebujú medzi svoje miesta. Divoká karta: napíš WC (hráč nie je nasadený, len sa označí).', '— number 1 is the best; leave the unseeded empty. Seeds 1 and 2 have fixed seats, 3–4 and 5–8 are drawn by lot among their own seats. Wild card: type WC (the player is not seeded, only marked).')}</span>` : `<span style="font-weight:400;color:var(--gray)">${tl('(žrebovanie je už vytvorené)', '(the draw has been made already)')}</span>`}</div>` : ''}
         ${seedRowsHtml(c)}
         ${c.players && noDraw ? `<button type="button" class="btn btn-sm btn-outline" data-act="seeds" data-cat="${c.category}" ${dirty(c.category) ? '' : 'disabled'}>${tl('Uložiť nasadenie', 'Save seeding')}${dirty(c.category) ? ` (${dirty(c.category)})` : ''}</button>` : ''}
         <div style="border-top:1px solid rgba(255,255,255,0.12);margin-top:22px;padding-top:22px">${noDraw ? setupHtml(c) : stateHtml(c)}</div>
@@ -296,7 +296,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
   host.oninput = (e) => {
     const seed = e.target.closest('.sd-seed');
     if (seed) {
-      drafts.set(Number(seed.dataset.reg), seed.value.trim());
+      drafts.set(Number(seed.dataset.reg), seed.value.trim().toUpperCase());
       const block = seed.closest('.sd-block');
       const cat = block.dataset.cat;
       const btn = block.querySelector('[data-act="seeds"]');
@@ -363,7 +363,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
       if (act.startsWith('dbl-')) {
         await doublesAction(act, btn);
       } else if (act === 'seeds') {
-        const seeds = rowsOf(cat).map((r) => ({ id: r.id, seed: draftOf(r) === '' ? null : Number(draftOf(r)) }));
+        const seeds = rowsOf(cat).map((r) => ({ id: r.id, seed: draftOf(r) === '' ? null : (/^wc$/i.test(draftOf(r)) ? 'WC' : Number(draftOf(r))) }));
         const savedList = await api(`/seasons/${seasonId}/seeds`, { method: 'POST', body: { category: cat, seeds } });
         if (cat === 'DOUBLES') doubles = await api(`/seasons/${seasonId}/doubles`); // the seeds of the pairs are kept with the pairs
         regs = withPairs(savedList);

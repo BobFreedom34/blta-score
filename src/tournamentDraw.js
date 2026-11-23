@@ -176,12 +176,18 @@ function setSeeds(seasonId, category, items) {
   const seen = new Set();
   const used = new Set();
   const seeded = [];
+  const wild = [];
   for (const item of items) {
     const id = Number(item && item.id);
     if (!own.has(id)) return { error: 'A player does not belong to this category of the tournament' };
     if (seen.has(id)) return { error: 'The same player is listed twice' };
     seen.add(id);
     if (item.seed === null || item.seed === undefined || item.seed === '') continue;
+    if (String(item.seed).trim().toUpperCase() === 'WC') {
+      if (category === 'DOUBLES') return { error: 'A wild card is not available for pairs' };
+      wild.push(id);
+      continue;
+    }
     const seed = Number(item.seed);
     if (!Number.isInteger(seed) || seed < 1) return { error: 'A seed is a whole number from 1' };
     if (seed > regs.length) return { error: `A seed cannot be higher than the number of players (${regs.length})` };
@@ -198,10 +204,12 @@ function setSeeds(seasonId, category, items) {
       seeded.forEach((s, i) => setPair.run(i + 1, s.id - PAIR_ID_OFFSET));
     } else {
       // (a tournament without categories, 'OPEN': its registrations carry no category, the draw takes everybody who registered)
-      if (category === 'OPEN') db.prepare('UPDATE season_registrations SET seed = NULL WHERE season_id = ?').run(seasonId);
-      else db.prepare('UPDATE season_registrations SET seed = NULL WHERE season_id = ? AND category = ?').run(seasonId, category);
+      if (category === 'OPEN') db.prepare('UPDATE season_registrations SET seed = NULL, wildcard = NULL WHERE season_id = ?').run(seasonId);
+      else db.prepare('UPDATE season_registrations SET seed = NULL, wildcard = NULL WHERE season_id = ? AND category = ?').run(seasonId, category);
       const set = db.prepare('UPDATE season_registrations SET seed = ? WHERE id = ?');
       seeded.forEach((s, i) => set.run(i + 1, s.id));
+      const mark = db.prepare('UPDATE season_registrations SET wildcard = 1 WHERE id = ?');
+      wild.forEach((id) => mark.run(id));
     }
     db.exec('COMMIT');
   } catch (err) {

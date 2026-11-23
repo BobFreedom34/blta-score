@@ -5353,7 +5353,7 @@ a.win-card:hover { box-shadow: none; }
 .sa-reg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 16px 0; border-top: 1px solid rgba(255, 255, 255, 0.12); }
 .sa-reg-edit { padding: 16px 0; border-top: 1px solid rgba(255, 255, 255, 0.12); }
 .sa-section h4 + .sa-reg-row, .sa-section h4 + .sa-reg-edit, .sa-section h4 + .as-row { border-top: 0; padding-top: 0; }
-.as-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.as-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 22px; }
 .as-sum { font-size: 13px; color: var(--gray); }
 .as-error { color: var(--danger); font-weight: 600; margin-top: 12px; }
 .as-error:empty { display: none; }
@@ -7840,3 +7840,10 @@ html.kiosk-mode #match-root .match-header .match-badges { margin-bottom: 16px; }
 
 /* the row of tabs of a season / tournament page: a green frame, 2px */
 #sv-tabs { border: 2px solid var(--green); }
+
+
+/* a title pill (.sa-tag / .tr-title) in orange instead of green */
+.sa-tag-orange { border-color: var(--orange); color: var(--orange); }
+.sa-tag-orange { margin-bottom: 26px; } /* a little air under the orange title pills */
+.sa-grid > .sa-tag-orange { margin-bottom: -4px; } /* inside a grid the row gap (30px) adds to it: the same 26px as everywhere */
+.sa-tag-orange + .tr-hint { margin-bottom: 26px; } /* the same air under the note as under the title pill */

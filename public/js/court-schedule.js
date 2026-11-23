@@ -63,7 +63,7 @@ const csDayLabel = (day) => {
 
 // the name of a player of a match: the seed number of the tournament in brackets before it, when he is seeded: "(3) Marek Mikuš"
 // (html: the number is orange and thin, see .cs-seed)
-const csNameHtml = (p) => `${p && p.seed ? `<span class="cs-seed">(${escapeHtml(p.seed)})</span> ` : ''}${escapeHtml((p && p.name) || '?')}`;
+const csNameHtml = (p) => `${p && (p.seed || p.wildcard) ? `<span class="cs-seed">(${p.seed ? escapeHtml(p.seed) : 'WC'})</span> ` : ''}${escapeHtml((p && p.name) || '?')}`;
 
 function csRoundLabel(m) {
   if (m.group) return [groupShortName(m.group.name), m.groupRound ? t('courts.round', { n: m.groupRound }) : ''].filter(Boolean).join(' · ');

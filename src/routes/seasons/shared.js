@@ -204,7 +204,7 @@ function registrationOpen(season) {
 }
 
 function serializeRegistration(r) {
-  return { id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', partnerName: r.partner_name || '', seed: r.seed || null, createdAt: r.created_at, playerId: r.player_id, remindedAt: r.reminded_at || null };
+  return { id: r.id, name: r.name, phone: r.phone, email: r.email, category: r.category, paid: !!r.paid, note: r.note || '', partnerName: r.partner_name || '', seed: r.seed || null, wildcard: !!r.wildcard, createdAt: r.created_at, playerId: r.player_id, remindedAt: r.reminded_at || null };
 }
 
 // the same with who is a substitute (waits after the maximum of players): substitute + substitutePosition (1, 2, ... among the substitutes of its category)

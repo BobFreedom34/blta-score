@@ -514,6 +514,7 @@ function seasonCardHtml(s) {
                 <span class="sa-hint sa-full">${tl('Maximum zadaj vždy. Keď sa dosiahne, ďalší hráči sa môžu prihlásiť už len ako náhradníci. Ak sa niekto odhlási (alebo ho zmažeš), prvý náhradník automaticky nastúpi do turnaja.', 'Always enter the maximum. When it is reached, the next players can only register as substitutes. If somebody drops out (or you delete them), the first substitute automatically comes into the tournament.')}</span>
                 ${field(tl('Odhlásenie hráča: najneskôr (hodín pred dátumom žrebovania)', 'Player may withdraw until (hours before the draw date)'), input('unregisterHours', s.unregisterHours === null || s.unregisterHours === undefined ? '' : s.unregisterHours, `type="number" min="0" max="720" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 48', 'e.g. 48'))}"`))}
                 <span class="sa-hint sa-full">${tl('Prihlásený hráč sa môže sám odhlásiť (tlačidlo „Odhlásiť sa“) najneskôr tento počet hodín pred dátumom žrebovania (0 = do polnoci pred dňom žrebovania; bez dátumu žrebovania pred začiatkom), a len kým nie je vytvorené žrebovanie. Prázdne = hráč sa sám odhlásiť nemôže, odhlási ho organizátor. Odhlásenie príde adminovi do zvončeka aj e-mailom.', 'A registered player can withdraw himself (the button "Withdraw") up to this many hours before the draw date (0 = until midnight before the draw day; with no draw date, before the start), and only before the draw is made. Empty = he cannot withdraw alone, the organiser removes him. A withdrawal reaches the admin in the bell and by e-mail.')}</span>
+                <div class="tr-title sa-tag-orange sa-full" style="margin-top:22px">${tl('Platba', 'Payment')}</div>
                 ${field(tl('Odkaz na platbu (Stripe) — tlačidlo „Úhrada štartovného online“', 'Payment link (Stripe) — the button "Pay the entry fee online"'), input('paymentUrl', s.paymentUrl || '', 'maxlength="500" placeholder="https://buy.stripe.com/…"'), 'sa-full')}
                 ${field(tl('IBAN pre štartovné (platba prevodom a QR kód)', 'IBAN of the entry fee (bank transfer and QR code)'), input('iban', s.iban || '', 'maxlength="60" placeholder="SK00 0000 0000 0000 0000 0000"'), 'sa-full')}
                 ${field(tl('Nadpis platby prevodom', 'Heading of the bank transfer'), input('payTitle', s.payTitle || '', 'maxlength="120" placeholder="' + escapeHtml(tl('prázdne = Štartovné uhraď prevodom na účet', 'empty = the default heading')) + '"'), 'sa-full')}
@@ -526,12 +527,13 @@ function seasonCardHtml(s) {
 
             ${IS_TOURNAMENT ? `<section class="sa-section">
               <h4><svg class="sa-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14M3 12h18"/></svg>${tl('Kurty a plánovanie', 'Courts and planning')}</h4>
+              <div class="tr-title sa-tag-orange" style="margin-top:0">${tl('Kurty', 'Courts')}</div>
               <div class="sa-grid">
                 ${field(tl('Počet kurtov (Kurt 1 … Kurt n)', 'Number of courts (Court 1 … Court n)'), input('courtCount', s.courtCount || '', `type="number" min="0" max="50" inputmode="numeric" placeholder="${escapeHtml(tl('napr. 4', 'e.g. 4'))}"`))}
                 ${courtStreamFieldsHtml(s.courtCount, s.courtStreams, s.slug, s.courtNames)}
                 ${field(tl('Max. zápasov hráča za deň', 'Max. matches per player per day'), input('maxMatchesPerDay', s.maxMatchesPerDay || '', `type="number" min="0" max="10" inputmode="numeric" placeholder="${escapeHtml(tl('bez limitu', 'no limit'))}"`))}
               </div>
-              <div class="tr-title">${tl('Plánovanie turnaja', 'Tournament planning')}</div>
+              <div class="tr-title sa-tag-orange">${tl('Plánovanie turnaja', 'Tournament planning')}</div>
               <p class="tr-hint">${tl('Podľa týchto údajov systém skladá rozvrh zápasov na kurty. Rozvrh sa dá ďalej upravovať v časti Rozpis.', 'The system builds the schedule of the matches on the courts from these. The schedule can be edited further in the Schedule part.')}</p>
               <div class="sa-grid">
                 ${field(tl('Dĺžka zápasu (min)', 'Match length (min)'), input('matchMinutes', s.planning.matchMinutes, 'type="number" min="15" max="300" step="5" inputmode="numeric"'))}

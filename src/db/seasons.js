@@ -200,6 +200,10 @@ if (!db.prepare('PRAGMA table_info(season_registrations)').all().some((c) => c.n
 if (!db.prepare('PRAGMA table_info(season_registrations)').all().some((c) => c.name === 'seed')) {
   db.exec('ALTER TABLE season_registrations ADD COLUMN seed INTEGER');
 }
+// a wild card ("WC" in the seeding): a player the organiser let in; not seeded, only marked (shown as (WC) before the name in the schedule)
+if (!db.prepare('PRAGMA table_info(season_registrations)').all().some((c) => c.name === 'wildcard')) {
+  db.exec('ALTER TABLE season_registrations ADD COLUMN wildcard INTEGER');
+}
 
 // The doubles of a tournament: the pairs the organiser put together (the registration form can name a partner; "partner_name" is what the player
 // wrote, the pair itself is made in the draw panel) and their seed. A player is in one pair of a tournament. The draw made from them is a

@@ -92,6 +92,13 @@ test('seeds: only whole numbers, each once, and only for players of that categor
   assert.deepStrictEqual(seeds, [[ids[2], 1], [ids[5], 2], [ids[3], 3], [ids[7], 4]]);
   const gap = await call('POST', `/api/seasons/${tournament.id}/seeds`, { category: 'ELITE', seeds: [{ id: ids[2], seed: 1 }, { id: ids[5], seed: 3 }] });
   assert.deepStrictEqual(gap.json.filter((x) => x.seed).map((x) => x.seed).sort(), [1, 2]);
+  // a wild card: WC is kept next to the seeds, the player has no seed number, a new save replaces the mark
+  const wcSave = await call('POST', `/api/seasons/${tournament.id}/seeds`, { category: 'ELITE', seeds: [{ id: ids[2], seed: 1 }, { id: ids[9], seed: 'wc' }] });
+  assert.strictEqual(wcSave.status, 200, wcSave.text);
+  const wcRow = wcSave.json.find((x) => x.id === ids[9]);
+  assert.ok(wcRow.wildcard === true && wcRow.seed === null, 'WC: marked, not seeded');
+  assert.strictEqual(wcSave.json.find((x) => x.id === ids[2]).wildcard, false);
+  assert.strictEqual(await bad([{ id: ids[2], seed: 'W' }]), 400);
   await call('POST', `/api/seasons/${tournament.id}/seeds`, { category: 'ELITE', seeds: [{ id: ids[2], seed: 1 }, { id: ids[5], seed: 2 }, { id: ids[3], seed: 3 }, { id: ids[7], seed: 4 }] });
   assert.strictEqual((await call('POST', `/api/seasons/${tournament.id}/seeds`, { category: 'ELITE', seeds: [] }, { admin: false })).status, 401);
 });
