@@ -54,10 +54,29 @@ function ksRender() {
     <a class="ks-change" href="/kiosk/${encodeURIComponent(ksToken)}">${escapeHtml(t('kiosk.changeCourt'))}</a>`;
 }
 
+// The battery of this phone goes to the organiser (Backend > Kiosk kurtov, and an e-mail when it is low and not charging): every 20 minutes, at once when it starts or stops charging, and at once when it is low (20 % or less).
+// Android Chrome knows the battery (navigator.getBattery); a browser that does not still sends "alive" with no level.
+const KS_BATTERY_EVERY_MS = 20 * 60 * 1000;
+let ksBatteryOn = false;
+async function ksBattery() {
+  if (ksBatteryOn) return;
+  ksBatteryOn = true;
+  let battery = null;
+  try { battery = navigator.getBattery ? await navigator.getBattery() : null; } catch { /* not allowed */ }
+  const send = () => api('/kiosk/battery', { method: 'POST', body: battery ? { level: battery.level, charging: battery.charging } : { level: null, charging: null } }).catch(() => {});
+  send();
+  setInterval(send, KS_BATTERY_EVERY_MS);
+  if (battery) {
+    battery.addEventListener('chargingchange', send);
+    battery.addEventListener('levelchange', () => { if (battery.level <= 0.2) send(); }); // a low battery is not left waiting for the next round
+  }
+}
+
 async function ksLoad() {
   try {
     ksData = await api(`/kiosk/${encodeURIComponent(ksToken)}/court/${ksCourt}`);
     ksOffline = false;
+    ksBattery(); // (after the first answer: it brought the cookie of the court)
     document.title = `${ksData.courtName} - BLTA`;
   } catch (err) {
     if (!ksData) { ksRoot.innerHTML = `<div class="ks-message bad">${escapeHtml(t('kiosk.invalid'))}</div>`; return; }

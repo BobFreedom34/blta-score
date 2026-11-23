@@ -248,3 +248,17 @@ db.exec(`
 `);
 // the short code that opens the short address /turnaj<number> (a database made before it was added gets the column; its links get a code when they are made again)
 if (!db.prepare('PRAGMA table_info(season_kiosks)').all().some((c) => c.name === 'pin')) db.exec("ALTER TABLE season_kiosks ADD COLUMN pin TEXT NOT NULL DEFAULT ''");
+
+// The battery of the phone that lies on a court (the kiosk reports it about once a minute, see courtKiosk.reportBattery): one row per court of a tournament. `alerted` = the "battery is low"
+// e-mail has been sent and the battery has not recovered since (so one low battery is one e-mail, not one per minute).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS kiosk_batteries (
+    season_id INTEGER NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    court_no INTEGER NOT NULL,
+    level REAL,
+    charging INTEGER,
+    alerted INTEGER NOT NULL DEFAULT 0,
+    seen_at TEXT NOT NULL,
+    PRIMARY KEY (season_id, court_no)
+  );
+`);

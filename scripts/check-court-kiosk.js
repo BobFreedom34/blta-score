@@ -134,6 +134,30 @@ test('the kiosk runs the live score of a match on its court: start, point, undo,
   assert.strictEqual(shown.json.courtNo, 1, 'the match says which court it is on');
 });
 
+test('the phone on a court reports its battery: the Backend shows it, a low battery that is not charging is ONE alert until it recovers; only a phone with a court may report', async () => {
+  const report = (body) => asKiosk('POST', '/api/kiosk/battery', body);
+  const alerted = () => db.prepare('SELECT alerted FROM kiosk_batteries WHERE season_id = ? AND court_no = 1').get(season.id).alerted;
+  assert.strictEqual((await call('POST', '/api/kiosk/battery', { body: { level: 0.5, charging: true } })).status, 401, 'no cookie, no report');
+  assert.strictEqual((await report({ level: 0.5, charging: false })).status, 200);
+  let shown = (await admin('GET', `/api/seasons/${season.id}/kiosk`)).json.batteries;
+  assert.deepStrictEqual(shown.map((b) => [b.courtNo, b.level, b.charging]), [[1, 0.5, false]]);
+  assert.ok(Date.now() - Date.parse(shown[0].seenAt) < 60000, 'seen just now');
+  assert.strictEqual(alerted(), 0);
+  await report({ level: 0.15, charging: false });
+  assert.strictEqual(alerted(), 1, 'low and not charging: alerted');
+  await report({ level: 0.12, charging: false });
+  assert.strictEqual(alerted(), 1, 'still low: no second alert');
+  await report({ level: 0.25, charging: false });
+  assert.strictEqual(alerted(), 1, 'not recovered yet (needs 30 % or charging)');
+  await report({ level: 0.15, charging: true });
+  assert.strictEqual(alerted(), 0, 'charging recovers it');
+  await report({ level: 0.1, charging: false });
+  assert.strictEqual(alerted(), 1, 'low again: a new alert');
+  await report({ level: 'x', charging: 'yes' });
+  shown = (await admin('GET', `/api/seasons/${season.id}/kiosk`)).json.batteries;
+  assert.deepStrictEqual([shown[0].level, shown[0].charging], [null, null], 'nonsense is stored as unknown');
+});
+
 test('the kiosk of court 1 cannot touch a match of court 2, nor anything outside the live score', async () => {
   const other = matches.b1;
   for (const [action, body] of [['start', { firstServer: 1 }], ['score', { player: 1, delta: 1 }], ['undo'], ['pause']]) {

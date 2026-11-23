@@ -8,6 +8,8 @@ const courtKiosk = require('../courtKiosk');
 const tournamentSchedule = require('../tournamentSchedule');
 const courtNames = require('../courtNames');
 
+const mailer = require('../mailer');
+
 const router = express.Router();
 const notValid = (res) => res.status(404).json({ error: 'This kiosk link is not valid any more' });
 
@@ -31,6 +33,20 @@ router.get('/:token', (req, res) => {
       live: schedule.matches.filter((m) => m.courtNo === i + 1 && m.status === 'LIVE').length,
     })),
   });
+});
+
+// The phone on a court reports its battery (about once a minute): { level 0..1 | null, charging true | false | null }. Only a phone that holds the cookie of a court (picked on its page)
+// may; the Backend shows it, and a low battery that is not charging is one e-mail to the organiser (src/courtKiosk.js).
+router.post('/battery', (req, res) => {
+  const kiosk = courtKiosk.fromRequest(req);
+  if (!kiosk) return res.status(401).json({ error: 'Pick a court on the kiosk page first' });
+  const done = courtKiosk.reportBattery(kiosk, req.body);
+  res.json({ ok: true });
+  if (done.sendAlert) {
+    const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(kiosk.seasonId);
+    const courtName = courtNames.label(tournamentSchedule.getSchedule(season).settings.courtNames, kiosk.courtNo);
+    mailer.sendKioskBatteryLowEmail({ seasonName: season.name, courtName, level: done.level }).catch((err) => console.error('[kiosk] battery e-mail failed:', err.message));
+  }
 });
 
 // The short address /turnaj<number>: { code } -> { token } (the page then goes on to /kiosk/<token>). A tournament with no kiosk and a wrong number look the same.

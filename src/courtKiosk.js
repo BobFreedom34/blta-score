@@ -31,6 +31,38 @@ function makeLink(season) {
 
 const removeLink = (seasonId) => db.prepare('DELETE FROM season_kiosks WHERE season_id = ?').run(seasonId).changes > 0;
 
+// ---- the battery of the phone on a court ----
+// The kiosk page reports { level 0..1, charging } every 20 minutes (Android Chrome knows it; a browser that does not sends nulls and only shows that the phone is alive). A battery at or
+// under LOW_LEVEL that is not charging is one e-mail to the organiser; the next one only after it has been charged or has climbed to RECOVER_LEVEL (so it does not mail again and again).
+const LOW_LEVEL = 0.2;
+const RECOVER_LEVEL = 0.3;
+
+// -> { level (0..1 or null), charging (true / false / null), sendAlert }
+function reportBattery(kiosk, body, now = Date.now()) {
+  const b = body || {};
+  const level = typeof b.level === 'number' && b.level >= 0 && b.level <= 1 ? Math.round(b.level * 100) / 100 : null;
+  const charging = typeof b.charging === 'boolean' ? b.charging : null;
+  const prev = db.prepare('SELECT alerted FROM kiosk_batteries WHERE season_id = ? AND court_no = ?').get(kiosk.seasonId, kiosk.courtNo);
+  let alerted = prev ? prev.alerted : 0;
+  let sendAlert = false;
+  if (level !== null) {
+    if (level <= LOW_LEVEL && charging !== true) {
+      if (!alerted) { alerted = 1; sendAlert = true; }
+    } else if (charging === true || level >= RECOVER_LEVEL) alerted = 0;
+  }
+  db.prepare(`
+    INSERT INTO kiosk_batteries (season_id, court_no, level, charging, alerted, seen_at) VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT (season_id, court_no) DO UPDATE SET level = excluded.level, charging = excluded.charging, alerted = excluded.alerted, seen_at = excluded.seen_at
+  `).run(kiosk.seasonId, kiosk.courtNo, level, charging === null ? null : (charging ? 1 : 0), alerted, new Date(now).toISOString());
+  return { level, charging, sendAlert };
+}
+
+// what the Backend shows: one entry per court that has reported
+function batteriesOf(seasonId) {
+  return db.prepare('SELECT court_no AS courtNo, level, charging, seen_at AS seenAt FROM kiosk_batteries WHERE season_id = ? ORDER BY court_no').all(seasonId)
+    .map((r) => ({ courtNo: r.courtNo, level: r.level, charging: r.charging === null ? null : !!r.charging, seenAt: r.seenAt }));
+}
+
 // the court n (1 ... number of courts, whole number) of the tournament of this link -> { token, seasonId, courtNo } or null
 function pick(token, courtNo) {
   const kiosk = byToken(token);
@@ -68,4 +100,4 @@ function openByCode(seasonId, code, now = Date.now()) {
   return { wrong: true, locked: count >= MAX_WRONG };
 }
 
-module.exports = { byToken, linkOf, openByCode, tokenOf, makeLink, removeLink, pick, fromRequest, mayScore };
+module.exports = { reportBattery, batteriesOf, LOW_LEVEL, byToken, linkOf, openByCode, tokenOf, makeLink, removeLink, pick, fromRequest, mayScore };

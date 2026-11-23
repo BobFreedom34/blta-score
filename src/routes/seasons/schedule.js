@@ -90,11 +90,11 @@ router.put('/:id/schedule/matches/:token', clubTournaments.requireSeasonManager(
 
 async function kioskView(req, season) {
   const link = courtKiosk.linkOf(season.id);
-  if (!link) return { url: null, qr: null, shortUrl: null, code: null };
+  if (!link) return { url: null, qr: null, shortUrl: null, code: null, batteries: [] };
   const origin = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/[/]$/, '');
   const url = `${origin}/kiosk/${link.token}`;
   // the short address (for typing and for sharing) and its code; the QR code holds the long link, which needs no code
-  return { url, qr: await QRCode.toDataURL(url, { margin: 1, width: 320 }), shortUrl: `${origin}/turnaj${season.id}`, code: link.pin || null };
+  return { url, qr: await QRCode.toDataURL(url, { margin: 1, width: 320 }), shortUrl: `${origin}/turnaj${season.id}`, code: link.pin || null, batteries: courtKiosk.batteriesOf(season.id) };
 }
 
 // The one kiosk link of the tournament (organiser): { url, qr }, both null while there is none.

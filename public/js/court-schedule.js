@@ -523,6 +523,18 @@ async function csOpenKiosks() {
   modal.id = 'cs-kiosk-modal';
   modal.style.display = 'flex';
   document.body.appendChild(modal);
+  // the battery of the phone on each court (it reports every 20 minutes; a phone that has not been heard from for 45 minutes is shown as having no signal)
+  const batteryHtml = (k) => {
+    const rows = (k.batteries || []).map((b) => {
+      const ageMin = Math.max(0, Math.round((Date.now() - Date.parse(b.seenAt)) / 60000));
+      const silent = ageMin > 45;
+      const low = b.level !== null && b.level <= 0.2 && b.charging !== true;
+      const level = b.level === null ? tl('batéria sa nedá zistiť', 'battery unknown') : `${Math.round(b.level * 100)} %${b.charging ? ` · ${tl('nabíja sa', 'charging')}` : b.charging === false ? ` · ${tl('nenabíja sa', 'not charging')}` : ''}`;
+      const when = ageMin < 1 ? tl('práve teraz', 'just now') : tl(`pred ${ageMin} min`, `${ageMin} min ago`);
+      return `<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid rgba(255,255,255,0.1);font-size:14px;${silent || low ? 'color:#ff6b4a;font-weight:700' : ''}"><span>${escapeHtml(csCourtName(b.courtNo))}</span><span>${silent ? escapeHtml(tl('bez signálu', 'no signal')) + ' · ' : ''}${escapeHtml(level)} · ${escapeHtml(when)}</span></div>`;
+    }).join('');
+    return `<div style="margin-top:16px"><div style="font-size:12px;color:var(--text-3);margin-bottom:4px">${escapeHtml(tl('Batéria telefónov na kurtoch (hlási sa každých 20 minút; pri slabej batérii príde e-mail)', 'Battery of the phones on the courts (reported every 20 minutes; a low battery sends an e-mail)'))}</div>${rows || `<div style="font-size:14px;color:var(--text-3)">${escapeHtml(tl('Zatiaľ sa nehlásil žiadny telefón.', 'No phone has reported yet.'))}</div>`}</div>`;
+  };
   const draw = (k) => {
     modal.innerHTML = `
       <div class="modal cs-kiosks">
@@ -545,7 +557,7 @@ async function csOpenKiosks() {
                 <button type="button" class="btn btn-sm btn-outline" data-ks="off">${escapeHtml(tl('Vypnúť', 'Turn off'))}</button>
               </div>
             </div>
-          </div>` : `
+          </div>${batteryHtml(k)}` : `
           <div style="color:var(--text-3);font-size:14px;margin-bottom:12px">${escapeHtml(tl('Kiosk nie je zapnutý.', 'The kiosk is off.'))}</div>
           <button type="button" class="btn btn-sm btn-primary" data-ks="make">${escapeHtml(tl('Zapnúť kiosk', 'Turn the kiosk on'))}</button>`}
       </div>`;
@@ -575,6 +587,11 @@ async function csOpenKiosks() {
     } catch (err) { toast(err.message); }
   });
   try { draw(await api(base)); } catch (err) { modal.remove(); toast(err.message); }
+  // the list of batteries is read again while the window is open
+  const refresh = setInterval(async () => {
+    if (!document.body.contains(modal)) { clearInterval(refresh); return; }
+    try { const k = await api(base); const box = modal.querySelector('.cs-kiosks'); if (k.url && box && !box.querySelector('.code-box:focus')) draw(k); } catch { /* the next round tries again */ }
+  }, 60000);
 }
 
 async function csOpenAddMatch() {

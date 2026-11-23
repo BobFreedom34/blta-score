@@ -415,6 +415,28 @@ async function sendPlayRequestDeniedEmail(owner, joiner, reason) {
 // else in the app. Same admin address as the other admin-facing emails.
 // The error message itself is left untranslated (it's whatever the Drive
 // API/Node threw) — only the surrounding text is Slovak.
+// The phone that lies on a court of a tournament (the kiosk) is nearly out of battery and not charging: one e-mail to the organiser.
+async function sendKioskBatteryLowEmail({ seasonName, courtName, level }) {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[mailer] SMTP not configured — skipping kiosk battery e-mail.');
+    return false;
+  }
+  const percent = Math.round(level * 100);
+  await t.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
+    subject: `Slabá batéria: ${courtName} (${percent} %)`,
+    text: [
+      `Telefón, ktorý leží na kurte "${courtName}" (turnaj ${seasonName}), má ${percent} % batérie a nenabíja sa.`,
+      '',
+      'Pripojte ho k nabíjačke, inak sa vypne a zápasy sa nebudú dať zapisovať.',
+      'Ďalší e-mail príde, až keď sa telefón nabije a batéria opäť klesne.',
+    ].join('\n'),
+  });
+  return true;
+}
+
 async function sendBackupFailedEmail(err) {
   const t = getTransporter();
   if (!t) {
@@ -750,5 +772,5 @@ module.exports = {
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendProposalReceivedEmail,
   sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendWelcomeEmail, sendClubWaitingEmail, sendPlayRequestEmail,
-  sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail, sendPartnerAcceptedEmail, sendBackupFailedEmail,
+  sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail, sendPartnerAcceptedEmail, sendBackupFailedEmail, sendKioskBatteryLowEmail,
 };

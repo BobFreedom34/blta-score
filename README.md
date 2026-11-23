@@ -4,6 +4,8 @@ Live score tracking app for the BLTA amateur tennis league, built to run on **sc
 
 - Plan matches, add players, pick a format (best of 1/3/5 sets, with or without a
   match-tiebreak deciding set), in one of four categories (Elite / Next Gen / Novice / Friendly)
+- The phone on a court (the kiosk) reports its **battery** every 20 minutes (Android Chrome): Backend > Kiosk kurtov shows it per court, and a battery at 20 % or less that is not
+  charging is one e-mail to `NOTIFY_EMAIL` (`POST /api/kiosk/battery`, `courtKiosk.reportBattery`, table `kiosk_batteries`)
 - Score live with big +1 / -1 buttons, undo mistakes, a running match timer
 - An admin, city admin or referee can score **point by point** (15-30-40-Ad, deuce, tie-break) — the "Body | Hry" switch above the score
   buttons; `POST /api/matches/:token/point`, engine `applyPoint` in `src/matchEngine.js`. Every point goes to the tab "Priebeh zápasu"
