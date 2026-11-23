@@ -98,6 +98,11 @@ const FONT = "font-family:'Segoe UI',Helvetica,Arial,sans-serif;";
 
 const button = (label, href) => `<tr><td style="padding:14px 0 6px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${C.orange}" style="border-radius:8px"><a href="${esc(href)}" style="display:inline-block;padding:13px 26px;${FONT}font-size:14px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:${C.white};text-decoration:none">${esc(label)} &rarr;</a></td></tr></table></td></tr>`;
 
+// links inside a line of ALREADY ESCAPED text: "[Winter Opening Series](https://...)" (a space between ] and ( is allowed) and a bare https://... address become links
+const inlineLinks = (html) => html.replace(/\[([^\]]+)\]\s*\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s<]+)/g, (all, label, href, bare) => (bare
+  ? `<a href="${bare}" style="color:${C.green}">${bare}</a>`
+  : `<a href="${href}" style="color:${C.green};font-weight:700">${label}</a>`));
+
 function dress(text, { origin, logoUrl }) {
   const lines = text.split('\n');
   // the signature = the last paragraph (after the last blank line), when there is more than one paragraph
@@ -130,7 +135,7 @@ function dress(text, { origin, logoUrl }) {
     const step = line.match(/^(\d+)\.\s+(.*)$/);
     const bullet = !step && line.match(/^-\s+(.*)$/);
     if (step || bullet) {
-      const body = esc(step ? step[2] : bullet[1]);
+      const body = inlineLinks(esc(step ? step[2] : bullet[1]));
       const cut = body.search(/\s[–-]\s/);
       const html = cut > 0 ? `<b style="color:${C.white}">${body.slice(0, cut)}</b>${body.slice(cut)}` : body;
       const badge = step
@@ -150,7 +155,7 @@ function dress(text, { origin, logoUrl }) {
       return;
     }
     if (first) { first = false; out.push(bigTitle(line)); return; } // the first plain line: the greeting
-    out.push(`<tr><td style="${FONT}font-size:15px;line-height:1.6;color:${C.text}">${esc(line).replace(/(https?:\/\/[^\s<]+)/g, `<a href="$1" style="color:${C.green}">$1</a>`)}</td></tr>`);
+    out.push(`<tr><td style="${FONT}font-size:15px;line-height:1.6;color:${C.text}">${inlineLinks(esc(line))}</td></tr>`);
   });
   const logo = logoUrl ? `<img src="${esc(logoUrl)}" width="52" height="39" alt="BLTA" style="display:block;border:0">` : '';
   return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:${C.page}" bgcolor="${C.page}">

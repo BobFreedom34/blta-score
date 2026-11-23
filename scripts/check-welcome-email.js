@@ -58,6 +58,16 @@ test('the placeholders are filled in and the HTML version is escaped', () => {
   assert.ok(!/\{(name|link)\}/.test(mail.text), 'no placeholder is left');
 });
 
+test('a link typed as [text](address) works inside a numbered step and a plain line, with or without a space after ]', () => {
+  const welcome = require('../src/welcomeEmail');
+  const body = 'Hi {name}\n\n5. The next season starts 7.1.2027 - [Winter Opening Series] (https://blta.sk/sezona/winter-opening-series-2027)\nAlso [here](https://blta.sk/x?a=1&b=2) and https://blta.sk/y now\n\nBye';
+  const html = welcome.render('en', { name: 'Jo', link: 'https://x.sk/player/jo' }, body).html;
+  assert.ok(html.includes('<a href="https://blta.sk/sezona/winter-opening-series-2027" style="color:#b2fa06;font-weight:700">Winter Opening Series</a>'), 'the link of the step');
+  assert.ok(html.includes('<a href="https://blta.sk/x?a=1&amp;b=2"') && html.includes('>here</a>'), 'the link of a plain line (the & is escaped)');
+  assert.ok(html.includes('<a href="https://blta.sk/y"'), 'a bare address is still a link');
+  assert.ok(!html.includes('](') && !html.includes('[Winter'), 'no raw markup is left');
+});
+
 test('registering a new player works with the welcome e-mail on and off (no mail server here)', async () => {
   const reg = (n, phone) => call('POST', '/api/player/register', { name: n, phone, email: `${phone}@example.com`, lang: 'en' }, false);
   assert.strictEqual((await reg('Welcome One', '0903000001')).status, 201);
