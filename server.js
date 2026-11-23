@@ -956,3 +956,9 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`BLTA score app listening on http://localhost:${PORT}`);
 });
+
+// every minute: a tournament match that is being played longer than planned pushes the matches behind it on its court later (nothing else would notice time passing)
+setInterval(() => {
+  const changed = require('./src/tournamentSchedule').replanOverrunning();
+  changed.forEach((seasonId) => io.emit('matches:changed', { seasonId, status: 'SCHEDULE' }));
+}, Number(process.env.SCHEDULE_WATCH_MS) || 60 * 1000).unref();

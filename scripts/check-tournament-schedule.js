@@ -296,6 +296,34 @@ test('with "automatic schedule" off, a new match stays unscheduled until the pla
   assertNoClashes(sch, 30);
 });
 
+test('a match that is played longer than planned pushes the match behind it on its court later by itself (the timer of the server), and a match after which nothing was saved does not stay overdue behind it', async () => {
+  const day = (offsetDays) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Bratislava' }).format(new Date(Date.now() + offsetDays * 24 * 60 * MIN));
+  const t = (await call('POST', '/api/seasons', { name: 'Overrun Open', kind: 'TOURNAMENT', startDate: day(0), endDate: day(1) })).json;
+  assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}`, { courtCount: 1 })).status, 200);
+  assert.strictEqual((await call('PATCH', `/api/seasons/${t.id}/schedule/settings`, { dayStart: '00:00', dayEnd: '23:55', matchMinutes: 60, restMinutes: 0 })).status, 200);
+  for (let i = 0; i < 4; i += 1) {
+    const p = (await call('POST', '/api/players', { name: `Overrun Player ${i + 1}` })).json;
+    const reg = await call('POST', `/api/seasons/${t.id}/registrations/admin`, { playerId: p.id, category: 'ELITE', phone: `0909${String(100000 + i)}`, email: `o${i}@example.com` });
+    assert.strictEqual(reg.status, 201, reg.text);
+  }
+  assert.strictEqual((await call('POST', `/api/seasons/${t.id}/draw`, { category: 'ELITE', mode: 'AUTO' })).status, 201);
+  const placed = (await call('GET', `/api/seasons/${t.id}/schedule`, undefined, { admin: false })).json.matches.filter((m) => m.courtNo).sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt));
+  assert.strictEqual(placed.length, 2);
+  // the first match started 100 minutes ago (planned 60): it is overrunning; the second one was planned to start 40 minutes ago and has not been started
+  const sql = new DatabaseSync(path.join(dir, 'blta-score.db'));
+  const at = (min) => new Date(Date.now() + min * MIN).toISOString();
+  sql.prepare("UPDATE matches SET status = 'LIVE', scheduled_at = ?, start_time = ? WHERE share_token = ?").run(at(-100), at(-100), placed[0].token);
+  sql.prepare('UPDATE matches SET scheduled_at = ?, slot_locked = 0 WHERE share_token = ?').run(at(-40), placed[1].token);
+  sql.close();
+  let moved = null;
+  for (let i = 0; i < 40 && !moved; i += 1) {
+    await new Promise((r) => setTimeout(r, 250));
+    const m = (await call('GET', `/api/seasons/${t.id}/schedule`, undefined, { admin: false })).json.matches.find((x) => x.token === placed[1].token);
+    if (Date.parse(m.scheduledAt) > Date.now()) moved = m;
+  }
+  assert.ok(moved, 'the match behind the overrunning one was moved to the future by the timer');
+});
+
 test('the planner goes round by round: round 1 of Novice, of Next Gen, of Elite, then round 2 of each, not a whole category at once', async () => {
   const t = (await call('POST', '/api/seasons', { name: 'Rounds Open 2099', kind: 'TOURNAMENT', startDate: '2099-07-01', endDate: '2099-07-02' })).json;
   await call('PATCH', `/api/seasons/${t.id}`, { courtCount: 1 });
@@ -400,7 +428,7 @@ test('a league season has no court schedule', async () => {
 async function main() {
   let failed = 0;
   try {
-    const env = { ...process.env, DATA_DIR: dir, PORT: String(port), ADMIN_PASSWORD: 'test', SESSION_SECRET: 'test' };
+    const env = { ...process.env, DATA_DIR: dir, PORT: String(port), ADMIN_PASSWORD: 'test', SESSION_SECRET: 'test', SCHEDULE_WATCH_MS: '300' };
     for (const k of Object.keys(env)) if (k.startsWith('GOOGLE_')) delete env[k];
     child = spawn(process.execPath, ['server.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = '';

@@ -594,7 +594,9 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
   let moved = 0;
 
   if (mode === 'compact') {
-    const candidates = rows.filter((r) => r.status === 'PLANNED' && r.court_no && r.scheduled_at && !r.slot_locked && !(Date.parse(r.scheduled_at) <= now && now - Date.parse(r.scheduled_at) < 12 * 60 * MIN)) // (a match that is overdue is taken as being played: it stays)
+    // (a match that is overdue is taken as being played: it stays - unless another match is LIVE on its court: then it is waiting for that one and moves behind it)
+    const liveCourts = new Set(rows.filter((r) => r.status === 'LIVE' && r.court_no).map((r) => r.court_no));
+    const candidates = rows.filter((r) => r.status === 'PLANNED' && r.court_no && r.scheduled_at && !r.slot_locked && !(Date.parse(r.scheduled_at) <= now && now - Date.parse(r.scheduled_at) < 12 * 60 * MIN && !liveCourts.has(r.court_no)))
       .sort((a, b) => Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at) || a.id - b.id);
     candidates.forEach((r) => {
       const entry = entries.find((e) => e.id === r.id);
@@ -647,6 +649,33 @@ function autoPlanIfEnabled(seasonId) {
   }
 }
 
+// A match that is being played longer than its planned length keeps its court busy, but nothing is saved when time just passes, so the matches after it would stay
+// where they were. This is run by a timer (server.js): for every tournament with automatic scheduling and a LIVE match past its planned end it runs the compact
+// planner (the matches behind move later, in steps of the time grid). -> the ids of the tournaments whose schedule changed
+function replanOverrunning(now = Date.now()) {
+  const changed = [];
+  try {
+    const live = db.prepare(`
+      SELECT m.* FROM matches m JOIN seasons s ON s.id = m.season_id
+      WHERE m.status = 'LIVE' AND m.court_no IS NOT NULL AND s.kind = 'TOURNAMENT' AND s.court_count > 0 AND s.auto_schedule != 0`).all();
+    const bySeason = new Map();
+    live.forEach((m) => {
+      const season = bySeason.get(m.season_id) || db.prepare('SELECT * FROM seasons WHERE id = ?').get(m.season_id);
+      bySeason.set(m.season_id, season);
+      const start = ms(m.scheduled_at) ?? ms(m.start_time);
+      if (start !== null && now > start + durationOf(m, settingsOf(season))) bySeason.get(m.season_id).overrun = true;
+    });
+    bySeason.forEach((season, seasonId) => {
+      if (!season.overrun) return;
+      const result = autoPlan(seasonId, { mode: 'compact', now });
+      if (result && result.moved > 0) changed.push(seasonId);
+    });
+  } catch (err) {
+    console.error('[tournament schedule]', err.message);
+  }
+  return changed;
+}
+
 // The length of one match in minutes, set by the organiser (15–300, a multiple of 5); null = the length of the tournament's matches again.
 // A match whose real end is not known (a result entered by hand) occupies its court for this long. After a change the planner moves the
 // following matches forward (or back) when "automatic schedule" is on. -> { error, status } or { ok }
@@ -694,5 +723,6 @@ module.exports = {
   setDuration,
   autoPlan,
   autoPlanIfEnabled,
+  replanOverrunning,
   localToUtcMs,
 };

@@ -353,7 +353,11 @@ function resetManualResult(nodeId, cascade = false) {
 // any bracket at all, which is the common case for every ordinary match.
 function syncBracketIfFinished(matchRow) {
   // the last match of the groups of a tournament category can make the bracket after the groups
-  if (matchRow.group_id && (matchRow.status === 'FINISHED' || matchRow.status === 'UNFINISHED')) require('./tournamentDraw').onMatchFinished(matchRow);
+  if (matchRow.group_id && (matchRow.status === 'FINISHED' || matchRow.status === 'UNFINISHED')) {
+    require('./tournamentDraw').onMatchFinished(matchRow);
+    // a match of a group ended (early or late): the matches after it on the court move forward or back, like after a match of a bracket
+    tournamentSchedule.autoPlanIfEnabled(matchRow.season_id);
+  }
   if (matchRow.status !== 'FINISHED' || !matchRow.winner_id) return;
   const node = db.prepare('SELECT * FROM bracket_matches WHERE match_id = ?').get(matchRow.id);
   if (!node) return;
