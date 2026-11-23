@@ -7837,3 +7837,6 @@ html.kiosk-mode #match-root .match-header .match-badges { margin-bottom: 16px; }
 
 /* the seed number before the name of a player in the court schedule: orange, thin */
 .cs-seed { color: var(--orange); font-weight: 300; }
+
+/* the row of tabs of a season / tournament page: a green frame, 2px */
+#sv-tabs { border: 2px solid var(--green); }
