@@ -4131,6 +4131,8 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-fee-info { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: var(--green); color: var(--ink); font: italic 800 15px/1 Georgia, serif; cursor: pointer; display: grid; place-items: center; padding: 0; }
 .sv-fee-info:hover { filter: brightness(1.1); }
 .sv-tile .k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.sv-tile .k { display: flex; align-items: center; gap: 6px; }
+.sv-tile .k .venue-icon { width: 14px; height: 14px; flex: 0 0 14px; color: var(--status-green); }
 .sv-tile .v { font-size: 16px; font-weight: 800; line-height: 1.2; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sv-tile .v.sm { font-size: 16px; }
 /* the maximum of the players tile ("6/8"): smaller and thinner than the number of registered players */
