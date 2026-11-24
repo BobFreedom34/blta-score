@@ -404,17 +404,19 @@ function tilesHtml() {
     return `<div class="sv-tile grey-tile"><div class="k">${courtIcon('playCircle')}${escapeHtml(t('season.tileLiveDraw'))}</div><div class="v sm sv-plays">${links}</div></div>`;
   };
   const TILE_ICONS = { 'season.tileCats': 'layers', 'season.tilePlayers': 'users', 'season.tileCourts': 'grid' };
-  const tile = (key, value, sub) => `<div class="sv-tile grey-tile"><div class="k">${courtIcon(TILE_ICONS[key] || 'info')}${escapeHtml(t(key))}</div><div class="v">${value}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</div></div>`;
+  // a long text (more than 24 letters: the categories, an address) takes the place of two tiles
+  const wide = (text) => (String(text || '').replace(/<[^>]*>/g, '').length > 24 ? ' sv-wide' : '');
+  const tile = (key, value, sub) => `<div class="sv-tile grey-tile${wide(value)}"><div class="k">${courtIcon(TILE_ICONS[key] || 'info')}${escapeHtml(t(key))}</div><div class="v">${value}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</div></div>`;
   // the categories ticked in the Backend (a season or a tournament), and any a group is in
   const cats = CATEGORY_ORDER_ALL.filter((c) => (season.categories || []).includes(c) || (season.groups || []).some((g) => g.category === c) || (standings && standings.groups.some((g) => g.category === c)));
   const tiles = [
     termText() ? `<div class="sv-tile grey-tile"><div class="k">${courtIcon('calendar')}${escapeHtml(t('season.tileTerm'))}</div><div class="v sm">${escapeHtml(termText())}</div></div>` : '',
     playingTimeText() ? `<div class="sv-tile grey-tile"><div class="k">${courtIcon('clock')}${escapeHtml(t('season.tileTime'))}</div><div class="v sm">${escapeHtml(playingTimeText())}</div></div>` : '',
     cats.length ? tile('season.tileCats', cats.map((c) => CATEGORY_NAMES[c]).join(' · ')) : '',
-    season.venue ? `<div class="sv-tile grey-tile"><div class="k">${courtIcon('pin')}${escapeHtml(t('season.tileVenue'))}</div><div class="v sm">${escapeHtml(season.venue)}</div></div>` : '',
+    season.venue ? `<div class="sv-tile grey-tile${wide(season.venue)}"><div class="k">${courtIcon('pin')}${escapeHtml(t('season.tileVenue'))}</div><div class="v sm">${escapeHtml(season.venue)}</div></div>` : '',
     players || maxPlayers ? tile('season.tilePlayers', maxPlayers ? `${players}<span class="sv-max">/${maxPlayers}</span>` : String(players), (model.substitutes.length ? `+${model.substitutes.length} ${t('season.onWaiting')}` : '')) : '',
     season.courtCount > 0 ? tile('season.tileCourts', String(season.courtCount)) : '',
-    drawFormatText() ? `<div class="sv-tile grey-tile"><div class="k">${courtIcon('group')}${escapeHtml(t('season.tileFormat'))}</div><div class="v sm">${escapeHtml(drawFormatText())}</div></div>` : '',
+    drawFormatText() ? `<div class="sv-tile grey-tile${wide(drawFormatText())}"><div class="k">${courtIcon('group')}${escapeHtml(t('season.tileFormat'))}</div><div class="v sm">${escapeHtml(drawFormatText())}</div></div>` : '',
     season.surface ? `<div class="sv-tile grey-tile"><div class="k">${courtIcon('surface')}${escapeHtml(t('season.tileSurface'))}</div><div class="v sm">${escapeHtml(t('season.surface.' + season.surface))}</div></div>` : '',
     season.balls ? `<div class="sv-tile grey-tile"><div class="k">${courtIcon('ball')}${escapeHtml(t('season.tileBalls'))}</div><div class="v sm">${escapeHtml(season.balls)}</div></div>` : '',
     // a tournament with an entry fee: the green "i" opens the window with how to pay it (the IBAN, the QR code)

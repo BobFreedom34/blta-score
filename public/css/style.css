@@ -4124,25 +4124,25 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-chip.t { border-color: var(--orange); color: var(--orange); }
 .sv-chip.now { background: var(--orange); color: var(--white); }
 .sv-chip.w { border-color: rgba(255, 255, 255, 0.35); color: var(--white); }
-/* the info tiles of an event: every value is 20px on one line, and a tile is as wide as its text needs (a very long text is cut with ... at the edge of the page, never put on a second line) */
-.sv-tiles { display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0 0; }
-.sv-tile { flex: 0 0 auto; min-width: 150px; max-width: 100%; box-sizing: border-box; background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius); padding: 14px 16px; }
+/* the info tiles of an event: a grid of tiles of ONE size (the same width and the same height), a long text (the categories, an address) takes two tiles (.sv-wide); no tile is cut or stretched on its own */
+.sv-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); grid-auto-flow: row dense; gap: 10px; margin: 14px 0 0; }
+.sv-tile { min-width: 0; box-sizing: border-box; background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius); padding: 12px 14px; }
+.sv-tile.sv-wide { grid-column: span 2; }
 .sv-tile-fee { position: relative; }
 .sv-fee-info { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: var(--green); color: var(--ink); font: italic 800 15px/1 Georgia, serif; cursor: pointer; display: grid; place-items: center; padding: 0; }
 .sv-fee-info:hover { filter: brightness(1.1); }
 .sv-tile .k { color: #c3c7cf; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .sv-tile .k { display: flex; align-items: center; gap: 6px; }
 .sv-tile .k .venue-icon { width: 14px; height: 14px; flex: 0 0 14px; color: var(--status-green); }
-.sv-tile .v { font-size: 16px; font-weight: 800; line-height: 1.2; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sv-tile .v { font-size: 16px; font-weight: 800; line-height: 1.2; margin-top: 5px; white-space: normal; overflow-wrap: anywhere; }
 .sv-tile .v.sm { font-size: 16px; }
 /* the maximum of the players tile ("6/8"): smaller and thinner than the number of registered players */
 .sv-tile .v .sv-max { font-size: 0.7em; font-weight: 500; color: #c3c7cf; }
 .sv-tile .v small { display: inline; font-size: 0.7em; font-weight: 500; color: #c3c7cf; margin: 0 0 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* a phone: always two tiles side by side; a text that does not fit the half of the screen goes on a second line there (a date or an address is never cut) */
 @media (max-width: 700px) {
-  .sv-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .sv-tile { min-width: 0; padding: 12px 14px; }
-  .sv-tile .v, .sv-tile .v small { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+  .sv-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sv-tile .v small { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 }
 .sv-sec { margin: 0; }
 #sv-tabs { margin: 48px 0 48px; }
@@ -4175,7 +4175,7 @@ body:not(.embed-light) .home-t-row a.nm.is-me { color: var(--green); }
 .sv-bracket { margin: 0 0 48px; }
 .sv-gallery-btn { display: inline-block; padding: 12px 20px; border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.35); color: var(--white); font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; }
 .sv-gallery-btn:hover { border-color: var(--orange); }
-@media (max-width: 900px) { #sv-cats, .sv-rounds { margin-bottom: 40px; } #sv-tabs { margin-bottom: 40px; } .sv-head { margin-bottom: 40px; } #sv-tabs { margin-top: 40px; } .sv-gl { row-gap: 40px; } .sv-bracket { margin-bottom: 40px; } }
+@media (max-width: 900px) { #sv-cats, .sv-rounds { margin-bottom: 40px; } #sv-tabs { margin-top: 40px; margin-bottom: 40px; } .sv-head { margin-bottom: 40px; } #sv-tabs { margin-top: 40px; } .sv-gl { row-gap: 40px; } .sv-bracket { margin-bottom: 40px; } }
 @media (max-width: 700px) { .sv-title { font-size: 26px; } .sv-gl { grid-template-columns: 1fr; } }
 
 /* season page: registration + payment buttons and the registration form */
@@ -6809,7 +6809,7 @@ body:not(.embed-light):not(.embed) .match-card.availability-post .scoreboard { b
 /* the tiles (Termín, Čas hrania …) sit closer to the head with the hero photo above them */
 .sv-head:has(+ .sv-tiles-panel) { margin-bottom: 22px; }
 /* the tiles in one dark card with a small heading, apart from the hero above and the tabs below */
-.sv-tiles-panel { margin: 0 0 28px; padding: 16px; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius); }
+.sv-tiles-panel { margin: 0; /* the space to the tabs below is the margin of #sv-tabs (48px), the same as the space under the tabs */ padding: 16px; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius); }
 .sv-tiles-panel h3 { margin: 0 0 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8f98; }
 .sv-tiles-panel .sv-tiles { margin: 0; }
 @media (max-width: 700px) { .sv-tiles-panel { padding: 12px; border-radius: 14px; } }
