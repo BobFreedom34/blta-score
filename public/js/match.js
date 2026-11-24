@@ -98,8 +98,14 @@ function viewersHtml(count) { return `${courtIcon('eye')}${count} ${escapeHtml(t
 
 function scoreboardHtml(m, durationHtml) {
   const state = m.state;
-  const setsToShow = state.sets;
-  const headerCells = setsToShow.map((s, i) => `<th>${s.isSuperTiebreak ? t('match.mtbAbbrev') : t('match.setLabel', { n: i + 1 })}</th>`).join('');
+  // Free Play keeps adding sets as long as play goes on: a set still at 0:0 is not shown (only when nothing else is, so the board is never empty)
+  const started = (s) => !!(s.winner || s.p1 || s.p2 || (s.tiebreak && (s.tiebreak.p1 || s.tiebreak.p2)));
+  let setsToShow = state.sets.map((s, i) => ({ s, i }));
+  if (m.format === 'FREE_PLAY') {
+    const played = setsToShow.filter(({ s }) => started(s));
+    setsToShow = played.length ? played : setsToShow.slice(0, 1);
+  }
+  const headerCells = setsToShow.map(({ s, i }) => `<th>${s.isSuperTiebreak ? t('match.mtbAbbrev') : t('match.setLabel', { n: i + 1 })}</th>`).join('');
   const serving = m.status === 'LIVE' ? currentServer(state, m.firstServer) : null;
   // once somebody scores point by point, the points of the game in play (15, 30, 40, Ad) are a column of the scoreboard too (a tie-break shows its points in the set)
   const showGame = m.status === 'LIVE' && !!state.log && state.status !== 'COMPLETE' && !state.sets[state.currentSet].tiebreak;
@@ -108,7 +114,7 @@ function scoreboardHtml(m, durationHtml) {
 
   const row = (playerNum, player) => {
     const isWinner = m.status === 'FINISHED' && m.winnerId === player.id;
-    const cells = setsToShow.map((s, i) => {
+    const cells = setsToShow.map(({ s, i }) => {
       const isCurrent = m.status === 'LIVE' && i === state.currentSet;
       return `<td class="set-score ${isCurrent ? 'current' : ''}">${setCell(s, playerNum)}</td>`;
     }).join('');
