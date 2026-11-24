@@ -74,7 +74,7 @@ function mainBracketOf(seasonId, category) {
 // ---------- settings of a category ----------
 
 const DEFAULTS = {
-  format: 'PRINCE', mode: 'AUTO', mainFormat: DEFAULT_MAIN_FORMAT, consolationFormat: DEFAULT_CONSOLATION_FORMAT, groupFormat: DEFAULT_MAIN_FORMAT,
+  format: 'PRINCE', mode: 'AUTO', mainFormat: DEFAULT_MAIN_FORMAT, consolationFormat: DEFAULT_CONSOLATION_FORMAT, consolationMode: 'AUTO', groupFormat: DEFAULT_MAIN_FORMAT,
   groupSize: 4, groupCount: 0, qualifiers: 2, bracketType: 'PRINCE', autoBracket: true, rounds: 0,
 };
 
@@ -82,19 +82,19 @@ function settingsOf(seasonId, category) {
   const r = db.prepare('SELECT * FROM tournament_categories WHERE season_id = ? AND category = ?').get(seasonId, category);
   if (!r) return { ...DEFAULTS };
   return {
-    format: r.format, mode: r.mode, mainFormat: r.main_format, consolationFormat: r.consolation_format, groupFormat: r.group_format,
+    format: r.format, mode: r.mode, mainFormat: r.main_format, consolationFormat: r.consolation_format, consolationMode: r.consolation_mode === 'MANUAL' ? 'MANUAL' : 'AUTO', groupFormat: r.group_format,
     groupSize: r.group_size, groupCount: r.group_count, qualifiers: r.qualifiers, bracketType: r.bracket_type, autoBracket: !!r.auto_bracket, rounds: r.rounds || 0,
   };
 }
 
 function saveSettings(seasonId, category, s) {
   db.prepare(`
-    INSERT INTO tournament_categories (season_id, category, format, mode, main_format, consolation_format, group_format, group_size, group_count, qualifiers, bracket_type, auto_bracket, rounds)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO tournament_categories (season_id, category, format, mode, main_format, consolation_format, group_format, group_size, group_count, qualifiers, bracket_type, auto_bracket, rounds, consolation_mode)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(season_id, category) DO UPDATE SET format = excluded.format, mode = excluded.mode, main_format = excluded.main_format,
       consolation_format = excluded.consolation_format, group_format = excluded.group_format, group_size = excluded.group_size,
-      group_count = excluded.group_count, qualifiers = excluded.qualifiers, bracket_type = excluded.bracket_type, auto_bracket = excluded.auto_bracket, rounds = excluded.rounds
-  `).run(seasonId, category, s.format, s.mode, s.mainFormat, s.consolationFormat, s.groupFormat, s.groupSize, s.groupCount, s.qualifiers, s.bracketType, s.autoBracket ? 1 : 0, s.rounds || 0);
+      group_count = excluded.group_count, qualifiers = excluded.qualifiers, bracket_type = excluded.bracket_type, auto_bracket = excluded.auto_bracket, rounds = excluded.rounds, consolation_mode = excluded.consolation_mode
+  `).run(seasonId, category, s.format, s.mode, s.mainFormat, s.consolationFormat, s.groupFormat, s.groupSize, s.groupCount, s.qualifiers, s.bracketType, s.autoBracket ? 1 : 0, s.rounds || 0, s.consolationMode === 'MANUAL' ? 'MANUAL' : 'AUTO');
 }
 
 // The type of the losers brackets of a category: what its format (or, for groups + bracket, its bracket type) says.
@@ -102,6 +102,16 @@ function losersTypeFor(seasonId, category) {
   const s = settingsOf(seasonId, category);
   const type = s.format === 'GROUPS_BRACKET' ? s.bracketType : s.format;
   return type === 'MONRAD' ? 'MONRAD' : 'PRINCE';
+}
+
+// The list the organiser picks the consolation draw from: the players who lost in round 1 of the main bracket (name, whether they play it) and how many
+// round-1 matches are still to be played.
+function picksView(main) {
+  const name = (id) => (id ? (db.prepare('SELECT name FROM players WHERE id = ?').get(id) || {}).name || '' : '');
+  const losers = bracketEngine.round1Losers(main.id).map((l) => ({
+    playerId: l.playerId, name: name(l.playerId), partnerName: l.partnerId ? name(l.partnerId) : null, position: l.position, plays: l.plays,
+  }));
+  return { losers, open: bracketEngine.round1Open(main.id), playing: losers.filter((l) => l.plays).length };
 }
 
 // ---------- overview ----------
@@ -137,6 +147,7 @@ function overview(seasonId) {
     const state = groups.groupsState(seasonId, category);
     const brackets = main ? [main.id, ...bracketEngine.descendants(main.id)].map((id) => bracketSummary(db.prepare('SELECT * FROM brackets WHERE id = ?').get(id))) : [];
     const hasLosers = settings.format === 'GROUPS_BRACKET' ? !['ELIMINATION', 'PLACEMENT'].includes(settings.bracketType) : ['PRINCE', 'MONRAD'].includes(settings.format);
+    const pickMode = !!main && !consolation && settings.consolationMode === 'MANUAL' && hasLosers && losersTypeFor(seasonId, category) === 'PRINCE';
     return {
       category,
       label: CATEGORY_LABELS[category],
@@ -156,7 +167,10 @@ function overview(seasonId) {
       // the Swiss system: which round it is, how many there are, whether the next one can be made (null for any other format)
       swiss: swiss.state(seasonId, category),
       // the losers brackets can be made once every round-1 match of the main draw is seated
-      canMakeConsolation: !!main && hasLosers && !consolation && readiness.empty === 0 && readiness.real >= 2,
+      // MANUAL consolation (PRINCE): the old button that drops the losers in by itself is not offered, the organiser picks the players (consolationPicks)
+      canMakeConsolation: !!main && hasLosers && !consolation && readiness.empty === 0 && readiness.real >= 2 && !pickMode,
+      consolationMode: settings.consolationMode,
+      consolationPicks: pickMode ? picksView(main) : null,
       // the bracket after the groups can be made once the groups exist
       canMakeBracket: settings.format === 'GROUPS_BRACKET' && !!state && !main,
       stage: main ? 'BRACKET' : state ? 'GROUPS' : 'NONE',
@@ -256,7 +270,7 @@ function entriesFor(regs, random) {
 // Makes the main bracket of a category and — for PRINCE and MONRAD, when the main bracket is filled — its losers brackets.
 // entries: [{ playerId, seed }] (an automatic draw) or size (an empty bracket the organiser seats by hand).
 // -> { mainId, consolationId (the first losers bracket or null), consolationNote, brackets }
-function makeBracketSet(season, category, { type, mainFormat, consolationFormat, entries, size }) {
+function makeBracketSet(season, category, { type, mainFormat, consolationFormat, consolationMode, entries, size }) {
   const base = `${season.name} — ${CATEGORY_LABELS[category]}`;
   const doubles = category === 'DOUBLES';
   const mainId = bracketEngine.createBracket({
@@ -266,7 +280,8 @@ function makeBracketSet(season, category, { type, mainFormat, consolationFormat,
   let consolationId = null;
   let consolationNote = null;
   let count = 1;
-  if (entries && type !== 'ELIMINATION') {
+  // PRINCE with the consolation draw picked by the organiser: it is not made now, the round-1 losers are listed when they are known (see overview)
+  if (entries && type !== 'ELIMINATION' && !(type === 'PRINCE' && consolationMode === 'MANUAL')) {
     const made = bracketEngine.buildLosers(mainId, { name: `${base} — Útecha`, format: consolationFormat, type });
     if (made.bracketId) { consolationId = made.bracketId; count += made.brackets; } else consolationNote = made.error;
   }
@@ -320,6 +335,7 @@ function prepareDraw(season, category, opts = {}) {
     mode: opts.mode === 'MANUAL' ? 'MANUAL' : 'AUTO',
     mainFormat: opts.mainFormat || prev.mainFormat,
     consolationFormat: opts.consolationFormat || prev.consolationFormat,
+    consolationMode: opts.consolationMode === 'MANUAL' ? 'MANUAL' : opts.consolationMode === 'AUTO' ? 'AUTO' : (prev.consolationMode || 'AUTO'),
     groupFormat: opts.groupFormat || prev.groupFormat,
     groupSize: opts.groupSize !== undefined ? Number(opts.groupSize) : prev.groupSize,
     groupCount: opts.groupCount !== undefined ? Number(opts.groupCount) : prev.groupCount,
@@ -452,7 +468,7 @@ function createDraw(season, category, opts = {}) {
   db.exec('BEGIN');
   try {
     set = makeBracketSet(season, category, {
-      type: s.format, mainFormat: s.mainFormat, consolationFormat: s.consolationFormat, entries: s.mode === 'AUTO' ? (opts.entries || entriesFor(regs, random)) : null, size, // (opts.entries: the seats drawn in front of the camera)
+      type: s.format, mainFormat: s.mainFormat, consolationFormat: s.consolationFormat, consolationMode: s.consolationMode, entries: s.mode === 'AUTO' ? (opts.entries || entriesFor(regs, random)) : null, size, // (opts.entries: the seats drawn in front of the camera)
     });
     saveSettings(season.id, category, s);
     db.exec('COMMIT');
@@ -529,7 +545,7 @@ function createBracketFromGroups(season, category, opts = {}) {
   db.exec('BEGIN');
   try {
     set = makeBracketSet(season, category, {
-      type: s.bracketType, mainFormat: s.mainFormat, consolationFormat: s.consolationFormat, entries: mode === 'AUTO' ? entries : null, size,
+      type: s.bracketType, mainFormat: s.mainFormat, consolationFormat: s.consolationFormat, consolationMode: s.consolationMode, entries: mode === 'AUTO' ? entries : null, size,
     });
     db.exec('COMMIT');
   } catch (err) {

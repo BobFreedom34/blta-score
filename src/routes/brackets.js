@@ -346,11 +346,44 @@ router.post('/:id/consolation', clubTournaments.requireSeasonManager(clubTournam
   const format = (req.body && req.body.format) || 'BO3_G4_STB';
   if (!engine.FORMATS[format] || format === 'FREE_PLAY') return res.status(400).json({ error: 'Invalid match format' });
   const base = bracket.name.replace(/\s*—\s*Hlavný pavúk\s*$/, '');
+  // made from the players the organiser ticked in the list of the round-1 losers (consolationMode MANUAL): by the neighbours of the draw (AUTO) or empty (MANUAL)
+  if (req.body && req.body.fromPicks) {
+    const mode = req.body.mode === 'MANUAL' ? 'MANUAL' : 'AUTO';
+    const picked = bracketEngine.buildPickedConsolation(id, { name: `${base} — Útecha`, format, mode });
+    if (picked.error) return res.status(400).json({ error: picked.error });
+    return res.status(201).json(serializeBracket(picked.bracketId));
+  }
   // PRINCE (one consolation bracket) or Monrad (a losers bracket for every round) — what the format of the category says
   const type = bracket.season_id && bracket.category ? require('../tournamentDraw').losersTypeFor(bracket.season_id, bracket.category) : 'PRINCE';
   const made = bracketEngine.buildConsolation(id, { name: `${base} — Útecha`, format, type });
   if (made.error) return res.status(400).json({ error: made.error });
   res.status(201).json(serializeBracket(made.bracketId));
+});
+
+// The list of the round-1 losers the organiser picks the consolation draw from, and ticking a player in or out of it.
+const picksOf = (bracketId) => {
+  const name = (pid) => (pid ? (db.prepare('SELECT name FROM players WHERE id = ?').get(pid) || {}).name || '' : '');
+  const losers = bracketEngine.round1Losers(bracketId).map((l) => ({ playerId: l.playerId, name: name(l.playerId), partnerName: l.partnerId ? name(l.partnerId) : null, position: l.position, plays: l.plays }));
+  return { losers, open: bracketEngine.round1Open(bracketId), playing: losers.filter((l) => l.plays).length };
+};
+router.get('/:id/consolation-picks', clubTournaments.requireSeasonManager(clubTournaments.byBracketId), (req, res) => {
+  const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(Number(req.params.id));
+  if (!bracket || bracket.kind === 'CONSOLATION') return res.status(404).json({ error: 'Bracket not found' });
+  res.json(picksOf(bracket.id));
+});
+// { playerId, plays } or { picks: [{ playerId, plays }] }
+router.put('/:id/consolation-picks', clubTournaments.requireSeasonManager(clubTournaments.byBracketId), (req, res) => {
+  const bracket = db.prepare('SELECT * FROM brackets WHERE id = ?').get(Number(req.params.id));
+  if (!bracket || bracket.kind === 'CONSOLATION') return res.status(404).json({ error: 'Bracket not found' });
+  if (bracketEngine.consolationOf(bracket.id)) return res.status(409).json({ error: 'The consolation draw is made already' });
+  const items = Array.isArray(req.body && req.body.picks) ? req.body.picks : [req.body || {}];
+  const losers = new Set(bracketEngine.round1Losers(bracket.id).map((l) => l.playerId));
+  for (const item of items) {
+    const playerId = Number(item.playerId);
+    if (!losers.has(playerId)) return res.status(400).json({ error: 'That player did not lose in round 1 of this bracket' });
+  }
+  items.forEach((item) => bracketEngine.setConsolationPick(bracket.id, Number(item.playerId), item.plays !== false && item.plays !== 0));
+  res.json(picksOf(bracket.id));
 });
 
 // Takes back a result entered by hand: the winner leaves the next round. With ?cascade=1 later results that depend on it are cleared too;

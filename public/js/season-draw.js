@@ -145,6 +145,11 @@ async function openDrawPanel(host, seasonId, onChanged) {
     if ((!isGroups(s.format) && !isSix(s.format) && !isSwiss(s.format)) || s.format === 'GROUPS_BRACKET') {
       body += sel('sd-main-format', placement ? tl('Formát zápasu — zápasy o umiestnenie', 'Match format — placement matches') : tl('Formát zápasu — hlavný pavúk', 'Match format — main bracket'), drawFormatOptions(s.mainFormat));
       if (hasLosers) body += sel('sd-cons-format', tl('Formát zápasu — útecha', 'Match format — consolation'), drawFormatOptions(s.consolationFormat));
+      // PRINCE: the consolation draw can be made by the system (the losers of round 1 drop in by themselves) or picked: the organiser ticks who of the round-1 losers plays it
+      if (hasLosers && (s.format === 'PRINCE' || (s.format === 'GROUPS_BRACKET' && s.bracketType === 'PRINCE'))) {
+        body += sel('sd-cons-mode', tl('Útecha', 'Consolation'),
+          `<option value="AUTO"${s.consolationMode !== 'MANUAL' ? ' selected' : ''}>${tl('Automaticky — porazení z 1. kola sa dosadia sami', 'Automatic — the round-1 losers drop in by themselves')}</option><option value="MANUAL"${s.consolationMode === 'MANUAL' ? ' selected' : ''}>${tl('Manuálne — vyberiem, kto útechu hrá', 'By hand — I pick who plays it')}</option>`);
+      }
     }
     body += '</div>';
     if (isSwiss(s.format)) {
@@ -183,6 +188,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
     if (!c.brackets.length && s.format === 'GROUPS_BRACKET') {
       parts.push(`<div style="font-size:13px;color:var(--gray);margin:6px 0">${tl('Pavúk ešte nie je vytvorený — vznikne z najlepších hráčov skupín.', 'The bracket is not made yet — it will be made from the best players of the groups.')}</div>`);
     }
+    if (c.consolationPicks) parts.push(picksHtml(c));
     const buttons = [];
     if (c.canMakeBracket) {
       buttons.push(`<select class="sd-bracket-mode" data-cat="${c.category}" style="${inputStyle}"><option value="AUTO">${tl('Vložiť hráčov automaticky', 'Seat the players automatically')}</option><option value="MANUAL">${tl('Prázdne zápasy (posadím ručne)', 'Empty matches (I seat them by hand)')}</option></select><button type="button" class="btn btn-sm btn-primary" data-act="bracket" data-cat="${c.category}">${s.bracketType === 'PLACEMENT' ? tl('Vytvoriť zápasy o umiestnenie', 'Create the placement matches') : tl('Vytvoriť pavúk zo skupín', 'Create the bracket from the groups')}</button>`);
@@ -198,6 +204,26 @@ async function openDrawPanel(host, seasonId, onChanged) {
     buttons.push(`<button type="button" class="btn btn-sm btn-outline" data-act="delete" data-cat="${c.category}" style="color:var(--danger)">${c.groups ? (c.main ? tl('Zmazať skupiny aj pavúk', 'Delete the groups and the bracket') : tl('Zmazať skupiny', 'Delete the groups')) : tl('Zmazať pavúk', 'Delete the bracket')}</button>`);
     parts.push(`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">${buttons.join('')}</div>`);
     return parts.join('');
+  }
+
+  // The consolation draw picked by the organiser (PRINCE, "By hand"): the players who lost in round 1 (they are added as the matches are played); tick who plays,
+  // then make the draw: automatically (the neighbours of the main draw meet, a player without a neighbour meets the nearest one) or empty, to seat them by hand.
+  function picksHtml(c) {
+    const p = c.consolationPicks;
+    const rows = p.losers.length
+      ? p.losers.map((l) => `<label style="display:flex;gap:8px;align-items:center;font-size:13px;padding:3px 0"><input type="checkbox" class="sd-pick" data-cat="${c.category}" data-player="${l.playerId}"${l.plays ? ' checked' : ''}> <span>${escapeHtml(l.name)}${l.partnerName ? ' / ' + escapeHtml(l.partnerName) : ''}</span> <span style="color:var(--gray);font-size:12px">${tl('zápas', 'match')} ${l.position + 1}</span></label>`).join('')
+      : `<div style="color:var(--gray);font-size:13px">${tl('Zatiaľ nikto — hráči sa pridajú, keď sa odohrajú zápasy 1. kola.', 'Nobody yet — the players are added when the round-1 matches are played.')}</div>`;
+    const ok = p.playing >= 2;
+    return `<div style="margin:10px 0;padding:12px 14px;border:1px solid rgba(255,255,255,0.18);border-radius:var(--radius-md)">
+      <div style="font-weight:700;font-size:13px">${tl('Útecha — kto ju hrá', 'Consolation — who plays it')} <span style="font-weight:400;color:var(--gray)">${p.playing} / ${p.losers.length}</span></div>
+      <div style="font-size:12px;color:var(--gray);margin:2px 0 8px">${tl('Porazení v 1. kole hlavného pavúka. Odškrtni tých, čo útechu hrať nechcú.', 'The players who lost in round 1 of the main bracket. Untick those who do not want to play it.')}${p.open ? ' ' + tl(`Ešte sa hrá ${p.open} zápasov 1. kola.`, `${p.open} round-1 matches are still to be played.`) : ''}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(240px,100%),1fr));gap:2px 14px">${rows}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
+        <select class="sd-cons-format" data-cat="${c.category}" style="${inputStyle}">${drawFormatOptions(settingsFor(c).consolationFormat)}</select>
+        <button type="button" class="btn btn-sm btn-primary" data-act="cons-auto" data-cat="${c.category}" ${ok ? '' : 'disabled'}>${tl('Vytvoriť útechu automaticky', 'Make the consolation automatically')}</button>
+        <button type="button" class="btn btn-sm btn-outline" data-act="cons-manual" data-cat="${c.category}" ${ok ? '' : 'disabled'}>${tl('Prázdny pavúk (posadím ručne)', 'Empty bracket (I seat them)')}</button>
+      </div>
+    </div>`;
   }
 
   function blockHtml(c) {
@@ -315,6 +341,15 @@ async function openDrawPanel(host, seasonId, onChanged) {
   };
 
   host.onchange = async (e) => {
+    if (e.target.matches && e.target.matches('.sd-pick')) {
+      const pickCat = e.target.dataset.cat;
+      const main = catOf(pickCat).main;
+      try {
+        await api(`/brackets/${main.id}/consolation-picks`, { method: 'PUT', body: { playerId: Number(e.target.dataset.player), plays: e.target.checked } });
+        await refresh();
+      } catch (err) { showError(pickCat, err.message); }
+      return;
+    }
     const cat = e.target.dataset.cat;
     if (!cat) return;
     const c = catOf(cat);
@@ -325,6 +360,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
       render();
     } else if (e.target.matches('.sd-main-format')) s.mainFormat = e.target.value;
     else if (e.target.matches('.sd-cons-format')) s.consolationFormat = e.target.value;
+    else if (e.target.matches('.sd-cons-mode')) s.consolationMode = e.target.value;
     else if (e.target.matches('.sd-group-format')) s.groupFormat = e.target.value;
     else if (e.target.matches('.sd-bracket-type')) { s.bracketType = e.target.value; render(); }
     else if (e.target.matches('.sd-auto-bracket')) s.autoBracket = e.target.checked;
@@ -392,7 +428,7 @@ async function openDrawPanel(host, seasonId, onChanged) {
       } else if (act === 'live') {
         // the presentation of the draw opens in a new window; it makes the draw with these settings and saves it only when the organiser says so
         const s = settingsFor(catOf(cat));
-        const o = { format: s.format, mode: 'AUTO', mainFormat: s.mainFormat, consolationFormat: s.consolationFormat, groupFormat: s.groupFormat, groupSize: s.groupSize, groupCount: s.groupCount, qualifiers: s.qualifiers, bracketType: s.bracketType, autoBracket: s.autoBracket, rounds: s.rounds };
+        const o = { format: s.format, mode: 'AUTO', mainFormat: s.mainFormat, consolationFormat: s.consolationFormat, consolationMode: s.consolationMode, groupFormat: s.groupFormat, groupSize: s.groupSize, groupCount: s.groupCount, qualifiers: s.qualifiers, bracketType: s.bracketType, autoBracket: s.autoBracket, rounds: s.rounds };
         window.open(`/draw-live?season=${seasonId}&category=${encodeURIComponent(cat)}&o=${encodeURIComponent(JSON.stringify(o))}`, '_blank');
         btn.disabled = false;
       } else if (act === 'swiss-round') {
@@ -409,6 +445,13 @@ async function openDrawPanel(host, seasonId, onChanged) {
         }
         await api(`/seasons/${seasonId}/draw/bracket`, { method: 'POST', body: { category: cat, mode, force } });
         toast(tl('Pavúk vytvorený', 'Bracket created'));
+        await refresh();
+      } else if (act === 'cons-auto' || act === 'cons-manual') {
+        const c = catOf(cat);
+        const open = c.consolationPicks ? c.consolationPicks.open : 0;
+        if (open && !confirm(tl(`Ešte sa nehrá ${open} zápasov 1. kola, ich porazení do útechy nepribudnú. Vytvoriť útechu teraz?`, `${open} round-1 matches are still to be played; their losers will not be in the consolation. Make it now?`))) { btn.disabled = false; return; }
+        await api(`/brackets/${c.main.id}/consolation`, { method: 'POST', body: { format: settingsFor(c).consolationFormat, fromPicks: true, mode: act === 'cons-auto' ? 'AUTO' : 'MANUAL' } });
+        toast(act === 'cons-auto' ? tl('Útecha vytvorená', 'Consolation created') : tl('Prázdny pavúk útechy vytvorený — posaď hráčov', 'Empty consolation bracket created — seat the players'));
         await refresh();
       } else if (act === 'consolation') {
         const c = catOf(cat);

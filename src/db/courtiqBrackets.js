@@ -185,3 +185,17 @@ db.exec(`
   const tcColumns = db.prepare('PRAGMA table_info(tournament_categories)').all().map((c) => c.name);
   if (!tcColumns.includes('rounds')) db.exec('ALTER TABLE tournament_categories ADD COLUMN rounds INTEGER NOT NULL DEFAULT 0');
 }
+// PRINCE: how the consolation draw ("útecha") is made. AUTO = it is made with the main draw and the losers of round 1 drop in by themselves; MANUAL = the organiser
+// picks who plays it from the list of the round-1 losers (consolation_picks) and then makes it automatically or seats the players by hand.
+{
+  const tcColumns2 = db.prepare('PRAGMA table_info(tournament_categories)').all().map((c) => c.name);
+  if (!tcColumns2.includes('consolation_mode')) db.exec("ALTER TABLE tournament_categories ADD COLUMN consolation_mode TEXT NOT NULL DEFAULT 'AUTO'");
+}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS consolation_picks (
+    bracket_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    plays INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (bracket_id, player_id)
+  );
+`);

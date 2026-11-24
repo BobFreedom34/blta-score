@@ -32,7 +32,7 @@ router.post('/:id/draw', clubTournaments.requireSeasonManager(clubTournaments.by
   if (!season) return;
   const body = req.body || {};
   const made = tournamentDraw.createDraw(season, body.category, {
-    format: body.format, mode: body.mode, mainFormat: body.mainFormat, consolationFormat: body.consolationFormat, groupFormat: body.groupFormat,
+    format: body.format, mode: body.mode, mainFormat: body.mainFormat, consolationFormat: body.consolationFormat, consolationMode: body.consolationMode, groupFormat: body.groupFormat,
     groupSize: body.groupSize, groupCount: body.groupCount, qualifiers: body.qualifiers, bracketType: body.bracketType, autoBracket: body.autoBracket,
     groups: body.groups, rounds: body.rounds,
   });

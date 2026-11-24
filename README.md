@@ -872,6 +872,17 @@ The **Zdieľať** button (`clubAppButtonsHtml` in `common.js`) sits in the actio
 (`src/clubApp.js`, routes `/api/communities/<slug>/manifest.json|icon-192|512|maskable.png`, `setClubManifest`). Check: `node scripts/check-club-app.js`.
 Spec/plan: `docs/superpowers/specs|plans/2026-11-01-club-season-menu-and-install*`.
 
+### PRINCE: the consolation draw picked by the organiser
+
+In the draw of a category (Backend > Tournaments > Format and draw) a PRINCE draw has the setting **Consolation**: *Automatic* (the default: the consolation bracket is made with the main bracket and the round-1 losers drop in by themselves) or *By hand*.
+With *By hand* only the main bracket is made. The panel then lists the players who lost in round 1 as their matches are decided (table `consolation_picks`, `GET` / `PUT /api/brackets/:id/consolation-picks`), all of them ticked.
+The organiser unticks who does not want to play and makes the consolation draw from the ticked players (`POST /api/brackets/:id/consolation` with `fromPicks: true` and `mode`):
+
+- `AUTO`: the neighbours of the main draw meet; a player whose neighbour does not play meets the nearest one; the byes go to the players without a neighbour (`pairConsolation` in `src/bracketEngine.js`).
+- `MANUAL`: an empty bracket of the right size, the organiser seats the players in "Edit the bracket".
+
+The list is closed once the consolation bracket exists. Checks: `scripts/check-manual-consolation.js`.
+
 ## 7. Embedding on the blta.sk WordPress site
 
 - **Full live-matches list**, always up to date:

@@ -485,6 +485,94 @@ function buildLosers(mainBracketId, { name, format, type = 'PRINCE' }) {
   return { bracketId: created[0], brackets: created.length };
 }
 
+// ---------- consolation draw picked by the organiser ----------
+// Some of the players who lost in round 1 do not want to play the consolation draw. In that mode the organiser sees the list of the round-1
+// losers, ticks who plays, and then makes the consolation draw from them: automatically (the neighbours of the main draw meet; a player whose
+// neighbour does not play meets the nearest one) or empty, to seat the players by hand.
+
+// The players who lost a decided round-1 match of the main draw, in the order of the matches: { playerId, partnerId, position, nodeId, plays }.
+// `plays` is true until the organiser unticks the player.
+function round1Losers(mainBracketId) {
+  const picks = new Map(db.prepare('SELECT player_id, plays FROM consolation_picks WHERE bracket_id = ?').all(mainBracketId).map((r) => [r.player_id, !!r.plays]));
+  const nodes = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1 ORDER BY position').all(mainBracketId);
+  const out = [];
+  nodes.forEach((n) => {
+    if (!n.player1_id || !n.player2_id) return;
+    const winnerId = nodeWinner(n);
+    if (!winnerId) return;
+    const loserId = winnerId === n.player1_id ? n.player2_id : n.player1_id;
+    out.push({ playerId: loserId, partnerId: partnerOf(mainBracketId, loserId) || null, position: n.position, nodeId: n.id, plays: picks.has(loserId) ? picks.get(loserId) : true });
+  });
+  return out;
+}
+
+// How many round-1 matches of the main draw are still to be played (their losers are not on the list yet).
+function round1Open(mainBracketId) {
+  const nodes = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1').all(mainBracketId);
+  return nodes.filter((n) => n.player1_id && n.player2_id && !nodeWinner(n)).length;
+}
+
+function setConsolationPick(mainBracketId, playerId, plays) {
+  db.prepare('INSERT INTO consolation_picks (bracket_id, player_id, plays) VALUES (?, ?, ?) ON CONFLICT(bracket_id, player_id) DO UPDATE SET plays = excluded.plays')
+    .run(mainBracketId, playerId, plays ? 1 : 0);
+}
+
+// The places of a consolation draw for the players who want it. `chosen`: [{ playerId, position }] (position = the match of round 1 the player lost in).
+// Round 1 of a bracket of a power of two has byes: size - n players go straight to round 2. Who gets a bye: first the players whose neighbour (the loser of
+// the other match that feeds the same match of round 2) does not play; if more byes are needed, the first ones in the order of the draw. The rest meet in
+// pairs: the neighbours of the main draw first, then each of the others the nearest one that is left (in the order of the draw).
+// -> { size, slots: [[a, b] | [a]] } in the order of the draw (a one-player slot is a bye).
+function pairConsolation(chosen) {
+  const list = [...chosen].sort((a, b) => a.position - b.position);
+  const size = nextPowerOfTwo(Math.max(list.length, 2));
+  const sibling = (p) => Math.floor(p.position / 2);
+  const per = new Map();
+  list.forEach((p) => per.set(sibling(p), (per.get(sibling(p)) || 0) + 1));
+  const byesNeeded = size - list.length;
+  const byeIds = new Set();
+  list.filter((p) => per.get(sibling(p)) === 1).forEach((p) => { if (byeIds.size < byesNeeded) byeIds.add(p.playerId); });
+  list.forEach((p) => { if (byeIds.size < byesNeeded) byeIds.add(p.playerId); });
+  const rest = list.filter((p) => !byeIds.has(p.playerId));
+  const used = new Set();
+  const pairs = [];
+  rest.forEach((a) => {
+    if (used.has(a.playerId)) return;
+    const b = rest.find((x) => x !== a && !used.has(x.playerId) && sibling(x) === sibling(a));
+    if (b) { used.add(a.playerId); used.add(b.playerId); pairs.push([a, b]); }
+  });
+  const left = rest.filter((p) => !used.has(p.playerId));
+  for (let i = 0; i + 1 < left.length; i += 2) pairs.push([left[i], left[i + 1]]);
+  const slots = [...pairs, ...list.filter((p) => byeIds.has(p.playerId)).map((p) => [p])];
+  slots.sort((x, y) => x[0].position - y[0].position);
+  return { size, slots };
+}
+
+// Makes the consolation draw of a main bracket from the round-1 losers who play it. mode AUTO seats them (pairConsolation); MANUAL makes the empty
+// bracket of the right size, the organiser seats the players. Returns { bracketId, brackets: 1 } or { error }.
+function buildPickedConsolation(mainBracketId, { name, format, mode = 'AUTO' }) {
+  const main = db.prepare('SELECT * FROM brackets WHERE id = ?').get(mainBracketId);
+  if (!main) return { error: 'Bracket not found' };
+  if (main.kind === 'CONSOLATION') return { error: 'Only a main bracket gets a consolation draw' };
+  if (consolationOf(mainBracketId)) return { error: 'This bracket already has a consolation draw' };
+  const chosen = round1Losers(mainBracketId).filter((l) => l.plays);
+  if (chosen.length < 2) return { error: 'At least two players must want to play the consolation draw' };
+  const { size, slots } = pairConsolation(chosen);
+  const bracketId = createBracket({
+    name, format, size, autoCreateMatches: main.auto_create_matches !== 0, category: main.category, seasonId: main.season_id,
+    kind: 'CONSOLATION', parentBracketId: mainBracketId, doubles: !!main.is_doubles,
+  });
+  db.prepare('UPDATE brackets SET feeds_round = 1 WHERE id = ?').run(bracketId);
+  if (mode === 'AUTO') {
+    const nodes = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1 ORDER BY position').all(bracketId);
+    slots.forEach((slot, i) => {
+      const [a, b] = slot;
+      setSlotPlayers(nodes[i].id, a.playerId, b ? b.playerId : null, main.is_doubles ? { player1PartnerId: a.partnerId, player2PartnerId: b ? b.partnerId : null } : {});
+    });
+    planCourts(bracketId);
+  }
+  return { bracketId, brackets: 1 };
+}
+
 // kept for the callers that only know the old name: the PRINCE consolation draw
 function buildConsolation(mainBracketId, { name, format, type }) {
   return buildLosers(mainBracketId, { name, format, type: type || 'PRINCE' });
@@ -571,6 +659,11 @@ function repairSlotsFromMatches() {
 }
 
 module.exports = {
+  round1Losers,
+  round1Open,
+  setConsolationPick,
+  pairConsolation,
+  buildPickedConsolation,
   followMatchPlayers,
   repairMatchesFromSlots,
   repairSlotsFromMatches,
