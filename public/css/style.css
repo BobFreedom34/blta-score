@@ -6809,7 +6809,7 @@ body:not(.embed-light):not(.embed) .match-card.availability-post .scoreboard { b
 /* the tiles (Termín, Čas hrania …) sit closer to the head with the hero photo above them */
 .sv-head:has(+ .sv-tiles-panel) { margin-bottom: 22px; }
 /* the tiles in one dark card with a small heading, apart from the hero above and the tabs below */
-.sv-tiles-panel { margin: 0; /* the space to the tabs below is the margin of #sv-tabs (48px), the same as the space under the tabs */ padding: 16px; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius); }
+.sv-tiles-panel { margin: 0 0 22px; /* under the panel the same space as above it (the margin of .sv-head, 22px); a tournament page gets the 48px under the tabs from #sv-tabs, see the rule below */ padding: 16px; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius); }
 .sv-tiles-panel h3 { margin: 0 0 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8f98; }
 .sv-tiles-panel .sv-tiles { margin: 0; }
 @media (max-width: 700px) { .sv-tiles-panel { padding: 12px; border-radius: 14px; } }
@@ -7843,6 +7843,9 @@ html.kiosk-mode #match-root .match-header .match-badges { margin-bottom: 16px; }
 
 /* the row of tabs of a season / tournament page: a 1px green frame on the green veil ("zelený závoj"); the veil lies on solid black because the row sticks to the top and the page scrolls under it */
 #sv-tabs { border: 1px solid var(--green); background: linear-gradient(rgba(178, 250, 6, 0.12), rgba(178, 250, 6, 0.12)), var(--ink); }
+/* after the tiles panel (which has 22px under it) the tabs take the rest of the 48px (40px on a narrow screen), so the space above the tabs is the same as under them */
+.sv-tiles-panel ~ #sv-tabs { margin-top: 26px; }
+@media (max-width: 900px) { .sv-tiles-panel ~ #sv-tabs { margin-top: 18px; } }
 
 
 /* a title pill (.sa-tag / .tr-title) in orange instead of green */
