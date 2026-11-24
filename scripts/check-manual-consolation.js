@@ -135,6 +135,7 @@ test('automatic consolation from the ticked players: the neighbours meet, a play
 
 test('manual consolation: an empty bracket of the right size for the ticked players, to be seated by hand', async () => {
   const t2 = await tournamentWith('Prince By Hand 2099', 'NOVICE', 8);
+  assert.strictEqual((await call('PATCH', `/api/seasons/${t2.id}`, { name: t2.name, courtCount: 2 })).status, 200);
   assert.strictEqual((await call('POST', `/api/seasons/${t2.id}/draw`, { category: 'NOVICE', format: 'PRINCE', mode: 'AUTO', consolationMode: 'MANUAL' })).status, 201);
   const main2 = bracketsOf(t2)[0];
   decideRound1(main2.id);
@@ -149,6 +150,9 @@ test('manual consolation: an empty bracket of the right size for the ticked play
   const a = rows[0].player2_id; const b = rows[1].player2_id;
   const seat = await call('PATCH', `/api/brackets/${made.json.id}/slots/${slot.id}`, { player1Id: a, player2Id: b });
   assert.strictEqual(seat.status, 200, JSON.stringify(seat.json));
+  // the match of the pair seated by hand is on a court at once (the scheduler runs after every seating)
+  const seated = db.prepare('SELECT m.court_no, m.scheduled_at FROM bracket_matches bm JOIN matches m ON m.id = bm.match_id WHERE bm.id = ?').get(slot.id);
+  assert.ok(seated && seated.court_no && seated.scheduled_at, 'the match has a court and a time: ' + JSON.stringify(seated));
 });
 
 test('the default is unchanged: a PRINCE draw in AUTO mode makes the consolation with the main draw and no list is offered', async () => {

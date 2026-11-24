@@ -452,6 +452,7 @@ router.patch('/:id/slots/:nodeId', clubTournaments.requireSeasonManager(clubTour
     partners = { player1PartnerId: p1Partner, player2PartnerId: p2Partner };
   }
   bracketEngine.setSlotPlayers(nodeId, player1Id, player2Id, partners);
+  bracketEngine.planCourts(bracketId); // the match of the pair just seated goes on a court at once (a tournament with courts and the automatic schedule)
   res.json(serializeBracket(bracketId));
 });
 
