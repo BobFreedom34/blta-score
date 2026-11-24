@@ -138,8 +138,9 @@ function groupShortName(name) {
 // The phase of a bracket match: "Finále", "Semifinále", "Štvrťfinále", "1. kolo", with "Útecha · " in front for the consolation draw.
 function bracketPhaseLabel(b) {
   if (!b || !b.round) return '';
-  let name = t('season.roundN', { n: b.round });
-  if (b.rounds && b.round === b.rounds) name = t('courts.final');
+  let name = t('season.roundN', { n: b.prelim ? b.round - 1 : b.round });
+  if (b.prelim && b.round === 1) name = t('bracket.prelim');
+  else if (b.rounds && b.round === b.rounds) name = t('courts.final');
   else if (b.rounds && b.round === b.rounds - 1) name = t('courts.semi');
   else if (b.rounds && b.round === b.rounds - 2) name = t('courts.quarter');
   return b.kind === 'CONSOLATION' ? `${t('courts.consolation')} · ${name}` : name;

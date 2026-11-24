@@ -204,6 +204,7 @@ const categoryRank = (category) => { const i = CATEGORY_ORDER.indexOf(category);
 function loadMatches(seasonId) {
   return db.prepare(`
     SELECT m.*, bm.round AS b_round, bm.position AS b_position, b.id AS bracket_id, b.name AS bracket_name, b.kind AS bracket_kind, b.size AS bracket_size,
+           (CASE WHEN b.prelim = 1 AND EXISTS (SELECT 1 FROM bracket_matches x WHERE x.bracket_id = b.id AND x.round = 1 AND x.is_bye = 1) THEN 1 ELSE 0 END) AS bracket_prelim,
            CASE WHEN m.is_doubles = 1 AND p1b.name IS NOT NULL THEN p1.name || ' / ' || p1b.name ELSE p1.name END AS p1_name, CASE WHEN m.is_doubles = 1 THEN NULL ELSE p1.slug END AS p1_slug,
            CASE WHEN m.is_doubles = 1 AND p2b.name IS NOT NULL THEN p2.name || ' / ' || p2b.name ELSE p2.name END AS p2_name, CASE WHEN m.is_doubles = 1 THEN NULL ELSE p2.slug END AS p2_slug, g.name AS group_name,
            (SELECT r.seed FROM season_registrations r WHERE r.season_id = m.season_id AND r.player_id = m.player1_id AND r.category = m.category LIMIT 1) AS p1_seed,
@@ -280,7 +281,7 @@ function serializeMatch(row, settings, now) {
     token: row.share_token,
     status: row.status,
     category: row.category,
-    bracket: row.bracket_id ? { id: row.bracket_id, name: row.bracket_name, kind: row.bracket_kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN' } : null,
+    bracket: row.bracket_id ? { id: row.bracket_id, name: row.bracket_name, kind: row.bracket_kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN', prelim: !!row.bracket_prelim } : null,
     round: row.b_round || null,
     group: row.group_id ? { id: row.group_id, name: row.group_name } : null,
     groupRound: row.round || null,

@@ -135,6 +135,8 @@ function serializeBracket(bracketId) {
     size: tree.bracket.size,
     autoCreateMatches: !!tree.bracket.auto_create_matches,
     rounds: bracketEngine.roundCount(tree.bracket.size),
+    // played with a preliminary round (predkolo): round 1 shows only its real matches and is called Predkolo, the round after it is 1. kolo
+    prelim: !!tree.bracket.prelim && tree.nodes.some((n) => n.round === 1 && n.is_bye),
     createdAt: tree.bracket.created_at,
     // a consolation draw's seeds only say where a loser is placed, not how good the player is: nothing to show
     nodes: tree.nodes.map((n) => (tree.bracket.kind === 'CONSOLATION' ? withLoserSources(serializeNode({ ...n, seed1: null, seed2: null }, tree.bracket), n, tree.bracket) : serializeNode(n, tree.bracket))),
@@ -363,7 +365,7 @@ router.post('/:id/consolation', clubTournaments.requireSeasonManager(clubTournam
 // The list of the round-1 losers the organiser picks the consolation draw from, and ticking a player in or out of it.
 const picksOf = (bracketId) => {
   const name = (pid) => (pid ? (db.prepare('SELECT name FROM players WHERE id = ?').get(pid) || {}).name || '' : '');
-  const losers = bracketEngine.round1Losers(bracketId).map((l) => ({ playerId: l.playerId, name: name(l.playerId), partnerName: l.partnerId ? name(l.partnerId) : null, position: l.position, plays: l.plays }));
+  const losers = bracketEngine.round1Losers(bracketId).map((l) => ({ playerId: l.playerId, name: name(l.playerId), partnerName: l.partnerId ? name(l.partnerId) : null, position: l.position, label: l.label, plays: l.plays }));
   return { losers, open: bracketEngine.round1Open(bracketId), playing: losers.filter((l) => l.plays).length };
 };
 router.get('/:id/consolation-picks', clubTournaments.requireSeasonManager(clubTournaments.byBracketId), (req, res) => {

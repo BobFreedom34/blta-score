@@ -191,6 +191,14 @@ db.exec(`
   const tcColumns2 = db.prepare('PRAGMA table_info(tournament_categories)').all().map((c) => c.name);
   if (!tcColumns2.includes('consolation_mode')) db.exec("ALTER TABLE tournament_categories ADD COLUMN consolation_mode TEXT NOT NULL DEFAULT 'AUTO'");
 }
+// How a bracket that is not full is shown and played: 'BYE' (the empty seats are byes in round 1) or 'PRELIM' (round 1 is a preliminary round:
+// only its real matches are shown, the round after it is "1. kolo"; a PRINCE consolation takes the losers of the preliminary round AND of 1. kolo).
+{
+  const tcColumns3 = db.prepare('PRAGMA table_info(tournament_categories)').all().map((c) => c.name);
+  if (!tcColumns3.includes('bye_mode')) db.exec("ALTER TABLE tournament_categories ADD COLUMN bye_mode TEXT NOT NULL DEFAULT 'BYE'");
+  const bColumns = db.prepare('PRAGMA table_info(brackets)').all().map((c) => c.name);
+  if (!bColumns.includes('prelim')) db.exec('ALTER TABLE brackets ADD COLUMN prelim INTEGER NOT NULL DEFAULT 0');
+}
 db.exec(`
   CREATE TABLE IF NOT EXISTS consolation_picks (
     bracket_id INTEGER NOT NULL,

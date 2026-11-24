@@ -211,8 +211,11 @@ const MATCH_STAGES = ['GROUP', 'PLAYOFF'];
 // Where a bracket match sits in its draw (for "Semifinále" on the card): its round, how many rounds the draw has, main or consolation draw; null for a match outside any bracket.
 function bracketInfo(row) {
   if (row.stage !== 'PLAYOFF') return null;
-  const b = db.prepare('SELECT bm.round AS round, br.size AS size, br.kind AS kind FROM bracket_matches bm JOIN brackets br ON br.id = bm.bracket_id WHERE bm.match_id = ?').get(row.id);
-  return b ? { round: b.round, rounds: Math.log2(b.size), kind: b.kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN' } : null;
+  const b = db.prepare('SELECT bm.round AS round, br.size AS size, br.kind AS kind, br.id AS bracket_id, br.prelim AS prelim FROM bracket_matches bm JOIN brackets br ON br.id = bm.bracket_id WHERE bm.match_id = ?').get(row.id);
+  if (!b) return null;
+  // played with a preliminary round: round 1 is "Predkolo" (only when the draw really has byes)
+  const prelim = !!b.prelim && !!db.prepare('SELECT 1 FROM bracket_matches WHERE bracket_id = ? AND round = 1 AND is_bye = 1').get(b.bracket_id);
+  return { round: b.round, rounds: Math.log2(b.size), kind: b.kind === 'CONSOLATION' ? 'CONSOLATION' : 'MAIN', prelim };
 }
 
 function seasonAndGroup(row) {

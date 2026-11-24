@@ -524,7 +524,7 @@ async function renderManagePanel(bracketId, slotEl) {
     byRound.get(n.round).push(n);
   });
   const rounds = Array.from(byRound.keys()).sort((a, b) => a - b);
-  const roundLabel = (r) => bracketRoundLabel(r, data.rounds);
+  const roundLabel = (r) => bracketRoundLabel(r, data.rounds, data.prelim);
 
   slotEl.innerHTML = `
     <div style="margin-top:10px;display:flex;flex-direction:column;gap:14px">

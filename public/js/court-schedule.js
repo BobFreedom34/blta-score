@@ -69,8 +69,10 @@ function csRoundLabel(m) {
   if (m.group) return [groupShortName(m.group.name), m.groupRound ? t('courts.round', { n: m.groupRound }) : ''].filter(Boolean).join(' · ');
   if (!m.round) return '';
   const rounds = m.rounds || 0;
-  let name = t('courts.round', { n: m.round });
-  if (rounds && m.round === rounds) name = t('courts.final');
+  const prelim = !!(m.bracket && m.bracket.prelim);
+  let name = t('courts.round', { n: prelim ? m.round - 1 : m.round });
+  if (prelim && m.round === 1) name = t('bracket.prelim');
+  else if (rounds && m.round === rounds) name = t('courts.final');
   else if (rounds && m.round === rounds - 1) name = t('courts.semi');
   else if (rounds && m.round === rounds - 2) name = t('courts.quarter');
   return m.bracket && m.bracket.kind === 'CONSOLATION' ? `${t('courts.consolation')} · ${name}` : name;

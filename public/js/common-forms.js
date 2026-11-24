@@ -99,11 +99,13 @@ setupTimeInputs();
 // Shared by bracket.js (public draw display) and bracket-admin.js (slot
 // management) — the last three rounds of any bracket have fixed names
 // regardless of draw size; anything earlier than that just counts up.
-function bracketRoundLabel(round, totalRounds) {
-  if (round === totalRounds) return 'Final';
-  if (round === totalRounds - 1) return 'Semi-finals';
-  if (round === totalRounds - 2) return 'Quarter-finals';
-  return `Round ${round}`;
+// The name of a round of a bracket. With a preliminary round (prelim) round 1 is "Predkolo" and the round after it is "1. kolo".
+function bracketRoundLabel(round, totalRounds, prelim) {
+  if (prelim && round === 1) return t('bracket.prelim');
+  if (round === totalRounds) return t('bracket.final');
+  if (round === totalRounds - 1) return t('bracket.semi');
+  if (round === totalRounds - 2) return t('bracket.quarter');
+  return t('bracket.roundN', { n: prelim ? round - 1 : round });
 }
 
 // ---------- Shared match-creation form pieces ----------

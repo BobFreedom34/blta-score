@@ -31,7 +31,7 @@ function slotHtml(node, which) {
   // by the browser's parser (an anchor can't contain another anchor).
   const nameHtml = player
     ? playerNameLink(player)
-    : `<span style="color:var(--gray-dim)">${node.round === 1 ? '—' : 'TBD'}</span>`;
+    : `<span style="color:var(--gray-dim)">${node.round === 1 ? '—' : escapeHtml(t('bracket.tbd'))}</span>`;
   return `
     <div class="bracket-slot${isWinner ? ' winner' : ''}">
       <span class="bracket-slot-name">${seed ? `<span class="bracket-seed">(${seed})</span>` : ''}${nameHtml}</span>
@@ -40,20 +40,21 @@ function slotHtml(node, which) {
 }
 
 function matchMetaHtml(node) {
-  if (node.isBye) return `<div class="bracket-match-meta">Bye</div>`;
-  if (node.isManualResult) return `<div class="bracket-match-meta bracket-match-score">${escapeHtml(node.scoreSummary || 'Result recorded')}</div>`;
+  if (node.isBye) return `<div class="bracket-match-meta">${escapeHtml(t('bracket.bye'))}</div>`;
+  if (node.isManualResult) return `<div class="bracket-match-meta bracket-match-score">${escapeHtml(node.scoreSummary || t('bracket.resultRecorded'))}</div>`;
   if (!node.match) return '';
   const m = node.match;
-  if (m.status === 'LIVE') return `<div class="bracket-match-meta" style="color:var(--orange)">● Live</div>`;
-  if (m.status === 'FINISHED') return `<div class="bracket-match-meta bracket-match-score">${escapeHtml(m.scoreSummary || 'Finished')}</div>`;
+  if (m.status === 'LIVE') return `<div class="bracket-match-meta" style="color:var(--orange)">● ${escapeHtml(t('bracket.live'))}</div>`;
+  if (m.status === 'FINISHED') return `<div class="bracket-match-meta bracket-match-score">${escapeHtml(m.scoreSummary || t('bracket.finished'))}</div>`;
   if (m.scheduledAt) return `<div class="bracket-match-meta">${escapeHtml(fmtDateShort(m.scheduledAt))}</div>`;
-  return `<div class="bracket-match-meta">Not yet scheduled</div>`;
+  return `<div class="bracket-match-meta">${escapeHtml(t('bracket.notScheduled'))}</div>`;
 }
 
 // the ids of the players of a node (a pair: both players), for the badge "My match" that common-site.js puts on the matches of the logged-in player
 const nodePlayerIds = (node) => [node.player1, node.player2].filter(Boolean).flatMap((p) => (p.team && p.team.length ? p.team.map((x) => x.id) : [p.id])).join(',');
 
-function nodeHtml(node) {
+// place (optional): { col, row, span, len } — where the compact draw of a bracket with a preliminary round puts the node
+function nodeHtml(node, place) {
   const inner = `
     ${slotHtml(node, 1)}
     <div class="bracket-vs-divider"></div>
@@ -73,13 +74,13 @@ function nodeHtml(node) {
   // two meet in the middle of the column gap without needing a separate
   // element, because a child's distance to its parent's center is always
   // exactly half its own row-span — see bracketEngine's tree math.
-  const span = 2 ** node.round;
+  const span = place ? place.span : 2 ** node.round;
   const connectorClasses = [];
   if (node.nextBracketMatchId) connectorClasses.push(node.position % 2 === 0 ? 'bracket-node--top' : 'bracket-node--bottom');
   if (node.round > 1) connectorClasses.push('bracket-node--incoming');
-  const connectorLen = (span / 2) * ROW_HEIGHT;
+  const connectorLen = place && place.len !== undefined ? place.len : (span / 2) * ROW_HEIGHT;
 
-  return `<div data-node-id="${node.id}" data-players="${nodePlayerIds(node)}" class="bracket-node${connectorClasses.length ? ` ${connectorClasses.join(' ')}` : ''}" style="grid-column:${node.round};grid-row:${node.position * span + 2} / span ${span};--connector-len:${connectorLen}px"><div class="${cardClass}"${clickNav}>${inner}</div></div>`;
+  return `<div data-node-id="${node.id}" data-players="${nodePlayerIds(node)}" class="bracket-node${connectorClasses.length ? ` ${connectorClasses.join(' ')}` : ''}" style="grid-column:${place ? place.col : node.round};grid-row:${place ? place.row : node.position * span + 2} / span ${span};--connector-len:${connectorLen}px"><div class="${cardClass}"${clickNav}>${inner}</div></div>`;
 }
 
 function bracketBoardHtml(data) {
@@ -93,15 +94,27 @@ function bracketBoardHtml(data) {
 
   const totalColumns = data.rounds + 1;
   const headerHtml = Array.from({ length: data.rounds }, (_, i) => i + 1)
-    .map((r) => `<div class="bracket-col-header" style="grid-column:${r}">${escapeHtml(bracketRoundLabel(r, data.rounds))}</div>`)
-    .join('') + `<div class="bracket-col-header" style="grid-column:${totalColumns}">Winner</div>`;
+    .map((r) => `<div class="bracket-col-header" style="grid-column:${r}">${escapeHtml(bracketRoundLabel(r, data.rounds, data.prelim))}</div>`)
+    .join('') + `<div class="bracket-col-header" style="grid-column:${totalColumns}">${escapeHtml(t('bracket.winnerLabel'))}</div>`;
 
-  const nodesHtml = data.nodes.map(nodeHtml).join('');
+  // A bracket played with a preliminary round (predkolo): the byes of round 1 are not drawn, only its real matches. When no match of 1. kolo is fed by
+  // two preliminary matches the draw is compact: it is laid out as the bracket of half the size (1. kolo is the first full column) and every preliminary
+  // match stands right beside the match of 1. kolo it feeds.
+  const prelimRound1 = data.prelim ? data.nodes.filter((n) => n.round === 1 && !n.isBye) : [];
+  const compact = !!data.prelim && !data.nodes.some((n) => n.round === 2 && prelimRound1.filter((p) => Math.floor(p.position / 2) === n.position).length > 1);
+  const rows = compact ? data.size / 2 : data.size;
+  const shown = data.prelim ? data.nodes.filter((n) => !(n.round === 1 && n.isBye)) : data.nodes;
+  const nodesHtml = shown.map((n) => {
+    if (!compact) return nodeHtml(n);
+    if (n.round === 1) return nodeHtml(n, { col: 1, row: Math.floor(n.position / 2) * 2 + 2, span: 2, len: 0 });
+    const span = 2 ** (n.round - 1);
+    return nodeHtml(n, { col: n.round, row: n.position * span + 2, span, len: (span / 2) * ROW_HEIGHT });
+  }).join('');
   const championHtml = `
-    <div class="bracket-node bracket-champion" style="grid-column:${totalColumns};grid-row:2 / span ${data.size}">
+    <div class="bracket-node bracket-champion" style="grid-column:${totalColumns};grid-row:2 / span ${rows}">
       ${championPlayer
     ? `<div class="bracket-champion-name">${courtIcon('trophy')}${escapeHtml(championPlayer.name)}</div>`
-    : `<span style="color:var(--gray-dim);font-size:12px">TBD</span>`}
+    : `<span style="color:var(--gray-dim);font-size:12px">${escapeHtml(t('bracket.tbd'))}</span>`}
     </div>
   `;
 
@@ -114,7 +127,7 @@ function bracketBoardHtml(data) {
         <button type="button" class="${view === 'rounds' ? 'active' : ''}" data-bk-view="rounds">${escapeHtml(t('bracket.viewRounds'))}</button>
       </div>
       <div class="bk-tree">
-        <div class="bracket-grid" style="grid-template-columns:repeat(${totalColumns}, minmax(180px, 1fr));grid-template-rows:auto repeat(${data.size}, ${ROW_HEIGHT}px)">
+        <div class="bracket-grid" style="grid-template-columns:repeat(${totalColumns}, minmax(180px, 1fr));grid-template-rows:auto repeat(${rows}, ${ROW_HEIGHT}px)">
           ${headerHtml}
           ${nodesHtml}
           ${championHtml}
@@ -128,11 +141,12 @@ function bracketBoardHtml(data) {
 
 // ---------- the rounds view (like the draw page of a tennis site): every round is a list of its matches; a round that is not played yet shows, in grey, who can be there ("A or B") ----------
 
-function roundTitle(round, total) {
+function roundTitle(round, total, prelim) {
+  if (prelim && round === 1) return t('bracket.prelim');
   if (round === total) return t('bracket.final');
   if (round === total - 1) return t('bracket.semi');
   if (round === total - 2) return t('bracket.quarter');
-  return t('bracket.roundN', { n: round });
+  return t('bracket.roundN', { n: prelim ? round - 1 : round });
 }
 
 // the players that can still come out of a node: its winner when it is decided, else everybody who can reach it (recursively through the rounds before)
@@ -193,7 +207,7 @@ function roundHeadHtml(node, sets) {
 }
 
 function roundMetaHtml(node, sets) {
-  if (node.isBye) return `<div class="bracket-match-meta">Bye</div>`;
+  if (node.isBye) return `<div class="bracket-match-meta">${escapeHtml(t('bracket.bye'))}</div>`;
   if (node.isManualResult) return `<div class="bracket-match-meta bracket-match-score">${escapeHtml(node.scoreSummary || '')}</div>`;
   if (!node.match || sets.length) return '';
   if (node.match.scheduledAt) return `<div class="bracket-match-meta">${escapeHtml(fmtDateShort(node.match.scheduledAt))}</div>`;
@@ -216,7 +230,8 @@ function feedersOf(data) {
 // the matches of a round stand one right under the other (like Blyzer: no empty space, so the draw stays low), a bracket joins the two matches that feed one match of the next round (css .bk-mob*) ----------
 const BRACKET_ROUNDS = new Map(); // the round last shown on a phone, by bracket id (the page draws all again with every live change of a score)
 
-function roundChip(r, total) {
+function roundChip(r, total, prelim) {
+  if (prelim && r === 1) return 'P';
   if (r === total) return 'F';
   if (r === total - 1) return 'SF';
   return `1/${2 ** (total - r)}`;
@@ -229,17 +244,17 @@ function mobileDrawHtml(data, championPlayer) {
   const firstOpen = Array.from({ length: total }, (_, i) => i + 1).find(open) || total;
   const start = BRACKET_ROUNDS.get(data.id) || firstOpen;
   const chips = Array.from({ length: total }, (_, i) => i + 1)
-    .map((r) => `<button type="button" class="${r === start ? 'active' : ''}" data-bk-round="${r}">${roundChip(r, total)}</button>`).join('')
+    .map((r) => `<button type="button" class="${r === start ? 'active' : ''}" data-bk-round="${r}">${roundChip(r, total, data.prelim)}</button>`).join('')
     + `<button type="button" class="bk-mob-trophy${start > total ? ' active' : ''}" data-bk-round="${total + 1}" aria-label="${escapeHtml(t('bracket.winnerLabel'))}">${courtIcon('trophy')}</button>`;
   const cols = Array.from({ length: total }, (_, i) => i + 1).map((r) => {
     const count = 2 ** (total - r);
     const slots = Array.from({ length: count }, (_, p) => {
       const node = data.nodes.find((n) => n.round === r && n.position === p);
       const cls = ['bk-mob-slot', node && node.nextBracketMatchId ? (p % 2 === 0 ? 'top' : 'bottom') : ''].filter(Boolean).join(' ');
-      const hidden = !node || (r === 1 && node.isBye && !node.player1 && !node.player2);
+      const hidden = !node || (r === 1 && node.isBye && (data.prelim || (!node.player1 && !node.player2)));
       return `<div class="${cls}" >${hidden ? '' : roundCardHtml(node, feeders)}</div>`;
     }).join('');
-    return `<section class="bk-mob-col" data-round="${r}"><h4 class="bk-mob-h"><span>${roundChip(r, total)}</span>${escapeHtml(roundTitle(r, total))}</h4>${slots}</section>`;
+    return `<section class="bk-mob-col" data-round="${r}"><h4 class="bk-mob-h"><span>${roundChip(r, total, data.prelim)}</span>${escapeHtml(roundTitle(r, total, data.prelim))}</h4>${slots}</section>`;
   }).join('');
   const champ = championPlayer
     ? `<div class="bk-p win"><span class="bk-name">${courtIcon('trophy')}${escapeHtml(championPlayer.name)}</span></div>`
@@ -252,10 +267,10 @@ function roundsHtml(data, championPlayer) {
   const feeders = feedersOf(data);
   const parts = [];
   for (let r = 1; r <= data.rounds; r += 1) {
-    const nodes = data.nodes.filter((n) => n.round === r).sort((a, b) => a.position - b.position).filter((n) => !(r === 1 && n.isBye && !n.player1 && !n.player2));
+    const nodes = data.nodes.filter((n) => n.round === r).sort((a, b) => a.position - b.position).filter((n) => !(r === 1 && n.isBye && (data.prelim || (!n.player1 && !n.player2))));
     if (!nodes.length) continue;
     const cards = nodes.map((node) => roundCardHtml(node, feeders)).join('');
-    parts.push(`<section class="bk-round"><h4 class="bk-round-h">${escapeHtml(roundTitle(r, data.rounds))} <small>(${nodes.length})</small></h4>${cards}</section>`);
+    parts.push(`<section class="bk-round"><h4 class="bk-round-h">${escapeHtml(roundTitle(r, data.rounds, data.prelim))} <small>(${nodes.length})</small></h4>${cards}</section>`);
   }
   const champ = championPlayer
     ? `<div class="bk-p win"><span class="bk-name">${courtIcon('trophy')}${escapeHtml(championPlayer.name)}</span></div>`

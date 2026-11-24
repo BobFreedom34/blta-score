@@ -883,6 +883,16 @@ The organiser unticks who does not want to play and makes the consolation draw f
 
 The list is closed once the consolation bracket exists. Checks: `scripts/check-manual-consolation.js`.
 
+### A bracket that is not full: byes or a preliminary round
+
+In the draw of a category the setting **Neúplný pavúk** says how a bracket that is not full (19 players in a bracket of 32) is played: *byes* (the default, the empty seats are byes in round 1) or *Predkolo*.
+The tree is the same (a bracket of 32 with byes); `brackets.prelim` and `tournament_categories.bye_mode` mark it. With Predkolo:
+
+- the drawing (`public/js/bracket-view.js`) shows only the real matches of round 1, in the column **Predkolo**, beside the 1. kolo match each one feeds; the round after it is **1. kolo** (`bracketRoundLabel(round, total, prelim)`), also on match cards and in the court schedule;
+- a PRINCE consolation takes the losers of the preliminary round AND of 1. kolo (`prelimFeeders` in `src/bracketEngine.js`); the consolation picked by hand lists both (labels P1… / 1. kolo č. …).
+
+Checks: `scripts/check-prelim.js`.
+
 ## 7. Embedding on the blta.sk WordPress site
 
 - **Full live-matches list**, always up to date:

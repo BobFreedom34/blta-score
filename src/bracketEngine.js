@@ -475,7 +475,29 @@ function buildLosers(mainBracketId, { name, format, type = 'PRINCE' }) {
       if (type === 'MONRAD') makeChildren(db.prepare('SELECT * FROM brackets WHERE id = ?').get(childId), false, childStart);
     }
   };
-  makeChildren(main, true);
+  if (type === 'PRINCE' && hasPrelim(main)) {
+    // PRINCE with a preliminary round: ONE consolation bracket for the losers of the preliminary round AND of 1. kolo (round 2 of the tree). The loser of a
+    // preliminary match and the loser of the 1. kolo match it fed are neighbours (they meet first).
+    const feeders = prelimFeeders(mainBracketId);
+    if (feeders.length >= 2) {
+      const size = nextPowerOfTwo(feeders.length);
+      const info = db.prepare('INSERT INTO brackets (name, format, size, auto_create_matches, category, season_id, kind, parent_bracket_id, feeds_round, is_doubles, prelim) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(name, format, size, main.auto_create_matches, main.category, main.season_id, 'CONSOLATION', main.id, 1, main.is_doubles ? 1 : 0, 1);
+      const childId = Number(info.lastInsertRowid);
+      buildEmptyTree(childId, size);
+      const n = feeders.length;
+      const byes = size - n;
+      const layout = db.prepare('UPDATE bracket_matches SET seed1 = ?, seed2 = ?, is_bye = ? WHERE bracket_id = ? AND round = 1 AND position = ?');
+      for (let position = 0; position < size / 2; position += 1) {
+        if (position < byes) layout.run(position + 1, n + position + 1, 1, childId, position);
+        else { const k = byes + 2 * (position - byes); layout.run(k + 1, k + 2, 0, childId, position); }
+      }
+      feeders.forEach((node, i) => mark.run(i + 1, childId, node.id));
+      created.push(childId);
+    }
+  } else {
+    makeChildren(main, true);
+  }
   if (!created.length) return { error: 'The main draw has fewer than two matches in its first round, so there is nobody to play a consolation draw' };
   db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND consolation_seed IS NOT NULL').all(mainBracketId).forEach((node) => {
     const winnerId = nodeWinner(node);
@@ -483,6 +505,29 @@ function buildLosers(mainBracketId, { name, format, type = 'PRINCE' }) {
   });
   planCourts(created[0]);
   return { bracketId: created[0], brackets: created.length };
+}
+
+// A main bracket that is not full and is played with a preliminary round ("predkolo"): it has byes in round 1 and the organiser chose PRELIM.
+function hasPrelim(bracket) {
+  if (!bracket || !bracket.prelim || bracket.kind === 'CONSOLATION') return false;
+  return !!db.prepare('SELECT 1 FROM bracket_matches WHERE bracket_id = ? AND round = 1 AND is_bye = 1').get(bracket.id);
+}
+// The matches whose losers play the PRINCE consolation of a bracket with a preliminary round, in the order of the draw: for every match of 1. kolo
+// (round 2) first the preliminary match(es) that feed it, then the match itself. Each carries vpos (a place in the order: a preliminary match 2j,
+// the 1. kolo match 2j + 1, so the two are neighbours) and a label (P1, P2 … / 1. kolo č. j).
+function prelimFeeders(mainBracketId) {
+  const r1 = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1 ORDER BY position').all(mainBracketId);
+  const r2 = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 2 ORDER BY position').all(mainBracketId);
+  const out = [];
+  let p = 0;
+  r2.forEach((node2) => {
+    r1.filter((n) => Math.floor(n.position / 2) === node2.position && n.player1_id && n.player2_id).forEach((n) => {
+      p += 1;
+      out.push({ ...n, vpos: 2 * node2.position, label: `P${p}` });
+    });
+    out.push({ ...node2, vpos: 2 * node2.position + 1, label: `1. kolo č. ${node2.position + 1}` });
+  });
+  return out;
 }
 
 // ---------- consolation draw picked by the organiser ----------
@@ -494,20 +539,25 @@ function buildLosers(mainBracketId, { name, format, type = 'PRINCE' }) {
 // `plays` is true until the organiser unticks the player.
 function round1Losers(mainBracketId) {
   const picks = new Map(db.prepare('SELECT player_id, plays FROM consolation_picks WHERE bracket_id = ?').all(mainBracketId).map((r) => [r.player_id, !!r.plays]));
-  const nodes = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1 ORDER BY position').all(mainBracketId);
+  const main = db.prepare('SELECT * FROM brackets WHERE id = ?').get(mainBracketId);
+  const nodes = hasPrelim(main)
+    ? prelimFeeders(mainBracketId).map((n) => ({ ...n, position: n.vpos }))
+    : db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1 ORDER BY position').all(mainBracketId).map((n) => ({ ...n, label: `${n.position + 1}` }));
   const out = [];
   nodes.forEach((n) => {
     if (!n.player1_id || !n.player2_id) return;
     const winnerId = nodeWinner(n);
     if (!winnerId) return;
     const loserId = winnerId === n.player1_id ? n.player2_id : n.player1_id;
-    out.push({ playerId: loserId, partnerId: partnerOf(mainBracketId, loserId) || null, position: n.position, nodeId: n.id, plays: picks.has(loserId) ? picks.get(loserId) : true });
+    out.push({ playerId: loserId, partnerId: partnerOf(mainBracketId, loserId) || null, position: n.position, label: n.label, nodeId: n.id, plays: picks.has(loserId) ? picks.get(loserId) : true });
   });
   return out;
 }
 
 // How many round-1 matches of the main draw are still to be played (their losers are not on the list yet).
 function round1Open(mainBracketId) {
+  const main = db.prepare('SELECT * FROM brackets WHERE id = ?').get(mainBracketId);
+  if (hasPrelim(main)) return prelimFeeders(mainBracketId).filter((n) => !nodeWinner(n)).length;
   const nodes = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1').all(mainBracketId);
   return nodes.filter((n) => n.player1_id && n.player2_id && !nodeWinner(n)).length;
 }
@@ -561,7 +611,7 @@ function buildPickedConsolation(mainBracketId, { name, format, mode = 'AUTO' }) 
     name, format, size, autoCreateMatches: main.auto_create_matches !== 0, category: main.category, seasonId: main.season_id,
     kind: 'CONSOLATION', parentBracketId: mainBracketId, doubles: !!main.is_doubles,
   });
-  db.prepare('UPDATE brackets SET feeds_round = 1 WHERE id = ?').run(bracketId);
+  db.prepare('UPDATE brackets SET feeds_round = 1, prelim = ? WHERE id = ?').run(main.prelim ? 1 : 0, bracketId);
   if (mode === 'AUTO') {
     const nodes = db.prepare('SELECT * FROM bracket_matches WHERE bracket_id = ? AND round = 1 ORDER BY position').all(bracketId);
     slots.forEach((slot, i) => {
@@ -659,6 +709,8 @@ function repairSlotsFromMatches() {
 }
 
 module.exports = {
+  hasPrelim,
+  prelimFeeders,
   round1Losers,
   round1Open,
   setConsolationPick,
