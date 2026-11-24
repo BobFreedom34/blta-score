@@ -393,7 +393,7 @@ function statsHtml(d) {
   const counted = groups.reduce((s, g) => s + (g.matchesCounted || 0), 0);
   const players = groups.reduce((s, g) => s + g.rows.length, 0);
   const weekLive = d.weekMatches.filter((m) => m.status === 'LIVE').length;
-  const tile = (k, v, s) => `<div class="home-stat grey-tile"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(String(v))}</div><div class="s">${escapeHtml(s)}</div></div>`;
+  const tile = (k, v, s) => `<div class="home-stat grey-tile"><div class="k">${escapeHtml(k)}</div><div class="vs"><div class="v">${escapeHtml(String(v))}</div><div class="s">${escapeHtml(s)}</div></div></div>`;
   return `<div class="home-stats">
     ${tile(t('home.statPlayed'), frozen ? '–' : counted, t('home.statPlayedSub'))}
     ${tile(t('home.statPlayers'), players, t('home.statPlayersSub', { n: groups.length }))}

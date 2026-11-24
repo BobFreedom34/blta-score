@@ -1262,6 +1262,7 @@ function bioCardHtml(player) {
     // stripPrivateFields in routes/players.js), so this column disappears
     // on its own for anyone not logged in as a player or admin.
     [
+      ['tennisLevel', player.tennis_level ? t(`login.level.${player.tennis_level}`) : null, t('player.bio.tennisLevel')],
       ['phone', player.phone, t('player.bio.phone')],
       ['email', player.email, t('player.bio.email')],
     ],

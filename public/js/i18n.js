@@ -431,6 +431,12 @@ const TRANSLATIONS = {
     'login.registerPhoneLabel': 'Telefónne číslo',
     'login.registerNameLabel': 'Vaše meno',
     'login.registerEmailLabel': 'Váš email',
+    'login.registerLevelLabel': 'Tenisová úroveň',
+    'login.registerLevelPlaceholder': 'Vyberte svoju úroveň',
+    'login.level.NOVICE': 'Novice – začiatočník',
+    'login.level.NEXT_GEN': 'Next Gen – mierne pokročilý',
+    'login.level.ELITE': 'Elite – veľmi pokročilý',
+    'login.error.levelRequired': 'Vyberte svoju tenisovú úroveň.',
 
     // Server-side /player/* error codes (see loginErrorText in common.js)
     // — error text itself always comes back in plain English (this app's
@@ -1046,6 +1052,12 @@ const TRANSLATIONS = {
     'login.registerPhoneLabel': 'Phone number',
     'login.registerNameLabel': 'Your name',
     'login.registerEmailLabel': 'Your email',
+    'login.registerLevelLabel': 'Tennis level',
+    'login.registerLevelPlaceholder': 'Choose your level',
+    'login.level.NOVICE': 'Novice – beginner',
+    'login.level.NEXT_GEN': 'Next Gen – intermediate to advanced',
+    'login.level.ELITE': 'Elite – very advanced',
+    'login.error.levelRequired': 'Choose your tennis level.',
 
     'login.error.phoneNotFound': "This phone number is not in the system. Register.",
     'login.error.enterCode': 'Enter your 5-digit code.',

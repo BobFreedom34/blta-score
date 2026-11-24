@@ -354,6 +354,9 @@ if (!playerColumns.includes('slug')) {
   // admin still sees (and can unhide) them on the Players page — this only
   // removes them from what a logged-out/non-admin visitor sees there.
   'hidden INTEGER NOT NULL DEFAULT 0',
+  // The level the player says they play at, chosen when they register (NOVICE = beginner, NEXT_GEN = intermediate/advanced, ELITE = very advanced). Their own word, not the division an admin
+  // puts them in (`category` above): shown to logged-in players and admins like phone/email, never to a visitor (see stripPrivateFields in src/auth.js).
+  'tennis_level TEXT',
 ].forEach((colDef) => {
   const colName = colDef.split(' ')[0];
   if (!playerColumns.includes(colName)) {

@@ -308,6 +308,7 @@ function openPlayerLoginModal(onSuccess, opts) {
   const registerPhoneInput = document.getElementById('player-login-register-phone-input');
   const registerNameInput = document.getElementById('player-login-register-name-input');
   const registerEmailInput = document.getElementById('player-login-register-email-input');
+  const registerLevelInput = document.getElementById('player-login-register-level-input');
   const registerErrorEl = document.getElementById('player-login-register-error');
   const registerSubmitBtn = registerForm.querySelector('button[type="submit"]');
   const registerBackBtn = document.getElementById('player-login-register-back-btn');
@@ -439,6 +440,7 @@ function openPlayerLoginModal(onSuccess, opts) {
     registerPhoneInput.value = input.value.trim();
     registerNameInput.value = '';
     registerEmailInput.value = '';
+    registerLevelInput.value = '';
     registerErrorEl.textContent = '';
     showStep(registerStep);
     setTimeout(() => (registerPhoneInput.value ? registerNameInput : registerPhoneInput).focus(), 50);
@@ -452,6 +454,7 @@ function openPlayerLoginModal(onSuccess, opts) {
     registerPhoneInput.value = enteredPhone;
     registerNameInput.value = '';
     registerEmailInput.value = '';
+    registerLevelInput.value = '';
     registerErrorEl.textContent = '';
     showStep(registerStep);
     setTimeout(() => registerNameInput.focus(), 50);
@@ -462,12 +465,14 @@ function openPlayerLoginModal(onSuccess, opts) {
     const phone = registerPhoneInput.value.trim();
     const name = registerNameInput.value.trim();
     const email = registerEmailInput.value.trim();
+    const tennisLevel = registerLevelInput.value;
     if (!phone || !name || !email) return;
+    if (!tennisLevel) { registerErrorEl.textContent = t('login.error.levelRequired'); return; }
     enteredPhone = phone;
     registerErrorEl.textContent = '';
     registerSubmitBtn.disabled = true;
     try {
-      const res = await api('/player/register', { method: 'POST', body: { name, email, phone, lang: typeof currentLang === 'string' ? currentLang : 'sk' } });
+      const res = await api('/player/register', { method: 'POST', body: { name, email, phone, tennisLevel, lang: typeof currentLang === 'string' ? currentLang : 'sk' } });
       applySession(res);
       trackConversion('blta_complete_registration'); // after the server said yes
       // Same landing spot a pinSetupRequired login uses — registering and

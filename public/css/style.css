@@ -7891,3 +7891,7 @@ html.kiosk-mode #match-root .match-header .match-badges { margin-bottom: 16px; }
 /* the points of the game in play (15, 30, 40, Ad) as the last column of the scoreboard, once somebody scores point by point */
 body.match-page .scoreboard th.game-col { color: var(--green); }
 body.match-page .scoreboard td.game-col { color: var(--green); font-weight: 800; border-left: 1px solid rgba(255, 255, 255, 0.12); }
+
+/* the small text of a home statistic stands next to its number (198 v tejto sérii), on the same baseline */
+.home-stat .vs { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 8px; margin-top: 6px; }
+.home-stat .vs .v, .home-stat .vs .s { margin-top: 0; }

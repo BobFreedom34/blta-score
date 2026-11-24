@@ -34,7 +34,7 @@ async function call(method, url, { body, cookie } = {}) {
 }
 const newPlayer = (name, slug, extra = '') => Number(db.prepare('INSERT INTO players (name, slug, category) VALUES (?, ?, ?)').run(name, slug, extra || 'NOVICE').lastInsertRowid);
 const mine = async (id) => (await call('GET', '/api/invites/mine', { cookie: playerCookie(id) })).json;
-const register = (name, phone, cookie) => call('POST', '/api/player/register', { body: { name, phone, email: `${phone}@example.com` }, cookie });
+const register = (name, phone, cookie) => call('POST', '/api/player/register', { body: { name, phone, email: `${phone}@example.com`, tennisLevel: 'NOVICE' }, cookie });
 
 let anna;
 

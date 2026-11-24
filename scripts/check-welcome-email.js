@@ -69,7 +69,7 @@ test('a link typed as [text](address) works inside a numbered step and a plain l
 });
 
 test('registering a new player works with the welcome e-mail on and off (no mail server here)', async () => {
-  const reg = (n, phone) => call('POST', '/api/player/register', { name: n, phone, email: `${phone}@example.com`, lang: 'en' }, false);
+  const reg = (n, phone) => call('POST', '/api/player/register', { name: n, phone, email: `${phone}@example.com`, tennisLevel: 'NOVICE', lang: 'en' }, false);
   assert.strictEqual((await reg('Welcome One', '0903000001')).status, 201);
   await call('PUT', '/api/welcome-email', { enabled: false });
   assert.strictEqual((await call('GET', '/api/welcome-email')).json.enabled, false);

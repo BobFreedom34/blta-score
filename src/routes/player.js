@@ -568,6 +568,8 @@ function uniqueSlugFor(name) {
 //    claim — rejected the same as always.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const TENNIS_LEVELS = ['NOVICE', 'NEXT_GEN', 'ELITE'];
+
 router.post('/register', async (req, res) => {
   const name = (req.body.name || '').trim();
   if (!name) return res.status(400).json({ error: 'Name is required', errorCode: 'nameRequired' });
@@ -590,6 +592,10 @@ router.post('/register', async (req, res) => {
   if (!email) return res.status(400).json({ error: 'Email is required', errorCode: 'emailRequired' });
   if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Invalid email', errorCode: 'invalidEmail' });
 
+  // the level the player plays at: beginner (Novice), intermediate / advanced (Next Gen) or very advanced (Elite)
+  const tennisLevel = String(req.body.tennisLevel || '').trim();
+  if (!TENNIS_LEVELS.includes(tennisLevel)) return res.status(400).json({ error: 'Choose your tennis level', errorCode: 'levelRequired' });
+
   const existingByName = db.prepare('SELECT * FROM players WHERE name = ? COLLATE NOCASE').get(name);
   if (existingByName && existingByName.phone) {
     return res.status(409).json({ error: 'A player with that name already exists — ask an admin, or log in instead if this is you', errorCode: 'nameAlreadyExists' });
@@ -605,11 +611,11 @@ router.post('/register', async (req, res) => {
 
   let player;
   if (existingByName) {
-    db.prepare('UPDATE players SET phone = ?, email = ? WHERE id = ?').run(digits, email.slice(0, 100), existingByName.id);
+    db.prepare('UPDATE players SET phone = ?, email = ?, tennis_level = ? WHERE id = ?').run(digits, email.slice(0, 100), tennisLevel, existingByName.id);
     player = db.prepare('SELECT id, name, slug, photo_url FROM players WHERE id = ?').get(existingByName.id);
   } else {
     const slug = uniqueSlugFor(name);
-    const info = db.prepare('INSERT INTO players (name, slug, phone, email, league_id) VALUES (?, ?, ?, ?, ?)').run(name, slug, digits, email.slice(0, 100), (req.league && req.league.id) || 1);
+    const info = db.prepare('INSERT INTO players (name, slug, phone, email, tennis_level, league_id) VALUES (?, ?, ?, ?, ?, ?)').run(name, slug, digits, email.slice(0, 100), tennisLevel, (req.league && req.league.id) || 1);
     player = db.prepare('SELECT id, name, slug FROM players WHERE id = ?').get(info.lastInsertRowid);
     creditInviter(req, res, player.id); // a new player who came through somebody's invite link
   }
@@ -620,7 +626,7 @@ router.post('/register', async (req, res) => {
   // After responding — the registering player shouldn't wait on this (or
   // have it fail their own registration) if SMTP has a hiccup.
   try {
-    await sendNewRegistrationEmail({ name, phone: digits, email, claimed: !!existingByName });
+    await sendNewRegistrationEmail({ name, phone: digits, email, tennisLevel, claimed: !!existingByName });
   } catch (err) {
     console.error('[player] Failed to send new-registration admin email:', err.message);
   }

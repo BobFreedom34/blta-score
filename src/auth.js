@@ -280,7 +280,7 @@ function stripPrivateFields(player, req) {
   if (!player) return player;
   const { login_pin, reset_token, reset_token_expires, failed_pin_attempts, ...visible } = player;
   if (canSeePrivateFields(req)) return visible;
-  const { phone, email, ...rest } = visible;
+  const { phone, email, tennis_level, ...rest } = visible; // (the level a player says they play at is for logged-in players and admins, like phone and email)
   return rest;
 }
 

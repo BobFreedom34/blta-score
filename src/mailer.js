@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const { describeMatch } = require('./matchEngine');
+const tpl = require('./emailTemplates');
 
 let transporter = null;
 function getTransporter() {
@@ -57,19 +58,19 @@ async function sendMatchFinishedEmail(match, player1, player2) {
     ? Math.round((new Date(match.end_time) - new Date(match.start_time)) / 60000)
     : null;
 
-  const subject = `Zápas ukončený: ${player1.name} vs ${player2.name} (${categoryLabel(match.category)})`;
-  const text = [
-    `Kategória: ${categoryLabel(match.category)}`,
-    `Hráči: ${player1.name} vs ${player2.name}`,
-    `Víťaz: ${winnerName}`,
-    `Skóre: ${score || '-'}${match.end_reason && END_REASON_LABELS[match.end_reason] ? ` (${END_REASON_LABELS[match.end_reason]})` : ''}`,
-    `Miesto: ${match.location || '-'}`,
-    `Naplánované: ${fmtDate(match.scheduled_at)}`,
-    `Začiatok: ${fmtDate(match.start_time)}`,
-    `Koniec: ${fmtDate(match.end_time)}`,
-    durationMin != null ? `Trvanie: ${durationMin} min` : null,
-    `Odkaz: ${matchLink(match)}`,
-  ].filter(Boolean).join('\n');
+  const { subject, text } = tpl.render('matchFinishedAdmin', {
+    category: categoryLabel(match.category),
+    player1: player1.name,
+    player2: player2.name,
+    winner: winnerName,
+    score: `${score || '-'}${match.end_reason && END_REASON_LABELS[match.end_reason] ? ` (${END_REASON_LABELS[match.end_reason]})` : ''}`,
+    location: match.location || '-',
+    scheduled: fmtDate(match.scheduled_at),
+    started: fmtDate(match.start_time),
+    ended: fmtDate(match.end_time),
+    duration: durationMin != null ? `${durationMin} min` : '',
+    link: matchLink(match),
+  });
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
@@ -88,19 +89,19 @@ async function sendMatchStartedEmailTo(match, player1, player2, toEmail) {
     console.warn('[mailer] SMTP not configured — skipping match-started notification.');
     return false;
   }
-  const subject = `Zápas začal: ${player1.name} vs ${player2.name}`;
-  const lines = [
-    `${player1.name} vs ${player2.name} práve začal!`,
-    `Kategória: ${categoryLabel(match.category)}`,
-  ];
-  if (match.location) lines.push(`Miesto: ${match.location}`);
-  lines.push(`Sledovať naživo: ${matchLink(match)}`);
+  const { subject, text } = tpl.render('matchStarted', {
+    player1: player1.name,
+    player2: player2.name,
+    category: categoryLabel(match.category),
+    location: match.location || '',
+    link: matchLink(match),
+  });
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: toEmail,
     subject,
-    text: lines.join('\n'),
+    text,
   });
   return true;
 }
@@ -119,20 +120,20 @@ async function sendMatchFinishedEmailTo(match, player1, player2, toEmail) {
   const reasonLabel = match.end_reason && END_REASON_LABELS[match.end_reason] ? END_REASON_LABELS[match.end_reason] : null;
   const resultText = [score, reasonLabel].filter(Boolean).join(' — ') || 'Bez výsledku';
 
-  const subject = `Zápas skončil: ${player1.name} vs ${player2.name}`;
-  const lines = [
-    `${player1.name} vs ${player2.name}`,
-    `Výsledok: ${resultText}${winnerName ? ` — víťaz ${winnerName}` : ''}`,
-    `Dátum: ${fmtDate(match.start_time || match.scheduled_at)}`,
-  ];
-  if (match.location) lines.push(`Miesto: ${match.location}`);
-  lines.push(`Odkaz: ${matchLink(match)}`);
+  const { subject, text } = tpl.render('matchFinishedSubscriber', {
+    player1: player1.name,
+    player2: player2.name,
+    result: `${resultText}${winnerName ? ` — víťaz ${winnerName}` : ''}`,
+    date: fmtDate(match.start_time || match.scheduled_at),
+    location: match.location || '',
+    link: matchLink(match),
+  });
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: toEmail,
     subject,
-    text: lines.join('\n'),
+    text,
   });
   return true;
 }
@@ -147,19 +148,19 @@ async function sendProposalConfirmedEmail(match, player1, player2, toEmail) {
     console.warn('[mailer] SMTP not configured — skipping proposal-confirmed email.');
     return false;
   }
-  const subject = `Termín potvrdený: ${player1.name} vs ${player2.name}`;
-  const lines = [
-    `Pre zápas, ktorý si navrhol, bol vybraný termín: ${player1.name} vs ${player2.name}.`,
-    `Kedy: ${fmtDate(match.scheduled_at)}`,
-    `Kde: ${match.location || '-'}`,
-    `Odkaz: ${matchLink(match)}`,
-  ];
+  const { subject, text } = tpl.render('proposalConfirmed', {
+    player1: player1.name,
+    player2: player2.name,
+    date: fmtDate(match.scheduled_at),
+    location: match.location || '-',
+    link: matchLink(match),
+  });
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: toEmail,
     subject,
-    text: lines.join('\n'),
+    text,
   });
   return true;
 }
@@ -175,17 +176,13 @@ async function sendProposalReceivedEmail(match, proposer, recipient) {
     console.warn('[mailer] SMTP not configured — skipping proposal-received email.');
     return false;
   }
-  const subject = `${proposer.name} ti navrhol termíny na hru!`;
-  const lines = [
-    `${proposer.name} ti navrhol termíny na váš zápas na BLTA.`,
-    `Vyber si ten, ktorý ti vyhovuje, tu: ${matchLink(match)}`,
-  ];
+  const { subject, text } = tpl.render('proposalReceived', { proposer: proposer.name, link: matchLink(match) });
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: recipient.email,
     subject,
-    text: lines.join('\n'),
+    text,
   });
   return true;
 }
@@ -203,15 +200,7 @@ async function sendPinResetEmail(player, token) {
     console.warn('[mailer] SMTP not configured — skipping login-code reset email.');
     return false;
   }
-  const subject = 'Obnovenie prihlasovacieho kódu pre BLTA';
-  const text = [
-    `Ahoj ${player.name},`,
-    '',
-    'Niekto (dúfajme, že ty) požiadal o obnovenie tvojho prihlasovacieho kódu pre BLTA.',
-    `Nastav si nový tu: ${resetCodeLink(token)}`,
-    '',
-    'Tento odkaz platí 1 hodinu. Ak si o to nežiadal, tento e-mail jednoducho ignoruj.',
-  ].join('\n');
+  const { subject, text } = tpl.render('pinReset', { name: player.name, link: resetCodeLink(token) });
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
@@ -231,12 +220,7 @@ async function sendAdminResetRequestEmail(player) {
     console.warn('[mailer] SMTP not configured — skipping admin reset-request email.');
     return false;
   }
-  const subject = `Žiadosť o reset prihlasovacieho kódu: ${player.name}`;
-  const text = [
-    `${player.name} (telefón ${player.phone || '-'}) požiadal o reset svojho prihlasovacieho kódu pre BLTA.`,
-    'Nemá uvedený e-mail, takže mu nie je možné poslať odkaz na samoobslužný reset.',
-    'Resetuj ho z jeho profilu (Upraviť profil → Resetovať prihlasovací kód) po tom, čo si overíš, že je to naozaj on.',
-  ].join('\n');
+  const { subject, text } = tpl.render('adminResetRequest', { name: player.name, phone: player.phone || '-' });
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
@@ -255,21 +239,20 @@ async function sendAdminResetRequestEmail(player) {
 // creating a brand-new player — worth calling out to the admin, who'll
 // likely recognize the name either way. Same admin address as the other
 // admin-facing emails above.
+const TENNIS_LEVEL_LABELS = { NOVICE: 'Novice – začiatočník', NEXT_GEN: 'Next Gen – mierne pokročilý', ELITE: 'Elite – veľmi pokročilý' };
+
 async function sendNewRegistrationEmail(player) {
   const t = getTransporter();
   if (!t) {
     console.warn('[mailer] SMTP not configured — skipping new-registration email.');
     return false;
   }
-  const subject = `Nová registrácia hráča: ${player.name}`;
-  const text = [
-    player.claimed
-      ? `${player.name} si práve priradil svoj existujúci profil hráča na BLTA (doteraz nemal uvedený telefón ani e-mail):`
-      : 'Nový hráč sa práve zaregistroval na BLTA:',
-    `Meno: ${player.name}`,
-    `Telefón: ${player.phone}`,
-    `E-mail: ${player.email}`,
-  ].join('\n');
+  const { subject, text } = tpl.render(player.claimed ? 'newRegistrationClaimed' : 'newRegistration', {
+    name: player.name,
+    phone: player.phone,
+    email: player.email,
+    level: player.tennisLevel ? (TENNIS_LEVEL_LABELS[player.tennisLevel] || player.tennisLevel) : '',
+  });
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
@@ -287,18 +270,17 @@ async function sendClubWaitingEmail(club) {
     console.warn('[mailer] SMTP not configured — skipping new-club email.');
     return false;
   }
+  const mail = tpl.render('clubWaiting', {
+    club: club.name,
+    city: club.city || '',
+    creator: club.creator || '',
+    link: `${(process.env.PUBLIC_URL || '').replace(/\/$/, '')}/communities-admin`,
+  });
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
-    subject: `Nový klub čaká na schválenie: ${club.name}`,
-    text: [
-      'Hráč založil nový klub, ktorý čaká na tvoje schválenie:',
-      `Názov: ${club.name}`,
-      `Mesto: ${club.city || ''}`,
-      `Založil: ${club.creator || ''}`,
-      '',
-      `Schváliť ho môžeš v Backende > Communities: ${(process.env.PUBLIC_URL || '').replace(/\/$/, '')}/communities-admin`,
-    ].join('\n'),
+    subject: mail.subject,
+    text: mail.text,
   });
   return true;
 }
@@ -316,22 +298,18 @@ async function sendPlayRequestEmail(owner, joiner, slot, message, mode = 'SINGLE
     console.warn('[mailer] SMTP not configured — skipping play-request email.');
     return false;
   }
-  const doubles = mode === 'DOUBLES';
-  const subject = doubles ? `${joiner.name} by s tebou hral štvorhru!` : `${joiner.name} chce s tebou hrať!`;
-  const lines = [
-    doubles
-      ? `${joiner.name} videl tvoj príspevok „Hľadám partnera“ na BLTA a vybral si jeden z tvojich voľných termínov — chce s tebou hrať štvorhru ako tvoj partner:`
-      : `${joiner.name} videl tvoj príspevok „Chcem hrať“ na BLTA a vybral si jeden z tvojich voľných termínov na priateľský zápas:`,
-    `Kedy: ${fmtDate(slot)}`,
-  ];
-  if (message) lines.push(`Jeho odkaz: "${message}"`);
-  lines.push(`Pozri si to tu: ${process.env.PUBLIC_URL || ''}${require('./seo').pageUrl('/looking-to-play', 'sk')}`);
+  const { subject, text } = tpl.render(mode === 'DOUBLES' ? 'playRequestDoubles' : 'playRequest', {
+    joiner: joiner.name,
+    date: fmtDate(slot),
+    message: message || '',
+    link: `${process.env.PUBLIC_URL || ''}${require('./seo').pageUrl('/looking-to-play', 'sk')}`,
+  });
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: owner.email,
     subject,
-    text: lines.join('\n'),
+    text,
   });
   return true;
 }
@@ -347,18 +325,13 @@ async function sendPlayRequestAcceptedEmail(owner, joiner, slot, matchToken) {
     console.warn('[mailer] SMTP not configured — skipping play-request-accepted email.');
     return false;
   }
-  const subject = `${owner.name} prijal tvoj termín na hru!`;
-  const lines = [
-    `${owner.name} prijal termín, ktorý si si vybral na BLTA — máte dohodnutý priateľský zápas.`,
-    `Kedy: ${fmtDate(slot)}`,
-    `Zápas: ${process.env.PUBLIC_URL || ''}/match/${matchToken}`,
-  ];
+  const { subject, text } = tpl.render('playRequestAccepted', { owner: owner.name, date: fmtDate(slot), link: `${process.env.PUBLIC_URL || ''}/match/${matchToken}` });
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: joiner.email,
     subject,
-    text: lines.join('\n'),
+    text,
   });
   return true;
 }
@@ -371,15 +344,12 @@ async function sendPartnerAcceptedEmail(owner, joiner, slot) {
     console.warn('[mailer] SMTP not configured — skipping partner-accepted email.');
     return false;
   }
+  const mail = tpl.render('partnerAccepted', { owner: owner.name, date: fmtDate(slot) });
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: joiner.email,
-    subject: `${owner.name} ťa prijal ako partnera na štvorhru!`,
-    text: [
-      `${owner.name} prijal tvoju ponuku na BLTA — ste partneri na štvorhru.`,
-      `Kedy: ${fmtDate(slot)}`,
-      'Zápas štvorhry vytvorí on; keď bude vytvorený, uvidíš ho v zozname svojich zápasov.',
-    ].join('\n'),
+    subject: mail.subject,
+    text: mail.text,
   });
   return true;
 }
@@ -393,18 +363,17 @@ async function sendPlayRequestDeniedEmail(owner, joiner, reason) {
     console.warn('[mailer] SMTP not configured — skipping play-request-denied email.');
     return false;
   }
-  const subject = `${owner.name} ti v tomto termíne nemôže vyhovieť`;
-  const lines = [
-    `${owner.name} nemohol prijať termín, ktorý si si vybral na BLTA.`,
-    `Jeho poznámka: "${reason}"`,
-    `Pozri si jeho ďalšie voľné termíny: ${process.env.PUBLIC_URL || ''}${require('./seo').pageUrl('/looking-to-play', 'sk')}`,
-  ];
+  const { subject, text } = tpl.render('playRequestDenied', {
+    owner: owner.name,
+    reason,
+    link: `${process.env.PUBLIC_URL || ''}${require('./seo').pageUrl('/looking-to-play', 'sk')}`,
+  });
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: joiner.email,
     subject,
-    text: lines.join('\n'),
+    text,
   });
   return true;
 }
@@ -423,17 +392,22 @@ async function sendKioskBatteryLowEmail({ seasonName, courtName, level }) {
     return false;
   }
   const percent = Math.round(level * 100);
+  const mail = tpl.render('kioskBatteryLow', { court: courtName, season: seasonName, percent });
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
-    subject: `Slabá batéria: ${courtName} (${percent} %)`,
-    text: [
-      `Telefón, ktorý leží na kurte "${courtName}" (turnaj ${seasonName}), má ${percent} % batérie a nenabíja sa.`,
-      '',
-      'Pripojte ho k nabíjačke, inak sa vypne a zápasy sa nebudú dať zapisovať.',
-      'Ďalší e-mail príde, až keď sa telefón nabije a batéria opäť klesne.',
-    ].join('\n'),
+    subject: mail.subject,
+    text: mail.text,
   });
+  return true;
+}
+
+// Sends one e-mail of Backend > E-mails to an address, filled with its example values (the "send a test" button); the text is the one being edited when `override` is given.
+async function sendTemplateTest(key, to, override) {
+  const t = getTransporter();
+  if (!t) return false;
+  const { subject, text } = tpl.render(key, tpl.sampleVars(key), override);
+  await t.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to, subject: `[TEST] ${subject}`, text });
   return true;
 }
 
@@ -443,14 +417,7 @@ async function sendBackupFailedEmail(err) {
     console.warn('[mailer] SMTP not configured — skipping backup-failed alert email.');
     return false;
   }
-  const subject = 'BLTA: záloha databázy zlyhala';
-  const text = [
-    'Dnešná automatická záloha databázy BLTA na Google Drive zlyhala:',
-    '',
-    err && err.message ? err.message : String(err),
-    '',
-    'Samotná stránka nie je ovplyvnená — znamená to len, že dnešná záloha mimo servera sa neuskutočnila. Kompletnú chybu nájdeš v Render logoch.',
-  ].join('\n');
+  const { subject, text } = tpl.render('backupFailed', { error: err && err.message ? err.message : String(err) });
 
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
@@ -478,24 +445,28 @@ async function sendSeasonRegistrationEmail(season, registration, total) {
     console.warn('[mailer] SMTP not configured — skipping season-registration email.');
     return false;
   }
-  const text = [
-    `Nová registrácia ${season.kind === 'TOURNAMENT' ? 'na turnaj' : 'do série'} ${season.name}:`,
-    '',
-    `Meno: ${registration.name}${accountNote(registration)}`,
-    ...(registration.category ? [`Kategória: ${categoryLabel(registration.category)}`] : ['Kategória: zaradí admin']),
-    `Telefón: ${registration.phone}`,
-    `E-mail: ${registration.email}`,
-    ...(registration.note ? [`Poznámka: ${registration.note}`] : []),
-    ...(registration.substitute ? ['', 'POZOR: kapacita je naplnená, hráč je zaradený ako NÁHRADNÍK (nastúpi, keď sa niekto odhlási alebo zvýšite maximum).'] : []),
-    '',
-    `Prihlásených ${season.kind === 'TOURNAMENT' ? 'v turnaji' : 'v sérii'}: ${total}`,
-    `Zoznam a úhrady: ${process.env.PUBLIC_URL || ''}${season.kind === 'TOURNAMENT' ? '/tournaments-admin' : '/seasons-admin'}`,
-  ].join('\n');
+  const tournament = season.kind === 'TOURNAMENT';
+  const { subject, text } = tpl.render('seasonRegistration', {
+    kindIn: tournament ? 'na turnaj' : 'do série',
+    kindWhere: tournament ? 'v turnaji' : 'v sérii',
+    season: season.name,
+    name: registration.name,
+    account: accountNote(registration),
+    category: registration.category ? categoryLabel(registration.category) : 'zaradí admin',
+    categoryTag: registration.category ? ` (${categoryLabel(registration.category)})` : '',
+    substituteTag: registration.substitute ? ' (náhradník)' : '',
+    phone: registration.phone,
+    email: registration.email,
+    note: registration.note || '',
+    substituteWarning: registration.substitute ? 'POZOR: kapacita je naplnená, hráč je zaradený ako NÁHRADNÍK (nastúpi, keď sa niekto odhlási alebo zvýšite maximum).' : '',
+    total,
+    link: `${process.env.PUBLIC_URL || ''}${tournament ? '/tournaments-admin' : '/seasons-admin'}`,
+  });
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
     replyTo: registration.email,
-    subject: `Registrácia ${season.kind === 'TOURNAMENT' ? 'na turnaj' : 'do série'}${registration.substitute ? ' (náhradník)' : ''}: ${registration.name}${registration.category ? ` (${categoryLabel(registration.category)})` : ''}`,
+    subject,
     text,
   });
   return true;
@@ -519,39 +490,14 @@ function reservationsLink() {
 // r = { player: { name, email, phone }, court, note, day, start, end, price ('27 €' or ''), cancelHours }
 function courtReservationTexts(r) {
   const when = `${skDay(r.day)}, ${r.start}–${r.end}`;
+  const whenShort = `${skDay(r.day)} ${r.start}–${r.end}`;
   const first = String(r.player.name || '').trim().split(/\s+/)[0] || '';
-  const cancel = r.cancelHours > 0
+  const cancelNote = r.cancelHours > 0
     ? `Rezerváciu môžeš zrušiť najneskôr ${skHours(r.cancelHours)} pred začiatkom.`
     : 'Rezerváciu môžeš zrušiť, kým sa daný čas nezačne.';
-  const playerText = [
-    first ? `Ahoj ${first},` : 'Ahoj,',
-    '',
-    'tvoja rezervácia kurtu je potvrdená.',
-    '',
-    `Kurt: ${r.court}${r.note ? ` (${r.note})` : ''}`,
-    `Kedy: ${when}`,
-    ...(r.price ? [`Cena: ${r.price}`] : []),
-    '',
-    `${cancel} Nájdeš ju v sekcii Moje rezervácie: ${reservationsLink()}`,
-    '',
-    'Tešíme sa na teba na kurte!',
-    'BLTA – Bratislavská Liga Tenisových Amatérov',
-  ].join('\n');
-  const adminText = [
-    'Hráč si práve rezervoval kurt:',
-    '',
-    `Hráč: ${r.player.name}`,
-    `Telefón: ${r.player.phone || '-'}`,
-    `E-mail: ${r.player.email || '-'}`,
-    `Kurt: ${r.court}`,
-    `Kedy: ${when}`,
-    ...(r.price ? [`Cena: ${r.price}`] : []),
-    '',
-    `Kalendár rezervácií: ${reservationsLink()}`,
-  ].join('\n');
   return {
-    player: { subject: `Rezervácia kurtu potvrdená: ${r.court}, ${skDay(r.day)} ${r.start}–${r.end}`, text: playerText },
-    admin: { subject: `Nová rezervácia kurtu: ${r.player.name} – ${r.court}, ${skDay(r.day)} ${r.start}–${r.end}`, text: adminText },
+    player: tpl.render('courtReservationPlayer', { first, court: r.court, courtNote: r.note ? ` (${r.note})` : '', when, whenShort, price: r.price || '', cancelNote, link: reservationsLink() }),
+    admin: tpl.render('courtReservationAdmin', { player: r.player.name, phone: r.player.phone || '-', email: r.player.email || '-', court: r.court, when, whenShort, price: r.price || '', link: reservationsLink() }),
   };
 }
 
@@ -565,20 +511,12 @@ async function sendContactRequestEmail({ to, name, phone, email, message, lang }
     console.warn('[mailer] SMTP not configured — skipping the contact-request email (the request is kept in the database).');
     return false;
   }
-  const text = [
-    `Meno: ${name}`,
-    `Email: ${email}`,
-    `Telefón: ${phone || '-'}`,
-    `Jazyk stránky: ${lang === 'en' ? 'EN' : 'SK'}`,
-    '',
-    'Doplňujúce informácie:',
-    message || '-',
-  ].join('\n');
+  const { subject, text } = tpl.render('contactRequest', { name, email, phone: phone || '-', language: lang === 'en' ? 'EN' : 'SK', message: message || '-' });
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: to || process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
     replyTo: email,
-    subject: `SLTA: správa z webu od ${name}`,
+    subject,
     text,
   });
   return true;
@@ -611,22 +549,19 @@ async function sendWelcomeEmail({ to, name, slug, lang, force }) {
 async function sendPaymentReminderEmail({ to, name, seasonName, fee, paymentUrl, organiser }) {
   const t = getTransporter();
   if (!t) return false;
-  const lines = [
-    `Dobrý deň ${name},`,
-    '',
-    `evidujeme vašu registráciu do "${seasonName}", ale štartovné ${fee ? `(${fee}) ` : ''}zatiaľ nemáme zaplatené.`,
-    '',
-    paymentUrl ? `Zaplatiť môžete online tu: ${paymentUrl}` : 'Platbu prosím dohodnite s organizátorom.',
-    '',
-    'Ak ste už zaplatili, tento e-mail prosím ignorujte (platbu ešte nemusíme mať zaznamenanú).',
-    organiser ? `\nOtázky? ${organiser}` : '',
-  ];
+  const { subject, text } = tpl.render('paymentReminder', {
+    name,
+    season: seasonName,
+    feeNote: fee ? `(${fee}) ` : '',
+    paymentUrl: paymentUrl || '',
+    organiser: organiser || '',
+  });
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to,
     replyTo: process.env.NOTIFY_EMAIL || undefined,
-    subject: `Pripomienka platby štartovného: ${seasonName}`,
-    text: lines.join('\n'),
+    subject,
+    text,
   });
   return true;
 }
@@ -638,23 +573,24 @@ async function sendSeasonUnregistrationEmail(season, registration, total) {
     console.warn('[mailer] SMTP not configured — skipping season-unregistration email.');
     return false;
   }
-  const kind = season.kind === 'TOURNAMENT' ? 'turnaja' : 'série';
-  const text = [
-    `Odhlásenie z ${kind} ${season.name}:`,
-    '',
-    `Meno: ${registration.name}`,
-    ...(registration.phone ? [`Telefón: ${registration.phone}`] : []),
-    ...(registration.email ? [`E-mail: ${registration.email}`] : []),
-    ...(registration.substitute ? ['', 'Bol to náhradník (nebol v turnaji).'] : []),
-    '',
-    `Prihlásených ${season.kind === 'TOURNAMENT' ? 'v turnaji' : 'v sérii'}: ${total}`,
-    `Zoznam a úhrady: ${process.env.PUBLIC_URL || ''}${season.kind === 'TOURNAMENT' ? '/tournaments-admin' : '/seasons-admin'}`,
-  ].join('\n');
+  const tournament = season.kind === 'TOURNAMENT';
+  const { subject, text } = tpl.render('seasonUnregistration', {
+    kindOf: tournament ? 'turnaja' : 'série',
+    kindFrom: tournament ? 'z turnaja' : 'zo série',
+    kindWhere: tournament ? 'v turnaji' : 'v sérii',
+    season: season.name,
+    name: registration.name,
+    phone: registration.phone || '',
+    email: registration.email || '',
+    substituteNote: registration.substitute ? 'Bol to náhradník (nebol v turnaji).' : '',
+    total,
+    link: `${process.env.PUBLIC_URL || ''}${tournament ? '/tournaments-admin' : '/seasons-admin'}`,
+  });
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to: process.env.NOTIFY_EMAIL || process.env.SMTP_USER,
     replyTo: registration.email || undefined,
-    subject: `Odhlásenie ${season.kind === 'TOURNAMENT' ? 'z turnaja' : 'zo série'}: ${registration.name}`,
+    subject,
     text,
   });
   return true;
@@ -664,19 +600,13 @@ async function sendSeasonUnregistrationEmail(season, registration, total) {
 async function sendSubstituteInEmail({ to, name, seasonName, pageUrl, organiser }) {
   const t = getTransporter();
   if (!t) return false;
-  const lines = [
-    `Dobrý deň ${name},`,
-    '',
-    `dobrá správa: uvoľnilo sa miesto a ste teraz v zozname hráčov "${seasonName}" (už nie ste náhradník).`,
-    pageUrl ? `\nStránka: ${pageUrl}` : '',
-    organiser ? `\nOtázky? ${organiser}` : '',
-  ];
+  const { subject, text } = tpl.render('substituteIn', { name, season: seasonName, pageUrl: pageUrl || '', organiser: organiser || '' });
   await t.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to,
     replyTo: process.env.NOTIFY_EMAIL || undefined,
-    subject: `Ste v turnaji: ${seasonName}`,
-    text: lines.join('\n'),
+    subject,
+    text,
   });
   return true;
 }
@@ -707,36 +637,12 @@ async function sendCourtReservationEmails(r) {
 // player cancelled: a confirmation; when the admin did: what happened). Same fields as courtReservationTexts, plus byAdmin.
 function courtCancellationTexts(r) {
   const when = `${skDay(r.day)}, ${r.start}–${r.end}`;
+  const whenShort = `${skDay(r.day)} ${r.start}–${r.end}`;
   const first = String(r.player.name || '').trim().split(/\s+/)[0] || '';
-  const short = `${r.court}, ${skDay(r.day)} ${r.start}–${r.end}`;
-  const adminText = [
-    'Hráč zrušil svoju rezerváciu kurtu:',
-    '',
-    `Hráč: ${r.player.name}`,
-    `Telefón: ${r.player.phone || '-'}`,
-    `E-mail: ${r.player.email || '-'}`,
-    `Kurt: ${r.court}`,
-    `Kedy: ${when}`,
-    ...(r.price ? [`Cena: ${r.price}`] : []),
-    '',
-    'Termín je opäť voľný a dá sa znova rezervovať.',
-    `Kalendár rezervácií: ${reservationsLink()}`,
-  ].join('\n');
-  const playerText = [
-    first ? `Ahoj ${first},` : 'Ahoj,',
-    '',
-    r.byAdmin ? 'tvoju rezerváciu kurtu zrušil administrátor BLTA.' : 'tvoja rezervácia kurtu je zrušená.',
-    '',
-    `Kurt: ${r.court}`,
-    `Kedy: ${when}`,
-    '',
-    `${r.byAdmin ? 'Ak ide o omyl alebo sa chceš dohodnúť na inom termíne, napíš nám. ' : ''}Nový termín si môžeš rezervovať tu: ${reservationsLink()}`,
-    '',
-    'BLTA – Bratislavská Liga Tenisových Amatérov',
-  ].join('\n');
+  const short = `${r.court}, ${whenShort}`;
   return {
-    admin: { subject: `Zrušená rezervácia kurtu: ${r.player.name} – ${short}`, text: adminText },
-    player: { subject: `Rezervácia kurtu zrušená: ${short}`, text: playerText },
+    admin: tpl.render('courtCancelledAdmin', { player: r.player.name, phone: r.player.phone || '-', email: r.player.email || '-', court: r.court, short, when, whenShort, price: r.price || '', link: reservationsLink() }),
+    player: tpl.render(r.byAdmin ? 'courtCancelledByAdmin' : 'courtCancelledPlayer', { first, court: r.court, short, when, whenShort, link: reservationsLink() }),
   };
 }
 
@@ -772,5 +678,5 @@ module.exports = {
   sendMatchFinishedEmail, sendMatchStartedEmailTo, sendMatchFinishedEmailTo, sendProposalConfirmedEmail,
   sendProposalReceivedEmail,
   sendPinResetEmail, sendAdminResetRequestEmail, sendNewRegistrationEmail, sendWelcomeEmail, sendClubWaitingEmail, sendPlayRequestEmail,
-  sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail, sendPartnerAcceptedEmail, sendBackupFailedEmail, sendKioskBatteryLowEmail,
+  sendPlayRequestAcceptedEmail, sendPlayRequestDeniedEmail, sendPartnerAcceptedEmail, sendBackupFailedEmail, sendKioskBatteryLowEmail, sendTemplateTest,
 };
