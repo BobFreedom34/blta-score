@@ -7,17 +7,19 @@ Zdroj textov pre stránku `/funkcie`. Stránku generuje `node scripts/build-funk
 | Funkcia | Popis |
 |---|---|
 | Skóre naživo | Zapni si zápas a skóruj ho veľkými tlačidlami priamo z kurtu. Každý bod sa okamžite zobrazí všetkým, ktorí zápas sledujú, bez obnovovania stránky. |
+| Skóre bod po bode | Rozhodca alebo organizátor môže zapisovať každú výmenu: 15, 30, 40, výhoda. Diváci vidia stav gemu na webe, v streame aj na veľkej obrazovke a v záložke Priebeh zápasu si prečítajú celý zápas bod po bode. |
 | Všetky formáty zápasov | Jeden set, na dva či tri víťazné sety, so super tajbrejkom namiesto rozhodujúceho setu, set do 4 alebo do 6 gemov s tajbrejkom. Aplikácia sama stráži pravidlá: gemy, sety aj tajbrejky. |
 | Späť, pauza a časovač | Pomýlil si sa? Jedným klepnutím vrátiš posledný bod. Zápas môžeš zastaviť a neskôr pokračovať a celý čas ti beží prehľadný časovač. |
 | Nedokončený zápas | Skreč, kontumácia, dážď alebo večerná tma? Zápas môžeš ukončiť tak, ako stojí, alebo ho dohrať inokedy a výsledok ostane správne zapísaný. |
 | Výsledok dodatočne | Zápas si odohral bez telefónu? Výsledok po zápase jednoducho zadáš ručne, aj set po sete. |
 | Rozhodca na kurte | Rozhodca dostane pri zápase svoj kód a môže skórovať zápas bez vlastného účtu v aplikácii. |
 | Chat pri zápase | Pod každým zápasom je diskusia, kde sa hráči aj diváci môžu pozdraviť, dohodnúť sa alebo komentovať. Môžeš si zapnúť upozornenie, že zápas začal. |
-| Fotky a video | K zápasu pridáš fotky a odkaz na stream alebo záznam, takže všetko o zápase nájdeš na jednom mieste. |
+| Fotky a video | K zápasu pridáš fotky a video z YouTube, ktoré sa prehrá priamo pod skóre. Všetko o zápase nájdeš na jednom mieste. |
 | Zdieľanie jedným klepnutím | Pošli zápas kamarátom cez WhatsApp alebo odkaz. Zobrazí sa pekný náhľad s výsledkom a každý ho môže sledovať naživo. |
 | Vzájomná bilancia | Pri každom súperovi vidíš, ako ste spolu hrali doteraz: výhry, prehry a posledné zápasy. |
 | Zmena ratingu po zápase | Hneď po zápase vidíš, ako sa ti zmenila úroveň aj body v rebríčku. |
 | Zápas týždňa | Najzaujímavejší zápas týždňa sa zobrazí priamo na úvodnej stránke. |
+| Môj zápas | Svoje zápasy nájdeš hneď. V zoznamoch, v rozpise kurtov, v pavúkoch aj na úvodnej stránke ich označuje štítok Môj zápas. |
 | Štvorhra | Hraj štvorhry v páre. Aplikácia vedie vlastný rebríček a rating párov. |
 
 ## 2. Nájdi súpera a dohodni zápas
@@ -80,12 +82,16 @@ Zdroj textov pre stránku `/funkcie`. Stránku generuje `node scripts/build-funk
 | Funkcia | Popis |
 |---|---|
 | Registrácia online | Prihlás sa na turnaj, vyber si kategóriu a vidíš, koľko miest je ešte voľných. Ak sa turnaj zaplní, aplikácia to ukáže. |
+| Odhlásenie a náhradníci | Nemôžeš prísť? Z turnaja sa odhlásiš sám, do času, ktorý určí organizátor. Keď je turnaj plný, zaradíš sa medzi náhradníkov. Organizátor môže hráča nahradiť iným aj v už vyžrebovanom pavúku. |
 | Žreb, ktorý sa spraví sám | Nasadenie najlepších hráčov, náhodný žreb, švajčiarsky systém alebo skupiny, a potom vyraďovací pavúk. Organizátor si vyberie systém a zvyšok je na aplikácii. |
-| Žreb naživo pred kamerou | Žrebovanie ako prezentácia, ktorú môžeš ukázať aj na YouTube. Odpočítavanie od 5, nasadení hráči idú na svoje miesta a ostatných určí náhoda pred očami divákov: svetlo behá po menách, spomalí a zastaví sa na vyžrebovanom hráčovi, ktorý preletí do skupiny alebo do pavúka. Pred začiatkom je na obrazovke zámok žrebu a na konci jeho kľúč, z ktorého sa výsledok dá zopakovať a overiť. Záznam žrebu môže ktokoľvek prehrať. Žreb naživo funguje pri turnajoch aj pri skupinách ligy. |
-| Pavúk a útecha | Vyraďovací strom s výsledkami v reálnom čase. Hráči, ktorí vypadnú, môžu pokračovať v útešnej vetve. |
-| Rozpis na viac kurtov | Aplikácia rozdelí zápasy medzi kurty a časy. Každý kurt môže mať vlastný názov, napríklad „Kurt 1“ alebo „Centrálny“. |
-| Čo sa hrá na ktorom kurte | Divák vidí, ktorý zápas práve beží na ktorom kurte, a môže si pozrieť aj stream kurtu. |
-| Štartovné a platby | Odkaz na platbu aj výška štartovného sú priamo pri turnaji. Organizátor vidí, kto zaplatil. |
+| Žreb naživo pred kamerou | Žrebovanie ako prezentácia, ktorú môžeš ukázať aj na YouTube. Odpočítavanie od 5, nasadení hráči idú na svoje miesta a ostatných určí náhoda pred očami divákov: svetlo behá po menách, spomalí a zastaví sa na vyžrebovanom hráčovi, ktorý preletí do skupiny alebo do pavúka. Pred začiatkom je na obrazovke zámok žrebu a na konci jeho kľúč, z ktorého sa výsledok dá zopakovať a overiť. Záznam žrebu môže ktokoľvek prehrať. Organizátor môže žrebovať aj po jednom hráčovi na každé kliknutie. Žreb naživo funguje pri turnajoch aj pri skupinách ligy. |
+| Pavúk a útecha | Vyraďovací strom s výsledkami v reálnom čase. Nasadená jednotka je hore, dvojka dole a ich čísla svietia pri menách. Hráči, ktorí vypadnú, môžu pokračovať v útešnej vetve alebo hrať o umiestnenie, napríklad o 3. miesto. |
+| Pavúk po kolách | Pavúk si pozrieš ako strom alebo po kolách pod sebou, čo je na mobile prehľadnejšie. Mená hráčov, ktorí do kola ešte len môžu postúpiť, sú sivé. |
+| Predkolo alebo voľný postup | Keď sa pavúk nezaplní, organizátor si vyberie: najlepší hráči postúpia rovno do 2. kola, alebo sa najprv odohrá predkolo len so zápasmi, ktoré treba. |
+| Rozpis na viac kurtov | Aplikácia rozdelí zápasy medzi kurty a časy, kolo po kole naprieč kategóriami. Rozpis sa riadi skutočnou dĺžkou zápasov: keď sa zápas natiahne, ďalšie sa posunú. Organizátor môže zápasy presúvať ťahaním na časovej osi. Každý kurt môže mať vlastný názov, napríklad „Kurt 1“ alebo „Centrálny“. |
+| Kiosk na kurte | Na každom kurte leží telefón. Hráči si v ňom vyberú svoj zápas, skórujú ho sami a výsledok je hneď v aplikácii. Organizátor má pre celý turnaj jeden odkaz a kód a každý telefón si zvolí svoj kurt. Aplikácia stráži aj batériu telefónov a upozorní, keď dochádza. |
+| Čo sa hrá na ktorom kurte | Divák vidí, ktorý zápas práve beží na ktorom kurte, a v záložke Live video si pozrie aj prenos z kurtu. |
+| Štartovné a platby | Výška štartovného je priamo pri turnaji. Po prihlásení dostaneš údaje na prevod aj QR kód PAY by square, ktorý stačí naskenovať v banke. Organizátor vidí, kto zaplatil. |
 | Zdieľanie víťazov | Po skončení turnaja jedným klepnutím zdieľaš víťazov ako príspevok v komunite. |
 | Galéria | Fotky z turnaja na jednom mieste. |
 
@@ -95,6 +101,7 @@ Zdroj textov pre stránku `/funkcie`. Stránku generuje `node scripts/build-funk
 |---|---|
 | Vlastná stránka komunity | Klub alebo partia má svoju stránku s logom, titulnou fotkou a odkazom na pozvánku. |
 | Novinky a príspevky | Zdieľaj správy, fotky a výsledky. Ostatní reagujú, komentujú a označujú sa pomocou @mena. |
+| Reakcie pri turnajoch | Pod turnajmi a ligovými podujatiami môžu hráči reagovať a komentovať, rovnako ako pod novinkami. |
 | Označovanie hráčov | Napíš @ a meno a hráč dostane upozornenie priamo v zvončeku aj na mobile. |
 | Členovia a pozvánky | Pozvi hráčov odkazom alebo priamo z aplikácie. Ty rozhoduješ, kto sa pripojí, a môžeš žiadosti schváliť jedným klikom. |
 | Vlastné turnaje a sezóny | Komunita si môže zorganizovať vlastný turnaj alebo ligu s rovnakými možnosťami ako veľké súťaže. |
@@ -126,9 +133,10 @@ Zdroj textov pre stránku `/funkcie`. Stránku generuje `node scripts/build-funk
 
 | Funkcia | Popis |
 |---|---|
-| Skóre priamo do streamu | Organizátor si môže pridať prehľadné skóre ako grafiku k vysielaniu zápasu z kurtu. |
+| YouTube prenos naživo | Organizátor pridá ku kurtu alebo k zápasu odkaz na YouTube. Prenos sa prehrá priamo pri zápase a v záložke Live video turnaja a na úvodnej stránke má zápas štítok LIVE VIDEO. |
+| Skóre priamo do streamu | Prehľadné skóre ako grafika k vysielaniu z kurtu, aj s bodmi v geme. Každý kurt má jeden stály odkaz, napríklad /overlay/kurt-1, ktorý platí pre všetky turnaje. V OBS alebo PRISM ho nastavíš len raz. |
 | Skóre na tvojom webe | Zápas, tabuľky, rebríčky alebo pavúk môžeš zobraziť na vlastnej webovej stránke. |
-| Veľká obrazovka na turnaji | Rozpis všetkých kurtov a zápasov na jednej obrazovke pre televízor alebo projektor. |
+| Veľká obrazovka na turnaji | Rozpis všetkých kurtov a zápasov na jednej obrazovke pre televízor alebo projektor. Na ďalšiu obrazovku dáš veľké skóre jedného zápasu, ktoré sa samo aktualizuje. |
 | Odkaz na všetko | Každý zápas, turnaj aj pozvánka má vlastný odkaz, ktorý ľahko pošleš ďalej. |
 | Náhľady v chatoch | Keď pošleš odkaz do WhatsAppu či na sociálne siete, zobrazí sa pekný náhľad s názvom a výsledkom. |
 

@@ -23,6 +23,15 @@
         "value": "arial",
         "createdAt": "2026-11-17T23:27:16.782Z",
         "reason": "HTML e-mail body in src/welcomeEmail.js: mail clients cannot load web fonts, so a system font stack is the correct choice (my call, not user-confirmed)"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "public/funkcie.html"
+        ],
+        "createdAt": "2026-11-25T15:58:29.412Z",
+        "reason": "Claude measured in browser: card text #c4c4cc on the grey-tile gradient #41414a-#2e2e35 is about 5.8:1 and the green tags are higher; the checker reads the gradient cards as a transparent background"
       }
     ]
   }

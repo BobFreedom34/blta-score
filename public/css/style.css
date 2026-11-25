@@ -7766,6 +7766,7 @@ body:has(.admin-tabs) .card .tab.active { background: var(--orange); color: var(
   .bracket-wrap[data-view="tree"] .bk-mob { display: block; }
   .bracket-wrap { padding: 14px 0 14px 14px; }
   .bracket-wrap .bk-switch { margin-right: 14px; }
+  .bracket-wrap[data-view="rounds"] { padding-right: 14px; } /* (the rounds as a list: the same gap on the right as on the left; only the swiped draw runs to the edge) */
   .bk-mob-chips { display: flex; gap: 8px; margin: 0 14px 14px 0; overflow-x: auto; scrollbar-width: none; }
   .bk-mob-chips button { flex: none; min-width: 42px; padding: 8px 12px; border: 1px solid var(--frame); border-radius: var(--radius-sm); background: #0a0a0a; color: #c3c7cf; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
   .bk-mob-chips button.active { background: var(--green); border-color: var(--green); color: #0a0a0a; }
