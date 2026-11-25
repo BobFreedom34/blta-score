@@ -29,11 +29,11 @@ function seatsOf(n, k, rng) {
   return { seat, entries };
 }
 
-test('16 players, 4 seeded: seed 1 is on top, seed 2 starts the lower half', () => {
+test('16 players, 4 seeded: seed 1 is on the top line, seed 2 on the bottom line', () => {
   for (let s = 1; s <= 100; s += 1) {
     const { seat } = seatsOf(16, 4, mulberry32(s));
     assert.strictEqual(seat.get(101), 0);
-    assert.strictEqual(seat.get(102), 8);
+    assert.strictEqual(seat.get(102), 15);
   }
 });
 
@@ -41,8 +41,8 @@ test('16 players, 4 seeded: seeds 3 and 4 are drawn into the two remaining quart
   let threeLow = 0;
   for (let s = 1; s <= 200; s += 1) {
     const { seat } = seatsOf(16, 4, mulberry32(s));
-    assert.deepStrictEqual([seat.get(103), seat.get(104)].sort((a, b) => a - b), [4, 12]);
-    if (seat.get(103) === 12) threeLow += 1;
+    assert.deepStrictEqual([seat.get(103), seat.get(104)].sort((a, b) => a - b), [4, 11], 'the top of the 2nd quarter and the bottom of the 3rd');
+    if (seat.get(103) === 11) threeLow += 1;
   }
   assert.ok(threeLow > 60 && threeLow < 140, `seed 3 was in the lower quarter ${threeLow} times of 200`);
 });
@@ -81,18 +81,30 @@ test('everybody gets one seed number from 1 to n, seeded players keep numbers up
   entries.slice(0, 8).forEach((e) => assert.ok(e.playerId < 200, 'a seeded player holds a number up to 8'));
 });
 
-test('the draw in front of the camera: the plan of a bracket with seeds 3-4 / 5-8 drawn is checked and confirmed by the verifier (plan.v 2)', async () => {
+test('the draw in front of the camera: the plan of a bracket with seeds 3-4 / 5-8 drawn is checked and confirmed by the verifier (plan.v 3)', async () => {
   for (const k of [4, 8]) {
     for (let i = 0; i < 5; i += 1) {
       const key = require('crypto').randomBytes(32).toString('hex');
       const regs = players(16, k).map((r, n) => ({ ...r, id: n + 1, name: 'P' + (n + 1) }));
       const planned = liveDraw.planBracket(regs, {}, liveDraw.makeRandom(key));
-      const record = { seed: key, seedHash: liveDraw.sha256(key), plan: { v: 2, entrants: regs.map((r, input) => ({ id: r.id, name: r.name, seed: r.seed || null, input })), layout: planned.layout, steps: planned.steps } };
+      const record = { seed: key, seedHash: liveDraw.sha256(key), plan: { v: 3, entrants: regs.map((r, input) => ({ id: r.id, name: r.name, seed: r.seed || null, input })), layout: planned.layout, steps: planned.steps } };
       const out = await DrawVerify.verifyRecord(record);
       assert.ok(out.ok, out.problems.join('; '));
       // the seeded players are shown first, in the order the organiser gave
       assert.deepStrictEqual(planned.steps.slice(0, k).map((st) => st.e), regs.slice(0, k).map((r) => r.id));
     }
+  }
+});
+
+test('the tennis layout (seed 2 on the bottom line) is the classic one with the bottom half upside down; the verifier uses the layout of the version of the record', () => {
+  assert.deepStrictEqual(bracketEngine.standardSeedOrder(8), [1, 8, 4, 5, 6, 3, 7, 2]);
+  assert.deepStrictEqual(bracketEngine.classicSeedOrder(8), [1, 8, 4, 5, 2, 7, 3, 6]);
+  for (const size of [2, 4, 8, 16, 32, 64]) {
+    assert.deepStrictEqual(DrawVerify.standardSeedOrder(size, 3), bracketEngine.standardSeedOrder(size), `v3 ${size}`);
+    assert.deepStrictEqual(DrawVerify.standardSeedOrder(size, 2), bracketEngine.classicSeedOrder(size), `v2 ${size}`);
+    // who can meet whom does not change: the two halves hold the same seeds
+    const half = (o) => new Set(o.slice(0, size / 2));
+    assert.deepStrictEqual(half(bracketEngine.standardSeedOrder(size)), half(bracketEngine.classicSeedOrder(size)));
   }
 });
 

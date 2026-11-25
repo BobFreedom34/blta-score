@@ -28,7 +28,16 @@ function nextPowerOfTwo(n) {
 // neighbor as the bracket allows. Built recursively: start with the
 // 2-slot base case [1,2], then repeatedly double by mirroring each
 // existing seed to its "opposite" position at the new size.
+// The seed number of every seat of a draw of this size, top to bottom, as a tennis draw has it: seed 1 on the top line, seed 2 on the BOTTOM line,
+// seeds 3/4 at the top of the 2nd quarter and the bottom of the 3rd (lines 3 and 6 of 8, 5 and 12 of 16), and so on: the bottom half is the top half
+// mirrored. Who can meet whom is the same as in classicSeedOrder (1 and 2 only in the final, 1-4 and 2-3 in the semi-finals); only the bottom half is upside down.
 function standardSeedOrder(size) {
+  const order = classicSeedOrder(size);
+  if (order.length < 4) return order;
+  return [...order.slice(0, order.length / 2), ...order.slice(order.length / 2).reverse()];
+}
+// The layout used before 2026-11-25 (seed 2 on the top line of the bottom half). Kept: the draws recorded with it are verified with it.
+function classicSeedOrder(size) {
   let order = [1, 2];
   while (order.length < size) {
     const newSize = order.length * 2;
@@ -722,6 +731,7 @@ module.exports = {
   placeLabel,
   nextPowerOfTwo,
   standardSeedOrder,
+  classicSeedOrder,
   roundCount,
   createBracket,
   applySeeding,

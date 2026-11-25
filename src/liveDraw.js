@@ -257,7 +257,7 @@ function prepareGroups(season, category) {
     });
   }
   const plan = {
-    v: 2, // 2: the seeds 3-4, 5-8 ... of a bracket are drawn among their seats (draw-verify.js repeats it)
+    v: 3, // 2: the seeds 3-4, 5-8 ... of a bracket are drawn among their seats; 3: the seats of a bracket in the tennis layout, seed 2 on the bottom line (draw-verify.js repeats both)
     season: { id: season.id, name: season.name, slug: season.slug, kind: season.kind },
     category,
     categoryLabel: draw.CATEGORY_LABELS[category] || category,
@@ -314,7 +314,7 @@ function prepare(season, category, opts = {}) {
   } else planned = planBracket(regs, s, rng);
   if (planned.error) return planned;
   const plan = {
-    v: 2, // 2: the seeds 3-4, 5-8 ... of a bracket are drawn among their seats (draw-verify.js repeats it)
+    v: 3, // 2: the seeds 3-4, 5-8 ... of a bracket are drawn among their seats; 3: the seats of a bracket in the tennis layout, seed 2 on the bottom line (draw-verify.js repeats both)
     season: { id: season.id, name: season.name, slug: season.slug },
     category,
     categoryLabel: draw.CATEGORY_LABELS[category] || category,

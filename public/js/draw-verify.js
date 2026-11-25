@@ -36,8 +36,14 @@
     return out;
   }
 
-  // the seed number of every seat of a bracket of this size, top to bottom (the standard seeding)
-  function standardSeedOrder(size) {
+  // the seed number of every seat of a bracket of this size, top to bottom: records of version 3 and later have the tennis layout (seed 2 on the bottom line, the
+  // bottom half mirrored), older ones the classic one (the same as standardSeedOrder / classicSeedOrder in src/bracketEngine.js)
+  function standardSeedOrder(size, version = 3) {
+    const order = classicSeedOrder(size);
+    if (version < 3 || order.length < 4) return order;
+    return [...order.slice(0, order.length / 2), ...order.slice(order.length / 2).reverse()];
+  }
+  function classicSeedOrder(size) {
     let order = [1, 2];
     while (order.length < size) {
       const newSize = order.length * 2;
@@ -95,7 +101,7 @@
       if (plan.v >= 2) { // the seeds 3-4, 5-8 ... are drawn among their own seats (only a complete group), after the unseeded were shuffled; v 1 records had none
         for (let end = 4; end <= seeded.length; end *= 2) order.splice(end / 2, end / 2, ...(await shuffled(order.slice(end / 2, end), random)));
       }
-      const seats = standardSeedOrder(layout.size);
+      const seats = standardSeedOrder(layout.size, plan.v || 1);
       seats.forEach((seedNo, p) => { if (seedNo <= order.length) check(order[seedNo - 1].id, { p }); });
     } else if (layout.caps) {
       // the groups of a season: the groups already have players, every group takes what the equal division says
