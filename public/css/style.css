@@ -2761,7 +2761,7 @@ a.rank-name:hover { text-decoration: underline; }
    already reads as "winner" throughout the rest of the bracket. */
 .bracket-slot.winner .bracket-slot-name::after { content: " \2713"; color: var(--yellow); }
 .bracket-slot-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bracket-seed { color: var(--gray-dim); font-size: 11px; margin-right: 4px; font-weight: 400; }
+.bracket-seed { color: var(--green); font-size: 11px; margin-right: 4px; font-weight: 400; }
 .bracket-vs-divider { border-top: 1px solid rgba(255, 255, 255, 0.15); margin: 3px 0; }
 .bracket-match-meta { font-size: 11px; color: var(--gray-dim); margin-top: 5px; }
 .bracket-champion { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
@@ -7706,6 +7706,9 @@ body:not(.embed-light) :is(.bk-m.link:hover, .bracket-match-card-clickable:hover
 .my-badge { display: inline-flex; align-items: center; flex: none; box-sizing: border-box; margin-left: 8px; padding: 2px 8px; border-radius: var(--radius-sm); background: rgba(255, 85, 0, 0.14); border: 1px solid var(--orange); color: var(--orange); font-size: 10px; font-weight: 800; letter-spacing: 0.05em; line-height: 1.3; text-transform: uppercase; white-space: nowrap; }
 .match-card-top .my-badge { margin-left: 0; }
 .my-badge.corner { position: absolute; right: 10px; bottom: 8px; margin: 0; }
+/* a box of a draw: the badge sits on the line of the result (or the date), smaller, on its right end */
+.bracket-match-meta:has(> .my-badge) { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bracket-match-meta > .my-badge { margin-left: auto; padding: 1px 6px; font-size: 9px; line-height: 1.3; }
 /* the Rozpis rows (round view): the badge sits at the right end of the row, outside the 3-column grid flow */
 .sv-rl-m { position: relative; }
 .sv-rl-m .my-badge { position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%); margin: 0; }

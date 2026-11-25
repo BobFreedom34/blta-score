@@ -1054,7 +1054,7 @@ async function loadSponsorStrip(el, query = '') {
     // the draws (bracket-view.js) carry the ids of the players of a match: the badge sits in the corner of the box
     document.querySelectorAll('[data-players]:not([data-mine-seen])').forEach((el) => {
       el.dataset.mineSeen = '1';
-      if ((el.dataset.players || '').split(',').includes(String(currentPlayerId))) { const b = make(); b.classList.add('corner'); (el.querySelector('.bracket-match-card') || el).appendChild(b); }
+      if ((el.dataset.players || '').split(',').includes(String(currentPlayerId))) { const b = make(); const meta = el.querySelector('.bracket-match-meta'); if (meta) meta.appendChild(b); else { b.classList.add('corner'); (el.querySelector('.bracket-match-card') || el).appendChild(b); } } // (on the line of the result / date when the box has one, else in the corner)
     });
   }
   function schedule() { clearTimeout(timer); timer = setTimeout(decorate, 80); }
