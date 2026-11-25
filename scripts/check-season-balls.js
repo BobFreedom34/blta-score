@@ -48,6 +48,10 @@ test('the surface is one of clay / hard / grass / taraflex, kept by other change
   assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { surface: 'grass' })).json.surface, 'grass');
   assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { venue: 'Kurt 5' })).json.surface, 'grass');
   assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { surface: 'sand' })).status, 400);
+  // several at once, kept in a fixed order whatever order they came in
+  assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { surface: 'hard,clay' })).json.surface, 'clay,hard');
+  assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { surface: ['taraflex', 'grass'] })).json.surface, 'grass,taraflex');
+  assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { surface: 'clay,sand' })).status, 400);
   assert.strictEqual((await call('PATCH', `/api/seasons/${id}`, { surface: '' })).json.surface, '');
 });
 

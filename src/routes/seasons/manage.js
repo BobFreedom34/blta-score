@@ -73,9 +73,14 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
   const draw = req.body.drawDate !== undefined ? parseDate(req.body.drawDate) : { value: season.draw_date };
   const venue = text('venue', season.venue, 200);
   const balls = text('balls', season.balls, 100); // the balls the tournament is played with (a tile of the page)
-  const SURFACES = ['', 'clay', 'hard', 'grass', 'taraflex']; // the court surface (a tile of the page, before the balls)
-  const surface = req.body.surface === undefined ? { value: season.surface || '' } : { value: String(req.body.surface || '') };
-  if (!SURFACES.includes(surface.value)) return res.status(400).json({ error: 'The surface must be clay, hard, grass or taraflex' });
+  // the court surfaces (a tile of the page, before the balls): one or more of these, kept as "clay,hard" in this order; '' = not said
+  const SURFACES = ['clay', 'hard', 'grass', 'taraflex'];
+  let surface = { value: season.surface || '' };
+  if (req.body.surface !== undefined) {
+    const picked = (Array.isArray(req.body.surface) ? req.body.surface : String(req.body.surface || '').split(',')).map((x) => String(x).trim()).filter(Boolean);
+    if (picked.some((x) => !SURFACES.includes(x))) return res.status(400).json({ error: 'The surface must be clay, hard, grass or taraflex' });
+    surface = { value: SURFACES.filter((x) => picked.includes(x)).join(',') };
+  }
   // the organiser of a club cannot change what a club tournament is (only an admin of the site may)
   const kind = req.body.kind === undefined || !auth.isAdmin(req) ? (season.kind || 'LEAGUE') : req.body.kind;
   if (!KINDS.includes(kind)) return res.status(400).json({ error: 'The type must be LEAGUE or TOURNAMENT' });
