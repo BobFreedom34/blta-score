@@ -674,7 +674,7 @@ function playoffHtml() {
   const kindFilter = kinds.length > 1
     ? `<div class="tabs sv-line" id="sv-pkinds">${kinds.map((k) => `<button type="button" class="tab${playoffKind === k ? ' active' : ''}" data-ok="${k}">${escapeHtml(kindName(k))}<small>${inCat.filter((b) => kindOf(b) === k).length}</small></button>`).join('')}</div>` : '';
   const body = inCat.filter((b) => kinds.length < 2 || kindOf(b) === playoffKind)
-    .map((b) => `<div class="sv-bracket" data-bracket="${b.id}"><h3 class="grp-title">${escapeHtml(title(b))}</h3><div class="sv-bracket-body">${escapeHtml(t('common.loading'))}</div></div>`).join('');
+    .map((b) => `<div class="sv-bracket" data-bracket="${b.id}"><h3 class="grp-title">${escapeHtml(title(b))}${b.hidden ? ` <span class="sa-chip sa-hidden" style="vertical-align:middle" title="${escapeHtml(t('season.bracketHiddenHint'))}">${escapeHtml(t('season.bracketHidden'))}</span>` : ''}</h3><div class="sv-bracket-body">${escapeHtml(t('common.loading'))}</div></div>`).join('');
   return `<section class="sv-sec" id="sv-playoff">${filter}${kindFilter}${body}</section>`;
 }
 

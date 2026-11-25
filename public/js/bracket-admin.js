@@ -286,13 +286,14 @@ function bracketRowHtml(b) {
   return `
       <div class="bracket-admin-row" data-id="${b.id}" style="border-bottom:1px solid var(--gray-light);padding:14px 4px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <div class="bracket-name-cell" style="flex:1;min-width:160px">
-            <div class="bracket-name-display" style="font-weight:700">${escapeHtml(displayName(b))}${b.category ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.category)}</span>` : ''}${b.seasonName && b.seasonKind !== 'TOURNAMENT' ? ` <span style="font-size:11px;font-weight:700;color:var(--charcoal);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.seasonName)}</span>` : ''}${b.autoCreateMatches === false ? ` <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">${tl('Historický', 'Historical')}</span>` : ''}${b.isDoubles ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${tl('Štvorhra', 'Doubles')}</span>` : ''}</div>
+          <div class="bracket-name-cell" style="flex:1 1 100%;min-width:0">
+            <div class="bracket-name-display" style="font-weight:700">${escapeHtml(displayName(b))}${b.category ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${escapeHtml(b.category)}</span>` : ''}${b.seasonName && b.seasonKind !== 'TOURNAMENT' ? ` <span style="font-size:11px;font-weight:700;color:var(--gray);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle;display:inline-block;white-space:nowrap">${escapeHtml(b.seasonName)}</span>` : ''}${b.autoCreateMatches === false ? ` <span style="font-size:11px;font-weight:700;color:var(--gray-dim);border:1px solid var(--gray-dim);border-radius:999px;padding:1px 8px;vertical-align:middle">${tl('Historický', 'Historical')}</span>` : ''}${b.isDoubles ? ` <span style="font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);border-radius:999px;padding:1px 8px;vertical-align:middle">${tl('Štvorhra', 'Doubles')}</span>` : ''}${b.hidden ? ` <span class="sa-chip sa-hidden" style="vertical-align:middle" title="${escapeHtml(tl('Skrytý: na webe ho vidíš len ty (správca)', 'Hidden: on the site only you (an admin) see it'))}">${tl('SKRYTÝ', 'HIDDEN')}</span>` : ''}</div>
             <div style="font-size:12px;color:var(--gray)">${b.size}-${tl('pavúk', 'draw')} · ${escapeHtml(formatLabel(b.format))}</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
             <a data-public href="/bracket/${b.id}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">${tl('Zobraziť', 'View')}</a>
             <button type="button" class="btn btn-sm btn-outline" data-action="rename">${tl('Upraviť', 'Edit')}</button>
+            ${b.kind === 'CONSOLATION' ? '' : `<button type="button" class="btn btn-sm btn-outline" data-action="hide" title="${escapeHtml(b.hidden ? tl('Zverejniť: pavúk uvidia všetci', 'Make public: everybody sees the bracket') : tl('Skryť: pavúk na webe uvidíš len ty', 'Hide: on the site only you see the bracket'))}">${b.hidden ? tl('Zverejniť', 'Make public') : tl('Skryť', 'Hide')}</button>`}
             <button type="button" class="btn btn-sm btn-outline" data-action="manage">${openManagePanels.has(b.id) ? tl('Skryť miesta', 'Hide slots') : tl('Spravovať miesta', 'Manage slots')}</button>
             <button type="button" class="btn btn-sm btn-danger" data-action="delete">${tl('Zmazať', 'Delete')}</button>
           </div>
@@ -343,6 +344,17 @@ function renderList() {
       slot.innerHTML = `<p style="color:var(--gray-dim);margin:10px 4px">${tl('Načítavam…', 'Loading…')}</p>`;
       await renderManagePanel(id, slot);
       renderList();
+    });
+
+    // hide / make public (a losers bracket follows its main bracket)
+    const hideBtn = rowEl.querySelector('[data-action="hide"]');
+    if (hideBtn) hideBtn.addEventListener('click', async () => {
+      const b = brackets.find((x) => x.id === id);
+      try {
+        await api(`/brackets/${id}`, { method: 'PATCH', body: { hidden: !b.hidden } });
+        toast(b.hidden ? tl('Pavúk je zverejnený', 'The bracket is public') : tl('Pavúk je skrytý: vidíš ho len ty', 'The bracket is hidden: only you see it'));
+        await loadBrackets();
+      } catch (err) { toast(err.message); }
     });
 
     rowEl.querySelector('[data-action="rename"]').addEventListener('click', () => {

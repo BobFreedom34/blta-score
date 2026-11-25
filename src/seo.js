@@ -1129,7 +1129,7 @@ function sitemapXml(origin, { national = false, leagueId = 1 } = {}) {
   if (!hidden('article')) blog.publishedRows(leagueId).forEach((r) => add(`/article/${encodeURIComponent(r.slug_sk)}`, day(r.modified_at)));
   if (!hidden('court')) db.prepare('SELECT slug, COALESCE(seeded_at, created_at) AS lastmod FROM venues WHERE slug IS NOT NULL AND league_id = ?').all(leagueId).forEach((r) => add(`/courts/${encodeURIComponent(r.slug)}`, day(r.lastmod)));
   if (!hidden('player')) db.prepare(`SELECT slug, COALESCE((SELECT MAX(m.updated_at) FROM matches m WHERE players.id IN (m.player1_id, m.player2_id, m.player1b_id, m.player2b_id)), created_at) AS lastmod FROM players WHERE slug IS NOT NULL AND league_id = ? AND COALESCE(hidden, 0) = 0 AND ${PLAYER_HAS_MATCH}`).all(leagueId).forEach((r) => add(`/player/${encodeURIComponent(r.slug)}`, day(r.lastmod)));
-  if (!hidden('bracket')) db.prepare('SELECT id, updated_at FROM brackets WHERE league_id = ?').all(leagueId).forEach((r) => add(`/bracket/${r.id}`, day(r.updated_at)));
+  if (!hidden('bracket')) db.prepare('SELECT id, updated_at FROM brackets WHERE league_id = ? AND COALESCE(hidden, 0) = 0').all(leagueId).forEach((r) => add(`/bracket/${r.id}`, day(r.updated_at)));
   const body = entries.map((e) => {
     const sk = `${origin}${pageUrl(e.canonical, 'sk')}`;
     const en = `${origin}${pageUrl(e.canonical, 'en')}`;

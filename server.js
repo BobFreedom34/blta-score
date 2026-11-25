@@ -478,7 +478,7 @@ const TEMPLATE_ENTITY = {
   // The link preview of these pages is always their own picture (it wins over the picture of Backend > SEO, which is only the fallback when the
   // page has none): a season / tournament / bracket its hero image (the one of the season, the desktop one first), a player his photo, a court its photo.
   bracket: (id) => {
-    const b = /^\d+$/.test(id) ? db.prepare('SELECT b.name, s.hero_url, s.hero_mobile_url, s.logo_url FROM brackets b LEFT JOIN seasons s ON s.id = b.season_id WHERE b.id = ?').get(Number(id)) : null;
+    const b = /^\d+$/.test(id) ? db.prepare('SELECT b.name, s.hero_url, s.hero_mobile_url, s.logo_url FROM brackets b LEFT JOIN seasons s ON s.id = b.season_id WHERE b.id = ? AND COALESCE(b.hidden, 0) = 0').get(Number(id)) : null;
     return b ? { name: b.name, image: b.hero_url || b.hero_mobile_url || b.logo_url || '' } : null;
   },
   season: (slug, lang, leagueId) => {

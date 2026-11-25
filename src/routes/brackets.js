@@ -133,6 +133,7 @@ function serializeBracket(bracketId) {
     parentBracketId: tree.bracket.parent_bracket_id || null,
     season: seasonOf(tree.bracket.season_id),
     size: tree.bracket.size,
+    hidden: !!tree.bracket.hidden,
     autoCreateMatches: !!tree.bracket.auto_create_matches,
     rounds: bracketEngine.roundCount(tree.bracket.size),
     // played with a preliminary round (predkolo): round 1 shows only its real matches and is called Predkolo, the round after it is 1. kolo
@@ -176,6 +177,7 @@ router.get('/', auth.requireAdmin, (req, res) => {
     seasonName: (seasonOf(r.season_id) || {}).name || null,
     seasonKind: r.season_id ? ((db.prepare('SELECT kind FROM seasons WHERE id = ?').get(r.season_id) || {}).kind || 'LEAGUE') : null,
     size: r.size,
+    hidden: !!r.hidden,
     autoCreateMatches: !!r.auto_create_matches,
     createdAt: r.created_at,
   })));
@@ -188,7 +190,9 @@ router.get('/:id', (req, res) => {
   if (!payload) return res.status(404).json({ error: 'Bracket not found' });
   // whether the viewer may enter results in it (an admin; the admin of the club that runs its tournament): the bracket page draws the buttons by it
   const season = payload.season && payload.season.id ? db.prepare('SELECT * FROM seasons WHERE id = ?').get(payload.season.id) : null;
-  res.json({ ...payload, canManage: clubTournaments.canManageSeason(req, season) });
+  const canManage = clubTournaments.canManageSeason(req, season);
+  if (payload.hidden && !canManage && !auth.isAdmin(req)) return res.status(404).json({ error: 'Bracket not found' }); // (a hidden bracket: only who runs it sees it)
+  res.json({ ...payload, canManage });
 });
 
 // Two ways in: `entries` (auto-generate — [{playerId, seed}], size derived
@@ -309,6 +313,12 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byBrac
     }
     const problem = seasonProblem(finalSeason || null, finalCategory, !!bracket.is_doubles);
     if (problem) return res.status(400).json({ error: problem });
+  }
+  // hidden: the bracket (and its losers brackets) is seen only by who runs it
+  if (Object.prototype.hasOwnProperty.call(req.body, 'hidden')) {
+    const hide = req.body.hidden ? 1 : 0;
+    [id, ...bracketEngine.descendants(id)].forEach((bid) => db.prepare('UPDATE brackets SET hidden = ? WHERE id = ?').run(hide, bid));
+    if (Object.keys(fields).length === 0) return res.json(serializeBracket(id));
   }
   if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Nothing to update' });
   const sets = Object.keys(fields).map((k) => `${k} = @${k}`).join(', ');

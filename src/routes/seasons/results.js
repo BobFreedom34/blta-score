@@ -8,9 +8,10 @@ const router = require('./router');
 const { rulesOfSeason, computeGroupStandings } = require('./shared');
 
 router.get('/:id/brackets', (req, res) => {
-  const season = db.prepare('SELECT id FROM seasons WHERE id = ?').get(Number(req.params.id));
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
-  const rows = db.prepare("SELECT id, name, category, COALESCE(kind, 'MAIN') AS kind, parent_bracket_id AS parentBracketId, is_doubles AS isDoubles, feeds_round AS feedsRound, size FROM brackets WHERE season_id = ? ORDER BY id").all(season.id);
+  const seesHidden = clubTournaments.canManageSeason(req, season); // (a hidden bracket: only who runs the season sees it)
+  const rows = db.prepare("SELECT id, name, category, COALESCE(kind, 'MAIN') AS kind, parent_bracket_id AS parentBracketId, is_doubles AS isDoubles, feeds_round AS feedsRound, size, hidden FROM brackets WHERE season_id = ? ORDER BY id").all(season.id).filter((r) => seesHidden || !r.hidden);
   // the order the tabs show: a category after the other as they were made; inside one the main bracket first, then the losers brackets by the best place they play for
   // (3rd–4th, 5th–8th, 7th–8th …; see bracketPlaces), the ones whose place is not known (made long ago) last, each group by the order they were made
   const byId = new Map(rows.map((r) => [r.id, r]));
@@ -24,7 +25,7 @@ router.get('/:id/brackets', (req, res) => {
   const firstOfCategory = new Map();
   rows.forEach((r) => { if (!firstOfCategory.has(r.category)) firstOfCategory.set(r.category, r.id); });
   rows.sort((x, y) => firstOfCategory.get(x.category) - firstOfCategory.get(y.category) || startOf(x) - startOf(y) || x.id - y.id);
-  res.json(rows.map(({ feedsRound, size, ...b }) => ({ ...b, isDoubles: !!b.isDoubles })));
+  res.json(rows.map(({ feedsRound, size, ...b }) => ({ ...b, isDoubles: !!b.isDoubles, hidden: !!b.hidden })));
 });
 
 // Public: the final standings of a tournament or a season (the tab "Konečné poradie"): who finished where, from the brackets and the groups (see finalStandings.js).
@@ -32,7 +33,7 @@ router.get('/:id/final-standings', (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season || season.league_id !== leagues.actingIdOf(req)) return res.status(404).json({ error: 'Season not found' });
   if (clubTournaments.publicFace(season, req).hidden) return res.status(404).json({ error: 'Season not found' });
-  res.json(finalStandings.compute(season));
+  res.json(finalStandings.compute(season, { withHidden: clubTournaments.canManageSeason(req, season) }));
 });
 
 // Public: the group tables of one season, calculated from the matches tagged with each group (see standings.js).

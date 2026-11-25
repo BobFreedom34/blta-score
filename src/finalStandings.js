@@ -149,8 +149,9 @@ function tableSection(season, group, frozen) {
   return { key: `group-${group.id}`, title: group.name, category: group.category, complete: !counts.total || counts.total === (counts.done || 0), rows };
 }
 
-function compute(season) {
-  const brackets = db.prepare('SELECT * FROM brackets WHERE season_id = ? ORDER BY id').all(season.id);
+// opts.withHidden: false = leave the hidden brackets out (the public page); the points of the rankings (no opts) count them all
+function compute(season, opts = {}) {
+  const brackets = db.prepare('SELECT * FROM brackets WHERE season_id = ? ORDER BY id').all(season.id).filter((b) => opts.withHidden !== false || !b.hidden);
   const allGroups = db.prepare('SELECT * FROM season_groups WHERE season_id = ? ORDER BY sort_order, id').all(season.id);
   const frozen = FROZEN[season.slug] || null;
   const sections = [];

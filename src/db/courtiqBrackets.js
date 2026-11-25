@@ -150,6 +150,8 @@ if (!bracketMatchColumns.includes('consolation_seed')) db.exec('ALTER TABLE brac
 // A bracket can have several "losers" brackets (PRINCE: one for the round-1 losers; Monrad: one for the losers of every round, each with its
 // own ones again): feeds_round = the round of the parent bracket whose losers play in this one; on a node of the parent, loser_bracket_id
 // is the bracket its loser drops into and consolation_seed the seed it takes there.
+// A hidden bracket (play-off not ready yet): only an admin (and the manager of its tournament) sees it; its losers brackets follow it
+if (!bracketKindColumns.includes('hidden')) db.exec('ALTER TABLE brackets ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0');
 if (!bracketKindColumns.includes('feeds_round')) db.exec('ALTER TABLE brackets ADD COLUMN feeds_round INTEGER');
 if (!bracketMatchColumns.includes('loser_bracket_id')) db.exec('ALTER TABLE bracket_matches ADD COLUMN loser_bracket_id INTEGER');
 
