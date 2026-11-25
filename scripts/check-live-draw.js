@@ -577,6 +577,15 @@ test('the draw panel of the organiser has the button and the record link; the pa
   for (const piece of ['.dl-pool-item', '.dl-slot', '.dl-count-num', '.dl-final', '.dl-tree', '.dl-mbox', '.dl-tree-svg']) assert.ok(css.includes(piece), piece);
 });
 
+test('step by step: with the switch on, every next player is drawn only after a click or Space / Enter / →', () => {
+  const page = fs.readFileSync(path.join(ROOT, 'public', 'draw-live.html'), 'utf8');
+  const js = fs.readFileSync(path.join(ROOT, 'public', 'js', 'draw-live.js'), 'utf8');
+  assert.ok(page.includes('id="dl-step"') && page.includes('id="dl-next"'), 'the switch and the button');
+  assert.ok(js.includes("waitNext('Ďalej: nasadení hráči idú na svoje miesta')"), 'it waits before the seeded players');
+  assert.ok(/await waitNext\(`Ďalší hráč[^\n]*\n\s*await drawOne\(rest\[i\]/.test(js.replace(/\r\n/g, '\n')), 'it waits before every player');
+  assert.ok(js.includes("e.key === 'ArrowRight'") && js.includes('goNext()'), 'the keys');
+});
+
 async function main() {
   let failed = 0;
   try {

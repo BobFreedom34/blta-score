@@ -26,6 +26,7 @@
   const S = {
     plan: null, seed: '', seedHash: '', recordId, attempt: 0, attempts: 0, record: null,
     tempo: 1, sound: true, paused: false, running: false, finished: false, committed: false,
+    step: false, waitNext: null, // step by step: every next draw waits for a click (waitNext resolves it)
     entrantEls: new Map(), slotEls: new Map(), done: 0, season: null,
   };
   try { S.sound = localStorage.getItem('dl_sound') !== '0'; } catch { /* the choice is just not remembered */ }
@@ -445,6 +446,22 @@
     }
   }
 
+  // Step by step: shows what comes next and waits until the organiser clicks "Ďalší žreb" (or presses Space / Enter / →). Without it, it goes on at once.
+  function waitNext(label) {
+    if (!S.step) return Promise.resolve();
+    setCaption('PRIPRAVENÉ', label);
+    $('dl-next').textContent = label.startsWith('Ďalší hráč') ? 'Ďalší hráč ▶' : 'Ďalej ▶';
+    $('dl-next').hidden = false;
+    return new Promise((resolve) => { S.waitNext = resolve; });
+  }
+  function goNext() {
+    if (!S.waitNext) return;
+    const resolve = S.waitNext;
+    S.waitNext = null;
+    $('dl-next').hidden = true;
+    resolve();
+  }
+
   async function drawOne(step, index, count) {
     const ent = entrantOf(step.e);
     const li = S.entrantEls.get(step.e);
@@ -479,6 +496,7 @@
     const seeds = S.plan.steps.filter((s) => s.kind === 'SEED');
     const rest = S.plan.steps.filter((s) => s.kind !== 'SEED');
     if (seeds.length) {
+      await waitNext('Ďalej: nasadení hráči idú na svoje miesta');
       setCaption('NASADENÍ HRÁČI', 'Nasadení hráči idú na svoje miesta');
       await sleep(1100 / S.tempo);
       for (const step of seeds) await seatSeeded(step);
@@ -487,7 +505,11 @@
     if (rest.length) {
       setCaption('ŽREB', 'Ostatných hráčov určí náhoda');
       await sleep(1300 / S.tempo);
-      for (let i = 0; i < rest.length; i += 1) await drawOne(rest[i], i, rest.length);
+      // step by step a click draws the next player (one spin of the roulette)
+      for (let i = 0; i < rest.length; i += 1) {
+        await waitNext(`Ďalší hráč · ${describeTarget(rest[i].slot)} <small>· ${i + 1} z ${rest.length}</small>`);
+        await drawOne(rest[i], i, rest.length);
+      }
     }
     await finish();
   }
@@ -685,6 +707,10 @@
   function toggleFull() { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); }
 
   $('dl-start').onclick = start;
+  $('dl-next').onclick = goNext;
+  try { S.step = localStorage.getItem('dl_step') === '1'; } catch { /* no storage */ }
+  $('dl-step').checked = S.step;
+  $('dl-step').onchange = () => { S.step = $('dl-step').checked; try { localStorage.setItem('dl_step', S.step ? '1' : '0'); } catch { /* no storage */ } };
   $('dl-t-pause').onclick = togglePause;
   $('dl-t-sound').onclick = toggleSound;
   $('dl-t-full').onclick = toggleFull;
@@ -697,6 +723,7 @@
     const k = e.key.toLowerCase();
     if (k === 'f') toggleFull();
     else if (k === 'm') toggleSound();
+    else if (S.waitNext && (e.code === 'Space' || e.key === 'Enter' || e.key === 'ArrowRight')) { e.preventDefault(); goNext(); }
     else if (e.code === 'Space' || e.key === 'Enter') {
       e.preventDefault();
       if (!S.running && !S.finished && !$('dl-setup').hidden && !$('dl-start').disabled) start(); else togglePause();

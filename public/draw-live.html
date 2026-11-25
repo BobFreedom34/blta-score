@@ -65,6 +65,7 @@
           </select>
         </label>
         <label class="dl-check"><input type="checkbox" id="dl-sound" checked> Zvuky</label>
+        <label class="dl-check"><input type="checkbox" id="dl-step"> Po hráčoch: každého ďalšieho hráča vyžrebujem kliknutím</label>
         <label class="dl-check" id="dl-autosave-wrap"><input type="checkbox" id="dl-autosave"> Po skončení žreb sám uložiť do turnaja</label>
       </div>
       <button type="button" class="dl-btn dl-btn-go" id="dl-start" disabled>Spustiť žreb</button>
@@ -90,6 +91,9 @@
       <div class="dl-final-actions" id="dl-final-actions"></div>
     </div>
   </div>
+
+  <!-- the draw step by step: the next player is drawn only after a click (or Space / Enter / →) -->
+  <button type="button" class="dl-btn dl-btn-go dl-next-btn" id="dl-next" hidden>Ďalší hráč ▶</button>
 
   <div class="dl-toolbar" id="dl-toolbar">
     <button type="button" class="dl-tool" id="dl-t-pause" title="Pozastaviť / pokračovať (medzerník)" hidden>❚❚</button>

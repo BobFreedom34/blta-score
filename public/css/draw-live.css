@@ -164,6 +164,11 @@ html, body { margin: 0; height: 100%; background: var(--ink); }
 .dl-toolbar { position: absolute; top: calc(var(--u) * 12); right: calc(var(--u) * 14); z-index: 60; display: flex; gap: calc(var(--u) * 8); opacity: 0.55; transition: opacity 0.2s; }
 .dl-toolbar:hover { opacity: 1; }
 .dl-body.dl-idle .dl-toolbar { opacity: 0; }
+/* the draw step by step: the button that starts the next draw (bottom centre, above the board); it fades with the cursor like the toolbar, the keys still work */
+.dl-next-btn { position: absolute; left: 50%; bottom: calc(var(--u) * 24); transform: translateX(-50%); z-index: 61; font-size: calc(var(--u) * 26); padding: calc(var(--u) * 14) calc(var(--u) * 44); box-shadow: 0 calc(var(--u) * 8) calc(var(--u) * 30) rgba(0, 0, 0, 0.5); }
+.dl-next-btn:hover { transform: translateX(-50%) translateY(-2px) scale(1.02); }
+.dl-next-btn[hidden] { display: none; }
+.dl-body.dl-idle .dl-next-btn { opacity: 0; }
 .dl-tool { width: calc(var(--u) * 44); height: calc(var(--u) * 44); border-radius: calc(var(--u) * 10); border: 1px solid var(--line); background: rgba(20, 20, 24, 0.8); color: #fff; font: inherit; font-size: calc(var(--u) * 22); cursor: pointer; }
 .dl-tool[hidden] { display: none; }
 .dl-tool:hover { border-color: var(--green); }
