@@ -63,6 +63,7 @@ ${body}
 let html = shell.slice(0, startMain) + intro + shell.slice(endMain);
 html = html.replace(/<title>[^<]*<\/title>/, '<title>Funkcie - BLTA - Bratislavská Liga Tenisových Amatérov</title>')
   .replace(/<meta name="description" content="[^"]*">/, '<meta name="description" content="Všetky funkcie aplikácie BLTA Score: živé skórovanie, rebríčky, turnaje, komunity, rezervácie kurtov, prenos a správa ligy v jednom prehľade.">')
-  .replace('<script src="/js/courtiq-page.js"></script>\n', '');
+  .replace(/<script src="\/js\/courtiq-page\.js"><\/script>\r?\n/, '')
+  .replace(/<script src="\/js\/i18n-courts\.js"><\/script>\r?\n/, ''); // (no text of the courts is used on this page)
 fs.writeFileSync(path.join(root, 'public', 'funkcie.html'), html);
 console.log('public/funkcie.html', total, 'cards,', secs.length, 'categories');

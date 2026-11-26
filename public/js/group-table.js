@@ -7,7 +7,7 @@ function groupTableHtml(group) {
       <h2 class="grp-title">${escapeHtml(groupShortName(group.name))}${group.swiss ? ` <span>${escapeHtml(t('tables.swissRound', { round: group.swiss.round, rounds: group.swiss.rounds }))}</span>` : ''}${group.matchesCounted === null ? '' : ` <span>${escapeHtml(t('tables.counted', { done: group.matchesCounted, total: group.matchesTotal }))}</span>`}</h2>
       <div class="card card-dark grp-card">
         <div class="grp-head">
-          <span>#</span><span>${escapeHtml(t('tables.player'))}</span><span>${escapeHtml(t('tables.points'))}</span><span>${escapeHtml(t('tables.matches'))}</span><span>${escapeHtml(t('tables.wins'))}</span><span>${escapeHtml(t('tables.losses'))}</span><span>+/−</span>
+          <span>#</span><span>${escapeHtml(t('tables.player'))}</span><span data-short="${escapeHtml(t('tables.pointsShort'))}">${escapeHtml(t('tables.points'))}</span><span data-short="${escapeHtml(t('tables.matchesShort'))}">${escapeHtml(t('tables.matches'))}</span><span>${escapeHtml(t('tables.wins'))}</span><span>${escapeHtml(t('tables.losses'))}</span><span>+/−</span>
         </div>
         ${group.rows.length ? group.rows.map((r) => {
           const d = r.setDiff;
