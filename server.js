@@ -301,7 +301,7 @@ const SLTA_ICONS = [
 ];
 const sltaManifest = ({ id, name, shortName, description, start }) => JSON.stringify({
   id, name, short_name: shortName, description, start_url: start, scope: start, display: 'standalone',
-  background_color: '#ffffff', theme_color: '#0a0a0a', orientation: 'portrait-primary', icons: SLTA_ICONS,
+  background_color: '#ffffff', theme_color: '#0a0a0a', orientation: 'any', icons: SLTA_ICONS,
 });
 const cityManifest = (league, base) => {
   const brand = league.brand_name || `SLTA ${league.name}`;

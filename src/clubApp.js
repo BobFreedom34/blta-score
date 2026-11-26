@@ -64,7 +64,7 @@ function manifestFor(org, { page, cityBase = '' }) {
     display: 'standalone',
     background_color: '#ffffff',
     theme_color: '#0a0a0a',
-    orientation: 'portrait-primary',
+    orientation: 'any',
     icons: [icon('192', 192, 'any'), icon('512', 512, 'any'), icon('maskable', 512, 'maskable')],
   };
 }
