@@ -359,13 +359,8 @@ function chatHtml() {
 // One side of the match title: the player, or in doubles each of the pair, every name a link to the profile
 function titleSideHtml(m, side) {
   const players = m.isDoubles ? (side === 1 ? m.team1 : m.team2) : [side === 1 ? m.player1 : m.player2];
-  return players.map((p, i) => {
-    const href = `/player/${p.slug || p.id}`;
-    const link = `<a class="player-name-link" href="${href}">${escapeHtml(p.name)}</a>`;
-    const info = (!m.isDoubles || i === players.length - 1)
-      ? `<a class="player-info-link" href="${href}" title="${escapeHtml(t('common.viewProfileTitle', { name: p.name }))}">i</a>` : '';
-    return link + info;
-  }).join(' <span style="color:var(--gray-dim);font-weight:500">/</span> ');
+  // the name itself is the link to the profile (no extra (i) next to it)
+  return players.map((p) => `<a class="player-name-link" href="/player/${p.slug || p.id}" title="${escapeHtml(t('common.viewProfileTitle', { name: p.name }))}">${escapeHtml(p.name)}</a>`).join(' <span style="color:var(--gray-dim);font-weight:500">/</span> ');
 }
 
 // The card "Zmeny úrovne" of a finished match: the change of the level (CourtIQ, or the doubles rating) of each player after this match
@@ -928,34 +923,9 @@ function render(m) {
         <div class="value" id="date-display">${dateValue}</div>
         ${locationEditable ? `<button type="button" class="edit-link info-item-edit-link" data-action="open-edit-match">${t('common.edit')}</button>` : ''}
       </div>
-      <div class="info-item">
-        <div class="label">${t('player.bio.category')}</div>
-        <div class="value" id="category-display">${categoryLabel(m.category)}</div>
-        ${locationEditable ? `<button type="button" class="edit-link info-item-edit-link" data-action="open-edit-match">${t('common.edit')}</button>` : ''}
-      </div>
-      ${isAdminUser ? videoItemHtml(m) : ''}
-      ${['ELITE', 'NEXT_GEN', 'NOVICE'].includes(m.category) ? `
-      <div class="info-item">
-        <div class="label">${t('match.seasonLabel')}</div>
-        <div class="value" id="season-display">${m.season ? escapeHtml(m.season.name) : `<span style="color:var(--gray)">${t('player.bio.notSet')}</span>`}</div>
-        ${isAdminUser ? `<button type="button" class="edit-link" data-action="edit-season">${t('common.edit')}</button>` : ''}
-      </div>
-      ${m.season && m.season.kind === 'TOURNAMENT' && !m.group ? '' : `<div class="info-item">
-        <div class="label">${t('match.groupLabel')}</div>
-        <div class="value" id="group-display">${m.group ? escapeHtml(m.group.name) : `<span style="color:var(--gray)">${t('player.bio.notSet')}</span>`}</div>
-        ${isAdminUser ? `<button type="button" class="edit-link" data-action="edit-season">${t('common.edit')}</button>` : ''}
-      </div>`}
-      <div class="info-item">
-        <div class="label">${t('match.stageLabel')}</div>
-        <div class="value" id="stage-display">${m.season && m.season.kind === 'TOURNAMENT' ? escapeHtml(bracketPhaseLabel(m.bracket) || (m.group ? t('match.stageGroup') : t('match.stagePlayoff'))) : t(m.stage === 'PLAYOFF' ? 'match.stagePlayoff' : 'match.stageGroup')}</div>
-        ${isAdminUser ? `<button type="button" class="edit-link" data-action="edit-season">${t('common.edit')}</button>` : ''}
-      </div>
-      ${m.round && m.stage !== 'PLAYOFF' ? `
-      <div class="info-item">
-        <div class="label">${t('match.roundLabel')}</div>
-        <div class="value" id="round-display">${m.round}</div>
-      </div>` : ''}` : ''}
     </div>
+
+    ${matchFactsHtml(m, { isAdminUser, locationEditable })}
 
     ${awaitingProposal ? proposalCardHtml(m) : ''}
 
@@ -1028,6 +998,41 @@ async function openSeasonModal(m) {
   modal.style.display = 'flex';
 }
 
+// One card with what the match belongs to: the category pill, the season as the title, one line "phase · group · round" under it, and at the
+// bottom the live video (a link to watch it; for an admin its form) with "Upraviť" (the season, phase and group; the match itself for a match
+// outside the league). Only what is set is shown.
+function matchFactsHtml(m, { isAdminUser, locationEditable }) {
+  const league = ['ELITE', 'NEXT_GEN', 'NOVICE'].includes(m.category);
+  const tournament = m.season && m.season.kind === 'TOURNAMENT';
+  const stage = !league || !m.season ? '' : tournament ? (bracketPhaseLabel(m.bracket) || (m.group ? t('match.stageGroup') : t('match.stagePlayoff'))) : t(m.stage === 'PLAYOFF' ? 'match.stagePlayoff' : 'match.stageGroup');
+  const line = [stage, m.group ? `${t('match.groupLabel')} ${m.group.name}` : '', m.round && m.stage !== 'PLAYOFF' ? `${m.round}. ${t('match.roundLabel').toLowerCase()}` : ''].filter(Boolean).join(' · ');
+  const title = league ? (m.season ? escapeHtml(m.season.name) : (isAdminUser ? `<span class="mf-unset">${t('match.seasonLabel')}: ${t('player.bio.notSet')}</span>` : '')) : '';
+  const video = m.videoId
+    ? `<a class="mf-yt" href="${escapeHtml(m.videoUrl)}" target="_blank" rel="noopener">${courtIcon('video')}${escapeHtml(t('match.liveVideo'))}: ${escapeHtml(t('match.watchVideo'))}</a>`
+    : (isAdminUser ? `<span class="mf-unset">${t('match.liveVideo')}: ${t('player.bio.notSet').toLowerCase()}</span>` : '');
+  const videoEdit = isAdminUser ? `<button type="button" class="edit-link mf-video-edit" data-action="edit-video">${m.videoId ? t('match.videoChange') : t('match.videoAdd')}</button>` : '';
+  const edit = isAdminUser && league ? `<button type="button" class="edit-link mf-edit" data-action="edit-season">${t('common.edit')}</button>`
+    : locationEditable ? `<button type="button" class="edit-link mf-edit info-item-edit-link" data-action="open-edit-match">${t('common.edit')}</button>` : '';
+  const foot = video || videoEdit || edit ? `<div class="mf-foot"><span class="mf-video">${video}${videoEdit}</span>${edit}</div>` : '';
+  const form = isAdminUser ? `
+      <form class="video-form" id="video-form" hidden>
+        <input type="text" id="video-input" value="${escapeHtml(m.videoUrl || '')}" placeholder="${escapeHtml(t('match.videoPlaceholder'))}" autocomplete="off">
+        <div class="video-form-row">
+          <button type="submit" class="btn btn-sm btn-primary">${t('match.videoSave')}</button>
+          ${m.videoId ? `<button type="button" class="btn btn-sm btn-outline" data-action="remove-video">${t('match.videoRemove')}</button>` : ''}
+          <button type="button" class="btn btn-sm btn-outline" data-action="cancel-video">${t('common.cancel')}</button>
+        </div>
+        <div class="video-error" id="video-error"></div>
+      </form>
+      ${m.videoId ? overlayLinkHtml(m) : ''}` : '';
+  return `<div class="card match-facts" id="video-item">
+      <div class="mf-pill" id="category-display">${categoryBadge(m.category)}</div>
+      ${title ? `<div class="mf-title" id="season-display">${title}</div>` : ''}
+      ${line ? `<div class="mf-line" id="group-display">${escapeHtml(line)}</div>` : ''}
+      ${foot}${form}
+    </div>`;
+}
+
 // The YouTube video of the match, embedded under the score and the buttons — only when the admin has put a link in.
 function videoEmbedHtml(m) {
   if (!m.videoId) return '';
@@ -1038,25 +1043,6 @@ function videoEmbedHtml(m) {
     </div>`;
 }
 
-// Admin only: the tile where the YouTube link is added, changed or taken away (an info tile like Miesto / Dátum / Kategória).
-function videoItemHtml(m) {
-  return `
-      <div class="info-item" id="video-item">
-        <div class="label">${t('match.liveVideo')}</div>
-        <div class="value" id="video-display">${m.videoId ? `<a href="${escapeHtml(m.videoUrl)}" target="_blank" rel="noopener" style="color:inherit">youtube.com/watch?v=${escapeHtml(m.videoId)}</a>` : `<span style="color:var(--gray)">${t('match.videoNone')}</span>`}</div>
-        <button type="button" class="edit-link" data-action="edit-video">${m.videoId ? t('common.edit') : t('match.videoAdd')}</button>
-        <form class="video-form" id="video-form" hidden>
-          <input type="text" id="video-input" value="${escapeHtml(m.videoUrl || '')}" placeholder="${escapeHtml(t('match.videoPlaceholder'))}" autocomplete="off">
-          <div class="video-form-row">
-            <button type="submit" class="btn btn-sm btn-primary">${t('match.videoSave')}</button>
-            ${m.videoId ? `<button type="button" class="btn btn-sm btn-outline" data-action="remove-video">${t('match.videoRemove')}</button>` : ''}
-            <button type="button" class="btn btn-sm btn-outline" data-action="cancel-video">${t('common.cancel')}</button>
-          </div>
-          <div class="video-error" id="video-error"></div>
-        </form>
-        ${m.videoId ? overlayLinkHtml(m) : ''}
-      </div>`;
-}
 
 // The link of the scoreboard overlay of this match (/overlay/match/<token>, public/js/overlay.js) to put into PRISM or OBS over the YouTube stream: only for a match
 // that has a YouTube link (the overlay draws nothing without one). A city site has its city in the address (window.CITY_BASE).

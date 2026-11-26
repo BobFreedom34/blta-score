@@ -58,9 +58,17 @@ function levelDotsHtml(category) {
   return `<span class="level-dots" aria-hidden="true">${[1, 2, 3].map((i) => `<i class="${i <= filled ? 'on' : ''}"></i>`).join('')}</span>`;
 }
 
+// The pill of a league category: a coloured square with the first letter of each word of its name (Elite E, Next Gen NG, Novice N) and the name
+// beside it (the colour of the square is the level: .badge-mono.badge-ELITE etc. in style.css). Other categories keep the plain pill.
+function categoryPillHtml(category, label) {
+  if (!CATEGORY_LEVEL_DOTS[category]) return `<span class="badge badge-${category}">${escapeHtml(label)}</span>`;
+  const mono = String(label).split(/\s+/).filter(Boolean).map((w) => w[0].toUpperCase()).join('');
+  return `<span class="badge badge-${category} badge-mono"><span class="cat-mono" aria-hidden="true">${escapeHtml(mono)}</span><span class="cat-name">${escapeHtml(label)}</span></span>`;
+}
+
 function categoryBadge(category) {
-  // Badges drop the "BLTA " prefix — the level dots / colour already say it's a league division.
-  return `<span class="badge badge-${category}">${levelDotsHtml(category)}${categoryLabel(category).replace(/^BLTA /, '')}</span>`;
+  // Badges drop the "BLTA " prefix — the square already says it's a league division.
+  return categoryPillHtml(category, categoryLabel(category).replace(/^BLTA /, ''));
 }
 
 // One-line card shared by the /compact page and the /embed/compact widget:

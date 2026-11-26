@@ -94,7 +94,7 @@ test('the pages carry the pieces: the embed and the admin tile on the match page
   const js = async (f) => (await call('GET', `/js/${f}`)).text;
   const match = await js('match.js');
   assert.ok(match.includes('youtube-nocookie.com/embed/') && match.includes('video-form') && match.includes('videoBadge(m)'));
-  assert.ok(match.includes('${isAdminUser ? videoItemHtml(m) :'), 'the tile is for the admin only');
+  assert.ok(/const form = isAdminUser \? `\s*<form class="video-form" id="video-form" hidden>/.test(match), 'the form of the video is for the admin only (the card of the match facts)');
   assert.ok(match.includes('if (!m.videoId) return \'\';'), 'no link, no player');
   const common = (await Promise.all(COMMON_FILES.map((f) => js(f)))).join('\n');
   assert.ok(common.includes('function videoBadge') && common.includes('${categoryBadge(m.category)}${videoBadge(m)}'), 'the compact cards');

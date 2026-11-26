@@ -1123,7 +1123,7 @@ datalist {}
 .scoreboard td.name-cell { text-align: left; font-weight: 800; font-size: 18px; }
 .scoreboard .sub-tb { font-size: 11px; color: #9a9a9a; margin-left: 2px; }
 .scoreboard tr.winner-row td.name-cell::after { content: " \2713"; color: var(--yellow); }
-body:not(.embed-light) .scoreboard tr.winner-row td.name-cell::after { color: var(--orange); }
+body:not(.embed-light) .scoreboard tr.winner-row td.name-cell::after { color: var(--status-green); } /* the tick of the winner: green, like the won sets */
 /* match cards: the winner's name and the higher number of each set are green */
 body:not(.embed-light) .match-card .scoreboard tr.winner-row td.name-cell, body:not(.embed-light) .match-card .scoreboard tr.winner-row td.name-cell a { color: var(--status-green); }
 .match-card .scoreboard tr.winner-row td.name-cell::after { content: none; }
@@ -2755,11 +2755,8 @@ a.rank-name:hover { text-decoration: underline; }
 .bracket-match-card-clickable:hover { background: rgba(255, 255, 255, 0.12); }
 .bracket-slot { display: flex; align-items: center; padding: 2px 0; font-weight: 600; min-width: 0; }
 .bracket-slot.winner { color: var(--green-light); font-weight: 800; }
-/* Same yellow "decided" checkmark the live scoreboard's own winner row
-   uses (see tr.winner-row td.name-cell::after) — kept alongside the
-   green text color here rather than replacing it, since green is what
-   already reads as "winner" throughout the rest of the bracket. */
-.bracket-slot.winner .bracket-slot-name::after { content: " \2713"; color: var(--yellow); }
+/* The green tick of the winner, the same as the winner row of the scoreboard of a match (tr.winner-row td.name-cell::after). */
+.bracket-slot.winner .bracket-slot-name::after { content: " \2713"; color: var(--status-green); }
 .bracket-slot-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bracket-seed { color: var(--green); font-size: 11px; margin-right: 4px; font-weight: 400; }
 .bracket-vs-divider { border-top: 1px solid rgba(255, 255, 255, 0.15); margin: 3px 0; }
@@ -3166,7 +3163,7 @@ body:not(.embed-light) .match-card .notify-btn:disabled .venue-icon { color: #5f
 /* Scoped to body.match-page so the player profile, embeds and other pages keep their own styles. */
 body.match-page #match-root { --glow: 128, 132, 140; }
 body.match-page .match-header { margin-top: 26px; margin-bottom: 20px; }
-body.match-page .match-header h1 { line-height: 1.15; }
+body.match-page .match-header h1 { line-height: 1.15; font-size: 24px; } /* the names of the players over the scoreboard: 24px on every screen */
 
 /* every panel: black card, thin white border, soft grey glow on all four sides */
 body.match-page .scoreboard,
@@ -3244,6 +3241,15 @@ body.match-page #match-root #unfinished-btn { border-color: var(--border-grey); 
 body.match-page .score-controls { gap: 18px; margin: 22px 0; }
 body.match-page .score-controls .player-controls { padding: 20px 14px; gap: 12px; }
 body.match-page .score-controls .player-controls .pname { font-size: 15px; color: var(--white); }
+/* the two player cards share their rows (subgrid): a long name that takes two lines makes the name row of BOTH cards taller, so the big
+   score buttons and the −1 buttons always stand side by side on one line; the name sits at the bottom of its row, right above its button */
+@supports (grid-template-rows: subgrid) {
+  .score-controls { grid-template-rows: auto auto auto; row-gap: 0; }
+  .score-controls .player-controls { display: grid; grid-row: span 3; grid-template-rows: subgrid; justify-items: stretch; row-gap: 10px; }
+  body.match-page .score-controls .player-controls { row-gap: 12px; }
+  .score-controls .player-controls .pname { align-self: end; }
+  .score-controls .player-controls .point-games { text-align: center; }
+}
 body.match-page #match-root .btn-giant { border-radius: var(--radius-sm); text-transform: none; letter-spacing: 0; background: var(--orange); border-color: var(--orange); }
 body.match-page #match-root .btn-giant:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
 body.match-page #match-root .btn-score-number { font-size: 56px; padding: 20px 10px; letter-spacing: 0; }
@@ -7929,4 +7935,37 @@ body.match-page .scoreboard td.game-col { color: var(--green); font-weight: 800;
   body :is(#sv-tables, #tables-root) .grp-name { flex-direction: column; align-items: flex-start; gap: 1px; }
   body :is(#sv-tables, #tables-root) .grp-name b { max-width: 100%; }
   body :is(#sv-tables, #tables-root) .grp-wl { display: block; font-size: 11px; font-weight: 600; color: var(--text-3, #8b8f98); letter-spacing: 0.02em; }
+}
+
+/* The pill of a league category (categoryPillHtml in common.js): a coloured square with the short name (E / NG / N) and the name beside it in white,
+   one thin grey frame round both - Elite orange, Next Gen lime, Novice grey (the level reads from the colour, the name says it) */
+body .badge.badge-mono, body:not(.embed-light) .badge.badge-mono, body:not(.embed-light) .match-card .badge.badge-mono {
+  display: inline-flex; align-items: stretch; gap: 0; padding: 0; overflow: hidden; background: transparent; color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.22); border-radius: var(--radius-sm); line-height: 1; vertical-align: middle;
+}
+.badge-mono .cat-mono { display: flex; align-items: center; padding: 4px 7px; font-weight: 900; letter-spacing: 0.02em; }
+.badge-mono .cat-name { display: flex; align-items: center; padding: 4px 9px 4px 7px; }
+.badge-mono.badge-ELITE .cat-mono { background: #ff5500; color: #fff; }
+.badge-mono.badge-NEXT_GEN .cat-mono { background: #b2fa06; color: #0a0a0a; }
+.badge-mono.badge-NOVICE .cat-mono { background: #6d6f77; color: #fff; }
+body.embed-light .badge.badge-mono { color: #111; border-color: rgba(0, 0, 0, 0.2); }
+
+/* Match page: what the match belongs to as one card (matchFactsHtml in match.js) - the category pill, the season as the title, a grey line
+   "phase · group · round", and a footer with the live video and Upraviť */
+body.match-page #match-root .match-facts { padding: 16px 18px; margin: 0 0 16px; }
+.match-facts .mf-title { margin-top: 10px; font-size: 20px; font-weight: 800; line-height: 1.2; color: var(--white); }
+.match-facts .mf-line { margin-top: 4px; font-size: 14px; color: #c3c7cf; }
+.match-facts .mf-unset { color: var(--gray-dim); font-weight: 600; }
+.match-facts .mf-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 14px; }
+.match-facts .mf-video { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; min-width: 0; }
+.match-facts .mf-yt { display: inline-flex; align-items: center; gap: 6px; color: #ff3b30; font-weight: 700; text-decoration: none; }
+.match-facts .mf-yt .venue-icon { width: 15px; height: 15px; }
+.match-facts .edit-link { margin: 0; }
+.match-facts .video-form, .match-facts .court-overlay-url { margin-top: 12px; }
+
+/* Match page on a phone: the buttons of the match (Zastaviť, Reštartovať, Ukončiť, Nedokončený …) two in a row, so four take two rows, not four */
+@media (max-width: 600px) {
+  body.match-page #match-root .match-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  body.match-page #match-root .match-actions .btn { width: 100%; min-width: 0; margin: 0; justify-content: center; text-align: center; white-space: normal; line-height: 1.2; padding: 10px 8px; font-size: 12px; gap: 6px; }
+  body.match-page #match-root .match-actions .btn .venue-icon { flex: none; width: 15px; height: 15px; }
 }
