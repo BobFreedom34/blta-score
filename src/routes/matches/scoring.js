@@ -3,6 +3,7 @@ const engine = require('../../matchEngine');
 const { sendMatchFinishedEmail } = require('../../mailer');
 const { requireLoggedIn, requireLoggedInOrReferee, isAdmin, isReferee } = require('../../auth');
 const bracketEngine = require('../../bracketEngine');
+const tournamentSchedule = require('../../tournamentSchedule');
 const router = require('./router');
 const { getRowOr404, checkLiveScoreAccess, nowIso, broadcast, notifySubscribers, notifyPushSubscribers, checkMatchAccess, sideOf, reconcileRankingPoints, mayCorrectFinished, MAX_HISTORY, deriveWinnerId, syncBadgesIfFinished, syncCourtIQIfFinished, playsInClubMatch } = require('./shared');
 
@@ -236,6 +237,8 @@ router.post('/:token/restart', requireLoggedInOrReferee, (req, res) => {
     WHERE id = ?
   `).run(JSON.stringify(state), ts, row.id);
   const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(row.id);
+  // a tournament: a match that moved onto this time while this one was finished goes back behind it
+  tournamentSchedule.afterRestart(row.season_id, row.id);
   const payload = broadcast(req, updated);
   res.json(payload);
 

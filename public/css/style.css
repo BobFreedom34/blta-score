@@ -5201,6 +5201,7 @@ a.win-card:hover { box-shadow: none; }
 .cs-lock::before { content: ''; position: absolute; left: 1px; top: -4px; width: 4px; height: 4px; border: 1.5px solid var(--yellow); border-bottom: none; border-radius: 3px 3px 0 0; }
 .cs-drag { cursor: grab; touch-action: none; user-select: none; -webkit-user-drag: none; }
 .cs-dragging { opacity: 0.35; }
+.cs-m.cs-resizing { z-index: 8; overflow: visible; outline: 2px solid var(--orange); outline-offset: -1px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55); } /* a block being made longer is drawn over the next ones */
 .cs-ghost { position: fixed; left: 0; z-index: 1000; pointer-events: none; opacity: 0.92; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
 .cs-ghost.cs-chip, .cs-ghost.cs-m { background: #30333b; }
 .cs-drop { position: absolute; left: 4px; right: 4px; z-index: 1; border: 2px dashed var(--orange); border-radius: var(--radius-sm); background: rgba(255, 85, 0, 0.12); color: var(--orange); font-size: 12px; font-weight: 800; padding: 3px 8px; pointer-events: none; }
@@ -7071,6 +7072,8 @@ body:has(#player-bio-card) :is(.player-bio-card, .statistics-card, .rivals-card,
 @media (max-width: 480px) { .sv-play { font-size: 14px; padding: 4px 10px; gap: 5px; } }
 .sv-plays-short { flex-wrap: nowrap; gap: 5px; } /* several live draws: short buttons (E, NG, N) side by side */
 .sv-plays-short .sv-play { padding: 4px 8px; gap: 4px; white-space: nowrap; }
+/* the buttons of the live draw tile are as tall as a line of the other tiles (they must not make the tile taller) */
+.sv-tile .sv-plays .sv-play, .sv-tile .sv-plays-short .sv-play { font-size: 13px; line-height: 1.15; padding: 2px 8px; gap: 4px; }
 
 /* the reason a match has no time yet (in the tray "Nerozvrhnuté") */
 .cs-chip .cs-why { display: block; margin-top: 4px; font-size: 11px; line-height: 1.35; font-weight: 600; color: #f0b27a; white-space: normal; max-width: 240px; }

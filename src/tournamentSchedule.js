@@ -563,9 +563,9 @@ function findSlot(entries, settings, windows, players, duration, notBefore, igno
 // mode 'fill': place the planned matches that have no time yet; 'rebuild': first take every planned match the planner placed (not the
 // locked ones) off the schedule, then fill; 'compact': move the planned matches that are not locked EARLIER where time was freed (a
 // match that ended early, a shortened match) and later where a running match overran their court; 'clear': take every planned
-// match off, locked ones too; 'unlock': unlock every planned match.
+// match off, locked ones too; 'unlock': unlock every planned match. keep: ids of matches 'compact' does not move (they stay, the others make way).
 // -> { placed, skipped (matches that found no free time before the end of the tournament), moved, error }
-function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
+function autoPlan(seasonId, { mode = 'fill', now = Date.now(), keep = [] } = {}) {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(seasonId);
   if (!season || season.kind !== 'TOURNAMENT') return { error: 'Only a tournament has a court schedule' };
   const settings = settingsOf(season);
@@ -600,7 +600,7 @@ function autoPlan(seasonId, { mode = 'fill', now = Date.now() } = {}) {
   if (mode === 'compact') {
     // (a match that is overdue is taken as being played: it stays - unless another match is LIVE on its court: then it is waiting for that one and moves behind it)
     const liveCourts = new Set(rows.filter((r) => r.status === 'LIVE' && r.court_no).map((r) => r.court_no));
-    const candidates = rows.filter((r) => r.status === 'PLANNED' && r.court_no && r.scheduled_at && !r.slot_locked && !(Date.parse(r.scheduled_at) <= now && now - Date.parse(r.scheduled_at) < 12 * 60 * MIN && !liveCourts.has(r.court_no)))
+    const candidates = rows.filter((r) => r.status === 'PLANNED' && r.court_no && r.scheduled_at && !r.slot_locked && !keep.includes(r.id) && !(Date.parse(r.scheduled_at) <= now && now - Date.parse(r.scheduled_at) < 12 * 60 * MIN && !liveCourts.has(r.court_no)))
       .sort((a, b) => Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at) || a.id - b.id);
     candidates.forEach((r) => {
       const entry = entries.find((e) => e.id === r.id);
@@ -648,6 +648,19 @@ function autoPlanIfEnabled(seasonId) {
     const started = db.prepare("SELECT 1 FROM matches WHERE season_id = ? AND status IN ('LIVE', 'FINISHED') LIMIT 1").get(seasonId);
     autoPlan(seasonId, { mode: started ? 'fill' : 'rebuild' });
     autoPlan(seasonId, { mode: 'compact' });
+  } catch (err) {
+    console.error('[tournament schedule]', err.message);
+  }
+}
+
+// A match was restarted (PLANNED again at its time): a match that had moved forward onto that time while it was finished would stand at the same time on the
+// same court. The restarted match keeps its time and the planner moves the others back behind it (only with automatic scheduling on). Never throws.
+function afterRestart(seasonId, matchId, now = Date.now()) {
+  try {
+    if (!seasonId) return;
+    const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(seasonId);
+    if (!season || season.kind !== 'TOURNAMENT' || !season.court_count || season.auto_schedule === 0) return;
+    autoPlan(seasonId, { mode: 'compact', now, keep: [matchId] });
   } catch (err) {
     console.error('[tournament schedule]', err.message);
   }
@@ -727,6 +740,7 @@ module.exports = {
   setDuration,
   autoPlan,
   autoPlanIfEnabled,
+  afterRestart,
   replanOverrunning,
   localToUtcMs,
 };

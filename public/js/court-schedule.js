@@ -404,6 +404,7 @@ function csOnPointerMove(e) {
     const dy = e.clientY - csDrag.startY;
     if (!csDrag.moved && Math.abs(dy) < 4) return;
     csDrag.moved = true;
+    csDrag.el.classList.add('cs-resizing'); // over the blocks after it while it grows, so its end stays in sight
     csDrag.minutes = Math.max(15, Math.min(300, Math.round((csDrag.startMinutes + dy / csPx()) / 5) * 5));
     csDrag.el.style.height = `${csDrag.minutes * csPx() - 3}px`;
     csDrag.el.title = `${csDrag.minutes} min`;
