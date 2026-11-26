@@ -289,6 +289,7 @@ function serializeMatch(row, settings, now) {
     player1: { id: row.player1_id, name: row.p1_name, slug: row.p1_slug, seed: row.p1_seed || null, wildcard: !!row.p1_wc },
     player2: { id: row.player2_id, name: row.p2_name, slug: row.p2_slug, seed: row.p2_seed || null, wildcard: !!row.p2_wc },
     winnerId: row.winner_id || null,
+    endReason: row.end_reason || null, // WALKOVER / RETIREMENT: the schedule says W.O. / Skreč next to Skončený
     scoreSummary,
     state,
     scheduledAt: row.scheduled_at || null,

@@ -89,6 +89,12 @@ function csPlayersHtml(m) {
 // The two players, and when the match is being played or has been played their sets in the format of the match page (the same as the schedule on the whole screen): the
 // name on the left, a column per set (S1, S2, MTB) on the right with the games of that player, the winner of a set green, the tie-break points small.
 // pill: the "finished" / "live" pill of a row of the list; it stands in the line of the set labels (S1) when there is one, so it takes no line of its own
+// W.O. / Skreč of a finished match that ended by a walkover or a retirement ('' otherwise): white, where the result is
+function csEndReasonText(m) {
+  const key = m.status === 'FINISHED' && { WALKOVER: 'courts.walkover', RETIREMENT: 'courts.retired' }[m.endReason];
+  return key ? t(key) : '';
+}
+
 function csScoredPlayersHtml(m, pill) {
   const st = m.state || { sets: [] };
   const started = (s, i) => s.winner || s.p1 || s.p2 || (s.tiebreak && (s.tiebreak.p1 || s.tiebreak.p2)) || (m.status === 'LIVE' && i === st.currentSet);
@@ -141,7 +147,7 @@ function csBlockHtml(m, day, startMin, laneInfo, endMin) {
   const across = lanes ? `;left:calc(4px + (100% - 8px) * ${lanes.lane} / ${lanes.lanes});right:auto;width:calc((100% - 8px) / ${lanes.lanes} - 2px)` : '';
   return `<a class="${classes}" href="/match/${m.token}" draggable="false" data-token="${m.token}" ${movable ? 'data-drag="1"' : ''}
       style="top:${top}px;height:${minutes * csPx() - 3}px${across}" data-minutes="${real}" title="${escapeHtml(`${csTime(csStartOf(m))} · ${m.player1.name} – ${m.player2.name}`)}">
-    <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>` : ''}${finished && csState.admin ? ` <i class="cs-lock fin${unlocked ? ' open' : ''}" data-fin-lock="${m.token}" title="${escapeHtml(unlocked ? tl('Odomknutý — zápas môžeš posúvať a meniť mu dĺžku. Kliknutím ho zamkneš.', 'Unlocked — you can move the match and change its length. Click to lock it.') : tl('Skončený zápas je zamknutý. Kliknutím ho odomkneš, potom ho môžeš posúvať a meniť mu dĺžku.', 'A finished match is locked. Click to unlock it, then you can move it and change its length.'))}"></i>` : ''}${m.status === 'PLANNED' && m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="${escapeHtml(tl('Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš.', 'Locked — the planner does not move it. Click to unlock it.'))}"></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-done cs-live-pill">${escapeHtml(t('home.live'))}</b>` : ''}</span>
+    <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>${csEndReasonText(m) ? ` <b class="cs-end-txt">${escapeHtml(csEndReasonText(m))}</b>` : ''}` : ''}${finished && csState.admin ? ` <i class="cs-lock fin${unlocked ? ' open' : ''}" data-fin-lock="${m.token}" title="${escapeHtml(unlocked ? tl('Odomknutý — zápas môžeš posúvať a meniť mu dĺžku. Kliknutím ho zamkneš.', 'Unlocked — you can move the match and change its length. Click to lock it.') : tl('Skončený zápas je zamknutý. Kliknutím ho odomkneš, potom ho môžeš posúvať a meniť mu dĺžku.', 'A finished match is locked. Click to unlock it, then you can move it and change its length.'))}"></i>` : ''}${m.status === 'PLANNED' && m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="${escapeHtml(tl('Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš.', 'Locked — the planner does not move it. Click to unlock it.'))}"></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-done cs-live-pill">${escapeHtml(t('home.live'))}</b>` : ''}</span>
     <span class="cs-m-pl">${csScoredPlayersHtml(m)}</span>
     <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
     ${resizable ? `<span class="cs-resize" data-resize="1" title="${escapeHtml(tl('Potiahni na zmenu dĺžky zápasu', 'Drag to change the length of the match'))}${m.durationMinutes ? escapeHtml(tl(` (nastavených ${m.durationMinutes} min) — dvojklik vráti pôvodnú dĺžku`, ` (set to ${m.durationMinutes} min) — double-click restores the original length`)) : ''}"></span>` : ''}
@@ -237,7 +243,8 @@ function csListHtml(day) {
       <a class="cs-row ${csStatusClass(m)}" href="/match/${m.token}">
         <span class="cs-row-time">${csTime(csStartOf(m))}</span>
         <span class="cs-row-pl">${csScoredPlayersHtml(m, m.status === 'FINISHED' ? `<b class="cs-done cs-row-pill">${escapeHtml(t('courts.finished'))}</b>` : (m.status === 'LIVE' ? `<b class="cs-done cs-live-pill cs-row-pill">${escapeHtml(t('home.live'))}</b>` : ''))}</span>
-        <span class="cs-row-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
+        <span class="cs-row-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>${csEndReasonText(m) ? `
+        <span class="cs-row-st cs-row-end">${escapeHtml(csEndReasonText(m))}</span>` : ''}
       </a>`).join('');
     return `<div class="cs-list-court"><div class="cs-list-h">${escapeHtml(csCourtName(court))}${csLiveButtonHtml(court)}<em>${rows.length}</em></div>${body || `<div class="cs-row-empty">${escapeHtml(t('courts.courtFree'))}</div>`}</div>`;
   }).join('');
