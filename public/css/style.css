@@ -3203,7 +3203,8 @@ body.match-page .scoreboard.status-PLANNED { --bar: color-mix(in srgb, #8b8f98 3
 body.match-page .scoreboard.status-FINISHED, body.match-page .result-card.status-FINISHED { --bar: var(--status-green); }
 body.match-page .scoreboard.status-UNFINISHED, body.match-page .result-card.status-UNFINISHED { --bar: color-mix(in srgb, #ffb802 34%, #0a0a0a); }
 body.match-page .scoreboard th { color: #8b8f98; letter-spacing: 0.06em; }
-body.match-page .scoreboard td.set-score.current { color: var(--orange); }
+body.match-page .scoreboard td.set-score.current { color: var(--white); } /* the set being played: white (the points of the game are the green column) */
+body.match-page .scoreboard td.set-score .set-win { color: var(--status-green); } /* the games of a won set are green, like in the lists of results */
 body.match-page .timer { background: var(--fill-grey); }
 body.match-page .timer-cell .timer { background: var(--fill-grey); }
 
@@ -7566,6 +7567,7 @@ body.match-page .chat-card .com-comment-new textarea::placeholder { color: #8b8f
 body.match-page .chat-card .com-comment-new textarea:focus { border-color: var(--orange); outline: none; }
 /* the match page: the "Zmeny úrovne" card has the same 20px gap under the winner card as the blocks above it (it had none) */
 body.match-page #match-root .result-card + .lc-card { margin-top: 20px; }
+body.match-page #match-root .match-actions + .lc-card { margin-top: 20px; } /* the same gap under the buttons (Reštartovať zápas) */
 /* "Prebieha" (a running season on the home page): the red of the live state, and its dot pulses with a ring like the dot of the live tab */
 @keyframes pulse-white { 0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { box-shadow: 0 0 0 7px rgba(255, 255, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
 body .home-tl.now .home-tl-chip { background: #ee3340; color: var(--white); border-color: #ee3340; }

@@ -116,7 +116,7 @@ function scoreboardHtml(m, durationHtml) {
     const isWinner = m.status === 'FINISHED' && m.winnerId === player.id;
     const cells = setsToShow.map(({ s, i }) => {
       const isCurrent = m.status === 'LIVE' && i === state.currentSet;
-      return `<td class="set-score ${isCurrent ? 'current' : ''}">${setCell(s, playerNum)}</td>`;
+      return `<td class="set-score ${isCurrent ? 'current' : ''}">${setCell(s, playerNum, { highlightWinner: true })}</td>`;
     }).join('');
     const ball = serving === playerNum ? `<span class="serve-ball" title="${escapeHtml(t('match.servingTitle'))}">${courtIcon('ball')}</span>` : '';
     const gameCell = showGame ? `<td class="set-score game-col">${gameLabels[playerNum - 1]}</td>` : '';
