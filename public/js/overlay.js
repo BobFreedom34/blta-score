@@ -32,9 +32,27 @@
       winnerId: null,
       player1: { name: 'Róbert Sloboda' },
       player2: { name: 'Peter Pálenek' },
+      firstServer: 1,
       state: { currentSet: 1, sets: [{ p1: 6, p2: 1, winner: 1 }, { p1: 3, p2: 2, winner: null }], game: { p1: 3, p2: 2 }, log: [1] },
     },
   };
+
+  // who serves now (1 / 2), from who served first: the serve changes every game over the whole match, a tie-break is one game with its own turns
+  // (the same rule as currentServer in public/js/match.js); null when nobody chose the first server
+  function currentServer(state, firstServer) {
+    if (!firstServer || !state || !state.sets || !state.sets[state.currentSet]) return null;
+    const other = firstServer === 1 ? 2 : 1;
+    let prior = 0;
+    for (let i = 0; i < state.currentSet; i += 1) { const s = state.sets[i]; prior += s.isSuperTiebreak ? 1 : (s.p1 + s.p2); }
+    const cur = state.sets[state.currentSet];
+    if (cur.tiebreak) {
+      const tbFirst = (prior + cur.p1 + cur.p2) % 2 === 0 ? firstServer : other;
+      const point = cur.tiebreak.p1 + cur.tiebreak.p2 + 1;
+      if (point <= 1) return tbFirst;
+      return Math.floor((point - 2) / 2) % 2 === 0 ? (tbFirst === 1 ? 2 : 1) : tbFirst;
+    }
+    return (prior + cur.p1 + cur.p2) % 2 === 0 ? firstServer : other;
+  }
 
   // a doubles side is called "A / B" (two full names): its row is narrow, so it shows the surnames; a single player keeps the full name
   const rowName = (name) => (String(name || '').includes(' / ') ? String(name).split(' / ').map((n) => n.trim().split(/\s+/).pop()).join(' / ') : name);
@@ -88,18 +106,21 @@
     const cells = (player) => shown.map(({ s, i }) => cellHtml(s, player, live && i === current)).join('');
     // once somebody scores point by point, the points of the game in play (15, 30, 40, Ad) are the last column (a tie-break already shows its points in the set)
     const curSet = (m.state.sets || [])[current];
-    const showGame = live && !!m.state.log && m.state.status !== 'COMPLETE' && !!curSet && !curSet.tiebreak;
+    const showGame = live && !!(m.state.log || m.state.pointByPoint) && m.state.status !== 'COMPLETE' && !!curSet && !curSet.tiebreak;
     const labels = showGame ? gamePointLabels(m.state.game) : null;
     const gameCell = (player) => (showGame ? `<div class="ov-cell ov-game${player === 2 ? ' ov-row2' : ''}">${labels[player - 1]}</div>` : '');
     const columns = `auto repeat(${shown.length}, 67px)${showGame ? ' 86px' : ''}`;
+    // the ball next to the name of the player who serves (a match being played whose first server is known)
+    const serving = live && m.state.status !== 'COMPLETE' ? currentServer(m.state, m.firstServer) : null;
+    const ball = (player) => (serving === player ? '<i class="ov-serve" aria-label="podáva"></i>' : '');
     const tag = data.tag != null ? data.tag : (data.label || `Kurt ${data.court}`);
     const subtitle = data.subtitle != null ? data.subtitle : data.tournament;
     stage.innerHTML = `
       <div class="ov-panel">
         <div class="ov-tag"><b>${escapeHtml(tag)}</b>${subtitle ? `<span>${escapeHtml(subtitle)}</span>` : ''}</div>
         <div class="ov-board" style="grid-template-columns:${columns}">
-          <div class="ov-name"><span>${escapeHtml(rowName(m.player1.name))}</span></div>${cells(1)}${gameCell(1)}
-          <div class="ov-name ov-row2"><span>${escapeHtml(rowName(m.player2.name))}</span></div>${cells(2)}${gameCell(2)}
+          <div class="ov-name"><span>${escapeHtml(rowName(m.player1.name))}</span>${ball(1)}</div>${cells(1)}${gameCell(1)}
+          <div class="ov-name ov-row2"><span>${escapeHtml(rowName(m.player2.name))}</span>${ball(2)}</div>${cells(2)}${gameCell(2)}
         </div>
       </div>`;
   }

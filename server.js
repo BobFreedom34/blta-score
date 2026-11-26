@@ -639,13 +639,15 @@ app.use((req, res, next) => {
       return res.redirect(301, `${req.cityBase || ''}${seo.pageUrl(`/community/${encodeURIComponent(org.slug)}`, hit.lang)}${tail}`);
     }
   }
-  // a hidden event (Backend > Základné info): a visitor gets a 404 as if it did not exist, an admin sees it (and it stays out of the search engines)
+  // a hidden event (Backend > Základné info): it is in no list of the app (seasons, Harmonogram, home, sitemap), but whoever has its link opens it as
+  // usual - and the search engines are told not to list it
+  let hiddenEvent = false;
   if (hit.key === 'season' || hit.key === 'tournament') {
     let slug = hit.param;
     try { slug = decodeURIComponent(slug); } catch { /* keep it as it is */ }
     const hiddenRow = db.prepare('SELECT hidden FROM seasons WHERE slug = ?').get(slug);
     if (hiddenRow && hiddenRow.hidden) {
-      if (!auth.isAdmin(req)) return pageNotFound(res);
+      hiddenEvent = true;
       res.set('X-Robots-Tag', 'noindex, nofollow');
     }
   }
@@ -654,6 +656,7 @@ app.use((req, res, next) => {
       let param = hit.param;
       try { param = decodeURIComponent(param); } catch { /* keep it as it is */ }
       entity = TEMPLATE_ENTITY[hit.key](param, hit.lang, req.league.id);
+      if (entity && hiddenEvent) entity.noindex = true;
       // the texts of a city's blog speak of the city, not of BLTA
       if (entity && entity.html && req.cityBase) entity.html = entity.html.replace(/BLTA/g, req.league.brand_name || req.league.name);
     } catch (err) { console.error('SEO lookup failed', hit.key, err); }

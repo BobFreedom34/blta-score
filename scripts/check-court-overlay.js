@@ -91,6 +91,18 @@ test('a live match on the court is shown with the names and the games; a live ma
   assert.strictEqual((await live(season.slug, 1)).json.match.token, matches.planned, 'a live match with no court shows nowhere');
 });
 
+test('scored point by point, the court overlay gets the points of the game in play (15-30-40) and knows the match is scored by points', async () => {
+  const before = (await live(season.slug, 1)).json.match.state;
+  assert.ok(!before.pointByPoint, 'scored by games: no points column');
+  const r = await admin('POST', `/api/matches/${matches.planned}/point`, { player: 1 });
+  assert.strictEqual(r.status, 200, r.text);
+  const st = (await live(season.slug, 1)).json.match.state;
+  assert.strictEqual(st.pointByPoint, true);
+  assert.deepStrictEqual([st.game && st.game.p1, st.game && st.game.p2], [1, 0], JSON.stringify(st.game));
+  assert.ok(st.status, 'the status of the match (the overlay hides the points once it is COMPLETE)');
+  assert.strictEqual((await live(season.slug, 1)).json.match.firstServer, 1, 'who served first: the overlay draws the ball next to the player who serves');
+});
+
 test('two live matches on one court: the one that started last', async () => {
   await new Promise((r) => setTimeout(r, 30));
   db.prepare('UPDATE matches SET court_no = 1 WHERE share_token = ?').run(matches.onCourt2);

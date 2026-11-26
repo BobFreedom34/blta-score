@@ -14,7 +14,7 @@ const organisationOf = (season) => (season && season.organisation_id ? db.prepar
 // `hidden` is true for a club tournament whose club is hidden or not (any more) approved - such a tournament is not shown anywhere
 // req: the request (an admin sees a hidden event, a visitor does not)
 function publicFace(season, req) {
-  if (season && season.hidden && !(req && auth.isAdmin(req))) return { organisation: null, hidden: true };
+  // (an event hidden in Backend > Základné info is not hidden here: it is left out of every list, but its link opens it for everybody, noindex)
   if (!season || !season.organisation_id) return { organisation: null, hidden: false };
   const org = organisationOf(season);
   if (!isPublicOrg(org)) return { organisation: null, hidden: true };

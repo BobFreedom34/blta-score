@@ -1,5 +1,5 @@
-// Check of the hidden events (Backend > Základné info > "Skrytý"): a hidden tournament is a 404 for a visitor (its page, its data, the list, the schedule, the sitemap,
-// the registration) and shows normally to an admin; when the admin makes it public everybody sees it. Starts its own server on a temporary data directory.
+// Check of the hidden events (Backend > Základné info > "Skrytý"): a hidden tournament is in no list for a visitor (the list of seasons, the schedule, the sitemap),
+// but its link opens its page and data as usual, with noindex; an admin sees it everywhere; when the admin makes it public it is listed again. Own server, temporary data.
 // Run: node scripts/check-hidden-event.js
 const fs = require('fs');
 const os = require('os');
@@ -37,16 +37,19 @@ test('a tournament made as hidden is hidden', async () => {
   assert.strictEqual(made.json.hidden, true);
   cup = made.json;
 });
-test('a visitor does not see it: page, data, list, schedule, sitemap', async () => {
-  assert.strictEqual((await call('GET', `/tournament/${cup.slug}`)).status, 404, 'the page');
-  assert.strictEqual((await call('GET', `/api/seasons/by-slug/${cup.slug}`)).status, 404, 'the data');
+test('a visitor finds it in no list (seasons, schedule, sitemap), but its link opens it as usual, out of the search engines', async () => {
+  const page = await call('GET', `/tournament/${cup.slug}`);
+  assert.strictEqual(page.status, 200, 'the page opens by its link');
+  assert.match(page.res.headers.get('x-robots-tag') || '', /noindex/, 'the header tells the search engines not to list it');
+  assert.match(page.text, /<meta name="robots" content="noindex/, 'and so does the page');
+  assert.strictEqual((await call('GET', `/api/seasons/by-slug/${cup.slug}`)).status, 200, 'the data of the page');
   assert.ok(!(await call('GET', '/api/seasons')).json.some((s) => s.slug === cup.slug), 'the list');
   assert.ok(!(await call('GET', '/api/schedule')).json.some((s) => s.seasonId === cup.id), 'the schedule');
   assert.ok(!(await call('GET', '/sitemap.xml')).text.includes(cup.slug), 'the sitemap');
 });
-test('a visitor cannot register to it', async () => {
+test('the registration of it is not refused as unknown (whoever has the link can register like to any tournament)', async () => {
   const r = await call('POST', `/api/seasons/${cup.id}/registrations`, { body: { name: 'Jan Novak Test', phone: '0905123456', email: 'jan@example.com', category: 'ELITE', website: '' } });
-  assert.strictEqual(r.status, 404, r.text);
+  assert.notStrictEqual(r.status, 404, r.text);
 });
 test('an admin sees it everywhere, and the page is kept out of the search engines', async () => {
   assert.strictEqual((await call('GET', `/api/seasons/by-slug/${cup.slug}`, { cookie: adminCookie })).status, 200);
@@ -66,7 +69,8 @@ test('made public, everybody sees it', async () => {
 });
 test('and hidden again with the same switch', async () => {
   assert.strictEqual((await call('PATCH', `/api/seasons/${cup.id}`, { cookie: adminCookie, body: { hidden: true } })).json.hidden, true);
-  assert.strictEqual((await call('GET', `/tournament/${cup.slug}`)).status, 404);
+  assert.ok(!(await call('GET', '/api/seasons')).json.some((s) => s.slug === cup.slug), 'out of the list again');
+  assert.match((await call('GET', `/tournament/${cup.slug}`)).res.headers.get('x-robots-tag') || '', /noindex/);
 });
 
 async function main() {

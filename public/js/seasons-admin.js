@@ -122,7 +122,7 @@ function renderAdmin() {
         ${IS_TOURNAMENT ? `<label style="flex:1;min-width:200px;font-size:12px;font-weight:700">${tl('Miesto', 'Venue')} <span style="font-weight:600;color:var(--gray)">${tl('(nepovinné)', '(optional)')}</span>
           <input type="text" id="season-venue" maxlength="200" placeholder="${tl('Adresa alebo klub', 'Address or club')}" style="display:block;width:100%;margin-top:4px;${inputStyle}">
         </label>` : ''}
-        <label style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px"><input type="checkbox" id="season-hidden"> ${tl('Skrytý (neverejný)', 'Hidden (not public)')}</label>
+        <label style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px"><input type="checkbox" id="season-hidden"> ${tl('Skrytý (len cez odkaz)', 'Hidden (link only)')}</label>
         <button type="submit" class="btn btn-primary">${tl('Pridať', 'Add')}</button>
       </form>
       <div id="add-season-error" style="color:var(--danger);font-weight:600;margin-top:8px"></div>
@@ -458,7 +458,7 @@ function seasonCardHtml(s) {
         ${IS_TOURNAMENT ? `<span class="sa-chip future">${s.playType === 'DOUBLES' ? tl('Štvorhra', 'Doubles') : tl('Dvojhra', 'Singles')}</span>` : ''}
         <span class="sa-dates">${escapeHtml(s.startDate && s.endDate ? `${fmtDate(s.startDate)} – ${fmtDate(s.endDate)}` : '')}</span>
         <span class="sa-chip ${seasonStatus(s)}">${STATUS_LABEL[seasonStatus(s)]}</span>
-        ${s.hidden ? `<span class="sa-chip sa-hidden" title="${escapeHtml(tl('Neverejný: na webe ho vidíš len ty ako admin', 'Not public: only you, as an admin, see it on the site'))}">${tl('SKRYTÝ', 'HIDDEN')}</span>` : ''}
+        ${s.hidden ? `<span class="sa-chip sa-hidden" title="${escapeHtml(tl('Skrytý: nie je v žiadnom zozname ani vo vyhľadávačoch, otvorí sa len cez svoj odkaz', 'Hidden: in no list and not in search engines, it opens only by its link'))}">${tl('SKRYTÝ', 'HIDDEN')}</span>` : ''}
         <span class="sa-count">${IS_TOURNAMENT ? '' : `${s.groups.length} ${nounFor(s.groups.length, 'skupina', 'skupiny', 'skupín', 'group', 'groups')} · `}${s.matchCount} ${nounFor(s.matchCount, 'zápas', 'zápasy', 'zápasov', 'match', 'matches')}</span>
       </summary>
       <div class="sa-tabs" role="tablist">
@@ -481,7 +481,7 @@ function seasonCardHtml(s) {
                   <div class="sa-checks">${[['clay', tl('Antuka', 'Clay')], ['hard', 'Hard'], ['grass', tl('Tráva', 'Grass')], ['taraflex', 'Taraflex']].map(([v, n]) => `<label><input type="checkbox" data-surface="${v}"${String(s.surface || '').split(',').includes(v) ? ' checked' : ''}> ${n}</label>`).join('')}</div>
                 </div>` : ''}
                 ${IS_TOURNAMENT ? field(tl('Lopty', 'Balls'), input('balls', s.balls || '', `maxlength="100" placeholder="${escapeHtml(tl('Napr. Wilson US Open', 'E.g. Wilson US Open'))}"`), 'sa-wide') : ''}
-                <label class="sa-field sa-check sa-full"><input type="checkbox" data-field="hidden"${s.hidden ? ' checked' : ''}> ${tl('Skrytý (neverejný) — na webe ho neuvidí nikto okrem adminov, kým túto voľbu nevypneš', 'Hidden (not public) — nobody but admins sees it on the site until you turn this off')}</label>
+                <label class="sa-field sa-check sa-full"><input type="checkbox" data-field="hidden"${s.hidden ? ' checked' : ''}> ${tl('Skrytý — nebude v žiadnom zozname (Harmonogram, úvod, ligy) ani vo vyhľadávačoch; kto má jeho odkaz, otvorí ho normálne', 'Hidden — in no list (schedule, home, leagues) and not in search engines; whoever has its link opens it as usual')}</label>
                 ${IS_TOURNAMENT && s.playType === 'DOUBLES' ? `<div class="sa-field sa-wide">${tl('Typ turnaja', 'Tournament type')}
                   <div style="padding-top:6px">${tl('Štvorhra — turnaj dvojíc (typ sa po vytvorení nedá zmeniť)', 'Doubles — a tournament of pairs (the type cannot be changed after it is made)')}</div>
                 </div>` : ''}

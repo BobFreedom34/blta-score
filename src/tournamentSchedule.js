@@ -274,6 +274,10 @@ function serializeMatch(row, settings, now) {
       state = {
         currentSet: full.currentSet,
         sets: (full.sets || []).map((x) => ({ p1: x.p1, p2: x.p2, tiebreak: x.tiebreak || null, isSuperTiebreak: !!x.isSuperTiebreak, winner: x.winner || null })),
+        // the points of the game in play (15-30-40-Ad) of a match scored point by point: the court overlay (/overlay/kurt-1) shows them as its last column
+        status: full.status || null,
+        game: full.game || null,
+        pointByPoint: !!(full.log && full.log.length),
       };
     } catch { scoreSummary = null; state = null; }
   }
@@ -323,7 +327,7 @@ function getCourtLive(season, court, now = Date.now()) {
   let match = null;
   if (row) {
     const m = serializeMatch(row, settings, now);
-    match = { token: m.token, status: m.status, player1: { name: m.player1.name }, player2: { name: m.player2.name }, winnerId: m.winnerId, state: m.state };
+    match = { token: m.token, status: m.status, player1: { name: m.player1.name }, player2: { name: m.player2.name }, winnerId: m.winnerId, firstServer: row.first_server || null, state: m.state };
   }
   return { court, label: courtLabel(settings, court), tournament: season.name, match };
 }
