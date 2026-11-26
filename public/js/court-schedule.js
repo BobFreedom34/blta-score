@@ -577,8 +577,9 @@ async function csOpenKiosks() {
         if (navigator.share) { try { await navigator.share({ title: tl('Kiosk kurtu', 'Court kiosk'), text: message() }); } catch { /* closed without sharing */ } }
         else { await copyToClipboard(message()); toast(tl('Odkaz s kódom skopírovaný', 'Link with the code copied')); }
       } else if (act.dataset.ks === 'copy') {
-        await copyToClipboard(message());
-        toast(tl('Odkaz s kódom skopírovaný', 'Link with the code copied'));
+        // Kopírovať: only the link (Zdieľať sends the whole message with the code)
+        await copyToClipboard(shortUrl());
+        toast(tl('Odkaz skopírovaný', 'Link copied'));
       } else if (act.dataset.ks === 'make') {
         if (modal.querySelector('.code-box') && !confirm(tl('Vytvoriť nový odkaz? Starý odkaz, jeho kód a všetky telefóny, ktoré ho používajú, prestanú fungovať. Nový odkaz treba znova otvoriť na každom telefóne.', 'Make a new link? The old link, its code and every phone that uses it stop working. The new link has to be opened again on every phone.'))) return;
         draw(await api(base, { method: 'POST' }));

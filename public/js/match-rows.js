@@ -40,7 +40,7 @@ function resultRow(m) {
   const when = dayMonth(m.scheduledAt || m.endTime);
   return `
   <a class="home-m-row" href="/match/${m.token}">
-    <div><div class="n"><span class="w">${escapeHtml(w.name)}</span> · ${escapeHtml(l.name)}</div><div class="s">${escapeHtml([where, when].filter(Boolean).join(' · '))}${photoBadge(m, { iconOnly: true })}</div></div>
+    <div><div class="n"><span class="w">${escapeHtml(w.name)}</span> · ${escapeHtml(l.name)}</div><div class="s">${escapeHtml([where, when].filter(Boolean).join(' · '))}${photoBadge(m, { iconOnly: true })}${videoBadge(m, { iconOnly: true })}</div></div>
     <div class="r">${walkover ? 'w/o' : `${ws} : ${ls}`}<small>${escapeHtml(walkover ? t('home.walkover') : winnerScore(m, winnerIsP1))}</small></div>
   </a>`;
 }

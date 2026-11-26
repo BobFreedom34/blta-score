@@ -400,8 +400,13 @@ function tilesHtml() {
     const draws = season.liveDraws || [];
     if (!draws.length && !isTournament()) return '';
     if (!draws.length) return `<div class="sv-tile grey-tile"><div class="k">${courtIcon('playCircle')}${escapeHtml(t('season.tileLiveDraw'))}</div><div class="v sm sv-dim">${escapeHtml(t('season.liveDrawNone'))}</div></div>`;
-    const links = draws.map((d) => `<a class="sv-play" href="/draw-live?record=${d.id}">▶ ${escapeHtml(draws.length > 1 ? (CATEGORY_NAMES[d.category] || d.category) : t('season.liveDrawPlay'))}</a>`).join('');
-    return `<div class="sv-tile grey-tile"><div class="k">${courtIcon('playCircle')}${escapeHtml(t('season.tileLiveDraw'))}</div><div class="v sm sv-plays">${links}</div></div>`;
+    // several draws: one short button per category, the first letter of each word of its name (Elite E, Next Gen NG, Novice N), the full name in the tooltip
+    const initials = (name) => String(name).split(/s+/).filter(Boolean).map((w) => w[0].toUpperCase()).join('');
+    const links = draws.map((d) => {
+      const name = CATEGORY_NAMES[d.category] || d.category;
+      return `<a class="sv-play" href="/draw-live?record=${d.id}"${draws.length > 1 ? ` title="${escapeHtml(name)}" aria-label="${escapeHtml(`${t('season.tileLiveDraw')} – ${name}`)}"` : ''}>▶ ${escapeHtml(draws.length > 1 ? initials(name) : t('season.liveDrawPlay'))}</a>`;
+    }).join('');
+    return `<div class="sv-tile grey-tile"><div class="k">${courtIcon('playCircle')}${escapeHtml(t('season.tileLiveDraw'))}</div><div class="v sm sv-plays${draws.length > 1 ? ' sv-plays-short' : ''}">${links}</div></div>`;
   };
   const TILE_ICONS = { 'season.tileCats': 'layers', 'season.tilePlayers': 'users', 'season.tileCourts': 'grid' };
   // a long text (more than 24 letters: the categories, an address) takes the place of two tiles

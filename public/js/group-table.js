@@ -15,8 +15,8 @@ function groupTableHtml(group) {
           <div class="grp-row">
             <span class="grp-pos">${r.position}</span>
             ${r.player.id
-              ? `<a class="grp-name" href="/player/${encodeURIComponent(r.player.slug || r.player.id)}"><b>${escapeHtml(r.player.name)}</b></a>`
-              : `<span class="grp-name"><b>${escapeHtml(r.player.name)}</b></span>`}
+              ? `<a class="grp-name" href="/player/${encodeURIComponent(r.player.slug || r.player.id)}"><b>${escapeHtml(r.player.name)}</b><small class="grp-wl">${r.wins}${escapeHtml(t('tables.wins'))} · ${r.losses}${escapeHtml(t('tables.losses'))}</small></a>`
+              : `<span class="grp-name"><b>${escapeHtml(r.player.name)}</b><small class="grp-wl">${r.wins}${escapeHtml(t('tables.wins'))} · ${r.losses}${escapeHtml(t('tables.losses'))}</small></span>`}
             <span class="grp-pts">${r.points}</span>
             <span class="dim">${r.played}</span>
             <span class="dim">${r.wins}</span>
