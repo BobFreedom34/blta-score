@@ -74,6 +74,24 @@ test('a free time needs no pushing', () => {
   assert.deepStrictEqual([m1, mover].map(timeOf), ['1@09:00', '1@13:00']);
 });
 
+test('a longer match in a full 3-day schedule with "max 2 matches a day" is planned quickly (the server ran out of memory on it)', () => {
+  const id = Number(db.prepare("INSERT INTO seasons (name, slug, kind, start_date, end_date, court_count, match_minutes, day_start, day_end, rest_minutes, auto_schedule, max_matches_per_day, categories) VALUES ('Busy', 'busy-3', 'TOURNAMENT', ?, ?, 3, 90, '09:00', '21:00', 5, 1, 2, 'NOVICE')").run(DAY, '2030-06-17').lastInsertRowid);
+  const players = Array.from({ length: 24 }, (_, i) => Number(db.prepare('INSERT INTO players (name) VALUES (?)').run(`Busy ${i}`).lastInsertRowid));
+  const toks = [];
+  for (let k = 0; k < 36; k += 1) {
+    const tok = `busy${k}`;
+    toks.push(tok);
+    db.prepare("INSERT INTO matches (share_token, category, player1_id, player2_id, format, status, state, season_id) VALUES (?, 'NOVICE', ?, ?, 'BEST_OF_3', 'PLANNED', '{}', ?)").run(tok, players[k % 24], players[(k * 5 + 7) % 24], id);
+  }
+  schedule.autoPlan(id, { mode: 'rebuild', now: NOW });
+  const t0 = Date.now();
+  const rss0 = process.memoryUsage().rss;
+  [120, 180, 240].forEach((len, i) => assert.ok(!schedule.setDuration(db.prepare('SELECT * FROM seasons WHERE id = ?').get(id), toks[i], len).error));
+  assert.ok(Date.now() - t0 < 3000, `3 changes of length took ${Date.now() - t0} ms`);
+  assert.ok(process.memoryUsage().rss - rss0 < 150 * 1048576, `they took ${Math.round((process.memoryUsage().rss - rss0) / 1048576)} MB`);
+  assert.ok(!/function[^{]*\{[^}]*new Intl\.DateTimeFormat/.test(fs.readFileSync(path.join(__dirname, '..', 'src', 'tournamentSchedule.js'), 'utf8')), 'the date formatters are made once, not per call');
+});
+
 test('the page sends insert and shows it while dragging', () => {
   const js = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'court-schedule.js'), 'utf8');
   assert.ok(js.includes('insert: !!target.insert'), 'the drop sends insert');

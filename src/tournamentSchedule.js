@@ -17,10 +17,15 @@ const MIN = 60 * 1000;
 
 // ---------- time ----------
 
+// The formatters are made ONCE: a new Intl.DateTimeFormat per call costs native memory that the garbage collector frees late, and the planner calls
+// these hundreds of thousands of times (with "max matches per day" one change of a match length took gigabytes and the server was killed).
+const FMT_PARTS = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const FMT_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: TZ });
+const FMT_HHMM_SK = new Intl.DateTimeFormat('sk-SK', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const FMT_HHMM_GB = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+
 function tzOffsetMinutes(utcMs) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: TZ, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
-  }).formatToParts(new Date(utcMs));
+  const parts = FMT_PARTS.formatToParts(new Date(utcMs));
   const get = (type) => Number(parts.find((p) => p.type === type).value);
   return Math.round((Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second')) - utcMs) / MIN);
 }
@@ -50,7 +55,7 @@ function daysOf(season) {
 
 // the day (Bratislava) an instant falls on, "2026-05-01"
 function dayOf(utcMs) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(utcMs));
+  return FMT_DAY.format(new Date(utcMs));
 }
 
 // the end of a day without a limit: the planner may use the whole day
@@ -379,7 +384,7 @@ function whyUnscheduled(row, rows, settings, now) {
   const players = playersOf(row);
   if (findSlot(entries, settings, windows, players, length, notBefore, row.id)) return { code: 'WAIT' };
   const lastEnd = Math.max(...windows.map((w) => w[1]));
-  const hhmm = (t) => new Intl.DateTimeFormat('sk-SK', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(t));
+  const hhmm = (t) => FMT_HHMM_SK.format(new Date(t));
   if (settings.maxPerDay) {
     const mine = entries.filter((e) => e.id !== row.id && e.players.some((p) => players.includes(p)));
     const full = windows.every(([ws]) => players.some((p) => mine.filter((e) => e.players.includes(p) && dayOf(e.interval[0]) === dayOf(ws)).length >= settings.maxPerDay));
@@ -410,7 +415,7 @@ function getSchedule(season, now = Date.now()) {
       const i = intervalOf(r, settings, now);
       if (i && r.court_no && dayOf(i[0]) === day) last = Math.max(last, i[1]);
     });
-    const [h, m] = (last ? new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(last)) : '00:00').split(':').map(Number);
+    const [h, m] = (last ? FMT_HHMM_GB.format(new Date(last)) : '00:00').split(':').map(Number);
     const endMin = Math.min(23 * 60 + 55, Math.max(toMinutes(w.start) + 180, last ? (h + (m > 0 ? 1 : 0)) * 60 : 0));
     dayView[day] = { start: w.start, end: `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}` };
   });
