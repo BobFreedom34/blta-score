@@ -7984,3 +7984,5 @@ body .badge.cs-cat:not(.badge-mono) { font-size: 9.5px; padding: 1px 6px; margin
 .cs-row-time:has(.cs-cat-sq) { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 body .badge.badge-mono.cs-cat.cs-cat-sq { margin: 0; vertical-align: 0; border-color: transparent; }
 body .badge.badge-mono.cs-cat.cs-cat-sq .cat-mono { padding: 1px 5px; }
+/* dropped over a match: it goes in, the matches after it move later (a solid frame and a line at the top where it goes in) */
+.cs-drop.cs-drop-insert { border-style: solid; box-shadow: 0 -3px 0 var(--orange); z-index: 9; background: rgba(255, 85, 0, 0.22); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

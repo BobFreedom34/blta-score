@@ -433,8 +433,10 @@ function getSchedule(season, now = Date.now()) {
 
 const overlaps = (a, b) => a[0] < b[1] && b[0] < a[1];
 
-// Puts a planned match on a court at a time (court null = take it off the schedule). Returns { error, status } or { warnings }.
-function placeMatch(season, token, courtNo, scheduledAt, now = Date.now()) {
+// Puts a planned match on a court at a time (court null = take it off the schedule). Returns { error, status } or { warnings, pushed }.
+// insert: a time taken by a match that has not started is no error: the match goes in front of it (dropped on its first half) or right after it
+// (its second half), and the planned matches after it on that court that day move later as far as needed (see pushAfter).
+function placeMatch(season, token, courtNo, scheduledAt, now = Date.now(), { insert = false } = {}) {
   const settings = settingsOf(season);
   const match = db.prepare('SELECT * FROM matches WHERE share_token = ? AND season_id = ?').get(token, season.id);
   if (!match) return { status: 404, error: 'Match not found in this tournament' };
@@ -455,9 +457,22 @@ function placeMatch(season, token, courtNo, scheduledAt, now = Date.now()) {
     const current = intervalOf(match, settings, now);
     if (current) length = Math.max(15 * MIN, Math.ceil((current[1] - current[0]) / (5 * MIN)) * 5 * MIN);
   }
-  const slot = [start, start + length];
+  let slot = [start, start + length];
   const others = loadMatches(season.id).filter((r) => r.id !== match.id);
-  const clash = others.find((r) => r.court_no === courtNo && r.status !== 'FINISHED' && (() => { const i = intervalOf(r, settings, now); return i && overlaps(i, slot); })());
+  const busy = (r, sl) => r.court_no === courtNo && r.status !== 'FINISHED' && (() => { const i = intervalOf(r, settings, now); return i && overlaps(i, sl); })();
+  let pushed = 0;
+  if (insert && !finished) {
+    const hit = others.filter((r) => busy(r, slot)).sort((a, b) => intervalOf(a, settings, now)[0] - intervalOf(b, settings, now)[0])[0];
+    if (hit) {
+      const i = intervalOf(hit, settings, now);
+      // the first half of a planned match: in front of it; its second half, or a match being played: right after it
+      const at = hit.status === 'PLANNED' && start < (i[0] + i[1]) / 2 ? i[0] : i[1];
+      slot = [at, at + length];
+      pushed = pushAfter(season, settings, others, courtNo, slot, now);
+      if (pushed < 0) return { status: 409, error: `Kurt ${courtNo}: the matches after it cannot move (a match that is being played is in the way)` };
+    }
+  }
+  const clash = others.find((r) => busy(r, slot));
   if (clash) return { status: 409, error: `Kurt ${courtNo} is taken at that time (${clash.p1_name} – ${clash.p2_name})` };
   const warnings = [];
   const rest = settings.restMinutes * MIN;
@@ -488,8 +503,37 @@ function placeMatch(season, token, courtNo, scheduledAt, now = Date.now()) {
     return { warnings };
   }
   db.prepare("UPDATE matches SET scheduled_at = ?, court_no = ?, slot_locked = 1, location = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?")
-    .run(new Date(start).toISOString(), courtNo, courtLabel(settings, courtNo), match.id);
-  return { warnings };
+    .run(new Date(slot[0]).toISOString(), courtNo, courtLabel(settings, courtNo), match.id);
+  if (pushed > 0) warnings.unshift(`${pushed} ${pushed === 1 ? 'match' : 'matches'} after it moved later`);
+  return { warnings, pushed };
+}
+
+// Makes room for an inserted block on a court: every planned match on that court that day which starts at or after the block (or overlaps it) moves later,
+// one after another, so that none overlaps the one before it (a gap that was there stays when it is big enough). Matches that are being played or are
+// finished do not move: a pushed match that would meet one goes after it. Changes `others` in place (their new times) and the database.
+// -> how many matches moved, or -1 when nothing could be done
+function pushAfter(season, settings, others, courtNo, slot, now) {
+  const day = dayOf(slot[0]);
+  const onCourt = others.filter((r) => r.court_no === courtNo && intervalOf(r, settings, now) && dayOf(intervalOf(r, settings, now)[0]) === day);
+  const fixed = onCourt.filter((r) => r.status !== 'PLANNED').map((r) => intervalOf(r, settings, now));
+  const movable = onCourt.filter((r) => r.status === 'PLANNED' && intervalOf(r, settings, now)[1] > slot[0])
+    .sort((a, b) => intervalOf(a, settings, now)[0] - intervalOf(b, settings, now)[0]);
+  if (fixed.some((i) => overlaps(i, slot))) return -1;
+  let end = slot[1];
+  let moved = 0;
+  const update = db.prepare("UPDATE matches SET scheduled_at = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?");
+  for (const r of movable) {
+    const len = durationOf(r, settings);
+    let at = Math.max(intervalOf(r, settings, now)[0], end);
+    for (let guard = 0; guard < 50; guard += 1) { // past a match that does not move
+      const block = fixed.find((i) => overlaps(i, [at, at + len]));
+      if (!block) break;
+      at = block[1];
+    }
+    if (at !== ms(r.scheduled_at)) { update.run(new Date(at).toISOString(), r.id); r.scheduled_at = new Date(at).toISOString(); moved += 1; }
+    end = at + len;
+  }
+  return moved;
 }
 
 // Locks or unlocks a planned match that is on the schedule: a locked one is never moved by the planner, an unlocked one stays where it is

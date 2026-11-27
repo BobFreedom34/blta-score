@@ -59,7 +59,7 @@ router.post('/:id/schedule/auto', clubTournaments.requireSeasonManager(clubTourn
 });
 
 // { courtNo, scheduledAt } puts a match that has not started on a court at a time (the planner never moves it afterwards);
-// { courtNo: null } takes it off the schedule.
+// { courtNo: null } takes it off the schedule. insert: true = a taken time pushes the matches after it later instead of being refused.
 router.put('/:id/schedule/matches/:token', clubTournaments.requireSeasonManager(clubTournaments.byIdAndMatchToken), (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
@@ -80,7 +80,7 @@ router.put('/:id/schedule/matches/:token', clubTournaments.requireSeasonManager(
     return res.json({ warnings: [], schedule: tournamentSchedule.getSchedule(season) });
   }
   const courtNo = body.courtNo === null || body.courtNo === undefined ? null : Number(body.courtNo);
-  const done = tournamentSchedule.placeMatch(season, req.params.token, courtNo, body.scheduledAt);
+  const done = tournamentSchedule.placeMatch(season, req.params.token, courtNo, body.scheduledAt, Date.now(), { insert: body.insert === true });
   if (done.error) return res.status(done.status || 400).json({ error: done.error });
   scheduleChanged(req, season);
   res.json({ warnings: done.warnings, schedule: tournamentSchedule.getSchedule(season) });

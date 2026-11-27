@@ -388,7 +388,7 @@ function csOnPointerDown(e) {
   const el = e.target.closest('[data-drag]');
   if (!el || !csState.host.contains(el)) return;
   const rect = el.getBoundingClientRect();
-  csDrag = { el, length: Number(el.dataset.minutes) || 0, token: el.dataset.token, startX: e.clientX, startY: e.clientY, offY: e.clientY - rect.top, offX: e.clientX - rect.left, width: rect.width, height: rect.height, ghost: null, target: null, preview: null };
+  csDrag = { el, finished: el.classList.contains('cs-st-finished'), length: Number(el.dataset.minutes) || 0, token: el.dataset.token, startX: e.clientX, startY: e.clientY, offY: e.clientY - rect.top, offX: e.clientX - rect.left, width: rect.width, height: rect.height, ghost: null, target: null, preview: null };
   window.addEventListener('pointermove', csOnPointerMove);
   window.addEventListener('pointerup', csOnPointerUp);
   window.addEventListener('pointercancel', csOnPointerUp);
@@ -407,6 +407,18 @@ function csDropTarget(e) {
     const length = csDrag.length || settings.matchMinutes;
     let minutes = startMin + Math.round(((e.clientY - csDrag.offY - colRect.top) / csPx()) / CS_SNAP) * CS_SNAP;
     minutes = Math.max(startMin, Math.min(minutes, endMin - length));
+    // over a match that has not ended: the match goes in front of it (its first half) or right after it (its second half), the ones after it move later
+    const blocks = [...col.querySelectorAll('.cs-m')].filter((b) => b.dataset.token !== csDrag.token && !b.classList.contains('cs-st-finished')).map((b) => {
+      const m = csState.data.matches.find((x) => x.token === b.dataset.token);
+      const from = m ? csParts(csStartOf(m)).minutes : null;
+      return from === null ? null : { from, to: from + (Number(b.dataset.minutes) || settings.matchMinutes), live: m.status === 'LIVE' };
+    }).filter(Boolean).sort((a, b) => a.from - b.from);
+    const hit = blocks.find((b) => b.from < minutes + length && minutes < b.to);
+    if (hit && !csDrag.finished) {
+      const at = !hit.live && minutes < (hit.from + hit.to) / 2 ? hit.from : hit.to;
+      const pushes = blocks.some((b) => b.to > at && b.from < at + length);
+      return { type: 'court', col, court: Number(col.dataset.court), minutes: at, length, insert: pushes };
+    }
     return { type: 'court', col, court: Number(col.dataset.court), minutes, length };
   }
   const tray = under.closest('.cs-tray');
@@ -454,7 +466,8 @@ function csUpdateTarget(e) {
     preview.className = 'cs-drop';
     preview.style.top = `${(target.minutes - startMin) * csPx()}px`;
     preview.style.height = `${target.length * csPx() - 3}px`;
-    preview.textContent = csClock(target.minutes);
+    preview.textContent = target.insert ? `${csClock(target.minutes)} · ${tl('vložiť — ďalšie sa posunú', 'insert — the next ones move later')}` : csClock(target.minutes);
+    if (target.insert) preview.classList.add('cs-drop-insert');
     target.col.appendChild(preview);
     csDrag.preview = preview;
   }
@@ -519,7 +532,7 @@ function csOnPointerUp() {
   if (!target) return;
   const base = `/seasons/${csState.season.id}/schedule/matches/${drag.token}`;
   if (target.type === 'court') {
-    csApply(api(base, { method: 'PUT', body: { courtNo: target.court, scheduledAt: csLocalToIso(csChoice.day, target.minutes) } }));
+    csApply(api(base, { method: 'PUT', body: { courtNo: target.court, scheduledAt: csLocalToIso(csChoice.day, target.minutes), insert: !!target.insert } }));
   } else if (drag.el.classList.contains('cs-m') && !drag.el.classList.contains('cs-st-finished')) { // (a finished match stays on the schedule)
     csApply(api(base, { method: 'PUT', body: { courtNo: null } }));
   }
