@@ -92,6 +92,22 @@ test('a longer match in a full 3-day schedule with "max 2 matches a day" is plan
   assert.ok(!/function[^{]*\{[^}]*new Intl\.DateTimeFormat/.test(fs.readFileSync(path.join(__dirname, '..', 'src', 'tournamentSchedule.js'), 'utf8')), 'the date formatters are made once, not per call');
 });
 
+test('a match made longer pushes only the matches after it on its own court; nothing jumps to another court (automatic schedule on, not started)', () => {
+  const id = Number(db.prepare("INSERT INTO seasons (name, slug, kind, start_date, end_date, court_count, match_minutes, day_start, day_end, rest_minutes, auto_schedule, categories) VALUES ('Longer', 'longer-1', 'TOURNAMENT', ?, ?, 3, 90, '09:00', '21:00', 0, 1, 'NOVICE')").run(DAY, DAY).lastInsertRowid);
+  const add = (tok, court, hhmm) => {
+    const a = Number(db.prepare('INSERT INTO players (name) VALUES (?)').run(`Longer ${tok} A`).lastInsertRowid);
+    const b = Number(db.prepare('INSERT INTO players (name) VALUES (?)').run(`Longer ${tok} B`).lastInsertRowid);
+    db.prepare("INSERT INTO matches (share_token, category, player1_id, player2_id, scheduled_at, court_no, slot_locked, format, status, state, season_id) VALUES (?, 'NOVICE', ?, ?, ?, ?, 0, 'BEST_OF_3', 'PLANNED', '{}', ?)").run(tok, a, b, iso(at(hhmm)), court, id);
+    return tok;
+  };
+  const c3a = add('lg1', 3, '17:00'); const c3b = add('lg2', 3, '18:30');
+  const c1 = add('lg3', 1, '09:00'); // court 1 is free from 10:30: the planner used to move lg2 there
+  const done = schedule.setDuration(db.prepare('SELECT * FROM seasons WHERE id = ?').get(id), c3a, 120);
+  assert.ok(!done.error, done.error);
+  assert.strictEqual(done.pushed, 1);
+  assert.deepStrictEqual([c3a, c3b, c1].map(timeOf), ['3@17:00', '3@19:00', '1@09:00'], 'the next match stays on Kurt 3, 30 minutes later');
+});
+
 test('the page sends insert and shows it while dragging', () => {
   const js = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'court-schedule.js'), 'utf8');
   assert.ok(js.includes('insert: !!target.insert'), 'the drop sends insert');

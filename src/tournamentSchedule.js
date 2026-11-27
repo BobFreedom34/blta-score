@@ -754,6 +754,7 @@ function setDuration(season, token, minutes) {
   if (!match) return { status: 404, error: 'Match not found in this tournament' };
   if (match.status === 'LIVE') return { status: 409, error: 'A match that is being played cannot be given another length' };
   if (minutes !== null && (!Number.isInteger(minutes) || minutes < 15 || minutes > 300 || minutes % 5 !== 0)) return { status: 400, error: 'The length of a match must be 15 to 300 minutes, a multiple of 5' };
+  const before = intervalOf(match, settingsOf(season), Date.now());
   if (match.status === 'FINISHED') {
     // a finished match is drawn from its real start to its real end; once the organiser sets a length (or moves it) it is drawn from scheduled_at + length instead
     // (the real times stay in the match). null = back to the real times.
@@ -767,12 +768,43 @@ function setDuration(season, token, minutes) {
       }
       db.prepare("UPDATE matches SET duration_minutes = ?, manual_block = 1, scheduled_at = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(minutes, scheduledAt, match.id);
     }
-    autoPlanIfEnabled(season.id);
-    return { ok: true };
+    return { ok: true, pushed: makeRoomAfter(season, match.id, before) };
   }
   db.prepare("UPDATE matches SET duration_minutes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(minutes, match.id);
-  autoPlanIfEnabled(season.id);
-  return { ok: true };
+  return { ok: true, pushed: makeRoomAfter(season, match.id, before) };
+}
+
+// After the length of a match changed, only ITS COURT changes (the planner used to lay out every unlocked match again, so a match further down jumped to
+// another court): longer - the planned matches after it move later as far as needed (pushAfter); shorter - the planned matches that followed it without a
+// gap move earlier by as much as it got shorter (a gap the organiser left stays). With "automatic schedule" the matches without a time are still placed.
+// before: its [start, end] before the change -> how many matches moved later
+function makeRoomAfter(season, matchId, before, now = Date.now()) {
+  const settings = settingsOf(season);
+  const rows = loadMatches(season.id);
+  const row = rows.find((r) => r.id === matchId);
+  const interval = row && row.court_no ? intervalOf(row, settings, now) : null;
+  let pushed = 0;
+  if (interval && before && interval[1] < before[1]) {
+    // the chain of planned matches that started where the one before ended
+    const delta = before[1] - interval[1];
+    const after = rows.filter((r) => r.id !== matchId && r.court_no === row.court_no && r.status === 'PLANNED' && r.scheduled_at)
+      .sort((a, b) => ms(a.scheduled_at) - ms(b.scheduled_at));
+    const update = db.prepare("UPDATE matches SET scheduled_at = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?");
+    let end = before[1];
+    for (const r of after) {
+      const start = ms(r.scheduled_at);
+      if (start < end) continue;
+      if (start !== end) break;
+      end = start + durationOf(r, settings);
+      update.run(new Date(start - delta).toISOString(), r.id); // (moved earlier: not counted, the count is for the message "moved later")
+    }
+  } else if (interval) {
+    pushed = Math.max(0, pushAfter(season, settings, rows.filter((r) => r.id !== matchId), row.court_no, interval, now));
+  }
+  if (season.auto_schedule !== 0 && season.court_count) {
+    try { autoPlan(season.id, { mode: 'fill', now }); } catch (err) { console.error('[tournament schedule]', err.message); }
+  }
+  return pushed;
 }
 
 module.exports = {

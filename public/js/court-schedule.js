@@ -374,7 +374,9 @@ async function csApply(promise, okMessage) {
   try {
     const res = await promise;
     csState.data = res.schedule || res;
-    if (res.warnings && res.warnings.length) toast(res.warnings.join(' '));
+    // ("N matches after it moved later": the matches behind it on its court made room)
+    const said = (w) => w.replace(/^(d+) match(?:es)? after it moved later$/, (x, n) => tl(`Zápasy za ním na tomto kurte sa posunuli neskôr: ${n}`, `${n} ${n === '1' ? 'match' : 'matches'} after it moved later`));
+    if (res.warnings && res.warnings.length) toast(res.warnings.map(said).join(' '));
     else if (okMessage) toast(okMessage);
   } catch (err) {
     toast(err.message);

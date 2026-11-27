@@ -100,7 +100,7 @@ router.put('/:id/schedule/matches/:token', clubTournaments.requireSeasonManager(
     const set = tournamentSchedule.setDuration(season, req.params.token, minutes);
     if (set.error) return refuse(set.status, set.error);
     scheduleChanged(req, season);
-    return res.json({ warnings: [], schedule: scheduleFor(req, season) });
+    return res.json({ warnings: set.pushed ? [`${set.pushed} ${set.pushed === 1 ? 'match' : 'matches'} after it moved later`] : [], schedule: scheduleFor(req, season) });
   }
   // { locked: true | false } alone: lock or unlock a match where it is
   if (typeof body.locked === 'boolean' && body.courtNo === undefined) {
