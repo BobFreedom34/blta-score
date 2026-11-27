@@ -7977,3 +7977,6 @@ body .badge.badge-mono.cs-cat { font-size: 9.5px; letter-spacing: 0.03em; border
 body .badge.badge-mono.cs-cat .cat-mono { padding: 1px 4px; }
 body .badge.badge-mono.cs-cat .cat-name { padding: 1px 6px 1px 5px; }
 body .badge.cs-cat:not(.badge-mono) { font-size: 9.5px; padding: 1px 6px; margin-right: 4px; }
+/* a little air between the names and the pill */
+.cs-row-meta:has(.cs-cat) { margin-top: 5px; }
+.cs-m-meta:has(.cs-cat) { display: block; margin-top: 4px; }
