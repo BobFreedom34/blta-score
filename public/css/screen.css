@@ -214,3 +214,7 @@ body.screen-page.idle.is-full .scr-foot { opacity: 0; }
 /* the S1 / S2 labels are smaller than the games under them: their cells are as wide as the cells of the games (the width is in em of the smaller type, so it is divided by its size) */
 .stc-pl-head .stc-sc > span { width: calc(2.4em / 0.7); }
 .stc-m .stc-pl-head .stc-sc > span { width: calc(1.9em / 0.7); }
+
+/* the category as on the tournament page: in the list the coloured square (E / NG / N) above the time, in the timeline the small pill in the grey line */
+.stc-row-time:has(.cs-cat-sq) { display: flex; flex-direction: column; align-items: flex-start; gap: 0.3em; }
+.stc-m-meta .badge.cs-cat { font-size: 0.85em; }

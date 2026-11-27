@@ -58,7 +58,6 @@ function stcPlayers(m, pill) {
   return `<span class="stc-pl">${head ? '' : (pill || '')}${head}${line(m.player1, 1)}${line(m.player2, 2)}</span>`;
 }
 
-const stcMeta = (m) => escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '));
 
 // ---------- the timeline: every court side by side, the matches of the day cover the height of the screen ----------
 
@@ -95,7 +94,7 @@ function stcTimelineHtml(day) {
       return `<div class="${classes}" style="top:${pct(parts.minutes)};height:calc(${(real / span) * 100}% - 2px)">
         <div class="stc-m-l1"><span class="stc-m-time">${csTime(csStartOf(m))}${stcPill(m)}</span></div>
         <div class="stc-m-pl">${stcPlayers(m)}</div>
-        <div class="stc-m-meta">${stcMeta(m)}</div>
+        <div class="stc-m-meta">${csMetaHtml(m)}</div>
       </div>`;
     }).join('');
     return `<div class="stc-colwrap"><div class="stc-h"><span>${escapeHtml(t('courts.court', { n: court }))}</span><em>${ofCourt.length}</em></div><div class="stc-col">${lines.join('')}${nowLine}${blocks}</div></div>`;
@@ -126,9 +125,9 @@ function stcListHtml(day) {
     const body = rows.map((m) => {
       return `
       <div class="stc-row stc-st-${String(m.status || 'PLANNED').toLowerCase()}">
-        <span class="stc-row-time">${csTime(csStartOf(m))}</span>
+        <span class="stc-row-time">${csCatSquareHtml(m)}${csTime(csStartOf(m))}</span>
         <span class="stc-row-pl">${stcPlayers(m, stcPill(m))}</span>
-        <span class="stc-row-meta">${stcMeta(m)}</span>
+        <span class="stc-row-meta">${csMetaHtml(m, { squareShown: !!csCatSquareHtml(m) })}</span>
       </div>`;
     }).join('');
     return `<div class="stc-lcol"><div class="stc-h"><span>${escapeHtml(t('courts.court', { n: court }))}</span><em>${rows.length}</em></div><div class="stc-lrows">${body || `<div class="stc-empty">${escapeHtml(t('courts.courtFree'))}</div>`}</div></div>`;
