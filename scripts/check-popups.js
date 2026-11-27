@@ -190,6 +190,18 @@ test('registering through the popup asks no category (the organiser sorts the pl
   const regs = await call('GET', `/api/seasons/${setup.season.id}/registrations`, { cookie: adminCookie });
   assert.strictEqual(regs.json.find((r) => r.player_id === d.id || r.name === d.name).category, '');
 });
+test('a player who said no and was then registered by the organiser (also under another profile of his name, or straight into a group) leaves the "said no" list', async () => {
+  const z = await makePlayer('Pop Zeta');
+  assert.strictEqual((await playerPost(z, setup.popup.id, 'seen')).status, 200);
+  assert.strictEqual((await playerPost(z, setup.popup.id, 'decline')).status, 200);
+  const declined = async () => (await get()).popups[0].stats.declinedPlayers.map((d) => d.name);
+  assert.ok((await declined()).includes('Pop Zeta'));
+  const { DatabaseSync } = require('node:sqlite');
+  const file = new DatabaseSync(path.join(dir, 'blta-score.db'));
+  file.prepare("INSERT INTO season_registrations (season_id, player_id, name, phone, email, category) VALUES (?, NULL, 'Pop Zeta', '', '', '')").run(setup.season.id);
+  file.close();
+  assert.ok(!(await declined()).includes('Pop Zeta'), 'registered under the name: not in the "said no" list');
+});
 test('the preview shows what a player sees; a popup is deleted with its numbers', async () => {
   const pv = await call('GET', `/api/popups/${setup.popup.id}/preview`, { cookie: adminCookie });
   assert.strictEqual(pv.status, 200);

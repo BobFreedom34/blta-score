@@ -4,6 +4,7 @@
 // registers (through the pop-up or on the page of the event) is not asked any more. The numbers (shown / registered / declined / waiting) are counted from
 // the same rows, so the organiser sees what the pop-up did.
 const db = require('./db');
+const nameMatch = require('./nameMatch');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS event_popups (
@@ -68,12 +69,16 @@ function statusOf(p, season, now = Date.now()) {
 
 function counts(popup) {
   const rows = db.prepare('SELECT * FROM event_popup_responses WHERE popup_id = ?').all(popup.id);
-  const registered = new Set(db.prepare('SELECT player_id FROM season_registrations WHERE season_id = ? AND player_id IS NOT NULL').all(popup.season_id).map((r) => r.player_id));
+  // registered = by the player, by the name (the organiser may have registered him under another profile of the same name), or put straight into a group of the season
+  const regs = db.prepare('SELECT player_id, name FROM season_registrations WHERE season_id = ?').all(popup.season_id);
+  const registeredIds = new Set(regs.filter((r) => r.player_id).map((r) => r.player_id));
+  for (const m of db.prepare('SELECT gm.player_id FROM season_group_members gm JOIN season_groups g ON g.id = gm.group_id WHERE g.season_id = ? AND gm.withdrawn_at IS NULL').all(popup.season_id)) registeredIds.add(m.player_id);
+  const registeredNames = new Set(regs.map((r) => nameMatch.key(r.name)));
   const shown = rows.filter((r) => r.shown_count > 0);
   const names = new Map(db.prepare(`SELECT id, name FROM players WHERE id IN (${rows.map(() => '?').join(',') || 'NULL'})`).all(...rows.map((r) => r.player_id)).map((p) => [p.id, p.name]));
   const out = { declinedPlayers: [], shown: shown.length, impressions: rows.reduce((n, r) => n + r.shown_count, 0), registered: 0, declined: 0, waiting: 0, reasons: { NO_TIME: 0, NOT_THIS_TIME: 0, OTHER: 0 } };
   for (const r of shown) {
-    if (registered.has(r.player_id)) out.registered += 1;
+    if (registeredIds.has(r.player_id) || (names.has(r.player_id) && registeredNames.has(nameMatch.key(names.get(r.player_id))))) out.registered += 1;
     else if (r.declined_at) { out.declined += 1; out.declinedPlayers.push({ id: r.player_id, name: names.get(r.player_id) || '(deleted player)', reason: r.reason || '', at: r.declined_at }); if (out.reasons[r.reason] !== undefined) out.reasons[r.reason] += 1; } else out.waiting += 1;
   }
   out.declinedPlayers.sort((a, b) => b.at.localeCompare(a.at)); // the latest first
