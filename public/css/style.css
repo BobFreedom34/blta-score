@@ -7988,8 +7988,9 @@ body .badge.badge-mono.cs-cat.cs-cat-sq .cat-mono { padding: 1px 5px; }
 .cs-drop.cs-drop-insert { border-style: solid; box-shadow: 0 -3px 0 var(--orange); z-index: 9; background: rgba(255, 85, 0, 0.22); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* "Krok späť" of the court schedule (organiser), next to Celá obrazovka; the number = how many steps can be undone */
-.cs-undo, body .btn.cs-undo { display: inline-flex; align-items: center; gap: 6px; background: transparent; color: var(--white); border: 1px solid var(--frame, rgba(255, 255, 255, 0.3)); }
-body .btn.cs-undo:not(:disabled):hover { border-color: var(--frame-hover, rgba(255, 255, 255, 0.8)); color: var(--white); }
+.cs-undo, body .btn.cs-undo { display: inline-flex; align-items: center; gap: 6px; background: transparent; color: var(--white); border: 2px solid var(--frame, rgba(255, 255, 255, 0.3)); box-shadow: none; } /* (the same button as Celá obrazovka next to it: same size, a grey frame instead of the orange one) */
+body .btn.cs-undo:not(:disabled):hover { background: rgba(255, 255, 255, 0.06); border-color: var(--frame-hover, rgba(255, 255, 255, 0.8)); color: var(--white); }
 .cs-undo span { font-size: 16px; line-height: 1; }
 .cs-undo em { font-style: normal; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); }
-body .btn.cs-undo:disabled { opacity: 0.45; cursor: default; color: var(--white); }
+body .btn.cs-undo:disabled { opacity: 0.45; cursor: default; color: var(--white); background: transparent; border-color: var(--frame, rgba(255, 255, 255, 0.3)); }
+.cs-bar-row .btn.cs-undo, .cs-bar-row .btn.cs-fullscreen { box-sizing: border-box; height: 34px; } /* (both buttons exactly as tall: the icon of Celá obrazovka made it 2px taller) */

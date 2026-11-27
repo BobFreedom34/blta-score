@@ -270,7 +270,7 @@ function csListHtml(day) {
 function csUndoHtml() {
   if (!csState.admin) return '';
   const n = csState.data.undoCount || 0;
-  return `<button type="button" class="btn btn-sm btn-outline cs-undo" data-cs="undo" ${n ? '' : 'disabled'} title="${escapeHtml(tl('Vráti harmonogram pred poslednú zmenu (aj Ctrl+Z)', 'Puts the schedule back as it was before the last change (also Ctrl+Z)'))}"><span aria-hidden="true">↶</span> ${escapeHtml(tl('Krok späť', 'Undo'))}${n ? ` <em>${n}</em>` : ''}</button>`;
+  return `<button type="button" class="btn btn-sm btn-primary cs-undo" data-cs="undo" ${n ? '' : 'disabled'} title="${escapeHtml(tl('Vráti harmonogram pred poslednú zmenu (aj Ctrl+Z)', 'Puts the schedule back as it was before the last change (also Ctrl+Z)'))}"><span aria-hidden="true">↶</span> ${escapeHtml(tl('Krok späť', 'Undo'))}${n ? ` <em>${n}</em>` : ''}</button>`;
 }
 
 function csUndo() {
