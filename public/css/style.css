@@ -7943,6 +7943,8 @@ body .badge.badge-mono, body:not(.embed-light) .badge.badge-mono, body:not(.embe
   display: inline-flex; align-items: stretch; gap: 0; padding: 0; overflow: hidden; background: transparent; color: var(--white);
   border: 1px solid rgba(255, 255, 255, 0.22); border-radius: var(--radius-sm); line-height: normal; vertical-align: middle; /* (as tall as the date pill next to it) */
 }
+/* (the player profile and the player list give every .badge padding and centre its content: the square must still fill the pill to its frame) */
+body:has(#player-bio-card) .badge.badge-mono, body:has(#player-list) .badge.badge-mono { padding: 0; align-items: stretch; }
 .badge-mono .cat-mono { display: flex; align-items: center; padding: 4px 7px; font-weight: 900; letter-spacing: 0.02em; }
 .badge-mono .cat-name { display: flex; align-items: center; padding: 4px 9px 4px 7px; }
 .badge-mono.badge-ELITE .cat-mono { background: #ff5500; color: #fff; }
