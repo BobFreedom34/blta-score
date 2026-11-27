@@ -70,15 +70,17 @@ test('one bad entry changes nothing: unknown category, a registration of another
   assert.deepStrictEqual((await call('GET', `/api/seasons/${tournament.id}/registrations`)).json.map((x) => x.category), before);
 });
 
-test('a league season needs a real category: "not sorted" is refused there', async () => {
+test('a league season: a player can be sorted into a category and back to "not sorted" (a pop-up registration has none)', async () => {
   const made = await call('POST', '/api/seasons', { name: 'Test League', kind: 'LEAGUE' });
   league = made.json;
   await call('PATCH', `/api/seasons/${league.id}`, { registrationOpen: true, categoryMax: { ELITE: 50, NEXT_GEN: 50, NOVICE: 50 } });
   const r = await call('POST', `/api/seasons/${league.id}/registrations`, { name: 'Ľuboš Liga', email: 'l@example.com', phone: '0903112299', category: 'NOVICE' }, { admin: false });
   assert.strictEqual(r.status, 201, r.text);
   const leagueRegs = (await call('GET', `/api/seasons/${league.id}/registrations`)).json;
-  const refused = await call('POST', `/api/seasons/${league.id}/registrations/categories`, { assignments: [{ id: leagueRegs[0].id, category: '' }] });
-  assert.strictEqual(refused.status, 400);
+  const back = await call('POST', `/api/seasons/${league.id}/registrations/categories`, { assignments: [{ id: leagueRegs[0].id, category: '' }] });
+  assert.strictEqual(back.status, 200, back.text);
+  assert.strictEqual(back.json[0].category, '');
+  assert.strictEqual((await call('POST', `/api/seasons/${league.id}/registrations/categories`, { assignments: [{ id: leagueRegs[0].id, category: 'X' }] })).status, 400);
   const ok = await call('POST', `/api/seasons/${league.id}/registrations/categories`, { assignments: [{ id: leagueRegs[0].id, category: 'ELITE' }] });
   assert.strictEqual(ok.status, 200);
   assert.strictEqual(ok.json[0].category, 'ELITE');

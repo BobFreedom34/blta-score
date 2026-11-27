@@ -254,7 +254,7 @@ router.get('/:id/registrations', clubTournaments.requireSeasonManager(clubTourna
 });
 
 // The admin sorts many players into categories at once (the "Zaradenie do kategórií" screen): { assignments: [{ id, category }] }, category
-// ELITE / NEXT_GEN / NOVICE or '' for "not sorted yet" (tournaments only). All or nothing: one bad entry changes nothing.
+// ELITE / NEXT_GEN / NOVICE or '' for "not sorted yet". All or nothing: one bad entry changes nothing.
 router.post('/:id/registrations/categories', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(Number(req.params.id));
   if (!season) return res.status(404).json({ error: 'Season not found' });
@@ -266,7 +266,7 @@ router.post('/:id/registrations/categories', clubTournaments.requireSeasonManage
   for (const item of list) {
     if (!item || !own.has(Number(item.id))) return res.status(400).json({ error: 'A registration does not belong to this season' });
     const allowed = season.kind === 'TOURNAMENT' ? tournamentDraw.categoriesFor(season) : BLTA_CATEGORIES; // (a tournament played in Elite and Next Gen has no Novice to sort into)
-    const ok = allowed.includes(item.category) || (item.category === '' && season.kind === 'TOURNAMENT');
+    const ok = allowed.includes(item.category) || item.category === ''; // '' = back to "not sorted yet" (a league has such players too: a registration through the pop-up asks no category)
     if (!ok) return res.status(400).json({ error: 'Choose a category' });
   }
   const update = db.prepare('UPDATE season_registrations SET category = ?, seed = CASE WHEN category = ? THEN seed ELSE NULL END WHERE id = ?');
