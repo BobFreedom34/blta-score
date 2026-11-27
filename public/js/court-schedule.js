@@ -266,6 +266,18 @@ function csListHtml(day) {
   return `<div class="cs-list">${sections}</div>`;
 }
 
+// "Krok späť" (organiser): the places of the matches before the last change come back; the server keeps the last 30 steps of the tournament
+function csUndoHtml() {
+  if (!csState.admin) return '';
+  const n = csState.data.undoCount || 0;
+  return `<button type="button" class="btn btn-sm btn-outline cs-undo" data-cs="undo" ${n ? '' : 'disabled'} title="${escapeHtml(tl('Vráti harmonogram pred poslednú zmenu (aj Ctrl+Z)', 'Puts the schedule back as it was before the last change (also Ctrl+Z)'))}"><span aria-hidden="true">↶</span> ${escapeHtml(tl('Krok späť', 'Undo'))}${n ? ` <em>${n}</em>` : ''}</button>`;
+}
+
+function csUndo() {
+  if (!csState || !csState.admin || !csState.data.undoCount) return;
+  csApply(api(`/seasons/${csState.season.id}/schedule/undo`, { method: 'POST' }), tl('Krok späť: harmonogram je ako pred poslednou zmenou', 'Undone: the schedule is as it was before the last change'));
+}
+
 function csAdminHtml() {
   if (!csState.admin) return '';
   const s = csState.data.settings;
@@ -325,7 +337,7 @@ function csRender() {
   csState.host.innerHTML = `
     <section class="sv-sec cs-sec">
       ${csLiveHtml()}
-      <div class="cs-bar">${pills}<div class="cs-bar-row">${views}${settings.courtCount ? fullLink : ''}</div></div>
+      <div class="cs-bar">${pills}<div class="cs-bar-row">${views}${settings.courtCount ? fullLink : ''}${csUndoHtml()}</div></div>
       <div class="cs-legend"><span class="cs-st-planned">${escapeHtml(t('courts.legendPlanned'))}</span><span class="cs-st-live">${escapeHtml(t('courts.legendLive'))}</span><span class="cs-st-finished">${escapeHtml(t('courts.legendFinished'))}</span></div>
       ${settings.courtCount ? '' : `<div class="sv-empty">${escapeHtml(t('courts.noCourts'))}</div>`}
       ${settings.courtCount ? (csChoice.view === 'timeline' ? csTimelineHtml(day) : csListHtml(day)) : ''}
@@ -731,6 +743,17 @@ async function initCourtSchedule(host, season) {
   csState = { host, season, admin: admin || !!season.canManage, data };
   host.removeEventListener('pointerdown', csOnPointerDown);
   host.addEventListener('pointerdown', csOnPointerDown);
+  // Ctrl+Z (Cmd+Z) undoes the last change of the schedule while it is on screen and no field is being typed in
+  if (!window.csUndoKey) {
+    window.csUndoKey = true;
+    document.addEventListener('keydown', (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
+      if (!csState || !csState.admin || !document.body.contains(csState.host) || !csState.host.offsetParent) return;
+      if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable]')) return;
+      e.preventDefault();
+      csUndo();
+    });
+  }
   host.ondblclick = (e) => {
     const handle = e.target.closest('[data-resize]');
     if (!handle || !csState.admin) return;
@@ -781,6 +804,8 @@ async function initCourtSchedule(host, season) {
         timelineView: document.getElementById('cs-tlview').value,
       };
       csApply(api(`${base}/settings`, { method: 'PATCH', body }), tl('Nastavenia uložené', 'Settings saved'));
+    } else if (kind === 'undo') {
+      csUndo();
     } else if (kind === 'addmatch') {
       csOpenAddMatch();
     } else if (kind === 'kiosks') {

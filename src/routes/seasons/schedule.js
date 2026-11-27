@@ -4,6 +4,7 @@ const clubTournaments = require('../../clubTournaments');
 const tournamentMatches = require('../../tournamentMatches');
 const tournamentSchedule = require('../../tournamentSchedule');
 const courtKiosk = require('../../courtKiosk');
+const scheduleUndo = require('../../scheduleUndo');
 const QRCode = require('qrcode');
 const router = require('./router');
 const { tournamentOr404 } = require('./shared');
@@ -25,7 +26,25 @@ function scheduleChanged(req, season) {
 router.get('/:id/schedule', (req, res) => {
   const season = tournamentOr404(req, res);
   if (!season) return;
-  res.json(tournamentSchedule.getSchedule(season));
+  res.json(scheduleFor(req, season));
+});
+
+// the schedule, and for the organiser how many steps "Krok späť" can undo
+function scheduleFor(req, season) {
+  const fresh = db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id) || season;
+  const out = tournamentSchedule.getSchedule(fresh);
+  if (clubTournaments.canManageSeason(req, fresh)) out.undoCount = scheduleUndo.count(season.id);
+  return out;
+}
+
+// "Krok späť": the places of the matches before the last change of the schedule come back (src/scheduleUndo.js)
+router.post('/:id/schedule/undo', clubTournaments.requireSeasonManager(clubTournaments.byParamId), (req, res) => {
+  const season = tournamentOr404(req, res);
+  if (!season) return;
+  const done = scheduleUndo.undo(season.id);
+  if (!done) return res.status(409).json({ error: 'There is nothing to undo' });
+  scheduleChanged(req, season);
+  res.json({ undone: done.label, schedule: scheduleFor(req, season) });
 });
 
 // The form "Pridať zápas" of the Harmonogram (organiser): the groups of the tournament with their players and rounds, and the courts.
@@ -51,7 +70,7 @@ router.patch('/:id/schedule/settings', clubTournaments.requireSeasonManager(club
   if (!season) return;
   const saved = tournamentSchedule.saveSettings(season, req.body || {});
   if (saved.error) return res.status(400).json({ error: saved.error });
-  res.json(tournamentSchedule.getSchedule(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)));
+  res.json(scheduleFor(req, season));
 });
 
 // { mode: 'fill' | 'backfill' | 'rebuild' | 'compact' | 'clear' | 'unlock' } (backfill: the matches without a time are laid out from the start of the first day, not from now; compact: unlocked planned matches move forward where time was freed;
@@ -60,10 +79,11 @@ router.post('/:id/schedule/auto', clubTournaments.requireSeasonManager(clubTourn
   const season = tournamentOr404(req, res);
   if (!season) return;
   const mode = ['fill', 'backfill', 'rebuild', 'compact', 'clear', 'unlock'].includes(req.body && req.body.mode) ? req.body.mode : 'fill';
+  const step = scheduleUndo.snapshot(season.id, `planner: ${mode}`);
   const done = tournamentSchedule.autoPlan(season.id, { mode });
-  if (done.error) return res.status(400).json({ error: done.error });
+  if (done.error) { scheduleUndo.drop(step); return res.status(400).json({ error: done.error }); }
   scheduleChanged(req, season);
-  res.json({ ...done, schedule: tournamentSchedule.getSchedule(season) });
+  res.json({ ...done, schedule: scheduleFor(req, season) });
 });
 
 // { courtNo, scheduledAt } puts a match that has not started on a court at a time (the planner never moves it afterwards);
@@ -72,26 +92,28 @@ router.put('/:id/schedule/matches/:token', clubTournaments.requireSeasonManager(
   const season = tournamentOr404(req, res);
   if (!season) return;
   const body = req.body || {};
+  const step = scheduleUndo.snapshot(season.id, body.durationMinutes !== undefined && body.courtNo === undefined ? 'length' : (typeof body.locked === 'boolean' && body.courtNo === undefined ? 'lock' : 'move'));
+  const refuse = (status, error) => { scheduleUndo.drop(step); return res.status(status || 400).json({ error }); };
   // { durationMinutes: 45 | null } alone: the length of this one match (null = the tournament's length)
   if (body.durationMinutes !== undefined && body.courtNo === undefined) {
     const minutes = body.durationMinutes === null ? null : Number(body.durationMinutes);
     const set = tournamentSchedule.setDuration(season, req.params.token, minutes);
-    if (set.error) return res.status(set.status || 400).json({ error: set.error });
+    if (set.error) return refuse(set.status, set.error);
     scheduleChanged(req, season);
-    return res.json({ warnings: [], schedule: tournamentSchedule.getSchedule(db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id)) });
+    return res.json({ warnings: [], schedule: scheduleFor(req, season) });
   }
   // { locked: true | false } alone: lock or unlock a match where it is
   if (typeof body.locked === 'boolean' && body.courtNo === undefined) {
     const set = tournamentSchedule.setLocked(season, req.params.token, body.locked);
-    if (set.error) return res.status(set.status || 400).json({ error: set.error });
+    if (set.error) return refuse(set.status, set.error);
     scheduleChanged(req, season);
-    return res.json({ warnings: [], schedule: tournamentSchedule.getSchedule(season) });
+    return res.json({ warnings: [], schedule: scheduleFor(req, season) });
   }
   const courtNo = body.courtNo === null || body.courtNo === undefined ? null : Number(body.courtNo);
   const done = tournamentSchedule.placeMatch(season, req.params.token, courtNo, body.scheduledAt, Date.now(), { insert: body.insert === true });
-  if (done.error) return res.status(done.status || 400).json({ error: done.error });
+  if (done.error) return refuse(done.status, done.error);
   scheduleChanged(req, season);
-  res.json({ warnings: done.warnings, schedule: tournamentSchedule.getSchedule(season) });
+  res.json({ warnings: done.warnings, schedule: scheduleFor(req, season) });
 });
 
 // ---------------- the kiosk of the tournament (see src/courtKiosk.js) ----------------

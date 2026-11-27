@@ -7986,3 +7986,9 @@ body .badge.badge-mono.cs-cat.cs-cat-sq { margin: 0; vertical-align: 0; border-c
 body .badge.badge-mono.cs-cat.cs-cat-sq .cat-mono { padding: 1px 5px; }
 /* dropped over a match: it goes in, the matches after it move later (a solid frame and a line at the top where it goes in) */
 .cs-drop.cs-drop-insert { border-style: solid; box-shadow: 0 -3px 0 var(--orange); z-index: 9; background: rgba(255, 85, 0, 0.22); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* "Krok späť" of the court schedule (organiser), next to Celá obrazovka; the number = how many steps can be undone */
+.cs-undo { display: inline-flex; align-items: center; gap: 6px; }
+.cs-undo span { font-size: 16px; line-height: 1; }
+.cs-undo em { font-style: normal; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); }
+.cs-undo:disabled { opacity: 0.4; cursor: default; }
