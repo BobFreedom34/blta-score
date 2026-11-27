@@ -7980,3 +7980,7 @@ body .badge.cs-cat:not(.badge-mono) { font-size: 9.5px; padding: 1px 6px; margin
 /* a little air between the names and the pill */
 .cs-row-meta:has(.cs-cat) { margin-top: 5px; }
 .cs-m-meta:has(.cs-cat) { display: block; margin-top: 4px; }
+/* the list: the coloured square of the category above the time */
+.cs-row-time:has(.cs-cat-sq) { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+body .badge.badge-mono.cs-cat.cs-cat-sq { margin: 0; vertical-align: 0; border-color: transparent; }
+body .badge.badge-mono.cs-cat.cs-cat-sq .cat-mono { padding: 1px 5px; }

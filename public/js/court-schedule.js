@@ -91,7 +91,15 @@ function csPlayersHtml(m) {
 // pill: the "finished" / "live" pill of a row of the list; it stands in the line of the set labels (S1) when there is one, so it takes no line of its own
 // W.O. / Skreč of a finished match that ended by a walkover or a retirement ('' otherwise): white, where the result is
 // the grey line under the players: the category as the small pill (coloured square + name, as on the match cards), then the group and round
-function csMetaHtml(m) {
+// the list puts only the coloured square (E / NG / N) above the time; a category without a square (a friendly, a doubles draw) stays a pill in the grey line
+function csCatSquareHtml(m) {
+  const pill = m.category ? categoryBadge(m.category) : '';
+  if (!pill.includes('badge-mono')) return '';
+  return pill.replace('class="badge ', 'class="badge cs-cat cs-cat-sq ').replace(/<span class="cat-name">[^<]*<\/span>/, '').replace('aria-hidden="true"', `title="${escapeHtml(categoryLabel(m.category))}"`);
+}
+
+function csMetaHtml(m, { squareShown = false } = {}) {
+  if (squareShown) return escapeHtml(csRoundLabel(m) || '');
   const round = escapeHtml(csRoundLabel(m) || '');
   if (!m.category) return round;
   return `${categoryBadge(m.category).replace('class="badge ', 'class="badge cs-cat ')}${round ? ` ${round}` : ''}`;
@@ -248,9 +256,9 @@ function csListHtml(day) {
       .sort((a, b) => Date.parse(csStartOf(a)) - Date.parse(csStartOf(b)));
     const body = rows.map((m) => `
       <a class="cs-row ${csStatusClass(m)}" href="/match/${m.token}">
-        <span class="cs-row-time">${csTime(csStartOf(m))}</span>
+        <span class="cs-row-time">${csCatSquareHtml(m)}${csTime(csStartOf(m))}</span>
         <span class="cs-row-pl">${csScoredPlayersHtml(m, m.status === 'FINISHED' ? `<b class="cs-done cs-row-pill">${escapeHtml(t('courts.finished'))}</b>` : (m.status === 'LIVE' ? `<b class="cs-done cs-live-pill cs-row-pill">${escapeHtml(t('home.live'))}</b>` : ''))}</span>
-        <span class="cs-row-meta">${csMetaHtml(m)}</span>${csEndReasonText(m) ? `
+        <span class="cs-row-meta">${csMetaHtml(m, { squareShown: !!csCatSquareHtml(m) })}</span>${csEndReasonText(m) ? `
         <span class="cs-row-st cs-row-end">${escapeHtml(csEndReasonText(m))}</span>` : ''}
       </a>`).join('');
     return `<div class="cs-list-court"><div class="cs-list-h">${escapeHtml(csCourtName(court))}${csLiveButtonHtml(court)}<em>${rows.length}</em></div>${body || `<div class="cs-row-empty">${escapeHtml(t('courts.courtFree'))}</div>`}</div>`;
