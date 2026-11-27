@@ -200,8 +200,12 @@ body.screen-page.idle.is-full .scr-foot { opacity: 0; }
 
 /* a block of the timeline shows what fits: the category goes first, then the S1 / S2 labels */
 .stc-m { container-type: size; }
-@container (max-height: 5.6em) { .stc-m-meta { display: none; } }
-@container (max-height: 4.6em) { .stc-pl-head { display: none; } .stc-m-pl .stc-pl { gap: 0.2em; } }
+/* (as the block of the tournament page: the time, the two names close under each other, then the category pill with the group and round - it fits a block of 4.9 lines) */
+.stc-m { padding: 0.12em 0.5em; }
+.stc-m .stc-pl { gap: 0.12em; }
+.stc-m-meta { margin-top: 0.2em; line-height: 1.3; }
+@container (max-height: 4.6em) { .stc-m-meta { display: none; } } /* (the content box: the padding is not counted) */
+@container (max-height: 4.6em) { .stc-pl-head { display: none; } }
 
 /* the same type size in the list and in the timeline (it follows the number of rows of courts of the list and the most matches of a court) */
 .stc-main { --stc-fs: clamp(9px, min(calc(76vh / var(--lrows, 1) / (2.2 + 5.9 * var(--rows, 6))), 2.3vh), 22px); }
@@ -217,4 +221,7 @@ body.screen-page.idle.is-full .scr-foot { opacity: 0; }
 
 /* the category as on the tournament page: in the list the coloured square (E / NG / N) above the time, in the timeline the small pill in the grey line */
 .stc-row-time:has(.cs-cat-sq) { display: flex; flex-direction: column; align-items: flex-start; gap: 0.3em; }
-.stc-m-meta .badge.cs-cat { font-size: 0.85em; }
+/* the pill grows with the screen (em, not the px of the tournament page) and is no taller than the line */
+body .stc-m-meta .badge.badge-mono.cs-cat, body .stc-row .badge.badge-mono.cs-cat { font-size: 0.92em; border-radius: 0.3em; margin-right: 0.35em; }
+body .stc-m-meta .badge.badge-mono.cs-cat .cat-mono, body .stc-row .badge.badge-mono.cs-cat .cat-mono { padding: 0.08em 0.4em; }
+body .stc-m-meta .badge.badge-mono.cs-cat .cat-name { padding: 0.08em 0.55em 0.08em 0.45em; }
