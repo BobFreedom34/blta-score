@@ -120,7 +120,7 @@ function pairKey(text) {
 // have no match in the app; nothing is created for them).
 function assignAutumn2026Rounds(db) {
   if (db.prepare('SELECT 1 FROM app_flags WHERE key = ?').get(FLAG)) return { skipped: true };
-  const season = db.prepare('SELECT id FROM seasons WHERE slug = ?').get(SEASON_SLUG);
+  const season = db.prepare('SELECT id FROM seasons WHERE slug = ? UNION ALL SELECT season_id AS id FROM season_old_slugs WHERE slug = ?').get(SEASON_SLUG, SEASON_SLUG);
   if (!season) return { skipped: true };
   const players = new Map(db.prepare('SELECT id, name FROM players').all().map((p) => [p.id, p.name]));
   const setRound = db.prepare('UPDATE matches SET round = ? WHERE id = ? AND round IS NULL');

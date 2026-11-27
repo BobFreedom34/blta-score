@@ -15,6 +15,9 @@ db.exec(`
   );
 `);
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_seasons_slug ON seasons(slug)');
+// the addresses a season had before it was renamed (the address follows the name): an old link is sent to the new address (server.js), the data
+// is found by the old one too (routes/seasons/info.js), and the one-off seeds still find their season after a rename
+db.exec('CREATE TABLE IF NOT EXISTS season_old_slugs (slug TEXT PRIMARY KEY, season_id INTEGER NOT NULL)');
 db.exec(`
   CREATE TABLE IF NOT EXISTS season_groups (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

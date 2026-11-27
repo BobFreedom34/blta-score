@@ -18,7 +18,7 @@ function slugify(name) {
 function migrateTournaments(db) {
   if (db.prepare("SELECT 1 FROM app_flags WHERE key = 'tournaments_as_seasons'").get()) return { skipped: true };
   const events = db.prepare('SELECT * FROM schedule_events ORDER BY start_date, id').all();
-  const taken = (slug) => !!db.prepare('SELECT 1 FROM seasons WHERE slug = ?').get(slug);
+  const taken = (slug) => !!db.prepare('SELECT 1 FROM seasons WHERE slug = ? UNION ALL SELECT 1 FROM season_old_slugs WHERE slug = ?').get(slug, slug);
   const insert = db.prepare("INSERT INTO seasons (name, slug, start_date, end_date, sort_order, kind, venue, categories) VALUES (?, ?, ?, ?, ?, 'TOURNAMENT', ?, ?)");
   const link = db.prepare('UPDATE winner_editions SET season_id = ? WHERE season_id IS NULL AND lower(title) = lower(?)');
   db.exec('BEGIN');

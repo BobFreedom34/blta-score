@@ -99,7 +99,7 @@ function parsedList() {
 // Adds the registrations (and raises paid ticks). Returns { inserted, paidRaised }.
 function importAutumn2026Registrations(db) {
   if (db.prepare('SELECT 1 FROM app_flags WHERE key = ?').get(FLAG)) return { skipped: true };
-  const season = db.prepare('SELECT id FROM seasons WHERE slug = ?').get(SEASON_SLUG);
+  const season = db.prepare('SELECT id FROM seasons WHERE slug = ? UNION ALL SELECT season_id AS id FROM season_old_slugs WHERE slug = ?').get(SEASON_SLUG, SEASON_SLUG);
   if (!season) return { skipped: true };
   if (!db.prepare('SELECT 1 FROM matches WHERE season_id = ? LIMIT 1').get(season.id)) return { skipped: true };
   const players = new Map(db.prepare('SELECT id, name FROM players').all().map((p) => [nameMatch.key(p.name), p]));

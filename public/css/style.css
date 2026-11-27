@@ -7721,7 +7721,7 @@ body:not(.embed-light) :is(.bk-m.link:hover, .bracket-match-card-clickable:hover
 #sv-tabs.is-stuck .tab::before { width: 18px; height: 18px; }
 /* "Môj zápas": the badge on every match of the logged-in player (common-site.js): an orange veil with an orange frame and orange letters */
 .my-badge { display: inline-flex; align-items: center; flex: none; box-sizing: border-box; margin-left: 8px; padding: 2px 8px; border-radius: var(--radius-sm); background: rgba(255, 85, 0, 0.14); border: 1px solid var(--orange); color: var(--orange); font-size: 10px; font-weight: 800; letter-spacing: 0.05em; line-height: 1.3; text-transform: uppercase; white-space: nowrap; }
-.match-card-top .my-badge { margin-left: 0; }
+.match-card-top .my-badge { margin-left: 0; padding: 4px 10px; font-size: 11px; line-height: normal; } /* as tall as the date and category pills next to it */
 .my-badge.corner { position: absolute; right: 10px; bottom: 8px; margin: 0; }
 /* a box of a draw: the badge sits on the line of the result (or the date), smaller, on its right end */
 .bracket-match-meta:has(> .my-badge) { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -7941,7 +7941,7 @@ body.match-page .scoreboard td.game-col { color: var(--green); font-weight: 800;
    one thin grey frame round both - Elite orange, Next Gen lime, Novice grey (the level reads from the colour, the name says it) */
 body .badge.badge-mono, body:not(.embed-light) .badge.badge-mono, body:not(.embed-light) .match-card .badge.badge-mono {
   display: inline-flex; align-items: stretch; gap: 0; padding: 0; overflow: hidden; background: transparent; color: var(--white);
-  border: 1px solid rgba(255, 255, 255, 0.22); border-radius: var(--radius-sm); line-height: 1; vertical-align: middle;
+  border: 1px solid rgba(255, 255, 255, 0.22); border-radius: var(--radius-sm); line-height: normal; vertical-align: middle; /* (as tall as the date pill next to it) */
 }
 .badge-mono .cat-mono { display: flex; align-items: center; padding: 4px 7px; font-weight: 900; letter-spacing: 0.02em; }
 .badge-mono .cat-name { display: flex; align-items: center; padding: 4px 9px 4px 7px; }

@@ -28,7 +28,7 @@ function uniqueSlug(base, exceptId) {
   let slug = base;
   let n = 2;
   while (true) {
-    const row = db.prepare('SELECT id FROM seasons WHERE slug = ?').get(slug);
+    const row = db.prepare('SELECT id FROM seasons WHERE slug = ? UNION ALL SELECT season_id AS id FROM season_old_slugs WHERE slug = ?').get(slug, slug);
     if (!row || row.id === exceptId) return slug;
     slug = `${base}-${n}`;
     n += 1;
@@ -294,6 +294,27 @@ function readNewSeason(body) {
   return { values: { name, start: start.value, end: end.value, kind, venue, playType, categories: playType === 'DOUBLES' ? null : categoriesToStore(body.categories), scoring: rules ? rules.scoring : null, tiebreakers: rules ? rules.tiebreakers.join(',') : null } };
 }
 
+// The address follows the name: a renamed season gets the address of its new name, the old one is kept in season_old_slugs (so an old link
+// still leads to it). A name that makes the same address changes nothing. -> the slug the season has now
+function renameSlug(season, name) {
+  const base = slugify(name);
+  if (season.slug === base || (season.slug && season.slug.startsWith(`${base}-`) && /^d+$/.test(season.slug.slice(base.length + 1)))) return season.slug;
+  const slug = uniqueSlug(base, season.id);
+  if (slug === season.slug) return slug;
+  if (season.slug) db.prepare('INSERT OR REPLACE INTO season_old_slugs (slug, season_id) VALUES (?, ?)').run(season.slug, season.id);
+  db.prepare('DELETE FROM season_old_slugs WHERE slug = ?').run(slug);
+  db.prepare('UPDATE seasons SET slug = ? WHERE id = ?').run(slug, season.id);
+  return slug;
+}
+
+// a season by its address, also by an address it had before a rename -> { season, moved } (moved: it was an old address) or null
+function seasonBySlug(slug) {
+  const season = db.prepare('SELECT * FROM seasons WHERE slug = ?').get(slug);
+  if (season) return { season, moved: false };
+  const old = db.prepare('SELECT s.* FROM season_old_slugs o JOIN seasons s ON s.id = o.season_id WHERE o.slug = ?').get(slug);
+  return old ? { season: old, moved: true } : null;
+}
+
 // inserts a checked new season and returns its row; a club tournament carries the id of its organisation
 function insertSeason(values, leagueId, organisationId = null) {
   const slug = uniqueSlug(slugify(values.name));
@@ -332,6 +353,8 @@ function resolveMemberPlayer(body, leagueId = leagues.DEFAULT_LEAGUE_ID, { allow
 }
 
 module.exports = {
+  renameSlug,
+  seasonBySlug,
   computeGroupStandings,
   rulesOfSeason,
   normalizeRules,

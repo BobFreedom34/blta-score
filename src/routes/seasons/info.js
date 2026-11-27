@@ -16,7 +16,7 @@ const unregister = require('../../unregister');
 const paymentQr = require('../../paymentQr');
 const tournamentSchedule = require('../../tournamentSchedule');
 const router = require('./router');
-const { serializeSeason } = require('./shared');
+const { serializeSeason, seasonBySlug } = require('./shared');
 
 // a tournament of a community pays the places of its final standings into the ranking of the community (src/communityPoints.js): after any change that reaches a tournament
 // (a draw, a group, a result) the places are paid again. The first number of the path is the season.
@@ -118,7 +118,7 @@ router.get('/', (req, res) => {
 // Public: the scoreboard overlay of a court (the page /overlay/<slug>/<court>, shown over the YouTube stream of the court): the match live on it. Only a court
 // that has a YouTube link has an overlay; any other court, a hidden club tournament and another city's tournament are 404, like the season page itself.
 router.get('/by-slug/:slug/court/:court/live', (req, res) => {
-  const season = db.prepare('SELECT * FROM seasons WHERE slug = ?').get(req.params.slug);
+  const season = (seasonBySlug(req.params.slug) || {}).season; // (an overlay set up before a rename keeps working)
   if (!season || season.league_id !== leagues.actingIdOf(req) || clubTournaments.publicFace(season, req).hidden) return res.status(404).json({ error: 'Not found' });
   const court = /^\d{1,3}$/.test(req.params.court) ? Number(req.params.court) : 0;
   const stream = court >= 1 && court <= (season.court_count || 0) ? courtStreams.streamsOf(season)[court - 1] : null;
@@ -162,7 +162,7 @@ function overlayCourtFor(req, wanted, now = Date.now()) {
 // The season page: one season by its slug, with its rounds (the group-stage rounds the season maker numbered, with how many
 // of their matches are finished).
 router.get('/by-slug/:slug', (req, res) => {
-  const season = db.prepare('SELECT * FROM seasons WHERE slug = ?').get(req.params.slug);
+  const season = (seasonBySlug(req.params.slug) || {}).season; // (also by an address it had before it was renamed)
   // a season belongs to one city: under the address of another city it does not exist
   if (!season || season.league_id !== leagues.actingIdOf(req)) return res.status(404).json({ error: 'Season not found' });
   // the tournament of a club that is hidden, or whose approval was withdrawn, does not exist for the public

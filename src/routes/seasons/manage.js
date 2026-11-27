@@ -14,7 +14,7 @@ const courtNames = require('../../courtNames');
 const paymentQr = require('../../paymentQr');
 const tournamentSchedule = require('../../tournamentSchedule');
 const router = require('./router');
-const { readNewSeason, insertSeason, serializeSeason, parseDate, KINDS, categoriesToStore, readRules, parseCategories, PLANNED_FORMATS, announceNewlyIn, sanitizeHtml, normalizeRules } = require('./shared');
+const { readNewSeason, insertSeason, serializeSeason, renameSlug, parseDate, KINDS, categoriesToStore, readRules, parseCategories, PLANNED_FORMATS, announceNewlyIn, sanitizeHtml, normalizeRules } = require('./shared');
 
 router.post('/', requireAdmin, (req, res) => {
   const read = readNewSeason(req.body);
@@ -206,6 +206,9 @@ router.patch('/:id', clubTournaments.requireSeasonManager(clubTournaments.byPara
   if (season.organisation_id && (pointsChanged || scoring !== season.scoring)) {
     try { communityPoints.resync(season.id); } catch (err) { console.error('[community points]', err.message); }
   }
+  // the address follows the name: a new name (or a name saved again whose address is still an older one) gives the season the address of that
+  // name; nothing changes when the address already fits; the old address keeps leading to it
+  if (req.body.name !== undefined) renameSlug(season, name);
   const saved = db.prepare('SELECT * FROM seasons WHERE id = ?').get(season.id);
   announceNewlyIn(saved, waitingBefore); // a raised maximum lets the first substitutes in
   res.json(serializeSeason(saved));

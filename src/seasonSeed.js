@@ -83,7 +83,7 @@ function run(db) {
   db.exec('BEGIN');
   try {
     SEASONS.forEach((s, i) => {
-      const existing = db.prepare('SELECT id FROM seasons WHERE slug = ?').get(s.slug);
+      const existing = db.prepare('SELECT id FROM seasons WHERE slug = ? UNION ALL SELECT season_id AS id FROM season_old_slugs WHERE slug = ?').get(s.slug, s.slug);
       const id = existing ? existing.id : Number(insertSeason.run(s.name, s.slug, s.from, s.to, i).lastInsertRowid);
       seasonId[s.slug] = id;
       s.groups.forEach((g, j) => {
@@ -134,7 +134,7 @@ function fixWinterStart(db) {
       const indexed = indexSeasons(SEASONS);
       const groupId = {};
       SEASONS.forEach((s) => {
-        const sid = db.prepare('SELECT id FROM seasons WHERE slug = ?').get(s.slug);
+        const sid = db.prepare('SELECT id FROM seasons WHERE slug = ? UNION ALL SELECT season_id AS id FROM season_old_slugs WHERE slug = ?').get(s.slug, s.slug);
         if (!sid) return;
         s.groups.forEach((g) => {
           const row = db.prepare('SELECT id FROM season_groups WHERE season_id = ? AND name = ?').get(sid.id, g.name);

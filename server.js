@@ -623,10 +623,14 @@ app.use((req, res, next) => {
   if (hit.key === 'season' || hit.key === 'tournament') {
     let param = hit.param;
     try { param = decodeURIComponent(param); } catch { /* keep it as it is */ }
-    const row = db.prepare('SELECT slug, kind FROM seasons WHERE slug = ?').get(param);
-    if (row && (row.kind === 'TOURNAMENT') !== (hit.key === 'tournament')) {
+    let row = db.prepare('SELECT slug, kind FROM seasons WHERE slug = ?').get(param);
+    // the address it had before it was renamed: sent to the address of its name now
+    const renamed = row ? null : db.prepare('SELECT s.slug, s.kind FROM season_old_slugs o JOIN seasons s ON s.id = o.season_id WHERE o.slug = ?').get(param);
+    if (renamed) row = { ...renamed, moved: true };
+    if (row && (row.moved || (row.kind === 'TOURNAMENT') !== (hit.key === 'tournament'))) {
       const own = `/${row.kind === 'TOURNAMENT' ? 'tournament' : 'season'}/${encodeURIComponent(row.slug)}`;
-      return res.redirect(301, seo.pageUrl(own, hit.lang));
+      const tail = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+      return res.redirect(301, `${req.cityBase || ''}${seo.pageUrl(own, hit.lang)}${tail}`);
     }
   }
   // a club that was renamed has a new address: the old one (a link, an invitation) is sent to it, with the rest of the address (?invite=...) kept
