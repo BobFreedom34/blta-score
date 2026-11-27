@@ -639,7 +639,8 @@ document.getElementById('notify-push-btn').addEventListener('click', async () =>
 });
 
 const socket = io();
-socket.on('matches:changed', () => {
+socket.on('matches:changed', (e) => {
+  if (e && e.status === 'SCHEDULE') return; // (a change of a tournament's court schedule: this page has nothing of it to redraw at once)
   loadMatches();
   refreshCounts();
   refreshMyMatchesCount();

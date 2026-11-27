@@ -8,9 +8,17 @@ const QRCode = require('qrcode');
 const router = require('./router');
 const { tournamentOr404 } = require('./shared');
 
+// Many changes in a row (the organiser rearranging the whole day) make one message per tournament at most every 3 seconds: every open page that
+// listens fetches its data again on it, and a message per drag brought the server down (out of memory) the evening before a tournament.
+const SCHEDULE_EMIT_MS = 3000;
+const pendingEmits = new Map();
 function scheduleChanged(req, season) {
   const io = req.app.get('io');
-  if (io) io.emit('matches:changed', { seasonId: season.id, status: 'SCHEDULE' });
+  if (!io || pendingEmits.has(season.id)) return;
+  pendingEmits.set(season.id, setTimeout(() => {
+    pendingEmits.delete(season.id);
+    io.emit('matches:changed', { seasonId: season.id, status: 'SCHEDULE' });
+  }, SCHEDULE_EMIT_MS));
 }
 
 // Public: the schedule tab of the tournament page — settings, every match with two players, who is on which court when.

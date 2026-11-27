@@ -176,6 +176,6 @@ groupsEl.addEventListener('click', (e) => {
   if (typeof io === 'function') {
     const socket = io();
     let timer = null;
-    socket.on('matches:changed', () => { clearTimeout(timer); timer = setTimeout(refresh, 600); });
+    socket.on('matches:changed', (e) => { if (e && e.status === 'SCHEDULE') return; clearTimeout(timer); timer = setTimeout(refresh, 600); });
   }
 })();

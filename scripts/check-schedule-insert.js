@@ -81,6 +81,15 @@ test('the page sends insert and shows it while dragging', () => {
   assert.ok(fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'seasons', 'schedule.js'), 'utf8').includes("{ insert: body.insert === true }"));
 });
 
+test('many schedule changes do not flood the site: one message per tournament at most every 3 s, pages without the schedule ignore it', () => {
+  const route = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'seasons', 'schedule.js'), 'utf8');
+  assert.ok(/SCHEDULE_EMIT_MS = 3000/.test(route) && /pendingEmits\.has\(season\.id\)\) return/.test(route), 'the messages are joined');
+  for (const f of ['app.js', 'player.js', 'embed-live.js', 'home.js', 'tables.js', 'common-site.js']) {
+    assert.ok(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', f), 'utf8').includes("e.status === 'SCHEDULE') return"), `${f} ignores a schedule change`);
+  }
+  assert.ok(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'season.js'), 'utf8').includes('e.seasonId !== season.id) return'), 'a tournament page ignores another tournament');
+});
+
 let failed = 0;
 for (const t of tests) {
   try { t.fn(); console.log(`PASS  ${t.name}`); } catch (err) { failed += 1; console.log(`FAIL  ${t.name}\n      ${err.message}`); }

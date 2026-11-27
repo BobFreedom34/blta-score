@@ -125,5 +125,5 @@ async function load() {
 }
 
 const socket = io();
-socket.on('matches:changed', load);
+socket.on('matches:changed', (e) => { if (e && e.status === 'SCHEDULE') return; load(); }); // (not on every change of a tournament's court schedule)
 load();

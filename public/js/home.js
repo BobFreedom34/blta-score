@@ -888,7 +888,7 @@ rootEl.addEventListener('click', (e) => {
   if (typeof io === 'function') {
     const socket = io();
     let timer = null;
-    socket.on('matches:changed', () => { clearTimeout(timer); timer = setTimeout(refreshHome, 800); });
+    socket.on('matches:changed', (e) => { if (e && e.status === 'SCHEDULE') return; clearTimeout(timer); timer = setTimeout(refreshHome, 800); });
     socket.on('reservations:changed', () => { clearTimeout(timer); timer = setTimeout(refreshHome, 800); });
   }
 })();

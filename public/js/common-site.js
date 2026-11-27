@@ -1073,6 +1073,6 @@ async function loadSponsorStrip(el, query = '') {
   // a new match / a changed player of a match: the set is loaded again (not more often than every few seconds)
   if (typeof io === 'function') {
     let reload = null;
-    io().on('matches:changed', () => { clearTimeout(reload); reload = setTimeout(async () => { if (!playerAuthed || !currentPlayerId) return; try { const list = await api(`/matches?playerId=${encodeURIComponent(currentPlayerId)}&withDoubles=1`); mine = new Set((Array.isArray(list) ? list : []).map((m) => m.token)); schedule(); } catch { /* keeps the old set */ } }, 4000); });
+    io().on('matches:changed', (e) => { if (e && e.status === 'SCHEDULE') return; clearTimeout(reload); reload = setTimeout(async () => { if (!playerAuthed || !currentPlayerId) return; try { const list = await api(`/matches?playerId=${encodeURIComponent(currentPlayerId)}&withDoubles=1`); mine = new Set((Array.isArray(list) ? list : []).map((m) => m.token)); schedule(); } catch { /* keeps the old set */ } }, 4000); });
   }
 })();

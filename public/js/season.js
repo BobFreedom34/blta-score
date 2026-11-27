@@ -1198,7 +1198,8 @@ async function refresh() {
   window.dispatchEvent(new CustomEvent('blta:season-tab', { detail: { tab } }));
   if (wantsRegister && season.registrationAvailable && document.getElementById('sv-register')) requirePlayerAuth(openRegisterModal);
   if (typeof io === 'function') {
-    io().on('matches:changed', () => {
+    io().on('matches:changed', (e) => {
+      if (e && e.seasonId && e.seasonId !== season.id) return; // (another tournament's change)
       clearTimeout(refreshTimer);
       // the timetable tab only reloads its own data (a live score changes often); the other tabs load again when opened
       refreshTimer = setTimeout(() => {
