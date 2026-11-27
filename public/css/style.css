@@ -7971,3 +7971,9 @@ body.match-page #match-root .match-facts { padding: 16px 18px; margin: 0 0 16px;
   body.match-page #match-root .match-actions .btn { width: 100%; min-width: 0; margin: 0; justify-content: center; text-align: center; white-space: normal; line-height: 1.2; padding: 10px 8px; font-size: 12px; gap: 6px; }
   body.match-page #match-root .match-actions .btn .venue-icon { flex: none; width: 15px; height: 15px; }
 }
+
+/* Court schedule: the category in the grey line as a small pill (categoryPillHtml) - coloured square + name, smaller than on the match cards */
+body .badge.badge-mono.cs-cat { font-size: 9.5px; letter-spacing: 0.03em; border-radius: 4px; margin-right: 4px; vertical-align: 1px; }
+body .badge.badge-mono.cs-cat .cat-mono { padding: 1px 4px; }
+body .badge.badge-mono.cs-cat .cat-name { padding: 1px 6px 1px 5px; }
+body .badge.cs-cat:not(.badge-mono) { font-size: 9.5px; padding: 1px 6px; margin-right: 4px; }

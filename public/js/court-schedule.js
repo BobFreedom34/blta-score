@@ -90,6 +90,13 @@ function csPlayersHtml(m) {
 // name on the left, a column per set (S1, S2, MTB) on the right with the games of that player, the winner of a set green, the tie-break points small.
 // pill: the "finished" / "live" pill of a row of the list; it stands in the line of the set labels (S1) when there is one, so it takes no line of its own
 // W.O. / Skreč of a finished match that ended by a walkover or a retirement ('' otherwise): white, where the result is
+// the grey line under the players: the category as the small pill (coloured square + name, as on the match cards), then the group and round
+function csMetaHtml(m) {
+  const round = escapeHtml(csRoundLabel(m) || '');
+  if (!m.category) return round;
+  return `${categoryBadge(m.category).replace('class="badge ', 'class="badge cs-cat ')}${round ? ` ${round}` : ''}`;
+}
+
 function csEndReasonText(m) {
   const key = m.status === 'FINISHED' && { WALKOVER: 'courts.walkover', RETIREMENT: 'courts.retired' }[m.endReason];
   return key ? t(key) : '';
@@ -149,7 +156,7 @@ function csBlockHtml(m, day, startMin, laneInfo, endMin) {
       style="top:${top}px;height:${minutes * csPx() - 3}px${across}" data-minutes="${real}" title="${escapeHtml(`${csTime(csStartOf(m))} · ${m.player1.name} – ${m.player2.name}`)}">
     <span class="cs-m-time">${csTime(csStartOf(m))}${m.status === 'FINISHED' ? ` <b class="cs-done">${escapeHtml(t('courts.finished'))}</b>${csEndReasonText(m) ? ` <b class="cs-end-txt">${escapeHtml(csEndReasonText(m))}</b>` : ''}` : ''}${finished && csState.admin ? ` <i class="cs-lock fin${unlocked ? ' open' : ''}" data-fin-lock="${m.token}" title="${escapeHtml(unlocked ? tl('Odomknutý — zápas môžeš posúvať a meniť mu dĺžku. Kliknutím ho zamkneš.', 'Unlocked — you can move the match and change its length. Click to lock it.') : tl('Skončený zápas je zamknutý. Kliknutím ho odomkneš, potom ho môžeš posúvať a meniť mu dĺžku.', 'A finished match is locked. Click to unlock it, then you can move it and change its length.'))}"></i>` : ''}${m.status === 'PLANNED' && m.locked && csState.admin ? ` <i class="cs-lock" data-unlock="${m.token}" title="${escapeHtml(tl('Zamknutý — plánovač ho nepresúva. Kliknutím ho odomkneš.', 'Locked — the planner does not move it. Click to unlock it.'))}"></i>` : ''}${m.status === 'LIVE' ? ` <b class="cs-done cs-live-pill">${escapeHtml(t('home.live'))}</b>` : ''}</span>
     <span class="cs-m-pl">${csScoredPlayersHtml(m)}</span>
-    <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
+    <span class="cs-m-meta">${csMetaHtml(m)}</span>
     ${resizable ? `<span class="cs-resize" data-resize="1" title="${escapeHtml(tl('Potiahni na zmenu dĺžky zápasu', 'Drag to change the length of the match'))}${m.durationMinutes ? escapeHtml(tl(` (nastavených ${m.durationMinutes} min) — dvojklik vráti pôvodnú dĺžku`, ` (set to ${m.durationMinutes} min) — double-click restores the original length`)) : ''}"></span>` : ''}
   </a>`;
 }
@@ -210,7 +217,7 @@ function csLiveHtml() {
     <a class="cs-livecard ${csStatusClass(m)}" href="/match/${m.token}">
       <span class="cs-live-h"><b class="cs-live">${escapeHtml(t('home.live'))}</b>${m.courtNo ? ` ${escapeHtml(csCourtName(m.courtNo))}` : ''}</span>
       <span class="cs-live-pl">${csScoredPlayersHtml(m)}</span>
-      <span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>
+      <span class="cs-m-meta">${csMetaHtml(m)}</span>
     </a>`).join('');
   return `<div class="cs-livestrip"><div class="cs-tray-h">${escapeHtml(t('courts.liveNow'))}<em>${live.length}</em></div><div class="cs-tray-body">${cards}</div></div>`;
 }
@@ -221,7 +228,7 @@ function csTrayHtml() {
   const chips = waiting.map((m) => {
     const movable = csState.admin;
     return `<a class="cs-chip ${csStatusClass(m)}${movable ? ' cs-drag' : ''}" href="/match/${m.token}" draggable="false" data-token="${m.token}" ${movable ? 'data-drag="1"' : ''}>
-      <span class="cs-m-pl">${csPlayersHtml(m)}</span><span class="cs-m-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>${m.why ? `<span class="cs-why">${escapeHtml(t(`courts.why.${m.why.code}`, m.why))}</span>` : ''}</a>`;
+      <span class="cs-m-pl">${csPlayersHtml(m)}</span><span class="cs-m-meta">${csMetaHtml(m)}</span>${m.why ? `<span class="cs-why">${escapeHtml(t(`courts.why.${m.why.code}`, m.why))}</span>` : ''}</a>`;
   }).join('');
   return `<div class="cs-tray"><div class="cs-tray-h">${escapeHtml(t('courts.unscheduled'))}<em>${waiting.length}</em></div><div class="cs-tray-body">${chips || `<span class="cs-tray-empty">${escapeHtml(t('courts.trayEmpty'))}</span>`}</div></div>`;
 }
@@ -243,7 +250,7 @@ function csListHtml(day) {
       <a class="cs-row ${csStatusClass(m)}" href="/match/${m.token}">
         <span class="cs-row-time">${csTime(csStartOf(m))}</span>
         <span class="cs-row-pl">${csScoredPlayersHtml(m, m.status === 'FINISHED' ? `<b class="cs-done cs-row-pill">${escapeHtml(t('courts.finished'))}</b>` : (m.status === 'LIVE' ? `<b class="cs-done cs-live-pill cs-row-pill">${escapeHtml(t('home.live'))}</b>` : ''))}</span>
-        <span class="cs-row-meta">${escapeHtml([categoryLabel(m.category), csRoundLabel(m)].filter(Boolean).join(' · '))}</span>${csEndReasonText(m) ? `
+        <span class="cs-row-meta">${csMetaHtml(m)}</span>${csEndReasonText(m) ? `
         <span class="cs-row-st cs-row-end">${escapeHtml(csEndReasonText(m))}</span>` : ''}
       </a>`).join('');
     return `<div class="cs-list-court"><div class="cs-list-h">${escapeHtml(csCourtName(court))}${csLiveButtonHtml(court)}<em>${rows.length}</em></div>${body || `<div class="cs-row-empty">${escapeHtml(t('courts.courtFree'))}</div>`}</div>`;
