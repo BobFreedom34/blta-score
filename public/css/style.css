@@ -7994,3 +7994,8 @@ body .btn.cs-undo:not(:disabled):hover { background: rgba(255, 255, 255, 0.06); 
 .cs-undo em { font-style: normal; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); }
 body .btn.cs-undo:disabled { opacity: 0.45; cursor: default; color: var(--white); background: transparent; border-color: var(--frame, rgba(255, 255, 255, 0.3)); }
 .cs-bar-row .btn.cs-undo, .cs-bar-row .btn.cs-fullscreen { box-sizing: border-box; height: 34px; } /* (both buttons exactly as tall: the icon of Celá obrazovka made it 2px taller) */
+
+/* "Nahradiť hráča": the field as the other fields of the app (the form of a new match): grey fill, thin frame, orange when typing */
+.rp-field input { box-sizing: border-box; width: 100%; background: var(--fill-grey); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: var(--radius-sm); color: #fff; font-family: inherit; font-size: 15px; font-weight: 600; padding: 12px 14px; outline: 0; box-shadow: none; }
+.rp-field input::placeholder { color: #6f737c; font-weight: 500; }
+.rp-field input:focus { border-color: var(--orange); }

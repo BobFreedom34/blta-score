@@ -831,7 +831,7 @@ async function pickReplacementPlayer(who) {
         <button type="button" class="close" aria-label="Close">&times;</button>
         <h3 style="margin-top:0">${escapeHtml(tl(`Kto nahradí hráča ${who}?`, `Who takes the place of ${who}?`))}</h3>
         <p class="hint" style="margin:0 0 10px">${escapeHtml(tl('Vyber hráča, ktorý je v aplikácii.', 'Choose a player who is in the app.'))}</p>
-        <input type="text" id="rp-name" list="rp-names" autocomplete="off" placeholder="${escapeHtml(tl('Meno hráča', 'Name of the player'))}" style="width:100%">
+        <div class="field rp-field"><input type="text" id="rp-name" list="rp-names" autocomplete="off" placeholder="${escapeHtml(tl('Začni písať meno hráča', 'Start typing the name of the player'))}"></div>
         <datalist id="rp-names">${players.map((p) => `<option value="${escapeHtml(p.name)}"></option>`).join('')}</datalist>
         <div id="rp-error" class="hint" style="color:var(--orange);min-height:1.4em;margin-top:6px"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
