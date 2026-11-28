@@ -68,7 +68,7 @@ router.post('/:id/registrations/admin', clubTournaments.requireSeasonManager(clu
 });
 
 // "Nahradiť hráča": the registered player leaves and another one takes his place everywhere (registration, group, bracket slot, matches not played yet):
-// { playerId } or { name (+ confirmNew) } for a player who is not in the list - a similar name asks first, as when a player is added to a group
+// { playerId } (or { name } of a player who is in the app; a new player is not made here)
 router.post('/registrations/:rid/replace', clubTournaments.requireSeasonManager(clubTournaments.byRegistrationId), (req, res) => {
   const reg = db.prepare('SELECT * FROM season_registrations WHERE id = ?').get(Number(req.params.rid));
   if (!reg) return res.status(404).json({ error: 'Registration not found' });
@@ -76,10 +76,11 @@ router.post('/registrations/:rid/replace', clubTournaments.requireSeasonManager(
   const body = req.body || {};
   const typed = typeof body.name === 'string' ? body.name.trim() : '';
   if ((body.playerId === undefined || body.playerId === null || body.playerId === '') && !typed) return res.status(400).json({ error: 'Choose the new player' });
-  const found = resolveMemberPlayer(body, season.league_id, { allowCreate: auth.isAdmin(req) });
+  // only a player who is in the app takes the place (no new player is made here)
+  const found = resolveMemberPlayer({ ...body, confirmNew: false }, season.league_id, { allowCreate: false });
   if (found.error) return res.status(400).json({ error: found.error });
   if (found.conflict) {
-    return res.status(409).json({ error: found.conflict.code === 'SIMILAR_PLAYERS' ? 'Similar players exist — choose who you mean' : 'No such player yet — confirm to create a new one', ...found.conflict });
+    return res.status(409).json({ error: found.conflict.code === 'SIMILAR_PLAYERS' ? 'Similar players exist — choose who you mean' : 'Choose a player who is in the app', ...found.conflict });
   }
   const oldName = reg.name;
   const done = replacePlayer.replaceInSeason(season, reg, found.player, { keepContact: auth.isAdmin(req) });

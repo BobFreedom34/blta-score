@@ -520,13 +520,15 @@ test('a player who left is replaced by another: registration (paid and seed stay
   assert.strictEqual((await call('POST', url(p[0].reg), { name: 'X' }, { admin: false })).status, 401);
   assert.strictEqual((await call('POST', url(p[0].reg), {})).status, 400, 'nobody chosen');
   assert.strictEqual((await call('POST', url(p[0].reg), { playerId: p[1].player.id })).status, 409, 'already registered');
-  // a new player typed as text asks first, then replaces
-  const ask = await call('POST', url(p[0].reg), { name: 'Náhradník Cup' });
-  assert.strictEqual(ask.status, 409);
-  assert.strictEqual(ask.json.code, 'UNKNOWN_PLAYER');
-  const done = await call('POST', url(p[0].reg), { name: 'Náhradník Cup', confirmNew: true });
+  // only a player who is in the app takes the place: a new name is refused, even confirmed
+  const ask = await call('POST', url(p[0].reg), { name: 'Náhradník Cup', confirmNew: true });
+  assert.ok([400, 409].includes(ask.status), `a new name: ${ask.status}`);
+  assert.ok(!(await call('GET', `/api/seasons/${tournament.id}/registrations`)).json.some((r) => r.name === 'Náhradník Cup'), 'nobody took the place');
+  const sub = await call('POST', '/api/players', { name: 'Náhradník Cup' });
+  assert.strictEqual(sub.status, 201, sub.text);
+  const done = await call('POST', url(p[0].reg), { playerId: sub.json.id });
   assert.strictEqual(done.status, 200, done.text);
-  assert.strictEqual(done.json.newPlayer, true);
+  assert.strictEqual(done.json.newPlayer, false);
   assert.ok(done.json.slots >= 1 && done.json.matches >= 1, JSON.stringify(done.json));
   const regs = (await call('GET', `/api/seasons/${tournament.id}/registrations`)).json;
   const now = regs.find((r) => r.name === 'Náhradník Cup');

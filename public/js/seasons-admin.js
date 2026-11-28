@@ -818,6 +818,46 @@ function renderList() {
 
 // Players for "Add a player" in a season's registrations, with the phone, e-mail and category of their profile (admin only).
 let adminPlayers = null;
+// "Nahradiť": the new player is chosen from the players of the app (typing filters the list; a name that is not in the app is refused) -> the player or null
+async function pickReplacementPlayer(who) {
+  const players = await loadAdminPlayers();
+  const key = (v) => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/s+/g, ' ').trim();
+  return new Promise((resolve) => {
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" style="max-width:440px">
+        <button type="button" class="close" aria-label="Close">&times;</button>
+        <h3 style="margin-top:0">${escapeHtml(tl(`Kto nahradí hráča ${who}?`, `Who takes the place of ${who}?`))}</h3>
+        <p class="hint" style="margin:0 0 10px">${escapeHtml(tl('Vyber hráča, ktorý je v aplikácii.', 'Choose a player who is in the app.'))}</p>
+        <input type="text" id="rp-name" list="rp-names" autocomplete="off" placeholder="${escapeHtml(tl('Meno hráča', 'Name of the player'))}" style="width:100%">
+        <datalist id="rp-names">${players.map((p) => `<option value="${escapeHtml(p.name)}"></option>`).join('')}</datalist>
+        <div id="rp-error" class="hint" style="color:var(--orange);min-height:1.4em;margin-top:6px"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+          <button type="button" class="btn btn-outline" id="rp-cancel">${escapeHtml(tl('Zrušiť', 'Cancel'))}</button>
+          <button type="button" class="btn btn-primary" id="rp-ok">${escapeHtml(tl('Nahradiť', 'Replace'))}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    const input = modal.querySelector('#rp-name');
+    const done = (value) => { modal.remove(); resolve(value); };
+    const ok = () => {
+      const k = key(input.value);
+      const found = players.filter((p) => key(p.name) === k);
+      if (!k) { modal.querySelector('#rp-error').textContent = tl('Vyber hráča zo zoznamu.', 'Choose a player from the list.'); return; }
+      if (!found.length) { modal.querySelector('#rp-error').textContent = tl('Taký hráč v aplikácii nie je. Vyber meno zo zoznamu.', 'There is no such player in the app. Choose a name from the list.'); return; }
+      done(found[0]);
+    };
+    modal.querySelector('.close').addEventListener('click', () => done(null));
+    modal.querySelector('#rp-cancel').addEventListener('click', () => done(null));
+    modal.addEventListener('click', (e) => { if (e.target === modal) done(null); });
+    modal.querySelector('#rp-ok').addEventListener('click', ok);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok(); } if (e.key === 'Escape') done(null); });
+    input.focus();
+  });
+}
+
 async function loadAdminPlayers() {
   if (!adminPlayers) adminPlayers = await api('/players');
   return adminPlayers;
@@ -1290,21 +1330,9 @@ function wireSeason(card) {
         await loadRegs();
       } else if (e.target.closest('[data-reg-replace]')) {
         const who = e.target.closest('[data-reg-replace]').dataset.name || '';
-        const typed = (prompt(tl(`Kto nahradí hráča ${who}? Napíš meno hráča (aj nového, ktorý ešte nie je v aplikácii).`, `Who takes the place of ${who}? Type the name of the player (a new one who is not in the app yet works too).`)) || '').trim();
-        if (!typed) return;
-        const send = async (extra) => api(`/seasons/registrations/${rid}/replace`, { method: 'POST', body: { name: typed, ...extra } });
-        let made;
-        try { made = await send({}); } catch (err) {
-          const d = err.data || {};
-          if (d.code !== 'SIMILAR_PLAYERS' && d.code !== 'UNKNOWN_PLAYER') throw err;
-          if (d.code === 'SIMILAR_PLAYERS' && d.suggestions && d.suggestions.length) {
-            const first = d.suggestions[0];
-            if (confirm(tl(`Je „${typed}“ hráč ${first.name}? OK = áno, ten ho nahradí. Zrušiť = nie, vytvorí sa nový hráč.`, `Is "${typed}" the player ${first.name}? OK = yes, they take the place. Cancel = no, a new player is made.`))) made = await send({ playerId: first.id });
-            else if (confirm(tl(`Vytvoriť nového hráča „${typed}“ a dať ho na miesto ${who}?`, `Make a new player "${typed}" and put them in the place of ${who}?`))) made = await send({ confirmNew: true });
-            else return;
-          } else if (confirm(tl(`Hráč „${typed}“ zatiaľ neexistuje. Vytvoriť ho a dať na miesto ${who}?`, `There is no player "${typed}" yet. Make them and put them in the place of ${who}?`))) made = await send({ confirmNew: true });
-          else return;
-        }
+        const picked = await pickReplacementPlayer(who);
+        if (!picked) return;
+        const made = await api(`/seasons/registrations/${rid}/replace`, { method: 'POST', body: { playerId: picked.id } });
         toast(tl(`${made.old} nahradený hráčom ${made.name} (skupina: ${made.groups}, pavúk: ${made.slots}, zápasy: ${made.matches})`, `${made.old} replaced by ${made.name} (group: ${made.groups}, bracket: ${made.slots}, matches: ${made.matches})`));
         await loadRegs();
       } else if (e.target.closest('[data-reg-purge]')) {
